@@ -1,5 +1,6 @@
 # Buda Debug Interface and Tools
 
+## General Information
 
 [Documentation](https://tenstorrent.sharepoint.com/:f:/r/sites/Specifications/Spatial/Debug?csf=1&web=1&e=m6PtgT]) on Sharepoint:
 - [Debug architecture](https://tenstorrent.sharepoint.com/:w:/r/sites/Specifications/Spatial/Debug/buda_debug_architecture.docx?d=w314badcf8d404f4b92e083091b0edad5&csf=1&web=1&e=EEX4UD)
@@ -9,6 +10,8 @@ Source code path: **dbd/**.
 Main development branch: **ihamer/debuda**.
 
 List of all [Debuda issues](https://yyz-gitlab.local.tenstorrent.com/tenstorrent/budabackend/-/issues?scope=all&state=opened&label_name[]=Debuda). Gitlab issues label: **debuda**.
+
+`slack`: #debuda
 
 ## Debuda.py
 
