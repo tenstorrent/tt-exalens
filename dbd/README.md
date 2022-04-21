@@ -12,7 +12,7 @@ List of all [Debuda issues](https://yyz-gitlab.local.tenstorrent.com/tenstorrent
 
 ## Debuda.py - silicon debugging
 
-![High level diagram](docs/images/debuda.png)
+![High level diagram](dbd/docs/images/debuda.png)
 
 Debuda.py is used to probe hardware and detect/trace hangs in NOC, get status of Queues, contents of memory, status of Riscs.
 It has access to NOC registers, DRAM, L1, host-based queues.
@@ -24,3 +24,4 @@ Prints status of streams.
 bin/build-debuda-stub.sh
 ```
 Prebuilt binary is committed to git repo for convenience.
+
