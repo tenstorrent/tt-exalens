@@ -40,7 +40,7 @@ make verif/op_tests
 
 Run debuda.py:
 ```
-python3 dbd/debuda.py  tt_build/test_op_6142509188972423790 --netlist verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml
+dbd/debuda.py  tt_build/test_op_6142509188972423790 --netlist verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml
 ```
 Debuda.py will read necessary files (e.g. netlist, blob/pipegen.yaml), and perform initial
 probing of the queues which shows presents any anomalies (such as queues with non-zero
@@ -60,7 +60,7 @@ can be useful when interactive (REPL) mode is not desirable. If **exit** is supp
 command, Debuda.py will terminate. As an example:
 
 ```
-python3 dbd/debuda.py  tt_build/test_op_6142509188972423790 --netlist verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml --commands "s 1 1 24;exit"
+dbd/debuda.py  tt_build/test_op_6142509188972423790 --netlist verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml --commands "s 1 1 24;exit"
 ```
 The above command will show Stream 24 on core 1-1 and then terminate.
 
