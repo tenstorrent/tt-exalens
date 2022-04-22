@@ -26,10 +26,17 @@ args = parser.parse_args()
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
+# Colors
 CLR_RED = '\033[31m'
 CLR_GREEN = '\033[32m'
 CLR_BLUE = '\033[34m'
+CLR_ORANGE = '\033[38:2:205:106:0m'
 CLR_END = '\033[0m'
+
+CLR_ERR = CLR_RED
+CLR_WARN = CLR_ORANGE
+CLR_INFO = CLR_BLUE
+CLR_PROMPT = CLR_GREEN
 
 # Global variables
 EPOCH_TO_PIPEGEN_YAML_MAP={}
@@ -267,12 +274,12 @@ def convert_reg_dict_to_strings(chip, regs, x, y, stream_id):
             try:
                 if k == "REMOTE_SRC_X":
                     noc0_x, noc0_y = GS_noc1_to_noc0 (regs[k], 0)
-                    string_regs[k] += f"({CLR_RED}{noc0_x}{CLR_END})"
+                    string_regs[k] += f"({CLR_INFO}{noc0_x}{CLR_END})"
                 if k == "REMOTE_SRC_Y":
                     noc0_x, noc0_y = GS_noc1_to_noc0 (0, regs[k])
-                    string_regs[k] += f"({CLR_RED}{noc0_y}{CLR_END})"
+                    string_regs[k] += f"({CLR_INFO}{noc0_y}{CLR_END})"
             except:
-                print (f"{CLR_RED}Invalid coordinate passed k={k} regs[k]={regs[k]} {CLR_END}")
+                print (f"{CLR_ERR}Invalid coordinate passed k={k} regs[k]={regs[k]} {CLR_END}")
 
     return string_regs
 
@@ -448,7 +455,7 @@ def get_streams_from_blob (chip, x, y, id):
             ret_val.append (v_data)
             lastidx = len(ret_val)-1
             # Attach a source field
-            ret_val[lastidx][f"source"] = f'{CLR_RED}{k}{CLR_END}'
+            ret_val[lastidx][f"source"] = f'{CLR_INFO}{k}{CLR_END}'
 
     return ret_val
 
@@ -544,7 +551,7 @@ def summary(chip, x_coords, y_coords, streams, short=False):
                     first_stream = False
                     stream_id=active_streams[x][y][i]
                     current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
-                    row = [ xy, stream_id, current_phase>>10, current_phase, f"{CLR_RED}Not idle{CLR_END}", int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING']), int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED']) ]
+                    row = [ xy, stream_id, current_phase>>10, current_phase, f"{CLR_WARN}Not idle{CLR_END}", int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING']), int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED']) ]
 
                     num_entries_to_show_remaining -= 1
                     if short and num_entries_to_show_remaining == 0:
@@ -613,7 +620,7 @@ def print_stream (current_chip, x, y, stream_id, current_epoch_id):
 
     all_stream_summary, navigation_suggestions = get_core_stream_summary (current_chip, x, y)
     data_columns = [ all_stream_summary ] if len(all_stream_summary) > 0 else []
-    title_columns = [ f"{CLR_RED}Non-idle streams{CLR_END}" ] if len(all_stream_summary) > 0 else []
+    title_columns = [ f"{CLR_WARN}Non-idle streams{CLR_END}" ] if len(all_stream_summary) > 0 else []
 
     data_columns.append (stream_regs)
     title_columns.append ("Registers")
@@ -656,7 +663,7 @@ def print_stream (current_chip, x, y, stream_id, current_epoch_id):
     print_columnar_dicts (data_columns, title_columns)
 
     if current_epoch_id != stream_epoch_id:
-        print (f"{CLR_RED}Current epoch is {current_epoch_id}, while the stream is in epoch {stream_epoch_id} {CLR_END}. To switch to epoch {stream_epoch_id}, enter {CLR_GREEN}e {stream_epoch_id}{CLR_END}")
+        print (f"{CLR_WARN}Current epoch is {current_epoch_id}, while the stream is in epoch {stream_epoch_id} {CLR_END}. To switch to epoch {stream_epoch_id}, enter {CLR_PROMPT}e {stream_epoch_id}{CLR_END}")
 
     # 4. TODO: Print forks
 
@@ -671,7 +678,7 @@ def print_buffer_data (buffer_id, current_epoch_id = None):
             d = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id][dct]
             if ("input_list" in d and buffer_id in d["input_list"]) or ("output_list" in d and buffer_id in d["output_list"]) or ("buffer" in dct and "uniqid" in d and buffer_id == d["uniqid"]):
                 if current_epoch_id is None or current_epoch_id == epoch_id:
-                    print_columnar_dicts ([d], [f"{CLR_RED}Epoch {epoch_id} - {dct}{CLR_END}"])
+                    print_columnar_dicts ([d], [f"{CLR_INFO}Epoch {epoch_id} - {dct}{CLR_END}"])
                 else:
                     print (f"Buffer is also used in epoch {epoch_id}. Details suppressed.")
 
@@ -683,7 +690,7 @@ def print_pipe_data (pipe_id, current_epoch_id = None):
             d = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id][dct]
             if ("pipe" in dct and "id" in d and pipe_id == d["id"]):
                 if current_epoch_id is None or current_epoch_id == epoch_id:
-                    print_columnar_dicts ([d], [f"{CLR_RED}Epoch {epoch_id} - {dct}{CLR_END}"])
+                    print_columnar_dicts ([d], [f"{CLR_INFO}Epoch {epoch_id} - {dct}{CLR_END}"])
                 else:
                     print (f"Pipe is also used in epoch {epoch_id}. Details suppressed.")
 
@@ -697,7 +704,7 @@ def print_pipe_data (pipe_id, current_epoch_id = None):
                 else:
                     if "pipe_id" in dct[strm] and dct[strm]["pipe_id"] == pipe_id:
                         if current_epoch_id is None or current_epoch_id == epoch_id:
-                            print_columnar_dicts ([dct[strm]], [f"{CLR_RED}Epoch {epoch_id} - BLOB - {strm}{CLR_END}"])
+                            print_columnar_dicts ([dct[strm]], [f"{CLR_INFO}Epoch {epoch_id} - BLOB - {strm}{CLR_END}"])
                         else:
                             print (f"Pipe is also used in epoch {epoch_id}. Details suppressed.")
 
@@ -708,7 +715,7 @@ def print_dram_queue_summary_for_graph (graph, chip_array):
 
     PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]
 
-    print (f"{CLR_BLUE}DRAM queues for epoch %d{CLR_END}" % epoch_id)
+    print (f"{CLR_INFO}DRAM queues for epoch %d{CLR_END}" % epoch_id)
 
     table = []
     for b in PIPEGEN:
@@ -742,7 +749,7 @@ def print_host_queue_for_graph (graph):
                 # dram_chan = buffer["dram_chan"]
                 dram_addr = buffer['dram_addr']
                 if dram_addr >> 29 == chip_id:
-                    # print (f"{CLR_RED}Found host queue %s{CLR_END}" % pp.pformat(buffer))
+                    # print (f"{CLR_WARN}Found host queue %s{CLR_END}" % pp.pformat(buffer))
                     rdptr = host_dma_read (dram_addr)
                     wrptr = host_dma_read (dram_addr + 4)
                     slot_size_bytes = buffer["size_tiles"] * buffer["tile_size"]
@@ -750,7 +757,7 @@ def print_host_queue_for_graph (graph):
                     occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer["q_slots"])
                     table.append ([ b, buffer["dram_buf_flag"], buffer["dram_io_flag"], f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer["q_slots"], queue_size_bytes ])
 
-    print (f"{CLR_BLUE}Host queues (where dram_io_flag_is_remote!=0) for epoch %d {CLR_END}" % epoch_id)
+    print (f"{CLR_INFO}Host queues (where dram_io_flag_is_remote!=0) for epoch %d {CLR_END}" % epoch_id)
     if len(table) > 0:
         print (tabulate(table, headers=["Buffer name", "dram_buf_flag", "dram_io_flag", "Address", "RD ptr", "WR ptr", "Occupancy", "Q slots", "Q Size [bytes]"] ))
     else:
@@ -774,7 +781,7 @@ def print_epoch_queue_summary (chip_array, x_coords, y_coords):
     chip_id = 0
     for chip in chip_array:
         table = []
-        print (f"{CLR_BLUE}Epoch queues for device %d{CLR_END}" % chip_id)
+        print (f"{CLR_INFO}Epoch queues for device %d{CLR_END}" % chip_id)
         chip_id += 1
         for x in y_coords:
             for y in x_coords:
@@ -815,7 +822,7 @@ def print_available_commands (commands):
     rows = []
     for c in commands:
         desc = c['arguments_description'].split(':')
-        row = [ f"{CLR_RED}{c['short']}{CLR_END}", f"{CLR_RED}{c['long']}{CLR_END}", f"{desc[0]}", f"{desc[1]}" ]
+        row = [ f"{CLR_INFO}{c['short']}{CLR_END}", f"{CLR_INFO}{c['long']}{CLR_END}", f"{desc[0]}", f"{desc[1]}" ]
         rows.append(row)
     print (tabulate(rows, headers=[ "Short", "Long", "Arguments", "Description" ]))
 
@@ -825,9 +832,9 @@ def print_suggestions (navigation_suggestions, current_stream_id):
         rows = []
         for i in range (len(navigation_suggestions)):
             stream_id = navigation_suggestions[i]['stream_id']
-            clr = CLR_RED if current_stream_id == stream_id else CLR_END
+            clr = CLR_INFO if current_stream_id == stream_id else CLR_END
             row = [ f"{clr}{i}{CLR_END}", \
-                f"Go to {navigation_suggestions[i]['type']} of stream {navigation_suggestions[i]['stream_id']}", \
+                f"{clr}Go to {navigation_suggestions[i]['type']} of stream {navigation_suggestions[i]['stream_id']}{CLR_END}", \
                 f"{clr}{navigation_suggestions[i]['cmd']}{CLR_END}"
                 ]
             rows.append (row)
@@ -836,7 +843,7 @@ def print_suggestions (navigation_suggestions, current_stream_id):
 def print_stream_summary (chip_array): 
     # Finally check and print stream data
     for i, chip in enumerate (chip_array):
-        print (f"{CLR_BLUE}Reading and analyzing streams on device %d...{CLR_END}" % i)
+        print (f"{CLR_INFO}Reading and analyzing streams on device %d...{CLR_END}" % i)
         streams_ui_data = get_all_streams_ui_data (chip, GS_x_coords, GS_y_coords)
         summary(chip, GS_x_coords, GS_y_coords, streams_ui_data)
 
@@ -860,7 +867,7 @@ def init_files (args):
         print (f"Loading {graph_to_epoch_filename}")
         GRAPH_TO_EPOCH_MAP = yaml.safe_load(open(graph_to_epoch_filename))
     except:
-        print (f"{CLR_RED}Error: cannot open graph_to_epoch_map.yaml {CLR_END}")
+        print (f"{CLR_ERR}Error: cannot open graph_to_epoch_map.yaml {CLR_END}")
         sys.exit(1)
 
     # Cache epoch id to chip id
@@ -876,7 +883,7 @@ def init_files (args):
     for graph in NETLIST["graphs"]:
         GRAPH_DIR=f"{args.output_dir}/graph_{graph}"
         if not os.path.isdir(GRAPH_DIR):
-            print (f"{CLR_RED}Error: cannot find directory {GRAPH_DIR} {CLR_END}")
+            print (f"{CLR_ERR}Error: cannot find directory {GRAPH_DIR} {CLR_END}")
             sys.exit(1)
         PIPEGEN_FILE=f"{GRAPH_DIR}/overlay/pipegen.yaml"
         BLOB_FILE=f"{GRAPH_DIR}/overlay/blob.yaml"
@@ -930,6 +937,11 @@ def main(chip_array, args):
           "short" : "x",
           "expected_argument_count" : 0,
           "arguments_description" : ": exit the program"
+        },
+        { "long" : "help",
+          "short" : "h",
+          "expected_argument_count" : 0,
+          "arguments_description" : ": prints command documentation"
         },
         { "long" : "epoch",
           "short" : "e",
@@ -1006,6 +1018,7 @@ def main(chip_array, args):
         return EPOCH_ID_TO_CHIP_ID[epoch_id]
 
     non_interactive_commands=args.commands.split(";") if args.commands else []
+    have_non_interactive_commands=len (non_interactive_commands) > 0
 
     current_x = 1
     current_y = 1
@@ -1013,21 +1026,21 @@ def main(chip_array, args):
     navigation_suggestions = None
     while cmd_raw != 'exit' and cmd_raw != 'x':
         if current_x is not None and current_y is not None and current_epoch_id is not None:
-            current_prompt = f"core:{CLR_RED}{current_x}-{current_y}{CLR_END} stream:{CLR_RED}{current_stream_id}{CLR_END} "
+            current_prompt = f"core:{CLR_PROMPT}{current_x}-{current_y}{CLR_END} stream:{CLR_PROMPT}{current_stream_id}{CLR_END} "
         try:
             current_chip_id = epoch_id_to_chip_id(current_epoch_id)
             current_chip = chip_array[current_chip_id]
 
-            if len (non_interactive_commands) > 0:
+            if have_non_interactive_commands:
                 cmd_raw = non_interactive_commands[0].strip()
                 if cmd_raw == 'exit' or cmd_raw == 'x':
                     continue
                 non_interactive_commands=non_interactive_commands[1:]
                 if len(cmd_raw)>0:
-                    print (f"{CLR_BLUE}Executing command: %s{CLR_END}" % cmd_raw)
+                    print (f"{CLR_INFO}Executing command: %s{CLR_END}" % cmd_raw)
             else:
                 print_suggestions (navigation_suggestions, current_stream_id)
-                prompt = f"Current epoch:{CLR_RED}{current_epoch_id}{CLR_END} chip:{CLR_RED}{current_chip_id}{CLR_END} {current_prompt}> "
+                prompt = f"Current epoch:{CLR_PROMPT}{current_epoch_id}{CLR_END} chip:{CLR_PROMPT}{current_chip_id}{CLR_END} {current_prompt}> "
                 cmd_raw = input(prompt)
                 try: # To get a navigation string
                     cmd_int = int(cmd_raw)
@@ -1046,13 +1059,13 @@ def main(chip_array, args):
                         found_command = c
                         # Check arguments
                         if len(cmd)-1 != found_command["expected_argument_count"]:
-                            print (f"Command '{found_command['long']}' requires {found_command['expected_argument_count']} argument{'s' if found_command['expected_argument_count'] != 1 else ''}: {found_command['arguments_description']}")
+                            print (f"{CLR_ERR}Command '{found_command['long']}' requires {found_command['expected_argument_count']} argument{'s' if found_command['expected_argument_count'] != 1 else ''}: {found_command['arguments_description']}{CLR_END}")
                             found_command = 'invalid-args'
                         break
 
                 if found_command == None:
                     # Print help on invalid commands
-                    print (f"Invalid command '{cmd_string}'\nAvailable commands:")
+                    print (f"{CLR_ERR}Invalid command '{cmd_string}'{CLR_END}\nAvailable commands:")
                     print_available_commands (commands)
                 elif found_command == 'invalid-args':
                     # This was handled earlier
@@ -1066,7 +1079,7 @@ def main(chip_array, args):
                             PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[current_epoch_id]
                             BLOB = EPOCH_TO_BLOB_YAML_MAP[current_epoch_id]
                         else:
-                            print (f"{CLR_RED}Invalid epoch id {new_epoch_id}{CLR_END}")
+                            print (f"{CLR_ERR}Invalid epoch id {new_epoch_id}{CLR_END}")
                     elif found_command["long"] == "stream-summary":
                         print_stream_summary(chip_array)
                     elif found_command["long"] == "stream":
@@ -1077,7 +1090,7 @@ def main(chip_array, args):
                                 current_epoch_id = stream_epoch_id
                                 PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[current_epoch_id]
                                 BLOB = EPOCH_TO_BLOB_YAML_MAP[current_epoch_id]
-                                print (f"{CLR_RED}Automatically switched to epoch {current_epoch_id}{CLR_END}")
+                                print (f"{CLR_WARN}Automatically switched to epoch {current_epoch_id}{CLR_END}")
                     elif found_command["long"] == "buffer":
                         buffer_id = int(cmd[1])
                         print_buffer_data (buffer_id, current_epoch_id)
@@ -1103,18 +1116,21 @@ def main(chip_array, args):
                         elif found_command["long"] == "pci-write-xy":
                             pci_write_xy (current_chip_id, x, y, NOC0, addr, data = int(cmd[4],0))
                         else:
-                            print (f"{CLR_RED} Unknown {found_command['long']} {CLR_END}")
+                            print (f"{CLR_ERR} Unknown {found_command['long']} {CLR_END}")
                     elif found_command["long"] == "full-dump":
                         full_dump_xy(current_chip_id, current_x, current_y)
                     elif found_command["long"] == "exit":
                         pass # Exit is handled in the outter loop
+                    elif found_command["long"] == "help":
+                        print_available_commands (commands)
                     else:
                         found_command["module"].run(cmd[1:], globals())
 
         except Exception as e:
-            print (f"Exception: {CLR_RED} {e} {CLR_END}")
+            print (f"Exception: {CLR_ERR} {e} {CLR_END}")
             print(traceback.format_exc())
-            # raise
+            if have_non_interactive_commands:
+                raise
     return 0
 
 # Communication with Buda (or debuda-stub)
@@ -1129,7 +1145,7 @@ def init_comm_client ():
         global DEBUDA_STUB_PROCESS
         DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path], preexec_fn=os.setsid)
     except:
-        print (f"Exception: {CLR_RED} Cannot find {debuda_stub_path}. {STUB_HELP} {CLR_END}")
+        print (f"Exception: {CLR_ERR} Cannot find {debuda_stub_path}. {STUB_HELP} {CLR_END}")
         raise
 
     context = zmq.Context()
@@ -1152,7 +1168,7 @@ def terminate_comm_client_callback ():
     os.killpg(os.getpgid(DEBUDA_STUB_PROCESS.pid), signal.SIGTERM)
     print (f"Terminated debuda-stub with pid:{DEBUDA_STUB_PROCESS.pid}")
 
-# Get path of this script. 'frozen' means packaged with pyinstaller.
+# Get path of this script. 'frozen' means: packaged with pyinstaller.
 def application_path ():
     if getattr(sys, 'frozen', False):
         application_path = os.path.dirname(sys.executable)
