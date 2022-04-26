@@ -106,6 +106,37 @@ def GS_noc1_to_noc0 (noc_x, noc_y):
     phys_x, phys_y = GS_noc_to_physical (noc_x, noc_y, noc_id=1)
     return GS_physical_to_noc (phys_x, phys_y, noc_id=0)
 
+# FIX: Check if this is correct
+def GS_noc0_to_rc (noc0_x, noc0_y):
+    row = noc0_y - 1
+    col = noc0_x - 1
+    return row, col
+
+def GS_rc_to_noc0 (row, col):
+    noc0_y = row + 1
+    noc0_x = col + 1
+    return noc0_x, noc0_y
+
+# Returns an array of [r,c] pairs for the operaiton
+def get_op_locations (op):
+    locations = []
+    opr = op['grid_loc'][0]
+    opc = op['grid_loc'][1]
+    for r in range(op['grid_size'][1]):
+        for c in range(op['grid_size'][0]):
+            locations.append ( [ opr + r, opc + c ] )
+    return locations
+
+# Prints the op name based on the core noc location
+def core_to_op_name (graph_name, noc0_x, noc0_y):
+    r, c = GS_noc0_to_rc (noc0_x, noc0_y)
+    graph = NETLIST["graphs"][graph_name]
+    for op_name in graph.keys():
+        if op_name not in ['target_device', 'input_count']:
+            op = graph[op_name]
+            op_locations = get_op_locations(op)
+            if [ r, c ] in op_locations:
+                return f"{graph_name}/{op_name}:{op['type']}"
 
 def pci_read_xy(chip_id, x, y, z, reg_addr):
     # print (f"Reading {x}-{y} 0x{reg_addr:x}")
@@ -292,20 +323,20 @@ def get_core_stream_summary (chip, x, y):
         # Check if idle
         regs = read_stream_regs (chip, x, y, stream_id)
         reg_strings = convert_reg_dict_to_strings(chip, regs, x, y, stream_id)
-        idle = (regs["DEBUG_STATUS[7]"] & 0xfff) == 0xc00
+        idle = is_stream_idle (regs)
 
         # Construct the navigation suggestions, and stream idle status
         if regs["REMOTE_SOURCE"] !=0 and 'REMOTE_SRC_X' in regs:
             val += f"RS-{reg_strings['REMOTE_SRC_X']}-{reg_strings['REMOTE_SRC_Y']}-{reg_strings['REMOTE_SRC_STREAM_ID']} "
             noc0_x, noc0_y = convert_to_noc_0 (regs['REMOTE_SRC_X'], regs['REMOTE_SRC_Y'], regs['REMOTE_SRC_UPDATE_NOC'])
             navigation_suggestions.append (\
-                { 'stream_id' : stream_id, 'type' : 'src', \
+                { 'stream_id' : stream_id, 'type' : 'src', "noc0_x" : noc0_x, "noc0_y" : noc0_y, \
                 'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_SRC_STREAM_ID']}" })
         if regs["REMOTE_RECEIVER"] !=0 and 'REMOTE_DEST_X' in regs:
             val += f"RR-{reg_strings['REMOTE_DEST_X']}-{reg_strings['REMOTE_DEST_Y']}-{reg_strings['REMOTE_DEST_STREAM_ID']} "
             noc0_x, noc0_y = convert_to_noc_0 (regs['REMOTE_DEST_X'], regs['REMOTE_DEST_Y'], regs['OUTGOING_DATA_NOC'])
             navigation_suggestions.append (\
-                { 'stream_id' : stream_id, 'type' : 'dest', \
+                { 'stream_id' : stream_id, 'type' : 'dest', "noc0_x" : noc0_x, "noc0_y" : noc0_y, \
                 'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_DEST_STREAM_ID']}" })
         if regs["LOCAL_SOURCES_CONNECTED"]!=0:
             val += "LSC "
@@ -502,6 +533,11 @@ def print_columnar_dicts (dict_array, title_array):
 
     print (tabulate(final_table, headers=titles))
 
+#
+# Analysis functions
+#
+def is_stream_idle(stream_data):
+    return (stream_data["DEBUG_STATUS[7]"] & 0xfff) == 0xc00
 def is_stream_active (stream_data):
     return int (stream_data["CURR_PHASE"]) != 0 and int (stream_data["NUM_MSGS_RECEIVED"]) > 0
 def is_bad_stream (stream_data):
@@ -514,7 +550,7 @@ def is_gsync_hung (chip, x, y):
 def is_ncrisc_done (chip, x, y):
     return pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0x1FFFFFF1
 
-def summary(chip, x_coords, y_coords, streams, short=False):
+def stream_summary(chip, x_coords, y_coords, streams, short=False):
     active_streams = {}
     bad_streams = []
     gsync_hung = {}
@@ -670,7 +706,7 @@ def print_stream (current_chip, x, y, stream_id, current_epoch_id):
     return navigation_suggestions, stream_epoch_id
 
 
-# Find occurences of buffer with ID 'buffer_id' across all epochs, and print the structures that reference them
+# Find occurrences of buffer with ID 'buffer_id' across all epochs, and print the structures that reference them
 # Supply current_epoch_id=None, to show details in all epochs
 def print_buffer_data (buffer_id, current_epoch_id = None):
     for epoch_id in EPOCH_TO_PIPEGEN_YAML_MAP:
@@ -682,7 +718,7 @@ def print_buffer_data (buffer_id, current_epoch_id = None):
                 else:
                     print (f"Buffer is also used in epoch {epoch_id}. Details suppressed.")
 
-# Find occurences of pipe with ID 'pipe_id' across all epochs, and print the structures that reference them
+# Find occurrences of pipe with ID 'pipe_id' across all epochs, and print the structures that reference them
 # Supply current_epoch_id=None, to show details in all epochs
 def print_pipe_data (pipe_id, current_epoch_id = None):
     for epoch_id in EPOCH_TO_PIPEGEN_YAML_MAP:
@@ -826,7 +862,7 @@ def print_available_commands (commands):
         rows.append(row)
     print (tabulate(rows, headers=[ "Short", "Long", "Arguments", "Description" ]))
 
-def print_suggestions (navigation_suggestions, current_stream_id):
+def print_suggestions (graph_name, navigation_suggestions, current_stream_id):
     if navigation_suggestions:
         print ("Speed dial:")
         rows = []
@@ -835,17 +871,18 @@ def print_suggestions (navigation_suggestions, current_stream_id):
             clr = CLR_INFO if current_stream_id == stream_id else CLR_END
             row = [ f"{clr}{i}{CLR_END}", \
                 f"{clr}Go to {navigation_suggestions[i]['type']} of stream {navigation_suggestions[i]['stream_id']}{CLR_END}", \
-                f"{clr}{navigation_suggestions[i]['cmd']}{CLR_END}"
+                f"{clr}{navigation_suggestions[i]['cmd']}{CLR_END}", \
+                f"{clr}{core_to_op_name(graph_name, navigation_suggestions[i]['noc0_x'], navigation_suggestions[i]['noc0_y'])}{CLR_END}"
                 ]
             rows.append (row)
-        print(tabulate(rows, headers=[ "#", "Description", "Command" ]))
+        print(tabulate(rows, headers=[ "#", "Description", "Command", "Op name" ]))
 
-def print_stream_summary (chip_array): 
+def print_stream_summary (chip_array):
     # Finally check and print stream data
     for i, chip in enumerate (chip_array):
         print (f"{CLR_INFO}Reading and analyzing streams on device %d...{CLR_END}" % i)
         streams_ui_data = get_all_streams_ui_data (chip, GS_x_coords, GS_y_coords)
-        summary(chip, GS_x_coords, GS_y_coords, streams_ui_data)
+        stream_summary(chip, GS_x_coords, GS_y_coords, streams_ui_data)
 
 def init_files (args):
     # Get paths to Pipegen and Blob YAML files for the Current epoch
@@ -1026,7 +1063,8 @@ def main(chip_array, args):
     navigation_suggestions = None
     while cmd_raw != 'exit' and cmd_raw != 'x':
         if current_x is not None and current_y is not None and current_epoch_id is not None:
-            current_prompt = f"core:{CLR_PROMPT}{current_x}-{current_y}{CLR_END} stream:{CLR_PROMPT}{current_stream_id}{CLR_END} "
+            row, col = GS_noc0_to_rc (current_x, current_y)
+            current_prompt = f"core:{CLR_PROMPT}{current_x}-{current_y}{CLR_END} rc:{CLR_PROMPT}{row},{col}{CLR_END} op:{CLR_PROMPT}{core_to_op_name(EPOCH_ID_TO_GRAPH[current_epoch_id], current_x, current_y)}{CLR_END} stream:{CLR_PROMPT}{current_stream_id}{CLR_END} "
         try:
             current_chip_id = epoch_id_to_chip_id(current_epoch_id)
             current_chip = chip_array[current_chip_id]
@@ -1039,7 +1077,7 @@ def main(chip_array, args):
                 if len(cmd_raw)>0:
                     print (f"{CLR_INFO}Executing command: %s{CLR_END}" % cmd_raw)
             else:
-                print_suggestions (navigation_suggestions, current_stream_id)
+                print_suggestions (EPOCH_ID_TO_GRAPH[current_epoch_id], navigation_suggestions, current_stream_id)
                 prompt = f"Current epoch:{CLR_PROMPT}{current_epoch_id}{CLR_END} chip:{CLR_PROMPT}{current_chip_id}{CLR_END} {current_prompt}> "
                 cmd_raw = input(prompt)
                 try: # To get a navigation string
@@ -1130,6 +1168,8 @@ def main(chip_array, args):
             print (f"Exception: {CLR_ERR} {e} {CLR_END}")
             print(traceback.format_exc())
             if have_non_interactive_commands:
+                raise
+            else:
                 raise
     return 0
 
