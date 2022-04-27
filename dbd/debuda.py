@@ -997,6 +997,7 @@ def traverse (graph, chip_array, current_x, current_y):
 
     for i, chip in enumerate (chip_array):
         streams = get_all_streams_ui_data (chip, GS_x_coords, GS_y_coords)
+        last_core_loc = None
         for x in GS_x_coords:
             for y in GS_y_coords:
                 has_active_stream = False
@@ -1021,7 +1022,9 @@ def traverse (graph, chip_array, current_x, current_y):
                             NUM_MSGS_RECEIVED = int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED'])
                             CURR_PHASE_NUM_MSGS_REMAINING = int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING'])
                             op = core_to_op_name(EPOCH_ID_TO_GRAPH_NAME[epoch_id], x, y)
-                            row = [ f"{x}-{y}", op, stream_id, stream_type, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, f"Active" if stream_active else "", f"{CLR_WARN}All inputs ready but no output generated{CLR_END}" if not has_empty_inputs else "" ]
+                            core_loc = f"{x}-{y}"
+                            row = [ core_loc if last_core_loc != core_loc else "", op if last_core_loc != core_loc else "", stream_id, stream_type, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, f"Active" if stream_active else "", f"{CLR_WARN}All inputs ready but no output generated{CLR_END}" if not has_empty_inputs else "" ]
+                            last_core_loc = core_loc
                             rows.append (row)
     print (tabulate(rows, headers=headers))
 
