@@ -918,6 +918,7 @@ def init_files (args):
 
     # Load BLOB and PIPEGEN data
     for graph in NETLIST["graphs"]:
+        epoch_id = GRAPH_TO_EPOCH_MAP[graph]["epoch_id"]
         GRAPH_DIR=f"{args.output_dir}/graph_{graph}"
         if not os.path.isdir(GRAPH_DIR):
             print (f"{CLR_ERR}Error: cannot find directory {GRAPH_DIR} {CLR_END}")
@@ -931,10 +932,10 @@ def init_files (args):
         pipegen_yaml = {}
         for i in yaml.safe_load_all(open(PIPEGEN_FILE)):
             pipegen_yaml = { **pipegen_yaml, **i }
-        EPOCH_TO_PIPEGEN_YAML_MAP[epoch] = pipegen_yaml
+        EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id] = pipegen_yaml
 
         print (f"Loading {BLOB_FILE}")
-        EPOCH_TO_BLOB_YAML_MAP[epoch] = yaml.safe_load(open(BLOB_FILE))
+        EPOCH_TO_BLOB_YAML_MAP[epoch_id] = yaml.safe_load(open(BLOB_FILE))
 
 def main(chip_array, args):
     # If chip_array is not an array, make it one
