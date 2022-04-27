@@ -41,9 +41,9 @@ CLR_PROMPT = CLR_GREEN
 # Global variables
 EPOCH_TO_PIPEGEN_YAML_MAP={}
 EPOCH_TO_BLOB_YAML_MAP={}
-GRAPH_TO_EPOCH_MAP={}
+GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP={}
 EPOCH_ID_TO_CHIP_ID={}
-EPOCH_ID_TO_GRAPH={}
+EPOCH_ID_TO_GRAPH_NAME={}
 PIPEGEN=None # Points to currently selected entry inside EPOCH_TO_PIPEGEN_YAML_MAP (selected by current_epoch)
 BLOB=None    # Points to currently selected entry inside EPOCH_TO_BLOB_YAML_MAP (selected by current_epoch)
 
@@ -61,11 +61,20 @@ def reverse_mapping_list(l):
 # From src/firmware/riscv/grayskull/stream_io_map.h
 # Kernel operand mapping scheme:
 KERNEL_OPERAND_MAPPING_SCHEME = [
-    { "id_min" : 0,  "id_max" : 7,  "long_desc" : "(inputs, unpacker-only) => streams 8-15" },
-    { "id_min" : 8,  "id_max" : 15, "long_desc" : "(params, unpacker-only) => streams 16-23" },
-    { "id_min" : 16, "id_max" : 23, "long_desc" : "(outputs, packer-only) => streams 24-31" },
-    { "id_min" : 24, "id_max" : 31, "long_desc" : "(intermediates, packer/unpacker) => streams 32-39" },
+    { "id_min" : 0,  "id_max" : 7,  "stream_id_min" : 8, "short" : "input", "long" : "(inputs, unpacker-only) => streams 8-15" },
+    { "id_min" : 8,  "id_max" : 15, "stream_id_min" : 16, "short" : "param", "long" : "(params, unpacker-only) => streams 16-23" },
+    { "id_min" : 16, "id_max" : 23, "stream_id_min" : 24, "short" : "output", "long" : "(outputs, packer-only) => streams 24-31" },
+    { "id_min" : 24, "id_max" : 31, "stream_id_min" : 32, "short" : "intermediate", "long" : "(intermediates, packer/unpacker) => streams 32-39" },
+    { "id_min" : 32, "id_max" : 63, "stream_id_min" : 32, "short" : "op-relay", "long" : "(operand relay?) => streams 40-63" }, # CHECK THIS
 ]
+
+def stream_id_descriptor (stream_id):
+    for ko in KERNEL_OPERAND_MAPPING_SCHEME:
+        s_id_min = ko["stream_id_min"]
+        s_id_count = ko["id_max"] - ko["id_min"]
+        if stream_id >= s_id_min and stream_id < s_id_min + s_id_count:
+            return ko
+    print ("no desc for stream_id=%s" % stream_id)
 
 # FIX: Move this to chip.py in t6py
 GS_CHANNEL_TO_DRAM_LOC = [(1, 0), (1, 6), (4, 0), (4, 6), (7, 0), (7, 6), (10, 0), (10, 6)]
@@ -536,17 +545,23 @@ def print_columnar_dicts (dict_array, title_array):
 #
 # Analysis functions
 #
+
+# This is shown in the 'Non-idle streams' column in stream view
 def is_stream_idle(stream_data):
     return (stream_data["DEBUG_STATUS[7]"] & 0xfff) == 0xc00
+# Used to show "Not idle" in stream_summary
 def is_stream_active (stream_data):
     return int (stream_data["CURR_PHASE"]) != 0 and int (stream_data["NUM_MSGS_RECEIVED"]) > 0
+# Used in stream_summary
 def is_bad_stream (stream_data):
     return \
         (int (stream_data["DEBUG_STATUS[1]"], base=16) != 0) or \
         (int (stream_data["DEBUG_STATUS[2]"], base=16) & 0x7) == 0x4 or \
         (int (stream_data["DEBUG_STATUS[2]"], base=16) & 0x7) == 0x2
+# Used in stream_summary
 def is_gsync_hung (chip, x, y):
     return pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0xB0010000
+# Used in stream_summary
 def is_ncrisc_done (chip, x, y):
     return pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0x1FFFFFF1
 
@@ -573,7 +588,7 @@ def stream_summary(chip, x_coords, y_coords, streams, short=False):
 
     # Print streams that are not idle
     all_streams_done = True
-    headers = [ "X-Y", "Stream", "Epoch", "Phase", "State", "CURR_PHASE_NUM_MSGS_REMAINING", "NUM_MSGS_RECEIVED" ]
+    headers = [ "X-Y", "Op", "Stream", "Type", "Epoch", "Phase", "State", "CURR_PHASE_NUM_MSGS_REMAINING", "NUM_MSGS_RECEIVED" ]
     rows = []
 
     num_entries_to_show_remaining = SHORT_PRINT_LINE_LIMIT
@@ -587,7 +602,10 @@ def stream_summary(chip, x_coords, y_coords, streams, short=False):
                     first_stream = False
                     stream_id=active_streams[x][y][i]
                     current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
-                    row = [ xy, stream_id, current_phase>>10, current_phase, f"{CLR_WARN}Not idle{CLR_END}", int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING']), int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED']) ]
+                    epoch_id = current_phase>>10
+                    stream_type = stream_id_descriptor(stream_id)["short"]
+                    op = core_to_op_name(EPOCH_ID_TO_GRAPH_NAME[epoch_id], x, y)
+                    row = [ xy, op, stream_id, stream_type, epoch_id, current_phase, f"{CLR_WARN}Active{CLR_END}", int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING']), int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED']) ]
 
                     num_entries_to_show_remaining -= 1
                     if short and num_entries_to_show_remaining == 0:
@@ -600,7 +618,6 @@ def stream_summary(chip, x_coords, y_coords, streams, short=False):
 
                     rows.append (row)
                     all_streams_done = False
-
 
     if not all_streams_done:
         print (tabulate(rows, headers=headers))
@@ -745,8 +762,8 @@ def print_pipe_data (pipe_id, current_epoch_id = None):
                             print (f"Pipe is also used in epoch {epoch_id}. Details suppressed.")
 
 def print_dram_queue_summary_for_graph (graph, chip_array):
-    epoch_id = GRAPH_TO_EPOCH_MAP[graph]["epoch_id"]
-    chip_id = GRAPH_TO_EPOCH_MAP[graph]["target_device"]
+    epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["epoch_id"]
+    chip_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["target_device"]
     chip = chip_array[chip_id]
 
     PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]
@@ -772,8 +789,8 @@ def print_dram_queue_summary_for_graph (graph, chip_array):
 
 # Prints the queues residing in host's memory.
 def print_host_queue_for_graph (graph):
-    epoch_id = GRAPH_TO_EPOCH_MAP[graph]["epoch_id"]
-    chip_id = GRAPH_TO_EPOCH_MAP[graph]["target_device"]
+    epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["epoch_id"]
+    chip_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["target_device"]
 
     PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]
 
@@ -898,27 +915,27 @@ def init_files (args):
     NETLIST = yaml.safe_load(open(args.netlist))
 
     # Load graph to epoch map
-    global GRAPH_TO_EPOCH_MAP
+    global GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP
     try:
         graph_to_epoch_filename = f"{args.output_dir}/graph_to_epoch_map.yaml"
         print (f"Loading {graph_to_epoch_filename}")
-        GRAPH_TO_EPOCH_MAP = yaml.safe_load(open(graph_to_epoch_filename))
+        GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP = yaml.safe_load(open(graph_to_epoch_filename))
     except:
         print (f"{CLR_ERR}Error: cannot open graph_to_epoch_map.yaml {CLR_END}")
         sys.exit(1)
 
     # Cache epoch id to chip id
     global EPOCH_ID_TO_CHIP_ID
-    global EPOCH_ID_TO_GRAPH
-    for graph in GRAPH_TO_EPOCH_MAP:
-        epoch_id = GRAPH_TO_EPOCH_MAP[graph]["epoch_id"]
-        target_device = GRAPH_TO_EPOCH_MAP[graph]["target_device"]
+    global EPOCH_ID_TO_GRAPH_NAME
+    for graph_name in GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP:
+        epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph_name]["epoch_id"]
+        target_device = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph_name]["target_device"]
         EPOCH_ID_TO_CHIP_ID[epoch_id] = target_device
-        EPOCH_ID_TO_GRAPH[epoch_id] = graph
+        EPOCH_ID_TO_GRAPH_NAME[epoch_id] = graph_name
 
     # Load BLOB and PIPEGEN data
     for graph in NETLIST["graphs"]:
-        epoch_id = GRAPH_TO_EPOCH_MAP[graph]["epoch_id"]
+        epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["epoch_id"]
         GRAPH_DIR=f"{args.output_dir}/graph_{graph}"
         if not os.path.isdir(GRAPH_DIR):
             print (f"{CLR_ERR}Error: cannot find directory {GRAPH_DIR} {CLR_END}")
@@ -936,6 +953,93 @@ def init_files (args):
 
         print (f"Loading {BLOB_FILE}")
         EPOCH_TO_BLOB_YAML_MAP[epoch_id] = yaml.safe_load(open(BLOB_FILE))
+
+
+# PSeudo code FOR TRAVERSAL
+# def list_inputs (core_x, core_y):
+#     for each stream:
+#         if stream has in blob.yaml entry with input_index field exists AND not intermediary
+#             then this is an input stream
+#                 then use buffer_id or
+#                 use REMOTE_SRC_X to figure out where the source is
+
+# # We also have forks (fork_stream_ids - list of streams in the core (local))
+# def list_output (core_x, core_y):
+#     for each stream:
+#         if stream has in blob.yaml entry with output_index field exists AND not intermediary
+#             then this is an output stream
+#                 then use buffer_id or (use REMOTE_DEST_X to figure out where the source is)
+
+#         if stream has fork_stream_ids:
+#             then also consider the stream ids in that list, but don't check for output_index
+
+# Return (noc0_x,noc0_y,stream_id) tuple for all the input DRAM buffers
+def get_graph_inputs(graph):
+    epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["epoch_id"]
+    PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]
+
+    for b in PIPEGEN:
+        if "buffer" in b:
+            buffer=PIPEGEN[b]
+            if buffer["dram_buf_flag"] != 0 or buffer["dram_io_flag"] != 0:
+                for p in PIPEGEN:
+                    if "pipe" in p:
+                        if buffer["uniqid"] in PIPEGEN[p]["input_list"]:
+                            print (f"INPUT BUFFER: {buffer}")
+                            for out_b in PIPEGEN[p]['output_list']:
+                                print (f"Consumers: {PIPEGEN[p]['output_list']}")
+
+            # if buffer["dram_buf_flag"] != 0 or buffer["dram_io_flag"] != 0 and buffer["dram_io_flag_is_remote"] == 0:
+
+def traverse (graph, chip_array, current_x, current_y):
+    headers = [ "X-Y", "Op", "Stream", "Type", "Epoch", "Phase", "MSGS_REMAINING", "MSGS_RECEIVED", "State", "Flag" ]
+    rows = []
+
+    for i, chip in enumerate (chip_array):
+        streams = get_all_streams_ui_data (chip, GS_x_coords, GS_y_coords)
+        for x in GS_x_coords:
+            for y in GS_y_coords:
+                has_active_stream = False
+                has_empty_inputs = False
+                for stream_id in range (0, 64):
+                    if is_stream_active(streams[x][y][stream_id]):
+                        has_active_stream = True
+                    current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
+                    if current_phase > 0: # Must be configured
+                        stream_type = stream_id_descriptor(stream_id)["short"]
+                        NUM_MSGS_RECEIVED = int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED'])
+                        if stream_type == "input" and NUM_MSGS_RECEIVED == 0:
+                            has_empty_inputs = True
+
+                if has_active_stream:
+                    for stream_id in range (0, 64):
+                        current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
+                        if current_phase > 0:
+                            epoch_id = current_phase>>10
+                            stream_type = stream_id_descriptor(stream_id)["short"]
+                            stream_active = is_stream_active(streams[x][y][stream_id])
+                            NUM_MSGS_RECEIVED = int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED'])
+                            CURR_PHASE_NUM_MSGS_REMAINING = int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING'])
+                            op = core_to_op_name(EPOCH_ID_TO_GRAPH_NAME[epoch_id], x, y)
+                            row = [ f"{x}-{y}", op, stream_id, stream_type, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, f"Active" if stream_active else "", f"{CLR_WARN}All inputs ready but no output generated{CLR_END}" if not has_empty_inputs else "" ]
+                            rows.append (row)
+    print (tabulate(rows, headers=headers))
+
+def traverse2(graph, chip_array, current_x, current_y):
+    epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["epoch_id"]
+    chip_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["target_device"]
+    chip = chip_array[chip_id]
+
+    PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]
+    BLOB = EPOCH_TO_BLOB_YAML_MAP[epoch_id]
+
+    dram_blob = BLOB["dram_blob"]
+    for db in dram_blob:
+        dram_blob_stream = BLOB["dram_blob"][db]
+        for db_stream_id in dram_blob_stream:
+            stream_data = dram_blob_stream[db_stream_id]
+            if 'dram_input' in stream_data and stream_data['dram_input']:
+                print (stream_data)
 
 def main(chip_array, args):
     # If chip_array is not an array, make it one
@@ -961,14 +1065,14 @@ def main(chip_array, args):
     GS_x_coords = list (range (1, 13))
     GS_y_coords = list (range (1, 6)) + list (range (7, 12))
 
-    for graph in GRAPH_TO_EPOCH_MAP:
+    for graph in GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP:
         print_host_queue_for_graph(graph)
 
-    for graph in GRAPH_TO_EPOCH_MAP:
+    for graph in GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP:
         print_dram_queue_summary_for_graph(graph, chip_array)
 
     # print_stream_summary (chip_array)
-    print_epoch_queue_summary(chip_array, GS_x_coords, GS_y_coords)
+    # print_epoch_queue_summary(chip_array, GS_x_coords, GS_y_coords)
 
     commands = [
         { "long" : "exit",
@@ -1047,6 +1151,12 @@ def main(chip_array, args):
           "short" : "fd",
           "expected_argument_count" : 0,
           "arguments_description" : ": performs a full dump at current x-y"
+        },
+        {
+          "long" : "traverse",
+          "short" : "t",
+          "expected_argument_count" : 0,
+          "arguments_description" : ": traverses the epoch from inputs to outputs in topological order while finding any broken nodes"
         }
     ]
 
@@ -1056,19 +1166,24 @@ def main(chip_array, args):
         return EPOCH_ID_TO_CHIP_ID[epoch_id]
 
     non_interactive_commands=args.commands.split(";") if args.commands else []
-    have_non_interactive_commands=len (non_interactive_commands) > 0
 
     current_x = 1
     current_y = 1
+    current_epoch_id = 0
+    current_graph_name = EPOCH_ID_TO_GRAPH_NAME[current_epoch_id]
 
     navigation_suggestions = None
     while cmd_raw != 'exit' and cmd_raw != 'x':
+        have_non_interactive_commands=len(non_interactive_commands) > 0
         if current_x is not None and current_y is not None and current_epoch_id is not None:
             row, col = GS_noc0_to_rc (current_x, current_y)
-            current_prompt = f"core:{CLR_PROMPT}{current_x}-{current_y}{CLR_END} rc:{CLR_PROMPT}{row},{col}{CLR_END} op:{CLR_PROMPT}{core_to_op_name(EPOCH_ID_TO_GRAPH[current_epoch_id], current_x, current_y)}{CLR_END} stream:{CLR_PROMPT}{current_stream_id}{CLR_END} "
+            current_prompt = f"core:{CLR_PROMPT}{current_x}-{current_y}{CLR_END} rc:{CLR_PROMPT}{row},{col}{CLR_END} op:{CLR_PROMPT}{core_to_op_name(current_graph_name, current_x, current_y)}{CLR_END} stream:{CLR_PROMPT}{current_stream_id}{CLR_END} "
         try:
             current_chip_id = epoch_id_to_chip_id(current_epoch_id)
             current_chip = chip_array[current_chip_id]
+            current_graph_name = EPOCH_ID_TO_GRAPH_NAME[current_epoch_id]
+
+            print_suggestions (current_graph_name, navigation_suggestions, current_stream_id)
 
             if have_non_interactive_commands:
                 cmd_raw = non_interactive_commands[0].strip()
@@ -1078,14 +1193,14 @@ def main(chip_array, args):
                 if len(cmd_raw)>0:
                     print (f"{CLR_INFO}Executing command: %s{CLR_END}" % cmd_raw)
             else:
-                print_suggestions (EPOCH_ID_TO_GRAPH[current_epoch_id], navigation_suggestions, current_stream_id)
                 prompt = f"Current epoch:{CLR_PROMPT}{current_epoch_id}{CLR_END} chip:{CLR_PROMPT}{current_chip_id}{CLR_END} {current_prompt}> "
                 cmd_raw = input(prompt)
-                try: # To get a navigation string
-                    cmd_int = int(cmd_raw)
-                    cmd_raw = navigation_suggestions[cmd_int]["cmd"]
-                except:
-                    pass
+
+            try: # To get a a command from the speed dial
+                cmd_int = int(cmd_raw)
+                cmd_raw = navigation_suggestions[cmd_int]["cmd"]
+            except:
+                pass
 
             cmd = cmd_raw.split ()
             if len(cmd) > 0:
@@ -1113,7 +1228,7 @@ def main(chip_array, args):
                     if found_command["long"] == "epoch":
                         new_epoch_id = int(cmd[1])
 
-                        if new_epoch_id in EPOCH_ID_TO_GRAPH:
+                        if new_epoch_id in EPOCH_ID_TO_GRAPH_NAME:
                             current_epoch_id = new_epoch_id
                             PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[current_epoch_id]
                             BLOB = EPOCH_TO_BLOB_YAML_MAP[current_epoch_id]
@@ -1137,9 +1252,9 @@ def main(chip_array, args):
                         buffer_id = int(cmd[1])
                         print_pipe_data (buffer_id, current_epoch_id)
                     elif found_command["long"] == "dram-queue":
-                        print_dram_queue_summary_for_graph (EPOCH_ID_TO_GRAPH[current_epoch_id], chip_array)
+                        print_dram_queue_summary_for_graph (current_graph_name, chip_array)
                     elif found_command["long"] == "host-queue":
-                        print_host_queue_for_graph (EPOCH_ID_TO_GRAPH[current_epoch_id])
+                        print_host_queue_for_graph (current_graph_name)
                     elif found_command["long"] == "epoch-queue":
                         print_epoch_queue_summary(chip_array, GS_x_coords, GS_y_coords)
                     elif found_command["long"] == "pci-read-xy" or found_command["long"] == "burst-read-xy" or found_command["long"] == "pci-write-xy":
@@ -1162,6 +1277,8 @@ def main(chip_array, args):
                         pass # Exit is handled in the outter loop
                     elif found_command["long"] == "help":
                         print_available_commands (commands)
+                    elif found_command["long"] == "traverse":
+                        traverse (current_graph_name, chip_array, current_x, current_y)
                     else:
                         found_command["module"].run(cmd[1:], globals())
 
