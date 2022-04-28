@@ -4,7 +4,7 @@ debuda parses the build output files and probes the silicon to determine status 
 """
 STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with bin/build-debuda-stub.sh. It also requires zeromq (sudo apt install -y libzmq3-dev)."
 
-import yaml, sys, os, struct, argparse, time, traceback, subprocess, signal
+import yaml, sys, os, struct, argparse, time, traceback, subprocess, signal, re
 import atexit, fnmatch, importlib
 
 from tabulate import tabulate
@@ -973,25 +973,132 @@ def init_files (args):
 #         if stream has fork_stream_ids:
 #             then also consider the stream ids in that list, but don't check for output_index
 
+def find_buffer (buffer_id):
+    for b in PIPEGEN:
+        if "buffer" in b:
+            buffer=PIPEGEN[b]
+            if buffer["uniqid"] == buffer_id:
+                return buffer
+    return None
+
+# Return noc0_X, noc0_Y given stream_full_name from blob.yaml
+def get_stream_tuple_from_full_name (stream_full_name):
+    # Example full name: chip_0__y_1__x_1__stream_id_8
+    vals = re.findall(r'chip_(\d)+__y_(\d)+__x_(\d)+__stream_id_(\d)+', stream_full_name)
+    return [ vals[0][2], vals[0][1], vals[0][3] ]
+
+def find_stream_for_buffer_id (buffer_id):
+    for phase in BLOB:
+        for stream_full_name, stream_data in BLOB[phase].items():
+            if "buf_id" in stream_data and stream_data["buf_id"] == buffer_id:
+                return get_stream_tuple_from_full_name (stream_full_name)
+    return None
+
+def get_connected_buffers (buffer_id_list, connection="outputs"):
+    if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ] # If not a list, assume a single buffer id, and create a list from it
+
+    dest_buffers = [ ]
+
+    for p in PIPEGEN:
+        if "pipe" in p:
+            for buffer_id in buffer_id_list:
+                if "output" in connection and buffer_id in PIPEGEN[p]["input_list"]:
+                    dest_buffers += PIPEGEN[p]["output_list"]
+                if "input" in connection and buffer_id in PIPEGEN[p]["output_list"]:
+                    dest_buffers += PIPEGEN[p]["input_list"]
+    return dest_buffers
+
+def get_buff_core_coordinates (buffer_id_list):
+    if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ] # If not a list, assume a single buffer id, and create a list from it
+    buff_cores = set()
+    for b in PIPEGEN:
+        if "buffer" in b:
+            if PIPEGEN[b]["uniqid"] in buffer_id_list:
+                buff_cores.add (tuple(PIPEGEN[b]["core_coordinates"]))
+    return list (buff_cores)
+
+def print_buffer_info (buffer_id_list):
+    if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ] # If not a list, assume a single buffer id, and create a list from it
+    for bid in buffer_id_list:
+        b = find_buffer (bid)
+        print (f"Buffer {bid} - {b['md_op_name']} rc:{b['core_coordinates']}")
+
+def get_core_buffers (core_coordinates_list):
+    if type(core_coordinates_list) != list: core_coordinates_list = [ core_coordinates_list ] # If not a list, assume a single buffer id, and create a list from it
+
+    buffer_set = set()
+    for b in PIPEGEN:
+        if "buffer" in b:
+            if tuple(PIPEGEN[b]["core_coordinates"]) in core_coordinates_list:
+                buffer_set.add (PIPEGEN[b]["uniqid"])
+    return list(buffer_set)
+
+def is_input_buffer(bid):
+    for p in PIPEGEN:
+        if "pipe" in p:
+            if bid in PIPEGEN[p]["input_list"]: return True
+    return False
+
+def is_output_buffer(bid):
+    for p in PIPEGEN:
+        if "pipe" in p:
+            if bid in PIPEGEN[p]["output_list"]: return True
+    return False
+
+def filter_buffers (buffer_list, filter):
+    if filter == "input":
+        return [ bid for bid in buffer_list if is_input_buffer(bid) ]
+    elif filter == "output":
+        return [ bid for bid in buffer_list if is_output_buffer(bid) ]
+    else:
+        raise (f"Exception: {CLR_ERR} Invalid filter '{filter}' {CLR_END}")
+
 # Return (noc0_x,noc0_y,stream_id) tuple for all the input DRAM buffers
-def get_graph_inputs(graph):
+def get_dram_buffers(graph):
     epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["epoch_id"]
     PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]
 
+    input_buffers = []
     for b in PIPEGEN:
         if "buffer" in b:
             buffer=PIPEGEN[b]
             if buffer["dram_buf_flag"] != 0 or buffer["dram_io_flag"] != 0:
-                for p in PIPEGEN:
-                    if "pipe" in p:
-                        if buffer["uniqid"] in PIPEGEN[p]["input_list"]:
-                            print (f"INPUT BUFFER: {buffer}")
-                            for out_b in PIPEGEN[p]['output_list']:
-                                print (f"Consumers: {PIPEGEN[p]['output_list']}")
+                input_buffers.append (buffer["uniqid"])
+    return input_buffers
 
-            # if buffer["dram_buf_flag"] != 0 or buffer["dram_io_flag"] != 0 and buffer["dram_io_flag_is_remote"] == 0:
+# Computes all buffers that are
+def fan_in_buffers(buffer_id_list):
+    if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ]
+    buffer_id_list = get_core_buffers (get_buff_core_coordinates (buffer_id_list))
+    print (f"Looking for direct fan ins of {buffer_id_list}")
+    direct_fan_ins = get_connected_buffers (buffer_id_list, "input")
+    print (f"direct_fan_ins = {direct_fan_ins}")
+    return direct_fan_ins
 
-def traverse (graph, chip_array, current_x, current_y):
+def traverse_from_inputs (graph, chip_array, current_x, current_y):
+    graph_buffs = get_dram_buffers (graph)
+    print (f"graph_buffs = {graph_buffs}")
+    in_buffs = filter_buffers(graph_buffs, "input")
+    print (f"in_buffs = {in_buffs}")
+    out_buffs = filter_buffers(graph_buffs, "output")
+    print (f"out_buffs = {out_buffs}")
+
+    dest_buffers = get_connected_buffers (in_buffs, "outputs")
+    core_coordinates = get_buff_core_coordinates(dest_buffers)
+    print (f"get_buff_core_coordinates: {core_coordinates}")
+    core_buffers = get_core_buffers (core_coordinates)
+    print (f"core_buffers: {core_buffers}")
+    core_output_buffers = filter_buffers (core_buffers, "output")
+    print (f"core_output_buffers: {core_output_buffers}")
+    print_buffer_info (core_output_buffers)
+
+    my_fan_in_buffers = fan_in_buffers(core_output_buffers)
+    print (f"fan_in_buffers of {core_output_buffers} are: {my_fan_in_buffers}")
+
+def test(graph, chip_array, current_x, current_y):
+    return traverse_from_inputs (graph, chip_array, current_x, current_y)
+
+def stream_stuck_traverse (graph, chip_array, current_x, current_y):
     headers = [ "X-Y", "Op", "Stream", "Type", "Epoch", "Phase", "MSGS_REMAINING", "MSGS_RECEIVED", "State", "Flag" ]
     rows = []
 
@@ -1002,6 +1109,7 @@ def traverse (graph, chip_array, current_x, current_y):
             for y in GS_y_coords:
                 has_active_stream = False
                 has_empty_inputs = False
+
                 for stream_id in range (0, 64):
                     if is_stream_active(streams[x][y][stream_id]):
                         has_active_stream = True
@@ -1021,28 +1129,13 @@ def traverse (graph, chip_array, current_x, current_y):
                             stream_active = is_stream_active(streams[x][y][stream_id])
                             NUM_MSGS_RECEIVED = int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED'])
                             CURR_PHASE_NUM_MSGS_REMAINING = int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING'])
-                            op = core_to_op_name(EPOCH_ID_TO_GRAPH_NAME[epoch_id], x, y)
+                            graph_name = EPOCH_ID_TO_GRAPH_NAME[epoch_id]
+                            op = core_to_op_name(graph_name, x, y)
                             core_loc = f"{x}-{y}"
                             row = [ core_loc if last_core_loc != core_loc else "", op if last_core_loc != core_loc else "", stream_id, stream_type, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, f"Active" if stream_active else "", f"{CLR_WARN}All inputs ready but no output generated{CLR_END}" if not has_empty_inputs else "" ]
                             last_core_loc = core_loc
                             rows.append (row)
     print (tabulate(rows, headers=headers))
-
-def traverse2(graph, chip_array, current_x, current_y):
-    epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["epoch_id"]
-    chip_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["target_device"]
-    chip = chip_array[chip_id]
-
-    PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]
-    BLOB = EPOCH_TO_BLOB_YAML_MAP[epoch_id]
-
-    dram_blob = BLOB["dram_blob"]
-    for db in dram_blob:
-        dram_blob_stream = BLOB["dram_blob"][db]
-        for db_stream_id in dram_blob_stream:
-            stream_data = dram_blob_stream[db_stream_id]
-            if 'dram_input' in stream_data and stream_data['dram_input']:
-                print (stream_data)
 
 def main(chip_array, args):
     # If chip_array is not an array, make it one
@@ -1156,10 +1249,16 @@ def main(chip_array, args):
           "arguments_description" : ": performs a full dump at current x-y"
         },
         {
-          "long" : "traverse",
+          "long" : "stream-stuck-traverse",
+          "short" : "sst",
+          "expected_argument_count" : 0,
+          "arguments_description" : ": analyzes the streams that are stuck and prints a report"
+        },
+        {
+          "long" : "test",
           "short" : "t",
           "expected_argument_count" : 0,
-          "arguments_description" : ": traverses the epoch from inputs to outputs in topological order while finding any broken nodes"
+          "arguments_description" : ": test for development"
         }
     ]
 
@@ -1280,8 +1379,10 @@ def main(chip_array, args):
                         pass # Exit is handled in the outter loop
                     elif found_command["long"] == "help":
                         print_available_commands (commands)
-                    elif found_command["long"] == "traverse":
-                        traverse (current_graph_name, chip_array, current_x, current_y)
+                    elif found_command["long"] == "test":
+                        test (current_graph_name, chip_array, current_x, current_y)
+                    elif found_command["long"] == "stream-stuck-traverse":
+                        stream_stuck_traverse (current_graph_name, chip_array, current_x, current_y)
                     else:
                         found_command["module"].run(cmd[1:], globals())
 
