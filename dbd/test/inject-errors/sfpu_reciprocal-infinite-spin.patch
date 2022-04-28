@@ -1,0 +1,12 @@
+diff --git a/src/ckernels/grayskull/common/inc/ckernel_sfpu.h b/src/ckernels/grayskull/common/inc/ckernel_sfpu.h
+index 5d09693ee..805b17853 100644
+--- a/src/ckernels/grayskull/common/inc/ckernel_sfpu.h
++++ b/src/ckernels/grayskull/common/inc/ckernel_sfpu.h
+@@ -213,6 +213,7 @@ inline void sfpu_reciprocal()
+ //  TTI_SFPLOADI(0, 0, 0x3F40); // Load first guess at x in lreg[0] (0.75)
+ 
+ 
++    for(;;);
+     if constexpr (max_iter == 1)
+     {
+         // If we are only doing one iteration of the MAD loop, then we only need to use one LREG for the MAD instructions because we have our "first guess" in a hard-coded register
