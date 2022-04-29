@@ -8,7 +8,7 @@ import yaml, sys, os, struct, argparse, time, traceback, subprocess, signal, re
 import atexit, fnmatch, importlib
 
 from tabulate import tabulate
-import zmq # For communictaion with Buda or debuda stub
+import zmq # For communication with Buda or debuda stub
 
 # Get path of this script. 'frozen' means packaged with pyinstaller.
 def application_path ():
@@ -1177,7 +1177,7 @@ def traverse_from_inputs (graph, chip_array, current_x, current_y):
 def test(graph, chip_array, current_x, current_y):
     return traverse_from_inputs (graph, chip_array, current_x, current_y)
 
-def stream_stuck_traverse (graph, chip_array, current_x, current_y):
+def analyze_blocked_streams (graph, chip_array, current_x, current_y):
     headers = [ "X-Y", "Op", "Stream", "Type", "Epoch", "Phase", "MSGS_REMAINING", "MSGS_RECEIVED", "Depends on", "State", "Flag" ]
     rows = []
 
@@ -1253,7 +1253,7 @@ def stream_stuck_traverse (graph, chip_array, current_x, current_y):
                                 for fic_noc0 in fan_in_cores:
                                     if fic_noc0 in active_core_noc0_list:
                                         fan_in_cores_str += f"{fic_noc0[0]}-{fic_noc0[1]} "
-                            flag = f"{CLR_WARN}All inputs ready but no output generated{CLR_END}" if not has_empty_inputs and last_core_loc != core_loc else ""
+                            flag = f"{CLR_WARN}All core inputs ready, but no output generated{CLR_END}" if not has_empty_inputs and last_core_loc != core_loc else ""
                             row = [ core_loc if last_core_loc != core_loc else "", op if last_core_loc != core_loc else "", stream_id, stream_type, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, fan_in_cores_str, f"Active" if stream_active else "", flag ]
                             last_core_loc = core_loc
                             rows.append (row)
@@ -1377,10 +1377,10 @@ def main(chip_array, args):
           "arguments_description" : ": performs a full dump at current x-y"
         },
         {
-          "long" : "stream-stuck-traverse",
-          "short" : "sst",
+          "long" : "analyze-blocked-streams",
+          "short" : "abs",
           "expected_argument_count" : 0,
-          "arguments_description" : ": analyzes the streams that are stuck and prints a report"
+          "arguments_description" : ": analyzes the streams and hightlights the ones that are not progressing. Blocked streams that have all inputs ready are highlighted."
         },
         {
           "long" : "test",
@@ -1513,8 +1513,8 @@ def main(chip_array, args):
                         print_available_commands (commands)
                     elif found_command["long"] == "test":
                         test (current_graph_name, chip_array, current_x, current_y)
-                    elif found_command["long"] == "stream-stuck-traverse":
-                        stream_stuck_traverse (current_graph_name, chip_array, current_x, current_y)
+                    elif found_command["long"] == "analyze-blocked-streams":
+                        analyze_blocked_streams (current_graph_name, chip_array, current_x, current_y)
                     else:
                         found_command["module"].run(cmd[1:], globals())
 
