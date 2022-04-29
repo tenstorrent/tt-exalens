@@ -936,7 +936,7 @@ def init_files (args):
     # Load BLOB and PIPEGEN data
     for graph in NETLIST["graphs"]:
         epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["epoch_id"]
-        GRAPH_DIR=f"{args.output_dir}/graph_{graph}"
+        GRAPH_DIR=f"{args.output_dir}/temporal_epoch_{epoch_id}"
         if not os.path.isdir(GRAPH_DIR):
             print (f"{CLR_ERR}Error: cannot find directory {GRAPH_DIR} {CLR_END}")
             sys.exit(1)
