@@ -4,7 +4,7 @@ debuda parses the build output files and probes the silicon to determine status 
 """
 STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with bin/build-debuda-stub.sh. It also requires zeromq (sudo apt install -y libzmq3-dev)."
 
-import yaml, sys, os, struct, argparse, time, traceback, subprocess, signal, re
+import yaml, sys, os, struct, argparse, time, traceback, subprocess, signal, re, pickle
 import atexit, fnmatch, importlib
 
 from tabulate import tabulate
@@ -18,10 +18,13 @@ def application_path ():
         application_path = os.path.dirname(__file__)
     return application_path
 
+STREAM_CACHE_FILE_NAME = "dbd_streams_cache.pkl"
+
 parser = argparse.ArgumentParser(description=__doc__ + STUB_HELP)
 parser.add_argument('output_dir', type=str, help='Output directory of a buda run')
 parser.add_argument('--netlist',  type=str, required=True, help='Netlist file to import')
 parser.add_argument('--commands', type=str, required=False, help='Execute a set of commands separated by ;')
+parser.add_argument('--stream-cache', action='store_true', default=False, help=f'If file "{STREAM_CACHE_FILE_NAME}" exists, the stream data will be laoded from it. If the file does not exist, it will be crated and populated with the stream data')
 args = parser.parse_args()
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
@@ -359,6 +362,13 @@ def get_core_stream_summary (chip, x, y):
 # For all cores given by _coords, read all 64 streams and populate the 'streams' dict
 # streams[x][y][stream_id] will contain a dictionary of all register values as strings formatted to show in UI
 def get_all_streams_ui_data (chip, x_coords, y_coords):
+    # Use cache
+    if os.path.exists (STREAM_CACHE_FILE_NAME) and args.stream_cache:
+        print (f"{CLR_WARN}Loading streams from file {STREAM_CACHE_FILE_NAME}{CLR_END}")
+        with open(STREAM_CACHE_FILE_NAME, 'rb') as f:
+            streams = pickle.load(f)
+            return streams
+
     streams = {}
     for x in x_coords:
         streams[x] = {}
@@ -367,6 +377,12 @@ def get_all_streams_ui_data (chip, x_coords, y_coords):
             for stream_id in range (0, 64):
                 regs = read_stream_regs (chip, x, y, stream_id)
                 streams[x][y][stream_id] = convert_reg_dict_to_strings(chip, regs, x, y, stream_id)
+
+    if args.stream_cache:
+        print (f"{CLR_WARN}Saving streams to file {STREAM_CACHE_FILE_NAME}{CLR_END}")
+        with open(STREAM_CACHE_FILE_NAME, 'wb') as f:
+            pickle.dump(streams, f)
+
     return streams
 
 def full_dump_xy(chip_id, x, y):
@@ -1561,7 +1577,6 @@ def init_comm_client ():
 def terminate_comm_client_callback ():
     os.killpg(os.getpgid(DEBUDA_STUB_PROCESS.pid), signal.SIGTERM)
     print (f"Terminated debuda-stub with pid:{DEBUDA_STUB_PROCESS.pid}")
-
 # Get path of this script. 'frozen' means: packaged with pyinstaller.
 def application_path ():
     if getattr(sys, 'frozen', False):
