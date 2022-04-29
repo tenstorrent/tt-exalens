@@ -1066,6 +1066,46 @@ def get_dram_buffers(graph):
                 input_buffers.append (buffer["uniqid"])
     return input_buffers
 
+def dump_memory(chip, x, y, addr, size):
+    for k in range(0, size//4//16 + 1):
+        row = []
+        for j in range(0, 16):
+            if (addr + k*64 + j* 4 < addr + size):
+                val = pci_read_xy(chip, x, y, 0, addr + k*64 + j*4)
+                row.append(f"0x{val:08x}")
+        s = " ".join(row)
+        print(f"{x}-{y} 0x{(addr + k*64):08x} => {s}")
+
+# gets information about stream buffer in l1 cache from blob
+def get_l1_buffer_info_from_blob(chip, x, y, stream_id, phase):
+    stream_name = f"chip_{chip}__y_{y}__x_{x}__stream_id_{stream_id}"
+    current_phase = "phase_" + phase
+    buffer_addr = 0
+    msg_size = 0
+    buffer_size = 0
+    for element in BLOB:
+        if (element == current_phase):
+            for stream in BLOB[element]:
+                if (stream == stream_name):
+                    if BLOB[element][stream].get("buf_addr"):
+                        buffer_addr = BLOB[element][stream].get("buf_addr")
+                        buffer_size = BLOB[element][stream].get("buf_size")
+                        msg_size =BLOB[element][stream].get("msg_size")
+    return buffer_addr, buffer_size, msg_size
+
+# dumps message in hex format 
+def dump_message_xy(chip, x, y, stream_id, message_id):
+    current_phase = str(get_stream_reg_field(chip, x, y, stream_id, 11, 0, 20))
+    buffer_addr, buffer_size, msg_size = get_l1_buffer_info_from_blob(chip, x, y, stream_id, current_phase)
+    print(f"{x}-{y} buffer_addr: 0x{(buffer_addr):08x} buffer_size: 0x{buffer_size:0x} msg_size:{msg_size}")
+    if (buffer_addr >0 and buffer_size>0 and msg_size>0) :
+        if (message_id> 0 and message_id <= buffer_size/msg_size):
+            dump_memory(chip, x, y, buffer_addr + (message_id - 1) * msg_size, msg_size )
+        else:
+            print(f"Message id should be in range (1, {buffer_size/msg_size})")
+    else:
+        print("Not enough data in blob.yaml")
+
 # Computes all buffers that are
 def fan_in_buffers(buffer_id_list):
     if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ]
@@ -1196,6 +1236,12 @@ def main(chip_array, args):
           "expected_argument_count" : 3,
           "arguments_description" : "x y stream_id : show stream 'stream_id' at core 'x-y'"
         },
+        {
+          "long" : "dump-message-xy",
+          "short" : "m",
+          "expected_argument_count" : 1,
+          "arguments_description" : "message_id: prints message for current stream in currently active phase"
+        },
         { "long" : "buffer",
           "short" : "b",
           "expected_argument_count" : 1,
@@ -1271,6 +1317,7 @@ def main(chip_array, args):
 
     current_x = 1
     current_y = 1
+    current_stream_id = 8
     current_epoch_id = 0
     current_graph_name = EPOCH_ID_TO_GRAPH_NAME[current_epoch_id]
 
@@ -1373,6 +1420,9 @@ def main(chip_array, args):
                             pci_write_xy (current_chip_id, x, y, NOC0, addr, data = int(cmd[4],0))
                         else:
                             print (f"{CLR_ERR} Unknown {found_command['long']} {CLR_END}")
+                    elif found_command["long"] == "dump-message-xy":
+                        message_id = int(cmd[1])
+                        dump_message_xy(current_chip_id, current_x, current_y, current_stream_id, message_id)
                     elif found_command["long"] == "full-dump":
                         full_dump_xy(current_chip_id, current_x, current_y)
                     elif found_command["long"] == "exit":
