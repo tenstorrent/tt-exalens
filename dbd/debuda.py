@@ -126,7 +126,7 @@ def GS_rc_to_noc0 (row, col):
     noc0_x = col + 1
     return noc0_x, noc0_y
 
-# Returns an array of [r,c] pairs for the operaiton
+# Returns an array of [r,c] pairs for the operation
 def get_op_locations (op):
     locations = []
     opr = op['grid_loc'][0]
@@ -1008,7 +1008,7 @@ def get_connected_buffers (buffer_id_list, connection="outputs"):
                     dest_buffers += PIPEGEN[p]["input_list"]
     return dest_buffers
 
-def get_buff_core_coordinates (buffer_id_list):
+def get_buff_core_coordinates_rc (buffer_id_list):
     if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ] # If not a list, assume a single buffer id, and create a list from it
     buff_cores = set()
     for b in PIPEGEN:
@@ -1023,13 +1023,13 @@ def print_buffer_info (buffer_id_list):
         b = find_buffer (bid)
         print (f"Buffer {bid} - {b['md_op_name']} rc:{b['core_coordinates']}")
 
-def get_core_buffers (core_coordinates_list):
-    if type(core_coordinates_list) != list: core_coordinates_list = [ core_coordinates_list ] # If not a list, assume a single buffer id, and create a list from it
+def get_core_buffers (core_coordinates_list_rc):
+    if type(core_coordinates_list_rc) != list: core_coordinates_list_rc = [ core_coordinates_list_rc ] # If not a list, assume a single buffer id, and create a list from it
 
     buffer_set = set()
     for b in PIPEGEN:
         if "buffer" in b:
-            if tuple(PIPEGEN[b]["core_coordinates"]) in core_coordinates_list:
+            if tuple(PIPEGEN[b]["core_coordinates"]) in core_coordinates_list_rc:
                 buffer_set.add (PIPEGEN[b]["uniqid"])
     return list(buffer_set)
 
@@ -1106,46 +1106,97 @@ def dump_message_xy(chip, x, y, stream_id, message_id):
     else:
         print("Not enough data in blob.yaml")
 
-# Computes all buffers that are
-def fan_in_buffers(buffer_id_list):
+RECURSION_DEPTH = 0
+
+# Computes all buffers that are feeding into the buffers from buffer_id_list
+def fan_in_buffer_set(buffer_id_list, already_visited = set()):
+    global RECURSION_DEPTH
+    if RECURSION_DEPTH > 400:
+        print (f"{CLR_ERR}Recursion limit reached{CLR_END}")
+        return set()
+    RECURSION_DEPTH=RECURSION_DEPTH+1
+    fan_in_set = set ()
+
     if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ]
-    buffer_id_list = get_core_buffers (get_buff_core_coordinates (buffer_id_list))
-    print (f"Looking for direct fan ins of {buffer_id_list}")
-    direct_fan_ins = get_connected_buffers (buffer_id_list, "input")
-    print (f"direct_fan_ins = {direct_fan_ins}")
-    return direct_fan_ins
+    if len (buffer_id_list) == 0:
+        return fan_in_set
+
+    # Get direct fan-ins
+    buff_core_coords = get_buff_core_coordinates_rc (buffer_id_list)
+    # print (buff_core_coords)
+    if (255,255) in buff_core_coords: buff_core_coords.remove ((255,255)) # Exclude DRAM
+    buffer_id_list = get_core_buffers (buff_core_coords)
+    # print (f"Looking for direct fan ins of {buffer_id_list}")
+    # print_buffer_info(buffer_id_list)
+    direct_fan_ins = set(get_connected_buffers (buffer_id_list, "input"))
+    # print (f"direct_fan_ins = {direct_fan_ins}")
+
+    # Filter out the buffers we already visited
+    # Figure out the set of fan-ins that we have not already visited
+    propagate_fan_in_set = direct_fan_ins - already_visited
+    # print (f"propagate_fan_in_set = {propagate_fan_in_set}")
+    # print (f"fan_in_set = {fan_in_set}")
+    already_visited = already_visited | direct_fan_ins
+
+    # print (f"already_visited: {already_visited}")
+
+    return already_visited.union (fan_in_buffer_set(list (propagate_fan_in_set), already_visited))
+
+def get_fanin_cores_rc (core_coordinates_list_rc):
+    if type(core_coordinates_list_rc) != list: core_coordinates_list_rc = [ core_coordinates_list_rc ] # If not a list, assume a single buffer id, and create a list from it
+
+    all_core_buffers = get_core_buffers (core_coordinates_list_rc)
+    # print (f"all_core_buffers: {all_core_buffers}")
+    core_buffers = list (fan_in_buffer_set(all_core_buffers))
+    # print (f"get_fanin_cores_rc/core_buffers: {core_buffers}")
+    fanin_cores_rc = get_buff_core_coordinates_rc (core_buffers)
+    # print (f"get_fanin_cores_rc/fanin_cores_rc: {fanin_cores_rc}")
+    if (255,255) in fanin_cores_rc: fanin_cores_rc.remove ((255,255)) # Exclude DRAM
+    return fanin_cores_rc
 
 def traverse_from_inputs (graph, chip_array, current_x, current_y):
     graph_buffs = get_dram_buffers (graph)
-    print (f"graph_buffs = {graph_buffs}")
+    # print (f"graph_buffs = {graph_buffs}")
     in_buffs = filter_buffers(graph_buffs, "input")
-    print (f"in_buffs = {in_buffs}")
+    # print (f"in_buffs = {in_buffs}")
     out_buffs = filter_buffers(graph_buffs, "output")
-    print (f"out_buffs = {out_buffs}")
+    # print (f"out_buffs = {out_buffs}")
 
     dest_buffers = get_connected_buffers (in_buffs, "outputs")
-    core_coordinates = get_buff_core_coordinates(dest_buffers)
-    print (f"get_buff_core_coordinates: {core_coordinates}")
+    core_coordinates = get_buff_core_coordinates_rc(dest_buffers)
+    # print (f"get_buff_core_coordinates_rc: {core_coordinates}")
     core_buffers = get_core_buffers (core_coordinates)
-    print (f"core_buffers: {core_buffers}")
+    # print (f"core_buffers: {core_buffers}")
     core_output_buffers = filter_buffers (core_buffers, "output")
-    print (f"core_output_buffers: {core_output_buffers}")
+    # print (f"core_output_buffers: {core_output_buffers}")
     print_buffer_info (core_output_buffers)
 
-    my_fan_in_buffers = fan_in_buffers(core_output_buffers)
-    print (f"fan_in_buffers of {core_output_buffers} are: {my_fan_in_buffers}")
+    fan_in_set = fan_in_buffer_set(core_output_buffers)
+    # print (f"fan_in_buffer_set of {core_output_buffers} are: {fan_in_set}")
 
 def test(graph, chip_array, current_x, current_y):
     return traverse_from_inputs (graph, chip_array, current_x, current_y)
 
 def stream_stuck_traverse (graph, chip_array, current_x, current_y):
-    headers = [ "X-Y", "Op", "Stream", "Type", "Epoch", "Phase", "MSGS_REMAINING", "MSGS_RECEIVED", "State", "Flag" ]
+    headers = [ "X-Y", "Op", "Stream", "Type", "Epoch", "Phase", "MSGS_REMAINING", "MSGS_RECEIVED", "Depends on", "State", "Flag" ]
     rows = []
 
+    # 1. Read and analyze data
+    chip_data = dict()
+    active_streams = dict()
+    empty_input_streams = dict()
+
     for i, chip in enumerate (chip_array):
+        chip_data[i] = {
+            "chip" : chip,
+            "cores" : { }
+        }
+        # 1. Read all stream data
         streams = get_all_streams_ui_data (chip, GS_x_coords, GS_y_coords)
-        last_core_loc = None
+
+        # 2a. Analyze the data
         for x in GS_x_coords:
+            chip_data[i]["cores"][x] = {}
             for y in GS_y_coords:
                 has_active_stream = False
                 has_empty_inputs = False
@@ -1153,13 +1204,37 @@ def stream_stuck_traverse (graph, chip_array, current_x, current_y):
                 for stream_id in range (0, 64):
                     if is_stream_active(streams[x][y][stream_id]):
                         has_active_stream = True
+                        active_streams[(i, x, y, stream_id)] = streams
                     current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
                     if current_phase > 0: # Must be configured
                         stream_type = stream_id_descriptor(stream_id)["short"]
                         NUM_MSGS_RECEIVED = int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED'])
                         if stream_type == "input" and NUM_MSGS_RECEIVED == 0:
                             has_empty_inputs = True
+                            empty_input_streams[(i, x, y, stream_id)] = streams
 
+                chip_data[i]["cores"][x][y] = {\
+                    "fan_in_cores" : [],\
+                    "has_active_stream" : has_active_stream,\
+                    "has_empty_inputs" : has_empty_inputs\
+                }
+
+        # 2b. Find stream dependencies
+        active_core_rc_list = [ GS_noc0_to_rc( active_stream[1], active_stream[2] ) for active_stream in active_streams ]
+        active_core_noc0_list = [ ( active_stream[1], active_stream[2] ) for active_stream in active_streams ]
+        for active_core_rc in active_core_rc_list:
+            fan_in_cores_rc = get_fanin_cores_rc (active_core_rc)
+            active_core_noc0 = GS_rc_to_noc0 (active_core_rc[0], active_core_rc[1])
+            # print (f"fan_in_cores_rc for {active_core_rc}: {fan_in_cores_rc}")
+            fan_in_cores_noc0 = [ GS_rc_to_noc0 (rc[0], rc[1]) for rc in fan_in_cores_rc ]
+            chip_data[i]["cores"][active_core_noc0[0]][active_core_noc0[1]]["fan_in_cores"] = fan_in_cores_noc0
+
+        # 3. Print the output
+        last_core_loc = None
+        for x in GS_x_coords:
+            for y in GS_y_coords:
+                has_active_stream = chip_data[i]["cores"][x][y]["has_active_stream"]
+                has_empty_inputs = chip_data[i]["cores"][x][y]["has_empty_inputs"]
                 if has_active_stream:
                     for stream_id in range (0, 64):
                         current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
@@ -1172,7 +1247,14 @@ def stream_stuck_traverse (graph, chip_array, current_x, current_y):
                             graph_name = EPOCH_ID_TO_GRAPH_NAME[epoch_id]
                             op = core_to_op_name(graph_name, x, y)
                             core_loc = f"{x}-{y}"
-                            row = [ core_loc if last_core_loc != core_loc else "", op if last_core_loc != core_loc else "", stream_id, stream_type, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, f"Active" if stream_active else "", f"{CLR_WARN}All inputs ready but no output generated{CLR_END}" if not has_empty_inputs else "" ]
+                            fan_in_cores = chip_data[i]['cores'][x][y]['fan_in_cores']
+                            fan_in_cores_str = ""
+                            if last_core_loc != core_loc:
+                                for fic_noc0 in fan_in_cores:
+                                    if fic_noc0 in active_core_noc0_list:
+                                        fan_in_cores_str += f"{fic_noc0[0]}-{fic_noc0[1]} "
+                            flag = f"{CLR_WARN}All inputs ready but no output generated{CLR_END}" if not has_empty_inputs and last_core_loc != core_loc else ""
+                            row = [ core_loc if last_core_loc != core_loc else "", op if last_core_loc != core_loc else "", stream_id, stream_type, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, fan_in_cores_str, f"Active" if stream_active else "", flag ]
                             last_core_loc = core_loc
                             rows.append (row)
     print (tabulate(rows, headers=headers))
