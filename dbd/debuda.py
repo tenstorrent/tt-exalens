@@ -1179,7 +1179,7 @@ def main(chip_array, args):
                             burst_type = int(cmd[4],0)
                             burst_read_xy (current_chip_id, x, y, NOC0, addr, burst_type=burst_type)
                         elif found_command["long"] == "pci-write-xy":
-                            pci_write_xy (current_chip_id, x, y, NOC0, addr, data = int(cmd[4],0))
+                            device.pci_write_xy (current_chip_id, x, y, NOC0, addr, data = int(cmd[4],0))
                         else:
                             print (f"{util.CLR_ERR} Unknown {found_command['long']} {util.CLR_END}")
                     elif found_command["long"] == "dump-message-xy":
