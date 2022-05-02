@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""
+debuda parses the build output files and probes the silicon to determine status of a buda run.
+"""
+STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with bin/build-debuda-stub.sh. It also requires zeromq (sudo apt install -y libzmq3-dev)."
+
+import yaml, sys, os, struct, argparse, time, traceback, subprocess, signal, re, pickle
+import atexit, fnmatch, importlib
+from tabulate import tabulate
+
+# Get path of this script. 'frozen' means packaged with pyinstaller.
+def application_path ():
+    if getattr(sys, 'frozen', False):
+        application_path = os.path.dirname(sys.executable)
+    elif __file__:
+        application_path = os.path.dirname(__file__)
+    return application_path
+
+# Colors
+CLR_RED = '\033[31m'
+CLR_GREEN = '\033[32m'
+CLR_BLUE = '\033[34m'
+CLR_ORANGE = '\033[38:2:205:106:0m'
+CLR_END = '\033[0m'
+
+CLR_ERR = CLR_RED
+CLR_WARN = CLR_ORANGE
+CLR_INFO = CLR_BLUE
+CLR_PROMPT = CLR_GREEN
+
+# Given a list l, returns a map that returns an index given the value of an element
+def reverse_mapping_list(l):
+    ret = [0] * len(l)
+    for idx, val in enumerate(l):
+        ret[val] = idx
+    return ret
+
+# Converts a shallow dict to a table. A table is an array that can be consumed by tabulate.py
+def dict_to_table (dct):
+    if dct:
+        table = [ [k, dct[k]] for k in dct ]
+    else:
+        table = [ [ "", "" ] ]
+    return table
+
+# Given two tables 'a' and 'b' merge them into a wider table
+def merge_tables_side_by_side (a, b):
+    width_a = len(a[0])
+    width_b = len(b[0])
+    t = [ ]
+    for i in range (max (len(a), len(b))):
+        row = [ None ] * (width_a + width_b)
+
+        for j in range (width_a):
+            row [j] = "" if i >= len(a) else a[i][j]
+
+        for j in range (width_b):
+            row [j + width_a] = "" if i >= len(b) else b[i][j]
+
+        t.append (row)
+    return t
+
+# Given an array of dicts, and their titles. Print a flattened version of all the dicts as a big table.
+def print_columnar_dicts (dict_array, title_array):
+    final_table = [ ]
+    for idx, dct in enumerate(dict_array):
+        assert isinstance(dct, dict)
+        current_table = dict_to_table(dct)
+        if idx == 0:
+            final_table = current_table
+        else:
+            final_table = merge_tables_side_by_side (final_table, current_table)
+
+    titles = [ ]
+    for t in title_array:
+        titles += [ t ]
+        titles += [ "" ]
+
+    print (tabulate(final_table, headers=titles))
+
+# Get path of this script. 'frozen' means: packaged with pyinstaller.
+def application_path ():
+    if getattr(sys, 'frozen', False):
+        application_path = os.path.dirname(sys.executable)
+    elif __file__:
+        application_path = os.path.dirname(__file__)
+    return os.path.abspath (application_path)

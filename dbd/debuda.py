@@ -10,13 +10,7 @@ import atexit, fnmatch, importlib
 from tabulate import tabulate
 import zmq # For communication with Buda or debuda stub
 
-# Get path of this script. 'frozen' means packaged with pyinstaller.
-def application_path ():
-    if getattr(sys, 'frozen', False):
-        application_path = os.path.dirname(sys.executable)
-    elif __file__:
-        application_path = os.path.dirname(__file__)
-    return application_path
+import util
 
 STREAM_CACHE_FILE_NAME = "dbd_streams_cache.pkl"
 
@@ -124,10 +118,10 @@ GS_PHYS_X_TO_NOC_0_X = [ 0, 12, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6 ]
 GS_PHYS_Y_TO_NOC_0_Y = [ 0, 11, 1, 10, 2, 9,  3, 8, 4, 7, 5, 6 ]
 GS_PHYS_X_TO_NOC_1_X = [ 12, 0, 11, 1, 10, 2, 9, 3, 8, 4, 7, 5, 6 ]
 GS_PHYS_Y_TO_NOC_1_Y = [ 11, 0, 10, 1, 9,  2, 8, 3, 7, 4, 6, 5 ]
-GS_NOC_0_X_TO_PHYS_X = reverse_mapping_list (GS_PHYS_X_TO_NOC_0_X)
-GS_NOC_0_Y_TO_PHYS_Y = reverse_mapping_list (GS_PHYS_Y_TO_NOC_0_Y)
-GS_NOC_1_X_TO_PHYS_X = reverse_mapping_list (GS_PHYS_X_TO_NOC_1_X)
-GS_NOC_1_Y_TO_PHYS_Y = reverse_mapping_list (GS_PHYS_Y_TO_NOC_1_Y)
+GS_NOC_0_X_TO_PHYS_X = util.reverse_mapping_list (GS_PHYS_X_TO_NOC_0_X)
+GS_NOC_0_Y_TO_PHYS_Y = util.reverse_mapping_list (GS_PHYS_Y_TO_NOC_0_Y)
+GS_NOC_1_X_TO_PHYS_X = util.reverse_mapping_list (GS_PHYS_X_TO_NOC_1_X)
+GS_NOC_1_Y_TO_PHYS_Y = util.reverse_mapping_list (GS_PHYS_Y_TO_NOC_1_Y)
 
 # IDs of NOCs
 NOC0 = 0
@@ -227,9 +221,6 @@ def get_stream_reg_field(chip_id, x, y, stream_id, reg_index, start_bit, num_bit
     mask = (1 << num_bits) - 1
     val = (val >> start_bit) & mask
     return val
-
-def print_blank_line():
-    print ("")
 
 # The field names we want to show as hexadecimal numbers
 HEX_FIELDS = {
@@ -433,13 +424,13 @@ def get_all_streams_ui_data (chip, x_coords, y_coords):
 
 def full_dump_xy(chip_id, x, y):
     for stream_id in range (0, 64):
-        print_blank_line()
+        print()
         stream = read_stream_regs(chip_id, x, y, stream_id)
         for reg, value in stream.items():
             print(f"Tensix x={x:02d},y={y:02d} => stream {stream_id:02d} {reg} = {value}")
 
     for noc_id in range (0, 2):
-        print_blank_line()
+        print()
         read_print_noc_reg(chip_id, x, y, noc_id, "nonposted write reqs sent", 0xA)
         read_print_noc_reg(chip_id, x, y, noc_id, "posted write reqs sent", 0xB)
         read_print_noc_reg(chip_id, x, y, noc_id, "nonposted write words sent", 0x8)
@@ -448,7 +439,7 @@ def full_dump_xy(chip_id, x, y):
         read_print_noc_reg(chip_id, x, y, noc_id, "read reqs sent", 0x5)
         read_print_noc_reg(chip_id, x, y, noc_id, "read words received", 0x3)
         read_print_noc_reg(chip_id, x, y, noc_id, "read resps received", 0x2)
-        print_blank_line()
+        print()
         read_print_noc_reg(chip_id, x, y, noc_id, "nonposted write reqs received", 0x1A)
         read_print_noc_reg(chip_id, x, y, noc_id, "posted write reqs received", 0x1B)
         read_print_noc_reg(chip_id, x, y, noc_id, "nonposted write words received", 0x18)
@@ -457,11 +448,11 @@ def full_dump_xy(chip_id, x, y):
         read_print_noc_reg(chip_id, x, y, noc_id, "read reqs received", 0x15)
         read_print_noc_reg(chip_id, x, y, noc_id, "read words sent", 0x13)
         read_print_noc_reg(chip_id, x, y, noc_id, "read resps sent", 0x12)
-        print_blank_line()
+        print()
         read_print_noc_reg(chip_id, x, y, noc_id, "router port x out vc full credit out vc stall", 0x24)
         read_print_noc_reg(chip_id, x, y, noc_id, "router port y out vc full credit out vc stall", 0x22)
         read_print_noc_reg(chip_id, x, y, noc_id, "router port niu out vc full credit out vc stall", 0x20)
-        print_blank_line()
+        print()
         read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC14 & VC15 dbg", 0x3d)
         read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC12 & VC13 dbg", 0x3c)
         read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC10 & VC11 dbg", 0x3b)
@@ -470,7 +461,7 @@ def full_dump_xy(chip_id, x, y):
         read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC4 & VC5 dbg", 0x38)
         read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC2 & VC3 dbg", 0x37)
         read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC0 & VC1 dbg", 0x36)
-        print_blank_line()
+        print()
         read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC14 & VC15 dbg", 0x35)
         read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC12 & VC13 dbg", 0x34)
         read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC10 & VC11 dbg", 0x33)
@@ -479,7 +470,7 @@ def full_dump_xy(chip_id, x, y):
         read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC4 & VC5 dbg", 0x30)
         read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC2 & VC3 dbg", 0x2f)
         read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC0 & VC1 dbg", 0x2e)
-        print_blank_line()
+        print()
         read_print_noc_reg(chip_id, x, y, noc_id, "router port niu VC6 & VC7 dbg", 0x29)
         read_print_noc_reg(chip_id, x, y, noc_id, "router port niu VC4 & VC5 dbg", 0x28)
         read_print_noc_reg(chip_id, x, y, noc_id, "router port niu VC2 & VC3 dbg", 0x27)
@@ -525,7 +516,7 @@ def full_dump_xy(chip_id, x, y):
     trisc2_pc = pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
 
     # IH: Commented out to reduce chatter
-    print_blank_line()
+    print()
     print(f"Tensix x={x:02d},y={y:02d} => dbus_test_val1 (expect 7)={test_val1:x}, dbus_test_val2 (expect A5A5A5A5)={test_val2:x}")
     print(f"Tensix x={x:02d},y={y:02d} => brisc_pc=0x{brisc_pc:x}, trisc0_pc=0x{trisc0_pc:x}, trisc1_pc=0x{trisc1_pc:x}, trisc2_pc=0x{trisc2_pc:x}")
 
@@ -560,49 +551,6 @@ def get_streams_from_blob (chip, x, y, id):
             ret_val[lastidx][f"source"] = f'{CLR_INFO}{k}{CLR_END}'
 
     return ret_val
-
-# Converts a shallow dict to a table. A table is an array that can be consumed by tabulate.py
-def dict_to_table (dct):
-    if dct:
-        table = [ [k, dct[k]] for k in dct ]
-    else:
-        table = [ [ "", "" ] ]
-    return table
-
-# Given two tables 'a' and 'b' merge them into a wider table
-def merge_tables_side_by_side (a, b):
-    width_a = len(a[0])
-    width_b = len(b[0])
-    t = [ ]
-    for i in range (max (len(a), len(b))):
-        row = [ None ] * (width_a + width_b)
-
-        for j in range (width_a):
-            row [j] = "" if i >= len(a) else a[i][j]
-
-        for j in range (width_b):
-            row [j + width_a] = "" if i >= len(b) else b[i][j]
-
-        t.append (row)
-    return t
-
-# Given an array of dicts, and their titles. Print a flattened version of all the dicts as a big table.
-def print_columnar_dicts (dict_array, title_array):
-    final_table = [ ]
-    for idx, dct in enumerate(dict_array):
-        assert isinstance(dct, dict)
-        current_table = dict_to_table(dct)
-        if idx == 0:
-            final_table = current_table
-        else:
-            final_table = merge_tables_side_by_side (final_table, current_table)
-
-    titles = [ ]
-    for t in title_array:
-        titles += [ t ]
-        titles += [ "" ]
-
-    print (tabulate(final_table, headers=titles))
 
 #
 # Analysis functions
@@ -716,7 +664,7 @@ def stream_summary(chip, x_coords, y_coords, streams, short=False):
     # Print streams in bad state
     if len(bad_streams) != 0:
         num_entries_to_show_remaining = SHORT_PRINT_LINE_LIMIT
-        print_blank_line()
+        print()
         print("The following streams are in a bad state (have an assertion in DEBUG_STATUS[1], or DEBUG_STATUS[2] indicates a hang):")
         for i in range(len(bad_streams)):
             bad_stream_x = bad_streams[i][0]
@@ -747,9 +695,9 @@ def stream_summary(chip, x_coords, y_coords, streams, short=False):
                     ncriscs_not_idle_count += 1
                     print(f"{x:02d}-{y:02d}", end=" ")
                     if ncriscs_not_idle_count % 12 == 0:
-                        print_blank_line()
+                        print()
         if ncriscs_not_idle_count > 0:
-            print_blank_line()
+            print()
 
 # Prints a single stream
 def print_stream (current_chip, x, y, stream_id, current_epoch_id):
@@ -801,7 +749,7 @@ def print_stream (current_chip, x, y, stream_id, current_epoch_id):
                     data_columns.append (d)
                     title_columns.append ("Pipe")
 
-    print_columnar_dicts (data_columns, title_columns)
+    util.print_columnar_dicts (data_columns, title_columns)
 
     if current_epoch_id != stream_epoch_id:
         print (f"{CLR_WARN}Current epoch is {current_epoch_id}, while the stream is in epoch {stream_epoch_id} {CLR_END}. To switch to epoch {stream_epoch_id}, enter {CLR_PROMPT}e {stream_epoch_id}{CLR_END}")
@@ -819,7 +767,7 @@ def print_buffer_data (buffer_id, current_epoch_id = None):
             d = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id][dct]
             if ("input_list" in d and buffer_id in d["input_list"]) or ("output_list" in d and buffer_id in d["output_list"]) or ("buffer" in dct and "uniqid" in d and buffer_id == d["uniqid"]):
                 if current_epoch_id is None or current_epoch_id == epoch_id:
-                    print_columnar_dicts ([d], [f"{CLR_INFO}Epoch {epoch_id} - {dct}{CLR_END}"])
+                    util.print_columnar_dicts ([d], [f"{CLR_INFO}Epoch {epoch_id} - {dct}{CLR_END}"])
                 else:
                     print (f"Buffer is also used in epoch {epoch_id}. Details suppressed.")
 
@@ -831,7 +779,7 @@ def print_pipe_data (pipe_id, current_epoch_id = None):
             d = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id][dct]
             if ("pipe" in dct and "id" in d and pipe_id == d["id"]):
                 if current_epoch_id is None or current_epoch_id == epoch_id:
-                    print_columnar_dicts ([d], [f"{CLR_INFO}Epoch {epoch_id} - {dct}{CLR_END}"])
+                    util.print_columnar_dicts ([d], [f"{CLR_INFO}Epoch {epoch_id} - {dct}{CLR_END}"])
                 else:
                     print (f"Pipe is also used in epoch {epoch_id}. Details suppressed.")
 
@@ -845,7 +793,7 @@ def print_pipe_data (pipe_id, current_epoch_id = None):
                 else:
                     if "pipe_id" in dct[strm] and dct[strm]["pipe_id"] == pipe_id:
                         if current_epoch_id is None or current_epoch_id == epoch_id:
-                            print_columnar_dicts ([dct[strm]], [f"{CLR_INFO}Epoch {epoch_id} - BLOB - {strm}{CLR_END}"])
+                            util.print_columnar_dicts ([dct[strm]], [f"{CLR_INFO}Epoch {epoch_id} - BLOB - {strm}{CLR_END}"])
                         else:
                             print (f"Pipe is also used in epoch {epoch_id}. Details suppressed.")
 
@@ -1294,11 +1242,11 @@ def dump_message_xy(chip, x, y, stream_id, message_id, is_tile):
             else:
                 dump_memory(chip, x, y, msg_addr, msg_size)
         else:
-            print(f"Message id should be in range (1, {buffer_size/msg_size})")
+            print(f"Message id should be in range (1, {buffer_size//msg_size})")
     else:
         print("Not enough data in blob.yaml")
 
-RECURSION_DEPTH = 0
+RECURSION_DEPTH = 0 # FIX: This should be called before each recursive call!
 
 # Computes all buffers that are feeding into the buffers from buffer_id_list
 def fan_in_buffer_set(buffer_id_list, already_visited = set()):
@@ -1309,6 +1257,8 @@ def fan_in_buffer_set(buffer_id_list, already_visited = set()):
     RECURSION_DEPTH=RECURSION_DEPTH+1
     fan_in_set = set ()
 
+# Computes all buffers that are on the input tree of a given buffer
+def fan_in_buffers(buffer_id_list):
     if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ]
     if len (buffer_id_list) == 0:
         return fan_in_set
@@ -1339,6 +1289,8 @@ def get_fanin_cores_rc (core_coordinates_list_rc):
 
     all_core_buffers = get_core_buffers (core_coordinates_list_rc)
     # print (f"all_core_buffers: {all_core_buffers}")
+    global RECURSION_DEPTH
+    RECURSION_DEPTH = 0
     core_buffers = list (fan_in_buffer_set(all_core_buffers))
     # print (f"get_fanin_cores_rc/core_buffers: {core_buffers}")
     fanin_cores_rc = get_buff_core_coordinates_rc (core_buffers)
@@ -1449,8 +1401,10 @@ def analyze_blocked_streams (graph, chip_array, current_x, current_y):
                             row = [ core_loc if last_core_loc != core_loc else "", op if last_core_loc != core_loc else "", stream_id, stream_type, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, fan_in_cores_str, f"Active" if stream_active else "", flag ]
                             last_core_loc = core_loc
                             rows.append (row)
-    print (tabulate(rows, headers=headers))
-
+    if len(rows) > 0:
+        print (tabulate(rows, headers=headers))
+    else:
+        print ("No blocked streams detected")
 def main(chip_array, args):
     # If chip_array is not an array, make it one
     if not isinstance(chip_array, list):
@@ -1739,7 +1693,7 @@ def init_comm_client ():
     DEBUDA_STUB_PORT=5555
 
     print ("Spawning debuda-stub.")
-    debuda_stub_path = application_path() + "/debuda-stub"
+    debuda_stub_path = util.application_path() + "/debuda-stub"
     try:
         global DEBUDA_STUB_PROCESS
         debuda_stub_args = [ "--debug" ] if args.debug_debuda_stub else [ ]
@@ -1769,21 +1723,14 @@ def init_comm_client ():
 def terminate_comm_client_callback ():
     os.killpg(os.getpgid(DEBUDA_STUB_PROCESS.pid), signal.SIGTERM)
     print (f"Terminated debuda-stub with pid:{DEBUDA_STUB_PROCESS.pid}")
-# Get path of this script. 'frozen' means: packaged with pyinstaller.
-def application_path ():
-    if getattr(sys, 'frozen', False):
-        application_path = os.path.dirname(sys.executable)
-    elif __file__:
-        application_path = os.path.dirname(__file__)
-    return os.path.abspath (application_path)
 
 def import_commands (command_metadata_array):
     command_files = []
-    for root, dirnames, filenames in os.walk(application_path () + '/debuda-commands'):
+    for root, dirnames, filenames in os.walk(util.application_path () + '/debuda-commands'):
         for filename in fnmatch.filter(filenames, '*.py'):
             command_files.append(os.path.join(root, filename))
 
-    sys.path.append(application_path() + '/debuda-commands')
+    sys.path.append(util.application_path() + '/debuda-commands')
 
     for cmdfile in command_files:
         module_path = os.path.splitext(os.path.basename(cmdfile))[0]
