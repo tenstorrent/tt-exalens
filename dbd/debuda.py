@@ -32,9 +32,6 @@ EPOCH_ID_TO_GRAPH_NAME={}
 PIPEGEN=None # Points to currently selected entry inside EPOCH_TO_PIPEGEN_YAML_MAP (selected by current_epoch)
 BLOB=None    # Points to currently selected entry inside EPOCH_TO_BLOB_YAML_MAP (selected by current_epoch)
 
-# When given short=True, function will only print this many entries
-SHORT_PRINT_LINE_LIMIT = 10
-
 # From src/firmware/riscv/grayskull/stream_io_map.h
 # Kernel operand mapping scheme:
 KERNEL_OPERAND_MAPPING_SCHEME = [
@@ -269,7 +266,6 @@ def stream_summary(chip, x_coords, y_coords, streams, short=False):
     headers = [ "X-Y", "Op", "Stream", "Type", "Epoch", "Phase", "State", "CURR_PHASE_NUM_MSGS_REMAINING", "NUM_MSGS_RECEIVED" ]
     rows = []
 
-    num_entries_to_show_remaining = SHORT_PRINT_LINE_LIMIT
     for x in x_coords:
         for y in y_coords:
             if len(active_streams[x][y]) != 0:
@@ -284,16 +280,6 @@ def stream_summary(chip, x_coords, y_coords, streams, short=False):
                     stream_type = stream_id_descriptor(stream_id)["short"]
                     op = core_to_op_name(EPOCH_ID_TO_GRAPH_NAME[epoch_id], x, y)
                     row = [ xy, op, stream_id, stream_type, epoch_id, current_phase, f"{util.CLR_WARN}Active{util.CLR_END}", int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING']), int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED']) ]
-
-                    num_entries_to_show_remaining -= 1
-                    if short and num_entries_to_show_remaining == 0:
-                        for i in range (len(row)):
-                            row[i] = "..."
-                        rows.append (row)
-                        break
-                    if short and num_entries_to_show_remaining < 0:
-                        break
-
                     rows.append (row)
                     all_streams_done = False
 
@@ -304,7 +290,6 @@ def stream_summary(chip, x_coords, y_coords, streams, short=False):
 
     # Print streams in bad state
     if len(bad_streams) != 0:
-        num_entries_to_show_remaining = SHORT_PRINT_LINE_LIMIT
         print()
         print("The following streams are in a bad state (have an assertion in DEBUG_STATUS[1], or DEBUG_STATUS[2] indicates a hang):")
         for i in range(len(bad_streams)):
@@ -312,13 +297,6 @@ def stream_summary(chip, x_coords, y_coords, streams, short=False):
             bad_stream_y = bad_streams[i][1]
             bad_stream_id = bad_streams[i][2]
             print(f"\t x={bad_stream_x:02d}, y={bad_stream_y:02d}, stream_id={bad_stream_id:02d}")
-            if short and num_entries_to_show_remaining == 0:
-                for i in range (len(row)):
-                    print ("...")
-            if short and num_entries_to_show_remaining < 0:
-                break
-            num_entries_to_show_remaining -= 1
-
 
     # Print gsync_hung cores
     for x in x_coords:
@@ -943,6 +921,7 @@ def analyze_blocked_streams (graph, chip_array, current_x, current_y):
         print (tabulate(rows, headers=headers))
     else:
         print ("No blocked streams detected")
+
 def main(chip_array, args):
     # If chip_array is not an array, make it one
     if not isinstance(chip_array, list):
