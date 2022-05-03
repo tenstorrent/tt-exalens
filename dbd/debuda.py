@@ -23,6 +23,13 @@ args = parser.parse_args()
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
+# Constants
+
+# IDs of NOCs
+NOC0 = 0
+NOC1 = 1
+
+
 # Global variables
 EPOCH_TO_PIPEGEN_YAML_MAP={}
 EPOCH_TO_BLOB_YAML_MAP={}
@@ -31,6 +38,7 @@ EPOCH_ID_TO_CHIP_ID={}
 EPOCH_ID_TO_GRAPH_NAME={}
 PIPEGEN=None # Points to currently selected entry inside EPOCH_TO_PIPEGEN_YAML_MAP (selected by current_epoch)
 BLOB=None    # Points to currently selected entry inside EPOCH_TO_BLOB_YAML_MAP (selected by current_epoch)
+
 
 # From src/firmware/riscv/grayskull/stream_io_map.h
 # Kernel operand mapping scheme:
@@ -42,20 +50,18 @@ KERNEL_OPERAND_MAPPING_SCHEME = [
     { "id_min" : 32, "id_max" : 63, "stream_id_min" : 32, "short" : "op-relay", "long" : "(operand relay?) => streams 40-63" }, # CHECK THIS
 ]
 
-def stream_id_descriptor (stream_id):
+# Returns a stream type based on KERNEL_OPERAND_MAPPING_SCHEME
+def stream_type (stream_id):
     for ko in KERNEL_OPERAND_MAPPING_SCHEME:
         s_id_min = ko["stream_id_min"]
         s_id_count = ko["id_max"] - ko["id_min"]
         if stream_id >= s_id_min and stream_id < s_id_min + s_id_count:
             return ko
-    print ("no desc for stream_id=%s" % stream_id)
-
-# IDs of NOCs
-NOC0 = 0
-NOC1 = 1
+    util.WARN ("no desc for stream_id=%s" % stream_id)
+    return "-"
 
 # Returns an array of [r,c] pairs for the operation
-def get_op_locations (op):
+def get_op_coords (op):
     locations = []
     opr = op['grid_loc'][0]
     opc = op['grid_loc'][1]
@@ -64,14 +70,14 @@ def get_op_locations (op):
             locations.append ( [ opr + r, opc + c ] )
     return locations
 
-# Prints the op name based on the core noc location
-def core_to_op_name (graph_name, noc0_x, noc0_y):
+# Returns the op name mapped to a given NOC location
+def core_coord_to_op_name (graph_name, noc0_x, noc0_y):
     r, c = grayskull.noc0_to_rc (noc0_x, noc0_y)
     graph = NETLIST["graphs"][graph_name]
     for op_name in graph.keys():
         if op_name not in ['target_device', 'input_count']:
             op = graph[op_name]
-            op_locations = get_op_locations(op)
+            op_locations = get_op_coords(op)
             if [ r, c ] in op_locations:
                 return f"{graph_name}/{op_name}:{op['type']}"
 
@@ -187,6 +193,7 @@ def get_all_streams_ui_data (chip, x_coords, y_coords):
 
     return streams
 
+# Returns blob data where all values get converted to strings
 def blob_data_to_string (blb_data):
     ret_val = {}
     for k in blb_data:
@@ -240,6 +247,7 @@ def is_gsync_hung (chip, x, y):
 def is_ncrisc_done (chip, x, y):
     return device.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0x1FFFFFF1
 
+# Detects potential problems within all chip streams, and prints a summary
 def stream_summary(chip, x_coords, y_coords, streams, short=False):
     active_streams = {}
     bad_streams = []
@@ -277,9 +285,9 @@ def stream_summary(chip, x_coords, y_coords, streams, short=False):
                     stream_id=active_streams[x][y][i]
                     current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
                     epoch_id = current_phase>>10
-                    stream_type = stream_id_descriptor(stream_id)["short"]
-                    op = core_to_op_name(EPOCH_ID_TO_GRAPH_NAME[epoch_id], x, y)
-                    row = [ xy, op, stream_id, stream_type, epoch_id, current_phase, f"{util.CLR_WARN}Active{util.CLR_END}", int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING']), int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED']) ]
+                    stream_type_str = stream_type(stream_id)["short"]
+                    op = core_coord_to_op_name(EPOCH_ID_TO_GRAPH_NAME[epoch_id], x, y)
+                    row = [ xy, op, stream_id, stream_type_str, epoch_id, current_phase, f"{util.CLR_WARN}Active{util.CLR_END}", int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING']), int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED']) ]
                     rows.append (row)
                     all_streams_done = False
 
@@ -319,7 +327,7 @@ def stream_summary(chip, x_coords, y_coords, streams, short=False):
         if ncriscs_not_idle_count > 0:
             print()
 
-# Prints a single stream
+# Prints all information on a stream
 def print_stream (current_chip, x, y, stream_id, current_epoch_id):
     regs = grayskull.read_stream_regs (current_chip, x, y, stream_id)
     stream_regs = convert_reg_dict_to_strings(current_chip, regs, x, y, stream_id)
@@ -417,6 +425,7 @@ def print_pipe_data (pipe_id, current_epoch_id = None):
                         else:
                             print (f"Pipe is also used in epoch {epoch_id}. Details suppressed.")
 
+# Prints information on DRAM queues
 def print_dram_queue_summary_for_graph (graph, chip_array):
     epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["epoch_id"]
     chip_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["target_device"]
@@ -459,8 +468,8 @@ def print_host_queue_for_graph (graph):
                 dram_addr = buffer['dram_addr']
                 if dram_addr >> 29 == chip_id:
                     # print (f"{util.CLR_WARN}Found host queue %s{util.CLR_END}" % pp.pformat(buffer))
-                    rdptr = host_dma_read (dram_addr)
-                    wrptr = host_dma_read (dram_addr + 4)
+                    rdptr = device.host_dma_read (dram_addr)
+                    wrptr = device.host_dma_read (dram_addr + 4)
                     slot_size_bytes = buffer["size_tiles"] * buffer["tile_size"]
                     queue_size_bytes = slot_size_bytes * buffer["q_slots"]
                     occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer["q_slots"])
@@ -507,10 +516,14 @@ def print_epoch_queue_summary (chip_array, x_coords, y_coords):
     else:
         print ("No epoch queues have occupancy > 0")
 
+# A helper to print the result of a single PCI read
 def print_a_read (x, y, addr, val, comment=""):
     print(f"{x}-{y} 0x{addr:08x} => 0x{val:08x} ({val:d}) {comment}")
 
-def burst_read_xy (chip, x, y, noc_id, addr, burst_type = 1):
+# Perform a burst of PCI reads and print results.
+# If burst_type is 1, read the same location for a second and print a report
+# If burst_type is 2, read an array of locations once and print a report
+def print_burst_read_xy (chip, x, y, noc_id, addr, burst_type = 1):
     if burst_type == 1:
         values = {}
         t_end = time.time() + 1
@@ -527,6 +540,7 @@ def burst_read_xy (chip, x, y, noc_id, addr, burst_type = 1):
             val = device.pci_read_xy(chip, x, y, noc_id, addr + 4*k)
             print_a_read(x,y,addr + 4*k, val)
 
+# Print all commands (help)
 def print_available_commands (commands):
     rows = []
     for c in commands:
@@ -535,6 +549,7 @@ def print_available_commands (commands):
         rows.append(row)
     print (tabulate(rows, headers=[ "Short", "Long", "Arguments", "Description" ]))
 
+# Certain commands give suggestions for next step. This function formats and prints those suggestions.
 def print_suggestions (graph_name, navigation_suggestions, current_stream_id):
     if navigation_suggestions:
         print ("Speed dial:")
@@ -545,11 +560,12 @@ def print_suggestions (graph_name, navigation_suggestions, current_stream_id):
             row = [ f"{clr}{i}{util.CLR_END}", \
                 f"{clr}Go to {navigation_suggestions[i]['type']} of stream {navigation_suggestions[i]['stream_id']}{util.CLR_END}", \
                 f"{clr}{navigation_suggestions[i]['cmd']}{util.CLR_END}", \
-                f"{clr}{core_to_op_name(graph_name, navigation_suggestions[i]['noc0_x'], navigation_suggestions[i]['noc0_y'])}{util.CLR_END}"
+                f"{clr}{core_coord_to_op_name(graph_name, navigation_suggestions[i]['noc0_x'], navigation_suggestions[i]['noc0_y'])}{util.CLR_END}"
                 ]
             rows.append (row)
         print(tabulate(rows, headers=[ "#", "Description", "Command", "Op name" ]))
 
+# Prints all streams for all chips given by chip_array
 def print_stream_summary (chip_array):
     # Finally check and print stream data
     for i, chip in enumerate (chip_array):
@@ -557,7 +573,8 @@ def print_stream_summary (chip_array):
         streams_ui_data = get_all_streams_ui_data (chip, grayskull.x_coords, grayskull.y_coords)
         stream_summary(chip, grayskull.x_coords, grayskull.y_coords, streams_ui_data)
 
-def init_files (args):
+# Loads all files (blob, pipegen, netlist) and constructs maps for faster lookup
+def load_files (args):
     # Get paths to Pipegen and Blob YAML files for the Current epoch
     epoch = 0
     global EPOCH_TO_PIPEGEN_YAML_MAP   # This refers to a single pipegen.yaml file
@@ -629,7 +646,8 @@ def init_files (args):
 #         if stream has fork_stream_ids:
 #             then also consider the stream ids in that list, but don't check for output_index
 
-def find_buffer (buffer_id):
+# Find a buffer given a buffer_id
+def get_buffer (buffer_id):
     for b in PIPEGEN:
         if "buffer" in b:
             buffer=PIPEGEN[b]
@@ -643,6 +661,7 @@ def get_stream_tuple_from_full_name (stream_full_name):
     vals = re.findall(r'chip_(\d)+__y_(\d)+__x_(\d)+__stream_id_(\d)+', stream_full_name)
     return [ vals[0][2], vals[0][1], vals[0][3] ]
 
+# Find stream information for a given buffer (from blob.yaml)
 def find_stream_for_buffer_id (buffer_id):
     for phase in BLOB:
         for stream_full_name, stream_data in BLOB[phase].items():
@@ -650,6 +669,8 @@ def find_stream_for_buffer_id (buffer_id):
                 return get_stream_tuple_from_full_name (stream_full_name)
     return None
 
+# Given a buffer list, find all buffers that are connected (pipegen.yaml)
+# connection can be input/output/inputoutput
 def get_connected_buffers (buffer_id_list, connection="outputs"):
     if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ] # If not a list, assume a single buffer id, and create a list from it
 
@@ -664,6 +685,7 @@ def get_connected_buffers (buffer_id_list, connection="outputs"):
                     dest_buffers += PIPEGEN[p]["input_list"]
     return dest_buffers
 
+# Given a buffer list, find all RC coordinates of the cores where the buffers reside
 def get_buff_core_coordinates_rc (buffer_id_list):
     if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ] # If not a list, assume a single buffer id, and create a list from it
     buff_cores = set()
@@ -673,12 +695,14 @@ def get_buff_core_coordinates_rc (buffer_id_list):
                 buff_cores.add (tuple(PIPEGEN[b]["core_coordinates"]))
     return list (buff_cores)
 
+# Prints condensed information on a buffer (list)
 def print_buffer_info (buffer_id_list):
     if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ] # If not a list, assume a single buffer id, and create a list from it
-    for bid in buffer_id_list:
-        b = find_buffer (bid)
-        print (f"Buffer {bid} - {b['md_op_name']} rc:{b['core_coordinates']}")
+    for buffer_id in buffer_id_list:
+        b = get_buffer (buffer_id)
+        print (f"Buffer {buffer_id} - {b['md_op_name']} rc:{b['core_coordinates']}")
 
+# Given a list of core coordinates, returns all buffers residing at those coordinates
 def get_core_buffers (core_coordinates_list_rc):
     if type(core_coordinates_list_rc) != list: core_coordinates_list_rc = [ core_coordinates_list_rc ] # If not a list, assume a single buffer id, and create a list from it
 
@@ -689,18 +713,21 @@ def get_core_buffers (core_coordinates_list_rc):
                 buffer_set.add (PIPEGEN[b]["uniqid"])
     return list(buffer_set)
 
-def is_input_buffer(bid):
+# Checks if a given buffer is and output buffer (shows up in the input_list of a pipe)
+def is_input_buffer(buffer_id):
     for p in PIPEGEN:
         if "pipe" in p:
-            if bid in PIPEGEN[p]["input_list"]: return True
+            if buffer_id in PIPEGEN[p]["input_list"]: return True
     return False
 
-def is_output_buffer(bid):
+# Checks if a given buffer is an output buffer (shows up in the output_list of a pipe)
+def is_output_buffer(buffer_id):
     for p in PIPEGEN:
         if "pipe" in p:
-            if bid in PIPEGEN[p]["output_list"]: return True
+            if buffer_id in PIPEGEN[p]["output_list"]: return True
     return False
 
+# Filters a list of buffers, to return only input or output buffers
 def filter_buffers (buffer_list, filter):
     if filter == "input":
         return [ bid for bid in buffer_list if is_input_buffer(bid) ]
@@ -722,6 +749,7 @@ def get_dram_buffers(graph):
                 input_buffers.append (buffer["uniqid"])
     return input_buffers
 
+# Prints contents of core's memory
 def dump_memory(chip, x, y, addr, size):
     for k in range(0, size//4//16 + 1):
         row = []
@@ -762,7 +790,7 @@ def dump_message_xy(chip, x, y, stream_id, message_id):
     else:
         print("Not enough data in blob.yaml")
 
-RECURSION_DEPTH = 0 # Temporary debug code
+RECURSION_DEPTH = 0 # Temporary/debug limit to prevent infinite recursion
 
 # Computes all buffers that are feeding into the buffers from buffer_id_list
 def fan_in_buffer_set(buffer_id_list, already_visited = set()):
@@ -800,6 +828,8 @@ def fan_in_buffers(buffer_id_list):
 
     return already_visited.union (fan_in_buffer_set(list (propagate_fan_in_set), already_visited))
 
+# Given a list of cores (as a list of RC locations), returns a list of RC coordinates of all the cores
+# that eventually feed the given cores. I.e. returns cores that the given cores depend on.
 def get_fanin_cores_rc (core_coordinates_list_rc):
     if type(core_coordinates_list_rc) != list: core_coordinates_list_rc = [ core_coordinates_list_rc ] # If not a list, assume a single buffer id, and create a list from it
 
@@ -814,7 +844,8 @@ def get_fanin_cores_rc (core_coordinates_list_rc):
     if (255,255) in fanin_cores_rc: fanin_cores_rc.remove ((255,255)) # Exclude DRAM
     return fanin_cores_rc
 
-def traverse_from_inputs (graph, chip_array, current_x, current_y):
+# Test only code
+def test_traverse_from_inputs (graph, chip_array, current_x, current_y):
     graph_buffs = get_dram_buffers (graph)
     # print (f"graph_buffs = {graph_buffs}")
     in_buffs = filter_buffers(graph_buffs, "input")
@@ -834,9 +865,13 @@ def traverse_from_inputs (graph, chip_array, current_x, current_y):
     fan_in_set = fan_in_buffer_set(core_output_buffers)
     # print (f"fan_in_buffer_set of {core_output_buffers} are: {fan_in_set}")
 
+# Test command for development only
 def test(graph, chip_array, current_x, current_y):
-    return traverse_from_inputs (graph, chip_array, current_x, current_y)
+    return test_traverse_from_inputs (graph, chip_array, current_x, current_y)
 
+# Traverses all streams and detects the blocked one. It then prints the results.
+# It prioritizes the streams that are genuinely blocked, to the ones that are waiting on genuinely 
+# blocked cores.
 def analyze_blocked_streams (graph, chip_array, current_x, current_y):
     headers = [ "X-Y", "Op", "Stream", "Type", "Epoch", "Phase", "MSgrayskull.REMAINING", "MSgrayskull.RECEIVED", "Depends on", "State", "Flag" ]
     rows = []
@@ -867,9 +902,9 @@ def analyze_blocked_streams (graph, chip_array, current_x, current_y):
                         active_streams[(i, x, y, stream_id)] = streams
                     current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
                     if current_phase > 0: # Must be configured
-                        stream_type = stream_id_descriptor(stream_id)["short"]
+                        stream_type_str = stream_type(stream_id)["short"]
                         NUM_MSGS_RECEIVED = int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED'])
-                        if stream_type == "input" and NUM_MSGS_RECEIVED == 0:
+                        if stream_type_str == "input" and NUM_MSGS_RECEIVED == 0:
                             has_empty_inputs = True
                             empty_input_streams[(i, x, y, stream_id)] = streams
 
@@ -900,12 +935,12 @@ def analyze_blocked_streams (graph, chip_array, current_x, current_y):
                         current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
                         if current_phase > 0:
                             epoch_id = current_phase>>10
-                            stream_type = stream_id_descriptor(stream_id)["short"]
+                            stream_type_str = stream_type(stream_id)["short"]
                             stream_active = is_stream_active(streams[x][y][stream_id])
                             NUM_MSGS_RECEIVED = int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED'])
                             CURR_PHASE_NUM_MSGS_REMAINING = int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING'])
                             graph_name = EPOCH_ID_TO_GRAPH_NAME[epoch_id]
-                            op = core_to_op_name(graph_name, x, y)
+                            op = core_coord_to_op_name(graph_name, x, y)
                             core_loc = f"{x}-{y}"
                             fan_in_cores = chip_data[i]['cores'][x][y]['fan_in_cores']
                             fan_in_cores_str = ""
@@ -914,7 +949,7 @@ def analyze_blocked_streams (graph, chip_array, current_x, current_y):
                                     if fic_noc0 in active_core_noc0_list:
                                         fan_in_cores_str += f"{fic_noc0[0]}-{fic_noc0[1]} "
                             flag = f"{util.CLR_WARN}All core inputs ready, but no output generated{util.CLR_END}" if not has_empty_inputs and last_core_loc != core_loc else ""
-                            row = [ core_loc if last_core_loc != core_loc else "", op if last_core_loc != core_loc else "", stream_id, stream_type, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, fan_in_cores_str, f"Active" if stream_active else "", flag ]
+                            row = [ core_loc if last_core_loc != core_loc else "", op if last_core_loc != core_loc else "", stream_id, stream_type_str, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, fan_in_cores_str, f"Active" if stream_active else "", flag ]
                             last_core_loc = core_loc
                             rows.append (row)
     if len(rows) > 0:
@@ -922,12 +957,13 @@ def analyze_blocked_streams (graph, chip_array, current_x, current_y):
     else:
         print ("No blocked streams detected")
 
+# Main
 def main(chip_array, args):
-    # If chip_array is not an array, make it one
+    # If chip_array is not an array, make it an array
     if not isinstance(chip_array, list):
        chip_array = [ chip_array ]
 
-    init_files (args)
+    load_files (args)
 
     cmd_raw = ""
 
@@ -1056,18 +1092,21 @@ def main(chip_array, args):
 
     non_interactive_commands=args.commands.split(";") if args.commands else []
 
+    # Initialize current UI state
     current_x = 1
     current_y = 1
     current_stream_id = 8
     current_epoch_id = 0
     current_graph_name = EPOCH_ID_TO_GRAPH_NAME[current_epoch_id]
-
     navigation_suggestions = None
+
+    # Main command loop
     while cmd_raw != 'exit' and cmd_raw != 'x':
         have_non_interactive_commands=len(non_interactive_commands) > 0
+
         if current_x is not None and current_y is not None and current_epoch_id is not None:
             row, col = grayskull.noc0_to_rc (current_x, current_y)
-            current_prompt = f"core:{util.CLR_PROMPT}{current_x}-{current_y}{util.CLR_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_END} op:{util.CLR_PROMPT}{core_to_op_name(current_graph_name, current_x, current_y)}{util.CLR_END} stream:{util.CLR_PROMPT}{current_stream_id}{util.CLR_END} "
+            current_prompt = f"core:{util.CLR_PROMPT}{current_x}-{current_y}{util.CLR_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_END} op:{util.CLR_PROMPT}{core_coord_to_op_name(current_graph_name, current_x, current_y)}{util.CLR_END} stream:{util.CLR_PROMPT}{current_stream_id}{util.CLR_END} "
         try:
             current_chip_id = epoch_id_to_chip_id(current_epoch_id)
             current_chip = chip_array[current_chip_id]
@@ -1156,7 +1195,7 @@ def main(chip_array, args):
                             print_a_read (x, y, addr, data)
                         elif found_command["long"] == "burst-read-xy":
                             burst_type = int(cmd[4],0)
-                            burst_read_xy (current_chip_id, x, y, NOC0, addr, burst_type=burst_type)
+                            print_burst_read_xy (current_chip_id, x, y, NOC0, addr, burst_type=burst_type)
                         elif found_command["long"] == "pci-write-xy":
                             device.pci_write_xy (current_chip_id, x, y, NOC0, addr, data = int(cmd[4],0))
                         else:
@@ -1186,7 +1225,7 @@ def main(chip_array, args):
                 raise
     return 0
 
-#
+# Import any 'plugin' comands from debuda-commands directory
 def import_commands (command_metadata_array):
     command_files = []
     for root, dirnames, filenames in os.walk(util.application_path () + '/debuda-commands'):
@@ -1204,17 +1243,11 @@ def import_commands (command_metadata_array):
 
         command_metadata_array.append (command_metadata)
 
+# Initialize communication with the client (debuda-stub)
 device.init_comm_client ()
 
 # Make sure to terminate communication client (debuda-stub) on exit
 atexit.register (device.terminate_comm_client_callback)
 
+# Call Main
 main([ 0 ], args)
-
-# TODO:
-# - Up down history/browsing in prompt
-# - Easily list all streams from a fork list
-# - Automatic problem tracing
-# - WH support
-# - Use RC coordinates: core_coordinates              [0, 1]
-# - Some kind of grep command or open blob.yaml in VSCODE
