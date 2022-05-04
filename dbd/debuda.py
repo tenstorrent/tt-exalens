@@ -25,6 +25,7 @@ parser.add_argument('output_dir', type=str, help='Output directory of a buda run
 parser.add_argument('--netlist',  type=str, required=True, help='Netlist file to import')
 parser.add_argument('--commands', type=str, required=False, help='Execute a set of commands separated by ;')
 parser.add_argument('--stream-cache', action='store_true', default=False, help=f'If file "{STREAM_CACHE_FILE_NAME}" exists, the stream data will be laoded from it. If the file does not exist, it will be crated and populated with the stream data')
+parser.add_argument('--debug-debuda-stub', action='store_true', default=False, help=f'Prints all transactions on PCIe. Also, starts debuda-stub with --debug to print transfers.')
 args = parser.parse_args()
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
@@ -1553,7 +1554,9 @@ def init_comm_client ():
     debuda_stub_path = application_path() + "/debuda-stub"
     try:
         global DEBUDA_STUB_PROCESS
-        DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path], preexec_fn=os.setsid)
+        debuda_stub_args = [ "--debug" ] if args.debug_debuda_stub else [ ]
+        # print ("debuda_stub_cmd = %s" % ([debuda_stub_path] + debuda_stub_args))
+        DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path] + debuda_stub_args, preexec_fn=os.setsid)
     except:
         print (f"Exception: {CLR_ERR} Cannot find {debuda_stub_path}. {STUB_HELP} {CLR_END}")
         raise
