@@ -19,6 +19,7 @@ parser.add_argument('output_dir', type=str, help='Output directory of a buda run
 parser.add_argument('--netlist',  type=str, required=True, help='Netlist file to import')
 parser.add_argument('--commands', type=str, required=False, help='Execute a set of commands separated by ;')
 parser.add_argument('--stream-cache', action='store_true', default=False, help=f'If file "{STREAM_CACHE_FILE_NAME}" exists, the stream data will be laoded from it. If the file does not exist, it will be crated and populated with the stream data')
+parser.add_argument('--debug-debuda-stub', action='store_true', default=False, help=f'Prints all transactions on PCIe. Also, starts debuda-stub with --debug to print transfers.')
 args = parser.parse_args()
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
@@ -1244,7 +1245,7 @@ def import_commands (command_metadata_array):
         command_metadata_array.append (command_metadata)
 
 # Initialize communication with the client (debuda-stub)
-device.init_comm_client ()
+device.init_comm_client (args.debug_debuda_stub)
 
 # Make sure to terminate communication client (debuda-stub) on exit
 atexit.register (device.terminate_comm_client_callback)

@@ -7,14 +7,16 @@ ZMQ_SOCKET=None
 # Communication with Buda (or debuda-stub)
 # See struct BUDA_READ_REQ
 DEBUDA_STUB_PROCESS=None
-def init_comm_client ():
+def init_comm_client (debug_debuda_stub):
     DEBUDA_STUB_PORT=5555
 
     print ("Spawning debuda-stub.")
     debuda_stub_path = util.application_path() + "/debuda-stub"
     try:
         global DEBUDA_STUB_PROCESS
-        DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path], preexec_fn=os.setsid)
+        debuda_stub_args = [ "--debug" ] if debug_debuda_stub else [ ]
+        # print ("debuda_stub_cmd = %s" % ([debuda_stub_path] + debuda_stub_args))
+        DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path] + debuda_stub_args, preexec_fn=os.setsid)
     except:
         print (f"Exception: {util.CLR_ERR} Cannot find {debuda_stub_path}. {STUB_HELP} {util.CLR_END}")
         raise
