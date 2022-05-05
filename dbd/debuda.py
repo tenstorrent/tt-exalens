@@ -158,6 +158,14 @@ def pci_read_xy(chip_id, x, y, z, reg_addr):
     ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
     return ret_val
 
+def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
+    # print (f"Reading {x}-{y} 0x{reg_addr:x}")
+    # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x05', chip_id, x, y, z, reg_addr, data_format<<16 + message_size))
+    data = data_format * 2**16 + msg_size
+    ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x05', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), z.to_bytes(1, byteorder='big'), reg_addr, data))
+    ret = ZMQ_SOCKET.recv()
+    return ret
+
 def pci_write_xy(chip_id, x, y, z, reg_addr, data):
     # print (f"Reading {x}-{y} 0x{reg_addr:x}")
     # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
@@ -1083,6 +1091,8 @@ def get_dram_buffers(graph):
                 input_buffers.append (buffer["uniqid"])
     return input_buffers
 
+# dumps L1 cache memory on chip=chip and core=(x,y)
+# starting from address addr until addr + size
 def dump_memory(chip, x, y, addr, size):
     for k in range(0, size//4//16 + 1):
         row = []
@@ -1092,6 +1102,90 @@ def dump_memory(chip, x, y, addr, size):
                 row.append(f"0x{val:08x}")
         s = " ".join(row)
         print(f"{x}-{y} 0x{(addr + k*64):08x} => {s}")
+
+# returns buffer_id from blob.yaml
+def get_buffer_id(chip, x, y, stream_id):
+    stream_name = f"chip_{chip}__y_{y}__x_{x}__stream_id_{stream_id}"
+    for element in BLOB :
+        phase = re.findall(r"phase_(\d+)", element)
+        if (len(phase) > 0):
+            for stream in BLOB[element]:
+                if stream == stream_name:
+                    if "buf_id" in BLOB[element][stream_name]:
+                        return BLOB[element][stream_name]["buf_id"]
+    return ""
+
+
+# returns current phase for the stream from device
+def get_current_phase(chip, x, y, stream_id):
+    return get_stream_reg_field(chip, x, y, stream_id, 11, 0, 20)
+
+# returns epoch id for the stream
+def get_stream_epoch_id(chip, x, y, stream_id):
+    current_phase = get_current_phase(chip, x ,y, stream_id)
+    return (current_phase >> 10)
+
+# converts data format to string
+def get_data_format_from_string(str):
+    data_format = {}
+    data_format["Float32"]   = 0
+    data_format["Float16"]   = 1
+    data_format["Bfp8"]      = 2
+    data_format["Bfp4"]      = 3
+    data_format["Bfp2"]      = 11
+    data_format["Float16_b"] = 5
+    data_format["Bfp8_b"]    = 6
+    data_format["Bfp4_b"]    = 7
+    data_format["Bfp2_b"]    = 15
+    data_format["Lf8"]       = 10
+    data_format["UInt16"]    = 12
+    data_format["Int8"]      = 14
+    data_format["Tf32"]      = 4
+    if str in data_format:
+        return data_format[str]
+    return None
+
+# returns data fromat from netlist
+# Format can be Float32, Float16, Float16_b...
+def get_data_format(chip, x, y, stream_id):
+
+    buf_id = get_buffer_id(chip, x, y, stream_id)
+    if buf_id == "":
+        return None
+
+    input = is_input_buffer(buf_id)
+    output = is_output_buffer(buf_id)
+
+    if input == output :
+        return None
+
+    is_in_df = input
+    epoch_id = get_stream_epoch_id(chip, x, y, stream_id)
+    graph_name = EPOCH_ID_TO_GRAPH_NAME[epoch_id]
+
+    if graph_name == "":
+        return None
+
+    # find operation and return data format of operation
+    graph = NETLIST["graphs"][graph_name]
+
+    for op in graph:
+        if op != "input_count" and op != "target_device":
+            operation = graph[op]
+            grid_loc = operation["grid_loc"]
+            grid_size = operation["grid_size"]
+
+            if grid_loc[0]<= y - 1 and y -1 < grid_loc[0] + grid_size[0] and grid_loc[1] <= x -1  and x - 1 < grid_loc[1] + grid_size[1]:
+                if is_in_df == True:
+                    return get_data_format_from_string(operation["in_df"][0])
+                else:
+                    return get_data_format_from_string(operation["out_df"])
+    return None
+
+# Dumps tile in format received form tt_tile::get_string
+def dump_tile(chip, x, y, addr, size, data_format):
+    s = pci_read_tile(chip, x, y, 0, addr, size, data_format)
+    print(s.decode("utf-8"))
 
 # gets information about stream buffer in l1 cache from blob
 def get_l1_buffer_info_from_blob(chip, x, y, stream_id, phase):
@@ -1110,14 +1204,20 @@ def get_l1_buffer_info_from_blob(chip, x, y, stream_id, phase):
                         msg_size =BLOB[element][stream].get("msg_size")
     return buffer_addr, buffer_size, msg_size
 
-# dumps message in hex format 
-def dump_message_xy(chip, x, y, stream_id, message_id):
+# dump raw message or formated tile within message
+# message consists of header, tile and padding
+def dump_message_xy(chip, x, y, stream_id, message_id, is_tile):
     current_phase = str(get_stream_reg_field(chip, x, y, stream_id, 11, 0, 20))
     buffer_addr, buffer_size, msg_size = get_l1_buffer_info_from_blob(chip, x, y, stream_id, current_phase)
     print(f"{x}-{y} buffer_addr: 0x{(buffer_addr):08x} buffer_size: 0x{buffer_size:0x} msg_size:{msg_size}")
     if (buffer_addr >0 and buffer_size>0 and msg_size>0) :
         if (message_id> 0 and message_id <= buffer_size/msg_size):
-            dump_memory(chip, x, y, buffer_addr + (message_id - 1) * msg_size, msg_size )
+            msg_addr = buffer_addr + (message_id - 1) * msg_size
+            if (is_tile):
+                data_format = get_data_format(chip, x, y, stream_id)
+                dump_tile(chip, x, y, msg_addr, msg_size, data_format)
+            else:
+                dump_memory(chip, x, y, msg_addr, msg_size)
         else:
             print(f"Message id should be in range (1, {buffer_size/msg_size})")
     else:
@@ -1335,11 +1435,15 @@ def main(chip_array, args):
           "expected_argument_count" : 3,
           "arguments_description" : "x y stream_id : show stream 'stream_id' at core 'x-y'"
         },
-        {
-          "long" : "dump-message-xy",
+        { "long" : "dump-message-xy",
           "short" : "m",
           "expected_argument_count" : 1,
           "arguments_description" : "message_id: prints message for current stream in currently active phase"
+        },
+        { "long" : "dump-tile-xy",
+          "short" : "t",
+          "expected_argument_count" : 1,
+          "arguments_description" : "tile_id: prints tile for current stream in currently active phase"
         },
         { "long" : "buffer",
           "short" : "b",
@@ -1519,9 +1623,10 @@ def main(chip_array, args):
                             pci_write_xy (current_chip_id, x, y, NOC0, addr, data = int(cmd[4],0))
                         else:
                             print (f"{CLR_ERR} Unknown {found_command['long']} {CLR_END}")
-                    elif found_command["long"] == "dump-message-xy":
+                    elif found_command["long"] == "dump-message-xy" or found_command["long"] == "dump-tile-xy":
                         message_id = int(cmd[1])
-                        dump_message_xy(current_chip_id, current_x, current_y, current_stream_id, message_id)
+                        is_tile = found_command["long"] == "dump-tile-xy"
+                        dump_message_xy(current_chip_id, current_x, current_y, current_stream_id, message_id, is_tile)
                     elif found_command["long"] == "full-dump":
                         full_dump_xy(current_chip_id, current_x, current_y)
                     elif found_command["long"] == "exit":
@@ -1571,6 +1676,7 @@ def init_comm_client ():
     print("Connected to debuda-stub.")
 
     ZMQ_SOCKET.send(struct.pack ("c", b'\x01')) # PING
+
     reply = ZMQ_SOCKET.recv_string()
     if "PONG" not in reply:
         print (f"Expected PONG but received {reply}") # Shoud print PONG
