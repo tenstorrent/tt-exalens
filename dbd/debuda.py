@@ -1656,7 +1656,7 @@ def init_comm_client ():
     DEBUDA_STUB_PORT=5555
 
     print ("Spawning debuda-stub.")
-    debuda_stub_path = application_path() + "/../tt_build/debuda-stub"
+    debuda_stub_path = application_path() + "/debuda-stub"
     try:
         global DEBUDA_STUB_PROCESS
         debuda_stub_args = [ "--debug" ] if args.debug_debuda_stub else [ ]
