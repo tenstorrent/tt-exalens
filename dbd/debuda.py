@@ -9,8 +9,10 @@ import atexit, fnmatch, importlib
 
 from tabulate import tabulate
 
+# Tenstorrent classes
 import util
 import device, grayskull
+import objects
 
 STREAM_CACHE_FILE_NAME = "dbd_streams_cache.pkl"
 
@@ -1251,4 +1253,6 @@ device.init_comm_client (args.debug_debuda_stub)
 atexit.register (device.terminate_comm_client_callback)
 
 # Call Main
-main([ 0 ], args)
+# main([ 0 ], args)
+
+objects.load (netlist_filepath = args.netlist, run_dirpath = args.output_dir)

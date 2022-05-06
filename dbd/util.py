@@ -28,12 +28,17 @@ CLR_WARN = CLR_ORANGE
 CLR_INFO = CLR_BLUE
 CLR_PROMPT = CLR_GREEN
 
+def DEBUG(s):
+    print (f"{CLR_END}{s}{CLR_END}")
 def INFO(s):
     print (f"{CLR_INFO}{s}{CLR_END}")
 def WARN(s):
     print (f"{CLR_WARN}{s}{CLR_END}")
 def ERROR(s):
     print (f"{CLR_ERR}{s}{CLR_END}")
+def FATAL(s):
+    ERROR (s)
+    sys.exit (1)
 
 # Given a list l, returns a map that returns an index given the value of an element
 def reverse_mapping_list(l):
