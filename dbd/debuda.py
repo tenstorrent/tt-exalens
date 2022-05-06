@@ -56,6 +56,9 @@ ZMQ_SOCKET=None
 # When given short=True, function will only print this many entries
 SHORT_PRINT_LINE_LIMIT = 10
 
+NCRISC_STATUS_REG_ADDR=0xFFB2010C
+BRISC_STATUS_REG_ADDR=0xFFB3010C
+
 def reverse_mapping_list(l):
     ret = [0] * len(l)
     for idx, val in enumerate(l):
@@ -71,6 +74,39 @@ KERNEL_OPERAND_MAPPING_SCHEME = [
     { "id_min" : 24, "id_max" : 31, "stream_id_min" : 32, "short" : "intermediate", "long" : "(intermediates, packer/unpacker) => streams 32-39" },
     { "id_min" : 32, "id_max" : 63, "stream_id_min" : 32, "short" : "op-relay", "long" : "(operand relay?) => streams 40-63" }, # CHECK THIS
 ]
+
+STATUS_REG = {
+    NCRISC_STATUS_REG_ADDR : [ #ncrisc
+        { "reg_val":[0xA8300000,0xA8200000,0xA8100000], "description" : "Prologue queue header load",                                   "mask":0xFFFFF000, "ver": 0 },
+        { "reg_val":[0x11111111],                       "description" : "Main loop begin",                                              "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xC0000000],                       "description" : "Load queue pointers",                                          "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xD0000000],                       "description" : "Which stream id will read queue",                              "mask":0xFFFFF000, "ver": 0 },
+        { "reg_val":[0xD1000000],                       "descritpion" : "Queue has data to read",                                       "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xD2000000],                       "description" : "Queue has l1 space",                                           "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xD3000000],                       "description" : "Queue read in progress",                                       "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xE0000000],                       "description" : "Which stream has data in l1 available to push",                "mask":0xFFFFF000, "ver": 0 },
+        { "reg_val":[0xE1000000],                       "description" : "Push in progress",                                             "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xF0000000],                       "description" : "Which stream will write queue",                                "mask":0xFFFFF000, "ver": 0 },
+        { "reg_val":[0xF0300000],                       "description" : "Waiting for stride to be ready before updating wr pointer",    "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xF1000000],                       "description" : "Needs to write data to dram",                                  "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xF2000000],                       "description" : "Ready to write data to dram",                                  "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xF3000000],                       "description" : "Has data to write to dram",                                    "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xF4000000],                       "description" : "Writing to dram",                                              "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0x20000000],                       "description" : "Amount of written tiles that needs to be cleared",             "mask":0xFFFFF000, "ver": 0 },
+        { "reg_val":[0x22222222,0x33333333,0x44444444], "description" : "Epilogue",                                                     "mask":0xFFFFFFFF, "ver": 1 },
+        { "reg_val":[0x10000006,0x10000001],            "description" : "Waiting for next epoch",                                       "mask":0xFFFFFFFF, "ver": 1 },
+    ],
+    BRISC_STATUS_REG_ADDR : [ #brisc
+        { "reg_val":[0xB0000000],                       "description" : "Stream restart check",                                         "mask":0xFFFFF000, "ver": 0 },
+        { "reg_val":[0xC0000000],                       "description" : "Check whether unpack stream has data",                         "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xD0000000],                       "description" : "Clear unpack stream",                                          "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xE0000000],                       "description" : "Check and push pack stream that has data (TM ops only)",       "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xF0000000],                       "description" : "Reset intermediate streams",                                   "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xF1000000],                       "description" : "Wait until all streams are idle",                              "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0x21000000],                       "description" : "Waiting for next epoch",                                       "mask":0xFFFFF000, "ver": 1 },
+        { "reg_val":[0x10000001],                       "description" : "Waiting for next epoch",                                       "mask":0xFFFFFFFF, "ver": 1 },
+    ]
+}
 
 def stream_id_descriptor (stream_id):
     for ko in KERNEL_OPERAND_MAPPING_SCHEME:
@@ -590,6 +626,33 @@ def is_gsync_hung (chip, x, y):
 def is_ncrisc_done (chip, x, y):
     return pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0x1FFFFFF1
 
+def get_status_register_desc(register_address, reg_value_on_chip):
+    if register_address in STATUS_REG:
+        reg_value_desc_list = STATUS_REG[register_address]
+        for reg_value_desc in reg_value_desc_list:
+            mask = reg_value_desc["mask"]
+            for reg_val_in_desc in reg_value_desc["reg_val"]:
+                if (reg_value_on_chip & mask == reg_val_in_desc):
+                    return [reg_value_on_chip, reg_value_desc["description"], reg_value_desc["ver"]]
+        return [reg_value_on_chip, "", 2]
+    return []
+
+def status_register_summary(chip, x_coords, y_coords, addr, ver = 0):
+    status_descs = {}
+    for x in x_coords:
+        status_descs[x] = {}
+        for y in y_coords:
+            status_descs[x][y] = get_status_register_desc(addr, pci_read_xy(chip, x, y, 0, addr))
+
+    # Print register status
+    status_descs_rows = []
+    for x in x_coords:
+        for y in y_coords:
+            if status_descs[x][y] and status_descs[x][y][2] <= ver:
+                status_descs_rows.append([f"{x:d}-{y:d}",f"{status_descs[x][y][0]:08x}", f"{status_descs[x][y][1]}"]);
+    if status_descs_rows:
+        print(tabulate(status_descs_rows, headers=["X-Y", "Status", "Status Description"]));
+
 def stream_summary(chip, x_coords, y_coords, streams, short=False):
     active_streams = {}
     bad_streams = []
@@ -665,7 +728,6 @@ def stream_summary(chip, x_coords, y_coords, streams, short=False):
             if short and num_entries_to_show_remaining < 0:
                 break
             num_entries_to_show_remaining -= 1
-
 
     # Print gsync_hung cores
     for x in x_coords:
@@ -890,7 +952,8 @@ def burst_read_xy (chip, x, y, noc_id, addr, burst_type = 1):
                 values[val] = 0
             values[val] += 1
         for val in values.keys():
-            print_a_read(x, y, addr, val, f"- {values[val]} times")
+            reg_desc = get_status_register_desc(addr, val)
+            print_a_read(x, y, addr, val, (reg_desc[1] if reg_desc else "") + f" - {values[val]} times")
     elif burst_type >= 2:
         for k in range(0, burst_type):
             val = pci_read_xy(chip, x, y, noc_id, addr + 4*k)
@@ -925,6 +988,14 @@ def print_stream_summary (chip_array):
         print (f"{CLR_INFO}Reading and analyzing streams on device %d...{CLR_END}" % i)
         streams_ui_data = get_all_streams_ui_data (chip, GS_x_coords, GS_y_coords)
         stream_summary(chip, GS_x_coords, GS_y_coords, streams_ui_data)
+
+def print_status_register_summary(chip_array, verbosity):
+    for i, chip in enumerate (chip_array):
+        print (f"{CLR_INFO}Reading status registers on device %d...{CLR_END}" % i)
+        print("\nNCRISC status summary")
+        status_register_summary(chip, GS_x_coords, GS_y_coords, NCRISC_STATUS_REG_ADDR, verbosity)
+        print("\nBRISC status summary")
+        status_register_summary(chip, GS_x_coords, GS_y_coords, BRISC_STATUS_REG_ADDR, verbosity)
 
 def init_files (args):
     # Get paths to Pipegen and Blob YAML files for the Current epoch
@@ -1430,6 +1501,11 @@ def main(chip_array, args):
           "expected_argument_count" : 0,
           "arguments_description" : " : reads and analyzes all streams"
         },
+        { "long" : "status-register-summary",
+          "short" : "srs",
+          "expected_argument_count" : 1,
+          "arguments_description" : "verbosity [0 - 2] : prints brisc and ncrisc status registers."
+        },
         { "long" : "stream",
           "short" : "s",
           "expected_argument_count" : 3,
@@ -1588,6 +1664,9 @@ def main(chip_array, args):
                             print (f"{CLR_ERR}Invalid epoch id {new_epoch_id}{CLR_END}")
                     elif found_command["long"] == "stream-summary":
                         print_stream_summary(chip_array)
+                    elif found_command["long"] == "status-register-summary":
+                        verbosity = int(cmd[1])
+                        print_status_register_summary(chip_array, verbosity)
                     elif found_command["long"] == "stream":
                         current_x, current_y, current_stream_id = int(cmd[1]), int(cmd[2]), int(cmd[3])
                         navigation_suggestions, stream_epoch_id = print_stream (current_chip, current_x, current_y, current_stream_id, current_epoch_id)
