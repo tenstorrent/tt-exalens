@@ -1,19 +1,10 @@
-import sys, yaml, os
+import sys, yaml, os, re
+from tabulate import tabulate
 import util
+
 # this is a pointer to the module object instance itself.
 this = sys.modules[__name__]
 this.context = None
-
-# WH (generic case):
-# One graph one device.
-# One temporal epoch can use multiple graphs. -> one pipegen.yaml might contain multiple graphs.
-
-# GS:
-# One graph, one device, one temporal epoch
-# This might change when direct streaming over PCI gets implemented
-
-# Is epoch_id
-
 
 # Each class should have a to_str function ('single-line', 'extensive')
 
@@ -49,7 +40,8 @@ class Buffer:
 
     # Renderer
     def __str__(self):
-        return f"{type(self).__name__}: {self.root['id']}"
+        r = self.root
+        return f"{type(self).__name__}: id: {self.id()}, coord: {r['core_coordinates']}"
 
 class Pipe:
     def __init__(self, data):
@@ -58,10 +50,40 @@ class Pipe:
     # Accessors
     def id (self):
         return self.root['id']
+    def inputs(self):
+        return self.root['input_list']
+    def outputs(self):
+        return self.root['output_list']
 
     # Renderer
     def __str__(self):
-        return f"{type(self).__name__}: {self.root['id']}"
+        return f"{type(self).__name__}: id: {self.id()}, inputs: {self.inputs()}, outputs: {self.outputs()}"
+
+class Stream:
+    # Return (chip_id, noc0_X, noc0_Y, stream_id) given a designator from blob.yaml
+    def get_stream_tuple_from_designator (designator):
+        # Example full name: chip_0__y_1__x_1__stream_id_8
+        vals = re.findall(r'chip_(\d+)__y_(\d+)__x_(\d+)__stream_id_(\d+)', designator)
+        print (f"{designator}, {vals}")
+        return ( int(vals[0][0]), int (vals[0][2]), int (vals[0][1]), int (vals[0][3]) )
+
+    def __init__(self, designator, data):
+        self.designator = designator
+        self.location = Stream.get_stream_tuple_from_designator (designator)
+        self._id = self.location + ( data['phase_id'], )
+        self.root = data
+
+    # Accessors
+    def id (self):
+        return self._id
+    # def inputs(self):
+    #     return None
+    # def outputs(self):
+    #     return None
+
+    # Renderer
+    def __str__(self):
+        return f"{type(self).__name__}: id: {self.id()}"
 
 class Graph:
     # Some keys do not refer to operations
@@ -76,7 +98,8 @@ class Graph:
         self.pipes = dict()
         for key, val in pipegen_yaml.items():
             if key == "graph_name":
-                util.WARN(f"Expected 'graph_name: {self.name}' in {pipegen_yaml.id()}, but got 'graph_name: {val}'")
+                if self.name != val:
+                    util.WARN(f"Expected 'graph_name: {self.name}' in {pipegen_yaml.id()}, but got 'graph_name: {val}'")
             elif "buffer" in key:
                 b = Buffer(val)
                 self.buffers[b.id()] = b
@@ -87,13 +110,19 @@ class Graph:
                 raise RuntimeError(f"{pipegen_yaml.id()}: Cannot interpret {key}: {val}")
 
         # 2. Load blob_yaml
+        self.streams = dict()
         for key, val in blob_yaml.items():
             if key == "dram_blob":
                 pass
             elif key == "dram_perf_dump_blob":
+                util.INFO ("Skipping dram_perf_dump_blob")
                 pass
             elif "phase" in key:
-                pass
+                phase_id = int (key[6:])
+                for stream_designator, stream_data in val.items():
+                    stream_data['phase_id'] = phase_id
+                    s = Stream (stream_designator, stream_data)
+                    self.streams[s.id()] = s
             else:
                 raise RuntimeError(f"{blob_yaml.id()}: Cannot interpret {key}: {val}")
 
@@ -108,6 +137,15 @@ class Graph:
     # Renderer
     def __str__(self):
         return f"{type(self).__name__}: {self.name}: Op count: {len (self.root.keys()) - len(Graph.non_op_keys)}, Input count: {self.input_count()}"
+
+    # Test
+    def _test_print(self):
+        for bname, b in self.buffers.items():
+            print (f"{b}")
+        for pname, p in self.pipes.items():
+            print (f"{p}")
+        for stream, s in self.streams.items():
+            print (f"{s}")
 
 class Netlist:
     def __init__(self, filepath, rundir):
@@ -163,113 +201,76 @@ class Netlist:
         return self.device_id_to_graph_name[device_id]
     def graph (self, graph_name):
         return self.graphs[graph_name]
+    def devices(self):
+        return self.yaml_file.root["devices"]
 
     # Renderer
     def __str__(self):
         return f"{type(self).__name__}: {self.yaml_file.filepath}. Graphs({len(self.graph_names())}): {' '.join (self.graph_names())}"
 
 class Device:
-    def __init__(self, type = "grayskull"):
-        self.type = type
+    def __init__(self, arch):
+        self.arch = arch
+        if arch == "grayskull":
+            # 1. Load the netlist itself
+            self.yaml_file = YamlFile ("device/grayskull_120_arch.yaml")
+        else:
+            raise RuntimeError(f"Architecture {arch} not supported yet")
 
-class Queue:
-    pass
+    # Accessors
+    def id (self):
+        return self.yaml_file.filepath
 
-class Stream:
+    # Renderer
+    def render (self):
+        dev = self.yaml_file.root
+        rows = []
+        locs = dict()
+
+        icons = { 'functional_workers' : 'W', 'eth': 'E', 'arc' : 'A', 'dram' : 'D', 'pcie' : 'P', 'router_only' : '.' }
+
+        for icon in icons:
+            for fw in dev[icon]:
+                if type(fw) == list:
+                    fw = fw[0]
+                vals = re.findall(r'(\d+)-(\d+)', fw)
+                x = int(vals[0][0])
+                y = int(vals[0][1])
+                locs[(x,y)] = icons[icon]
+
+        x_size = dev['grid']['x_size']
+        y_size = dev['grid']['y_size']
+
+        for y in range (y_size):
+            row = []
+            for x in range (x_size):
+                if (x,y) in locs:
+                    row.append (locs[(x,y)])
+                else:
+                    row.append ("")
+            rows.append (row)
+
+        return tabulate(rows, tablefmt='plain')
+
+    def __str__(self):
+        return self.render()
+
+# All-encompassing structure to pass around
+class Context:
     pass
 
 def load (netlist_filepath, run_dirpath):
-    if (this.context is None):
+    if (this.context is None):  # This refers to the module
         print (f"Initializing context")
-        this.context = Stream()
+        this.context = Context()
 
     # Load netlist files
     print (f"Loading netlist '{netlist_filepath}'")
     this.context.netlist = Netlist(netlist_filepath, run_dirpath)
-
     print (this.context.netlist)
 
-def analyze_blocked_streams (graph, chip_array, current_x, current_y):
-    headers = [ "X-Y", "Op", "Stream", "Type", "Epoch", "Phase", "MSgrayskull.REMAINING", "MSgrayskull.RECEIVED", "Depends on", "State", "Flag" ]
-    rows = []
+    netlist_devices = this.context.netlist.devices()
+    this.context.devices = [ Device(netlist_devices['arch']) ] * netlist_devices["count"]
+    for dev in this.context.devices:
+        print (dev)
 
-    # 1. Read and analyze data
-    chip_data = dict()
-    active_streams = dict()
-    empty_input_streams = dict()
-
-    for i, chip in enumerate (chip_array):
-        chip_data[i] = {
-            "chip" : chip,
-            "cores" : { }
-        }
-        # 1. Read all stream data
-        streams = get_all_streams_ui_data (chip, grayskull.x_coords, grayskull.y_coords)
-
-        # 2a. Analyze the data
-        for x in grayskull.x_coords:
-            chip_data[i]["cores"][x] = {}
-            for y in grayskull.y_coords:
-                has_active_stream = False
-                has_empty_inputs = False
-
-                for stream_id in range (0, 64):
-                    if is_stream_active(streams[x][y][stream_id]):
-                        has_active_stream = True
-                        active_streams[(i, x, y, stream_id)] = streams
-                    current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
-                    if current_phase > 0: # Must be configured
-                        stream_type_str = stream_type(stream_id)["short"]
-                        NUM_MSGS_RECEIVED = int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED'])
-                        if stream_type_str == "input" and NUM_MSGS_RECEIVED == 0:
-                            has_empty_inputs = True
-                            empty_input_streams[(i, x, y, stream_id)] = streams
-
-                chip_data[i]["cores"][x][y] = {\
-                    "fan_in_cores" : [],\
-                    "has_active_stream" : has_active_stream,\
-                    "has_empty_inputs" : has_empty_inputs\
-                }
-
-        # 2b. Find stream dependencies
-        active_core_rc_list = [ grayskull.noc0_to_rc( active_stream[1], active_stream[2] ) for active_stream in active_streams ]
-        active_core_noc0_list = [ ( active_stream[1], active_stream[2] ) for active_stream in active_streams ]
-        for active_core_rc in active_core_rc_list:
-            fan_in_cores_rc = get_fanin_cores_rc (active_core_rc)
-            active_core_noc0 = grayskull.rc_to_noc0 (active_core_rc[0], active_core_rc[1])
-            # print (f"fan_in_cores_rc for {active_core_rc}: {fan_in_cores_rc}")
-            fan_in_cores_noc0 = [ grayskull.rc_to_noc0 (rc[0], rc[1]) for rc in fan_in_cores_rc ]
-            chip_data[i]["cores"][active_core_noc0[0]][active_core_noc0[1]]["fan_in_cores"] = fan_in_cores_noc0
-
-        # 3. Print the output
-        last_core_loc = None
-        for x in grayskull.x_coords:
-            for y in grayskull.y_coords:
-                has_active_stream = chip_data[i]["cores"][x][y]["has_active_stream"]
-                has_empty_inputs = chip_data[i]["cores"][x][y]["has_empty_inputs"]
-                if has_active_stream:
-                    for stream_id in range (0, 64):
-                        current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
-                        if current_phase > 0:
-                            epoch_id = current_phase>>10
-                            stream_type_str = stream_type(stream_id)["short"]
-                            stream_active = is_stream_active(streams[x][y][stream_id])
-                            NUM_MSGS_RECEIVED = int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED'])
-                            CURR_PHASE_NUM_MSGS_REMAINING = int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING'])
-                            graph_name = EPOCH_ID_TO_GRAPH_NAME[epoch_id]
-                            op = core_coord_to_op_name(graph_name, x, y)
-                            core_loc = f"{x}-{y}"
-                            fan_in_cores = chip_data[i]['cores'][x][y]['fan_in_cores']
-                            fan_in_cores_str = ""
-                            if last_core_loc != core_loc:
-                                for fic_noc0 in fan_in_cores:
-                                    if fic_noc0 in active_core_noc0_list:
-                                        fan_in_cores_str += f"{fic_noc0[0]}-{fic_noc0[1]} "
-                            flag = f"{util.CLR_WARN}All core inputs ready, but no output generated{util.CLR_END}" if not has_empty_inputs and last_core_loc != core_loc else ""
-                            row = [ core_loc if last_core_loc != core_loc else "", op if last_core_loc != core_loc else "", stream_id, stream_type_str, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, fan_in_cores_str, f"Active" if stream_active else "", flag ]
-                            last_core_loc = core_loc
-                            rows.append (row)
-    if len(rows) > 0:
-        print (tabulate(rows, headers=headers))
-    else:
-        print ("No blocked streams detected")
