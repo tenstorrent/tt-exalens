@@ -11,6 +11,9 @@ Main development branch: **ihamer/debuda**.
 
 List of all [Debuda issues](https://yyz-gitlab.local.tenstorrent.com/tenstorrent/budabackend/-/issues?scope=all&state=opened&label_name[]=Debuda). Gitlab issues label: **debuda**.
 
+[CI Dashboard](http://yyz-elk/goto/e8be9082b7cc6682fd692f4a5ec5f1e1)
+[CI last two days](http://yyz-elk/goto/af8e4fe5b9afc69533e2b9bc9259f114)
+
 `slack`: #debuda
 
 ## Debuda.py
