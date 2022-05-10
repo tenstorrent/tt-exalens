@@ -1,6 +1,6 @@
-import sys, yaml, os, re
+import sys, yaml, os, re, pickle
 from tabulate import tabulate
-import util
+import util, device, stream
 
 # this is a pointer to the module object instance itself.
 this = sys.modules[__name__]
@@ -25,6 +25,26 @@ class YamlFile:
         return self.root.items()
     def id(self):
         return self.filepath
+
+class CachedDictFile:
+    def __init__ (self, filepath):
+        self.filepath = filepath
+        self.enabled = True
+
+    def load_cached (self, generator, generator_name):
+        # Use cache
+        if self.enabled and os.path.exists (self.filepath):
+            print (f"{util.CLR_WARN}Loading {generator_name} cache from file {self.filepath}{util.CLR_END}")
+            with open(self.filepath, 'rb') as f:
+                streams = pickle.load(f)
+                return streams
+        else:
+            streams = generator()
+
+        if self.enabled:
+            print (f"{util.CLR_WARN}Saving {generator_name} cache to file {self.filepath}{util.CLR_END}")
+            with open(self.filepath, 'wb') as f:
+                pickle.dump(streams, f)
 
 class Location:
     # Types: 'core-in-device', 'device-in-cluster', 'stream-in-device'...
@@ -59,32 +79,6 @@ class Pipe:
     def __str__(self):
         return f"{type(self).__name__}: id: {self.id()}, inputs: {self.inputs()}, outputs: {self.outputs()}"
 
-class Stream:
-    # Return (chip_id, noc0_X, noc0_Y, stream_id) given a designator from blob.yaml
-    def get_stream_tuple_from_designator (designator):
-        # Example full name: chip_0__y_1__x_1__stream_id_8
-        vals = re.findall(r'chip_(\d+)__y_(\d+)__x_(\d+)__stream_id_(\d+)', designator)
-        print (f"{designator}, {vals}")
-        return ( int(vals[0][0]), int (vals[0][2]), int (vals[0][1]), int (vals[0][3]) )
-
-    def __init__(self, designator, data):
-        self.designator = designator
-        self.location = Stream.get_stream_tuple_from_designator (designator)
-        self._id = self.location + ( data['phase_id'], )
-        self.root = data
-
-    # Accessors
-    def id (self):
-        return self._id
-    # def inputs(self):
-    #     return None
-    # def outputs(self):
-    #     return None
-
-    # Renderer
-    def __str__(self):
-        return f"{type(self).__name__}: id: {self.id()}"
-
 class Graph:
     # Some keys do not refer to operations
     non_op_keys = set (['target_device', 'input_count'])
@@ -113,21 +107,20 @@ class Graph:
         self.streams = dict()
         for key, val in blob_yaml.items():
             if key == "dram_blob":
-                pass
+                util.INFO ("Skipping dram_blob")
             elif key == "dram_perf_dump_blob":
                 util.INFO ("Skipping dram_perf_dump_blob")
-                pass
             elif "phase" in key:
                 phase_id = int (key[6:])
                 for stream_designator, stream_data in val.items():
                     stream_data['phase_id'] = phase_id
-                    s = Stream (stream_designator, stream_data)
+                    s = stream.Stream (stream_designator, stream_data)
                     self.streams[s.id()] = s
             else:
                 raise RuntimeError(f"{blob_yaml.id()}: Cannot interpret {key}: {val}")
 
     # Accessors
-    def ops (self):
+    def op_names (self):
         return set (self.root.keys()) - Graph.non_op_keys
     def device_id (self):
         return self.root['target_device']
@@ -208,55 +201,11 @@ class Netlist:
     def __str__(self):
         return f"{type(self).__name__}: {self.yaml_file.filepath}. Graphs({len(self.graph_names())}): {' '.join (self.graph_names())}"
 
-class Device:
-    def __init__(self, arch):
-        self.arch = arch
-        if arch == "grayskull":
-            # 1. Load the netlist itself
-            self.yaml_file = YamlFile ("device/grayskull_120_arch.yaml")
-        else:
-            raise RuntimeError(f"Architecture {arch} not supported yet")
-
-    # Accessors
-    def id (self):
-        return self.yaml_file.filepath
-
-    # Renderer
-    def render (self):
-        dev = self.yaml_file.root
-        rows = []
-        locs = dict()
-
-        icons = { 'functional_workers' : 'W', 'eth': 'E', 'arc' : 'A', 'dram' : 'D', 'pcie' : 'P', 'router_only' : '.' }
-
-        for icon in icons:
-            for fw in dev[icon]:
-                if type(fw) == list:
-                    fw = fw[0]
-                vals = re.findall(r'(\d+)-(\d+)', fw)
-                x = int(vals[0][0])
-                y = int(vals[0][1])
-                locs[(x,y)] = icons[icon]
-
-        x_size = dev['grid']['x_size']
-        y_size = dev['grid']['y_size']
-
-        for y in range (y_size):
-            row = []
-            for x in range (x_size):
-                if (x,y) in locs:
-                    row.append (locs[(x,y)])
-                else:
-                    row.append ("")
-            rows.append (row)
-
-        return tabulate(rows, tablefmt='plain')
-
-    def __str__(self):
-        return self.render()
 
 # All-encompassing structure to pass around
 class Context:
+    netlist = None
+    devices = None
     pass
 
 def load (netlist_filepath, run_dirpath):
@@ -267,10 +216,8 @@ def load (netlist_filepath, run_dirpath):
     # Load netlist files
     print (f"Loading netlist '{netlist_filepath}'")
     this.context.netlist = Netlist(netlist_filepath, run_dirpath)
-    print (this.context.netlist)
 
     netlist_devices = this.context.netlist.devices()
-    this.context.devices = [ Device(netlist_devices['arch']) ] * netlist_devices["count"]
-    for dev in this.context.devices:
-        print (dev)
+    this.context.devices = [ device.Device.create(netlist_devices['arch']) ] * netlist_devices["count"]
 
+    return this.context

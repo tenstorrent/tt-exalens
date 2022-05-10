@@ -1,5 +1,6 @@
-import util
-import device
+import util, os
+import device, objects, stream
+
 
 # FIX: Move this to chip.py in t6py
 CHANNEL_TO_DRAM_LOC = [(1, 0), (1, 6), (4, 0), (4, 6), (7, 0), (7, 6), (10, 0), (10, 6)]
@@ -47,6 +48,25 @@ def rc_to_noc0 (row, col):
     noc0_x = col + 1
     return noc0_x, noc0_y
 
+# From src/firmware/riscv/grayskull/stream_io_map.h
+# Kernel operand mapping scheme:
+KERNEL_OPERAND_MAPPING_SCHEME = [
+    { "id_min" : 0,  "id_max" : 7,  "stream_id_min" : 8, "short" : "input", "long" : "(inputs, unpacker-only) => streams 8-15" },
+    { "id_min" : 8,  "id_max" : 15, "stream_id_min" : 16, "short" : "param", "long" : "(params, unpacker-only) => streams 16-23" },
+    { "id_min" : 16, "id_max" : 23, "stream_id_min" : 24, "short" : "output", "long" : "(outputs, packer-only) => streams 24-31" },
+    { "id_min" : 24, "id_max" : 31, "stream_id_min" : 32, "short" : "intermediate", "long" : "(intermediates, packer/unpacker) => streams 32-39" },
+    { "id_min" : 32, "id_max" : 63, "stream_id_min" : 32, "short" : "op-relay", "long" : "(operand relay?) => streams 40-63" }, # CHECK THIS
+]
+
+# Returns a stream type based on KERNEL_OPERAND_MAPPING_SCHEME
+def stream_type (stream_id):
+    for ko in KERNEL_OPERAND_MAPPING_SCHEME:
+        s_id_min = ko["stream_id_min"]
+        s_id_count = ko["id_max"] - ko["id_min"]
+        if stream_id >= s_id_min and stream_id < s_id_min + s_id_count:
+            return ko
+    util.WARN ("no desc for stream_id=%s" % stream_id)
+    return "-"
 
 # Populates a dict with register names and current values on core x-y for stream with id 'stream_id'
 def read_stream_regs(chip, x, y, stream_id):
@@ -251,3 +271,28 @@ def get_stream_reg_field(chip_id, x, y, stream_id, reg_index, start_bit, num_bit
     mask = (1 << num_bits) - 1
     val = (val >> start_bit) & mask
     return val
+
+#
+# Device
+#
+class GrayskullDevice (device.Device):
+    def __init__(self):
+        # 1. Load the netlist itself
+        self.yaml_file = objects.YamlFile ("device/grayskull_120_arch.yaml")
+
+    def physical_to_noc (self, phys_x, phys_y, noc_id=0): return physical_to_noc(phys_x, phys_y, noc_id=noc_id)
+    def noc_to_physical (self, noc_x, noc_y, noc_id=0): return noc_to_physical(noc_x, noc_y, noc_id=noc_id)
+    def noc0_to_noc1 (self, noc_x, noc_y): return noc0_to_noc1(noc_x, noc_y)
+    def noc1_to_noc0 (self, noc_x, noc_y): return noc1_to_noc0(noc_x, noc_y)
+    def noc0_to_rc (self, noc0_x, noc0_y): return noc0_to_rc(noc0_x, noc0_y)
+    def rc_to_noc0 (self, row, col): return rc_to_noc0(row, col)
+    def stream_type (self, stream_id): return stream_type (stream_id)
+
+    def read_stream_regs(self, noc0_loc, stream_id):
+        return read_stream_regs (self.id(), noc0_loc[0], noc0_loc[1], stream_id)
+
+    def render (self):
+        return device.Device.render (self)
+
+    def noc_to_physical(self, noc_loc, noc_id=0):
+        return noc_to_physical (noc_loc[0], noc_loc[1], noc_id=noc_id)
