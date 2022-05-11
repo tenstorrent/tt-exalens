@@ -1016,6 +1016,9 @@ def init_files (args):
         graph_to_epoch_filename = f"{args.output_dir}/graph_to_epoch_map.yaml"
         print (f"Loading {graph_to_epoch_filename}")
         GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP = yaml.safe_load(open(graph_to_epoch_filename))
+    except Exception as e: 
+        print(e)
+        sys.exit(1)
     except:
         print (f"{CLR_ERR}Error: cannot open graph_to_epoch_map.yaml {CLR_END}")
         sys.exit(1)
