@@ -1,8 +1,8 @@
 # Traverses all streams and detects the blocked one. It then prints the results.
 # It prioritizes the streams that are genuinely blocked, to the ones that are waiting on genuinely 
 # blocked cores.
-
-import stream, objects
+from tabulate import tabulate
+import stream, objects, util
 
 command_metadata = {
         "short" : "abs",
@@ -20,8 +20,10 @@ def run(args, context):
     active_streams = dict()
     empty_input_streams = dict()
 
-    for i, device in enumerate (context.devices):
-        device_data[i] = {
+    netlist = context.netlist
+
+    for device_id, device in enumerate (context.devices):
+        device_data[device_id] = {
             "device" : device,
             "cores" : { }
         }
@@ -29,35 +31,42 @@ def run(args, context):
         stream_cache = objects.CachedDictFile (stream.STREAM_CACHE_FILE_NAME)
         all_stream_regs = stream_cache.load_cached (device.read_all_stream_registers, "device.read_all_stream_registers ()")
 
-        # 2. Check where the cores are
-        device.get_stream_states(all_stream_regs)
+        # 2. Check where the programmed streams are
+        programmed_streams = device.get_programmed_stream_locations(all_stream_regs)
+        print (f"Programmed streams: {programmed_streams}")
+
+        # Find epochs for each stream
+        epochs = { device.stream_epoch (stream_regs) for loc, stream_regs in all_stream_regs.items() if loc in programmed_streams }
+        print (epochs)
+
+        working_epoch_id = min(epochs)
+        working_graph_name = netlist.epoch_id_to_graph_name (working_epoch_id)
+        graph = netlist.graph (working_graph_name)
 
         all_streams_ui_data = dict()
         for stream_loc, stream_regs in all_stream_regs.items():
             all_streams_ui_data[stream_loc] = stream.convert_reg_dict_to_strings(device, stream_regs)
 
         # 2a. Analyze the data
-        for block_loc in device.get_block_noc0_locactions (block_type = "functional_workers"):
+        for block_loc in device.get_block_locations (block_type = "functional_workers"):
             x, y = block_loc[0], block_loc[1]
             has_active_stream = False
             has_empty_inputs = False
 
             for stream_id in range (0, 64):
-                forced_active_stream = x == 1 and y == 1 and stream_id==8
-
                 stream_loc = block_loc + (stream_id, )
-                if stream.is_stream_active(all_stream_regs[stream_loc]) or forced_active_stream:
+                if device.is_stream_active(all_stream_regs[stream_loc]):
                     has_active_stream = True
-                    active_streams[(i, x, y, stream_id)] = stream_loc
+                    active_streams[(device_id, x, y, stream_id)] = stream_loc
                 current_phase = int(all_stream_regs[stream_loc]['CURR_PHASE'])
                 if current_phase > 0: # Must be configured
                     stream_type_str = device.stream_type(stream_id)["short"]
                     NUM_MSGS_RECEIVED = int(all_stream_regs[stream_loc]['NUM_MSGS_RECEIVED'])
                     if stream_type_str == "input" and NUM_MSGS_RECEIVED == 0:
                         has_empty_inputs = True
-                        empty_input_streams[(i, x, y, stream_id)] = stream_loc
+                        empty_input_streams[(device_id, x, y, stream_id)] = stream_loc
 
-            device_data[i]["cores"][block_loc] = {\
+            device_data[device_id]["cores"][block_loc] = {\
                 "fan_in_cores" : [],\
                 "has_active_stream" : has_active_stream,\
                 "has_empty_inputs" : has_empty_inputs\
@@ -67,33 +76,32 @@ def run(args, context):
         active_core_rc_list = [ device.noc0_to_rc( active_stream[1], active_stream[2] ) for active_stream in active_streams ]
         active_core_noc0_list = [ ( active_stream[1], active_stream[2] ) for active_stream in active_streams ]
         for active_core_rc in active_core_rc_list:
-            fan_in_cores_rc = get_fanin_cores_rc (active_core_rc)
+            fan_in_cores_rc = graph.get_fanin_cores_rc (active_core_rc)
             active_core_noc0 = device.rc_to_noc0 (active_core_rc[0], active_core_rc[1])
             # print (f"fan_in_cores_rc for {active_core_rc}: {fan_in_cores_rc}")
             fan_in_cores_noc0 = [ device.rc_to_noc0 (rc[0], rc[1]) for rc in fan_in_cores_rc ]
-            device_data[i]["cores"][active_core_noc0[0]][active_core_noc0[1]]["fan_in_cores"] = fan_in_cores_noc0
+            device_data[device_id]["cores"][active_core_noc0]["fan_in_cores"] = fan_in_cores_noc0
 
         # 3. Print the output
         last_core_loc = None
 
-        for block_loc in device.get_block_noc0_locactions (block_type = "functional_workers"):
+        for block_loc in device.get_block_locations (block_type = "functional_workers"):
             x, y = block_loc[0], block_loc[1]
-            stream_loc = block_loc + (stream_id,)
-            has_active_stream = device_data[i]["cores"][block_loc]["has_active_stream"]
-            has_empty_inputs = device_data[i]["cores"][block_loc]["has_empty_inputs"]
+            has_active_stream = device_data[device_id]["cores"][block_loc]["has_active_stream"]
+            has_empty_inputs = device_data[device_id]["cores"][block_loc]["has_empty_inputs"]
             if has_active_stream:
                 for stream_id in range (0, 64):
+                    stream_loc = block_loc + (stream_id,)
                     current_phase = int(all_stream_regs[stream_loc]['CURR_PHASE'])
                     if current_phase > 0:
                         epoch_id = current_phase>>10
-                        stream_type_str = stream_type(stream_id)["short"]
-                        stream_active = is_stream_active(all_stream_regs[stream_loc])
+                        stream_type_str = device.stream_type(stream_id)["short"]
+                        stream_active = device.is_stream_active(all_stream_regs[stream_loc])
                         NUM_MSGS_RECEIVED = int(all_stream_regs[stream_loc]['NUM_MSGS_RECEIVED'])
                         CURR_PHASE_NUM_MSGS_REMAINING = int(all_stream_regs[stream_loc]['CURR_PHASE_NUM_MSGS_REMAINING'])
-                        graph_name = EPOCH_ID_TO_GRAPH_NAME[epoch_id]
-                        op = core_coord_to_op_name(graph_name, x, y)
+                        op = "N/A" # graph.core_coord_to_op_name(graph_name, x, y)
                         core_loc = f"{x}-{y}"
-                        fan_in_cores = device_data[i]['cores'][block_loc]['fan_in_cores']
+                        fan_in_cores = device_data[device_id]['cores'][block_loc]['fan_in_cores']
                         fan_in_cores_str = ""
                         if last_core_loc != core_loc:
                             for fic_noc0 in fan_in_cores:

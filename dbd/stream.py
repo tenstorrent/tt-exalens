@@ -39,24 +39,6 @@ def get_core_stream_summary (chip, x, y):
 # Analysis functions
 #
 
-# This is shown in the 'Non-idle streams' column in stream view
-def is_stream_idle(stream_data):
-    return (stream_data["DEBUG_STATUS[7]"] & 0xfff) == 0xc00
-# Used to show "Not idle" in stream_summary
-def is_stream_active (stream_data):
-    return int (stream_data["CURR_PHASE"]) != 0 and int (stream_data["NUM_MSGS_RECEIVED"]) > 0
-# Used in stream_summary
-def is_bad_stream (stream_data):
-    return \
-        (int (stream_data["DEBUG_STATUS[1]"], base=16) != 0) or \
-        (int (stream_data["DEBUG_STATUS[2]"], base=16) & 0x7) == 0x4 or \
-        (int (stream_data["DEBUG_STATUS[2]"], base=16) & 0x7) == 0x2
-# Used in stream_summary
-def is_gsync_hung (chip, x, y):
-    return device.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0xB0010000
-# Used in stream_summary
-def is_ncrisc_done (chip, x, y):
-    return device.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0x1FFFFFF1
 
 # Detects potential problems within all chip streams, and prints a summary
 def stream_summary(chip, x_coords, y_coords, streams, short=False):

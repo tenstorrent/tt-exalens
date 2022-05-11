@@ -95,13 +95,20 @@ class Device:
     # contain a dictionary of all register values as strings formatted to show in UI
     def read_all_stream_registers (self):
         streams = {}
-        for loc in self.get_block_noc0_locactions (block_type = "functional_workers"):
+        for loc in self.get_block_locations (block_type = "functional_workers"):
             for stream_id in range (0, 64):
                 regs = self.read_stream_regs (loc, stream_id)
                 streams[loc + (stream_id,)] = regs
         return streams
 
-    def get_block_noc0_locactions (self, block_type = "functional_workers"):
+    def get_programmed_stream_locations(self, all_stream_regs):
+        cores = set ()
+        for loc, stream_regs in all_stream_regs.items():
+            if self.is_stream_configured(stream_regs):
+                cores.add (loc)
+        return cores
+
+    def get_block_locations (self, block_type = "functional_workers"):
         locs = set ()
         dev = self.yaml_file.root
         for loc in dev["functional_workers"]:
@@ -123,7 +130,7 @@ class Device:
         block_types = { 'functional_workers' : 'W', 'eth': 'E', 'arc' : 'A', 'dram' : 'D', 'pcie' : 'P', 'router_only' : '.' }
 
         for block_name in block_types:
-            for loc in self.get_block_noc0_locactions (block_name):
+            for loc in self.get_block_locations (block_name):
                 if options=="physical":
                     loc = self.noc_to_physical(loc, noc_id=0)
                 locs[loc] = block_types[block_name]
