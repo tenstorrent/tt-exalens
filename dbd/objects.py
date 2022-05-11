@@ -85,7 +85,7 @@ class Pipe:
         return f"{type(self).__name__}: id: {self.id()}, inputs: {self.inputs()}, outputs: {self.outputs()}"
 
 class Graph:
-    # Some keys do not refer to operations
+    # Some keys do not refer to operations, and we keep them here to be used when parsing
     non_op_keys = set (['target_device', 'input_count'])
 
     def __init__(self, name, root, pipegen_yaml, blob_yaml):
@@ -128,9 +128,9 @@ class Graph:
 
     # Find a buffer given a buffer_id
     def get_buffer (self, buffer_id):
-        return self.buffers[buffer_id]
+        return self.buffers.get (buffer_id, None)
     def get_pipe (self, pipe_id):
-        return self.pipes[pipe_id]
+        return self.pipes.get (pipe_id, None)
 
     # Not used
     # # Find stream information for a given buffer (from blob.yaml)
@@ -287,6 +287,8 @@ class Graph:
 
 
     # Accessors
+    def id (self):
+        return self.name
     def op_names (self):
         return set (self.root.keys()) - Graph.non_op_keys
     def device_id (self):
@@ -320,13 +322,19 @@ class Netlist:
         # Cache epoch id, device id and graph names
         self.epoch_id_to_graph_name_map = dict()
         self.device_id_to_graph_name_map = dict()
+        self._epoch_ids = set()
 
         for graph_name in self.graph_names():
             epoch_id = self.graph_name_to_epoch_id(graph_name)
+            assert (epoch_id not in self._epoch_ids)  # We do not support multiple graphs in the same epoch
+            self._epoch_ids.add (epoch_id)
             target_device = self.graph_name_to_device_id(graph_name)
 
             self.epoch_id_to_graph_name_map[epoch_id] = graph_name
             self.device_id_to_graph_name_map[target_device] = graph_name
+
+        self._epoch_ids = list (self._epoch_ids)
+        self._epoch_ids.sort()
 
         # 3. Load pipegen and blob files
         self.epoch_to_pipegen_yaml_file = dict()
@@ -352,14 +360,16 @@ class Netlist:
             self.graphs[graph_name] = g
 
     # Accessors
+    def epoch_ids (self):
+        return self._epoch_ids
     def graph_names (self):
         return self.yaml_file.root['graphs'].keys()
     def graph_name_to_epoch_id (self, graph_name):
         return self.graph_to_epoch_map_yaml_file[graph_name]["epoch_id"]
     def graph_name_to_device_id (self, graph_name):
-        return self.graph_to_epoch_map_yaml_file[graph_name]["target_device"]
+        return self.graph_to_epoch_map_yaml_file[graph_name]["target_device"] if graph_name in self.graph_to_epoch_map_yaml_file else None
     def epoch_id_to_graph_name (self, epoch_id):
-        return self.epoch_id_to_graph_name_map[epoch_id]
+        return self.epoch_id_to_graph_name_map[epoch_id] if epoch_id in self.epoch_id_to_graph_name_map else None
     def device_id_to_graph_name (self, device_id):
         return self.device_id_to_graph_name_map[device_id]
     def graph (self, graph_name):
@@ -391,4 +401,3 @@ def load (netlist_filepath, run_dirpath):
     this.context.devices = [ device.Device.create(netlist_devices['arch']) ] * netlist_devices["count"]
 
     return this.context
- 

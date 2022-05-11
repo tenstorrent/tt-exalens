@@ -1,7 +1,6 @@
-import os, subprocess, time, struct, signal, re
+import os, subprocess, time, struct, signal, re, zmq
 from tabulate import tabulate
-import zmq
-import util, objects
+import util
 
 #
 # Communication with Buda (or debuda-stub) over sockets (ZMQ).
@@ -70,6 +69,7 @@ def host_dma_read (dram_addr):
 # Device class: generic constructs for talking to devices
 #
 class Device:
+    # Class variable denoting the number of devices created
     num_devices = 0
 
     def create(arch):
@@ -151,5 +151,3 @@ class Device:
 
     def __str__(self):
         return self.render()
-
-

@@ -310,6 +310,7 @@ class GrayskullDevice (device.Device):
     def noc0_to_rc (self, noc0_x, noc0_y): return noc0_to_rc(noc0_x, noc0_y)
     def rc_to_noc0 (self, row, col): return rc_to_noc0(row, col)
     def stream_type (self, stream_id): return stream_type (stream_id)
+    def full_dump_xy(self, x, y): return full_dump_xy(self.id(), x, y)
 
     def read_stream_regs(self, noc0_loc, stream_id):
         return read_stream_regs (self.id(), noc0_loc[0], noc0_loc[1], stream_id)

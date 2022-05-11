@@ -85,20 +85,49 @@ def get_streams_from_blob (chip, x, y, id):
     return ret_val
 
 # Find occurrences of buffer with ID 'buffer_id' across all epochs, and print the structures that reference them
-# Supply current_epoch_id=None, to show details in all epochs
-def print_buffer_data (buffer_id, current_epoch_id = None):
-    for epoch_id in EPOCH_TO_PIPEGEN_YAML_MAP:
-        for dct in EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]:
-            d = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id][dct]
-            if ("input_list" in d and buffer_id in d["input_list"]) or ("output_list" in d and buffer_id in d["output_list"]) or ("buffer" in dct and "uniqid" in d and buffer_id == d["uniqid"]):
-                if current_epoch_id is None or current_epoch_id == epoch_id:
-                    util.print_columnar_dicts ([d], [f"{util.CLR_INFO}Epoch {epoch_id} - {dct}{util.CLR_END}"])
-                else:
-                    print (f"Buffer is also used in epoch {epoch_id}. Details suppressed.")
+# Supply ui_state['current_epoch_id']=None, to show details in all epochs
+def print_buffer_data (cmd, context):
+    buffer_id = int(cmd[1])
+
+    for epoch_id in context.netlist.epoch_ids():
+        graph_name = context.netlist.epoch_id_to_graph_name(epoch_id)
+        graph = context.netlist.graph(graph_name)
+        buffer = graph.get_buffer(buffer_id)
+        if buffer:
+            util.print_columnar_dicts ([buffer.root], [f"{util.CLR_INFO}Epoch {epoch_id}{util.CLR_END}"])
+
+        navigation_suggestions = [ ]
+        for p in graph.pipes:
+            pipe = graph.get_pipe(p)
+            if buffer_id in pipe.root["input_list"]:
+                print (f"( {util.CLR_BLUE}Input{util.CLR_END} of pipe {pipe.id()} )")
+                navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
+            if buffer_id in pipe.root["output_list"]:
+                print (f"( {util.CLR_BLUE}Output{util.CLR_END} of pipe {pipe.id()} )")
+                navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
+
+    return navigation_suggestions
 
 # Find occurrences of pipe with ID 'pipe_id' across all epochs, and print the structures that reference them
 # Supply current_epoch_id=None, to show details in all epochs
-def print_pipe_data (pipe_id, current_epoch_id = None):
+def print_pipe_data (cmd, context):
+    pipe_id = int(cmd[1])
+
+    for epoch_id in context.netlist.epoch_ids():
+        graph_name = context.netlist.epoch_id_to_graph_name(epoch_id)
+        graph = context.netlist.graph(graph_name)
+        pipe = graph.get_pipe(pipe_id)
+        if pipe:
+            util.print_columnar_dicts ([pipe.root], [f"{util.CLR_INFO}Epoch {epoch_id}{util.CLR_END}"])
+
+        navigation_suggestions = [ ]
+        for input_buffer in pipe.root['input_list']:
+            navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show src buffer" })
+        for input_buffer in pipe.root['output_list']:
+            navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show dest buffer" })
+
+    return navigation_suggestions
+
     for epoch_id in EPOCH_TO_PIPEGEN_YAML_MAP:
         for dct in EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]:
             d = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id][dct]
@@ -220,13 +249,13 @@ def print_a_read (x, y, addr, val, comment=""):
 # Perform a burst of PCI reads and print results.
 # If burst_type is 1, read the same location for a second and print a report
 # If burst_type is 2, read an array of locations once and print a report
-def print_burst_read_xy (chip, x, y, noc_id, addr, burst_type = 1):
+def print_burst_read_xy (device_id, x, y, noc_id, addr, burst_type = 1):
     if burst_type == 1:
         values = {}
         t_end = time.time() + 1
         print ("Sampling for 1 second...")
         while time.time() < t_end:
-            val = device.pci_read_xy(chip, x, y, noc_id, addr)
+            val = device.pci_read_xy(device_id, x, y, noc_id, addr)
             if val not in values:
                 values[val] = 0
             values[val] += 1
@@ -234,7 +263,7 @@ def print_burst_read_xy (chip, x, y, noc_id, addr, burst_type = 1):
             print_a_read(x, y, addr, val, f"- {values[val]} times")
     elif burst_type >= 2:
         for k in range(0, burst_type):
-            val = device.pci_read_xy(chip, x, y, noc_id, addr + 4*k)
+            val = device.pci_read_xy(device_id, x, y, noc_id, addr + 4*k)
             print_a_read(x,y,addr + 4*k, val)
 
 # Print all commands (help)
@@ -247,82 +276,21 @@ def print_available_commands (commands):
     print (tabulate(rows, headers=[ "Short", "Long", "Arguments", "Description" ]))
 
 # Certain commands give suggestions for next step. This function formats and prints those suggestions.
-def print_suggestions (graph_name, navigation_suggestions, current_stream_id):
+def print_navigation_suggestions (navigation_suggestions):
     if navigation_suggestions:
         print ("Speed dial:")
         rows = []
         for i in range (len(navigation_suggestions)):
-            stream_id = navigation_suggestions[i]['stream_id']
-            clr = util.CLR_INFO if current_stream_id == stream_id else util.CLR_END
-            row = [ f"{clr}{i}{util.CLR_END}", \
-                f"{clr}Go to {navigation_suggestions[i]['type']} of stream {navigation_suggestions[i]['stream_id']}{util.CLR_END}", \
-                f"{clr}{navigation_suggestions[i]['cmd']}{util.CLR_END}", \
-                f"{clr}{core_coord_to_op_name(graph_name, navigation_suggestions[i]['noc0_x'], navigation_suggestions[i]['noc0_y'])}{util.CLR_END}"
-                ]
-            rows.append (row)
-        print(tabulate(rows, headers=[ "#", "Description", "Command", "Op name" ]))
+            rows.append ([ f"{i}", f"{navigation_suggestions[i]['description']}", f"{navigation_suggestions[i]['cmd']}" ])
+        print(tabulate(rows, headers=[ "#", "Description", "Command" ]))
 
 # Prints all streams for all chips given by chip_array
-def print_stream_summary (chip_array):
+def print_stream_summary (context):
     # Finally check and print stream data
-    for i, chip in enumerate (chip_array):
-        print (f"{util.CLR_INFO}Reading and analyzing streams on device %d...{util.CLR_END}" % i)
-        streams_ui_data = read_all_stream_registers (chip, grayskull.x_coords, grayskull.y_coords)
-        stream_summary(chip, grayskull.x_coords, grayskull.y_coords, streams_ui_data)
-
-# Loads all files (blob, pipegen, netlist) and constructs maps for faster lookup
-def load_files (args):
-    # Get paths to Pipegen and Blob YAML files for the Current epoch
-    epoch = 0
-    global EPOCH_TO_PIPEGEN_YAML_MAP   # This refers to a single pipegen.yaml file
-    global EPOCH_TO_BLOB_YAML_MAP      # This refers to a single blob.yaml file
-    global PIPEGEN   # This refers to a single pipegen.yaml file
-    global BLOB      # This refers to a single blob.yaml file
-    global NETLIST   # netlist yaml
-
-    # Load netlist file
-    print (f"Loading {args.netlist}")
-    NETLIST = yaml.safe_load(open(args.netlist))
-
-    # Load graph to epoch map
-    global GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP
-    try:
-        graph_to_epoch_filename = f"{args.output_dir}/graph_to_epoch_map.yaml"
-        print (f"Loading {graph_to_epoch_filename}")
-        GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP = yaml.safe_load(open(graph_to_epoch_filename))
-    except:
-        print (f"{util.CLR_ERR}Error: cannot open graph_to_epoch_map.yaml {util.CLR_END}")
-        sys.exit(1)
-
-    # Cache epoch id to chip id
-    global EPOCH_ID_TO_CHIP_ID
-    global EPOCH_ID_TO_GRAPH_NAME
-    for graph_name in GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP:
-        epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph_name]["epoch_id"]
-        target_device = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph_name]["target_device"]
-        EPOCH_ID_TO_CHIP_ID[epoch_id] = target_device
-        EPOCH_ID_TO_GRAPH_NAME[epoch_id] = graph_name
-
-    # Load BLOB and PIPEGEN data
-    for graph in NETLIST["graphs"]:
-        epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["epoch_id"]
-        GRAPH_DIR=f"{args.output_dir}/temporal_epoch_{epoch_id}"
-        if not os.path.isdir(GRAPH_DIR):
-            print (f"{util.CLR_ERR}Error: cannot find directory {GRAPH_DIR} {util.CLR_END}")
-            sys.exit(1)
-        PIPEGEN_FILE=f"{GRAPH_DIR}/overlay/pipegen.yaml"
-        BLOB_FILE=f"{GRAPH_DIR}/overlay/blob.yaml"
-
-        # Pipegen file contains multiple documents (separated by ---).
-        # We merge them all into one map.
-        print (f"Loading {PIPEGEN_FILE}")
-        pipegen_yaml = {}
-        for i in yaml.safe_load_all(open(PIPEGEN_FILE)):
-            pipegen_yaml = { **pipegen_yaml, **i }
-        EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id] = pipegen_yaml
-
-        print (f"Loading {BLOB_FILE}")
-        EPOCH_TO_BLOB_YAML_MAP[epoch_id] = yaml.safe_load(open(BLOB_FILE))
+    for device_id, device in enumerate (context.devices):
+        print (f"{util.CLR_INFO}Reading and analyzing streams on device %d...{util.CLR_END}" % device_id)
+        streams_ui_data = device.read_all_stream_registers ()
+        # stream_summary(chip, grayskull.x_coords, grayskull.y_coords, streams_ui_data)
 
 # Prints contents of core's memory
 def dump_memory(chip, x, y, addr, size):
@@ -370,36 +338,10 @@ def test(graph, chip_array, current_x, current_y):
     return test_traverse_from_inputs (graph, chip_array, current_x, current_y)
 
 # Main
-def main(chip_array, args, context):
-    # If chip_array is not an array, make it an array
-    if not isinstance(chip_array, list):
-       chip_array = [ chip_array ]
-
-    # 
-    # load_files (args)
-
+def main(args, context):
     cmd_raw = ""
 
-    # Set initial state
-    current_epoch_id = 0 # len(EPOCH_TO_PIPEGEN_YAML_MAP.keys())-1
-    current_x, current_y, current_stream_id = None, None, None
-    current_prompt = "" # Based on the current x,y,stream_id tuple
-    # global PIPEGEN
-    # PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[current_epoch_id]
-    # global BLOB
-    # BLOB = EPOCH_TO_BLOB_YAML_MAP[current_epoch_id]
-
-    # Print the summary
-
-    # for graph in GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP:
-    #     print_host_queue_for_graph(graph)
-
-    # for graph in GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP:
-    #     print_dram_queue_summary_for_graph(graph, chip_array)
-
-    # print_stream_summary (chip_array)
-    # print_epoch_queue_summary(chip_array, grayskull.x_coords, grayskull.y_coords)
-
+    # Init commands
     commands = [
         { "long" : "exit",
           "short" : "x",
@@ -416,16 +358,6 @@ def main(chip_array, args, context):
           "expected_argument_count" : 1,
           "arguments_description" : "epoch_id : switch to epoch epoch_id"
         },
-        { "long" : "stream-summary",
-          "short" : "ss",
-          "expected_argument_count" : 0,
-          "arguments_description" : " : reads and analyzes all streams"
-        },
-        { "long" : "stream",
-          "short" : "s",
-          "expected_argument_count" : 3,
-          "arguments_description" : "x y stream_id : show stream 'stream_id' at core 'x-y'"
-        },
         {
           "long" : "dump-message-xy",
           "short" : "m",
@@ -441,24 +373,6 @@ def main(chip_array, args, context):
           "short" : "p",
           "expected_argument_count" : 1,
           "arguments_description" : "pipe_id : prints details on the pipe with ID pipe_id"
-        },
-        {
-          "long" : "dram-queue",
-          "short" : "dq",
-          "expected_argument_count" : 0,
-          "arguments_description" : ": prints DRAM queue summary"
-        },
-        {
-          "long" : "host-queue",
-          "short" : "hq",
-          "expected_argument_count" : 0,
-          "arguments_description" : ": prints Host queue summary"
-        },
-        {
-          "long" : "epoch-queue",
-          "short" : "eq",
-          "expected_argument_count" : 0,
-          "arguments_description" : ": prints Epoch queue summary"
         },
         {
           "long" : "pci-read-xy",
@@ -478,17 +392,40 @@ def main(chip_array, args, context):
           "expected_argument_count" : 4,
           "arguments_description" : "x y addr value : writes value to address 'addr' at noc0 location x-y of the chip associated with current epoch"
         },
+
+        {
+          "long" : "dram-queue",
+          "short" : "dq",
+          "expected_argument_count" : 0,
+          "arguments_description" : ": prints DRAM queue summary"
+        },
+        {
+          "long" : "host-queue",
+          "short" : "hq",
+          "expected_argument_count" : 0,
+          "arguments_description" : ": prints Host queue summary"
+        },
+        {
+          "long" : "epoch-queue",
+          "short" : "eq",
+          "expected_argument_count" : 0,
+          "arguments_description" : ": prints Epoch queue summary"
+        },
         {
           "long" : "full-dump",
           "short" : "fd",
           "expected_argument_count" : 0,
           "arguments_description" : ": performs a full dump at current x-y"
         },
-        {
-          "long" : "analyze-blocked-streams-old",
-          "short" : "abso",
+        { "long" : "stream-summary",
+          "short" : "ss",
           "expected_argument_count" : 0,
-          "arguments_description" : ": analyzes the streams and hightlights the ones that are not progressing. Blocked streams that have all inputs ready are highlighted."
+          "arguments_description" : " : reads and analyzes all streams"
+        },
+        { "long" : "stream",
+          "short" : "s",
+          "expected_argument_count" : 3,
+          "arguments_description" : "x y stream_id : show stream 'stream_id' at core 'x-y'"
         },
         {
           "long" : "test",
@@ -500,34 +437,42 @@ def main(chip_array, args, context):
 
     import_commands (commands)
 
-    def epoch_id_to_chip_id (epoch_id):
-        # return EPOCH_ID_TO_CHIP_ID[epoch_id]
-        return 0
-
-    non_interactive_commands=args.commands.split(";") if args.commands else []
-
     # Initialize current UI state
-    current_x = 1
-    current_y = 1
-    current_stream_id = 8
-    current_epoch_id = 0
-    current_graph_name = "" # EPOCH_ID_TO_GRAPH_NAME[current_epoch_id]
+    ui_state = {
+        "current_x": 1,           # Currently selected core (noc0 coordinates)
+        "current_y": 1,
+        "current_stream_id": 8,   # Currently selected stream_id
+        "current_epoch_id": 0,    # Current epoch_id
+        "current_graph_name": "", # Graph name for the current epoch
+        "current_prompt": ""      # Based on the current x,y,stream_id tuple
+    }
+
     navigation_suggestions = None
+
+    def change_epoch (new_epoch_id):
+        if context.netlist.epoch_id_to_graph_name(new_epoch_id) is not None:
+            nonlocal ui_state
+            ui_state["current_epoch_id"] = new_epoch_id
+        else:
+            print (f"{util.CLR_ERR}Invalid epoch id {new_epoch_id}{util.CLR_END}")
+
+    # These commands will be executed right away (before allowing user input)
+    non_interactive_commands=args.commands.split(";") if args.commands else []
 
     # Main command loop
     while cmd_raw != 'exit' and cmd_raw != 'x':
         have_non_interactive_commands=len(non_interactive_commands) > 0
 
-        if current_x is not None and current_y is not None and current_epoch_id is not None:
-            row, col = grayskull.noc0_to_rc (current_x, current_y)
-            # current_prompt = f"core:{util.CLR_PROMPT}{current_x}-{current_y}{util.CLR_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_END} op:{util.CLR_PROMPT}{core_coord_to_op_name(current_graph_name, current_x, current_y)}{util.CLR_END} stream:{util.CLR_PROMPT}{current_stream_id}{util.CLR_END} "
-            current_prompt = f"core:{util.CLR_PROMPT}{current_x}-{current_y}{util.CLR_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_END} stream:{util.CLR_PROMPT}{current_stream_id}{util.CLR_END} "
-        try:
-            current_chip_id = epoch_id_to_chip_id(current_epoch_id)
-            current_chip = chip_array[current_chip_id]
-            current_graph_name = "N/A" # EPOCH_ID_TO_GRAPH_NAME[current_epoch_id]
+        if ui_state['current_x'] is not None and ui_state['current_y'] is not None and ui_state['current_epoch_id'] is not None:
+            row, col = grayskull.noc0_to_rc (ui_state['current_x'], ui_state['current_y'])
+            ui_state['current_prompt'] = f"core:{util.CLR_PROMPT}{ui_state['current_x']}-{ui_state['current_y']}{util.CLR_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_END} stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_END} "
 
-            print_suggestions (current_graph_name, navigation_suggestions, current_stream_id)
+        try:
+            ui_state['current_graph_name'] = context.netlist.epoch_id_to_graph_name(ui_state['current_epoch_id'])
+            ui_state['current_device_id'] = context.netlist.graph_name_to_device_id(ui_state['current_graph_name'])
+            ui_state['current_device'] = context.devices[ui_state['current_device_id']]
+
+            print_navigation_suggestions (navigation_suggestions)
 
             if have_non_interactive_commands:
                 cmd_raw = non_interactive_commands[0].strip()
@@ -537,7 +482,7 @@ def main(chip_array, args, context):
                 if len(cmd_raw)>0:
                     print (f"{util.CLR_INFO}Executing command: %s{util.CLR_END}" % cmd_raw)
             else:
-                prompt = f"Current epoch:{util.CLR_PROMPT}{current_epoch_id}{util.CLR_END} chip:{util.CLR_PROMPT}{current_chip_id}{util.CLR_END} {current_prompt}> "
+                prompt = f"Current epoch:{util.CLR_PROMPT}{ui_state['current_epoch_id']}{util.CLR_END}({ui_state['current_graph_name']}) device:{util.CLR_PROMPT}{ui_state['current_device_id']}{util.CLR_END} {ui_state['current_prompt']}> "
                 cmd_raw = input(prompt)
 
             try: # To get a a command from the speed dial
@@ -569,65 +514,52 @@ def main(chip_array, args, context):
                     # This was handled earlier
                     pass
                 else:
-                    if found_command["long"] == "epoch":
-                        new_epoch_id = int(cmd[1])
-
-                        if True: # new_epoch_id in EPOCH_ID_TO_GRAPH_NAME:
-                            current_epoch_id = new_epoch_id
-                            # PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[current_epoch_id]
-                            # BLOB = EPOCH_TO_BLOB_YAML_MAP[current_epoch_id]
-                        else:
-                            print (f"{util.CLR_ERR}Invalid epoch id {new_epoch_id}{util.CLR_END}")
-                    elif found_command["long"] == "stream-summary":
-                        print_stream_summary(chip_array)
-                    elif found_command["long"] == "stream":
-                        current_x, current_y, current_stream_id = int(cmd[1]), int(cmd[2]), int(cmd[3])
-                        navigation_suggestions, stream_epoch_id = print_stream (current_chip, current_x, current_y, current_stream_id, current_epoch_id)
-                        if stream_epoch_id != current_epoch_id:
-                            if stream_epoch_id >=0: # and stream_epoch_id < len(BLOB.keys()):
-                                current_epoch_id = stream_epoch_id
-                                # PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[current_epoch_id]
-                                # BLOB = EPOCH_TO_BLOB_YAML_MAP[current_epoch_id]
-                                print (f"{util.CLR_WARN}Automatically switched to epoch {current_epoch_id}{util.CLR_END}")
+                    if found_command["long"] == "exit":
+                        pass # Exit is handled in the outter loop
+                    elif found_command["long"] == "help":
+                        print_available_commands (commands)
+                    elif found_command["long"] == "epoch":
+                        change_epoch (int(cmd[1]))
                     elif found_command["long"] == "buffer":
-                        buffer_id = int(cmd[1])
-                        print_buffer_data (buffer_id, current_epoch_id)
+                        navigation_suggestions = print_buffer_data (cmd, context)
                     elif found_command["long"] == "pipe":
-                        buffer_id = int(cmd[1])
-                        print_pipe_data (buffer_id, current_epoch_id)
-                    elif found_command["long"] == "dram-queue":
-                        print_dram_queue_summary_for_graph (current_graph_name, chip_array)
-                    elif found_command["long"] == "host-queue":
-                        print_host_queue_for_graph (current_graph_name)
-                    elif found_command["long"] == "epoch-queue":
-                        print_epoch_queue_summary(chip_array, grayskull.x_coords, grayskull.y_coords)
+                        navigation_suggestions = print_pipe_data (cmd, context)
                     elif found_command["long"] == "pci-read-xy" or found_command["long"] == "burst-read-xy" or found_command["long"] == "pci-write-xy":
                         x = int(cmd[1],0)
                         y = int(cmd[2],0)
                         addr = int(cmd[3],0)
                         if found_command["long"] == "pci-read-xy":
-                            data = device.pci_read_xy (current_chip_id, x, y, NOC0, addr)
+                            data = device.pci_read_xy (ui_state['current_device_id'], x, y, NOC0, addr)
                             print_a_read (x, y, addr, data)
                         elif found_command["long"] == "burst-read-xy":
                             burst_type = int(cmd[4],0)
-                            print_burst_read_xy (current_chip_id, x, y, NOC0, addr, burst_type=burst_type)
+                            print_burst_read_xy (ui_state['current_device_id'], x, y, NOC0, addr, burst_type=burst_type)
                         elif found_command["long"] == "pci-write-xy":
-                            device.pci_write_xy (current_chip_id, x, y, NOC0, addr, data = int(cmd[4],0))
+                            device.pci_write_xy (ui_state['current_device_id'], x, y, NOC0, addr, data = int(cmd[4],0))
                         else:
                             print (f"{util.CLR_ERR} Unknown {found_command['long']} {util.CLR_END}")
+                    elif found_command["long"] == "full-dump":
+                        ui_state['current_device'].full_dump_xy(ui_state['current_x'], ui_state['current_y'])
+
+                    elif found_command["long"] == "dram-queue":
+                        print_dram_queue_summary_for_graph (ui_state['current_graph_name'], chip_array)
+                    elif found_command["long"] == "host-queue":
+                        print_host_queue_for_graph (ui_state['current_graph_name'])
+                    elif found_command["long"] == "epoch-queue":
+                        print_epoch_queue_summary(chip_array, grayskull.x_coords, grayskull.y_coords)
                     elif found_command["long"] == "dump-message-xy":
                         message_id = int(cmd[1])
-                        dump_message_xy(current_chip_id, current_x, current_y, current_stream_id, message_id)
-                    elif found_command["long"] == "full-dump":
-                        grayskull.full_dump_xy(current_chip_id, current_x, current_y)
-                    elif found_command["long"] == "exit":
-                        pass # Exit is handled in the outter loop
-                    elif found_command["long"] == "help":
-                        print_available_commands (commands)
+                        dump_message_xy(ui_state['current_device_id'], ui_state['current_x'], ui_state['current_y'], ui_state['current_stream_id'], message_id)
                     elif found_command["long"] == "test":
-                        test (current_graph_name, chip_array, current_x, current_y)
-                    elif found_command["long"] == "analyze-blocked-streams-old":
-                        analyze_blocked_streams (current_graph_name, chip_array, current_x, current_y)
+                        test (ui_state['current_graph_name'], chip_array, ui_state['current_x'], ui_state['current_y'])
+                    elif found_command["long"] == "stream-summary":
+                        print_stream_summary(context)
+                    elif found_command["long"] == "stream":
+                        ui_state['current_x'], ui_state['current_y'], ui_state['current_stream_id'] = int(cmd[1]), int(cmd[2]), int(cmd[3])
+                        navigation_suggestions, stream_epoch_id = print_stream (ui_state['current_device'], ui_state['current_x'], ui_state['current_y'], ui_state['current_stream_id'], ui_state['current_epoch_id'])
+                        if stream_epoch_id != ui_state['current_epoch_id'] and stream_epoch_id >=0:
+                            print (f"{util.CLR_WARN}Automatically switching to epoch {stream_epoch_id}{util.CLR_END}")
+                            change_epoch (stream_epoch_id)
                     else:
                         found_command["module"].run(cmd[1:], context)
 
@@ -665,12 +597,8 @@ device.init_comm_client (args.debug_debuda_stub)
 # Make sure to terminate communication client (debuda-stub) on exit
 atexit.register (device.terminate_comm_client_callback)
 
-# Call Main
-
+# Create context
 context = objects.load (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
 
-main([ 0 ], args, context)
-
-
-# for dev in context.devices:
-#     print (dev)
+# Main function
+sys.exit (main(args, context))
