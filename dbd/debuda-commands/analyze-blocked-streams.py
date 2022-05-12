@@ -10,8 +10,9 @@ command_metadata = {
         "arguments_description" : ": draws a mini map of the current epoch"
     }
 
-def run(args, context):
-# def analyze_blocked_streams (graph, device_array, current_x, current_y):
+def run(args, context, ui_state = None):
+    navigation_suggestions = []
+
     headers = [ "X-Y", "Op", "Stream", "Type", "Epoch", "Phase", "MSGS_REMAINING", "MSGS_RECEIVED", "Depends on", "State", "Flag" ]
     rows = []
 
@@ -33,11 +34,10 @@ def run(args, context):
 
         # 2. Check where the programmed streams are
         programmed_streams = device.get_programmed_stream_locations(all_stream_regs)
-        print (f"Programmed streams: {programmed_streams}")
 
         # Find epochs for each stream
         epochs = { device.stream_epoch (stream_regs) for loc, stream_regs in all_stream_regs.items() if loc in programmed_streams }
-        print (epochs)
+        print (f"Stream epochs: {epochs}")
 
         working_epoch_id = min(epochs)
         working_graph_name = netlist.epoch_id_to_graph_name (working_epoch_id)
@@ -116,4 +116,84 @@ def run(args, context):
     else:
         print ("No blocked streams detected")
 
+    return navigation_suggestions
 
+# Detects potential problems within all chip streams, and prints a summary
+def stream_summary(chip, x_coords, y_coords, streams, short=False):
+    active_streams = {}
+    bad_streams = []
+    gsync_hung = {}
+    ncrisc_done = {}
+
+    # Detect problems
+    for x in x_coords:
+        active_streams[x] = {}
+        gsync_hung[x] = {}
+        ncrisc_done[x] = {}
+        for y in y_coords:
+            active_streams[x][y] = []
+            for stream_id in range (0, 64):
+                if is_stream_active(streams[x][y][stream_id]):
+                    active_streams[x][y].append(stream_id)
+                if is_bad_stream(streams[x][y][stream_id]):
+                    bad_streams.append([x,y,stream_id])
+            gsync_hung[x][y] = is_gsync_hung(chip, x, y)
+            ncrisc_done[x][y] = is_ncrisc_done(chip, x, y)
+
+    # Print streams that are not idle
+    all_streams_done = True
+    headers = [ "X-Y", "Op", "Stream", "Type", "Epoch", "Phase", "State", "CURR_PHASE_NUM_MSGS_REMAINING", "NUM_MSGS_RECEIVED" ]
+    rows = []
+
+    for x in x_coords:
+        for y in y_coords:
+            if len(active_streams[x][y]) != 0:
+                first_stream = True
+
+                for i in range(len(active_streams[x][y])):
+                    xy = f"{x}-{y}" if first_stream else ""
+                    first_stream = False
+                    stream_id=active_streams[x][y][i]
+                    current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
+                    epoch_id = current_phase>>10
+                    stream_type_str = stream_type(stream_id)["short"]
+                    op = core_coord_to_op_name(EPOCH_ID_TO_GRAPH_NAME[epoch_id], x, y)
+                    row = [ xy, op, stream_id, stream_type_str, epoch_id, current_phase, f"{util.CLR_WARN}Active{util.CLR_END}", int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING']), int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED']) ]
+                    rows.append (row)
+                    all_streams_done = False
+
+    if not all_streams_done:
+        print (tabulate(rows, headers=headers))
+    if all_streams_done:
+        print("  No streams appear hung. If the test hung, some of the streams possibly did not get any tiles.")
+
+    # Print streams in bad state
+    if len(bad_streams) != 0:
+        print()
+        print("The following streams are in a bad state (have an assertion in DEBUG_STATUS[1], or DEBUG_STATUS[2] indicates a hang):")
+        for i in range(len(bad_streams)):
+            bad_stream_x = bad_streams[i][0]
+            bad_stream_y = bad_streams[i][1]
+            bad_stream_id = bad_streams[i][2]
+            print(f"\t x={bad_stream_x:02d}, y={bad_stream_y:02d}, stream_id={bad_stream_id:02d}")
+
+    # Print gsync_hung cores
+    for x in x_coords:
+        for y in y_coords:
+            if gsync_hung[x][y]:
+                print(f"Global sync hang: x={x:02d}, y={y:02d}")
+
+    # Print NC Riscs that are not idle
+    if all_streams_done: # Only do this if all streams are done
+        ncriscs_not_idle_count = 0
+        for y in y_coords:
+            for x in x_coords:
+                if not ncrisc_done[x][y]:
+                    if ncriscs_not_idle_count == 0: # First output
+                        print("NCRISCs not idle: ")
+                    ncriscs_not_idle_count += 1
+                    print(f"{x:02d}-{y:02d}", end=" ")
+                    if ncriscs_not_idle_count % 12 == 0:
+                        print()
+        if ncriscs_not_idle_count > 0:
+            print()

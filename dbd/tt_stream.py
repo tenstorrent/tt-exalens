@@ -3,28 +3,28 @@ import tt_util as util, tt_grayskull, re, os
 STREAM_CACHE_FILE_NAME="stream-cache.pkl"
 
 # Returns a summary of non-idle streams within a core
-def get_core_stream_summary (chip, x, y):
+def get_core_stream_summary (device, x, y):
     all_streams_summary = {}
     navigation_suggestions = [ ]
     for stream_id in range (0, 64):
         val = ""
         # Check if idle
-        regs = tt_grayskull.read_stream_regs (chip, x, y, stream_id)
-        reg_strings = convert_reg_dict_to_strings(chip, regs, x, y, stream_id)
-        idle = is_stream_idle (regs)
+        regs = device.read_stream_regs ((x, y), stream_id)
+        reg_strings = convert_reg_dict_to_strings(device, regs)
+        idle = device.is_stream_idle (regs)
 
         # Construct the navigation suggestions, and stream idle status
         if regs["REMOTE_SOURCE"] !=0 and 'REMOTE_SRC_X' in regs:
             val += f"RS-{reg_strings['REMOTE_SRC_X']}-{reg_strings['REMOTE_SRC_Y']}-{reg_strings['REMOTE_SRC_STREAM_ID']} "
-            noc0_x, noc0_y = tt_grayskull.convert_to_noc_0 (regs['REMOTE_SRC_X'], regs['REMOTE_SRC_Y'], regs['REMOTE_SRC_UPDATE_NOC'])
+            noc0_x, noc0_y = device.as_noc_0 (regs['REMOTE_SRC_X'], regs['REMOTE_SRC_Y'], regs['REMOTE_SRC_UPDATE_NOC'])
             navigation_suggestions.append (\
-                { 'stream_id' : stream_id, 'type' : 'src', "noc0_x" : noc0_x, "noc0_y" : noc0_y, \
-                'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_SRC_STREAM_ID']}" })
+                { 'description': 'Go to source',
+                  'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_SRC_STREAM_ID']}" })
         if regs["REMOTE_RECEIVER"] !=0 and 'REMOTE_DEST_X' in regs:
             val += f"RR-{reg_strings['REMOTE_DEST_X']}-{reg_strings['REMOTE_DEST_Y']}-{reg_strings['REMOTE_DEST_STREAM_ID']} "
-            noc0_x, noc0_y = tt_grayskull.convert_to_noc_0 (regs['REMOTE_DEST_X'], regs['REMOTE_DEST_Y'], regs['OUTGOING_DATA_NOC'])
+            noc0_x, noc0_y = device.as_noc_0 (regs['REMOTE_DEST_X'], regs['REMOTE_DEST_Y'], regs['OUTGOING_DATA_NOC'])
             navigation_suggestions.append (\
-                { 'stream_id' : stream_id, 'type' : 'dest', "noc0_x" : noc0_x, "noc0_y" : noc0_y, \
+                { 'description': 'Go to destination',
                 'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_DEST_STREAM_ID']}" })
         if regs["LOCAL_SOURCES_CONNECTED"]!=0:
             val += "LSC "
@@ -34,150 +34,6 @@ def get_core_stream_summary (chip, x, y):
         else:
             val += "idle"
     return all_streams_summary, navigation_suggestions
-
-#
-# Analysis functions
-#
-
-
-# Detects potential problems within all chip streams, and prints a summary
-def stream_summary(chip, x_coords, y_coords, streams, short=False):
-    active_streams = {}
-    bad_streams = []
-    gsync_hung = {}
-    ncrisc_done = {}
-
-    # Detect problems
-    for x in x_coords:
-        active_streams[x] = {}
-        gsync_hung[x] = {}
-        ncrisc_done[x] = {}
-        for y in y_coords:
-            active_streams[x][y] = []
-            for stream_id in range (0, 64):
-                if is_stream_active(streams[x][y][stream_id]):
-                    active_streams[x][y].append(stream_id)
-                if is_bad_stream(streams[x][y][stream_id]):
-                    bad_streams.append([x,y,stream_id])
-            gsync_hung[x][y] = is_gsync_hung(chip, x, y)
-            ncrisc_done[x][y] = is_ncrisc_done(chip, x, y)
-
-    # Print streams that are not idle
-    all_streams_done = True
-    headers = [ "X-Y", "Op", "Stream", "Type", "Epoch", "Phase", "State", "CURR_PHASE_NUM_MSGS_REMAINING", "NUM_MSGS_RECEIVED" ]
-    rows = []
-
-    for x in x_coords:
-        for y in y_coords:
-            if len(active_streams[x][y]) != 0:
-                first_stream = True
-
-                for i in range(len(active_streams[x][y])):
-                    xy = f"{x}-{y}" if first_stream else ""
-                    first_stream = False
-                    stream_id=active_streams[x][y][i]
-                    current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
-                    epoch_id = current_phase>>10
-                    stream_type_str = stream_type(stream_id)["short"]
-                    op = core_coord_to_op_name(EPOCH_ID_TO_GRAPH_NAME[epoch_id], x, y)
-                    row = [ xy, op, stream_id, stream_type_str, epoch_id, current_phase, f"{util.CLR_WARN}Active{util.CLR_END}", int(streams[x][y][stream_id]['CURR_PHASE_NUM_MSGS_REMAINING']), int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED']) ]
-                    rows.append (row)
-                    all_streams_done = False
-
-    if not all_streams_done:
-        print (tabulate(rows, headers=headers))
-    if all_streams_done:
-        print("  No streams appear hung. If the test hung, some of the streams possibly did not get any tiles.")
-
-    # Print streams in bad state
-    if len(bad_streams) != 0:
-        print()
-        print("The following streams are in a bad state (have an assertion in DEBUG_STATUS[1], or DEBUG_STATUS[2] indicates a hang):")
-        for i in range(len(bad_streams)):
-            bad_stream_x = bad_streams[i][0]
-            bad_stream_y = bad_streams[i][1]
-            bad_stream_id = bad_streams[i][2]
-            print(f"\t x={bad_stream_x:02d}, y={bad_stream_y:02d}, stream_id={bad_stream_id:02d}")
-
-    # Print gsync_hung cores
-    for x in x_coords:
-        for y in y_coords:
-            if gsync_hung[x][y]:
-                print(f"Global sync hang: x={x:02d}, y={y:02d}")
-
-    # Print NC Riscs that are not idle
-    if all_streams_done: # Only do this if all streams are done
-        ncriscs_not_idle_count = 0
-        for y in y_coords:
-            for x in x_coords:
-                if not ncrisc_done[x][y]:
-                    if ncriscs_not_idle_count == 0: # First output
-                        print("NCRISCs not idle: ")
-                    ncriscs_not_idle_count += 1
-                    print(f"{x:02d}-{y:02d}", end=" ")
-                    if ncriscs_not_idle_count % 12 == 0:
-                        print()
-        if ncriscs_not_idle_count > 0:
-            print()
-
-# Prints all information on a stream
-def print_stream (current_chip, x, y, stream_id, current_epoch_id):
-    regs = tt_grayskull.read_stream_regs (current_chip, x, y, stream_id)
-    stream_regs = convert_reg_dict_to_strings(current_chip, regs, x, y, stream_id)
-    streams_from_blob = get_streams_from_blob (current_chip, x, y, stream_id)
-    stream_epoch_id = (regs["CURR_PHASE"] >> 10)
-    current_epoch_id = stream_epoch_id
-
-    all_stream_summary, navigation_suggestions = get_core_stream_summary (current_chip, x, y)
-    data_columns = [ all_stream_summary ] if len(all_stream_summary) > 0 else []
-    title_columns = [ f"{util.CLR_WARN}Non-idle streams{util.CLR_END}" ] if len(all_stream_summary) > 0 else []
-
-    data_columns.append (stream_regs)
-    title_columns.append ("Registers")
-
-    # 1. Append blobs
-    buffer_id_strings = set()
-    non_active_phases = dict()
-    for stream_from_blob in streams_from_blob:
-        buf_id = stream_from_blob["buf_id"] if stream_from_blob and "buf_id" in stream_from_blob else None
-        if f"{regs['CURR_PHASE']}" in stream_from_blob["source"]:
-            if buf_id is not None:
-                buffer_str = f"buffer_{buf_id}"
-                buffer_id_strings.add (buffer_str)
-            data_columns.append (stream_from_blob)
-            title_columns.append ("Stream (blob.yaml)")
-        else:
-            non_active_phases[stream_from_blob["source"]] = "-"
-
-    # 1a. Print Non Active phases, if any
-    if len(non_active_phases) > 0:
-        title_columns.append ("non-active phases")
-        data_columns.append (non_active_phases)
-
-    # 2. Append buffers
-    for buffer_id_string in buffer_id_strings:
-        data_columns.append (PIPEGEN[buffer_id_string] if buffer_id_string in PIPEGEN else { "-": "-" })
-        title_columns.append (buffer_id_string)
-
-    # 3. Append relevant pipes
-    for buffer_id_string in buffer_id_strings:
-        buffer_id = int (buffer_id_string[7:], 0) # HACK: to skip the "buffer_" string
-        # FIX: below is mostly copied from print_buffer_data()
-        for epoch_id in EPOCH_TO_PIPEGEN_YAML_MAP:
-            for dct in EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]:
-                d = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id][dct]
-                if ("input_list" in d and buffer_id in d["input_list"]) or ("output_list" in d and buffer_id in d["output_list"]):
-                    data_columns.append (d)
-                    title_columns.append ("Pipe")
-
-    util.print_columnar_dicts (data_columns, title_columns)
-
-    if current_epoch_id != stream_epoch_id:
-        print (f"{util.CLR_WARN}Current epoch is {current_epoch_id}, while the stream is in epoch {stream_epoch_id} {util.CLR_END}. To switch to epoch {stream_epoch_id}, enter {util.CLR_PROMPT}e {stream_epoch_id}{util.CLR_END}")
-
-    # 4. TODO: Print forks
-
-    return navigation_suggestions, stream_epoch_id
 
 # The field names we want to show as hexadecimal numbers
 HEX_FIELDS = {

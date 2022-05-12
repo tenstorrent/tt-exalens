@@ -203,17 +203,12 @@ class Graph:
         else:
             raise (f"Exception: {util.CLR_ERR} Invalid filter '{filter}' {util.CLR_END}")
 
-    # Return (noc0_x,noc0_y,stream_id) tuple for all the input DRAM buffers
+    # Return list of DRAM buffers
     def get_dram_buffers(self):
-        epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["epoch_id"]
-        PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]
-
         input_buffers = []
-        for b in PIPEGEN:
-            if "buffer" in b:
-                buffer=PIPEGEN[b]
-                if buffer["dram_buf_flag"] != 0 or buffer["dram_io_flag"] != 0:
-                    input_buffers.append (buffer["uniqid"])
+        for bid, buffer in self.buffers.items():
+            if buffer.root["dram_buf_flag"] != 0 or buffer.root["dram_io_flag"] != 0:
+                input_buffers.append (bid)
         return input_buffers
 
     # Computes all buffers that are feeding into the buffers from buffer_id_list
@@ -297,6 +292,14 @@ class Graph:
         return self.root['input_count']
     def epoch_id (self):
         return self._epoch_id
+
+    def get_pipes_for_buffer (self, buffer_id):
+        pipes = []
+        for pipe_id in self.pipes:
+            pipe = self.get_pipe(pipe_id)
+            if buffer_id in pipe.inputs() or buffer_id in pipe.outputs():
+                pipes.append(pipe_id)
+        return pipes
 
     # Renderer
     def __str__(self):

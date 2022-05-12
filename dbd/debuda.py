@@ -51,39 +51,6 @@ def core_coord_to_op_name (graph_name, noc0_x, noc0_y):
             if [ r, c ] in op_locations:
                 return f"{graph_name}/{op_name}:{op['type']}"
 
-
-
-# Returns blob data where all values get converted to strings
-def blob_data_to_string (blb_data):
-    ret_val = {}
-    for k in blb_data:
-        try:
-            ret_val[k] = get_as_str(k, blb_data[k])
-        except:
-            ret_val[k] = blb_data[k] # get_as_str(k, blb_data[k])
-    return ret_val
-
-# Given a stream, return the stream's data as recorded in blob.yaml
-def get_streams_from_blob (chip, x, y, id):
-    stream_name = f"chip_{chip}__y_{y}__x_{x}__stream_id_{id}"
-#    print (f"get_stream of {stream_name}")
-    ret_val = [ ]
-    for k in BLOB:
-        v = BLOB[k]
-        if stream_name in v:
-            # print (f"v[stream_name]: {v[stream_name]}")
-            if 0 in v[stream_name]: # Hack: dram lists
-                v_data = blob_data_to_string(v[stream_name][0])
-            else:
-                v_data = blob_data_to_string(v[stream_name])
-            # print (f"APPENDING: {v_data}")
-            ret_val.append (v_data)
-            lastidx = len(ret_val)-1
-            # Attach a source field
-            ret_val[lastidx][f"source"] = f'{util.CLR_INFO}{k}{util.CLR_END}'
-
-    return ret_val
-
 # Find occurrences of buffer with ID 'buffer_id' across all epochs, and print the structures that reference them
 # Supply ui_state['current_epoch_id']=None, to show details in all epochs
 def print_buffer_data (cmd, context):
@@ -127,29 +94,6 @@ def print_pipe_data (cmd, context):
             navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show dest buffer" })
 
     return navigation_suggestions
-
-    for epoch_id in EPOCH_TO_PIPEGEN_YAML_MAP:
-        for dct in EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]:
-            d = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id][dct]
-            if ("pipe" in dct and "id" in d and pipe_id == d["id"]):
-                if current_epoch_id is None or current_epoch_id == epoch_id:
-                    util.print_columnar_dicts ([d], [f"{util.CLR_INFO}Epoch {epoch_id} - {dct}{util.CLR_END}"])
-                else:
-                    print (f"Pipe is also used in epoch {epoch_id}. Details suppressed.")
-
-    for epoch_id in EPOCH_TO_BLOB_YAML_MAP:
-        for dram_blob_or_phase in EPOCH_TO_BLOB_YAML_MAP[epoch_id]:
-            dct = EPOCH_TO_BLOB_YAML_MAP[epoch_id][dram_blob_or_phase]
-            for strm in dct:
-                if dram_blob_or_phase == "dram_blob":
-                    for i in strm:
-                        pass # No pipe info in dram_blobs at the moment
-                else:
-                    if "pipe_id" in dct[strm] and dct[strm]["pipe_id"] == pipe_id:
-                        if current_epoch_id is None or current_epoch_id == epoch_id:
-                            util.print_columnar_dicts ([dct[strm]], [f"{util.CLR_INFO}Epoch {epoch_id} - BLOB - {strm}{util.CLR_END}"])
-                        else:
-                            print (f"Pipe is also used in epoch {epoch_id}. Details suppressed.")
 
 # Prints information on DRAM queues
 def print_dram_queue_summary (cmd, context, ui_state = None): # graph, chip_array):
@@ -444,11 +388,6 @@ def main(args, context):
           "expected_argument_count" : 0,
           "arguments_description" : " : reads and analyzes all streams"
         },
-        { "long" : "stream",
-          "short" : "s",
-          "expected_argument_count" : 3,
-          "arguments_description" : "x y stream_id : show stream 'stream_id' at core 'x-y'"
-        },
         {
           "long" : "test",
           "short" : "t",
@@ -582,7 +521,7 @@ def main(args, context):
                             print (f"{util.CLR_WARN}Automatically switching to epoch {stream_epoch_id}{util.CLR_END}")
                             change_epoch (stream_epoch_id)
                     else:
-                        found_command["module"].run(cmd[1:], context)
+                        navigation_suggestions = found_command["module"].run(cmd, context, ui_state)
 
         except Exception as e:
             print (f"Exception: {util.CLR_ERR} {e} {util.CLR_END}")

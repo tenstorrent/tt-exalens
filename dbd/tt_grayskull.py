@@ -150,14 +150,8 @@ def read_stream_regs(chip, x, y, stream_id):
 
     return reg
 
-def convert_to_noc_0 (x, y, noc_id):
-    if noc_id == 0:
-        return (x, y)
-    else:
-        return (noc1_to_noc0 (x,y))
-
-x_coords = list (range (1, 13))
-y_coords = list (range (1, 6)) + list (range (7, 12))
+# x_coords = list (range (1, 13))
+# y_coords = list (range (1, 6)) + list (range (7, 12))
 
 def full_dump_xy(chip_id, x, y):
     for stream_id in range (0, 64):
@@ -310,6 +304,13 @@ class GrayskullDevice (tt_device.Device):
     def rc_to_noc0 (self, row, col): return rc_to_noc0(row, col)
     def stream_type (self, stream_id): return stream_type (stream_id)
     def full_dump_xy(self, x, y): return full_dump_xy(self.id(), x, y)
+    def is_stream_idle (self, regs): return is_stream_idle (regs)
+    def as_noc_0 (self, x, y, noc_id):
+        if noc_id == 0:
+            return (x, y)
+        else:
+            return (self.noc1_to_noc0 (x,y))
+
 
     def read_stream_regs(self, noc0_loc, stream_id):
         return read_stream_regs (self.id(), noc0_loc[0], noc0_loc[1], stream_id)
