@@ -1,6 +1,5 @@
-import util, os
-import device, objects, stream
-
+import tt_util as util, os
+import tt_device, tt_objects, tt_stream
 
 # FIX: Move this to chip.py in t6py
 CHANNEL_TO_DRAM_LOC = [(1, 0), (1, 6), (4, 0), (4, 6), (7, 0), (7, 6), (10, 0), (10, 6)]
@@ -164,7 +163,7 @@ def full_dump_xy(chip_id, x, y):
     for stream_id in range (0, 64):
         print()
         stream = read_stream_regs(chip_id, x, y, stream_id)
-        for reg, value in stream.items():
+        for reg, value in tt_stream.items():
             print(f"Tensix x={x:02d},y={y:02d} => stream {stream_id:02d} {reg} = {value}")
 
     for noc_id in range (0, 2):
@@ -221,53 +220,53 @@ def full_dump_xy(chip_id, x, y):
 
     sig_sel = 0xff
     rd_sel = 0
-    device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    test_val1 = device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c)
+    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    test_val1 = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c)
     rd_sel = 1
-    device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    test_val2 = device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c)
+    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    test_val2 = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c)
 
     rd_sel = 0
     sig_sel = 2*9
-    device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    brisc_pc = device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    brisc_pc = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
 
     # Doesn't work - looks like a bug for selecting inputs > 31 in daisy stop
     # rd_sel = 0
     # sig_sel = 2*16
-    # device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    # nrisc_pc = device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+    # tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    # nrisc_pc = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
 
     rd_sel = 0
     sig_sel = 2*10
-    device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    trisc0_pc = device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    trisc0_pc = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
 
     rd_sel = 0
     sig_sel = 2*11
-    device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    trisc1_pc = device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    trisc1_pc = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
 
     rd_sel = 0
     sig_sel = 2*12
-    device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    trisc2_pc = device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    trisc2_pc = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
 
     # IH: Commented out to reduce chatter
     print()
     print(f"Tensix x={x:02d},y={y:02d} => dbus_test_val1 (expect 7)={test_val1:x}, dbus_test_val2 (expect A5A5A5A5)={test_val2:x}")
     print(f"Tensix x={x:02d},y={y:02d} => brisc_pc=0x{brisc_pc:x}, trisc0_pc=0x{trisc0_pc:x}, trisc1_pc=0x{trisc1_pc:x}, trisc2_pc=0x{trisc2_pc:x}")
 
-    device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, 0)
+    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, 0)
 
 def read_print_noc_reg(chip_id, x, y, noc_id, reg_name, reg_index):
     reg_addr = 0xffb20000 + (noc_id*0x10000) + 0x200 + (reg_index*4)
-    val = device.pci_read_xy(chip_id, x, y, 0, reg_addr)
+    val = tt_device.pci_read_xy(chip_id, x, y, 0, reg_addr)
     print(f"Tensix x={x:02d},y={y:02d} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})")
 
 def get_stream_reg_field(chip_id, x, y, stream_id, reg_index, start_bit, num_bits):
     reg_addr = 0xFFB40000 + (stream_id*0x1000) + (reg_index*4)
-    val = device.pci_read_xy(chip_id, x, y, 0, reg_addr)
+    val = tt_device.pci_read_xy(chip_id, x, y, 0, reg_addr)
     mask = (1 << num_bits) - 1
     val = (val >> start_bit) & mask
     return val
@@ -290,18 +289,18 @@ def is_bad_stream (stream_data):
         (int (stream_data["DEBUG_STATUS[2]"], base=16) & 0x7) == 0x2
 # Used in stream_summary
 def is_gsync_hung (chip, x, y):
-    return device.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0xB0010000
+    return tt_device.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0xB0010000
 # Used in stream_summary
 def is_ncrisc_done (chip, x, y):
-    return device.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0x1FFFFFF1
+    return tt_device.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0x1FFFFFF1
 
 #
 # Device
 #
-class GrayskullDevice (device.Device):
+class GrayskullDevice (tt_device.Device):
     def __init__(self):
         # 1. Load the netlist itself
-        self.yaml_file = objects.YamlFile ("device/grayskull_120_arch.yaml")
+        self.yaml_file = tt_objects.YamlFile ("device/grayskull_120_arch.yaml")
 
     def physical_to_noc (self, phys_x, phys_y, noc_id=0): return physical_to_noc(phys_x, phys_y, noc_id=noc_id)
     def noc_to_physical (self, noc_x, noc_y, noc_id=0): return noc_to_physical(noc_x, noc_y, noc_id=noc_id)
@@ -325,7 +324,7 @@ class GrayskullDevice (device.Device):
         return int(stream_regs['CURR_PHASE']) >> 10
 
     def render (self):
-        return device.Device.render (self)
+        return tt_device.tt_device.render (self)
 
     def noc_to_physical(self, noc_loc, noc_id=0):
         return noc_to_physical (noc_loc[0], noc_loc[1], noc_id=noc_id)

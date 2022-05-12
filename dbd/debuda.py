@@ -10,15 +10,15 @@ import atexit, fnmatch, importlib
 from tabulate import tabulate
 
 # Tenstorrent classes
-import util
-import device, grayskull
-import objects, stream
+import tt_util as util
+import tt_device, tt_grayskull as grayskull
+import tt_objects, tt_stream
 
 parser = argparse.ArgumentParser(description=__doc__ + STUB_HELP)
 parser.add_argument('output_dir', type=str, help='Output directory of a buda run')
 parser.add_argument('--netlist',  type=str, required=True, help='Netlist file to import')
 parser.add_argument('--commands', type=str, required=False, help='Execute a set of commands separated by ;')
-parser.add_argument('--stream-cache', action='store_true', default=False, help=f'If file "{stream.STREAM_CACHE_FILE_NAME}" exists, the stream data will be laoded from it. If the file does not exist, it will be crated and populated with the stream data')
+parser.add_argument('--stream-cache', action='store_true', default=False, help=f'If file "{tt_stream.STREAM_CACHE_FILE_NAME}" exists, the stream data will be loaded from it. If the file does not exist, it will be crated and populated with the stream data')
 parser.add_argument('--debug-debuda-stub', action='store_true', default=False, help=f'Prints all transactions on PCIe. Also, starts debuda-stub with --debug to print transfers.')
 args = parser.parse_args()
 import pprint
@@ -171,8 +171,8 @@ def print_dram_queue_summary (cmd, context, ui_state = None): # graph, chip_arra
                 dram_chan = buffer_data["dram_chan"]
                 dram_addr = buffer_data['dram_addr']
                 dram_loc = grayskull.CHANNEL_TO_DRAM_LOC[dram_chan]
-                rdptr = device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
-                wrptr = device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
+                rdptr = tt_device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
+                wrptr = tt_device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
                 slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
                 queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
                 occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer_data["q_slots"])
@@ -199,8 +199,8 @@ def print_host_queue (cmd, context, ui_state):
             if buffer_data["dram_io_flag_is_remote"] != 0:
                 dram_addr = buffer_data['dram_addr']
                 if dram_addr >> 29 == device_id:
-                    rdptr = device.host_dma_read (dram_addr)
-                    wrptr = device.host_dma_read (dram_addr + 4)
+                    rdptr = tt_device.host_dma_read (dram_addr)
+                    wrptr = tt_device.host_dma_read (dram_addr + 4)
                     slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
                     queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
                     occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer_data["q_slots"])
@@ -246,8 +246,8 @@ def print_epoch_queue_summary (cmd, context, ui_state):
         EPOCH_QUEUE_START_ADDR = reserved_size_bytes
         offset = (16 * x + y) * ((EPOCH_Q_NUM_SLOTS*2+8)*4)
         dram_addr = EPOCH_QUEUE_START_ADDR + offset
-        rdptr = device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
-        wrptr = device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
+        rdptr = tt_device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
+        wrptr = tt_device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
         occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - EPOCH_Q_NUM_SLOTS)
         if occupancy > 0:
             table.append ([ f"{x}-{y}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
@@ -272,7 +272,7 @@ def print_burst_read_xy (device_id, x, y, noc_id, addr, burst_type = 1):
         t_end = time.time() + 1
         print ("Sampling for 1 second...")
         while time.time() < t_end:
-            val = device.pci_read_xy(device_id, x, y, noc_id, addr)
+            val = tt_device.pci_read_xy(device_id, x, y, noc_id, addr)
             if val not in values:
                 values[val] = 0
             values[val] += 1
@@ -280,7 +280,7 @@ def print_burst_read_xy (device_id, x, y, noc_id, addr, burst_type = 1):
             print_a_read(x, y, addr, val, f"- {values[val]} times")
     elif burst_type >= 2:
         for k in range(0, burst_type):
-            val = device.pci_read_xy(device_id, x, y, noc_id, addr + 4*k)
+            val = tt_device.pci_read_xy(device_id, x, y, noc_id, addr + 4*k)
             print_a_read(x,y,addr + 4*k, val)
 
 # Print all commands (help)
@@ -306,7 +306,7 @@ def print_stream_summary (context):
     # Finally check and print stream data
     for device_id, device in enumerate (context.devices):
         print (f"{util.CLR_INFO}Reading and analyzing streams on device %d...{util.CLR_END}" % device_id)
-        streams_ui_data = device.read_all_stream_registers ()
+        streams_ui_data = tt_device.read_all_stream_registers ()
         stream_summary(chip, grayskull.x_coords, grayskull.y_coords, streams_ui_data)
 
 # Prints contents of core's memory
@@ -315,7 +315,7 @@ def dump_memory(chip, x, y, addr, size):
         row = []
         for j in range(0, 16):
             if (addr + k*64 + j* 4 < addr + size):
-                val = device.pci_read_xy(chip, x, y, 0, addr + k*64 + j*4)
+                val = tt_device.pci_read_xy(chip, x, y, 0, addr + k*64 + j*4)
                 row.append(f"0x{val:08x}")
         s = " ".join(row)
         print(f"{x}-{y} 0x{(addr + k*64):08x} => {s}")
@@ -553,13 +553,13 @@ def main(args, context):
                         y = int(cmd[2],0)
                         addr = int(cmd[3],0)
                         if found_command["long"] == "pci-read-xy":
-                            data = device.pci_read_xy (ui_state['current_device_id'], x, y, NOC0, addr)
+                            data = tt_device.pci_read_xy (ui_state['current_device_id'], x, y, NOC0, addr)
                             print_a_read (x, y, addr, data)
                         elif found_command["long"] == "burst-read-xy":
                             burst_type = int(cmd[4],0)
                             print_burst_read_xy (ui_state['current_device_id'], x, y, NOC0, addr, burst_type=burst_type)
                         elif found_command["long"] == "pci-write-xy":
-                            device.pci_write_xy (ui_state['current_device_id'], x, y, NOC0, addr, data = int(cmd[4],0))
+                            tt_device.pci_write_xy (ui_state['current_device_id'], x, y, NOC0, addr, data = int(cmd[4],0))
                         else:
                             print (f"{util.CLR_ERR} Unknown {found_command['long']} {util.CLR_END}")
                     elif found_command["long"] == "full-dump":
@@ -613,13 +613,13 @@ def import_commands (command_metadata_array):
         command_metadata_array.append (command_metadata)
 
 # Initialize communication with the client (debuda-stub)
-device.init_comm_client (args.debug_debuda_stub)
+tt_device.init_comm_client (args.debug_debuda_stub)
 
 # Make sure to terminate communication client (debuda-stub) on exit
-atexit.register (device.terminate_comm_client_callback)
+atexit.register (tt_device.terminate_comm_client_callback)
 
 # Create context
-context = objects.load (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
+context = tt_objects.load (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
 
 # Main function
 sys.exit (main(args, context))

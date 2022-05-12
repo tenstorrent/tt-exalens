@@ -1,6 +1,6 @@
 import sys, yaml, os, re, pickle
 from tabulate import tabulate
-import util, device, stream
+import tt_util as util, tt_device, tt_stream
 
 # this is a pointer to the module object instance itself.
 this = sys.modules[__name__]
@@ -119,7 +119,7 @@ class Graph:
                 phase_id = int (key[6:])
                 for stream_designator, stream_data in val.items():
                     stream_data['phase_id'] = phase_id
-                    s = stream.Stream (stream_designator, stream_data)
+                    s = tt_stream.Stream (stream_designator, stream_data)
                     self.streams[s.id()] = s
             else:
                 raise RuntimeError(f"{blob_yaml.id()}: Cannot interpret {key}: {val}")
@@ -394,6 +394,6 @@ def load (netlist_filepath, run_dirpath):
     this.context.netlist = Netlist(netlist_filepath, run_dirpath)
 
     netlist_devices = this.context.netlist.devices()
-    this.context.devices = [ device.Device.create(netlist_devices['arch']) ] * netlist_devices["count"]
+    this.context.devices = [ tt_device.Device.create(netlist_devices['arch']) ] * netlist_devices["count"]
 
     return this.context

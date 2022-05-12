@@ -1,6 +1,6 @@
 import os, subprocess, time, struct, signal, re, zmq
 from tabulate import tabulate
-import util
+import tt_util as util
 
 #
 # Communication with Buda (or debuda-stub) over sockets (ZMQ).
@@ -75,8 +75,8 @@ class Device:
     def create(arch):
         dev = None
         if arch == "grayskull":
-            import grayskull
-            dev = grayskull.GrayskullDevice()
+            import tt_grayskull
+            dev = tt_grayskull.GrayskullDevice()
         else:
             raise RuntimeError(f"Architecture {arch} not supported yet")
 

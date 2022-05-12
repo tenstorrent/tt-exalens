@@ -1,4 +1,4 @@
-import util, re, os
+import tt_util as util, tt_grayskull, re, os
 
 STREAM_CACHE_FILE_NAME="stream-cache.pkl"
 
@@ -9,20 +9,20 @@ def get_core_stream_summary (chip, x, y):
     for stream_id in range (0, 64):
         val = ""
         # Check if idle
-        regs = grayskull.read_stream_regs (chip, x, y, stream_id)
+        regs = tt_grayskull.read_stream_regs (chip, x, y, stream_id)
         reg_strings = convert_reg_dict_to_strings(chip, regs, x, y, stream_id)
         idle = is_stream_idle (regs)
 
         # Construct the navigation suggestions, and stream idle status
         if regs["REMOTE_SOURCE"] !=0 and 'REMOTE_SRC_X' in regs:
             val += f"RS-{reg_strings['REMOTE_SRC_X']}-{reg_strings['REMOTE_SRC_Y']}-{reg_strings['REMOTE_SRC_STREAM_ID']} "
-            noc0_x, noc0_y = grayskull.convert_to_noc_0 (regs['REMOTE_SRC_X'], regs['REMOTE_SRC_Y'], regs['REMOTE_SRC_UPDATE_NOC'])
+            noc0_x, noc0_y = tt_grayskull.convert_to_noc_0 (regs['REMOTE_SRC_X'], regs['REMOTE_SRC_Y'], regs['REMOTE_SRC_UPDATE_NOC'])
             navigation_suggestions.append (\
                 { 'stream_id' : stream_id, 'type' : 'src', "noc0_x" : noc0_x, "noc0_y" : noc0_y, \
                 'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_SRC_STREAM_ID']}" })
         if regs["REMOTE_RECEIVER"] !=0 and 'REMOTE_DEST_X' in regs:
             val += f"RR-{reg_strings['REMOTE_DEST_X']}-{reg_strings['REMOTE_DEST_Y']}-{reg_strings['REMOTE_DEST_STREAM_ID']} "
-            noc0_x, noc0_y = grayskull.convert_to_noc_0 (regs['REMOTE_DEST_X'], regs['REMOTE_DEST_Y'], regs['OUTGOING_DATA_NOC'])
+            noc0_x, noc0_y = tt_grayskull.convert_to_noc_0 (regs['REMOTE_DEST_X'], regs['REMOTE_DEST_Y'], regs['OUTGOING_DATA_NOC'])
             navigation_suggestions.append (\
                 { 'stream_id' : stream_id, 'type' : 'dest', "noc0_x" : noc0_x, "noc0_y" : noc0_y, \
                 'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_DEST_STREAM_ID']}" })
@@ -122,7 +122,7 @@ def stream_summary(chip, x_coords, y_coords, streams, short=False):
 
 # Prints all information on a stream
 def print_stream (current_chip, x, y, stream_id, current_epoch_id):
-    regs = grayskull.read_stream_regs (current_chip, x, y, stream_id)
+    regs = tt_grayskull.read_stream_regs (current_chip, x, y, stream_id)
     stream_regs = convert_reg_dict_to_strings(current_chip, regs, x, y, stream_id)
     streams_from_blob = get_streams_from_blob (current_chip, x, y, stream_id)
     stream_epoch_id = (regs["CURR_PHASE"] >> 10)
@@ -211,7 +211,7 @@ def get_as_str (fld, val):
     else:
         return f"{val:d}"
 
-# Given a dict returned by grayskull.read_stream_regs, convert to strings (and colorize)
+# Given a dict returned by tt_grayskull.read_stream_regs, convert to strings (and colorize)
 def convert_reg_dict_to_strings(device, regs):
     string_regs = {}
     for k in regs:
