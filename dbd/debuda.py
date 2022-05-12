@@ -152,54 +152,59 @@ def print_pipe_data (cmd, context):
                             print (f"Pipe is also used in epoch {epoch_id}. Details suppressed.")
 
 # Prints information on DRAM queues
-def print_dram_queue_summary_for_graph (graph, chip_array):
-    epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["epoch_id"]
-    chip_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["target_device"]
-    chip = chip_array[chip_id]
-
-    PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]
-
-    print (f"{util.CLR_INFO}DRAM queues for epoch %d{util.CLR_END}" % epoch_id)
+def print_dram_queue_summary (cmd, context, ui_state = None): # graph, chip_array):
+    if ui_state is not None:
+        epoch_id_list = [ ui_state["current_epoch_id"] ]
+    else:
+        epoch_id_list = context.netlist.epoch_ids()
 
     table = []
-    for b in PIPEGEN:
-        if "buffer" in b:
-            buffer=PIPEGEN[b]
-            if buffer["dram_buf_flag"] != 0 or buffer["dram_io_flag"] != 0 and buffer["dram_io_flag_is_remote"] == 0:
-                dram_chan = buffer["dram_chan"]
-                dram_addr = buffer['dram_addr']
+    for epoch_id in epoch_id_list:
+        print (f"{util.CLR_INFO}DRAM queues for epoch %d{util.CLR_END}" % epoch_id)
+        graph_name = context.netlist.epoch_id_to_graph_name (epoch_id)
+        graph = context.netlist.graph(graph_name)
+        device_id = context.netlist.graph_name_to_device_id(graph_name)
+
+        for buffer_id, buffer in graph.buffers.items():
+            buffer_data = buffer.root
+            if buffer_data["dram_buf_flag"] != 0 or buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0:
+                dram_chan = buffer_data["dram_chan"]
+                dram_addr = buffer_data['dram_addr']
                 dram_loc = grayskull.CHANNEL_TO_DRAM_LOC[dram_chan]
-                rdptr = device.pci_read_xy (chip, dram_loc[0], dram_loc[1], 0, dram_addr)
-                wrptr = device.pci_read_xy (chip, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
-                slot_size_bytes = buffer["size_tiles"] * buffer["tile_size"]
-                queue_size_bytes = slot_size_bytes * buffer["q_slots"]
-                occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer["q_slots"])
-                table.append ([ b, buffer["dram_buf_flag"], buffer["dram_io_flag"], dram_chan, f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer["q_slots"], queue_size_bytes ])
+                rdptr = device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
+                wrptr = device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
+                slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
+                queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
+                occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer_data["q_slots"])
+                table.append ([ buffer_id, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], dram_chan, f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
 
     print (tabulate(table, headers=["Buffer name", "dram_buf_flag", "dram_io_flag", "Channel", "Address", "RD ptr", "WR ptr", "Occupancy", "Q slots", "Q Size [bytes]"] ))
 
 # Prints the queues residing in host's memory.
-def print_host_queue_for_graph (graph):
-    epoch_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["epoch_id"]
-    chip_id = GRAPH_NAME_TO_DEVICE_AND_EPOCH_MAP[graph]["target_device"]
-
-    PIPEGEN = EPOCH_TO_PIPEGEN_YAML_MAP[epoch_id]
+def print_host_queue (cmd, context, ui_state):
+    if ui_state is not None:
+        epoch_id_list = [ ui_state["current_epoch_id"] ]
+    else:
+        epoch_id_list = context.netlist.epoch_ids()
 
     table = []
-    for b in PIPEGEN:
-        if "buffer" in b:
-            buffer=PIPEGEN[b]
-            if buffer["dram_io_flag_is_remote"] != 0:
-                # dram_chan = buffer["dram_chan"]
-                dram_addr = buffer['dram_addr']
-                if dram_addr >> 29 == chip_id:
-                    # print (f"{util.CLR_WARN}Found host queue %s{util.CLR_END}" % pp.pformat(buffer))
+    for epoch_id in epoch_id_list:
+        print (f"{util.CLR_INFO}DRAM queues for epoch %d{util.CLR_END}" % epoch_id)
+        graph_name = context.netlist.epoch_id_to_graph_name (epoch_id)
+        graph = context.netlist.graph(graph_name)
+        device_id = context.netlist.graph_name_to_device_id(graph_name)
+
+        for buffer_id, buffer in graph.buffers.items():
+            buffer_data = buffer.root
+            if buffer_data["dram_io_flag_is_remote"] != 0:
+                dram_addr = buffer_data['dram_addr']
+                if dram_addr >> 29 == device_id:
                     rdptr = device.host_dma_read (dram_addr)
                     wrptr = device.host_dma_read (dram_addr + 4)
-                    slot_size_bytes = buffer["size_tiles"] * buffer["tile_size"]
-                    queue_size_bytes = slot_size_bytes * buffer["q_slots"]
-                    occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer["q_slots"])
-                    table.append ([ b, buffer["dram_buf_flag"], buffer["dram_io_flag"], f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer["q_slots"], queue_size_bytes ])
+                    slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
+                    queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
+                    occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer_data["q_slots"])
+                    table.append ([ buffer_id, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
 
     print (f"{util.CLR_INFO}Host queues (where dram_io_flag_is_remote!=0) for epoch %d {util.CLR_END}" % epoch_id)
     if len(table) > 0:
@@ -208,9 +213,15 @@ def print_host_queue_for_graph (graph):
         print ("No host queues found")
 
 # Prints epoch queues
-def print_epoch_queue_summary (chip_array, x_coords, y_coords):
-    dram_chan = 0 # This queue is always in channel 0
-    dram_loc = grayskull.CHANNEL_TO_DRAM_LOC[dram_chan]
+def print_epoch_queue_summary (cmd, context, ui_state):
+    epoch_id = ui_state["current_epoch_id"]
+
+    graph_name = context.netlist.epoch_id_to_graph_name (epoch_id)
+    graph = context.netlist.graph(graph_name)
+    device_id = context.netlist.graph_name_to_device_id(graph_name)
+    epoch_device = context.devices[device_id]
+
+    print (f"{util.CLR_INFO}Epoch queues for epoch %d, device id {device_id}{util.CLR_END}" % epoch_id)
 
     # From tt_epoch_dram_manager::tt_epoch_dram_manager and following the constants
     GridSizeRow = 16
@@ -223,24 +234,30 @@ def print_epoch_queue_summary (chip_array, x_coords, y_coords):
     reserved_size_bytes = DRAM_PERF_SCRATCH_SIZE_BYTES - epoch0_start_table_size_bytes
 
     chip_id = 0
-    for chip in chip_array:
-        table = []
-        print (f"{util.CLR_INFO}Epoch queues for device %d{util.CLR_END}" % chip_id)
-        chip_id += 1
-        for x in y_coords:
-            for y in x_coords:
-                EPOCH_QUEUE_START_ADDR = reserved_size_bytes
-                offset = (16 * x + y) * ((EPOCH_Q_NUM_SLOTS*2+8)*4)
-                dram_addr = EPOCH_QUEUE_START_ADDR + offset
-                rdptr = device.pci_read_xy (chip, dram_loc[0], dram_loc[1], 0, dram_addr)
-                wrptr = device.pci_read_xy (chip, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
-                occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - EPOCH_Q_NUM_SLOTS)
-                if occupancy > 0:
-                    table.append ([ f"{x}-{y}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
+    print (f"{util.CLR_INFO}Epoch queues for device %d{util.CLR_END}" % chip_id)
+    chip_id += 1
+
+    dram_chan = 0 # CHECK: This queue is always in channel 0
+    dram_loc = epoch_device.get_block_locations (block_type = "dram")[dram_chan]
+
+    table=[]
+    for loc in epoch_device.get_block_locations (block_type = "functional_workers"):
+        y, x = loc[0], loc[1] # FIX: This is backwards - check.
+        EPOCH_QUEUE_START_ADDR = reserved_size_bytes
+        offset = (16 * x + y) * ((EPOCH_Q_NUM_SLOTS*2+8)*4)
+        dram_addr = EPOCH_QUEUE_START_ADDR + offset
+        rdptr = device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
+        wrptr = device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
+        occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - EPOCH_Q_NUM_SLOTS)
+        if occupancy > 0:
+            table.append ([ f"{x}-{y}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
+
     if len(table) > 0:
         print (tabulate(table, headers=["Location", "Address", "RD ptr", "WR ptr", "Occupancy" ] ))
     else:
         print ("No epoch queues have occupancy > 0")
+
+    util.WARN ("WIP: This results of this function need to be verified")
 
 # A helper to print the result of a single PCI read
 def print_a_read (x, y, addr, val, comment=""):
@@ -290,7 +307,7 @@ def print_stream_summary (context):
     for device_id, device in enumerate (context.devices):
         print (f"{util.CLR_INFO}Reading and analyzing streams on device %d...{util.CLR_END}" % device_id)
         streams_ui_data = device.read_all_stream_registers ()
-        # stream_summary(chip, grayskull.x_coords, grayskull.y_coords, streams_ui_data)
+        stream_summary(chip, grayskull.x_coords, grayskull.y_coords, streams_ui_data)
 
 # Prints contents of core's memory
 def dump_memory(chip, x, y, addr, size):
@@ -304,38 +321,43 @@ def dump_memory(chip, x, y, addr, size):
         print(f"{x}-{y} 0x{(addr + k*64):08x} => {s}")
 
 # gets information about stream buffer in l1 cache from blob
-def get_l1_buffer_info_from_blob(chip, x, y, stream_id, phase):
-    stream_name = f"chip_{chip}__y_{y}__x_{x}__stream_id_{stream_id}"
-    current_phase = "phase_" + phase
+def get_l1_buffer_info_from_blob(device_id, graph, x, y, stream_id, phase):
     buffer_addr = 0
     msg_size = 0
     buffer_size = 0
-    for element in BLOB:
-        if (element == current_phase):
-            for stream in BLOB[element]:
-                if (stream == stream_name):
-                    if BLOB[element][stream].get("buf_addr"):
-                        buffer_addr = BLOB[element][stream].get("buf_addr")
-                        buffer_size = BLOB[element][stream].get("buf_size")
-                        msg_size =BLOB[element][stream].get("msg_size")
+
+    stream_loc = (device_id, x, y, stream_id, phase)
+    stream = graph.streams[stream_loc]
+
+    if stream.root.get("buf_addr"):
+        buffer_addr = stream.root.get("buf_addr")
+        buffer_size = stream.root.get("buf_size")
+        msg_size =stream.root.get("msg_size")
     return buffer_addr, buffer_size, msg_size
 
 # dumps message in hex format
-def dump_message_xy(chip, x, y, stream_id, message_id):
-    current_phase = str(grayskull.get_stream_reg_field(chip, x, y, stream_id, 11, 0, 20))
-    buffer_addr, buffer_size, msg_size = get_l1_buffer_info_from_blob(chip, x, y, stream_id, current_phase)
+def dump_message_xy(cmd, context, ui_state):
+    message_id = int(cmd[1])
+    device_id = ui_state['current_device_id']
+    epoch_id = ui_state ['current_epoch_id']
+    graph_name = context.netlist.epoch_id_to_graph_name(epoch_id)
+    graph = context.netlist.graph(graph_name)
+    current_device = context.devices[device_id]
+    x, y, stream_id = ui_state['current_x'], ui_state['current_y'], ui_state['current_stream_id']
+    current_phase = current_device.get_stream_phase (x, y, stream_id)
+    buffer_addr, buffer_size, msg_size = get_l1_buffer_info_from_blob(device_id, graph, x, y, stream_id, current_phase)
     print(f"{x}-{y} buffer_addr: 0x{(buffer_addr):08x} buffer_size: 0x{buffer_size:0x} msg_size:{msg_size}")
     if (buffer_addr >0 and buffer_size>0 and msg_size>0) :
         if (message_id> 0 and message_id <= buffer_size/msg_size):
-            dump_memory(chip, x, y, buffer_addr + (message_id - 1) * msg_size, msg_size )
+            dump_memory(device_id, x, y, buffer_addr + (message_id - 1) * msg_size, msg_size )
         else:
             print(f"Message id should be in range (1, {buffer_size//msg_size})")
     else:
         print("Not enough data in blob.yaml")
 
 # Test command for development only
-def test(graph, chip_array, current_x, current_y):
-    return test_traverse_from_inputs (graph, chip_array, current_x, current_y)
+def test_command(cmd, context, ui_state):
+    return 0
 
 # Main
 def main(args, context):
@@ -518,6 +540,8 @@ def main(args, context):
                         pass # Exit is handled in the outter loop
                     elif found_command["long"] == "help":
                         print_available_commands (commands)
+                    elif found_command["long"] == "test":
+                        test_command (cmd, context, ui_state)
                     elif found_command["long"] == "epoch":
                         change_epoch (int(cmd[1]))
                     elif found_command["long"] == "buffer":
@@ -540,20 +564,17 @@ def main(args, context):
                             print (f"{util.CLR_ERR} Unknown {found_command['long']} {util.CLR_END}")
                     elif found_command["long"] == "full-dump":
                         ui_state['current_device'].full_dump_xy(ui_state['current_x'], ui_state['current_y'])
-
                     elif found_command["long"] == "dram-queue":
-                        print_dram_queue_summary_for_graph (ui_state['current_graph_name'], chip_array)
+                        print_dram_queue_summary (cmd, context, ui_state)
                     elif found_command["long"] == "host-queue":
-                        print_host_queue_for_graph (ui_state['current_graph_name'])
+                        print_host_queue (cmd, context, ui_state)
                     elif found_command["long"] == "epoch-queue":
-                        print_epoch_queue_summary(chip_array, grayskull.x_coords, grayskull.y_coords)
+                        print_epoch_queue_summary(cmd, context, ui_state)
                     elif found_command["long"] == "dump-message-xy":
-                        message_id = int(cmd[1])
-                        dump_message_xy(ui_state['current_device_id'], ui_state['current_x'], ui_state['current_y'], ui_state['current_stream_id'], message_id)
-                    elif found_command["long"] == "test":
-                        test (ui_state['current_graph_name'], chip_array, ui_state['current_x'], ui_state['current_y'])
+                        dump_message_xy(cmd, context, ui_state)
+
                     elif found_command["long"] == "stream-summary":
-                        print_stream_summary(context)
+                        print_stream_summary(cmd, context, ui_state)
                     elif found_command["long"] == "stream":
                         ui_state['current_x'], ui_state['current_y'], ui_state['current_stream_id'] = int(cmd[1]), int(cmd[2]), int(cmd[3])
                         navigation_suggestions, stream_epoch_id = print_stream (ui_state['current_device'], ui_state['current_x'], ui_state['current_y'], ui_state['current_stream_id'], ui_state['current_epoch_id'])

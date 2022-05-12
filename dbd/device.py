@@ -109,16 +109,16 @@ class Device:
         return cores
 
     def get_block_locations (self, block_type = "functional_workers"):
-        locs = set ()
+        locs = []
         dev = self.yaml_file.root
-        for loc in dev["functional_workers"]:
+        for loc in dev[block_type]:
             if type(loc) == list:
                 loc = loc[0]
             parsed_loc = re.findall(r'(\d+)-(\d+)', loc)
             parsed_loc = re.findall(r'(\d+)-(\d+)', loc)
             x = int(parsed_loc[0][0])
             y = int(parsed_loc[0][1])
-            locs.add ((x,y))
+            locs.append ((x,y))
         return locs
 
     # Renderer

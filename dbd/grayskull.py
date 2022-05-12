@@ -330,3 +330,7 @@ class GrayskullDevice (device.Device):
     def noc_to_physical(self, noc_loc, noc_id=0):
         return noc_to_physical (noc_loc[0], noc_loc[1], noc_id=noc_id)
 
+    def get_stream_phase (self, x, y, stream_id):
+        return get_stream_reg_field(self.id(), x, y, stream_id, 11, 0, 20)
+
+

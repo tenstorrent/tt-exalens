@@ -321,7 +321,6 @@ class Netlist:
 
         # Cache epoch id, device id and graph names
         self.epoch_id_to_graph_name_map = dict()
-        self.device_id_to_graph_name_map = dict()
         self._epoch_ids = set()
 
         for graph_name in self.graph_names():
@@ -331,7 +330,6 @@ class Netlist:
             target_device = self.graph_name_to_device_id(graph_name)
 
             self.epoch_id_to_graph_name_map[epoch_id] = graph_name
-            self.device_id_to_graph_name_map[target_device] = graph_name
 
         self._epoch_ids = list (self._epoch_ids)
         self._epoch_ids.sort()
@@ -370,8 +368,6 @@ class Netlist:
         return self.graph_to_epoch_map_yaml_file[graph_name]["target_device"] if graph_name in self.graph_to_epoch_map_yaml_file else None
     def epoch_id_to_graph_name (self, epoch_id):
         return self.epoch_id_to_graph_name_map[epoch_id] if epoch_id in self.epoch_id_to_graph_name_map else None
-    def device_id_to_graph_name (self, device_id):
-        return self.device_id_to_graph_name_map[device_id]
     def graph (self, graph_name):
         return self.graphs[graph_name]
     def devices(self):
