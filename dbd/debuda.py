@@ -81,7 +81,7 @@ STATUS_REG = {
         { "reg_val":[0x11111111],                       "description" : "Main loop begin",                                              "mask":0xFFFFFFFF, "ver": 0 },
         { "reg_val":[0xC0000000],                       "description" : "Load queue pointers",                                          "mask":0xFFFFFFFF, "ver": 0 },
         { "reg_val":[0xD0000000],                       "description" : "Which stream id will read queue",                              "mask":0xFFFFF000, "ver": 0 },
-        { "reg_val":[0xD1000000],                       "descritpion" : "Queue has data to read",                                       "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xD1000000],                       "description" : "Queue has data to read",                                       "mask":0xFFFFFFFF, "ver": 0 },
         { "reg_val":[0xD2000000],                       "description" : "Queue has l1 space",                                           "mask":0xFFFFFFFF, "ver": 0 },
         { "reg_val":[0xD3000000],                       "description" : "Queue read in progress",                                       "mask":0xFFFFFFFF, "ver": 0 },
         { "reg_val":[0xE0000000],                       "description" : "Which stream has data in l1 available to push",                "mask":0xFFFFF000, "ver": 0 },
