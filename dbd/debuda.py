@@ -4,15 +4,9 @@ debuda parses the build output files and probes the silicon to determine status 
 """
 STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with bin/build-debuda-stub.sh. It also requires zeromq (sudo apt install -y libzmq3-dev)."
 
-import yaml, sys, os, argparse, time, traceback, re, pickle
-import atexit, fnmatch, importlib
-
+import sys, os, argparse, time, traceback, atexit, fnmatch, importlib
 from tabulate import tabulate
-
-# Tenstorrent classes
-import tt_util as util
-import tt_device, tt_grayskull as grayskull
-import tt_objects, tt_stream
+import tt_util as util, tt_device, tt_grayskull, tt_objects, tt_stream
 
 parser = argparse.ArgumentParser(description=__doc__ + STUB_HELP)
 parser.add_argument('output_dir', type=str, help='Output directory of a buda run')
@@ -24,11 +18,7 @@ args = parser.parse_args()
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
-# Constants
-
-# IDs of NOCs
-NOC0 = 0
-NOC1 = 1
+### BUILT-IN COMMANDS
 
 # Find occurrences of buffer with ID 'buffer_id' across all epochs, and print the structures that reference them
 # Supply ui_state['current_epoch_id']=None, to show details in all epochs
@@ -93,7 +83,7 @@ def print_dram_queue_summary (cmd, context, ui_state = None): # graph, chip_arra
             if buffer_data["dram_buf_flag"] != 0 or buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0:
                 dram_chan = buffer_data["dram_chan"]
                 dram_addr = buffer_data['dram_addr']
-                dram_loc = grayskull.CHANNEL_TO_DRAM_LOC[dram_chan]
+                dram_loc = tt_grayskull.CHANNEL_TO_DRAM_LOC[dram_chan]
                 rdptr = tt_device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
                 wrptr = tt_device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
                 slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
@@ -104,7 +94,7 @@ def print_dram_queue_summary (cmd, context, ui_state = None): # graph, chip_arra
     print (tabulate(table, headers=["Buffer name", "dram_buf_flag", "dram_io_flag", "Channel", "Address", "RD ptr", "WR ptr", "Occupancy", "Q slots", "Q Size [bytes]"] ))
 
 # Prints the queues residing in host's memory.
-def print_host_queue (cmd, context, ui_state):
+def print_host_queue_summary (cmd, context, ui_state):
     if ui_state is not None:
         epoch_id_list = [ ui_state["current_epoch_id"] ]
     else:
@@ -183,13 +173,13 @@ def print_epoch_queue_summary (cmd, context, ui_state):
     util.WARN ("WIP: This results of this function need to be verified")
 
 # A helper to print the result of a single PCI read
-def print_a_read (x, y, addr, val, comment=""):
+def print_a_pci_read (x, y, addr, val, comment=""):
     print(f"{x}-{y} 0x{addr:08x} => 0x{val:08x} ({val:d}) {comment}")
 
 # Perform a burst of PCI reads and print results.
 # If burst_type is 1, read the same location for a second and print a report
 # If burst_type is 2, read an array of locations once and print a report
-def print_burst_read_xy (device_id, x, y, noc_id, addr, burst_type = 1):
+def print_a_pci_burst_read (device_id, x, y, noc_id, addr, burst_type = 1):
     if burst_type == 1:
         values = {}
         t_end = time.time() + 1
@@ -200,11 +190,11 @@ def print_burst_read_xy (device_id, x, y, noc_id, addr, burst_type = 1):
                 values[val] = 0
             values[val] += 1
         for val in values.keys():
-            print_a_read(x, y, addr, val, f"- {values[val]} times")
+            print_a_pci_read(x, y, addr, val, f"- {values[val]} times")
     elif burst_type >= 2:
         for k in range(0, burst_type):
             val = tt_device.pci_read_xy(device_id, x, y, noc_id, addr + 4*k)
-            print_a_read(x,y,addr + 4*k, val)
+            print_a_pci_read(x,y,addr + 4*k, val)
 
 # Print all commands (help)
 def print_available_commands (commands):
@@ -250,7 +240,7 @@ def get_l1_buffer_info_from_blob(device_id, graph, x, y, stream_id, phase):
         msg_size =stream.root.get("msg_size")
     return buffer_addr, buffer_size, msg_size
 
-# dumps message in hex format
+# Prints a tile (message) from a given buffer
 def dump_message_xy(cmd, context, ui_state):
     message_id = int(cmd[1])
     device_id = ui_state['current_device_id']
@@ -270,7 +260,7 @@ def dump_message_xy(cmd, context, ui_state):
     else:
         print("Not enough data in blob.yaml")
 
-# Test command for development only
+# Test command (for development only)
 def test_command(cmd, context, ui_state):
     return 0
 
@@ -396,7 +386,7 @@ def main(args, context):
         have_non_interactive_commands=len(non_interactive_commands) > 0
 
         if ui_state['current_x'] is not None and ui_state['current_y'] is not None and ui_state['current_epoch_id'] is not None:
-            row, col = grayskull.noc0_to_rc (ui_state['current_x'], ui_state['current_y'])
+            row, col = tt_grayskull.noc0_to_rc (ui_state['current_x'], ui_state['current_y'])
             ui_state['current_prompt'] = f"core:{util.CLR_PROMPT}{ui_state['current_x']}-{ui_state['current_y']}{util.CLR_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_END} stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_END} "
 
         try:
@@ -463,13 +453,13 @@ def main(args, context):
                         y = int(cmd[2],0)
                         addr = int(cmd[3],0)
                         if found_command["long"] == "pci-read-xy":
-                            data = tt_device.pci_read_xy (ui_state['current_device_id'], x, y, NOC0, addr)
-                            print_a_read (x, y, addr, data)
+                            data = tt_device.pci_read_xy (ui_state['current_device_id'], x, y, 0, addr)
+                            print_a_pci_read (x, y, addr, data)
                         elif found_command["long"] == "burst-read-xy":
                             burst_type = int(cmd[4],0)
-                            print_burst_read_xy (ui_state['current_device_id'], x, y, NOC0, addr, burst_type=burst_type)
+                            print_a_pci_burst_read (ui_state['current_device_id'], x, y, 0, addr, burst_type=burst_type)
                         elif found_command["long"] == "pci-write-xy":
-                            tt_device.pci_write_xy (ui_state['current_device_id'], x, y, NOC0, addr, data = int(cmd[4],0))
+                            tt_device.pci_write_xy (ui_state['current_device_id'], x, y, 0, addr, data = int(cmd[4],0))
                         else:
                             print (f"{util.CLR_ERR} Unknown {found_command['long']} {util.CLR_END}")
                     elif found_command["long"] == "full-dump":
@@ -477,7 +467,7 @@ def main(args, context):
                     elif found_command["long"] == "dram-queue":
                         print_dram_queue_summary (cmd, context, ui_state)
                     elif found_command["long"] == "host-queue":
-                        print_host_queue (cmd, context, ui_state)
+                        print_host_queue_summary (cmd, context, ui_state)
                     elif found_command["long"] == "epoch-queue":
                         print_epoch_queue_summary(cmd, context, ui_state)
                     elif found_command["long"] == "dump-message-xy":
@@ -516,6 +506,13 @@ def import_commands (command_metadata_array):
         command_metadata["module"] = my_cmd_module
         command_metadata["long"] = my_cmd_module.__name__
         print (f"Importing command '{my_cmd_module.__name__}'")
+
+        # Check command names/shortcuts
+        for cmd in command_metadata_array:
+            if cmd["long"] == command_metadata["long"]:
+                util.FATAL (f"Command {cmd['long']} already exists")
+            if cmd["short"] == command_metadata["short"]:
+                util.FATAL (f"Commands {cmd['long']} and {command_metadata['long']} use the same shortcut: {cmd['short']}")
 
         command_metadata_array.append (command_metadata)
 

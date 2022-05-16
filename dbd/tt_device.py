@@ -47,16 +47,16 @@ def terminate_comm_client_callback ():
 
 # PCI read/write functions. Given a noc0 location and addr, performs a PCI read/write
 # to the given location at the address.
-def pci_read_xy(chip_id, x, y, z, reg_addr):
+def pci_read_xy(chip_id, x, y, noc_id, reg_addr):
     # print (f"Reading {x}-{y} 0x{reg_addr:x}")
     # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
-    ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x02', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), z.to_bytes(1, byteorder='big'), reg_addr, 0))
+    ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x02', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, 0))
     ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
     return ret_val
-def pci_write_xy(chip_id, x, y, z, reg_addr, data):
+def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
     # print (f"Reading {x}-{y} 0x{reg_addr:x}")
     # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
-    ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x04', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), z.to_bytes(1, byteorder='big'), reg_addr, data))
+    ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x04', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, data))
     ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
     assert data == ret_val
 def host_dma_read (dram_addr):
