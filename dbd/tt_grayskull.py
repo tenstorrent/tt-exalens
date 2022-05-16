@@ -278,9 +278,9 @@ def is_stream_active (stream_data):
 # Used in stream_summary
 def is_bad_stream (stream_data):
     return \
-        (int (stream_data["DEBUG_STATUS[1]"], base=16) != 0) or \
-        (int (stream_data["DEBUG_STATUS[2]"], base=16) & 0x7) == 0x4 or \
-        (int (stream_data["DEBUG_STATUS[2]"], base=16) & 0x7) == 0x2
+        (stream_data["DEBUG_STATUS[1]"] != 0) or \
+        (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x4 or \
+        (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x2
 # Used in stream_summary
 def is_gsync_hung (chip, x, y):
     return tt_device.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0xB0010000
@@ -311,6 +311,9 @@ class GrayskullDevice (tt_device.Device):
         else:
             return (self.noc1_to_noc0 (x,y))
 
+    def is_bad_stream(self, regs): return is_bad_stream(regs)
+    def is_gsync_hung(self, x, y): return is_gsync_hung(self.id(), x, y)
+    def is_ncrisc_done(self, x, y): return is_ncrisc_done(self.id(), x, y)
 
     def read_stream_regs(self, noc0_loc, stream_id):
         return read_stream_regs (self.id(), noc0_loc[0], noc0_loc[1], stream_id)
@@ -323,9 +326,6 @@ class GrayskullDevice (tt_device.Device):
 
     def stream_epoch (self, stream_regs):
         return int(stream_regs['CURR_PHASE']) >> 10
-
-    def render (self):
-        return tt_device.tt_device.render (self)
 
     def noc_to_physical(self, noc_loc, noc_id=0):
         return noc_to_physical (noc_loc[0], noc_loc[1], noc_id=noc_id)

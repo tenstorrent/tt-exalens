@@ -121,30 +121,40 @@ class Device:
             locs.append ((x,y))
         return locs
 
-    # Renderer
-    def render (self, options="physical"):
+    # Render and return a string
+    def render (self, options="physical", emphasize_loc_list = set()):
         dev = self.yaml_file.root
         rows = []
         locs = dict()
+        emphasize_loc_list_to_render = set()
+
+        # Convert em\hasize_loc_list from noc0 coordinates to the coord space given by 'options' arg
+        if options=="physical":
+            for loc in emphasize_loc_list:
+                emphasize_loc_list_to_render.add (self.noc_to_physical(loc, noc_id=0))
+        else:
+            emphasize_loc_list_to_render = emphasize_loc_list
 
         block_types = { 'functional_workers' : 'W', 'eth': 'E', 'arc' : 'A', 'dram' : 'D', 'pcie' : 'P', 'router_only' : '.' }
 
+        # Convert the block locations to the coord space given by 'options' arg
         for block_name in block_types:
             for loc in self.get_block_locations (block_name):
                 if options=="physical":
                     loc = self.noc_to_physical(loc, noc_id=0)
                 locs[loc] = block_types[block_name]
 
+        # Render the grid
         x_size = dev['grid']['x_size']
         y_size = dev['grid']['y_size']
 
         for y in range (y_size):
             row = []
             for x in range (x_size):
-                if (x,y) in locs:
-                    row.append (locs[(x,y)])
-                else:
-                    row.append ("")
+                render_str = ""
+                if (x,y) in locs: render_str += locs[(x,y)]
+                if (x,y) in emphasize_loc_list_to_render: render_str += "+"
+                row.append (render_str)
             rows.append (row)
 
         return tabulate(rows, tablefmt='plain')
