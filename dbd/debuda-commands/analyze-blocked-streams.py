@@ -2,7 +2,7 @@
 # It prioritizes the streams that are genuinely blocked, to the ones that are waiting on genuinely 
 # blocked cores.
 from tabulate import tabulate
-import tt_stream, tt_objects, tt_util as util
+import tt_stream, tt_netlist, tt_util as util
 
 command_metadata = {
         "short" : "abs",
@@ -29,7 +29,7 @@ def run(args, context, ui_state = None):
             "cores" : { }
         }
         # 1. Read all stream registers
-        stream_cache = tt_objects.CachedDictFile (tt_stream.STREAM_CACHE_FILE_NAME)
+        stream_cache = tt_netlist.CachedDictFile (tt_stream.STREAM_CACHE_FILE_NAME)
         all_stream_regs = stream_cache.load_cached (device.read_all_stream_registers, "device.read_all_stream_registers ()")
 
         # 2. Check where the programmed streams are

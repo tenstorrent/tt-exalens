@@ -6,7 +6,7 @@ STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with bin/
 
 import sys, os, argparse, time, traceback, atexit, fnmatch, importlib
 from tabulate import tabulate
-import tt_util as util, tt_device, tt_grayskull, tt_objects, tt_stream
+import tt_util as util, tt_device, tt_grayskull, tt_netlist, tt_stream
 
 parser = argparse.ArgumentParser(description=__doc__ + STUB_HELP)
 parser.add_argument('output_dir', type=str, help='Output directory of a buda run')
@@ -518,7 +518,7 @@ tt_device.init_comm_client (args.debug_debuda_stub)
 atexit.register (tt_device.terminate_comm_client_callback)
 
 # Create context
-context = tt_objects.load (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
+context = tt_netlist.load (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
 
 # Main function
 sys.exit (main(args, context))

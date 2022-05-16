@@ -2,11 +2,9 @@ import sys, yaml, os, re, pickle
 from tabulate import tabulate
 import tt_util as util, tt_device, tt_stream
 
-# this is a pointer to the module object instance itself.
+# 'this' is a reference to the module object instance itself.
 this = sys.modules[__name__]
 this.context = None
-
-# Each class should have a to_str function ('single-line', 'extensive')
 
 # Store all data loaded from a yaml file here
 # Other classes constructed from the data in the yaml (netlist, blob, etc) can point to this
@@ -26,6 +24,7 @@ class YamlFile:
     def id(self):
         return self.filepath
 
+# This class allows caching of dictionaries to files.
 class CachedDictFile:
     def __init__ (self, filepath):
         self.filepath = filepath
@@ -48,11 +47,7 @@ class CachedDictFile:
 
         return streams
 
-class Location:
-    # Types: 'core-in-device', 'device-in-cluster', 'stream-in-device'...
-    pass
-
-# Constructed from epoch's pipegen.yaml
+# Constructed from epoch's pipegen.yaml. Contains information about a buffer.
 class Buffer:
     def __init__(self, data):
         data["core_coordinates"] = tuple(data["core_coordinates"])
@@ -67,7 +62,7 @@ class Buffer:
         r = self.root
         return f"{type(self).__name__}: id: {self.id()}, coord: {r['core_coordinates']}"
 
-# Constructed from epoch's pipegen.yaml
+# Constructed from epoch's pipegen.yaml. Contains information about a pipe.
 class Pipe:
     def __init__(self, data):
         self.root = data
@@ -84,6 +79,9 @@ class Pipe:
     def __str__(self):
         return f"{type(self).__name__}: id: {self.id()}, inputs: {self.inputs()}, outputs: {self.outputs()}"
 
+# Class that represents a single graph within a netlist
+# Contains all the information from graph's blob.yaml and pipegen.yaml
+# Provides functions for graph traversal
 class Graph:
     # Some keys do not refer to operations, and we keep them here to be used when parsing
     non_op_keys = set (['target_device', 'input_count'])
@@ -131,15 +129,6 @@ class Graph:
         return self.buffers.get (buffer_id, None)
     def get_pipe (self, pipe_id):
         return self.pipes.get (pipe_id, None)
-
-    # Not used
-    # # Find stream information for a given buffer (from blob.yaml)
-    # def get_stream_for_buffer_id (self, buffer_id):
-    #     for s in self.streams:
-    #         stream_data = s.root
-    #         if "buf_id" in stream_data and stream_data["buf_id"] == buffer_id:
-    #             return s.id()
-    #     return None
 
     # Given a buffer list, find all buffers that are connected (pipegen.yaml)
     # connection can be input/output/inputoutput
@@ -258,29 +247,6 @@ class Graph:
         if (255,255) in fanin_cores_rc: fanin_cores_rc.remove ((255,255)) # Exclude DRAM
         return fanin_cores_rc
 
-
-    # # Test only code
-    # def test_traverse_from_inputs (graph, chip_array, current_x, current_y):
-    #     graph_buffs = get_dram_buffers (graph)
-    #     # print (f"graph_buffs = {graph_buffs}")
-    #     in_buffs = filter_buffers(graph_buffs, "input")
-    #     # print (f"in_buffs = {in_buffs}")
-    #     out_buffs = filter_buffers(graph_buffs, "output")
-    #     # print (f"out_buffs = {out_buffs}")
-
-    #     dest_buffers = get_connected_buffers (in_buffs, "outputs")
-    #     core_coordinates = get_buff_core_coordinates_rc(dest_buffers)
-    #     # print (f"get_buff_core_coordinates_rc: {core_coordinates}")
-    #     core_buffers = get_core_buffers (core_coordinates)
-    #     # print (f"core_buffers: {core_buffers}")
-    #     core_output_buffers = filter_buffers (core_buffers, "output")
-    #     # print (f"core_output_buffers: {core_output_buffers}")
-    #     print_buffer_info (core_output_buffers)
-
-    #     fan_in_set = fan_in_buffer_set(core_output_buffers)
-    #     # print (f"fan_in_buffer_set of {core_output_buffers} are: {fan_in_set}")
-
-
     # Accessors
     def id (self):
         return self.name
@@ -334,6 +300,7 @@ class Graph:
         for stream, s in self.streams.items():
             print (f"{s}")
 
+# Wrapper for Buda run netlist.yaml file
 class Netlist:
     def __init__(self, filepath, rundir):
         # 1. Load the netlist itself
@@ -400,13 +367,14 @@ class Netlist:
     def __str__(self):
         return f"{type(self).__name__}: {self.yaml_file.filepath}. Graphs({len(self.graph_names())}): {' '.join (self.graph_names())}"
 
-
-# All-encompassing structure to pass around
+# All-encompassing structure representing a Buda run context
 class Context:
-    netlist = None
-    devices = None
+    netlist = None # Netlist and related 'static' data (i.e. data stored in files such as blob.yaml, pipegen.yaml)
+    devices = None # A list of objects of class Device used to extract 'dynamic' data (i.e. data read from the devices)
     pass
 
+# Loads all files necessary to debug a single buda run
+# Returns a debug 'context' that contains the loaded information
 def load (netlist_filepath, run_dirpath):
     if (this.context is None):  # This refers to the module
         print (f"Initializing context")
