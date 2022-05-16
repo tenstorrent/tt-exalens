@@ -13,6 +13,7 @@ NOC_0_Y_TO_PHYS_Y = util.reverse_mapping_list (PHYS_Y_TO_NOC_0_Y)
 NOC_1_X_TO_PHYS_X = util.reverse_mapping_list (PHYS_X_TO_NOC_1_X)
 NOC_1_Y_TO_PHYS_Y = util.reverse_mapping_list (PHYS_Y_TO_NOC_1_Y)
 
+# Coordinate conversion functions 
 def physical_to_noc (phys_x, phys_y, noc_id=0):
     if noc_id == 0:
         return (PHYS_X_TO_NOC_0_X[phys_x], PHYS_Y_TO_NOC_0_Y[phys_y])
@@ -25,12 +26,10 @@ def noc_to_physical (noc_x, noc_y, noc_id=0):
     else:
         return (NOC_1_X_TO_PHYS_X[noc_x], NOC_1_Y_TO_PHYS_Y[noc_y])
 
-# Converts NOC0 to NOC1 coords
 def noc0_to_noc1 (noc_x, noc_y):
     phys_x, phys_y = noc_to_physical (noc_x, noc_y, noc_id=0)
     return physical_to_noc (phys_x, phys_y, noc_id=1)
 
-# Converts NOC1 to NOC0 coords
 def noc1_to_noc0 (noc_x, noc_y):
     #print (f"noc_x = {noc_x}  noc_y = {noc_y}")
     phys_x, phys_y = noc_to_physical (noc_x, noc_y, noc_id=1)
@@ -47,18 +46,17 @@ def rc_to_noc0 (row, col):
     noc0_x = col + 1
     return noc0_x, noc0_y
 
-# From src/firmware/riscv/grayskull/stream_io_map.h
-# Kernel operand mapping scheme:
-KERNEL_OPERAND_MAPPING_SCHEME = [
-    { "id_min" : 0,  "id_max" : 7,  "stream_id_min" : 8, "short" : "input", "long" : "(inputs, unpacker-only) => streams 8-15" },
-    { "id_min" : 8,  "id_max" : 15, "stream_id_min" : 16, "short" : "param", "long" : "(params, unpacker-only) => streams 16-23" },
-    { "id_min" : 16, "id_max" : 23, "stream_id_min" : 24, "short" : "output", "long" : "(outputs, packer-only) => streams 24-31" },
-    { "id_min" : 24, "id_max" : 31, "stream_id_min" : 32, "short" : "intermediate", "long" : "(intermediates, packer/unpacker) => streams 32-39" },
-    { "id_min" : 32, "id_max" : 63, "stream_id_min" : 32, "short" : "op-relay", "long" : "(operand relay?) => streams 40-63" }, # CHECK THIS
-]
-
 # Returns a stream type based on KERNEL_OPERAND_MAPPING_SCHEME
 def stream_type (stream_id):
+    # From src/firmware/riscv/grayskull/stream_io_map.h
+    # Kernel operand mapping scheme:
+    KERNEL_OPERAND_MAPPING_SCHEME = [
+        { "id_min" : 0,  "id_max" : 7,  "stream_id_min" : 8, "short" : "input", "long" : "(inputs, unpacker-only) => streams 8-15" },
+        { "id_min" : 8,  "id_max" : 15, "stream_id_min" : 16, "short" : "param", "long" : "(params, unpacker-only) => streams 16-23" },
+        { "id_min" : 16, "id_max" : 23, "stream_id_min" : 24, "short" : "output", "long" : "(outputs, packer-only) => streams 24-31" },
+        { "id_min" : 24, "id_max" : 31, "stream_id_min" : 32, "short" : "intermediate", "long" : "(intermediates, packer/unpacker) => streams 32-39" },
+        { "id_min" : 32, "id_max" : 63, "stream_id_min" : 32, "short" : "op-relay", "long" : "(operand relay?) => streams 40-63" }, # CHECK THIS
+    ]
     for ko in KERNEL_OPERAND_MAPPING_SCHEME:
         s_id_min = ko["stream_id_min"]
         s_id_count = ko["id_max"] - ko["id_min"]
@@ -150,9 +148,7 @@ def read_stream_regs(chip, x, y, stream_id):
 
     return reg
 
-# x_coords = list (range (1, 13))
-# y_coords = list (range (1, 6)) + list (range (7, 12))
-
+# Function to print a full dump of a location x-y
 def full_dump_xy(chip_id, x, y):
     for stream_id in range (0, 64):
         print()
@@ -253,11 +249,13 @@ def full_dump_xy(chip_id, x, y):
 
     tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, 0)
 
+# Reads and immediately prints a value of a given NOC register
 def read_print_noc_reg(chip_id, x, y, noc_id, reg_name, reg_index):
     reg_addr = 0xffb20000 + (noc_id*0x10000) + 0x200 + (reg_index*4)
     val = tt_device.pci_read_xy(chip_id, x, y, 0, reg_addr)
     print(f"Tensix x={x:02d},y={y:02d} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})")
 
+# Extracts and returns a single field of a stream register
 def get_stream_reg_field(chip_id, x, y, stream_id, reg_index, start_bit, num_bits):
     reg_addr = 0xFFB40000 + (stream_id*0x1000) + (reg_index*4)
     val = tt_device.pci_read_xy(chip_id, x, y, 0, reg_addr)
@@ -265,26 +263,22 @@ def get_stream_reg_field(chip_id, x, y, stream_id, reg_index, start_bit, num_bit
     val = (val >> start_bit) & mask
     return val
 
-# This is shown in the 'Non-idle streams' column in stream view
+# Returns whether the stream is configured
 def is_stream_configured(stream_data):
     # FIX: Ask Djordje for correct way of doing this 
     return int(stream_data['CURR_PHASE']) > 0 and (int(stream_data['CURR_PHASE_NUM_MSGS_REMAINING']) > 0 or int(stream_data['NUM_MSGS_RECEIVED']))
 
 def is_stream_idle(stream_data):
     return (stream_data["DEBUG_STATUS[7]"] & 0xfff) == 0xc00
-# Used to show "Not idle" in stream_summary
 def is_stream_active (stream_data):
     return int (stream_data["CURR_PHASE"]) != 0 and int (stream_data["NUM_MSGS_RECEIVED"]) > 0
-# Used in stream_summary
 def is_bad_stream (stream_data):
     return \
         (stream_data["DEBUG_STATUS[1]"] != 0) or \
         (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x4 or \
         (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x2
-# Used in stream_summary
 def is_gsync_hung (chip, x, y):
     return tt_device.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0xB0010000
-# Used in stream_summary
 def is_ncrisc_done (chip, x, y):
     return tt_device.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0x1FFFFFF1
 
