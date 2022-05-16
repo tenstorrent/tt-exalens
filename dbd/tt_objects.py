@@ -305,6 +305,26 @@ class Graph:
     def __str__(self):
         return f"{type(self).__name__}: {self.name}: Op count: {len (self.root.keys()) - len(Graph.non_op_keys)}, Input count: {self.input_count()}"
 
+
+    # Returns an array of [r,c] pairs for the operation
+    def get_op_coords (self, op_name):
+        locations = []
+        op = self.root[op_name]
+        opr = op['grid_loc'][0]
+        opc = op['grid_loc'][1]
+        for r in range(op['grid_size'][1]):
+            for c in range(op['grid_size'][0]):
+                locations.append ( [ opr + r, opc + c ] )
+        return locations
+
+    # Returns the op name mapped to a given RC location
+    def core_coord_to_op_name (self, r, c):
+        for op_name, op in self.root.items():
+            if op_name not in ['target_device', 'input_count']:
+                op_locations = self.get_op_coords(op_name)
+                if [ r, c ] in op_locations:
+                    return f"{self.name}/{op_name}:{op['type']}"
+
     # Test
     def _test_print(self):
         for bname, b in self.buffers.items():

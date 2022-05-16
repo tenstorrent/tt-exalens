@@ -98,11 +98,12 @@ def run(args, context, ui_state = None):
             fan_in_cores_noc0 = [ device.rc_to_noc0 (rc[0], rc[1]) for rc in fan_in_cores_rc ]
             device_data[device_id]["cores"][active_core_noc0]["fan_in_cores"] = fan_in_cores_noc0
 
-        # 3. Print the output
+        # 3. Print the summary of blocked streams
         last_core_loc = None
 
         for block_loc in device.get_block_locations (block_type = "functional_workers"):
             x, y = block_loc[0], block_loc[1]
+            r, c = device.noc0_to_rc (x, y)
             has_active_stream = device_data[device_id]["cores"][block_loc]["has_active_stream"]
             has_empty_inputs = device_data[device_id]["cores"][block_loc]["has_empty_inputs"]
             if has_active_stream:
@@ -115,7 +116,8 @@ def run(args, context, ui_state = None):
                         stream_active = device.is_stream_active(all_stream_regs[stream_loc])
                         NUM_MSGS_RECEIVED = int(all_stream_regs[stream_loc]['NUM_MSGS_RECEIVED'])
                         CURR_PHASE_NUM_MSGS_REMAINING = int(all_stream_regs[stream_loc]['CURR_PHASE_NUM_MSGS_REMAINING'])
-                        op = "N/A" # graph.core_coord_to_op_name(graph_name, x, y)
+
+                        op = graph.core_coord_to_op_name(r, c)
                         core_loc = f"{x}-{y}"
                         fan_in_cores = device_data[device_id]['cores'][block_loc]['fan_in_cores']
                         fan_in_cores_str = ""
@@ -128,7 +130,7 @@ def run(args, context, ui_state = None):
                         last_core_loc = core_loc
                         rows.append (row)
 
-        # 4. Print issues
+        # 4. Print any issues
         if len (issues_sets["bad_stream"]) > 0:
             print ("Bad streams:")
             for loc in issues_sets["bad_stream"]:

@@ -30,27 +30,6 @@ pp = pprint.PrettyPrinter(indent=4)
 NOC0 = 0
 NOC1 = 1
 
-# Returns an array of [r,c] pairs for the operation
-def get_op_coords (op):
-    locations = []
-    opr = op['grid_loc'][0]
-    opc = op['grid_loc'][1]
-    for r in range(op['grid_size'][1]):
-        for c in range(op['grid_size'][0]):
-            locations.append ( [ opr + r, opc + c ] )
-    return locations
-
-# Returns the op name mapped to a given NOC location
-def core_coord_to_op_name (graph_name, noc0_x, noc0_y):
-    r, c = grayskull.noc0_to_rc (noc0_x, noc0_y)
-    graph = NETLIST["graphs"][graph_name]
-    for op_name in graph.keys():
-        if op_name not in ['target_device', 'input_count']:
-            op = graph[op_name]
-            op_locations = get_op_coords(op)
-            if [ r, c ] in op_locations:
-                return f"{graph_name}/{op_name}:{op['type']}"
-
 # Find occurrences of buffer with ID 'buffer_id' across all epochs, and print the structures that reference them
 # Supply ui_state['current_epoch_id']=None, to show details in all epochs
 def print_buffer_data (cmd, context):
@@ -244,14 +223,6 @@ def print_navigation_suggestions (navigation_suggestions):
         for i in range (len(navigation_suggestions)):
             rows.append ([ f"{i}", f"{navigation_suggestions[i]['description']}", f"{navigation_suggestions[i]['cmd']}" ])
         print(tabulate(rows, headers=[ "#", "Description", "Command" ]))
-
-# Prints all streams for all chips given by chip_array
-def print_stream_summary (context):
-    # Finally check and print stream data
-    for device_id, device in enumerate (context.devices):
-        print (f"{util.CLR_INFO}Reading and analyzing streams on device %d...{util.CLR_END}" % device_id)
-        streams_ui_data = tt_device.read_all_stream_registers ()
-        stream_summary(chip, grayskull.x_coords, grayskull.y_coords, streams_ui_data)
 
 # Prints contents of core's memory
 def dump_memory(chip, x, y, addr, size):
@@ -511,9 +482,6 @@ def main(args, context):
                         print_epoch_queue_summary(cmd, context, ui_state)
                     elif found_command["long"] == "dump-message-xy":
                         dump_message_xy(cmd, context, ui_state)
-
-                    elif found_command["long"] == "stream-summary":
-                        print_stream_summary(cmd, context, ui_state)
                     elif found_command["long"] == "stream":
                         ui_state['current_x'], ui_state['current_y'], ui_state['current_stream_id'] = int(cmd[1]), int(cmd[2]), int(cmd[3])
                         navigation_suggestions, stream_epoch_id = print_stream (ui_state['current_device'], ui_state['current_x'], ui_state['current_y'], ui_state['current_stream_id'], ui_state['current_epoch_id'])
