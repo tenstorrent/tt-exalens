@@ -344,11 +344,6 @@ def main(args, context):
           "expected_argument_count" : 0,
           "arguments_description" : ": performs a full dump at current x-y"
         },
-        { "long" : "stream-summary",
-          "short" : "ss",
-          "expected_argument_count" : 0,
-          "arguments_description" : " : reads and analyzes all streams"
-        },
         {
           "long" : "test",
           "short" : "t",

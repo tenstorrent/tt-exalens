@@ -28,6 +28,7 @@ CLR_WARN = CLR_ORANGE
 CLR_INFO = CLR_BLUE
 CLR_PROMPT = CLR_GREEN
 
+# Colorized messages
 def DEBUG(s):
     print (f"{CLR_END}{s}{CLR_END}")
 def INFO(s):
@@ -40,7 +41,7 @@ def FATAL(s):
     ERROR (s)
     sys.exit (1)
 
-# Given a list l, returns a map that returns an index given the value of an element
+# Given a list l of possibly shuffled integers from 0 to len(l), the function returns reverse mapping
 def reverse_mapping_list(l):
     ret = [0] * len(l)
     for idx, val in enumerate(l):

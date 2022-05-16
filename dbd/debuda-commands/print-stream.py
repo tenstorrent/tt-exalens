@@ -6,16 +6,6 @@ command_metadata = {
 
 import tt_stream, tt_util as util
 
-# Returns blob data where all values get converted to strings
-def blob_data_to_string (blb_data):
-    ret_val = {}
-    for k in blb_data:
-        try:
-            ret_val[k] = get_as_str(k, blb_data[k])
-        except:
-            ret_val[k] = blb_data[k] # get_as_str(k, blb_data[k])
-    return ret_val
-
 # Prints all information on a stream
 def run(args, context, ui_state = None):
     x, y, stream_id = int(args[1]), int(args[2]), int(args[3])
