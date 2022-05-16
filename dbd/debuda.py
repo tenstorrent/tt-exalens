@@ -68,6 +68,7 @@ def reverse_mapping_list(l):
 # From src/firmware/riscv/grayskull/stream_io_map.h
 # Kernel operand mapping scheme:
 KERNEL_OPERAND_MAPPING_SCHEME = [
+    { "id_min" : 0,  "id_max" : 7,  "stream_id_min" : 0, "short" : "??", "long" : "????? => streams 0-7" }, # FIX THIS
     { "id_min" : 0,  "id_max" : 7,  "stream_id_min" : 8, "short" : "input", "long" : "(inputs, unpacker-only) => streams 8-15" },
     { "id_min" : 8,  "id_max" : 15, "stream_id_min" : 16, "short" : "param", "long" : "(params, unpacker-only) => streams 16-23" },
     { "id_min" : 16, "id_max" : 23, "stream_id_min" : 24, "short" : "output", "long" : "(outputs, packer-only) => streams 24-31" },
@@ -81,7 +82,7 @@ STATUS_REG = {
         { "reg_val":[0x11111111],                       "description" : "Main loop begin",                                              "mask":0xFFFFFFFF, "ver": 0 },
         { "reg_val":[0xC0000000],                       "description" : "Load queue pointers",                                          "mask":0xFFFFFFFF, "ver": 0 },
         { "reg_val":[0xD0000000],                       "description" : "Which stream id will read queue",                              "mask":0xFFFFF000, "ver": 0 },
-        { "reg_val":[0xD1000000],                       "descritpion" : "Queue has data to read",                                       "mask":0xFFFFFFFF, "ver": 0 },
+        { "reg_val":[0xD1000000],                       "description" : "Queue has data to read",                                       "mask":0xFFFFFFFF, "ver": 0 },
         { "reg_val":[0xD2000000],                       "description" : "Queue has l1 space",                                           "mask":0xFFFFFFFF, "ver": 0 },
         { "reg_val":[0xD3000000],                       "description" : "Queue read in progress",                                       "mask":0xFFFFFFFF, "ver": 0 },
         { "reg_val":[0xE0000000],                       "description" : "Which stream has data in l1 available to push",                "mask":0xFFFFF000, "ver": 0 },
@@ -1398,6 +1399,7 @@ def analyze_blocked_streams (graph, chip_array, current_x, current_y):
                         active_streams[(i, x, y, stream_id)] = streams
                     current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
                     if current_phase > 0: # Must be configured
+                        print(stream_id)
                         stream_type = stream_id_descriptor(stream_id)["short"]
                         NUM_MSGS_RECEIVED = int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED'])
                         if stream_type == "input" and NUM_MSGS_RECEIVED == 0:
