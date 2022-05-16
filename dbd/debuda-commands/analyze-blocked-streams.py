@@ -140,7 +140,7 @@ def run(args, context, ui_state = None):
             for loc in issues_sets["gsync_hung"]:
                 print(f"{loc[0]}-{loc[1]}", end = ' ')
             print()
-        if all_streams_done and (issues_sets["ncrisc_not_done"]) > 0:
+        if all_streams_done and len(issues_sets["ncrisc_not_done"]) > 0:
             print ("NCrisc not done (+):")
             print (device.render (emphasize_loc_list = issues_sets["ncrisc_not_done"]))
             print()
