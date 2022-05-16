@@ -33,7 +33,7 @@ def run(args, context, ui_state = None):
         all_stream_regs = stream_cache.load_cached (device.read_all_stream_registers, "device.read_all_stream_registers ()")
 
         # 2. Check where the programmed streams are
-        programmed_streams = device.get_programmed_stream_locations(all_stream_regs)
+        programmed_streams = device.get_configured_stream_locations(all_stream_regs)
 
         # Find epochs for each stream
         epochs = { device.stream_epoch (stream_regs) for loc, stream_regs in all_stream_regs.items() if loc in programmed_streams }

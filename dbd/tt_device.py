@@ -72,6 +72,7 @@ class Device:
     # Class variable denoting the number of devices created
     num_devices = 0
 
+    # Class method to create a Device object given device architecture
     def create(arch):
         dev = None
         if arch == "grayskull":
@@ -81,6 +82,7 @@ class Device:
             raise RuntimeError(f"Architecture {arch} not supported yet")
 
         dev._id = Device.num_devices
+        dev.arch = arch
         Device.num_devices+=1
         return dev
 
@@ -101,13 +103,15 @@ class Device:
                 streams[loc + (stream_id,)] = regs
         return streams
 
-    def get_programmed_stream_locations(self, all_stream_regs):
-        cores = set ()
+    # Returns core locations of cores that have programmed stream registers
+    def get_configured_stream_locations(self, all_stream_regs):
+        core_locations = []
         for loc, stream_regs in all_stream_regs.items():
             if self.is_stream_configured(stream_regs):
-                cores.add (loc)
-        return cores
+                core_locations.append (loc)
+        return core_locations
 
+    #  Returns locations of all blocks of a given type
     def get_block_locations (self, block_type = "functional_workers"):
         locs = []
         dev = self.yaml_file.root
@@ -121,7 +125,8 @@ class Device:
             locs.append ((x,y))
         return locs
 
-    # Render and return a string
+    # Returns a string representation of the device. When printed, the string will
+    # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list
     def render (self, options="physical", emphasize_loc_list = set()):
         dev = self.yaml_file.root
         rows = []
