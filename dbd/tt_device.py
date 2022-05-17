@@ -75,7 +75,7 @@ class Device:
     # Class method to create a Device object given device architecture
     def create(arch):
         dev = None
-        if arch == "grayskull":
+        if arch.lower() == "grayskull":
             import tt_grayskull
             dev = tt_grayskull.GrayskullDevice()
         else:

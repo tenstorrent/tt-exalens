@@ -75,13 +75,17 @@ def get_core_stream_summary (device, x, y):
             noc0_x, noc0_y = device.as_noc_0 (regs['REMOTE_SRC_X'], regs['REMOTE_SRC_Y'], regs['REMOTE_SRC_UPDATE_NOC'])
             navigation_suggestions.append (\
                 { 'description': 'Go to source',
-                  'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_SRC_STREAM_ID']}" })
+                  'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_SRC_STREAM_ID']}",
+                  'loc' : (noc0_x, noc0_y)
+                })
         if regs["REMOTE_RECEIVER"] !=0 and 'REMOTE_DEST_X' in regs:
             val += f"RR-{reg_strings['REMOTE_DEST_X']}-{reg_strings['REMOTE_DEST_Y']}-{reg_strings['REMOTE_DEST_STREAM_ID']} "
             noc0_x, noc0_y = device.as_noc_0 (regs['REMOTE_DEST_X'], regs['REMOTE_DEST_Y'], regs['OUTGOING_DATA_NOC'])
             navigation_suggestions.append (\
                 { 'description': 'Go to destination',
-                'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_DEST_STREAM_ID']}" })
+                  'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_DEST_STREAM_ID']}",
+                  'loc' : (noc0_x, noc0_y)
+                })
         if regs["LOCAL_SOURCES_CONNECTED"]!=0:
             val += "LSC "
 
