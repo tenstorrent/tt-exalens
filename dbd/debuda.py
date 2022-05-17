@@ -1399,7 +1399,6 @@ def analyze_blocked_streams (graph, chip_array, current_x, current_y):
                         active_streams[(i, x, y, stream_id)] = streams
                     current_phase = int(streams[x][y][stream_id]['CURR_PHASE'])
                     if current_phase > 0: # Must be configured
-                        print(stream_id)
                         stream_type = stream_id_descriptor(stream_id)["short"]
                         NUM_MSGS_RECEIVED = int(streams[x][y][stream_id]['NUM_MSGS_RECEIVED'])
                         if stream_type == "input" and NUM_MSGS_RECEIVED == 0:

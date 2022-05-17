@@ -11,7 +11,7 @@ else
 fi
 
 echo Running op_tests/test_op ...
-./build/test/verif/op_tests/test_op --outdir debuda_test --netlist verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml --seed 0 --silicon --timeout 500 > $TMP_OUT_FILE
+./build/test/verif/op_tests/test_op --outdir debuda_test --netlist verif/op_tests/netlists/netlist_unary_op.yaml --seed 0 --silicon --timeout 500 > $TMP_OUT_FILE
 if [ $? -ne 0 ]; then
     echo Error in running ./build/test/verif/op_tests/test_op
     exit 1
