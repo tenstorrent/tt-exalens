@@ -93,7 +93,7 @@ def print_dram_queue_summary (cmd, context, ui_state = None): # graph, chip_arra
                 occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer_data["q_slots"])
                 table.append ([ buffer_id, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], dram_chan, f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
 
-    print (tabulate(table, headers=["Buffer name", "dram_buf_flag", "dram_io_flag", "Channel", "Address", "RD ptr", "WR ptr", "Occupancy", "Q slots", "Q Size [bytes]"] ))
+    print (tabulate(table, headers=["Buffer ID", "dram_buf_flag", "dram_io_flag", "Channel", "Address", "RD ptr", "WR ptr", "Occupancy", "Q slots", "Q Size [bytes]"] ))
 
 # Prints the queues residing in host's memory.
 def print_host_queue_summary (cmd, context, ui_state):
