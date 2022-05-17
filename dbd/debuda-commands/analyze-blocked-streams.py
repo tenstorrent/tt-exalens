@@ -7,7 +7,7 @@ import tt_stream, tt_netlist, tt_util as util
 command_metadata = {
         "short" : "abs",
         "expected_argument_count" : 0,
-        "arguments_description" : ": draws a mini map of the current epoch"
+        "arguments_description" : ": reads stream information from the devices and highlights blocked streams"
     }
 
 def run(args, context, ui_state = None):
