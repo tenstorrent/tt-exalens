@@ -32,7 +32,7 @@ The implementation consists of two parts: the client (debuda.py) and the debug s
 Install dependencies:
 ```
 sudo apt update && sudo apt install -y libzmq3-dev
-pip install pyzmq tabulate
+pip install pyzmq tabulate prompt_toolkit
 ```
 
 Run something on the device (for example):

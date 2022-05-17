@@ -26,7 +26,9 @@ CLR_END = '\033[0m'
 CLR_ERR = CLR_RED
 CLR_WARN = CLR_ORANGE
 CLR_INFO = CLR_BLUE
-CLR_PROMPT = CLR_GREEN
+
+CLR_PROMPT = "<style color='red'>"
+CLR_PROMPT_END = "</style>"
 
 # Colorized messages
 def DEBUG(s):

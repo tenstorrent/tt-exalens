@@ -7,6 +7,8 @@ STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with bin/
 import sys, os, argparse, time, traceback, atexit, fnmatch, importlib
 from tabulate import tabulate
 import tt_util as util, tt_device, tt_grayskull, tt_netlist, tt_stream
+from prompt_toolkit import PromptSession
+from prompt_toolkit.formatted_text import HTML
 
 parser = argparse.ArgumentParser(description=__doc__ + STUB_HELP)
 parser.add_argument('output_dir', type=str, help='Output directory of a buda run')
@@ -250,7 +252,11 @@ def dump_message_xy(cmd, context, ui_state):
     current_device = context.devices[device_id]
     x, y, stream_id = ui_state['current_x'], ui_state['current_y'], ui_state['current_stream_id']
     current_phase = current_device.get_stream_phase (x, y, stream_id)
-    buffer_addr, buffer_size, msg_size = get_l1_buffer_info_from_blob(device_id, graph, x, y, stream_id, current_phase)
+    try:
+        buffer_addr, buffer_size, msg_size = get_l1_buffer_info_from_blob(device_id, graph, x, y, stream_id, current_phase)
+    except:
+        print (f"{util.CLR_RED}No information{util.CLR_END}")
+        return
     print(f"{x}-{y} buffer_addr: 0x{(buffer_addr):08x} buffer_size: 0x{buffer_size:0x} msg_size:{msg_size}")
     if (buffer_addr >0 and buffer_size>0 and msg_size>0) :
         if (message_id> 0 and message_id <= buffer_size/msg_size):
@@ -267,6 +273,9 @@ def test_command(cmd, context, ui_state):
 # Main
 def main(args, context):
     cmd_raw = ""
+
+    # Create prompt object.
+    prompt_session = PromptSession()
 
     # Init commands
     commands = [
@@ -382,7 +391,7 @@ def main(args, context):
 
         if ui_state['current_x'] is not None and ui_state['current_y'] is not None and ui_state['current_epoch_id'] is not None:
             row, col = tt_grayskull.noc0_to_rc (ui_state['current_x'], ui_state['current_y'])
-            ui_state['current_prompt'] = f"core:{util.CLR_PROMPT}{ui_state['current_x']}-{ui_state['current_y']}{util.CLR_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_END} stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_END} "
+            ui_state['current_prompt'] = f"core:{util.CLR_PROMPT}{ui_state['current_x']}-{ui_state['current_y']}{util.CLR_PROMPT_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_PROMPT_END} stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_PROMPT_END} "
 
         try:
             ui_state['current_graph_name'] = context.netlist.epoch_id_to_graph_name(ui_state['current_epoch_id'])
@@ -397,10 +406,10 @@ def main(args, context):
                     continue
                 non_interactive_commands=non_interactive_commands[1:]
                 if len(cmd_raw)>0:
-                    print (f"{util.CLR_INFO}Executing command: %s{util.CLR_END}" % cmd_raw)
+                    print (f"{util.CLR_INFO}Executing command: %s{util.CLR_PROMPT_END}" % cmd_raw)
             else:
-                prompt = f"Current epoch:{util.CLR_PROMPT}{ui_state['current_epoch_id']}{util.CLR_END}({ui_state['current_graph_name']}) device:{util.CLR_PROMPT}{ui_state['current_device_id']}{util.CLR_END} {ui_state['current_prompt']}> "
-                cmd_raw = input(prompt)
+                my_prompt = f"Current epoch:{util.CLR_PROMPT}{ui_state['current_epoch_id']}{util.CLR_PROMPT_END}({ui_state['current_graph_name']}) device:{util.CLR_PROMPT}{ui_state['current_device_id']}{util.CLR_PROMPT_END} {ui_state['current_prompt']}> "
+                cmd_raw = prompt_session.prompt(HTML(my_prompt))
 
             try: # To get a a command from the speed dial
                 cmd_int = int(cmd_raw)
