@@ -1,9 +1,10 @@
 import tt_util as util, os
 import tt_device, tt_netlist, tt_stream
 
-# FIX: Move this to chip.py in t6py
+# Some of this can be read from architecture yaml file
 CHANNEL_TO_DRAM_LOC = [(1, 0), (1, 6), (4, 0), (4, 6), (7, 0), (7, 6), (10, 0), (10, 6)]
 
+# Physical locaction mapping
 PHYS_X_TO_NOC_0_X = [ 0, 12, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6 ]
 PHYS_Y_TO_NOC_0_Y = [ 0, 11, 1, 10, 2, 9,  3, 8, 4, 7, 5, 6 ]
 PHYS_X_TO_NOC_1_X = [ 12, 0, 11, 1, 10, 2, 9, 3, 8, 4, 7, 5, 6 ]
@@ -13,7 +14,7 @@ NOC_0_Y_TO_PHYS_Y = util.reverse_mapping_list (PHYS_Y_TO_NOC_0_Y)
 NOC_1_X_TO_PHYS_X = util.reverse_mapping_list (PHYS_X_TO_NOC_1_X)
 NOC_1_Y_TO_PHYS_Y = util.reverse_mapping_list (PHYS_Y_TO_NOC_1_Y)
 
-# Coordinate conversion functions 
+# Coordinate conversion functions
 def physical_to_noc (phys_x, phys_y, noc_id=0):
     if noc_id == 0:
         return (PHYS_X_TO_NOC_0_X[phys_x], PHYS_Y_TO_NOC_0_Y[phys_y])
@@ -35,7 +36,7 @@ def noc1_to_noc0 (noc_x, noc_y):
     phys_x, phys_y = noc_to_physical (noc_x, noc_y, noc_id=1)
     return physical_to_noc (phys_x, phys_y, noc_id=0)
 
-# FIX: Check if this is correct
+# TODO: Check if this is correct
 def noc0_to_rc (noc0_x, noc0_y):
     row = noc0_y - 1
     col = noc0_x - 1
@@ -392,5 +393,3 @@ class GrayskullDevice (tt_device.Device):
     def status_register_summary(self, addr, ver = 0):
         coords = self.get_block_locations ()
         return status_register_summary(self.id(), coords, addr, ver)
-
-
