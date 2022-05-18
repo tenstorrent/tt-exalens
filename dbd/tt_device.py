@@ -36,7 +36,7 @@ def init_comm_client (debug_debuda_stub):
     ZMQ_SOCKET.send(struct.pack ("c", b'\x01')) # PING
     reply = ZMQ_SOCKET.recv_string()
     if "PONG" not in reply:
-        print (f"Expected PONG but received {reply}") # Shoud print PONG
+        print (f"Expected PONG but received {reply}") # Should print PONG
 
     time.sleep (0.1)
 
@@ -133,7 +133,7 @@ class Device:
         locs = dict()
         emphasize_loc_list_to_render = set()
 
-        # Convert em\hasize_loc_list from noc0 coordinates to the coord space given by 'options' arg
+        # Convert emphasize_loc_list from noc0 coordinates to the coord space given by 'options' arg
         if options=="physical":
             for loc in emphasize_loc_list:
                 emphasize_loc_list_to_render.add (self.noc_to_physical(loc, noc_id=0))

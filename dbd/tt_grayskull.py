@@ -51,6 +51,7 @@ def stream_type (stream_id):
     # From src/firmware/riscv/grayskull/stream_io_map.h
     # Kernel operand mapping scheme:
     KERNEL_OPERAND_MAPPING_SCHEME = [
+        { "id_min" : 0,  "id_max" : 7,  "stream_id_min" : 0, "short" : "??", "long" : "????? => streams 0-7" }, # FIX THIS
         { "id_min" : 0,  "id_max" : 7,  "stream_id_min" : 8, "short" : "input", "long" : "(inputs, unpacker-only) => streams 8-15" },
         { "id_min" : 8,  "id_max" : 15, "stream_id_min" : 16, "short" : "param", "long" : "(params, unpacker-only) => streams 16-23" },
         { "id_min" : 16, "id_max" : 23, "stream_id_min" : 24, "short" : "output", "long" : "(outputs, packer-only) => streams 24-31" },

@@ -143,9 +143,9 @@ def print_epoch_queue_summary (cmd, context, ui_state):
     GridSizeCol = 16
     EPOCH_Q_NUM_SLOTS = 32
     epoch0_start_table_size_bytes = GridSizeRow*GridSizeCol*(EPOCH_Q_NUM_SLOTS*2+8)*4
-    DRAM_CHANNEL_CAPACITY_BYTES  = 1024 * 1024 * 1024
+    # DRAM_CHANNEL_CAPACITY_BYTES  = 1024 * 1024 * 1024
     DRAM_PERF_SCRATCH_SIZE_BYTES =   40 * 1024 * 1024
-    DRAM_HOST_MMIO_SIZE_BYTES    =  256 * 1024 * 1024
+    # DRAM_HOST_MMIO_SIZE_BYTES    =  256 * 1024 * 1024
     reserved_size_bytes = DRAM_PERF_SCRATCH_SIZE_BYTES - epoch0_start_table_size_bytes
 
     chip_id = 0
@@ -441,7 +441,7 @@ def main(args, context):
                     pass
                 else:
                     if found_command["long"] == "exit":
-                        pass # Exit is handled in the outter loop
+                        pass # Exit is handled in the outer loop
                     elif found_command["long"] == "help":
                         print_available_commands (commands)
                     elif found_command["long"] == "test":
@@ -476,12 +476,6 @@ def main(args, context):
                         print_epoch_queue_summary(cmd, context, ui_state)
                     elif found_command["long"] == "dump-message-xy":
                         dump_message_xy(cmd, context, ui_state)
-                    elif found_command["long"] == "stream":
-                        ui_state['current_x'], ui_state['current_y'], ui_state['current_stream_id'] = int(cmd[1]), int(cmd[2]), int(cmd[3])
-                        navigation_suggestions, stream_epoch_id = print_stream (ui_state['current_device'], ui_state['current_x'], ui_state['current_y'], ui_state['current_stream_id'], ui_state['current_epoch_id'])
-                        if stream_epoch_id != ui_state['current_epoch_id'] and stream_epoch_id >=0:
-                            print (f"{util.CLR_WARN}Automatically switching to epoch {stream_epoch_id}{util.CLR_END}")
-                            change_epoch (stream_epoch_id)
                     else:
                         navigation_suggestions = found_command["module"].run(cmd, context, ui_state)
 
@@ -494,7 +488,7 @@ def main(args, context):
                 raise
     return 0
 
-# Import any 'plugin' comands from debuda-commands directory
+# Import any 'plugin' commands from debuda-commands directory
 def import_commands (command_metadata_array):
     command_files = []
     for root, dirnames, filenames in os.walk(util.application_path () + '/debuda-commands'):

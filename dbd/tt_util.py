@@ -27,7 +27,7 @@ CLR_ERR = CLR_RED
 CLR_WARN = CLR_ORANGE
 CLR_INFO = CLR_BLUE
 
-CLR_PROMPT = "<style color='red'>"
+CLR_PROMPT = "<style color='green'>"
 CLR_PROMPT_END = "</style>"
 
 # Colorized messages
@@ -92,11 +92,3 @@ def print_columnar_dicts (dict_array, title_array):
         titles += [ "" ]
 
     print (tabulate(final_table, headers=titles))
-
-# Get path of this script. 'frozen' means: packaged with pyinstaller.
-def application_path ():
-    if getattr(sys, 'frozen', False):
-        application_path = os.path.dirname(sys.executable)
-    elif __file__:
-        application_path = os.path.dirname(__file__)
-    return os.path.abspath (application_path)
