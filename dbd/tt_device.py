@@ -64,6 +64,13 @@ def host_dma_read (dram_addr):
     ZMQ_SOCKET.send(struct.pack ("cccccI", b'\x03', b'\x00', b'\x00', b'\x00', b'\x00', dram_addr))
     ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
     return ret_val
+def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
+    # print (f"Reading {x}-{y} 0x{reg_addr:x}")
+    # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x05', chip_id, x, y, z, reg_addr, data_format<<16 + message_size))
+    data = data_format * 2**16 + msg_size
+    ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x05', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), z.to_bytes(1, byteorder='big'), reg_addr, data))
+    ret = ZMQ_SOCKET.recv()
+    return ret
 
 # Prints contents of core's memory
 def dump_memory(device_id, x, y, addr, size):
@@ -75,6 +82,11 @@ def dump_memory(device_id, x, y, addr, size):
                 row.append(f"0x{val:08x}")
         s = " ".join(row)
         print(f"{x}-{y} 0x{(addr + k*64):08x} => {s}")
+
+# Dumps tile in format received form tt_tile::get_string
+def dump_tile(chip, x, y, addr, size, data_format):
+    s = pci_read_tile(chip, x, y, 0, addr, size, data_format)
+    print(s.decode("utf-8"))
 
 #
 # Device class: generic constructs for talking to devices
@@ -177,7 +189,8 @@ class Device:
 
     def dump_memory(self, x, y, addr, size):
         return dump_memory(self.id(), x, y, addr, size)
-
+    def dump_tile(self, x, y, addr, size, data_format):
+        return dump_tile(self.id(), x, y, addr, size, data_format)
 
     def __str__(self):
         return self.render()

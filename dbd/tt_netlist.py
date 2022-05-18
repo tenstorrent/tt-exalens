@@ -47,16 +47,41 @@ class CachedDictFile:
 
         return streams
 
+# converts data format to string
+def get_data_format_from_string(str):
+    data_format = {}
+    data_format["Float32"]   = 0
+    data_format["Float16"]   = 1
+    data_format["Bfp8"]      = 2
+    data_format["Bfp4"]      = 3
+    data_format["Bfp2"]      = 11
+    data_format["Float16_b"] = 5
+    data_format["Bfp8_b"]    = 6
+    data_format["Bfp4_b"]    = 7
+    data_format["Bfp2_b"]    = 15
+    data_format["Lf8"]       = 10
+    data_format["UInt16"]    = 12
+    data_format["Int8"]      = 14
+    data_format["Tf32"]      = 4
+    if str in data_format:
+        return data_format[str]
+    return None
+
 # Constructed from epoch's pipegen.yaml. Contains information about a buffer.
 class Buffer:
     def __init__(self, data):
         data["core_coordinates"] = tuple(data["core_coordinates"])
         self.root = data
+        self.input_of_pipe_ids = set ()
+        self.output_of_pipe_ids = set ()
 
     # Accessors
     def id (self):
         return self.root['uniqid']
-
+    def is_op_input (self):
+        return len(self.output_of_pipe_ids) > 0
+    def is_op_output (self):
+        return len(self.input_of_pipe_ids) > 0
     # Renderer
     def __str__(self):
         r = self.root
@@ -103,6 +128,12 @@ class Graph:
             elif "pipe" in key:
                 p = Pipe(val)
                 self.pipes[p.id()] = p
+
+                # Link buffers to pipes
+                for buf_id in p.inputs():
+                    self.buffers[buf_id].input_of_pipe_ids.add (p.id())
+                for buf_id in p.outputs():
+                    self.buffers[buf_id].output_of_pipe_ids.add (p.id())
             else:
                 raise RuntimeError(f"{pipegen_yaml.id()}: Cannot interpret {key}: {val}")
 
@@ -129,6 +160,8 @@ class Graph:
         return self.buffers.get (buffer_id, None)
     def get_pipe (self, pipe_id):
         return self.pipes.get (pipe_id, None)
+    def get_stream (self, stream_loc):
+        return self.streams.get (stream_loc, None)
 
     # Given a buffer list, find all buffers that are connected (pipegen.yaml)
     # connection can be input/output/inputoutput
@@ -271,7 +304,6 @@ class Graph:
     def __str__(self):
         return f"{type(self).__name__}: {self.name}: Op count: {len (self.root.keys()) - len(Graph.non_op_keys)}, Input count: {self.input_count()}"
 
-
     # Returns an array of [r,c] pairs for the operation
     def get_op_coords (self, op_name):
         locations = []
@@ -283,13 +315,20 @@ class Graph:
                 locations.append ( [ opr + r, opc + c ] )
         return locations
 
+    # Returns the full op name mapped to a given RC location
+    # The name format is graph/op_name:op_type
+    def core_coord_to_full_op_name (self, r, c):
+        op_name = self.core_coord_to_op_name(r, c)
+        op = self.root[op_name]
+        return f"{self.name}/{op_name}:{op['type']}"
+
     # Returns the op name mapped to a given RC location
     def core_coord_to_op_name (self, r, c):
         for op_name, op in self.root.items():
             if op_name not in ['target_device', 'input_count']:
                 op_locations = self.get_op_coords(op_name)
                 if [ r, c ] in op_locations:
-                    return f"{self.name}/{op_name}:{op['type']}"
+                    return op_name
 
     # Test
     def _test_print(self):

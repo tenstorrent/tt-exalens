@@ -35,7 +35,7 @@ def run(args, context, ui_state = None):
     for n in navigation_suggestions:
         loc = n['loc']
         loc_rc = current_device.noc0_to_rc(loc[0], loc[1])
-        op_name = graph.core_coord_to_op_name (loc_rc[0], loc_rc[1])
+        op_name = graph.core_coord_to_full_op_name (loc_rc[0], loc_rc[1])
         n['description'] += f" ({op_name})"
 
     # 2. Find blob data

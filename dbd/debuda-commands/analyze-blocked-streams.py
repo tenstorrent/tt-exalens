@@ -117,7 +117,7 @@ def run(args, context, ui_state = None):
                         NUM_MSGS_RECEIVED = int(all_stream_regs[stream_loc]['NUM_MSGS_RECEIVED'])
                         CURR_PHASE_NUM_MSGS_REMAINING = int(all_stream_regs[stream_loc]['CURR_PHASE_NUM_MSGS_REMAINING'])
 
-                        op = graph.core_coord_to_op_name(r, c)
+                        op = graph.core_coord_to_full_op_name(r, c)
                         core_loc = f"{x}-{y}"
                         fan_in_cores = device_data[device_id]['cores'][block_loc]['fan_in_cores']
                         fan_in_cores_str = ""

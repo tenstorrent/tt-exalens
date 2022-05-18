@@ -98,6 +98,7 @@ def get_core_stream_summary (device, x, y):
 #
 # Stream Class
 #
+# ID (device_id, x, y, stream_id, phase)
 class Stream:
     # Return (chip_id, noc0_X, noc0_Y, stream_id) given a designator from blob.yaml
     def get_stream_tuple_from_designator (designator):
@@ -115,6 +116,8 @@ class Stream:
     # Accessors
     def id (self):
         return self._id
+    def get_buffer_id (self):
+        return self.root["buf_id"]
 
     # Renderer
     def __str__(self):
