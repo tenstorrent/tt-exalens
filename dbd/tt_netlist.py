@@ -319,8 +319,11 @@ class Graph:
     # The name format is graph/op_name:op_type
     def core_coord_to_full_op_name (self, r, c):
         op_name = self.core_coord_to_op_name(r, c)
+        if op_name is not None:
         op = self.root[op_name]
         return f"{self.name}/{op_name}:{op['type']}"
+        else:
+            return f"No op at {r},{c}"
 
     # Returns the op name mapped to a given RC location
     def core_coord_to_op_name (self, r, c):
@@ -329,6 +332,7 @@ class Graph:
                 op_locations = self.get_op_coords(op_name)
                 if [ r, c ] in op_locations:
                     return op_name
+        return None
 
     # Test
     def _test_print(self):
