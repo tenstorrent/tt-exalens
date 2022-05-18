@@ -28,7 +28,7 @@ def get_l1_buffer_info_from_blob(device_id, graph, x, y, stream_id, phase):
 
 # Prints a tile (message) from a given buffer
 def dump_message_xy(context, ui_state, tile_id, raw):
-    is_tile = raw != 0
+    is_tile = raw == 0
     device_id = ui_state['current_device_id']
     epoch_id = ui_state ['current_epoch_id']
     graph_name = context.netlist.epoch_id_to_graph_name(epoch_id)
@@ -45,7 +45,7 @@ def dump_message_xy(context, ui_state, tile_id, raw):
     if (buffer_addr >0 and buffer_size>0 and msg_size>0) :
         if (tile_id> 0 and tile_id <= buffer_size/msg_size):
             msg_addr = buffer_addr + (tile_id - 1) * msg_size
-            if (is_tile):
+            if is_tile:
                 # 1. Get the op name through coordinates.
                 stream_loc = (device_id, x, y, stream_id, current_phase)
                 stream = graph.get_stream (stream_loc)
