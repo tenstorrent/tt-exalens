@@ -328,8 +328,8 @@ class Graph:
     def core_coord_to_full_op_name (self, r, c):
         op_name = self.core_coord_to_op_name(r, c)
         if op_name is not None:
-        op = self.root[op_name]
-        return f"{self.name}/{op_name}:{op['type']}"
+            op = self.root[op_name]
+            return f"{self.name}/{op_name}:{op['type']}"
         else:
             return f"No op at {r},{c}"
 
