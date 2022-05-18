@@ -2,8 +2,6 @@
 """
 debuda parses the build output files and probes the silicon to determine status of a buda run.
 """
-STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with bin/build-debuda-stub.sh. It also requires zeromq (sudo apt install -y libzmq3-dev)."
-
 import yaml, sys, os, struct, argparse, time, traceback, subprocess, signal, re, pickle
 import atexit, fnmatch, importlib
 from tabulate import tabulate

@@ -1,6 +1,7 @@
 import os, subprocess, time, struct, signal, re, zmq
 from tabulate import tabulate
 import tt_util as util
+STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with bin/build-debuda-stub.sh. It also requires zeromq (sudo apt install -y libzmq3-dev)."
 
 #
 # Communication with Buda (or debuda-stub) over sockets (ZMQ).

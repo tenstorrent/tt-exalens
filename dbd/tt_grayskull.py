@@ -4,7 +4,7 @@ import tt_device, tt_netlist, tt_stream
 # Some of this can be read from architecture yaml file
 CHANNEL_TO_DRAM_LOC = [(1, 0), (1, 6), (4, 0), (4, 6), (7, 0), (7, 6), (10, 0), (10, 6)]
 
-# Physical locaction mapping
+# Physical location mapping
 PHYS_X_TO_NOC_0_X = [ 0, 12, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6 ]
 PHYS_Y_TO_NOC_0_Y = [ 0, 11, 1, 10, 2, 9,  3, 8, 4, 7, 5, 6 ]
 PHYS_X_TO_NOC_1_X = [ 12, 0, 11, 1, 10, 2, 9, 3, 8, 4, 7, 5, 6 ]

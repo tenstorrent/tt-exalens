@@ -2,15 +2,13 @@
 """
 debuda parses the build output files and probes the silicon to determine status of a buda run.
 """
-STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with bin/build-debuda-stub.sh. It also requires zeromq (sudo apt install -y libzmq3-dev)."
-
 import sys, os, argparse, time, traceback, atexit, fnmatch, importlib
 from tabulate import tabulate
 import tt_util as util, tt_device, tt_grayskull, tt_netlist, tt_stream
 from prompt_toolkit import PromptSession
 from prompt_toolkit.formatted_text import HTML
 
-parser = argparse.ArgumentParser(description=__doc__ + STUB_HELP)
+parser = argparse.ArgumentParser(description=__doc__ + tt_device.STUB_HELP)
 parser.add_argument('output_dir', type=str, help='Output directory of a buda run')
 parser.add_argument('--netlist',  type=str, required=True, help='Netlist file to import')
 parser.add_argument('--commands', type=str, required=False, help='Execute a set of commands separated by ;')
@@ -244,12 +242,6 @@ def main(args, context):
           "expected_argument_count" : 1,
           "arguments_description" : "epoch_id : switch to epoch epoch_id"
         },
-        {
-          "long" : "dump-message-xy",
-          "short" : "m",
-          "expected_argument_count" : 1,
-          "arguments_description" : "message_id: prints message for current stream in currently active phase"
-        },
         { "long" : "buffer",
           "short" : "b",
           "expected_argument_count" : 1,
@@ -424,8 +416,6 @@ def main(args, context):
                         print_host_queue_summary (cmd, context, ui_state)
                     elif found_command["long"] == "epoch-queue":
                         print_epoch_queue_summary(cmd, context, ui_state)
-                    elif found_command["long"] == "dump-message-xy":
-                        dump_message_xy(cmd, context, ui_state)
                     else:
                         navigation_suggestions = found_command["module"].run(cmd, context, ui_state)
 
