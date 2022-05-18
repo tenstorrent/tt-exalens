@@ -2,7 +2,7 @@
 # It prioritizes the streams that are genuinely blocked, to the ones that are waiting on genuinely 
 # blocked cores.
 from tabulate import tabulate
-import tt_stream, tt_netlist, tt_util as util
+import tt_util as util
 
 command_metadata = {
         "short" : "srs",

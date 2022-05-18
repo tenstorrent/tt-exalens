@@ -216,56 +216,6 @@ def print_navigation_suggestions (navigation_suggestions):
             rows.append ([ f"{i}", f"{navigation_suggestions[i]['description']}", f"{navigation_suggestions[i]['cmd']}" ])
         print(tabulate(rows, headers=[ "#", "Description", "Command" ]))
 
-# Prints contents of core's memory
-def dump_memory(chip, x, y, addr, size):
-    for k in range(0, size//4//16 + 1):
-        row = []
-        for j in range(0, 16):
-            if (addr + k*64 + j* 4 < addr + size):
-                val = tt_device.pci_read_xy(chip, x, y, 0, addr + k*64 + j*4)
-                row.append(f"0x{val:08x}")
-        s = " ".join(row)
-        print(f"{x}-{y} 0x{(addr + k*64):08x} => {s}")
-
-# gets information about stream buffer in l1 cache from blob
-def get_l1_buffer_info_from_blob(device_id, graph, x, y, stream_id, phase):
-    buffer_addr = 0
-    msg_size = 0
-    buffer_size = 0
-
-    stream_loc = (device_id, x, y, stream_id, phase)
-    stream = graph.streams[stream_loc]
-
-    if stream.root.get("buf_addr"):
-        buffer_addr = stream.root.get("buf_addr")
-        buffer_size = stream.root.get("buf_size")
-        msg_size =stream.root.get("msg_size")
-    return buffer_addr, buffer_size, msg_size
-
-# Prints a tile (message) from a given buffer
-def dump_message_xy(cmd, context, ui_state):
-    message_id = int(cmd[1])
-    device_id = ui_state['current_device_id']
-    epoch_id = ui_state ['current_epoch_id']
-    graph_name = context.netlist.epoch_id_to_graph_name(epoch_id)
-    graph = context.netlist.graph(graph_name)
-    current_device = context.devices[device_id]
-    x, y, stream_id = ui_state['current_x'], ui_state['current_y'], ui_state['current_stream_id']
-    current_phase = current_device.get_stream_phase (x, y, stream_id)
-    try:
-        buffer_addr, buffer_size, msg_size = get_l1_buffer_info_from_blob(device_id, graph, x, y, stream_id, current_phase)
-    except:
-        print (f"{util.CLR_RED}No information{util.CLR_END}")
-        return
-    print(f"{x}-{y} buffer_addr: 0x{(buffer_addr):08x} buffer_size: 0x{buffer_size:0x} msg_size:{msg_size}")
-    if (buffer_addr >0 and buffer_size>0 and msg_size>0) :
-        if (message_id> 0 and message_id <= buffer_size/msg_size):
-            dump_memory(device_id, x, y, buffer_addr + (message_id - 1) * msg_size, msg_size )
-        else:
-            print(f"Message id should be in range (1, {buffer_size//msg_size})")
-    else:
-        print("Not enough data in blob.yaml")
-
 # Test command (for development only)
 def test_command(cmd, context, ui_state):
     return 0
@@ -355,7 +305,7 @@ def main(args, context):
         },
         {
           "long" : "test",
-          "short" : "t",
+          "short" : "test",
           "expected_argument_count" : 0,
           "arguments_description" : ": test for development"
         }

@@ -65,6 +65,17 @@ def host_dma_read (dram_addr):
     ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
     return ret_val
 
+# Prints contents of core's memory
+def dump_memory(device_id, x, y, addr, size):
+    for k in range(0, size//4//16 + 1):
+        row = []
+        for j in range(0, 16):
+            if (addr + k*64 + j* 4 < addr + size):
+                val = pci_read_xy(device_id, x, y, 0, addr + k*64 + j*4)
+                row.append(f"0x{val:08x}")
+        s = " ".join(row)
+        print(f"{x}-{y} 0x{(addr + k*64):08x} => {s}")
+
 #
 # Device class: generic constructs for talking to devices
 #
@@ -163,6 +174,10 @@ class Device:
             rows.append (row)
 
         return tabulate(rows, tablefmt='plain')
+
+    def dump_memory(self, x, y, addr, size):
+        return dump_memory(self.id(), x, y, addr, size)
+
 
     def __str__(self):
         return self.render()
