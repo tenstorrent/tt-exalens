@@ -406,7 +406,7 @@ def main(args, context):
                     continue
                 non_interactive_commands=non_interactive_commands[1:]
                 if len(cmd_raw)>0:
-                    print (f"{util.CLR_INFO}Executing command: %s{util.CLR_PROMPT_END}" % cmd_raw)
+                    print (f"{util.CLR_INFO}Executing command: %s{util.CLR_END}" % cmd_raw)
             else:
                 my_prompt = f"Current epoch:{util.CLR_PROMPT}{ui_state['current_epoch_id']}{util.CLR_PROMPT_END}({ui_state['current_graph_name']}) device:{util.CLR_PROMPT}{ui_state['current_device_id']}{util.CLR_PROMPT_END} {ui_state['current_prompt']}> "
                 cmd_raw = prompt_session.prompt(HTML(my_prompt))

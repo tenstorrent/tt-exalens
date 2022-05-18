@@ -283,6 +283,65 @@ def is_gsync_hung (chip, x, y):
 def is_ncrisc_done (chip, x, y):
     return tt_device.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0x1FFFFFF1
 
+NCRISC_STATUS_REG_ADDR=0xFFB2010C
+BRISC_STATUS_REG_ADDR=0xFFB3010C
+
+def get_status_register_desc(register_address, reg_value_on_chip):
+    STATUS_REG = {
+        NCRISC_STATUS_REG_ADDR : [ #ncrisc
+            { "reg_val":[0xA8300000,0xA8200000,0xA8100000], "description" : "Prologue queue header load",                                   "mask":0xFFFFF000, "ver": 0 },
+            { "reg_val":[0x11111111],                       "description" : "Main loop begin",                                              "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xC0000000],                       "description" : "Load queue pointers",                                          "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xD0000000],                       "description" : "Which stream id will read queue",                              "mask":0xFFFFF000, "ver": 0 },
+            { "reg_val":[0xD1000000],                       "description" : "Queue has data to read",                                       "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xD2000000],                       "description" : "Queue has l1 space",                                           "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xD3000000],                       "description" : "Queue read in progress",                                       "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xE0000000],                       "description" : "Which stream has data in l1 available to push",                "mask":0xFFFFF000, "ver": 0 },
+            { "reg_val":[0xE1000000],                       "description" : "Push in progress",                                             "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xF0000000],                       "description" : "Which stream will write queue",                                "mask":0xFFFFF000, "ver": 0 },
+            { "reg_val":[0xF0300000],                       "description" : "Waiting for stride to be ready before updating wr pointer",    "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xF1000000],                       "description" : "Needs to write data to dram",                                  "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xF2000000],                       "description" : "Ready to write data to dram",                                  "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xF3000000],                       "description" : "Has data to write to dram",                                    "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xF4000000],                       "description" : "Writing to dram",                                              "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0x20000000],                       "description" : "Amount of written tiles that needs to be cleared",             "mask":0xFFFFF000, "ver": 0 },
+            { "reg_val":[0x22222222,0x33333333,0x44444444], "description" : "Epilogue",                                                     "mask":0xFFFFFFFF, "ver": 1 },
+            { "reg_val":[0x10000006,0x10000001],            "description" : "Waiting for next epoch",                                       "mask":0xFFFFFFFF, "ver": 1 },
+        ],
+        BRISC_STATUS_REG_ADDR : [ #brisc
+            { "reg_val":[0xB0000000],                       "description" : "Stream restart check",                                         "mask":0xFFFFF000, "ver": 0 },
+            { "reg_val":[0xC0000000],                       "description" : "Check whether unpack stream has data",                         "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xD0000000],                       "description" : "Clear unpack stream",                                          "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xE0000000],                       "description" : "Check and push pack stream that has data (TM ops only)",       "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xF0000000],                       "description" : "Reset intermediate streams",                                   "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0xF1000000],                       "description" : "Wait until all streams are idle",                              "mask":0xFFFFFFFF, "ver": 0 },
+            { "reg_val":[0x21000000],                       "description" : "Waiting for next epoch",                                       "mask":0xFFFFF000, "ver": 1 },
+            { "reg_val":[0x10000001],                       "description" : "Waiting for next epoch",                                       "mask":0xFFFFFFFF, "ver": 1 },
+        ]
+    }
+
+    if register_address in STATUS_REG:
+        reg_value_desc_list = STATUS_REG[register_address]
+        for reg_value_desc in reg_value_desc_list:
+            mask = reg_value_desc["mask"]
+            for reg_val_in_desc in reg_value_desc["reg_val"]:
+                if (reg_value_on_chip & mask == reg_val_in_desc):
+                    return [reg_value_on_chip, reg_value_desc["description"], reg_value_desc["ver"]]
+        return [reg_value_on_chip, "", 2]
+    return []
+
+def status_register_summary(device_id, coords, addr, ver = 0):
+    status_descs = {}
+    for loc in coords:
+        status_descs[loc] = get_status_register_desc(addr, tt_device.pci_read_xy(device_id, loc[0], loc[1], 0, addr))
+
+    # Print register status
+    status_descs_rows = []
+    for loc in coords:
+        if status_descs[loc] and status_descs[loc][2] <= ver:
+            status_descs_rows.append([f"{loc[0]:d}-{loc[1]:d}",f"{status_descs[loc][0]:08x}", f"{status_descs[loc][1]}"]);
+    return status_descs_rows
+
 #
 # Device
 #
@@ -327,5 +386,11 @@ class GrayskullDevice (tt_device.Device):
 
     def get_stream_phase (self, x, y, stream_id):
         return get_stream_reg_field(self.id(), x, y, stream_id, 11, 0, 20)
+
+    NCRISC_STATUS_REG_ADDR=NCRISC_STATUS_REG_ADDR
+    BRISC_STATUS_REG_ADDR=BRISC_STATUS_REG_ADDR
+    def status_register_summary(self, addr, ver = 0):
+        coords = self.get_block_locations ()
+        return status_register_summary(self.id(), coords, addr, ver)
 
 
