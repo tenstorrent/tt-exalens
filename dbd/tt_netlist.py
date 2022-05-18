@@ -128,14 +128,22 @@ class Graph:
             elif "pipe" in key:
                 p = Pipe(val)
                 self.pipes[p.id()] = p
-
-                # Link buffers to pipes
-                for buf_id in p.inputs():
-                    self.buffers[buf_id].input_of_pipe_ids.add (p.id())
-                for buf_id in p.outputs():
-                    self.buffers[buf_id].output_of_pipe_ids.add (p.id())
             else:
                 raise RuntimeError(f"{pipegen_yaml.id()}: Cannot interpret {key}: {val}")
+
+        # 1a. Link buffers to pipes
+        for _, p in self.pipes.items():
+                for buf_id in p.inputs():
+                if buf_id not in self.buffers:
+                    util.ERROR (f"Buffer {buf_id} is not in graph {self.name}")
+                else:
+                    self.buffers[buf_id].input_of_pipe_ids.add (p.id())
+
+                for buf_id in p.outputs():
+                if buf_id not in self.buffers:
+                    util.ERROR (f"Buffer {buf_id} is not in graph {self.name}")
+                else:
+                    self.buffers[buf_id].output_of_pipe_ids.add (p.id())
 
         # 2. Load blob_yaml
         self.streams = dict()
