@@ -18,6 +18,8 @@ def run(args, context, ui_state = None):
     new_current_epoch_id = stream_epoch_id
 
     all_stream_summary, navigation_suggestions = tt_stream.get_core_stream_summary (current_device, x, y)
+
+    # Initialize with the summary of all streams within the core (if any)
     data_columns = [ all_stream_summary ] if len(all_stream_summary) > 0 else []
     title_columns = [ f"{util.CLR_WARN}Non-idle streams{util.CLR_END}" ] if len(all_stream_summary) > 0 else []
 
