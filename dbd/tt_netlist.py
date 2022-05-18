@@ -133,13 +133,13 @@ class Graph:
 
         # 1a. Link buffers to pipes
         for _, p in self.pipes.items():
-                for buf_id in p.inputs():
+            for buf_id in p.inputs():
                 if buf_id not in self.buffers:
                     util.ERROR (f"Buffer {buf_id} is not in graph {self.name}")
                 else:
                     self.buffers[buf_id].input_of_pipe_ids.add (p.id())
 
-                for buf_id in p.outputs():
+            for buf_id in p.outputs():
                 if buf_id not in self.buffers:
                     util.ERROR (f"Buffer {buf_id} is not in graph {self.name}")
                 else:
