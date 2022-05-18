@@ -68,4 +68,8 @@ def run(args, context, ui_state = None):
 
     # 4. TODO: Print forks
 
+    # Update the current UI state
+    ui_state["current_x"] = x
+    ui_state["current_y"] = y
+    ui_state["current_stream_id"] = stream_id
     return navigation_suggestions
