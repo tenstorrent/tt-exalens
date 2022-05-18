@@ -128,14 +128,22 @@ class Graph:
             elif "pipe" in key:
                 p = Pipe(val)
                 self.pipes[p.id()] = p
-
-                # Link buffers to pipes
-                for buf_id in p.inputs():
-                    self.buffers[buf_id].input_of_pipe_ids.add (p.id())
-                for buf_id in p.outputs():
-                    self.buffers[buf_id].output_of_pipe_ids.add (p.id())
             else:
                 raise RuntimeError(f"{pipegen_yaml.id()}: Cannot interpret {key}: {val}")
+
+        # 1a. Link buffers to pipes
+        for _, p in self.pipes.items():
+            for buf_id in p.inputs():
+                if buf_id not in self.buffers:
+                    util.ERROR (f"Buffer {buf_id} is not in graph {self.name}")
+                else:
+                    self.buffers[buf_id].input_of_pipe_ids.add (p.id())
+
+            for buf_id in p.outputs():
+                if buf_id not in self.buffers:
+                    util.ERROR (f"Buffer {buf_id} is not in graph {self.name}")
+                else:
+                    self.buffers[buf_id].output_of_pipe_ids.add (p.id())
 
         # 2. Load blob_yaml
         self.streams = dict()
@@ -319,8 +327,11 @@ class Graph:
     # The name format is graph/op_name:op_type
     def core_coord_to_full_op_name (self, r, c):
         op_name = self.core_coord_to_op_name(r, c)
-        op = self.root[op_name]
-        return f"{self.name}/{op_name}:{op['type']}"
+        if op_name is not None:
+            op = self.root[op_name]
+            return f"{self.name}/{op_name}:{op['type']}"
+        else:
+            return f"No op at {r},{c}"
 
     # Returns the op name mapped to a given RC location
     def core_coord_to_op_name (self, r, c):
@@ -329,6 +340,7 @@ class Graph:
                 op_locations = self.get_op_coords(op_name)
                 if [ r, c ] in op_locations:
                     return op_name
+        return None
 
     # Test
     def _test_print(self):
