@@ -158,7 +158,7 @@ class DebudaNetlistGenerator {
             output << "entries: " << get_entries()<< ", ";
 
             // TODO: Check if order is good
-            output << "grid_size: [" << op.grid_size_x() << ", " << op.grid_size_y() << "], ";
+            output << "grid_size: [" << op.grid_size_y() << ", " << op.grid_size_x() << "], ";
 
             output << "t: " << op.t << ", ";
 
