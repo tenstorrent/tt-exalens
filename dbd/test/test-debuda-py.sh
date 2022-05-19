@@ -10,6 +10,7 @@ else
     make verif/op_tests > $TMP_OUT_FILE
 fi
 
+mkdir debuda_test
 echo Running op_tests/test_op ...
 ./build/test/verif/op_tests/test_op --outdir debuda_test --netlist verif/op_tests/netlists/netlist_unary_op.yaml --seed 0 --silicon --timeout 500 > $TMP_OUT_FILE
 if [ $? -ne 0 ]; then
