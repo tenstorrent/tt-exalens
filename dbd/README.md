@@ -84,6 +84,22 @@ dial will show commands to jump to any destination or source streams connected t
 In the above screenshot, sources and destinations of the currently selected core are shown. The currently selected stream (stream 8 of core 1-1) is highlighted in red. To quickly jump to the
 source of the current stream, one can enter `0`.
 
+
+## tapout.sh
+
+tapout.sh can be used to automatically run test with modified netlist, adding outputs to every operator in sorted order.
+
+### Usage
+
+First parameter is command that you are running. tapout.sh will modify netlist in this command and rerun it with new netlist file.
+If there are n opertions, it can run test n times, or 1 time in case --single parameter is provided.
+```build/bin/dbd_modify_netlist``` is required for tapout.sh to work. Run ``` make dbd ``` to build dbd_modify_netlist.
+
+```
+dbd/tapout.sh "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --seed 0 --silicon --timeout 500"
+dbd/tapout.sh "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --seed 0 --silicon --timeout 500" --single
+```
+
 ## Miscellaneous
 
 ### Building debuda-stub
