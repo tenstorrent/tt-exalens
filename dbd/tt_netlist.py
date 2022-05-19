@@ -114,6 +114,8 @@ class Graph:
     def __init__(self, name, root, pipegen_yaml, blob_yaml):
         self.name = name
         self.root = root # The entry in netlist file
+        self.pipegen_yaml = pipegen_yaml
+        self.blob_yaml = blob_yaml
 
         # 1. Load pipegen_yaml
         self.buffers = dict()
@@ -135,13 +137,13 @@ class Graph:
         for _, p in self.pipes.items():
             for buf_id in p.inputs():
                 if buf_id not in self.buffers:
-                    util.ERROR (f"Buffer {buf_id} is not in graph {self.name}")
+                    util.ERROR (f"Buffer {buf_id} shows up as an input of pipe {p.id()} but has no definition in graph {self.name}. See {self.pipegen_yaml.filepath}")
                 else:
                     self.buffers[buf_id].input_of_pipe_ids.add (p.id())
 
             for buf_id in p.outputs():
                 if buf_id not in self.buffers:
-                    util.ERROR (f"Buffer {buf_id} is not in graph {self.name}")
+                    util.ERROR (f"Buffer {buf_id} shows up as an output of pipe {p.id()} but has no definition in graph {self.name}. See {self.pipegen_yaml.filepath}")
                 else:
                     self.buffers[buf_id].output_of_pipe_ids.add (p.id())
 
