@@ -127,6 +127,15 @@ class Device:
                 streams[loc + (stream_id,)] = regs
         return streams
 
+    # For a given core, read all 64 streams and populate the 'streams' dict. streams[stream_id] will
+    # contain a dictionary of all register values as strings formatted to show in UI
+    def read_core_stream_registers (self, loc):
+        streams = {}
+        for stream_id in range (0, 64):
+            regs = self.read_stream_regs (loc, stream_id)
+            streams[stream_id] = regs
+        return streams
+
     # Returns core locations of cores that have programmed stream registers
     def get_configured_stream_locations(self, all_stream_regs):
         core_locations = []
