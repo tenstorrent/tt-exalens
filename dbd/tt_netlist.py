@@ -125,25 +125,38 @@ class Graph:
                 if self.name != val:
                     util.WARN(f"Expected 'graph_name: {self.name}' in {pipegen_yaml.id()}, but got 'graph_name: {val}'")
             elif "buffer" in key:
-                b = Buffer(val)
-                self.buffers[b.id()] = b
+                uniqid = val["uniqid"]
+                for r in range (val["replicate"] + 1):
+                    val["uniqid"] = uniqid + r
+                    b = Buffer(val)
+                    self.buffers[b.id()] = b
             elif "pipe" in key:
                 p = Pipe(val)
                 self.pipes[p.id()] = p
             else:
                 raise RuntimeError(f"{pipegen_yaml.id()}: Cannot interpret {key}: {val}")
 
-        # 1a. Link buffers to pipes
+        # 1a. Link buffers to pipe
+        max_lines_printed_for_num_missing_buffers = 10
+        def print_missing_buffer (self, buf_id, pipe_id, is_input):
+            nonlocal max_lines_printed_for_num_missing_buffers
+            if max_lines_printed_for_num_missing_buffers > 0:
+                max_lines_printed_for_num_missing_buffers -= 1
+                if max_lines_printed_for_num_missing_buffers == 0:
+                    util.ERROR ("... skipping the rest ...")
+                else:
+                    util.ERROR (f"Buffer {buf_id} shows up as an {'input' if is_input else 'output'} of pipe {pipe_id} but has no definition in graph {self.name}. See {self.pipegen_yaml.filepath}")
+
         for _, p in self.pipes.items():
             for buf_id in p.inputs():
                 if buf_id not in self.buffers:
-                    util.ERROR (f"Buffer {buf_id} shows up as an input of pipe {p.id()} but has no definition in graph {self.name}. See {self.pipegen_yaml.filepath}")
+                    print_missing_buffer (self, buf_id, p.id(), True)
                 else:
                     self.buffers[buf_id].input_of_pipe_ids.add (p.id())
 
             for buf_id in p.outputs():
                 if buf_id not in self.buffers:
-                    util.ERROR (f"Buffer {buf_id} shows up as an output of pipe {p.id()} but has no definition in graph {self.name}. See {self.pipegen_yaml.filepath}")
+                    print_missing_buffer (self, buf_id, p.id(), False)
                 else:
                     self.buffers[buf_id].output_of_pipe_ids.add (p.id())
 
