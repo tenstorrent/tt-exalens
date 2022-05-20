@@ -21,7 +21,7 @@ def run(args, context, ui_state = None):
         stream_epoch = current_device.stream_epoch (sr)
         core_epochs.add (stream_epoch)
 
-    output_table["epochs"] = " ".join (list({ str(e) for e in core_epochs}))
+    output_table[f"epoch{'s' if len(core_epochs) > 1 else ''}"] = " ".join (list({ str(e) for e in core_epochs}))
 
     # 2. Get the debug registers
     DEBUG_MAILBOX_BUF_BASE  = 112
