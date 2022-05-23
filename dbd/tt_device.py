@@ -204,3 +204,17 @@ class Device:
 
     def __str__(self):
         return self.render()
+
+    # Reads and returns the Risc debug registers
+    def get_debug_regs(self, x, y):
+        DEBUG_MAILBOX_BUF_BASE  = 112
+        DEBUG_MAILBOX_BUF_SIZE  = 64
+        THREAD_COUNT = 4
+
+        debug_tables = [ [] for i in range (THREAD_COUNT) ]
+        for thread_idx in range (THREAD_COUNT):
+            for reg_idx in range(DEBUG_MAILBOX_BUF_SIZE // THREAD_COUNT):
+                reg_addr = DEBUG_MAILBOX_BUF_BASE + thread_idx * DEBUG_MAILBOX_BUF_SIZE + reg_idx * 4
+                val = pci_read_xy(self.id(), x, y, 0, reg_addr)
+                debug_tables[thread_idx].append ({ "lo_val" : val & 0xffff, "hi_val": (val >> 16) & 0xffff })
+        return debug_tables

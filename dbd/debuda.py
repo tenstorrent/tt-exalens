@@ -369,8 +369,17 @@ def main(args, context):
                     if c["short"] == cmd_string or c["long"] == cmd_string:
                         found_command = c
                         # Check arguments
-                        if len(cmd)-1 != found_command["expected_argument_count"]:
-                            print (f"{util.CLR_ERR}Command '{found_command['long']}' requires {found_command['expected_argument_count']} argument{'s' if found_command['expected_argument_count'] != 1 else ''}: {found_command['arguments_description']}{util.CLR_END}")
+                        if type(found_command["expected_argument_count"]) == list:
+                            valid_arg_count_list = found_command["expected_argument_count"]
+                        else:
+                            valid_arg_count_list = [ found_command["expected_argument_count"] ]
+
+                        if len(cmd)-1 not in valid_arg_count_list:
+                            if len(valid_arg_count_list) == 1:
+                                expected_args = valid_arg_count_list[0]
+                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires {expected_args} argument{'s' if expected_args != 1 else ''}: {found_command['arguments_description']}{util.CLR_END}")
+                            else:
+                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires one of {valid_arg_count_list} arguments: {found_command['arguments_description']}{util.CLR_END}")
                             found_command = 'invalid-args'
                         break
 
