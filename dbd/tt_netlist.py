@@ -125,9 +125,11 @@ class Graph:
                 if self.name != val:
                     util.WARN(f"Expected 'graph_name: {self.name}' in {pipegen_yaml.id()}, but got 'graph_name: {val}'")
             elif "buffer" in key:
+                b = Buffer(val)
+                self.buffers[b.id()] = b
                 uniqid = val["uniqid"]
-                for r in range (val["replicate"] + 1):
-                    val["uniqid"] = uniqid + r
+                for r in range (1, val["replicate"]): # Handle replicated buffers (see issue #326)
+                    val["uniqid"] = uniqid + r * val["scatter_gather_num_tiles"]
                     b = Buffer(val)
                     self.buffers[b.id()] = b
             elif "pipe" in key:
