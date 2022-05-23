@@ -80,7 +80,7 @@ def print_dram_queue_summary (cmd, context, ui_state = None): # graph, chip_arra
 
         for buffer_id, buffer in graph.buffers.items():
             buffer_data = buffer.root
-            if buffer_data["dram_buf_flag"] != 0 or buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0:
+            if buffer_data["dram_buf_flag"] != 0 or buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0 and not buffer.replicated:
                 dram_chan = buffer_data["dram_chan"]
                 dram_addr = buffer_data['dram_addr']
                 dram_loc = tt_grayskull.CHANNEL_TO_DRAM_LOC[dram_chan]

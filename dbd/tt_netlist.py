@@ -74,6 +74,7 @@ class Buffer:
         self.root = data
         self.input_of_pipe_ids = set ()
         self.output_of_pipe_ids = set ()
+        self.replicated = False
 
     # Accessors
     def id (self):
@@ -132,6 +133,7 @@ class Graph:
                     val["uniqid"] = uniqid + r * val["scatter_gather_num_tiles"]
                     b = Buffer(val)
                     self.buffers[b.id()] = b
+                    b.replicated = True # Mark the buffers we created by replication
             elif "pipe" in key:
                 p = Pipe(val)
                 self.pipes[p.id()] = p
