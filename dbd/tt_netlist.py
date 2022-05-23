@@ -26,9 +26,9 @@ class YamlFile:
 
 # This class allows caching of dictionaries to files.
 class CachedDictFile:
-    def __init__ (self, filepath):
+    def __init__ (self, filepath, enable):
         self.filepath = filepath
-        self.enabled = True
+        self.enabled = enable
 
     def load_cached (self, generator, generator_name):
         # Use cache

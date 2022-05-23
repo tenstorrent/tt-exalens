@@ -472,5 +472,8 @@ atexit.register (tt_device.terminate_comm_client_callback)
 # Create context
 context = tt_netlist.load (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
 
+# Initialize context
+context.stream_cache_enabled = args.stream_cache
+
 # Main function
 sys.exit (main(args, context))

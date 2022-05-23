@@ -24,12 +24,13 @@ def run(args, context, ui_state = None):
     netlist = context.netlist
 
     for device_id, device in enumerate (context.devices):
+        util.INFO (f"Analyzing device {device_id + 1}/{len(context.devices)}")
         device_data[device_id] = {
             "device" : device,
             "cores" : { }
         }
         # 1. Read all stream registers
-        stream_cache = tt_netlist.CachedDictFile (tt_stream.STREAM_CACHE_FILE_NAME)
+        stream_cache = tt_netlist.CachedDictFile (tt_stream.STREAM_CACHE_FILE_NAME, context.stream_cache_enabled)
         all_stream_regs = stream_cache.load_cached (device.read_all_stream_registers, "device.read_all_stream_registers ()")
 
         # 2. Check where the programmed streams are
