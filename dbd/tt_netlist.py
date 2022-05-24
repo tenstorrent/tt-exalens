@@ -455,6 +455,6 @@ def load (netlist_filepath, run_dirpath):
     this.context.netlist = Netlist(netlist_filepath, run_dirpath)
 
     netlist_devices = this.context.netlist.devices()
-    this.context.devices = [ tt_device.Device.create(netlist_devices['arch']) ] * netlist_devices["count"]
+    this.context.devices = [ tt_device.Device.create(netlist_devices['arch']) for i in range (netlist_devices["count"]) ] 
 
     return this.context
