@@ -40,6 +40,10 @@ def run(args, context, ui_state = None):
         epochs = { device.stream_epoch (stream_regs) for loc, stream_regs in all_stream_regs.items() if loc in programmed_streams }
         # print (f"Stream epochs: {epochs}")
 
+        if len(epochs) == 0:
+            util.INFO (f"Device {device_id} has no programmed streams. Cannot determine the current epoch.")
+            continue
+
         working_epoch_id = min(epochs)
         working_graph_name = netlist.epoch_id_to_graph_name (working_epoch_id)
         graph = netlist.graph (working_graph_name)
@@ -142,8 +146,7 @@ def run(args, context, ui_state = None):
                 print(f"{loc[0]}-{loc[1]}", end = ' ')
             print()
         if all_streams_done and len(issues_sets["ncrisc_not_done"]) > 0:
-            print ("NCrisc not done (+):")
-            print (device.render (emphasize_loc_list = issues_sets["ncrisc_not_done"]))
+            print (device.render (options='rc', emphasize_noc0_loc_list = issues_sets.get ("ncrisc_not_done", set()), emphasize_explanation="NCrisc not done"))
             print()
 
     if len(rows) > 0:

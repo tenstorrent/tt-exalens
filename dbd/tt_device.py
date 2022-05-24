@@ -208,7 +208,8 @@ class Device:
             x_size-=1
 
         legend = [ f"Coordinate system: {options}", "Legend:" ] + [ f"{block_types[block_type]['sym']} - {block_types[block_type]['desc']}" for block_type in block_types_present ]
-        legend += [ "+ - " + emphasize_explanation ]
+        if emphasize_explanation is not None:
+            legend += [ "+ - " + emphasize_explanation ]
 
         for y in reversed(range (y_size)): # We want 0,0 in the bottom left corner, so we reverse
             row = [ f"%02d" % y ]
