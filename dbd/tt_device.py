@@ -211,7 +211,7 @@ class Device:
         legend += [ "+ - " + emphasize_explanation ]
 
         for y in reversed(range (y_size)): # We want 0,0 in the bottom left corner, so we reverse
-            row = [ y ]
+            row = [ f"%02d" % y ]
             # 1. Add graphics
             for x in range (x_size):
                 render_str = ""
@@ -228,9 +228,8 @@ class Device:
             if legend_y < len(legend):
                 row = row + [ util.CLR_INFO + legend[legend_y] + util.CLR_END ]
 
-
             rows.append (row)
-        row = [ "" ] + [ i for i in range(x_size) ]
+        row = [ "" ] + [ f"%02d" % i for i in range(x_size) ]
         rows.append (row)
 
         table_str = tabulate(rows, tablefmt='plain')
