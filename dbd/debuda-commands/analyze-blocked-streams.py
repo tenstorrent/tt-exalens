@@ -30,11 +30,12 @@ def run(args, context, ui_state = None):
             "cores" : { }
         }
         # 1. Read all stream registers
-        stream_cache = tt_netlist.CachedDictFile (tt_stream.STREAM_CACHE_FILE_NAME, context.stream_cache_enabled)
+        stream_cache = tt_netlist.CachedDictFile (f"device{device_id}-{tt_stream.STREAM_CACHE_FILE_NAME}", context.stream_cache_enabled)
         all_stream_regs = stream_cache.load_cached (device.read_all_stream_registers, "device.read_all_stream_registers ()")
 
         # 2. Check where the programmed streams are
         programmed_streams = device.get_configured_stream_locations(all_stream_regs)
+        print ("programmed_streams:", programmed_streams)
 
         # Find epochs for each stream
         epochs = { device.stream_epoch (stream_regs) for loc, stream_regs in all_stream_regs.items() if loc in programmed_streams }

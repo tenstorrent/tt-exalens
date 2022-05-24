@@ -280,8 +280,7 @@ def get_stream_reg_field(chip_id, x, y, stream_id, reg_index, start_bit, num_bit
 
 # Returns whether the stream is configured
 def is_stream_configured(stream_data):
-    # FIX: Ask Djordje for correct way of doing this 
-    return int(stream_data['CURR_PHASE']) > 0 and (int(stream_data['CURR_PHASE_NUM_MSGS_REMAINING']) > 0 or int(stream_data['NUM_MSGS_RECEIVED']))
+    return int(stream_data['CURR_PHASE']) > 0
 
 def is_stream_idle(stream_data):
     return (stream_data["DEBUG_STATUS[7]"] & 0xfff) == 0xc00
