@@ -35,11 +35,10 @@ def run(args, context, ui_state = None):
 
         # 2. Check where the programmed streams are
         programmed_streams = device.get_configured_stream_locations(all_stream_regs)
-        print ("programmed_streams:", programmed_streams)
 
         # Find epochs for each stream
         epochs = { device.stream_epoch (stream_regs) for loc, stream_regs in all_stream_regs.items() if loc in programmed_streams }
-        print (f"Stream epochs: {epochs}")
+        # print (f"Stream epochs: {epochs}")
 
         working_epoch_id = min(epochs)
         working_graph_name = netlist.epoch_id_to_graph_name (working_epoch_id)
