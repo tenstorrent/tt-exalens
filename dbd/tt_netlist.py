@@ -9,13 +9,20 @@ this.context = None
 # Store all data loaded from a yaml file here
 # Other classes constructed from the data in the yaml (netlist, blob, etc) can point to this
 class YamlFile:
+    # Cache
+    file_cache = {}
+
     def __init__ (self, filepath):
-        util.DEBUG (f"Loading '{filepath}'")
-        self.filepath = filepath
-        self.root = dict()
-        # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
-        for i in yaml.safe_load_all(open(filepath)):
-            self.root = { **self.root, **i }
+        if filepath in YamlFile.file_cache:
+            self.root = YamlFile.file_cache[filepath]
+        else:
+            util.DEBUG (f"Loading '{filepath}'")
+            self.filepath = filepath
+            self.root = dict()
+            # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
+            for i in yaml.safe_load_all(open(filepath)):
+                self.root = { **self.root, **i }
+            YamlFile.file_cache[filepath] = self.root
 
     def __str__(self):
         return f"{type(self).__name__}: {self.filepath}"
