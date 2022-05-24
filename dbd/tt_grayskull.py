@@ -36,16 +36,29 @@ def noc1_to_noc0 (noc_x, noc_y):
     phys_x, phys_y = noc_to_physical (noc_x, noc_y, noc_id=1)
     return physical_to_noc (phys_x, phys_y, noc_id=0)
 
-# TODO: Check if this is correct
 def noc0_to_rc (noc0_x, noc0_y):
+    if noc0_y == 0 or noc0_y == 6:
+        assert False, "DRAM does not have an RC coordinate" 
+    if noc0_x == 0:
+        assert False, "NOC0 column 0 does not have an RC coordinate" 
     row = noc0_y - 1
     col = noc0_x - 1
+    if noc0_y > 6: row-=1 # DRAM at noc0 Y coord of 6 is a hole in RC coordinates
     return row, col
 
 def rc_to_noc0 (row, col):
     noc0_y = row + 1
     noc0_x = col + 1
+    if noc0_y > 5: noc0_y+=1 # DRAM at noc0 Y coord of 6 is a hole in RC coordinates
     return noc0_x, noc0_y
+
+def test_rc_to_noc0 ():
+    for r in range (0,10):
+        for c in range (0,10):
+            nx, ny = rc_to_noc0(r, c)
+            nr, nc = noc0_to_rc(nx, ny)
+            if not (c == nc and r == nr):
+                print ("Not good: ", r, c, nr, nc)
 
 # Returns a stream type based on KERNEL_OPERAND_MAPPING_SCHEME
 def stream_type (stream_id):

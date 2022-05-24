@@ -160,42 +160,81 @@ class Device:
 
     # Returns a string representation of the device. When printed, the string will
     # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list
-    def render (self, options="physical", emphasize_loc_list = set()):
+    def render (self, options="physical", emphasize_noc0_loc_list = set(), emphasize_explanation = None):
         dev = self.yaml_file.root
         rows = []
         locs = dict()
         emphasize_loc_list_to_render = set()
 
-        # Convert emphasize_loc_list from noc0 coordinates to the coord space given by 'options' arg
+        # Convert emphasize_noc0_loc_list from noc0 coordinates to the coord space given by 'options' arg
         if options=="physical":
-            for loc in emphasize_loc_list:
+            for loc in emphasize_noc0_loc_list:
                 emphasize_loc_list_to_render.add (self.noc_to_physical(loc, noc_id=0))
+        elif options=="rc":
+            for loc in emphasize_noc0_loc_list:
+                emphasize_loc_list_to_render.add (self.noc0_to_rc(loc[0], loc[1]))
+        elif options=="noc0":
+            emphasize_loc_list_to_render = emphasize_noc0_loc_list
         else:
-            emphasize_loc_list_to_render = emphasize_loc_list
+            util.ERROR (f"Invalid options: {options}")
 
-        block_types = { 'functional_workers' : 'W', 'eth': 'E', 'arc' : 'A', 'dram' : 'D', 'pcie' : 'P', 'router_only' : '.' }
+        block_types = { 'functional_workers' : { 'sym' : '.', "desc" : "Functional worker" },
+                        'eth':                 { 'sym' : 'E', "desc" : "Ethernet" },
+                        'arc' :                { 'sym' : 'A', "desc" : "ARC" },
+                        'dram' :               { 'sym' : 'D', "desc" : "DRAM" },
+                        'pcie' :               { 'sym' : 'P', "desc" : "PCIE" },
+                        'router_only' :        { 'sym' : ' ', "desc" : "Router only" }
+        }
+
+        block_types_present = set()
 
         # Convert the block locations to the coord space given by 'options' arg
         for block_name in block_types:
+            if options=="rc" and block_name != 'functional_workers': continue  # No blocks other than Tensix cores have RC coords
             for loc in self.get_block_locations (block_name):
                 if options=="physical":
                     loc = self.noc_to_physical(loc, noc_id=0)
-                locs[loc] = block_types[block_name]
+                elif options=="rc":
+                    loc = self.noc0_to_rc(loc[0], loc[1])
+                locs[loc] = block_types[block_name]['sym']
+                block_types_present.add(block_name)
 
         # Render the grid
         x_size = dev['grid']['x_size']
         y_size = dev['grid']['y_size']
 
-        for y in range (y_size):
-            row = []
+        if options == "rc":
+            y_size-=2
+            x_size-=1
+
+        legend = [ "Legend:" ] + [ f"{block_types[block_type]['sym']} - {block_types[block_type]['desc']}" for block_type in block_types_present ]
+        legend += [ "+ - " + emphasize_explanation ]
+
+        for y in reversed(range (y_size)): # We want 0,0 in the bottom left corner, so we reverse
+            row = [ y ]
+            # 1. Add graphics
             for x in range (x_size):
                 render_str = ""
-                if (x,y) in locs: render_str += locs[(x,y)]
-                if (x,y) in emphasize_loc_list_to_render: render_str += "+"
+                if options=="rc": 
+                    if (y,x) in locs: render_str += locs[(y,x)]
+                    if (y,x) in emphasize_loc_list_to_render: render_str = "+"
+                else:
+                    if (x,y) in locs: render_str += locs[(x,y)]
+                    if (x,y) in emphasize_loc_list_to_render: render_str = "+"
                 row.append (render_str)
-            rows.append (row)
 
-        return tabulate(rows, tablefmt='plain')
+            # 2. Add legend
+            legend_y = y_size - y - 1
+            if legend_y < len(legend):
+                row = row + [ util.CLR_INFO + legend[legend_y] + util.CLR_END ]
+
+
+            rows.append (row)
+        row = [ "" ] + [ i for i in range(x_size) ]
+        rows.append (row)
+
+        table_str = tabulate(rows, tablefmt='plain')
+        return table_str 
 
     def dump_memory(self, x, y, addr, size):
         return dump_memory(self.id(), x, y, addr, size)
