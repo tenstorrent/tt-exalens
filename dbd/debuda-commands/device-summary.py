@@ -27,15 +27,7 @@ def run(args, context, ui_state = None):
                     configured_streams.add (loc)
         # print (configured_streams)
         emphasize_explanation = "Functional worker with configured stream(s)"
-        util.INFO ("- RC coordinates:")
         print(device.render (options="rc", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
-        # print()
-        # util.INFO ("- NOC0 coordinates:")
-        # print(device.render (options="noc0", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
-        # print()
-        # util.INFO ("- Physical coordinates:")
-        # print(device.render (emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
-        # print()
 
     navigation_suggestions = []
     return navigation_suggestions
