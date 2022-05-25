@@ -94,7 +94,7 @@ Prebuilt binary is committed to git repo for convenience.
 
 ## High Level Debugging
 
-It is used to find operations with wrong results. It compares operation outputs with expected golden results.
+While debuda can help find low level bugs on silicon, High Level Debugging (aka Tapout Sweep) is used to find data mismatche errors. It runs a netlist iteratively with each operation 'tapped out' in topological order. The result of the tapped-out operation is compared with the golden results. Two flows are supported: budabackend and pybuda.
 
 ### Usage
 
@@ -114,8 +114,14 @@ ex.
 dbd/pybuda_tapout_sweep.py "pytest -svv ../../pybuda/test/backend/test_bert.py::test_encoder[inference-Grayskull-cfg0-no_recompute]" --out_dir debuda_temp
 ```
 ### How it works
-It runs provided command number of times. Each time, it modifies command netlist by adding one additional queue which is output of particular operation.
-and runs command, parses log. Currently only supported command for parsing output and automatically providing correctness of operations is ***verif/op_tests/test_op***. If output of operation is not "equal" to golden, it will log that run failed. It does not take into consideration, whether some other output queue failed. Log is stored in "<span style="color:green">output_directory/tapout_result.log</span>".
+It runs the provided command a number of times. Each time, it modifies the netlist by adding a DRAM queue to the output of a particular operation. This makes the result of the operation observable and comparable to golden restults. The output of the command log is examined and PASS/FAIL condition printed. Currently, the only supported command for parsing output and automatically providing correctness of operations is ***verif/op_tests/test_op***. If the output of the operation does not match golden results, the Op will be logged as failed. The Log is stored in "<span style="color:green">output_directory/tapout_result.log</span>". An entry in this file looks like this:
+```
+	Command: build/test/verif/op_tests/test_op --seed 0 --silicon --timeout 500 --netlist tapout_output/fwd_0_norm_ff_0_recip.yaml --pytorch-bin /home/ihamer/work/pybuda/third_party/budabackend/tapout_output/pybuda_test_backend_test_bert_py_test_encoder_inference-Grayskull-cfg0-no_recompute
+	Log:tapout_output/fwd_0_norm_ff_0_recip.log
+op_name: norm_ff_0_recip_s_brcst_m1_0_0.lc1
+	Result: FAILED
+```
+ All run logs are also saved so that comparison results can be examined. 
 
 ## tapout.sh
 This is similar to tapout_sweep.py.
