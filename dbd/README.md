@@ -84,9 +84,41 @@ dial will show commands to jump to any destination or source streams connected t
 In the above screenshot, sources and destinations of the currently selected core are shown. The currently selected stream (stream 8 of core 1-1) is highlighted in red. To quickly jump to the
 source of the current stream, one can enter `0`.
 
+## Miscellaneous
+
+### Building debuda-stub
+```
+bin/build-debuda-stub.sh
+```
+Prebuilt binary is committed to git repo for convenience.
+
+## High Level Debugging
+
+It is used to find operations with wrong results. It compares operation outputs with expected golden results.
+
+### Usage
+
+From BudaBackEnd:
+```
+dbd/tapout_sweep.py --test_command "command" --out_dir output
+
+ex.
+dbd/tapout_sweep.py --test_command "build/test/verif/op_tests/test_op --netlist verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml --seed 0 --silicon --timeout 500" --out_dir tapout_output
+```
+
+From PyBuda:
+```
+dbd/pybuda_tapout_sweep.py "pytest_command" --out_dir output
+
+ex.
+dbd/pybuda_tapout_sweep.py "pytest -svv ../../pybuda/test/backend/test_bert.py::test_encoder[inference-Grayskull-cfg0-no_recompute]" --out_dir debuda_temp
+```
+### How it works
+It runs provided command number of times. Each time, it modifies command netlist by adding one additional queue which is output of particular operation.
+and runs command, parses log. Currently only supported command for parsing output and automatically providing correctness of operations is ***verif/op_tests/test_op***. If output of operation is not "equal" to golden, it will log that run failed. It does not take into consideration, whether some other output queue failed. Log is stored in "<span style="color:green">output_directory/tapout_result.log</span>".
 
 ## tapout.sh
-
+This is similar to tapout_sweep.py.
 tapout.sh can be used to automatically run test with modified netlist, adding outputs to every operator in sorted order.
 
 ### Usage
@@ -99,11 +131,3 @@ If there are n opertions, it can run test n times, or 1 time in case --single pa
 dbd/tapout.sh "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --seed 0 --silicon --timeout 500"
 dbd/tapout.sh "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --seed 0 --silicon --timeout 500" --single
 ```
-
-## Miscellaneous
-
-### Building debuda-stub
-```
-bin/build-debuda-stub.sh
-```
-Prebuilt binary is committed to git repo for convenience.

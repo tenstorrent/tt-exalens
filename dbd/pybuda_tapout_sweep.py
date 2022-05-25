@@ -8,7 +8,7 @@ will save the stimulus so the Buda backend can run with the exact inputs that th
 import json
 import sys, os, argparse, subprocess
 import tt_util as util
-import tapout
+import tapout_sweep as tapout
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('pytest_command', type=str, help='')
