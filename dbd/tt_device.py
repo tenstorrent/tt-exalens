@@ -102,6 +102,9 @@ class Device:
         if arch.lower() == "grayskull":
             import tt_grayskull
             dev = tt_grayskull.GrayskullDevice()
+        if arch.lower() == "wormhole":
+            import tt_wormhole
+            dev = tt_wormhole.WormholeDevice()
         else:
             raise RuntimeError(f"Architecture {arch} not supported yet")
 
