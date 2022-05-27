@@ -3,6 +3,7 @@
 tapout.py parses netlist and generates new queues.
 """
 import argparse, yaml, subprocess, os
+import sys
 from collections import defaultdict
 
 GRAYSKULL = "grayskull"
@@ -396,29 +397,70 @@ class TapoutCommandExecutor:
         file_original.close()
         file_modified.close()
 
-    def run_cmd(op_name, cmd, log_filename):
-        print(f"{op_name} -  {' '.join(cmd)}")
+    def run_cmd(op_name, cmd, log_filename, op_error_log):
+        TapoutCommandExecutor.reset()
+        print(f"Tapout operation:\t{op_name}\nCommand:\t\t{' '.join(cmd)}\nLog:\t\t\t{log_filename}")
+
         f = open(log_filename, "w")
+
+        f_diff = open(op_error_log, "a")
+        f_diff.writelines(f"{op_name}\n")
+        f_diff.close()
+
+        operation_processed = False
+        tapout_output_error = False
+        test_finished = True
         with subprocess.Popen(cmd, stdout=subprocess.PIPE) as proc:
             try:
-                error_found = False
+                lines = []
+                cnt = 0
                 while True:
                     line = proc.stdout.readline()
                     if not line:
                         break
 
                     ln = line.decode("utf-8")
-                    if "Error" in ln and op_name in ln:
-                        error_found = True
+
+                    if "DBG_"+op_name in ln:
+                        if not operation_processed:
+                            operation_processed = True
+
+                    # Check if we detected error 
+                    if "Error" in ln and "Queue:" in ln:
+                        if op_name in ln and "DBG" in ln:
+                            tapout_output_error = True
+                            f_diff = open(op_error_log, "a")
+                            lines.append("\n")
+                            f_diff.writelines(lines)
+                            f_diff.close()
+                            print(''.join(lines))
+                        lines = []
+                        cnt = 0
+
+                    # HACK This is hack to detect that test will start
+                    # dumping tiles 
+                    if "First Mismatched Tile for Tensor" in ln:
+                        cnt = 1
+
+                    if cnt > 0:
+                        lines.append(ln)
+                        cnt = cnt + 1
+
+                    if cnt > 100:
+                        cnt = 0
+                        lines = []
 
                     f.writelines(ln)
-                    print (ln, end="")
             except Exception as e:
-                print(e)
                 proc.terminate()
+                if not "what():  Test Failed" in repr(e):
+                    test_finished = False
+                f.writelines(repr(e))
+                print(e)
 
         f.close()
-        return error_found
+
+        return tapout_output_error, operation_processed, test_finished
 
     def get_modified_netlist_filename(self, graph_name, op_name):
         return f"{self._out_dir}/{graph_name}_{op_name}.yaml"
@@ -429,9 +471,28 @@ class TapoutCommandExecutor:
     def get_run_result_log(self):
         return f"{self._out_dir}/tapout_result.log"
 
+    def get_op_errors_log(self):
+        return f"{self._out_dir}/op_errors.log"
+
+    def reset():
+        with subprocess.Popen(["device/bin/silicon/reset.sh"], stdout=subprocess.PIPE) as proc:
+            try:
+                while True:
+                    line = proc.stdout.readline()
+                    if not line:
+                        break
+                    ln = line.decode("utf-8")
+                    print (ln, end="")
+            except Exception as e:
+                print(e)
+                proc.terminate()
+
     def run(self):
+
         if not os.path.exists(self._out_dir):
             os.makedirs(self._out_dir)
+        f_diff = open(self.get_op_errors_log(), "w")
+        f_diff.close()
 
         result_file = open(self.get_run_result_log(), "w")
 
@@ -442,9 +503,16 @@ class TapoutCommandExecutor:
 
             self.create_netlist(netlist_filename, netlist_tapout.generate_tapout_queue_as_string(graph_name, op_name))
             log_filename = self.get_tapout_log(graph_name, op_name)
-            result = TapoutCommandExecutor.run_cmd(op_name, cmd, log_filename)
-            result_file.writelines(f'op_name: {op_name}\n\tResult: {"PASSED" if result == 0 else "FAILED"}\n\tCommand: {" ".join(cmd)}\n\tLog:{log_filename}\n')
-
+            result, operation_processed, test_finished = TapoutCommandExecutor.run_cmd(op_name, cmd, log_filename, self.get_op_errors_log())
+            result_file.writelines(f'op_name: {op_name}\n\tCommand: {" ".join(cmd)}\n\tLog:{log_filename}\n\t')
+            if operation_processed:
+                result_file.writelines(f'Result: {"PASSED" if result == 0 else "FAILED"}\n')
+            else:
+                if test_finished:
+                    result_file.writelines(f'Result: TAPOUT OUTPUT NOT PROCESSED\n')
+                else:
+                    result_file.writelines(f'Result: COMMAND FAILURE (For more information look at log file\n')
+            result_file.flush()
         result_file.close()
 
 def main():

@@ -93,11 +93,17 @@ test-config:
     check_pct: 0.0
     check_pcc: 0.99
     verbosity: Concise
+  stimulus-config:
+    type: Uniform
+    uniform_lower_bound: 0.01
+    uniform_upper_bound: 0.25
 """
 
     f = open(netlist_path, "r")
     copy = open(new_netlist_path, "w")
     for line in f:
+        if "param: [$p_loop_count]" in line:
+            line = line.replace ("param: [$p_loop_count]", "var: {$p_loop_count: 1}")
         if "param: [$p_microbatch_count]" in line:   # TODO: fix that
             line = line.replace ("param: [$p_microbatch_count]", "var: {$p_microbatch_count: 1}")
         copy.write(line)
