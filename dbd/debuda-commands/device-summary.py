@@ -8,7 +8,11 @@ import tt_util as util
 
 def run(args, context, ui_state = None):
     if len(args) == 2:
-        devices_list = [ (int(args[1])) ]
+        device_id = int(args[1])
+        if device_id >= len(context.devices) or device_id < 0:
+            util.ERROR (f"Invalid device id '{device_id}'")
+            return []
+        devices_list = [ device_id ]
     else:
         devices_list = [ did for did in range (len(context.devices)) ]
 
@@ -28,6 +32,8 @@ def run(args, context, ui_state = None):
         # print (configured_streams)
         emphasize_explanation = "Functional worker with configured stream(s)"
         print(device.render (options="rc", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
+        # print(device.render (options="physical", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
+        # print(device.render (options="noc0", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
 
     navigation_suggestions = []
     return navigation_suggestions
