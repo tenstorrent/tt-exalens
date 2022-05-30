@@ -360,7 +360,6 @@ def status_register_summary(device_id, coords, addr, ver = 0):
 #
 class GrayskullDevice (tt_device.Device):
     def __init__(self):
-        # 1. Load the netlist itself
         self.yaml_file = tt_netlist.YamlFile ("device/grayskull_120_arch.yaml")
 
     def physical_to_noc (self, phys_x, phys_y, noc_id=0): return physical_to_noc(phys_x, phys_y, noc_id=noc_id)
@@ -405,3 +404,6 @@ class GrayskullDevice (tt_device.Device):
     def status_register_summary(self, addr, ver = 0):
         coords = self.get_block_locations ()
         return status_register_summary(self.id(), coords, addr, ver)
+
+    def rows_with_no_functional_workers(self): return 2
+    def cols_with_no_functional_workers(self): return 1

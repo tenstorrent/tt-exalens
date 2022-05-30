@@ -182,12 +182,12 @@ class Device:
         else:
             util.ERROR (f"Invalid options: {options}")
 
-        block_types = { 'functional_workers' : { 'sym' : '.', "desc" : "Functional worker" },
-                        'eth':                 { 'sym' : 'E', "desc" : "Ethernet" },
-                        'arc' :                { 'sym' : 'A', "desc" : "ARC" },
-                        'dram' :               { 'sym' : 'D', "desc" : "DRAM" },
-                        'pcie' :               { 'sym' : 'P', "desc" : "PCIE" },
-                        'router_only' :        { 'sym' : ' ', "desc" : "Router only" }
+        block_types = { 'functional_workers' : { 'symbol' : '.', "desc" : "Functional worker" },
+                        'eth':                 { 'symbol' : 'E', "desc" : "Ethernet" },
+                        'arc' :                { 'symbol' : 'A', "desc" : "ARC" },
+                        'dram' :               { 'symbol' : 'D', "desc" : "DRAM" },
+                        'pcie' :               { 'symbol' : 'P', "desc" : "PCIE" },
+                        'router_only' :        { 'symbol' : ' ', "desc" : "Router only" }
         }
 
         block_types_present = set()
@@ -200,7 +200,7 @@ class Device:
                     loc = self.noc_to_physical(loc, noc_id=0)
                 elif options=="rc":
                     loc = self.noc0_to_rc(loc[0], loc[1])
-                locs[loc] = block_types[block_name]['sym']
+                locs[loc] = block_types[block_name]['symbol']
                 block_types_present.add(block_name)
 
         # Render the grid
@@ -208,10 +208,10 @@ class Device:
         y_size = dev['grid']['y_size']
 
         if options == "rc":
-            y_size-=2
-            x_size-=1
+            y_size-=self.rows_with_no_functional_workers() # GS:2, WH:2
+            x_size-=self.cols_with_no_functional_workers() # GS:1, WH:2
 
-        legend = [ f"Coordinate system: {options}", "Legend:" ] + [ f"{block_types[block_type]['sym']} - {block_types[block_type]['desc']}" for block_type in block_types_present ]
+        legend = [ f"Coordinate system: {options}", "Legend:" ] + [ f"{block_types[block_type]['symbol']} - {block_types[block_type]['desc']}" for block_type in block_types_present ]
         if emphasize_explanation is not None:
             legend += [ "+ - " + emphasize_explanation ]
 
@@ -220,9 +220,10 @@ class Device:
             # 1. Add graphics
             for x in range (x_size):
                 render_str = ""
-                if options=="rc": 
-                    if (y,x) in locs: render_str += locs[(y,x)]
-                    if (y,x) in emphasize_loc_list_to_render: render_str = "+"
+                if options=="rc":
+                    rc_loc = (y, x)
+                    if rc_loc in locs: render_str += locs[rc_loc]
+                    if rc_loc in emphasize_loc_list_to_render: render_str = "+"
                 else:
                     if (x,y) in locs: render_str += locs[(x,y)]
                     if (x,y) in emphasize_loc_list_to_render: render_str = "+"
