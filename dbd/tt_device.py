@@ -105,7 +105,8 @@ class Device:
         if arch.lower() == "wormhole":
             import tt_wormhole
             dev = tt_wormhole.WormholeDevice()
-        else:
+
+        if dev is None:
             raise RuntimeError(f"Architecture {arch} not supported yet")
 
         dev._id = Device.num_devices
