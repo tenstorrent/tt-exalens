@@ -440,6 +440,13 @@ class Netlist:
     def devices(self):
         return self.yaml_file.root["devices"]
 
+    # Determines the architecture
+    def get_arch (self):
+        for epoch_id in self.graph_to_epoch_map_yaml_file:
+            if "ARCH_NAME" in self.graph_to_epoch_map_yaml_file[epoch_id]:
+                return self.graph_to_epoch_map_yaml_file[epoch_id]["ARCH_NAME"] # HACK: return the first arch name
+        return None
+
     # Renderer
     def __str__(self):
         return f"{type(self).__name__}: {self.yaml_file.filepath}. Graphs({len(self.graph_names())}): {' '.join (self.graph_names())}"
@@ -462,6 +469,7 @@ def load (netlist_filepath, run_dirpath):
     this.context.netlist = Netlist(netlist_filepath, run_dirpath)
 
     netlist_devices = this.context.netlist.devices()
-    this.context.devices = [ tt_device.Device.create(netlist_devices['arch']) for i in range (netlist_devices["count"]) ] 
+    arch = this.context.netlist.get_arch ()
+    this.context.devices = [ tt_device.Device.create(arch) for i in range (netlist_devices["count"]) ] 
 
     return this.context
