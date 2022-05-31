@@ -14,9 +14,9 @@ def run(args, context, ui_state = None):
         epoch_id = context.netlist.graph_name_to_epoch_id (graph_name)
         for op_name in graph.op_names():
             op = graph.root[op_name]
-            row = [ f"{graph_name}/{op_name}", epoch_id, f"{graph.root['target_device']}", f"{op['grid_loc']}", f"{op['grid_size']}"]
+            row = [ f"{graph_name}/{op_name}", op['type'], epoch_id, f"{graph.root['target_device']}", f"{op['grid_loc']}", f"{op['grid_size']}"]
             rows.append (row)
 
-    print (tabulate(rows, headers = [ "Op", "Epoch", "Device", "Grid Loc", "Grid Size" ]))
+    print (tabulate(rows, headers = [ "Op", "Op type", "Epoch", "Device", "Grid Loc", "Grid Size" ]))
 
     return navigation_suggestions
