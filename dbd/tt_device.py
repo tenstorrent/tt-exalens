@@ -14,7 +14,8 @@ DEBUDA_STUB_PROCESS_ID=None  # The process ID of debuda-stub spawned in init_com
 def init_comm_client (debug_debuda_stub):
     DEBUDA_STUB_PORT=5555
 
-    print ("Spawning debuda-stub.")
+    print ("Spawning debuda-stub...")
+
     debuda_stub_path = util.application_path() + "/debuda-stub"
     try:
         global DEBUDA_STUB_PROCESS_ID
@@ -27,6 +28,8 @@ def init_comm_client (debug_debuda_stub):
 
     context = zmq.Context()
     global ZMQ_SOCKET
+
+    time.sleep (0.1) # Cosmetic wait: To allow debuda-stub to print the message
 
     #  Socket to talk to server
     print("Connecting to debuda-stub...")

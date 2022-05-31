@@ -16,7 +16,7 @@ class YamlFile:
         if filepath in YamlFile.file_cache:
             self.root = YamlFile.file_cache[filepath]
         else:
-            util.DEBUG (f"Loading '{filepath}'")
+            util.VERBOSE (f"Loading '{filepath}'")
             self.filepath = filepath
             self.root = dict()
             # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
@@ -40,7 +40,7 @@ class CachedDictFile:
     def load_cached (self, generator, generator_name):
         # Use cache
         if self.enabled and os.path.exists (self.filepath):
-            print (f"{util.CLR_WARN}Loading {generator_name} cache from file {self.filepath}{util.CLR_END}")
+            util.WARN (f"Loading {generator_name} cache from file {self.filepath}")
             with open(self.filepath, 'rb') as f:
                 streams = pickle.load(f)
                 return streams
@@ -48,7 +48,7 @@ class CachedDictFile:
             streams = generator()
 
         if self.enabled:
-            print (f"{util.CLR_WARN}Saving {generator_name} cache to file {self.filepath}{util.CLR_END}")
+            util.WARN (f"Saving {generator_name} cache to file {self.filepath}")
             with open(self.filepath, 'wb') as f:
                 pickle.dump(streams, f)
 
@@ -175,9 +175,9 @@ class Graph:
         self.streams = dict()
         for key, val in blob_yaml.items():
             if key == "dram_blob":
-                util.INFO ("Skipping dram_blob")
+                util.VERBOSE ("- Skipping dram_blob")
             elif key == "dram_perf_dump_blob":
-                util.INFO ("Skipping dram_perf_dump_blob")
+                util.VERBOSE ("- Skipping dram_perf_dump_blob")
             elif "phase" in key:
                 phase_id = int (key[6:])
                 for stream_designator, stream_data in val.items():
@@ -270,7 +270,7 @@ class Graph:
     # Computes all buffers that are feeding into the buffers from buffer_id_list
     def fan_in_buffer_set(self, buffer_id_list, already_visited = set()):
         if Graph.RECURSION_DEPTH > 400:
-            print (f"{util.CLR_ERR}Recursion limit reached{util.CLR_END}")
+            util.ERROR (f"Recursion limit reached")
             return set()
         Graph.RECURSION_DEPTH=Graph.RECURSION_DEPTH+1
 
@@ -370,9 +370,9 @@ class Graph:
 
     # Test
     def _test_print(self):
-        for bname, b in self.buffers.items():
+        for _, b in self.buffers.items():
             print (f"{b}")
-        for pname, p in self.pipes.items():
+        for _, p in self.pipes.items():
             print (f"{p}")
         for stream, s in self.streams.items():
             print (f"{s}")
@@ -407,7 +407,7 @@ class Netlist:
         self.graphs = dict()
         for graph_name in self.graph_names():
             epoch_id = self.graph_name_to_epoch_id(graph_name)
-            util.DEBUG (f"Loading epoch {epoch_id} ({graph_name})")
+            util.VERBOSE (f"Loading epoch {epoch_id} ({graph_name})")
             graph_dir=f"{rundir}/temporal_epoch_{epoch_id}"
             if not os.path.isdir(graph_dir):
                 util.FATAL (f"Error: cannot find directory {graph_dir}")
@@ -454,11 +454,11 @@ class Context:
 # Returns a debug 'context' that contains the loaded information
 def load (netlist_filepath, run_dirpath):
     if (this.context is None):  # This refers to the module
-        print (f"Initializing context")
+        util.VERBOSE (f"Initializing context")
         this.context = Context()
 
     # Load netlist files
-    print (f"Loading netlist '{netlist_filepath}'")
+    util.INFO (f"Loading netlist '{netlist_filepath}'")
     this.context.netlist = Netlist(netlist_filepath, run_dirpath)
 
     netlist_devices = this.context.netlist.devices()

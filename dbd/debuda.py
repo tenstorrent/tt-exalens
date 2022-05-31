@@ -14,7 +14,9 @@ parser.add_argument('--netlist',  type=str, required=True, help='Netlist file to
 parser.add_argument('--commands', type=str, required=False, help='Execute a set of commands separated by ;')
 parser.add_argument('--stream-cache', action='store_true', default=False, help=f'If file "{tt_stream.STREAM_CACHE_FILE_NAME}" exists, the stream data will be loaded from it. If the file does not exist, it will be crated and populated with the stream data')
 parser.add_argument('--debug-debuda-stub', action='store_true', default=False, help=f'Prints all transactions on PCIe. Also, starts debuda-stub with --debug to print transfers.')
+parser.add_argument('--verbose', action='store_true', default=False, help=f'Prints additional information.')
 args = parser.parse_args()
+util.args = args
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -452,7 +454,7 @@ def import_commands (command_metadata_array):
         command_metadata = my_cmd_module.command_metadata
         command_metadata["module"] = my_cmd_module
         command_metadata["long"] = my_cmd_module.__name__
-        print (f"Importing command '{my_cmd_module.__name__}'")
+        util.VERBOSE (f"Importing command '{my_cmd_module.__name__}'")
 
         # Check command names/shortcuts
         for cmd in command_metadata_array:

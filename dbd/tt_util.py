@@ -2,8 +2,7 @@
 """
 debuda parses the build output files and probes the silicon to determine status of a buda run.
 """
-import yaml, sys, os, struct, argparse, time, traceback, subprocess, signal, re, pickle
-import atexit, fnmatch, importlib
+import sys, os
 from tabulate import tabulate
 
 # Get path of this script. 'frozen' means packaged with pyinstaller.
@@ -29,8 +28,10 @@ CLR_PROMPT = "<style color='green'>"
 CLR_PROMPT_END = "</style>"
 
 # Colorized messages
-def DEBUG(s):
-    print (f"{CLR_END}{s}{CLR_END}")
+def VERBOSE(s):
+    global args # Expecting this to be set on the module externally
+    if "verbose" in args and args.verbose:
+        print (f"{CLR_END}{s}{CLR_END}")
 def INFO(s):
     print (f"{CLR_INFO}{s}{CLR_END}")
 def WARN(s):
