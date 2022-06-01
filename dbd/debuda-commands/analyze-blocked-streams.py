@@ -6,8 +6,8 @@ import tt_stream, tt_netlist, tt_util as util
 
 command_metadata = {
         "short" : "abs",
-        "expected_argument_count" : [0, 1],
-        "arguments_description" : "[verbosity]: reads stream information from the devices and highlights blocked streams (if verbosity is provided, print more detail)"
+        "expected_argument_count" : [0,1],
+        "arguments_description" : "verbosity [0-1]: reads stream information from the devices and highlights blocked streams (if verbosity is 1, print more detail)"
     }
 
 def run(args, context, ui_state = None):
@@ -118,6 +118,7 @@ def run(args, context, ui_state = None):
             has_empty_inputs = device_data[device_id]["cores"][block_loc]["has_empty_inputs"]
             if has_active_stream:
                 for stream_id in range (0, 64):
+                    add_stream_to_navigation_suggestions = False
                     stream_loc = block_loc + (stream_id,)
                     current_phase = int(all_stream_regs[stream_loc]['CURR_PHASE'])
                     if current_phase > 0:
@@ -140,10 +141,23 @@ def run(args, context, ui_state = None):
                             # b. Flags
                             if not has_empty_inputs:
                                 flag = f"{util.CLR_WARN}All core inputs ready, but no output generated{util.CLR_END}"
+                                add_stream_to_navigation_suggestions = True
 
                         row = [ core_loc if last_core_loc != core_loc else "", op if last_core_loc != core_loc else "", stream_id, stream_type_str, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, depends_on_str, f"Active" if stream_active else "", flag ]
                         last_core_loc = core_loc
-                        rows.append (row)
+                        if verbosity > 0 or flag != "":
+                            rows.append (row)
+                        if verbosity and stream_active:
+                            add_stream_to_navigation_suggestions = True
+
+                    if add_stream_to_navigation_suggestions:
+                        navigation_suggestions.append (\
+                            { 'description': 'Go to stream',
+                                'cmd' : f"s {x} {y} {stream_id}",
+                                'loc' : (x, y)
+                            })
+
+
 
         # 4. Print any issues
         if len (issues_sets["bad_stream"]) > 0:

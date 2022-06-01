@@ -21,7 +21,7 @@ def run(args, context, ui_state = None):
 
     # Initialize with the summary of all streams within the core (if any)
     data_columns = [ all_stream_summary ] if len(all_stream_summary) > 0 else []
-    title_columns = [ f"{util.CLR_WARN}Non-idle streams{util.CLR_END}" ] if len(all_stream_summary) > 0 else []
+    title_columns = [ f"Non-idle streams" ] if len(all_stream_summary) > 0 else []
 
     data_columns.append (stream_regs)
     title_columns.append ("Registers")
