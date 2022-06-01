@@ -1,7 +1,7 @@
 #!/bin/bash
 TMP_OUT_FILE=build/test/dbd-out.tmp
 
-if [ $1 = "skip-build" ]; then
+if [ "$1" = "skip-build" ]; then
     echo Skipping build used for CI and tests
     # Hack - CI will copy only build directory.
     # We should either move debuda-stub to build directory,
