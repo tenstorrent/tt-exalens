@@ -377,14 +377,18 @@ class Graph:
         for stream, s in self.streams.items():
             print (f"{s}")
 
-# Wrapper for Buda run netlist.yaml file
+# Wrapper for Buda run netlist.yaml and, currently, runtime_data.yaml files
 class Netlist:
-    def __init__(self, filepath, rundir):
-        # 1. Load the netlist itself
-        self.yaml_file = YamlFile (filepath)
+    def __init__(self, netlist_filepath, rundir):
+        # 1. Load the runtime data file
+        self.runtime_data_yaml = yaml.safe_load(open(f"{rundir}/runtime_data.yaml"))
 
-        # 2. Load the graph to epoch map. Example:
-        self.graph_to_epoch_map_yaml_file = yaml.safe_load(open(f"{rundir}/graph_to_epoch_map.yaml"))
+        if netlist_filepath is None:
+            netlist_filepath = self.get_netlist_path()
+
+        # 2. Load the netlist itself
+        util.INFO (f"Loading netlist '{netlist_filepath}'")
+        self.yaml_file = YamlFile (netlist_filepath)
 
         # Cache epoch id, device id and graph names
         self.epoch_id_to_graph_name_map = dict()
@@ -430,9 +434,9 @@ class Netlist:
     def graph_names (self):
         return self.yaml_file.root['graphs'].keys()
     def graph_name_to_epoch_id (self, graph_name):
-        return self.graph_to_epoch_map_yaml_file[graph_name]["epoch_id"]
+        return self.runtime_data_yaml["graph_to_epoch_map"][graph_name]["epoch_id"]
     def graph_name_to_device_id (self, graph_name):
-        return self.graph_to_epoch_map_yaml_file[graph_name]["target_device"] if graph_name in self.graph_to_epoch_map_yaml_file else None
+        return self.runtime_data_yaml["graph_to_epoch_map"][graph_name]["target_device"] if graph_name in self.runtime_data_yaml["graph_to_epoch_map"] else None
     def epoch_id_to_graph_name (self, epoch_id):
         return self.epoch_id_to_graph_name_map[epoch_id] if epoch_id in self.epoch_id_to_graph_name_map else None
     def graph (self, graph_name):
@@ -442,9 +446,14 @@ class Netlist:
 
     # Determines the architecture
     def get_arch (self):
-        for epoch_id in self.graph_to_epoch_map_yaml_file:
-            if "ARCH_NAME" in self.graph_to_epoch_map_yaml_file[epoch_id]:
-                return self.graph_to_epoch_map_yaml_file[epoch_id]["ARCH_NAME"] # HACK: return the first arch name
+        if "arch_name" in self.runtime_data_yaml:
+            return self.runtime_data_yaml["arch_name"]
+        return None
+
+    # Determines the netlist file path
+    def get_netlist_path (self):
+        if "netlist_path" in self.runtime_data_yaml:
+            return self.runtime_data_yaml["netlist_path"]
         return None
 
     # Renderer
@@ -465,11 +474,10 @@ def load (netlist_filepath, run_dirpath):
         this.context = Context()
 
     # Load netlist files
-    util.INFO (f"Loading netlist '{netlist_filepath}'")
     this.context.netlist = Netlist(netlist_filepath, run_dirpath)
 
     netlist_devices = this.context.netlist.devices()
     arch = this.context.netlist.get_arch ()
-    this.context.devices = [ tt_device.Device.create(arch) for i in range (netlist_devices["count"]) ] 
+    this.context.devices = [ tt_device.Device.create(arch) for i in range (netlist_devices["count"]) ]
 
     return this.context

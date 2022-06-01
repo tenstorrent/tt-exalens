@@ -10,7 +10,7 @@ from prompt_toolkit.formatted_text import HTML
 
 parser = argparse.ArgumentParser(description=__doc__ + tt_device.STUB_HELP)
 parser.add_argument('output_dir', type=str, nargs='?', default=None, help='Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used')
-parser.add_argument('--netlist',  type=str, required=True, help='Netlist file to import')
+parser.add_argument('--netlist',  type=str, required=False, default=None, help='Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used')
 parser.add_argument('--commands', type=str, required=False, help='Execute a set of commands separated by ;')
 parser.add_argument('--stream-cache', action='store_true', default=False, help=f'If file "{tt_stream.STREAM_CACHE_FILE_NAME}" exists, the stream data will be loaded from it. If the file does not exist, it will be crated and populated with the stream data')
 parser.add_argument('--debug-debuda-stub', action='store_true', default=False, help=f'Prints all transactions on PCIe. Also, starts debuda-stub with --debug to print transfers.')
@@ -472,17 +472,17 @@ tt_device.init_comm_client (args.debug_debuda_stub)
 atexit.register (tt_device.terminate_comm_client_callback)
 
 # Create context
-if args.output_dir is None:
-    latest_time = None
-    for f in os.listdir("tt_build"):
-        subdir = f"tt_build/{f}"
+if args.output_dir is None: # Then find the most recent tt_build subdir
+    most_recent_modification_time = None
+    for tt_build_subfile in os.listdir("tt_build"):
+        subdir = f"tt_build/{tt_build_subfile}"
         if os.path.isdir(subdir):
-            if latest_time is None or os.path.getmtime(subdir) > latest_time:
-                latest_time = os.path.getmtime(subdir)
-                latest_subdir = subdir
-    print (latest_subdir)
-    args.output_dir = latest_subdir
-    util.INFO (f"Output directory not specified: looking for the most recent tt_build/ subdirectory. Found: {latest_subdir}")
+            if most_recent_modification_time is None or os.path.getmtime(subdir) > most_recent_modification_time:
+                most_recent_modification_time = os.path.getmtime(subdir)
+                most_recent_subdir = subdir
+    print (most_recent_subdir)
+    args.output_dir = most_recent_subdir
+    util.INFO (f"Output directory not specified: looking for the most recent tt_build/ subdirectory. Found: {most_recent_subdir}")
 
 context = tt_netlist.load (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
 
