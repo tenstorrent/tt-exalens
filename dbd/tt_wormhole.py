@@ -1,5 +1,5 @@
 import tt_util as util, os
-import tt_device, tt_netlist, tt_stream
+import tt_device, tt_netlist
 
 phase_state_map = {
     0: "PHASE_START",
@@ -236,7 +236,7 @@ def full_dump_xy(chip_id, x, y):
     for stream_id in range (0, 64):
         print()
         stream = read_stream_regs(chip_id, x, y, stream_id)
-        for reg, value in tt_stream.items():
+        for reg, value in stream.items():
             print(f"Tensix x={x:02d},y={y:02d} => stream {stream_id:02d} {reg} = {value}")
 
     for noc_id in range (0, 2):

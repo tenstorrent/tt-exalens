@@ -1,5 +1,5 @@
 import tt_util as util, os
-import tt_device, tt_netlist, tt_stream
+import tt_device, tt_netlist
 
 # Some of this can be read from architecture yaml file
 CHANNEL_TO_DRAM_LOC = [(1, 0), (1, 6), (4, 0), (4, 6), (7, 0), (7, 6), (10, 0), (10, 6)]
@@ -168,7 +168,7 @@ def full_dump_xy(chip_id, x, y):
     for stream_id in range (0, 64):
         print()
         stream = read_stream_regs(chip_id, x, y, stream_id)
-        for reg, value in tt_stream.items():
+        for reg, value in stream.items():
             print(f"Tensix x={x:02d},y={y:02d} => stream {stream_id:02d} {reg} = {value}")
 
     for noc_id in range (0, 2):
