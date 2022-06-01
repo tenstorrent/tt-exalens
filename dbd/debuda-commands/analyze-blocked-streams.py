@@ -6,11 +6,16 @@ import tt_stream, tt_netlist, tt_util as util
 
 command_metadata = {
         "short" : "abs",
-        "expected_argument_count" : 0,
-        "arguments_description" : ": reads stream information from the devices and highlights blocked streams"
+        "expected_argument_count" : [0, 1],
+        "arguments_description" : "[verbosity]: reads stream information from the devices and highlights blocked streams (if verbosity is provided, print more detail)"
     }
 
 def run(args, context, ui_state = None):
+    if len(args) == 2:
+        verbosity = int(args[1])
+    else:
+        verbosity = 0
+
     navigation_suggestions = []
 
     headers = [ "X-Y", "Op", "Stream", "Type", "Epoch", "Phase", "MSGS_REMAINING", "MSGS_RECEIVED", "Depends on", "State", "Flag" ]
@@ -125,19 +130,24 @@ def run(args, context, ui_state = None):
                         op = graph.core_coord_to_full_op_name(r, c)
                         core_loc = f"{x}-{y}"
                         fan_in_cores = device_data[device_id]['cores'][block_loc]['fan_in_cores']
-                        fan_in_cores_str = ""
-                        if last_core_loc != core_loc:
+                        depends_on_str = ""
+                        flag = ""
+                        if last_core_loc != core_loc: # Do it only once per core
+                            # a. Note dependencies
                             for fic_noc0 in fan_in_cores:
                                 if fic_noc0 in active_core_noc0_list:
-                                    fan_in_cores_str += f"{fic_noc0[0]}-{fic_noc0[1]} "
-                        flag = f"{util.CLR_WARN}All core inputs ready, but no output generated{util.CLR_END}" if not has_empty_inputs and last_core_loc != core_loc else ""
-                        row = [ core_loc if last_core_loc != core_loc else "", op if last_core_loc != core_loc else "", stream_id, stream_type_str, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, fan_in_cores_str, f"Active" if stream_active else "", flag ]
+                                    depends_on_str += f"{fic_noc0[0]}-{fic_noc0[1]} "
+                            # b. Flags
+                            if not has_empty_inputs:
+                                flag = f"{util.CLR_WARN}All core inputs ready, but no output generated{util.CLR_END}"
+
+                        row = [ core_loc if last_core_loc != core_loc else "", op if last_core_loc != core_loc else "", stream_id, stream_type_str, epoch_id, current_phase, CURR_PHASE_NUM_MSGS_REMAINING, NUM_MSGS_RECEIVED, depends_on_str, f"Active" if stream_active else "", flag ]
                         last_core_loc = core_loc
                         rows.append (row)
 
         # 4. Print any issues
         if len (issues_sets["bad_stream"]) > 0:
-            print ("Bad streams:")
+            print ("Bad streams (check DEBUG_STATUS registers):")
             for loc in issues_sets["bad_stream"]:
                 print(f"\t x={loc[0]:02d}, y={loc[1]:02d}, stream_id={loc[2]:02d}")
         if len (issues_sets["gsync_hung"]) > 0:
