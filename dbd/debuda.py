@@ -149,7 +149,6 @@ def print_epoch_queue_summary (cmd, context, ui_state):
     reserved_size_bytes = DRAM_PERF_SCRATCH_SIZE_BYTES - epoch0_start_table_size_bytes
 
     chip_id = 0
-    print (f"{util.CLR_INFO}Epoch queues for device %d{util.CLR_END}" % chip_id)
     chip_id += 1
 
     dram_chan = 0 # CHECK: This queue is always in channel 0
