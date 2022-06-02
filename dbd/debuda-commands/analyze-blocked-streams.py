@@ -38,21 +38,28 @@ def run(args, context, ui_state = None):
         stream_cache = tt_netlist.CachedDictFile (f"device{device_id}-{tt_stream.STREAM_CACHE_FILE_NAME}", context.stream_cache_enabled)
         all_stream_regs = stream_cache.load_cached (device.read_all_stream_registers, "device.read_all_stream_registers ()")
 
-        # 2. Check where the programmed streams are
-        programmed_streams = device.get_configured_stream_locations(all_stream_regs)
-
         # Find epochs for each stream
-        epochs = { device.stream_epoch (stream_regs) for loc, stream_regs in all_stream_regs.items() if loc in programmed_streams }
-        # print (f"Stream epochs: {epochs}")
+        epochs = set()
+        epoch_to_graph_map = dict()
+        for loc, stream_regs in all_stream_regs.items():
+            epoch_id = device.stream_epoch (stream_regs)
+            if epoch_id not in epochs:
+                epochs.add (epoch_id)
+            graph_name = netlist.epoch_id_to_graph_name (epoch_id)
+            if graph_name is None:
+                util.ERROR (f"Stream at {loc} is in epoch {epoch_id}, which does not exist in the netlist")
+            else:
+                epoch_to_graph_map[epoch_id] = netlist.graph (graph_name)
 
         if len(epochs) == 0:
             util.INFO (f"Device {device_id} has no programmed streams. Cannot determine the current epoch.")
             continue
+        elif len(epochs) > 1:
+            util.WARN (f"The streams within the device are in the following set of epochs: {epochs}.")
 
-        working_epoch_id = min(epochs)
+        working_epoch_id = list(epochs)[0]
         working_graph_name = netlist.epoch_id_to_graph_name (working_epoch_id)
-        graph = netlist.graph (working_graph_name)
-
+        device_graph = netlist.graph (working_graph_name)
         all_streams_ui_data = dict()
         for stream_loc, stream_regs in all_stream_regs.items():
             all_streams_ui_data[stream_loc] = tt_stream.convert_reg_dict_to_strings(device, stream_regs)
@@ -102,7 +109,7 @@ def run(args, context, ui_state = None):
         active_core_rc_list = [ device.noc0_to_rc( active_stream[1], active_stream[2] ) for active_stream in active_streams ]
         active_core_noc0_list = [ ( active_stream[1], active_stream[2] ) for active_stream in active_streams ]
         for active_core_rc in active_core_rc_list:
-            fan_in_cores_rc = graph.get_fanin_cores_rc (active_core_rc)
+            fan_in_cores_rc = device_graph.get_fanin_cores_rc (active_core_rc)
             active_core_noc0 = device.rc_to_noc0 (active_core_rc[0], active_core_rc[1])
             # print (f"fan_in_cores_rc for {active_core_rc}: {fan_in_cores_rc}")
             fan_in_cores_noc0 = [ device.rc_to_noc0 (rc[0], rc[1]) for rc in fan_in_cores_rc ]
@@ -128,7 +135,10 @@ def run(args, context, ui_state = None):
                         NUM_MSGS_RECEIVED = int(all_stream_regs[stream_loc]['NUM_MSGS_RECEIVED'])
                         CURR_PHASE_NUM_MSGS_REMAINING = int(all_stream_regs[stream_loc]['CURR_PHASE_NUM_MSGS_REMAINING'])
 
-                        op = graph.core_coord_to_full_op_name(r, c)
+                        op=f"Unknown opoch_id {epoch_id}"
+                        if epoch_id in epoch_to_graph_map:
+                            graph = epoch_to_graph_map[epoch_id]
+                            op = graph.core_coord_to_full_op_name(r, c)
                         core_loc = f"{x}-{y}"
                         fan_in_cores = device_data[device_id]['cores'][block_loc]['fan_in_cores']
                         depends_on_str = ""
