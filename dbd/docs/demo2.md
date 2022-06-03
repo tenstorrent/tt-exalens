@@ -1,8 +1,10 @@
 # Tapout demo
 
-```dbd/tapout_sweep.py --test_command "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --silicon --arch grayskull" --out_dir "output"```\
-This command will create modified netlist for each operation, which has one additional tapout queue and execute test command, for each modified netlist.
-In output folder, you can find modified netlists in file DBG_{operation_name}.yaml, console output of test operation in DBG_{operation}.console.log, op_errors.log where all mismatched tiles are logged, and tapout_result.log.\
+```
+ARCH_NAME=grayskull dbd/tapout_sweep.py --test_command "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --silicon --arch grayskull" --out_dir "output"
+```
+This command will create a modified netlist for each operation with one additional tapout queue. Then it will execute a given test command for each modified netlist.
+In the output folder, you can find the modified netlists in file DBG_{operation_name}.yaml, console output of test operation in DBG_{operation}.console.log, op_errors.log where all mismatched tiles are logged, and tapout_result.log.\
 ex. tapout_result.log
 ```
 op_name: DBG_mha_0_as_mask
@@ -11,8 +13,11 @@ op_name: DBG_mha_0_as_mask
 	Result: PASSED
 ```
 ## Broken test command
-This is example of bad command\
-```dbd/tapout_sweep.py --test_command "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --dummy --silicon --arch grayskull" --out_dir "output"```\
+This is example of bad command:
+```
+dbd/tapout_sweep.py --test_command "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --dummy --silicon --arch grayskull" --out_dir "output"
+```
+
 tapout_result.log will look like following
 ```
 op_name: DBG_mha_0_output
