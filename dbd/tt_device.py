@@ -218,7 +218,8 @@ class Device:
         if emphasize_explanation is not None:
             legend += [ "+ - " + emphasize_explanation ]
 
-        for y in reversed(range (y_size)): # We want 0,0 in the bottom left corner, so we reverse
+        rng = range (y_size) if options == 'rc' else reversed(range (y_size))
+        for y in rng:
             row = [ f"%02d" % y ]
             # 1. Add graphics
             for x in range (x_size):
@@ -242,7 +243,7 @@ class Device:
         rows.append (row)
 
         table_str = tabulate(rows, tablefmt='plain')
-        return table_str 
+        return table_str
 
     def dump_memory(self, x, y, addr, size):
         return dump_memory(self.id(), x, y, addr, size)
