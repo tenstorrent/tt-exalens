@@ -239,8 +239,8 @@ def main(args, context):
     commands = [
         { "long" : "exit",
           "short" : "x",
-          "expected_argument_count" : 0,
-          "arguments_description" : ": exit the program"
+          "expected_argument_count" : [ 0, 1 ],
+          "arguments_description" : ": exit the program. If argument given, it will be used as the exit code"
         },
         { "long" : "help",
           "short" : "h",
@@ -338,7 +338,7 @@ def main(args, context):
     non_interactive_commands=args.commands.split(";") if args.commands else []
 
     # Main command loop
-    while cmd_raw != 'exit' and cmd_raw != 'x':
+    while True:
         have_non_interactive_commands=len(non_interactive_commands) > 0
 
         if ui_state['current_x'] is not None and ui_state['current_y'] is not None and ui_state['current_epoch_id'] is not None:
@@ -354,8 +354,6 @@ def main(args, context):
 
             if have_non_interactive_commands:
                 cmd_raw = non_interactive_commands[0].strip()
-                if cmd_raw == 'exit' or cmd_raw == 'x':
-                    continue
                 non_interactive_commands=non_interactive_commands[1:]
                 if len(cmd_raw)>0:
                     print (f"{util.CLR_INFO}Executing command: %s{util.CLR_END}" % cmd_raw)
@@ -402,7 +400,8 @@ def main(args, context):
                     pass
                 else:
                     if found_command["long"] == "exit":
-                        pass # Exit is handled in the outer loop
+                        exit_code = int(cmd[1]) if len(cmd) > 1 else 0
+                        return exit_code
                     elif found_command["long"] == "help":
                         print_available_commands (commands)
                     elif found_command["long"] == "test":
@@ -498,4 +497,6 @@ context = tt_netlist.load (netlist_filepath = args.netlist, run_dirpath = args.o
 context.stream_cache_enabled = args.stream_cache
 
 # Main function
-sys.exit (main(args, context))
+exit_code = main(args, context)
+util.INFO (f"Exiting with code {exit_code} ")
+sys.exit (exit_code)

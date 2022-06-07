@@ -46,8 +46,9 @@ def init_comm_client (debug_debuda_stub):
 
 # Terminates debuda-stub spawned in init_comm_client
 def terminate_comm_client_callback ():
-    os.killpg(os.getpgid(DEBUDA_STUB_PROCESS_ID.pid), signal.SIGTERM)
-    print (f"Terminated debuda-stub with pid:{DEBUDA_STUB_PROCESS_ID.pid}")
+    if DEBUDA_STUB_PROCESS_ID is not None:
+        os.killpg(os.getpgid(DEBUDA_STUB_PROCESS_ID.pid), signal.SIGTERM)
+        print (f"Terminated debuda-stub")
 
 # PCI read/write functions. Given a noc0 location and addr, performs a PCI read/write
 # to the given location at the address.
