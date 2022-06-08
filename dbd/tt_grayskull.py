@@ -225,55 +225,55 @@ def full_dump_xy(chip_id, x, y):
 
     sig_sel = 0xff
     rd_sel = 0
-    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    test_val1 = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c)
+    tt_device.PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    test_val1 = tt_device.PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c)
     rd_sel = 1
-    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    test_val2 = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c)
+    tt_device.PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    test_val2 = tt_device.PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c)
 
     rd_sel = 0
     sig_sel = 2*9
-    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    brisc_pc = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+    tt_device.PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    brisc_pc = tt_device.PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
 
     # Doesn't work - looks like a bug for selecting inputs > 31 in daisy stop
     # rd_sel = 0
     # sig_sel = 2*16
-    # tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    # nrisc_pc = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+    # tt_device.PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    # nrisc_pc = tt_device.PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
 
     rd_sel = 0
     sig_sel = 2*10
-    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    trisc0_pc = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+    tt_device.PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    trisc0_pc = tt_device.PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
 
     rd_sel = 0
     sig_sel = 2*11
-    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    trisc1_pc = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+    tt_device.PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    trisc1_pc = tt_device.PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
 
     rd_sel = 0
     sig_sel = 2*12
-    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-    trisc2_pc = tt_device.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+    tt_device.PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+    trisc2_pc = tt_device.PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
 
     # IH: Commented out to reduce chatter
     print()
     print(f"Tensix x={x:02d},y={y:02d} => dbus_test_val1 (expect 7)={test_val1:x}, dbus_test_val2 (expect A5A5A5A5)={test_val2:x}")
     print(f"Tensix x={x:02d},y={y:02d} => brisc_pc=0x{brisc_pc:x}, trisc0_pc=0x{trisc0_pc:x}, trisc1_pc=0x{trisc1_pc:x}, trisc2_pc=0x{trisc2_pc:x}")
 
-    tt_device.pci_write_xy(chip_id, x, y, 0, 0xffb12054, 0)
+    tt_device.PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, 0)
 
 # Reads and immediately prints a value of a given NOC register
 def read_print_noc_reg(chip_id, x, y, noc_id, reg_name, reg_index):
     reg_addr = 0xffb20000 + (noc_id*0x10000) + 0x200 + (reg_index*4)
-    val = tt_device.pci_read_xy(chip_id, x, y, 0, reg_addr)
+    val = tt_device.PCI_IFC.pci_read_xy(chip_id, x, y, 0, reg_addr)
     print(f"Tensix x={x:02d},y={y:02d} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})")
 
 # Extracts and returns a single field of a stream register
 def get_stream_reg_field(chip_id, x, y, stream_id, reg_index, start_bit, num_bits):
     reg_addr = 0xFFB40000 + (stream_id*0x1000) + (reg_index*4)
-    val = tt_device.pci_read_xy(chip_id, x, y, 0, reg_addr)
+    val = tt_device.PCI_IFC.pci_read_xy(chip_id, x, y, 0, reg_addr)
     mask = (1 << num_bits) - 1
     val = (val >> start_bit) & mask
     return val
@@ -292,9 +292,9 @@ def is_bad_stream (stream_data):
         (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x4 or \
         (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x2
 def is_gsync_hung (chip, x, y):
-    return tt_device.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0xB0010000
+    return tt_device.PCI_IFC.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0xB0010000
 def is_ncrisc_done (chip, x, y):
-    return tt_device.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0x1FFFFFF1
+    return tt_device.PCI_IFC.pci_read_xy(chip, x, y, 0, 0xffb2010c) == 0x1FFFFFF1
 
 NCRISC_STATUS_REG_ADDR=0xFFB2010C
 BRISC_STATUS_REG_ADDR=0xFFB3010C
@@ -346,7 +346,7 @@ def get_status_register_desc(register_address, reg_value_on_chip):
 def status_register_summary(device_id, coords, addr, ver = 0):
     status_descs = {}
     for loc in coords:
-        status_descs[loc] = get_status_register_desc(addr, tt_device.pci_read_xy(device_id, loc[0], loc[1], 0, addr))
+        status_descs[loc] = get_status_register_desc(addr, tt_device.PCI_IFC.pci_read_xy(device_id, loc[0], loc[1], 0, addr))
 
     # Print register status
     status_descs_rows = []

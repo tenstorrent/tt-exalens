@@ -1,4 +1,4 @@
-import os, subprocess, time, struct, signal, re, zmq
+import os, subprocess, time, struct, signal, re, zmq, pickle
 from tabulate import tabulate
 import tt_util as util
 STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with bin/build-debuda-stub.sh. It also requires zeromq (sudo apt install -y libzmq3-dev)."
@@ -50,32 +50,84 @@ def terminate_comm_client_callback ():
         os.killpg(os.getpgid(DEBUDA_STUB_PROCESS_ID.pid), signal.SIGTERM)
         print (f"Terminated debuda-stub")
 
-# PCI read/write functions. Given a noc0 location and addr, performs a PCI read/write
-# to the given location at the address.
-def pci_read_xy(chip_id, x, y, noc_id, reg_addr):
-    # print (f"Reading {x}-{y} 0x{reg_addr:x}")
-    # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
-    ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x02', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, 0))
-    ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
-    return ret_val
-def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
-    # print (f"Reading {x}-{y} 0x{reg_addr:x}")
-    # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
-    ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x04', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, data))
-    ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
-    assert data == ret_val
-def host_dma_read (dram_addr):
-    # print ("host_dma_read 0x%x" % dram_addr)
-    ZMQ_SOCKET.send(struct.pack ("cccccI", b'\x03', b'\x00', b'\x00', b'\x00', b'\x00', dram_addr))
-    ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
-    return ret_val
-def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
-    # print (f"Reading {x}-{y} 0x{reg_addr:x}")
-    # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x05', chip_id, x, y, z, reg_addr, data_format<<16 + message_size))
-    data = data_format * 2**16 + msg_size
-    ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x05', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), z.to_bytes(1, byteorder='big'), reg_addr, data))
-    ret = ZMQ_SOCKET.recv()
-    return ret
+# This is the interface to the debuda server (aka. debuda-stub)
+class DEBUDA_SERVER_IFC:
+    enabled = True # It can be disabled for offline operation (when working from cache)
+
+    # PCI read/write functions. Given a noc0 location and addr, performs a PCI read/write
+    # to the given location at the address.
+    def pci_read_xy(chip_id, x, y, noc_id, reg_addr):
+        assert DEBUDA_SERVER_IFC.enabled
+        # print (f"Reading {x}-{y} 0x{reg_addr:x}")
+        # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
+        ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x02', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, 0))
+        ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
+        return ret_val
+    def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
+        assert DEBUDA_SERVER_IFC.enabled
+        # print (f"Reading {x}-{y} 0x{reg_addr:x}")
+        # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
+        ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x04', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, data))
+        ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
+        assert data == ret_val
+    def host_dma_read (dram_addr):
+        assert DEBUDA_SERVER_IFC.enabled
+        # print ("host_dma_read 0x%x" % dram_addr)
+        ZMQ_SOCKET.send(struct.pack ("cccccI", b'\x03', b'\x00', b'\x00', b'\x00', b'\x00', dram_addr))
+        ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
+        return ret_val
+    def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
+        assert DEBUDA_SERVER_IFC.enabled
+        # print (f"Reading {x}-{y} 0x{reg_addr:x}")
+        # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x05', chip_id, x, y, z, reg_addr, data_format<<16 + message_size))
+        data = data_format * 2**16 + msg_size
+        ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x05', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), z.to_bytes(1, byteorder='big'), reg_addr, data))
+        ret = ZMQ_SOCKET.recv()
+        return ret
+
+# This interface is used to read cached values of PCI reads.
+class DEBUDA_SERVER_CACHED_IFC:
+    filepath = 'debuda-server-cache.pkl'
+    cache_store = dict()
+    enabled = True
+
+    def load ():
+        if DEBUDA_SERVER_CACHED_IFC.enabled:
+            if os.path.exists (DEBUDA_SERVER_CACHED_IFC.filepath):
+                util.WARN (f"Loading server cache from file {DEBUDA_SERVER_CACHED_IFC.filepath}")
+                with open(DEBUDA_SERVER_CACHED_IFC.filepath, 'rb') as f:
+                    DEBUDA_SERVER_CACHED_IFC.cache_store = pickle.load(f)
+            else:
+                assert DEBUDA_SERVER_IFC.enabled, f"Cache file {DEBUDA_SERVER_CACHED_IFC.filepath} does not exist"
+
+    def save():
+        if DEBUDA_SERVER_CACHED_IFC.enabled and DEBUDA_SERVER_IFC.enabled:
+            util.WARN (f"Saving server cache to file {DEBUDA_SERVER_CACHED_IFC.filepath}")
+            with open(DEBUDA_SERVER_CACHED_IFC.filepath, 'wb') as f:
+                pickle.dump(DEBUDA_SERVER_CACHED_IFC.cache_store, f)
+
+    def pci_read_xy(chip_id, x, y, noc_id, reg_addr):
+        key = (chip_id, x, y, noc_id, reg_addr)
+        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_IFC.pci_read_xy(chip_id, x, y, noc_id, reg_addr)
+        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
+    def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
+        if not DEBUDA_SERVER_CACHED_IFC.enabled:
+            return DEBUDA_SERVER_IFC.pci_write_xy(chip_id, x, y, noc_id, reg_addr, data)
+    def host_dma_read (dram_addr):
+        key = (dram_addr)
+        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_IFC.host_dma_read (dram_addr)
+        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
+    def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
+        key = (chip_id, x, y, z, reg_addr, msg_size, data_format)
+        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_IFC.pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format)
+        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
+
+# PCI interface is a cached interface through Debuda server
+class PCI_IFC (DEBUDA_SERVER_CACHED_IFC):
+    pass
 
 # Prints contents of core's memory
 def dump_memory(device_id, x, y, addr, size):
@@ -83,14 +135,14 @@ def dump_memory(device_id, x, y, addr, size):
         row = []
         for j in range(0, 16):
             if (addr + k*64 + j* 4 < addr + size):
-                val = pci_read_xy(device_id, x, y, 0, addr + k*64 + j*4)
+                val = PCI_IFC.pci_read_xy(device_id, x, y, 0, addr + k*64 + j*4)
                 row.append(f"0x{val:08x}")
         s = " ".join(row)
         print(f"{x}-{y} 0x{(addr + k*64):08x} => {s}")
 
 # Dumps tile in format received form tt_tile::get_string
 def dump_tile(chip, x, y, addr, size, data_format):
-    s = pci_read_tile(chip, x, y, 0, addr, size, data_format)
+    s = PCI_IFC.pci_read_tile(chip, x, y, 0, addr, size, data_format)
     print(s.decode("utf-8"))
 
 #
@@ -264,6 +316,6 @@ class Device:
         for thread_idx in range (THREAD_COUNT):
             for reg_idx in range(DEBUG_MAILBOX_BUF_SIZE // THREAD_COUNT):
                 reg_addr = DEBUG_MAILBOX_BUF_BASE + thread_idx * DEBUG_MAILBOX_BUF_SIZE + reg_idx * 4
-                val = pci_read_xy(self.id(), x, y, 0, reg_addr)
+                val = PCI_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
                 debug_tables[thread_idx].append ({ "lo_val" : val & 0xffff, "hi_val": (val >> 16) & 0xffff })
         return debug_tables

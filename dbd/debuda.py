@@ -12,7 +12,8 @@ parser = argparse.ArgumentParser(description=__doc__ + tt_device.STUB_HELP)
 parser.add_argument('output_dir', type=str, nargs='?', default=None, help='Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used')
 parser.add_argument('--netlist',  type=str, required=False, default=None, help='Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used')
 parser.add_argument('--commands', type=str, required=False, help='Execute a set of commands separated by ;')
-parser.add_argument('--stream-cache', action='store_true', default=False, help=f'If file "{tt_stream.STREAM_CACHE_FILE_NAME}" exists, the stream data will be loaded from it. If the file does not exist, it will be crated and populated with the stream data')
+parser.add_argument('--stream-cache', action='store_true', default=False, help=f'If file "{tt_stream.STREAM_CACHE_FILE_NAME}" exists, the stream data will be loaded from it. If the file does not exist, it will be created and populated with the stream data')
+parser.add_argument('--server-cache', type=str, default='off', help=f'Directs communication with Debuda Server. When "off", all device reads are done through the server. When set to "through", attempt to read from cache first. When "on", all reads are from cache only.')
 parser.add_argument('--debug-debuda-stub', action='store_true', default=False, help=f'Prints all transactions on PCIe. Also, starts debuda-stub with --debug to print transfers.')
 parser.add_argument('--verbose', action='store_true', default=False, help=f'Prints additional information.')
 args = parser.parse_args()
@@ -86,8 +87,8 @@ def print_dram_queue_summary (cmd, context, ui_state = None): # graph, chip_arra
                 dram_chan = buffer_data["dram_chan"]
                 dram_addr = buffer_data['dram_addr']
                 dram_loc = tt_grayskull.CHANNEL_TO_DRAM_LOC[dram_chan]
-                rdptr = tt_device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
-                wrptr = tt_device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
+                rdptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
+                wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
                 slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
                 queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
                 occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer_data["q_slots"])
@@ -169,8 +170,8 @@ def print_epoch_queue_summary (cmd, context, ui_state):
         EPOCH_QUEUE_START_ADDR = reserved_size_bytes
         offset = (16 * x + y) * ((EPOCH_Q_NUM_SLOTS*2+8)*4)
         dram_addr = EPOCH_QUEUE_START_ADDR + offset
-        rdptr = tt_device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
-        wrptr = tt_device.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
+        rdptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
+        wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
         occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - EPOCH_Q_NUM_SLOTS)
         if occupancy > 0:
             table.append ([ f"{x}-{y}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
@@ -195,7 +196,7 @@ def print_a_pci_burst_read (device_id, x, y, noc_id, addr, burst_type = 1):
         t_end = time.time() + 1
         print ("Sampling for 1 second...")
         while time.time() < t_end:
-            val = tt_device.pci_read_xy(device_id, x, y, noc_id, addr)
+            val = tt_device.PCI_IFC.pci_read_xy(device_id, x, y, noc_id, addr)
             if val not in values:
                 values[val] = 0
             values[val] += 1
@@ -203,7 +204,7 @@ def print_a_pci_burst_read (device_id, x, y, noc_id, addr, burst_type = 1):
             print_a_pci_read(x, y, addr, val, f"- {values[val]} times")
     elif burst_type >= 2:
         for k in range(0, burst_type):
-            val = tt_device.pci_read_xy(device_id, x, y, noc_id, addr + 4*k)
+            val = tt_device.PCI_IFC.pci_read_xy(device_id, x, y, noc_id, addr + 4*k)
             print_a_pci_read(x,y,addr + 4*k, val)
 
 # Print all commands (help)
@@ -417,13 +418,13 @@ def main(args, context):
                         y = int(cmd[2],0)
                         addr = int(cmd[3],0)
                         if found_command["long"] == "pci-read-xy":
-                            data = tt_device.pci_read_xy (ui_state['current_device_id'], x, y, 0, addr)
+                            data = tt_device.PCI_IFC.pci_read_xy (ui_state['current_device_id'], x, y, 0, addr)
                             print_a_pci_read (x, y, addr, data)
                         elif found_command["long"] == "burst-read-xy":
                             burst_type = int(cmd[4],0)
                             print_a_pci_burst_read (ui_state['current_device_id'], x, y, 0, addr, burst_type=burst_type)
                         elif found_command["long"] == "pci-write-xy":
-                            tt_device.pci_write_xy (ui_state['current_device_id'], x, y, 0, addr, data = int(cmd[4],0))
+                            tt_device.PCI_IFC.pci_write_xy (ui_state['current_device_id'], x, y, 0, addr, data = int(cmd[4],0))
                         else:
                             print (f"{util.CLR_ERR} Unknown {found_command['long']} {util.CLR_END}")
                     elif found_command["long"] == "full-dump":
@@ -477,6 +478,13 @@ tt_device.init_comm_client (args.debug_debuda_stub)
 
 # Make sure to terminate communication client (debuda-stub) on exit
 atexit.register (tt_device.terminate_comm_client_callback)
+
+# Handle server cache
+tt_device.DEBUDA_SERVER_CACHED_IFC.enabled = args.server_cache == "through" or args.server_cache == "on"
+tt_device.DEBUDA_SERVER_IFC.enabled = args.server_cache == "through" or args.server_cache == "off"
+if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled:
+    atexit.register (tt_device.DEBUDA_SERVER_CACHED_IFC.save)
+    tt_device.DEBUDA_SERVER_CACHED_IFC.load()
 
 # Create context
 if args.output_dir is None: # Then find the most recent tt_build subdir

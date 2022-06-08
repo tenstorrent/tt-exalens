@@ -84,6 +84,18 @@ dial will show commands to jump to any destination or source streams connected t
 In the above screenshot, sources and destinations of the currently selected core are shown. The currently selected stream (stream 8 of core 1-1) is highlighted in red. To quickly jump to the
 source of the current stream, one can enter `0`.
 
+## Offline use (--server-cache)
+
+It is sometimes desirable to run debuda without having a connection to a running device. For this purpose, Debuda can use a cache file. An example usage scenario could be:
+
+
+- A customer runs Debuda with `--server-cache through` and sends the resulting cache file to Tenstorrent for debugging
+- A Tenstorrent engineer uses Debuda locally with `--server-cache on` to load the cache file and debug the design.
+
+Note: not all commands will be available to Tenstorrent engineer. Naturally, any command that writes to the device will not accomplish much. Any command that reads from an area of the device that was not cached will also fail. Therefore, the customer run of Debuda should read from all the relevant device areas as that will store those areas in the cache.
+
+Currently, this functionality is supported through a fairly manual flow (perhaps by using --commands for some automation). In the future, the feature will be expanded to automatically dump all relevant chip areas (DRAM, L1, registers...)
+
 ## Miscellaneous
 
 ### Building debuda-stub
@@ -94,7 +106,7 @@ Prebuilt binary is committed to git repo for convenience.
 
 ## High Level Debugging
 
-While debuda can help find low level bugs on silicon, High Level Debugging (aka Tapout Sweep) is used to find data mismatche errors. It runs a netlist iteratively with each operation 'tapped out' in topological order. The result of the tapped-out operation is compared with the golden results. Two flows are supported: budabackend and pybuda.
+While debuda can help find low level bugs on silicon, High Level Debugging (aka Tapout Sweep) is used to find data mismatch errors. It runs a netlist iteratively with each operation 'tapped out' in topological order. The result of the tapped-out operation is compared with the golden results. Two flows are supported: budabackend and pybuda.
 
 ### Usage
 
