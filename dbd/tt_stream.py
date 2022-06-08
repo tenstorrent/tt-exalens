@@ -1,7 +1,5 @@
 import tt_util as util, tt_grayskull, re, os
 
-STREAM_CACHE_FILE_NAME="stream-cache.pkl"
-
 # The field names we want to show as hexadecimal numbers
 HEX_FIELDS = {
     "buf_addr",

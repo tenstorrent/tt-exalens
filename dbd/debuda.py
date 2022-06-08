@@ -12,7 +12,6 @@ parser = argparse.ArgumentParser(description=__doc__ + tt_device.STUB_HELP)
 parser.add_argument('output_dir', type=str, nargs='?', default=None, help='Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used')
 parser.add_argument('--netlist',  type=str, required=False, default=None, help='Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used')
 parser.add_argument('--commands', type=str, required=False, help='Execute a set of commands separated by ;')
-parser.add_argument('--stream-cache', action='store_true', default=False, help=f'If file "{tt_stream.STREAM_CACHE_FILE_NAME}" exists, the stream data will be loaded from it. If the file does not exist, it will be created and populated with the stream data')
 parser.add_argument('--server-cache', type=str, default='off', help=f'Directs communication with Debuda Server. When "off", all device reads are done through the server. When set to "through", attempt to read from cache first. When "on", all reads are from cache only.')
 parser.add_argument('--debug-debuda-stub', action='store_true', default=False, help=f'Prints all transactions on PCIe. Also, starts debuda-stub with --debug to print transfers.')
 parser.add_argument('--verbose', action='store_true', default=False, help=f'Prints additional information.')
@@ -500,9 +499,6 @@ if args.output_dir is None: # Then find the most recent tt_build subdir
     util.INFO (f"Output directory not specified: looking for the most recent tt_build/ subdirectory. Found: {most_recent_subdir}")
 
 context = tt_netlist.load (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
-
-# Initialize context
-context.stream_cache_enabled = args.stream_cache
 
 # Main function
 exit_code = main(args, context)

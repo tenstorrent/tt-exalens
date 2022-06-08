@@ -35,8 +35,7 @@ def run(args, context, ui_state = None):
             "cores" : { }
         }
         # 1. Read all stream registers
-        stream_cache = tt_netlist.CachedDictFile (f"device{device_id}-{tt_stream.STREAM_CACHE_FILE_NAME}", context.stream_cache_enabled)
-        all_stream_regs = stream_cache.load_cached (device.read_all_stream_registers, "device.read_all_stream_registers ()")
+        all_stream_regs = device.read_all_stream_registers ()
 
         # Find epochs for each stream
         epochs = set()
