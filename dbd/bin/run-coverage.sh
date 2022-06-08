@@ -18,7 +18,7 @@ check_logfile_exit_code () {
     fi
 }
 
-# Run one coverrage command
+# Run one coverage command
 coverage_run () {
     log_file=$1
     cov_command="$2"
@@ -36,11 +36,12 @@ mkdir -p $RUN_DIR
 sudo pip install coverage
 make -j8 && make -j8 verif/op_tests/test_op
 device/bin/silicon/reset.sh
-# Apply patch to cause a hang
+# Apply the patch to cause a hang
 git apply dbd/test/inject-errors/sfpu_reciprocal-infinite-spin.patch
 
 # Run the test
-./build/test/verif/op_tests/test_op --netlist dbd/test/netlists/netlist_multi_matmul_perf.yaml --seed 0 --silicon --timeout 10 > $RUN_DIR/test_op_run.txt
+./build/test/verif/op_tests/test_op --netlist dbd/test/netlists/netlist_multi_matmul_perf.yaml --seed 0 --silicon --timeout 30 > $RUN_DIR/test_op_run.txt
+fi
 
 # Run Debuda
 ## This debuda run command sequence is supposed to return exact same text always
@@ -50,7 +51,6 @@ coverage_run $RUN_DIR/coverage-fuzzy-match.log "$COVERAGE_RUN" --append "$DEBUDA
 
 # Undo the patch
 git apply -R dbd/test/inject-errors/sfpu_reciprocal-infinite-spin.patch
-fi
 
 # Check coverage
 coverage report --sort=cover --show-missing | tee $RUN_DIR/coverage-report.txt
