@@ -1,5 +1,5 @@
 import tt_util as util, os
-import tt_device, tt_netlist
+import tt_device
 
 # Some of this can be read from architecture yaml file
 CHANNEL_TO_DRAM_LOC = [(1, 0), (1, 6), (4, 0), (4, 6), (7, 0), (7, 6), (10, 0), (10, 6)]
@@ -360,7 +360,7 @@ def status_register_summary(device_id, coords, addr, ver = 0):
 #
 class GrayskullDevice (tt_device.Device):
     def __init__(self):
-        self.yaml_file = tt_netlist.YamlFile ("device/grayskull_120_arch.yaml")
+        self.yaml_file = util.YamlFile ("device/grayskull_120_arch.yaml")
 
     def physical_to_noc (self, phys_x, phys_y, noc_id=0): return physical_to_noc(phys_x, phys_y, noc_id=noc_id)
     def noc_to_physical (self, noc_x, noc_y, noc_id=0): return noc_to_physical(noc_x, noc_y, noc_id=noc_id)

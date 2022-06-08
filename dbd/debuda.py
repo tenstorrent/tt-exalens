@@ -2,9 +2,9 @@
 """
 debuda parses the build output files and probes the silicon to determine status of a buda run.
 """
-import sys, os, argparse, time, traceback, atexit, fnmatch, importlib
+import sys, os, argparse, time, traceback, atexit, fnmatch, importlib, zipfile
 from tabulate import tabulate
-import tt_util as util, tt_device, tt_grayskull, tt_netlist, tt_stream
+import tt_util as util, tt_device, tt_grayskull, tt_netlist
 from prompt_toolkit import PromptSession
 from prompt_toolkit.formatted_text import HTML
 
@@ -247,6 +247,11 @@ def main(args, context):
           "expected_argument_count" : 0,
           "arguments_description" : ": prints command documentation"
         },
+        { "long" : "export",
+          "short" : "xp",
+          "expected_argument_count" : [ 0, 1 ],
+          "arguments_description" : f"[ filename ]: exports a zip package for offline work. The optional argument represents a zip file name. Defaults to '{ util.DEFAULT_EXPORT_FILENAME }'"
+        },
         { "long" : "epoch",
           "short" : "e",
           "expected_argument_count" : 1,
@@ -404,6 +409,20 @@ def main(args, context):
                         return exit_code
                     elif found_command["long"] == "help":
                         print_available_commands (commands)
+                    elif found_command["long"] == "export":
+                        zip_file_name = cmd[1] if len(cmd) > 1 else util.DEFAULT_EXPORT_FILENAME
+
+                        # 1. Add all Yaml files
+                        filelist = [ f for f in util.YamlFile.file_cache ]
+
+                        # 2. See if server cache is made
+                        if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled:
+                            tt_device.DEBUDA_SERVER_CACHED_IFC.save()
+                            filelist.append (tt_device.DEBUDA_SERVER_CACHED_IFC.filepath)
+                        else:
+                            util.WARN ("Warning: server cache is missing and will not be exported (see '--server-cache')")
+                        util.export_to_zip (filelist, out_file=zip_file_name)
+                        print (f"{util.CLR_GREEN}Exported '{zip_file_name}'. Import with:\n  unzip {zip_file_name} -d dbd-export\n  cd dbd-export\n  Run debuda.py {'--server-cache on' if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled else ''}{util.CLR_END}")
                     elif found_command["long"] == "test":
                         test_command (cmd, context, ui_state)
                     elif found_command["long"] == "epoch":
@@ -472,12 +491,6 @@ def import_commands (command_metadata_array):
 
         command_metadata_array.append (command_metadata)
 
-# Initialize communication with the client (debuda-stub)
-tt_device.init_comm_client (args.debug_debuda_stub)
-
-# Make sure to terminate communication client (debuda-stub) on exit
-atexit.register (tt_device.terminate_comm_client_callback)
-
 # Handle server cache
 tt_device.DEBUDA_SERVER_CACHED_IFC.enabled = args.server_cache == "through" or args.server_cache == "on"
 tt_device.DEBUDA_SERVER_IFC.enabled = args.server_cache == "through" or args.server_cache == "off"
@@ -485,7 +498,16 @@ if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled:
     atexit.register (tt_device.DEBUDA_SERVER_CACHED_IFC.save)
     tt_device.DEBUDA_SERVER_CACHED_IFC.load()
 
+if tt_device.DEBUDA_SERVER_IFC.enabled:
+    # Initialize communication with the client (debuda-stub)
+    tt_device.init_comm_client (args.debug_debuda_stub)
+
+    # Make sure to terminate communication client (debuda-stub) on exit
+    atexit.register (tt_device.terminate_comm_client_callback)
+
 # Create context
+
+# Try to find a default output directory
 if args.output_dir is None: # Then find the most recent tt_build subdir
     most_recent_modification_time = None
     for tt_build_subfile in os.listdir("tt_build"):

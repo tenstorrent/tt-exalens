@@ -2,7 +2,7 @@
 """
 debuda parses the build output files and probes the silicon to determine status of a buda run.
 """
-import sys, os
+import sys, os, yaml, zipfile
 from tabulate import tabulate
 
 # Get path of this script. 'frozen' means packaged with pyinstaller.
@@ -91,3 +91,42 @@ def print_columnar_dicts (dict_array, title_array):
         titles += [ "" ]
 
     print (tabulate(final_table, headers=titles))
+
+# Stores all data loaded from a yaml file
+# Includes a cache in case a file is loaded multiple files
+class YamlFile:
+    # Cache
+    file_cache = {}
+
+    def __init__ (self, filepath):
+        if filepath in YamlFile.file_cache:
+            self.root = YamlFile.file_cache[filepath]
+        else:
+            VERBOSE (f"Loading '{filepath}'")
+            self.filepath = filepath
+            self.root = dict()
+            # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
+            for i in yaml.safe_load_all(open(filepath)):
+                self.root = { **self.root, **i }
+            YamlFile.file_cache[filepath] = self.root
+
+    def __str__(self):
+        return f"{type(self).__name__}: {self.filepath}"
+    def items(self):
+        return self.root.items()
+    def id(self):
+        return self.filepath
+
+DEFAULT_EXPORT_FILENAME='debuda-export.zip'
+
+# Exports filelist to a zip file
+def export_to_zip(filelist, out_file=DEFAULT_EXPORT_FILENAME):
+    if out_file is None: out_file=DEFAULT_EXPORT_FILENAME
+    if os.path.exists (out_file):
+        WARN (f"Warning: cannot export as the output file already exists: {out_file}.")
+        return
+
+    zf = zipfile.ZipFile(out_file, "w", zipfile.ZIP_DEFLATED)
+
+    for filepath in filelist:
+        zf.write(filepath, filepath)

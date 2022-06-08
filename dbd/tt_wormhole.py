@@ -1,5 +1,5 @@
 import tt_util as util, os
-import tt_device, tt_netlist
+import tt_device
 
 phase_state_map = {
     0: "PHASE_START",
@@ -428,7 +428,7 @@ def status_register_summary(device_id, coords, addr, ver = 0):
 #
 class WormholeDevice (tt_device.Device):
     def __init__(self):
-        self.yaml_file = tt_netlist.YamlFile ("device/wormhole_80_arch.yaml")
+        self.yaml_file = util.YamlFile ("device/wormhole_80_arch.yaml")
 
     def physical_to_noc (self, phys_x, phys_y, noc_id=0): return physical_to_noc(phys_x, phys_y, noc_id=noc_id)
     def noc_to_physical (self, noc_x, noc_y, noc_id=0): return noc_to_physical(noc_x, noc_y, noc_id=noc_id)

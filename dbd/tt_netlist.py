@@ -1,35 +1,10 @@
-import sys, yaml, os, re, pickle
+import sys, os, pickle
 from tabulate import tabulate
 import tt_util as util, tt_device, tt_stream
 
 # 'this' is a reference to the module object instance itself.
 this = sys.modules[__name__]
 this.context = None
-
-# Store all data loaded from a yaml file here
-# Other classes constructed from the data in the yaml (netlist, blob, etc) can point to this
-class YamlFile:
-    # Cache
-    file_cache = {}
-
-    def __init__ (self, filepath):
-        if filepath in YamlFile.file_cache:
-            self.root = YamlFile.file_cache[filepath]
-        else:
-            util.VERBOSE (f"Loading '{filepath}'")
-            self.filepath = filepath
-            self.root = dict()
-            # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
-            for i in yaml.safe_load_all(open(filepath)):
-                self.root = { **self.root, **i }
-            YamlFile.file_cache[filepath] = self.root
-
-    def __str__(self):
-        return f"{type(self).__name__}: {self.filepath}"
-    def items(self):
-        return self.root.items()
-    def id(self):
-        return self.filepath
 
 # This class allows caching of dictionaries to files.
 class CachedDictFile:
@@ -381,14 +356,14 @@ class Graph:
 class Netlist:
     def __init__(self, netlist_filepath, rundir):
         # 1. Load the runtime data file
-        self.runtime_data_yaml = yaml.safe_load(open(f"{rundir}/runtime_data.yaml"))
+        self.runtime_data_yaml = util.YamlFile(f"{rundir}/runtime_data.yaml")
 
         if netlist_filepath is None:
             netlist_filepath = self.get_netlist_path()
 
         # 2. Load the netlist itself
         util.INFO (f"Loading netlist '{netlist_filepath}'")
-        self.yaml_file = YamlFile (netlist_filepath)
+        self.yaml_file = util.YamlFile (netlist_filepath)
 
         # Cache epoch id, device id and graph names
         self.epoch_id_to_graph_name_map = dict()
@@ -419,9 +394,9 @@ class Netlist:
             pipegen_file=f"{graph_dir}/overlay/pipegen.yaml"
             blob_file=f"{graph_dir}/overlay/blob.yaml"
 
-            pipegen_yaml = YamlFile(pipegen_file)
+            pipegen_yaml = util.YamlFile(pipegen_file)
             self.epoch_to_pipegen_yaml_file[epoch_id] = pipegen_yaml
-            blob_yaml = YamlFile(blob_file)
+            blob_yaml = util.YamlFile(blob_file)
             self.epoch_to_blob_yaml_file[epoch_id] = blob_yaml
 
             # Create the graph
@@ -434,9 +409,9 @@ class Netlist:
     def graph_names (self):
         return self.yaml_file.root['graphs'].keys()
     def graph_name_to_epoch_id (self, graph_name):
-        return self.runtime_data_yaml["graph_to_epoch_map"][graph_name]["epoch_id"]
+        return self.runtime_data_yaml.root["graph_to_epoch_map"][graph_name]["epoch_id"]
     def graph_name_to_device_id (self, graph_name):
-        return self.runtime_data_yaml["graph_to_epoch_map"][graph_name]["target_device"] if graph_name in self.runtime_data_yaml["graph_to_epoch_map"] else None
+        return self.runtime_data_yaml.root["graph_to_epoch_map"][graph_name]["target_device"] if graph_name in self.runtime_data_yaml.root["graph_to_epoch_map"] else None
     def epoch_id_to_graph_name (self, epoch_id):
         return self.epoch_id_to_graph_name_map[epoch_id] if epoch_id in self.epoch_id_to_graph_name_map else None
     def graph (self, graph_name):
@@ -446,14 +421,14 @@ class Netlist:
 
     # Determines the architecture
     def get_arch (self):
-        if "arch_name" in self.runtime_data_yaml:
-            return self.runtime_data_yaml["arch_name"]
+        if "arch_name" in self.runtime_data_yaml.root:
+            return self.runtime_data_yaml.root["arch_name"]
         return None
 
     # Determines the netlist file path
     def get_netlist_path (self):
-        if "netlist_path" in self.runtime_data_yaml:
-            return self.runtime_data_yaml["netlist_path"]
+        if "netlist_path" in self.runtime_data_yaml.root:
+            return self.runtime_data_yaml.root["netlist_path"]
         return None
 
     # Renderer

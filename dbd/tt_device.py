@@ -35,12 +35,13 @@ def init_comm_client (debug_debuda_stub):
     print("Connecting to debuda-stub...")
     ZMQ_SOCKET = context.socket(zmq.REQ)
     ZMQ_SOCKET.connect(f"tcp://localhost:{DEBUDA_STUB_PORT}")
-    print("Connected to debuda-stub.")
 
     ZMQ_SOCKET.send(struct.pack ("c", b'\x01')) # PING
     reply = ZMQ_SOCKET.recv_string()
     if "PONG" not in reply:
         print (f"Expected PONG but received {reply}") # Should print PONG
+
+    print("Connected to debuda-stub.")
 
     time.sleep (0.1)
 
@@ -48,7 +49,7 @@ def init_comm_client (debug_debuda_stub):
 def terminate_comm_client_callback ():
     if DEBUDA_STUB_PROCESS_ID is not None:
         os.killpg(os.getpgid(DEBUDA_STUB_PROCESS_ID.pid), signal.SIGTERM)
-        print (f"Terminated debuda-stub")
+        util.VERBOSE (f"Terminated debuda-stub")
 
 # This is the interface to the debuda server (aka. debuda-stub)
 class DEBUDA_SERVER_IFC:
@@ -94,7 +95,7 @@ class DEBUDA_SERVER_CACHED_IFC:
     def load ():
         if DEBUDA_SERVER_CACHED_IFC.enabled:
             if os.path.exists (DEBUDA_SERVER_CACHED_IFC.filepath):
-                util.WARN (f"Loading server cache from file {DEBUDA_SERVER_CACHED_IFC.filepath}")
+                util.VERBOSE (f"Loading server cache from file {DEBUDA_SERVER_CACHED_IFC.filepath}")
                 with open(DEBUDA_SERVER_CACHED_IFC.filepath, 'rb') as f:
                     DEBUDA_SERVER_CACHED_IFC.cache_store = pickle.load(f)
             else:
@@ -102,7 +103,7 @@ class DEBUDA_SERVER_CACHED_IFC:
 
     def save():
         if DEBUDA_SERVER_CACHED_IFC.enabled and DEBUDA_SERVER_IFC.enabled:
-            util.WARN (f"Saving server cache to file {DEBUDA_SERVER_CACHED_IFC.filepath}")
+            util.VERBOSE (f"Saving server cache to file {DEBUDA_SERVER_CACHED_IFC.filepath}")
             with open(DEBUDA_SERVER_CACHED_IFC.filepath, 'wb') as f:
                 pickle.dump(DEBUDA_SERVER_CACHED_IFC.cache_store, f)
 

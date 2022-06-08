@@ -8,8 +8,8 @@
 Spawning debuda-stub...
 Connecting to debuda-stub...
 Connected to debuda-stub.
-tt_build/test_op_17928503988902036500
-[34mOutput directory not specified: looking for the most recent tt_build/ subdirectory. Found: tt_build/test_op_17928503988902036500[0m
+tt_build/test_op_6715245286658215413
+[34mOutput directory not specified: looking for the most recent tt_build/ subdirectory. Found: tt_build/test_op_6715245286658215413[0m
 [34mLoading netlist 'dbd/test/netlists/netlist_multi_matmul_perf.yaml'[0m
 [34mExecuting command: hq[0m
 [34mHost queues (where dram_io_flag_is_remote!=0) for epoch 0 [0m
@@ -387,9 +387,10 @@ Speed dial:
   0  Show pipe      p 10000270000
 [34mExecuting command: help[0m
 Short    Long                     Arguments            Description
--------  -----------------------  -------------------  ---------------------------------------------------------------------------------------------------------------
+-------  -----------------------  -------------------  -------------------------------------------------------------------------------------------------------------------------
 [34mx[0m        [34mexit[0m                                          exit the program. If argument given, it will be used as the exit code
 [34mh[0m        [34mhelp[0m                                          prints command documentation
+[34mxp[0m       [34mexport[0m                   [ filename ]         exports a zip package for offline work. The optional argument represents a zip file name. Defaults to 'debuda-export.zip'
 [34me[0m        [34mepoch[0m                    epoch_id             switch to epoch epoch_id
 [34mb[0m        [34mbuffer[0m                   buffer_id            prints details on the buffer with ID buffer_id
 [34mp[0m        [34mpipe[0m                     pipe_id              prints details on the pipe with ID pipe_id
@@ -416,4 +417,3 @@ Speed dial:
   0  Show pipe      p 10000270000
 [34mExecuting command: x[0m
 [34mExiting with code 0 [0m
-Terminated debuda-stub
