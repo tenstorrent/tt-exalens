@@ -130,3 +130,7 @@ def export_to_zip(filelist, out_file=DEFAULT_EXPORT_FILENAME):
 
     for filepath in filelist:
         zf.write(filepath, filepath)
+
+def write_to_yaml_file (data, filename):
+    with open(filename, 'w') as output_yaml_file:
+        yaml.dump(data, output_yaml_file)
