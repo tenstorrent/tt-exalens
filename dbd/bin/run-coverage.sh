@@ -8,6 +8,11 @@ DEBUDA_CMD="dbd/debuda.py --server-cache through" # Read cache, run, save cache
 
 set -o pipefail # Propagate exit codes through pipes
 
+if [ "$ARCH_NAME" == "" ]; then
+    echo "ARCH_NAME not defined"
+    exit 1
+fi
+
 # Checks whether Debuda run failed
 check_logfile_exit_code () {
     log_file="$1"
