@@ -221,13 +221,14 @@ def read_stream_regs(chip, x, y, stream_id):
             dest_side_phase_complete = get_stream_reg_field(chip, x, y, stream_id, 224+i, 11, 1)
             src_state = get_stream_reg_field(chip, x, y, stream_id, 224+i, 16, 4)
             dest_state = get_stream_reg_field(chip, x, y, stream_id, 224+i, 20, 3)
-            reg["PHASE_STATE"] = f"0x{phase_state:x} ({phase_state_map[phase_state]})"
-            reg["SRC_READY_STATE"] = f"0x{src_ready_state:x} ({src_ready_state_map[src_ready_state]})"
-            reg["DEST_READY_STATE"] = f"0x{dest_ready_state:x} ({dest_ready_state_map[dest_ready_state]})"
-            reg["SRC_SIDE_PHASE_COMPLETE"] = f"{src_side_phase_complete:x}"
-            reg["DEST_SIDE_PHASE_COMPLETE"] = f"{dest_side_phase_complete:x}"
-            reg["SRC_STATE"] = f"0x{src_state:x} ({src_state_map[src_state]})"
-            reg["DEST_STATE"] = f"0x{dest_state:x} ({dest_state_map[dest_state]})"
+            # IMPROVE: add back the interpretation in get_as_str
+            reg["PHASE_STATE"] = phase_state
+            reg["SRC_READY_STATE"] = src_ready_state
+            reg["DEST_READY_STATE"] = dest_ready_state
+            reg["SRC_SIDE_PHASE_COMPLETE"] = src_side_phase_complete
+            reg["DEST_SIDE_PHASE_COMPLETE"] = dest_side_phase_complete
+            reg["SRC_STATE"] = src_state
+            reg["DEST_STATE"] = dest_state
 
     return reg
 
