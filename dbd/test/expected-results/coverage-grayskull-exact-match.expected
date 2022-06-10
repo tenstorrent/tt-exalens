@@ -415,5 +415,14 @@ Speed dial:
   #  Description    Command
 ---  -------------  -------------
   0  Show pipe      p 10000270000
+[34mExecuting command: export dbd/run/coverage-exact-match.zip[0m
+[32mExported 'dbd/run/coverage-exact-match.zip'. Import with:
+  unzip dbd/run/coverage-exact-match.zip -d dbd-export
+  cd dbd-export
+  Run debuda.py --server-cache on[0m
+Speed dial:
+  #  Description    Command
+---  -------------  -------------
+  0  Show pipe      p 10000270000
 [34mExecuting command: x[0m
 [34mExiting with code 0 [0m
