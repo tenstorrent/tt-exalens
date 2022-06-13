@@ -40,6 +40,7 @@ ROOT=`pwd`
 
 ## This debuda run command sequence is supposed to return exact same text always
 rm -rf $RUN_DIR/dbd-export
+mkdir -p $RUN_DIR
 unzip dbd/test/exported/$ARCH_NAME/coverage-exact-match.zip -d $RUN_DIR/dbd-export
 cd $ROOT/$RUN_DIR/dbd-export
 coverage_run coverage-exact-match.log "$COVERAGE_RUN" "" "../../../$DEBUDA_CMD" --commands "hq; dq; abs; abs 1; s 1 1 8; cdr 1 1; c 1 1; d; t 1 0; d 0; d 1; cdr 1 1; b 10000030000; 0; 0; eq; brxy 1 1 0 0; help; x"

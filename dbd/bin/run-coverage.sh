@@ -37,6 +37,7 @@ coverage_run () {
 # When SKIP_RUN is defined, only existing files will be used - good for testing.
 if [ "$SKIP_RUN" == "" ]; then
 # Setup environment
+rm -rf $RUN_DIR
 mkdir -p $RUN_DIR
 sudo pip install coverage
 make -j8 && make -j8 verif/op_tests/test_op
@@ -44,7 +45,7 @@ device/bin/silicon/reset.sh
 if [ "$ARCH_NAME" == "wormhole" ]; then ./device/bin/silicon/wormhole/boot; fi
 
 # Apply the patch to cause a hang
-git apply dbd/test/inject-errors/sfpu_reciprocal-infinite-spin.patch
+git apply dbd/test/inject-errors/sfpu_reciprocal-infinite-spin-$ARCH_NAME.patch
 
 # Run the test
 ./build/test/verif/op_tests/test_op --netlist dbd/test/netlists/netlist_multi_matmul_perf.yaml --seed 0 --silicon --timeout 30 | tee $RUN_DIR/test_op_run.txt

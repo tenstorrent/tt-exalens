@@ -23,15 +23,47 @@ No host queues found
 [34mDRAM queues for epoch 0[0m
   Buffer ID  Op      Input Ops    Output Ops      dram_buf_flag    dram_io_flag    Channel  Address       RD ptr    WR ptr    Occupancy    Slots    Size [bytes]
 -----------  ------  -----------  ------------  ---------------  --------------  ---------  ----------  --------  --------  -----------  -------  --------------
-10000010000  output  d_op3                                    0               1          0  0x32000000         1         1            0        1          131072
-10000050000  input0               f_op0                       1               0          0  0x30000000         1         1            0        1           66560
-10000030000  input1               f_op1                       1               0          0  0x31000000         1         1            0        1           66560
+10000010000  output  d_op3                                    0               1          0  0x32000000         0         0            0        1          131072
+10000050000  input0               f_op0                       1               0          0  0x30000000         0         1            1        1           66560
+10000030000  input1               f_op1                       1               0          0  0x31000000         0         1            1        1           66560
 [34mExecuting command: abs[0m
 [34mAnalyzing device 1/1[0m
-No blocked streams detected
+X-Y    Op                          Stream  Type      Epoch    Phase    MSGS_REMAINING    MSGS_RECEIVED  Depends on    State    Flag
+-----  ------------------------  --------  ------  -------  -------  ----------------  ---------------  ------------  -------  ------
+3-3    test_op/recip:reciprocal         8  input         0        1                32                8  2-1           Active   [38:2:205:106:0mAll core inputs ready, but no output generated[0m
+Speed dial:
+  #  Description    Command
+---  -------------  ---------
+  0  Go to stream   s 3 3 8
 [34mExecuting command: abs 1[0m
 [34mAnalyzing device 1/1[0m
-No blocked streams detected
+X-Y    Op                          Stream  Type            Epoch    Phase    MSGS_REMAINING    MSGS_RECEIVED  Depends on       State    Flag
+-----  ------------------------  --------  ------------  -------  -------  ----------------  ---------------  ---------------  -------  ------
+2-1    test_op/f_op1:datacopy           8  input               0        1                 0                0  2-1
+                                       24  output              0        1                 0                0
+                                       40  op-relay            0        1                 0                0
+                                       41  op-relay            0        1                24                2                   Active
+3-1    test_op/matmul1:matmul           8  input               0        1                 0                0  2-1
+                                        9  input               0        1                 0                0
+                                       24  output              0        1                56                2                   Active
+                                       32  intermediate        0        1                64                0
+3-3    test_op/recip:reciprocal         8  input               0        1                32                8  2-1              Active   [38:2:205:106:0mAll core inputs ready, but no output generated[0m
+                                       24  output              0        1                32                0
+6-3    test_op/matmul2:matmul           8  input               0        1                32                8  2-1 3-3          Active
+                                        9  input               0        1                32                0
+                                       24  output              0        1                64                0
+                                       32  intermediate        0        1                64                0
+8-3    test_op/add1:add                 8  input               0        1                64                8  2-1 6-3 3-1 3-3  Active
+                                        9  input               0        1                64                0
+                                       24  output              0        1                64                0
+Speed dial:
+  #  Description    Command
+---  -------------  ---------
+  0  Go to stream   s 2 1 41
+  1  Go to stream   s 3 1 24
+  2  Go to stream   s 3 3 8
+  3  Go to stream   s 6 3 8
+  4  Go to stream   s 8 3 8
 [34mExecuting command: s 1 1 8[0m
   Non-idle streams                    Registers                                                     Stream (blob.yaml)                        Buffer 10000100000                          Pipe 10000260000
 ------------------  ----------------  ------------------------------------------------  ----------  ---------------------------  -----------  -----------------------------  -----------  ------------------  -------------
@@ -354,7 +386,11 @@ Speed dial:
   0  Show pipe      p 10000270000
 [34mExecuting command: eq[0m
 [34mEpoch queues for epoch 0, device id 0[0m
-No epoch queues have occupancy > 0
+Location    Address      RD ptr    WR ptr    Occupancy
+----------  ---------  --------  --------  -----------
+1-2         0x27ef440         0         1            1
+1-3         0x27ef560         0         1            1
+1-4         0x27ef680         0         1            1
 [38:2:205:106:0mWIP: This results of this function need to be verified[0m
 Speed dial:
   #  Description    Command
@@ -396,10 +432,11 @@ Speed dial:
 ---  -------------  -------------
   0  Show pipe      p 10000270000
 [34mExecuting command: export dbd/run/coverage-exact-match.zip[0m
+[38:2:205:106:0mWarning: server cache is missing and will not be exported (see '--server-cache')[0m
 [32mExported 'dbd/run/coverage-exact-match.zip'. Import with:
   unzip dbd/run/coverage-exact-match.zip -d dbd-export
   cd dbd-export
-  Run debuda.py --server-cache on[0m
+  Run debuda.py [0m
 Speed dial:
   #  Description    Command
 ---  -------------  -------------
