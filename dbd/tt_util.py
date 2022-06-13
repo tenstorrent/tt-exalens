@@ -124,12 +124,14 @@ def export_to_zip(filelist, out_file=DEFAULT_EXPORT_FILENAME):
     if out_file is None: out_file=DEFAULT_EXPORT_FILENAME
     if os.path.exists (out_file):
         WARN (f"Warning: cannot export as the output file already exists: {out_file}")
-        return
+        return False
 
     zf = zipfile.ZipFile(out_file, "w", zipfile.ZIP_DEFLATED)
 
     for filepath in filelist:
         zf.write(filepath, filepath)
+
+    return True
 
 def write_to_yaml_file (data, filename):
     with open(filename, 'w') as output_yaml_file:

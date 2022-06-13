@@ -428,8 +428,8 @@ def main(args, context):
                         util.write_to_yaml_file (prompt_session.history.get_strings(), COMMAND_HISTORY_FILENAME)
                         filelist.append (COMMAND_HISTORY_FILENAME)
 
-                        util.export_to_zip (filelist, out_file=zip_file_name)
-                        print (f"{util.CLR_GREEN}Exported '{zip_file_name}'. Import with:\n  unzip {zip_file_name} -d dbd-export\n  cd dbd-export\n  Run debuda.py {'--server-cache on' if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled else ''}{util.CLR_END}")
+                        if util.export_to_zip (filelist, out_file=zip_file_name):
+                            print (f"{util.CLR_GREEN}Exported '{zip_file_name}'. Import with:\n  unzip {zip_file_name} -d dbd-export\n  cd dbd-export\n  Run debuda.py {'--server-cache on' if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled else ''}{util.CLR_END}")
                     elif found_command["long"] == "test":
                         test_command (cmd, context, ui_state)
                     elif found_command["long"] == "epoch":
