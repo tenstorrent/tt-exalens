@@ -4,7 +4,7 @@ debuda parses the build output files and probes the silicon to determine status 
 """
 import sys, os, argparse, time, traceback, atexit, fnmatch, importlib, zipfile
 from tabulate import tabulate
-import tt_util as util, tt_device, tt_grayskull, tt_netlist
+import tt_util as util, tt_device, tt_netlist
 from prompt_toolkit import PromptSession
 from prompt_toolkit.formatted_text import HTML
 
@@ -85,7 +85,7 @@ def print_dram_queue_summary (cmd, context, ui_state = None): # graph, chip_arra
             if buffer_data["dram_buf_flag"] != 0 or buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0 and not buffer.replicated:
                 dram_chan = buffer_data["dram_chan"]
                 dram_addr = buffer_data['dram_addr']
-                dram_loc = tt_grayskull.CHANNEL_TO_DRAM_LOC[dram_chan]
+                dram_loc = ui_state['current_device'].CHANNEL_TO_DRAM_LOC[dram_chan]
                 rdptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
                 wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
                 slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
@@ -327,7 +327,8 @@ def main(args, context):
         "current_stream_id": 8,   # Currently selected stream_id
         "current_epoch_id": 0,    # Current epoch_id
         "current_graph_name": "", # Graph name for the current epoch
-        "current_prompt": ""      # Based on the current x,y,stream_id tuple
+        "current_prompt": "",     # Based on the current x,y,stream_id tuple
+        "current_device": None
     }
 
     navigation_suggestions = None
@@ -346,8 +347,8 @@ def main(args, context):
     while True:
         have_non_interactive_commands=len(non_interactive_commands) > 0
 
-        if ui_state['current_x'] is not None and ui_state['current_y'] is not None and ui_state['current_epoch_id'] is not None:
-            row, col = tt_grayskull.noc0_to_rc (ui_state['current_x'], ui_state['current_y'])
+        if ui_state['current_x'] is not None and ui_state['current_y'] is not None and ui_state['current_epoch_id'] is not None and ui_state['current_device'] is not None:
+            row, col = ui_state['current_device'].noc0_to_rc (ui_state['current_x'], ui_state['current_y'])
             ui_state['current_prompt'] = f"core:{util.CLR_PROMPT}{ui_state['current_x']}-{ui_state['current_y']}{util.CLR_PROMPT_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_PROMPT_END} stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_PROMPT_END} "
 
         try:
