@@ -178,6 +178,28 @@ class Device:
     def id (self):
         return self._id
 
+    # Coordinate conversion functions
+    def physical_to_noc (self, phys_x, phys_y, noc_id=0):
+        if noc_id == 0:
+            return (self.PHYS_X_TO_NOC_0_X[phys_x], self.PHYS_Y_TO_NOC_0_Y[phys_y])
+        else:
+            return (self.PHYS_X_TO_NOC_1_X[phys_x], self.PHYS_Y_TO_NOC_1_Y[phys_y])
+
+    def noc_to_physical (self, noc_x, noc_y, noc_id=0):
+        if noc_id == 0:
+            return (self.NOC_0_X_TO_PHYS_X[noc_x], self.NOC_0_Y_TO_PHYS_Y[noc_y])
+        else:
+            return (self.NOC_1_X_TO_PHYS_X[noc_x], self.NOC_1_Y_TO_PHYS_Y[noc_y])
+
+    def noc0_to_noc1 (self, noc_x, noc_y):
+        phys_x, phys_y = self.noc_to_physical (noc_x, noc_y, noc_id=0)
+        return self.physical_to_noc (phys_x, phys_y, noc_id=1)
+
+    def noc1_to_noc0 (self, noc_x, noc_y):
+        #print (f"noc_x = {noc_x}  noc_y = {noc_y}")
+        phys_x, phys_y = self.noc_to_physical (noc_x, noc_y, noc_id=1)
+        return self.physical_to_noc (phys_x, phys_y, noc_id=0)
+
     # For all cores read all 64 streams and populate the 'streams' dict. streams[x][y][stream_id] will
     # contain a dictionary of all register values as strings formatted to show in UI
     def read_all_stream_registers (self):
@@ -230,7 +252,7 @@ class Device:
         # Convert emphasize_noc0_loc_list from noc0 coordinates to the coord space given by 'options' arg
         if options=="physical":
             for loc in emphasize_noc0_loc_list:
-                emphasize_loc_list_to_render.add (self.noc_to_physical(loc, noc_id=0))
+                emphasize_loc_list_to_render.add (self.noc_to_physical(loc[0], loc[1], noc_id=0))
         elif options=="rc":
             for loc in emphasize_noc0_loc_list:
                 emphasize_loc_list_to_render.add (self.noc0_to_rc(loc[0], loc[1]))
@@ -254,7 +276,7 @@ class Device:
             if options=="rc" and block_name != 'functional_workers': continue  # No blocks other than Tensix cores have RC coords
             for loc in self.get_block_locations (block_name):
                 if options=="physical":
-                    loc = self.noc_to_physical(loc, noc_id=0)
+                    loc = self.noc_to_physical(loc[0], loc[1], noc_id=0)
                 elif options=="rc":
                     loc = self.noc0_to_rc(loc[0], loc[1])
                 locs[loc] = block_types[block_name]['symbol']

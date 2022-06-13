@@ -1,65 +1,6 @@
 import tt_util as util, os
 import tt_device
 
-# Some of this can be read from architecture yaml file
-CHANNEL_TO_DRAM_LOC = [(1, 0), (1, 6), (4, 0), (4, 6), (7, 0), (7, 6), (10, 0), (10, 6)]
-
-# Physical location mapping
-PHYS_X_TO_NOC_0_X = [ 0, 12, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6 ]
-PHYS_Y_TO_NOC_0_Y = [ 0, 11, 1, 10, 2, 9,  3, 8, 4, 7, 5, 6 ]
-PHYS_X_TO_NOC_1_X = [ 12, 0, 11, 1, 10, 2, 9, 3, 8, 4, 7, 5, 6 ]
-PHYS_Y_TO_NOC_1_Y = [ 11, 0, 10, 1, 9,  2, 8, 3, 7, 4, 6, 5 ]
-NOC_0_X_TO_PHYS_X = util.reverse_mapping_list (PHYS_X_TO_NOC_0_X)
-NOC_0_Y_TO_PHYS_Y = util.reverse_mapping_list (PHYS_Y_TO_NOC_0_Y)
-NOC_1_X_TO_PHYS_X = util.reverse_mapping_list (PHYS_X_TO_NOC_1_X)
-NOC_1_Y_TO_PHYS_Y = util.reverse_mapping_list (PHYS_Y_TO_NOC_1_Y)
-
-# Coordinate conversion functions
-def physical_to_noc (phys_x, phys_y, noc_id=0):
-    if noc_id == 0:
-        return (PHYS_X_TO_NOC_0_X[phys_x], PHYS_Y_TO_NOC_0_Y[phys_y])
-    else:
-        return (PHYS_X_TO_NOC_1_X[phys_x], PHYS_Y_TO_NOC_1_Y[phys_y])
-
-def noc_to_physical (noc_x, noc_y, noc_id=0):
-    if noc_id == 0:
-        return (NOC_0_X_TO_PHYS_X[noc_x], NOC_0_Y_TO_PHYS_Y[noc_y])
-    else:
-        return (NOC_1_X_TO_PHYS_X[noc_x], NOC_1_Y_TO_PHYS_Y[noc_y])
-
-def noc0_to_noc1 (noc_x, noc_y):
-    phys_x, phys_y = noc_to_physical (noc_x, noc_y, noc_id=0)
-    return physical_to_noc (phys_x, phys_y, noc_id=1)
-
-def noc1_to_noc0 (noc_x, noc_y):
-    #print (f"noc_x = {noc_x}  noc_y = {noc_y}")
-    phys_x, phys_y = noc_to_physical (noc_x, noc_y, noc_id=1)
-    return physical_to_noc (phys_x, phys_y, noc_id=0)
-
-def noc0_to_rc (noc0_x, noc0_y):
-    if noc0_y == 0 or noc0_y == 6:
-        assert False, "DRAM does not have an RC coordinate" 
-    if noc0_x == 0:
-        assert False, "NOC0 column 0 does not have an RC coordinate" 
-    row = noc0_y - 1
-    col = noc0_x - 1
-    if noc0_y > 6: row-=1 # DRAM at noc0 Y coord of 6 is a hole in RC coordinates
-    return row, col
-
-def rc_to_noc0 (row, col):
-    noc0_y = row + 1
-    noc0_x = col + 1
-    if noc0_y > 5: noc0_y+=1 # DRAM at noc0 Y coord of 6 is a hole in RC coordinates
-    return noc0_x, noc0_y
-
-def test_rc_to_noc0 ():
-    for r in range (0,10):
-        for c in range (0,10):
-            nx, ny = rc_to_noc0(r, c)
-            nr, nc = noc0_to_rc(nx, ny)
-            if not (c == nc and r == nr):
-                print ("Not good: ", r, c, nr, nc)
-
 # Returns a stream type based on KERNEL_OPERAND_MAPPING_SCHEME
 def stream_type (stream_id):
     # From src/firmware/riscv/grayskull/stream_io_map.h
@@ -359,15 +300,46 @@ def status_register_summary(device_id, coords, addr, ver = 0):
 # Device
 #
 class GrayskullDevice (tt_device.Device):
+    # Some of this can be read from architecture yaml file
+    CHANNEL_TO_DRAM_LOC = [(1, 0), (1, 6), (4, 0), (4, 6), (7, 0), (7, 6), (10, 0), (10, 6)]
+
+    # Physical location mapping
+    PHYS_X_TO_NOC_0_X = [ 0, 12, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6 ]
+    PHYS_Y_TO_NOC_0_Y = [ 0, 11, 1, 10, 2, 9,  3, 8, 4, 7, 5, 6 ]
+    PHYS_X_TO_NOC_1_X = [ 12, 0, 11, 1, 10, 2, 9, 3, 8, 4, 7, 5, 6 ]
+    PHYS_Y_TO_NOC_1_Y = [ 11, 0, 10, 1, 9,  2, 8, 3, 7, 4, 6, 5 ]
+    NOC_0_X_TO_PHYS_X = util.reverse_mapping_list (PHYS_X_TO_NOC_0_X)
+    NOC_0_Y_TO_PHYS_Y = util.reverse_mapping_list (PHYS_Y_TO_NOC_0_Y)
+    NOC_1_X_TO_PHYS_X = util.reverse_mapping_list (PHYS_X_TO_NOC_1_X)
+    NOC_1_Y_TO_PHYS_Y = util.reverse_mapping_list (PHYS_Y_TO_NOC_1_Y)
+
+    def noc0_to_rc (self, noc0_x, noc0_y):
+        if noc0_y == 0 or noc0_y == 6:
+            assert False, f"Coordinate {noc0_x}-{noc0_y} does have an RC coordinate"
+        if noc0_x == 0:
+            assert False, f"Coordinate {noc0_x}-{noc0_y} does have an RC coordinate"
+        row = noc0_y - 1
+        col = noc0_x - 1
+        if noc0_y > 6: row-=1
+        return row, col
+
+    def rc_to_noc0 (self, row, col):
+        noc0_y = row + 1
+        noc0_x = col + 1
+        if noc0_y > 5: noc0_y+=1 # DRAM at noc0 Y coord of 6 is a hole in RC coordinates
+        return noc0_x, noc0_y
+
+    def test_rc_to_noc0 (self):
+        for r in range (0,10):
+            for c in range (0,10):
+                nx, ny = self.rc_to_noc0(r, c)
+                nr, nc = self.noc0_to_rc(nx, ny)
+                if not (c == nc and r == nr):
+                    print ("Not good: ", r, c, nr, nc)
+
     def __init__(self):
         self.yaml_file = util.YamlFile ("device/grayskull_120_arch.yaml")
 
-    def physical_to_noc (self, phys_x, phys_y, noc_id=0): return physical_to_noc(phys_x, phys_y, noc_id=noc_id)
-    def noc_to_physical (self, noc_x, noc_y, noc_id=0): return noc_to_physical(noc_x, noc_y, noc_id=noc_id)
-    def noc0_to_noc1 (self, noc_x, noc_y): return noc0_to_noc1(noc_x, noc_y)
-    def noc1_to_noc0 (self, noc_x, noc_y): return noc1_to_noc0(noc_x, noc_y)
-    def noc0_to_rc (self, noc0_x, noc0_y): return noc0_to_rc(noc0_x, noc0_y)
-    def rc_to_noc0 (self, row, col): return rc_to_noc0(row, col)
     def stream_type (self, stream_id): return stream_type (stream_id)
     def full_dump_xy(self, x, y): return full_dump_xy(self.id(), x, y)
     def is_stream_idle (self, regs): return is_stream_idle (regs)
@@ -392,9 +364,6 @@ class GrayskullDevice (tt_device.Device):
 
     def stream_epoch (self, stream_regs):
         return int(stream_regs['CURR_PHASE']) >> 10
-
-    def noc_to_physical(self, noc_loc, noc_id=0):
-        return noc_to_physical (noc_loc[0], noc_loc[1], noc_id=noc_id)
 
     def get_stream_phase (self, x, y, stream_id):
         return get_stream_reg_field(self.id(), x, y, stream_id, 11, 0, 20)

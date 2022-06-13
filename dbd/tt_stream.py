@@ -1,4 +1,4 @@
-import tt_util as util, tt_grayskull, re, os
+import tt_util as util, re
 
 # The field names we want to show as hexadecimal numbers
 HEX_FIELDS = {
@@ -32,7 +32,7 @@ def get_as_str (fld, val):
     else:
         return f"{val:d}"
 
-# Given a dict returned by tt_grayskull.read_stream_regs, convert to strings (and colorize)
+# Given a dict returned by tt_device.read_stream_regs, convert to strings (and colorize)
 def convert_reg_dict_to_strings(device, regs):
     string_regs = {}
     for k in regs:

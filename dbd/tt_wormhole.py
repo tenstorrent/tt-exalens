@@ -44,60 +44,6 @@ src_state_map = {
     3 : "SRC_ENDPOINT"
     }
 
-
-# # Some of this can be read from architecture yaml file
-CHANNEL_TO_DRAM_LOC = [(0, 11), (5, 11), (5, 2), (5, 8), (5, 5), (0, 5)]
-
-# # Physical location mapping
-PHYS_X_TO_NOC_0_X = [ 0, 9, 1, 8, 2, 7, 3, 6, 4, 5 ]
-PHYS_Y_TO_NOC_0_Y = [ 0, 11, 1, 10, 2, 9,  3, 8, 4, 7, 5, 6 ]
-PHYS_X_TO_NOC_1_X = [ 9, 0, 8, 1, 7, 2, 6, 3, 5, 4 ]
-PHYS_Y_TO_NOC_1_Y = [ 11, 0, 10, 1, 9,  2, 8, 3, 7, 4, 6, 5 ]
-NOC_0_X_TO_PHYS_X = util.reverse_mapping_list (PHYS_X_TO_NOC_0_X)
-NOC_0_Y_TO_PHYS_Y = util.reverse_mapping_list (PHYS_Y_TO_NOC_0_Y)
-NOC_1_X_TO_PHYS_X = util.reverse_mapping_list (PHYS_X_TO_NOC_1_X)
-NOC_1_Y_TO_PHYS_Y = util.reverse_mapping_list (PHYS_Y_TO_NOC_1_Y)
-
-# Coordinate conversion functions
-def physical_to_noc (phys_x, phys_y, noc_id=0):
-    if noc_id == 0:
-        return (PHYS_X_TO_NOC_0_X[phys_x], PHYS_Y_TO_NOC_0_Y[phys_y])
-    else:
-        return (PHYS_X_TO_NOC_1_X[phys_x], PHYS_Y_TO_NOC_1_Y[phys_y])
-
-def noc_to_physical (noc_x, noc_y, noc_id=0):
-    if noc_id == 0:
-        return (NOC_0_X_TO_PHYS_X[noc_x], NOC_0_Y_TO_PHYS_Y[noc_y])
-    else:
-        return (NOC_1_X_TO_PHYS_X[noc_x], NOC_1_Y_TO_PHYS_Y[noc_y])
-
-def noc0_to_noc1 (noc_x, noc_y):
-    phys_x, phys_y = noc_to_physical (noc_x, noc_y, noc_id=0)
-    return physical_to_noc (phys_x, phys_y, noc_id=1)
-
-def noc1_to_noc0 (noc_x, noc_y):
-    #print (f"noc_x = {noc_x}  noc_y = {noc_y}")
-    phys_x, phys_y = noc_to_physical (noc_x, noc_y, noc_id=1)
-    return physical_to_noc (phys_x, phys_y, noc_id=0)
-
-def noc0_to_rc (noc0_x, noc0_y):
-    if noc0_x == 0 or noc0_x == 5:
-        assert False, "NOC0 x=0 and x=5 do not have an RC coordinate" 
-    if noc0_y == 0 or noc0_y == 6:
-        assert False, "NOC0 y=0 and y=6 do not have an RC coordinate" 
-    row = noc0_y - 1
-    col = noc0_x - 1
-    if noc0_x > 5: col-=1
-    if noc0_y > 6: row-=1
-    return row, col
-
-def rc_to_noc0 (row, col):
-    noc0_y = row + 1
-    noc0_x = col + 1
-    if noc0_x >= 5: noc0_x+=1
-    if noc0_y >= 6: noc0_y+=1
-    return noc0_x, noc0_y
-
 def test_rc_to_noc0 ():
     for r in range (0,10):
         for c in range (0,10):
@@ -431,12 +377,37 @@ class WormholeDevice (tt_device.Device):
     def __init__(self):
         self.yaml_file = util.YamlFile ("device/wormhole_80_arch.yaml")
 
-    def physical_to_noc (self, phys_x, phys_y, noc_id=0): return physical_to_noc(phys_x, phys_y, noc_id=noc_id)
-    def noc_to_physical (self, noc_x, noc_y, noc_id=0): return noc_to_physical(noc_x, noc_y, noc_id=noc_id)
-    def noc0_to_noc1 (self, noc_x, noc_y): return noc0_to_noc1(noc_x, noc_y)
-    def noc1_to_noc0 (self, noc_x, noc_y): return noc1_to_noc0(noc_x, noc_y)
-    def noc0_to_rc (self, noc0_x, noc0_y): return noc0_to_rc(noc0_x, noc0_y)
-    def rc_to_noc0 (self, row, col): return rc_to_noc0(row, col)
+    # # Some of this can be read from architecture yaml file
+    CHANNEL_TO_DRAM_LOC = [(0, 11), (5, 11), (5, 2), (5, 8), (5, 5), (0, 5)]
+
+    # # Physical location mapping
+    PHYS_X_TO_NOC_0_X = [ 0, 9, 1, 8, 2, 7, 3, 6, 4, 5 ]
+    PHYS_Y_TO_NOC_0_Y = [ 0, 11, 1, 10, 2, 9,  3, 8, 4, 7, 5, 6 ]
+    PHYS_X_TO_NOC_1_X = [ 9, 0, 8, 1, 7, 2, 6, 3, 5, 4 ]
+    PHYS_Y_TO_NOC_1_Y = [ 11, 0, 10, 1, 9,  2, 8, 3, 7, 4, 6, 5 ]
+    NOC_0_X_TO_PHYS_X = util.reverse_mapping_list (PHYS_X_TO_NOC_0_X)
+    NOC_0_Y_TO_PHYS_Y = util.reverse_mapping_list (PHYS_Y_TO_NOC_0_Y)
+    NOC_1_X_TO_PHYS_X = util.reverse_mapping_list (PHYS_X_TO_NOC_1_X)
+    NOC_1_Y_TO_PHYS_Y = util.reverse_mapping_list (PHYS_Y_TO_NOC_1_Y)
+
+    def noc0_to_rc (self, noc0_x, noc0_y):
+        if noc0_x == 0 or noc0_x == 5:
+            assert False, "NOC0 x=0 and x=5 do not have an RC coordinate"
+        if noc0_y == 0 or noc0_y == 6:
+            assert False, "NOC0 y=0 and y=6 do not have an RC coordinate"
+        row = noc0_y - 1
+        col = noc0_x - 1
+        if noc0_x > 5: col-=1
+        if noc0_y > 6: row-=1
+        return row, col
+
+    def rc_to_noc0 (self, row, col):
+        noc0_y = row + 1
+        noc0_x = col + 1
+        if noc0_x >= 5: noc0_x+=1
+        if noc0_y >= 6: noc0_y+=1
+        return noc0_x, noc0_y
+
     def stream_type (self, stream_id): return stream_type (stream_id)
     def full_dump_xy(self, x, y): return full_dump_xy(self.id(), x, y)
     def is_stream_idle (self, regs): return is_stream_idle (regs)
@@ -462,8 +433,6 @@ class WormholeDevice (tt_device.Device):
     def stream_epoch (self, stream_regs):
         return int(stream_regs['CURR_PHASE']) >> 10
 
-    def noc_to_physical(self, noc_loc, noc_id=0):
-        return noc_to_physical (noc_loc[0], noc_loc[1], noc_id=noc_id)
 
     def get_stream_phase (self, x, y, stream_id):
         return get_stream_reg_field(self.id(), x, y, stream_id, 11, 0, 20)
@@ -473,6 +442,6 @@ class WormholeDevice (tt_device.Device):
     def status_register_summary(self, addr, ver = 0):
         coords = self.get_block_locations ()
         return status_register_summary(self.id(), coords, addr, ver)
-    
+
     def rows_with_no_functional_workers(self): return 2
     def cols_with_no_functional_workers(self): return 2
