@@ -151,8 +151,70 @@ dbd/tapout.sh "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/n
 ```
 
 ## Slicing Netlist
+tt_netlist_slicer.py is tool that helps you to cut specific part of the graph, by providing inputs/outputs.
+
+We will demonstrate netlist slicing on [softmax](../verif/graph_tests/netlists/netlist_softmax_single_tile.yaml).
+
+```
+                                  0
+                            ┌───────────────────────────────────────────────────┐
+                            │                                                   ▼
+┌──────────────────┐  0   ┌─────┐  0   ┌────────────────┐  0   ┌───────┐  1   ┌──────┐  0   ┌────────────────┐
+│ input_activation │ ───▶ │ exp │ ───▶ │      sum       │ ───▶ │ recip │ ───▶ │ mult │ ───▶ │ output_softmax │
+└──────────────────┘      └─────┘      └────────────────┘      └───────┘      └──────┘      └────────────────┘
+                                         ▲
+                                         │ 1
+                                         │
+                                       ┌────────────────┐
+                                       │ input_constant │
+                                       └────────────────┘
+
+```
+
+First example will show how to get graph with only one operation.
 ``` bash
-./dbd/tt_netlist_slicer.py --netlist /verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --out_ops "mult" --in_op_inputs "mult" # graph will be sliced to one operation - mult
-./dbd/tt_netlist_slicer.py --netlist /verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --out_ops "mult"                       # graph will be sliced to subgraph which output is output of operation mult
-./dbd/tt_netlist_slicer.py --netlist /verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --in_ops "exp"                         # output of operation exp will be replaced with input queue, and operations that are not needed will be removed
+./dbd/tt_netlist_slicer.py --netlist /verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --out_ops "mult" --in_op_inputs "mult"
+```
+```
+┌─────────┐  0   ┌───────────┐  0   ┌──────────┐
+│ DBG_exp │ ───▶ │   mult    │ ───▶ │ DBG_mult │
+└─────────┘      └───────────┘      └──────────┘
+                   ▲
+                   │ 1
+                   │
+                 ┌───────────┐
+                 │ DBG_recip │
+                 └───────────┘
+```
+Second example shows how to tapout only specific operation, by leaving only necessary operations. 
+``` bash
+./dbd/tt_netlist_slicer.py --netlist /verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --out_ops "recip"
+```
+```
+
+┌──────────────────┐  0   ┌─────┐  0   ┌────────────────┐  0   ┌───────┐  0   ┌───────────┐
+│ input_activation │ ───▶ │ exp │ ───▶ │      sum       │ ───▶ │ recip │ ───▶ │ DBG_recip │
+└──────────────────┘      └─────┘      └────────────────┘      └───────┘      └───────────┘
+                                         ▲
+                                         │ 1
+                                         │
+                                       ┌────────────────┐
+                                       │ input_constant │
+                                       └────────────────┘
+```
+Last examle shows how to replace only specific operations with input queues.
+``` bash
+./dbd/tt_netlist_slicer.py --netlist /verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --in_ops "sum exp"
+```
+```
+┌─────────┐  0   ┌───────┐  0   ┌────────────────┐
+│ DBG_exp │ ───▶ │ mult  │ ───▶ │ output_softmax │
+└─────────┘      └───────┘      └────────────────┘
+                   ▲
+                   │ 1
+                   │
+┌─────────┐  0   ┌───────┐
+│ DBG_sum │ ───▶ │ recip │
+└─────────┘      └───────┘
+
 ```
