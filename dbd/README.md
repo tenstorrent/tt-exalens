@@ -149,3 +149,10 @@ If there are n opertions, it can run test n times, or 1 time in case --single pa
 dbd/tapout.sh "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --seed 0 --silicon --timeout 500"
 dbd/tapout.sh "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --seed 0 --silicon --timeout 500" --single
 ```
+
+## Slicing Netlist
+``` bash
+./dbd/tt_netlist_slicer.py --netlist /verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --out_ops "mult" --in_op_inputs "mult" # graph will be sliced to one operation - mult
+./dbd/tt_netlist_slicer.py --netlist /verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --out_ops "mult"                       # graph will be sliced to subgraph which output is output of operation mult
+./dbd/tt_netlist_slicer.py --netlist /verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --in_ops "exp"                         # output of operation exp will be replaced with input queue, and operations that are not needed will be removed
+```

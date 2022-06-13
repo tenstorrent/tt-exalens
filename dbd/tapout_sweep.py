@@ -57,6 +57,15 @@ class NetlistDataShapeReader:
     def get_size_in_bytes(self):
         return self.get_mblock()[0] * self.get_mblock()[1] * self.get_ublock()[0] * self.get_ublock()[1]*self.get_t()*TILE_SIZE[self.get_df()]
 
+    def get_as_dict(self):
+        result = {}
+        result["df"] = self.get_df()
+        result["grid_size"] = self.get_grid_size()
+        result["mblock"] = self.get_mblock()
+        result["ublock"] = self.get_ublock()
+        result["t"] = self.get_t()
+        return result
+
     def __str__(self):
         return f"df: {self.get_df()}, grid_size: {self.get_grid_size()}, mblock: {self.get_mblock()}, ublock: {self.get_ublock()}, t: {self.get_t()}"
 
@@ -198,6 +207,9 @@ class NetlistQueueReader:
     def is_dram(self):
         return self.get_location() == 'dram'
 
+    def get_target_device(self):
+        return self._queue["target_device"]
+
     def get_memory(self):
         return self._queue[self.get_location()]
 
@@ -288,7 +300,9 @@ class NetlistGraphReader:
         return result
 
     def get_op(self, op_name):
-        return self._operations[op_name]
+        if op_name in self._operations:
+            return self._operations[op_name]
+        return None
 
     def get_op_sorted(self):
         topo_sort = TopologicalSort()
@@ -320,6 +334,12 @@ class NetlistReader:
     def get_graph(self, graph_name):
         return NetlistGraphReader(graph_name, self.__graphs[graph_name])
 
+    def get_graph_op(self, op_name):
+        for graph_name in self.__graphs:
+            if op_name in self.__graphs[graph_name]:
+                return graph_name, op_name
+        return None
+
     def get_max_entries(self, graph_name):
         max_entries = 0
         g = self.get_graph(graph_name)
@@ -345,6 +365,14 @@ class NetlistReader:
             inputs.add(queue.get_input())
         return inputs
 
+def format_queue(queue_name, op_name, type, entries, datashape, target_device, loc, memory):
+    output = f"  {queue_name}: "
+    output += "{"
+    output += f"input: {op_name}, type: {type}, entries: {entries}, {datashape}, target_device: {target_device}, loc: {loc}, {loc}: ["
+    output += ", ".join([ f"[{mem[0]}, 0x{mem[1]:02x}]" for mem in memory])
+    output += "]}"
+    return output
+
 class NetlistTapOut:
     def __init__(self, filename) -> None:
         self._netlist = NetlistReader(filename)
@@ -365,6 +393,24 @@ class NetlistTapOut:
             output += f"[{channel}, 0x{address:02x}]"
         output += "]}"
         return output
+
+    def generate_tapout_queue_as_dict(self, graph_name, op_name):
+        graph = self._netlist.get_graph(graph_name)
+        op = graph.get_op(op_name)
+        entries = self._netlist.get_max_entries(graph_name)
+        parameters = {}
+        parameters["input"] = op_name
+        parameters["type"] = "queue"
+        parameters["entries"] = entries
+        parameters.update(op.get_data_shape().get_as_dict())
+        parameters["target_device"] = graph.get_target_device()
+        parameters["loc"] = "dram"
+        memory = []
+        for i in range(op.get_data_shape().get_core_count()):
+            channel, address = self._dram.allocate(get_buffer_size(op.get_data_shape(), entries))
+            memory.append([channel, address])
+        parameters["dram"] = memory
+        return {f"DBG_{op_name}" : parameters }
 
     def get_ops_to_tapout(self):
         result = []
@@ -471,7 +517,6 @@ class CommandExecutor:
             except Exception as e:
                 proc.terminate()
                 self.__handle_exception(e)
-
 
 class CommandHandlerList:
     def __init__(self) -> None:
