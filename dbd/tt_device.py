@@ -342,3 +342,235 @@ class Device:
                 val = PCI_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
                 debug_tables[thread_idx].append ({ "lo_val" : val & 0xffff, "hi_val": (val >> 16) & 0xffff })
         return debug_tables
+
+    # Returns a stream type based on KERNEL_OPERAND_MAPPING_SCHEME
+    def stream_type (self, stream_id):
+        # From src/firmware/riscv/grayskull/stream_io_map.h
+        # Kernel operand mapping scheme:
+        KERNEL_OPERAND_MAPPING_SCHEME = [
+            { "id_min" : 0,  "id_max" : 7,  "stream_id_min" : 0, "short" : "??", "long" : "????? => streams 0-7" }, # FIX THIS
+            { "id_min" : 0,  "id_max" : 7,  "stream_id_min" : 8, "short" : "input", "long" : "(inputs, unpacker-only) => streams 8-15" },
+            { "id_min" : 8,  "id_max" : 15, "stream_id_min" : 16, "short" : "param", "long" : "(params, unpacker-only) => streams 16-23" },
+            { "id_min" : 16, "id_max" : 23, "stream_id_min" : 24, "short" : "output", "long" : "(outputs, packer-only) => streams 24-31" },
+            { "id_min" : 24, "id_max" : 31, "stream_id_min" : 32, "short" : "intermediate", "long" : "(intermediates, packer/unpacker) => streams 32-39" },
+            { "id_min" : 32, "id_max" : 63, "stream_id_min" : 32, "short" : "op-relay", "long" : "(operand relay?) => streams 40-63" }, # CHECK THIS
+        ]
+        for ko in KERNEL_OPERAND_MAPPING_SCHEME:
+            s_id_min = ko["stream_id_min"]
+            s_id_count = ko["id_max"] - ko["id_min"]
+            if stream_id >= s_id_min and stream_id < s_id_min + s_id_count:
+                return ko
+        util.WARN ("no desc for stream_id=%s" % stream_id)
+        return "-"
+
+
+    # Function to print a full dump of a location x-y
+    def full_dump_xy(self, chip_id, x, y):
+        for stream_id in range (0, 64):
+            print()
+            stream = self.read_stream_regs(x, y, stream_id)
+            for reg, value in stream.items():
+                print(f"Tensix x={x:02d},y={y:02d} => stream {stream_id:02d} {reg} = {value}")
+
+        for noc_id in range (0, 2):
+            print()
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "nonposted write reqs sent", 0xA)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "posted write reqs sent", 0xB)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "nonposted write words sent", 0x8)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "posted write words sent", 0x9)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "write acks received", 0x1)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "read reqs sent", 0x5)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "read words received", 0x3)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "read resps received", 0x2)
+            print()
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "nonposted write reqs received", 0x1A)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "posted write reqs received", 0x1B)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "nonposted write words received", 0x18)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "posted write words received", 0x19)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "write acks sent", 0x10)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "read reqs received", 0x15)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "read words sent", 0x13)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "read resps sent", 0x12)
+            print()
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port x out vc full credit out vc stall", 0x24)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port y out vc full credit out vc stall", 0x22)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port niu out vc full credit out vc stall", 0x20)
+            print()
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC14 & VC15 dbg", 0x3d)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC12 & VC13 dbg", 0x3c)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC10 & VC11 dbg", 0x3b)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC8 & VC9 dbg", 0x3a)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC6 & VC7 dbg", 0x39)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC4 & VC5 dbg", 0x38)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC2 & VC3 dbg", 0x37)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port x VC0 & VC1 dbg", 0x36)
+            print()
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC14 & VC15 dbg", 0x35)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC12 & VC13 dbg", 0x34)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC10 & VC11 dbg", 0x33)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC8 & VC9 dbg", 0x32)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC6 & VC7 dbg", 0x31)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC4 & VC5 dbg", 0x30)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC2 & VC3 dbg", 0x2f)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port y VC0 & VC1 dbg", 0x2e)
+            print()
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port niu VC6 & VC7 dbg", 0x29)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port niu VC4 & VC5 dbg", 0x28)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port niu VC2 & VC3 dbg", 0x27)
+            self.read_print_noc_reg(chip_id, x, y, noc_id, "router port niu VC0 & VC1 dbg", 0x26)
+
+        en = 1
+        rd_sel = 0
+        pc_mask = 0x7fffffff
+        daisy_sel = 7
+
+        sig_sel = 0xff
+        rd_sel = 0
+        PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        test_val1 = PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c)
+        rd_sel = 1
+        PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        test_val2 = PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c)
+
+        rd_sel = 0
+        sig_sel = 2*self.SIG_SEL_CONST
+        PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        brisc_pc = PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+
+        # Doesn't work - looks like a bug for selecting inputs > 31 in daisy stop
+        # rd_sel = 0
+        # sig_sel = 2*16
+        # PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        # nrisc_pc = PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+
+        rd_sel = 0
+        sig_sel = 2*10
+        PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc0_pc = PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+
+        rd_sel = 0
+        sig_sel = 2*11
+        PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc1_pc = PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+
+        rd_sel = 0
+        sig_sel = 2*12
+        PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc2_pc = PCI_IFC.pci_read_xy(chip_id, x, y, 0, 0xffb1205c) & pc_mask
+
+        # IH: Commented out to reduce chatter
+        print()
+        print(f"Tensix x={x:02d},y={y:02d} => dbus_test_val1 (expect 7)={test_val1:x}, dbus_test_val2 (expect A5A5A5A5)={test_val2:x}")
+        print(f"Tensix x={x:02d},y={y:02d} => brisc_pc=0x{brisc_pc:x}, trisc0_pc=0x{trisc0_pc:x}, trisc1_pc=0x{trisc1_pc:x}, trisc2_pc=0x{trisc2_pc:x}")
+
+        PCI_IFC.pci_write_xy(chip_id, x, y, 0, 0xffb12054, 0)
+
+    # Reads and immediately prints a value of a given NOC register
+    def read_print_noc_reg(self, x, y, noc_id, reg_name, reg_index):
+        reg_addr = 0xffb20000 + (noc_id*0x10000) + 0x200 + (reg_index*4)
+        val = PCI_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
+        print(f"Tensix x={x:02d},y={y:02d} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})")
+
+    # Extracts and returns a single field of a stream register
+    def get_stream_reg_field(self, x, y, stream_id, reg_index, start_bit, num_bits):
+        reg_addr = 0xFFB40000 + (stream_id*0x1000) + (reg_index*4)
+        val = PCI_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
+        mask = (1 << num_bits) - 1
+        val = (val >> start_bit) & mask
+        return val
+
+    def get_stream_phase (self, x, y, stream_id):
+        return self.get_stream_reg_field(x, y, stream_id, 11, 0, 20)
+
+    # Returns whether the stream is configured
+    def is_stream_configured(self, stream_data):
+        return int(stream_data['CURR_PHASE']) > 0
+
+    def is_stream_idle(self, stream_data):
+        return (stream_data["DEBUG_STATUS[7]"] & 0xfff) == 0xc00
+    def is_stream_active (self, stream_data):
+        return int (stream_data["CURR_PHASE"]) != 0 and int (stream_data["NUM_MSGS_RECEIVED"]) > 0
+    def is_bad_stream (self, stream_data):
+        return \
+            (stream_data["DEBUG_STATUS[1]"] != 0) or \
+            (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x4 or \
+            (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x2
+    def is_gsync_hung (self, x, y):
+        return PCI_IFC.pci_read_xy(self.id(), x, y, 0, 0xffb2010c) == 0xB0010000
+    def is_ncrisc_done (self, x, y):
+        return PCI_IFC.pci_read_xy(self.id(), x, y, 0, 0xffb2010c) == 0x1FFFFFF1
+
+    NCRISC_STATUS_REG_ADDR=0xFFB2010C
+    BRISC_STATUS_REG_ADDR=0xFFB3010C
+
+    def get_status_register_desc(self, register_address, reg_value_on_chip):
+        STATUS_REG = {
+            self.NCRISC_STATUS_REG_ADDR : [ #ncrisc
+                { "reg_val":[0xA8300000,0xA8200000,0xA8100000], "description" : "Prologue queue header load",                                   "mask":0xFFFFF000, "ver": 0 },
+                { "reg_val":[0x11111111],                       "description" : "Main loop begin",                                              "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xC0000000],                       "description" : "Load queue pointers",                                          "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xD0000000],                       "description" : "Which stream id will read queue",                              "mask":0xFFFFF000, "ver": 0 },
+                { "reg_val":[0xD1000000],                       "description" : "Queue has data to read",                                       "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xD2000000],                       "description" : "Queue has l1 space",                                           "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xD3000000],                       "description" : "Queue read in progress",                                       "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xE0000000],                       "description" : "Which stream has data in l1 available to push",                "mask":0xFFFFF000, "ver": 0 },
+                { "reg_val":[0xE1000000],                       "description" : "Push in progress",                                             "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xF0000000],                       "description" : "Which stream will write queue",                                "mask":0xFFFFF000, "ver": 0 },
+                { "reg_val":[0xF0300000],                       "description" : "Waiting for stride to be ready before updating wr pointer",    "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xF1000000],                       "description" : "Needs to write data to dram",                                  "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xF2000000],                       "description" : "Ready to write data to dram",                                  "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xF3000000],                       "description" : "Has data to write to dram",                                    "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xF4000000],                       "description" : "Writing to dram",                                              "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0x20000000],                       "description" : "Amount of written tiles that needs to be cleared",             "mask":0xFFFFF000, "ver": 0 },
+                { "reg_val":[0x22222222,0x33333333,0x44444444], "description" : "Epilogue",                                                     "mask":0xFFFFFFFF, "ver": 1 },
+                { "reg_val":[0x10000006,0x10000001],            "description" : "Waiting for next epoch",                                       "mask":0xFFFFFFFF, "ver": 1 },
+            ],
+            self.BRISC_STATUS_REG_ADDR : [ #brisc
+                { "reg_val":[0xB0000000],                       "description" : "Stream restart check",                                         "mask":0xFFFFF000, "ver": 0 },
+                { "reg_val":[0xC0000000],                       "description" : "Check whether unpack stream has data",                         "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xD0000000],                       "description" : "Clear unpack stream",                                          "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xE0000000],                       "description" : "Check and push pack stream that has data (TM ops only)",       "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xF0000000],                       "description" : "Reset intermediate streams",                                   "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0xF1000000],                       "description" : "Wait until all streams are idle",                              "mask":0xFFFFFFFF, "ver": 0 },
+                { "reg_val":[0x21000000],                       "description" : "Waiting for next epoch",                                       "mask":0xFFFFF000, "ver": 1 },
+                { "reg_val":[0x10000001],                       "description" : "Waiting for next epoch",                                       "mask":0xFFFFFFFF, "ver": 1 },
+            ]
+        }
+
+        if register_address in STATUS_REG:
+            reg_value_desc_list = STATUS_REG[register_address]
+            for reg_value_desc in reg_value_desc_list:
+                mask = reg_value_desc["mask"]
+                for reg_val_in_desc in reg_value_desc["reg_val"]:
+                    if (reg_value_on_chip & mask == reg_val_in_desc):
+                        return [reg_value_on_chip, reg_value_desc["description"], reg_value_desc["ver"]]
+            return [reg_value_on_chip, "", 2]
+        return []
+
+    NCRISC_STATUS_REG_ADDR=NCRISC_STATUS_REG_ADDR
+    BRISC_STATUS_REG_ADDR=BRISC_STATUS_REG_ADDR
+
+    def read_stream_regs(self, noc0_loc, stream_id):
+        return self.read_stream_regs_direct (noc0_loc[0], noc0_loc[1], stream_id)
+
+    def status_register_summary(self, addr, ver = 0):
+        coords = self.get_block_locations ()
+        status_descs = {}
+        for loc in coords:
+            status_descs[loc] = self.get_status_register_desc(addr, PCI_IFC.pci_read_xy(self.id(), loc[0], loc[1], 0, addr))
+
+        # Print register status
+        status_descs_rows = []
+        for loc in coords:
+            if status_descs[loc] and status_descs[loc][2] <= ver:
+                status_descs_rows.append([f"{loc[0]:d}-{loc[1]:d}",f"{status_descs[loc][0]:08x}", f"{status_descs[loc][1]}"]);
+        return status_descs_rows
+
+    def as_noc_0 (self, x, y, noc_id):
+        if noc_id == 0:
+            return (x, y)
+        else:
+            return (self.noc1_to_noc0 (x,y))
+
+    def stream_epoch (self, stream_regs):
+        return int(stream_regs['CURR_PHASE']) >> 10
