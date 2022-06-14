@@ -456,6 +456,13 @@ def netlist_slice(netlist_filename, in_ops, in_op_inputs, out_ops):
         for op in in_ops:
             remove_op(nl, op)
 
+        # changing ublock order for output operations
+        for op_name in out_ops:
+            op = get_op(nl, op_name)
+            if "ublock_order" in op:
+                print(f"WARNING: Changing ublock_order for operation {op_name} to r")
+                op["ublock_order"] = "r"
+
         # 7. Add tapout_queues to out operations
         out_queues = get_tapout_queues(netlist_filename, out_ops)
         add_queues(nl, out_queues)
