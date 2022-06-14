@@ -1,3 +1,13 @@
+[0;30mDetected 1 PCI device 
+[0m[0;30mOpening TT_PCI_INTERFACE_ID 0
+[0m[0;30mVID:DID      0x1e52:0xfaca
+[0m[0;30mSubVID:SubID 0x1e52:0x1
+[0m[0;30mBSF          9:0:0
+[0m[0;30mBAR          0xc0000000  size: 48MB
+[0mdebuda-stub: listening on tcp://*:5555...
+Spawning debuda-stub...
+Connecting to debuda-stub...
+Connected to debuda-stub.
 tt_build/test_op_6715245286658215413
 [34mOutput directory not specified: looking for the most recent tt_build/ subdirectory. Found: tt_build/test_op_6715245286658215413[0m
 [34mLoading netlist 'dbd/test/netlists/netlist_multi_matmul_perf.yaml'[0m
@@ -394,13 +404,13 @@ Short    Long                     Arguments            Description
 [34mfd[0m       [34mfull-dump[0m                                     performs a full dump at current x-y
 [34mtest[0m     [34mtest[0m                                          test for development
 [34mabs[0m      [34manalyze-blocked-streams[0m  verbosity [0-1]      reads stream information from the devices and highlights blocked streams (if verbosity is 1, print more detail)
-[34md[0m        [34mdevice-summary[0m           device_id            shows summary of a device. When no argument is supplied, shows summary of all devices
-[34mom[0m       [34mop-map[0m                                        draws a mini map of the current epoch
-[34msrs[0m      [34mstatus-register-summary[0m  verbosity [0-2]      prints brisc and ncrisc status registers.
-[34mt[0m        [34mdump-tile[0m                tile_id, raw         prints tile for current stream in currently active phase. If raw=1, prints raw bytes
 [34mcdr[0m      [34mcore-debug-regs[0m          x y                  show debug registers for core 'x-y'. If coordinates are not supplied, show all cores.
-[34ms[0m        [34mprint-stream[0m             x y stream_id        show stream 'stream_id' at core 'x-y'
 [34mc[0m        [34mcore-summary[0m             x y                  show summary for core 'x-y'
+[34md[0m        [34mdevice-summary[0m           device_id            shows summary of a device. When no argument is supplied, shows summary of all devices
+[34mt[0m        [34mdump-tile[0m                tile_id, raw         prints tile for current stream in currently active phase. If raw=1, prints raw bytes
+[34mom[0m       [34mop-map[0m                                        draws a mini map of the current epoch
+[34ms[0m        [34mprint-stream[0m             x y stream_id        show stream 'stream_id' at core 'x-y'
+[34msrs[0m      [34mstatus-register-summary[0m  verbosity [0-2]      prints brisc and ncrisc status registers.
 Speed dial:
   #  Description    Command
 ---  -------------  -------------
@@ -3847,5 +3857,10 @@ test_op/f_op1    datacopy          0         0  [0, 1]      2-1         [1, 1]
 test_op/matmul1  matmul            0         0  [0, 2]      3-1         [1, 1]
 test_op/matmul2  matmul            0         0  [2, 4]      5-3         [1, 1]
 test_op/recip    reciprocal        0         0  [2, 2]      3-3         [1, 1]
+[34mExecuting command: export dbd/run/coverage-exact-match.zip[0m
+[32mExported 'dbd/run/coverage-exact-match.zip'. Import with:
+  unzip dbd/run/coverage-exact-match.zip -d dbd-export
+  cd dbd-export
+  Run debuda.py --server-cache on[0m
 [34mExecuting command: x[0m
 [34mExiting with code 0 [0m

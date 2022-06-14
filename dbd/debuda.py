@@ -481,6 +481,7 @@ def import_commands (command_metadata_array):
 
     sys.path.append(util.application_path() + '/debuda-commands')
 
+    command_files.sort()
     for cmdfile in command_files:
         module_path = os.path.splitext(os.path.basename(cmdfile))[0]
         my_cmd_module = importlib.import_module (module_path)
