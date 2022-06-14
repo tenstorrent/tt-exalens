@@ -53,21 +53,21 @@ fi
 
 # Run Debuda
 ## This debuda run command sequence is supposed to return exact same text always
-coverage_run $RUN_DIR/coverage-exact-match.log "$COVERAGE_RUN" ""       "$DEBUDA_CMD" --commands "hq; dq; abs; abs 1; s 1 1 8; cdr 1 1; c 1 1; d; t 1 0; d 0; d 1; cdr 1 1; b 10000030000; 0; 0; eq; brxy 1 1 0 0; help; export $RUN_DIR/coverage-exact-match.zip; x"
-## This command might read stuff that is not always the same
-coverage_run $RUN_DIR/coverage-fuzzy-match.log "$COVERAGE_RUN" --append "$DEBUDA_CMD" --commands "srs 0; srs 1; srs 2; fd; t 1 1; op-map; export $RUN_DIR/coverage-fuzzy-match.zip; x"
+coverage_run $RUN_DIR/coverage-exact-match.log "$COVERAGE_RUN" ""       "$DEBUDA_CMD" --commands "hq; dq; abs; abs 1; s 1 1 8; cdr 1 1; c 1 1; d; t 1 0; d 0; d 1; cdr 1 1; b 10000030000; 0; 0; eq; brxy 1 1 0 0; help; srs 0; srs 1; srs 2; fd ; t 1 1; op-map; export $RUN_DIR/coverage-exact-match.zip; x"
 
 # Undo the patch
-git apply -R dbd/test/inject-errors/sfpu_reciprocal-infinite-spin.patch
+git apply -R dbd/test/inject-errors/sfpu_reciprocal-infinite-spin-$ARCH_NAME.patch
 
 # Check coverage
 coverage report --sort=cover --show-missing | tee $RUN_DIR/coverage-report.txt
 COVER_PCT=`cat $RUN_DIR/coverage-report.txt | tail -n 1 | awk '{print $4}' | tr -d "%"`
 if (( $COVER_PCT < $EXPECTED_COVER_PCT )) ; then echo "FAIL: Coverage ($COVER_PCT) is smaller then expected ($EXPECTED_COVER_PCT)"; exit 1; fi
 
-# Compare the output with the expected
-compare_files="$RUN_DIR/coverage-exact-match.log dbd/test/expected-results/coverage-$ARCH_NAME-exact-match.expected"
-echo diff $compare_files
-diff $compare_files
-compare_exit_code="$?"
-if [ "$compare_exit_code" == "0" ]; then echo PASS; else echo FAIL; exit "$compare_exit_code"; fi
+# Show what needs to be done to set the current run as expected run
+echo "To set the current run as expected:"
+echo cp $RUN_DIR/coverage-exact-match.log dbd/test/expected-results/coverage-$ARCH_NAME-exact-match.expected
+echo cp $RUN_DIR/coverage-exact-match.zip dbd/test/exported/$ARCH_NAME/coverage-exact-match.zip
+echo "To run offline test:"
+echo ARCH_NAME=$ARCH_NAME dbd/bin/run-offline-tests.sh
+echo "Then, copy the expected log file from the offline run again:"
+echo cp $RUN_DIR/dbd-export/coverage-exact-match.log dbd/test/expected-results/coverage-$ARCH_NAME-exact-match.expected

@@ -293,7 +293,9 @@ class Graph:
     def id (self):
         return self.name
     def op_names (self):
-        return set (self.root.keys()) - Graph.non_op_keys
+        on = list(set (self.root.keys()) - Graph.non_op_keys)
+        on.sort()  # Sort to remove the non-determinism of the above operations
+        return on
     def device_id (self):
         return self.root['target_device']
     def input_count (self):

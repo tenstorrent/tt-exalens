@@ -30,20 +30,18 @@ coverage_run () {
     cov_args="$3"
     debuda_cmd="$4"
     debuda_commands_arg="$6"
-    $cov_command $cov_args $debuda_cmd "$5" "$debuda_commands_arg" | tee "$log_file"
+    $cov_command $cov_args $debuda_cmd "$5" "$debuda_commands_arg" > "$log_file"
     check_logfile_exit_code "$log_file"
 }
 
 ROOT=`pwd`
 
 # Run Debuda
-
-## This debuda run command sequence is supposed to return exact same text always
 rm -rf $RUN_DIR/dbd-export
 mkdir -p $RUN_DIR
 unzip dbd/test/exported/$ARCH_NAME/coverage-exact-match.zip -d $RUN_DIR/dbd-export
 cd $ROOT/$RUN_DIR/dbd-export
-coverage_run coverage-exact-match.log "$COVERAGE_RUN" "" "../../../$DEBUDA_CMD" --commands "hq; dq; abs; abs 1; s 1 1 8; cdr 1 1; c 1 1; d; t 1 0; d 0; d 1; cdr 1 1; b 10000030000; 0; 0; eq; brxy 1 1 0 0; help; x"
+coverage_run coverage-exact-match.log "$COVERAGE_RUN" "" "../../../$DEBUDA_CMD" --commands "hq; dq; abs; abs 1; s 1 1 8; cdr 1 1; c 1 1; d; t 1 0; d 0; d 1; cdr 1 1; b 10000030000; 0; 0; eq; brxy 1 1 0 0; help; srs 0; srs 1; srs 2; fd; t 1 1; op-map; x"
 cd $ROOT
 
 # Compare the output with the expected
@@ -51,11 +49,4 @@ compare_files="$ROOT/$RUN_DIR/dbd-export/coverage-exact-match.log $ROOT/dbd/test
 echo diff $compare_files
 diff $compare_files
 compare_exit_code="$?"
-if [ "$compare_exit_code" == "0" ]; then echo PASS; else echo FAIL; exit "$compare_exit_code"; fi
-
-# ## This command might read stuff that is not always the same
-# rm -rf $RUN_DIR/dbd-export
-# unzip dbd/test/exported/$ARCH_NAME/coverage-fuzzy-match.zip -d $RUN_DIR/dbd-export
-# cd $ROOT/$RUN_DIR/dbd-export
-# coverage_run coverage-fuzzy-match.log "$COVERAGE_RUN" "" "../../../$DEBUDA_CMD" --commands "srs 0; srs 1; srs 2; fd; t 1 1; op-map; x"
-# cd $ROOT
+if [ "$compare_exit_code" == "0" ]; then echo PASS; else echo FAIL: diff $compare_files; exit "$compare_exit_code"; fi
