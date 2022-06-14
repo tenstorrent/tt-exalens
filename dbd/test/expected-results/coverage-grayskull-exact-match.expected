@@ -1,13 +1,3 @@
-[0;30mDetected 1 PCI device 
-[0m[0;30mOpening TT_PCI_INTERFACE_ID 0
-[0m[0;30mVID:DID      0x1e52:0xfaca
-[0m[0;30mSubVID:SubID 0x1e52:0x1
-[0m[0;30mBSF          9:0:0
-[0m[0;30mBAR          0xc0000000  size: 48MB
-[0mdebuda-stub: listening on tcp://*:5555...
-Spawning debuda-stub...
-Connecting to debuda-stub...
-Connected to debuda-stub.
 tt_build/test_op_6715245286658215413
 [34mOutput directory not specified: looking for the most recent tt_build/ subdirectory. Found: tt_build/test_op_6715245286658215413[0m
 [34mLoading netlist 'dbd/test/netlists/netlist_multi_matmul_perf.yaml'[0m
@@ -3857,10 +3847,5 @@ test_op/f_op1    datacopy          0         0  [0, 1]      2-1         [1, 1]
 test_op/matmul1  matmul            0         0  [0, 2]      3-1         [1, 1]
 test_op/matmul2  matmul            0         0  [2, 4]      5-3         [1, 1]
 test_op/recip    reciprocal        0         0  [2, 2]      3-3         [1, 1]
-[34mExecuting command: export dbd/run/coverage-exact-match.zip[0m
-[32mExported 'dbd/run/coverage-exact-match.zip'. Import with:
-  unzip dbd/run/coverage-exact-match.zip -d dbd-export
-  cd dbd-export
-  Run debuda.py --server-cache on[0m
 [34mExecuting command: x[0m
 [34mExiting with code 0 [0m
