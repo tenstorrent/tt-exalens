@@ -404,14 +404,14 @@ Short    Long                     Arguments            Description
 [34meq[0m       [34mepoch-queue[0m                                   prints Epoch queue summary
 [34mfd[0m       [34mfull-dump[0m                                     performs a full dump at current x-y
 [34mtest[0m     [34mtest[0m                                          test for development
-[34mt[0m        [34mdump-tile[0m                tile_id, raw         prints tile for current stream in currently active phase. If raw=1, prints raw bytes
-[34ms[0m        [34mprint-stream[0m             x y stream_id        show stream 'stream_id' at core 'x-y'
-[34md[0m        [34mdevice-summary[0m           device_id            shows summary of a device. When no argument is supplied, shows summary of all devices
-[34mc[0m        [34mcore-summary[0m             x y                  show summary for core 'x-y'
-[34msrs[0m      [34mstatus-register-summary[0m  verbosity [0-2]      prints brisc and ncrisc status registers.
 [34mabs[0m      [34manalyze-blocked-streams[0m  verbosity [0-1]      reads stream information from the devices and highlights blocked streams (if verbosity is 1, print more detail)
 [34mcdr[0m      [34mcore-debug-regs[0m          x y                  show debug registers for core 'x-y'. If coordinates are not supplied, show all cores.
+[34mc[0m        [34mcore-summary[0m             x y                  show summary for core 'x-y'
+[34md[0m        [34mdevice-summary[0m           device_id            shows summary of a device. When no argument is supplied, shows summary of all devices
+[34mt[0m        [34mdump-tile[0m                tile_id, raw         prints tile for current stream in currently active phase. If raw=1, prints raw bytes
 [34mom[0m       [34mop-map[0m                                        draws a mini map of the current epoch
+[34ms[0m        [34mprint-stream[0m             x y stream_id        show stream 'stream_id' at core 'x-y'
+[34msrs[0m      [34mstatus-register-summary[0m  verbosity [0-2]      prints brisc and ncrisc status registers.
 Speed dial:
   #  Description    Command
 ---  -------------  -------------
