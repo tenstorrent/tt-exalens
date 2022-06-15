@@ -67,7 +67,7 @@ def print_pipe_data (cmd, context):
     return navigation_suggestions
 
 # Prints information on DRAM queues
-def print_dram_queue_summary (cmd, context, ui_state = None): # graph, chip_array):
+def print_dram_queue_summary (cmd, context, ui_state = None):
     if ui_state is not None:
         epoch_id_list = [ ui_state["current_epoch_id"] ]
     else:
@@ -79,13 +79,14 @@ def print_dram_queue_summary (cmd, context, ui_state = None): # graph, chip_arra
         graph_name = context.netlist.epoch_id_to_graph_name (epoch_id)
         graph = context.netlist.graph(graph_name)
         device_id = context.netlist.graph_name_to_device_id(graph_name)
+        device = context.devices[device_id]
 
         for buffer_id, buffer in graph.buffers.items():
             buffer_data = buffer.root
             if buffer_data["dram_buf_flag"] != 0 or buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0 and not buffer.replicated:
                 dram_chan = buffer_data["dram_chan"]
                 dram_addr = buffer_data['dram_addr']
-                dram_loc = ui_state['current_device'].CHANNEL_TO_DRAM_LOC[dram_chan]
+                dram_loc = device.CHANNEL_TO_DRAM_LOC[dram_chan]
                 rdptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
                 wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
                 slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
@@ -123,8 +124,8 @@ def print_host_queue_summary (cmd, context, ui_state):
             if buffer_data["dram_io_flag_is_remote"] != 0:
                 dram_addr = buffer_data['dram_addr']
                 if dram_addr >> 29 == device_id:
-                    rdptr = tt_device.host_dma_read (dram_addr)
-                    wrptr = tt_device.host_dma_read (dram_addr + 4)
+                    rdptr = tt_device.PCI_IFC.host_dma_read (dram_addr)
+                    wrptr = tt_device.PCI_IFC.host_dma_read (dram_addr + 4)
                     slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
                     queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
                     occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer_data["q_slots"])
