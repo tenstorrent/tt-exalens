@@ -321,8 +321,8 @@ class Graph:
         op = self.root[op_name]
         opr = op['grid_loc'][0]
         opc = op['grid_loc'][1]
-        for r in range(op['grid_size'][1]):
-            for c in range(op['grid_size'][0]):
+        for r in range(op['grid_size'][0]):
+            for c in range(op['grid_size'][1]):
                 locations.append ( [ opr + r, opc + c ] )
         return locations
 
