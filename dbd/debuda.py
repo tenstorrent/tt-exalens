@@ -84,7 +84,7 @@ def print_dram_queue_summary (cmd, context, ui_state = None):
 
         for buffer_id, buffer in graph.buffers.items():
             buffer_data = buffer.root
-            if buffer_data["dram_buf_flag"] != 0 or (buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0 and not buffer.replicated):
+            if (buffer_data["dram_buf_flag"] != 0 or (buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0)) and not buffer.replicated:
                 dram_chan = buffer_data["dram_chan"]
                 dram_addr = buffer_data['dram_addr']
                 dram_loc = device.CHANNEL_TO_DRAM_LOC[dram_chan]
@@ -130,11 +130,23 @@ def print_host_queue_summary (cmd, context, ui_state):
                     slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
                     queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
                     occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer_data["q_slots"])
-                    table.append ([ buffer_id, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
+
+                    # IMPROVE: Duplicated from print_dram_queue_summary. Merge into one function.
+                    input_buffer_op_name_list = []
+                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'input'):
+                        input_buffer_op_name_list.append (graph.get_buffer(other_buffer_id).root["md_op_name"])
+                    output_buffer_op_name_list = []
+                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'output'):
+                        output_buffer_op_name_list.append (graph.get_buffer(other_buffer_id).root["md_op_name"])
+
+                    input_ops = f"{' '.join (input_buffer_op_name_list)}"
+                    output_ops = f"{' '.join (output_buffer_op_name_list)}"
+
+                    table.append ([ buffer_id, buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
 
     print (f"{util.CLR_INFO}Host queues (where dram_io_flag_is_remote!=0) for epoch %d {util.CLR_END}" % epoch_id)
     if len(table) > 0:
-        print (tabulate(table, headers=["Buffer name", "dram_buf_flag", "dram_io_flag", "Address", "RD ptr", "WR ptr", "Occupancy", "Q slots", "Q Size [bytes]"] ))
+        print (tabulate(table, headers=["Buffer name", "Op", "Input Ops", "Output Ops", "dram_buf_flag", "dram_io_flag", "Address", "RD ptr", "WR ptr", "Occupancy", "Q slots", "Q Size [bytes]"] ))
     else:
         print ("No host queues found")
 
