@@ -15,6 +15,7 @@ parser.add_argument('--commands', type=str, required=False, help='Execute a set 
 parser.add_argument('--server-cache', type=str, default='off', help=f'Directs communication with Debuda Server. When "off", all device reads are done through the server. When set to "through", attempt to read from cache first. When "on", all reads are from cache only.')
 parser.add_argument('--debug-debuda-stub', action='store_true', default=False, help=f'Prints all transactions on PCIe. Also, starts debuda-stub with --debug to print transfers.')
 parser.add_argument('--verbose', action='store_true', default=False, help=f'Prints additional information.')
+parser.add_argument('--debuda-server-address', type=str, default="localhost:5555", required=False, help='IP address of debuda server (e.g. remote.server.com:5555);')
 args = parser.parse_args()
 util.args = args
 import pprint
@@ -83,7 +84,7 @@ def print_dram_queue_summary (cmd, context, ui_state = None):
 
         for buffer_id, buffer in graph.buffers.items():
             buffer_data = buffer.root
-            if buffer_data["dram_buf_flag"] != 0 or buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0 and not buffer.replicated:
+            if buffer_data["dram_buf_flag"] != 0 or (buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0 and not buffer.replicated):
                 dram_chan = buffer_data["dram_chan"]
                 dram_addr = buffer_data['dram_addr']
                 dram_loc = device.CHANNEL_TO_DRAM_LOC[dram_chan]
@@ -509,7 +510,8 @@ if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled:
 
 if tt_device.DEBUDA_SERVER_IFC.enabled:
     # Initialize communication with the client (debuda-stub)
-    tt_device.init_comm_client (args.debug_debuda_stub)
+    ip_and_port = args.debuda_server_address.split(":")
+    tt_device.init_comm_client (ip=ip_and_port[0], port=ip_and_port[1], debug_debuda_stub=args.debug_debuda_stub)
 
     # Make sure to terminate communication client (debuda-stub) on exit
     atexit.register (tt_device.terminate_comm_client_callback)

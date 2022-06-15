@@ -8,47 +8,59 @@ STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with bin/
 # See struct BUDA_READ_REQ for protocol details
 #
 ZMQ_SOCKET=None              # The socket for communication
-DEBUDA_STUB_PROCESS_ID=None  # The process ID of debuda-stub spawned in init_comm_client
+DEBUDA_STUB_PROCESS=None  # The process ID of debuda-stub spawned in init_comm_client
 
 # Spawns debuda-stub and initializes the communication
-def init_comm_client (debug_debuda_stub):
-    DEBUDA_STUB_PORT=5555
+def init_comm_client (ip="localhost", port=5555, debug_debuda_stub=False):
+    debuda_stub_address=f"tcp://{ip}:{port}"
+    spawning_debuda_stub = ip=='localhost'
 
-    print ("Spawning debuda-stub...")
+    if spawning_debuda_stub:
+        print ("Spawning debuda-stub...")
 
-    debuda_stub_path = util.application_path() + "/debuda-stub"
-    try:
-        global DEBUDA_STUB_PROCESS_ID
-        debuda_stub_args = [ "--debug" ] if debug_debuda_stub else [ ]
-        # print ("debuda_stub_cmd = %s" % ([debuda_stub_path] + debuda_stub_args))
-        DEBUDA_STUB_PROCESS_ID=subprocess.Popen([debuda_stub_path] + debuda_stub_args, preexec_fn=os.setsid)
-    except:
-        print (f"Exception: {util.CLR_ERR} Cannot find {debuda_stub_path}. {STUB_HELP} {util.CLR_END}")
-        raise
+        debuda_stub_path = util.application_path() + "/debuda-stub"
+        try:
+            global DEBUDA_STUB_PROCESS
+            debuda_stub_args = [ "--debug" ] if debug_debuda_stub else [ ]
+            debuda_stub_args += [ "--port", f"{port}"]
+
+            # print ("debuda_stub_cmd = %s" % ([debuda_stub_path] + debuda_stub_args))
+            DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path] + debuda_stub_args, preexec_fn=os.setsid)
+        except:
+            print (f"Exception: {util.CLR_ERR} Cannot find {debuda_stub_path}. {STUB_HELP} {util.CLR_END}")
+            raise
+        time.sleep (0.1) # Cosmetic wait: To allow debuda-stub to print the message
+        debuda_stub_is_running = DEBUDA_STUB_PROCESS.poll() is None
+        if not debuda_stub_is_running:
+            util.FATAL ("Debuda stub could not be started")
+
+    print(f"Connecting to local debuda-stub at {debuda_stub_address}...")
 
     context = zmq.Context()
     global ZMQ_SOCKET
 
-    time.sleep (0.1) # Cosmetic wait: To allow debuda-stub to print the message
+    try:
+        #  Socket to talk to server
+        ZMQ_SOCKET = context.socket(zmq.REQ)
+        ZMQ_SOCKET.connect(debuda_stub_address)
 
-    #  Socket to talk to server
-    print("Connecting to debuda-stub...")
-    ZMQ_SOCKET = context.socket(zmq.REQ)
-    ZMQ_SOCKET.connect(f"tcp://localhost:{DEBUDA_STUB_PORT}")
+        ZMQ_SOCKET.send(struct.pack ("c", b'\x01')) # PING
+        reply = ZMQ_SOCKET.recv_string()
+        if "PONG" not in reply:
+            print (f"Expected PONG but received {reply}") # Should print PONG
 
-    ZMQ_SOCKET.send(struct.pack ("c", b'\x01')) # PING
-    reply = ZMQ_SOCKET.recv_string()
-    if "PONG" not in reply:
-        print (f"Expected PONG but received {reply}") # Should print PONG
-
-    print("Connected to debuda-stub.")
+        print("Connected to debuda-stub.")
+    except:
+        if spawning_debuda_stub:
+            terminate_comm_client_callback ()
+        raise
 
     time.sleep (0.1)
 
 # Terminates debuda-stub spawned in init_comm_client
 def terminate_comm_client_callback ():
-    if DEBUDA_STUB_PROCESS_ID is not None:
-        os.killpg(os.getpgid(DEBUDA_STUB_PROCESS_ID.pid), signal.SIGTERM)
+    if DEBUDA_STUB_PROCESS is not None:
+        os.killpg(os.getpgid(DEBUDA_STUB_PROCESS.pid), signal.SIGTERM)
         util.VERBOSE (f"Terminated debuda-stub")
 
 # This is the interface to the debuda server (aka. debuda-stub)
