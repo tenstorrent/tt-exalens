@@ -59,7 +59,7 @@ def init_comm_client (ip="localhost", port=5555, debug_debuda_stub=False):
 
 # Terminates debuda-stub spawned in init_comm_client
 def terminate_comm_client_callback ():
-    if DEBUDA_STUB_PROCESS is not None:
+    if DEBUDA_STUB_PROCESS is not None and DEBUDA_STUB_PROCESS.poll() is None:
         os.killpg(os.getpgid(DEBUDA_STUB_PROCESS.pid), signal.SIGTERM)
         util.VERBOSE (f"Terminated debuda-stub")
 
