@@ -32,7 +32,7 @@ def init_comm_client (ip="localhost", port=5555, debug_debuda_stub=False):
         time.sleep (0.1) # Cosmetic wait: To allow debuda-stub to print the message
         debuda_stub_is_running = DEBUDA_STUB_PROCESS.poll() is None
         if not debuda_stub_is_running:
-            util.FATAL ("Debuda stub could not be started")
+            util.ERROR ("Debuda stub could not be spawned on localhost")
 
     print(f"Connecting to local debuda-stub at {debuda_stub_address}...")
 
