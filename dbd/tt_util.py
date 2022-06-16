@@ -12,16 +12,18 @@ def notify_exception(exc_type, exc_value, tb):
     ss_list = traceback.extract_tb(tb)
     cwd_path = os.path.abspath (os.getcwd()) + os.sep
     indent = 0
-    last_dbd_ss = None
+    fn = "-"
+    line_number = "-"
     for ss in ss_list:
         file_name, line_number, func_name, text = ss
         abs_filename = os.path.abspath(file_name)
-        if cwd_path in abs_filename:
-            fn = abs_filename.replace (cwd_path, "")
-            row = [ f"{fn}:{line_number}", func_name, f"{CLR_BLUE}{'  '*indent}{text}{CLR_END}"]
-            rows.append (row)
-            if indent < 10:
-                indent+=1
+        fn = os.path.relpath (abs_filename)
+        row = [ f"{fn}:{line_number}", func_name, f"{CLR_BLUE}{'  '*indent}{text}{CLR_END}"]
+        rows.append (row)
+        if indent < 10:
+            indent+=1
+        else:
+            print (f"{cwd_path} not in {abs_filename}")
 
     rows.append ([ f"{CLR_RED}{fn}:{line_number}{CLR_END}", f"{CLR_RED}{func_name}{CLR_END}", f"{CLR_RED}{exc_type.__name__}: {exc_value}{CLR_END}"])
 
