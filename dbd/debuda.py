@@ -478,12 +478,10 @@ def main(args, context):
                         navigation_suggestions = found_command["module"].run(cmd, context, ui_state)
 
         except Exception as e:
-            print (f"Exception: {util.CLR_ERR} {e} {util.CLR_END}")
-            print(traceback.format_exc())
             if have_non_interactive_commands:
                 raise
             else:
-                raise
+                util.notify_exception (type(e), e, e.__traceback__) # Print the exception
     return 0
 
 # Import any 'plugin' commands from debuda-commands directory

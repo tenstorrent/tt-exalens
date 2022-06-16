@@ -4,6 +4,31 @@ debuda parses the build output files and probes the silicon to determine status 
 """
 import sys, os, yaml, zipfile
 from tabulate import tabulate
+import traceback
+
+# Pretty print exceptions (traceback)
+def notify_exception(exc_type, exc_value, tb):
+    rows=[]
+    ss_list = traceback.extract_tb(tb)
+    cwd_path = os.path.abspath (os.getcwd()) + os.sep
+    indent = 0
+    last_dbd_ss = None
+    for ss in ss_list:
+        file_name, line_number, func_name, text = ss
+        abs_filename = os.path.abspath(file_name)
+        if cwd_path in abs_filename:
+            fn = abs_filename.replace (cwd_path, "")
+            row = [ f"{fn}:{line_number}", func_name, f"{CLR_BLUE}{'  '*indent}{text}{CLR_END}"]
+            rows.append (row)
+            if indent < 10:
+                indent+=1
+
+    rows.append ([ f"{CLR_RED}{fn}:{line_number}{CLR_END}", f"{CLR_RED}{func_name}{CLR_END}", f"{CLR_RED}{exc_type.__name__}: {exc_value}{CLR_END}"])
+
+    print (tabulate(rows))
+
+# Replace the exception hook to print a nicer output
+sys.excepthook = notify_exception
 
 # Get path of this script. 'frozen' means packaged with pyinstaller.
 def application_path ():
