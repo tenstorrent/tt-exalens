@@ -106,7 +106,7 @@ class YamlFile:
             self.filepath = filepath
             self.root = dict()
             # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
-            for i in yaml.safe_load_all(open(filepath)):
+            for i in yaml.load_all(open(filepath), Loader=yaml.CSafeLoader):
                 self.root = { **self.root, **i }
             YamlFile.file_cache[filepath] = self.root
 
