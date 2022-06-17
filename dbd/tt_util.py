@@ -22,9 +22,6 @@ def notify_exception(exc_type, exc_value, tb):
         rows.append (row)
         if indent < 10:
             indent+=1
-        else:
-            print (f"{cwd_path} not in {abs_filename}")
-
     rows.append ([ f"{CLR_RED}{fn}:{line_number}{CLR_END}", f"{CLR_RED}{func_name}{CLR_END}", f"{CLR_RED}{exc_type.__name__}: {exc_value}{CLR_END}"])
 
     print (tabulate(rows))
