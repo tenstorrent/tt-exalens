@@ -100,13 +100,14 @@ class Graph:
         self.pipegen_yaml = pipegen_yaml
         self.blob_yaml = blob_yaml
 
+    def load (self):
         # 1. Load pipegen_yaml
         self.buffers = dict()
         self.pipes = dict()
-        for key, val in pipegen_yaml.items():
+        for key, val in self.pipegen_yaml.items():
             if key == "graph_name":
                 if self.name != val:
-                    util.WARN(f"Expected 'graph_name: {self.name}' in {pipegen_yaml.id()}, but got 'graph_name: {val}'")
+                    util.WARN(f"Expected 'graph_name: {self.name}' in {self.pipegen_yaml.id()}, but got 'graph_name: {val}'")
             elif "buffer" in key:
                 b = Buffer(val)
                 self.buffers[b.id()] = b
@@ -120,7 +121,7 @@ class Graph:
                 p = Pipe(val)
                 self.pipes[p.id()] = p
             else:
-                raise RuntimeError(f"{pipegen_yaml.id()}: Cannot interpret {key}: {val}")
+                raise RuntimeError(f"{self.pipegen_yaml.id()}: Cannot interpret {key}: {val}")
 
         # 1a. Link buffers to pipe
         max_lines_printed_for_num_missing_buffers = 10
@@ -148,7 +149,7 @@ class Graph:
 
         # 2. Load blob_yaml
         self.streams = dict()
-        for key, val in blob_yaml.items():
+        for key, val in self.blob_yaml.items():
             if key == "dram_blob":
                 util.VERBOSE ("- Skipping dram_blob")
             elif key == "dram_perf_dump_blob":
@@ -160,7 +161,8 @@ class Graph:
                     s = tt_stream.Stream (stream_designator, stream_data)
                     self.streams[s.id()] = s
             else:
-                raise RuntimeError(f"{blob_yaml.id()}: Cannot interpret {key}: {val}")
+                raise RuntimeError(f"{self.blob_yaml.id()}: Cannot interpret {key}: {val}")
+
 
     RECURSION_DEPTH = 0 # Temporary/debug limit to prevent infinite recursion
 
@@ -171,6 +173,11 @@ class Graph:
         return self.pipes.get (pipe_id, None)
     def get_stream (self, stream_loc):
         return self.streams.get (stream_loc, None)
+
+    def __getattr__(self, name):
+        if name in { "buffers", "pipes", "streams" }:
+            self.load() # Lazy-loaded structures
+        return object.__getattribute__(self, name)
 
     # Given a buffer list, find all buffers that are connected (pipegen.yaml)
     # connection can be input/output/inputoutput
@@ -388,7 +395,6 @@ class Netlist:
         self.graphs = dict()
         for graph_name in self.graph_names():
             epoch_id = self.graph_name_to_epoch_id(graph_name)
-            util.VERBOSE (f"Loading epoch {epoch_id} ({graph_name})")
             graph_dir=f"{rundir}/temporal_epoch_{epoch_id}"
             if not os.path.isdir(graph_dir):
                 util.FATAL (f"Error: cannot find directory {graph_dir}")

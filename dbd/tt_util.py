@@ -123,16 +123,18 @@ class YamlFile:
     file_cache = {}
 
     def __init__ (self, filepath):
+        self.filepath = filepath
         if filepath in YamlFile.file_cache:
             self.root = YamlFile.file_cache[filepath]
-        else:
-            VERBOSE (f"Loading '{filepath}'")
-            self.filepath = filepath
-            self.root = dict()
-            # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
-            for i in yaml.load_all(open(filepath), Loader=yaml.CSafeLoader):
-                self.root = { **self.root, **i }
-            YamlFile.file_cache[filepath] = self.root
+
+    def load (self):
+        INFO (f"Loading '{self.filepath}'")
+        # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
+        self.root = dict()
+
+        for i in yaml.load_all(open(self.filepath), Loader=yaml.CSafeLoader):
+            self.root = { **self.root, **i }
+        YamlFile.file_cache[self.filepath] = self.root
 
     def __str__(self):
         return f"{type(self).__name__}: {self.filepath}"
@@ -140,6 +142,11 @@ class YamlFile:
         return self.root.items()
     def id(self):
         return self.filepath
+
+    def __getattr__(self, name):
+        if name == "root":
+            self.load()
+        return object.__getattribute__(self, name)
 
 DEFAULT_EXPORT_FILENAME='debuda-export.zip'
 

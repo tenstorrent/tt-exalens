@@ -38,6 +38,7 @@ coverage_run () {
 if [ "$SKIP_RUN" == "" ]; then
 # Setup environment
 rm -rf $RUN_DIR
+rm *.pkl
 mkdir -p $RUN_DIR
 sudo pip install coverage
 make -j8 && make -j8 verif/op_tests/test_op

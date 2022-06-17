@@ -1,7 +1,11 @@
 tt_build/test_op_6715245286658215413
 [34mOutput directory not specified: looking for the most recent tt_build/ subdirectory. Found: tt_build/test_op_6715245286658215413[0m
+[34mLoading 'tt_build/test_op_6715245286658215413/runtime_data.yaml'[0m
 [34mLoading netlist 'dbd/test/netlists/netlist_multi_matmul_perf.yaml'[0m
+[34mLoading 'dbd/test/netlists/netlist_multi_matmul_perf.yaml'[0m
 [34mExecuting command: hq[0m
+[34mLoading 'tt_build/test_op_6715245286658215413/temporal_epoch_0/overlay/pipegen.yaml'[0m
+[34mLoading 'tt_build/test_op_6715245286658215413/temporal_epoch_0/overlay/blob.yaml'[0m
 [34mHost queues (where dram_io_flag_is_remote!=0) for epoch 0 [0m
 No host queues found
 [34mExecuting command: dq[0m
@@ -13,6 +17,7 @@ No host queues found
 10000030000  input1               f_op1                       1               0          0  0x31000000         0         1            1        1           66560
 [34mExecuting command: abs[0m
 [34mAnalyzing device 1/1[0m
+[34mLoading 'device/grayskull_120_arch.yaml'[0m
 X-Y    Op                          Stream  Type      Epoch    Phase    MSGS_REMAINING    MSGS_RECEIVED  Depends on    State    Flag
 -----  ------------------------  --------  ------  -------  -------  ----------------  ---------------  ------------  -------  ------
 3-3    test_op/recip:reciprocal         8  input         0        1                32                2  2-1           Active   [38:2:205:106:0mAll core inputs ready, but no output generated[0m

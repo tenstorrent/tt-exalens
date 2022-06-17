@@ -42,11 +42,12 @@ def run(args, context, ui_state = None):
     stream_loc = (current_device_id, x, y, stream_id, int(regs['CURR_PHASE']))
     if stream_loc in graph.streams:
         stream_from_blob = graph.streams[stream_loc].root
-        buf_id = stream_from_blob["buf_id"] if stream_from_blob and "buf_id" in stream_from_blob else None
-        if buf_id is not None:
-            buffer_ids.add (buf_id)
         data_columns.append (stream_from_blob)
         title_columns.append ("Stream (blob.yaml)")
+        # If there is an associated buffer, add it for showing.
+        buf_id = stream_from_blob.get ("buf_id", None)
+        if buf_id is not None:
+            buffer_ids.add (buf_id)
 
     # 2. Append buffers
     for buffer_id in buffer_ids:
