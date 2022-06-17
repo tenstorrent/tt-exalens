@@ -371,7 +371,6 @@ class Netlist:
             netlist_filepath = self.get_netlist_path()
 
         # 2. Load the netlist itself
-        util.INFO (f"Loading netlist '{netlist_filepath}'")
         self.yaml_file = util.YamlFile (netlist_filepath)
 
         # Cache epoch id, device id and graph names
