@@ -167,3 +167,36 @@ def export_to_zip(filelist, out_file=DEFAULT_EXPORT_FILENAME):
 def write_to_yaml_file (data, filename):
     with open(filename, 'w') as output_yaml_file:
         yaml.dump(data, output_yaml_file)
+
+# Takes in data in row/column format and returns string with aligned columns
+class TabulateTable:
+    # column_format = [
+    #     { 'key_name' : None,          'title': 'Name',   'formatter': None },
+    #     { 'key_name' : 'target_device', 'title': 'Device', 'formatter': lambda x: f"{util.CLR_RED}{x}{util.CLR_END}" },
+
+    # How to format across columns.
+    # if 'key_name' is None, the 'key' argument to add_row is used for that column
+    def __init__ (self, column_format, sort_col = 0):
+        self.headers =[ col["title"] for col in column_format ]
+        self.rows = []
+        self.column_format = column_format
+        self.sort_col = sort_col
+
+    def add_row (self, key, data):
+        row = []
+
+        for col_data in self.column_format:
+            if col_data["key_name"] is None:
+                element_data=key
+            else:
+                element_data=data[col_data['key_name']]
+
+            if 'formatter' in col_data and col_data['formatter'] is not None:
+                element_data = col_data['formatter'] (element_data)
+            row.append (element_data)
+        self.rows.append (row)
+
+    def __str__ (self):
+        self.rows.sort (key=lambda x: x[self.sort_col])
+
+        return tabulate (self.rows, headers=self.headers)

@@ -425,6 +425,8 @@ class Netlist:
         return self.graphs[graph_name]
     def devices(self):
         return self.yaml_file.root["devices"]
+    def queues(self):
+        return self.yaml_file.root['queues']
 
     # Determines the architecture
     def get_arch (self):

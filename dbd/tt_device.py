@@ -67,30 +67,32 @@ def terminate_comm_client_callback ():
 class DEBUDA_SERVER_IFC:
     enabled = True # It can be disabled for offline operation (when working from cache)
 
+    NOT_ENABLED_ERROR_MSG="Access to device/host is requested, while the device communication is disabled with --server-cache"
+
     # PCI read/write functions. Given a noc0 location and addr, performs a PCI read/write
     # to the given location at the address.
     def pci_read_xy(chip_id, x, y, noc_id, reg_addr):
-        assert DEBUDA_SERVER_IFC.enabled
+        assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
         # print (f"Reading {x}-{y} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x02', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, 0))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
         return ret_val
     def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
-        assert DEBUDA_SERVER_IFC.enabled
+        assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
         # print (f"Reading {x}-{y} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x04', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, data))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
         assert data == ret_val
     def host_dma_read (dram_addr):
-        assert DEBUDA_SERVER_IFC.enabled
+        assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
         # print ("host_dma_read 0x%x" % dram_addr)
         ZMQ_SOCKET.send(struct.pack ("cccccI", b'\x03', b'\x00', b'\x00', b'\x00', b'\x00', dram_addr))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
         return ret_val
     def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
-        assert DEBUDA_SERVER_IFC.enabled
+        assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
         # print (f"Reading {x}-{y} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x05', chip_id, x, y, z, reg_addr, data_format<<16 + message_size))
         data = data_format * 2**16 + msg_size
@@ -586,3 +588,10 @@ class Device:
 
     def stream_epoch (self, stream_regs):
         return int(stream_regs['CURR_PHASE']) >> 10
+
+    def pci_read_xy(self, x, y, noc_id, reg_addr):
+        return PCI_IFC.pci_read_xy(self.id(), x, y, noc_id, reg_addr)
+    def pci_write_xy(self, x, y, noc_id, reg_addr, data):
+        return PCI_IFC.pci_write_xy(self.id(), x, y, noc_id, reg_addr, data)
+    def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
+        return PCI_IFC.pci_read_tile(self.id(), x, y, z, reg_addr, msg_size, data_format)
