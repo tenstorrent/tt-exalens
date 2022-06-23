@@ -185,7 +185,7 @@ class TabulateTable:
 
     # How to format across columns.
     # if 'key_name' is None, the 'key' argument to add_row is used for that column
-    def __init__ (self, column_format, sort_col = 0):
+    def __init__ (self, column_format, sort_col = None):
         self.headers =[ col["title"] for col in column_format ]
         self.rows = []
         self.column_format = column_format
@@ -206,6 +206,7 @@ class TabulateTable:
         self.rows.append (row)
 
     def __str__ (self):
-        self.rows.sort (key=lambda x: x[self.sort_col])
+        if self.sort_col is not None:
+            self.rows.sort (key=lambda x: x[self.sort_col])
 
         return tabulate (self.rows, headers=self.headers)
