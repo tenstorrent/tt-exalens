@@ -103,7 +103,7 @@ def print_dram_queue_summary (cmd, context, ui_state = None):
                 wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
                 slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
                 queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
-                occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer_data["q_slots"])
+                occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - 2 * buffer_data["q_slots"])
 
                 input_buffer_op_name_list = []
                 for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'input'):
@@ -140,7 +140,7 @@ def print_host_queue_summary (cmd, context, ui_state):
                     wrptr = tt_device.PCI_IFC.host_dma_read (dram_addr + 4)
                     slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
                     queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
-                    occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - buffer_data["q_slots"])
+                    occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - 2 * buffer_data["q_slots"])
 
                     # IMPROVE: Duplicated from print_dram_queue_summary. Merge into one function.
                     input_buffer_op_name_list = []
@@ -196,7 +196,7 @@ def print_epoch_queue_summary (cmd, context, ui_state):
         dram_addr = EPOCH_QUEUE_START_ADDR + offset
         rdptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
         wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
-        occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - EPOCH_Q_NUM_SLOTS)
+        occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - 2 * EPOCH_Q_NUM_SLOTS)
         if occupancy > 0:
             table.append ([ f"{x}-{y}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
 

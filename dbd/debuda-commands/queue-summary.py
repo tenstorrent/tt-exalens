@@ -37,7 +37,7 @@ def run(args, context, ui_state = None):
             rdptr = tt_device.PCI_IFC.host_dma_read (addr)
             wrptr = tt_device.PCI_IFC.host_dma_read (addr + 4)
             # rdptr = wrptr = 0
-            occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - entries)
+            occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - 2 * entries)
             queue_positions.append ((rdptr, wrptr, occupancy))
         else:
             device_id = q_data["target_device"]
@@ -50,7 +50,7 @@ def run(args, context, ui_state = None):
                 dram_loc = device.CHANNEL_TO_DRAM_LOC[dram_chan]
                 rdptr = device.pci_read_xy (dram_loc[0], dram_loc[1], 0, dram_addr)
                 wrptr = device.pci_read_xy (dram_loc[0], dram_loc[1], 0, dram_addr + 4)
-                occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - entries)
+                occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - 2 * entries)
                 queue_positions.append ((rdptr, wrptr, occupancy))
 
         def queue_positions_to_str (queue_positions, i):
