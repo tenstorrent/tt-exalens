@@ -37,6 +37,15 @@ def application_path ():
         application_path = os.path.dirname(__file__)
     return application_path
 
+def to_hex_if_possible (val):
+    if type(val) == int and (val > 9 or val < 0):
+        return f" (0x{val:x})"
+    else:
+        return ''
+
+def with_hex_if_possible (val):
+    return f"{val}{to_hex_if_possible(val)}"
+
 # Colors
 CLR_RED = '\033[31m'
 CLR_GREEN = '\033[32m'
@@ -76,7 +85,7 @@ def reverse_mapping_list(l):
 # Converts a shallow dict to a table. A table is an array that can be consumed by tabulate.py
 def dict_to_table (dct):
     if dct:
-        table = [ [k, dct[k]] for k in dct ]
+        table = [ [k, with_hex_if_possible (dct[k])] for k in dct ]
     else:
         table = [ [ "", "" ] ]
     return table
