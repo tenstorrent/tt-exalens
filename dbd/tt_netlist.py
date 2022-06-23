@@ -103,6 +103,7 @@ class Graph:
     def load (self):
         # 1. Load pipegen_yaml
         self.buffers = dict()
+        self.buffers_by_op_name = dict()
         self.pipes = dict()
         for key, val in self.pipegen_yaml.items():
             if key == "graph_name":
@@ -111,6 +112,7 @@ class Graph:
             elif "buffer" in key:
                 b = Buffer(val)
                 self.buffers[b.id()] = b
+                self.buffers_by_op_name[val["md_op_name"]] = b
                 uniqid = val["uniqid"]
                 for r in range (1, val["replicate"]): # Handle replicated buffers (see issue #326)
                     val["uniqid"] = uniqid + r * val["scatter_gather_num_tiles"]
@@ -169,6 +171,8 @@ class Graph:
     # Find a buffer given a buffer_id
     def get_buffer (self, buffer_id):
         return self.buffers.get (buffer_id, None)
+    def get_buffer_by_op_name (self, op_name):
+        return self.buffers_by_op_name.get (op_name, None)
     def get_pipe (self, pipe_id):
         return self.pipes.get (pipe_id, None)
     def get_stream (self, stream_loc):

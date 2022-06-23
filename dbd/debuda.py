@@ -24,16 +24,25 @@ pp = pprint.PrettyPrinter(indent=4)
 ### BUILT-IN COMMANDS
 
 # Find occurrences of buffer with ID 'buffer_id' across all epochs, and print the structures that reference them
-# Supply ui_state['current_epoch_id']=None, to show details in all epochs
+# Supply ui_state['current_epoch_id']=None, to show details in all epochs.
 def print_buffer_data (cmd, context):
-    buffer_id = int(cmd[1])
+    try:
+        buffer_id = int(cmd[1])
+    except ValueError as e:
+        buffer_id = cmd[1]
 
     for epoch_id in context.netlist.epoch_ids():
         graph_name = context.netlist.epoch_id_to_graph_name(epoch_id)
         graph = context.netlist.graph(graph_name)
         buffer = graph.get_buffer(buffer_id)
-        if buffer:
-            util.print_columnar_dicts ([buffer.root], [f"{util.CLR_INFO}Epoch {epoch_id}{util.CLR_END}"])
+        if type(buffer_id) == int:
+            buffer = graph.get_buffer(buffer_id)
+            if buffer:
+                util.print_columnar_dicts ([buffer.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
+        if type(buffer_id) == str:
+            buffer = graph.get_buffer_by_op_name(buffer_id)
+            if buffer:
+                util.print_columnar_dicts ([buffer.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
 
         navigation_suggestions = [ ]
         for p in graph.pipes:
@@ -56,14 +65,16 @@ def print_pipe_data (cmd, context):
         graph_name = context.netlist.epoch_id_to_graph_name(epoch_id)
         graph = context.netlist.graph(graph_name)
         pipe = graph.get_pipe(pipe_id)
-        if pipe:
-            util.print_columnar_dicts ([pipe.root], [f"{util.CLR_INFO}Epoch {epoch_id}{util.CLR_END}"])
-
         navigation_suggestions = [ ]
-        for input_buffer in pipe.root['input_list']:
-            navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show src buffer" })
-        for input_buffer in pipe.root['output_list']:
-            navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show dest buffer" })
+        if pipe:
+            util.print_columnar_dicts ([pipe.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
+
+            for input_buffer in pipe.root['input_list']:
+                navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show src buffer" })
+            for input_buffer in pipe.root['output_list']:
+                navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show dest buffer" })
+        else:
+            util.INFO (f"Pipe {pipe_id} cannot be found in graph {graph_name}")
 
     return navigation_suggestions
 
@@ -274,7 +285,7 @@ def main(args, context):
         { "long" : "buffer",
           "short" : "b",
           "expected_argument_count" : 1,
-          "arguments_description" : "buffer_id : prints details on the buffer with ID buffer_id"
+          "arguments_description" : "buffer_id_or_op_name : prints details on the buffer with a given id, or buffer(s) mapped to a given operation."
         },
         { "long" : "pipe",
           "short" : "p",

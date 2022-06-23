@@ -12,18 +12,19 @@ def run(args, context, ui_state = None):
     table = []
 
     column_format = [
-        { 'key_name' : None,            'title': 'Name',   'formatter': None },
-        { 'key_name' : 'input',         'title': 'Input',  'formatter': None },
-        { 'key_name' : 'type',          'title': 'Type',   'formatter': None },
-        { 'key_name' : 'target_device', 'title': 'Device', 'formatter': lambda x: f"{util.CLR_RED}{x}{util.CLR_END}" },
-        { 'key_name' : 'loc',           'title': 'Loc',    'formatter': None },
-        { 'key_name' : 'entries',       'title': 'EN',     'formatter': None },
-        { 'key_name' : 'rdptr',         'title': 'RD',     'formatter': None },
-        { 'key_name' : 'wrptr',         'title': 'WR',     'formatter': None },
-        { 'key_name' : 'occupancy',     'title': 'OCC',    'formatter': None },
+        { 'key_name' : 'entries',       'title': 'Entries',  'formatter': None },
+        { 'key_name' : 'wrptr',         'title': 'WR',       'formatter': None },
+        { 'key_name' : 'rdptr',         'title': 'RD',       'formatter': None },
+        { 'key_name' : 'occupancy',     'title': 'OCC',      'formatter': None },
+        { 'key_name' : None,            'title': 'Name',     'formatter': None },
+        { 'key_name' : 'input',         'title': 'Input',    'formatter': None },
+        { 'key_name' : 'type',          'title': 'Type',     'formatter': None },
+        { 'key_name' : 'target_device', 'title': 'Device',   'formatter': lambda x: f"{util.CLR_RED}{x}{util.CLR_END}" },
+        { 'key_name' : 'loc',           'title': 'Loc',      'formatter': None },
+
     ]
 
-    table=util.TabulateTable(column_format, sort_col=3)
+    table=util.TabulateTable(column_format)
 
     # Whether to print all DRAM positions or aggregate them
     expand_queue_positions = True
