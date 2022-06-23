@@ -1,7 +1,6 @@
 tt_build/test_op_6715245286658215413
 [34mOutput directory not specified: looking for the most recent tt_build/ subdirectory. Found: tt_build/test_op_6715245286658215413[0m
 [34mLoading 'tt_build/test_op_6715245286658215413/runtime_data.yaml'[0m
-[34mLoading netlist 'dbd/test/netlists/netlist_multi_matmul_perf.yaml'[0m
 [34mLoading 'dbd/test/netlists/netlist_multi_matmul_perf.yaml'[0m
 [34mExecuting command: hq[0m
 [34mLoading 'tt_build/test_op_6715245286658215413/temporal_epoch_0/overlay/pipegen.yaml'[0m
@@ -55,48 +54,48 @@ Speed dial:
   3  Go to stream   s 6 3 8
   4  Go to stream   s 8 3 8
 [34mExecuting command: s 1 1 8[0m
-  Non-idle streams                    Registers                                                     Stream (blob.yaml)                        Buffer 10000100000                          Pipe 10000260000
-------------------  ----------------  ------------------------------------------------  ----------  ---------------------------  -----------  -----------------------------  -----------  ------------------  -------------
-                 0                    STREAM_ID                                         8           buf_addr                     196608       md_op_name                     f_op0        id                  10000260000
-                 1                    PHASE_AUTO_CFG_PTR (word addr)                    0x18550     buf_id                       10000100000  id                             0            input_list          [10000050000]
-                 2                    CURR_PHASE                                        1           buf_size                     16640        uniqid                         10000100000  output_list         [10000100000]
-                 3                    CURR_PHASE_NUM_MSGS_REMAINING                     0           buf_space_available_ack_thr  0            epoch_tiles                    32           outgoing_noc_id     0
-                 4                    NUM_MSGS_RECEIVED                                 0           data_auto_send               True         chip_id                        [0]          mcast_core_rc       [0, 0, 0]
-                 5                    NEXT_MSG_ADDR                                     0x338e      dest                         []           core_coordinates               (0, 0)
-                 6                    NEXT_MSG_SIZE                                     0x82        fork_stream_ids              []           size_tiles                     8
-                 7                    OUTGOING_DATA_NOC                                 0           input_index                  0            scatter_gather_num_tiles       32
-                 8  RS-8([34m1[0m)-10([34m1[0m)-41  LOCAL_SOURCES_CONNECTED                           0           intermediate                 False        is_scatter                     0
-                 9                    SOURCE_ENDPOINT                                   0           msg_info_buf_addr            0            replicate                      0
-                10                    REMOTE_SOURCE                                     1           msg_size                     2080         tile_size                      2080
-                11                    RECEIVER_ENDPOINT                                 1           next_phase_dest_change       True         tile_clear_granularity         4
-                12                    LOCAL_RECEIVER                                    0           next_phase_src_change        True         dram_io_flag_is_remote         0
-                13                    REMOTE_RECEIVER                                   0           num_fork_streams             0            dram_buf_flag                  0
-                14                    NEXT_PHASE_SRC_CHANGE                             1           num_iters_in_epoch           1            dram_buf_streaming             0
-                15                    NEXT_PHASE_DST_CHANGE                             1           num_msgs                     32           write_dram_buf_flag            0
-                16                    INCOMING_DATA_NOC                                 0           num_unroll_iter              1            dram_prefetch_incoming_noc_id  0
-                17                    REMOTE_SRC_X                                      8([34m1[0m)        phase_auto_advance           True         outgoing_noc_id                0
-                18                    REMOTE_SRC_Y                                      10([34m1[0m)       phase_auto_config            False        dram_chan                      0
-                19                    REMOTE_SRC_STREAM_ID                              41          receiver_endpoint            True         dram_sub_chan                  0
-                20                    REMOTE_SRC_UPDATE_NOC                             1           reg_update_vc                1            dram_addr                      0
-                21                    REMOTE_SRC_PHASE                                  1           remote_source                True         q_slots                        0
-                22                    REMOTE_SRC_DEST_INDEX                             0           unroll_iter                  0            dram_io_flag                   0
-                23                    REMOTE_SRC_IS_MCAST                               0           phase_id                     1            dram_io_allow_overwrite        0
-                24  RR-3-1-8          BUF_START (word addr)                             0x3000                                                dram_io_skip_flow_ctrl         0
-                25                    BUF_SIZE (words)                                  0x410                                                 dram_ram_flag                  0
-                26                    BUF_RD_PTR (word addr)                            0x0                                                   use_shadow_rd_ptr              0
-                27                    BUF_WR_PTR (word addr)                            0x0                                                   ublock_rt                      0
-                28                    MSG_INFO_PTR (word addr)                          0x2020                                                ublock_ct                      0
-                29                    MSG_INFO_WR_PTR (word addr)                       0x2020                                                mblock_m                       0
-                30                    STREAM_BUF_SPACE_AVAILABLE_REG_INDEX (word addr)  0x410                                                 mblock_n                       0
-                31                    DATA_BUF_NO_FLOW_CTRL                             0                                                     mblock_k                       0
-                32                    UNICAST_VC_REG                                    0                                                     untilized_output               0
-                33                    REG_UPDATE_VC_REG                                 1                                                     untilized_output_full_r_dim    0
-                34                    SCRATCH_REG0                                      0x00000000                                            untilized_output_full_c_dim    0
-                35                    SCRATCH_REG1                                      0x00000000                                            untilized_output_r_dim         0
-                36                    SCRATCH_REG2                                      0x00000000                                            untilized_output_c_dim         0
-                37                    SCRATCH_REG3                                      0x00000000                                            untilized_output_z_dim         0
-                38                    SCRATCH_REG4                                      0x00000000                                            untilized_output_type_0_zdim   0
-                39                    SCRATCH_REG5                                      0x00000000                                            untilized_output_type_1_zdim   0
+  Non-idle streams                    Registers                                                     Stream (blob.yaml)                                      Buffer 10000100000                                        Pipe 10000260000
+------------------  ----------------  ------------------------------------------------  ----------  ---------------------------  -------------------------  -----------------------------  -------------------------  ------------------  -------------------------
+                 0                    STREAM_ID                                         8           buf_addr                     196608 (0x30000)           md_op_name                     f_op0                      id                  10000260000 (0x2540fdba0)
+                 1                    PHASE_AUTO_CFG_PTR (word addr)                    0x18550     buf_id                       10000100000 (0x2540d6aa0)  id                             0                          input_list          [10000050000]
+                 2                    CURR_PHASE                                        1           buf_size                     16640 (0x4100)             uniqid                         10000100000 (0x2540d6aa0)  output_list         [10000100000]
+                 3                    CURR_PHASE_NUM_MSGS_REMAINING                     0           buf_space_available_ack_thr  0                          epoch_tiles                    32 (0x20)                  outgoing_noc_id     0
+                 4                    NUM_MSGS_RECEIVED                                 0           data_auto_send               True                       chip_id                        [0]                        mcast_core_rc       [0, 0, 0]
+                 5                    NEXT_MSG_ADDR                                     0x338e      dest                         []                         core_coordinates               (0, 0)
+                 6                    NEXT_MSG_SIZE                                     0x82        fork_stream_ids              []                         size_tiles                     8
+                 7                    OUTGOING_DATA_NOC                                 0           input_index                  0                          scatter_gather_num_tiles       32 (0x20)
+                 8  RS-8([34m1[0m)-10([34m1[0m)-41  LOCAL_SOURCES_CONNECTED                           0           intermediate                 False                      is_scatter                     0
+                 9                    SOURCE_ENDPOINT                                   0           msg_info_buf_addr            0                          replicate                      0
+                10                    REMOTE_SOURCE                                     1           msg_size                     2080 (0x820)               tile_size                      2080 (0x820)
+                11                    RECEIVER_ENDPOINT                                 1           next_phase_dest_change       True                       tile_clear_granularity         4
+                12                    LOCAL_RECEIVER                                    0           next_phase_src_change        True                       dram_io_flag_is_remote         0
+                13                    REMOTE_RECEIVER                                   0           num_fork_streams             0                          dram_buf_flag                  0
+                14                    NEXT_PHASE_SRC_CHANGE                             1           num_iters_in_epoch           1                          dram_buf_streaming             0
+                15                    NEXT_PHASE_DST_CHANGE                             1           num_msgs                     32 (0x20)                  write_dram_buf_flag            0
+                16                    INCOMING_DATA_NOC                                 0           num_unroll_iter              1                          dram_prefetch_incoming_noc_id  0
+                17                    REMOTE_SRC_X                                      8([34m1[0m)        phase_auto_advance           True                       outgoing_noc_id                0
+                18                    REMOTE_SRC_Y                                      10([34m1[0m)       phase_auto_config            False                      dram_chan                      0
+                19                    REMOTE_SRC_STREAM_ID                              41          receiver_endpoint            True                       dram_sub_chan                  0
+                20                    REMOTE_SRC_UPDATE_NOC                             1           reg_update_vc                1                          dram_addr                      0
+                21                    REMOTE_SRC_PHASE                                  1           remote_source                True                       q_slots                        0
+                22                    REMOTE_SRC_DEST_INDEX                             0           unroll_iter                  0                          dram_io_flag                   0
+                23                    REMOTE_SRC_IS_MCAST                               0           phase_id                     1                          dram_io_allow_overwrite        0
+                24  RR-3-1-8          BUF_START (word addr)                             0x3000                                                              dram_io_skip_flow_ctrl         0
+                25                    BUF_SIZE (words)                                  0x410                                                               dram_ram_flag                  0
+                26                    BUF_RD_PTR (word addr)                            0x0                                                                 use_shadow_rd_ptr              0
+                27                    BUF_WR_PTR (word addr)                            0x0                                                                 ublock_rt                      0
+                28                    MSG_INFO_PTR (word addr)                          0x2020                                                              ublock_ct                      0
+                29                    MSG_INFO_WR_PTR (word addr)                       0x2020                                                              mblock_m                       0
+                30                    STREAM_BUF_SPACE_AVAILABLE_REG_INDEX (word addr)  0x410                                                               mblock_n                       0
+                31                    DATA_BUF_NO_FLOW_CTRL                             0                                                                   mblock_k                       0
+                32                    UNICAST_VC_REG                                    0                                                                   untilized_output               0
+                33                    REG_UPDATE_VC_REG                                 1                                                                   untilized_output_full_r_dim    0
+                34                    SCRATCH_REG0                                      0x00000000                                                          untilized_output_full_c_dim    0
+                35                    SCRATCH_REG1                                      0x00000000                                                          untilized_output_r_dim         0
+                36                    SCRATCH_REG2                                      0x00000000                                                          untilized_output_c_dim         0
+                37                    SCRATCH_REG3                                      0x00000000                                                          untilized_output_z_dim         0
+                38                    SCRATCH_REG4                                      0x00000000                                                          untilized_output_type_0_zdim   0
+                39                    SCRATCH_REG5                                      0x00000000                                                          untilized_output_type_1_zdim   0
                 40  RR-6-3-8          DEBUG_STATUS[0]                                   0x00000001
                 41  RR-1-1-8          DEBUG_STATUS[1]                                   0x00000000
                 42                    DEBUG_STATUS[2]                                   0x00000009
@@ -268,19 +267,19 @@ DBG[29]  0x0000  DBG[29]  0x0000  DBG[29]  0x0000  DBG[29]  0x0000
 DBG[30]  0x0000  DBG[30]  0x0000  DBG[30]  0x0000  DBG[30]  0x0000
 DBG[31]  0x0000  DBG[31]  0x0000  DBG[31]  0x0000  DBG[31]  0x0000
 [34mExecuting command: b 10000030000[0m
-[34mEpoch 0[0m
------------------------------  -----------
+[34mGraph test_op[0m
+-----------------------------  -------------------------
 md_op_name                     input1
 id                             0
-uniqid                         10000030000
-epoch_tiles                    32
+uniqid                         10000030000 (0x2540c5930)
+epoch_tiles                    32 (0x20)
 chip_id                        [0]
 core_coordinates               (0, 1)
-size_tiles                     32
-scatter_gather_num_tiles       32
+size_tiles                     32 (0x20)
+scatter_gather_num_tiles       32 (0x20)
 is_scatter                     0
 replicate                      0
-tile_size                      2080
+tile_size                      2080 (0x820)
 dram_io_flag_is_remote         0
 dram_buf_flag                  1
 dram_buf_streaming             0
@@ -289,7 +288,7 @@ dram_prefetch_incoming_noc_id  0
 outgoing_noc_id                0
 dram_chan                      0
 dram_sub_chan                  0
-dram_addr                      822083584
+dram_addr                      822083584 (0x31000000)
 q_slots                        1
 dram_io_flag                   0
 dram_io_allow_overwrite        0
@@ -315,9 +314,9 @@ Speed dial:
 ---  -------------  -------------
   0  Show pipe      p 10000270000
 [34mExecuting command: 0[0m
-[34mEpoch 0[0m
----------------  -------------
-id               10000270000
+[34mGraph test_op[0m
+---------------  -------------------------
+id               10000270000 (0x2541002b0)
 input_list       [10000030000]
 output_list      [10000120000]
 outgoing_noc_id  0
@@ -328,19 +327,19 @@ Speed dial:
   0  Show src buffer   b 10000030000
   1  Show dest buffer  b 10000120000
 [34mExecuting command: 0[0m
-[34mEpoch 0[0m
------------------------------  -----------
+[34mGraph test_op[0m
+-----------------------------  -------------------------
 md_op_name                     input1
 id                             0
-uniqid                         10000030000
-epoch_tiles                    32
+uniqid                         10000030000 (0x2540c5930)
+epoch_tiles                    32 (0x20)
 chip_id                        [0]
 core_coordinates               (0, 1)
-size_tiles                     32
-scatter_gather_num_tiles       32
+size_tiles                     32 (0x20)
+scatter_gather_num_tiles       32 (0x20)
 is_scatter                     0
 replicate                      0
-tile_size                      2080
+tile_size                      2080 (0x820)
 dram_io_flag_is_remote         0
 dram_buf_flag                  1
 dram_buf_streaming             0
@@ -349,7 +348,7 @@ dram_prefetch_incoming_noc_id  0
 outgoing_noc_id                0
 dram_chan                      0
 dram_sub_chan                  0
-dram_addr                      822083584
+dram_addr                      822083584 (0x31000000)
 q_slots                        1
 dram_io_flag                   0
 dram_io_allow_overwrite        0
@@ -392,31 +391,32 @@ Speed dial:
 ---  -------------  -------------
   0  Show pipe      p 10000270000
 [34mExecuting command: help[0m
-Short    Long                     Arguments            Description
--------  -----------------------  -------------------  -------------------------------------------------------------------------------------------------------------------------
-[34mx[0m        [34mexit[0m                                          exit the program. If argument given, it will be used as the exit code
-[34mh[0m        [34mhelp[0m                                          prints command documentation
-[34mxp[0m       [34mexport[0m                   [ filename ]         exports a zip package for offline work. The optional argument represents a zip file name. Defaults to 'debuda-export.zip'
-[34me[0m        [34mepoch[0m                    epoch_id             switch to epoch epoch_id
-[34mb[0m        [34mbuffer[0m                   buffer_id            prints details on the buffer with ID buffer_id
-[34mp[0m        [34mpipe[0m                     pipe_id              prints details on the pipe with ID pipe_id
-[34mrxy[0m      [34mpci-read-xy[0m              x y addr             read data from address 'addr' at noc0 location x-y of the chip associated with current epoch
-[34mbrxy[0m     [34mburst-read-xy[0m            x y addr burst_type  burst read data from address 'addr' at noc0 location x-y of the chip associated with current epoch.
-                                                       NCRISC status code address=0xffb2010c, BRISC status code address=0xffb3010c
-[34mwxy[0m      [34mpci-write-xy[0m             x y addr value       writes value to address 'addr' at noc0 location x-y of the chip associated with current epoch
-[34mdq[0m       [34mdram-queue[0m                                    prints DRAM queue summary
-[34mhq[0m       [34mhost-queue[0m                                    prints Host queue summary
-[34meq[0m       [34mepoch-queue[0m                                   prints Epoch queue summary
-[34mfd[0m       [34mfull-dump[0m                                     performs a full dump at current x-y
-[34mtest[0m     [34mtest[0m                                          test for development
-[34mabs[0m      [34manalyze-blocked-streams[0m  verbosity [0-1]      reads stream information from the devices and highlights blocked streams (if verbosity is 1, print more detail)
-[34mcdr[0m      [34mcore-debug-regs[0m          x y                  show debug registers for core 'x-y'. If coordinates are not supplied, show all cores.
-[34mc[0m        [34mcore-summary[0m             x y                  show summary for core 'x-y'
-[34md[0m        [34mdevice-summary[0m           device_id            shows summary of a device. When no argument is supplied, shows summary of all devices
-[34mt[0m        [34mdump-tile[0m                tile_id, raw         prints tile for current stream in currently active phase. If raw=1, prints raw bytes
-[34mom[0m       [34mop-map[0m                                        draws a mini map of the current epoch
-[34ms[0m        [34mprint-stream[0m             x y stream_id        show stream 'stream_id' at core 'x-y'
-[34msrs[0m      [34mstatus-register-summary[0m  verbosity [0-2]      prints brisc and ncrisc status registers.
+Short    Long                     Arguments             Description
+-------  -----------------------  --------------------  -------------------------------------------------------------------------------------------------------------------------
+[34mx[0m        [34mexit[0m                                           exit the program. If argument given, it will be used as the exit code
+[34mh[0m        [34mhelp[0m                                           prints command documentation
+[34mxp[0m       [34mexport[0m                   [ filename ]          exports a zip package for offline work. The optional argument represents a zip file name. Defaults to 'debuda-export.zip'
+[34me[0m        [34mepoch[0m                    epoch_id              switch to epoch epoch_id
+[34mb[0m        [34mbuffer[0m                   buffer_id_or_op_name  prints details on the buffer with a given id, or buffer(s) mapped to a given operation.
+[34mp[0m        [34mpipe[0m                     pipe_id               prints details on the pipe with ID pipe_id
+[34mrxy[0m      [34mpci-read-xy[0m              x y addr              read data from address 'addr' at noc0 location x-y of the chip associated with current epoch
+[34mbrxy[0m     [34mburst-read-xy[0m            x y addr burst_type   burst read data from address 'addr' at noc0 location x-y of the chip associated with current epoch.
+                                                        NCRISC status code address=0xffb2010c, BRISC status code address=0xffb3010c
+[34mwxy[0m      [34mpci-write-xy[0m             x y addr value        writes value to address 'addr' at noc0 location x-y of the chip associated with current epoch
+[34mdq[0m       [34mdram-queue[0m                                     prints DRAM queue summary
+[34mhq[0m       [34mhost-queue[0m                                     prints Host queue summary
+[34meq[0m       [34mepoch-queue[0m                                    prints Epoch queue summary
+[34mfd[0m       [34mfull-dump[0m                                      performs a full dump at current x-y
+[34mtest[0m     [34mtest[0m                                           test for development
+[34mabs[0m      [34manalyze-blocked-streams[0m  verbosity [0-1]       reads stream information from the devices and highlights blocked streams (if verbosity is 1, print more detail)
+[34mcdr[0m      [34mcore-debug-regs[0m          x y                   show debug registers for core 'x-y'. If coordinates are not supplied, show all cores.
+[34mc[0m        [34mcore-summary[0m             x y                   show summary for core 'x-y'
+[34md[0m        [34mdevice-summary[0m           device_id             shows summary of a device. When no argument is supplied, shows summary of all devices
+[34mt[0m        [34mdump-tile[0m                tile_id, raw          prints tile for current stream in currently active phase. If raw=1, prints raw bytes
+[34mom[0m       [34mop-map[0m                                         draws a mini map of the current epoch
+[34ms[0m        [34mprint-stream[0m             x y stream_id         show stream 'stream_id' at core 'x-y'
+[34mq[0m        [34mqueue-summary[0m                                  Prints summary of queues
+[34msrs[0m      [34mstatus-register-summary[0m  verbosity [0-2]       prints brisc and ncrisc status registers.
 Speed dial:
   #  Description    Command
 ---  -------------  -------------
