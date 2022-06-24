@@ -12,16 +12,16 @@ def run(args, context, ui_state = None):
     table = []
 
     column_format = [
-        { 'key_name' : 'entries',       'title': 'Entries',  'formatter': None },
-        { 'key_name' : 'wrptr',         'title': 'WR',       'formatter': None },
-        { 'key_name' : 'rdptr',         'title': 'RD',       'formatter': None },
-        { 'key_name' : 'occupancy',     'title': 'OCC',      'formatter': None },
-        { 'key_name' : None,            'title': 'Name',     'formatter': None },
-        { 'key_name' : 'input',         'title': 'Input',    'formatter': None },
-        { 'key_name' : 'type',          'title': 'Type',     'formatter': None },
-        { 'key_name' : 'target_device', 'title': 'Device',   'formatter': lambda x: f"{util.CLR_RED}{x}{util.CLR_END}" },
-        { 'key_name' : 'loc',           'title': 'Loc',      'formatter': None },
-
+        { 'key_name' : 'entries',       'title': 'Entries',    'formatter': None },
+        { 'key_name' : 'wrptr',         'title': 'Wr',         'formatter': None },
+        { 'key_name' : 'rdptr',         'title': 'Rd',         'formatter': None },
+        { 'key_name' : 'occupancy',     'title': 'Occ',        'formatter': lambda x: f"{util.CLR_BLUE}{x}{util.CLR_END}" },
+        { 'key_name' : 'type',          'title': 'Type',       'formatter': None },
+        { 'key_name' : 'target_device', 'title': 'Device',     'formatter': None },
+        { 'key_name' : 'loc',           'title': 'Loc',        'formatter': None },
+        { 'key_name' : None,            'title': 'Name',       'formatter': None },
+        { 'key_name' : 'input',         'title': 'Input',      'formatter': None },
+        { 'key_name' : 'outputs',       'title': 'Outputs',    'formatter': None},
     ]
 
     table=util.TabulateTable(column_format)
@@ -29,7 +29,10 @@ def run(args, context, ui_state = None):
     # Whether to print all DRAM positions or aggregate them
     expand_queue_positions = True
 
-    for q_name, q_data in context.netlist.queues().items():
+    for q_name, queue in context.netlist.queues.items():
+        q_data = queue.root
+        q_data["outputs"] = queue.outputs_as_str()
+
         queue_positions = []
         if "host" in q_data:
             q_data["target_device"] = 'host'

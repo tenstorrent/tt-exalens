@@ -87,6 +87,45 @@ class Pipe:
     def __str__(self):
         return f"{type(self).__name__}: id: {self.id()}, inputs: {self.inputs()}, outputs: {self.outputs()}"
 
+# Netlist queues
+class Queue:
+    def __init__(self, name, data):
+        self.root = data
+        self.id = name
+        self.output_ops = set() # set of names of queue's output_ops
+
+    # Accessors
+    def id (self):
+        return self.id
+
+    def outputs_as_str(self):
+        ret_str = ""
+        num_ops_fed_by_queue = len(self.output_ops)
+        if num_ops_fed_by_queue > 1:
+            ret_str = f"[{num_ops_fed_by_queue}]: "
+        if num_ops_fed_by_queue > 0:
+            ret_str += ', '.join (list(self.output_ops)) if num_ops_fed_by_queue > 0 else ""
+        return ret_str
+
+    # Renderer
+    def __str__(self):
+        return f"{type(self).__name__}: id: {self.id()}"
+
+# Graph Ops
+class Op:
+    def __init__(self, name, graph_name, data):
+        self.root = data
+        self.graph_name = graph_name
+        self._id = f"{graph_name}/{name}"
+
+    # Accessors
+    def id (self):
+        return self._id
+
+    # Renderer
+    def __str__(self):
+        return f"{type(self).__name__}: id: {self.id()}"
+
 # Class that represents a single graph within a netlist
 # Contains all the information from graph's blob.yaml and pipegen.yaml
 # Provides functions for graph traversal
@@ -99,11 +138,16 @@ class Graph:
         self.root = root # The entry in netlist file
         self.pipegen_yaml = pipegen_yaml
         self.blob_yaml = blob_yaml
+        self.ops = dict()
 
-    def load (self):
+        for op_name in self.op_names():
+            op = Op (op_name, self.name, self.root[op_name])
+            self.ops[op_name] = op
+
+    def load_pipegen_and_blob (self):
         # 1. Load pipegen_yaml
         self.buffers = dict()
-        self.buffers_by_op_name = dict()
+        self.op_name_to_buffer_list = dict() # Cache for lookup by op name
         self.pipes = dict()
         for key, val in self.pipegen_yaml.items():
             if key == "graph_name":
@@ -112,7 +156,10 @@ class Graph:
             elif "buffer" in key:
                 b = Buffer(val)
                 self.buffers[b.id()] = b
-                self.buffers_by_op_name[val["md_op_name"]] = b
+                op_name = val["md_op_name"]
+                if op_name not in self.op_name_to_buffer_list:
+                    self.op_name_to_buffer_list[op_name] = []
+                self.op_name_to_buffer_list[op_name].append (b)
                 uniqid = val["uniqid"]
                 for r in range (1, val["replicate"]): # Handle replicated buffers (see issue #326)
                     val["uniqid"] = uniqid + r * val["scatter_gather_num_tiles"]
@@ -172,7 +219,7 @@ class Graph:
     def get_buffer (self, buffer_id):
         return self.buffers.get (buffer_id, None)
     def get_buffer_by_op_name (self, op_name):
-        return self.buffers_by_op_name.get (op_name, None)
+        return self.op_name_to_buffer_list.get (op_name, None)
     def get_pipe (self, pipe_id):
         return self.pipes.get (pipe_id, None)
     def get_stream (self, stream_loc):
@@ -180,7 +227,7 @@ class Graph:
 
     def __getattr__(self, name):
         if name in { "buffers", "pipes", "streams" }:
-            self.load() # Lazy-loaded structures
+            self.load_pipegen_and_blob() # Lazy-loaded structures
         return object.__getattribute__(self, name)
 
     # Given a buffer list, find all buffers that are connected (pipegen.yaml)
@@ -313,6 +360,8 @@ class Graph:
         return self.root['input_count']
     def epoch_id (self):
         return self._epoch_id
+    def op (self, op_name):
+        return self.ops[op_name]
 
     def get_pipes_for_buffer (self, buffer_id):
         pipes = []
@@ -367,17 +416,8 @@ class Graph:
 
 # Wrapper for Buda run netlist.yaml and, currently, runtime_data.yaml files
 class Netlist:
-    def __init__(self, netlist_filepath, rundir):
-        # 1. Load the runtime data file
-        self.runtime_data_yaml = util.YamlFile(f"{rundir}/runtime_data.yaml")
-
-        if netlist_filepath is None:
-            netlist_filepath = self.get_netlist_path()
-
-        # 2. Load the netlist itself
-        self.yaml_file = util.YamlFile (netlist_filepath)
-
-        # Cache epoch id, device id and graph names
+    def load_netlist_data (self):
+        # 1. Cache epoch id, device id and graph names
         self.epoch_id_to_graph_name_map = dict()
         self._epoch_ids = set()
 
@@ -385,14 +425,20 @@ class Netlist:
             epoch_id = self.graph_name_to_epoch_id(graph_name)
             assert (epoch_id not in self._epoch_ids)  # We do not support multiple graphs in the same epoch
             self._epoch_ids.add (epoch_id)
-            target_device = self.graph_name_to_device_id(graph_name)
 
             self.epoch_id_to_graph_name_map[epoch_id] = graph_name
 
         self._epoch_ids = list (self._epoch_ids)
         self._epoch_ids.sort()
 
-        # 3. Load pipegen and blob files
+        # 2. Load queues
+        self.queues = dict()
+        for queue_name in self.queue_names():
+            queue = Queue (queue_name, self.yaml_file.root["queues"][queue_name])
+            self.queues[queue_name] = queue
+
+    # Initializes, but does not yet load pipegen and blob files
+    def load_graphs (self, rundir):
         self.epoch_to_pipegen_yaml_file = dict()
         self.epoch_to_blob_yaml_file = dict()
         self.graphs = dict()
@@ -414,11 +460,34 @@ class Netlist:
             g = Graph(graph_name, self.yaml_file.root['graphs'][graph_name], pipegen_yaml, blob_yaml)
             self.graphs[graph_name] = g
 
+    def __init__(self, netlist_filepath, rundir):
+        # 1. Load the runtime data file
+        self.runtime_data_yaml = util.YamlFile(f"{rundir}/runtime_data.yaml")
+
+        if netlist_filepath is None:
+            netlist_filepath = self.get_netlist_path()
+
+        # 2. Load the netlist itself
+        self.yaml_file = util.YamlFile (netlist_filepath)
+        self.load_netlist_data ()
+
+        # 3. Load pipegen/blob yamls
+        self.load_graphs (rundir)
+
+        # 4. Extra stuff
+        for graph_name, graph in self.graphs.items():
+            for op_name, op in graph.ops.items():
+                for input in op.root["inputs"]:
+                    if input in self.queues:
+                        self.queues[input].output_ops.add (op_name)
+
     # Accessors
     def epoch_ids (self):
         return self._epoch_ids
     def graph_names (self):
         return self.yaml_file.root['graphs'].keys()
+    def queue_names (self):
+        return self.yaml_file.root['queues'].keys()
     def graph_name_to_epoch_id (self, graph_name):
         return self.runtime_data_yaml.root["graph_to_epoch_map"][graph_name]["epoch_id"]
     def graph_name_to_device_id (self, graph_name):
@@ -429,8 +498,8 @@ class Netlist:
         return self.graphs[graph_name]
     def devices(self):
         return self.yaml_file.root["devices"]
-    def queues(self):
-        return self.yaml_file.root['queues']
+    def queue(self, queue_name):
+        return self.queues[queue_name]
 
     # Determines the architecture
     def get_arch (self):
