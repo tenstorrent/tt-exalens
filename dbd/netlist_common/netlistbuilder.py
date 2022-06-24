@@ -93,11 +93,36 @@ class NetlistBuilderHelper:
             )
 
     def create_datacopy_operation_from_op(nl, graph_name, operation_name, input_name, grid_loc):
-        datacopy_op = Netlist(nl).get_graphs().get_graph(graph_name).get_operation(operation_name).clone()
-        datacopy_op.set_type(NetlistConsts.OPERATION_TYPE_DATACOPY)
-        datacopy_op.set_input_names([input_name])
+        datacopy_op = Operation(
+            {
+                NetlistConsts.OPERATION_TYPE: NetlistConsts.OPERATION_TYPE_DATACOPY,
+                NetlistConsts.OPERATION_GRID_LOC: None, 
+                NetlistConsts.OPERATION_GRID_SIZE: None, 
+                NetlistConsts.OPERATION_INPUT_NAMES: None,
+                NetlistConsts.OPERATION_ACC_DF: None, 
+                NetlistConsts.OPERATION_IN_DF: None,
+                NetlistConsts.OPERATION_OUT_DF: None,
+                NetlistConsts.OPERATION_INTERMED_DF: None,
+                NetlistConsts.OPERATION_UBLOCK_ORDER: NetlistConsts.OPERATION_UBLOCK_ORDER_ROW,
+                NetlistConsts.OPERATION_BUF_SIZE_MB: None,
+                NetlistConsts.OPERATION_MATH_FIDELITY: None,
+                NetlistConsts.OPERATION_UNTILIZE_OUTPUT: False,
+                NetlistConsts.OPERATION_T: None,
+                NetlistConsts.QUEUE_MBLOCK: None, 
+                NetlistConsts.QUEUE_UBLOCK: None})
+
+        op = Netlist(nl).get_graphs().get_graph(graph_name).get_operation(operation_name)
         datacopy_op.set_grid_loc(grid_loc)
-        datacopy_op.set_in_df([datacopy_op.get_out_df()])
+        datacopy_op.set_grid_size(op.get_grid_size())
+        datacopy_op.set_input_names([input_name])
+        datacopy_op.set_acc_df(op.get_out_df())
+        datacopy_op.set_in_df([op.get_out_df()])
+        datacopy_op.set_intermed_df(op.get_out_df())
+        datacopy_op.set_buf_size_mb(op.get_buf_size_mb())
+        datacopy_op.set_math_fidelity(op.get_math_fidelity())
+        datacopy_op.set_t(op.get_t())
+        datacopy_op.set_mblock(op.get_mblock())
+        datacopy_op.set_ublock(op.get_ublock())
         return datacopy_op
 
     def get_queue_name_from_op_name(operation_name):

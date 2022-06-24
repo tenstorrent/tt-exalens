@@ -50,6 +50,11 @@ class NetlistConsts:
     OPERATION_UBLOCK_ORDER_ROW = "r"
     OPERATION_TYPE = "type"
     OPERATION_TYPE_DATACOPY = "datacopy"
+    OPERATION_ACC_DF = "acc_df"
+    OPERATION_INTERMED_DF=  "intermed_df"
+    OPERATION_BUF_SIZE_MB = "buf_size_mb"
+    OPERATION_MATH_FIDELITY=  "math_fidelity"
+    OPERATION_UNTILIZE_OUTPUT= "untilize_output"
     INSTRUCTION_NAME_EXECUTE = "execute"
     INSTRUCTION_NAME_LOOP = "loop"
     INSTRUCTION_NAME_ENDLOOP = "endloop"
@@ -136,12 +141,20 @@ class Operation(Dict):
         self.set(NetlistConsts.OPERATION_GRID_LOC, get_list(grid_loc))
     def get_grid_size(self):
         return GridSize(self.get_value(NetlistConsts.OPERATION_GRID_SIZE))
+    def set_grid_size(self, gs):
+        self.set(NetlistConsts.OPERATION_GRID_SIZE, get_list(gs))
     def get_mblock(self):
         return self.get_value(NetlistConsts.OPERATION_MBLOCK)
+    def set_mblock(self, mblock):
+        self.set(NetlistConsts.OPERATION_MBLOCK, mblock)
     def get_ublock(self):
         return self.get_value(NetlistConsts.OPERATION_UBLOCK)
+    def set_ublock(self, ublock):
+        return self.set(NetlistConsts.OPERATION_UBLOCK, ublock)
     def get_t(self):
         return self.get_value(NetlistConsts.OPERATION_T)
+    def set_t(self, t):
+        self.set(NetlistConsts.OPERATION_T, t)
     def get_input_names(self):
         return self.get_value(NetlistConsts.OPERATION_INPUT_NAMES)
     def set_input_names(self, inputs):
@@ -155,6 +168,30 @@ class Operation(Dict):
     def set_type(self, type):
         self.set(NetlistConsts.OPERATION_TYPE, type)
 
+    def get_acc_df(self):
+        return self.get_value(NetlistConsts.OPERATION_ACC_DF)
+    def set_acc_df(self, acc_df):
+        self.set(NetlistConsts.OPERATION_ACC_DF, acc_df)
+
+    def get_intermed_df(self):
+        return self.get_value(NetlistConsts.OPERATION_INTERMED_DF)
+    def set_intermed_df(self, inetrmed_df):
+        self.set(NetlistConsts.OPERATION_INTERMED_DF, inetrmed_df)
+
+    def get_buf_size_mb(self):
+        return self.get_value(NetlistConsts.OPERATION_BUF_SIZE_MB)
+    def set_buf_size_mb(self, buf_size_mb):
+        self.set(NetlistConsts.OPERATION_BUF_SIZE_MB, buf_size_mb)
+
+    def get_math_fidelity(self):
+        return self.get_value(NetlistConsts.OPERATION_MATH_FIDELITY)
+    def set_math_fidelity(self, math_fidelity):
+        self.set(NetlistConsts.OPERATION_MATH_FIDELITY, math_fidelity)
+
+    def get_untilize_output(self):
+        return self.get_value(NetlistConsts.OPERATION_UNTILIZE_OUTPUT)
+    def set_set_untilize_output(self, untilize_output):
+        self.set(NetlistConsts.OPERATION_UNTILIZE_OUTPUT, untilize_output)
 class Graph(Dict):
     No_Op = set([NetlistConsts.GRAPH_TARGET_DEVICE, NetlistConsts.GRAPH_INPUT_COUNT])
 
