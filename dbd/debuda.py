@@ -31,6 +31,8 @@ def print_buffer_data (cmd, context):
     except ValueError as e:
         buffer_id = cmd[1]
 
+    navigation_suggestions = [ ]
+
     for epoch_id in context.netlist.epoch_ids():
         graph_name = context.netlist.epoch_id_to_graph_name(epoch_id)
         graph = context.netlist.graph(graph_name)
@@ -39,20 +41,22 @@ def print_buffer_data (cmd, context):
             buffer = graph.get_buffer(buffer_id)
             if buffer:
                 util.print_columnar_dicts ([buffer.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
-        if type(buffer_id) == str:
-            buffer = graph.get_buffer_by_op_name(buffer_id)
-            if buffer:
-                util.print_columnar_dicts ([buffer.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
 
-        navigation_suggestions = [ ]
-        for p in graph.pipes:
-            pipe = graph.get_pipe(p)
-            if buffer_id in pipe.root["input_list"]:
-                print (f"( {util.CLR_BLUE}Input{util.CLR_END} of pipe {pipe.id()} )")
-                navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
-            if buffer_id in pipe.root["output_list"]:
-                print (f"( {util.CLR_BLUE}Output{util.CLR_END} of pipe {pipe.id()} )")
-                navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
+            for p in graph.pipes:
+                pipe = graph.get_pipe(p)
+                if buffer_id in pipe.root["input_list"]:
+                    print (f"( {util.CLR_BLUE}Input{util.CLR_END} of pipe {pipe.id()} )")
+                    navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
+                if buffer_id in pipe.root["output_list"]:
+                    print (f"( {util.CLR_BLUE}Output{util.CLR_END} of pipe {pipe.id()} )")
+                    navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
+
+        elif type(buffer_id) == str:
+            buffer_list = graph.get_buffer_by_op_name(buffer_id)
+            if buffer_list:
+                print (f"{util.CLR_BLUE}Found {len(buffer_list)} buffers{util.CLR_END}")
+                for buffer in buffer_list:
+                    navigation_suggestions.append ({ 'cmd' : f"b {buffer.id()}", 'description' : "Show buffer" })
 
     return navigation_suggestions
 
