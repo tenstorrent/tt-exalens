@@ -133,6 +133,8 @@ class Operation(Dict):
         super().__init__(nl_op)
     def set_in_df(self, in_formats):
         self.set(NetlistConsts.OPERATION_IN_DF, in_formats)
+    def set_out_df(self, value):
+        return self.set(NetlistConsts.OPERATION_OUT_DF, value)
     def get_out_df(self):
         return self.get_value(NetlistConsts.OPERATION_OUT_DF)
     def get_grid_loc(self):

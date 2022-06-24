@@ -123,6 +123,7 @@ class NetlistBuilderHelper:
         datacopy_op.set_t(op.get_t())
         datacopy_op.set_mblock(op.get_mblock())
         datacopy_op.set_ublock(op.get_ublock())
+        datacopy_op.set_out_df(op.get_out_df())
         return datacopy_op
 
     def get_queue_name_from_op_name(operation_name):
