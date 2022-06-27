@@ -173,7 +173,7 @@ We will demonstrate netlist slicing on [softmax](../verif/graph_tests/netlists/n
 
 First example will show how to get graph with only one operation.
 ``` bash
-./dbd/tt_netlist_slicer.py --netlist /verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --out_ops "mult" --in_op_inputs "mult"
+./dbd/tt_netlist_slicer.py --netlist verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --out_ops "mult" --in_op_inputs "mult"
 ```
 ```
 ┌─────────┐  0   ┌───────────┐  0   ┌──────────┐
@@ -188,7 +188,7 @@ First example will show how to get graph with only one operation.
 ```
 Second example shows how to tapout only specific operation, by leaving only necessary operations. 
 ``` bash
-./dbd/tt_netlist_slicer.py --netlist /verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --out_ops "recip"
+./dbd/tt_netlist_slicer.py --netlist verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --out_ops "recip"
 ```
 ```
 
@@ -204,7 +204,7 @@ Second example shows how to tapout only specific operation, by leaving only nece
 ```
 Last examle shows how to replace only specific operations with input queues.
 ``` bash
-./dbd/tt_netlist_slicer.py --netlist /verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --in_ops "sum exp"
+./dbd/tt_netlist_slicer.py --netlist verif/graph_tests/netlists/netlist_softmax_single_tile.yaml --in_ops "sum exp"
 ```
 ```
 ┌─────────┐  0   ┌───────┐  0   ┌────────────────┐

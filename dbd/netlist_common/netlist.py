@@ -218,6 +218,13 @@ class Graph(Dict):
     def add_operation(self, operation_name, operation):
         self.add(operation_name, get_dict(operation))
 
+    def get_operation_names_for_input(self, input_name):
+        operation_names = []
+        for operation_name in self.get_operation_names():
+            if input_name in self.get_operation(operation_name).get_input_names():
+                operation_names.append(operation_name)
+        return operation_names
+
 class Graphs(Dict):
     def __init__(self, nl_graphs) -> None:
         super().__init__(nl_graphs)
@@ -230,6 +237,12 @@ class Graphs(Dict):
 
     def add_graph(self, graph_name, graph):
         self.add(graph_name, get_dict(graph))
+
+    def get_graph_name(self, operation_name):
+        for graph_name in self.get_graph_names():
+            if operation_name in self.get_graph(graph_name).get_operation_names():
+                return graph_name
+        raise Exception(f"Cannot find operation [{operation_name}] in netlist.")
 
 class GridLoc(List):
     X = 0
@@ -355,6 +368,17 @@ class Queues(Dict):
         for queue_name in self.get_queue_names():
             input_names.add(self.get_queue(queue_name).get_input())
         return input_names
+
+    def get_inputs_and_queue_names(self):
+        d = dict()
+        for queue_name in self.get_queue_names():
+            input = self.get_queue(queue_name).get_input()
+            if input in d:
+                d[input].add(queue_name)
+            else:
+                d[input] = set()
+                d[input].add(queue_name)
+        return d
 
 class Devices(Dict):
     def __init__(self, nl_devices):
@@ -491,6 +515,9 @@ class Netlist(Dict):
     def get_queues(self):
         return Queues(self.get_value(NetlistConsts.QUEUES))
 
+    def get_queue_names(self):
+        return self.get_queues().get_queue_names()
+
     def get_queue(self, queue_name):
         return self.get_queues().get_queue(queue_name)
 
@@ -509,8 +536,19 @@ class Netlist(Dict):
     def get_operation(self, graph_name, operation_name):
         return self.get_graph(graph_name).get_operation(operation_name)
 
+    def get_operation_names(self, graph_name):
+        return self.get_graph(graph_name).get_operation_names()
+
     def add_operation(self, graph_name, operation_name, operation):
         self.get_graph(graph_name).add_operation(operation_name, operation)
+
+    def get_graph_output_queue_names(self, graph_name):
+        result = []
+        d = self.get_queues().get_inputs_and_queue_names()
+        for operation_name in self.get_graph(graph_name).get_operation_names():
+            if operation_name in d:
+                result.extend(list(d[operation_name]))
+        return result
 
     def get_operation_inputs(self, graph_name, operation_name):
         graph = self.get_graph(graph_name)
@@ -593,6 +631,8 @@ class NetlistWriter:
     def queues_to_str(self):
         myQueues = self.__mynl.get_queues().clone()
         for q_name in myQueues.get_queue_names():
+            if not myQueues.get_queue(q_name).get_value(NetlistConsts.QUEUE_DRAM):
+                continue
             memory_list = myQueues.get_queue(q_name).get_memory().get_raw()
             for cnt in range(0, len(memory_list)):
                 if isinstance(memory_list[cnt], list):

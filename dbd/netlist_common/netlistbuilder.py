@@ -178,6 +178,35 @@ class BuildNetlist:
     def build_empty(self):
         self.__new_nl = NetlistBuilderHelper.build_empty_netlist_from_template(self.__nl)
 
+    def build_single_graph(self, graph_name):
+        self.__new_nl = self.__nl.clone()
+        graph_names = self.__new_nl.get_graphs().get_graph_names()
+        if graph_name not in graph_names:
+            raise Exception(f"Graph [{graph_name}] is not in provided netlist.")
+
+        #  delete graph names
+        for name in graph_names:
+            if name != graph_name:
+                self.__new_nl.get_graphs().remove(name)
+
+        # delete queues
+        input_queues = self.__new_nl.get_graph_input_queue_names(graph_name)
+        output_queues = self.__new_nl.get_graph_output_queue_names(graph_name)
+        queue_names = self.__new_nl.get_queue_names()
+        for q_name in queue_names:
+            if q_name not in input_queues and q_name not in output_queues:
+                self.__new_nl.get_queues().remove(q_name)
+
+        # keep only programs for graph_name
+        self.__new_nl.set_programs(NetlistBuilderHelper.get_programs_for_graph(self.__nl, graph_name))
+        return self
+
+    def remove_output_queues_for_graph(self, graph_name):
+        out_queues = self.__new_nl.get_graph_output_queue_names(graph_name)
+        for q_name in out_queues:
+            self.__new_nl.get_queues().remove(q_name)
+        return self
+
     def add_empty_graph(self, graph_name):
         g = self.__nl.get_graph(graph_name)
         empty_graph = NetlistBuilderHelper.build_empty_graph(g)
@@ -304,6 +333,46 @@ class BuildNetlist:
                 channel, address = dram.allocate(buffer_size)
                 memory.append([channel, address])
             queue.set_memory(memory)
+
+    def replace_input_names(self, graph_name, op_name, new_op_name):
+        for operation_name in self.__new_nl.get_operation_names(graph_name):
+            if op_name in self.__new_nl.get_operation_inputs(graph_name, operation_name):
+                self.__new_nl.get_operation(graph_name, operation_name).replace_input_name(op_name, new_op_name)
+        return self
+
+    def remove_operation(self, graph_name, operation_name):
+        # first
+        inputs_and_queue_names = self.__new_nl.get_queues().get_inputs_and_queue_names()
+        operation_inputs = self.__new_nl.get_operation_inputs(graph_name, operation_name)
+        for input_operation in operation_inputs:
+            if type(operation_inputs[input_operation]) is Operation:
+                fan_out_ops = self.__new_nl.get_graph(graph_name).get_operation_names_for_input(input_operation)
+                if operation_name not in fan_out_ops:
+                    raise Exception(f"Op that is removing {operation_name}")
+                if len(fan_out_ops) == 1 and input_operation not in inputs_and_queue_names: # input is dependent only on this op
+                    # we can remove child op safely
+                    self.remove_operation(graph_name, input_operation)
+        for input_operation in operation_inputs:
+            if type(operation_inputs[input_operation]) is Queue:
+                fan_out_ops = self.__new_nl.get_graph(graph_name).get_operation_names_for_input(input_operation)
+                assert(operation_name in fan_out_ops)
+                if len(fan_out_ops) == 1: # only one op depends on this queue
+                    self.__new_nl.get_queues().remove(input_operation)
+
+        self.__new_nl.get_graph(graph_name).remove(operation_name)
+
+    def remove_operations_without_output(self, graph_name):
+        operations_to_remove = []
+        inputs_and_queue_names = self.__new_nl.get_queues().get_inputs_and_queue_names()
+        for operation_name in self.__new_nl.get_operation_names(graph_name):
+            if not self.__new_nl.get_graph(graph_name).get_operation_names_for_input(operation_name):
+                if operation_name not in inputs_and_queue_names:
+                    operations_to_remove.append(operation_name)
+
+        for operation_name in operations_to_remove:
+            self.remove_operation(graph_name, operation_name)
+
+        return self
 
     def get_netlist(self):
         return self.__new_nl
