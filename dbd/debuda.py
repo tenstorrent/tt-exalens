@@ -276,6 +276,11 @@ def main(args, context):
           "expected_argument_count" : 0,
           "arguments_description" : ": prints command documentation"
         },
+        { "long" : "reload",
+          "short" : "rl",
+          "expected_argument_count" : 0,
+          "arguments_description" : ": reloads files in debuda-commands directory"
+        },
         { "long" : "export",
           "short" : "xp",
           "expected_argument_count" : [ 0, 1 ],
@@ -439,6 +444,8 @@ def main(args, context):
                         return exit_code
                     elif found_command["long"] == "help":
                         print_available_commands (commands)
+                    elif found_command["long"] == "reload":
+                        import_commands (commands, reload=True)
                     elif found_command["long"] == "export":
                         zip_file_name = cmd[1] if len(cmd) > 1 else util.DEFAULT_EXPORT_FILENAME
 
@@ -500,7 +507,8 @@ def main(args, context):
     return 0
 
 # Import any 'plugin' commands from debuda-commands directory
-def import_commands (command_metadata_array):
+# With reload=True, the debuda-commands commands will be live-reloaded (importlib.reload)
+def import_commands (command_metadata_array, reload = False):
     command_files = []
     for root, dirnames, filenames in os.walk(util.application_path () + '/debuda-commands'):
         for filename in fnmatch.filter(filenames, '*.py'):
@@ -519,11 +527,16 @@ def import_commands (command_metadata_array):
 
         # Check command names/shortcuts
         for cmd in command_metadata_array:
-            if cmd["long"] == command_metadata["long"]:
+            if cmd["long"] == command_metadata["long"] and not reload:
                 util.FATAL (f"Command {cmd['long']} already exists")
-            if cmd["short"] == command_metadata["short"]:
+            if cmd["short"] == command_metadata["short"] and not reload:
                 util.FATAL (f"Commands {cmd['long']} and {command_metadata['long']} use the same shortcut: {cmd['short']}")
 
+        for i, c in enumerate(command_metadata_array):
+            if c["long"] == command_metadata["long"]:
+                command_metadata_array[i] = command_metadata
+                importlib.reload(my_cmd_module)
+                continue
         command_metadata_array.append (command_metadata)
 
 # Handle server cache
