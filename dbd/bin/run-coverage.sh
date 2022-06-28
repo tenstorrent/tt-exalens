@@ -67,7 +67,7 @@ if (( $COVER_PCT < $EXPECTED_COVER_PCT )) ; then echo "FAIL: Coverage ($COVER_PC
 # Show what needs to be done to set the current run as expected run
 echo "To set the current run as expected:"
 echo cp $RUN_DIR/coverage-exact-match.log dbd/test/expected-results/coverage-$ARCH_NAME-exact-match.expected
-echo cp $RUN_DIR/coverage-exact-match.zip dbd/test/exported/$ARCH_NAME/coverage-exact-match.zip
+echo cp $RUN_DIR/coverage-exact-match.zip dbd/test/exported-runs/$ARCH_NAME-regression/coverage-exact-match.zip
 echo "To run offline test:"
 echo ARCH_NAME=$ARCH_NAME dbd/bin/run-offline-tests.sh
 echo "Then, copy the expected log file from the offline run again:"
