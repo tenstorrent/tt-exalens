@@ -25,13 +25,14 @@ check_logfile_exit_code () {
 
 # Run one coverage command
 coverage_run () {
-    log_file=$1
+    log_file=`pwd`/$1
     cov_command="$2"
     cov_args="$3"
     debuda_cmd="$4"
     debuda_commands_arg="$6"
     $cov_command $cov_args $debuda_cmd "$5" "$debuda_commands_arg" > "$log_file"
-    check_logfile_exit_code "$log_file"
+    EXIT_CODE="$?"
+    if [ "$EXIT_CODE" == "0" ]; then check_logfile_exit_code "$log_file"; else echo "Debuda run failed with exit code $EXIT_CODE (see $log_file)"; tail $log_file; exit $EXIT_CODE; fi
 }
 
 ROOT=`pwd`

@@ -9,6 +9,6 @@ for ARCH_NAME in ${ARCH_LIST[@]}; do
     echo Testing $ARCH_NAME
     ARCH_NAME=$ARCH_NAME $SCRIPTPATH/run-offline-tests.sh >> $OUT_FILE
     EXIT_CODE=$?
-    if [ "$EXIT_CODE" != "0" ]; then echo "FAIL"; echo tail $OUT_FILE; exit $EXIT_CODE; fi
+    if [ "$EXIT_CODE" != "0" ]; then echo "FAIL"; echo tail $OUT_FILE; tail $OUT_FILE; exit $EXIT_CODE; fi
 done
 echo PASS. See $OUT_FILE for output
