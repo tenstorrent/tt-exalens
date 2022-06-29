@@ -502,6 +502,8 @@ class Device(TTObject):
         return (stream_data["DEBUG_STATUS[7]"] & 0xfff) == 0xc00
     def is_stream_active (self, stream_data):
         return int (stream_data["CURR_PHASE"]) != 0 and int (stream_data["NUM_MSGS_RECEIVED"]) > 0
+    def is_stream_done (self, stream_data):
+        return int (stream_data["NUM_MSGS_RECEIVED"]) == int (stream_data["CURR_PHASE_NUM_MSGS_REMAINING"])
     def is_bad_stream (self, stream_data):
         return \
             (stream_data["DEBUG_STATUS[1]"] != 0) or \

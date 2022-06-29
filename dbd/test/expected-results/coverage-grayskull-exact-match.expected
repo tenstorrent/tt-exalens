@@ -384,6 +384,7 @@ Short    Long                     Arguments             Description
 -------  -----------------------  --------------------  -------------------------------------------------------------------------------------------------------------------------
 [34mx[0m        [34mexit[0m                                           exit the program. If argument given, it will be used as the exit code
 [34mh[0m        [34mhelp[0m                                           prints command documentation
+[34mrl[0m       [34mreload[0m                                         reloads files in debuda-commands directory
 [34mxp[0m       [34mexport[0m                   [ filename ]          exports a zip package for offline work. The optional argument represents a zip file name. Defaults to 'debuda-export.zip'
 [34me[0m        [34mepoch[0m                    epoch_id              switch to epoch epoch_id
 [34mb[0m        [34mbuffer[0m                   buffer_id_or_op_name  prints details on the buffer with a given id, or buffer(s) mapped to a given operation.
@@ -402,6 +403,7 @@ Short    Long                     Arguments             Description
 [34mc[0m        [34mcore-summary[0m             x y                   show summary for core 'x-y'
 [34md[0m        [34mdevice-summary[0m           device_id             shows summary of a device. When no argument is supplied, shows summary of all devices
 [34mt[0m        [34mdump-tile[0m                tile_id, raw          prints tile for current stream in currently active phase. If raw=1, prints raw bytes
+[34mha[0m       [34mhang-analysis[0m                                  Prints operation summary
 [34mom[0m       [34mop-map[0m                                         draws a mini map of the current epoch
 [34ms[0m        [34mprint-stream[0m             x y stream_id         show stream 'stream_id' at core 'x-y'
 [34mq[0m        [34mqueue-summary[0m                                  Prints summary of queues
