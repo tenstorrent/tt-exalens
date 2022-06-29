@@ -22,6 +22,7 @@ def run(args, context, ui_state = None):
         { 'key_name' : None,            'title': 'Name',       'formatter': None },
         { 'key_name' : 'input',         'title': 'Input',      'formatter': None },
         { 'key_name' : 'outputs',       'title': 'Outputs',    'formatter': None},
+        { 'key_name' : 'dram',          'title': 'Dram addr',  'formatter': None},
     ]
 
     table=util.TabulateTable(column_format)
@@ -32,6 +33,8 @@ def run(args, context, ui_state = None):
     for q_name, queue in context.netlist.queues.items():
         q_data = queue.root
         q_data["outputs"] = queue.outputs_as_str()
+        if "dram" not in q_data:
+            q_data["dram"] = '-'
 
         queue_positions = []
         if "host" in q_data:
