@@ -89,10 +89,10 @@ class Queue:
 
 # Graph Ops
 class Op:
-    def __init__(self, name, graph_name, data):
+    def __init__(self, name, graph_id, data):
         self.root = data
-        self.graph_name = graph_name
-        self._id = f"{graph_name}/{name}"
+        self._graph_id = graph_id
+        self._id = f"{self._graph_id}/{name}"
 
     # Accessors
     def id (self):
@@ -110,14 +110,14 @@ class Graph:
     non_op_keys = set (['target_device', 'input_count'])
 
     def __init__(self, name, root, pipegen_yaml, blob_yaml):
-        self.name = name
+        self._id = name
         self.root = root # The entry in netlist file
         self.pipegen_yaml = pipegen_yaml
         self.blob_yaml = blob_yaml
         self.ops = dict()
 
         for op_name in self.op_names():
-            op = Op (op_name, self.name, self.root[op_name])
+            op = Op (op_name, self.id(), self.root[op_name])
             self.ops[op_name] = op
 
     def load_pipegen_and_blob (self):
@@ -127,8 +127,8 @@ class Graph:
         self.pipes = dict()
         for key, val in self.pipegen_yaml.items():
             if key == "graph_name":
-                if self.name != val:
-                    util.WARN(f"Expected 'graph_name: {self.name}' in {self.pipegen_yaml.id()}, but got 'graph_name: {val}'")
+                if self.id() != val:
+                    util.WARN(f"Expected 'graph_name: {self.id()}' in {self.pipegen_yaml.id()}, but got 'graph_name: {val}'")
             elif "buffer" in key:
                 b = Buffer(val)
                 self.buffers[b.id()] = b
@@ -157,7 +157,7 @@ class Graph:
                 if max_lines_printed_for_num_missing_buffers == 0:
                     util.ERROR ("... skipping the rest ...")
                 else:
-                    util.ERROR (f"Buffer {buf_id} shows up as an {'input' if is_input else 'output'} of pipe {pipe_id} but has no definition in graph {self.name}. See {self.pipegen_yaml.filepath}")
+                    util.ERROR (f"Buffer {buf_id} shows up as an {'input' if is_input else 'output'} of pipe {pipe_id} but has no definition in graph {self.id()}. See {self.pipegen_yaml.filepath}")
 
         for _, p in self.pipes.items():
             for buf_id in p.inputs():
@@ -325,7 +325,7 @@ class Graph:
 
     # Accessors
     def id (self):
-        return self.name
+        return self._id
     def op_names (self):
         on = list(set (self.root.keys()) - Graph.non_op_keys)
         on.sort()  # Sort to remove the non-determinism of the above operations
@@ -349,7 +349,7 @@ class Graph:
 
     # Renderer
     def __str__(self):
-        return f"{type(self).__name__}: {self.name}: Op count: {len (self.root.keys()) - len(Graph.non_op_keys)}, Input count: {self.input_count()}"
+        return f"{type(self).__name__}: {self.id()}: Op count: {len (self.root.keys()) - len(Graph.non_op_keys)}, Input count: {self.input_count()}"
 
     # Returns an array of [r,c] pairs for the operation
     def get_op_coords (self, op_name):
@@ -368,7 +368,7 @@ class Graph:
         op_name = self.core_coord_to_op_name(r, c)
         if op_name is not None:
             op = self.root[op_name]
-            return f"{self.name}/{op_name}:{op['type']}"
+            return f"{self.id()}/{op_name}:{op['type']}"
         else:
             return f"No op at {r},{c}"
 
