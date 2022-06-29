@@ -1,33 +1,9 @@
-import sys, os, pickle
-from tabulate import tabulate
+import sys, os
 import tt_util as util, tt_device, tt_stream
 
 # 'this' is a reference to the module object instance itself.
 this = sys.modules[__name__]
 this.context = None
-
-# This class allows caching of dictionaries to files.
-class CachedDictFile:
-    def __init__ (self, filepath, enable):
-        self.filepath = filepath
-        self.enabled = enable
-
-    def load_cached (self, generator, generator_name):
-        # Use cache
-        if self.enabled and os.path.exists (self.filepath):
-            util.WARN (f"Loading {generator_name} cache from file {self.filepath}")
-            with open(self.filepath, 'rb') as f:
-                streams = pickle.load(f)
-                return streams
-        else:
-            streams = generator()
-
-        if self.enabled:
-            util.WARN (f"Saving {generator_name} cache to file {self.filepath}")
-            with open(self.filepath, 'wb') as f:
-                pickle.dump(streams, f)
-
-        return streams
 
 # converts data format to string
 def get_data_format_from_string(str):
@@ -91,12 +67,12 @@ class Pipe:
 class Queue:
     def __init__(self, name, data):
         self.root = data
-        self.id = name
+        self._id = name
         self.output_ops = set() # set of names of queue's output_ops
 
     # Accessors
     def id (self):
-        return self.id
+        return self._id
 
     def outputs_as_str(self):
         ret_str = ""
