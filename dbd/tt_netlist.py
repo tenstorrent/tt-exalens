@@ -1,5 +1,7 @@
 import sys, os
+from dbd.tt_object import TTObject
 import tt_util as util, tt_device, tt_stream
+import tt_object
 
 # 'this' is a reference to the module object instance itself.
 this = sys.modules[__name__]
@@ -26,17 +28,16 @@ def get_data_format_from_string(str):
     return None
 
 # Constructed from epoch's pipegen.yaml. Contains information about a buffer.
-class Buffer:
+class Buffer(TTObject):
     def __init__(self, data):
         data["core_coordinates"] = tuple(data["core_coordinates"])
         self.root = data
         self.input_of_pipe_ids = set ()
         self.output_of_pipe_ids = set ()
         self.replicated = False
+        self._id = self.root['uniqid']
 
     # Accessors
-    def id (self):
-        return self.root['uniqid']
     def is_op_input (self):
         return len(self.output_of_pipe_ids) > 0
     def is_op_output (self):
@@ -44,16 +45,15 @@ class Buffer:
     # Renderer
     def __str__(self):
         r = self.root
-        return f"{type(self).__name__}: id: {self.id()}, coord: {r['core_coordinates']}"
+        return f"{super().__str__()}, coord: {r['core_coordinates']}"
 
 # Constructed from epoch's pipegen.yaml. Contains information about a pipe.
-class Pipe:
+class Pipe(TTObject):
     def __init__(self, data):
         self.root = data
+        self._id = self.root['id']
 
     # Accessors
-    def id (self):
-        return self.root['id']
     def inputs(self):
         return self.root['input_list']
     def outputs(self):
@@ -61,19 +61,16 @@ class Pipe:
 
     # Renderer
     def __str__(self):
-        return f"{type(self).__name__}: id: {self.id()}, inputs: {self.inputs()}, outputs: {self.outputs()}"
+        return f"{super().__str__()}, inputs: {self.inputs()}, outputs: {self.outputs()}"
 
 # Netlist queues
-class Queue:
+class Queue(TTObject):
     def __init__(self, name, data):
         self.root = data
         self._id = name
         self.output_ops = set() # set of names of queue's output_ops
 
     # Accessors
-    def id (self):
-        return self._id
-
     def outputs_as_str(self):
         ret_str = ""
         num_ops_fed_by_queue = len(self.output_ops)
@@ -83,29 +80,17 @@ class Queue:
             ret_str += ', '.join (list(self.output_ops)) if num_ops_fed_by_queue > 0 else ""
         return ret_str
 
-    # Renderer
-    def __str__(self):
-        return f"{type(self).__name__}: id: {self.id()}"
-
 # Graph Ops
-class Op:
+class Op(TTObject):
     def __init__(self, name, graph_id, data):
         self.root = data
         self._graph_id = graph_id
         self._id = f"{self._graph_id}/{name}"
 
-    # Accessors
-    def id (self):
-        return self._id
-
-    # Renderer
-    def __str__(self):
-        return f"{type(self).__name__}: id: {self.id()}"
-
 # Class that represents a single graph within a netlist
 # Contains all the information from graph's blob.yaml and pipegen.yaml
 # Provides functions for graph traversal
-class Graph:
+class Graph(TTObject):
     # Some keys do not refer to operations, and we keep them here to be used when parsing
     non_op_keys = set (['target_device', 'input_count'])
 
@@ -324,8 +309,6 @@ class Graph:
         return fanin_cores_rc
 
     # Accessors
-    def id (self):
-        return self._id
     def op_names (self):
         on = list(set (self.root.keys()) - Graph.non_op_keys)
         on.sort()  # Sort to remove the non-determinism of the above operations

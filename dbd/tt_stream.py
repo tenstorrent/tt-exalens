@@ -1,4 +1,6 @@
+from dbd.tt_object import TTObject
 import tt_util as util, re
+import tt_object
 
 # The field names we want to show as hexadecimal numbers
 HEX_FIELDS = {
@@ -97,7 +99,7 @@ def get_core_stream_summary (device, x, y):
 # Stream Class
 #
 # ID (device_id, x, y, stream_id, phase)
-class Stream:
+class Stream(TTObject):
     # Return (chip_id, noc0_X, noc0_Y, stream_id) given a designator from blob.yaml
     def get_stream_tuple_from_designator (designator):
         # Example full name: chip_0__y_1__x_1__stream_id_8
@@ -112,8 +114,6 @@ class Stream:
         self.root = data
 
     # Accessors
-    def id (self):
-        return self._id
     def get_buffer_id (self):
         return self.root["buf_id"]
 

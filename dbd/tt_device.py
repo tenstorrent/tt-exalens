@@ -1,6 +1,8 @@
 import os, subprocess, time, struct, signal, re, zmq, pickle
 from tabulate import tabulate
+from dbd.tt_object import TTObject
 import tt_util as util
+import tt_object
 STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with bin/build-debuda-stub.sh. It also requires zeromq (sudo apt install -y libzmq3-dev)."
 
 #
@@ -163,7 +165,7 @@ def dump_tile(chip, x, y, addr, size, data_format):
 #
 # Device class: generic constructs for talking to devices
 #
-class Device:
+class Device(TTObject):
     # Class variable denoting the number of devices created
     num_devices = 0
 
@@ -187,10 +189,6 @@ class Device:
 
     def __init__(self, arch):
         raise RuntimeError(f"Use Device.create class method to create a device")
-
-    # Accessors
-    def id (self):
-        return self._id
 
     # Coordinate conversion functions
     def physical_to_noc (self, phys_x, phys_y, noc_id=0):
