@@ -133,17 +133,18 @@ class YamlFile:
 
     def __init__ (self, filepath):
         self.filepath = filepath
-        if filepath in YamlFile.file_cache:
-            self.root = YamlFile.file_cache[filepath]
 
     def load (self):
-        INFO (f"Loading '{self.filepath}'")
-        # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
-        self.root = dict()
+        if self.filepath in YamlFile.file_cache:
+            self.root = YamlFile.file_cache[self.filepath]
+        else:
+            INFO (f"Loading '{self.filepath}'")
+            # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
+            self.root = dict()
 
-        for i in yaml.load_all(open(self.filepath), Loader=yaml.CSafeLoader):
-            self.root = { **self.root, **i }
-        YamlFile.file_cache[self.filepath] = self.root
+            for i in yaml.load_all(open(self.filepath), Loader=yaml.CSafeLoader):
+                self.root = { **self.root, **i }
+            YamlFile.file_cache[self.filepath] = self.root
 
     def __str__(self):
         return f"{type(self).__name__}: {self.filepath}"
