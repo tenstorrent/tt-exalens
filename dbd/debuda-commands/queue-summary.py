@@ -22,7 +22,7 @@ def run(args, context, ui_state = None):
         { 'key_name' : None,            'title': 'Name',       'formatter': None },
         { 'key_name' : 'input',         'title': 'Input',      'formatter': None },
         { 'key_name' : 'outputs',       'title': 'Outputs',    'formatter': None},
-        { 'key_name' : 'dram',          'title': 'Dram addr',  'formatter': None},
+        { 'key_name' : 'dram',          'title': 'DRAM ch-addr',  'formatter': lambda x: ', '.join(f"%d-0x%x" % (e[0], e[1]) for e in x) },
     ]
 
     table=util.TabulateTable(column_format)
