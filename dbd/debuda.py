@@ -308,6 +308,18 @@ def main(args, context):
           "arguments_description" : "x y addr : read data from address 'addr' at noc0 location x-y of the chip associated with current epoch"
         },
         {
+          "long" : "pci-raw-read",
+          "short" : "pcir",
+          "expected_argument_count" : 1,
+          "arguments_description" : "addr : read data from PCI bar at address 'addr"
+        },
+        {
+          "long" : "pci-raw-write",
+          "short" : "pciw",
+          "expected_argument_count" : 2,
+          "arguments_description" : "addr data: write 'data' to PCI bar at address 'addr"
+        },
+        {
           "long" : "burst-read-xy",
           "short" : "brxy",
           "expected_argument_count" : 4,
@@ -474,6 +486,13 @@ def main(args, context):
                         navigation_suggestions = print_buffer_data (cmd, context)
                     elif found_command["long"] == "pipe":
                         navigation_suggestions = print_pipe_data (cmd, context)
+                    elif found_command["long"] == "pci-raw-read":
+                        addr = int(cmd[1],0)
+                        print ("PCI RD [0x%x]: 0x%x" % (addr, tt_device.PCI_IFC.pci_raw_read (ui_state['current_device_id'], addr)))
+                    elif found_command["long"] == "pci-raw-write":
+                        addr = int(cmd[1],0)
+                        data = int(cmd[2],0)
+                        print ("PCI WR [0x%x] <- 0x%x" % (addr, tt_device.PCI_IFC.pci_raw_write (ui_state['current_device_id'], data)))
                     elif found_command["long"] == "pci-read-xy" or found_command["long"] == "burst-read-xy" or found_command["long"] == "pci-write-xy":
                         x = int(cmd[1],0)
                         y = int(cmd[2],0)

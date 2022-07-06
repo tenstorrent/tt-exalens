@@ -101,6 +101,17 @@ class DEBUDA_SERVER_IFC:
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x05', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), z.to_bytes(1, byteorder='big'), reg_addr, data))
         ret = ZMQ_SOCKET.recv()
         return ret
+    def pci_raw_read(chip_id, reg_addr):
+        assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
+        zero = 0
+        ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x06', chip_id.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), reg_addr, 0))
+        ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
+        return ret_val
+    def pci_raw_write(chip_id, reg_addr, data):
+        assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
+        ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x07', chip_id.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), reg_addr, data))
+        ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
+        assert data == ret_val
 
 # This interface is used to read cached values of PCI reads.
 class DEBUDA_SERVER_CACHED_IFC:
@@ -141,6 +152,14 @@ class DEBUDA_SERVER_CACHED_IFC:
         if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
             DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_IFC.pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format)
         return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
+    def pci_raw_read(chip_id, reg_addr):
+        key = (chip_id, reg_addr)
+        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_IFC.pci_raw_read(chip_id, reg_addr)
+        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
+    def pci_raw_write(chip_id, reg_addr, data):
+        if not DEBUDA_SERVER_CACHED_IFC.enabled:
+            return DEBUDA_SERVER_IFC.pci_raw_write(chip_id, reg_addr, data)
 
 # PCI interface is a cached interface through Debuda server
 class PCI_IFC (DEBUDA_SERVER_CACHED_IFC):
