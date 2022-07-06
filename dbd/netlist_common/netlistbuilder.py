@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import yaml
 from .dramallocation import DramFactory, get_dram_queue_buffer_size
-from .netlist import Netlist, Graph, NetlistConsts, Operation, Queue
+from .netlist import Netlist, Graph, NetlistConsts, Operation, Queue, QueueSetting
 
 class Chip:
     def __init__(self, rows, columns) -> None:
@@ -60,6 +60,40 @@ class NetlistBuilderHelper:
 
     def build_empty_graph(mygraph):
         return Graph.create_graph(mygraph.get_target_device(), mygraph.get_input_count())
+
+    def build_runtime_ram_settings(zero, prolog, epilog, wr_ptr_global, rd_ptr_global):
+        return {
+            "zero":zero,
+            "prologue":prolog,
+            "epilogue":epilog,
+            "wr_ptr_global":wr_ptr_global,
+            "rd_ptr_global":rd_ptr_global
+        }
+
+    def build_runtime_queue_settings(zero, prolog, epilog, rd_ptr_global, rd_ptr_local, rd_ptr_autoinc):
+        return {
+            "zero":zero,
+            "prologue":prolog,
+            "epilogue":epilog,
+            "rd_ptr_global":rd_ptr_global,
+            "rd_ptr_local":rd_ptr_local,
+            "global_rdptr_autoinc":rd_ptr_autoinc
+        }
+
+    def get_default_queue_setting(qs):
+        result = {}
+        for name in qs.get_queue_names():
+            setting = qs.get_queue_setting(name)
+            if not setting.has(NetlistConsts.INSTRUCTION_EXECUTE_QUEUE_SETTINGS_WR_PTR_GLOBAL):
+                result = setting.clone()
+                result.set(NetlistConsts.INSTRUCTION_EXECUTE_QUEUE_SETTINGS_PROLOGUE, True)
+                return result
+
+        d = qs.get_queue_setting(qs.get_queue_names()[0]).clone()
+        if d.has(NetlistConsts.INSTRUCTION_EXECUTE_QUEUE_SETTINGS_WR_PTR_GLOBAL):
+            d.remove(NetlistConsts.INSTRUCTION_EXECUTE_QUEUE_SETTINGS_WR_PTR_GLOBAL)
+        d.set(NetlistConsts.INSTRUCTION_EXECUTE_QUEUE_SETTINGS_PROLOGUE, True)
+        return d
 
     def build_dram_queue(input, entries, target_device, memory, df, grid_size, mblock, ublock, t):
         return Queue({
@@ -173,13 +207,16 @@ class BuildNetlist:
     def __init__(self, nl) -> None:
         self.__nl = Netlist(nl)
         self.__new_nl = self.__nl.clone()
+        self.__created_input_queues = []
         pass
 
     def build_empty(self):
         self.__new_nl = NetlistBuilderHelper.build_empty_netlist_from_template(self.__nl)
+        self.__created_input_queues = []
 
     def build_single_graph(self, graph_name):
         self.__new_nl = self.__nl.clone()
+        self.__created_input_queues = []
         graph_names = self.__new_nl.get_graphs().get_graph_names()
         if graph_name not in graph_names:
             raise Exception(f"Graph [{graph_name}] is not in provided netlist.")
@@ -242,6 +279,7 @@ class BuildNetlist:
             operation_name,
             NetlistConsts.QUEUE_INPUT_HOST)
         self.__new_nl.add_queue(new_input_queue_name, new_input_queue)
+        self.__created_input_queues.append(new_input_queue_name)
         return new_input_queue_name
 
     def add_output_queue_for_operation(self, graph_name, operation_name, input_name):
@@ -303,7 +341,13 @@ class BuildNetlist:
                 queue_settings = execute_instruction.get_queue_settings()
                 for input_queue_name in input_queue_names:
                     if not queue_settings.has(input_queue_name):
-                        queue_settings.add_queue_setting(input_queue_name, queue_settings.get_default_setting())
+                        q_type = self.__new_nl.get_queue(input_queue_name).get_type()
+                        ## TODO: Is this bug in netlist or functionality
+                        if input_queue_name not in self.__created_input_queues:
+                            continue
+                        if (q_type != NetlistConsts.QUEUE_TYPE_QUEUE):
+                            raise Exception(f"Missing functionality for queue {input_queue_name} type {q_type}")
+                        queue_settings.add_queue_setting(input_queue_name, NetlistBuilderHelper.get_default_queue_setting(queue_settings))
                 for q_name in queue_settings.get_queue_names():
                     if q_name not in input_queue_names:
                         queue_settings.remove(q_name)

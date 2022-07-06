@@ -42,3 +42,4 @@ $(OBJDIR)/dbd/%.o: dbd/%.cpp
 	$(CXX) $(DBD_CFLAGS) $(CXXFLAGS) $(STATIC_LIB_FLAGS) $(DBD_INCLUDES) $(DBD_DEFINES) -c -o $@ $<
 	$(PRINT_OK)
 
+include dbd/tools/module.mk
