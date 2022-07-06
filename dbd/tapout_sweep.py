@@ -125,7 +125,7 @@ class CommandExecutor:
             except Exception as e:
                 proc.terminate()
                 self.__handle_exception(e)
-
+            return proc.returncode
 class CommandHandlerList:
     def __init__(self) -> None:
         self.__exception_handlers = []
@@ -223,6 +223,9 @@ class TapoutOperation:
                 self.__mismatch.append("".join(self.__mismatch_parser.get_lines()))
             self.__mismatch_parser.clear()
 
+    def set_failed(self):
+        self.__test_failed = True
+
     def process_exception(self, e):
         if "what():  Test Failed" in repr(e):
             self.__test_failed = True
@@ -314,16 +317,18 @@ class TapoutCommandExecutor:
         command_executor.set_exception_handler(handlers.handle_exception)
         return command_executor
 
-    def run_tapout_operations(self, tapout_operations, netlist_filename, log_filename):
-        self.build_netlist(tapout_operations, netlist_filename)
+    def run_tapout_operations(self, tapout_operations, log_filename):
         self.__test_command.set_log_filename(log_filename)
         command_executor = self.build_command_executor(tapout_operations, log_filename)
-        command_executor.execute(self.__test_command.get_command())
+        result = command_executor.execute(self.__test_command.get_command())
 
         for tapout_operation in tapout_operations:
+            if result != 0:
+                tapout_operation.set_failed()
+
             self.log(tapout_operation)
 
-    def run(self, one_run = False):
+    def run(self, one_run = False, step_by_step = False):
         # commands
         tapout_operations = self.get_tapout_operations()
 
@@ -331,11 +336,17 @@ class TapoutCommandExecutor:
             for operation in tapout_operations:
                 new_netlist_filename = f"{self.__out_dir}/netlist_{operation.get_tapout_queue_name()}.yaml"
                 log_filename = f"{self.__out_dir}/{operation.get_tapout_queue_name()}.console.log"
-                self.run_tapout_operations([operation], new_netlist_filename, log_filename)
+                if step_by_step:
+                    self.build_single_op_netlist(operation, new_netlist_filename)
+                else:
+                    self.build_netlist([operation], new_netlist_filename)
+
+                self.run_tapout_operations([operation], log_filename)
         else:
             new_netlist_filename = f"{self.__out_dir}/modified.netlist.yaml"
             log_filename = f"{self.__out_dir}/out.log"
-            self.run_tapout_operations(tapout_operations, new_netlist_filename, log_filename)
+            self.build_netlist([operation], new_netlist_filename)
+            self.run_tapout_operations(tapout_operations, log_filename)
 
         self.__ferrors.close()
         self.__result_file.close()
@@ -345,10 +356,11 @@ def main():
     parser.add_argument('--test_command', type=str, required=True, help='Command that will be executed with modified netlist')
     parser.add_argument('--out_dir', type=str, required=True, help='Output directory')
     parser.add_argument('--one_run', action='store_true', default=False, help=f'Tapout all operations in one run.')
+    parser.add_argument('--step_by_step', action='store_true', default=False, help=f'Modified netlist will have only one operation from graph')
     args = parser.parse_args()
 
     command = args.test_command
-    TapoutCommandExecutor(command, args.out_dir).run(args.one_run)
+    TapoutCommandExecutor(command, args.out_dir).run(args.one_run, args.step_by_step)
 
 if __name__ == "__main__":
     main()

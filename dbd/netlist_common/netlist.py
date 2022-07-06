@@ -26,6 +26,7 @@ class NetlistConsts:
     QUEUE_INPUT = "input"
     QUEUE_INPUT_HOST = "HOST"
     QUEUE_TYPE = "type"
+    QUEUE_TYPE_QUEUE = "queue"
     QUEUE_ENTRIES = "entries"
     QUEUE_LOCATION = "loc"
     QUEUE_LOCATION_DRAM = "dram"
@@ -60,7 +61,8 @@ class NetlistConsts:
     INSTRUCTION_NAME_ENDLOOP = "endloop"
     INSTRUCTION_EXECUTE_GRAPH_NAME = "graph_name"
     INSTRUCTION_EXECUTE_QUEUE_SETTINGS = "queue_settings"
-
+    INSTRUCTION_EXECUTE_QUEUE_SETTINGS_WR_PTR_GLOBAL ="wr_ptr_global"
+    INSTRUCTION_EXECUTE_QUEUE_SETTINGS_PROLOGUE = "prologue"
 class Var:
     def __init__(self, var) -> None:
         self.__var = var
@@ -162,7 +164,9 @@ class Operation(Dict):
     def set_input_names(self, inputs):
         self.set(NetlistConsts.OPERATION_INPUT_NAMES, inputs)
     def replace_input_name(self, old_input_name, new_input_name):
-        self.get_input_names()[self.get_input_names().index(old_input_name)] = new_input_name
+        for i in range(len(self.get_input_names())):
+            if self.get_input_names()[i] == old_input_name:
+                self.get_input_names()[i] = new_input_name
     def get_ublock_order(self):
         return self.get_value(NetlistConsts.OPERATION_UBLOCK_ORDER)
     def set_ublock_order(self, ublock_order):
@@ -445,9 +449,6 @@ class QueueSettings(Dict):
     def add_queue_setting(self, name, setting):
         self.add(name, get_dict(setting))
 
-    def get_default_setting(self):
-        return self.get_queue_setting(self.get_queue_names()[0])
-
 class Program(List):
     def __init__(self, l) -> None:
         super().__init__(l)
@@ -631,8 +632,6 @@ class NetlistWriter:
     def queues_to_str(self):
         myQueues = self.__mynl.get_queues().clone()
         for q_name in myQueues.get_queue_names():
-            if not myQueues.get_queue(q_name).get_value(NetlistConsts.QUEUE_DRAM):
-                continue
             memory_list = myQueues.get_queue(q_name).get_memory().get_raw()
             for cnt in range(0, len(memory_list)):
                 if isinstance(memory_list[cnt], list):
