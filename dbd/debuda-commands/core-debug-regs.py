@@ -20,7 +20,7 @@ def run(args, context, ui_state = None):
         THREADS = ["T0", "T1", "T2", "FW"]
 
         # Get the register values
-        debug_tables = current_device.get_debug_regs (x, y)
+        debug_tables = current_device.get_debug_regs (core_loc)
 
         render_tables = [ dict() ] * len(THREADS)
         for thread_idx in range (len(THREADS)):

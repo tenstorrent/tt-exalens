@@ -17,8 +17,8 @@ def run(args, context, ui_state = None):
         for op_name in graph.op_names():
             op = graph.root[op_name]
             grid_loc = op['grid_loc']
-            noc0_x, noc0_y = device.rc_to_noc0 (grid_loc[0], grid_loc[1])
-            row = [ f"{graph_name}/{op_name}", op['type'], epoch_id, f"{graph.root['target_device']}", f"{grid_loc}", f"{noc0_x}-{noc0_y}", f"{op['grid_size']}"]
+            noc0_loc = device.rc_to_noc0 (grid_loc)
+            row = [ f"{graph_name}/{op_name}", op['type'], epoch_id, f"{graph.root['target_device']}", f"{grid_loc}", f"{noc0_loc[0]}-{noc0_loc[1]}", f"{op['grid_size']}"]
             rows.append (row)
 
     print (tabulate(rows, headers = [ "Op", "Op type", "Epoch", "Device", "Grid Loc", "NOC0 Loc", "Grid Size" ]))

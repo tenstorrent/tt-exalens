@@ -72,7 +72,6 @@ def run(args, context, ui_state = None):
         # 2a. Analyze the data
         all_streams_done = True
         for block_loc in device.get_block_locations (block_type = "functional_workers"):
-            x, y = block_loc[0], block_loc[1]
             has_active_stream = False
             has_empty_inputs = False
 
@@ -80,7 +79,7 @@ def run(args, context, ui_state = None):
                 stream_loc = block_loc + (stream_id, )
                 if device.is_stream_active(all_stream_regs[stream_loc]):
                     has_active_stream = True
-                    active_streams[(device_id, x, y, stream_id)] = stream_loc
+                    active_streams[(device_id, *block_loc, stream_id)] = stream_loc
                     all_streams_done = False
                 current_phase = int(all_stream_regs[stream_loc]['CURR_PHASE'])
                 if current_phase > 0: # Must be configured
@@ -88,15 +87,15 @@ def run(args, context, ui_state = None):
                     NUM_MSGS_RECEIVED = int(all_stream_regs[stream_loc]['NUM_MSGS_RECEIVED'])
                     if stream_type_str == "input" and NUM_MSGS_RECEIVED == 0:
                         has_empty_inputs = True
-                        empty_input_streams[(device_id, x, y, stream_id)] = stream_loc
+                        empty_input_streams[(device_id, *block_loc, stream_id)] = stream_loc
 
                 if device.is_bad_stream (all_stream_regs[stream_loc]):
                     issues_sets["bad_stream"].add (stream_loc)
 
-            if device.is_gsync_hung (x, y):
-                issues_sets["gsync_hung"].add ((x,y))
-            if not device.is_ncrisc_done (x, y):
-                issues_sets["ncrisc_not_done"].add ((x,y))
+            if device.is_gsync_hung (block_loc):
+                issues_sets["gsync_hung"].add (block_loc)
+            if not device.is_ncrisc_done (block_loc):
+                issues_sets["ncrisc_not_done"].add (block_loc)
 
             device_data[device_id]["cores"][block_loc] = {\
                 "fan_in_cores" : [],\
@@ -105,13 +104,13 @@ def run(args, context, ui_state = None):
             }
 
         # 2b. Find stream dependencies
-        active_core_rc_list = [ device.noc0_to_rc( active_stream[1], active_stream[2] ) for active_stream in active_streams ]
+        active_core_rc_list = [ device.noc0_to_rc( ( active_stream[1], active_stream[2] ) ) for active_stream in active_streams ]
         active_core_noc0_list = [ ( active_stream[1], active_stream[2] ) for active_stream in active_streams ]
         for active_core_rc in active_core_rc_list:
             fan_in_cores_rc = device_graph.get_fanin_cores_rc (active_core_rc)
-            active_core_noc0 = device.rc_to_noc0 (active_core_rc[0], active_core_rc[1])
+            active_core_noc0 = device.rc_to_noc0 (active_core_rc)
             # print (f"fan_in_cores_rc for {active_core_rc}: {fan_in_cores_rc}")
-            fan_in_cores_noc0 = [ device.rc_to_noc0 (rc[0], rc[1]) for rc in fan_in_cores_rc ]
+            fan_in_cores_noc0 = [ device.rc_to_noc0 (rc) for rc in fan_in_cores_rc ]
             device_data[device_id]["cores"][active_core_noc0]["fan_in_cores"] = fan_in_cores_noc0
 
         # 3. Print the summary of blocked streams
@@ -119,7 +118,7 @@ def run(args, context, ui_state = None):
 
         for block_loc in device.get_block_locations (block_type = "functional_workers"):
             x, y = block_loc[0], block_loc[1]
-            r, c = device.noc0_to_rc (x, y)
+            rc_loc = device.noc0_to_rc (block_loc)
             has_active_stream = device_data[device_id]["cores"][block_loc]["has_active_stream"]
             has_empty_inputs = device_data[device_id]["cores"][block_loc]["has_empty_inputs"]
             if has_active_stream:
@@ -137,7 +136,7 @@ def run(args, context, ui_state = None):
                         op=f"Unknown opoch_id {epoch_id}"
                         if epoch_id in epoch_to_graph_map:
                             graph = epoch_to_graph_map[epoch_id]
-                            op = graph.core_coord_to_full_op_name(r, c)
+                            op = graph.core_coord_to_full_op_name(rc_loc)
                         core_loc = f"{x}-{y}"
                         fan_in_cores = device_data[device_id]['cores'][block_loc]['fan_in_cores']
                         depends_on_str = ""

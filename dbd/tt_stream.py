@@ -44,11 +44,11 @@ def convert_reg_dict_to_strings(device, regs):
         if "REMOTE_SRC_UPDATE_NOC" in regs and regs["REMOTE_SRC_UPDATE_NOC"] > 0:
             try:
                 if k == "REMOTE_SRC_X":
-                    noc0_x, noc0_y = device.noc1_to_noc0 (regs[k], 0)
-                    string_regs[k] += f"({util.CLR_INFO}{noc0_x}{util.CLR_END})"
+                    noc0_loc = device.noc1_to_noc0 ( ( regs[k], 0 ) )
+                    string_regs[k] += f"({util.CLR_INFO}{noc0_loc[0]}{util.CLR_END})"
                 if k == "REMOTE_SRC_Y":
-                    noc0_x, noc0_y = device.noc1_to_noc0 (0, regs[k])
-                    string_regs[k] += f"({util.CLR_INFO}{noc0_y}{util.CLR_END})"
+                    noc0_loc = device.noc1_to_noc0 ( ( 0, regs[k] ) )
+                    string_regs[k] += f"({util.CLR_INFO}{noc0_loc[1]}{util.CLR_END})"
             except:
                 print (f"{util.CLR_ERR}Invalid coordinate passed k={k} regs[k]={regs[k]} {util.CLR_END}")
                 raise
@@ -59,20 +59,20 @@ def convert_reg_dict_to_strings(device, regs):
 # Converts the readings into a user-friendly strings
 # Returns the summary, and suggestions for navigation
 # IMPROVE: this function does too much. should be broken up
-def get_core_stream_summary (device, x, y):
+def get_core_stream_summary (device, noc0_loc):
     all_streams_summary = {}
     navigation_suggestions = [ ]
     for stream_id in range (0, 64):
         val = ""
         # Check if idle
-        regs = device.read_stream_regs ((x, y), stream_id)
+        regs = device.read_stream_regs (noc0_loc, stream_id)
         reg_strings = convert_reg_dict_to_strings(device, regs)
         idle = device.is_stream_idle (regs)
 
         # Construct the navigation suggestions, and stream idle status
         if regs["REMOTE_SOURCE"] !=0 and 'REMOTE_SRC_X' in regs:
             val += f"RS-{reg_strings['REMOTE_SRC_X']}-{reg_strings['REMOTE_SRC_Y']}-{reg_strings['REMOTE_SRC_STREAM_ID']} "
-            noc0_x, noc0_y = device.as_noc_0 (regs['REMOTE_SRC_X'], regs['REMOTE_SRC_Y'], regs['REMOTE_SRC_UPDATE_NOC'])
+            noc0_x, noc0_y = device.as_noc_0 ( (regs['REMOTE_SRC_X'], regs['REMOTE_SRC_Y']), regs['REMOTE_SRC_UPDATE_NOC'])
             navigation_suggestions.append (\
                 { 'description': 'Go to source',
                   'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_SRC_STREAM_ID']}",
@@ -80,7 +80,7 @@ def get_core_stream_summary (device, x, y):
                 })
         if regs["REMOTE_RECEIVER"] !=0 and 'REMOTE_DEST_X' in regs:
             val += f"RR-{reg_strings['REMOTE_DEST_X']}-{reg_strings['REMOTE_DEST_Y']}-{reg_strings['REMOTE_DEST_STREAM_ID']} "
-            noc0_x, noc0_y = device.as_noc_0 (regs['REMOTE_DEST_X'], regs['REMOTE_DEST_Y'], regs['OUTGOING_DATA_NOC'])
+            noc0_x, noc0_y = device.as_noc_0 ( (regs['REMOTE_DEST_X'], regs['REMOTE_DEST_Y']), regs['OUTGOING_DATA_NOC'])
             navigation_suggestions.append (\
                 { 'description': 'Go to destination',
                   'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_DEST_STREAM_ID']}",

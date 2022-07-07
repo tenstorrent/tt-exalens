@@ -26,12 +26,12 @@ def run(args, context, ui_state = None):
         # Returns if the Op wants more data on a given input
         def wants_more_data_from_input (all_stream_regs, graph, graph_device, op_name, input_name):
             op_buffer_ids = set( b.id() for b in  graph.get_op_buffers (op_name) )
-            # As not all streams have buf_id, and not all have pipe_id, we try to find both
+            # As not all streams have buf_id, and not all have pipe_id, we try to find either
             relevant_buffers = set()
             relevant_pipes = set()
             for op_buffer_id in op_buffer_ids:
-                if graph.is_output_buffer (op_buffer_id):
-                    src_buffers = graph.get_connected_buffers (op_buffer_id, "input")
+                if graph.is_dest_buffer (op_buffer_id):
+                    src_buffers = graph.get_connected_buffers (op_buffer_id, "src")
                     for bid in src_buffers:
                         b = graph.buffers[bid]
                         if b.root["md_op_name"] == input_name:

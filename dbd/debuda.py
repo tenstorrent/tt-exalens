@@ -111,10 +111,10 @@ def print_dram_queue_summary (cmd, context, ui_state = None):
                 occupancy = Queue.occupancy (buffer_data["q_slots"], wrptr, rdptr)
 
                 input_buffer_op_name_list = []
-                for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'input'):
+                for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'src'):
                     input_buffer_op_name_list.append (graph.get_buffer(other_buffer_id).root["md_op_name"])
                 output_buffer_op_name_list = []
-                for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'output'):
+                for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'dest'):
                     output_buffer_op_name_list.append (graph.get_buffer(other_buffer_id).root["md_op_name"])
 
                 input_ops = f"{' '.join (input_buffer_op_name_list)}"
@@ -150,10 +150,10 @@ def print_host_queue_summary (cmd, context, ui_state):
 
                     # IMPROVE: Duplicated from print_dram_queue_summary. Merge into one function.
                     input_buffer_op_name_list = []
-                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'input'):
+                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'src'):
                         input_buffer_op_name_list.append (graph.get_buffer(other_buffer_id).root["md_op_name"])
                     output_buffer_op_name_list = []
-                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'output'):
+                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'dest'):
                         output_buffer_op_name_list.append (graph.get_buffer(other_buffer_id).root["md_op_name"])
 
                     input_ops = f"{' '.join (input_buffer_op_name_list)}"
@@ -394,9 +394,10 @@ def main(args, context):
     # Main command loop
     while True:
         have_non_interactive_commands=len(non_interactive_commands) > 0
+        noc0_loc = ( ui_state['current_x'], ui_state['current_y'] )
 
         if ui_state['current_x'] is not None and ui_state['current_y'] is not None and ui_state['current_epoch_id'] is not None and ui_state['current_device'] is not None:
-            row, col = ui_state['current_device'].noc0_to_rc (ui_state['current_x'], ui_state['current_y'])
+            row, col = ui_state['current_device'].noc0_to_rc ( noc0_loc )
             ui_state['current_prompt'] = f"core:{util.CLR_PROMPT}{ui_state['current_x']}-{ui_state['current_y']}{util.CLR_PROMPT_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_PROMPT_END} stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_PROMPT_END} "
 
         try:
@@ -510,7 +511,7 @@ def main(args, context):
                         else:
                             print (f"{util.CLR_ERR} Unknown {found_command['long']} {util.CLR_END}")
                     elif found_command["long"] == "full-dump":
-                        ui_state['current_device'].full_dump_xy(ui_state['current_x'], ui_state['current_y'])
+                        ui_state['current_device'].full_dump_xy( (ui_state['current_x'], ui_state['current_y']) )
                     elif found_command["long"] == "dram-queue":
                         print_dram_queue_summary (cmd, context, ui_state)
                     elif found_command["long"] == "host-queue":

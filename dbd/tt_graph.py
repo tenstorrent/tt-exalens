@@ -140,17 +140,19 @@ class Graph(TTObject):
         return object.__getattribute__(self, name)
 
     # Given a buffer list, find all buffers that are connected (pipegen.yaml)
-    # connection can be input/output/inputoutput
-    def get_connected_buffers (self, buffer_id_list, connection="outputs"):
+    # connection can be src, dest, or srcdest (for both)
+    def get_connected_buffers (self, buffer_id_list, connection="dest"):
         if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ] # If not a list, assume a single buffer id, and create a list from it
 
         connected_buffers = []
-
+        look_for_dest = "dest" in connection
+        look_for_src = "src" in connection
+        assert (look_for_src or look_for_dest), "Either src or dest must be present"
         for p in self.pipes:
             for b in buffer_id_list:
-                if "output" in connection and b in self.get_pipe(p).root["input_list"]:
+                if look_for_dest and b in self.get_pipe(p).root["input_list"]:
                     connected_buffers += self.get_pipe(p).root["output_list"]
-                if "input" in connection and b in self.get_pipe(p).root["output_list"]:
+                if look_for_src and b in self.get_pipe(p).root["output_list"]:
                     connected_buffers += self.get_pipe(p).root["input_list"]
 
         return list(set(connected_buffers))
@@ -178,26 +180,26 @@ class Graph(TTObject):
                 buffer_set.add (b_root["uniqid"])
         return list(buffer_set)
 
-    # Checks if a given buffer is an input buffer (i.e. it shows up in the input_list of a pipe)
-    def is_input_buffer(self, buffer_id):
+    # Checks if a given buffer is a source buffer (i.e. it shows up in the input_list of a pipe)
+    def is_src_buffer(self, buffer_id):
         for p in self.pipes:
             p_root = self.get_pipe (p).root
             if buffer_id in p_root["input_list"]: return True
         return False
 
-    # Checks if a given buffer is an output buffer (i.e. it shows up in the output_list of a pipe)
-    def is_output_buffer(self, buffer_id):
+    # Checks if a given buffer is a destination buffer (i.e. it shows up in the output_list of a pipe)
+    def is_dest_buffer(self, buffer_id):
         for p in self.pipes:
             p_root = self.get_pipe (p).root
             if buffer_id in p_root["output_list"]: return True
         return False
 
-    # Filters a list of buffers, to return only input or output buffers
+    # Filters a list of buffers, to return only src or dest buffers
     def filter_buffers (self, buffer_list, filter):
-        if filter == "input":
-            return [ bid for bid in buffer_list if self.is_input_buffer(bid) ]
-        elif filter == "output":
-            return [ bid for bid in buffer_list if self.is_output_buffer(bid) ]
+        if filter == "src":
+            return [ bid for bid in buffer_list if self.is_src_buffer(bid) ]
+        elif filter == "dest":
+            return [ bid for bid in buffer_list if self.is_dest_buffer(bid) ]
         else:
             raise (f"Exception: {util.CLR_ERR} Invalid filter '{filter}' {util.CLR_END}")
 
@@ -227,7 +229,7 @@ class Graph(TTObject):
         buffer_id_list = self.get_core_buffers (buff_core_coords)
         # print (f"Looking for direct fan ins of {buffer_id_list}")
         # print_buffer_info(buffer_id_list)
-        direct_fan_ins = set(self.get_connected_buffers (buffer_id_list, "input"))
+        direct_fan_ins = set(self.get_connected_buffers (buffer_id_list, "src"))
         # print (f"direct_fan_ins = {direct_fan_ins}")
 
         # Filter out the buffers we already visited
@@ -270,6 +272,7 @@ class Graph(TTObject):
     def op (self, op_name):
         return self.ops[op_name]
 
+    # Returns all pipes a buffer is a part of
     def get_pipes_for_buffer (self, buffer_id):
         pipes = []
         for pipe_id in self.pipes:
@@ -283,7 +286,7 @@ class Graph(TTObject):
         return f"{type(self).__name__}: {self.id()}: Op count: {len (self.root.keys()) - len(Graph.non_op_keys)}, Input count: {self.input_count()}"
 
     # Returns an array of [r,c] pairs for the operation
-    def get_op_coords (self, op_name):
+    def get_op_rc_coords (self, op_name):
         locations = []
         op = self.root[op_name]
         opr = op['grid_loc'][0]
@@ -295,20 +298,20 @@ class Graph(TTObject):
 
     # Returns the full op name mapped to a given RC location
     # The name format is graph/op_name:op_type
-    def core_coord_to_full_op_name (self, r, c):
-        op_name = self.core_coord_to_op_name(r, c)
+    def core_coord_to_full_op_name (self, rc_loc):
+        op_name = self.core_coord_to_op_name(rc_loc)
         if op_name is not None:
             op = self.root[op_name]
             return f"{self.id()}/{op_name}:{op['type']}"
         else:
-            return f"No op at {r},{c}"
+            return f"No op at [{rc_loc[0]},{rc_loc[1]}]"
 
     # Returns the op name mapped to a given RC location
-    def core_coord_to_op_name (self, r, c):
+    def core_coord_to_op_name (self, rc_loc):
         for op_name, op in self.root.items():
             if op_name not in ['target_device', 'input_count']:
-                op_locations = self.get_op_coords(op_name)
-                if (r, c) in op_locations:
+                op_locations = self.get_op_rc_coords(op_name)
+                if rc_loc in op_locations:
                     return op_name
         return None
 

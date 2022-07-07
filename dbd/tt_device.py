@@ -210,26 +210,27 @@ class Device(TTObject):
         raise RuntimeError(f"Use Device.create class method to create a device")
 
     # Coordinate conversion functions
-    def physical_to_noc (self, phys_x, phys_y, noc_id=0):
+    def physical_to_noc (self, phys_loc, noc_id=0):
+        phys_x, phys_y = phys_loc
         if noc_id == 0:
             return (self.PHYS_X_TO_NOC_0_X[phys_x], self.PHYS_Y_TO_NOC_0_Y[phys_y])
         else:
             return (self.PHYS_X_TO_NOC_1_X[phys_x], self.PHYS_Y_TO_NOC_1_Y[phys_y])
 
-    def noc_to_physical (self, noc_x, noc_y, noc_id=0):
+    def noc_to_physical (self, noc_loc, noc_id=0):
+        noc_x, noc_y = noc_loc
         if noc_id == 0:
             return (self.NOC_0_X_TO_PHYS_X[noc_x], self.NOC_0_Y_TO_PHYS_Y[noc_y])
         else:
             return (self.NOC_1_X_TO_PHYS_X[noc_x], self.NOC_1_Y_TO_PHYS_Y[noc_y])
 
-    def noc0_to_noc1 (self, noc_x, noc_y):
-        phys_x, phys_y = self.noc_to_physical (noc_x, noc_y, noc_id=0)
-        return self.physical_to_noc (phys_x, phys_y, noc_id=1)
+    def noc0_to_noc1 (self, noc0_loc):
+        phys_loc = self.noc_to_physical (noc0_loc, noc_id=0)
+        return self.physical_to_noc (phys_loc, noc_id=1)
 
-    def noc1_to_noc0 (self, noc_x, noc_y):
-        #print (f"noc_x = {noc_x}  noc_y = {noc_y}")
-        phys_x, phys_y = self.noc_to_physical (noc_x, noc_y, noc_id=1)
-        return self.physical_to_noc (phys_x, phys_y, noc_id=0)
+    def noc1_to_noc0 (self, noc1_loc):
+        phys_loc = self.noc_to_physical (noc1_loc, noc_id=1)
+        return self.physical_to_noc (phys_loc, noc_id=0)
 
     # For all cores read all 64 streams and populate the 'streams' dict. streams[x][y][stream_id] will
     # contain a dictionary of all register values as strings formatted to show in UI
@@ -286,7 +287,7 @@ class Device(TTObject):
                 emphasize_loc_list_to_render.add (self.noc_to_physical(loc[0], loc[1], noc_id=0))
         elif options=="rc":
             for loc in emphasize_noc0_loc_list:
-                emphasize_loc_list_to_render.add (self.noc0_to_rc(loc[0], loc[1]))
+                emphasize_loc_list_to_render.add (self.noc0_to_rc(loc))
         elif options=="noc0":
             emphasize_loc_list_to_render = emphasize_noc0_loc_list
         else:
@@ -307,9 +308,9 @@ class Device(TTObject):
             if options=="rc" and block_name != 'functional_workers': continue  # No blocks other than Tensix cores have RC coords
             for loc in self.get_block_locations (block_name):
                 if options=="physical":
-                    loc = self.noc_to_physical(loc[0], loc[1], noc_id=0)
+                    loc = self.noc_to_physical(loc, noc_id=0)
                 elif options=="rc":
-                    loc = self.noc0_to_rc(loc[0], loc[1])
+                    loc = self.noc0_to_rc(loc)
                 locs[loc] = block_types[block_name]['symbol']
                 block_types_present.add(block_name)
 
@@ -396,59 +397,59 @@ class Device(TTObject):
 
 
     # Function to print a full dump of a location x-y
-    def full_dump_xy(self, x, y):
+    def full_dump_xy(self, noc0_loc):
         for stream_id in range (0, 64):
             print()
-            stream = self.read_stream_regs((x, y), stream_id)
+            stream = self.read_stream_regs(noc0_loc, stream_id)
             for reg, value in stream.items():
-                print(f"Tensix x={x:02d},y={y:02d} => stream {stream_id:02d} {reg} = {value}")
+                print(f"Tensix x={noc0_loc[0]:02d},y={noc0_loc[1]:02d} => stream {stream_id:02d} {reg} = {value}")
 
         for noc_id in range (0, 2):
             print()
-            self.read_print_noc_reg(x, y, noc_id, "nonposted write reqs sent", 0xA)
-            self.read_print_noc_reg(x, y, noc_id, "posted write reqs sent", 0xB)
-            self.read_print_noc_reg(x, y, noc_id, "nonposted write words sent", 0x8)
-            self.read_print_noc_reg(x, y, noc_id, "posted write words sent", 0x9)
-            self.read_print_noc_reg(x, y, noc_id, "write acks received", 0x1)
-            self.read_print_noc_reg(x, y, noc_id, "read reqs sent", 0x5)
-            self.read_print_noc_reg(x, y, noc_id, "read words received", 0x3)
-            self.read_print_noc_reg(x, y, noc_id, "read resps received", 0x2)
+            self.read_print_noc_reg(noc0_loc, noc_id, "nonposted write reqs sent", 0xA)
+            self.read_print_noc_reg(noc0_loc, noc_id, "posted write reqs sent", 0xB)
+            self.read_print_noc_reg(noc0_loc, noc_id, "nonposted write words sent", 0x8)
+            self.read_print_noc_reg(noc0_loc, noc_id, "posted write words sent", 0x9)
+            self.read_print_noc_reg(noc0_loc, noc_id, "write acks received", 0x1)
+            self.read_print_noc_reg(noc0_loc, noc_id, "read reqs sent", 0x5)
+            self.read_print_noc_reg(noc0_loc, noc_id, "read words received", 0x3)
+            self.read_print_noc_reg(noc0_loc, noc_id, "read resps received", 0x2)
             print()
-            self.read_print_noc_reg(x, y, noc_id, "nonposted write reqs received", 0x1A)
-            self.read_print_noc_reg(x, y, noc_id, "posted write reqs received", 0x1B)
-            self.read_print_noc_reg(x, y, noc_id, "nonposted write words received", 0x18)
-            self.read_print_noc_reg(x, y, noc_id, "posted write words received", 0x19)
-            self.read_print_noc_reg(x, y, noc_id, "write acks sent", 0x10)
-            self.read_print_noc_reg(x, y, noc_id, "read reqs received", 0x15)
-            self.read_print_noc_reg(x, y, noc_id, "read words sent", 0x13)
-            self.read_print_noc_reg(x, y, noc_id, "read resps sent", 0x12)
+            self.read_print_noc_reg(noc0_loc, noc_id, "nonposted write reqs received", 0x1A)
+            self.read_print_noc_reg(noc0_loc, noc_id, "posted write reqs received", 0x1B)
+            self.read_print_noc_reg(noc0_loc, noc_id, "nonposted write words received", 0x18)
+            self.read_print_noc_reg(noc0_loc, noc_id, "posted write words received", 0x19)
+            self.read_print_noc_reg(noc0_loc, noc_id, "write acks sent", 0x10)
+            self.read_print_noc_reg(noc0_loc, noc_id, "read reqs received", 0x15)
+            self.read_print_noc_reg(noc0_loc, noc_id, "read words sent", 0x13)
+            self.read_print_noc_reg(noc0_loc, noc_id, "read resps sent", 0x12)
             print()
-            self.read_print_noc_reg(x, y, noc_id, "router port x out vc full credit out vc stall", 0x24)
-            self.read_print_noc_reg(x, y, noc_id, "router port y out vc full credit out vc stall", 0x22)
-            self.read_print_noc_reg(x, y, noc_id, "router port niu out vc full credit out vc stall", 0x20)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port x out vc full credit out vc stall", 0x24)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port y out vc full credit out vc stall", 0x22)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port niu out vc full credit out vc stall", 0x20)
             print()
-            self.read_print_noc_reg(x, y, noc_id, "router port x VC14 & VC15 dbg", 0x3d)
-            self.read_print_noc_reg(x, y, noc_id, "router port x VC12 & VC13 dbg", 0x3c)
-            self.read_print_noc_reg(x, y, noc_id, "router port x VC10 & VC11 dbg", 0x3b)
-            self.read_print_noc_reg(x, y, noc_id, "router port x VC8 & VC9 dbg", 0x3a)
-            self.read_print_noc_reg(x, y, noc_id, "router port x VC6 & VC7 dbg", 0x39)
-            self.read_print_noc_reg(x, y, noc_id, "router port x VC4 & VC5 dbg", 0x38)
-            self.read_print_noc_reg(x, y, noc_id, "router port x VC2 & VC3 dbg", 0x37)
-            self.read_print_noc_reg(x, y, noc_id, "router port x VC0 & VC1 dbg", 0x36)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC14 & VC15 dbg", 0x3d)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC12 & VC13 dbg", 0x3c)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC10 & VC11 dbg", 0x3b)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC8 & VC9 dbg", 0x3a)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC6 & VC7 dbg", 0x39)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC4 & VC5 dbg", 0x38)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC2 & VC3 dbg", 0x37)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC0 & VC1 dbg", 0x36)
             print()
-            self.read_print_noc_reg(x, y, noc_id, "router port y VC14 & VC15 dbg", 0x35)
-            self.read_print_noc_reg(x, y, noc_id, "router port y VC12 & VC13 dbg", 0x34)
-            self.read_print_noc_reg(x, y, noc_id, "router port y VC10 & VC11 dbg", 0x33)
-            self.read_print_noc_reg(x, y, noc_id, "router port y VC8 & VC9 dbg", 0x32)
-            self.read_print_noc_reg(x, y, noc_id, "router port y VC6 & VC7 dbg", 0x31)
-            self.read_print_noc_reg(x, y, noc_id, "router port y VC4 & VC5 dbg", 0x30)
-            self.read_print_noc_reg(x, y, noc_id, "router port y VC2 & VC3 dbg", 0x2f)
-            self.read_print_noc_reg(x, y, noc_id, "router port y VC0 & VC1 dbg", 0x2e)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC14 & VC15 dbg", 0x35)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC12 & VC13 dbg", 0x34)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC10 & VC11 dbg", 0x33)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC8 & VC9 dbg", 0x32)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC6 & VC7 dbg", 0x31)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC4 & VC5 dbg", 0x30)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC2 & VC3 dbg", 0x2f)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC0 & VC1 dbg", 0x2e)
             print()
-            self.read_print_noc_reg(x, y, noc_id, "router port niu VC6 & VC7 dbg", 0x29)
-            self.read_print_noc_reg(x, y, noc_id, "router port niu VC4 & VC5 dbg", 0x28)
-            self.read_print_noc_reg(x, y, noc_id, "router port niu VC2 & VC3 dbg", 0x27)
-            self.read_print_noc_reg(x, y, noc_id, "router port niu VC0 & VC1 dbg", 0x26)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port niu VC6 & VC7 dbg", 0x29)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port niu VC4 & VC5 dbg", 0x28)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port niu VC2 & VC3 dbg", 0x27)
+            self.read_print_noc_reg(noc0_loc, noc_id, "router port niu VC0 & VC1 dbg", 0x26)
 
         en = 1
         rd_sel = 0
@@ -457,61 +458,63 @@ class Device(TTObject):
 
         sig_sel = 0xff
         rd_sel = 0
-        PCI_IFC.pci_write_xy(self.id(), x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        test_val1 = PCI_IFC.pci_read_xy(self.id(), x, y, 0, 0xffb1205c)
+        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        test_val1 = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c)
         rd_sel = 1
-        PCI_IFC.pci_write_xy(self.id(), x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        test_val2 = PCI_IFC.pci_read_xy(self.id(), x, y, 0, 0xffb1205c)
+        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        test_val2 = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c)
 
         rd_sel = 0
         sig_sel = 2*self.SIG_SEL_CONST
-        PCI_IFC.pci_write_xy(self.id(), x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        brisc_pc = PCI_IFC.pci_read_xy(self.id(), x, y, 0, 0xffb1205c) & pc_mask
+        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        brisc_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         # Doesn't work - looks like a bug for selecting inputs > 31 in daisy stop
         # rd_sel = 0
         # sig_sel = 2*16
-        # PCI_IFC.pci_write_xy(self.id(), x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        # nrisc_pc = PCI_IFC.pci_read_xy(self.id(), x, y, 0, 0xffb1205c) & pc_mask
+        # PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        # nrisc_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         rd_sel = 0
         sig_sel = 2*10
-        PCI_IFC.pci_write_xy(self.id(), x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        trisc0_pc = PCI_IFC.pci_read_xy(self.id(), x, y, 0, 0xffb1205c) & pc_mask
+        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc0_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         rd_sel = 0
         sig_sel = 2*11
-        PCI_IFC.pci_write_xy(self.id(), x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        trisc1_pc = PCI_IFC.pci_read_xy(self.id(), x, y, 0, 0xffb1205c) & pc_mask
+        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc1_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         rd_sel = 0
         sig_sel = 2*12
-        PCI_IFC.pci_write_xy(self.id(), x, y, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        trisc2_pc = PCI_IFC.pci_read_xy(self.id(), x, y, 0, 0xffb1205c) & pc_mask
+        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc2_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
-        # IH: Commented out to reduce chatter
         print()
+        x, y = noc0_loc
         print(f"Tensix x={x:02d},y={y:02d} => dbus_test_val1 (expect 7)={test_val1:x}, dbus_test_val2 (expect A5A5A5A5)={test_val2:x}")
         print(f"Tensix x={x:02d},y={y:02d} => brisc_pc=0x{brisc_pc:x}, trisc0_pc=0x{trisc0_pc:x}, trisc1_pc=0x{trisc1_pc:x}, trisc2_pc=0x{trisc2_pc:x}")
 
-        PCI_IFC.pci_write_xy(self.id(), x, y, 0, 0xffb12054, 0)
+        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, 0)
 
     # Reads and immediately prints a value of a given NOC register
-    def read_print_noc_reg(self, x, y, noc_id, reg_name, reg_index):
+    def read_print_noc_reg(self, noc0_loc, noc_id, reg_name, reg_index):
+        x, y = noc0_loc
         reg_addr = 0xffb20000 + (noc_id*0x10000) + 0x200 + (reg_index*4)
         val = PCI_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
         print(f"Tensix x={x:02d},y={y:02d} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})")
 
     # Extracts and returns a single field of a stream register
-    def get_stream_reg_field(self, x, y, stream_id, reg_index, start_bit, num_bits):
+    def get_stream_reg_field(self, noc0_loc, stream_id, reg_index, start_bit, num_bits):
+        x, y = noc0_loc
         reg_addr = 0xFFB40000 + (stream_id*0x1000) + (reg_index*4)
         val = PCI_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
         mask = (1 << num_bits) - 1
         val = (val >> start_bit) & mask
         return val
 
-    def get_stream_phase (self, x, y, stream_id):
-        return self.get_stream_reg_field(x, y, stream_id, 11, 0, 20)
+    def get_stream_phase (self, noc0_loc, stream_id):
+        return self.get_stream_reg_field(noc0_loc, stream_id, 11, 0, 20)
 
     # Returns whether the stream is configured
     def is_stream_configured(self, stream_data):
@@ -528,10 +531,10 @@ class Device(TTObject):
             (stream_data["DEBUG_STATUS[1]"] != 0) or \
             (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x4 or \
             (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x2
-    def is_gsync_hung (self, x, y):
-        return PCI_IFC.pci_read_xy(self.id(), x, y, 0, 0xffb2010c) == 0xB0010000
-    def is_ncrisc_done (self, x, y):
-        return PCI_IFC.pci_read_xy(self.id(), x, y, 0, 0xffb2010c) == 0x1FFFFFF1
+    def is_gsync_hung (self, noc0_loc):
+        return PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb2010c) == 0xB0010000
+    def is_ncrisc_done (self, noc0_loc):
+        return PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb2010c) == 0x1FFFFFF1
 
     NCRISC_STATUS_REG_ADDR=0xFFB2010C
     BRISC_STATUS_REG_ADDR=0xFFB3010C
@@ -584,7 +587,7 @@ class Device(TTObject):
     BRISC_STATUS_REG_ADDR=BRISC_STATUS_REG_ADDR
 
     def read_stream_regs(self, noc0_loc, stream_id):
-        return self.read_stream_regs_direct (noc0_loc[0], noc0_loc[1], stream_id)
+        return self.read_stream_regs_direct (noc0_loc, stream_id)
 
     def status_register_summary(self, addr, ver = 0):
         coords = self.get_block_locations ()
@@ -599,11 +602,11 @@ class Device(TTObject):
                 status_descs_rows.append([f"{loc[0]:d}-{loc[1]:d}",f"{status_descs[loc][0]:08x}", f"{status_descs[loc][1]}"]);
         return status_descs_rows
 
-    def as_noc_0 (self, x, y, noc_id):
+    def as_noc_0 (self, noc_loc, noc_id):
         if noc_id == 0:
-            return (x, y)
+            return noc_loc
         else:
-            return (self.noc1_to_noc0 (x,y))
+            return (self.noc1_to_noc0 (noc_loc))
 
     def stream_epoch (self, stream_regs):
         return int(stream_regs['CURR_PHASE']) >> 10
