@@ -7,6 +7,7 @@ from tabulate import tabulate
 import tt_util as util, tt_device, tt_netlist
 from prompt_toolkit import PromptSession
 from prompt_toolkit.formatted_text import HTML
+from tt_graph import Queue
 
 parser = argparse.ArgumentParser(description=__doc__ + tt_device.STUB_HELP)
 parser.add_argument('output_dir', type=str, nargs='?', default=None, help='Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used')
@@ -102,12 +103,12 @@ def print_dram_queue_summary (cmd, context, ui_state = None):
             if (buffer_data["dram_buf_flag"] != 0 or (buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0)) and not buffer.replicated:
                 dram_chan = buffer_data["dram_chan"]
                 dram_addr = buffer_data['dram_addr']
-                dram_loc = device.CHANNEL_TO_DRAM_LOC[dram_chan]
+                dram_loc = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
                 rdptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
                 wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
                 slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
                 queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
-                occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - 2 * buffer_data["q_slots"])
+                occupancy = Queue.occupancy (buffer_data["q_slots"], wrptr, rdptr)
 
                 input_buffer_op_name_list = []
                 for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'input'):
@@ -145,7 +146,7 @@ def print_host_queue_summary (cmd, context, ui_state):
                     wrptr = tt_device.PCI_IFC.host_dma_read (dram_addr + 4)
                     slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
                     queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
-                    occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - 2 * buffer_data["q_slots"])
+                    occupancy = Queue.occupancy (buffer_data["q_slots"], wrptr, rdptr)
 
                     # IMPROVE: Duplicated from print_dram_queue_summary. Merge into one function.
                     input_buffer_op_name_list = []
@@ -201,7 +202,7 @@ def print_epoch_queue_summary (cmd, context, ui_state):
         dram_addr = EPOCH_QUEUE_START_ADDR + offset
         rdptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
         wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
-        occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - 2 * EPOCH_Q_NUM_SLOTS)
+        occupancy = Queue.occupancy (EPOCH_Q_NUM_SLOTS, wrptr, rdptr)
         if occupancy > 0:
             table.append ([ f"{x}-{y}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
 

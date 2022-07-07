@@ -12,6 +12,12 @@ class Queue(TTObject):
         self._id = name
         self.output_ops = set() # set of names of queue's output_ops
 
+    # Class functions
+    def occupancy (entries, wrptr, rdptr):
+        return (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - 2 * entries)
+    def to_str (channel, addr):
+        return f"Ch%d-0x%x" % (channel, addr)
+
     # Accessors
     def outputs_as_str(self):
         ret_str = ""
@@ -172,14 +178,14 @@ class Graph(TTObject):
                 buffer_set.add (b_root["uniqid"])
         return list(buffer_set)
 
-    # Checks if a given buffer is and output buffer (shows up in the input_list of a pipe)
+    # Checks if a given buffer is an input buffer (i.e. it shows up in the input_list of a pipe)
     def is_input_buffer(self, buffer_id):
         for p in self.pipes:
             p_root = self.get_pipe (p).root
             if buffer_id in p_root["input_list"]: return True
         return False
 
-    # Checks if a given buffer is an output buffer (shows up in the output_list of a pipe)
+    # Checks if a given buffer is an output buffer (i.e. it shows up in the output_list of a pipe)
     def is_output_buffer(self, buffer_id):
         for p in self.pipes:
             p_root = self.get_pipe (p).root
@@ -284,7 +290,7 @@ class Graph(TTObject):
         opc = op['grid_loc'][1]
         for r in range(op['grid_size'][0]):
             for c in range(op['grid_size'][1]):
-                locations.append ( [ opr + r, opc + c ] )
+                locations.append ( ( opr + r, opc + c ) )
         return locations
 
     # Returns the full op name mapped to a given RC location
@@ -302,9 +308,14 @@ class Graph(TTObject):
         for op_name, op in self.root.items():
             if op_name not in ['target_device', 'input_count']:
                 op_locations = self.get_op_coords(op_name)
-                if [ r, c ] in op_locations:
+                if (r, c) in op_locations:
                     return op_name
         return None
+
+    # API
+    def get_op_buffers (self, op_name):
+        op_buffers = set( b for _, b in self.buffers.items() if b.root["md_op_name"] == op_name )
+        return op_buffers
 
     # Test
     def _test_print(self):

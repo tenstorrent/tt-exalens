@@ -179,10 +179,15 @@ def write_to_yaml_file (data, filename):
         yaml.dump(data, output_yaml_file)
 
 # Takes in data in row/column format and returns string with aligned columns
+# Usage:
+# column_format = [
+#     { 'key_name' : None,          'title': 'Name',   'formatter': None },
+#     { 'key_name' : 'target_device', 'title': 'Device', 'formatter': lambda x: f"{util.CLR_RED}{x}{util.CLR_END}" },
+# ]
+# table=util.TabulateTable(column_format)
+# ... table.add_row (row_key_name, row_data_dict)
+# print (table)
 class TabulateTable:
-    # column_format = [
-    #     { 'key_name' : None,          'title': 'Name',   'formatter': None },
-    #     { 'key_name' : 'target_device', 'title': 'Device', 'formatter': lambda x: f"{util.CLR_RED}{x}{util.CLR_END}" },
 
     # How to format across columns.
     # if 'key_name' is None, the 'key' argument to add_row is used for that column

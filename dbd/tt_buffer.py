@@ -19,4 +19,4 @@ class Buffer(TTObject):
     # Renderer
     def __str__(self):
         r = self.root
-        return f"{super().__str__()}, coord: {r['core_coordinates']}"
+        return f"{super().__str__()}, RC coord: [{r['core_coordinates'][0]}, {r['core_coordinates'][1]}]"

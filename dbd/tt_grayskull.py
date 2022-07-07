@@ -11,7 +11,7 @@ import tt_device
 class GrayskullDevice (tt_device.Device):
     SIG_SEL_CONST = 9
     # Some of this can be read from architecture yaml file
-    CHANNEL_TO_DRAM_LOC = [(1, 0), (1, 6), (4, 0), (4, 6), (7, 0), (7, 6), (10, 0), (10, 6)]
+    DRAM_CHANNEL_TO_NOC0_LOC = [(1, 0), (1, 6), (4, 0), (4, 6), (7, 0), (7, 6), (10, 0), (10, 6)]
 
     # Physical location mapping
     PHYS_X_TO_NOC_0_X = [ 0, 12, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6 ]
