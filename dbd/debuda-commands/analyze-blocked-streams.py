@@ -117,7 +117,6 @@ def run(args, context, ui_state = None):
         last_core_loc = None
 
         for block_loc in device.get_block_locations (block_type = "functional_workers"):
-            x, y = block_loc[0], block_loc[1]
             rc_loc = device.noc0_to_rc (block_loc)
             has_active_stream = device_data[device_id]["cores"][block_loc]["has_active_stream"]
             has_empty_inputs = device_data[device_id]["cores"][block_loc]["has_empty_inputs"]
@@ -137,7 +136,7 @@ def run(args, context, ui_state = None):
                         if epoch_id in epoch_to_graph_map:
                             graph = epoch_to_graph_map[epoch_id]
                             op = graph.core_coord_to_full_op_name(rc_loc)
-                        core_loc = f"{x}-{y}"
+                        core_loc = f"{util.noc_loc_str(block_loc)}"
                         fan_in_cores = device_data[device_id]['cores'][block_loc]['fan_in_cores']
                         depends_on_str = ""
                         flag = ""
@@ -161,8 +160,8 @@ def run(args, context, ui_state = None):
                     if add_stream_to_navigation_suggestions:
                         navigation_suggestions.append (\
                             { 'description': 'Go to stream',
-                                'cmd' : f"s {x} {y} {stream_id}",
-                                'loc' : (x, y)
+                                'cmd' : f"s {block_loc[0]} {block_loc[1]} {stream_id}",
+                                'loc' : block_loc
                             })
 
 

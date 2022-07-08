@@ -90,6 +90,12 @@ def dict_to_table (dct):
         table = [ [ "", "" ] ]
     return table
 
+# Print noc0 coordinates as x-y, and RC coords as [r,c]
+def noc_loc_str (noc_loc):
+    return f"{noc_loc[0]}-{noc_loc[1]}"
+def rc_loc_str (rc_loc):
+    return f"[{rc_loc[0]},{rc_loc[1]}]"
+
 # Given two tables 'a' and 'b' merge them into a wider table
 def merge_tables_side_by_side (a, b):
     width_a = len(a[0])

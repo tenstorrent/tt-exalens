@@ -204,7 +204,7 @@ def print_epoch_queue_summary (cmd, context, ui_state):
         wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
         occupancy = Queue.occupancy (EPOCH_Q_NUM_SLOTS, wrptr, rdptr)
         if occupancy > 0:
-            table.append ([ f"{x}-{y}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
+            table.append ([ f"{util.noc_loc_str((x, y))}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
 
     if len(table) > 0:
         print (tabulate(table, headers=["Location", "Address", "RD ptr", "WR ptr", "Occupancy" ] ))
@@ -215,7 +215,7 @@ def print_epoch_queue_summary (cmd, context, ui_state):
 
 # A helper to print the result of a single PCI read
 def print_a_pci_read (x, y, addr, val, comment=""):
-    print(f"{x}-{y} 0x{addr:08x} => 0x{val:08x} ({val:d}) {comment}")
+    print(f"{util.noc_loc_str((x, y))} 0x{addr:08x} => 0x{val:08x} ({val:d}) {comment}")
 
 # Perform a burst of PCI reads and print results.
 # If burst_type is 1, read the same location for a second and print a report
@@ -398,7 +398,7 @@ def main(args, context):
 
         if ui_state['current_x'] is not None and ui_state['current_y'] is not None and ui_state['current_epoch_id'] is not None and ui_state['current_device'] is not None:
             row, col = ui_state['current_device'].noc0_to_rc ( noc0_loc )
-            ui_state['current_prompt'] = f"core:{util.CLR_PROMPT}{ui_state['current_x']}-{ui_state['current_y']}{util.CLR_PROMPT_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_PROMPT_END} stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_PROMPT_END} "
+            ui_state['current_prompt'] = f"core:{util.CLR_PROMPT}{util.noc_loc_str(noc0_loc)}{util.CLR_PROMPT_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_PROMPT_END} stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_PROMPT_END} "
 
         try:
             ui_state['current_graph_name'] = context.netlist.epoch_id_to_graph_name(ui_state['current_epoch_id'])

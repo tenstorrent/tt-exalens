@@ -15,8 +15,7 @@ def run(args, context, ui_state = None):
         core_locations = current_device.get_block_locations (block_type = "functional_workers")
 
     for core_loc in core_locations:
-        x, y = core_loc[0], core_loc[1]
-        print (f"=== Debug registers for core {x}-{y} ===")
+        print (f"=== Debug registers for core {util.noc_loc_str(core_loc)} ===")
         THREADS = ["T0", "T1", "T2", "FW"]
 
         # Get the register values

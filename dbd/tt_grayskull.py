@@ -26,9 +26,9 @@ class GrayskullDevice (tt_device.Device):
     def noc0_to_rc (self, noc0_loc):
         noc0_x, noc0_y = noc0_loc
         if noc0_y == 0 or noc0_y == 6:
-            assert False, f"Coordinate {noc0_x}-{noc0_y} does have an RC coordinate"
+            assert False, "NOC0 y=0 and y=6 do not have an RC coordinate"
         if noc0_x == 0:
-            assert False, f"Coordinate {noc0_x}-{noc0_y} does have an RC coordinate"
+            assert False, "NOC0 x=0 does not have an RC coordinate"
         row = noc0_y - 1
         col = noc0_x - 1
         if noc0_y > 6: row-=1

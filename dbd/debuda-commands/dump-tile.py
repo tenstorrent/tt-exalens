@@ -70,9 +70,9 @@ def dump_message_xy(context, ui_state, tile_id, raw):
                 data_format = tt_netlist.get_data_format_from_string (data_format_str)
 
                 # 3. Dump the tile
-                current_device.dump_tile(*noc0_loc, msg_addr, msg_size, data_format)
+                current_device.dump_tile(noc0_loc, msg_addr, msg_size, data_format)
             else:
-                current_device.dump_memory(*noc0_loc, msg_addr, msg_size)
+                current_device.dump_memory(noc0_loc, msg_addr, msg_size)
         else:
             print(f"Message id should be in range (1, {buffer_size//msg_size})")
     else:

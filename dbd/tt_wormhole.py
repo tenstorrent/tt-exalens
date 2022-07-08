@@ -44,17 +44,6 @@ src_state_map = {
     3 : "SRC_ENDPOINT"
     }
 
-def test_rc_to_noc0 ():
-    for r in range (0,10):
-        for c in range (0,10):
-            nx, ny = rc_to_noc0(r, c)
-            print (f"Checking rc {r},{c} -> {nx}-{ny}", end='')
-            nr, nc = noc0_to_rc(nx, ny)
-            if not (c == nc and r == nr):
-                print ("Not good: ", r, c, nr, nc)
-            else:
-                print()
-
 #
 # Device
 #

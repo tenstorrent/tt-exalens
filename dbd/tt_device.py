@@ -75,14 +75,14 @@ class DEBUDA_SERVER_IFC:
     # to the given location at the address.
     def pci_read_xy(chip_id, x, y, noc_id, reg_addr):
         assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
-        # print (f"Reading {x}-{y} 0x{reg_addr:x}")
+        # print (f"Reading {util.noc_loc_str((x, y))} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x02', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, 0))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
         return ret_val
     def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
         assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
-        # print (f"Reading {x}-{y} 0x{reg_addr:x}")
+        # print (f"Reading {util.noc_loc_str((x, y))} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x04', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, data))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
@@ -95,7 +95,7 @@ class DEBUDA_SERVER_IFC:
         return ret_val
     def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
         assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
-        # print (f"Reading {x}-{y} 0x{reg_addr:x}")
+        # print (f"Reading {util.noc_loc_str((x, y))} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x05', chip_id, x, y, z, reg_addr, data_format<<16 + message_size))
         data = data_format * 2**16 + msg_size
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x05', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), z.to_bytes(1, byteorder='big'), reg_addr, data))
@@ -166,19 +166,19 @@ class PCI_IFC (DEBUDA_SERVER_CACHED_IFC):
     pass
 
 # Prints contents of core's memory
-def dump_memory(device_id, x, y, addr, size):
+def dump_memory(device_id, noc0_loc, addr, size):
     for k in range(0, size//4//16 + 1):
         row = []
         for j in range(0, 16):
             if (addr + k*64 + j* 4 < addr + size):
-                val = PCI_IFC.pci_read_xy(device_id, x, y, 0, addr + k*64 + j*4)
+                val = PCI_IFC.pci_read_xy(device_id, *noc0_loc, 0, addr + k*64 + j*4)
                 row.append(f"0x{val:08x}")
         s = " ".join(row)
-        print(f"{x}-{y} 0x{(addr + k*64):08x} => {s}")
+        print(f"{util.noc_loc_str(noc0_loc)} 0x{(addr + k*64):08x} => {s}")
 
 # Dumps tile in format received form tt_tile::get_string
-def dump_tile(chip, x, y, addr, size, data_format):
-    s = PCI_IFC.pci_read_tile(chip, x, y, 0, addr, size, data_format)
+def dump_tile(chip, noc0_loc, addr, size, data_format):
+    s = PCI_IFC.pci_read_tile(chip, *noc0_loc, 0, addr, size, data_format)
     print(s.decode("utf-8"))
 
 #
@@ -353,16 +353,16 @@ class Device(TTObject):
         table_str = tabulate(rows, tablefmt='plain')
         return table_str
 
-    def dump_memory(self, x, y, addr, size):
-        return dump_memory(self.id(), x, y, addr, size)
-    def dump_tile(self, x, y, addr, size, data_format):
-        return dump_tile(self.id(), x, y, addr, size, data_format)
+    def dump_memory(self, noc0_loc, addr, size):
+        return dump_memory(self.id(), noc0_loc, addr, size)
+    def dump_tile(self, noc0_loc, addr, size, data_format):
+        return dump_tile(self.id(), noc0_loc, addr, size, data_format)
 
     def __str__(self):
         return self.render()
 
     # Reads and returns the Risc debug registers
-    def get_debug_regs(self, x, y):
+    def get_debug_regs(self, noc0_loc):
         DEBUG_MAILBOX_BUF_BASE  = 112
         DEBUG_MAILBOX_BUF_SIZE  = 64
         THREAD_COUNT = 4
@@ -371,7 +371,7 @@ class Device(TTObject):
         for thread_idx in range (THREAD_COUNT):
             for reg_idx in range(DEBUG_MAILBOX_BUF_SIZE // THREAD_COUNT):
                 reg_addr = DEBUG_MAILBOX_BUF_BASE + thread_idx * DEBUG_MAILBOX_BUF_SIZE + reg_idx * 4
-                val = PCI_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
+                val = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, reg_addr)
                 debug_tables[thread_idx].append ({ "lo_val" : val & 0xffff, "hi_val": (val >> 16) & 0xffff })
         return debug_tables
 
