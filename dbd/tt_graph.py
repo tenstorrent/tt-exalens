@@ -1,6 +1,6 @@
 import tt_util as util
 import tt_stream
-from tt_object import TTObject
+from tt_object import TTObject, TTObjectSet
 from tt_pipe import Pipe
 from tt_buffer import Buffer
 from tt_object import TTObject
@@ -32,8 +32,8 @@ class Queue(TTObject):
 class Op(TTObject):
     def __init__(self, name, graph_id, data):
         self.root = data
+        self._id = name
         self._graph_id = graph_id
-        self._id = f"{self._graph_id}/{name}"
 
 # Class that represents a single graph within a netlist
 # Contains all the information from graph's blob.yaml and pipegen.yaml
@@ -47,7 +47,7 @@ class Graph(TTObject):
         self.root = root # The entry in netlist file
         self.pipegen_yaml = pipegen_yaml
         self.blob_yaml = blob_yaml
-        self.ops = dict()
+        self.ops = TTObjectSet()
 
         for op_name in self.op_names():
             op = Op (op_name, self.id(), self.root[op_name])
@@ -55,9 +55,9 @@ class Graph(TTObject):
 
     def load_pipegen_and_blob (self):
         # 1. Load pipegen_yaml
-        self.buffers = dict()
-        self.op_name_to_buffer_list = dict() # Cache for lookup by op name
-        self.pipes = dict()
+        self.buffers = TTObjectSet()
+        self.pipes = TTObjectSet()
+
         for key, val in self.pipegen_yaml.items():
             if key == "graph_name":
                 if self.id() != val:
@@ -65,10 +65,6 @@ class Graph(TTObject):
             elif "buffer" in key:
                 b = Buffer(val)
                 self.buffers[b.id()] = b
-                op_name = val["md_op_name"]
-                if op_name not in self.op_name_to_buffer_list:
-                    self.op_name_to_buffer_list[op_name] = []
-                self.op_name_to_buffer_list[op_name].append (b)
                 uniqid = val["uniqid"]
                 for r in range (1, val["replicate"]): # Handle replicated buffers (see issue #326)
                     val["uniqid"] = uniqid + r * val["scatter_gather_num_tiles"]
@@ -127,8 +123,6 @@ class Graph(TTObject):
     # Find a buffer given a buffer_id
     def get_buffer (self, buffer_id):
         return self.buffers.get (buffer_id, None)
-    def get_buffer_by_op_name (self, op_name):
-        return self.op_name_to_buffer_list.get (op_name, None)
     def get_pipe (self, pipe_id):
         return self.pipes.get (pipe_id, None)
     def get_stream (self, stream_loc):
@@ -140,7 +134,7 @@ class Graph(TTObject):
         return object.__getattribute__(self, name)
 
     # Given a buffer list, find all buffers that are connected (pipegen.yaml)
-    # connection can be src, dest, or srcdest (for both)
+    # connection can be src, dest, or srcdest (for either)
     def get_connected_buffers (self, buffer_id_list, connection="dest"):
         if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ] # If not a list, assume a single buffer id, and create a list from it
 
@@ -182,16 +176,20 @@ class Graph(TTObject):
 
     # Checks if a given buffer is a source buffer (i.e. it shows up in the input_list of a pipe)
     def is_src_buffer(self, buffer_id):
+        if type(buffer_id) == Buffer: buffer_id = buffer_id.id()
         for p in self.pipes:
             p_root = self.get_pipe (p).root
-            if buffer_id in p_root["input_list"]: return True
+            if buffer_id in p_root["input_list"]:
+                return True
         return False
 
     # Checks if a given buffer is a destination buffer (i.e. it shows up in the output_list of a pipe)
     def is_dest_buffer(self, buffer_id):
+        if type(buffer_id) == Buffer: buffer_id = buffer_id.id()
         for p in self.pipes:
             p_root = self.get_pipe (p).root
-            if buffer_id in p_root["output_list"]: return True
+            if buffer_id in p_root["output_list"]:
+                return True
         return False
 
     # Filters a list of buffers, to return only src or dest buffers

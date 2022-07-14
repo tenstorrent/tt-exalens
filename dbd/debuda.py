@@ -52,13 +52,6 @@ def print_buffer_data (cmd, context):
                     print (f"( {util.CLR_BLUE}Output{util.CLR_END} of pipe {pipe.id()} )")
                     navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
 
-        elif type(buffer_id) == str:
-            buffer_list = graph.get_buffer_by_op_name(buffer_id)
-            if buffer_list:
-                print (f"{util.CLR_BLUE}Found {len(buffer_list)} buffers{util.CLR_END}")
-                for buffer in buffer_list:
-                    navigation_suggestions.append ({ 'cmd' : f"b {buffer.id()}", 'description' : "Show buffer" })
-
     return navigation_suggestions
 
 # Find occurrences of pipe with ID 'pipe_id' across all epochs, and print the structures that reference them
