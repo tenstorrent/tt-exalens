@@ -90,10 +90,10 @@ class Netlist:
 
         # 4. Extra stuff
         for graph_name, graph in self.graphs.items():
-            for op_name, op in graph.ops.items():
+            for op in graph.ops:
                 for input in op.root["inputs"]:
                     if input in self.queues:
-                        self.queues[input].output_ops.add (op_name)
+                        self.queues[input].output_ops.add (op.id())
 
     # Accessors
     def epoch_ids (self):

@@ -1,5 +1,5 @@
 import tt_util as util
-import tt_stream
+from tt_stream import Stream
 from tt_object import TTObject, TTObjectSet
 from tt_pipe import Pipe
 from tt_buffer import Buffer
@@ -51,12 +51,15 @@ class Graph(TTObject):
 
         for op_name in self.op_names():
             op = Op (op_name, self.id(), self.root[op_name])
-            self.ops[op_name] = op
+            self.ops.add(op)
 
     def load_pipegen_and_blob (self):
         # 1. Load pipegen_yaml
         self.buffers = TTObjectSet()
         self.pipes = TTObjectSet()
+
+        input_buffers_ids = set()
+        output_buffers_ids = set()
 
         for key, val in self.pipegen_yaml.items():
             if key == "graph_name":
@@ -64,70 +67,47 @@ class Graph(TTObject):
                     util.WARN(f"Expected 'graph_name: {self.id()}' in {self.pipegen_yaml.id()}, but got 'graph_name: {val}'")
             elif "buffer" in key:
                 b = Buffer(val)
-                self.buffers[b.id()] = b
+                self.buffers.add(b)
                 uniqid = val["uniqid"]
                 for r in range (1, val["replicate"]): # Handle replicated buffers (see issue #326)
                     val["uniqid"] = uniqid + r * val["scatter_gather_num_tiles"]
                     b = Buffer(val)
-                    self.buffers[b.id()] = b
+                    self.buffers.add(b)
                     b.replicated = True # Mark the buffers we created by replication
             elif "pipe" in key:
                 p = Pipe(val)
-                self.pipes[p.id()] = p
+                self.pipes.add(p)
+                input_buffers_ids.update (val['input_list'])
+                output_buffers_ids.update (val['output_list'])
             else:
                 raise RuntimeError(f"{self.pipegen_yaml.id()}: Cannot interpret {key}: {val}")
 
-        # 1a. Link buffers to pipe
-        max_lines_printed_for_num_missing_buffers = 10
-        def print_missing_buffer (self, buf_id, pipe_id, is_input):
-            nonlocal max_lines_printed_for_num_missing_buffers
-            if max_lines_printed_for_num_missing_buffers > 0:
-                max_lines_printed_for_num_missing_buffers -= 1
-                if max_lines_printed_for_num_missing_buffers == 0:
-                    util.ERROR ("... skipping the rest ...")
-                else:
-                    util.ERROR (f"Buffer {buf_id} shows up as an {'input' if is_input else 'output'} of pipe {pipe_id} but has no definition in graph {self.id()}. See {self.pipegen_yaml.filepath}")
-
-        for _, p in self.pipes.items():
-            for buf_id in p.inputs():
-                if buf_id not in self.buffers:
-                    print_missing_buffer (self, buf_id, p.id(), True)
-                else:
-                    self.buffers[buf_id].input_of_pipe_ids.add (p.id())
-
-            for buf_id in p.outputs():
-                if buf_id not in self.buffers:
-                    print_missing_buffer (self, buf_id, p.id(), False)
-                else:
-                    self.buffers[buf_id].output_of_pipe_ids.add (p.id())
+        for b in self.get_buffers (input_buffers_ids):
+            b.is_input = True
+        for b in self.get_buffers (output_buffers_ids):
+            assert not hasattr (b, 'is_input'), f"Buffer {b.id()} is already set as input, but now it wants to be output"
+            b.is_input = False
 
         # 2. Load blob_yaml
-        self.streams = dict()
+        self.streams = TTObjectSet()
         for key, val in self.blob_yaml.items():
             if key == "dram_blob":
                 util.VERBOSE ("- Skipping dram_blob")
             elif key == "dram_perf_dump_blob":
                 util.VERBOSE ("- Skipping dram_perf_dump_blob")
-            elif "phase" in key:
-                phase_id = int (key[6:])
+            elif key.startswith ("phase_"):
+                phase_id = int (key[6:]) # Skip phase_
                 for stream_designator, stream_data in val.items():
                     stream_data['phase_id'] = phase_id
-                    s = tt_stream.Stream (stream_designator, stream_data)
-                    self.streams[s.id()] = s
+                    s = Stream (stream_designator, stream_data)
+                    self.streams.add (s)
             else:
                 raise RuntimeError(f"{self.blob_yaml.id()}: Cannot interpret {key}: {val}")
 
 
     RECURSION_DEPTH = 0 # Temporary/debug limit to prevent infinite recursion
 
-    # Find a buffer given a buffer_id
-    def get_buffer (self, buffer_id):
-        return self.buffers.get (buffer_id, None)
-    def get_pipe (self, pipe_id):
-        return self.pipes.get (pipe_id, None)
-    def get_stream (self, stream_loc):
-        return self.streams.get (stream_loc, None)
-
+    # Overriding this to support lazy loading of yaml files (this can take a lot of time)
     def __getattr__(self, name):
         if name in { "buffers", "pipes", "streams" }:
             self.load_pipegen_and_blob() # Lazy-loaded structures
@@ -144,17 +124,17 @@ class Graph(TTObject):
         assert (look_for_src or look_for_dest), "Either src or dest must be present"
         for p in self.pipes:
             for b in buffer_id_list:
-                if look_for_dest and b in self.get_pipe(p).root["input_list"]:
-                    connected_buffers += self.get_pipe(p).root["output_list"]
-                if look_for_src and b in self.get_pipe(p).root["output_list"]:
-                    connected_buffers += self.get_pipe(p).root["input_list"]
+                if look_for_dest and b in p.root["input_list"]:
+                    connected_buffers += p.root["output_list"]
+                if look_for_src and b in p.root["output_list"]:
+                    connected_buffers += p.root["input_list"]
 
         return list(set(connected_buffers))
 
     # Given a buffer list, find all RC coordinates of the cores where the buffers reside
     def get_buff_core_coordinates_rc (self, buffer_id_list):
         if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ] # If not a list, assume a single buffer id, and create a list from it
-        buff_cores = { self.get_buffer(b).root["core_coordinates"] for b in self.buffers if b in buffer_id_list }
+        buff_cores = { b.root["core_coordinates"] for b in self.buffers if b.id() in buffer_id_list }
         return list (buff_cores)
 
     # Prints condensed information on a buffer (list)
@@ -169,17 +149,15 @@ class Graph(TTObject):
 
         buffer_set = set()
         for b in self.buffers:
-            b_root = self.get_buffer (b).root
-            if b_root["core_coordinates"] in core_coordinates_list_rc:
-                buffer_set.add (b_root["uniqid"])
+            if b.root["core_coordinates"] in core_coordinates_list_rc:
+                buffer_set.add (b.root["uniqid"])
         return list(buffer_set)
 
     # Checks if a given buffer is a source buffer (i.e. it shows up in the input_list of a pipe)
     def is_src_buffer(self, buffer_id):
         if type(buffer_id) == Buffer: buffer_id = buffer_id.id()
         for p in self.pipes:
-            p_root = self.get_pipe (p).root
-            if buffer_id in p_root["input_list"]:
+            if buffer_id in p.root["input_list"]:
                 return True
         return False
 
@@ -187,8 +165,7 @@ class Graph(TTObject):
     def is_dest_buffer(self, buffer_id):
         if type(buffer_id) == Buffer: buffer_id = buffer_id.id()
         for p in self.pipes:
-            p_root = self.get_pipe (p).root
-            if buffer_id in p_root["output_list"]:
+            if buffer_id in p.root["output_list"]:
                 return True
         return False
 
@@ -313,10 +290,117 @@ class Graph(TTObject):
                     return op_name
         return None
 
-    # API
+    # API NOVEAU!
     def get_op_buffers (self, op_name):
         op_buffers = set( b for _, b in self.buffers.items() if b.root["md_op_name"] == op_name )
         return op_buffers
+
+    def input_queues_to_op_map (self, netlist_queues):
+        graph_input_queues_to_op_map = dict()
+        for op_name in self.ops:
+            op = self.ops[op_name]
+            for input in op.root["inputs"]:
+                if input in netlist_queues:
+                    if input not in graph_input_queues_to_op_map:
+                        graph_input_queues_to_op_map[input] = set([ op_name ])
+                    else:
+                        graph_input_queues_to_op_map[input].add(op_name)
+        return graph_input_queues_to_op_map
+
+    # Return all immediate fan-out ops of a given op
+    def get_fanout (self, op_name):
+        ret_set = set()
+        for fanout_op_name, op in self.ops.items():
+            if op_name in op.root["inputs"]:
+                ret_set.add (fanout_op_name)
+        return ret_set
+
+    # Return all immediate fan-out ops of a given op
+    def get_fanin (self, op_name):
+        ret_set = set()
+        op = self.ops[op_name]
+        for fanin_op_name in op.root["inputs"]:
+            if fanin_op_name in self.ops: # Make sure it is an Op in this graph
+                ret_set.add (fanin_op_name)
+        return ret_set
+
+    # Get buffers on two connected ops A and B (A feeds B).
+    # Returns a set of tuples (buff_A, buff_B, pipe_id)
+    def get_buffers_and_pipes_and_streams (self, A, B):
+        assert A in self.get_fanin(B) and B in self.get_fanout(A), f"{A} does not feed {B}"
+
+        dest_buffer_ids = self.filter_buffers (set( b.id() for b in self.get_op_buffers (B) ), "dest")
+        buffer_and_pipes = set ()
+
+        util.VERBOSE (f"Running get_buffer_pars for {A}->{B}")
+        for dest_buffer_id in dest_buffer_ids:
+            for src_buffer_id in self.get_connected_buffers (dest_buffer_id, "src"):
+                if self.buffers[src_buffer_id].root["md_op_name"] == A: # src buffer is in op A
+                    pipes_with_src = set(self.get_pipes_for_buffer (src_buffer_id))
+                    pipes_with_dest = set(self.get_pipes_for_buffer (dest_buffer_id))
+                    # util.VERBOSE (f"pipes_with_src: {pipes_with_src}")
+                    # util.VERBOSE (f"pipes_with_dest: {pipes_with_dest}")
+                    pipes = pipes_with_dest.intersection(pipes_with_src)
+                    util.VERBOSE (f"intersection: {pipes}")
+                    for pipe_id in pipes:
+                        print (f"--------- pipe {pipe_id} for {src_buffer_id}->{dest_buffer_id}")
+                        assert src_buffer_id in self.pipes[pipe_id].root["input_list"], f"{src_buffer_id} not in input_list of {pipe_id}"
+                        assert dest_buffer_id in self.pipes[pipe_id].root["output_list"], f"{dest_buffer_id} not in output_list of {pipe_id}"
+                        src_stream_id = dest_stream_id = None
+                        for stream_id, s in self.streams.items():
+                            if s.get_buffer_id() == src_buffer_id:
+                                print (f"Match stream_id {stream_id} by src_buffer_id {src_buffer_id}")
+                            if s.get_buffer_id() == dest_buffer_id:
+                                print (f"Match stream_id {stream_id} by dest_buffer_id {dest_buffer_id}")
+                            if s.get_pipe_id() == pipe_id:
+                                print (f"Match stream_id {stream_id} by pipe_id {pipe_id}")
+                        # buffer_and_pipes.add ( (src_buffer_id, dest_buffer_id, pipe_id, src_stream_id, dest_stream_id ) )
+        return buffer_and_pipes
+
+    def get_buffers(self, where):
+        ret_val = TTObjectSet()
+        if type(where) == TTObjectSet or type(where) == set:
+            for o in where:
+                ob = self.get_buffers (o)
+                ret_val.update (ob)
+        elif type(where) == str or type(where) == int:
+            expected_id = int(where)
+            ret_val = TTObjectSet( { b : None for b in self.buffers if b.id() == expected_id } )
+        elif type(where) == Pipe:
+            ret_val = TTObjectSet( { b : None for b in self.buffers if b.id() in where.root['input_list'] or b.id() in where.root['output_list'] } )
+            pass
+        elif type(where) == Op:
+            ret_val = TTObjectSet( { b : None for b in self.buffers if b.root["md_op_name"] == where.id() } )
+        else:
+            raise TypeError (f"Usupported object type: {type(where)}")
+        return ret_val
+
+    def get_streams (self, where):
+        ret_val = TTObjectSet()
+        if type(where) == TTObjectSet or type(where) == set:
+            for o in where:
+                ob = self.get_streams (o)
+                ret_val.update (ob)
+        elif type(where) == tuple:
+            # Looking by strema location tuple
+            ret_val = TTObjectSet( { s : None for s in self.streams if s.id() == where } )
+        else:
+            raise TypeError (f"Usupported object type: {type(where)}")
+        return ret_val
+
+    def get_pipes (self, where):
+        ret_val = TTObjectSet()
+        if type(where) == TTObjectSet or type(where) == set:
+            for o in where:
+                ob = self.get_pipes (o)
+                ret_val.update (ob)
+        elif type(where) == int:
+            ret_val = TTObjectSet( { p : None for p in self.pipes if p.id() == where } )
+        elif type(where) == Buffer:
+            ret_val = TTObjectSet( { p : None for p in self.pipes if where.id() in p.root['input_list'] or where.id() in p.root['output_list'] } )
+        else:
+            raise TypeError (f"Usupported object type: {type(where)}")
+        return ret_val
 
     # Test
     def _test_print(self):

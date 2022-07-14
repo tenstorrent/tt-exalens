@@ -29,20 +29,25 @@ def run(args, context, ui_state = None):
             # As not all streams have buf_id, and not all have pipe_id, we try to find either
             relevant_buffers = set()
             relevant_pipes = set()
-            for op_buffer_id in op_buffer_ids:
-                if graph.is_dest_buffer (op_buffer_id):
-                    src_buffers = graph.get_connected_buffers (op_buffer_id, "src")
+            util.VERBOSE (f"Running wants_more_data_from_input for {op_name} on input {input_name}")
+            util.VERBOSE (f"  Found these buffers for {op_name}: {op_buffer_ids}")
+            for dest_buffer_id in op_buffer_ids:
+                if graph.is_dest_buffer (dest_buffer_id):
+                    src_buffers = graph.get_connected_buffers (dest_buffer_id, "src")
                     for bid in src_buffers:
                         b = graph.buffers[bid]
                         if b.root["md_op_name"] == input_name:
-                            relevant_buffers.add (op_buffer_id)
-                            pipes = graph.get_pipes_for_buffer (op_buffer_id)
+                            relevant_buffers.add (dest_buffer_id)
+                            pipes = graph.get_pipes_for_buffer (dest_buffer_id)
                             for p in pipes:
                                 relevant_pipes.add (p)
-
+            util.VERBOSE (f"  Found these source buffers for {input_name}->{op_name} conection: {relevant_buffers}")
             relevant_streams = set (s for _, s in graph.streams.items() if s.get_buffer_id() in relevant_buffers or s.get_pipe_id() in relevant_pipes)
+
             if not relevant_streams:
-                util.WARN (f"No streams for buffer {op_buffer_id} {' '.join (list(relevant_buffers))}")
+                util.WARN (f"No relevant streams for buffers {' '.join (list(relevant_buffers))}")
+            else:
+                util.VERBOSE (f"  Found these relevant_streams for {input_name}->{op_name} conection: {' '.join ([ s.__str__() for s in relevant_streams ])}")
 
             for s in relevant_streams:
                 stream_data = all_stream_regs.get (s.on_chip_id(), None)
@@ -67,41 +72,33 @@ def run(args, context, ui_state = None):
             graph_device = context.devices[context.netlist.graph_name_to_device_id(graph_name)]
 
             # 1. Find which queues are feeding the Ops in this graph
-            graph_input_queues_to_op_map = dict()
-            for op_name in graph.ops:
-                op = graph.ops[op_name]
-                for input in op.root["inputs"]:
-                    if input in context.netlist.queues:
-                        if input not in graph_input_queues_to_op_map:
-                            graph_input_queues_to_op_map[input] = [ op_name ]
-                        else:
-                            graph_input_queues_to_op_map[input].append(op_name)
+            graph_input_queues_to_op_map = graph.input_queues_to_op_map(context.netlist.queues)
 
-            # 2. For each such queue, see if the occupancy is 0
+            # 2. For each combination of queue->op test if queue has data and op wants data
+            problematic_ops = set()
             for q_name, ops in graph_input_queues_to_op_map.items():
                 q = context.netlist.queues[q_name]
                 q_data = q.root
                 if q_data['type'] != 'queue':
                     continue # Assuming, only queues can cause problems (i.e type: ram is OK)
 
-                loc_type = q_data['loc']
-                loc_array = q_data[loc_type]
+                q_loc = q_data['loc']
+                loc_array = q_data[q_loc]
                 entries = q_data["entries"]
                 for loc in loc_array:
                     # Get read and write pointers
-                    if loc_type == 'dram':
+                    if q_loc == 'dram':
                         dram_chan, dram_addr = loc[0], loc[1]
                         dram_noc0_loc = graph_device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
                         rdptr = graph_device.pci_read_xy (dram_noc0_loc[0], dram_noc0_loc[1], 0, dram_addr)
                         wrptr = graph_device.pci_read_xy (dram_noc0_loc[0], dram_noc0_loc[1], 0, dram_addr + 4)
-                    elif loc_type == 'host':
+                    elif q_loc == 'host':
                         rdptr = tt_device.PCI_IFC.host_dma_read (loc)
                         wrptr = tt_device.PCI_IFC.host_dma_read (loc + 4)
                     else:
-                        util.WARN (f"Unknown queue type {loc}")
+                        util.WARN (f"Unknown queue loc: {q_loc}")
                         continue
 
-                    # Calculate occupancy
                     input_has_data = Queue.occupancy(entries, wrptr, rdptr) > 0
                     for op_name in ops:
                         if not input_has_data:
@@ -109,8 +106,31 @@ def run(args, context, ui_state = None):
                             if op_wants_data:
                                 table.add_row (None, { 'op' : op_name, 'input' : q_name, 'has_data': input_has_data, "wants_data": op_wants_data })
                                 # util.WARN (f"Op {op_name}, input {q_name}: input_has_data {input_has_data} != {op_wants_data} op_wants_data")
+                                problematic_ops.add (op_name)
                                 all_good = False
-            # 3. For all queues that have data (occupancy != 0)
+
+            # Test other ops
+            visited_ops = set () # problematic_ops
+            ops_to_visit = set ()
+            for _, ops in graph_input_queues_to_op_map.items():
+                for op_name in ops:
+                    ops_to_visit.add (op_name)
+
+            while ops_to_visit:
+                new_ops_to_visit = set()
+                for op_name in ops_to_visit:
+                    if op_name not in visited_ops:
+                        fanout_ops = graph.get_fanout (op_name)
+                        new_ops_to_visit = new_ops_to_visit.union (fanout_ops)
+                        for dest_op_name in fanout_ops:
+                            op_wants_data = wants_more_data_from_input (all_stream_regs, graph, graph_device, dest_op_name, op_name)
+                            print (f"Wants more data {op_wants_data}: {op_name} -> {dest_op_name} ")
+                            buffers_and_pipes_and_streams = graph.get_buffers_and_pipes_and_streams (op_name, dest_op_name)
+                            for b in buffers_and_pipes_and_streams:
+                                print (b)
+                        visited_ops.add(op_name)
+                ops_to_visit = new_ops_to_visit
+
         if table.rows:
             print (table)
 

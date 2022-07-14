@@ -18,7 +18,7 @@ def get_l1_buffer_info_from_blob(device_id, graph, noc0_loc, stream_id, phase):
     buffer_size = 0
 
     stream_loc = (device_id, *noc0_loc, stream_id, phase)
-    stream = graph.streams[stream_loc]
+    stream = graph.get_streams(stream_loc).first()
 
     if stream.root.get("buf_addr"):
         buffer_addr = stream.root.get("buf_addr")
@@ -48,11 +48,11 @@ def dump_message_xy(context, ui_state, tile_id, raw):
             if is_tile:
                 # 1. Get the op name through coordinates.
                 stream_loc = (device_id, *noc0_loc, stream_id, current_phase)
-                stream = graph.get_stream (stream_loc)
+                stream = graph.get_streams(stream_loc).first()
                 if stream is None:
                     util.ERROR (f"Cannot find stream {stream_loc}")
                     return
-                buffer = graph.get_buffer (stream.get_buffer_id())
+                buffer = graph.get_buffers(stream.get_buffer_id()).first()
                 loc_rc = current_device.noc0_to_rc( noc0_loc )
                 op_name = graph.core_coord_to_op_name (loc_rc)
 
@@ -60,12 +60,13 @@ def dump_message_xy(context, ui_state, tile_id, raw):
                 op = graph.root[op_name]
                 assert (buffer.root['md_op_name'] == op_name) # Make sure the op name is the same as the one in the buffer itself
 
-                if buffer.is_op_input():
-                    data_format_str = op['in_df'][0] # FIX: we are picking the first from the list
-                elif buffer.is_op_output():
-                    data_format_str = op['out_df']
+                if hasattr (buffer, "is_input"):
+                    if buffer.is_input:
+                        data_format_str = op['in_df'][0] # FIX: we are picking the first from the list
+                    else:
+                        data_format_str = op['out_df']
                 else:
-                    util.ERROR (f"Cannot compute buffer data format of buffer f{buffer.id()}. It is both input of pipes {buffer.input_of_pipe_ids} and output of pipes {buffer.output_of_pipe_ids}")
+                    util.ERROR (f"Cannot compute buffer data format of buffer {buffer.id()}.")
                     return
                 data_format = tt_netlist.get_data_format_from_string (data_format_str)
 

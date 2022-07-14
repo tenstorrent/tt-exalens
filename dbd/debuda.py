@@ -37,20 +37,21 @@ def print_buffer_data (cmd, context):
     for epoch_id in context.netlist.epoch_ids():
         graph_name = context.netlist.epoch_id_to_graph_name(epoch_id)
         graph = context.netlist.graph(graph_name)
-        buffer = graph.get_buffer(buffer_id)
+        buffer = graph.get_buffers(buffer_id).first()
         if type(buffer_id) == int:
-            buffer = graph.get_buffer(buffer_id)
+            buffer = graph.get_buffers(buffer_id).first()
             if buffer:
                 util.print_columnar_dicts ([buffer.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
 
-            for p in graph.pipes:
-                pipe = graph.get_pipe(p)
+            for pipe in graph.pipes:
                 if buffer_id in pipe.root["input_list"]:
                     print (f"( {util.CLR_BLUE}Input{util.CLR_END} of pipe {pipe.id()} )")
                     navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
                 if buffer_id in pipe.root["output_list"]:
                     print (f"( {util.CLR_BLUE}Output{util.CLR_END} of pipe {pipe.id()} )")
                     navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
+        else:
+            raise TypeError (f"Usupported buffer_id type: {type(buffer_id)}")
 
     return navigation_suggestions
 
@@ -62,7 +63,7 @@ def print_pipe_data (cmd, context):
     for epoch_id in context.netlist.epoch_ids():
         graph_name = context.netlist.epoch_id_to_graph_name(epoch_id)
         graph = context.netlist.graph(graph_name)
-        pipe = graph.get_pipe(pipe_id)
+        pipe = graph.get_pipes(pipe_id).first()
         navigation_suggestions = [ ]
         if pipe:
             util.print_columnar_dicts ([pipe.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
@@ -91,7 +92,7 @@ def print_dram_queue_summary (cmd, context, ui_state = None):
         device_id = context.netlist.graph_name_to_device_id(graph_name)
         device = context.devices[device_id]
 
-        for buffer_id, buffer in graph.buffers.items():
+        for buffer in graph.buffers:
             buffer_data = buffer.root
             if (buffer_data["dram_buf_flag"] != 0 or (buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0)) and not buffer.replicated:
                 dram_chan = buffer_data["dram_chan"]
@@ -105,14 +106,14 @@ def print_dram_queue_summary (cmd, context, ui_state = None):
 
                 input_buffer_op_name_list = []
                 for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'src'):
-                    input_buffer_op_name_list.append (graph.get_buffer(other_buffer_id).root["md_op_name"])
+                    input_buffer_op_name_list.append (graph.get_buffers(other_buffer_id).first().root["md_op_name"])
                 output_buffer_op_name_list = []
                 for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'dest'):
-                    output_buffer_op_name_list.append (graph.get_buffer(other_buffer_id).root["md_op_name"])
+                    output_buffer_op_name_list.append (graph.get_buffers(other_buffer_id).first().root["md_op_name"])
 
                 input_ops = f"{' '.join (input_buffer_op_name_list)}"
                 output_ops = f"{' '.join (output_buffer_op_name_list)}"
-                table.append ([ buffer_id, buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], dram_chan, f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
+                table.append ([ buffer.id(), buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], dram_chan, f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
 
     print (tabulate(table, headers=["Buffer ID", "Op", "Input Ops", "Output Ops", "dram_buf_flag", "dram_io_flag", "Channel", "Address", "RD ptr", "WR ptr", "Occupancy", "Slots", "Size [bytes]"] ))
 
@@ -129,7 +130,7 @@ def print_host_queue_summary (cmd, context, ui_state):
         graph = context.netlist.graph(graph_name)
         device_id = context.netlist.graph_name_to_device_id(graph_name)
 
-        for buffer_id, buffer in graph.buffers.items():
+        for buffer in graph.buffers:
             buffer_data = buffer.root
             if buffer_data["dram_io_flag_is_remote"] != 0:
                 dram_addr = buffer_data['dram_addr']
@@ -152,7 +153,7 @@ def print_host_queue_summary (cmd, context, ui_state):
                     input_ops = f"{' '.join (input_buffer_op_name_list)}"
                     output_ops = f"{' '.join (output_buffer_op_name_list)}"
 
-                    table.append ([ buffer_id, buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
+                    table.append ([ buffer.id(), buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
 
     print (f"{util.CLR_INFO}Host queues (where dram_io_flag_is_remote!=0) for epoch %d {util.CLR_END}" % epoch_id)
     if len(table) > 0:

@@ -40,27 +40,30 @@ def run(args, context, ui_state = None):
 
     # 2. Find blob data
     stream_loc = (current_device_id, *noc0_loc, stream_id, int(regs['CURR_PHASE']))
-    if stream_loc in graph.streams:
-        stream_from_blob = graph.streams[stream_loc].root
+    stream_set = graph.get_streams(stream_loc)
+
+    if len(stream_set) == 1:
+        stream_from_blob = stream_set.first().root
         data_columns.append (stream_from_blob)
         title_columns.append ("Stream (blob.yaml)")
         # If there is an associated buffer, add it for showing.
         buf_id = stream_from_blob.get ("buf_id", None)
         if buf_id is not None:
             buffer_ids.add (buf_id)
+    else:
+        util.WARN (f"Cannot find stream {stream_loc} in blob data of graph {graph.id()}, or multiple streams found")
 
     # 2. Append buffers
-    for buffer_id in buffer_ids:
-        data_columns.append (graph.buffers[buffer_id].root)
-        title_columns.append (f"Buffer {buffer_id}")
+    buffers = graph.get_buffers (buffer_ids)
+    for b in buffers:
+        title_columns.append (f"Buffer {b.id()}")
+        data_columns.append (b.root)
 
     # 3. Append relevant pipes
-    for buffer_id in buffer_ids:
-        pipe_ids = graph.get_pipes_for_buffer(buffer_id)
-        for pipe_id in pipe_ids:
-            pipe = graph.get_pipe (pipe_id)
-            title_columns.append (f"Pipe {pipe_id}")
-            data_columns.append (pipe.root)
+    pipes = graph.get_pipes(buffers)
+    for pipe in pipes:
+        title_columns.append (f"Pipe {pipe.id()}")
+        data_columns.append (pipe.root)
 
     util.print_columnar_dicts (data_columns, title_columns)
 

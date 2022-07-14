@@ -109,8 +109,7 @@ class Stream(TTObject):
 
     def __init__(self, designator, data):
         self.designator = designator
-        self.location = Stream.get_stream_tuple_from_designator (designator)
-        self._id = self.location + ( data['phase_id'], )
+        self._id = Stream.get_stream_tuple_from_designator (designator) + ( data['phase_id'], )
         self.root = data
 
     # Accessors
@@ -121,7 +120,3 @@ class Stream(TTObject):
 
     def on_chip_id (self):
         return ( self._id[1], self._id[2], self._id[3], )
-
-    # Renderer
-    def __str__(self):
-        return f"{type(self).__name__}: id: {self.id()}"
