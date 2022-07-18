@@ -182,7 +182,7 @@ def print_epoch_queue_summary (cmd, context, ui_state):
     EPOCH_Q_NUM_SLOTS = 32
     epoch0_start_table_size_bytes = GridSizeRow*GridSizeCol*(EPOCH_Q_NUM_SLOTS*2+8)*4
     # DRAM_CHANNEL_CAPACITY_BYTES  = 1024 * 1024 * 1024
-    DRAM_PERF_SCRATCH_SIZE_BYTES =   8 * 1024 * 1024
+    DRAM_PERF_SCRATCH_SIZE_BYTES =   40 * 1024 * 1024
     # DRAM_HOST_MMIO_SIZE_BYTES    =  256 * 1024 * 1024
     reserved_size_bytes = DRAM_PERF_SCRATCH_SIZE_BYTES - epoch0_start_table_size_bytes
 
