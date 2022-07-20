@@ -12,8 +12,8 @@ for ARCH_NAME in ${ARCH_LIST[@]}; do
     if [ "$EXIT_CODE" != "0" ]; then
         echo "FAIL";
         tail $OUT_FILE; echo ^^^ tail $OUT_FILE;
-        cat $OUT_FILE | grep "==="
         exit $EXIT_CODE;
     fi
 done
+cat $OUT_FILE | grep "==="
 echo PASS. See $OUT_FILE for output

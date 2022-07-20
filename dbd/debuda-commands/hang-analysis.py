@@ -28,8 +28,8 @@ def run(args, context, ui_state = None):
         def wants_more_data_from_input (all_stream_regs, graph, graph_device, op, input_queue):
             op_buffers = graph.get_buffers(op)
             # As not all streams have buf_id, and not all have pipe_id, we try to find either
-            relevant_buffers = util.set()
-            relevant_pipes = util.set()
+            relevant_buffers = TTObjectSet()
+            relevant_pipes = TTObjectSet()
             util.VERBOSE (f"Running wants_more_data_from_input for {op} on input {input_queue}")
             util.VERBOSE (f"  Found these buffers for {op}: {op_buffers}")
             for dest_buffer in op_buffers:
@@ -38,14 +38,14 @@ def run(args, context, ui_state = None):
                     src_buffers.keep (lambda b: b.root["md_op_name"] == input_queue.id())
                     for b in src_buffers:
                         relevant_buffers.add (dest_buffer)
-                        pipes = graph.get_pipes_for_buffer (dest_buffer)
-                        for p in pipes:
-                            relevant_pipes.add (p)
+                        pipes = graph.get_pipes (dest_buffer)
+                        relevant_pipes.update (pipes)
             util.VERBOSE (f"  Found these source buffers for {input_queue}->{op} conection: {relevant_buffers}")
-            relevant_streams = set (s for _, s in graph.streams.items() if s.get_buffer_id() in relevant_buffers or s.get_pipe_id() in relevant_pipes)
+            relevant_streams = util.set({s for s in graph.streams if relevant_buffers.find_id (s.get_buffer_id()) or relevant_pipes.find_id(s.get_pipe_id())})
 
             if not relevant_streams:
-                util.WARN (f"No relevant streams for buffers {' '.join (list(relevant_buffers))}")
+                buflist = [ str(b.id()) for b in relevant_buffers]
+                util.WARN (f"No relevant streams for buffers {' '.join (buflist)}")
             else:
                 util.VERBOSE (f"  Found these relevant_streams for {input_queue}->{op} conection: {' '.join ([ s.__str__() for s in relevant_streams ])}")
 
@@ -58,9 +58,9 @@ def run(args, context, ui_state = None):
 
         all_good = True
         column_format = [
-            { 'key_name' : 'op',          'title': 'Op Name',   'formatter': None },
             { 'key_name' : 'input',       'title': 'Input Name',   'formatter': None },
             { 'key_name' : 'has_data',    'title': 'Input has data',   'formatter': lambda x: f"{util.CLR_RED}{x}{util.CLR_END}" },
+            { 'key_name' : 'op',          'title': 'Op Name',   'formatter': None },
             { 'key_name' : 'wants_data',  'title': 'Op wants data',   'formatter': lambda x: f"{util.CLR_RED}{x}{util.CLR_END}" },
         ]
         table=util.TabulateTable(column_format)
@@ -72,14 +72,14 @@ def run(args, context, ui_state = None):
             graph_device = context.devices[context.netlist.graph_name_to_device_id(graph_name)]
 
             # Obtain all queues that feed all the operations within the graph
-            input_queues = graph.get_fanin(graph.ops, Queue)
+            input_queues = graph.get_fanin(graph.ops)
             # Keep only 'queue' type
             input_queues.keep (lambda q: q.root['type'] == 'queue')
 
             problematic_ops = TTObjectSet()
             for q in input_queues:
                 # Get ops that the queue feeds
-                ops = graph.get_fanout (input_queues, Op)
+                ops = graph.get_fanout (q)
 
                 # Check each q->ops connection
                 q_data = q.root

@@ -10,7 +10,7 @@ class Queue(TTObject):
     def __init__(self, name, data):
         self.root = data
         self._id = name
-        self.output_ops = util.set() # set of names of queue's output_ops
+        self.output_ops = TTObjectSet()
 
     # Class functions
     def occupancy (entries, wrptr, rdptr):
@@ -22,18 +22,19 @@ class Queue(TTObject):
     def outputs_as_str(self):
         ret_str = ""
         num_ops_fed_by_queue = len(self.output_ops)
+        output_op_names = [ op.id() for op in self.output_ops ]
         if num_ops_fed_by_queue > 1:
             ret_str = f"[{num_ops_fed_by_queue}]: "
         if num_ops_fed_by_queue > 0:
-            ret_str += ', '.join (list(self.output_ops)) if num_ops_fed_by_queue > 0 else ""
+            ret_str += ', '.join (output_op_names) if num_ops_fed_by_queue > 0 else ""
         return ret_str
 
 # Operations
 class Op(TTObject):
-    def __init__(self, name, graph_id, data):
+    def __init__(self, graph, name, data):
         self.root = data
         self._id = name
-        self._graph_id = graph_id
+        self.graph = graph
 
 # Class that represents a single graph within a netlist
 # Contains all the information from graph's blob.yaml and pipegen.yaml
@@ -52,7 +53,7 @@ class Graph(TTObject):
         self.queues = netlist.queues # A shortcut to queues
 
         for op_name in self.op_names():
-            op = Op (op_name, self.id(), self.root[op_name])
+            op = Op (self, op_name, self.root[op_name])
             self.ops.add(op)
 
     def load_pipegen_and_blob (self):
@@ -68,16 +69,16 @@ class Graph(TTObject):
                 if self.id() != val:
                     util.WARN(f"Expected 'graph_name: {self.id()}' in {self.pipegen_yaml.id()}, but got 'graph_name: {val}'")
             elif "buffer" in key:
-                b = Buffer(val)
+                b = Buffer(self, val)
                 self.buffers.add(b)
                 uniqid = val["uniqid"]
                 for r in range (1, val["replicate"]): # Handle replicated buffers (see issue #326)
                     val["uniqid"] = uniqid + r * val["scatter_gather_num_tiles"]
-                    b = Buffer(val)
+                    b = Buffer(self, val)
                     self.buffers.add(b)
                     b.replicated = True # Mark the buffers we created by replication
             elif "pipe" in key:
-                p = Pipe(val)
+                p = Pipe(self, val)
                 self.pipes.add(p)
                 input_buffers_ids.update (val['input_list'])
                 output_buffers_ids.update (val['output_list'])
@@ -101,7 +102,7 @@ class Graph(TTObject):
                 phase_id = int (key[6:]) # Skip phase_
                 for stream_designator, stream_data in val.items():
                     stream_data['phase_id'] = phase_id
-                    s = Stream (stream_designator, stream_data)
+                    s = Stream (self, stream_designator, stream_data)
                     self.streams.add (s)
             else:
                 raise RuntimeError(f"{self.blob_yaml.id()}: Cannot interpret {key}: {val}")
@@ -246,17 +247,6 @@ class Graph(TTObject):
         return self.root['input_count']
     def epoch_id (self):
         return self._epoch_id
-    def op (self, op_name):
-        return self.ops[op_name]
-
-    # Returns all pipes a buffer is a part of
-    def get_pipes_for_buffer (self, buffer_id):
-        pipes = []
-        for pipe_id in self.pipes:
-            pipe = self.get_pipe(pipe_id)
-            if buffer_id in pipe.inputs() or buffer_id in pipe.outputs():
-                pipes.append(pipe_id)
-        return pipes
 
     # Renderer
     def __str__(self):
@@ -336,8 +326,8 @@ class Graph(TTObject):
         for dest_buffer_id in dest_buffer_ids:
             for src_buffer_id in self.get_connected_buffers (dest_buffer_id, "src"):
                 if self.buffers[src_buffer_id].root["md_op_name"] == A: # src buffer is in op A
-                    pipes_with_src = set(self.get_pipes_for_buffer (src_buffer_id))
-                    pipes_with_dest = set(self.get_pipes_for_buffer (dest_buffer_id))
+                    pipes_with_src = self.get_pipes (src_buffer_id)
+                    pipes_with_dest = self.get_pipes (dest_buffer_id)
                     # util.VERBOSE (f"pipes_with_src: {pipes_with_src}")
                     # util.VERBOSE (f"pipes_with_dest: {pipes_with_dest}")
                     pipes = pipes_with_dest.intersection(pipes_with_src)
@@ -363,7 +353,7 @@ class Graph(TTObject):
             expected_id = int(where)
             ret_val = TTObjectSet.fromiterable( { b for b in self.buffers if b.id() == expected_id } )
         elif type(where) == Pipe:
-            ret_val = TTObjectSet.fromiterable( { b for b in self.buffers if b.id() in where.root['input_list'] or b.id() in where.root['output_list'] } )
+            ret_val = TTObjectSet.fromiterable( { b for b in self.buffers if b.id() in where.inputs() or b.id() in where.outputs() } )
         elif type(where) == Op:
             ret_val = TTObjectSet.fromiterable( { b for b in self.buffers if b.root["md_op_name"] == where.id() } )
         elif util.is_iterable(where):
@@ -388,7 +378,7 @@ class Graph(TTObject):
         if type(where) == int:
             ret_val = TTObjectSet.fromiterable( { p for p in self.pipes if p.id() == where } )
         elif type(where) == Buffer:
-            ret_val = TTObjectSet.fromiterable( { p for p in self.pipes if where.id() in p.root['input_list'] or where.id() in p.root['output_list'] } )
+            ret_val = TTObjectSet.fromiterable( { p for p in self.pipes if where.id() in p.inputs() or where.id() in p.outputs() } )
         elif util.is_iterable(where):
             for o in where: ret_val.update (self.get_pipes (o))
         else:
@@ -442,16 +432,24 @@ class Graph(TTObject):
             raise TypeError (f"Usupported object type: {type(where)}")
 
     def get_fanin (self, where):
-        if type(where) == Op or type(where) == Queue:
-            return self.get_fanin_op_and_queue_level(where)
+        ret_val = TTObjectSet()
+        if util.is_iterable(where):
+            for o in where: ret_val.update (self.get_fanin (o))
+        elif type(where) == Op or type(where) == Queue:
+            ret_val.update (self.get_fanin_op_and_queue_level(where))
         else:
-            return self.get_fanin_buffer_level(where)
+            ret_val.update (self.get_fanin_buffer_level(where))
+        return ret_val
 
     def get_fanout (self, where):
-        if type(where) == Op or type(where) == Queue:
+        ret_val = TTObjectSet()
+        if util.is_iterable(where):
+            for o in where: ret_val.update (self.get_fanout (o))
+        elif type(where) == Op or type(where) == Queue:
             return self.get_fanout_op_and_queue_level(where)
         else:
             return self.get_fanout_buffer_level(where)
+        return ret_val
 
     # Test
     def _test_print(self):

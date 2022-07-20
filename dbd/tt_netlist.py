@@ -87,12 +87,13 @@ class Netlist:
         # 3. Load pipegen/blob yamls
         self.load_graphs (rundir)
 
-        # 4. Extra stuff
+        # 4. Store the Ops for input queues
+        all_queue_ids = TTObjectSet ({ q.id() for q in self.queues })
         for graph in self.graphs:
             for op in graph.ops:
                 for input in op.root["inputs"]:
-                    if input in self.queues:
-                        self.queues[input].output_ops.add (op)
+                    if input in all_queue_ids:
+                        self.queues.find_id(input).output_ops.add (op)
 
     # Accessors
     def epoch_ids (self):

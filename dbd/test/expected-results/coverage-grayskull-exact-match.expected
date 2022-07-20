@@ -2,6 +2,12 @@ tt_build/test_op_6715245286658215413
 [34mOutput directory not specified: looking for the most recent tt_build/ subdirectory. Found: tt_build/test_op_6715245286658215413[0m
 [34mLoading 'tt_build/test_op_6715245286658215413/runtime_data.yaml'[0m
 [34mLoading 'dbd/test/netlists/netlist_multi_matmul_perf.yaml'[0m
+[34mExecuting command: q[0m
+  Entries    Wr    Rd    Occ  Type      Device  Loc    Name    Input    Outputs    DRAM ch-addr
+---------  ----  ----  -----  ------  --------  -----  ------  -------  ---------  --------------
+        1     1     0      [34m1[0m  queue          0  dram   input0  HOST     f_op0      Ch0-0x30000000
+        1     1     0      [34m1[0m  queue          0  dram   input1  HOST     f_op1      Ch0-0x31000000
+        1     0     0      [34m0[0m  queue          0  dram   output  d_op3               Ch0-0x32000000
 [34mExecuting command: hq[0m
 [34mLoading 'tt_build/test_op_6715245286658215413/temporal_epoch_0/overlay/pipegen.yaml'[0m
 [34mLoading 'tt_build/test_op_6715245286658215413/temporal_epoch_0/overlay/blob.yaml'[0m
@@ -12,8 +18,8 @@ No host queues found
   Buffer ID  Op      Input Ops    Output Ops      dram_buf_flag    dram_io_flag    Channel  Address       RD ptr    WR ptr    Occupancy    Slots    Size [bytes]
 -----------  ------  -----------  ------------  ---------------  --------------  ---------  ----------  --------  --------  -----------  -------  --------------
 10000010000  output  d_op3                                    0               1          0  0x32000000         0         0            0        1          131072
-10000050000  input0               f_op0                       1               0          0  0x30000000         0         1            1        1           66560
 10000030000  input1               f_op1                       1               0          0  0x31000000         0         1            1        1           66560
+10000050000  input0               f_op0                       1               0          0  0x30000000         0         1            1        1           66560
 [34mExecuting command: abs[0m
 [34mAnalyzing device 1/1[0m
 [34mLoading 'device/grayskull_120_arch.yaml'[0m
@@ -3867,14 +3873,14 @@ oset3 == oset1: True
   other - self: { 5:my_tt_obj }
 5:my_tt_obj
 [34mtest_object: PASS[0m
-add1:Op fanin: { matmul2:Op, matmul1:Op }
+add1:Op fanin: { matmul1:Op, matmul2:Op }
 add1:Op fanout: { d_op3:Op }
 d_op3:Op fanin: { add1:Op }
 d_op3:Op fanout: { output:Queue }
 f_op0:Op fanin: { input0:Queue }
-f_op0:Op fanout: { matmul2:Op, matmul1:Op }
+f_op0:Op fanout: { matmul1:Op, matmul2:Op }
 f_op1:Op fanin: { input1:Queue }
-f_op1:Op fanout: { recip:Op, matmul1:Op }
+f_op1:Op fanout: { matmul1:Op, recip:Op }
 matmul1:Op fanin: { f_op0:Op, f_op1:Op }
 matmul1:Op fanout: { add1:Op }
 matmul2:Op fanin: { f_op0:Op, recip:Op }
@@ -3889,35 +3895,47 @@ output:Queue fanin: { d_op3:Op }
 output:Queue fanout: { }
 [34mtest_fanin_fanout: PASS[0m
 test_fanin_fanout_buffer_level for add1:Op
-10000060001:Buffer add1:[2,6] buffer fanin: { 10000180000:Buffer matmul2:[2,4] }
 10000060000:Buffer add1:[2,6] buffer fanin: { 10000150000:Buffer matmul1:[0,2] }
+10000060001:Buffer add1:[2,6] buffer fanin: { 10000180000:Buffer matmul2:[2,4] }
 10000070000:Buffer add1:[2,6] buffer fanout: { 10000080000:Buffer d_op3:[0,3] }
+Pipes for buffer: { 10000240000:Pipe, inputs: [10000070000], outputs: [10000080000] }
 test_fanin_fanout_buffer_level for d_op3:Op
 10000080000:Buffer d_op3:[0,3] buffer fanin: { 10000070000:Buffer add1:[2,6] }
 10000090000:Buffer d_op3:[0,3] buffer fanout: { 10000010000:Buffer output:[255,255] }
+Pipes for buffer: { 10000250000:Pipe, inputs: [10000090000], outputs: [10000010000] }
 test_fanin_fanout_buffer_level for f_op0:Op
 10000100000:Buffer f_op0:[0,0] buffer fanin: { 10000050000:Buffer input0:[0,0] }
+10000110000:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
 10000110004:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
 10000110008:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
-10000110020:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
-10000110024:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
-10000110000:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
 10000110012:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
 10000110016:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
+10000110020:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
+10000110024:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
 10000110028:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
+Pipes for buffer: { 10000280000:Pipe, inputs: [10000110000, 10000110008, 10000110016, 10000110024, 10000110004, 10000110012, 10000110020, 10000110028], outputs: [10000140000], 10000300000:Pipe, inputs: [10000110000, 10000110008, 10000110016, 10000110024, 10000110004, 10000110012, 10000110020, 10000110028], outputs: [10000170000] }
 test_fanin_fanout_buffer_level for f_op1:Op
 10000120000:Buffer f_op1:[0,1] buffer fanin: { 10000030000:Buffer input1:[0,1] }
 10000130000:Buffer f_op1:[0,1] buffer fanout: { 10000140001:Buffer matmul1:[0,2], 10000200000:Buffer recip:[2,2] }
+Pipes for buffer: { 10000290000:Pipe, inputs: [10000130000], outputs: [10000140001], 10000320000:Pipe, inputs: [10000130000], outputs: [10000200000] }
 test_fanin_fanout_buffer_level for matmul1:Op
+10000140000:Buffer matmul1:[0,2] buffer fanin: { 10000110000:Buffer f_op0:[0,0], 10000110004:Buffer f_op0:[0,0], 10000110008:Buffer f_op0:[0,0], 10000110012:Buffer f_op0:[0,0], 10000110016:Buffer f_op0:[0,0], 10000110020:Buffer f_op0:[0,0], 10000110024:Buffer f_op0:[0,0], 10000110028:Buffer f_op0:[0,0] }
 10000140001:Buffer matmul1:[0,2] buffer fanin: { 10000130000:Buffer f_op1:[0,1] }
-10000140000:Buffer matmul1:[0,2] buffer fanin: { 10000110004:Buffer f_op0:[0,0], 10000110008:Buffer f_op0:[0,0], 10000110020:Buffer f_op0:[0,0], 10000110024:Buffer f_op0:[0,0], 10000110000:Buffer f_op0:[0,0], 10000110012:Buffer f_op0:[0,0], 10000110016:Buffer f_op0:[0,0], 10000110028:Buffer f_op0:[0,0] }
 10000150000:Buffer matmul1:[0,2] buffer fanout: { 10000060000:Buffer add1:[2,6] }
+Pipes for buffer: { 10000220000:Pipe, inputs: [10000150000], outputs: [10000060000] }
 test_fanin_fanout_buffer_level for matmul2:Op
+10000170000:Buffer matmul2:[2,4] buffer fanin: { 10000110000:Buffer f_op0:[0,0], 10000110004:Buffer f_op0:[0,0], 10000110008:Buffer f_op0:[0,0], 10000110012:Buffer f_op0:[0,0], 10000110016:Buffer f_op0:[0,0], 10000110020:Buffer f_op0:[0,0], 10000110024:Buffer f_op0:[0,0], 10000110028:Buffer f_op0:[0,0] }
 10000170001:Buffer matmul2:[2,4] buffer fanin: { 10000210000:Buffer recip:[2,2] }
-10000170000:Buffer matmul2:[2,4] buffer fanin: { 10000110004:Buffer f_op0:[0,0], 10000110008:Buffer f_op0:[0,0], 10000110020:Buffer f_op0:[0,0], 10000110024:Buffer f_op0:[0,0], 10000110000:Buffer f_op0:[0,0], 10000110012:Buffer f_op0:[0,0], 10000110016:Buffer f_op0:[0,0], 10000110028:Buffer f_op0:[0,0] }
 10000180000:Buffer matmul2:[2,4] buffer fanout: { 10000060001:Buffer add1:[2,6] }
+Pipes for buffer: { 10000230000:Pipe, inputs: [10000180000], outputs: [10000060001] }
 test_fanin_fanout_buffer_level for recip:Op
 10000200000:Buffer recip:[2,2] buffer fanin: { 10000130000:Buffer f_op1:[0,1] }
 10000210000:Buffer recip:[2,2] buffer fanout: { 10000170001:Buffer matmul2:[2,4] }
+Pipes for buffer: { 10000310000:Pipe, inputs: [10000210000], outputs: [10000170001] }
+[34mExecuting command: ha[0m
+[34mAnalyzing device 0[0m
+[34m  Device 0 is running graph: test_op[0m
+[34m    Analyzing graph test_op[0m
+[34mNo problems on device 0[0m
 [34mExecuting command: x[0m
 [34mExiting with code 0 [0m

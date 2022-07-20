@@ -1,11 +1,11 @@
 from tt_object import TTObject
-import tt_util as util
 
 # Constructed from epoch's pipegen.yaml. Contains information about a pipe.
 class Pipe(TTObject):
-    def __init__(self, data):
+    def __init__(self, graph, data):
         self.root = data
         self._id = self.root['id']
+        self.graph = graph
 
     # Accessors
     def inputs(self):

@@ -71,6 +71,8 @@ def test_fanin_fanout_buffer_level(context):
             buffer_fanouts = graph.get_fanout(buffer)
             print (f"{buffer} buffer fanout: {buffer_fanouts}")
 
+        print (f"Pipes for buffer: {graph.get_pipes (src_buffers)}")
+
 def run(args, context, ui_state = None):
     navigation_suggestions = []
     test_object ()

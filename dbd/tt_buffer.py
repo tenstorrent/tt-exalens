@@ -3,11 +3,12 @@ import tt_util as util
 
 # Constructed from epoch's pipegen.yaml. Contains information about a buffer.
 class Buffer(TTObject):
-    def __init__(self, data):
+    def __init__(self, graph, data):
         data["core_coordinates"] = tuple(data["core_coordinates"])
         self.root = data
         self._id = self.root['uniqid']
         self.replicated = False
+        self.graph = graph
 
     # Renderer
     def __str__(self):

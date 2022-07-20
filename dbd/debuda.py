@@ -68,9 +68,9 @@ def print_pipe_data (cmd, context):
         if pipe:
             util.print_columnar_dicts ([pipe.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
 
-            for input_buffer in pipe.root['input_list']:
+            for input_buffer in pipe.inputs():
                 navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show src buffer" })
-            for input_buffer in pipe.root['output_list']:
+            for input_buffer in pipe.outputs():
                 navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show dest buffer" })
         else:
             util.INFO (f"Pipe {pipe_id} cannot be found in graph {graph_name}")

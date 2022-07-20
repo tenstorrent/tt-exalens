@@ -107,10 +107,11 @@ class Stream(TTObject):
         # print (f"{designator}, {vals}")
         return ( int(vals[0][0]), int (vals[0][2]), int (vals[0][1]), int (vals[0][3]) )
 
-    def __init__(self, designator, data):
+    def __init__(self, graph, designator, data):
         self.designator = designator
         self._id = Stream.get_stream_tuple_from_designator (designator) + ( data['phase_id'], )
         self.root = data
+        self.graph = graph
 
     # Accessors
     def get_buffer_id (self):
