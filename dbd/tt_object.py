@@ -1,41 +1,48 @@
+import tt_util as util
+from ordered_set import OrderedSet
+
 # Parent class for all objects (ops, queues, buffers, streams...)
 class TTObject:
     def __str__(self):
-        return f"{type(self).__name__}: id: {self.id()}"
+        return f"{self.id()}:{type(self).__name__}"
     def id (self):
-        return self._id
+        return self._id # Assume children have the _id
 
 # Storage for sets of objects
-# Using dicts as they are ordered
-class TTObjectSet (dict):
+class TTObjectSet (OrderedSet):
     def __str__ (self):
         str_list = [ s.__str__() for s in self ]
-        return ", ".join (str_list)
+        if len (self) > 0:
+            return "{ " + ", ".join (str_list) + " }"
+        else:
+            return "{ }"
 
-    def add (self, item):
-        self[item] = None
+    # Constructs a TTObjectSet from an iterable
+    @classmethod
+    def fromiterable(cls, S):
+        return cls({ b : None for b in S })
 
     # Keeps/deletes the elements that pass the given lambda function
     def keep (self, lam):
-        for k in list (self.keys ()):
+        for k in list (self):
             if not lam(k):
-                del (self[k])
+                self.remove(k)
     def delete (self, lam):
         self.keep (lambda x: not lam (x))
 
+    # Prints a simple comparison between sets
     def compare (self, other):
-        selfset = set(self.items())
-        otherset = set(other.items())
-        print (f"len(self)={len(self)} len(other)={len(other)}")
-        print (selfset - otherset)
-        print (otherset - selfset)
+        print (f"  len(self)={len(self)} len(other)={len(other)}")
+        print (f"  self - other: {self - other}")
+        print (f"  other - self: {other - self}")
 
     # Returns the first element
     def first (self):
         return next(iter(self))
 
-    def __setitem__(self, key, value):
-        if value is not None:
-            raise TypeError (f"TTObjectSet: Cannot assign value to the set element")
-        else:
-            return super().__setitem__(key, value)
+    # Finds and returns an element by id
+    def find_id (self, id):
+        for s in self:
+            if s.id() == id:
+                return s
+        return None

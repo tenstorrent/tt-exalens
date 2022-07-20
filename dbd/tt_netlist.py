@@ -1,8 +1,7 @@
 import sys, os
-from dbd.tt_object import TTObject
-import tt_util as util, tt_device, tt_stream
-import tt_object
-from tt_graph import Graph, Queue, Op
+from dbd.tt_object import TTObjectSet
+import tt_util as util, tt_device
+from tt_graph import Graph, Queue
 
 # 'this' is a reference to the module object instance itself.
 this = sys.modules[__name__]
@@ -46,16 +45,16 @@ class Netlist:
         self._epoch_ids.sort()
 
         # 2. Load queues
-        self.queues = dict()
+        self.queues = TTObjectSet()
         for queue_name in self.queue_names():
             queue = Queue (queue_name, self.yaml_file.root["queues"][queue_name])
-            self.queues[queue_name] = queue
+            self.queues.add (queue)
 
     # Initializes, but does not yet load pipegen and blob files
     def load_graphs (self, rundir):
         self.epoch_to_pipegen_yaml_file = dict()
         self.epoch_to_blob_yaml_file = dict()
-        self.graphs = dict()
+        self.graphs = TTObjectSet()
         for graph_name in self.graph_names():
             epoch_id = self.graph_name_to_epoch_id(graph_name)
             graph_dir=f"{rundir}/temporal_epoch_{epoch_id}"
@@ -71,8 +70,8 @@ class Netlist:
             self.epoch_to_blob_yaml_file[epoch_id] = blob_yaml
 
             # Create the graph
-            g = Graph(graph_name, self.yaml_file.root['graphs'][graph_name], pipegen_yaml, blob_yaml)
-            self.graphs[graph_name] = g
+            g = Graph(self, graph_name, self.yaml_file.root['graphs'][graph_name], pipegen_yaml, blob_yaml)
+            self.graphs.add(g)
 
     def __init__(self, netlist_filepath, rundir):
         # 1. Load the runtime data file
@@ -89,11 +88,11 @@ class Netlist:
         self.load_graphs (rundir)
 
         # 4. Extra stuff
-        for graph_name, graph in self.graphs.items():
+        for graph in self.graphs:
             for op in graph.ops:
                 for input in op.root["inputs"]:
                     if input in self.queues:
-                        self.queues[input].output_ops.add (op.id())
+                        self.queues[input].output_ops.add (op)
 
     # Accessors
     def epoch_ids (self):
@@ -109,7 +108,10 @@ class Netlist:
     def epoch_id_to_graph_name (self, epoch_id):
         return self.epoch_id_to_graph_name_map[epoch_id] if epoch_id in self.epoch_id_to_graph_name_map else None
     def graph (self, graph_name):
-        return self.graphs[graph_name]
+        for g in self.graphs:
+            if g.id() == graph_name:
+                return g
+        return None
     def devices(self):
         return self.yaml_file.root["devices"]
     def queue(self, queue_name):

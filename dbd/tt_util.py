@@ -222,3 +222,10 @@ class TabulateTable:
             self.rows.sort (key=lambda x: x[self.sort_col])
 
         return tabulate (self.rows, headers=self.headers)
+
+def is_iterable(obj):
+    try:
+        iter(obj)
+        return True
+    except TypeError:
+        return False

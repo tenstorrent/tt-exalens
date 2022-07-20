@@ -535,7 +535,11 @@ def import_commands (command_metadata_array, reload = False):
     command_files.sort()
     for cmdfile in command_files:
         module_path = os.path.splitext(os.path.basename(cmdfile))[0]
-        my_cmd_module = importlib.import_module (module_path)
+        try:
+            my_cmd_module = importlib.import_module (module_path)
+        except Exception as e:
+            util.ERROR (f"Error in module {module_path}: {e}")
+            continue
         command_metadata = my_cmd_module.command_metadata
         command_metadata["module"] = my_cmd_module
         command_metadata["long"] = my_cmd_module.__name__

@@ -10,7 +10,8 @@ def run(args, context, ui_state = None):
     navigation_suggestions = []
 
     rows = []
-    for graph_name, graph in context.netlist.graphs.items():
+    for graph in context.netlist.graphs:
+        graph_name = graph.id()
         epoch_id = context.netlist.graph_name_to_epoch_id (graph_name)
         device_id = context.netlist.graph_name_to_device_id (graph_name)
         device = context.devices[device_id]

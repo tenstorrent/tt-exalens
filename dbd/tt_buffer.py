@@ -12,4 +12,6 @@ class Buffer(TTObject):
     # Renderer
     def __str__(self):
         r = self.root
-        return f"{super().__str__()}, RC coord: [{r['core_coordinates'][0]}, {r['core_coordinates'][1]}]"
+        R = r['core_coordinates'][0]
+        C = r['core_coordinates'][1]
+        return f"{super().__str__()} {r['md_op_name']}:[{R},{C}]"

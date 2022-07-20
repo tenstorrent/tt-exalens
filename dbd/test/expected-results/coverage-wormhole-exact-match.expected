@@ -401,6 +401,8 @@ Short    Long                     Arguments             Description
 [34mb[0m        [34mbuffer[0m                   buffer_id_or_op_name  prints details on the buffer with a given id, or buffer(s) mapped to a given operation.
 [34mp[0m        [34mpipe[0m                     pipe_id               prints details on the pipe with ID pipe_id
 [34mrxy[0m      [34mpci-read-xy[0m              x y addr              read data from address 'addr' at noc0 location x-y of the chip associated with current epoch
+[34mpcir[0m     [34mpci-raw-read[0m             addr                  read data from PCI bar at address 'addr
+[34mpciw[0m     [34mpci-raw-write[0m            addr data             write 'data' to PCI bar at address 'addr
 [34mbrxy[0m     [34mburst-read-xy[0m            x y addr burst_type   burst read data from address 'addr' at noc0 location x-y of the chip associated with current epoch.
                                                         NCRISC status code address=0xffb2010c, BRISC status code address=0xffb3010c
 [34mwxy[0m      [34mpci-write-xy[0m             x y addr value        writes value to address 'addr' at noc0 location x-y of the chip associated with current epoch
@@ -418,7 +420,9 @@ Short    Long                     Arguments             Description
 [34mom[0m       [34mop-map[0m                                         draws a mini map of the current epoch
 [34ms[0m        [34mprint-stream[0m             x y stream_id         show stream 'stream_id' at core 'x-y'
 [34mq[0m        [34mqueue-summary[0m                                  Prints summary of queues
+[34mst[0m       [34mself-test[0m                                      Test debuda internals
 [34msrs[0m      [34mstatus-register-summary[0m  verbosity [0-2]       prints brisc and ncrisc status registers.
+[34mtt[0m       [34mtesttest[0m                                       test only
 Speed dial:
   #  Description    Command
 ---  -------------  -------------
@@ -4156,5 +4160,66 @@ test_op/f_op1    datacopy          0         0  [0, 1]      2-1         [1, 1]
 test_op/matmul1  matmul            0         0  [0, 2]      3-1         [1, 1]
 test_op/matmul2  matmul            0         0  [2, 4]      6-3         [1, 1]
 test_op/recip    reciprocal        0         0  [2, 2]      3-3         [1, 1]
+[34mExecuting command: self-test[0m
+<class 'dbd.tt_object.TTObjectSet'>
+oset3 == oset1: True
+5:my_tt_obj
+  len(self)=10 len(other)=11
+  self - other: { }
+  other - self: { 5:my_tt_obj }
+5:my_tt_obj
+[34mtest_object: PASS[0m
+add1:Op fanin: { matmul2:Op, matmul1:Op }
+add1:Op fanout: { d_op3:Op }
+d_op3:Op fanin: { add1:Op }
+d_op3:Op fanout: { output:Queue }
+f_op0:Op fanin: { input0:Queue }
+f_op0:Op fanout: { matmul2:Op, matmul1:Op }
+f_op1:Op fanin: { input1:Queue }
+f_op1:Op fanout: { matmul1:Op, recip:Op }
+matmul1:Op fanin: { f_op0:Op, f_op1:Op }
+matmul1:Op fanout: { add1:Op }
+matmul2:Op fanin: { f_op0:Op, recip:Op }
+matmul2:Op fanout: { add1:Op }
+recip:Op fanin: { f_op1:Op }
+recip:Op fanout: { matmul2:Op }
+input0:Queue fanin: { }
+input0:Queue fanout: { f_op0:Op }
+input1:Queue fanin: { }
+input1:Queue fanout: { f_op1:Op }
+output:Queue fanin: { d_op3:Op }
+output:Queue fanout: { }
+[34mtest_fanin_fanout: PASS[0m
+test_fanin_fanout_buffer_level for add1:Op
+10000060000:Buffer add1:[2,6] buffer fanin: { 10000150000:Buffer matmul1:[0,2] }
+10000060001:Buffer add1:[2,6] buffer fanin: { 10000180000:Buffer matmul2:[2,4] }
+10000070000:Buffer add1:[2,6] buffer fanout: { 10000080000:Buffer d_op3:[0,3] }
+test_fanin_fanout_buffer_level for d_op3:Op
+10000080000:Buffer d_op3:[0,3] buffer fanin: { 10000070000:Buffer add1:[2,6] }
+10000090000:Buffer d_op3:[0,3] buffer fanout: { 10000010000:Buffer output:[255,255] }
+test_fanin_fanout_buffer_level for f_op0:Op
+10000100000:Buffer f_op0:[0,0] buffer fanin: { 10000050000:Buffer input0:[0,0] }
+10000110020:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
+10000110024:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
+10000110000:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
+10000110012:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
+10000110016:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
+10000110028:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
+10000110004:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
+10000110008:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
+test_fanin_fanout_buffer_level for f_op1:Op
+10000120000:Buffer f_op1:[0,1] buffer fanin: { 10000030000:Buffer input1:[0,1] }
+10000130000:Buffer f_op1:[0,1] buffer fanout: { 10000140001:Buffer matmul1:[0,2], 10000200000:Buffer recip:[2,2] }
+test_fanin_fanout_buffer_level for matmul1:Op
+10000140001:Buffer matmul1:[0,2] buffer fanin: { 10000130000:Buffer f_op1:[0,1] }
+10000140000:Buffer matmul1:[0,2] buffer fanin: { 10000110020:Buffer f_op0:[0,0], 10000110024:Buffer f_op0:[0,0], 10000110000:Buffer f_op0:[0,0], 10000110012:Buffer f_op0:[0,0], 10000110016:Buffer f_op0:[0,0], 10000110028:Buffer f_op0:[0,0], 10000110004:Buffer f_op0:[0,0], 10000110008:Buffer f_op0:[0,0] }
+10000150000:Buffer matmul1:[0,2] buffer fanout: { 10000060000:Buffer add1:[2,6] }
+test_fanin_fanout_buffer_level for matmul2:Op
+10000170001:Buffer matmul2:[2,4] buffer fanin: { 10000210000:Buffer recip:[2,2] }
+10000170000:Buffer matmul2:[2,4] buffer fanin: { 10000110020:Buffer f_op0:[0,0], 10000110024:Buffer f_op0:[0,0], 10000110000:Buffer f_op0:[0,0], 10000110012:Buffer f_op0:[0,0], 10000110016:Buffer f_op0:[0,0], 10000110028:Buffer f_op0:[0,0], 10000110004:Buffer f_op0:[0,0], 10000110008:Buffer f_op0:[0,0] }
+10000180000:Buffer matmul2:[2,4] buffer fanout: { 10000060001:Buffer add1:[2,6] }
+test_fanin_fanout_buffer_level for recip:Op
+10000200000:Buffer recip:[2,2] buffer fanin: { 10000130000:Buffer f_op1:[0,1] }
+10000210000:Buffer recip:[2,2] buffer fanout: { 10000170001:Buffer matmul2:[2,4] }
 [34mExecuting command: x[0m
 [34mExiting with code 0 [0m

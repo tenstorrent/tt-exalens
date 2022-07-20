@@ -42,12 +42,14 @@ class Graph(TTObject):
     # Some keys do not refer to operations, and we keep them here to be used when parsing
     non_op_keys = set (['target_device', 'input_count'])
 
-    def __init__(self, name, root, pipegen_yaml, blob_yaml):
+    def __init__(self, netlist, name, root, pipegen_yaml, blob_yaml):
         self._id = name
         self.root = root # The entry in netlist file
         self.pipegen_yaml = pipegen_yaml
         self.blob_yaml = blob_yaml
         self.ops = TTObjectSet()
+        self.netlist = netlist
+        self.queues = netlist.queues # A shortcut to queues
 
         for op_name in self.op_names():
             op = Op (op_name, self.id(), self.root[op_name])
@@ -292,47 +294,45 @@ class Graph(TTObject):
 
     # API NOVEAU!
     def get_op_buffers (self, op_name):
-        op_buffers = set( b for _, b in self.buffers.items() if b.root["md_op_name"] == op_name )
+        op_buffers = set( b for b in self.buffers.items() if b.root["md_op_name"] == op_name )
         return op_buffers
 
     def input_queues_to_op_map (self, netlist_queues):
-        graph_input_queues_to_op_map = dict()
-        for op_name in self.ops:
-            op = self.ops[op_name]
+        graph_input_queues_to_op_map = TTObjectSet()
+        for op in self.ops:
             for input in op.root["inputs"]:
                 if input in netlist_queues:
                     if input not in graph_input_queues_to_op_map:
-                        graph_input_queues_to_op_map[input] = set([ op_name ])
-                    else:
-                        graph_input_queues_to_op_map[input].add(op_name)
+                        graph_input_queues_to_op_map[input] = TTObjectSet()
+                    graph_input_queues_to_op_map[input].add(op)
         return graph_input_queues_to_op_map
 
-    # Return all immediate fan-out ops of a given op
-    def get_fanout (self, op_name):
-        ret_set = set()
-        for fanout_op_name, op in self.ops.items():
-            if op_name in op.root["inputs"]:
-                ret_set.add (fanout_op_name)
-        return ret_set
+    # # Return all immediate fan-out ops of a given op
+    # def get_fanout (self, op_name):
+    #     ret_set = set()
+    #     for fanout_op_name, op in self.ops.items():
+    #         if op_name in op.root["inputs"]:
+    #             ret_set.add (fanout_op_name)
+    #     return ret_set
 
-    # Return all immediate fan-out ops of a given op
-    def get_fanin (self, op_name):
-        ret_set = set()
-        op = self.ops[op_name]
-        for fanin_op_name in op.root["inputs"]:
-            if fanin_op_name in self.ops: # Make sure it is an Op in this graph
-                ret_set.add (fanin_op_name)
-        return ret_set
+    # # Return all immediate fan-out ops of a given op
+    # def get_fanin (self, op_name):
+    #     ret_set = set()
+    #     op = self.ops[op_name]
+    #     for fanin_op_name in op.root["inputs"]:
+    #         if fanin_op_name in self.ops: # Make sure it is an Op in this graph
+    #             ret_set.add (fanin_op_name)
+    #     return ret_set
 
-    # Get buffers on two connected ops A and B (A feeds B).
+    # Get buffers on two connected ops op_A and op_B (A feeds B).
     # Returns a set of tuples (buff_A, buff_B, pipe_id)
-    def get_buffers_and_pipes_and_streams (self, A, B):
-        assert A in self.get_fanin(B) and B in self.get_fanout(A), f"{A} does not feed {B}"
+    def get_buffers_and_pipes_and_streams (self, op_A, op_B):
+        assert op_A in self.get_fanin(op_B) and op_B in self.get_fanout(op_A), f"{op_A} does not feed {op_B}"
 
-        dest_buffer_ids = self.filter_buffers (set( b.id() for b in self.get_op_buffers (B) ), "dest")
+        dest_buffer_ids = self.filter_buffers (set( b.id() for b in self.get_op_buffers (op_B) ), "dest")
         buffer_and_pipes = set ()
 
-        util.VERBOSE (f"Running get_buffer_pars for {A}->{B}")
+        util.VERBOSE (f"Running get_buffer_pars for {op_A}->{op_B}")
         for dest_buffer_id in dest_buffer_ids:
             for src_buffer_id in self.get_connected_buffers (dest_buffer_id, "src"):
                 if self.buffers[src_buffer_id].root["md_op_name"] == A: # src buffer is in op A
@@ -359,48 +359,99 @@ class Graph(TTObject):
 
     def get_buffers(self, where):
         ret_val = TTObjectSet()
-        if type(where) == TTObjectSet or type(where) == set:
-            for o in where:
-                ob = self.get_buffers (o)
-                ret_val.update (ob)
-        elif type(where) == str or type(where) == int:
+        if type(where) == str or type(where) == int:
             expected_id = int(where)
-            ret_val = TTObjectSet( { b : None for b in self.buffers if b.id() == expected_id } )
+            ret_val = TTObjectSet.fromiterable( { b for b in self.buffers if b.id() == expected_id } )
         elif type(where) == Pipe:
-            ret_val = TTObjectSet( { b : None for b in self.buffers if b.id() in where.root['input_list'] or b.id() in where.root['output_list'] } )
-            pass
+            ret_val = TTObjectSet.fromiterable( { b for b in self.buffers if b.id() in where.root['input_list'] or b.id() in where.root['output_list'] } )
         elif type(where) == Op:
-            ret_val = TTObjectSet( { b : None for b in self.buffers if b.root["md_op_name"] == where.id() } )
+            ret_val = TTObjectSet.fromiterable( { b for b in self.buffers if b.root["md_op_name"] == where.id() } )
+        elif util.is_iterable(where):
+            for o in where: ret_val.update (self.get_buffers (o))
         else:
             raise TypeError (f"Usupported object type: {type(where)}")
         return ret_val
 
     def get_streams (self, where):
         ret_val = TTObjectSet()
-        if type(where) == TTObjectSet or type(where) == set:
-            for o in where:
-                ob = self.get_streams (o)
-                ret_val.update (ob)
-        elif type(where) == tuple:
+        if type(where) == tuple:
             # Looking by strema location tuple
-            ret_val = TTObjectSet( { s : None for s in self.streams if s.id() == where } )
+            ret_val = TTObjectSet.fromiterable( { s for s in self.streams if s.id() == where } )
+        elif util.is_iterable(where):
+            for o in where: ret_val.update (self.get_streams (o))
         else:
             raise TypeError (f"Usupported object type: {type(where)}")
         return ret_val
 
     def get_pipes (self, where):
         ret_val = TTObjectSet()
-        if type(where) == TTObjectSet or type(where) == set:
-            for o in where:
-                ob = self.get_pipes (o)
-                ret_val.update (ob)
-        elif type(where) == int:
-            ret_val = TTObjectSet( { p : None for p in self.pipes if p.id() == where } )
+        if type(where) == int:
+            ret_val = TTObjectSet.fromiterable( { p for p in self.pipes if p.id() == where } )
         elif type(where) == Buffer:
-            ret_val = TTObjectSet( { p : None for p in self.pipes if where.id() in p.root['input_list'] or where.id() in p.root['output_list'] } )
+            ret_val = TTObjectSet.fromiterable( { p for p in self.pipes if where.id() in p.root['input_list'] or where.id() in p.root['output_list'] } )
+        elif util.is_iterable(where):
+            for o in where: ret_val.update (self.get_pipes (o))
         else:
             raise TypeError (f"Usupported object type: {type(where)}")
         return ret_val
+
+    def get_fanin_op_and_queue_level (self, where):
+        if type(where) == Op:
+            op_input_names = { i for i in where.root["inputs"] }
+            # Fed by input queue
+            ret_val = TTObjectSet.fromiterable ({ q for q in self.netlist.queues if q.id() in op_input_names })
+            # Fed by another op
+            ret_val.update (TTObjectSet.fromiterable ({ op for op in self.ops if op.id() in op_input_names }))
+        elif type(where) == Queue:
+            # Fed by input queue
+            ret_val = (TTObjectSet.fromiterable ({ q for q in self.netlist.queues if q.id() == where.root["input"] }))
+            # Fed by another op
+            ret_val.update (TTObjectSet.fromiterable ({ op for op in self.ops if op.id() == where.root["input"] }))
+        else:
+            raise TypeError (f"Usupported object type: {type(where)}")
+        return ret_val
+
+    def get_fanout_op_and_queue_level (self, where):
+        if type(where) == Op or type(where) == Queue:
+            # Feeding output queue
+            ret_val = TTObjectSet.fromiterable ({ q for q in self.netlist.queues if where.id() == q.root["input"] })
+            # Feeding another op
+            ret_val.update (TTObjectSet.fromiterable ({ op for op in self.ops if where.id() in op.root["inputs"] }))
+        else:
+            raise TypeError (f"Usupported object type: {type(where)}")
+        return ret_val
+
+    def get_fanin_buffer_level (self, where):
+        if type(where) == Buffer:
+            assert self.is_dest_buffer(where), "fanin is valid only for dest buffers"
+            pipes = { p for p in self.pipes if where.id() in p.root["output_list"] }
+            src_buffers = self.get_buffers (pipes)
+            src_buffers.keep (self.is_src_buffer)
+            return src_buffers
+        else:
+            raise TypeError (f"Usupported object type: {type(where)}")
+
+    def get_fanout_buffer_level (self, where):
+        if type(where) == Buffer:
+            assert self.is_src_buffer(where), "fanout is valid only for src buffers"
+            pipes = { p for p in self.pipes if where.id() in p.root["input_list"] }
+            dest_buffers = self.get_buffers (pipes)
+            dest_buffers.keep (self.is_dest_buffer)
+            return dest_buffers
+        else:
+            raise TypeError (f"Usupported object type: {type(where)}")
+
+    def get_fanin (self, where):
+        if type(where) == Op or type(where) == Queue:
+            return self.get_fanin_op_and_queue_level(where)
+        else:
+            return self.get_fanin_buffer_level(where)
+
+    def get_fanout (self, where):
+        if type(where) == Op or type(where) == Queue:
+            return self.get_fanout_op_and_queue_level(where)
+        else:
+            return self.get_fanout_buffer_level(where)
 
     # Test
     def _test_print(self):
