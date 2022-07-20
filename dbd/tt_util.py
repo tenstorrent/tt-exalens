@@ -4,7 +4,7 @@ debuda parses the build output files and probes the silicon to determine status 
 """
 import sys, os, yaml, zipfile
 from tabulate import tabulate
-from ordered_set import OrderedSet
+from sortedcontainers import SortedSet
 import traceback
 
 # Pretty print exceptions (traceback)
@@ -232,4 +232,4 @@ def is_iterable(obj):
         return False
 
 def set(*args, **kwargs):
-    return OrderedSet(*args, **kwargs)
+    return SortedSet(*args, **kwargs)

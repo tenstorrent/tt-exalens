@@ -1,5 +1,5 @@
 import tt_util as util
-from ordered_set import OrderedSet
+from sortedcontainers import SortedSet
 
 # Parent class for all objects (ops, queues, buffers, streams...)
 class TTObject:
@@ -7,9 +7,11 @@ class TTObject:
         return f"{self.id()}:{type(self).__name__}"
     def id (self):
         return self._id # Assume children have the _id
+    def __lt__(self, other):
+        return self.id() < other.id()
 
 # Storage for sets of objects
-class TTObjectSet (OrderedSet):
+class TTObjectSet (SortedSet):
     def __str__ (self):
         str_list = [ s.__str__() for s in self ]
         if len (self) > 0:

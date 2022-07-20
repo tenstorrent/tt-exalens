@@ -30,7 +30,8 @@ def run(args, context, ui_state = None):
     # Whether to print all DRAM positions or aggregate them
     show_each_queue_dram_location = True
 
-    for q_name, queue in context.netlist.queues.items():
+    for queue in context.netlist.queues:
+        q_name = queue.id()
         q_data = queue.root
         q_data["outputs"] = queue.outputs_as_str()
         if "dram" not in q_data:
