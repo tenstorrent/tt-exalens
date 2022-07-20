@@ -32,7 +32,7 @@ class Netlist:
     def load_netlist_data (self):
         # 1. Cache epoch id, device id and graph names
         self.epoch_id_to_graph_name_map = dict()
-        self._epoch_ids = set()
+        self._epoch_ids = util.set()
 
         for graph_name in self.graph_names():
             epoch_id = self.graph_name_to_epoch_id(graph_name)

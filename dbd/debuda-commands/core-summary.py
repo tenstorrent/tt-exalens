@@ -15,7 +15,7 @@ def run(args, context, ui_state = None):
 
     # 1. Get epochs for core
     stream_regs = current_device.read_core_stream_registers (noc0_loc)
-    core_epochs = set()
+    core_epochs = util.set()
     for _, sr in stream_regs.items():
         stream_epoch = current_device.stream_epoch (sr)
         core_epochs.add (stream_epoch)

@@ -38,7 +38,7 @@ def run(args, context, ui_state = None):
         all_stream_regs = device.read_all_stream_registers ()
 
         # Find epochs for each stream
-        epochs = set()
+        epochs = util.set()
         epoch_to_graph_map = dict()
         for loc, stream_regs in all_stream_regs.items():
             epoch_id = device.stream_epoch (stream_regs)
@@ -64,9 +64,9 @@ def run(args, context, ui_state = None):
             all_streams_ui_data[stream_loc] = tt_stream.convert_reg_dict_to_strings(device, stream_regs)
 
         issues_sets = {
-            "bad_stream" : set(),
-            "gsync_hung" : set(),
-            "ncrisc_not_done" : set()
+            "bad_stream" : util.set(),
+            "gsync_hung" : util.set(),
+            "ncrisc_not_done" : util.set()
         }
 
         # 2a. Analyze the data
@@ -177,7 +177,7 @@ def run(args, context, ui_state = None):
                 print(f"{loc[0]}-{loc[1]}", end = ' ')
             print()
         if all_streams_done and len(issues_sets["ncrisc_not_done"]) > 0:
-            print (device.render (options='rc', emphasize_noc0_loc_list = issues_sets.get ("ncrisc_not_done", set()), emphasize_explanation="NCrisc not done"))
+            print (device.render (options='rc', emphasize_noc0_loc_list = issues_sets.get ("ncrisc_not_done", util.set()), emphasize_explanation="NCrisc not done"))
             print()
 
     if len(rows) > 0:

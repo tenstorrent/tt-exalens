@@ -275,11 +275,11 @@ class Device(TTObject):
 
     # Returns a string representation of the device. When printed, the string will
     # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list
-    def render (self, options="physical", emphasize_noc0_loc_list = set(), emphasize_explanation = None):
+    def render (self, options="physical", emphasize_noc0_loc_list = util.set(), emphasize_explanation = None):
         dev = self.yaml_file.root
         rows = []
         locs = dict()
-        emphasize_loc_list_to_render = set()
+        emphasize_loc_list_to_render = util.set()
 
         # Convert emphasize_noc0_loc_list from noc0 coordinates to the coord space given by 'options' arg
         if options=="physical":
@@ -301,7 +301,7 @@ class Device(TTObject):
                         'router_only' :        { 'symbol' : ' ', "desc" : "Router only" }
         }
 
-        block_types_present = set()
+        block_types_present = util.set()
 
         # Convert the block locations to the coord space given by 'options' arg
         for block_name in block_types:

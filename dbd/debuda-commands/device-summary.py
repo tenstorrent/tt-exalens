@@ -20,7 +20,7 @@ def run(args, context, ui_state = None):
         device = context.devices[device_id]
         util.INFO (f"==== Device {device.id()}")
 
-        configured_streams = set()
+        configured_streams = util.set()
         for loc in device.get_block_locations (block_type = "functional_workers"):
             for stream_id in range (64):
                 phase_reg = device.get_stream_phase (loc, stream_id)

@@ -27,7 +27,7 @@ def run(args, context, ui_state = None):
     title_columns.append ("Registers")
 
     # 1. Append blobs
-    buffer_ids = set()
+    buffer_ids = util.set()
     non_active_phases = dict()
     graph = context.netlist.graph(context.netlist.epoch_id_to_graph_name(stream_epoch_id))
 

@@ -10,7 +10,7 @@ class Queue(TTObject):
     def __init__(self, name, data):
         self.root = data
         self._id = name
-        self.output_ops = set() # set of names of queue's output_ops
+        self.output_ops = util.set() # set of names of queue's output_ops
 
     # Class functions
     def occupancy (entries, wrptr, rdptr):
@@ -60,8 +60,8 @@ class Graph(TTObject):
         self.buffers = TTObjectSet()
         self.pipes = TTObjectSet()
 
-        input_buffers_ids = set()
-        output_buffers_ids = set()
+        input_buffers_ids = util.set()
+        output_buffers_ids = util.set()
 
         for key, val in self.pipegen_yaml.items():
             if key == "graph_name":
@@ -149,7 +149,7 @@ class Graph(TTObject):
     def get_core_buffers (self, core_coordinates_list_rc):
         if type(core_coordinates_list_rc) != list: core_coordinates_list_rc = [ core_coordinates_list_rc ] # If not a list, assume a single buffer id, and create a list from it
 
-        buffer_set = set()
+        buffer_set = util.set()
         for b in self.buffers:
             if b.root["core_coordinates"] in core_coordinates_list_rc:
                 buffer_set.add (b.root["uniqid"])
@@ -189,15 +189,15 @@ class Graph(TTObject):
         return input_buffers
 
     # Computes all buffers that are feeding into the buffers from buffer_id_list
-    def fan_in_buffer_set(self, buffer_id_list, already_visited = set()):
+    def fan_in_buffer_set(self, buffer_id_list, already_visited = util.set()):
         if Graph.RECURSION_DEPTH > 400:
             util.ERROR (f"Recursion limit reached")
-            return set()
+            return util.set()
         Graph.RECURSION_DEPTH=Graph.RECURSION_DEPTH+1
 
         if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ]
         if len (buffer_id_list) == 0:
-            return set()
+            return util.set()
 
         # Get direct fan-ins
         buff_core_coords = self.get_buff_core_coordinates_rc (buffer_id_list)
@@ -309,7 +309,7 @@ class Graph(TTObject):
 
     # # Return all immediate fan-out ops of a given op
     # def get_fanout (self, op_name):
-    #     ret_set = set()
+    #     ret_set = util.set()
     #     for fanout_op_name, op in self.ops.items():
     #         if op_name in op.root["inputs"]:
     #             ret_set.add (fanout_op_name)
@@ -317,7 +317,7 @@ class Graph(TTObject):
 
     # # Return all immediate fan-out ops of a given op
     # def get_fanin (self, op_name):
-    #     ret_set = set()
+    #     ret_set = util.set()
     #     op = self.ops[op_name]
     #     for fanin_op_name in op.root["inputs"]:
     #         if fanin_op_name in self.ops: # Make sure it is an Op in this graph

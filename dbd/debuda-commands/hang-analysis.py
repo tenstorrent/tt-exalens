@@ -16,7 +16,7 @@ def run(args, context, ui_state = None):
     for device in context.devices:
         util.INFO (f"Analyzing device {device.id()}")
         all_stream_regs = device.read_all_stream_registers ()
-        device_epochs = set()
+        device_epochs = util.set()
         for loc, stream_regs in all_stream_regs.items():
             epoch_id = device.stream_epoch (stream_regs)
             device_epochs.add (epoch_id)
@@ -28,8 +28,8 @@ def run(args, context, ui_state = None):
         def wants_more_data_from_input (all_stream_regs, graph, graph_device, op, input_queue):
             op_buffers = graph.get_buffers(op)
             # As not all streams have buf_id, and not all have pipe_id, we try to find either
-            relevant_buffers = set()
-            relevant_pipes = set()
+            relevant_buffers = util.set()
+            relevant_pipes = util.set()
             util.VERBOSE (f"Running wants_more_data_from_input for {op} on input {input_queue}")
             util.VERBOSE (f"  Found these buffers for {op}: {op_buffers}")
             for dest_buffer in op_buffers:
@@ -118,7 +118,7 @@ def run(args, context, ui_state = None):
             #         ops_to_visit.add (op_name)
 
             # while ops_to_visit:
-            #     new_ops_to_visit = set()
+            #     new_ops_to_visit = util.set()
             #     for op_name in ops_to_visit:
             #         if op_name not in visited_ops:
             #             fanout_ops = graph.get_fanout (op_name)

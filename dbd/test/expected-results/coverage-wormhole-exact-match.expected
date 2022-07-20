@@ -4176,7 +4176,7 @@ d_op3:Op fanout: { output:Queue }
 f_op0:Op fanin: { input0:Queue }
 f_op0:Op fanout: { matmul2:Op, matmul1:Op }
 f_op1:Op fanin: { input1:Queue }
-f_op1:Op fanout: { matmul1:Op, recip:Op }
+f_op1:Op fanout: { recip:Op, matmul1:Op }
 matmul1:Op fanin: { f_op0:Op, f_op1:Op }
 matmul1:Op fanout: { add1:Op }
 matmul2:Op fanin: { f_op0:Op, recip:Op }
@@ -4191,32 +4191,32 @@ output:Queue fanin: { d_op3:Op }
 output:Queue fanout: { }
 [34mtest_fanin_fanout: PASS[0m
 test_fanin_fanout_buffer_level for add1:Op
-10000060000:Buffer add1:[2,6] buffer fanin: { 10000150000:Buffer matmul1:[0,2] }
 10000060001:Buffer add1:[2,6] buffer fanin: { 10000180000:Buffer matmul2:[2,4] }
+10000060000:Buffer add1:[2,6] buffer fanin: { 10000150000:Buffer matmul1:[0,2] }
 10000070000:Buffer add1:[2,6] buffer fanout: { 10000080000:Buffer d_op3:[0,3] }
 test_fanin_fanout_buffer_level for d_op3:Op
 10000080000:Buffer d_op3:[0,3] buffer fanin: { 10000070000:Buffer add1:[2,6] }
 10000090000:Buffer d_op3:[0,3] buffer fanout: { 10000010000:Buffer output:[255,255] }
 test_fanin_fanout_buffer_level for f_op0:Op
 10000100000:Buffer f_op0:[0,0] buffer fanin: { 10000050000:Buffer input0:[0,0] }
-10000110020:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
-10000110024:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
-10000110000:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
-10000110012:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
-10000110016:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
-10000110028:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
-10000110004:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
-10000110008:Buffer f_op0:[0,0] buffer fanout: { 10000170000:Buffer matmul2:[2,4], 10000140000:Buffer matmul1:[0,2] }
+10000110004:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
+10000110008:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
+10000110020:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
+10000110024:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
+10000110000:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
+10000110012:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
+10000110016:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
+10000110028:Buffer f_op0:[0,0] buffer fanout: { 10000140000:Buffer matmul1:[0,2], 10000170000:Buffer matmul2:[2,4] }
 test_fanin_fanout_buffer_level for f_op1:Op
 10000120000:Buffer f_op1:[0,1] buffer fanin: { 10000030000:Buffer input1:[0,1] }
 10000130000:Buffer f_op1:[0,1] buffer fanout: { 10000140001:Buffer matmul1:[0,2], 10000200000:Buffer recip:[2,2] }
 test_fanin_fanout_buffer_level for matmul1:Op
 10000140001:Buffer matmul1:[0,2] buffer fanin: { 10000130000:Buffer f_op1:[0,1] }
-10000140000:Buffer matmul1:[0,2] buffer fanin: { 10000110020:Buffer f_op0:[0,0], 10000110024:Buffer f_op0:[0,0], 10000110000:Buffer f_op0:[0,0], 10000110012:Buffer f_op0:[0,0], 10000110016:Buffer f_op0:[0,0], 10000110028:Buffer f_op0:[0,0], 10000110004:Buffer f_op0:[0,0], 10000110008:Buffer f_op0:[0,0] }
+10000140000:Buffer matmul1:[0,2] buffer fanin: { 10000110004:Buffer f_op0:[0,0], 10000110008:Buffer f_op0:[0,0], 10000110020:Buffer f_op0:[0,0], 10000110024:Buffer f_op0:[0,0], 10000110000:Buffer f_op0:[0,0], 10000110012:Buffer f_op0:[0,0], 10000110016:Buffer f_op0:[0,0], 10000110028:Buffer f_op0:[0,0] }
 10000150000:Buffer matmul1:[0,2] buffer fanout: { 10000060000:Buffer add1:[2,6] }
 test_fanin_fanout_buffer_level for matmul2:Op
 10000170001:Buffer matmul2:[2,4] buffer fanin: { 10000210000:Buffer recip:[2,2] }
-10000170000:Buffer matmul2:[2,4] buffer fanin: { 10000110020:Buffer f_op0:[0,0], 10000110024:Buffer f_op0:[0,0], 10000110000:Buffer f_op0:[0,0], 10000110012:Buffer f_op0:[0,0], 10000110016:Buffer f_op0:[0,0], 10000110028:Buffer f_op0:[0,0], 10000110004:Buffer f_op0:[0,0], 10000110008:Buffer f_op0:[0,0] }
+10000170000:Buffer matmul2:[2,4] buffer fanin: { 10000110004:Buffer f_op0:[0,0], 10000110008:Buffer f_op0:[0,0], 10000110020:Buffer f_op0:[0,0], 10000110024:Buffer f_op0:[0,0], 10000110000:Buffer f_op0:[0,0], 10000110012:Buffer f_op0:[0,0], 10000110016:Buffer f_op0:[0,0], 10000110028:Buffer f_op0:[0,0] }
 10000180000:Buffer matmul2:[2,4] buffer fanout: { 10000060001:Buffer add1:[2,6] }
 test_fanin_fanout_buffer_level for recip:Op
 10000200000:Buffer recip:[2,2] buffer fanin: { 10000130000:Buffer f_op1:[0,1] }
