@@ -18,7 +18,7 @@
             "justMyCode": true
         },
         {
-            "name": "dbd-with-errors",
+            "name": "simple-matmul-with-hangs",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/debuda.py",
@@ -27,12 +27,12 @@
                 "on",
                 //                "--verbose"
             ],
-            "cwd": "${workspaceFolder}/test/dbd-with-errors",
+            "cwd": "${workspaceFolder}/test/exported-runs/simple-matmul-with-hangs",
             "console": "integratedTerminal",
             "justMyCode": true
         },
         {
-            "name": "dbd-no-errors",
+            "name": "simple-matmul-no-hangs",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/debuda.py",
@@ -40,7 +40,7 @@
                 "--server-cache",
                 "on"
             ],
-            "cwd": "${workspaceFolder}/test/dbd-no-errors",
+            "cwd": "${workspaceFolder}/test/exported-runs/simple-matmul-no-hangs",
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -67,7 +67,7 @@
                 "--commands",
                 "self-test;x"
             ],
-            "cwd": "${workspaceFolder}/test/dbd-no-errors",
+            "cwd": "${workspaceFolder}/test/exported-runs/simple-matmul-no-hangs",
             "console": "integratedTerminal",
             "justMyCode": true
         }
