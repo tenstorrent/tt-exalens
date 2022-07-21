@@ -140,12 +140,6 @@ class Graph(TTObject):
         buff_cores = { b.root["core_coordinates"] for b in self.buffers if b.id() in buffer_id_list }
         return list (buff_cores)
 
-    # Prints condensed information on a buffer (list)
-    def print_buffer_info (self, buffer_id_list):
-        if type(buffer_id_list) != list: buffer_id_list = [ buffer_id_list ] # If not a list, assume a single buffer id, and create a list from it
-        for buffer_id in buffer_id_list:
-            print (self.get_buffer (buffer_id))
-
     # Given a list of core coordinates, returns all buffers residing at those coordinates
     def get_core_buffers (self, core_coordinates_list_rc):
         if type(core_coordinates_list_rc) != list: core_coordinates_list_rc = [ core_coordinates_list_rc ] # If not a list, assume a single buffer id, and create a list from it
@@ -171,15 +165,6 @@ class Graph(TTObject):
             if buffer_id in p.root["output_list"]:
                 return True
         return False
-
-    # Filters a list of buffers, to return only src or dest buffers
-    def filter_buffers (self, buffer_list, filter):
-        if filter == "src":
-            return [ bid for bid in buffer_list if self.is_src_buffer(bid) ]
-        elif filter == "dest":
-            return [ bid for bid in buffer_list if self.is_dest_buffer(bid) ]
-        else:
-            raise (f"Exception: {util.CLR_ERR} Invalid filter '{filter}' {util.CLR_END}")
 
     # Return list of DRAM buffers
     def get_dram_buffers(self):
@@ -283,10 +268,6 @@ class Graph(TTObject):
         return None
 
     # API NOVEAU!
-    def get_op_buffers (self, op_name):
-        op_buffers = set( b for b in self.buffers.items() if b.root["md_op_name"] == op_name )
-        return op_buffers
-
     def input_queues_to_op_map (self, netlist_queues):
         graph_input_queues_to_op_map = TTObjectSet()
         for op in self.ops:
@@ -297,53 +278,37 @@ class Graph(TTObject):
                     graph_input_queues_to_op_map[input].add(op)
         return graph_input_queues_to_op_map
 
-    # # Return all immediate fan-out ops of a given op
-    # def get_fanout (self, op_name):
-    #     ret_set = util.set()
-    #     for fanout_op_name, op in self.ops.items():
-    #         if op_name in op.root["inputs"]:
-    #             ret_set.add (fanout_op_name)
-    #     return ret_set
-
-    # # Return all immediate fan-out ops of a given op
-    # def get_fanin (self, op_name):
-    #     ret_set = util.set()
-    #     op = self.ops[op_name]
-    #     for fanin_op_name in op.root["inputs"]:
-    #         if fanin_op_name in self.ops: # Make sure it is an Op in this graph
-    #             ret_set.add (fanin_op_name)
-    #     return ret_set
-
     # Get buffers on two connected ops op_A and op_B (A feeds B).
     # Returns a set of tuples (buff_A, buff_B, pipe_id)
     def get_buffers_and_pipes_and_streams (self, op_A, op_B):
         assert op_A in self.get_fanin(op_B) and op_B in self.get_fanout(op_A), f"{op_A} does not feed {op_B}"
 
-        dest_buffer_ids = self.filter_buffers (set( b.id() for b in self.get_op_buffers (op_B) ), "dest")
+        dest_buffers = TTObjectSet ({b for b in self.get_buffers (op_B) if self.is_dest_buffer (b)})
         buffer_and_pipes = set ()
 
         util.VERBOSE (f"Running get_buffer_pars for {op_A}->{op_B}")
-        for dest_buffer_id in dest_buffer_ids:
-            for src_buffer_id in self.get_connected_buffers (dest_buffer_id, "src"):
-                if self.buffers[src_buffer_id].root["md_op_name"] == A: # src buffer is in op A
-                    pipes_with_src = self.get_pipes (src_buffer_id)
-                    pipes_with_dest = self.get_pipes (dest_buffer_id)
+        for dest_buffer in dest_buffers:
+            dest_buffer_id = dest_buffer.id()
+            for src_buffer in self.get_fanin (dest_buffer):
+                if src_buffer.root["md_op_name"] == op_A.id(): # src buffer is in op A
+                    pipes_with_src = self.get_pipes (src_buffer)
+                    pipes_with_dest = self.get_pipes (dest_buffer)
                     # util.VERBOSE (f"pipes_with_src: {pipes_with_src}")
                     # util.VERBOSE (f"pipes_with_dest: {pipes_with_dest}")
                     pipes = pipes_with_dest.intersection(pipes_with_src)
                     util.VERBOSE (f"intersection: {pipes}")
-                    for pipe_id in pipes:
-                        print (f"--------- pipe {pipe_id} for {src_buffer_id}->{dest_buffer_id}")
-                        assert src_buffer_id in self.pipes[pipe_id].root["input_list"], f"{src_buffer_id} not in input_list of {pipe_id}"
-                        assert dest_buffer_id in self.pipes[pipe_id].root["output_list"], f"{dest_buffer_id} not in output_list of {pipe_id}"
+                    for pipe in pipes:
+                        print (f"--------- pipe {pipe.id()} for {src_buffer.id()}->{dest_buffer_id}")
+                        assert src_buffer.id() in pipe.inputs(), f"{src_buffer.id()} not in input_list of {pipe.id()}"
+                        assert dest_buffer.id() in pipe.outputs(), f"{dest_buffer.id()} not in output_list of {pipe.id()}"
                         src_stream_id = dest_stream_id = None
-                        for stream_id, s in self.streams.items():
-                            if s.get_buffer_id() == src_buffer_id:
-                                print (f"Match stream_id {stream_id} by src_buffer_id {src_buffer_id}")
+                        for s in self.streams:
+                            if s.get_buffer_id() == src_buffer.id():
+                                print (f"Match stream_id {s.id()} by src_buffer_id {src_buffer.id()}")
                             if s.get_buffer_id() == dest_buffer_id:
-                                print (f"Match stream_id {stream_id} by dest_buffer_id {dest_buffer_id}")
-                            if s.get_pipe_id() == pipe_id:
-                                print (f"Match stream_id {stream_id} by pipe_id {pipe_id}")
+                                print (f"Match stream_id {s.id()} by dest_buffer_id {dest_buffer.id()}")
+                            if s.get_pipe_id() == pipe.id():
+                                print (f"Match stream_id {s.id()} by pipe.id() {pipe.id()}")
                         # buffer_and_pipes.add ( (src_buffer_id, dest_buffer_id, pipe_id, src_stream_id, dest_stream_id ) )
         return buffer_and_pipes
 
@@ -354,7 +319,7 @@ class Graph(TTObject):
             ret_val = TTObjectSet.fromiterable( { b for b in self.buffers if b.id() == expected_id } )
         elif type(where) == Pipe:
             ret_val = TTObjectSet.fromiterable( { b for b in self.buffers if b.id() in where.inputs() or b.id() in where.outputs() } )
-        elif type(where) == Op:
+        elif type(where) == Op or type(where) == Queue:
             ret_val = TTObjectSet.fromiterable( { b for b in self.buffers if b.root["md_op_name"] == where.id() } )
         elif util.is_iterable(where):
             for o in where: ret_val.update (self.get_buffers (o))

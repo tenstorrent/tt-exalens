@@ -5,6 +5,8 @@ from sortedcontainers import SortedSet
 class TTObject:
     def __str__(self):
         return f"{self.id()}:{type(self).__name__}"
+    def __repr__(self):
+        return self.__str__()
     def id (self):
         return self._id # Assume children have the _id
     def __lt__(self, other):
@@ -18,6 +20,8 @@ class TTObjectSet (SortedSet):
             return "{ " + ", ".join (str_list) + " }"
         else:
             return "{ }"
+    def __repr__(self):
+        return f"[{len (self)}] self.__str__()"
 
     # Constructs a TTObjectSet from an iterable
     @classmethod

@@ -1,0 +1,75 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "kyle-2gs",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [
+                "--server-cache",
+                "on"
+            ],
+            "cwd": "${workspaceFolder}/test/exported-runs/dbd-kyle-2gs",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "dbd-with-errors",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [
+                "--server-cache",
+                "on",
+                //                "--verbose"
+            ],
+            "cwd": "${workspaceFolder}/test/dbd-with-errors",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "dbd-no-errors",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [
+                "--server-cache",
+                "on"
+            ],
+            "cwd": "${workspaceFolder}/test/dbd-no-errors",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "run-workload",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/test/bin/run-workload.py",
+            "args": [
+                "dbd/test/workloads/template.yaml"
+            ],
+            "cwd": "/Users/ivanhamer/work/budabackend",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "self-test",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [
+                "--server-cache",
+                "on",
+                "--commands",
+                "self-test;x"
+            ],
+            "cwd": "${workspaceFolder}/test/dbd-no-errors",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}

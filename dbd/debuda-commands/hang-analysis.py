@@ -110,26 +110,25 @@ def run(args, context, ui_state = None):
                                 problematic_ops.add (op)
                                 all_good = False
 
-            # Test other ops
+            ops_to_visit = graph.get_fanout(input_queues)
+            ops_to_visit -= problematic_ops
+
+            # # Test other ops
             # visited_ops = set () # problematic_ops
-            # ops_to_visit = set ()
-            # for _, ops in graph_input_queues_to_op_map.items():
-            #     for op_name in ops:
-            #         ops_to_visit.add (op_name)
 
             # while ops_to_visit:
-            #     new_ops_to_visit = util.set()
-            #     for op_name in ops_to_visit:
-            #         if op_name not in visited_ops:
-            #             fanout_ops = graph.get_fanout (op_name)
+            #     new_ops_to_visit = TTObjectSet()
+            #     for op in ops_to_visit:
+            #         if op not in visited_ops:
+            #             fanout_ops = graph.get_fanout (op)
             #             new_ops_to_visit = new_ops_to_visit.union (fanout_ops)
-            #             for dest_op_name in fanout_ops:
-            #                 op_wants_data = wants_more_data_from_input (all_stream_regs, graph, graph_device, dest_op_name, op_name)
-            #                 print (f"Wants more data {op_wants_data}: {op_name} -> {dest_op_name} ")
-            #                 buffers_and_pipes_and_streams = graph.get_buffers_and_pipes_and_streams (op_name, dest_op_name)
+            #             for dest_op in fanout_ops:
+            #                 op_wants_data = wants_more_data_from_input (all_stream_regs, graph, graph_device, dest_op, op)
+            #                 print (f"Wants more data {op_wants_data}: {op.id()} -> {dest_op} ")
+            #                 buffers_and_pipes_and_streams = graph.get_buffers_and_pipes_and_streams (op, dest_op)
             #                 for b in buffers_and_pipes_and_streams:
             #                     print (b)
-            #             visited_ops.add(op_name)
+            #             visited_ops.add(op)
             #     ops_to_visit = new_ops_to_visit
 
         if table.rows:
