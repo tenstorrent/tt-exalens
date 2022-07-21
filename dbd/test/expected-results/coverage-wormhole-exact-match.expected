@@ -4239,5 +4239,10 @@ Pipes for buffer: { 10000310000:Pipe, inputs: [10000210000], outputs: [100001700
 [34m  Device 0 is running graph: test_op[0m
 [34m    Analyzing graph test_op[0m
 [34mNo problems on device 0[0m
+[34mExecuting command: export[0m
+[32mExported 'debuda-export.zip'. Import with:
+  unzip debuda-export.zip -d dbd-export
+  cd dbd-export
+  Run debuda.py --server-cache on[0m
 [34mExecuting command: x[0m
 [34mExiting with code 0 [0m
