@@ -139,7 +139,7 @@ def print_host_queue_summary (cmd, context, ui_state):
             buffer_data = buffer.root
             if buffer_data["dram_io_flag_is_remote"] != 0:
                 dram_addr = buffer_data['dram_addr']
-                if dram_addr >> 29 == device_id:
+                if dram_addr >> 28 == device_id:
                     rdptr = tt_device.PCI_IFC.host_dma_read (dram_addr)
                     wrptr = tt_device.PCI_IFC.host_dma_read (dram_addr + 4)
                     slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
