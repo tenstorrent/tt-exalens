@@ -1,5 +1,4 @@
 devices:
-  count: 1
   arch: [grayskull, wormhole]
 
 queues:
