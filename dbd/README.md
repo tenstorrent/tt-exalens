@@ -100,7 +100,7 @@ Currently, this functionality is supported through a fairly manual flow (perhaps
 
 ### Building debuda-stub
 ```
-bin/build-debuda-stub.sh
+make dbd/debuda-stub
 ```
 Prebuilt binary is committed to git repo for convenience.
 

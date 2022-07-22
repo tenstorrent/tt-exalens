@@ -15,14 +15,36 @@ DBD_SRCS = $(wildcard dbd/*.cpp)
 DBD_OBJS = $(addprefix $(OBJDIR)/, $(DBD_SRCS:.cpp=.o))
 DBD_DEPS = $(addprefix $(OBJDIR)/, $(DBD_SRCS:.cpp=.d))
 
+DEBUDA_STUB_TARGET = $(BINDIR)/debuda-stub
+DEBUDA_STUB_SRC = device/tt_silicon_driver_debuda_stub.cpp
+DEBUDA_STUB_INCLUDES = -Ithird_party/fmt/ -Isrc/firmware/riscv/grayskull/ -Icommon/model -Idevice/grayskull/ -Inetlist -Imodel -I. -Icore_graph_lib  -Isrc/firmware/riscv/ -Iversim/grayskull/headers/vendor/yaml-cpp/include
+DEBUDA_STUB_LDFLAGS = -lzmq
+DEBUDA_STUB_OBJ = $(OBJDIR)/dbd/tt_silicon_driver_debuda_stub.o
+
 -include $(DBD_DEPS)
 
-# Each module has a top level target as the entrypoint which must match the subdir name
-dbd: $(OUT)/bin/dbd_modify_netlist
+dbd: $(OUT)/bin/dbd_modify_netlist dbd/debuda-stub
 	$(PRINT_OK)
 
-dbd_clean:
+dbd/debuda-stub: $(DEBUDA_STUB_TARGET)
+	$(PRINT_OK)
+
+$(DEBUDA_STUB_TARGET): $(DEBUDA_STUB_OBJ) $(DEVICE_LIB) $(MODEL_LIB)
+	$(PRINT_TARGET)
+	@mkdir -p $(@D)
+	$(CXX) $(CFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(DEBUDA_STUB_LDFLAGS)
+	$(PRINT_OK)
+
+$(DEBUDA_STUB_OBJ): $(DEBUDA_STUB_SRC)
+	$(PRINT_TARGET)
+	@mkdir -p $(@D)
+	$(CXX) $(CFLAGS) $(CXXFLAGS) $(DEBUDA_STUB_INCLUDES) -c -o $@ $^
+	$(PRINT_OK)
+
+dbd/clean:
 	-rm $(OUT)/bin/dbd_* $(SILENT_ERRORS)
+	-rm $(DEBUDA_STUB) $(SILENT_ERRORS)
+	-rm $(OBJDIR)/dbd/* $(SILENT_ERRORS)
 
 $(DBD_LIB): $(DBD_OBJS) $(BACKEND_LIB)
 	$(PRINT_TARGET)

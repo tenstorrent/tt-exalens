@@ -3,7 +3,7 @@ from tabulate import tabulate
 from dbd.tt_object import TTObject
 import tt_util as util
 import tt_object
-STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with bin/build-debuda-stub.sh. It also requires zeromq (sudo apt install -y libzmq3-dev)."
+STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with 'make dbd/debuda-stub'. It also requires zeromq (sudo apt install -y libzmq3-dev)."
 
 #
 # Communication with Buda (or debuda-stub) over sockets (ZMQ).
@@ -20,7 +20,7 @@ def init_comm_client (ip="localhost", port=5555, debug_debuda_stub=False):
     if spawning_debuda_stub:
         print ("Spawning debuda-stub...")
 
-        debuda_stub_path = util.application_path() + "/debuda-stub"
+        debuda_stub_path = util.application_path() + "/../build/bin/debuda-stub"
         try:
             global DEBUDA_STUB_PROCESS
             debuda_stub_args = [ "--debug" ] if debug_debuda_stub else [ ]
@@ -560,6 +560,7 @@ class Device(TTObject):
                 { "reg_val":[0x20000000],                       "description" : "Amount of written tiles that needs to be cleared",             "mask":0xFFFFF000, "ver": 0 },
                 { "reg_val":[0x22222222,0x33333333,0x44444444], "description" : "Epilogue",                                                     "mask":0xFFFFFFFF, "ver": 1 },
                 { "reg_val":[0x10000006,0x10000001],            "description" : "Waiting for next epoch",                                       "mask":0xFFFFFFFF, "ver": 1 },
+                { "reg_val":[0x1FFFFFF1],                       "description" : "Done",                                                         "mask":0xFFFFFFFF, "ver": 2 },
             ],
             self.BRISC_STATUS_REG_ADDR : [ #brisc
                 { "reg_val":[0xB0000000],                       "description" : "Stream restart check",                                         "mask":0xFFFFF000, "ver": 0 },
@@ -570,6 +571,7 @@ class Device(TTObject):
                 { "reg_val":[0xF1000000],                       "description" : "Wait until all streams are idle",                              "mask":0xFFFFFFFF, "ver": 0 },
                 { "reg_val":[0x21000000],                       "description" : "Waiting for next epoch",                                       "mask":0xFFFFF000, "ver": 1 },
                 { "reg_val":[0x10000001],                       "description" : "Waiting for next epoch",                                       "mask":0xFFFFFFFF, "ver": 1 },
+                { "reg_val":[0x22000000],                       "description" : "Done",                                                         "mask":0xFFFFFF00, "ver": 2 },
             ]
         }
 
