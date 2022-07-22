@@ -1,5 +1,10 @@
 This folder contains file exported with 'export' command.
 
+## unpack with
+```
+for f in *.zip; do unzip $f; done
+```
+
 ## gs-x2-fd8f98aca.zip - Kyle's run from checkout fd8f98aca
 To rerun:
 make -j32 verif/netlist_tests/test_inference
@@ -13,3 +18,4 @@ These are used by the regression tests (look for run-offline-tests.sh and run-co
 
 ## bert-large-no-pkl.zip
 Large netlist with many epochs. Used for benchmarking YAML read performance. It does not contain any silicon data (pkl)
+
