@@ -88,7 +88,7 @@ class Netlist:
         self.load_graphs (rundir)
 
         # 4. Store the Ops for input queues
-        all_queue_ids = TTObjectSet ({ q.id() for q in self.queues })
+        all_queue_ids = TTObjectSet( q.id() for q in self.queues )
         for graph in self.graphs:
             for op in graph.ops:
                 for input in op.root["inputs"]:

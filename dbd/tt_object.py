@@ -21,7 +21,7 @@ class TTObjectSet (SortedSet):
         else:
             return "{ }"
     def __repr__(self):
-        return f"[{len (self)}] self.__str__()"
+        return f"[{len (self)}] {self.__str__()}"
 
     # Constructs a TTObjectSet from an iterable
     @classmethod

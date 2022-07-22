@@ -67,6 +67,10 @@ dbd/debuda.py  tt_build/test_op_6142509188972423790 --netlist verif/op_tests/net
 ```
 The above command will show Stream 24 on core 1-1 and then terminate.
 
+### Profiling
+
+Use pyinstrument for simple profiling. Simply, prefix your invocation of Debuda with **pyinstrument**.
+
 ### REPL
 
 `Help`

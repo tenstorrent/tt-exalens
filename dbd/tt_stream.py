@@ -117,7 +117,8 @@ class Stream(TTObject):
     def get_buffer_id (self):
         return self.root.get ("buf_id", None)
     def get_pipe_id (self):
-        return self.root.get ("pipe_id", None)
+        ret_val = self.root.get ("pipe_id", None)
+        return ret_val
 
     def on_chip_id (self):
         return ( self._id[1], self._id[2], self._id[3], )

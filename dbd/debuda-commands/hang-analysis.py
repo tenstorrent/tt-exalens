@@ -25,29 +25,29 @@ def run(args, context, ui_state = None):
         util.INFO (f"  Device {device.id()} is running graph{'s:' if len(device_graph_names) > 1 else ':' } {' '.join (device_graph_names)}")
 
         # Returns if the Op wants more data on a given input
-        def wants_more_data_from_input (all_stream_regs, graph, graph_device, op, input_queue):
-            op_buffers = graph.get_buffers(op)
+        def wants_more_data_from_input (all_stream_regs, graph, graph_device, src_op_or_q, dest_op_or_q):
+            op_buffers = graph.get_buffers(dest_op_or_q)
             # As not all streams have buf_id, and not all have pipe_id, we try to find either
             relevant_buffers = TTObjectSet()
             relevant_pipes = TTObjectSet()
-            util.VERBOSE (f"Running wants_more_data_from_input for {op} on input {input_queue}")
-            util.VERBOSE (f"  Found these buffers for {op}: {op_buffers}")
+            util.VERBOSE (f"Running wants_more_data_from_input for {dest_op_or_q} on input {src_op_or_q}")
+            util.VERBOSE (f"  Found these buffers for {dest_op_or_q}: {op_buffers}")
             for dest_buffer in op_buffers:
                 if graph.is_dest_buffer (dest_buffer):
                     src_buffers = graph.get_fanin (dest_buffer)
-                    src_buffers.keep (lambda b: b.root["md_op_name"] == input_queue.id())
-                    for b in src_buffers:
+                    src_buffers.keep (lambda b: b.root["md_op_name"] == src_op_or_q.id())
+                    if src_buffers:
                         relevant_buffers.add (dest_buffer)
                         pipes = graph.get_pipes (dest_buffer)
                         relevant_pipes.update (pipes)
-            util.VERBOSE (f"  Found these source buffers for {input_queue}->{op} conection: {relevant_buffers}")
+            util.VERBOSE (f"  Found these source buffers for {src_op_or_q}->{dest_op_or_q} conection: {relevant_buffers}")
             relevant_streams = util.set({s for s in graph.streams if relevant_buffers.find_id (s.get_buffer_id()) or relevant_pipes.find_id(s.get_pipe_id())})
 
             if not relevant_streams:
                 buflist = [ str(b.id()) for b in relevant_buffers]
                 util.WARN (f"No relevant streams for buffers {' '.join (buflist)}")
             else:
-                util.VERBOSE (f"  Found these relevant_streams for {input_queue}->{op} conection: {' '.join ([ s.__str__() for s in relevant_streams ])}")
+                util.VERBOSE (f"  Found these relevant_streams for {src_op_or_q}->{dest_op_or_q} conection: {' '.join ([ s.__str__() for s in relevant_streams ])}")
 
             for s in relevant_streams:
                 stream_data = all_stream_regs.get (s.on_chip_id(), None)
@@ -103,7 +103,7 @@ def run(args, context, ui_state = None):
                     input_has_data = Queue.occupancy(entries, wrptr, rdptr) > 0
                     for op in ops:
                         if not input_has_data:
-                            op_wants_data = wants_more_data_from_input (all_stream_regs, graph, graph_device, op, q)
+                            op_wants_data = wants_more_data_from_input (all_stream_regs, graph, graph_device, q, op)
                             if op_wants_data:
                                 table.add_row (None, { 'op' : op.id(), 'input' : q.id(), 'has_data': input_has_data, "wants_data": op_wants_data })
                                 # util.WARN (f"Op {op}, input {q_name}: input_has_data {input_has_data} != {op_wants_data} op_wants_data")
@@ -114,22 +114,37 @@ def run(args, context, ui_state = None):
             ops_to_visit -= problematic_ops
 
             # # Test other ops
-            # visited_ops = set () # problematic_ops
+            visited_ops = set () # problematic_ops
 
-            # while ops_to_visit:
-            #     new_ops_to_visit = TTObjectSet()
-            #     for op in ops_to_visit:
-            #         if op not in visited_ops:
-            #             fanout_ops = graph.get_fanout (op)
-            #             new_ops_to_visit = new_ops_to_visit.union (fanout_ops)
-            #             for dest_op in fanout_ops:
-            #                 op_wants_data = wants_more_data_from_input (all_stream_regs, graph, graph_device, dest_op, op)
-            #                 print (f"Wants more data {op_wants_data}: {op.id()} -> {dest_op} ")
-            #                 buffers_and_pipes_and_streams = graph.get_buffers_and_pipes_and_streams (op, dest_op)
-            #                 for b in buffers_and_pipes_and_streams:
-            #                     print (b)
-            #             visited_ops.add(op)
-            #     ops_to_visit = new_ops_to_visit
+            while ops_to_visit:
+                new_ops_to_visit = TTObjectSet()
+                for src_op in ops_to_visit:
+                    if src_op not in visited_ops:
+                        dest_ops = graph.get_fanout (src_op)
+                        new_ops_to_visit.update (dest_ops)
+                        for dest_op in dest_ops:
+                            util.INFO (f"Examining connection {src_op}->{dest_op}")
+                            src_pipes = graph.get_pipes (src_op)
+                            dest_pipes = graph.get_pipes (dest_op)
+                            connecting_pipes = src_pipes.intersection (dest_pipes)
+
+                            pipe_streams = graph.get_streams (connecting_pipes)
+                            pipe_streams.update (graph.get_streams (graph.get_buffers (connecting_pipes)))
+
+                            assert pipe_streams, "No streams found for connection {src_op}->{dest_op}"
+
+                            for s in pipe_streams:
+                                stream_data = all_stream_regs.get (s.on_chip_id(), None)
+                                if stream_data:
+                                    print (f"{s} {graph_device.is_stream_done (stream_data)} {graph_device.is_stream_active (stream_data)}")
+
+                            # op_wants_data = wants_more_data_from_input (all_stream_regs, graph, graph_device, src_op, dest_op)
+                            # print (f"Wants more data {op_wants_data}: {src_op.id()} -> {dest_op} ")
+                            # buffers_and_pipes_and_streams = graph.get_buffers_and_pipes_and_streams (src_op, dest_op)
+                            # for b in buffers_and_pipes_and_streams:
+                            #     print (b)
+                        visited_ops.add(src_op)
+                ops_to_visit = new_ops_to_visit
 
         if table.rows:
             print (table)

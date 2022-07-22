@@ -283,7 +283,7 @@ class Graph(TTObject):
     def get_buffers_and_pipes_and_streams (self, op_A, op_B):
         assert op_A in self.get_fanin(op_B) and op_B in self.get_fanout(op_A), f"{op_A} does not feed {op_B}"
 
-        dest_buffers = TTObjectSet ({b for b in self.get_buffers (op_B) if self.is_dest_buffer (b)})
+        dest_buffers = TTObjectSet(b for b in self.get_buffers (op_B) if self.is_dest_buffer (b))
         buffer_and_pipes = set ()
 
         util.VERBOSE (f"Running get_buffer_pars for {op_A}->{op_B}")
@@ -316,11 +316,11 @@ class Graph(TTObject):
         ret_val = TTObjectSet()
         if type(where) == str or type(where) == int:
             expected_id = int(where)
-            ret_val = TTObjectSet.fromiterable( { b for b in self.buffers if b.id() == expected_id } )
+            ret_val.update( b for b in self.buffers if b.id() == expected_id )
         elif type(where) == Pipe:
-            ret_val = TTObjectSet.fromiterable( { b for b in self.buffers if b.id() in where.inputs() or b.id() in where.outputs() } )
+            ret_val.update( b for b in self.buffers if b.id() in where.inputs() or b.id() in where.outputs() )
         elif type(where) == Op or type(where) == Queue:
-            ret_val = TTObjectSet.fromiterable( { b for b in self.buffers if b.root["md_op_name"] == where.id() } )
+            ret_val.update( b for b in self.buffers if b.root["md_op_name"] == where.id() )
         elif util.is_iterable(where):
             for o in where: ret_val.update (self.get_buffers (o))
         else:
@@ -330,8 +330,12 @@ class Graph(TTObject):
     def get_streams (self, where):
         ret_val = TTObjectSet()
         if type(where) == tuple:
-            # Looking by strema location tuple
-            ret_val = TTObjectSet.fromiterable( { s for s in self.streams if s.id() == where } )
+            # Looking by stream location tuple
+            ret_val.update( s for s in self.streams if s.id() == where )
+        elif type(where) == Buffer:
+            ret_val.update( s for s in self.streams if s.get_buffer_id() == where.id() )
+        elif type(where) == Pipe:
+            ret_val.update( s for s in self.streams if s.get_pipe_id() == where.id() )
         elif util.is_iterable(where):
             for o in where: ret_val.update (self.get_streams (o))
         else:
@@ -341,9 +345,14 @@ class Graph(TTObject):
     def get_pipes (self, where):
         ret_val = TTObjectSet()
         if type(where) == int:
-            ret_val = TTObjectSet.fromiterable( { p for p in self.pipes if p.id() == where } )
+            ret_val.update( p for p in self.pipes if p.id() == where )
         elif type(where) == Buffer:
-            ret_val = TTObjectSet.fromiterable( { p for p in self.pipes if where.id() in p.inputs() or where.id() in p.outputs() } )
+            ret_val.update( p for p in self.pipes if where.id() in p.inputs() or where.id() in p.outputs() )
+        elif type(where) == Op or type(where) == Queue:
+            def is_ops (b):
+                return b.root["md_op_name"]==where.id()
+            for p in self.pipes:
+                ret_val.update ( p for b in self.get_buffers(p) if is_ops(b) )
         elif util.is_iterable(where):
             for o in where: ret_val.update (self.get_pipes (o))
         else:
@@ -354,14 +363,14 @@ class Graph(TTObject):
         if type(where) == Op:
             op_input_names = { i for i in where.root["inputs"] }
             # Fed by input queue
-            ret_val = TTObjectSet.fromiterable ({ q for q in self.netlist.queues if q.id() in op_input_names })
+            ret_val = TTObjectSet( q for q in self.netlist.queues if q.id() in op_input_names )
             # Fed by another op
-            ret_val.update (TTObjectSet.fromiterable ({ op for op in self.ops if op.id() in op_input_names }))
+            ret_val.update ( op for op in self.ops if op.id() in op_input_names )
         elif type(where) == Queue:
             # Fed by input queue
-            ret_val = (TTObjectSet.fromiterable ({ q for q in self.netlist.queues if q.id() == where.root["input"] }))
+            ret_val = TTObjectSet( q for q in self.netlist.queues if q.id() == where.root["input"] )
             # Fed by another op
-            ret_val.update (TTObjectSet.fromiterable ({ op for op in self.ops if op.id() == where.root["input"] }))
+            ret_val.update ( op for op in self.ops if op.id() == where.root["input"] )
         else:
             raise TypeError (f"Usupported object type: {type(where)}")
         return ret_val
@@ -369,9 +378,9 @@ class Graph(TTObject):
     def get_fanout_op_and_queue_level (self, where):
         if type(where) == Op or type(where) == Queue:
             # Feeding output queue
-            ret_val = TTObjectSet.fromiterable ({ q for q in self.netlist.queues if where.id() == q.root["input"] })
+            ret_val = TTObjectSet( q for q in self.netlist.queues if where.id() == q.root["input"] )
             # Feeding another op
-            ret_val.update (TTObjectSet.fromiterable ({ op for op in self.ops if where.id() in op.root["inputs"] }))
+            ret_val.update (TTObjectSet( op for op in self.ops if where.id() in op.root["inputs"] ))
         else:
             raise TypeError (f"Usupported object type: {type(where)}")
         return ret_val
