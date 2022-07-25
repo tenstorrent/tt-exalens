@@ -6,7 +6,7 @@ include $(GIT_ROOT)/dbd/util.mk
 DBD_INCLUDES = $(BASE_INCLUDES) $(GOLDEN_INCLUDES) $(MODEL2_INCLUDES) $(NETLIST_INCLUDES) $(MODEL_INCLUDES) -Iverif/directed_tests -Iverif -Ithird_party/json
 DBD_LIB = $(LIBDIR)/libdbd.a
 DBD_DEFINES = -DGIT_HASH=$(shell git rev-parse HEAD)
-DBD_INCLUDES += -Imodel -Inetlist -Icommon -Iversim/$(ARCH_NAME)/headers/vendor/yaml-cpp/include -Isrc/firmware/riscv/$(ARCH_NAME)/ 
+DBD_INCLUDES += -Imodel -Inetlist -Icommon -Iversim/$(ARCH_NAME)/headers/vendor/yaml-cpp/include -Isrc/firmware/riscv/$(ARCH_NAME)/
 DBD_CFLAGS = $(CFLAGS) -Werror
 DBD_LDFLAGS = -ltt -ldevice -lstdc++fs -lpthread -lyaml-cpp -lcommon -lboost_program_options
 
@@ -16,29 +16,35 @@ DBD_OBJS = $(addprefix $(OBJDIR)/, $(DBD_SRCS:.cpp=.o))
 DBD_DEPS = $(addprefix $(OBJDIR)/, $(DBD_SRCS:.cpp=.d))
 
 DEBUDA_STUB_TARGET = $(BINDIR)/debuda-stub
-DEBUDA_STUB_SRC = device/tt_silicon_driver_debuda_stub.cpp
-DEBUDA_STUB_INCLUDES = -Ithird_party/fmt/ -Isrc/firmware/riscv/grayskull/ -Icommon/model -Idevice/grayskull/ -Inetlist -Imodel -I. -Icore_graph_lib  -Isrc/firmware/riscv/ -Iversim/grayskull/headers/vendor/yaml-cpp/include
-DEBUDA_STUB_LDFLAGS = -lzmq
-DEBUDA_STUB_OBJ = $(OBJDIR)/dbd/tt_silicon_driver_debuda_stub.o
+DEBUDA_STUB_SRC = model/tile.cpp device/tt_silicon_driver_debuda_stub.cpp device/tt_silicon_driver_common.cpp device/tt_silicon_driver.cpp model/tt_rnd_util.cpp device/tt_device.cpp
+DEBUDA_STUB_INCLUDES = -Isrc/firmware/riscv/$(ARCH_NAME)/
+DEBUDA_STUB_LDFLAGS = -lzmq -lpthread ./device/lib/libyaml-cpp.a
+
+ifeq ("$(ARCH_NAME)", "wormhole_b0")
+  DEBUDA_STUB_SRC += device/wormhole/impl_device.cpp
+  DEBUDA_STUB_INCLUDES += -Idevice/wormhole/
+else ifeq ("$(ARCH_NAME)", "wormhole")
+  DEBUDA_STUB_SRC += device/wormhole/impl_device.cpp
+  DEBUDA_STUB_INCLUDES += -Idevice/wormhole/
+else
+  DEBUDA_STUB_SRC += device/grayskull/impl_device.cpp
+  DEBUDA_STUB_INCLUDES += -Idevice/grayskull/
+endif
 
 -include $(DBD_DEPS)
 
 dbd: $(OUT)/bin/dbd_modify_netlist dbd/debuda-stub
+	$(PRINT_TARGET)
 	$(PRINT_OK)
 
 dbd/debuda-stub: $(DEBUDA_STUB_TARGET)
+	$(PRINT_TARGET)
 	$(PRINT_OK)
 
-$(DEBUDA_STUB_TARGET): $(DEBUDA_STUB_OBJ) $(DEVICE_LIB) $(MODEL_LIB)
+$(DEBUDA_STUB_TARGET): $(DEBUDA_STUB_SRC)
 	$(PRINT_TARGET)
 	@mkdir -p $(@D)
-	$(CXX) $(CFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(DEBUDA_STUB_LDFLAGS)
-	$(PRINT_OK)
-
-$(DEBUDA_STUB_OBJ): $(DEBUDA_STUB_SRC)
-	$(PRINT_TARGET)
-	@mkdir -p $(@D)
-	$(CXX) $(CFLAGS) $(CXXFLAGS) $(DEBUDA_STUB_INCLUDES) -c -o $@ $^
+	$(CXX) $(CFLAGS) $(CXXFLAGS) $(DEBUDA_STUB_INCLUDES) -o $@ $^ $(LDFLAGS) $(DEBUDA_STUB_LDFLAGS)
 	$(PRINT_OK)
 
 dbd/clean:
