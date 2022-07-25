@@ -14,7 +14,7 @@ else
     make verif/op_tests > $TMP_OUT_FILE
 fi
 
-pip install prompt_toolkit
+pip install prompt_toolkit sortedcontainers
 
 mkdir -p debuda_test
 
