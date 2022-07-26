@@ -21,7 +21,7 @@ def run(args, context, ui_state = None):
             epoch_id = device.stream_epoch (stream_regs)
             device_epochs.add (epoch_id)
 
-        device_graph_names = { context.netlist.epoch_id_to_graph_name (epoch_id) for epoch_id in device_epochs }
+        device_graph_names = context.netlist.graph_names()
         util.INFO (f"  Device {device.id()} is running graph{'s:' if len(device_graph_names) > 1 else ':' } {' '.join (device_graph_names)}")
 
         # Returns if the Op wants more data on a given input

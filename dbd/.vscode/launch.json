@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "kyle-2gs",
+            "name": "gs-x2-fd8f98aca",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/debuda.py",
@@ -13,7 +13,7 @@
                 "--server-cache",
                 "on"
             ],
-            "cwd": "${workspaceFolder}/test/exported-runs/dbd-kyle-2gs",
+            "cwd": "${workspaceFolder}/test/exported-runs/gs-x2-fd8f98aca",
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -70,6 +70,19 @@
             "cwd": "${workspaceFolder}/test/exported-runs/simple-matmul-no-hangs",
             "console": "integratedTerminal",
             "justMyCode": true
-        }
+        },
+        {
+            "name": "wh-multidevice-single-epoch ",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [
+                "--server-cache",
+                "on"
+            ],
+            "cwd": "${workspaceFolder}/test/exported-runs/wh-multidevice-single-epoch",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
     ]
 }

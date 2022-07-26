@@ -29,7 +29,7 @@ def run(args, context, ui_state = None):
     # 1. Append blobs
     buffer_ids = util.set()
     non_active_phases = dict()
-    graph = context.netlist.graph(context.netlist.epoch_id_to_graph_name(stream_epoch_id))
+    graph = context.netlist.graph(ui_state["current_graph_name"])
 
     # 1a. Append the op name to description
     for n in navigation_suggestions:

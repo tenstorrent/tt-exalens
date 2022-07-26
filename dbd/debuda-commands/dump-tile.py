@@ -30,8 +30,7 @@ def get_l1_buffer_info_from_blob(device_id, graph, noc0_loc, stream_id, phase):
 def dump_message_xy(context, ui_state, tile_id, raw):
     is_tile = raw == 0
     device_id = ui_state['current_device_id']
-    epoch_id = ui_state ['current_epoch_id']
-    graph_name = context.netlist.epoch_id_to_graph_name(epoch_id)
+    graph_name = ui_state ['current_graph_name']
     graph = context.netlist.graph(graph_name)
     current_device = context.devices[device_id]
     noc0_loc, stream_id = (ui_state['current_x'], ui_state['current_y']), ui_state['current_stream_id']
@@ -60,14 +59,11 @@ def dump_message_xy(context, ui_state, tile_id, raw):
                 op = graph.root[op_name]
                 assert (buffer.root['md_op_name'] == op_name) # Make sure the op name is the same as the one in the buffer itself
 
-                if hasattr (buffer, "is_input"):
-                    if buffer.is_input:
-                        data_format_str = op['in_df'][0] # FIX: we are picking the first from the list
-                    else:
-                        data_format_str = op['out_df']
+                if buffer.is_input:
+                    data_format_str = op['in_df'][0] # FIX: we are picking the first from the list
                 else:
-                    util.ERROR (f"Cannot compute buffer data format of buffer {buffer.id()}.")
-                    return
+                    data_format_str = op['out_df']
+
                 data_format = tt_netlist.get_data_format_from_string (data_format_str)
 
                 # 3. Dump the tile

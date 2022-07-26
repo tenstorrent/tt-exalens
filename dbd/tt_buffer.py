@@ -9,7 +9,8 @@ class Buffer(TTObject):
         self._id = self.root['uniqid']
         self.replicated = False
         self.graph = graph
-
+        self.is_input = False
+        self.is_output = False
     # Renderer
     def __str__(self):
         r = self.root

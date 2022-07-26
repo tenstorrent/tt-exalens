@@ -11,7 +11,7 @@ def run(args, context, ui_state = None):
 
     current_device_id = ui_state["current_device_id"]
     current_device = context.devices[current_device_id]
-    graph = context.netlist.graphs[context.netlist.epoch_id_to_graph_name(ui_state["current_epoch_id"])]
+    graph = context.netlist.graph(ui_state["current_graph_name"])
 
     a_pipe = list (graph.pipes)[0]
     a_buffer = list (graph.buffers)[0]

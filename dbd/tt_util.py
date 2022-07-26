@@ -133,7 +133,7 @@ def print_columnar_dicts (dict_array, title_array):
     print (tabulate(final_table, headers=titles))
 
 # Stores all data loaded from a yaml file
-# Includes a cache in case a file is loaded multiple files
+# Includes a cache in case a file is loaded multiple times
 class YamlFile:
     # Cache
     file_cache = {}
@@ -147,10 +147,16 @@ class YamlFile:
         else:
             INFO (f"Loading '{self.filepath}'")
             # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
+            # Note: graph_name can apear multiple times, we manually convert it into an array
             self.root = dict()
 
             for i in yaml.load_all(open(self.filepath), Loader=yaml.CSafeLoader):
-                self.root = { **self.root, **i }
+                if 'graph_name' in i:
+                    if 'graph_names' not in self.root:
+                        self.root['graph_names'] = []
+                    self.root['graph_names'].append (i['graph_name'])
+                else:
+                    self.root = { **self.root, **i }
             YamlFile.file_cache[self.filepath] = self.root
 
     def __str__(self):

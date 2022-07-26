@@ -65,9 +65,9 @@ class Graph(TTObject):
         output_buffers_ids = util.set()
 
         for key, val in self.pipegen_yaml.items():
-            if key == "graph_name":
-                if self.id() != val:
-                    util.WARN(f"Expected 'graph_name: {self.id()}' in {self.pipegen_yaml.id()}, but got 'graph_name: {val}'")
+            if key == "graph_names": # This key is pluralized in util.YamlFile
+                if self.id() not in val:
+                    util.WARN(f"Expected graph {self.id()} to be in {val}")
             elif "buffer" in key:
                 b = Buffer(self, val)
                 self.buffers.add(b)
@@ -88,8 +88,7 @@ class Graph(TTObject):
         for b in self.get_buffers (input_buffers_ids):
             b.is_input = True
         for b in self.get_buffers (output_buffers_ids):
-            assert not hasattr (b, 'is_input'), f"Buffer {b.id()} is already set as input, but now it wants to be output"
-            b.is_input = False
+            b.is_output = True
 
         # 2. Load blob_yaml
         self.streams = TTObjectSet()

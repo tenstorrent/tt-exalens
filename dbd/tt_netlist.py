@@ -31,15 +31,17 @@ def get_data_format_from_string(str):
 class Netlist:
     def load_netlist_data (self):
         # 1. Cache epoch id, device id and graph names
-        self.epoch_id_to_graph_name_map = dict()
+        self.epoch_id_to_graph_names_map = dict()
         self._epoch_ids = util.set()
 
         for graph_name in self.graph_names():
             epoch_id = self.graph_name_to_epoch_id(graph_name)
-            assert (epoch_id not in self._epoch_ids)  # We do not support multiple graphs in the same epoch
+            # assert (epoch_id not in self._epoch_ids)  # We do not support multiple graphs in the same epoch
             self._epoch_ids.add (epoch_id)
 
-            self.epoch_id_to_graph_name_map[epoch_id] = graph_name
+            if epoch_id not in self.epoch_id_to_graph_names_map:
+                self.epoch_id_to_graph_names_map[epoch_id] = util.set()
+            self.epoch_id_to_graph_names_map[epoch_id].add (graph_name)
 
         self._epoch_ids = list (self._epoch_ids)
         self._epoch_ids.sort()
@@ -106,12 +108,17 @@ class Netlist:
         return self.runtime_data_yaml.root["graph_to_epoch_map"][graph_name]["epoch_id"]
     def graph_name_to_device_id (self, graph_name):
         return self.runtime_data_yaml.root["graph_to_epoch_map"][graph_name]["target_device"] if graph_name in self.runtime_data_yaml.root["graph_to_epoch_map"] else None
-    def epoch_id_to_graph_name (self, epoch_id):
-        return self.epoch_id_to_graph_name_map[epoch_id] if epoch_id in self.epoch_id_to_graph_name_map else None
+    def epoch_id_to_graph_names (self, epoch_id):
+        return self.epoch_id_to_graph_names_map[epoch_id] if epoch_id in self.epoch_id_to_graph_names_map else None
     def graph (self, graph_name):
         for g in self.graphs:
             if g.id() == graph_name:
                 return g
+        return None
+    def graph_by_epoch_and_device (self, epoch_id, device_id):
+        for graph_name, gdata in self.runtime_data_yaml.root["graph_to_epoch_map"].items():
+            if gdata["epoch_id"] == epoch_id and gdata["target_device"] == device_id:
+                return self.graph(graph_name)
         return None
     def devices(self):
         return self.yaml_file.root["devices"]

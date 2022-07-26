@@ -39,16 +39,11 @@ def run(args, context, ui_state = None):
 
         # Find epochs for each stream
         epochs = util.set()
-        epoch_to_graph_map = dict()
+        # epoch_to_graph_map = dict()
         for loc, stream_regs in all_stream_regs.items():
             epoch_id = device.stream_epoch (stream_regs)
             if epoch_id not in epochs:
                 epochs.add (epoch_id)
-            graph_name = netlist.epoch_id_to_graph_name (epoch_id)
-            if graph_name is None:
-                util.ERROR (f"Stream at {loc} is in epoch {epoch_id}, which does not exist in the netlist")
-            else:
-                epoch_to_graph_map[epoch_id] = netlist.graph (graph_name)
 
         if len(epochs) == 0:
             util.INFO (f"Device {device_id} has no programmed streams. Cannot determine the current epoch.")
@@ -56,9 +51,8 @@ def run(args, context, ui_state = None):
         elif len(epochs) > 1:
             util.WARN (f"The streams within the device are in the following set of epochs: {epochs}.")
 
-        working_epoch_id = list(epochs)[0]
-        working_graph_name = netlist.epoch_id_to_graph_name (working_epoch_id)
-        device_graph = netlist.graph (working_graph_name)
+        working_epoch_id = list(epochs)[0] # HACK: taking the first epoch
+        device_graph = netlist.graph_by_epoch_and_device (working_epoch_id, device_id)
         all_streams_ui_data = dict()
         for stream_loc, stream_regs in all_stream_regs.items():
             all_streams_ui_data[stream_loc] = tt_stream.convert_reg_dict_to_strings(device, stream_regs)
@@ -133,9 +127,8 @@ def run(args, context, ui_state = None):
                         CURR_PHASE_NUM_MSGS_REMAINING = int(all_stream_regs[stream_loc]['CURR_PHASE_NUM_MSGS_REMAINING'])
 
                         op=f"Unknown opoch_id {epoch_id}"
-                        if epoch_id in epoch_to_graph_map:
-                            graph = epoch_to_graph_map[epoch_id]
-                            op = graph.core_coord_to_full_op_name(rc_loc)
+                        graph = netlist.graph_by_epoch_and_device(epoch_id, device_id)
+                        op = graph.core_coord_to_full_op_name(rc_loc)
                         core_loc = f"{util.noc_loc_str(block_loc)}"
                         fan_in_cores = device_data[device_id]['cores'][block_loc]['fan_in_cores']
                         depends_on_str = ""
