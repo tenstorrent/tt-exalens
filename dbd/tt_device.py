@@ -284,7 +284,7 @@ class Device(TTObject):
         # Convert emphasize_noc0_loc_list from noc0 coordinates to the coord space given by 'options' arg
         if options=="physical":
             for loc in emphasize_noc0_loc_list:
-                emphasize_loc_list_to_render.add (self.noc_to_physical(loc[0], loc[1], noc_id=0))
+                emphasize_loc_list_to_render.add (self.noc_to_physical(loc, noc_id=0))
         elif options=="rc":
             for loc in emphasize_noc0_loc_list:
                 emphasize_loc_list_to_render.add (self.noc0_to_rc(loc))
