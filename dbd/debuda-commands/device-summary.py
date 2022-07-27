@@ -14,7 +14,7 @@ def run(args, context, ui_state = None):
             return []
         devices_list = [ device_id ]
     else:
-        devices_list = [ did for did in range (len(context.devices)) ]
+        devices_list = list(context.devices.keys())
 
     for device_id in devices_list:
         device = context.devices[device_id]
