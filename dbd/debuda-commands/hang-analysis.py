@@ -13,7 +13,7 @@ command_metadata = {
 def run(args, context, ui_state = None):
     navigation_suggestions = []
 
-    for device in context.devices:
+    for _, device in context.devices.items():
         util.INFO (f"Analyzing device {device.id()}")
         all_stream_regs = device.read_all_stream_registers ()
         device_epochs = util.set()

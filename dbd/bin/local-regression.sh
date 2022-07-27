@@ -2,7 +2,7 @@
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 declare -a ARCH_LIST=("grayskull" "wormhole")
 
-OUT_FILE="dbd-local-regression-run.txt"
+OUT_FILE="dbd/run/dbd-local-regression-run.txt"
 
 if [ -f "$OUT_FILE" ]; then rm $OUT_FILE; fi
 for ARCH_NAME in ${ARCH_LIST[@]}; do

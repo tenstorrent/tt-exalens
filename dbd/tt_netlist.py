@@ -131,6 +131,12 @@ class Netlist:
             return self.runtime_data_yaml.root["arch_name"]
         return None
 
+    # Returns all device ids used by the graphs and the queues in the netlist
+    def get_device_ids(self):
+        device_ids = util.set (q["target_device"] for _, q in self.yaml_file.root["queues"].items())
+        device_ids.update (util.set (g["target_device"] for _, g in self.yaml_file.root["graphs"].items()))
+        return device_ids
+
     # Determines the netlist file path
     def get_netlist_path (self):
         if "netlist_path" in self.runtime_data_yaml.root:
@@ -157,8 +163,9 @@ def load (netlist_filepath, run_dirpath):
     # Load netlist files
     this.context.netlist = Netlist(netlist_filepath, run_dirpath)
 
-    netlist_devices = this.context.netlist.devices()
+    # Create the devices
     arch = this.context.netlist.get_arch ()
-    this.context.devices = [ tt_device.Device.create(arch) for i in range (16) ]
+    device_ids = this.context.netlist.get_device_ids()
+    this.context.devices = { i : tt_device.Device.create(arch) for i in device_ids }
 
     return this.context

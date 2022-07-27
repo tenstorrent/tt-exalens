@@ -145,7 +145,7 @@ class YamlFile:
         if self.filepath in YamlFile.file_cache:
             self.root = YamlFile.file_cache[self.filepath]
         else:
-            INFO (f"Loading '{self.filepath}'")
+            INFO (f"Loading '{os.getcwd()}/{self.filepath}'")
             # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
             # Note: graph_name can apear multiple times, we manually convert it into an array
             self.root = dict()

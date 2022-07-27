@@ -1,7 +1,7 @@
 tt_build/test_op_6715245286658215413
-[34mOutput directory not specified: looking for the most recent tt_build/ subdirectory. Found: tt_build/test_op_6715245286658215413[0m
-[34mLoading 'tt_build/test_op_6715245286658215413/runtime_data.yaml'[0m
-[34mLoading 'dbd/test/netlists/netlist_multi_matmul_perf.yaml'[0m
+[34mOutput directory not specified. Using most recently changed subdirectory of tt_build: /Users/ivanhamer/work/budabackend/dbd/run/dbd-export/tt_build/test_op_6715245286658215413[0m
+[34mLoading '/Users/ivanhamer/work/budabackend/dbd/run/dbd-export/tt_build/test_op_6715245286658215413/runtime_data.yaml'[0m
+[34mLoading '/Users/ivanhamer/work/budabackend/dbd/run/dbd-export/dbd/test/netlists/netlist_multi_matmul_perf.yaml'[0m
 [34mExecuting command: q[0m
   Entries    Wr    Rd    Occ  Type      Device  Loc    Name    Input    Outputs    DRAM ch-addr
 ---------  ----  ----  -----  ------  --------  -----  ------  -------  ---------  --------------
@@ -9,20 +9,20 @@ tt_build/test_op_6715245286658215413
         1     1     0      [34m1[0m  queue          0  dram   input1  HOST     f_op1      Ch0-0x31000000
         1     0     0      [34m0[0m  queue          0  dram   output  d_op3               Ch0-0x32000000
 [34mExecuting command: hq[0m
-[34mLoading 'tt_build/test_op_6715245286658215413/temporal_epoch_0/overlay/pipegen.yaml'[0m
-[34mLoading 'tt_build/test_op_6715245286658215413/temporal_epoch_0/overlay/blob.yaml'[0m
-[34mHost queues (where dram_io_flag_is_remote!=0) for epoch 0 [0m
+[34mLoading '/Users/ivanhamer/work/budabackend/dbd/run/dbd-export/tt_build/test_op_6715245286658215413/temporal_epoch_0/overlay/pipegen.yaml'[0m
+[34mLoading '/Users/ivanhamer/work/budabackend/dbd/run/dbd-export/tt_build/test_op_6715245286658215413/temporal_epoch_0/overlay/blob.yaml'[0m
+[34mHost queues (where dram_io_flag_is_remote!=0) for graph test_op [0m
 No host queues found
 [34mExecuting command: dq[0m
-[34mDRAM queues for epoch 0[0m
+[34mDRAM queues for graph test_op[0m
   Buffer ID  Op      Input Ops    Output Ops      dram_buf_flag    dram_io_flag    Channel  Address       RD ptr    WR ptr    Occupancy    Slots    Size [bytes]
 -----------  ------  -----------  ------------  ---------------  --------------  ---------  ----------  --------  --------  -----------  -------  --------------
 10000010000  output  d_op3                                    0               1          0  0x32000000         0         0            0        1          131072
 10000030000  input1               f_op1                       1               0          0  0x31000000         0         1            1        1           66560
 10000050000  input0               f_op0                       1               0          0  0x30000000         0         1            1        1           66560
 [34mExecuting command: abs[0m
-[34mAnalyzing device 1/1[0m
-[34mLoading 'device/wormhole_80_arch.yaml'[0m
+[34mAnalyzing device 0[0m
+[34mLoading '/Users/ivanhamer/work/budabackend/dbd/run/dbd-export/device/wormhole_80_arch.yaml'[0m
 X-Y    Op                          Stream  Type      Epoch    Phase    MSGS_REMAINING    MSGS_RECEIVED  Depends on    State    Flag
 -----  ------------------------  --------  ------  -------  -------  ----------------  ---------------  ------------  -------  ------
 3-3    test_op/recip:reciprocal         8  input         0        1                32                8  2-1           Active   [38:2:205:106:0mAll core inputs ready, but no output generated[0m
@@ -31,7 +31,7 @@ Speed dial:
 ---  -------------  ---------
   0  Go to stream   s 3 3 8
 [34mExecuting command: abs 1[0m
-[34mAnalyzing device 1/1[0m
+[34mAnalyzing device 0[0m
 X-Y    Op                          Stream  Type            Epoch    Phase    MSGS_REMAINING    MSGS_RECEIVED  Depends on       State    Flag
 -----  ------------------------  --------  ------------  -------  -------  ----------------  ---------------  ---------------  -------  ------
 2-1    test_op/f_op1:datacopy           8  input               0        1                 0                0  2-1
@@ -403,7 +403,8 @@ Short    Long                     Arguments             Description
 [34mh[0m        [34mhelp[0m                                           prints command documentation
 [34mrl[0m       [34mreload[0m                                         reloads files in debuda-commands directory
 [34mxp[0m       [34mexport[0m                   [ filename ]          exports a zip package for offline work. The optional argument represents a zip file name. Defaults to 'debuda-export.zip'
-[34me[0m        [34mepoch[0m                    epoch_id              switch to epoch epoch_id
+[34me[0m        [34mepoch[0m                    epoch_id              [DEPRECATED - use 'graph' instead]
+[34mg[0m        [34mgraph[0m                    graph__name           switch to graph graph_name
 [34mb[0m        [34mbuffer[0m                   buffer_id_or_op_name  prints details on the buffer with a given id, or buffer(s) mapped to a given operation.
 [34mp[0m        [34mpipe[0m                     pipe_id               prints details on the pipe with ID pipe_id
 [34mrxy[0m      [34mpci-read-xy[0m              x y addr              read data from address 'addr' at noc0 location x-y of the chip associated with current epoch
@@ -4234,11 +4235,6 @@ test_fanin_fanout_buffer_level for recip:Op
 10000200000:Buffer recip:[2,2] buffer fanin: { 10000130000:Buffer f_op1:[0,1] }
 10000210000:Buffer recip:[2,2] buffer fanout: { 10000170001:Buffer matmul2:[2,4] }
 Pipes for buffer: { 10000310000:Pipe, inputs: [10000210000], outputs: [10000170001] }
-[34mExecuting command: ha[0m
-[34mAnalyzing device 0[0m
-[34m  Device 0 is running graph: test_op[0m
-[34m    Analyzing graph test_op[0m
-[34mNo problems on device 0[0m
 [34mExecuting command: export[0m
 [32mExported 'debuda-export.zip'. Import with:
   unzip debuda-export.zip -d dbd-export

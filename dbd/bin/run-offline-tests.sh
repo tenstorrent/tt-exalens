@@ -44,7 +44,7 @@ unzip dbd/test/exported-runs/$ARCH_NAME-regression/coverage-exact-match.zip -d $
 cd $ROOT/$RUN_DIR/dbd-export
 DEBUDA_COMMANDS_TO_RUN="q; hq; dq; abs; abs 1; s 1 1 8;
 cdr 1 1; c 1 1; d; t 1 0; d 0; d 1; cdr 1 1; b 10000030000; 0; 0; eq;
-brxy 1 1 0 0; help; srs 0; srs 1; srs 2; fd; t 1 1; op-map; self-test; ha;
+brxy 1 1 0 0; help; srs 0; srs 1; srs 2; fd; t 1 1; op-map; self-test;
 export;
 x"
 coverage_run coverage-exact-match.log "$COVERAGE_RUN" "" "../../../$DEBUDA_CMD" --commands "$DEBUDA_COMMANDS_TO_RUN"

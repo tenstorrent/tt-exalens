@@ -266,7 +266,7 @@ def main(args, context):
         { "long" : "epoch",
           "short" : "e",
           "expected_argument_count" : 1,
-          "arguments_description" : "epoch_id : [DEPRECATED:use graph instead] switch to epoch epoch_id"
+          "arguments_description" : "epoch_id : [DEPRECATED - use 'graph' instead]"
         },
         { "long" : "graph",
           "short" : "g",
@@ -570,7 +570,7 @@ if args.output_dir is None: # Then find the most recent tt_build subdir
                 most_recent_subdir = subdir
     print (most_recent_subdir)
     args.output_dir = most_recent_subdir
-    util.INFO (f"Output directory not specified: looking for the most recent tt_build/ subdirectory. Found: {most_recent_subdir}")
+    util.INFO (f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{most_recent_subdir}")
 
 context = tt_netlist.load (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
 

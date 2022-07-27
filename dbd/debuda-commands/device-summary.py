@@ -9,7 +9,7 @@ import tt_util as util
 def run(args, context, ui_state = None):
     if len(args) == 2:
         device_id = int(args[1])
-        if device_id >= len(context.devices) or device_id < 0:
+        if device_id not in context.devices:
             util.ERROR (f"Invalid device id '{device_id}'")
             return []
         devices_list = [ device_id ]

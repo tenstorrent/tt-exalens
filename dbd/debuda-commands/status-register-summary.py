@@ -11,8 +11,8 @@ command_metadata = {
     }
 
 def print_status_register_summary(verbosity, context):
-    for device_id, device in enumerate (context.devices):
-        print (f"{util.CLR_INFO}Reading status registers on device %d...{util.CLR_END}" % device_id)
+    for device_id, device in context.devices.items():
+        print (f"{util.CLR_INFO}Reading status registers on device {device_id}...{util.CLR_END}")
 
         print("NCRISC status summary:")
         status_descs_rows = device.status_register_summary(device.NCRISC_STATUS_REG_ADDR, verbosity)

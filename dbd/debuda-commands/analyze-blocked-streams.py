@@ -28,8 +28,8 @@ def run(args, context, ui_state = None):
 
     netlist = context.netlist
 
-    for device_id, device in enumerate (context.devices):
-        util.INFO (f"Analyzing device {device_id + 1}/{len(context.devices)}")
+    for device_id, device in context.devices.items():
+        util.INFO (f"Analyzing device {device_id}")
         device_data[device_id] = {
             "device" : device,
             "cores" : { }

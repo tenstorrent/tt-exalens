@@ -1,1 +1,4 @@
 run
+
+# Ignore subdirectories, as we unpack those manually from the zips
+test/exported-runs/*/
