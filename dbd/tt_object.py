@@ -44,7 +44,10 @@ class TTObjectSet (SortedSet):
 
     # Returns the first element
     def first (self):
-        return next(iter(self))
+        if len(self):
+            return next(iter(self))
+        else:
+            return None
 
     # Finds and returns an element by id
     def find_id (self, id):

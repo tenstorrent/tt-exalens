@@ -9,9 +9,9 @@ tt_build/test_op_6715245286658215413
         1     1     0      [34m1[0m  queue          0  dram   input1  HOST     f_op1      Ch0-0x31000000
         1     0     0      [34m0[0m  queue          0  dram   output  d_op3               Ch0-0x32000000
 [34mExecuting command: hq[0m
+[34mHOST queues for graph test_op[0m
 [34mLoading '/Users/ivanhamer/work/budabackend/dbd/run/dbd-export/tt_build/test_op_6715245286658215413/temporal_epoch_0/overlay/pipegen.yaml'[0m
 [34mLoading '/Users/ivanhamer/work/budabackend/dbd/run/dbd-export/tt_build/test_op_6715245286658215413/temporal_epoch_0/overlay/blob.yaml'[0m
-[34mHost queues (where dram_io_flag_is_remote!=0) for graph test_op [0m
 No host queues found
 [34mExecuting command: dq[0m
 [34mDRAM queues for graph test_op[0m
@@ -379,18 +379,6 @@ Speed dial:
   #  Description    Command
 ---  -------------  -------------
   0  Show pipe      p 10000270000
-[34mExecuting command: eq[0m
-[34mEpoch queues for epoch 0, device id 0[0m
-Location    Address      RD ptr    WR ptr    Occupancy
-----------  ---------  --------  --------  -----------
-1-2         0x27ef440         0         1            1
-1-3         0x27ef560         0         1            1
-1-4         0x27ef680         0         1            1
-[38:2:205:106:0mWIP: This results of this function need to be verified[0m
-Speed dial:
-  #  Description    Command
----  -------------  -------------
-  0  Show pipe      p 10000270000
 [34mExecuting command: brxy 1 1 0 0[0m
 Speed dial:
   #  Description    Command
@@ -399,32 +387,31 @@ Speed dial:
 [34mExecuting command: help[0m
 Short    Long                     Arguments             Description
 -------  -----------------------  --------------------  -------------------------------------------------------------------------------------------------------------------------
-[34mx[0m        [34mexit[0m                                           exit the program. If argument given, it will be used as the exit code
+[34mx[0m        [34mexit[0m                                           exits the program. If an argument is supplied, it will be used as the exit code
 [34mh[0m        [34mhelp[0m                                           prints command documentation
 [34mrl[0m       [34mreload[0m                                         reloads files in debuda-commands directory
 [34mxp[0m       [34mexport[0m                   [ filename ]          exports a zip package for offline work. The optional argument represents a zip file name. Defaults to 'debuda-export.zip'
 [34me[0m        [34mepoch[0m                    epoch_id              [DEPRECATED - use 'graph' instead]
 [34mg[0m        [34mgraph[0m                    graph__name           switch to graph graph_name
-[34mb[0m        [34mbuffer[0m                   buffer_id_or_op_name  prints details on the buffer with a given id, or buffer(s) mapped to a given operation.
-[34mp[0m        [34mpipe[0m                     pipe_id               prints details on the pipe with ID pipe_id
 [34mrxy[0m      [34mpci-read-xy[0m              x y addr              read data from address 'addr' at noc0 location x-y of the chip associated with current epoch
 [34mpcir[0m     [34mpci-raw-read[0m             addr                  read data from PCI bar at address 'addr
 [34mpciw[0m     [34mpci-raw-write[0m            addr data             write 'data' to PCI bar at address 'addr
 [34mbrxy[0m     [34mburst-read-xy[0m            x y addr burst_type   burst read data from address 'addr' at noc0 location x-y of the chip associated with current epoch.
                                                         NCRISC status code address=0xffb2010c, BRISC status code address=0xffb3010c
 [34mwxy[0m      [34mpci-write-xy[0m             x y addr value        writes value to address 'addr' at noc0 location x-y of the chip associated with current epoch
-[34mdq[0m       [34mdram-queue[0m                                     prints DRAM queue summary
-[34mhq[0m       [34mhost-queue[0m                                     prints Host queue summary
-[34meq[0m       [34mepoch-queue[0m                                    prints Epoch queue summary
-[34mfd[0m       [34mfull-dump[0m                                      performs a full dump at current x-y
-[34mtest[0m     [34mtest[0m                                           test for development
 [34mabs[0m      [34manalyze-blocked-streams[0m  verbosity [0-1]       reads stream information from the devices and highlights blocked streams (if verbosity is 1, print more detail)
+[34mb[0m        [34mbuffer[0m                   buffer_id_or_op_name  prints details on the buffer with a given id, or buffer(s) mapped to a given operation.
 [34mcdr[0m      [34mcore-debug-regs[0m          x y                   show debug registers for core 'x-y'. If coordinates are not supplied, show all cores.
 [34mc[0m        [34mcore-summary[0m             x y                   show summary for core 'x-y'
 [34md[0m        [34mdevice-summary[0m           device_id             shows summary of a device. When no argument is supplied, shows summary of all devices
+[34mdq[0m       [34mdram-queue[0m                                     prints DRAM queue summary
 [34mt[0m        [34mdump-tile[0m                tile_id, raw          prints tile for current stream in currently active phase. If raw=1, prints raw bytes
+[34meq[0m       [34mepoch-queue[0m                                    prints Epoch queue summary
+[34mfd[0m       [34mfull-dump[0m                                      performs a full dump at current x-y
 [34mha[0m       [34mhang-analysis[0m                                  Prints operation summary
+[34mhq[0m       [34mhost-queue[0m                                     prints Host queue summary
 [34mom[0m       [34mop-map[0m                                         draws a mini map of the current epoch
+[34mp[0m        [34mpipe[0m                     pipe_id               prints details on the pipe with ID pipe_id
 [34ms[0m        [34mprint-stream[0m             x y stream_id         show stream 'stream_id' at core 'x-y'
 [34mq[0m        [34mqueue-summary[0m                                  Prints summary of queues
 [34mst[0m       [34mself-test[0m                                      Test debuda internals

@@ -11,6 +11,26 @@ command_metadata = {
     "arguments_description" : "tile_id, raw: prints tile for current stream in currently active phase. If raw=1, prints raw bytes"
 }
 
+# converts data format to string
+def get_data_format_from_string(str):
+    data_format = {}
+    data_format["Float32"]   = 0
+    data_format["Float16"]   = 1
+    data_format["Bfp8"]      = 2
+    data_format["Bfp4"]      = 3
+    data_format["Bfp2"]      = 11
+    data_format["Float16_b"] = 5
+    data_format["Bfp8_b"]    = 6
+    data_format["Bfp4_b"]    = 7
+    data_format["Bfp2_b"]    = 15
+    data_format["Lf8"]       = 10
+    data_format["UInt16"]    = 12
+    data_format["Int8"]      = 14
+    data_format["Tf32"]      = 4
+    if str in data_format:
+        return data_format[str]
+    return None
+
 # gets information about stream buffer in l1 cache from blob
 def get_l1_buffer_info_from_blob(device_id, graph, noc0_loc, stream_id, phase):
     buffer_addr = 0
@@ -64,7 +84,7 @@ def dump_message_xy(context, ui_state, tile_id, raw):
                 else:
                     data_format_str = op['out_df']
 
-                data_format = tt_netlist.get_data_format_from_string (data_format_str)
+                data_format = get_data_format_from_string (data_format_str)
 
                 # 3. Dump the tile
                 current_device.dump_tile(noc0_loc, msg_addr, msg_size, data_format)

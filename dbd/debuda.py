@@ -19,174 +19,8 @@ parser.add_argument('--verbose', action='store_true', default=False, help=f'Prin
 parser.add_argument('--debuda-server-address', type=str, default="localhost:5555", required=False, help='IP address of debuda server (e.g. remote.server.com:5555);')
 args = parser.parse_args()
 util.args = args
-import pprint
-pp = pprint.PrettyPrinter(indent=4)
 
 ### BUILT-IN COMMANDS
-
-# Find occurrences of buffer with ID 'buffer_id' across all epochs, and print the structures that reference them
-def print_buffer_data (cmd, context, ui_state=None):
-    try:
-        buffer_id = int(cmd[1])
-    except ValueError as e:
-        buffer_id = cmd[1]
-
-    navigation_suggestions = [ ]
-
-    graph_name = ui_state['current_graph_name']
-    graph = context.netlist.graph(graph_name)
-    buffer = graph.get_buffers(buffer_id).first()
-    if type(buffer_id) == int:
-        buffer = graph.get_buffers(buffer_id).first()
-        if buffer:
-            util.print_columnar_dicts ([buffer.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
-
-        for pipe in graph.pipes:
-            if buffer_id in pipe.root["input_list"]:
-                print (f"( {util.CLR_BLUE}Input{util.CLR_END} of pipe {pipe.id()} )")
-                navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
-            if buffer_id in pipe.root["output_list"]:
-                print (f"( {util.CLR_BLUE}Output{util.CLR_END} of pipe {pipe.id()} )")
-                navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
-    else:
-        raise TypeError (f"Usupported buffer_id type: {type(buffer_id)}")
-
-    return navigation_suggestions
-
-# Find occurrences of pipe with ID 'pipe_id' across all epochs, and print the structures that reference them
-def print_pipe_data (cmd, context, ui_state=None):
-    pipe_id = int(cmd[1])
-
-    graph_name = ui_state['current_graph_name']
-    graph = context.netlist.graph(graph_name)
-    pipe = graph.get_pipes(pipe_id).first()
-    navigation_suggestions = [ ]
-    if pipe:
-        util.print_columnar_dicts ([pipe.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
-
-        for input_buffer in pipe.inputs():
-            navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show src buffer" })
-        for input_buffer in pipe.outputs():
-            navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show dest buffer" })
-    else:
-        util.INFO (f"Pipe {pipe_id} cannot be found in graph {graph_name}")
-
-    return navigation_suggestions
-
-# Prints information on DRAM queues
-def print_dram_queue_summary (cmd, context, ui_state = None):
-    table = []
-    for graph_name in context.netlist.graph_names():
-        print (f"{util.CLR_INFO}DRAM queues for graph {graph_name}{util.CLR_END}")
-        graph = context.netlist.graph(graph_name)
-        device_id = context.netlist.graph_name_to_device_id(graph_name)
-        device = context.devices[device_id]
-
-        for buffer in graph.buffers:
-            buffer_data = buffer.root
-            if (buffer_data["dram_buf_flag"] != 0 or (buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0)) and not buffer.replicated:
-                dram_chan = buffer_data["dram_chan"]
-                dram_addr = buffer_data['dram_addr']
-                dram_loc = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
-                rdptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
-                wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
-                slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
-                queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
-                occupancy = Queue.occupancy (buffer_data["q_slots"], wrptr, rdptr)
-
-                input_buffer_op_name_list = []
-                for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'src'):
-                    input_buffer_op_name_list.append (graph.get_buffers(other_buffer_id).first().root["md_op_name"])
-                output_buffer_op_name_list = []
-                for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'dest'):
-                    output_buffer_op_name_list.append (graph.get_buffers(other_buffer_id).first().root["md_op_name"])
-
-                input_ops = f"{' '.join (input_buffer_op_name_list)}"
-                output_ops = f"{' '.join (output_buffer_op_name_list)}"
-                table.append ([ buffer.id(), buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], dram_chan, f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
-
-    print (tabulate(table, headers=["Buffer ID", "Op", "Input Ops", "Output Ops", "dram_buf_flag", "dram_io_flag", "Channel", "Address", "RD ptr", "WR ptr", "Occupancy", "Slots", "Size [bytes]"] ))
-
-# Prints the queues residing in host's memory.
-def print_host_queue_summary (cmd, context, ui_state):
-    table = []
-    for graph_name in context.netlist.graph_names():
-        graph = context.netlist.graph(graph_name)
-        device_id = context.netlist.graph_name_to_device_id(graph_name)
-
-        for buffer in graph.buffers:
-            buffer_data = buffer.root
-            if buffer_data["dram_io_flag_is_remote"] != 0:
-                dram_addr = buffer_data['dram_addr']
-                # bits 31,30 peer_id==0 means HOST
-                if dram_addr >> 30 == 0:
-                    rdptr = tt_device.PCI_IFC.host_dma_read (dram_addr)
-                    wrptr = tt_device.PCI_IFC.host_dma_read (dram_addr + 4)
-                    slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
-                    queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
-                    occupancy = Queue.occupancy (buffer_data["q_slots"], wrptr, rdptr)
-
-                    # IMPROVE: Duplicated from print_dram_queue_summary. Merge into one function.
-                    input_buffer_op_name_list = []
-                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'src'):
-                        input_buffer_op_name_list.append (graph.buffers.find_id(other_buffer_id).root["md_op_name"])
-                    output_buffer_op_name_list = []
-                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'dest'):
-                        output_buffer_op_name_list.append (graph.buffers.find_id(other_buffer_id).root["md_op_name"])
-
-                    input_ops = f"{' '.join (input_buffer_op_name_list)}"
-                    output_ops = f"{' '.join (output_buffer_op_name_list)}"
-
-                    table.append ([ buffer.id(), buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
-
-    print (f"{util.CLR_INFO}Host queues (where dram_io_flag_is_remote!=0) for graph {graph_name} {util.CLR_END}")
-    if len(table) > 0:
-        print (tabulate(table, headers=["Buffer name", "Op", "Input Ops", "Output Ops", "dram_buf_flag", "dram_io_flag", "Address", "RD ptr", "WR ptr", "Occupancy", "Q slots", "Q Size [bytes]"] ))
-    else:
-        print ("No host queues found")
-
-# Prints epoch queues
-def print_epoch_queue_summary (cmd, context, ui_state):
-    graph_name = ui_state["current_graph_name"]
-    device_id = context.netlist.graph_name_to_device_id(graph_name)
-    epoch_device = context.devices[device_id]
-
-    print (f"{util.CLR_INFO}Epoch queues for graph {graph_name}, device id {device_id}{util.CLR_END}")
-
-    # From tt_epoch_dram_manager::tt_epoch_dram_manager and following the constants
-    GridSizeRow = 16
-    GridSizeCol = 16
-    EPOCH_Q_NUM_SLOTS = 32
-    epoch0_start_table_size_bytes = GridSizeRow*GridSizeCol*(EPOCH_Q_NUM_SLOTS*8+8)*4
-    # DRAM_CHANNEL_CAPACITY_BYTES  = 1024 * 1024 * 1024
-    DRAM_PERF_SCRATCH_SIZE_BYTES =   8 * 1024 * 1024
-    # DRAM_HOST_MMIO_SIZE_BYTES    =  256 * 1024 * 1024
-    reserved_size_bytes = DRAM_PERF_SCRATCH_SIZE_BYTES - epoch0_start_table_size_bytes
-
-    chip_id = 0
-    chip_id += 1
-
-    dram_chan = 0 # CHECK: This queue is always in channel 0
-    dram_loc = epoch_device.get_block_locations (block_type = "dram")[dram_chan]
-
-    table=[]
-    for loc in epoch_device.get_block_locations (block_type = "functional_workers"):
-        y, x = loc[0], loc[1] # FIX: This is backwards - check.
-        EPOCH_QUEUE_START_ADDR = reserved_size_bytes
-        offset = (16 * x + y) * ((EPOCH_Q_NUM_SLOTS*2+8)*4)
-        dram_addr = EPOCH_QUEUE_START_ADDR + offset
-        rdptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
-        wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
-        occupancy = Queue.occupancy (EPOCH_Q_NUM_SLOTS, wrptr, rdptr)
-        if occupancy > 0:
-            table.append ([ f"{util.noc_loc_str((x, y))}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
-
-    if len(table) > 0:
-        print (tabulate(table, headers=["Location", "Address", "RD ptr", "WR ptr", "Occupancy" ] ))
-    else:
-        print ("No epoch queues have occupancy > 0")
-
-    util.WARN ("WIP: This results of this function need to be verified")
 
 # A helper to print the result of a single PCI read
 def print_a_pci_read (x, y, addr, val, comment=""):
@@ -230,10 +64,6 @@ def print_navigation_suggestions (navigation_suggestions):
             rows.append ([ f"{i}", f"{navigation_suggestions[i]['description']}", f"{navigation_suggestions[i]['cmd']}" ])
         print(tabulate(rows, headers=[ "#", "Description", "Command" ]))
 
-# Test command (for development only)
-def test_command(cmd, context, ui_state):
-    return 0
-
 # Main
 def main(args, context):
     cmd_raw = ""
@@ -246,7 +76,7 @@ def main(args, context):
         { "long" : "exit",
           "short" : "x",
           "expected_argument_count" : [ 0, 1 ],
-          "arguments_description" : ": exit the program. If argument given, it will be used as the exit code"
+          "arguments_description" : ": exits the program. If an argument is supplied, it will be used as the exit code"
         },
         { "long" : "help",
           "short" : "h",
@@ -272,16 +102,6 @@ def main(args, context):
           "short" : "g",
           "expected_argument_count" : 1,
           "arguments_description" : "graph__name : switch to graph graph_name"
-        },
-        { "long" : "buffer",
-          "short" : "b",
-          "expected_argument_count" : 1,
-          "arguments_description" : "buffer_id_or_op_name : prints details on the buffer with a given id, or buffer(s) mapped to a given operation."
-        },
-        { "long" : "pipe",
-          "short" : "p",
-          "expected_argument_count" : 1,
-          "arguments_description" : "pipe_id : prints details on the pipe with ID pipe_id"
         },
         {
           "long" : "pci-read-xy",
@@ -313,37 +133,6 @@ def main(args, context):
           "expected_argument_count" : 4,
           "arguments_description" : "x y addr value : writes value to address 'addr' at noc0 location x-y of the chip associated with current epoch"
         },
-
-        {
-          "long" : "dram-queue",
-          "short" : "dq",
-          "expected_argument_count" : 0,
-          "arguments_description" : ": prints DRAM queue summary"
-        },
-        {
-          "long" : "host-queue",
-          "short" : "hq",
-          "expected_argument_count" : 0,
-          "arguments_description" : ": prints Host queue summary"
-        },
-        {
-          "long" : "epoch-queue",
-          "short" : "eq",
-          "expected_argument_count" : 0,
-          "arguments_description" : ": prints Epoch queue summary"
-        },
-        {
-          "long" : "full-dump",
-          "short" : "fd",
-          "expected_argument_count" : 0,
-          "arguments_description" : ": performs a full dump at current x-y"
-        },
-        {
-          "long" : "test",
-          "short" : "test",
-          "expected_argument_count" : 0,
-          "arguments_description" : ": test for development"
-        }
     ]
 
     import_commands (commands)
@@ -452,8 +241,6 @@ def main(args, context):
 
                         if util.export_to_zip (filelist, out_file=zip_file_name):
                             print (f"{util.CLR_GREEN}Exported '{zip_file_name}'. Import with:\n  unzip {zip_file_name} -d dbd-export\n  cd dbd-export\n  Run debuda.py {'--server-cache on' if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled else ''}{util.CLR_END}")
-                    elif found_command["long"] == "test":
-                        test_command (cmd, context, ui_state)
                     elif found_command["long"] == "graph":
                         gname = cmd[1]
                         if gname not in context.netlist.graph_names():
@@ -462,10 +249,6 @@ def main(args, context):
                             ui_state["current_graph_name"] = cmd[1]
                     elif found_command["long"] == "epoch":
                         util.WARN ("'epoch' command is deprecated: use 'graph' command instead")
-                    elif found_command["long"] == "buffer":
-                        navigation_suggestions = print_buffer_data (cmd, context, ui_state)
-                    elif found_command["long"] == "pipe":
-                        navigation_suggestions = print_pipe_data (cmd, context, ui_state)
                     elif found_command["long"] == "pci-raw-read":
                         addr = int(cmd[1],0)
                         print ("PCI RD [0x%x]: 0x%x" % (addr, tt_device.PCI_IFC.pci_raw_read (ui_state['current_device_id'], addr)))
@@ -487,14 +270,6 @@ def main(args, context):
                             tt_device.PCI_IFC.pci_write_xy (ui_state['current_device_id'], x, y, 0, addr, data = int(cmd[4],0))
                         else:
                             print (f"{util.CLR_ERR} Unknown {found_command['long']} {util.CLR_END}")
-                    elif found_command["long"] == "full-dump":
-                        ui_state['current_device'].full_dump_xy( (ui_state['current_x'], ui_state['current_y']) )
-                    elif found_command["long"] == "dram-queue":
-                        print_dram_queue_summary (cmd, context, ui_state)
-                    elif found_command["long"] == "host-queue":
-                        print_host_queue_summary (cmd, context, ui_state)
-                    elif found_command["long"] == "epoch-queue":
-                        print_epoch_queue_summary(cmd, context, ui_state)
                     else:
                         navigation_suggestions = found_command["module"].run(cmd, context, ui_state)
 
@@ -505,76 +280,112 @@ def main(args, context):
                 util.notify_exception (type(e), e, e.__traceback__) # Print the exception
     return 0
 
-# Import any 'plugin' commands from debuda-commands directory
-# With reload=True, the debuda-commands commands will be live-reloaded (importlib.reload)
+# Import 'plugin' commands from debuda-commands directory
+# With reload=True, the debuda-commands can be live-reloaded (importlib.reload)
 def import_commands (command_metadata_array, reload = False):
-    command_files = []
+    cmd_files = []
     for root, dirnames, filenames in os.walk(util.application_path () + '/debuda-commands'):
         for filename in fnmatch.filter(filenames, '*.py'):
-            command_files.append(os.path.join(root, filename))
+            cmd_files.append(os.path.join(root, filename))
 
     sys.path.append(util.application_path() + '/debuda-commands')
 
-    command_files.sort()
-    for cmdfile in command_files:
+    cmd_files.sort()
+    for cmdfile in cmd_files:
         module_path = os.path.splitext(os.path.basename(cmdfile))[0]
         try:
-            my_cmd_module = importlib.import_module (module_path)
+            cmd_module = importlib.import_module (module_path)
         except Exception as e:
             util.ERROR (f"Error in module {module_path}: {e}")
             continue
-        command_metadata = my_cmd_module.command_metadata
-        command_metadata["module"] = my_cmd_module
-        command_metadata["long"] = my_cmd_module.__name__
-        util.VERBOSE (f"Importing command '{my_cmd_module.__name__}'")
+        command_metadata = cmd_module.command_metadata
+        command_metadata["module"] = cmd_module
 
-        # Check command names/shortcuts
-        for cmd in command_metadata_array:
-            if cmd["long"] == command_metadata["long"] and not reload:
-                util.FATAL (f"Command {cmd['long']} already exists")
-            if cmd["short"] == command_metadata["short"] and not reload:
-                util.FATAL (f"Commands {cmd['long']} and {command_metadata['long']} use the same shortcut: {cmd['short']}")
+        # Make the module name the default 'long' invocation string
+        if "long" not in command_metadata:
+            command_metadata["long"] = cmd_module.__name__
+        util.VERBOSE (f"Importing command '{cmd_module.__name__}'")
 
-        for i, c in enumerate(command_metadata_array):
-            if c["long"] == command_metadata["long"]:
-                command_metadata_array[i] = command_metadata
-                importlib.reload(my_cmd_module)
-                continue
-        command_metadata_array.append (command_metadata)
+        if reload:
+            for i, c in enumerate(command_metadata_array):
+                if c["long"] == command_metadata["long"]:
+                    command_metadata_array[i] = command_metadata
+                    importlib.reload(cmd_module)
+        else:
+            # Check command names/shortcut overlap (only when not reloading)
+            for cmd in command_metadata_array:
+                if cmd["long"] == command_metadata["long"]:
+                    util.FATAL (f"Command {cmd['long']} already exists")
+                if cmd["short"] == command_metadata["short"]:
+                    util.FATAL (f"Commands {cmd['long']} and {command_metadata['long']} use the same shortcut: {cmd['short']}")
+            command_metadata_array.append (command_metadata)
 
-# Handle server cache
-tt_device.DEBUDA_SERVER_CACHED_IFC.enabled = args.server_cache == "through" or args.server_cache == "on"
-tt_device.DEBUDA_SERVER_IFC.enabled = args.server_cache == "through" or args.server_cache == "off"
-if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled:
-    atexit.register (tt_device.DEBUDA_SERVER_CACHED_IFC.save)
-    tt_device.DEBUDA_SERVER_CACHED_IFC.load()
+# Initialize communication with the device
+def init_device_comm ():
+    tt_device.DEBUDA_SERVER_CACHED_IFC.enabled = args.server_cache == "through" or args.server_cache == "on"
+    tt_device.DEBUDA_SERVER_IFC.enabled = args.server_cache == "through" or args.server_cache == "off"
+    if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled:
+        atexit.register (tt_device.DEBUDA_SERVER_CACHED_IFC.save)
+        tt_device.DEBUDA_SERVER_CACHED_IFC.load()
 
-if tt_device.DEBUDA_SERVER_IFC.enabled:
-    # Initialize communication with the client (debuda-stub)
-    ip_and_port = args.debuda_server_address.split(":")
-    tt_device.init_comm_client (ip=ip_and_port[0], port=ip_and_port[1], debug_debuda_stub=args.debug_debuda_stub)
+    if tt_device.DEBUDA_SERVER_IFC.enabled:
+        # Initialize communication with the client (debuda-stub)
+        ip_and_port = args.debuda_server_address.split(":")
+        tt_device.init_device_comm (ip=ip_and_port[0], port=ip_and_port[1], debug_debuda_stub=args.debug_debuda_stub)
 
-    # Make sure to terminate communication client (debuda-stub) on exit
-    atexit.register (tt_device.terminate_comm_client_callback)
+        # Make sure to terminate communication client (debuda-stub) on exit
+        atexit.register (tt_device.terminate_comm_client_callback)
 
-# Create context
-
-# Try to find a default output directory
-if args.output_dir is None: # Then find the most recent tt_build subdir
+def init_output_dir ():
+    # Try to find a default output directory
     most_recent_modification_time = None
-    for tt_build_subfile in os.listdir("tt_build"):
-        subdir = f"tt_build/{tt_build_subfile}"
-        if os.path.isdir(subdir):
-            if most_recent_modification_time is None or os.path.getmtime(subdir) > most_recent_modification_time:
-                most_recent_modification_time = os.path.getmtime(subdir)
-                most_recent_subdir = subdir
-    print (most_recent_subdir)
-    args.output_dir = most_recent_subdir
-    util.INFO (f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{most_recent_subdir}")
+    try:
+        for tt_build_subfile in os.listdir("tt_build"):
+            subdir = f"tt_build/{tt_build_subfile}"
+            if os.path.isdir(subdir):
+                if most_recent_modification_time is None or os.path.getmtime(subdir) > most_recent_modification_time:
+                    most_recent_modification_time = os.path.getmtime(subdir)
+                    most_recent_subdir = subdir
+        print (most_recent_subdir)
+        args.output_dir = most_recent_subdir
+        util.INFO (f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{most_recent_subdir}")
+    except:
+        pass
 
-context = tt_netlist.load (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
+# Loads all files necessary to debug a single buda run
+# Returns a debug 'context' that contains the loaded information
+def load_context (netlist_filepath, run_dirpath):
+    # All-encompassing structure representing a Debuda context
+    class Context:
+        netlist = None # Netlist and related 'static' data (i.e. data stored in files such as blob.yaml, pipegen.yaml)
+        devices = None # A list of objects of class Device used to obtain 'dynamic' data (i.e. data read from the devices)
+        pass
+
+    util.VERBOSE (f"Initializing context")
+    context = Context()
+
+    # Load netlist files
+    context.netlist = tt_netlist.Netlist(netlist_filepath, run_dirpath)
+
+    # Create the devices
+    arch = context.netlist.get_arch ()
+    device_ids = context.netlist.get_device_ids()
+    context.devices = { i : tt_device.Device.create(arch) for i in device_ids }
+
+    return context
+
+### START
+
+init_device_comm()
+
+if args.output_dir is None: # Then find the most recent tt_build subdir
+    init_output_dir()
+
+# Create the context
+context = load_context (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
 
 # Main function
 exit_code = main(args, context)
+
 util.INFO (f"Exiting with code {exit_code} ")
 sys.exit (exit_code)

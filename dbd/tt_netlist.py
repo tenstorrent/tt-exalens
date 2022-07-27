@@ -3,30 +3,6 @@ from dbd.tt_object import TTObjectSet
 import tt_util as util, tt_device
 from tt_graph import Graph, Queue
 
-# 'this' is a reference to the module object instance itself.
-this = sys.modules[__name__]
-this.context = None
-
-# converts data format to string
-def get_data_format_from_string(str):
-    data_format = {}
-    data_format["Float32"]   = 0
-    data_format["Float16"]   = 1
-    data_format["Bfp8"]      = 2
-    data_format["Bfp4"]      = 3
-    data_format["Bfp2"]      = 11
-    data_format["Float16_b"] = 5
-    data_format["Bfp8_b"]    = 6
-    data_format["Bfp4_b"]    = 7
-    data_format["Bfp2_b"]    = 15
-    data_format["Lf8"]       = 10
-    data_format["UInt16"]    = 12
-    data_format["Int8"]      = 14
-    data_format["Tf32"]      = 4
-    if str in data_format:
-        return data_format[str]
-    return None
-
 # Wrapper for Buda run netlist.yaml and, currently, runtime_data.yaml files
 class Netlist:
     def load_netlist_data (self):
@@ -146,26 +122,3 @@ class Netlist:
     # Renderer
     def __str__(self):
         return f"{type(self).__name__}: {self.yaml_file.filepath}. Graphs({len(self.graph_names())}): {' '.join (self.graph_names())}"
-
-# All-encompassing structure representing a Buda run context
-class Context:
-    netlist = None # Netlist and related 'static' data (i.e. data stored in files such as blob.yaml, pipegen.yaml)
-    devices = None # A list of objects of class Device used to extract 'dynamic' data (i.e. data read from the devices)
-    pass
-
-# Loads all files necessary to debug a single buda run
-# Returns a debug 'context' that contains the loaded information
-def load (netlist_filepath, run_dirpath):
-    if (this.context is None):  # This refers to the module
-        util.VERBOSE (f"Initializing context")
-        this.context = Context()
-
-    # Load netlist files
-    this.context.netlist = Netlist(netlist_filepath, run_dirpath)
-
-    # Create the devices
-    arch = this.context.netlist.get_arch ()
-    device_ids = this.context.netlist.get_device_ids()
-    this.context.devices = { i : tt_device.Device.create(arch) for i in device_ids }
-
-    return this.context
