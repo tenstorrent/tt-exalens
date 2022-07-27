@@ -72,7 +72,7 @@
             "justMyCode": true
         },
         {
-            "name": "wh-multidevice-single-epoch ",
+            "name": "wh_multichip_dram_fork_0_to_11-passing",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/debuda.py",
@@ -80,7 +80,7 @@
                 "--server-cache",
                 "on"
             ],
-            "cwd": "${workspaceFolder}/test/exported-runs/wh-multidevice-single-epoch",
+            "cwd": "${workspaceFolder}/test/exported-runs/wh_multichip_dram_fork_0_to_11-passing",
             "console": "integratedTerminal",
             "justMyCode": true
         },
