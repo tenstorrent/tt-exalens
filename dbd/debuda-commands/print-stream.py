@@ -8,16 +8,16 @@ import tt_stream, tt_util as util
 
 # Prints all information on a stream
 def run(args, context, ui_state = None):
-    x, y, stream_id = int(args[1]), int(args[2]), int(args[3])
+    noc0_loc, stream_id = (int(args[1]), int(args[2])), int(args[3])
     current_device_id = ui_state["current_device_id"]
     current_device = context.devices[current_device_id]
 
-    regs = current_device.read_stream_regs ((x, y), stream_id)
+    regs = current_device.read_stream_regs ((noc0_loc), stream_id)
     stream_regs = tt_stream.convert_reg_dict_to_strings(current_device, regs)
     stream_epoch_id = regs["CURR_PHASE"] >> 10
     new_current_epoch_id = stream_epoch_id
 
-    all_stream_summary, navigation_suggestions = tt_stream.get_core_stream_summary (current_device, x, y)
+    all_stream_summary, navigation_suggestions = tt_stream.get_core_stream_summary (current_device, noc0_loc)
 
     # Initialize with the summary of all streams within the core (if any)
     data_columns = [ all_stream_summary ] if len(all_stream_summary) > 0 else []
@@ -27,40 +27,43 @@ def run(args, context, ui_state = None):
     title_columns.append ("Registers")
 
     # 1. Append blobs
-    buffer_ids = set()
+    buffer_ids = util.set()
     non_active_phases = dict()
-    graph = context.netlist.graphs[context.netlist.epoch_id_to_graph_name(stream_epoch_id)]
+    graph = context.netlist.graph(ui_state["current_graph_name"])
 
     # 1a. Append the op name to description
     for n in navigation_suggestions:
         loc = n['loc']
-        loc_rc = current_device.noc0_to_rc(loc[0], loc[1])
-        op_name = graph.core_coord_to_full_op_name (loc_rc[0], loc_rc[1])
+        loc_rc = current_device.noc0_to_rc(loc)
+        op_name = graph.core_coord_to_full_op_name (loc_rc)
         n['description'] += f" ({op_name})"
 
     # 2. Find blob data
-    stream_loc = (current_device_id, x, y, stream_id, int(regs['CURR_PHASE']))
-    if stream_loc in graph.streams:
-        stream_from_blob = graph.streams[stream_loc].root
+    stream_loc = (current_device_id, *noc0_loc, stream_id, int(regs['CURR_PHASE']))
+    stream_set = graph.get_streams(stream_loc)
+
+    if len(stream_set) == 1:
+        stream_from_blob = stream_set.first().root
         data_columns.append (stream_from_blob)
         title_columns.append ("Stream (blob.yaml)")
         # If there is an associated buffer, add it for showing.
         buf_id = stream_from_blob.get ("buf_id", None)
         if buf_id is not None:
             buffer_ids.add (buf_id)
+    else:
+        util.WARN (f"Cannot find stream {stream_loc} in blob data of graph {graph.id()}, or multiple streams found")
 
     # 2. Append buffers
-    for buffer_id in buffer_ids:
-        data_columns.append (graph.buffers[buffer_id].root)
-        title_columns.append (f"Buffer {buffer_id}")
+    buffers = graph.get_buffers (buffer_ids)
+    for b in buffers:
+        title_columns.append (f"Buffer {b.id()}")
+        data_columns.append (b.root)
 
     # 3. Append relevant pipes
-    for buffer_id in buffer_ids:
-        pipe_ids = graph.get_pipes_for_buffer(buffer_id)
-        for pipe_id in pipe_ids:
-            pipe = graph.get_pipe (pipe_id)
-            title_columns.append (f"Pipe {pipe_id}")
-            data_columns.append (pipe.root)
+    pipes = graph.get_pipes(buffers)
+    for pipe in pipes:
+        title_columns.append (f"Pipe {pipe.id()}")
+        data_columns.append (pipe.root)
 
     util.print_columnar_dicts (data_columns, title_columns)
 
@@ -70,7 +73,7 @@ def run(args, context, ui_state = None):
     # 4. TODO: Print forks
 
     # Update the current UI state
-    ui_state["current_x"] = x
-    ui_state["current_y"] = y
+    ui_state["current_x"] = noc0_loc[0]
+    ui_state["current_y"] = noc0_loc[1]
     ui_state["current_stream_id"] = stream_id
     return navigation_suggestions

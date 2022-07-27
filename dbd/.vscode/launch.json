@@ -1,0 +1,88 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "gs-x2-fd8f98aca",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [
+                "--server-cache",
+                "on"
+            ],
+            "cwd": "${workspaceFolder}/test/exported-runs/gs-x2-fd8f98aca",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "simple-matmul-with-hangs",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [
+                "--server-cache",
+                "on",
+                //                "--verbose"
+            ],
+            "cwd": "${workspaceFolder}/test/exported-runs/simple-matmul-with-hangs",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "simple-matmul-no-hangs",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [
+                "--server-cache",
+                "on"
+            ],
+            "cwd": "${workspaceFolder}/test/exported-runs/simple-matmul-no-hangs",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "run-workload",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/test/bin/run-workload.py",
+            "args": [
+                "dbd/test/workloads/template.yaml"
+            ],
+            "cwd": "/Users/ivanhamer/work/budabackend",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "self-test",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [
+                "--server-cache",
+                "on",
+                "--commands",
+                "self-test;x"
+            ],
+            "cwd": "${workspaceFolder}/test/exported-runs/simple-matmul-no-hangs",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "wh-multidevice-single-epoch ",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [
+                "--server-cache",
+                "on"
+            ],
+            "cwd": "${workspaceFolder}/test/exported-runs/wh-multidevice-single-epoch",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+    ]
+}

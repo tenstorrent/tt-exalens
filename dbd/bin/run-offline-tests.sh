@@ -1,7 +1,7 @@
 #!/bin/bash
 RUN_DIR=dbd/run           # Where to store run results
 EXPECTED_COVER_PCT=70     # Complain when coverage is below this percantage
-COVERAGE_RUN=""
+COVERAGE_RUN="coverage run --include=**/dbd/**"
 # DEBUDA_CMD="dbd/debuda.py --server-cache off"     # Run without reading or writing the cache file
 DEBUDA_CMD="dbd/debuda.py --server-cache on" # Read cache, run, save cache
 # DEBUDA_CMD="dbd/debuda.py --server-cache on"      # Do not read cache, run, save cache
@@ -42,8 +42,20 @@ rm -rf $RUN_DIR/dbd-export
 mkdir -p $RUN_DIR
 unzip dbd/test/exported-runs/$ARCH_NAME-regression/coverage-exact-match.zip -d $RUN_DIR/dbd-export
 cd $ROOT/$RUN_DIR/dbd-export
-coverage_run coverage-exact-match.log "$COVERAGE_RUN" "" "../../../$DEBUDA_CMD" --commands "hq; dq; abs; abs 1; s 1 1 8; cdr 1 1; c 1 1; d; t 1 0; d 0; d 1; cdr 1 1; b 10000030000; 0; 0; eq; brxy 1 1 0 0; help; srs 0; srs 1; srs 2; fd; t 1 1; op-map; x"
+DEBUDA_COMMANDS_TO_RUN="q; hq; dq; abs; abs 1; s 1 1 8;
+cdr 1 1; c 1 1; d; t 1 0; d 0; d 1; cdr 1 1; b 10000030000; 0; 0; eq;
+brxy 1 1 0 0; help; srs 0; srs 1; srs 2; fd; t 1 1; op-map; self-test;
+export;
+x"
+coverage_run coverage-exact-match.log "$COVERAGE_RUN" "" "../../../$DEBUDA_CMD" --commands "$DEBUDA_COMMANDS_TO_RUN"
+coverage report --sort=cover --show-missing | tee coverage-report.txt
+
 cd $ROOT
+
+COVER_PCT=`cat $ROOT/$RUN_DIR/dbd-export/coverage-report.txt | tail -n 1 | awk '{print $4}' | tr -d "%"`
+if (( $COVER_PCT < $EXPECTED_COVER_PCT )) ; then echo "FAIL: Coverage ($COVER_PCT) is smaller then expected ($EXPECTED_COVER_PCT)"; exit 1; fi
+echo "=== coverage: $COVER_PCT%"
+echo "=== cat $ROOT/$RUN_DIR/dbd-export/coverage-report.txt"
 
 # Compare the output with the expected
 compare_files="$ROOT/$RUN_DIR/dbd-export/coverage-exact-match.log $ROOT/dbd/test/expected-results/coverage-$ARCH_NAME-exact-match.expected"

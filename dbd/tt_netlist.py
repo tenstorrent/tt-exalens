@@ -1,8 +1,7 @@
 import sys, os
-from dbd.tt_object import TTObject
-import tt_util as util, tt_device, tt_stream
-import tt_object
-from tt_graph import Graph, Queue, Op
+from dbd.tt_object import TTObjectSet
+import tt_util as util, tt_device
+from tt_graph import Graph, Queue
 
 # 'this' is a reference to the module object instance itself.
 this = sys.modules[__name__]
@@ -32,30 +31,32 @@ def get_data_format_from_string(str):
 class Netlist:
     def load_netlist_data (self):
         # 1. Cache epoch id, device id and graph names
-        self.epoch_id_to_graph_name_map = dict()
-        self._epoch_ids = set()
+        self.epoch_id_to_graph_names_map = dict()
+        self._epoch_ids = util.set()
 
         for graph_name in self.graph_names():
             epoch_id = self.graph_name_to_epoch_id(graph_name)
-            assert (epoch_id not in self._epoch_ids)  # We do not support multiple graphs in the same epoch
+            # assert (epoch_id not in self._epoch_ids)  # We do not support multiple graphs in the same epoch
             self._epoch_ids.add (epoch_id)
 
-            self.epoch_id_to_graph_name_map[epoch_id] = graph_name
+            if epoch_id not in self.epoch_id_to_graph_names_map:
+                self.epoch_id_to_graph_names_map[epoch_id] = util.set()
+            self.epoch_id_to_graph_names_map[epoch_id].add (graph_name)
 
         self._epoch_ids = list (self._epoch_ids)
         self._epoch_ids.sort()
 
         # 2. Load queues
-        self.queues = dict()
+        self.queues = TTObjectSet()
         for queue_name in self.queue_names():
             queue = Queue (queue_name, self.yaml_file.root["queues"][queue_name])
-            self.queues[queue_name] = queue
+            self.queues.add (queue)
 
     # Initializes, but does not yet load pipegen and blob files
     def load_graphs (self, rundir):
         self.epoch_to_pipegen_yaml_file = dict()
         self.epoch_to_blob_yaml_file = dict()
-        self.graphs = dict()
+        self.graphs = TTObjectSet()
         for graph_name in self.graph_names():
             epoch_id = self.graph_name_to_epoch_id(graph_name)
             graph_dir=f"{rundir}/temporal_epoch_{epoch_id}"
@@ -71,8 +72,8 @@ class Netlist:
             self.epoch_to_blob_yaml_file[epoch_id] = blob_yaml
 
             # Create the graph
-            g = Graph(graph_name, self.yaml_file.root['graphs'][graph_name], pipegen_yaml, blob_yaml)
-            self.graphs[graph_name] = g
+            g = Graph(self, graph_name, self.yaml_file.root['graphs'][graph_name], pipegen_yaml, blob_yaml)
+            self.graphs.add(g)
 
     def __init__(self, netlist_filepath, rundir):
         # 1. Load the runtime data file
@@ -88,12 +89,13 @@ class Netlist:
         # 3. Load pipegen/blob yamls
         self.load_graphs (rundir)
 
-        # 4. Extra stuff
-        for graph_name, graph in self.graphs.items():
-            for op_name, op in graph.ops.items():
+        # 4. Store the Ops for input queues
+        all_queue_ids = TTObjectSet( q.id() for q in self.queues )
+        for graph in self.graphs:
+            for op in graph.ops:
                 for input in op.root["inputs"]:
-                    if input in self.queues:
-                        self.queues[input].output_ops.add (op_name)
+                    if input in all_queue_ids:
+                        self.queues.find_id(input).output_ops.add (op)
 
     # Accessors
     def epoch_ids (self):
@@ -106,10 +108,18 @@ class Netlist:
         return self.runtime_data_yaml.root["graph_to_epoch_map"][graph_name]["epoch_id"]
     def graph_name_to_device_id (self, graph_name):
         return self.runtime_data_yaml.root["graph_to_epoch_map"][graph_name]["target_device"] if graph_name in self.runtime_data_yaml.root["graph_to_epoch_map"] else None
-    def epoch_id_to_graph_name (self, epoch_id):
-        return self.epoch_id_to_graph_name_map[epoch_id] if epoch_id in self.epoch_id_to_graph_name_map else None
+    def epoch_id_to_graph_names (self, epoch_id):
+        return self.epoch_id_to_graph_names_map[epoch_id] if epoch_id in self.epoch_id_to_graph_names_map else None
     def graph (self, graph_name):
-        return self.graphs[graph_name]
+        for g in self.graphs:
+            if g.id() == graph_name:
+                return g
+        return None
+    def graph_by_epoch_and_device (self, epoch_id, device_id):
+        for graph_name, gdata in self.runtime_data_yaml.root["graph_to_epoch_map"].items():
+            if gdata["epoch_id"] == epoch_id and gdata["target_device"] == device_id:
+                return self.graph(graph_name)
+        return None
     def devices(self):
         return self.yaml_file.root["devices"]
     def queue(self, queue_name):
@@ -120,6 +130,12 @@ class Netlist:
         if "arch_name" in self.runtime_data_yaml.root:
             return self.runtime_data_yaml.root["arch_name"]
         return None
+
+    # Returns all device ids used by the graphs and the queues in the netlist
+    def get_device_ids(self):
+        device_ids = util.set (q["target_device"] for _, q in self.yaml_file.root["queues"].items())
+        device_ids.update (util.set (g["target_device"] for _, g in self.yaml_file.root["graphs"].items()))
+        return device_ids
 
     # Determines the netlist file path
     def get_netlist_path (self):
@@ -147,8 +163,9 @@ def load (netlist_filepath, run_dirpath):
     # Load netlist files
     this.context.netlist = Netlist(netlist_filepath, run_dirpath)
 
-    netlist_devices = this.context.netlist.devices()
+    # Create the devices
     arch = this.context.netlist.get_arch ()
-    this.context.devices = [ tt_device.Device.create(arch) for i in range (16) ]
+    device_ids = this.context.netlist.get_device_ids()
+    this.context.devices = { i : tt_device.Device.create(arch) for i in device_ids }
 
     return this.context

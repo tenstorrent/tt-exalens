@@ -1,12 +1,11 @@
-GIT_ROOT?=$(shell git rev-parse --show-toplevel)
-include $(GIT_ROOT)/dbd/util.mk
+include $(BUDA_HOME)/dbd/util.mk
 
 # Every variable in subdir must be prefixed with subdir(emulating a namespace)
 
 DBD_INCLUDES = $(BASE_INCLUDES) $(GOLDEN_INCLUDES) $(MODEL2_INCLUDES) $(NETLIST_INCLUDES) $(MODEL_INCLUDES) -Iverif/directed_tests -Iverif -Ithird_party/json
 DBD_LIB = $(LIBDIR)/libdbd.a
 DBD_DEFINES = -DGIT_HASH=$(shell git rev-parse HEAD)
-DBD_INCLUDES += -Imodel -Inetlist -Icommon -Iversim/$(ARCH_NAME)/headers/vendor/yaml-cpp/include -Isrc/firmware/riscv/$(ARCH_NAME)/ 
+DBD_INCLUDES += -Imodel -Inetlist -Icommon -Iversim/$(ARCH_NAME)/headers/vendor/yaml-cpp/include -Isrc/firmware/riscv/$(ARCH_NAME)/
 DBD_CFLAGS = $(CFLAGS) -Werror
 DBD_LDFLAGS = -ltt -ldevice -lstdc++fs -lpthread -lyaml-cpp -lcommon -lboost_program_options
 
@@ -17,12 +16,13 @@ DBD_DEPS = $(addprefix $(OBJDIR)/, $(DBD_SRCS:.cpp=.d))
 
 -include $(DBD_DEPS)
 
-# Each module has a top level target as the entrypoint which must match the subdir name
-dbd: $(OUT)/bin/dbd_modify_netlist
+dbd: $(BINDIR)/dbd_modify_netlist dbd/debuda-stub
+	$(PRINT_TARGET)
 	$(PRINT_OK)
 
-dbd_clean:
-	-rm $(OUT)/bin/dbd_* $(SILENT_ERRORS)
+dbd/clean: dbd/debuda-stub/clean dbd/tools/clean
+	-rm $(BINDIR)/dbd_* $(SILENT_ERRORS)
+	-rm $(OBJDIR)/dbd/* $(SILENT_ERRORS)
 
 $(DBD_LIB): $(DBD_OBJS) $(BACKEND_LIB)
 	$(PRINT_TARGET)
@@ -30,7 +30,7 @@ $(DBD_LIB): $(DBD_OBJS) $(BACKEND_LIB)
 	ar rcs -o $@ $(DBD_OBJS)
 	$(PRINT_OK)
 
-$(OUT)/bin/dbd_%: $(OBJDIR)/dbd/%.o $(BACKEND_LIB) $(DBD_LIB) $(VERIF_LIB)
+$(BINDIR)/dbd_%: $(OBJDIR)/dbd/%.o $(BACKEND_LIB) $(DBD_LIB) $(VERIF_LIB)
 	$(PRINT_TARGET)
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) $(CXXFLAGS) $(DBD_INCLUDES) -o $@ $^ $(LDFLAGS) $(DBD_LDFLAGS)
@@ -42,4 +42,5 @@ $(OBJDIR)/dbd/%.o: dbd/%.cpp
 	$(CXX) $(DBD_CFLAGS) $(CXXFLAGS) $(STATIC_LIB_FLAGS) $(DBD_INCLUDES) $(DBD_DEFINES) -c -o $@ $<
 	$(PRINT_OK)
 
-include dbd/tools/module.mk
+include $(BUDA_HOME)/dbd/tools/module.mk
+include $(BUDA_HOME)/dbd/debuda-stub.mk

@@ -4,6 +4,7 @@ debuda parses the build output files and probes the silicon to determine status 
 """
 import sys, os, yaml, zipfile
 from tabulate import tabulate
+from sortedcontainers import SortedSet
 import traceback
 
 # Pretty print exceptions (traceback)
@@ -90,6 +91,12 @@ def dict_to_table (dct):
         table = [ [ "", "" ] ]
     return table
 
+# Print noc0 coordinates as x-y, and RC coords as [r,c]
+def noc_loc_str (noc_loc):
+    return f"{noc_loc[0]}-{noc_loc[1]}"
+def rc_loc_str (rc_loc):
+    return f"[{rc_loc[0]},{rc_loc[1]}]"
+
 # Given two tables 'a' and 'b' merge them into a wider table
 def merge_tables_side_by_side (a, b):
     width_a = len(a[0])
@@ -126,7 +133,7 @@ def print_columnar_dicts (dict_array, title_array):
     print (tabulate(final_table, headers=titles))
 
 # Stores all data loaded from a yaml file
-# Includes a cache in case a file is loaded multiple files
+# Includes a cache in case a file is loaded multiple times
 class YamlFile:
     # Cache
     file_cache = {}
@@ -138,12 +145,18 @@ class YamlFile:
         if self.filepath in YamlFile.file_cache:
             self.root = YamlFile.file_cache[self.filepath]
         else:
-            INFO (f"Loading '{self.filepath}'")
+            INFO (f"Loading '{os.getcwd()}/{self.filepath}'")
             # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
+            # Note: graph_name can apear multiple times, we manually convert it into an array
             self.root = dict()
 
             for i in yaml.load_all(open(self.filepath), Loader=yaml.CSafeLoader):
-                self.root = { **self.root, **i }
+                if 'graph_name' in i:
+                    if 'graph_names' not in self.root:
+                        self.root['graph_names'] = []
+                    self.root['graph_names'].append (i['graph_name'])
+                else:
+                    self.root = { **self.root, **i }
             YamlFile.file_cache[self.filepath] = self.root
 
     def __str__(self):
@@ -179,10 +192,15 @@ def write_to_yaml_file (data, filename):
         yaml.dump(data, output_yaml_file)
 
 # Takes in data in row/column format and returns string with aligned columns
+# Usage:
+# column_format = [
+#     { 'key_name' : None,          'title': 'Name',   'formatter': None },
+#     { 'key_name' : 'target_device', 'title': 'Device', 'formatter': lambda x: f"{util.CLR_RED}{x}{util.CLR_END}" },
+# ]
+# table=util.TabulateTable(column_format)
+# ... table.add_row (row_key_name, row_data_dict)
+# print (table)
 class TabulateTable:
-    # column_format = [
-    #     { 'key_name' : None,          'title': 'Name',   'formatter': None },
-    #     { 'key_name' : 'target_device', 'title': 'Device', 'formatter': lambda x: f"{util.CLR_RED}{x}{util.CLR_END}" },
 
     # How to format across columns.
     # if 'key_name' is None, the 'key' argument to add_row is used for that column
@@ -211,3 +229,13 @@ class TabulateTable:
             self.rows.sort (key=lambda x: x[self.sort_col])
 
         return tabulate (self.rows, headers=self.headers)
+
+def is_iterable(obj):
+    try:
+        iter(obj)
+        return True
+    except TypeError:
+        return False
+
+def set(*args, **kwargs):
+    return SortedSet(*args, **kwargs)

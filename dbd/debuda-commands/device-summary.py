@@ -9,7 +9,7 @@ import tt_util as util
 def run(args, context, ui_state = None):
     if len(args) == 2:
         device_id = int(args[1])
-        if device_id >= len(context.devices) or device_id < 0:
+        if device_id not in context.devices:
             util.ERROR (f"Invalid device id '{device_id}'")
             return []
         devices_list = [ device_id ]
@@ -20,10 +20,10 @@ def run(args, context, ui_state = None):
         device = context.devices[device_id]
         util.INFO (f"==== Device {device.id()}")
 
-        configured_streams = set()
+        configured_streams = util.set()
         for loc in device.get_block_locations (block_type = "functional_workers"):
             for stream_id in range (64):
-                phase_reg = device.get_stream_phase (loc[0], loc[1], stream_id)
+                phase_reg = device.get_stream_phase (loc, stream_id)
                 epoch = phase_reg >> 10
                 phase = phase_reg & 0x3ff
 

@@ -6,7 +6,7 @@ if [ "$1" = "skip-build" ]; then
     # Hack - CI will copy only build directory.
     # We should either move debuda-stub to build directory,
     # or extend CI to pickup debuda binaries from dbd directory.
-    cp build/bin/debuda-stub dbd/debuda-stub
+    # cp build/bin/debuda-stub dbd/debuda-stub
 else
     echo make build_hw
     make build_hw
@@ -14,7 +14,7 @@ else
     make verif/op_tests > $TMP_OUT_FILE
 fi
 
-pip install prompt_toolkit
+pip install prompt_toolkit sortedcontainers
 
 mkdir -p debuda_test
 

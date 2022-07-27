@@ -7,6 +7,7 @@ from tabulate import tabulate
 import tt_util as util, tt_device, tt_netlist
 from prompt_toolkit import PromptSession
 from prompt_toolkit.formatted_text import HTML
+from tt_graph import Queue
 
 parser = argparse.ArgumentParser(description=__doc__ + tt_device.STUB_HELP)
 parser.add_argument('output_dir', type=str, nargs='?', default=None, help='Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used')
@@ -24,8 +25,7 @@ pp = pprint.PrettyPrinter(indent=4)
 ### BUILT-IN COMMANDS
 
 # Find occurrences of buffer with ID 'buffer_id' across all epochs, and print the structures that reference them
-# Supply ui_state['current_epoch_id']=None, to show details in all epochs.
-def print_buffer_data (cmd, context):
+def print_buffer_data (cmd, context, ui_state=None):
     try:
         buffer_id = int(cmd[1])
     except ValueError as e:
@@ -33,109 +33,88 @@ def print_buffer_data (cmd, context):
 
     navigation_suggestions = [ ]
 
-    for epoch_id in context.netlist.epoch_ids():
-        graph_name = context.netlist.epoch_id_to_graph_name(epoch_id)
-        graph = context.netlist.graph(graph_name)
-        buffer = graph.get_buffer(buffer_id)
-        if type(buffer_id) == int:
-            buffer = graph.get_buffer(buffer_id)
-            if buffer:
-                util.print_columnar_dicts ([buffer.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
+    graph_name = ui_state['current_graph_name']
+    graph = context.netlist.graph(graph_name)
+    buffer = graph.get_buffers(buffer_id).first()
+    if type(buffer_id) == int:
+        buffer = graph.get_buffers(buffer_id).first()
+        if buffer:
+            util.print_columnar_dicts ([buffer.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
 
-            for p in graph.pipes:
-                pipe = graph.get_pipe(p)
-                if buffer_id in pipe.root["input_list"]:
-                    print (f"( {util.CLR_BLUE}Input{util.CLR_END} of pipe {pipe.id()} )")
-                    navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
-                if buffer_id in pipe.root["output_list"]:
-                    print (f"( {util.CLR_BLUE}Output{util.CLR_END} of pipe {pipe.id()} )")
-                    navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
-
-        elif type(buffer_id) == str:
-            buffer_list = graph.get_buffer_by_op_name(buffer_id)
-            if buffer_list:
-                print (f"{util.CLR_BLUE}Found {len(buffer_list)} buffers{util.CLR_END}")
-                for buffer in buffer_list:
-                    navigation_suggestions.append ({ 'cmd' : f"b {buffer.id()}", 'description' : "Show buffer" })
+        for pipe in graph.pipes:
+            if buffer_id in pipe.root["input_list"]:
+                print (f"( {util.CLR_BLUE}Input{util.CLR_END} of pipe {pipe.id()} )")
+                navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
+            if buffer_id in pipe.root["output_list"]:
+                print (f"( {util.CLR_BLUE}Output{util.CLR_END} of pipe {pipe.id()} )")
+                navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })
+    else:
+        raise TypeError (f"Usupported buffer_id type: {type(buffer_id)}")
 
     return navigation_suggestions
 
 # Find occurrences of pipe with ID 'pipe_id' across all epochs, and print the structures that reference them
-# Supply current_epoch_id=None, to show details in all epochs
-def print_pipe_data (cmd, context):
+def print_pipe_data (cmd, context, ui_state=None):
     pipe_id = int(cmd[1])
 
-    for epoch_id in context.netlist.epoch_ids():
-        graph_name = context.netlist.epoch_id_to_graph_name(epoch_id)
-        graph = context.netlist.graph(graph_name)
-        pipe = graph.get_pipe(pipe_id)
-        navigation_suggestions = [ ]
-        if pipe:
-            util.print_columnar_dicts ([pipe.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
+    graph_name = ui_state['current_graph_name']
+    graph = context.netlist.graph(graph_name)
+    pipe = graph.get_pipes(pipe_id).first()
+    navigation_suggestions = [ ]
+    if pipe:
+        util.print_columnar_dicts ([pipe.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
 
-            for input_buffer in pipe.root['input_list']:
-                navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show src buffer" })
-            for input_buffer in pipe.root['output_list']:
-                navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show dest buffer" })
-        else:
-            util.INFO (f"Pipe {pipe_id} cannot be found in graph {graph_name}")
+        for input_buffer in pipe.inputs():
+            navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show src buffer" })
+        for input_buffer in pipe.outputs():
+            navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show dest buffer" })
+    else:
+        util.INFO (f"Pipe {pipe_id} cannot be found in graph {graph_name}")
 
     return navigation_suggestions
 
 # Prints information on DRAM queues
 def print_dram_queue_summary (cmd, context, ui_state = None):
-    if ui_state is not None:
-        epoch_id_list = [ ui_state["current_epoch_id"] ]
-    else:
-        epoch_id_list = context.netlist.epoch_ids()
-
     table = []
-    for epoch_id in epoch_id_list:
-        print (f"{util.CLR_INFO}DRAM queues for epoch %d{util.CLR_END}" % epoch_id)
-        graph_name = context.netlist.epoch_id_to_graph_name (epoch_id)
+    for graph_name in context.netlist.graph_names():
+        print (f"{util.CLR_INFO}DRAM queues for graph {graph_name}{util.CLR_END}")
         graph = context.netlist.graph(graph_name)
         device_id = context.netlist.graph_name_to_device_id(graph_name)
         device = context.devices[device_id]
 
-        for buffer_id, buffer in graph.buffers.items():
+        for buffer in graph.buffers:
             buffer_data = buffer.root
             if (buffer_data["dram_buf_flag"] != 0 or (buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0)) and not buffer.replicated:
                 dram_chan = buffer_data["dram_chan"]
                 dram_addr = buffer_data['dram_addr']
-                dram_loc = device.CHANNEL_TO_DRAM_LOC[dram_chan]
+                dram_loc = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
                 rdptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
                 wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
                 slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
                 queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
-                occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - 2 * buffer_data["q_slots"])
+                occupancy = Queue.occupancy (buffer_data["q_slots"], wrptr, rdptr)
 
                 input_buffer_op_name_list = []
-                for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'input'):
-                    input_buffer_op_name_list.append (graph.get_buffer(other_buffer_id).root["md_op_name"])
+                for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'src'):
+                    input_buffer_op_name_list.append (graph.get_buffers(other_buffer_id).first().root["md_op_name"])
                 output_buffer_op_name_list = []
-                for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'output'):
-                    output_buffer_op_name_list.append (graph.get_buffer(other_buffer_id).root["md_op_name"])
+                for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'dest'):
+                    output_buffer_op_name_list.append (graph.get_buffers(other_buffer_id).first().root["md_op_name"])
 
                 input_ops = f"{' '.join (input_buffer_op_name_list)}"
                 output_ops = f"{' '.join (output_buffer_op_name_list)}"
-                table.append ([ buffer_id, buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], dram_chan, f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
+                table.append ([ buffer.id(), buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], dram_chan, f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
 
     print (tabulate(table, headers=["Buffer ID", "Op", "Input Ops", "Output Ops", "dram_buf_flag", "dram_io_flag", "Channel", "Address", "RD ptr", "WR ptr", "Occupancy", "Slots", "Size [bytes]"] ))
 
 # Prints the queues residing in host's memory.
 def print_host_queue_summary (cmd, context, ui_state):
-    if ui_state is not None:
-        epoch_id_list = [ ui_state["current_epoch_id"] ]
-    else:
-        epoch_id_list = context.netlist.epoch_ids()
-
     table = []
-    for epoch_id in epoch_id_list:
-        graph_name = context.netlist.epoch_id_to_graph_name (epoch_id)
+    for graph_name in context.netlist.graph_names():
         graph = context.netlist.graph(graph_name)
         device_id = context.netlist.graph_name_to_device_id(graph_name)
 
-        for buffer_id, buffer in graph.buffers.items():
+        for buffer in graph.buffers:
             buffer_data = buffer.root
             if buffer_data["dram_io_flag_is_remote"] != 0:
                 dram_addr = buffer_data['dram_addr']
@@ -145,22 +124,22 @@ def print_host_queue_summary (cmd, context, ui_state):
                     wrptr = tt_device.PCI_IFC.host_dma_read (dram_addr + 4)
                     slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
                     queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
-                    occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - 2 * buffer_data["q_slots"])
+                    occupancy = Queue.occupancy (buffer_data["q_slots"], wrptr, rdptr)
 
                     # IMPROVE: Duplicated from print_dram_queue_summary. Merge into one function.
                     input_buffer_op_name_list = []
-                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'input'):
-                        input_buffer_op_name_list.append (graph.get_buffer(other_buffer_id).root["md_op_name"])
+                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'src'):
+                        input_buffer_op_name_list.append (graph.buffers.find_id(other_buffer_id).root["md_op_name"])
                     output_buffer_op_name_list = []
-                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'output'):
-                        output_buffer_op_name_list.append (graph.get_buffer(other_buffer_id).root["md_op_name"])
+                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'dest'):
+                        output_buffer_op_name_list.append (graph.buffers.find_id(other_buffer_id).root["md_op_name"])
 
                     input_ops = f"{' '.join (input_buffer_op_name_list)}"
                     output_ops = f"{' '.join (output_buffer_op_name_list)}"
 
-                    table.append ([ buffer_id, buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
+                    table.append ([ buffer.id(), buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
 
-    print (f"{util.CLR_INFO}Host queues (where dram_io_flag_is_remote!=0) for epoch %d {util.CLR_END}" % epoch_id)
+    print (f"{util.CLR_INFO}Host queues (where dram_io_flag_is_remote!=0) for graph {graph_name} {util.CLR_END}")
     if len(table) > 0:
         print (tabulate(table, headers=["Buffer name", "Op", "Input Ops", "Output Ops", "dram_buf_flag", "dram_io_flag", "Address", "RD ptr", "WR ptr", "Occupancy", "Q slots", "Q Size [bytes]"] ))
     else:
@@ -168,14 +147,11 @@ def print_host_queue_summary (cmd, context, ui_state):
 
 # Prints epoch queues
 def print_epoch_queue_summary (cmd, context, ui_state):
-    epoch_id = ui_state["current_epoch_id"]
-
-    graph_name = context.netlist.epoch_id_to_graph_name (epoch_id)
-    graph = context.netlist.graph(graph_name)
+    graph_name = ui_state["current_graph_name"]
     device_id = context.netlist.graph_name_to_device_id(graph_name)
     epoch_device = context.devices[device_id]
 
-    print (f"{util.CLR_INFO}Epoch queues for epoch %d, device id {device_id}{util.CLR_END}" % epoch_id)
+    print (f"{util.CLR_INFO}Epoch queues for graph {graph_name}, device id {device_id}{util.CLR_END}")
 
     # From tt_epoch_dram_manager::tt_epoch_dram_manager and following the constants
     GridSizeRow = 16
@@ -201,9 +177,9 @@ def print_epoch_queue_summary (cmd, context, ui_state):
         dram_addr = EPOCH_QUEUE_START_ADDR + offset
         rdptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
         wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
-        occupancy = (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - 2 * EPOCH_Q_NUM_SLOTS)
+        occupancy = Queue.occupancy (EPOCH_Q_NUM_SLOTS, wrptr, rdptr)
         if occupancy > 0:
-            table.append ([ f"{x}-{y}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
+            table.append ([ f"{util.noc_loc_str((x, y))}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
 
     if len(table) > 0:
         print (tabulate(table, headers=["Location", "Address", "RD ptr", "WR ptr", "Occupancy" ] ))
@@ -214,7 +190,7 @@ def print_epoch_queue_summary (cmd, context, ui_state):
 
 # A helper to print the result of a single PCI read
 def print_a_pci_read (x, y, addr, val, comment=""):
-    print(f"{x}-{y} 0x{addr:08x} => 0x{val:08x} ({val:d}) {comment}")
+    print(f"{util.noc_loc_str((x, y))} 0x{addr:08x} => 0x{val:08x} ({val:d}) {comment}")
 
 # Perform a burst of PCI reads and print results.
 # If burst_type is 1, read the same location for a second and print a report
@@ -290,7 +266,12 @@ def main(args, context):
         { "long" : "epoch",
           "short" : "e",
           "expected_argument_count" : 1,
-          "arguments_description" : "epoch_id : switch to epoch epoch_id"
+          "arguments_description" : "epoch_id : [DEPRECATED - use 'graph' instead]"
+        },
+        { "long" : "graph",
+          "short" : "g",
+          "expected_argument_count" : 1,
+          "arguments_description" : "graph__name : switch to graph graph_name"
         },
         { "long" : "buffer",
           "short" : "b",
@@ -369,23 +350,15 @@ def main(args, context):
 
     # Initialize current UI state
     ui_state = {
-        "current_x": 1,           # Currently selected core (noc0 coordinates)
+        "current_x": 1,             # Currently selected core (noc0 coordinates)
         "current_y": 1,
-        "current_stream_id": 8,   # Currently selected stream_id
-        "current_epoch_id": 0,    # Current epoch_id
-        "current_graph_name": "", # Graph name for the current epoch
-        "current_prompt": "",     # Based on the current x,y,stream_id tuple
+        "current_stream_id": 8,     # Currently selected stream_id
+        "current_graph_name": context.netlist.graphs.first().id(), # Currently selected graph name
+        "current_prompt": "",       # Based on the current x,y,stream_id tuple
         "current_device": None
     }
 
     navigation_suggestions = None
-
-    def change_epoch (new_epoch_id):
-        if context.netlist.epoch_id_to_graph_name(new_epoch_id) is not None:
-            nonlocal ui_state
-            ui_state["current_epoch_id"] = new_epoch_id
-        else:
-            print (f"{util.CLR_ERR}Invalid epoch id {new_epoch_id}{util.CLR_END}")
 
     # These commands will be executed right away (before allowing user input)
     non_interactive_commands=args.commands.split(";") if args.commands else []
@@ -393,15 +366,15 @@ def main(args, context):
     # Main command loop
     while True:
         have_non_interactive_commands=len(non_interactive_commands) > 0
+        noc0_loc = ( ui_state['current_x'], ui_state['current_y'] )
 
-        if ui_state['current_x'] is not None and ui_state['current_y'] is not None and ui_state['current_epoch_id'] is not None and ui_state['current_device'] is not None:
-            row, col = ui_state['current_device'].noc0_to_rc (ui_state['current_x'], ui_state['current_y'])
-            ui_state['current_prompt'] = f"core:{util.CLR_PROMPT}{ui_state['current_x']}-{ui_state['current_y']}{util.CLR_PROMPT_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_PROMPT_END} stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_PROMPT_END} "
+        if ui_state['current_x'] is not None and ui_state['current_y'] is not None and ui_state['current_graph_name'] is not None and ui_state['current_device'] is not None:
+            row, col = ui_state['current_device'].noc0_to_rc ( noc0_loc )
+            ui_state['current_prompt'] = f"core:{util.CLR_PROMPT}{util.noc_loc_str(noc0_loc)}{util.CLR_PROMPT_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_PROMPT_END} stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_PROMPT_END} "
 
         try:
-            ui_state['current_graph_name'] = context.netlist.epoch_id_to_graph_name(ui_state['current_epoch_id'])
             ui_state['current_device_id'] = context.netlist.graph_name_to_device_id(ui_state['current_graph_name'])
-            ui_state['current_device'] = context.devices[ui_state['current_device_id']]
+            ui_state['current_device'] = context.devices[ui_state['current_device_id']] if ui_state['current_device_id'] is not None else None
 
             print_navigation_suggestions (navigation_suggestions)
 
@@ -411,7 +384,7 @@ def main(args, context):
                 if len(cmd_raw)>0:
                     print (f"{util.CLR_INFO}Executing command: %s{util.CLR_END}" % cmd_raw)
             else:
-                my_prompt = f"Current epoch:{util.CLR_PROMPT}{ui_state['current_epoch_id']}{util.CLR_PROMPT_END}({ui_state['current_graph_name']}) device:{util.CLR_PROMPT}{ui_state['current_device_id']}{util.CLR_PROMPT_END} {ui_state['current_prompt']}> "
+                my_prompt = f"Current epoch:{util.CLR_PROMPT}{context.netlist.graph_name_to_epoch_id(ui_state['current_graph_name'])}{util.CLR_PROMPT_END}({ui_state['current_graph_name']}) device:{util.CLR_PROMPT}{ui_state['current_device_id']}{util.CLR_PROMPT_END} {ui_state['current_prompt']}> "
                 cmd_raw = prompt_session.prompt(HTML(my_prompt))
 
             try: # To get a a command from the speed dial
@@ -481,12 +454,18 @@ def main(args, context):
                             print (f"{util.CLR_GREEN}Exported '{zip_file_name}'. Import with:\n  unzip {zip_file_name} -d dbd-export\n  cd dbd-export\n  Run debuda.py {'--server-cache on' if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled else ''}{util.CLR_END}")
                     elif found_command["long"] == "test":
                         test_command (cmd, context, ui_state)
+                    elif found_command["long"] == "graph":
+                        gname = cmd[1]
+                        if gname not in context.netlist.graph_names():
+                            util.WARN (f"Invalid graph {gname}")
+                        else:
+                            ui_state["current_graph_name"] = cmd[1]
                     elif found_command["long"] == "epoch":
-                        change_epoch (int(cmd[1]))
+                        util.WARN ("'epoch' command is deprecated: use 'graph' command instead")
                     elif found_command["long"] == "buffer":
-                        navigation_suggestions = print_buffer_data (cmd, context)
+                        navigation_suggestions = print_buffer_data (cmd, context, ui_state)
                     elif found_command["long"] == "pipe":
-                        navigation_suggestions = print_pipe_data (cmd, context)
+                        navigation_suggestions = print_pipe_data (cmd, context, ui_state)
                     elif found_command["long"] == "pci-raw-read":
                         addr = int(cmd[1],0)
                         print ("PCI RD [0x%x]: 0x%x" % (addr, tt_device.PCI_IFC.pci_raw_read (ui_state['current_device_id'], addr)))
@@ -509,7 +488,7 @@ def main(args, context):
                         else:
                             print (f"{util.CLR_ERR} Unknown {found_command['long']} {util.CLR_END}")
                     elif found_command["long"] == "full-dump":
-                        ui_state['current_device'].full_dump_xy(ui_state['current_x'], ui_state['current_y'])
+                        ui_state['current_device'].full_dump_xy( (ui_state['current_x'], ui_state['current_y']) )
                     elif found_command["long"] == "dram-queue":
                         print_dram_queue_summary (cmd, context, ui_state)
                     elif found_command["long"] == "host-queue":
@@ -539,7 +518,11 @@ def import_commands (command_metadata_array, reload = False):
     command_files.sort()
     for cmdfile in command_files:
         module_path = os.path.splitext(os.path.basename(cmdfile))[0]
-        my_cmd_module = importlib.import_module (module_path)
+        try:
+            my_cmd_module = importlib.import_module (module_path)
+        except Exception as e:
+            util.ERROR (f"Error in module {module_path}: {e}")
+            continue
         command_metadata = my_cmd_module.command_metadata
         command_metadata["module"] = my_cmd_module
         command_metadata["long"] = my_cmd_module.__name__
@@ -587,7 +570,7 @@ if args.output_dir is None: # Then find the most recent tt_build subdir
                 most_recent_subdir = subdir
     print (most_recent_subdir)
     args.output_dir = most_recent_subdir
-    util.INFO (f"Output directory not specified: looking for the most recent tt_build/ subdirectory. Found: {most_recent_subdir}")
+    util.INFO (f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{most_recent_subdir}")
 
 context = tt_netlist.load (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
 
