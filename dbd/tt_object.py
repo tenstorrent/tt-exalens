@@ -55,3 +55,37 @@ class TTObjectSet (SortedSet):
             if s.id() == id:
                 return s
         return None
+
+    # Temporary interface
+    def id_filter (id):
+        def _id_filter(elem):
+            if not id: return True
+            return id == elem.id()
+        return _id_filter
+    def filter (self, lam):
+        ret_val = self.copy()
+        ret_val.keep(lam)
+        return ret_val
+    def print (self, *args):
+        for elem in self:
+            for keyname in args:
+                if hasattr(elem, keyname):
+                    print (f"{getattr(elem, keyname)}", end=", ")
+            print()
+    def print_table (self, *args):
+        table=util.TabulateTable(list ( { "key_name" : keyname, "title" : keyname, 'formatter': None } for keyname in args))
+        for elem in self:
+            elem_dict = { "_id" : elem.id() }
+            table.add_row ("-", elem_dict)
+        print(table)
+
+# Example run command
+def run(args, context, ui_state = None):
+    qid = args[1] if len(args)>1 else None
+    QS = context.netlist.queues
+    OS = TTObjectSet
+
+    qs = QS.filter (OS.id_filter(qid))
+
+    qs.print_table("_id", "_id", "_id")
+
