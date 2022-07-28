@@ -2,7 +2,7 @@
 """
 debuda parses the build output files and probes the silicon to determine status of a buda run.
 """
-import sys, os, argparse, time, traceback, atexit, fnmatch, importlib, zipfile
+import sys, os, argparse, time, traceback, fnmatch, importlib, zipfile
 from tabulate import tabulate
 import tt_util as util, tt_device, tt_netlist
 from prompt_toolkit import PromptSession
@@ -320,22 +320,6 @@ def import_commands (command_metadata_array, reload = False):
                     util.FATAL (f"Commands {cmd['long']} and {command_metadata['long']} use the same shortcut: {cmd['short']}")
             command_metadata_array.append (command_metadata)
 
-# Initialize communication with the device
-def init_device_comm ():
-    tt_device.DEBUDA_SERVER_CACHED_IFC.enabled = args.server_cache == "through" or args.server_cache == "on"
-    tt_device.DEBUDA_SERVER_IFC.enabled = args.server_cache == "through" or args.server_cache == "off"
-    if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled:
-        atexit.register (tt_device.DEBUDA_SERVER_CACHED_IFC.save)
-        tt_device.DEBUDA_SERVER_CACHED_IFC.load()
-
-    if tt_device.DEBUDA_SERVER_IFC.enabled:
-        # Initialize communication with the client (debuda-stub)
-        ip_and_port = args.debuda_server_address.split(":")
-        tt_device.init_device_comm (ip=ip_and_port[0], port=ip_and_port[1], debug_debuda_stub=args.debug_debuda_stub)
-
-        # Make sure to terminate communication client (debuda-stub) on exit
-        atexit.register (tt_device.terminate_comm_client_callback)
-
 def init_output_dir ():
     # Try to find a default output directory
     most_recent_modification_time = None
@@ -376,7 +360,7 @@ def load_context (netlist_filepath, run_dirpath):
 
 ### START
 
-init_device_comm()
+tt_device.init_device_comm(args)
 
 if args.output_dir is None: # Then find the most recent tt_build subdir
     init_output_dir()

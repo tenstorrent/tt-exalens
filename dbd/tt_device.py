@@ -1,8 +1,7 @@
-import os, subprocess, time, struct, signal, re, zmq, pickle
+import os, subprocess, time, struct, signal, re, zmq, pickle, atexit
 from tabulate import tabulate
 from dbd.tt_object import TTObject
 import tt_util as util
-import tt_object
 STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with 'make dbd/debuda-stub'. It also requires zeromq (sudo apt install -y libzmq3-dev)."
 
 #
@@ -619,3 +618,19 @@ class Device(TTObject):
         return PCI_IFC.pci_write_xy(self.id(), x, y, noc_id, reg_addr, data)
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         return PCI_IFC.pci_read_tile(self.id(), x, y, z, reg_addr, msg_size, data_format)
+
+# Initialize communication with the device
+def init_device_comm (args):
+    DEBUDA_SERVER_CACHED_IFC.enabled = args.server_cache == "through" or args.server_cache == "on"
+    DEBUDA_SERVER_IFC.enabled = args.server_cache == "through" or args.server_cache == "off"
+    if DEBUDA_SERVER_CACHED_IFC.enabled:
+        atexit.register (DEBUDA_SERVER_CACHED_IFC.save)
+        DEBUDA_SERVER_CACHED_IFC.load()
+
+    if DEBUDA_SERVER_IFC.enabled:
+        # Initialize communication with the client (debuda-stub)
+        ip_and_port = args.debuda_server_address.split(":")
+        init_device_comm (ip=ip_and_port[0], port=ip_and_port[1], debug_debuda_stub=args.debug_debuda_stub)
+
+        # Make sure to terminate communication client (debuda-stub) on exit
+        atexit.register (terminate_comm_client_callback)
