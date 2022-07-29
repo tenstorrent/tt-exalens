@@ -93,7 +93,7 @@ class DataArray (TTObject):
         self.data = []
         self.bytes_per_entry = bytes_per_entry
         if not cell_formatter:
-            self.cell_formatter=util.CELLFMT.composite([util.CELLFMT.hex(self.bytes_per_entry), util.CELLFMT.odd_even])
+            self.cell_formatter=util.CELLFMT.hex(self.bytes_per_entry)
         else:
             self.cell_formatter=cell_formatter
     def to_bytes_per_entry (self, bytes_per_entry):
@@ -104,7 +104,7 @@ class DataArray (TTObject):
         for i in range (0, len(dest), bytes_per_entry):
             self.data.append (int.from_bytes(dest[i:i+bytes_per_entry],byteorder='little'))
         self.bytes_per_entry = bytes_per_entry
-        self.cell_formatter=util.CELLFMT.composite([util.CELLFMT.hex(self.bytes_per_entry), util.CELLFMT.odd_even])
+        self.cell_formatter=util.CELLFMT.hex(self.bytes_per_entry)
 
 # Example run command
 def run(args, context, ui_state = None):

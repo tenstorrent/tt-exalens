@@ -128,6 +128,7 @@ def run(args, context, ui_state = None):
     print (table)
 
     if queue_id:
+        queue = context.netlist.queues.find_id(queue_id)
         queue_start_addr = int(args[2], 0) if len(args) > 2 else 0
         queue_num_bytes = int(args[3], 0) if len(args) > 3 else 128
         alignment_bytes=queue_start_addr % 4
