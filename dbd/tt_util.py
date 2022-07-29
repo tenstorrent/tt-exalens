@@ -51,7 +51,9 @@ def with_hex_if_possible (val):
 CLR_RED = '\033[31m'
 CLR_GREEN = '\033[32m'
 CLR_BLUE = '\033[34m'
+CLR_GREY = '\033[37m'
 CLR_ORANGE = '\033[38:2:205:106:0m'
+
 CLR_END = '\033[0m'
 
 CLR_ERR = CLR_RED
@@ -239,3 +241,65 @@ def is_iterable(obj):
 
 def set(*args, **kwargs):
     return SortedSet(*args, **kwargs)
+
+class CELLFMT:
+    def passthrough(r,c,i,val):
+        return val
+    def odd_even(r,c,i,val):
+        if r % 2 == 0: return val
+        else: return f"{CLR_GREY}{val}{CLR_END}"
+    def hex(bytes_per_entry):
+        def hex_formatter(r,c,i,val):
+            return "0x{vrednost:{fmt}}".format (fmt="0" + str(bytes_per_entry*2) + "x", vrednost=val)
+        return hex_formatter
+    def composite(fmt_function_array):
+        def cell_fmt(r,c,i,val):
+            for f in fmt_function_array:
+                val = f(r,c,i,val)
+            return val
+        return cell_fmt
+    def dec_and_hex(r,c,i,val):
+        return f"{CLR_BLUE}{i:4d}{CLR_END} 0x{i:08x}"
+
+def array_to_str(A,
+    num_cols=8, start_row=None, end_row=None,
+    condense=False,
+    show_row_index=True, show_col_index=True,
+    cell_formatter=CELLFMT.passthrough,
+    row_index_formatter=CELLFMT.passthrough
+    ):
+    lena=len(A)
+    if lena==0: return
+    if not start_row: start_row=0
+    if not end_row: end_row=(lena - 1) // num_cols + 1
+
+    skip_border_rows=4 if condense else 0
+    skip_rows_rendered=False
+
+    header = list(range(num_cols))
+    rows = []
+    for r in range(start_row, end_row):
+        if skip_border_rows and (r >= skip_border_rows and r < end_row-skip_border_rows):
+            if not skip_rows_rendered:
+                rows.append (["..."] * num_cols)
+                skip_rows_rendered=True
+        else:
+            row = [] if not show_row_index else [ row_index_formatter(r,r * num_cols,r * num_cols,r) ]
+            for c in range(num_cols):
+                i = r * num_cols + c
+                if i < lena:
+                    row.append(cell_formatter(r,c,i,A[i]))
+                else:
+                    row.append('')
+
+            rows.append(row)
+    return tabulate(rows, headers=header if show_col_index else [])
+
+def word_to_byte_array(A):
+    byte_array=[]
+    for i in A:
+        byte_array.append (i & 0xff)
+        byte_array.append ((i>>8) & 0xff)
+        byte_array.append ((i>>16) & 0xff)
+        byte_array.append ((i>>32) & 0xff)
+    return byte_array

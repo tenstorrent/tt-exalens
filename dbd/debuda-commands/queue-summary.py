@@ -1,6 +1,6 @@
 command_metadata = {
     "short" : "q",
-    "expected_argument_count" : [0, 3],
+    "expected_argument_count" : [0, 1, 3],
     "arguments_description" : " [ queue_name, start_addr, num_bytes ]: Prints summary of queues. If arguments supplied, it will print contents"
 }
 
@@ -40,38 +40,35 @@ def get_queue_data (context, queue):
             queue_locations.append ((rdptr, wrptr, occupancy))
     return q_data, queue_locations
 
-def  print_word_array (word_array):
-    for i in range(len(word_array)):
-        print ("0x%08x " % word_array[i], end="")
-        if i%8 == 7:
-            print()
-
 # Returns word array
-def print_queue_contents (context, queue, start_addr, num_bytes):
+def read_queue_contents (context, queue, start_addr, num_bytes):
     util.INFO (f"Contents of queue {queue.id()}:")
+    num_words = (num_bytes-1) // 4 + 1
+    ret_val = tt_object.TTObjectSet()
     q_data = queue.root
     device_id = q_data["target_device"]
     device = context.devices[device_id]
-    word_array=[]
 
     if "host" in q_data: # This queues is on the host
         addr = q_data["host"][0]
-        for i in range (num_bytes // 4):
+        da = util.DataArray(f"host-0x{addr:08x}-{num_words * 4}")
+        for i in range (num_words):
             data = tt_device.PCI_IFC.host_dma_read (addr + start_addr + i * 4)
-            word_array.append(data)
-        print_word_array (word_array)
+            da.data.append(data)
+        ret_val.add (da)
     else:
         device_id = q_data["target_device"]
         for queue_position in range(len(q_data["dram"])):
             dram_place = q_data["dram"][queue_position]
             dram_chan = dram_place[0]
-            dram_addr = dram_place[1]
-            print("At ch{dram_chan}-0x%x" % dram_addr)
+            addr = dram_place[1]
             dram_loc = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
-            for i in range (num_bytes // 4):
-                data = device.pci_read_xy (dram_loc[0], dram_loc[1], 0, dram_addr + start_addr + i * 4)
-                word_array.append(data)
-            print_word_array (word_array)
+            da = tt_object.DataArray(f"dram-ch{dram_chan}-0x{addr:08x}-{num_words * 4}")
+            for i in range (num_words):
+                data = device.pci_read_xy (dram_loc[0], dram_loc[1], 0, addr + start_addr + i * 4)
+                da.data.append(data)
+            ret_val.add (da)
+    return ret_val
 
 def print_single_queue_summary(args, context, ui_state = None):
     qid = args[1]
@@ -131,4 +128,13 @@ def run(args, context, ui_state = None):
     print (table)
 
     if queue_id:
-        print_queue_contents(context, queue, int(args[2], 0), int(args[3], 0))
+        queue_start_addr = int(args[2], 0) if len(args) > 2 else 0
+        queue_num_bytes = int(args[3], 0) if len(args) > 3 else 128
+        alignment_bytes=queue_start_addr % 4
+        queue_start_addr-=alignment_bytes
+        queue_num_bytes+=alignment_bytes
+
+        data = read_queue_contents(context, queue, queue_start_addr, queue_num_bytes)
+        # for d in data:
+        #     d.to_bytes_per_entry(1)
+        print (data)

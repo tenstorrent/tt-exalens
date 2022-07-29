@@ -21,7 +21,11 @@ class TTObjectSet (SortedSet):
         else:
             return "{ }"
     def __repr__(self):
-        return f"[{len (self)}] {self.__str__()}"
+        str_list = [ s.__repr__() for s in self ]
+        if len (self) > 0:
+            return f"len={len (self)}"+ " { " + ", ".join (str_list) + " }"
+        else:
+            return f"len={len (self)}"
 
     # Constructs a TTObjectSet from an iterable
     @classmethod
@@ -78,6 +82,29 @@ class TTObjectSet (SortedSet):
             elem_dict = { "_id" : elem.id() }
             table.add_row ("-", elem_dict)
         print(table)
+
+class DataArray (TTObject):
+    def __str__ (self):
+        return f"{self._id}\n" + util.array_to_str(self.data, cell_formatter=self.cell_formatter)
+    def __repr__(self):
+        return f"{self._id} len:{len(self.data)} ({len(self.data)*self.bytes_per_entry} bytes)"
+    def __init__(self, id, bytes_per_entry=4, cell_formatter=None):
+        self._id = id
+        self.data = []
+        self.bytes_per_entry = bytes_per_entry
+        if not cell_formatter:
+            self.cell_formatter=util.CELLFMT.composite([util.CELLFMT.hex(self.bytes_per_entry), util.CELLFMT.odd_even])
+        else:
+            self.cell_formatter=cell_formatter
+    def to_bytes_per_entry (self, bytes_per_entry):
+        dest = bytes()
+        for v in self.data:
+            dest += int.to_bytes(v, length=self.bytes_per_entry, byteorder='little')
+        self.data = []
+        for i in range (0, len(dest), bytes_per_entry):
+            self.data.append (int.from_bytes(dest[i:i+bytes_per_entry],byteorder='little'))
+        self.bytes_per_entry = bytes_per_entry
+        self.cell_formatter=util.CELLFMT.composite([util.CELLFMT.hex(self.bytes_per_entry), util.CELLFMT.odd_even])
 
 # Example run command
 def run(args, context, ui_state = None):
