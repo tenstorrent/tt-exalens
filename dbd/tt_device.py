@@ -630,7 +630,7 @@ def init_device_comm (args):
     if DEBUDA_SERVER_IFC.enabled:
         # Initialize communication with the client (debuda-stub)
         ip_and_port = args.debuda_server_address.split(":")
-        init_device_comm (ip=ip_and_port[0], port=ip_and_port[1], debug_debuda_stub=args.debug_debuda_stub)
+        init_comm_client (ip=ip_and_port[0], port=ip_and_port[1], debug_debuda_stub=args.debug_debuda_stub)
 
         # Make sure to terminate communication client (debuda-stub) on exit
         atexit.register (terminate_comm_client_callback)
