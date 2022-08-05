@@ -112,13 +112,20 @@ class Stream(TTObject):
         self._id = Stream.get_stream_tuple_from_designator (designator) + ( data['phase_id'], )
         self.root = data
         self.graph = graph
+        self.__buffer_id = self.root.get ("buf_id", None)
+        self.__pipe_id = self.root.get ("pipe_id", None)
 
     # Accessors
     def get_buffer_id (self):
-        return self.root.get ("buf_id", None)
+        return self.__buffer_id
     def get_pipe_id (self):
-        ret_val = self.root.get ("pipe_id", None)
-        return ret_val
+        return self.__pipe_id
 
     def on_chip_id (self):
         return ( self._id[1], self._id[2], self._id[3], )
+
+    def noc0_XY(self):
+        return (self._id[1], self._id[2])
+
+    def stream_id(self):
+        return self._id[3]

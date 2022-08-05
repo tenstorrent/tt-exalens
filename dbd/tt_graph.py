@@ -11,6 +11,8 @@ class Queue(TTObject):
         self.root = data
         self._id = name
         self.output_ops = TTObjectSet()
+        assert(self.is_dram() or self.is_host())
+        assert(self.get_mem_addr())
 
     # Class functions
     def occupancy (entries, wrptr, rdptr):
@@ -28,6 +30,27 @@ class Queue(TTObject):
         if num_ops_fed_by_queue > 0:
             ret_str += ', '.join (output_op_names) if num_ops_fed_by_queue > 0 else ""
         return ret_str
+
+    def get_loc(self):
+        return self.root['loc']
+
+    def get_mem_addr(self):
+        loc = self.get_loc()
+        if loc in self.root:
+            addresses = self.root[loc]
+            for a in addresses:
+                assert(type(a) is int if self.is_host() else type(a) is list)
+            return addresses
+        return []
+
+    def is_dram(self):
+        return self.get_loc() == 'dram'
+
+    def is_host(self):
+        return self.get_loc() == 'host'
+
+    def entries(self):
+        return self.root["entries"]
 
 # Operations
 class Op(TTObject):
@@ -340,6 +363,25 @@ class Graph(TTObject):
         else:
             raise TypeError (f"Usupported object type: {type(where)}")
         return ret_val
+
+    def get_ops_pipes(self):
+        ret_val = dict()
+        for op in self.ops:
+            ret_val[op.id()] = []
+
+        # connect pipes with op_names
+        for pipe in self.pipes:
+            for buffer in self.get_buffers(pipe):
+                id = buffer.root["md_op_name"]
+                if id in ret_val:
+                    ret_val[id].append(pipe)
+
+        res = dict()
+        for key in ret_val.keys():
+            s = TTObjectSet()
+            s.update(ret_val[key])
+            res[key] = s
+        return res
 
     def get_pipes (self, where):
         ret_val = TTObjectSet()

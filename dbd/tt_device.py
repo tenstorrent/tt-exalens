@@ -241,6 +241,15 @@ class Device(TTObject):
                 streams[loc + (stream_id,)] = regs
         return streams
 
+    # For all cores read epoch_id for all 64 streams and populate the 'epochs' dict. epoch[x][y][stream_id] will
+    # contain a epoch_id
+    def read_all_epochs (self):
+        epochs = {}
+        for loc in self.get_block_locations (block_type = "functional_workers"):
+            for stream_id in range (0, 64):
+                epochs[loc + (stream_id,)] = self.get_epoch_id(loc, stream_id)
+        return epochs
+
     # For a given core, read all 64 streams and populate the 'streams' dict. streams[stream_id] will
     # contain a dictionary of all register values as strings formatted to show in UI
     def read_core_stream_registers (self, loc):
@@ -514,6 +523,9 @@ class Device(TTObject):
 
     def get_stream_phase (self, noc0_loc, stream_id):
         return self.get_stream_reg_field(noc0_loc, stream_id, 11, 0, 20)
+
+    def get_epoch_id(self, noc0_loc, stream_id):
+        return self.get_stream_phase(noc0_loc, stream_id) >> 10
 
     # Returns whether the stream is configured
     def is_stream_configured(self, stream_data):

@@ -10,146 +10,260 @@ command_metadata = {
         "arguments_description" : ": Prints operation summary"
     }
 
-def run(args, context, ui_state = None):
-    navigation_suggestions = []
+# checks wheter queue has data
+def queue_has_data(device, q:Queue):
+    if not q.is_host() and not q.is_dram():
+        util.WARN(f'Unknown memory location: {q.get_loc()}')
+        return True
 
-    for _, device in context.devices.items():
-        util.INFO (f"Analyzing device {device.id()}")
-        all_stream_regs = device.read_all_stream_registers ()
-        device_epochs = util.set()
-        for loc, stream_regs in all_stream_regs.items():
-            epoch_id = device.stream_epoch (stream_regs)
-            device_epochs.add (epoch_id)
+    for mem_addr in q.get_mem_addr():
+        if q.is_dram():
+            dram_chan, dram_addr = mem_addr[0], mem_addr[1]
+            x, y = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
+            read_ptr = device.pci_read_xy (x, y, 0, dram_addr)
+            write_ptr = device.pci_read_xy (x, y, 0, dram_addr + 4)
+        if q.is_host():
+            read_ptr = tt_device.PCI_IFC.host_dma_read (mem_addr)
+            write_ptr = tt_device.PCI_IFC.host_dma_read (mem_addr+4)
 
-        device_graph_names = context.netlist.graph_names()
-        util.INFO (f"  Device {device.id()} is running graph{'s:' if len(device_graph_names) > 1 else ':' } {' '.join (device_graph_names)}")
-
-        # Returns if the Op wants more data on a given input
-        def wants_more_data_from_input (all_stream_regs, graph, graph_device, src_op_or_q, dest_op_or_q):
-            op_buffers = graph.get_buffers(dest_op_or_q)
-            # As not all streams have buf_id, and not all have pipe_id, we try to find either
-            relevant_buffers = TTObjectSet()
-            relevant_pipes = TTObjectSet()
-            util.VERBOSE (f"Running wants_more_data_from_input for {dest_op_or_q} on input {src_op_or_q}")
-            util.VERBOSE (f"  Found these buffers for {dest_op_or_q}: {op_buffers}")
-            for dest_buffer in op_buffers:
-                if graph.is_dest_buffer (dest_buffer):
-                    src_buffers = graph.get_fanin (dest_buffer)
-                    src_buffers.keep (lambda b: b.root["md_op_name"] == src_op_or_q.id())
-                    if src_buffers:
-                        relevant_buffers.add (dest_buffer)
-                        pipes = graph.get_pipes (dest_buffer)
-                        relevant_pipes.update (pipes)
-            util.VERBOSE (f"  Found these source buffers for {src_op_or_q}->{dest_op_or_q} conection: {relevant_buffers}")
-            relevant_streams = util.set({s for s in graph.streams if relevant_buffers.find_id (s.get_buffer_id()) or relevant_pipes.find_id(s.get_pipe_id())})
-
-            if not relevant_streams:
-                buflist = [ str(b.id()) for b in relevant_buffers]
-                util.WARN (f"No relevant streams for buffers {' '.join (buflist)}")
-            else:
-                util.VERBOSE (f"  Found these relevant_streams for {src_op_or_q}->{dest_op_or_q} conection: {' '.join ([ s.__str__() for s in relevant_streams ])}")
-
-            for s in relevant_streams:
-                stream_data = all_stream_regs.get (s.on_chip_id(), None)
-                if stream_data:
-                    if not graph_device.is_stream_done (stream_data):
-                        return True
+        # Get read and write pointers
+        if Queue.occupancy(q.entries(), write_ptr, read_ptr) == 0:
             return False
 
-        all_good = True
-        column_format = [
-            { 'key_name' : 'input',       'title': 'Input Name',   'formatter': None },
-            { 'key_name' : 'has_data',    'title': 'Input has data',   'formatter': lambda x: f"{util.CLR_RED}{x}{util.CLR_END}" },
-            { 'key_name' : 'op',          'title': 'Op Name',   'formatter': None },
-            { 'key_name' : 'wants_data',  'title': 'Op wants data',   'formatter': lambda x: f"{util.CLR_RED}{x}{util.CLR_END}" },
+    return True
+
+# check if destination buffer is connected to source op
+def is_destination_buffer(graph, src_op_or_q, dest_buffer):
+    if graph.is_dest_buffer (dest_buffer):
+        src_buffers = graph.get_fanin (dest_buffer)
+        src_buffers.keep (lambda b: b.root["md_op_name"] == src_op_or_q.id())
+        if src_buffers:
+            return True
+    return False
+
+# some stream helper functions
+# TODO: This should be part of stream
+def is_stream_done(device, stream):
+    return device.get_num_msgs_received(stream.noc0_XY(), stream.stream_id()) == device.get_curr_phase_num_msgs_remaining(stream.noc0_XY(), stream.stream_id())
+
+def is_stream_active(device, stream):
+    return device.get_stream_phase(stream.noc0_XY(), stream.stream_id()) != 0 and device.get_num_msgs_received(stream.noc0_XY(), stream.stream_id())  > 0
+
+def is_stream_hang(device, stream):
+    return not is_stream_done(device, stream) and not is_stream_active(device, stream)
+
+def get_stream_data(device, stream):
+    ret_type = dict()
+    ret_type["phase"] = device.get_stream_phase(stream.noc0_XY(), stream.stream_id())
+    ret_type["msg_received"] = device.get_num_msgs_received(stream.noc0_XY(), stream.stream_id())
+    ret_type["msg_reamining"] = device.get_curr_phase_num_msgs_remaining(stream.noc0_XY(), stream.stream_id())
+    if device.get_remote_receiver(stream.noc0_XY(), stream.stream_id()):
+        ret_type["source"] = True
+    if device.get_remote_source(stream.noc0_XY(), stream.stream_id()):
+        ret_type["dest"] = True
+    return ret_type
+
+def get_epoch_to_ops(context, device_id, epochs):
+    epochs_ops_stream = {}
+    device = context.devices[device_id]
+    netlist = context.netlist
+    epoch_id_graph = {}
+    for loc, epoch_id in epochs.items():
+        # get graph
+        if epoch_id not in epoch_id_graph:
+            graph_name = netlist.get_graph_name(epoch_id, device_id)
+            if graph_name is None:
+                continue
+            epoch_id_graph[epoch_id] = {}
+            epoch_id_graph[epoch_id]["graph_name"] = graph_name
+            epoch_id_graph[epoch_id]["graph"] = netlist.graph(graph_name)
+
+        graph_name = epoch_id_graph[epoch_id]["graph_name"]
+        # get operation for loc
+        row, col = device.noc0_to_rc((loc[0], loc[1]))
+        op_name = epoch_id_graph[epoch_id]["graph"].core_coord_to_op_name((row,col))
+        if epoch_id not in epochs_ops_stream:
+            epochs_ops_stream[epoch_id] = dict()
+        if op_name not in epochs_ops_stream[epoch_id]:
+            epochs_ops_stream[epoch_id][op_name] = []
+
+        epochs_ops_stream[epoch_id][op_name].append(loc)
+    return epochs_ops_stream
+
+# Returns if the Op wants more data on a given input
+def get_streams_waiting_for_data (graph, device, src_op_or_q, dest_op_or_q):
+    op_buffers = graph.get_buffers(dest_op_or_q)
+    # As not all streams have buf_id, and not all have pipe_id, we try to find either
+    relevant_buffers = TTObjectSet()
+    relevant_pipes = TTObjectSet()
+    util.VERBOSE (f"Running wants_more_data_from_input for {dest_op_or_q} on input {src_op_or_q}")
+    util.VERBOSE (f"  Found these buffers for {dest_op_or_q}: {op_buffers}")
+    for dest_buffer in op_buffers:
+        if is_destination_buffer(graph, src_op_or_q, dest_buffer):
+            relevant_buffers.add (dest_buffer)
+            pipes = graph.get_pipes (dest_buffer)
+            relevant_pipes.update (pipes)
+    util.VERBOSE (f"  Found these source buffers for {src_op_or_q}->{dest_op_or_q} conection: {relevant_buffers}")
+    relevant_streams = util.set({stream for stream in graph.streams if relevant_buffers.find_id (stream.get_buffer_id()) or relevant_pipes.find_id(stream.get_pipe_id())})
+
+    if not relevant_streams:
+        buflist = [ str(buffer.id()) for buffer in relevant_buffers]
+        util.WARN (f"No relevant streams for buffers {' '.join (buflist)}")
+    else:
+        util.VERBOSE (f"  Found these relevant_streams for {src_op_or_q}->{dest_op_or_q} conection: {' '.join ([ stream.__str__() for stream in relevant_streams ])}")
+
+    streams_waiting_for_data = []
+    for stream in relevant_streams:
+        if not is_stream_done(device, stream):
+            streams_waiting_for_data.append(stream)
+    return streams_waiting_for_data
+
+def get_graph_input_queues(graph):
+    input_queues = graph.get_fanin(graph.ops)
+    input_queues.keep (lambda q: q.root['type'] == 'queue')
+    return input_queues
+
+def get_input_queues_without_data(device, graph):
+    input_queues = get_graph_input_queues(graph)
+    queue_ops = {}
+    for q in input_queues:
+        has_data = queue_has_data(device, q)
+        if not has_data:
+            for op in graph.get_fanout(q):
+                streams = get_streams_waiting_for_data (graph, device, q, op)
+                if streams:
+                    if q not in queue_ops: queue_ops[q] = {}
+                    queue_ops[q][op] = []
+                    for stream in streams:
+                        data = get_stream_data(device, stream)
+                        queue_ops[q][op].append([stream.on_chip_id(), "No data in queue", data])
+
+    return queue_ops
+
+# go through all operation in topological
+# order and searchs for first stream
+# that is not done and not active
+def find_ops_with_hang(graph, device):
+    input_queues = get_graph_input_queues(graph)
+    ops_to_visit = graph.get_fanout(input_queues)
+    visited_ops = set ()
+    ops_pipes = graph.get_ops_pipes()
+    # dictionary with stream location and 
+    found_hangs = {}
+    while ops_to_visit:
+        # initialize list of fanout ops
+        new_ops_to_visit = TTObjectSet()
+        for src_op in ops_to_visit:
+            assert(src_op not in visited_ops)
+            src_pipes = ops_pipes[src_op.id()]
+            dest_ops = graph.get_fanout (src_op)
+            for dest_op in dest_ops:
+                if dest_op.id() not in ops_pipes:
+                    # currently we are not handling op to queue
+                    continue
+                dest_pipes = ops_pipes[dest_op.id()]
+                new_ops_to_visit.add(dest_op)
+
+                connecting_pipes = src_pipes.intersection (dest_pipes)
+
+                pipe_streams = graph.get_streams (connecting_pipes)
+
+                pipe_streams.update (graph.get_streams (graph.get_buffers (connecting_pipes)))
+
+                assert pipe_streams, "No streams found for connection {src_op}->{dest_op}"
+
+                for stream in pipe_streams:
+                    if is_stream_hang(device, stream):
+                        if src_op not in found_hangs: found_hangs[src_op] = {}
+                        if dest_op not in found_hangs[src_op]: found_hangs[src_op][dest_op] = []
+                        data = get_stream_data(device, stream)
+                        found_hangs [src_op][dest_op].append([stream.on_chip_id(), "", data])
+
+        if found_hangs:
+            return found_hangs
+
+        visited_ops.update(ops_to_visit)
+
+        # add new ops to visit
+        ops_to_visit = TTObjectSet()
+        for new_op in new_ops_to_visit:
+            fan_in_ops = graph.get_fanin(new_op)
+            if fan_in_ops.issubset(visited_ops):
+                ops_to_visit.add(new_op)
+    return None
+
+def print_hanged_ops(ops_with_hang_list):
+    column_format = [
+            { 'key_name' : 'device',      'title': 'Device ID',                 'formatter' : None},
+            { 'key_name' : 'epoch',       'title': 'Epoch ID',                  'formatter' : None},
+            { 'key_name' : 'graph',       'title': 'Graph Name',                'formatter' : None},
+            { 'key_name' : 'src',         'title': 'Source',                    'formatter' : None},
+            { 'key_name' : 'dst',         'title': 'Destination',               'formatter' : None},
+            { 'key_name' : 'stream',      'title': 'Stream',                    'formatter' : None},
+            { 'key_name' : 'info',        'title': 'Additional Stream Info',    'formatter' : None},
         ]
-        table=util.TabulateTable(column_format)
-        table.rows = [ ]
-
-        for graph_name in device_graph_names:
-            util.INFO (f"    Analyzing graph {graph_name}")
-            graph = context.netlist.graph(graph_name)
-            graph_device = context.devices[context.netlist.graph_name_to_device_id(graph_name)]
-
-            # Obtain all queues that feed all the operations within the graph
-            input_queues = graph.get_fanin(graph.ops)
-            # Keep only 'queue' type
-            input_queues.keep (lambda q: q.root['type'] == 'queue')
-
-            problematic_ops = TTObjectSet()
-            for q in input_queues:
-                # Get ops that the queue feeds
-                ops = graph.get_fanout (q)
-
-                # Check each q->ops connection
-                q_data = q.root
-                q_loc = q_data['loc']
-                loc_array = q_data[q_loc]
-                entries = q_data["entries"]
-                for loc in loc_array:
-                    # Get read and write pointers
-                    if q_loc == 'dram':
-                        dram_chan, dram_addr = loc[0], loc[1]
-                        dram_noc0_loc = graph_device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
-                        rdptr = graph_device.pci_read_xy (dram_noc0_loc[0], dram_noc0_loc[1], 0, dram_addr)
-                        wrptr = graph_device.pci_read_xy (dram_noc0_loc[0], dram_noc0_loc[1], 0, dram_addr + 4)
-                    elif q_loc == 'host':
-                        rdptr = tt_device.PCI_IFC.host_dma_read (loc)
-                        wrptr = tt_device.PCI_IFC.host_dma_read (loc + 4)
+    table=util.TabulateTable(column_format)
+    table.rows = [ ]
+    for element in ops_with_hang_list:
+        for src, dst_streams in element['operations'].items():
+            for dst, streams_with_desc in dst_streams.items():
+                first = True
+                for stream_with_desc in streams_with_desc:
+                    if first:
+                        table.add_row (None, { 'device': element['device_id'], 'epoch':element['epoch_id'], 'graph': element['graph_name'], 'src' : src, 'dst' : dst, 'stream': stream_with_desc[0], 'info':stream_with_desc[1]+ " " +str(stream_with_desc[2]) if stream_with_desc[1] else str(stream_with_desc[2]) })
+                        first = False
                     else:
-                        util.WARN (f"Unknown queue loc: {q_loc}")
-                        continue
+                        table.add_row (None, { 'device': "", 'epoch':"", 'graph': "", 'src' : "", 'dst' : "", 'stream': stream_with_desc[0], 'info': stream_with_desc[1]+ " " +str(stream_with_desc[2]) if stream_with_desc[1] else str(stream_with_desc[2]) })
 
-                    input_has_data = Queue.occupancy(entries, wrptr, rdptr) > 0
-                    for op in ops:
-                        if not input_has_data:
-                            op_wants_data = wants_more_data_from_input (all_stream_regs, graph, graph_device, q, op)
-                            if op_wants_data:
-                                table.add_row (None, { 'op' : op.id(), 'input' : q.id(), 'has_data': input_has_data, "wants_data": op_wants_data })
-                                # util.WARN (f"Op {op}, input {q_name}: input_has_data {input_has_data} != {op_wants_data} op_wants_data")
-                                problematic_ops.add (op)
-                                all_good = False
+    if table.rows:
+        print (table)
 
-            ops_to_visit = graph.get_fanout(input_queues)
-            ops_to_visit -= problematic_ops
+def get_navigation_suggestion_for_hanged_ops(ops_with_hang_list):
+    navigation_suggestions = []
+    for element in ops_with_hang_list:
+        for src, dst_streams in element['operations'].items():
+            for dst, streams in dst_streams.items():
+                for stream_with_desc in streams:
+                    navigation_suggestions.append ({ 'cmd' : f"s {stream_with_desc[0][0]} {stream_with_desc[0][1]} {stream_with_desc[0][2]}", 'description' : f"Go to stream {stream_with_desc[0]}" })
+    return navigation_suggestions
 
-            # # Test other ops
-            visited_ops = set () # problematic_ops
+def run(args, context, ui_state = None):
+    navigation_suggestions = []
+    queue_ops_missing_data = []
+    ops_with_hang_list = []
 
-            while ops_to_visit:
-                new_ops_to_visit = TTObjectSet()
-                for src_op in ops_to_visit:
-                    if src_op not in visited_ops:
-                        dest_ops = graph.get_fanout (src_op)
-                        new_ops_to_visit.update (dest_ops)
-                        for dest_op in dest_ops:
-                            util.INFO (f"Examining connection {src_op}->{dest_op}")
-                            src_pipes = graph.get_pipes (src_op)
-                            dest_pipes = graph.get_pipes (dest_op)
-                            connecting_pipes = src_pipes.intersection (dest_pipes)
+    for device_id, graph_names in context.netlist.device_graph_names().items():
+        util.INFO(f"Analyzing device {device_id}")
+        device = context.devices[device_id]
+        util.INFO (f"  Reading epochs for locations")
+        epochs = device.read_all_epochs()
+        epoch_ops_streams = get_epoch_to_ops(context, device_id, epochs)
+        if len(epoch_ops_streams.keys()) > 1:
+            # This has not been tested
+            util.WARN (f"  More than one epoch running on device (epochs: {list(epoch_ops_streams.keys())})")
 
-                            pipe_streams = graph.get_streams (connecting_pipes)
-                            pipe_streams.update (graph.get_streams (graph.get_buffers (connecting_pipes)))
+        # handle graph that is running on device
+        for epoch_id, ops_streams in epoch_ops_streams.items():
+            graph_name = graph_names[epoch_id]
+            util.INFO (f"    Analyzing graph {graph_name} ( epoch {epoch_id} )")
+            graph = context.netlist.graph(graph_name)
 
-                            assert pipe_streams, "No streams found for connection {src_op}->{dest_op}"
+            # check input queues
+            queue_ops_errors = get_input_queues_without_data(device, graph)
 
-                            for s in pipe_streams:
-                                stream_data = all_stream_regs.get (s.on_chip_id(), None)
-                                if stream_data:
-                                    print (f"{s} {graph_device.is_stream_done (stream_data)} {graph_device.is_stream_active (stream_data)}")
+            if len(queue_ops_errors) > 0:
+                queue_ops_missing_data.append({'device_id':device_id, 'epoch_id':epoch_id, 'graph_name':graph_name, 'operations':queue_ops_errors})
+                continue
 
-                            # op_wants_data = wants_more_data_from_input (all_stream_regs, graph, graph_device, src_op, dest_op)
-                            # print (f"Wants more data {op_wants_data}: {src_op.id()} -> {dest_op} ")
-                            # buffers_and_pipes_and_streams = graph.get_buffers_and_pipes_and_streams (src_op, dest_op)
-                            # for b in buffers_and_pipes_and_streams:
-                            #     print (b)
-                        visited_ops.add(src_op)
-                ops_to_visit = new_ops_to_visit
+            # check hanged operations
+            ops_with_hang = find_ops_with_hang(graph, device)
+            if ops_with_hang:
+                ops_with_hang_list.append({'device_id':device_id, 'epoch_id':epoch_id, 'graph_name':graph_name, 'operations':ops_with_hang})
 
-        if table.rows:
-            print (table)
+    print_hanged_ops(queue_ops_missing_data)
+    print_hanged_ops(ops_with_hang_list)
 
-        if all_good:
-            util.INFO (f"No problems on device {device.id()}")
+    navigation_suggestions = get_navigation_suggestion_for_hanged_ops(queue_ops_missing_data)
+    navigation_suggestions.extend(get_navigation_suggestion_for_hanged_ops(ops_with_hang_list))
 
     return navigation_suggestions
