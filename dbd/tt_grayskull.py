@@ -47,6 +47,18 @@ class GrayskullDevice (tt_device.Device):
     def rows_with_no_functional_workers(self): return 2
     def cols_with_no_functional_workers(self): return 1
 
+    def get_num_msgs_received(self, noc0_loc, stream_id):
+        return int(self.get_stream_reg_field(noc0_loc, stream_id, 224+5, 0, 16))
+
+    def get_curr_phase_num_msgs_remaining(self, noc0_loc, stream_id):
+        return int(self.get_stream_reg_field(noc0_loc, stream_id, 35, 0, 12))
+
+    def get_remote_source(self, noc0_loc, stream_id):
+        return self.get_stream_reg_field(noc0_loc, stream_id, 10, 5, 1)
+
+    def get_remote_receiver(self, noc0_loc, stream_id):
+        return self.get_stream_reg_field(noc0_loc, stream_id, 10, 8, 1)
+
     # Populates a dict with register names and current values on core x-y for stream with id 'stream_id'
     def read_stream_regs_direct(self, noc0_loc, stream_id):
         reg = {}

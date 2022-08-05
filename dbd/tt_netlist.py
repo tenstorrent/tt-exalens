@@ -9,9 +9,15 @@ class Netlist:
         # 1. Cache epoch id, device id and graph names
         self.epoch_id_to_graph_names_map = dict()
         self._epoch_ids = util.set()
+        self.__map_graph_names = dict()
 
         for graph_name in self.graph_names():
             epoch_id = self.graph_name_to_epoch_id(graph_name)
+            device_id = self.graph_name_to_device_id(graph_name)
+            if device_id not in self.__map_graph_names:
+                self.__map_graph_names[device_id] = dict()
+            self.__map_graph_names[device_id][epoch_id] = graph_name
+
             # assert (epoch_id not in self._epoch_ids)  # We do not support multiple graphs in the same epoch
             self._epoch_ids.add (epoch_id)
 
@@ -32,6 +38,7 @@ class Netlist:
     def load_graphs (self, rundir):
         self.epoch_to_pipegen_yaml_file = dict()
         self.epoch_to_blob_yaml_file = dict()
+        self.__map_graphs = dict()
         self.graphs = TTObjectSet()
         for graph_name in self.graph_names():
             epoch_id = self.graph_name_to_epoch_id(graph_name)
@@ -50,6 +57,7 @@ class Netlist:
             # Create the graph
             g = Graph(self, graph_name, self.yaml_file.root['graphs'][graph_name], pipegen_yaml, blob_yaml)
             self.graphs.add(g)
+            self.__map_graphs[graph_name] = g
 
     def __init__(self, netlist_filepath, rundir):
         # 1. Load the runtime data file
@@ -87,15 +95,25 @@ class Netlist:
     def epoch_id_to_graph_names (self, epoch_id):
         return self.epoch_id_to_graph_names_map[epoch_id] if epoch_id in self.epoch_id_to_graph_names_map else None
     def graph (self, graph_name):
-        for g in self.graphs:
-            if g.id() == graph_name:
-                return g
+        if graph_name in self.__map_graphs:
+            return self.__map_graphs[graph_name]
         return None
+
+    def get_graph_name(self, epoch_id, device_id):
+        if device_id in self.__map_graph_names:
+            if epoch_id in self.__map_graph_names[device_id]:
+                return self.__map_graph_names[device_id][epoch_id]
+        return None
+
     def graph_by_epoch_and_device (self, epoch_id, device_id):
-        for graph_name, gdata in self.runtime_data_yaml.root["graph_to_epoch_map"].items():
-            if gdata["epoch_id"] == epoch_id and gdata["target_device"] == device_id:
-                return self.graph(graph_name)
+        graph_name = self.get_graph_name(epoch_id, device_id)
+        if graph_name:
+            return self.graph(graph_name)
         return None
+
+    def device_graph_names(self):
+        return self.__map_graph_names
+
     def devices(self):
         return self.yaml_file.root["devices"]
     def queue(self, queue_name):
