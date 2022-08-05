@@ -177,7 +177,7 @@ def find_ops_with_hang(graph, device):
                         if src_op not in found_hangs: found_hangs[src_op] = {}
                         if dest_op not in found_hangs[src_op]: found_hangs[src_op][dest_op] = []
                         data = get_stream_data(device, stream)
-                        found_hangs [src_op][dest_op].append([stream.on_chip_id(), "", data])
+                        found_hangs [src_op][dest_op].append([stream.on_chip_id(), "Data not received", data])
 
         if found_hangs:
             return found_hangs
@@ -199,6 +199,7 @@ def print_hanged_ops(ops_with_hang_list):
             { 'key_name' : 'graph',       'title': 'Graph Name',                'formatter' : None},
             { 'key_name' : 'src',         'title': 'Source',                    'formatter' : None},
             { 'key_name' : 'dst',         'title': 'Destination',               'formatter' : None},
+            { 'key_name' : 'hang',        'title': 'Hang Reason',               'formatter' : lambda x: f"{util.CLR_RED}{x}{util.CLR_END}"},
             { 'key_name' : 'stream',      'title': 'Stream',                    'formatter' : None},
             { 'key_name' : 'info',        'title': 'Additional Stream Info',    'formatter' : None},
         ]
@@ -206,14 +207,13 @@ def print_hanged_ops(ops_with_hang_list):
     table.rows = [ ]
     for element in ops_with_hang_list:
         for src, dst_streams in element['operations'].items():
-            for dst, streams_with_desc in dst_streams.items():
-                first = True
-                for stream_with_desc in streams_with_desc:
-                    if first:
-                        table.add_row (None, { 'device': element['device_id'], 'epoch':element['epoch_id'], 'graph': element['graph_name'], 'src' : src, 'dst' : dst, 'stream': stream_with_desc[0], 'info':stream_with_desc[1]+ " " +str(stream_with_desc[2]) if stream_with_desc[1] else str(stream_with_desc[2]) })
-                        first = False
-                    else:
-                        table.add_row (None, { 'device': "", 'epoch':"", 'graph': "", 'src' : "", 'dst' : "", 'stream': stream_with_desc[0], 'info': stream_with_desc[1]+ " " +str(stream_with_desc[2]) if stream_with_desc[1] else str(stream_with_desc[2]) })
+            for dst, details in dst_streams.items():
+                row = { 'device': element['device_id'], 'epoch':element['epoch_id'], 'graph': element['graph_name'], 'src' : src, 'dst' : dst}
+                for stream_details in details:
+                    stream_coords, hang_message, additional_info = stream_details
+                    row.update({'hang' : hang_message, 'stream' : stream_coords, 'info' : additional_info})
+                    table.add_row(None, row)
+                    row = { 'device': '', 'epoch': '', 'graph': '', 'src' : '', 'dst' : ''}
 
     if table.rows:
         print (table)

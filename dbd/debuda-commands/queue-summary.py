@@ -10,15 +10,14 @@ from tt_graph import Queue
 
 def get_queue_data (context, queue):
     q_data = queue.root
-    device_id = q_data["target_device"]
-    device = context.devices[device_id]
-
     q_data["outputs"] = queue.outputs_as_str()
     if "dram" not in q_data:
         q_data["dram"] = '-'
 
     queue_locations = []
-    if "host" in q_data: # This queues is on the host
+    if queue.is_host(): # This queues is on the host
+        # target_device does not exist for host queues
+        # highjacking target_device
         q_data["target_device"] = 'host'
         addr = q_data["host"][0]
         rdptr = tt_device.PCI_IFC.host_dma_read (addr)
@@ -28,6 +27,7 @@ def get_queue_data (context, queue):
         queue_locations.append ((rdptr, wrptr, occupancy))
     else:
         device_id = q_data["target_device"]
+        device = context.devices[device_id]
         entries = q_data["entries"]
         for queue_position in range(len(q_data["dram"])):
             dram_place = q_data["dram"][queue_position]
