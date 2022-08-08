@@ -248,9 +248,9 @@ class CELLFMT:
     def odd_even(r,c,i,val):
         if r % 2 == 0: return val
         else: return f"{CLR_GREY}{val}{CLR_END}"
-    def hex(bytes_per_entry):
+    def hex(bytes_per_entry, prefix ="0x", postfix = ""):
         def hex_formatter(r,c,i,val):
-            return "0x{vrednost:{fmt}}".format (fmt="0" + str(bytes_per_entry*2) + "x", vrednost=val)
+            return prefix + "{vrednost:{fmt}}".format (fmt="0" + str(bytes_per_entry*2) + "x", vrednost=val) + postfix
         return hex_formatter
     def composite(fmt_function_array):
         def cell_fmt(r,c,i,val):
@@ -294,6 +294,19 @@ def array_to_str(A,
 
             rows.append(row)
     return tabulate(rows, headers=header if show_col_index else [])
+
+def dump_memory(addr, array, bytes_per_entry, bytes_per_row, in_hex):
+    num_cols = bytes_per_row // bytes_per_entry
+    if in_hex:
+        cell_formatter = CELLFMT.hex(bytes_per_entry, "")
+    else:
+        cell_formatter = CELLFMT.passthrough
+    def fmt_row_index(addr, bytes_per_entry):
+        def hex_formatter(r,c,i,val):
+            return "0x{val:08x}".format(val = addr+i*bytes_per_entry)+":"
+        return hex_formatter
+    row_index_formatter = fmt_row_index(addr, bytes_per_entry)
+    return array_to_str(array, num_cols, show_col_index=False, cell_formatter=cell_formatter, row_index_formatter=row_index_formatter)
 
 def word_to_byte_array(A):
     byte_array=[]
