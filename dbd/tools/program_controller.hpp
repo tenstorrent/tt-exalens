@@ -12,7 +12,7 @@ class ProgramConfig {
         ProgramConfig(const std::string& netlist_path);
         ~ProgramConfig() {}
 
-        tt::DEVICE get_architecture() const;
+        tt::ARCH get_architecture() const;
 
         StimulusConfig get_stimulus_config() const;
 

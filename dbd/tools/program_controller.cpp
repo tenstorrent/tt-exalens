@@ -19,7 +19,7 @@ ProgramConfig::ProgramConfig(const std::string& netlist_path)
          _test_config = verif::test_config::read_from_yaml_file(netlist_path);
     }
 
-tt::DEVICE ProgramConfig::get_architecture() const {
+tt::ARCH ProgramConfig::get_architecture() const {
     return _netlist.device_info.arch;
 }
 
