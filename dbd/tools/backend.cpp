@@ -44,7 +44,7 @@ std::shared_ptr<tt_backend> create_backend(const string& netlist_path, tt_backen
     return backend;
 }
 
-tt_backend_config get_backend_config(tt::BACKEND backend_type) {
+tt_backend_config get_backend_config(tt::DEVICE backend_type) {
     tt_backend_config config;
     config.type = backend_type;
     return config;
@@ -60,10 +60,10 @@ std::shared_ptr<IBackend> BackendFactory::create(const string& netlist_path, boo
 
 /*static*/
 std::shared_ptr<IBackend> BackendFactory::create_golden(const string& netlist_path) {
-    return std::make_shared<VerifBackend>(create_backend(netlist_path, get_backend_config(tt::BACKEND::Golden)));
+    return std::make_shared<VerifBackend>(create_backend(netlist_path, get_backend_config(tt::DEVICE::Golden)));
 }
 
 /*static*/
 std::shared_ptr<IBackend> BackendFactory::create_silicon(const string& netlist_path) {
-    return std::make_shared<VerifBackend>(create_backend(netlist_path, get_backend_config(tt::BACKEND::Silicon)));
+    return std::make_shared<VerifBackend>(create_backend(netlist_path, get_backend_config(tt::DEVICE::Silicon)));
 }
