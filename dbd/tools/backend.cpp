@@ -6,7 +6,7 @@ class VerifBackend : public IBackend {
         VerifBackend(std::shared_ptr<tt_backend> backend) : _backend(backend) {}
 
         virtual ~VerifBackend() {
-            TT_ASSERT(_backend->finish() == tt::BACKEND_STATUS_CODE::Success);
+            TT_ASSERT(_backend->finish() == tt::DEVICE_STATUS_CODE::Success);
             log_info(tt::LogTest, "Backend teardown finished");
         }
 
@@ -40,7 +40,7 @@ class VerifBackend : public IBackend {
 
 std::shared_ptr<tt_backend> create_backend(const string& netlist_path, tt_backend_config config) {
     std::shared_ptr<tt_backend> backend = tt_backend::create(netlist_path, config);
-    TT_ASSERT(backend->initialize() == tt::BACKEND_STATUS_CODE::Success);
+    TT_ASSERT(backend->initialize() == tt::DEVICE_STATUS_CODE::Success);
     return backend;
 }
 
