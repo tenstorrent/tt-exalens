@@ -3,7 +3,7 @@
 void set_architecture() {
     const char *env_arch = std::getenv("ARCH_NAME");
     if (env_arch == nullptr) {
-        ArchName arch = detect_arch();
+        tt::ARCH arch = detect_arch();
         stringstream ss;
         ss << arch;
         setenv("ARCH_NAME", ss.str().c_str(), 0);
