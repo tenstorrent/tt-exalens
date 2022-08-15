@@ -21,6 +21,7 @@ class IBackend {
 class BackendFactory {
     public:
         static std::shared_ptr<IBackend> create(const string& netlist_path, bool silicon);
+        static std::shared_ptr<IBackend> create_golden_debug(const std::string& netlist);
         static std::shared_ptr<IBackend> create_golden(const string& netlist_path);
         static std::shared_ptr<IBackend> create_silicon(const string& netlist_path);
 };
