@@ -4,7 +4,7 @@ DBD_TOOLS += $(basename $(wildcard dbd/tools/*.cpp))
 DBD_TOOLS_SRCS = $(addsuffix .cpp, $(DBD_TOOLS))
 
 DBD_TOOLS_INCLUDES = $(GOLDEN_INCLUDES) $(DBD_INCLUDES) $(NETLIST_INCLUDES) $(LOADER_INCLUDES) $(MODEL_INCLUDES) $(COMPILE_TRISC_INCLUDES) -Idbd/tools -Iverif
-DBD_TOOLS_LDFLAGS = -ltt -ldevice -lstdc++fs -lpthread -lyaml-cpp
+DBD_TOOLS_LDFLAGS = -ltt -ldevice -lstdc++fs -lpthread -lyaml-cpp -lzmq
 
 DBD_TOOLS_OBJS = $(addprefix $(OBJDIR)/, $(DBD_TOOLS_SRCS:.cpp=.o))
 DBD_TOOLS_DEPS = $(addprefix $(OBJDIR)/, $(DBD_TOOLS_SRCS:.cpp=.d))

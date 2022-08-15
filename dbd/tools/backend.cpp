@@ -84,4 +84,3 @@ std::shared_ptr<IBackend> BackendFactory::create_silicon_debug(const std::string
     config.mode = DEVICE_MODE::RunOnly;
     return std::make_shared<VerifBackend>(create_backend(netlist, config));
 }
-

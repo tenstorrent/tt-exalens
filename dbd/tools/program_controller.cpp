@@ -159,10 +159,16 @@ void ProgramController::fill_input_queues() {
 const ProgramConfig& ProgramController::get_program_config() const { return _program_config; }
 
 CommonProgramController::CommonProgramController(const ProgramConfig& config, const std::string& bin_in_path, const std::string& bin_out_path, bool silicon)
-        : ProgramController(config)
-        , _tensor_rw(bin_in_path, bin_out_path, get_program_config().get_stimulus_config()) {
-            _backend = BackendFactory::create(config.get_netlist_path(), silicon);
-        }
+    : ProgramController(config)
+    , _tensor_rw(bin_in_path, bin_out_path, get_program_config().get_stimulus_config()) {
+        _backend = BackendFactory::create(config.get_netlist_path(), silicon);
+    }
+
+CommonProgramController::CommonProgramController(const ProgramConfig& config, const std::string& bin_in_path, const std::string& bin_out_path, std::shared_ptr<IBackend> backend)
+    : ProgramController(config)
+    , _tensor_rw(bin_in_path, bin_out_path, get_program_config().get_stimulus_config()) {
+        _backend = backend;
+    }
 
 std::shared_ptr<IBackend> CommonProgramController::get_backend() {
     return _backend;
