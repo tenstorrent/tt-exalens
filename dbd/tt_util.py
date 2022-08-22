@@ -308,6 +308,15 @@ def dump_memory(addr, array, bytes_per_entry, bytes_per_row, in_hex):
     row_index_formatter = fmt_row_index(addr, bytes_per_entry)
     return array_to_str(array, num_cols, show_col_index=False, cell_formatter=cell_formatter, row_index_formatter=row_index_formatter)
 
+# A helper function to parse print_format
+PRINT_FORMATS = {
+    "i32"  : {"is_hex": False, "bytes": 4 },
+    "i16"  : {"is_hex": False, "bytes": 2 },
+    "i8"   : {"is_hex": False, "bytes": 1 },
+    "hex32": {"is_hex": True,  "bytes": 4 },
+    "hex16": {"is_hex": True,  "bytes": 2 },
+    "hex8" : {"is_hex": True,  "bytes": 1 }}
+
 def word_to_byte_array(A):
     byte_array=[]
     for i in A:
