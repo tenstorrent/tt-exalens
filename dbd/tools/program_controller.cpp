@@ -113,9 +113,14 @@ ProgramController::ProgramController(const ProgramConfig& config)
     }
 
 void ProgramController::run() {
+    initialize();
     fill_input_queues();
     run_programs();
     process_results();
+}
+
+void ProgramController::initialize() {
+    get_backend()->initialize();
 }
 
 void ProgramController::run_programs() {
