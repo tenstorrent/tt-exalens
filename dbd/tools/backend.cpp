@@ -3,15 +3,24 @@
 
 class VerifBackend : public IBackend {
     public:
-        VerifBackend(std::shared_ptr<tt_backend> backend) : _backend(backend) {}
+        VerifBackend(std::shared_ptr<tt_backend> backend) 
+        : _backend(backend)
+        , _initialized(false) {}
 
         virtual ~VerifBackend() {
-            TT_ASSERT(_backend->finish() == tt::DEVICE_STATUS_CODE::Success);
+            if (_initialized) {
+                TT_ASSERT(_backend->finish() == tt::DEVICE_STATUS_CODE::Success);
+            }
             log_info(tt::LogTest, "Backend teardown finished");
         }
 
+        void initialize() {
+            TT_ASSERT(_backend->initialize() == tt::DEVICE_STATUS_CODE::Success);
+            _initialized = true;
+        }
+
         void push_tensor(const string& q_name, std::shared_ptr<tt_tensor> tensor) {
-             verif::push_tensor(*_backend, q_name, tensor.get(), 0);
+            verif::push_tensor(*_backend, q_name, tensor.get(), 0);
         }
 
         void run_program(const string& program_name, const ProgramParameters& parameters){
@@ -36,17 +45,18 @@ class VerifBackend : public IBackend {
 
     private:
         std::shared_ptr<tt_backend> _backend;
+        bool _initialized;
 };
 
 std::shared_ptr<tt_backend> create_backend(const string& netlist_path, tt_backend_config config) {
     std::shared_ptr<tt_backend> backend = tt_backend::create(netlist_path, config);
-    TT_ASSERT(backend->initialize() == tt::DEVICE_STATUS_CODE::Success);
     return backend;
 }
 
 tt_backend_config get_backend_config(tt::DEVICE backend_type) {
     tt_backend_config config;
     config.type = backend_type;
+    //config.debuda_server_port = 5555;
     return config;
 }
 
@@ -67,3 +77,11 @@ std::shared_ptr<IBackend> BackendFactory::create_golden(const string& netlist_pa
 std::shared_ptr<IBackend> BackendFactory::create_silicon(const string& netlist_path) {
     return std::make_shared<VerifBackend>(create_backend(netlist_path, get_backend_config(tt::DEVICE::Silicon)));
 }
+
+/*static*/
+std::shared_ptr<IBackend> BackendFactory::create_silicon_debug(const std::string& netlist) {
+    tt_backend_config config = get_backend_config(tt::DEVICE::Silicon);
+    config.mode = DEVICE_MODE::RunOnly;
+    return std::make_shared<VerifBackend>(create_backend(netlist, config));
+}
+

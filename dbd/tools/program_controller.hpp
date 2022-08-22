@@ -1,7 +1,5 @@
 #pragma once
 #include "run_config.hpp"
-//#include "runtime.hpp"
-//#include "utils.hpp"
 #include "verif.hpp"
 #include "backend.hpp"
 #include "tensor_rw.hpp"
@@ -47,6 +45,7 @@ class ProgramController {
 
     protected:
 
+        void initialize();
         void run_programs();
 
         virtual void process_results();

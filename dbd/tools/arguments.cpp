@@ -29,24 +29,32 @@ void ProgramArgumentsParser::print_usage() {
 /*static*/
 ProgramArguments ProgramArgumentsParser::parse_arguments(int argc, char** argv) {
     std::vector<std::string> input_args(argv, argv + argc);
-    ProgramArguments arguments = default_program_arguments;
-        size_t i = 1;
-        while (i < input_args.size()) {
-            if (arguments.find(input_args[i]) != arguments.end()) {
-                ProgramArgument& argument = arguments[input_args[i]];
-                if (argument.type != ProgramArgument::BOOLEAN) {
-                    ++i;
-                    argument.value = input_args[i];
-                }
-                else {
-                    argument.value = BOOLEAN_TRUE;
-                }
+    ProgramArgumentsMap arguments = default_program_arguments;
+    size_t i = 1;
+    while (i < input_args.size()) {
+        if (arguments.find(input_args[i]) != arguments.end()) {
+            ProgramArgument& argument = arguments[input_args[i]];
+            if (argument.type != ProgramArgument::BOOLEAN) {
                 ++i;
+                argument.value = input_args[i];
             }
             else {
-                print_usage();
-                exit(1);
+                argument.value = BOOLEAN_TRUE;
             }
+            ++i;
         }
-    return arguments;
+        else {
+            print_usage();
+            exit(1);
+        }
+    }
+
+    for (auto arg : arguments) {
+        if (arg.second.required && arg.second.value.empty()) {
+            print_usage();
+            exit(1);
+        }
+    }
+
+    return ProgramArguments(arguments);
 }
