@@ -56,7 +56,7 @@ std::shared_ptr<tt_backend> create_backend(const string& netlist_path, tt_backen
 tt_backend_config get_backend_config(tt::DEVICE backend_type) {
     tt_backend_config config;
     config.type = backend_type;
-    //config.debuda_server_port = 5555;
+    config.debuda_server_port = 5555;
     return config;
 }
 
