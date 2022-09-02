@@ -1,4 +1,5 @@
 import os, subprocess, time, struct, signal, re, zmq, pickle, atexit
+from socket import timeout
 from tabulate import tabulate
 from dbd.tt_object import TTObject
 import tt_util as util
@@ -14,7 +15,7 @@ DEBUDA_STUB_PROCESS=None  # The process ID of debuda-stub spawned in init_comm_c
 # Spawns debuda-stub and initializes the communication
 def init_comm_client (ip="localhost", port=5555, debug_debuda_stub=False):
     debuda_stub_address=f"tcp://{ip}:{port}"
-    spawning_debuda_stub = ip=='localhost'
+    spawning_debuda_stub = ip=='localhost' and util.is_port_available (int(port))
 
     if spawning_debuda_stub:
         print ("Spawning debuda-stub...")
@@ -35,7 +36,7 @@ def init_comm_client (ip="localhost", port=5555, debug_debuda_stub=False):
         if not debuda_stub_is_running:
             util.ERROR ("Debuda stub could not be spawned on localhost")
 
-    print(f"Connecting to local debuda-stub at {debuda_stub_address}...")
+    print(f"Connecting to debuda-stub at {debuda_stub_address}...")
 
     context = zmq.Context()
     global ZMQ_SOCKET

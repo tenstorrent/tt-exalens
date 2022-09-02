@@ -5,7 +5,7 @@ debuda parses the build output files and probes the silicon to determine status 
 import sys, os, yaml, zipfile
 from tabulate import tabulate
 from sortedcontainers import SortedSet
-import traceback
+import traceback, socket
 
 # Pretty print exceptions (traceback)
 def notify_exception(exc_type, exc_value, tb):
@@ -325,3 +325,15 @@ def word_to_byte_array(A):
         byte_array.append ((i>>16) & 0xff)
         byte_array.append ((i>>32) & 0xff)
     return byte_array
+
+# Returns True if port available
+def is_port_available(port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    result = False
+    try:
+        sock.bind(("0.0.0.0", port))
+        result = True
+    except:
+        pass
+    sock.close()
+    return result
