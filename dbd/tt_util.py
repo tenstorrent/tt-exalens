@@ -331,6 +331,7 @@ def is_port_available(port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     result = False
     try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(("0.0.0.0", port))
         result = True
     except:
