@@ -160,15 +160,16 @@ def find_ops_with_hang(graph, device):
             for dest_op in dest_ops:
                 if dest_op.id() not in ops_pipes:
                     # currently we are not handling op to queue
-                    continue
-                dest_pipes = ops_pipes[dest_op.id()]
-                new_ops_to_visit.add(dest_op)
+                    pipe_streams = graph.get_streams(graph.get_buffers (src_pipes))
+                else:
+                    dest_pipes = ops_pipes[dest_op.id()]
+                    new_ops_to_visit.add(dest_op)
 
-                connecting_pipes = src_pipes.intersection (dest_pipes)
+                    connecting_pipes = src_pipes.intersection (dest_pipes)
 
-                pipe_streams = graph.get_streams (connecting_pipes)
+                    pipe_streams = graph.get_streams (connecting_pipes)
 
-                pipe_streams.update (graph.get_streams (graph.get_buffers (connecting_pipes)))
+                    pipe_streams.update (graph.get_streams (graph.get_buffers (connecting_pipes)))
 
                 assert pipe_streams, "No streams found for connection {src_op}->{dest_op}"
 
