@@ -3,7 +3,7 @@ from socket import timeout
 from tabulate import tabulate
 from dbd.tt_object import TTObject
 import tt_util as util
-STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with 'make dbd/debuda-stub'. It also requires zeromq (sudo apt install -y libzmq3-dev)."
+STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with 'make verif/netlist_tests/debuda-server-standalone'."
 
 #
 # Communication with Buda (or debuda-stub) over sockets (ZMQ).
@@ -13,18 +13,17 @@ ZMQ_SOCKET=None              # The socket for communication
 DEBUDA_STUB_PROCESS=None  # The process ID of debuda-stub spawned in init_comm_client
 
 # Spawns debuda-stub and initializes the communication
-def init_comm_client (ip="localhost", port=5555, debug_debuda_stub=False):
+def init_comm_client (ip="localhost", port=5555, path_to_runtime_yaml=None):
     debuda_stub_address=f"tcp://{ip}:{port}"
     spawning_debuda_stub = ip=='localhost' and util.is_port_available (int(port))
 
     if spawning_debuda_stub:
         print ("Spawning debuda-stub...")
 
-        debuda_stub_path = util.application_path() + "/../build/bin/debuda-stub"
+        debuda_stub_path = util.application_path() + "/../build/test/verif/netlist_tests/debuda-server-standalone"
         try:
             global DEBUDA_STUB_PROCESS
-            debuda_stub_args = [ "--debug" ] if debug_debuda_stub else [ ]
-            debuda_stub_args += [ "--port", f"{port}"]
+            debuda_stub_args = [ f"{port}", f"{path_to_runtime_yaml}" ]
 
             # print ("debuda_stub_cmd = %s" % ([debuda_stub_path] + debuda_stub_args))
             DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path] + debuda_stub_args, preexec_fn=os.setsid)
@@ -643,7 +642,7 @@ def init_device_comm (args):
     if DEBUDA_SERVER_IFC.enabled:
         # Initialize communication with the client (debuda-stub)
         ip_and_port = args.debuda_server_address.split(":")
-        init_comm_client (ip=ip_and_port[0], port=ip_and_port[1], debug_debuda_stub=args.debug_debuda_stub)
+        init_comm_client (ip=ip_and_port[0], port=ip_and_port[1], path_to_runtime_yaml=args.path_to_runtime_yaml)
 
         # Make sure to terminate communication client (debuda-stub) on exit
         atexit.register (terminate_comm_client_callback)

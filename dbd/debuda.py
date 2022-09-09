@@ -351,7 +351,6 @@ def init_output_dir ():
                 if most_recent_modification_time is None or os.path.getmtime(subdir) > most_recent_modification_time:
                     most_recent_modification_time = os.path.getmtime(subdir)
                     most_recent_subdir = subdir
-        print (most_recent_subdir)
         args.output_dir = most_recent_subdir
         util.INFO (f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{most_recent_subdir}")
     except:
@@ -381,13 +380,14 @@ def load_context (netlist_filepath, run_dirpath):
 
 ### START
 
-tt_device.init_device_comm(args)
-
 if args.output_dir is None: # Then find the most recent tt_build subdir
     init_output_dir()
 
 # Create the context
 context = load_context (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
+
+args.path_to_runtime_yaml = context.netlist.runtime_data_yaml.filepath
+tt_device.init_device_comm(args)
 
 # Main function
 exit_code = main(args, context)
