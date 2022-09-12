@@ -387,7 +387,7 @@ if args.output_dir is None: # Then find the most recent tt_build subdir
 context = load_context (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
 
 args.path_to_runtime_yaml = context.netlist.runtime_data_yaml.filepath
-tt_device.init_device_comm(args)
+tt_device.init_server_communication(args)
 
 # Main function
 exit_code = main(args, context)

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from tt_device import DEBUDA_SERVER_IFC
+from tt_device import DEBUDA_SERVER_SOCKET_IFC
 
 # Register address
 REG_STATUS                    = 0
@@ -64,10 +64,10 @@ class RiscDebug :
         self.control0_read  = 0x80000000 + (self.location.risc_id << 17)
 
     def __write(self, addr, data):
-        DEBUDA_SERVER_IFC.pci_write_xy(self.location.device_id, self.location.x, self.location.y, self.location.noc_id, addr, data)
+        DEBUDA_SERVER_SOCKET_IFC.pci_write_xy(self.location.device_id, self.location.x, self.location.y, self.location.noc_id, addr, data)
 
     def __read(self, addr):
-        data = DEBUDA_SERVER_IFC.pci_read_xy(self.location.device_id, self.location.x, self.location.y, self.location.noc_id, addr)
+        data = DEBUDA_SERVER_SOCKET_IFC.pci_read_xy(self.location.device_id, self.location.x, self.location.y, self.location.noc_id, addr)
         return data
 
     def __trigger_write(self, reg_addr):
