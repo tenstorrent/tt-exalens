@@ -134,6 +134,13 @@ def print_columnar_dicts (dict_array, title_array):
 
     print (tabulate(final_table, headers=titles))
 
+# Container for YAML
+class YamlContainer:
+    def __init__ (self, yaml_string):
+        self.root = dict()
+        for i in yaml.load_all(yaml_string, Loader=yaml.CSafeLoader):
+            self.root = { **self.root, **i }
+
 # Stores all data loaded from a yaml file
 # Includes a cache in case a file is loaded multiple times
 class YamlFile:

@@ -114,9 +114,17 @@ class DEBUDA_SERVER_SOCKET_IFC:
         return ret_val
     def pci_raw_write(chip_id, reg_addr, data):
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
+        zero = 0
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x07', chip_id.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), reg_addr, data))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
         assert data == ret_val
+    def get_runtime_data():
+        assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
+        zero = 0
+        ZMQ_SOCKET.send(struct.pack ("ccccc", b'\x08', zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big')))
+        s = ZMQ_SOCKET.recv()
+        print (f"get_runtime_data: {s}")
+        return s
 
 # This interface is used to read cached values of PCI reads.
 class DEBUDA_SERVER_CACHED_IFC:
@@ -165,9 +173,14 @@ class DEBUDA_SERVER_CACHED_IFC:
     def pci_raw_write(chip_id, reg_addr, data):
         if not DEBUDA_SERVER_CACHED_IFC.enabled:
             return DEBUDA_SERVER_SOCKET_IFC.pci_raw_write(chip_id, reg_addr, data)
+    def get_runtime_data():
+        key = "get_runtime_data"
+        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_SOCKET_IFC.get_runtime_data()
+        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
 
 # PCI interface is a cached interface through Debuda server
-class PCI_IFC (DEBUDA_SERVER_CACHED_IFC):
+class SERVER_IFC (DEBUDA_SERVER_CACHED_IFC):
     pass
 
 # Prints contents of core's memory
@@ -176,14 +189,14 @@ def dump_memory(device_id, noc0_loc, addr, size):
         row = []
         for j in range(0, 16):
             if (addr + k*64 + j* 4 < addr + size):
-                val = PCI_IFC.pci_read_xy(device_id, *noc0_loc, 0, addr + k*64 + j*4)
+                val = SERVER_IFC.pci_read_xy(device_id, *noc0_loc, 0, addr + k*64 + j*4)
                 row.append(f"0x{val:08x}")
         s = " ".join(row)
         print(f"{util.noc_loc_str(noc0_loc)} 0x{(addr + k*64):08x} => {s}")
 
 # Dumps tile in format received form tt_tile::get_string
 def dump_tile(chip, noc0_loc, addr, size, data_format):
-    s = PCI_IFC.pci_read_tile(chip, *noc0_loc, 0, addr, size, data_format)
+    s = SERVER_IFC.pci_read_tile(chip, *noc0_loc, 0, addr, size, data_format)
     print(s.decode("utf-8"))
 
 #
@@ -385,7 +398,7 @@ class Device(TTObject):
         for thread_idx in range (THREAD_COUNT):
             for reg_idx in range(DEBUG_MAILBOX_BUF_SIZE // THREAD_COUNT):
                 reg_addr = DEBUG_MAILBOX_BUF_BASE + thread_idx * DEBUG_MAILBOX_BUF_SIZE + reg_idx * 4
-                val = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, reg_addr)
+                val = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, reg_addr)
                 debug_tables[thread_idx].append ({ "lo_val" : val & 0xffff, "hi_val": (val >> 16) & 0xffff })
         return debug_tables
 
@@ -472,57 +485,57 @@ class Device(TTObject):
 
         sig_sel = 0xff
         rd_sel = 0
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        test_val1 = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c)
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        test_val1 = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c)
         rd_sel = 1
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        test_val2 = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c)
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        test_val2 = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c)
 
         rd_sel = 0
         sig_sel = 2*self.SIG_SEL_CONST
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        brisc_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        brisc_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         # Doesn't work - looks like a bug for selecting inputs > 31 in daisy stop
         # rd_sel = 0
         # sig_sel = 2*16
-        # PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        # nrisc_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        # SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        # nrisc_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         rd_sel = 0
         sig_sel = 2*10
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        trisc0_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc0_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         rd_sel = 0
         sig_sel = 2*11
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        trisc1_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc1_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         rd_sel = 0
         sig_sel = 2*12
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        trisc2_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc2_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         print()
         x, y = noc0_loc
         print(f"Tensix x={x:02d},y={y:02d} => dbus_test_val1 (expect 7)={test_val1:x}, dbus_test_val2 (expect A5A5A5A5)={test_val2:x}")
         print(f"Tensix x={x:02d},y={y:02d} => brisc_pc=0x{brisc_pc:x}, trisc0_pc=0x{trisc0_pc:x}, trisc1_pc=0x{trisc1_pc:x}, trisc2_pc=0x{trisc2_pc:x}")
 
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, 0)
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, 0)
 
     # Reads and immediately prints a value of a given NOC register
     def read_print_noc_reg(self, noc0_loc, noc_id, reg_name, reg_index):
         x, y = noc0_loc
         reg_addr = 0xffb20000 + (noc_id*0x10000) + 0x200 + (reg_index*4)
-        val = PCI_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
+        val = SERVER_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
         print(f"Tensix x={x:02d},y={y:02d} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})")
 
     # Extracts and returns a single field of a stream register
     def get_stream_reg_field(self, noc0_loc, stream_id, reg_index, start_bit, num_bits):
         x, y = noc0_loc
         reg_addr = 0xFFB40000 + (stream_id*0x1000) + (reg_index*4)
-        val = PCI_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
+        val = SERVER_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
         mask = (1 << num_bits) - 1
         val = (val >> start_bit) & mask
         return val
@@ -549,9 +562,9 @@ class Device(TTObject):
             (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x4 or \
             (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x2
     def is_gsync_hung (self, noc0_loc):
-        return PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb2010c) == 0xB0010000
+        return SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb2010c) == 0xB0010000
     def is_ncrisc_done (self, noc0_loc):
-        return PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb2010c) == 0x1FFFFFF1
+        return SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb2010c) == 0x1FFFFFF1
 
     NCRISC_STATUS_REG_ADDR=0xFFB2010C
     BRISC_STATUS_REG_ADDR=0xFFB3010C
@@ -612,7 +625,7 @@ class Device(TTObject):
         coords = self.get_block_locations ()
         status_descs = {}
         for loc in coords:
-            status_descs[loc] = self.get_status_register_desc(addr, PCI_IFC.pci_read_xy(self.id(), loc[0], loc[1], 0, addr))
+            status_descs[loc] = self.get_status_register_desc(addr, SERVER_IFC.pci_read_xy(self.id(), loc[0], loc[1], 0, addr))
 
         # Print register status
         status_descs_rows = []
@@ -631,11 +644,11 @@ class Device(TTObject):
         return int(stream_regs['CURR_PHASE']) >> 10
 
     def pci_read_xy(self, x, y, noc_id, reg_addr):
-        return PCI_IFC.pci_read_xy(self.id(), x, y, noc_id, reg_addr)
+        return SERVER_IFC.pci_read_xy(self.id(), x, y, noc_id, reg_addr)
     def pci_write_xy(self, x, y, noc_id, reg_addr, data):
-        return PCI_IFC.pci_write_xy(self.id(), x, y, noc_id, reg_addr, data)
+        return SERVER_IFC.pci_write_xy(self.id(), x, y, noc_id, reg_addr, data)
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
-        return PCI_IFC.pci_read_tile(self.id(), x, y, z, reg_addr, msg_size, data_format)
+        return SERVER_IFC.pci_read_tile(self.id(), x, y, z, reg_addr, msg_size, data_format)
 
 # Initialize communication with the device
 def init_server_communication (args):
@@ -650,3 +663,5 @@ def init_server_communication (args):
         # Initialize communication with the client (debuda-stub)
         ip_and_port = args.debuda_server_address.split(":")
         connect_to_server (ip=ip_and_port[0], port=ip_and_port[1], path_to_runtime_yaml=args.path_to_runtime_yaml)
+
+    return SERVER_IFC
