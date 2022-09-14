@@ -343,11 +343,12 @@ class Device(TTObject):
             y_size-=self.rows_with_no_functional_workers() # GS:2, WH:2
             x_size-=self.cols_with_no_functional_workers() # GS:1, WH:2
 
-        legend = [ f"Coordinate system: {options}", "Legend:" ] + [ f"{block_types[block_type]['symbol']} - {block_types[block_type]['desc']}" for block_type in block_types_present ]
+        legend = [ f"Coordinate system: {options.upper()}" ] + [ f"{block_types[block_type]['symbol']} - {block_types[block_type]['desc']}" for block_type in block_types_present ]
         if emphasize_explanation is not None:
             legend += [ "+ - " + emphasize_explanation ]
 
         rng = range (y_size) if options == 'rc' else reversed(range (y_size))
+        screen_row_y = 0
         for y in rng:
             row = [ f"%02d" % y ]
             # 1. Add graphics
@@ -363,11 +364,12 @@ class Device(TTObject):
                 row.append (render_str)
 
             # 2. Add legend
-            legend_y = y_size - y - 1
+            legend_y = screen_row_y
             if legend_y < len(legend):
                 row = row + [ util.CLR_INFO + legend[legend_y] + util.CLR_END ]
 
             rows.append (row)
+            screen_row_y += 1
         row = [ "" ] + [ f"%02d" % i for i in range(x_size) ]
         rows.append (row)
 

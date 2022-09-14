@@ -34,7 +34,9 @@ def run(args, context, ui_state = None):
         # print (configured_streams)
         emphasize_explanation = "Functional worker with configured stream(s)"
         print(device.render (options="rc", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
+        # print()
         # print(device.render (options="physical", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
+        # print()
         # print(device.render (options="noc0", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
 
     navigation_suggestions = []
