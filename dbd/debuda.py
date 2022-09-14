@@ -341,7 +341,7 @@ def import_commands (command_metadata_array, reload = False):
                     util.FATAL (f"Commands {cmd['long']} and {command_metadata['long']} use the same shortcut: {cmd['short']}")
             command_metadata_array.append (command_metadata)
 
-def init_output_dir ():
+def locate_output_dir ():
     # Try to find a default output directory
     most_recent_modification_time = None
     try:
@@ -351,18 +351,19 @@ def init_output_dir ():
                 if most_recent_modification_time is None or os.path.getmtime(subdir) > most_recent_modification_time:
                     most_recent_modification_time = os.path.getmtime(subdir)
                     most_recent_subdir = subdir
-        args.output_dir = most_recent_subdir
         util.INFO (f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{most_recent_subdir}")
+        return most_recent_subdir
     except:
         pass
+    return None
 
 # Loads all files necessary to debug a single buda run
 # Returns a debug 'context' that contains the loaded information
 def load_context (netlist_filepath, run_dirpath):
     # All-encompassing structure representing a Debuda context
     class Context:
-        netlist = None # Netlist and related 'static' data (i.e. data stored in files such as blob.yaml, pipegen.yaml)
-        devices = None # A list of objects of class Device used to obtain 'dynamic' data (i.e. data read from the devices)
+        netlist = None      # Netlist and related 'static' data (i.e. data stored in files such as blob.yaml, pipegen.yaml)
+        devices = None      # A list of objects of class Device used to obtain 'dynamic' data (i.e. data read from the devices)
         pass
 
     util.VERBOSE (f"Initializing context")
@@ -381,11 +382,14 @@ def load_context (netlist_filepath, run_dirpath):
 ### START
 
 if args.output_dir is None: # Then find the most recent tt_build subdir
-    init_output_dir()
+    args.output_dir = locate_output_dir()
+
+# Try to connect to the server
+server_ifc = tt_device.init_server_communication(args)
+runtime_data = server_ifc.get_runtime_data()
 
 # Create the context
-context = load_context (netlist_filepath = args.netlist, run_dirpath = args.output_dir)
-
+context = load_context (netlist_filepath = args.netlist, run_dirpath=args.output_dir)
 args.path_to_runtime_yaml = context.netlist.runtime_data_yaml.filepath
 context.server_ifc = tt_device.init_server_communication(args)
 

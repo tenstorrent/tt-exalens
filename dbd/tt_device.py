@@ -9,7 +9,7 @@ STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with 'mak
 # Communication with Buda (or debuda-stub) over sockets (ZMQ).
 # See struct BUDA_READ_REQ for protocol details
 #
-ZMQ_SOCKET=None              # The socket for communication
+ZMQ_SOCKET=None           # The socket for communication
 DEBUDA_STUB_PROCESS=None  # The process ID of debuda-stub spawned in connect_to_server
 
 def spawn_standalone_debuda_stub(port, path_to_runtime_yaml):
@@ -31,13 +31,8 @@ def spawn_standalone_debuda_stub(port, path_to_runtime_yaml):
         util.ERROR ("Debuda stub could not be spawned on localhost")
 
 # Spawns debuda-stub and initializes the communication
-def connect_to_server (ip="localhost", port=5555, path_to_runtime_yaml=None):
+def connect_to_server (ip="localhost", port=5555):
     debuda_stub_address=f"tcp://{ip}:{port}"
-    spawning_debuda_stub = ip=='localhost' and util.is_port_available (int(port))
-
-    if spawning_debuda_stub:
-        spawn_standalone_debuda_stub(port, path_to_runtime_yaml)
-
     print(f"Connecting to debuda-stub at {debuda_stub_address}...")
 
     context = zmq.Context()
@@ -123,8 +118,7 @@ class DEBUDA_SERVER_SOCKET_IFC:
         zero = 0
         ZMQ_SOCKET.send(struct.pack ("ccccc", b'\x08', zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big')))
         s = ZMQ_SOCKET.recv()
-        print (f"get_runtime_data: {s}")
-        return s
+        return util.YamlContainer(s)
 
 # This interface is used to read cached values of PCI reads.
 class DEBUDA_SERVER_CACHED_IFC:
@@ -660,8 +654,12 @@ def init_server_communication (args):
         DEBUDA_SERVER_CACHED_IFC.load()
 
     if DEBUDA_SERVER_SOCKET_IFC.enabled:
-        # Initialize communication with the client (debuda-stub)
-        ip_and_port = args.debuda_server_address.split(":")
-        connect_to_server (ip=ip_and_port[0], port=ip_and_port[1], path_to_runtime_yaml=args.path_to_runtime_yaml)
+        (ip, port) = args.debuda_server_address.split(":")
+        spawning_debuda_stub = ip=='localhost' and util.is_port_available (int(port))
+
+        if spawning_debuda_stub:
+            spawn_standalone_debuda_stub(port, f"{args.output_dir}/runtime_data.yaml")
+
+        connect_to_server (ip=ip, port=port)
 
     return SERVER_IFC

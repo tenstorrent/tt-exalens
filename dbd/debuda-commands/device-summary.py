@@ -7,7 +7,7 @@ command_metadata = {
 import tt_util as util
 
 def run(args, context, ui_state = None):
-    runtime_data = util.YamlContainer(context.server_ifc.get_runtime_data()).root
+    runtime_data = context.server_ifc.get_runtime_data().root
 
     if len(args) == 2:
         device_id = int(args[1])
