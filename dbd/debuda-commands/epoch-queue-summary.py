@@ -40,8 +40,8 @@ def run (cmd, context, ui_state):
         EPOCH_QUEUE_START_ADDR = reserved_size_bytes
         offset = (16 * x + y) * ((EPOCH_Q_NUM_SLOTS*2+8)*4)
         dram_addr = EPOCH_QUEUE_START_ADDR + offset
-        rdptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
-        wrptr = tt_device.PCI_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
+        rdptr = tt_device.SERVER_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
+        wrptr = tt_device.SERVER_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
         occupancy = Queue.occupancy (EPOCH_Q_NUM_SLOTS, wrptr, rdptr)
         if occupancy > 0:
             table.append ([ f"{util.noc_loc_str((x, y))}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])

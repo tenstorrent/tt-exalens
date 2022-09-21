@@ -16,11 +16,11 @@ DBD_DEPS = $(addprefix $(OBJDIR)/, $(DBD_SRCS:.cpp=.d))
 
 -include $(DBD_DEPS)
 
-dbd: $(BINDIR)/dbd_modify_netlist dbd/debuda-stub
+dbd: $(BINDIR)/dbd_modify_netlist verif/netlist_tests/debuda-server-standalone
 	$(PRINT_TARGET)
 	$(PRINT_OK)
 
-dbd/clean: dbd/debuda-stub/clean dbd/tools/clean
+dbd/clean: verif/netlist_tests/clean dbd/tools/clean
 	-rm $(BINDIR)/dbd_* $(SILENT_ERRORS)
 	-rm $(OBJDIR)/dbd/* $(SILENT_ERRORS)
 
@@ -43,4 +43,3 @@ $(OBJDIR)/dbd/%.o: dbd/%.cpp
 	$(PRINT_OK)
 
 include $(BUDA_HOME)/dbd/tools/module.mk
-include $(BUDA_HOME)/dbd/debuda-stub.mk

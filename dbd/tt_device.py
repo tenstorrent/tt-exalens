@@ -15,7 +15,7 @@ DEBUDA_STUB_PROCESS=None  # The process ID of debuda-stub spawned in connect_to_
 def spawn_standalone_debuda_stub(port, path_to_runtime_yaml):
     print ("Spawning debuda-stub...")
 
-    debuda_stub_path = util.application_path() + "/../build/test/verif/netlist_tests/debuda-server-standalone"
+    debuda_stub_path = os.path.abspath (util.application_path() + "/../build/test/verif/netlist_tests/debuda-server-standalone")
     try:
         global DEBUDA_STUB_PROCESS
         debuda_stub_args = [ f"{port}", f"{path_to_runtime_yaml}" ]
@@ -73,27 +73,27 @@ class DEBUDA_SERVER_SOCKET_IFC:
 
     # PCI read/write functions. Given a noc0 location and addr, performs a PCI read/write
     # to the given location at the address.
-    def pci_read_xy(chip_id, x, y, noc_id, reg_addr):
+    def pci_read_xy(chip_id, x, y, noc_id, reg_addr): # PCI_READ_XY
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
         # print (f"Reading {util.noc_loc_str((x, y))} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x02', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, 0))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
         return ret_val
-    def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
+    def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data): # PCI_WRITE_XY
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
         # print (f"Reading {util.noc_loc_str((x, y))} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x04', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, data))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
         assert data == ret_val
-    def host_dma_read (dram_addr):
+    def host_dma_read (chip_id, dram_addr): # DMA_BUFF_READ
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
         # print ("host_dma_read 0x%x" % dram_addr)
-        ZMQ_SOCKET.send(struct.pack ("cccccI", b'\x03', b'\x00', b'\x00', b'\x00', b'\x00', dram_addr))
+        ZMQ_SOCKET.send(struct.pack ("cccccI", b'\x03', chip_id.to_bytes(1, byteorder='big'), b'\x00', b'\x00', b'\x00', dram_addr))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
         return ret_val
-    def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
+    def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format): # PCI_READ_TILE
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
         # print (f"Reading {util.noc_loc_str((x, y))} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x05', chip_id, x, y, z, reg_addr, data_format<<16 + message_size))
@@ -101,19 +101,32 @@ class DEBUDA_SERVER_SOCKET_IFC:
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x05', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), z.to_bytes(1, byteorder='big'), reg_addr, data))
         ret = ZMQ_SOCKET.recv()
         return ret
-    def pci_raw_read(chip_id, reg_addr):
+    def pci_raw_read(chip_id, reg_addr): # PCI_READ_RAW
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
         zero = 0
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x06', chip_id.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), reg_addr, 0))
-        ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
+        ret = ZMQ_SOCKET.recv()
+        try:
+            ret_val = struct.unpack ("I", ret)[0]
+        except Exception:
+            ret_val = 0
+            util.ERROR (f"Cannot do PCI read: {ret}")
         return ret_val
-    def pci_raw_write(chip_id, reg_addr, data):
+    def pci_raw_write(chip_id, reg_addr, data): # PCI_WRITE_RAW
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
         zero = 0
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x07', chip_id.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), reg_addr, data))
-        ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
+        ret = ZMQ_SOCKET.recv()
+
+        try:
+            ret_val = struct.unpack ("I", ret)[0]
+        except Exception:
+            ret_val = 0
+            util.ERROR (f"Cannot do PCI write: {ret}")
+            print ("Done write")
         assert data == ret_val
-    def get_runtime_data():
+        return ret_val
+    def get_runtime_data(): # GET_RUNTIME_DATA
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
         zero = 0
         ZMQ_SOCKET.send(struct.pack ("ccccc", b'\x08', zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big')))
@@ -149,10 +162,10 @@ class DEBUDA_SERVER_CACHED_IFC:
     def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
         if not DEBUDA_SERVER_CACHED_IFC.enabled:
             return DEBUDA_SERVER_SOCKET_IFC.pci_write_xy(chip_id, x, y, noc_id, reg_addr, data)
-    def host_dma_read (dram_addr):
+    def host_dma_read (chip_id, dram_addr):
         key = (dram_addr)
         if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
-            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_SOCKET_IFC.host_dma_read (dram_addr)
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_SOCKET_IFC.host_dma_read (chip_id, dram_addr)
         return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
     def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
         key = (chip_id, x, y, z, reg_addr, msg_size, data_format)

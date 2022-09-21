@@ -23,8 +23,8 @@ def queue_has_data(device, q:Queue):
             read_ptr = device.pci_read_xy (x, y, 0, dram_addr)
             write_ptr = device.pci_read_xy (x, y, 0, dram_addr + 4)
         if q.is_host():
-            read_ptr = tt_device.PCI_IFC.host_dma_read (mem_addr)
-            write_ptr = tt_device.PCI_IFC.host_dma_read (mem_addr+4)
+            read_ptr = tt_device.SERVER_IFC.host_dma_read (mem_addr)
+            write_ptr = tt_device.SERVER_IFC.host_dma_read (mem_addr+4)
 
         # Get read and write pointers
         if Queue.occupancy(q.entries(), write_ptr, read_ptr) == 0:

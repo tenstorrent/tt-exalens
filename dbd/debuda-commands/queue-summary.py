@@ -20,8 +20,8 @@ def get_queue_data (context, queue):
         # highjacking target_device
         q_data["target_device"] = 'host'
         addr = q_data["host"][0]
-        rdptr = tt_device.PCI_IFC.host_dma_read (addr)
-        wrptr = tt_device.PCI_IFC.host_dma_read (addr + 4)
+        rdptr = tt_device.SERVER_IFC.host_dma_read (addr)
+        wrptr = tt_device.SERVER_IFC.host_dma_read (addr + 4)
         entries = q_data["entries"]
         occupancy = Queue.occupancy(entries, wrptr, rdptr)
         queue_locations.append ((rdptr, wrptr, occupancy))
@@ -53,7 +53,7 @@ def read_queue_contents (context, queue, start_addr, num_bytes):
         addr = q_data["host"][0]
         da = util.DataArray(f"host-0x{addr:08x}-{num_words * 4}")
         for i in range (num_words):
-            data = tt_device.PCI_IFC.host_dma_read (addr + start_addr + i * 4)
+            data = tt_device.SERVER_IFC.host_dma_read (addr + start_addr + i * 4)
             da.data.append(data)
         ret_val.add (da)
     else:

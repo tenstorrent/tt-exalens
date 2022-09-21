@@ -46,7 +46,7 @@ def print_a_pci_burst_read (device_id, x, y, noc_id, addr, burst_type = 1, print
         t_end = time.time() + 1
         print ("Sampling for 1 second...")
         while time.time() < t_end:
-            val = tt_device.PCI_IFC.pci_read_xy(device_id, x, y, noc_id, addr)
+            val = tt_device.SERVER_IFC.pci_read_xy(device_id, x, y, noc_id, addr)
             if val not in values:
                 values[val] = 0
             values[val] += 1
@@ -56,7 +56,7 @@ def print_a_pci_burst_read (device_id, x, y, noc_id, addr, burst_type = 1, print
         num_words = burst_type
         da = DataArray(f"L1-0x{addr:08x}-{num_words * 4}", 4)
         for i in range (num_words):
-            data = tt_device.PCI_IFC.pci_read_xy(device_id, x, y, noc_id, addr + 4*i)
+            data = tt_device.SERVER_IFC.pci_read_xy(device_id, x, y, noc_id, addr + 4*i)
             da.data.append(data)
         is_hex, bytes_per_entry = get_print_format(print_format)
         if bytes_per_entry != 4:
@@ -119,7 +119,7 @@ def main(args, context):
         { "long" : "graph",
           "short" : "g",
           "expected_argument_count" : 1,
-          "arguments_description" : "graph__name : switch to graph graph_name"
+          "arguments_description" : "graph_name : switch to graph graph_name"
         },
         {
           "long" : "pci-read-xy",
@@ -262,24 +262,24 @@ def main(args, context):
                     elif found_command["long"] == "graph":
                         gname = cmd[1]
                         if gname not in context.netlist.graph_names():
-                            util.WARN (f"Invalid graph {gname}")
+                            util.WARN (f"Invalid graph {gname}. Available graphs: {', '.join (list(context.netlist.graph_names()))}")
                         else:
                             ui_state["current_graph_name"] = cmd[1]
                     elif found_command["long"] == "epoch":
                         util.WARN ("'epoch' command is deprecated: use 'graph' command instead")
                     elif found_command["long"] == "pci-raw-read":
                         addr = int(cmd[1],0)
-                        print ("PCI RD [0x%x]: 0x%x" % (addr, tt_device.PCI_IFC.pci_raw_read (ui_state['current_device_id'], addr)))
+                        print ("PCI RD [0x%x]: 0x%x" % (addr, tt_device.SERVER_IFC.pci_raw_read (ui_state['current_device_id'], addr)))
                     elif found_command["long"] == "pci-raw-write":
                         addr = int(cmd[1],0)
                         data = int(cmd[2],0)
-                        print ("PCI WR [0x%x] <- 0x%x" % (addr, tt_device.PCI_IFC.pci_raw_write (ui_state['current_device_id'], data)))
+                        print ("PCI WR [0x%x] <- 0x%x" % (addr, tt_device.SERVER_IFC.pci_raw_write (ui_state['current_device_id'], addr, data)))
                     elif found_command["long"] == "pci-read-xy" or found_command["long"] == "burst-read-xy" or found_command["long"] == "pci-write-xy":
                         x = int(cmd[1],0)
                         y = int(cmd[2],0)
                         addr = int(cmd[3],0)
                         if found_command["long"] == "pci-read-xy":
-                            data = tt_device.PCI_IFC.pci_read_xy (ui_state['current_device_id'], x, y, 0, addr)
+                            data = tt_device.SERVER_IFC.pci_read_xy (ui_state['current_device_id'], x, y, 0, addr)
                             print_a_pci_read (x, y, addr, data)
                         elif found_command["long"] == "burst-read-xy":
                             burst_type = int(cmd[4],0)
@@ -288,7 +288,7 @@ def main(args, context):
                                 print_format = cmd[5]
                             print_a_pci_burst_read (ui_state['current_device_id'], x, y, 0, addr, burst_type=burst_type, print_format=print_format)
                         elif found_command["long"] == "pci-write-xy":
-                            tt_device.PCI_IFC.pci_write_xy (ui_state['current_device_id'], x, y, 0, addr, data = int(cmd[4],0))
+                            tt_device.SERVER_IFC.pci_write_xy (ui_state['current_device_id'], x, y, 0, addr, data = int(cmd[4],0))
                         else:
                             print (f"{util.CLR_ERR} Unknown {found_command['long']} {util.CLR_END}")
                     else:
@@ -383,6 +383,9 @@ def load_context (netlist_filepath, run_dirpath):
 
 if args.output_dir is None: # Then find the most recent tt_build subdir
     args.output_dir = locate_output_dir()
+
+if args.output_dir is None:
+    util.FATAL (f"Output directory (output_dir) was not supplied and cannot be determined automatically. Exiting...")
 
 # Try to connect to the server
 server_ifc = tt_device.init_server_communication(args)
