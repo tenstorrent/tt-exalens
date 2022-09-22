@@ -20,7 +20,7 @@ dbd: $(BINDIR)/dbd_modify_netlist verif/netlist_tests/debuda-server-standalone
 	$(PRINT_TARGET)
 	$(PRINT_OK)
 
-dbd/clean: verif/netlist_tests/clean dbd/tools/clean
+dbd/clean: dbd/tools/clean
 	-rm $(BINDIR)/dbd_* $(SILENT_ERRORS)
 	-rm $(OBJDIR)/dbd/* $(SILENT_ERRORS)
 

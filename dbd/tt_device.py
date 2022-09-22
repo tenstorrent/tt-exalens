@@ -123,7 +123,6 @@ class DEBUDA_SERVER_SOCKET_IFC:
         except Exception:
             ret_val = 0
             util.ERROR (f"Cannot do PCI write: {ret}")
-            print ("Done write")
         assert data == ret_val
         return ret_val
     def get_runtime_data(): # GET_RUNTIME_DATA
