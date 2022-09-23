@@ -1,6 +1,8 @@
 #!/bin/bash
 TMP_OUT_FILE=build/test/dbd-out.tmp
 
+touch $TMP_OUT_FILE
+
 if [ "$1" = "skip-build" ]; then
     echo Skipping build used for CI and tests
     # Hack - CI will copy only build directory.
@@ -11,7 +13,9 @@ else
     echo make build_hw
     make build_hw
     echo Building verif/op_tests ...
-    make verif/op_tests > $TMP_OUT_FILE
+    make verif/op_tests >> $TMP_OUT_FILE
+    echo Building debuda-server-standalone ...
+    make verif/netlist_tests/debuda-server-standalone >> $TMP_OUT_FILE
 fi
 
 pip install prompt_toolkit sortedcontainers
@@ -19,7 +23,7 @@ pip install prompt_toolkit sortedcontainers
 mkdir -p debuda_test
 
 echo Running op_tests/test_op ...
-./build/test/verif/op_tests/test_op --outdir debuda_test --netlist verif/op_tests/netlists/netlist_unary_op.yaml --seed 0 --silicon --timeout 500 > $TMP_OUT_FILE
+./build/test/verif/op_tests/test_op --outdir debuda_test --netlist verif/op_tests/netlists/netlist_unary_op.yaml --seed 0 --silicon --timeout 500 >> $TMP_OUT_FILE
 if [ $? -ne 0 ]; then
     echo Error in running ./build/test/verif/op_tests/test_op
     exit 1
