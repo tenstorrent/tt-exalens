@@ -15,13 +15,16 @@ DEBUDA_STUB_PROCESS=None  # The process ID of debuda-stub spawned in connect_to_
 def spawn_standalone_debuda_stub(port, path_to_runtime_yaml):
     print ("Spawning debuda-stub...")
 
-    debuda_stub_path = os.path.abspath (util.application_path() + "/../build/test/verif/netlist_tests/debuda-server-standalone")
+    debuda_stub_path = os.path.abspath (util.application_path() + "/debuda-server-standalone")
     try:
         global DEBUDA_STUB_PROCESS
         debuda_stub_args = [ f"{port}", f"{path_to_runtime_yaml}" ]
 
         # print ("debuda_stub_cmd = %s" % ([debuda_stub_path] + debuda_stub_args))
-        DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path] + debuda_stub_args, preexec_fn=os.setsid)
+        if not os.path.isfile (debuda_stub_path):
+            util.ERROR ("Cannot find debuda-server. Try: 'make verif/netlist_tests/debuda-server-standalone'")
+        else:
+            DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path] + debuda_stub_args, preexec_fn=os.setsid)
     except:
         print (f"Exception: {util.CLR_ERR} Cannot find {debuda_stub_path}. {STUB_HELP} {util.CLR_END}")
         raise
@@ -31,7 +34,7 @@ def spawn_standalone_debuda_stub(port, path_to_runtime_yaml):
         util.ERROR ("Debuda stub could not be spawned on localhost")
 
 # Spawns debuda-stub and initializes the communication
-def connect_to_server (ip="localhost", port=5555):
+def connect_to_server (ip="localhost", port=5555, spawning_debuda_stub=False):
     debuda_stub_address=f"tcp://{ip}:{port}"
     print(f"Connecting to debuda-stub at {debuda_stub_address}...")
 
@@ -674,6 +677,6 @@ def init_server_communication (args):
         if spawning_debuda_stub:
             spawn_standalone_debuda_stub(port, f"{args.output_dir}/runtime_data.yaml")
 
-        connect_to_server (ip=ip, port=port)
+        connect_to_server (ip=ip, port=port, spawning_debuda_stub=spawning_debuda_stub)
 
     return SERVER_IFC
