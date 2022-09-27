@@ -394,7 +394,7 @@ runtime_data = server_ifc.get_runtime_data()
 # Create the context
 context = load_context (netlist_filepath = args.netlist, run_dirpath=args.output_dir)
 args.path_to_runtime_yaml = context.netlist.runtime_data_yaml.filepath
-context.server_ifc = tt_device.init_server_communication(args)
+context.server_ifc = server_ifc
 
 # Main function
 exit_code = main(args, context)
