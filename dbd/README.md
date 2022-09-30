@@ -104,7 +104,7 @@ Currently, this functionality is supported through a fairly manual flow (perhaps
 
 ### Building debuda-stub
 ```
-make dbd/debuda-stub
+make verif/netlist_tests/debuda-server-standalone
 ```
 Prebuilt binary is committed to git repo for convenience.
 
@@ -222,3 +222,4 @@ Last examle shows how to replace only specific operations with input queues.
 └─────────┘      └───────┘
 
 ```
+

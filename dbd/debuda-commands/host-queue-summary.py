@@ -23,8 +23,8 @@ def run (cmd, context, ui_state):
                 dram_addr = buffer_data['dram_addr']
                 # bits 31,30 peer_id==0 means HOST
                 if dram_addr >> 30 == 0:
-                    rdptr = tt_device.PCI_IFC.host_dma_read (dram_addr)
-                    wrptr = tt_device.PCI_IFC.host_dma_read (dram_addr + 4)
+                    rdptr = tt_device.SERVER_IFC.host_dma_read (dram_addr)
+                    wrptr = tt_device.SERVER_IFC.host_dma_read (dram_addr + 4)
                     slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
                     queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
                     occupancy = Queue.occupancy (buffer_data["q_slots"], wrptr, rdptr)

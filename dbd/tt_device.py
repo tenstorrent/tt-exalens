@@ -1,41 +1,42 @@
 import os, subprocess, time, struct, signal, re, zmq, pickle, atexit
+from socket import timeout
 from tabulate import tabulate
 from dbd.tt_object import TTObject
 import tt_util as util
-STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with 'make dbd/debuda-stub'. It also requires zeromq (sudo apt install -y libzmq3-dev)."
+STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with 'make verif/netlist_tests/debuda-server-standalone'."
 
 #
 # Communication with Buda (or debuda-stub) over sockets (ZMQ).
 # See struct BUDA_READ_REQ for protocol details
 #
-ZMQ_SOCKET=None              # The socket for communication
-DEBUDA_STUB_PROCESS=None  # The process ID of debuda-stub spawned in init_comm_client
+ZMQ_SOCKET=None           # The socket for communication
+DEBUDA_STUB_PROCESS=None  # The process ID of debuda-stub spawned in connect_to_server
+
+def spawn_standalone_debuda_stub(port, path_to_runtime_yaml):
+    print ("Spawning debuda-stub...")
+
+    debuda_stub_path = os.path.abspath (util.application_path() + "/debuda-server-standalone")
+    try:
+        global DEBUDA_STUB_PROCESS
+        debuda_stub_args = [ f"{port}", f"{path_to_runtime_yaml}" ]
+
+        # print ("debuda_stub_cmd = %s" % ([debuda_stub_path] + debuda_stub_args))
+        if not os.path.isfile (debuda_stub_path):
+            util.ERROR ("Cannot find debuda-server. Try: 'make verif/netlist_tests/debuda-server-standalone'")
+        else:
+            DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path] + debuda_stub_args, preexec_fn=os.setsid)
+    except:
+        print (f"Exception: {util.CLR_ERR} Cannot find {debuda_stub_path}. {STUB_HELP} {util.CLR_END}")
+        raise
+    time.sleep (0.1) # Cosmetic wait: To allow debuda-stub to print the message
+    debuda_stub_is_running = DEBUDA_STUB_PROCESS.poll() is None
+    if not debuda_stub_is_running:
+        util.ERROR ("Debuda stub could not be spawned on localhost")
 
 # Spawns debuda-stub and initializes the communication
-def init_comm_client (ip="localhost", port=5555, debug_debuda_stub=False):
+def connect_to_server (ip="localhost", port=5555, spawning_debuda_stub=False):
     debuda_stub_address=f"tcp://{ip}:{port}"
-    spawning_debuda_stub = ip=='localhost'
-
-    if spawning_debuda_stub:
-        print ("Spawning debuda-stub...")
-
-        debuda_stub_path = util.application_path() + "/../build/bin/debuda-stub"
-        try:
-            global DEBUDA_STUB_PROCESS
-            debuda_stub_args = [ "--debug" ] if debug_debuda_stub else [ ]
-            debuda_stub_args += [ "--port", f"{port}"]
-
-            # print ("debuda_stub_cmd = %s" % ([debuda_stub_path] + debuda_stub_args))
-            DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path] + debuda_stub_args, preexec_fn=os.setsid)
-        except:
-            print (f"Exception: {util.CLR_ERR} Cannot find {debuda_stub_path}. {STUB_HELP} {util.CLR_END}")
-            raise
-        time.sleep (0.1) # Cosmetic wait: To allow debuda-stub to print the message
-        debuda_stub_is_running = DEBUDA_STUB_PROCESS.poll() is None
-        if not debuda_stub_is_running:
-            util.ERROR ("Debuda stub could not be spawned on localhost")
-
-    print(f"Connecting to local debuda-stub at {debuda_stub_address}...")
+    print(f"Connecting to debuda-stub at {debuda_stub_address}...")
 
     context = zmq.Context()
     global ZMQ_SOCKET
@@ -53,64 +54,86 @@ def init_comm_client (ip="localhost", port=5555, debug_debuda_stub=False):
         print("Connected to debuda-stub.")
     except:
         if spawning_debuda_stub:
-            terminate_comm_client_callback ()
+            terminate_standalone_debuda_stub ()
         raise
+
+    # Make sure to terminate communication client (debuda-stub) on exit
+    atexit.register (terminate_standalone_debuda_stub)
 
     time.sleep (0.1)
 
-# Terminates debuda-stub spawned in init_comm_client
-def terminate_comm_client_callback ():
+# Terminates debuda-stub spawned in connect_to_server
+def terminate_standalone_debuda_stub ():
     if DEBUDA_STUB_PROCESS is not None and DEBUDA_STUB_PROCESS.poll() is None:
         os.killpg(os.getpgid(DEBUDA_STUB_PROCESS.pid), signal.SIGTERM)
         util.VERBOSE (f"Terminated debuda-stub")
 
 # This is the interface to the debuda server (aka. debuda-stub)
-class DEBUDA_SERVER_IFC:
+class DEBUDA_SERVER_SOCKET_IFC:
     enabled = True # It can be disabled for offline operation (when working from cache)
 
     NOT_ENABLED_ERROR_MSG="Access to device/host is requested, while the device communication is disabled with --server-cache"
 
     # PCI read/write functions. Given a noc0 location and addr, performs a PCI read/write
     # to the given location at the address.
-    def pci_read_xy(chip_id, x, y, noc_id, reg_addr):
-        assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
+    def pci_read_xy(chip_id, x, y, noc_id, reg_addr): # PCI_READ_XY
+        assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
         # print (f"Reading {util.noc_loc_str((x, y))} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x02', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, 0))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
         return ret_val
-    def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
-        assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
+    def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data): # PCI_WRITE_XY
+        assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
         # print (f"Reading {util.noc_loc_str((x, y))} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x04', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, data))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
         assert data == ret_val
-    def host_dma_read (dram_addr):
-        assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
+    def host_dma_read (chip_id, dram_addr): # DMA_BUFF_READ
+        assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
         # print ("host_dma_read 0x%x" % dram_addr)
-        ZMQ_SOCKET.send(struct.pack ("cccccI", b'\x03', b'\x00', b'\x00', b'\x00', b'\x00', dram_addr))
+        ZMQ_SOCKET.send(struct.pack ("cccccI", b'\x03', chip_id.to_bytes(1, byteorder='big'), b'\x00', b'\x00', b'\x00', dram_addr))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
         return ret_val
-    def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
-        assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
+    def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format): # PCI_READ_TILE
+        assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
         # print (f"Reading {util.noc_loc_str((x, y))} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x05', chip_id, x, y, z, reg_addr, data_format<<16 + message_size))
         data = data_format * 2**16 + msg_size
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x05', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), z.to_bytes(1, byteorder='big'), reg_addr, data))
         ret = ZMQ_SOCKET.recv()
         return ret
-    def pci_raw_read(chip_id, reg_addr):
-        assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
+    def pci_raw_read(chip_id, reg_addr): # PCI_READ_RAW
+        assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
         zero = 0
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x06', chip_id.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), reg_addr, 0))
-        ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
+        ret = ZMQ_SOCKET.recv()
+        try:
+            ret_val = struct.unpack ("I", ret)[0]
+        except Exception:
+            ret_val = 0
+            util.ERROR (f"Cannot do PCI read: {ret}")
         return ret_val
-    def pci_raw_write(chip_id, reg_addr, data):
-        assert DEBUDA_SERVER_IFC.enabled, DEBUDA_SERVER_IFC.NOT_ENABLED_ERROR_MSG
+    def pci_raw_write(chip_id, reg_addr, data): # PCI_WRITE_RAW
+        assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
+        zero = 0
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x07', chip_id.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), reg_addr, data))
-        ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
+        ret = ZMQ_SOCKET.recv()
+
+        try:
+            ret_val = struct.unpack ("I", ret)[0]
+        except Exception:
+            ret_val = 0
+            util.ERROR (f"Cannot do PCI write: {ret}")
         assert data == ret_val
+        return ret_val
+    def get_runtime_data(): # GET_RUNTIME_DATA
+        assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
+        zero = 0
+        ZMQ_SOCKET.send(struct.pack ("ccccc", b'\x08', zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big')))
+        s = ZMQ_SOCKET.recv()
+        return util.YamlContainer(s)
 
 # This interface is used to read cached values of PCI reads.
 class DEBUDA_SERVER_CACHED_IFC:
@@ -125,10 +148,10 @@ class DEBUDA_SERVER_CACHED_IFC:
                 with open(DEBUDA_SERVER_CACHED_IFC.filepath, 'rb') as f:
                     DEBUDA_SERVER_CACHED_IFC.cache_store = pickle.load(f)
             else:
-                assert DEBUDA_SERVER_IFC.enabled, f"Cache file {DEBUDA_SERVER_CACHED_IFC.filepath} does not exist"
+                assert DEBUDA_SERVER_SOCKET_IFC.enabled, f"Cache file {DEBUDA_SERVER_CACHED_IFC.filepath} does not exist"
 
     def save():
-        if DEBUDA_SERVER_CACHED_IFC.enabled and DEBUDA_SERVER_IFC.enabled:
+        if DEBUDA_SERVER_CACHED_IFC.enabled and DEBUDA_SERVER_SOCKET_IFC.enabled:
             util.VERBOSE (f"Saving server cache to file {DEBUDA_SERVER_CACHED_IFC.filepath}")
             with open(DEBUDA_SERVER_CACHED_IFC.filepath, 'wb') as f:
                 pickle.dump(DEBUDA_SERVER_CACHED_IFC.cache_store, f)
@@ -136,32 +159,37 @@ class DEBUDA_SERVER_CACHED_IFC:
     def pci_read_xy(chip_id, x, y, noc_id, reg_addr):
         key = (chip_id, x, y, noc_id, reg_addr)
         if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
-            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_IFC.pci_read_xy(chip_id, x, y, noc_id, reg_addr)
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_SOCKET_IFC.pci_read_xy(chip_id, x, y, noc_id, reg_addr)
         return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
     def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
         if not DEBUDA_SERVER_CACHED_IFC.enabled:
-            return DEBUDA_SERVER_IFC.pci_write_xy(chip_id, x, y, noc_id, reg_addr, data)
-    def host_dma_read (dram_addr):
+            return DEBUDA_SERVER_SOCKET_IFC.pci_write_xy(chip_id, x, y, noc_id, reg_addr, data)
+    def host_dma_read (chip_id, dram_addr):
         key = (dram_addr)
         if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
-            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_IFC.host_dma_read (dram_addr)
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_SOCKET_IFC.host_dma_read (chip_id, dram_addr)
         return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
     def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
         key = (chip_id, x, y, z, reg_addr, msg_size, data_format)
         if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
-            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_IFC.pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format)
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_SOCKET_IFC.pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format)
         return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
     def pci_raw_read(chip_id, reg_addr):
         key = (chip_id, reg_addr)
         if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
-            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_IFC.pci_raw_read(chip_id, reg_addr)
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_SOCKET_IFC.pci_raw_read(chip_id, reg_addr)
         return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
     def pci_raw_write(chip_id, reg_addr, data):
         if not DEBUDA_SERVER_CACHED_IFC.enabled:
-            return DEBUDA_SERVER_IFC.pci_raw_write(chip_id, reg_addr, data)
+            return DEBUDA_SERVER_SOCKET_IFC.pci_raw_write(chip_id, reg_addr, data)
+    def get_runtime_data():
+        key = "get_runtime_data"
+        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_SOCKET_IFC.get_runtime_data()
+        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
 
 # PCI interface is a cached interface through Debuda server
-class PCI_IFC (DEBUDA_SERVER_CACHED_IFC):
+class SERVER_IFC (DEBUDA_SERVER_CACHED_IFC):
     pass
 
 # Prints contents of core's memory
@@ -170,14 +198,14 @@ def dump_memory(device_id, noc0_loc, addr, size):
         row = []
         for j in range(0, 16):
             if (addr + k*64 + j* 4 < addr + size):
-                val = PCI_IFC.pci_read_xy(device_id, *noc0_loc, 0, addr + k*64 + j*4)
+                val = SERVER_IFC.pci_read_xy(device_id, *noc0_loc, 0, addr + k*64 + j*4)
                 row.append(f"0x{val:08x}")
         s = " ".join(row)
         print(f"{util.noc_loc_str(noc0_loc)} 0x{(addr + k*64):08x} => {s}")
 
 # Dumps tile in format received form tt_tile::get_string
 def dump_tile(chip, noc0_loc, addr, size, data_format):
-    s = PCI_IFC.pci_read_tile(chip, *noc0_loc, 0, addr, size, data_format)
+    s = SERVER_IFC.pci_read_tile(chip, *noc0_loc, 0, addr, size, data_format)
     print(s.decode("utf-8"))
 
 #
@@ -330,11 +358,12 @@ class Device(TTObject):
             y_size-=self.rows_with_no_functional_workers() # GS:2, WH:2
             x_size-=self.cols_with_no_functional_workers() # GS:1, WH:2
 
-        legend = [ f"Coordinate system: {options}", "Legend:" ] + [ f"{block_types[block_type]['symbol']} - {block_types[block_type]['desc']}" for block_type in block_types_present ]
+        legend = [ f"Coordinate system: {options.upper()}" ] + [ f"{block_types[block_type]['symbol']} - {block_types[block_type]['desc']}" for block_type in block_types_present ]
         if emphasize_explanation is not None:
             legend += [ "+ - " + emphasize_explanation ]
 
         rng = range (y_size) if options == 'rc' else reversed(range (y_size))
+        screen_row_y = 0
         for y in rng:
             row = [ f"%02d" % y ]
             # 1. Add graphics
@@ -350,11 +379,12 @@ class Device(TTObject):
                 row.append (render_str)
 
             # 2. Add legend
-            legend_y = y_size - y - 1
+            legend_y = screen_row_y
             if legend_y < len(legend):
                 row = row + [ util.CLR_INFO + legend[legend_y] + util.CLR_END ]
 
             rows.append (row)
+            screen_row_y += 1
         row = [ "" ] + [ f"%02d" % i for i in range(x_size) ]
         rows.append (row)
 
@@ -379,7 +409,7 @@ class Device(TTObject):
         for thread_idx in range (THREAD_COUNT):
             for reg_idx in range(DEBUG_MAILBOX_BUF_SIZE // THREAD_COUNT):
                 reg_addr = DEBUG_MAILBOX_BUF_BASE + thread_idx * DEBUG_MAILBOX_BUF_SIZE + reg_idx * 4
-                val = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, reg_addr)
+                val = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, reg_addr)
                 debug_tables[thread_idx].append ({ "lo_val" : val & 0xffff, "hi_val": (val >> 16) & 0xffff })
         return debug_tables
 
@@ -466,57 +496,57 @@ class Device(TTObject):
 
         sig_sel = 0xff
         rd_sel = 0
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        test_val1 = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c)
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        test_val1 = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c)
         rd_sel = 1
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        test_val2 = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c)
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        test_val2 = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c)
 
         rd_sel = 0
         sig_sel = 2*self.SIG_SEL_CONST
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        brisc_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        brisc_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         # Doesn't work - looks like a bug for selecting inputs > 31 in daisy stop
         # rd_sel = 0
         # sig_sel = 2*16
-        # PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        # nrisc_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        # SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        # nrisc_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         rd_sel = 0
         sig_sel = 2*10
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        trisc0_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc0_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         rd_sel = 0
         sig_sel = 2*11
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        trisc1_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc1_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         rd_sel = 0
         sig_sel = 2*12
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        trisc2_pc = PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc2_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
 
         print()
         x, y = noc0_loc
         print(f"Tensix x={x:02d},y={y:02d} => dbus_test_val1 (expect 7)={test_val1:x}, dbus_test_val2 (expect A5A5A5A5)={test_val2:x}")
         print(f"Tensix x={x:02d},y={y:02d} => brisc_pc=0x{brisc_pc:x}, trisc0_pc=0x{trisc0_pc:x}, trisc1_pc=0x{trisc1_pc:x}, trisc2_pc=0x{trisc2_pc:x}")
 
-        PCI_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, 0)
+        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, 0)
 
     # Reads and immediately prints a value of a given NOC register
     def read_print_noc_reg(self, noc0_loc, noc_id, reg_name, reg_index):
         x, y = noc0_loc
         reg_addr = 0xffb20000 + (noc_id*0x10000) + 0x200 + (reg_index*4)
-        val = PCI_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
+        val = SERVER_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
         print(f"Tensix x={x:02d},y={y:02d} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})")
 
     # Extracts and returns a single field of a stream register
     def get_stream_reg_field(self, noc0_loc, stream_id, reg_index, start_bit, num_bits):
         x, y = noc0_loc
         reg_addr = 0xFFB40000 + (stream_id*0x1000) + (reg_index*4)
-        val = PCI_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
+        val = SERVER_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
         mask = (1 << num_bits) - 1
         val = (val >> start_bit) & mask
         return val
@@ -543,9 +573,9 @@ class Device(TTObject):
             (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x4 or \
             (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x2
     def is_gsync_hung (self, noc0_loc):
-        return PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb2010c) == 0xB0010000
+        return SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb2010c) == 0xB0010000
     def is_ncrisc_done (self, noc0_loc):
-        return PCI_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb2010c) == 0x1FFFFFF1
+        return SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb2010c) == 0x1FFFFFF1
 
     NCRISC_STATUS_REG_ADDR=0xFFB2010C
     BRISC_STATUS_REG_ADDR=0xFFB3010C
@@ -606,7 +636,7 @@ class Device(TTObject):
         coords = self.get_block_locations ()
         status_descs = {}
         for loc in coords:
-            status_descs[loc] = self.get_status_register_desc(addr, PCI_IFC.pci_read_xy(self.id(), loc[0], loc[1], 0, addr))
+            status_descs[loc] = self.get_status_register_desc(addr, SERVER_IFC.pci_read_xy(self.id(), loc[0], loc[1], 0, addr))
 
         # Print register status
         status_descs_rows = []
@@ -625,24 +655,28 @@ class Device(TTObject):
         return int(stream_regs['CURR_PHASE']) >> 10
 
     def pci_read_xy(self, x, y, noc_id, reg_addr):
-        return PCI_IFC.pci_read_xy(self.id(), x, y, noc_id, reg_addr)
+        return SERVER_IFC.pci_read_xy(self.id(), x, y, noc_id, reg_addr)
     def pci_write_xy(self, x, y, noc_id, reg_addr, data):
-        return PCI_IFC.pci_write_xy(self.id(), x, y, noc_id, reg_addr, data)
+        return SERVER_IFC.pci_write_xy(self.id(), x, y, noc_id, reg_addr, data)
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
-        return PCI_IFC.pci_read_tile(self.id(), x, y, z, reg_addr, msg_size, data_format)
+        return SERVER_IFC.pci_read_tile(self.id(), x, y, z, reg_addr, msg_size, data_format)
 
 # Initialize communication with the device
-def init_device_comm (args):
+def init_server_communication (args):
     DEBUDA_SERVER_CACHED_IFC.enabled = args.server_cache == "through" or args.server_cache == "on"
-    DEBUDA_SERVER_IFC.enabled = args.server_cache == "through" or args.server_cache == "off"
+    DEBUDA_SERVER_SOCKET_IFC.enabled = args.server_cache == "through" or args.server_cache == "off"
+
     if DEBUDA_SERVER_CACHED_IFC.enabled:
         atexit.register (DEBUDA_SERVER_CACHED_IFC.save)
         DEBUDA_SERVER_CACHED_IFC.load()
 
-    if DEBUDA_SERVER_IFC.enabled:
-        # Initialize communication with the client (debuda-stub)
-        ip_and_port = args.debuda_server_address.split(":")
-        init_comm_client (ip=ip_and_port[0], port=ip_and_port[1], debug_debuda_stub=args.debug_debuda_stub)
+    if DEBUDA_SERVER_SOCKET_IFC.enabled:
+        (ip, port) = args.debuda_server_address.split(":")
+        spawning_debuda_stub = ip=='localhost' and util.is_port_available (int(port))
 
-        # Make sure to terminate communication client (debuda-stub) on exit
-        atexit.register (terminate_comm_client_callback)
+        if spawning_debuda_stub:
+            spawn_standalone_debuda_stub(port, f"{args.output_dir}/runtime_data.yaml")
+
+        connect_to_server (ip=ip, port=port, spawning_debuda_stub=spawning_debuda_stub)
+
+    return SERVER_IFC

@@ -23,7 +23,7 @@ def run(args, context, ui_state = None):
     addr = TRISC_DEBUG_BASE[trisc_id]
     da = DataArray(f"L1-0x{addr:08x}-{num_words * 4}", 4)
     for i in range (num_words):
-        data = tt_device.PCI_IFC.pci_read_xy(ui_state['current_device_id'], ui_state['current_x'], ui_state['current_y'], 0, addr + 4*i)
+        data = tt_device.SERVER_IFC.pci_read_xy(ui_state['current_device_id'], ui_state['current_x'], ui_state['current_y'], 0, addr + 4*i)
         da.data.append(data)
 
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]

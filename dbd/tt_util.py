@@ -5,7 +5,7 @@ debuda parses the build output files and probes the silicon to determine status 
 import sys, os, yaml, zipfile
 from tabulate import tabulate
 from sortedcontainers import SortedSet
-import traceback
+import traceback, socket
 
 # Pretty print exceptions (traceback)
 def notify_exception(exc_type, exc_value, tb):
@@ -133,6 +133,13 @@ def print_columnar_dicts (dict_array, title_array):
         titles += [ "" ]
 
     print (tabulate(final_table, headers=titles))
+
+# Container for YAML
+class YamlContainer:
+    def __init__ (self, yaml_string):
+        self.root = dict()
+        for i in yaml.load_all(yaml_string, Loader=yaml.CSafeLoader):
+            self.root = { **self.root, **i }
 
 # Stores all data loaded from a yaml file
 # Includes a cache in case a file is loaded multiple times
@@ -325,3 +332,16 @@ def word_to_byte_array(A):
         byte_array.append ((i>>16) & 0xff)
         byte_array.append ((i>>32) & 0xff)
     return byte_array
+
+# Returns True if port available
+def is_port_available(port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    result = False
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("0.0.0.0", port))
+        result = True
+    except:
+        pass
+    sock.close()
+    return result

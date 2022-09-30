@@ -65,12 +65,14 @@ class ProgramController {
 class CommonProgramController : public ProgramController {
     public:
         CommonProgramController(const ProgramConfig& config, const std::string& bin_in_path, const std::string& bin_out_path, bool silicon);
+        CommonProgramController(const ProgramConfig& config, const std::string& bin_in_path, const std::string& bin_out_path, std::shared_ptr<IBackend> backend);
+
         virtual ~CommonProgramController() {}
+
     protected:
         virtual std::shared_ptr<IBackend> get_backend();
         virtual ITensorWriter&  get_tensor_writer();
         virtual ITensorBuilder& get_tensor_builder();
-
     private:
         std::shared_ptr<IBackend> _backend;
         TensorRW _tensor_rw;

@@ -7,6 +7,8 @@ command_metadata = {
 import tt_util as util
 
 def run(args, context, ui_state = None):
+    runtime_data = context.server_ifc.get_runtime_data().root
+
     if len(args) == 2:
         device_id = int(args[1])
         if device_id not in context.devices:
@@ -18,7 +20,7 @@ def run(args, context, ui_state = None):
 
     for device_id in devices_list:
         device = context.devices[device_id]
-        util.INFO (f"==== Device {device.id()}")
+        util.INFO (f"==== Device {device.id()} {'(MMIO)' if device.id() in runtime_data['chips_with_mmio'] else ''}")
 
         configured_streams = util.set()
         for loc in device.get_block_locations (block_type = "functional_workers"):
@@ -32,7 +34,9 @@ def run(args, context, ui_state = None):
         # print (configured_streams)
         emphasize_explanation = "Functional worker with configured stream(s)"
         print(device.render (options="rc", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
+        # print()
         # print(device.render (options="physical", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
+        # print()
         # print(device.render (options="noc0", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
 
     navigation_suggestions = []

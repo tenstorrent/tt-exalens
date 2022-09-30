@@ -22,6 +22,6 @@ def run(args, context, ui_state = None):
             row = [ f"{graph_name}/{op_name}", op['type'], epoch_id, f"{graph.root['target_device']}", f"{grid_loc}", f"{noc0_loc[0]}-{noc0_loc[1]}", f"{op['grid_size']}"]
             rows.append (row)
 
-    print (tabulate(rows, headers = [ "Op", "Op type", "Epoch", "Device", "Grid Loc", "NOC0 Loc", "Grid Size" ]))
+    print (tabulate(rows, headers = [ "Graph/Op", "Op type", "Epoch", "Device", "Grid Loc", "NOC0 Loc", "Grid Size" ]))
 
     return navigation_suggestions
