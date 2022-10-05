@@ -29,9 +29,11 @@ def spawn_standalone_debuda_stub(port, path_to_runtime_yaml):
         print (f"Exception: {util.CLR_ERR} Cannot find {debuda_stub_path}. {STUB_HELP} {util.CLR_END}")
         raise
     time.sleep (0.1) # Cosmetic wait: To allow debuda-stub to print the message
-    debuda_stub_is_running = DEBUDA_STUB_PROCESS.poll() is None
+    debuda_stub_is_running = DEBUDA_STUB_PROCESS.poll() is None and not util.is_port_available (int(port))
     if not debuda_stub_is_running:
         util.ERROR ("Debuda stub could not be spawned on localhost")
+        return False
+    return True
 
 # Spawns debuda-stub and initializes the communication
 def connect_to_server (ip="localhost", port=5555, spawning_debuda_stub=False):
@@ -675,7 +677,9 @@ def init_server_communication (args):
         spawning_debuda_stub = ip=='localhost' and util.is_port_available (int(port))
 
         if spawning_debuda_stub:
-            spawn_standalone_debuda_stub(port, f"{args.output_dir}/runtime_data.yaml")
+            success = spawn_standalone_debuda_stub(port, f"{args.output_dir}/runtime_data.yaml")
+            if not success:
+                raise Exception("Could not connect to debuda-stub")
 
         connect_to_server (ip=ip, port=port, spawning_debuda_stub=spawning_debuda_stub)
 
