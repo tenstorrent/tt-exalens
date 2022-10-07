@@ -16,7 +16,7 @@ DBD_DEPS = $(addprefix $(OBJDIR)/, $(DBD_SRCS:.cpp=.d))
 
 -include $(DBD_DEPS)
 
-dbd: $(BINDIR)/dbd_modify_netlist verif/netlist_tests/debuda-server-standalone
+dbd: verif/netlist_tests/debuda-server-standalone
 	$(PRINT_TARGET)
 	$(PRINT_OK)
 

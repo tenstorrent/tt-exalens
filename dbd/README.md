@@ -139,21 +139,6 @@ op_name: norm_ff_0_recip_s_brcst_m1_0_0.lc1
 ```
  All run logs are also saved so that comparison results can be examined. 
 
-## tapout.sh
-This is similar to tapout_sweep.py.
-tapout.sh can be used to automatically run test with modified netlist, adding outputs to every operator in sorted order.
-
-### Usage
-
-First parameter is command that you are running. tapout.sh will modify netlist in this command and rerun it with new netlist file.
-If there are n opertions, it can run test n times, or 1 time in case --single parameter is provided.
-```build/bin/dbd_modify_netlist``` is required for tapout.sh to work. Run ``` make dbd ``` to build dbd_modify_netlist.
-
-```
-dbd/tapout.sh "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --seed 0 --silicon --timeout 500"
-dbd/tapout.sh "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --seed 0 --silicon --timeout 500" --single
-```
-
 ## Slicing Netlist
 tt_netlist_slicer.py is tool that helps you to cut specific part of the graph, by providing inputs/outputs.
 
