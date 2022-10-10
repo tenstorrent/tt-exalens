@@ -1,7 +1,7 @@
 Introduction to DeBuda
 ======================
 
-DeBuda is a set of debugging tools for Buda.
+DeBuda is a suite of debugging tools for Buda.
 
 .. contents:: Table of Contents
    :local:
@@ -14,5 +14,6 @@ DeBuda is a set of debugging tools for Buda.
    examples
    terminology
    debuda_py/index
+   dev/classes
 
 .. |tm|   unicode:: U+02122 .. TM SIGN

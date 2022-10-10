@@ -59,10 +59,12 @@ class Op(TTObject):
         self._id = name
         self.graph = graph
 
-# Class that represents a single graph within a netlist
-# Contains all the information from graph's blob.yaml and pipegen.yaml
-# Provides functions for graph traversal
 class Graph(TTObject):
+    """Represents a single graph within a netlist.
+    Contains all the information from graph's blob.yaml and pipegen.yaml.
+    Provides functions for graph traversal.
+    """
+
     # Some keys do not refer to operations, and we keep them here to be used when parsing
     non_op_keys = set (['target_device', 'input_count'])
 

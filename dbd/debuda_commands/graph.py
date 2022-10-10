@@ -1,0 +1,22 @@
+"""Documentation for graph
+"""
+command_metadata = {
+    "short" : "g",
+    "expected_argument_count" : 1,
+    "arguments_description" : "graph_name : switch to graph graph_name"
+}
+
+import tt_util as util
+
+def run(args, context, ui_state = None):
+    """Run command
+    """
+    navigation_suggestions = []
+
+    gname = args[1]
+    if gname not in context.netlist.graph_names():
+        util.WARN (f"Invalid graph {gname}. Available graphs: {', '.join (list(context.netlist.graph_names()))}")
+    else:
+        ui_state["current_graph_name"] = args[1]
+
+    return navigation_suggestions

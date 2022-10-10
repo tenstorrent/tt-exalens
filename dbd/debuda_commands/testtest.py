@@ -1,3 +1,5 @@
+"""Documentation for testtest
+"""
 from tabulate import tabulate
 
 command_metadata = {
@@ -7,6 +9,8 @@ command_metadata = {
     }
 
 def run(args, context, ui_state = None):
+    """Run command
+    """
     navigation_suggestions = []
 
     current_device_id = ui_state["current_device_id"]
@@ -34,3 +38,4 @@ def run(args, context, ui_state = None):
         print (b)
 
     return navigation_suggestions
+
