@@ -67,7 +67,6 @@ def replicate (times=1, char="="):
 def generate_commands_rst (f):
     commands = debuda.import_commands()
     command_list = { command_data['long'] : command_data for command_data in commands }
-    print (command_list)
 
     render_commands_of_type (f, 'housekeeping', "Housekeeping", command_list)
     render_commands_of_type (f, 'low-level', "Low level", command_list)
