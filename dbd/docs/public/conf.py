@@ -56,30 +56,41 @@ html_static_path = ['_static']
 autodoc_member_order = 'bysource'
 add_module_names = False
 
+import debuda
 
-import fnmatch, importlib
-def generate_commands_rst ():
-    cmd_files = []
-    dbd_commands_dir = os.path.abspath(os.curdir) + '/dbd/debuda_commands'
-    for root, dirnames, filenames in os.walk(dbd_commands_dir):
-        for filename in fnmatch.filter(filenames, '*.py'):
-            cmd_files.append(os.path.join(root, filename))
-    cmd_files.sort()
+def replicate (times=1, char="="):
+    ret = ""
+    for i in range(times):
+        ret+=char
+    return ret
 
-    sys.path.append(dbd_commands_dir)
+def generate_commands_rst (f):
+    commands = debuda.import_commands()
+    command_list = { command_data['long'] : command_data for command_data in commands }
+    print (command_list)
 
-    for cmdfile in cmd_files:
-        module_path = os.path.splitext(os.path.basename(cmdfile))[0]
-        try:
-            cmd_module = importlib.import_module (module_path)
-        except Exception as e:
-            print (f"Error in module {module_path}: {e}")
-            continue
-        command_metadata = cmd_module.command_metadata
-        command_metadata["module"] = cmd_module
-        print (f"{cmdfile}: {cmd_module.__doc__}")
+    render_commands_of_type (f, 'housekeeping', "Housekeeping", command_list)
+    render_commands_of_type (f, 'low-level', "Low level", command_list)
+    render_commands_of_type (f, 'high-level', "High level", command_list)
+    render_commands_of_type (f, 'dev', "Development", command_list)
+
+def render_commands_of_type (f, ct, ct_name, command_list):
+    # f.write (f"{replicate(len(ct), '#')}\n")
+    f.write (f"{ct_name}\n")
+    f.write (f"{replicate(len(ct_name), '^')}\n\n")
+
+    for cname, c in command_list.items():
+        if c['type'] == ct:
+            f.write (f"{cname}\n")
+            under = replicate(len(cname)+5, '"')
+            f.write (f"{under}\n\n")
+            f.write (f"{c['arguments_description']}\n\n")
+            if 'module' in c:
+                f.write (f"{c['module'].__doc__}\n\n")
 
 def setup(app):
     app.add_css_file('tt_theme.css')
-    print ("-------------------------")
-    generate_commands_rst ()
+
+    print ("Generating Debuda.py command help")
+    with open("dbd/docs/public/debuda_py/commands.generated-rst", "w") as f:
+        generate_commands_rst (f)

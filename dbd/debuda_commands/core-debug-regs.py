@@ -1,5 +1,6 @@
 command_metadata = {
     "short" : "cdr",
+    "type" : "low-level",
     "expected_argument_count" : [0, 2],
     "arguments_description" : "x y : show debug registers for core 'x-y'. If coordinates are not supplied, show all cores."
 }

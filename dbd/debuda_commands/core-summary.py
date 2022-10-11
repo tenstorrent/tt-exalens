@@ -1,5 +1,6 @@
 command_metadata = {
     "short" : "c",
+    "type" : "high-level",
     "expected_argument_count" : 2,
     "arguments_description" : "x y : show summary for core 'x-y'"
 }

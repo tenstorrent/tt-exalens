@@ -4,10 +4,11 @@ from tt_graph import Queue, Op
 import tt_device
 
 command_metadata = {
-        "short" : "st",
-        "expected_argument_count" : 0,
-        "arguments_description" : ": Test debuda internals"
-    }
+    "short" : "st",
+    "type" : "dev",
+    "expected_argument_count" : 0,
+    "arguments_description" : ": Test debuda internals"
+}
 
 def test_object():
     class my_tt_obj(TTObject):

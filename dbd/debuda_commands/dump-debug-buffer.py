@@ -4,11 +4,11 @@ import tt_device
 import tt_util as util
 
 command_metadata = {
-          "long" : "dump-debug-buffer",
-          "short" : "ddb",
-          "expected_argument_count" : [2,3],
-          "arguments_description" : "id, num_words, print_format: id - trisc 0|1|2 at current x-y.\nnum_words - number of words to dump.\nPrint formats are i8, i16, i32, hex8, hex16, hex32.\n"
-        }
+    "short" : "ddb",
+    "type" : "low-level",
+    "expected_argument_count" : [2,3],
+    "arguments_description" : "id, num_words, print_format: id - trisc 0|1|2 at current x-y.\nnum_words - number of words to dump.\nPrint formats are i8, i16, i32, hex8, hex16, hex32.\n"
+}
 
 def run(args, context, ui_state = None):
     #This is defined in src/firmware/riscv/grayskull/l1_address_map.h

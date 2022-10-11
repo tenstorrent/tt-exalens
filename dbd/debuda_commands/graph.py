@@ -2,6 +2,7 @@
 """
 command_metadata = {
     "short" : "g",
+    "type" : "high-level",
     "expected_argument_count" : 1,
     "arguments_description" : "graph_name : switch to graph graph_name"
 }

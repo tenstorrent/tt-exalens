@@ -1,5 +1,6 @@
 command_metadata = {
     "short" : "s",
+    "type" : "low-level",
     "expected_argument_count" : 3,
     "arguments_description" : "x y stream_id : show stream 'stream_id' at core 'x-y'"
 }

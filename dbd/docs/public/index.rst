@@ -7,7 +7,7 @@ DeBuda is a suite of debugging tools for Buda.
    :local:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Table of Contents
 
    user_guide

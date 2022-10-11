@@ -1,10 +1,11 @@
 from tabulate import tabulate
 
 command_metadata = {
-        "short" : "om",
-        "expected_argument_count" : 0,
-        "arguments_description" : ": draws a mini map of the current epoch"
-    }
+    "short" : "om",
+    "type" : "high-level",
+    "expected_argument_count" : 0,
+    "arguments_description" : ": draws a mini map of the current epoch"
+}
 
 def run(args, context, ui_state = None):
     navigation_suggestions = []

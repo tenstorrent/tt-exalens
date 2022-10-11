@@ -23,8 +23,6 @@ def get_parser ():
 
 ### BUILT-IN COMMANDS
 
-
-
 # Print all commands (help)
 def print_available_commands (commands):
     rows = []
@@ -50,26 +48,7 @@ def main(args, context):
     # Create prompt object.
     context.prompt_session = PromptSession()
 
-    # Init commands
-    commands = [
-        { "long" : "exit",
-          "short" : "x",
-          "expected_argument_count" : [ 0, 1 ],
-          "arguments_description" : ": exits the program. If an argument is supplied, it will be used as the exit code"
-        },
-        { "long" : "help",
-          "short" : "h",
-          "expected_argument_count" : 0,
-          "arguments_description" : ": prints command documentation"
-        },
-        { "long" : "reload",
-          "short" : "rl",
-          "expected_argument_count" : 0,
-          "arguments_description" : ": reloads files in debuda_commands directory"
-        },
-    ]
-
-    import_commands (commands)
+    commands = import_commands ()
 
     # Initialize current UI state
     ui_state = {
@@ -154,7 +133,7 @@ def main(args, context):
                     elif found_command["long"] == "help":
                         print_available_commands (commands)
                     elif found_command["long"] == "reload":
-                        import_commands (commands, reload=True)
+                        import_commands (reload=True)
                     else:
                         navigation_suggestions = found_command["module"].run(cmd, context, ui_state)
 
@@ -167,7 +146,29 @@ def main(args, context):
 
 # Import 'plugin' commands from debuda_commands directory
 # With reload=True, the debuda_commands can be live-reloaded (importlib.reload)
-def import_commands (command_metadata_array, reload = False):
+def import_commands (reload = False):
+    # Built-in commands
+    commands = [
+        { "long" : "exit",
+          "short" : "x",
+          "type" : "housekeeping",
+          "expected_argument_count" : [ 0, 1 ],
+          "arguments_description" : ": exits the program. If an argument is supplied, it will be used as the exit code"
+        },
+        { "long" : "help",
+          "short" : "h",
+          "type" : "housekeeping",
+          "expected_argument_count" : 0,
+          "arguments_description" : ": prints command documentation"
+        },
+        { "long" : "reload",
+          "short" : "rl",
+          "type" : "housekeeping",
+          "expected_argument_count" : 0,
+          "arguments_description" : ": reloads files in debuda_commands directory"
+        },
+    ]
+
     cmd_files = []
     for root, dirnames, filenames in os.walk(util.application_path () + '/debuda_commands'):
         for filename in fnmatch.filter(filenames, '*.py'):
@@ -192,18 +193,19 @@ def import_commands (command_metadata_array, reload = False):
         util.VERBOSE (f"Importing command '{cmd_module.__name__}'")
 
         if reload:
-            for i, c in enumerate(command_metadata_array):
+            for i, c in enumerate(commands):
                 if c["long"] == command_metadata["long"]:
-                    command_metadata_array[i] = command_metadata
+                    commands[i] = command_metadata
                     importlib.reload(cmd_module)
         else:
             # Check command names/shortcut overlap (only when not reloading)
-            for cmd in command_metadata_array:
+            for cmd in commands:
                 if cmd["long"] == command_metadata["long"]:
                     util.FATAL (f"Command {cmd['long']} already exists")
                 if cmd["short"] == command_metadata["short"]:
                     util.FATAL (f"Commands {cmd['long']} and {command_metadata['long']} use the same shortcut: {cmd['short']}")
-            command_metadata_array.append (command_metadata)
+            commands.append (command_metadata)
+    return commands
 
 def locate_output_dir ():
     # Try to find a default output directory
@@ -247,7 +249,9 @@ def load_context (netlist_filepath, run_dirpath):
 if __name__ == '__main__':
     parser=get_parser()
     args = parser.parse_args()
-    util.args = args
+
+    if not args.verbose:
+        util.VERBOSE=util.NULL_PRINT
 
     if args.output_dir is None: # Then find the most recent tt_build subdir
         args.output_dir = locate_output_dir()

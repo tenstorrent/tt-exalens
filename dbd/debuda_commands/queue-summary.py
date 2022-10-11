@@ -1,5 +1,6 @@
 command_metadata = {
     "short" : "q",
+    "type" : "high-level",
     "expected_argument_count" : [0, 1, 3],
     "arguments_description" : " [ queue_name, start_addr, num_bytes ]: Prints summary of queues. If arguments supplied, it will print contents"
 }

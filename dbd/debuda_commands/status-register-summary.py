@@ -5,10 +5,11 @@ from tabulate import tabulate
 import tt_util as util
 
 command_metadata = {
-        "short" : "srs",
-        "expected_argument_count" : 1,
-        "arguments_description" : "verbosity [0-2] : prints brisc and ncrisc status registers."
-    }
+    "short" : "srs",
+    "type" : "low-level",
+    "expected_argument_count" : 1,
+    "arguments_description" : "verbosity [0-2] : prints brisc and ncrisc status registers."
+}
 
 def print_status_register_summary(verbosity, context):
     for device_id, device in context.devices.items():

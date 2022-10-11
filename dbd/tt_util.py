@@ -63,11 +63,12 @@ CLR_INFO = CLR_BLUE
 CLR_PROMPT = "<style color='green'>"
 CLR_PROMPT_END = "</style>"
 
+
 # Colorized messages
+def NULL_PRINT(s):
+    pass
 def VERBOSE(s):
-    global args # Expecting this to be set on the module externally
-    if "verbose" in args and args.verbose:
-        print (f"{CLR_END}{s}{CLR_END}")
+    print (f"{CLR_END}{s}{CLR_END}")
 def INFO(s):
     print (f"{CLR_INFO}{s}{CLR_END}")
 def WARN(s):

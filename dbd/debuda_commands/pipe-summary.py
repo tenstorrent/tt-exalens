@@ -1,11 +1,12 @@
 import tt_util as util
 
 command_metadata = {
-          "long" : "pipe",
-          "short" : "p",
-          "expected_argument_count" : 1,
-          "arguments_description" : "pipe_id : prints details on the pipe with ID pipe_id"
-        }
+    "long" : "pipe",
+    "short" : "p",
+    "type" : "low-level",
+    "expected_argument_count" : 1,
+    "arguments_description" : "pipe_id : prints details on the pipe with ID pipe_id"
+}
 
 def run (cmd, context, ui_state=None):
     pipe_id = int(cmd[1])

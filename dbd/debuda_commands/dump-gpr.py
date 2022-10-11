@@ -5,6 +5,7 @@ from tt_debug_risc import RiscDebug, RiscLoc
 
 command_metadata = {
     "short" : "gpr",
+    "type" : "low-level",
     "expected_argument_count" : 0,
     "arguments_description" : ": dumps risc general purpose registers"
 }

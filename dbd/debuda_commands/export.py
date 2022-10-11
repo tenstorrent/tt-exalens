@@ -4,6 +4,7 @@ import tt_util as util
 
 command_metadata = {
     "short" : "xp",
+    "type" : "housekeeping",
     "expected_argument_count" : [ 0, 1 ],
     "arguments_description" : f"[ filename ]: exports a zip package for offline work. The optional argument represents a zip file name. Defaults to '{ util.DEFAULT_EXPORT_FILENAME }'"
 }

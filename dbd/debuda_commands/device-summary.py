@@ -1,5 +1,6 @@
 command_metadata = {
     "short" : "d",
+    "type" : "high-level",
     "expected_argument_count" : [0, 1],
     "arguments_description" : "device_id: shows summary of a device. When no argument is supplied, shows summary of all devices"
 }

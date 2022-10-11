@@ -5,10 +5,11 @@ from tt_graph import Queue, Op
 import tt_device
 
 command_metadata = {
-        "short" : "ha",
-        "expected_argument_count" : 0,
-        "arguments_description" : ": Prints operation summary"
-    }
+    "short" : "ha",
+    "type" : "high-level",
+    "expected_argument_count" : 0,
+    "arguments_description" : ": Prints operation summary"
+}
 
 # checks wheter queue has data
 def queue_has_data(device, q:Queue):

@@ -7,6 +7,7 @@ import tt_netlist
 
 command_metadata = {
     "short" : "t",
+    "type" : "high-level",
     "expected_argument_count" : 2,
     "arguments_description" : "tile_id, raw: prints tile for current stream in currently active phase. If raw=1, prints raw bytes"
 }

@@ -4,11 +4,12 @@ from tt_netlist import Queue
 from tabulate import tabulate
 
 command_metadata = {
-          "long" : "dram-queue",
-          "short" : "dq",
-          "expected_argument_count" : 0,
-          "arguments_description" : ": prints DRAM queue summary"
-        }
+    "long" : "dram-queue",
+    "short" : "dq",
+    "type" : "high-level",
+    "expected_argument_count" : 0,
+    "arguments_description" : ": prints DRAM queue summary"
+}
 
 def run (cmd, context, ui_state = None):
     table = []

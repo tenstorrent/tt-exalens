@@ -3,10 +3,11 @@
 from tabulate import tabulate
 
 command_metadata = {
-        "short" : "tt",
-        "expected_argument_count" : 0,
-        "arguments_description" : ": test only"
-    }
+    "short" : "tt",
+    "type" : "dev",
+    "expected_argument_count" : 0,
+    "arguments_description" : ": test only"
+}
 
 def run(args, context, ui_state = None):
     """Run command

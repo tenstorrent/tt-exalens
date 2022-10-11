@@ -6,6 +6,7 @@ import tt_stream, tt_netlist, tt_util as util
 
 command_metadata = {
         "short" : "abs",
+        "type" : "high-level",
         "expected_argument_count" : [0,1],
         "arguments_description" : "verbosity [0-1]: reads stream information from the devices and highlights blocked streams (if verbosity is 1, print more detail)"
     }
