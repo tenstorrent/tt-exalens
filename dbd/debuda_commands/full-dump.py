@@ -2,7 +2,8 @@ command_metadata = {
     "short" : "fd",
     "type" : "low-level",
     "expected_argument_count" : 0,
-    "arguments_description" : ": performs a full dump at current x-y"
+    "arguments" : "",
+    "description" : "Performs a full stream dump at current x-y location."
 }
 
 def run (cmd, context, ui_state=None):

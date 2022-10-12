@@ -1,5 +1,5 @@
 # Traverses all streams and detects the blocked one. It then prints the results.
-# It prioritizes the streams that are genuinely blocked, to the ones that are waiting on genuinely 
+# It prioritizes the streams that are genuinely blocked, to the ones that are waiting on genuinely.
 # blocked cores.
 from tabulate import tabulate
 import tt_stream, tt_netlist, tt_util as util
@@ -8,7 +8,8 @@ command_metadata = {
         "short" : "abs",
         "type" : "high-level",
         "expected_argument_count" : [0, 1],
-        "arguments_description" : "verbosity [0-1]: reads stream information from the devices and highlights blocked streams (if verbosity is 1, print more detail)"
+        "arguments" : "verbosity [0-1]",
+        "description" : "Reads stream information from the devices and highlights blocked streams (if verbosity is 1, print more detail)."
     }
 
 def run(args, context, ui_state = None):

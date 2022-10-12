@@ -4,7 +4,8 @@ command_metadata = {
     "short" : "pcir",
     "type" : "low-level",
     "expected_argument_count" : 1,
-    "arguments_description" : "addr : read data from PCI bar at address 'addr"
+    "arguments" : "addr",
+    "description" : "Reads data from PCI BAR at address 'addr'"
 }
 
 import tt_device

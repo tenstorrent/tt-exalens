@@ -7,7 +7,8 @@ command_metadata = {
     "short" : "ddb",
     "type" : "low-level",
     "expected_argument_count" : [2,3],
-    "arguments_description" : "id, num_words, print_format: id - trisc 0|1|2 at current x-y.\nnum_words - number of words to dump.\nPrint formats are i8, i16, i32, hex8, hex16, hex32.\n"
+    "arguments" : "id, num_words, format",
+    "description" : "Prints a debug buffer. 'id' - trisc 0|1|2 at current x-y. 'num_words' - number of words to dump. 'format' - i8, i16, i32, hex8, hex16, hex32."
 }
 
 def run(args, context, ui_state = None):

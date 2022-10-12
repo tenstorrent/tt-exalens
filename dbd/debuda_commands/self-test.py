@@ -7,7 +7,8 @@ command_metadata = {
     "short" : "st",
     "type" : "dev",
     "expected_argument_count" : 0,
-    "arguments_description" : ": Test debuda internals"
+    "arguments" : "",
+    "description" : "Tests Debuda internals."
 }
 
 def test_object():

@@ -5,10 +5,11 @@ from tabulate import tabulate
 
 command_metadata = {
     "long" : "epoch-queue",
-    "type" : "high-level",
+    "type" : "dev",
     "short" : "eq",
     "expected_argument_count" : 0,
-    "arguments_description" : ": prints Epoch queue summary"
+    "arguments" : "",
+    "description" : "Prints Epoch queue summary"
 }
 
 # Prints epoch queues

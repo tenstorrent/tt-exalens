@@ -283,7 +283,8 @@ from tabulate import tabulate
 command_metadata = {
         "short" : "om",
         "expected_argument_count" : 0,
-        "arguments_description" : ": draws a mini map of the current epoch"
+        "arguments" : "",
+        "description" : "Draws a mini map of the current epoch"
     }
 ```
 Then define function run(). This example shows the `op-map` command:

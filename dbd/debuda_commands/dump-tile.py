@@ -1,6 +1,7 @@
-# Traverses all streams and detects the blocked one. It then prints the results.
-# It prioritizes the streams that are genuinely blocked, to the ones that are waiting on genuinely 
-# blocked cores.
+"""Traverses all streams and detects the blocked one. It then prints the results.
+It prioritizes the streams that are genuinely blocked, to the ones that are waiting on genuinely
+blocked cores.
+"""
 from tabulate import tabulate
 import tt_util as util
 import tt_netlist
@@ -9,7 +10,8 @@ command_metadata = {
     "short" : "t",
     "type" : "high-level",
     "expected_argument_count" : 2,
-    "arguments_description" : "tile_id, raw: prints tile for current stream in currently active phase. If raw=1, prints raw bytes"
+    "arguments" : "tile_id, raw",
+    "description" : "Prints tile for the current stream in the currently active phase. If raw=1, prints raw bytes."
 }
 
 # converts data format to string

@@ -5,7 +5,8 @@ command_metadata = {
     "short" : "p",
     "type" : "high-level",
     "expected_argument_count" : 1,
-    "arguments_description" : "pipe_id : prints details on the pipe with ID pipe_id"
+    "arguments" : "pipe_id",
+    "description" : "Prints details on the pipe with ID 'pipe_id'."
 }
 
 def run (cmd, context, ui_state=None):

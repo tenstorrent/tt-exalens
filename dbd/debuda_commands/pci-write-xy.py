@@ -4,7 +4,8 @@ command_metadata = {
     "short" : "wxy",
     "type" : "low-level",
     "expected_argument_count" : 4,
-    "arguments_description" : "x y addr value : writes value to address 'addr' at noc0 location x-y of the chip associated with current epoch"
+    "arguments" : "x y addr value",
+    "description" : "Writes word 'value' to address 'addr' at noc0 location x-y of the current chip."
 }
 
 import tt_device

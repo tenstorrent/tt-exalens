@@ -27,8 +27,9 @@ def format_commands (commands, type):
     rows = []
     for c in commands:
         if c['type'] == type:
-            desc = c['arguments_description'].split(':')
-            row = [ f"{util.CLR_INFO}{c['short']}{util.CLR_END}", f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{desc[0]}", f"{desc[1]}" ]
+            arguments = c['arguments']
+            description = c['description']
+            row = [ f"{util.CLR_INFO}{c['short']}{util.CLR_END}", f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{arguments}", f"{description}" ]
             rows.append(row)
     return rows
 
@@ -122,9 +123,9 @@ def main(args, context):
                         if len(cmd)-1 not in valid_arg_count_list:
                             if len(valid_arg_count_list) == 1:
                                 expected_args = valid_arg_count_list[0]
-                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires {expected_args} argument{'s' if expected_args != 1 else ''}: {found_command['arguments_description']}{util.CLR_END}")
+                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires {expected_args} argument{'s' if expected_args != 1 else ''}: {found_command['arguments']} - {found_command['description']}{util.CLR_END}")
                             else:
-                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires one of {valid_arg_count_list} arguments: {found_command['arguments_description']}{util.CLR_END}")
+                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires one of {valid_arg_count_list} arguments: {found_command['arguments']} - {found_command['description']}{util.CLR_END}")
                             found_command = 'invalid-args'
                         break
 
@@ -163,19 +164,22 @@ def import_commands (reload = False):
           "short" : "x",
           "type" : "housekeeping",
           "expected_argument_count" : [ 0, 1 ],
-          "arguments_description" : ": exits the program. If an argument is supplied, it will be used as the exit code"
+          "arguments" : "exit_code",
+          "description" : "Exits the program. If an argument is supplied, it will be used as the exit code."
         },
         { "long" : "help",
           "short" : "h",
           "type" : "housekeeping",
           "expected_argument_count" : 0,
-          "arguments_description" : ": prints command documentation"
+          "arguments" : "",
+          "description" : "Prints documentation."
         },
         { "long" : "reload",
           "short" : "rl",
           "type" : "housekeeping",
           "expected_argument_count" : 0,
-          "arguments_description" : ": reloads files in debuda_commands directory"
+          "arguments" : "",
+          "description" : "Reloads files in debuda_commands directory."
         },
     ]
 

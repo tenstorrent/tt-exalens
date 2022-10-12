@@ -1,6 +1,3 @@
-# Traverses all streams and detects the blocked one. It then prints the results.
-# It prioritizes the streams that are genuinely blocked, to the ones that are waiting on genuinely 
-# blocked cores.
 from tabulate import tabulate
 import tt_util as util
 
@@ -8,7 +5,8 @@ command_metadata = {
     "short" : "srs",
     "type" : "low-level",
     "expected_argument_count" : 1,
-    "arguments_description" : "verbosity [0-2] : prints brisc and ncrisc status registers."
+    "arguments" : "verbosity",
+    "description" : "Prints brisc and ncrisc status registers. Verbosity can be 0, 1 or 2."
 }
 
 def print_status_register_summary(verbosity, context):

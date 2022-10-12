@@ -4,7 +4,8 @@ command_metadata = {
     "short" : "pciw",
     "type" : "low-level",
     "expected_argument_count" : 2,
-    "arguments_description" : "addr data: write 'data' to PCI bar at address 'addr"
+    "arguments" : "addr data",
+    "description" : "Writes 'data' word to PCI BAR at address 'addr'"
 }
 
 import tt_device

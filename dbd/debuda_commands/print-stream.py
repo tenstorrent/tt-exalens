@@ -2,7 +2,8 @@ command_metadata = {
     "short" : "s",
     "type" : "low-level",
     "expected_argument_count" : 3,
-    "arguments_description" : "x y stream_id : show stream 'stream_id' at core 'x-y'"
+    "arguments" : "x y stream_id",
+    "description" : "Shows stream 'stream_id' at core 'x-y'"
 }
 
 import tt_stream, tt_util as util

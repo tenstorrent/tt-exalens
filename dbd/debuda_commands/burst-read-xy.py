@@ -1,10 +1,12 @@
-"""Documentation for testtest
+"""Documentation for brxy.
+For example: NCRISC status code address=0xffb2010c, BRISC status code address=0xffb3010c.
 """
 command_metadata = {
     "short" : "brxy",
     "type" : "low-level",
     "expected_argument_count" : [4,5],
-    "arguments_description" : "x y addr burst_type print_format: burst read data from address 'addr' at noc0 location x-y of the chip associated with current epoch. \nNCRISC status code address=0xffb2010c, BRISC status code address=0xffb3010c\nPrint formats i8, i16, i32, hex8, hex16, hex32"
+    "arguments" : "x y addr burst_type format",
+    "description" : "Reads data from address 'addr' at noc0 location x-y of the chip associated with current epoch. Available formats: i8, i16, i32, hex8, hex16, hex32."
 }
 
 import tt_util as util

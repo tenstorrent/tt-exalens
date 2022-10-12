@@ -1,5 +1,6 @@
-# Prints all RISC-V registers for TRISC0, TRISC1, TRISC2 and Brisc on current core.
-# If cannot pause(halt) core, it will not write anyhting. If core is not active, currently it throws exception.
+"""Prints all RISC-V registers for TRISC0, TRISC1, TRISC2 and Brisc on current core.
+If cannot pause(halt) core, it will not write anyhting. If core is not active, currently it throws exception.
+"""
 import tabulate
 from tt_debug_risc import RiscDebug, RiscLoc
 
@@ -7,7 +8,8 @@ command_metadata = {
     "short" : "gpr",
     "type" : "low-level",
     "expected_argument_count" : 0,
-    "arguments_description" : ": dumps risc general purpose registers"
+    "arguments" : "",
+    "description" : "Prints general purpose registers at Risc cores."
 }
 RISC_REGS = {
     0:'zero', 1:'ra', 2:'sp', 3:'gp', 4:'tp', 5:'t0', 6:'t1', 7:'t2', 8:'s0 / fp', 9:'s1', 10:'a0', 11:'a1', 12:'a2',

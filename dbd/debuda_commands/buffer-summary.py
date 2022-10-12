@@ -5,7 +5,8 @@ command_metadata = {
     "short" : "b",
     "type" : "high-level",
     "expected_argument_count" : 1,
-    "arguments_description" : "buffer_id_or_op_name : prints details on the buffer with a given id, or buffer(s) mapped to a given operation."
+    "arguments" : "buffer_id_or_op_name",
+    "description" : "Prints details on the buffer with a given id, or buffer(s) mapped to a given operation."
 }
 
 # Find occurrences of buffer with ID 'buffer_id' across all epochs, and print the structures that reference them

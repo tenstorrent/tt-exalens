@@ -4,7 +4,8 @@ command_metadata = {
     "short" : "om",
     "type" : "high-level",
     "expected_argument_count" : 0,
-    "arguments_description" : ": draws a mini map of the current epoch"
+    "arguments" : "",
+    "description" : "Draws a mini map of the current epoch."
 }
 
 def run(args, context, ui_state = None):

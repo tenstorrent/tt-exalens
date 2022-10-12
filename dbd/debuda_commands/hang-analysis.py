@@ -8,7 +8,8 @@ command_metadata = {
     "short" : "ha",
     "type" : "high-level",
     "expected_argument_count" : 0,
-    "arguments_description" : ": Prints operation summary"
+    "arguments" : "",
+    "description" : "Prints a summary of all operations in the netlist."
 }
 
 # checks wheter queue has data

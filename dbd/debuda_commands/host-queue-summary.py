@@ -8,7 +8,8 @@ command_metadata = {
     "short" : "hq",
     "type" : "high-level",
     "expected_argument_count" : 0,
-    "arguments_description" : ": prints Host queue summary"
+    "arguments" : "",
+    "description" : "Prints host queue summary"
 }
 
 def run (cmd, context, ui_state):

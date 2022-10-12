@@ -4,7 +4,8 @@ command_metadata = {
     "short" : "g",
     "type" : "high-level",
     "expected_argument_count" : 1,
-    "arguments_description" : "graph_name : switch to graph graph_name"
+    "arguments" : "graph_name",
+    "description" : "Changes the current active graph."
 }
 
 import tt_util as util

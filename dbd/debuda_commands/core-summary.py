@@ -2,7 +2,8 @@ command_metadata = {
     "short" : "c",
     "type" : "high-level",
     "expected_argument_count" : 2,
-    "arguments_description" : "x y : show summary for core 'x-y'"
+    "arguments" : "x y",
+    "description" : "Shows summary for core 'x-y'"
 }
 
 import tt_util as util

@@ -2,7 +2,8 @@ command_metadata = {
     "short" : "d",
     "type" : "high-level",
     "expected_argument_count" : [0, 1],
-    "arguments_description" : "device_id: shows summary of a device. When no argument is supplied, shows summary of all devices"
+    "arguments" : "device_id",
+    "description" : "Shows a device summary. When no argument is supplied, it iterates through all devices."
 }
 
 import tt_util as util

@@ -83,7 +83,7 @@ def render_commands_of_type (f, ct, ct_name, command_list):
             f.write (f"{cname}\n")
             under = replicate(len(cname)+5, '"')
             f.write (f"{under}\n\n")
-            f.write (f"{c['arguments_description']}\n\n")
+            f.write (f"**{c['arguments']}:** {c['description']}\n\n")
             if 'module' in c:
                 f.write (f"{c['module'].__doc__}\n\n")
 

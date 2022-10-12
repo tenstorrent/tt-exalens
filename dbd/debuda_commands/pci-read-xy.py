@@ -4,7 +4,8 @@ command_metadata = {
     "short" : "rxy",
     "type" : "low-level",
     "expected_argument_count" : 3,
-    "arguments_description" : "x y addr : read data from address 'addr' at noc0 location x-y of the chip associated with current epoch"
+    "arguments" : "x y addr",
+    "description" : "Reads data word from address 'addr' at noc0 location x-y of the current chip."
 }
 
 import tt_util as util
