@@ -3,7 +3,7 @@ import tt_util as util
 command_metadata = {
     "long" : "pipe",
     "short" : "p",
-    "type" : "low-level",
+    "type" : "high-level",
     "expected_argument_count" : 1,
     "arguments_description" : "pipe_id : prints details on the pipe with ID pipe_id"
 }

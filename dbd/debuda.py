@@ -23,14 +23,23 @@ def get_parser ():
 
 ### BUILT-IN COMMANDS
 
-# Print all commands (help)
-def print_available_commands (commands):
+def format_commands (commands, type):
     rows = []
     for c in commands:
-        desc = c['arguments_description'].split(':')
-        row = [ f"{util.CLR_INFO}{c['short']}{util.CLR_END}", f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{desc[0]}", f"{desc[1]}" ]
-        rows.append(row)
-    print (tabulate(rows, headers=[ "Short", "Long", "Arguments", "Description" ]))
+        if c['type'] == type:
+            desc = c['arguments_description'].split(':')
+            row = [ f"{util.CLR_INFO}{c['short']}{util.CLR_END}", f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{desc[0]}", f"{desc[1]}" ]
+            rows.append(row)
+    return rows
+
+# Print all commands (help)
+def print_help (commands):
+    rows = []
+    rows += format_commands (commands, 'housekeeping')
+    rows += format_commands (commands, 'low-level')
+    rows += format_commands (commands, 'high-level')
+    print (tabulate(rows, tablefmt='plain'))
+    # format_commands (commands, 'dev', "Development")
 
 # Certain commands give suggestions for next step. This function formats and prints those suggestions.
 def print_navigation_suggestions (navigation_suggestions):
@@ -122,7 +131,8 @@ def main(args, context):
                 if found_command == None:
                     # Print help on invalid commands
                     print (f"{util.CLR_ERR}Invalid command '{cmd_string}'{util.CLR_END}\nAvailable commands:")
-                    print_available_commands (commands)
+                    print_help (commands)
+
                 elif found_command == 'invalid-args':
                     # This was handled earlier
                     pass
@@ -131,7 +141,7 @@ def main(args, context):
                         exit_code = int(cmd[1]) if len(cmd) > 1 else 0
                         return exit_code
                     elif found_command["long"] == "help":
-                        print_available_commands (commands)
+                        print_help (commands)
                     elif found_command["long"] == "reload":
                         import_commands (reload=True)
                     else:

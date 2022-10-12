@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.abspath('../..'))
 project = 'Debuda'
 copyright = '2022, Tenstorrent'
 author = 'Tenstorrent'
-
+master_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
 
