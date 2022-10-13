@@ -173,7 +173,7 @@ def find_ops_with_hang(graph, device):
 
                     pipe_streams.update (graph.get_streams (graph.get_buffers (connecting_pipes)))
 
-                assert pipe_streams, "No streams found for connection {src_op}->{dest_op}"
+                assert pipe_streams, f"No streams found for connection {src_op}->{dest_op}"
 
                 for stream in pipe_streams:
                     if is_stream_hang(device, stream):
