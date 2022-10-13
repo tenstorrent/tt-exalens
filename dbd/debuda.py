@@ -16,7 +16,6 @@ def get_parser ():
     parser.add_argument('--netlist',  type=str, required=False, default=None, help='Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used')
     parser.add_argument('--commands', type=str, required=False, help='Execute a set of commands separated by ;')
     parser.add_argument('--server-cache', type=str, default='off', help=f'Directs communication with Debuda Server. When "off", all device reads are done through the server. When set to "through", attempt to read from cache first. When "on", all reads are from cache only.')
-    parser.add_argument('--debug-debuda-stub', action='store_true', default=False, help=f'Prints all transactions on PCIe. Also, starts debuda-stub with --debug to print transfers.')
     parser.add_argument('--verbose', action='store_true', default=False, help=f'Prints additional information.')
     parser.add_argument('--debuda-server-address', type=str, default="localhost:5555", required=False, help='IP address of debuda server (e.g. remote.server.com:5555);')
     return parser
