@@ -7,7 +7,7 @@ command_metadata = {
     "long" : "dram-queue",
     "short" : "dq",
     "type" : "high-level",
-    "expected_argument_count" : 0,
+    "expected_argument_count" : [0],
     "arguments" : "",
     "description" : "Prints DRAM queue summary"
 }

@@ -282,7 +282,7 @@ from tabulate import tabulate
 
 command_metadata = {
         "short" : "om",
-        "expected_argument_count" : 0,
+        "expected_argument_count" : [ 0 ],
         "arguments" : "",
         "description" : "Draws a mini map of the current epoch"
     }

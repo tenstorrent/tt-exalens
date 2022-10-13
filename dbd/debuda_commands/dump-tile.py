@@ -9,9 +9,9 @@ import tt_netlist
 command_metadata = {
     "short" : "t",
     "type" : "high-level",
-    "expected_argument_count" : 2,
-    "arguments" : "tile_id, raw",
-    "description" : "Prints tile for the current stream in the currently active phase. If raw=1, prints raw bytes."
+    "expected_argument_count" : [ 2 ],
+    "arguments" : "tile_id raw",
+    "description" : "Prints tile for the current stream in the currently active phase. If raw=1, it prints raw bytes."
 }
 
 # converts data format to string

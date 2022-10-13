@@ -3,7 +3,7 @@
 command_metadata = {
     "short" : "g",
     "type" : "high-level",
-    "expected_argument_count" : 1,
+    "expected_argument_count" : [ 1 ],
     "arguments" : "graph_name",
     "description" : "Changes the current active graph."
 }

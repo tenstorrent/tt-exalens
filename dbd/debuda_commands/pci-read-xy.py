@@ -3,7 +3,7 @@
 command_metadata = {
     "short" : "rxy",
     "type" : "low-level",
-    "expected_argument_count" : 3,
+    "expected_argument_count" : [ 3 ],
     "arguments" : "x y addr",
     "description" : "Reads data word from address 'addr' at noc0 location x-y of the current chip."
 }

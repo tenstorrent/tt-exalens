@@ -4,7 +4,7 @@ command_metadata = {
     "long" : "pipe",
     "short" : "p",
     "type" : "high-level",
-    "expected_argument_count" : 1,
+    "expected_argument_count" : [ 1 ],
     "arguments" : "pipe_id",
     "description" : "Prints details on the pipe with ID 'pipe_id'."
 }

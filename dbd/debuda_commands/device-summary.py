@@ -1,5 +1,8 @@
+"""Prints a graphical representation of a given device.
+"""
 command_metadata = {
     "short" : "d",
+    "long" : "device",
     "type" : "high-level",
     "expected_argument_count" : [0, 1],
     "arguments" : "device_id",
@@ -14,7 +17,7 @@ def run(args, context, ui_state = None):
     if len(args) == 2:
         device_id = int(args[1])
         if device_id not in context.devices:
-            util.ERROR (f"Invalid device id '{device_id}'")
+            util.ERROR (f"Invalid device ID '{device_id}'. Valid devices IDs: %s" % [ d for d in context.devices ])
             return []
         devices_list = [ device_id ]
     else:

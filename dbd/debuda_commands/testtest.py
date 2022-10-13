@@ -1,12 +1,11 @@
-"""Internal test only
+"""This is the __doc__ of module testtest
 """
 from tabulate import tabulate
 
 command_metadata = {
     "short" : "tt",
     "type" : "dev",
-    "expected_argument_count" : 0,
-    "arguments" : "",
+    "expected_argument_count" : [ 0 ],    "arguments" : "",
     "description" : "Internal test"
 }
 

@@ -6,8 +6,7 @@ import tt_device
 command_metadata = {
     "short" : "st",
     "type" : "dev",
-    "expected_argument_count" : 0,
-    "arguments" : "",
+    "expected_argument_count" : [ 0 ],    "arguments" : "",
     "description" : "Tests Debuda internals."
 }
 

@@ -4,7 +4,7 @@ command_metadata = {
     "long" : "buffer",
     "short" : "b",
     "type" : "high-level",
-    "expected_argument_count" : 1,
+    "expected_argument_count" : [ 1 ],
     "arguments" : "buffer_id_or_op_name",
     "description" : "Prints details on the buffer with a given id, or buffer(s) mapped to a given operation."
 }

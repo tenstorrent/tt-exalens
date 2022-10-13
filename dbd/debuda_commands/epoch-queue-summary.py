@@ -7,7 +7,7 @@ command_metadata = {
     "long" : "epoch-queue",
     "type" : "dev",
     "short" : "eq",
-    "expected_argument_count" : 0,
+    "expected_argument_count" : [ 0 ],
     "arguments" : "",
     "description" : "Prints Epoch queue summary"
 }

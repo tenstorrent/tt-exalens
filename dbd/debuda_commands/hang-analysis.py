@@ -7,8 +7,7 @@ import tt_device
 command_metadata = {
     "short" : "ha",
     "type" : "high-level",
-    "expected_argument_count" : 0,
-    "arguments" : "",
+    "expected_argument_count" : [ 0 ],    "arguments" : "",
     "description" : "Prints a summary of all operations in the netlist."
 }
 

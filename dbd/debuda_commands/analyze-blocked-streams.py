@@ -6,7 +6,7 @@ import tt_stream, tt_netlist, tt_util as util
 
 command_metadata = {
         "short" : "abs",
-        "type" : "high-level",
+        "type" : "dev",
         "expected_argument_count" : [0, 1],
         "arguments" : "verbosity [0-1]",
         "description" : "Reads stream information from the devices and highlights blocked streams (if verbosity is 1, print more detail)."
@@ -158,8 +158,6 @@ def run(args, context, ui_state = None):
                                 'cmd' : f"s {block_loc[0]} {block_loc[1]} {stream_id}",
                                 'loc' : block_loc
                             })
-
-
 
         # 4. Print any issues
         if len (issues_sets["bad_stream"]) > 0:

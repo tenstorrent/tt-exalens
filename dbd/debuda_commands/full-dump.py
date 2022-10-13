@@ -1,7 +1,7 @@
 command_metadata = {
     "short" : "fd",
     "type" : "low-level",
-    "expected_argument_count" : 0,
+    "expected_argument_count" : [ 0 ],
     "arguments" : "",
     "description" : "Performs a full stream dump at current x-y location."
 }

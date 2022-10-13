@@ -3,7 +3,7 @@
 command_metadata = {
     "short" : "pcir",
     "type" : "low-level",
-    "expected_argument_count" : 1,
+    "expected_argument_count" : [ 1 ],
     "arguments" : "addr",
     "description" : "Reads data from PCI BAR at address 'addr'"
 }

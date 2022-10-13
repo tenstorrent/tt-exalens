@@ -3,7 +3,7 @@
 command_metadata = {
     "short" : "wxy",
     "type" : "low-level",
-    "expected_argument_count" : 4,
+    "expected_argument_count" : [ 4 ],
     "arguments" : "x y addr value",
     "description" : "Writes word 'value' to address 'addr' at noc0 location x-y of the current chip."
 }

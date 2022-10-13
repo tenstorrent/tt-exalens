@@ -1,6 +1,12 @@
 For developers
 ==============
 
+Smoke test
+----------
+
+Run a very basic test of debuda with: ``dbd/test/test-debuda-py.sh``. This test will run a simple
+netlist and start debuda.py.
+
 
 Low Level Debug
 ---------------
@@ -15,6 +21,7 @@ Low level messages (debug and trace) are printed in debuda-server source code wi
 Make sure all relevant source code is compiled with ``CONFIG=Debug`` in the environment to enable
 trace and debug messages.
 When running debuda-server, add ``LOGGER_LEVEL=Trace`` or ``LOGGER_LEVEL=Debug`` to enable the messasges.
+
 
 Visual Studio Code
 ------------------

@@ -2,6 +2,7 @@
 """
 debuda parses the build output files and probes the silicon to determine status of a buda run.
 """
+from multiprocessing.dummy import Array
 import sys, os, argparse, time, traceback, fnmatch, importlib, zipfile
 from tabulate import tabulate
 from tt_object import DataArray
@@ -12,12 +13,12 @@ from tt_graph import Queue
 
 def get_parser ():
     parser = argparse.ArgumentParser(description=__doc__ + tt_device.STUB_HELP)
-    parser.add_argument('output_dir', type=str, nargs='?', default=None, help='Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used')
-    parser.add_argument('--netlist',  type=str, required=False, default=None, help='Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used')
-    parser.add_argument('--commands', type=str, required=False, help='Execute a set of commands separated by ;')
+    parser.add_argument('output_dir', type=str, nargs='?', default=None, help='Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used, and the netlist file will be inferred from the runtime_data.yaml file.')
+    parser.add_argument('--netlist',  type=str, required=False, default=None, help='Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used.')
+    parser.add_argument('--commands', type=str, required=False, help='Execute a list commands (semicolon-separated).')
     parser.add_argument('--server-cache', type=str, default='off', help=f'Directs communication with Debuda Server. When "off", all device reads are done through the server. When set to "through", attempt to read from cache first. When "on", all reads are from cache only.')
     parser.add_argument('--verbose', action='store_true', default=False, help=f'Prints additional information.')
-    parser.add_argument('--debuda-server-address', type=str, default="localhost:5555", required=False, help='IP address of debuda server (e.g. remote.server.com:5555);')
+    parser.add_argument('--debuda-server-address', type=str, default="localhost:5555", required=False, help='IP address of debuda server (e.g. remote.server.com:5555).')
     return parser
 
 ### BUILT-IN COMMANDS
@@ -28,7 +29,9 @@ def format_commands (commands, type):
         if c['type'] == type:
             arguments = c['arguments']
             description = c['description']
-            row = [ f"{util.CLR_INFO}{c['short']}{util.CLR_END}", f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{arguments}", f"{description}" ]
+            eac = c['expected_argument_count']
+            expected_argument_count = "/".join ([ str(a) for a in eac ])
+            row = [ f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{c['short']}", f"{expected_argument_count}", f"{arguments}", f"{description}" ]
             rows.append(row)
     return rows
 
@@ -38,7 +41,7 @@ def print_help (commands):
     rows += format_commands (commands, 'housekeeping')
     rows += format_commands (commands, 'low-level')
     rows += format_commands (commands, 'high-level')
-    print (tabulate(rows, tablefmt='plain'))
+    print (tabulate(rows, headers=["Long Form", "Short", "Arg count", "Arguments", "Description"]))
     # format_commands (commands, 'dev', "Development")
 
 # Certain commands give suggestions for next step. This function formats and prints those suggestions.
@@ -114,17 +117,14 @@ def main(args, context):
                     if c["short"] == cmd_string or c["long"] == cmd_string:
                         found_command = c
                         # Check arguments
-                        if type(found_command["expected_argument_count"]) == list:
-                            valid_arg_count_list = found_command["expected_argument_count"]
-                        else:
-                            valid_arg_count_list = [ found_command["expected_argument_count"] ]
+                        valid_arg_count_list = found_command["expected_argument_count"]
 
                         if len(cmd)-1 not in valid_arg_count_list:
                             if len(valid_arg_count_list) == 1:
                                 expected_args = valid_arg_count_list[0]
-                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires {expected_args} argument{'s' if expected_args != 1 else ''}: {found_command['arguments']} - {found_command['description']}{util.CLR_END}")
+                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires {expected_args} argument{'s' if expected_args != 1 else ''}: {found_command['arguments']}")
                             else:
-                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires one of {valid_arg_count_list} arguments: {found_command['arguments']} - {found_command['description']}{util.CLR_END}")
+                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires one of {valid_arg_count_list} arguments: {found_command['arguments']}")
                             found_command = 'invalid-args'
                         break
 
@@ -148,6 +148,7 @@ def main(args, context):
                         navigation_suggestions = found_command["module"].run(cmd, context, ui_state)
 
         except Exception as e:
+            raise e
             if have_non_interactive_commands:
                 raise
             else:
@@ -164,19 +165,19 @@ def import_commands (reload = False):
           "type" : "housekeeping",
           "expected_argument_count" : [ 0, 1 ],
           "arguments" : "exit_code",
-          "description" : "Exits the program. If an argument is supplied, it will be used as the exit code."
+          "description" : "Exits the program. The optional argument represents the exit code. Defaults to 0."
         },
         { "long" : "help",
           "short" : "h",
           "type" : "housekeeping",
-          "expected_argument_count" : 0,
+          "expected_argument_count" : [ 0 ],
           "arguments" : "",
           "description" : "Prints documentation."
         },
         { "long" : "reload",
           "short" : "rl",
           "type" : "housekeeping",
-          "expected_argument_count" : 0,
+          "expected_argument_count" : [ 0 ],
           "arguments" : "",
           "description" : "Reloads files in debuda_commands directory."
         },
@@ -255,7 +256,7 @@ def load_context (netlist_filepath, run_dirpath):
 
     return context
 
-### START
+
 if __name__ == '__main__':
     parser=get_parser()
     args = parser.parse_args()

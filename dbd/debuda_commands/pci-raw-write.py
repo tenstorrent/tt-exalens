@@ -3,7 +3,7 @@
 command_metadata = {
     "short" : "pciw",
     "type" : "low-level",
-    "expected_argument_count" : 2,
+    "expected_argument_count" : [ 2 ],
     "arguments" : "addr data",
     "description" : "Writes 'data' word to PCI BAR at address 'addr'"
 }

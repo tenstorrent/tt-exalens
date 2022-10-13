@@ -1,7 +1,8 @@
 command_metadata = {
     "short" : "s",
+    "long" : "stream",
     "type" : "low-level",
-    "expected_argument_count" : 3,
+    "expected_argument_count" : [ 3 ],
     "arguments" : "x y stream_id",
     "description" : "Shows stream 'stream_id' at core 'x-y'"
 }
@@ -52,8 +53,10 @@ def run(args, context, ui_state = None):
         buf_id = stream_from_blob.get ("buf_id", None)
         if buf_id is not None:
             buffer_ids.add (buf_id)
+    elif len(stream_set) == 0:
+        util.WARN (f"Cannot find stream {stream_loc} in blob data of graph {graph.id()}")
     else:
-        util.WARN (f"Cannot find stream {stream_loc} in blob data of graph {graph.id()}, or multiple streams found")
+        util.WARN (f"Multiple streams found at {stream_loc} in blob data of graph {graph.id()}")
 
     # 2. Append buffers
     buffers = graph.get_buffers (buffer_ids)

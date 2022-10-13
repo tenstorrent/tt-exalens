@@ -3,8 +3,9 @@ import tt_util as util
 
 command_metadata = {
     "short" : "srs",
+    "long" : "status-register",
     "type" : "low-level",
-    "expected_argument_count" : 1,
+    "expected_argument_count" : [ 1 ],
     "arguments" : "verbosity",
     "description" : "Prints brisc and ncrisc status registers. Verbosity can be 0, 1 or 2."
 }
