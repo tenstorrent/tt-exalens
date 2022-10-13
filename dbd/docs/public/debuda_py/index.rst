@@ -11,10 +11,12 @@ It can operate in three distinct modes:
 
 1. Built-in Buda server: while Buda is still running
 
+   To enable, run Buda with the following environment variable set: ``TT_DEBUG_SERVER_PORT=5555``.
+
 .. image:: ../../images/debuda-buda.png
    :width: 500
 
-2. Standalone server: useful when Buda crashes, but chip is available
+2. Standalone server: useful when Buda terminates unexpectedly
 
 .. image:: ../../images/debuda-debuda-server.png
    :width: 500

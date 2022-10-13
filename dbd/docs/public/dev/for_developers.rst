@@ -16,16 +16,23 @@ Make sure all relevant source code is compiled with ``CONFIG=Debug`` in the envi
 trace and debug messages.
 When running debuda-server, add ``LOGGER_LEVEL=Trace`` or ``LOGGER_LEVEL=Debug`` to enable the messasges.
 
+Visual Studio Code
+------------------
+
+Debuda comes with specific debug targets for VS Code. These are configured in ``dbd/launch.json``. You
+need add the ``dbd`` folder to workspace to make them available.
+
+
 
 Classes
 -------
 
-autoclass:: tt_graph.Graph
+Result of ``autoclass:: tt_graph.Graph``
 
 .. autoclass:: tt_graph.Graph
     :members:
 
-automodule:: debuda_commands.testtest
+Result of ``automodule:: debuda_commands.testtest``
 
 .. automodule:: debuda_commands.testtest
     :members:
