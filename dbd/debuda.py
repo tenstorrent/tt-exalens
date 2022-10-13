@@ -203,21 +203,18 @@ def import_commands (reload = False):
         # Make the module name the default 'long' invocation string
         if "long" not in command_metadata:
             command_metadata["long"] = cmd_module.__name__
-        util.VERBOSE (f"Importing command '{cmd_module.__name__}'")
+        util.VERBOSE (f"Importing command {command_metadata['long']} from '{cmd_module.__name__}'")
 
         if reload:
-            for i, c in enumerate(commands):
-                if c["long"] == command_metadata["long"]:
-                    commands[i] = command_metadata
-                    importlib.reload(cmd_module)
-        else:
-            # Check command names/shortcut overlap (only when not reloading)
-            for cmd in commands:
-                if cmd["long"] == command_metadata["long"]:
-                    util.FATAL (f"Command {cmd['long']} already exists")
-                if cmd["short"] == command_metadata["short"]:
-                    util.FATAL (f"Commands {cmd['long']} and {command_metadata['long']} use the same shortcut: {cmd['short']}")
-            commands.append (command_metadata)
+            importlib.reload(cmd_module)
+
+        # Check command names/shortcut overlap (only when not reloading)
+        for cmd in commands:
+            if cmd["long"] == command_metadata["long"]:
+                util.FATAL (f"Command {cmd['long']} already exists")
+            if cmd["short"] == command_metadata["short"]:
+                util.FATAL (f"Commands {cmd['long']} and {command_metadata['long']} use the same shortcut: {cmd['short']}")
+        commands.append (command_metadata)
     return commands
 
 def locate_output_dir ():
