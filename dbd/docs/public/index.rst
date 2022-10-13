@@ -14,6 +14,6 @@ DeBuda is a suite of debugging tools for Buda.
    examples
    terminology
    debuda_py/index
-   dev/classes
+   dev/for_developers
 
 .. |tm|   unicode:: U+02122 .. TM SIGN
