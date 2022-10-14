@@ -3,10 +3,6 @@ Terminology
 
 .. glossary::
 
-  Grayskull
-    First-generation Tenstorrent chip
-
-  Wormhole
-    Second-generation Tenstorrent chip
-
+  Server Cache
+    Data communicated with silicon and cached for offline use.
 

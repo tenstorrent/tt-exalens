@@ -1,3 +1,5 @@
+"""UNDER DEVELOPMENT
+"""
 command_metadata = {
     "short" : "c",
     "long" : "core",

@@ -21,8 +21,7 @@ def get_parser ():
     parser.add_argument('--debuda-server-address', type=str, default="localhost:5555", required=False, help='IP address of debuda server (e.g. remote.server.com:5555).')
     return parser
 
-### BUILT-IN COMMANDS
-
+# Creates rows for tabulate for all commands of a given type
 def format_commands (commands, type):
     rows = []
     for c in commands:
@@ -279,6 +278,8 @@ if __name__ == '__main__':
     context = load_context (netlist_filepath = args.netlist, run_dirpath=args.output_dir)
     args.path_to_runtime_yaml = context.netlist.runtime_data_yaml.filepath
     context.server_ifc = server_ifc
+    context.args = args
+    context.debuda_path = __file__
 
     # Main function
     exit_code = main(args, context)

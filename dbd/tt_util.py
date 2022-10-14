@@ -187,9 +187,17 @@ class YamlFile:
 
 DEFAULT_EXPORT_FILENAME='debuda-export.zip'
 
+# Removes a prefix from a string
+def remove_prefix(text, prefix):
+    if prefix and text.startswith(prefix):
+        return text[len(prefix):]
+    return text
+
 # Exports filelist to a zip file
-def export_to_zip(filelist, out_file=DEFAULT_EXPORT_FILENAME):
-    if out_file is None: out_file=DEFAULT_EXPORT_FILENAME
+def export_to_zip(filelist, out_file=DEFAULT_EXPORT_FILENAME, prefix_to_remove=None):
+    if out_file is None:
+        out_file=DEFAULT_EXPORT_FILENAME
+
     if os.path.exists (out_file):
         WARN (f"Warning: cannot export as the output file already exists: {out_file}")
         return False
@@ -197,7 +205,7 @@ def export_to_zip(filelist, out_file=DEFAULT_EXPORT_FILENAME):
     zf = zipfile.ZipFile(out_file, "w", zipfile.ZIP_DEFLATED)
 
     for filepath in filelist:
-        zf.write(filepath, filepath)
+        zf.write(filepath, arcname=remove_prefix(filepath, prefix_to_remove))
 
     return True
 
