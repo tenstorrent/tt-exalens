@@ -24,7 +24,6 @@ def notify_exception(exc_type, exc_value, tb):
         if indent < 10:
             indent+=1
     rows.append ([ f"{CLR_RED}{fn}:{line_number}{CLR_END}", f"{CLR_RED}{func_name}{CLR_END}", f"{CLR_RED}{exc_type.__name__}: {exc_value}{CLR_END}"])
-
     print (tabulate(rows))
 
 # Replace the exception hook to print a nicer output
@@ -63,6 +62,10 @@ CLR_INFO = CLR_BLUE
 CLR_PROMPT = "<style color='green'>"
 CLR_PROMPT_END = "</style>"
 
+# We create a fatal exception that must terminate the program
+# All other exceptions might get caught and the program might continue
+class TTFatalException (Exception):
+    pass
 
 # Colorized messages
 def NULL_PRINT(s):
@@ -77,7 +80,7 @@ def ERROR(s):
     print (f"{CLR_ERR}{s}{CLR_END}")
 def FATAL(s):
     ERROR (s)
-    sys.exit (1)
+    raise TTFatalException(s)
 
 # Given a list l of possibly shuffled integers from 0 to len(l), the function returns reverse mapping
 def reverse_mapping_list(l):

@@ -148,11 +148,12 @@ def main(args, context):
                         navigation_suggestions = found_command["module"].run(cmd, context, ui_state)
 
         except Exception as e:
-            raise e
-            if have_non_interactive_commands:
+            if have_non_interactive_commands or type(e) == util.TTFatalException:
+                # In non-interactive mode and on fatal excepions, we re-raise to exit the program
                 raise
             else:
-                util.notify_exception (type(e), e, e.__traceback__) # Print the exception
+                # Otherwise, we print the call stack, but continue the REPL
+                util.notify_exception (type(e), e, e.__traceback__)
     return 0
 
 # Import 'plugin' commands from debuda_commands directory
@@ -176,7 +177,7 @@ def import_commands (reload = False):
         },
         { "long" : "reload",
           "short" : "rl",
-          "type" : "housekeeping",
+          "type" : "dev",
           "expected_argument_count" : [ 0 ],
           "arguments" : "",
           "description" : "Reloads files in debuda_commands directory."
