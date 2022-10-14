@@ -153,9 +153,10 @@ class YamlFile:
 
     def __init__ (self, filepath):
         self.filepath = filepath
+        YamlFile.file_cache[self.filepath] = None # Not loaded yet
 
     def load (self):
-        if self.filepath in YamlFile.file_cache:
+        if self.filepath in YamlFile.file_cache and YamlFile.file_cache[self.filepath]:
             self.root = YamlFile.file_cache[self.filepath]
         else:
             INFO (f"Loading '{os.getcwd()}/{self.filepath}'")
