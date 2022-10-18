@@ -7,6 +7,11 @@ Smoke test
 Run a very basic test of debuda with: ``dbd/test/test-debuda-py.sh``. This test will run a simple
 netlist and start debuda.py.
 
+Offline tests
+-------------
+
+Offline tests are stored in ``dbd/test/exported-runs``. They are in binary form. Run the following command
+to extract them: ``dbd/test/exported-runs/unpack.sh``
 
 Low Level Debug
 ---------------
