@@ -11,7 +11,11 @@ Offline tests
 -------------
 
 Offline tests are stored in ``dbd/test/exported-runs``. They are in binary form. Run the following command
-to extract them: ``dbd/test/exported-runs/unpack.sh``
+to extract them: ``dbd/test/exported-runs/unpack.sh``. 
+
+After unzipping, you should go into the test directory
+and start debuda.py from there. E.g.:
+``cd test/exported-runs/simple-matmul-no-hangs && ../../../debuda.py --server-cache on``
 
 Low Level Debug
 ---------------
