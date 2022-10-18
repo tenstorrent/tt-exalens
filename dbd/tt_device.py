@@ -140,7 +140,8 @@ class DEBUDA_SERVER_SOCKET_IFC:
         assert data == ret_val
         return ret_val
     def get_runtime_data(): # GET_RUNTIME_DATA
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
+        if not DEBUDA_SERVER_SOCKET_IFC.enabled:
+            return None # If there is no connection, return empty runtime_data
         zero = 0
         ZMQ_SOCKET.send(struct.pack ("ccccc", b'\x08', zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big')))
         s = ZMQ_SOCKET.recv()

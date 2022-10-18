@@ -272,7 +272,7 @@ if __name__ == '__main__':
 
     # Try to connect to the server
     server_ifc = tt_device.init_server_communication(args)
-    runtime_data = server_ifc.get_runtime_data()
+    server_ifc.runtime_data = server_ifc.get_runtime_data()
 
     # Create the context
     context = load_context (netlist_filepath = args.netlist, run_dirpath=args.output_dir)

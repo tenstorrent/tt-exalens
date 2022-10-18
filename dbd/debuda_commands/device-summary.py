@@ -12,7 +12,7 @@ command_metadata = {
 import tt_util as util
 
 def run(args, context, ui_state = None):
-    runtime_data = context.server_ifc.get_runtime_data().root
+    runtime_data = context.server_ifc.get_runtime_data()
 
     if len(args) == 2:
         device_id = int(args[1])
@@ -25,7 +25,8 @@ def run(args, context, ui_state = None):
 
     for device_id in devices_list:
         device = context.devices[device_id]
-        util.INFO (f"==== Device {device.id()} {'(MMIO)' if device.id() in runtime_data['chips_with_mmio'] else ''}")
+        is_mmio_device = runtime_data and device.id() in runtime_data.root['chips_with_mmio']
+        util.INFO (f"==== Device {device.id()} {'(MMIO)' if is_mmio_device else ''}")
 
         configured_streams = util.set()
         for loc in device.get_block_locations (block_type = "functional_workers"):
