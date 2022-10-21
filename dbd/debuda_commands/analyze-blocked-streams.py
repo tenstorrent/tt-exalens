@@ -122,7 +122,7 @@ def run(args, context, ui_state = None):
                     stream_loc = block_loc + (stream_id,)
                     current_phase = int(all_stream_regs[stream_loc]['CURR_PHASE'])
                     if current_phase > 0:
-                        epoch_id = current_phase>>10
+                        epoch_id = current_phase>>15
                         stream_type_str = device.stream_type(stream_id)["short"]
                         stream_active = device.is_stream_active(all_stream_regs[stream_loc])
                         NUM_MSGS_RECEIVED = int(all_stream_regs[stream_loc]['NUM_MSGS_RECEIVED'])

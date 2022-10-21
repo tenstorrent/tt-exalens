@@ -31,7 +31,7 @@ def run(args, context, ui_state = None):
 
     regs = current_device.read_stream_regs ((noc0_loc), stream_id)
     stream_regs = tt_stream.convert_reg_dict_to_strings(current_device, regs)
-    stream_epoch_id = regs["CURR_PHASE"] >> 10
+    stream_epoch_id = regs["CURR_PHASE"] >> 15
     new_current_epoch_id = stream_epoch_id
 
     all_stream_summary, navigation_suggestions = tt_stream.get_core_stream_summary (current_device, noc0_loc)

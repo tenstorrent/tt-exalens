@@ -567,7 +567,7 @@ class Device(TTObject):
         return self.get_stream_reg_field(noc0_loc, stream_id, 11, 0, 20)
 
     def get_epoch_id(self, noc0_loc, stream_id):
-        return self.get_stream_phase(noc0_loc, stream_id) >> 10
+        return self.get_stream_phase(noc0_loc, stream_id) >> 15
 
     # Returns whether the stream is configured
     def is_stream_configured(self, stream_data):
@@ -664,7 +664,7 @@ class Device(TTObject):
             return (self.noc1_to_noc0 (noc_loc))
 
     def stream_epoch (self, stream_regs):
-        return int(stream_regs['CURR_PHASE']) >> 10
+        return int(stream_regs['CURR_PHASE']) >> 15
 
     def pci_read_xy(self, x, y, noc_id, reg_addr):
         return SERVER_IFC.pci_read_xy(self.id(), x, y, noc_id, reg_addr)
