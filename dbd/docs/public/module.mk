@@ -18,9 +18,9 @@ $(DBD_DOCS_PUBLIC_DIR): $(DBD_DOCS_PUBLIC_BUILD_SCRIPT) $(DBD_DOCS_PUBLIC_SRCS)
 	$(PRINT_OK)
 
 .PHONY: $(DBD_DOCS_PUBLIC_DIR)/publish
-$(DBD_DOCS_PUBLIC_DIR)/publish: $(DBD_DOCS_PUBLIC_DIR)
+$(DBD_DOCS_PUBLIC_DIR)/publish:
 	$(PRINT_TARGET)
-	rsync -e "ssh -i $(HOME)/.ssh/id_rsa_webservices" --delete -avz  $(DBD_DOCS_PUBLIC_DIR)/html/ yyz-webservice-02:/var/www/html/docs/debuda-docs
+	rsync -e "ssh -i $(HOME)/.ssh/id_rsa_webservices" --delete -avz  $(DBD_DOCS_PUBLIC_DIR)/build/html/ yyz-webservice-02:/var/www/html/docs/debuda-docs
 	$(PRINT_OK)
 
 .PHONY: $(DBD_DOCS_PUBLIC_DIR)/clean
