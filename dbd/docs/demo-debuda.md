@@ -1,3 +1,5 @@
+# Debuda.py Demo
+
 ## Install graph-easy (optional)
 
 Graph-Easy is a Perl-based program that renders .dot graphs in ASCII.
@@ -59,7 +61,7 @@ Rerun the test_op, and you should see a hang:
 ```
 Use ctrl-c to exit.
 
-# Debugging
+## Debugging
 
 Start Debuda:
 ```
@@ -261,9 +263,9 @@ DBG[6]   0x0000  DBG[6]   0x0000  DBG[6]   0x0000  DBG[6]   0x0000
 ```
 
 
-# Scripting
+## Scripting
 
-## Simple scripting with --commands argument
+### Simple scripting with --commands argument
 
 When debuda encounters `--command` argument it will treat it as a semicolon-separated list of commands to run.
 If the last command is `exit`, Debuda will terminate. For example:
@@ -272,7 +274,7 @@ dbd/debuda.py --commands "cdr 3 3; exit"
 ```
 
 
-## Commands/ folder
+### Commands/ folder
 
 A python file placed into commands/ folder becomes a command available to Debuda.
 
@@ -288,7 +290,7 @@ command_metadata = {
     }
 ```
 Then define function run(). This example shows the `op-map` command:
-```c++
+```python
 def run(args, context, ui_state = None):
     navigation_suggestions = []
 
@@ -307,4 +309,4 @@ def run(args, context, ui_state = None):
     print (tabulate(rows, headers = [ "Op", "Op type", "Epoch", "Device", "Grid Loc", "NOC0 Loc", "Grid Size" ]))
 
     return navigation_suggestions
-    ```
+```

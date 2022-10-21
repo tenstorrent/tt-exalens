@@ -32,7 +32,7 @@ If possible, you can tapout all operations in one run. Here is an example.
 dbd/tapout_sweep.py --test_command "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --silicon --arch grayskull" --out_dir "output" --one_run
 ```
 
-# Debuda abs/streams/tiles
+## Debuda abs/streams/tiles
 
 ```
 build/test/verif/op_tests/test_op --netlist verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml --seed 0 --silicon --timeout 500  --debug
@@ -344,8 +344,9 @@ t 1 0
 ```
 
 
-# Commands used in Demo
-```dbd/tapout_sweep.py --test_command "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --silicon --arch grayskull" --out_dir "output"
+## Commands used in Demo
+```
+dbd/tapout_sweep.py --test_command "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --silicon --arch grayskull" --out_dir "output"
 dbd/tapout_sweep.py --test_command "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --silicon --arch grayskull" --out_dir "output" --one_run
 
 build/test/verif/op_tests/test_op --netlist verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml --seed 0 --silicon --timeout 500  --debug

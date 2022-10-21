@@ -27,7 +27,7 @@ master_doc = 'index'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinxarg.ext', 'sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'sphinx.ext.autosummary', 'sphinx.ext.autosectionlabel']
+extensions = ['myst_parser', 'sphinxarg.ext', 'sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'sphinx.ext.autosummary', 'sphinx.ext.autosectionlabel']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -55,6 +55,12 @@ html_static_path = ['_static']
 
 autodoc_member_order = 'bysource'
 add_module_names = False
+
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.txt': 'markdown',
+    '.md': 'markdown',
+}
 
 import debuda
 
@@ -85,7 +91,7 @@ def render_commands_of_type (f, ct, ct_name, command_list):
             under = replicate(len(cname)+5, '"')
             f.write (f"{under}\n\n")
             args = f"{c['arguments']}" if c['arguments'] else "No arguments"
-            f.write (f"Arguments **{args}:** {c['description']}\n\n")
+            f.write (f"Arguments: **{args}**\n\n{c['description']}\n\n")
             if 'module' in c:
                 f.write (f"{c['module'].__doc__}\n\n")
 

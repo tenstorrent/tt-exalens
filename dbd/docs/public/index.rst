@@ -1,5 +1,5 @@
-Introduction to DeBuda
-======================
+Introduction
+============
 
 DeBuda is a suite of debugging tools for Buda.
 
@@ -10,10 +10,10 @@ DeBuda is a suite of debugging tools for Buda.
    :maxdepth: 3
    :caption: Table of Contents
 
-   user_guide
-   examples
-   terminology
    debuda_py/index
+   debuda_py/demo-debuda
+   tapout/demo-tapout
    dev/for_developers
+   terminology
 
 .. |tm|   unicode:: U+02122 .. TM SIGN

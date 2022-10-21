@@ -1,7 +1,9 @@
 # Build the docs from root directory with: make dbd/docs/public
 # Publish them to http://yyz-webservice-02.local.tenstorrent.com/docs/debuda-docs/ with: make dbd/docs/public/publish
 DBD_DOCS_PUBLIC_DIR = dbd/docs/public
-DBD_DOCS_PUBLIC_SRCS = $(shell find $(DBD_DOCS_PUBLIC_DIR) -type f -name '*.rst')
+DBD_DOCS_PUBLIC_SRCS_RST = $(shell find $(DBD_DOCS_PUBLIC_DIR) -type f -name '*.rst')
+DBD_DOCS_PUBLIC_SRCS_MD = $(shell find $(DBD_DOCS_PUBLIC_DIR) -type f -name '*.md')
+DBD_DOCS_PUBLIC_SRCS=$(DBD_DOCS_PUBLIC_SRCS_RST) $(DBD_DOCS_PUBLIC_SRCS_MD)
 DBD_DOCS_PUBLIC_SPHINX_BUILDER = html
 DBD_DOCS_PUBLIC_BUILD_SCRIPT = $(DBD_DOCS_PUBLIC_DIR)/build.sh
 
