@@ -1,5 +1,5 @@
 """The result of the *export* command is similar to a 'core dump' in a conventional program.
-It allows one to run the debugger offline.
+It allows one to run the debugger (debuda.py) offline.
 
 The exported file is a zip file containing all relevant yaml files, server cache and command history.
 
@@ -13,7 +13,7 @@ command_metadata = {
     "type" : "dev", # Not yet production ready. TODO: make sure all the files are properly exported
     "expected_argument_count" : [ 0, 1 ],
     "arguments" : "filename",
-    "description" : f"Exports a zip package for offline work. The optional argument represents the file name. Defaults to '{ util.DEFAULT_EXPORT_FILENAME }'"
+    "description" : f"Exports a zip package for offline work. The filename argument is optional. It defaults to '{ util.DEFAULT_EXPORT_FILENAME }'"
 }
 
 import tt_device

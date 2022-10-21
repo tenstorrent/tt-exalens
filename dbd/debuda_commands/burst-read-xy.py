@@ -6,7 +6,7 @@ command_metadata = {
     "type" : "low-level",
     "expected_argument_count" : [4,5],
     "arguments" : "x y addr burst_type format",
-    "description" : "Reads data from address 'addr' at noc0 location x-y of the chip associated with current epoch. Available formats: i8, i16, i32, hex8, hex16, hex32."
+    "description" : "Reads data from address 'addr' at noc0 location x-y of the chip associated with currently selected graph. Available formats: i8, i16, i32, hex8, hex16, hex32."
 }
 
 import tt_util as util
