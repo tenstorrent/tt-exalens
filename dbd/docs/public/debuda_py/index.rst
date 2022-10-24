@@ -26,6 +26,16 @@ It can operate in three distinct modes:
 .. image:: ../../images/debuda-export-db.png
    :width: 600
 
+Tutorial
+--------
+
+For a quick tutorial, see the following:
+
+.. toctree::
+   :maxdepth: 2
+
+   demo-debuda
+
 Invocation (CLI arguments)
 --------------------------
 

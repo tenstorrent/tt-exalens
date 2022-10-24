@@ -1,4 +1,4 @@
-# Debuda.py Demo
+# Debuda.py Tutorial
 
 ## Install graph-easy (optional)
 

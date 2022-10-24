@@ -4,5 +4,5 @@ Terminology
 .. glossary::
 
   Server Cache
-    Data read from silicon and cached for offline use.
+    Data previously read from silicon and cached for offline use.
 

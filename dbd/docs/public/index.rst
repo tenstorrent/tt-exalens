@@ -11,7 +11,6 @@ DeBuda is a suite of debugging tools for Buda.
    :caption: Table of Contents
 
    debuda_py/index
-   debuda_py/demo-debuda
    tapout/demo-tapout
    dev/for_developers
    terminology
