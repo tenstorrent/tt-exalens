@@ -128,8 +128,10 @@ def run(args, context, ui_state = None):
                         NUM_MSGS_RECEIVED = int(all_stream_regs[stream_loc]['NUM_MSGS_RECEIVED'])
                         CURR_PHASE_NUM_MSGS_REMAINING = int(all_stream_regs[stream_loc]['CURR_PHASE_NUM_MSGS_REMAINING'])
 
-                        op=f"Unknown opoch_id {epoch_id}"
                         graph = netlist.graph_by_epoch_and_device(epoch_id, device_id)
+                        if not graph:
+                            util.WARN (f"No graph for epoch {epoch_id} on core RC {rc_loc}, device {device_id}, stream {stream_id}.")
+                            continue
                         op = graph.core_coord_to_full_op_name(rc_loc)
                         core_loc = f"{util.noc_loc_str(block_loc)}"
                         fan_in_cores = device_data[device_id]['cores'][block_loc]['fan_in_cores']
