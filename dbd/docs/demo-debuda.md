@@ -1,8 +1,14 @@
 # Debuda.py Tutorial
 
+This short tutorial shows basics of Debuda.py debugging tool. You will introduce a hang by modifying a kernel
+source code, and then use Debuda.py to determine the location of the hang. You will also examine some commonly-used
+commands of Debuda.py.
+
 ## Install graph-easy (optional)
 
-Graph-Easy is a Perl-based program that renders .dot graphs in ASCII.
+Graph-Easy is a Perl-based program that renders .dot graphs in ASCII. In this tutorial, we only use it to show
+a graphical representation of the netlist graph.
+
 ```
 sudo apt install cpanminus
 sudo cpanm Graph::Easy
