@@ -1,3 +1,24 @@
+"""Traverses all devices looking for the point of failure in the netlist execution. The traversal is
+done in topological order with the intention of finding the first problematic core/stream.
+
+.. code-block::
+   :caption: Example
+
+        Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > ha
+        Analyzing device 0
+        Reading epochs for locations
+            Analyzing graph test_op ( epoch 0 )
+        Device ID    Epoch ID    Graph Name    Source    Destination    Hang Reason        Stream      Additional Stream Info
+        -----------  ----------  ------------  --------  -------------  -----------------  ----------  --------------------------------------------------------------------
+        0            0           test_op       recip:Op  matmul2:Op     Data not received  (3, 3, 24)  {'phase': 1, 'msg_received': 0, 'msg_reamining': 32, 'source': True}
+                                                                        Data not received  (5, 3, 9)   {'phase': 1, 'msg_received': 0, 'msg_reamining': 32, 'dest': True}
+        Speed dial:
+        #  Description              Command
+        ---  -----------------------  ---------
+        0  Go to stream (3, 3, 24)  s 3 3 24
+        1  Go to stream (5, 3, 9)   s 5 3 9
+
+"""
 from tabulate import tabulate
 from dbd.tt_object import TTObjectSet
 import tt_util as util
@@ -11,7 +32,7 @@ command_metadata = {
     "description" : "Prints a summary of all operations in the netlist."
 }
 
-# checks wheter queue has data
+# Checks whether the queue has data
 def queue_has_data(device, q:Queue):
     if not q.is_host() and not q.is_dram():
         util.WARN(f'Unknown memory location: {q.get_loc()}')

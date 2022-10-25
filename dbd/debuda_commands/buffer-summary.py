@@ -1,12 +1,29 @@
+"""
+.. code-block::
+   :caption: Example
+
+        Current epoch:0(test_op) device:0 core:5-3 rc:2,4 stream:8 > b 10000170000
+        Graph test_op
+        ----------------------------  -------------------------
+        md_op_name                    matmul2
+        id                            0
+        uniqid                        10000170000 (0x2540e7c10)
+        epoch_tiles                   32 (0x20)
+        chip_id                       [0]
+        core_coordinates              (2, 4)
+        size_tiles                    32 (0x20)
+        scatter_gather_num_tiles      16 (0x10)
+        ...
+"""
 import tt_util as util
 
 command_metadata = {
     "long" : "buffer",
     "short" : "b",
-    "type" : "high-level",
+    "type" : "dev",
     "expected_argument_count" : [ 1 ],
     "arguments" : "buffer_id_or_op_name",
-    "description" : "Prints details on the buffer with a given id, or buffer(s) mapped to a given operation."
+    "description" : "Prints details on the buffer with a given ID."
 }
 
 # Find occurrences of buffer with ID 'buffer_id' across all epochs, and print the structures that reference them

@@ -1,3 +1,19 @@
+"""
+.. code-block::
+   :caption: Example
+
+        Current epoch:0(test_op) device:0 core:5-3 rc:2,4 stream:8 > p 10000300000
+        Graph test_op
+        --------------------  --------------------------------------------------------------------------------------------------------
+        id                    10000300000 (0x2541077e0)
+        input_list            [10000110000, 10000110008, 10000110016, 10000110024, 10000110004, 10000110012, 10000110020, 10000110028]
+        pipe_periodic_repeat  0
+        pipe_consumer_repeat  1
+        output_list           [10000170000]
+        incoming_noc_id       0
+        outgoing_noc_id       0
+        mcast_core_rc         [0, 0, 0]
+"""
 import tt_util as util
 
 command_metadata = {

@@ -1,5 +1,21 @@
 """Prints all RISC-V registers for TRISC0, TRISC1, TRISC2 and Brisc on current core.
-If cannot pause(halt) core, it will not write anyhting. If core is not active, currently it throws exception.
+If the core cannot be paused(halted), it prints nothing. If core is not active, an exception is thrown.
+
+.. code-block::
+   :caption: Example
+
+        Current epoch:0(test_op) device:0 > gpr
+        Register     Brisc    Trisc0      Trisc1      Trisc2
+        -----------  -------  ----------  ----------  ----------
+        0 - zero     -        0x00000000  0x00000000  0x00000000
+        1 - ra       -        0x0000d208  0x00012208  0x00015208
+        2 - sp       -        0xffb00400  0xffb00100  0xffb006c0
+        3 - gp       -        0xffb00800  0xffb00800  0xffb00880
+        4 - tp       -        0x00000000  0x00000000  0x00000000
+        5 - t0       -        0xffe40000  0x00000000  0x000151bc
+        6 - t1       -        0xffef0000  0xb20102c0  0x0001a080
+        ...
+
 """
 import tabulate
 from tt_debug_risc import RiscDebug, RiscLoc

@@ -1,9 +1,24 @@
+"""Shows debug registers for given cores.
+
+.. code-block::
+   :caption: Example
+
+        Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > cdr 1 1
+        === Debug registers for core 1-1 ===
+        T0               T1               T2               FW
+        -------  ------  -------  ------  -------  ------  -------  ------
+        DBG[0]   0x0000  DBG[0]   0x0000  DBG[0]   0x0000  DBG[0]   0x0000
+        DBG[1]   0x0000  DBG[1]   0x0000  DBG[1]   0x0000  DBG[1]   0x0000
+        DBG[2]   0x0000  DBG[2]   0x0000  DBG[2]   0x0000  DBG[2]   0x0000
+        DBG[3]   0x0000  DBG[3]   0x0000  DBG[3]   0x0000  DBG[3]   0x0000
+        ...
+"""
 command_metadata = {
     "short" : "cdr",
     "type" : "low-level",
     "expected_argument_count" : [0, 2],
     "arguments" : "x y",
-    "description" : "Shows debug registers for core 'x-y'. If coordinates are not supplied, it iterates through all cores."
+    "description" : "Prints the state of the debug registers for core 'x-y'. If coordinates are not supplied, it iterates through all cores."
 }
 
 import tt_util as util

@@ -1,5 +1,12 @@
-"""Documentation for brxy.
-For example: NCRISC status code address=0xffb2010c, BRISC status code address=0xffb3010c.
+"""Reads from an address or a range of addresses a given number of times.
+
+- If burst_type is 1: read the same location for one second
+- If burst_type is greater than 1: read an array of locations once. The number of words to read is 'burst_type'-1.
+
+Summary of important addresses:
+
+- NCRISC status code address: 0xffb2010c
+- BRISC status code address: 0xffb3010c
 """
 command_metadata = {
     "short" : "brxy",

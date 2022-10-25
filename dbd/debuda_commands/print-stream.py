@@ -1,3 +1,18 @@
+"""Reads stream configuration data given x-y location and stream ID.
+
+.. code-block::
+   :caption: Example
+
+    Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > 2
+    Non-idle streams                       Registers                                                     Stream (blob.yaml)                                       Buffer 10000170000                                       Pipe 10000300000
+    ------------------  -----------------  ------------------------------------------------  ----------  ----------------------------  -------------------------  ----------------------------  -------------------------  --------------------  --------------------------------------------------------------------------------------------------------
+    8                   RS-11(1)-10(1)-40  STREAM_ID                                         8           buf_addr                      241664 (0x3b000)           md_op_name                    matmul2                    id                    10000300000 (0x2541077e0)
+    9                   RS-9(3)-8(3)-24    PHASE_AUTO_CFG_PTR (word addr)                    0x1b494     buf_id                        10000170000 (0x2540e7c10)  id                            0                          input_list            [10000110000, 10000110008, 10000110016, 10000110024, 10000110004, 10000110012, 10000110020, 10000110028]
+    24                  RR-7-3-9           CURR_PHASE                                        1           buf_size                      66560 (0x10400)            uniqid                        10000170000 (0x2540e7c10)  pipe_periodic_repeat  0
+    32                                     CURR_PHASE_NUM_MSGS_REMAINING                     32          buf_space_available_ack_thr   1                          epoch_tiles                   32 (0x20)                  pipe_consumer_repeat  1
+    ...
+"""
+
 command_metadata = {
     "short" : "s",
     "long" : "stream",
@@ -6,7 +21,6 @@ command_metadata = {
     "arguments" : "x y stream_id",
     "description" : "Shows stream 'stream_id' at core 'x-y'"
 }
-
 import tt_stream, tt_util as util
 
 # Prints all information on a stream

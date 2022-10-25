@@ -1,6 +1,6 @@
-# Traverses all streams and detects the blocked one. It then prints the results.
-# It prioritizes the streams that are genuinely blocked, to the ones that are waiting on genuinely.
-# blocked cores.
+"""Traverses all streams and detects the blocked ones. It prints the results in a table.
+It prioritizes the streams that are genuinely blocked to the ones that are waiting on blocked streams.
+"""
 from tabulate import tabulate
 import tt_stream, tt_netlist, tt_util as util
 

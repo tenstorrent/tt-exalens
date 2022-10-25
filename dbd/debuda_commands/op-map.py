@@ -1,3 +1,19 @@
+"""
+.. code-block::
+   :caption: Example
+
+        Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > op-map
+        Graph/Op         Op type       Epoch    Device  Grid Loc    NOC0 Loc    Grid Size
+        ---------------  ----------  -------  --------  ----------  ----------  -----------
+        test_op/add1     add               0         0  [2, 6]      7-3         [1, 1]
+        test_op/d_op3    datacopy          0         0  [0, 3]      4-1         [1, 1]
+        test_op/f_op0    datacopy          0         0  [0, 0]      1-1         [1, 1]
+        test_op/f_op1    datacopy          0         0  [0, 1]      2-1         [1, 1]
+        test_op/matmul1  matmul            0         0  [0, 2]      3-1         [1, 1]
+        test_op/matmul2  matmul            0         0  [2, 4]      5-3         [1, 1]
+        test_op/recip    reciprocal        0         0  [2, 2]      3-3         [1, 1]
+"""
+
 from tabulate import tabulate
 
 command_metadata = {

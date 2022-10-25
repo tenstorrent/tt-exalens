@@ -1,3 +1,17 @@
+"""Prints a debug buffer at the currently selected x-y location.
+
+.. code-block::
+   :caption: Example
+
+    Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > ddb 0 16 hex16
+    L1-0x00011800-64
+    -----------  ----  ----  ----  ----  ----  ----  ----  ----
+    0x00011800:  d746  bcec  951e  45ee  5fce  37ba  3758  ec52
+    0x00011810:  afa5  3fd2  4cbf  e653  56cd  caf6  d617  2647
+    0x00011820:  f642  9d4c  6fbe  c6dc  6626  4257  4c46  8c5a
+    0x00011830:  712d  277f  ea94  c6ab  57d7  c2ce  eb56  36ce
+    -----------  ----  ----  ----  ----  ----  ----  ----  ----
+"""
 from cgi import print_form
 from dbd.tt_object import DataArray
 import tt_device

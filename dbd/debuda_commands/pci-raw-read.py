@@ -1,4 +1,12 @@
-"""Documentation for testtest
+"""Reads from the device's PCI memory space at a given offset. The mapping between the addresses and the on-chip data is
+stored within the Tensix TLBs.
+
+.. code-block::
+   :caption: Example
+
+        Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > pcir 0
+        PCI RD [0x0]: 0x17c0006f
+
 """
 command_metadata = {
     "short" : "pcir",

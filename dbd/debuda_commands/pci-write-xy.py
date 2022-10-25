@@ -1,4 +1,4 @@
-"""Documentation for testtest
+"""Writes to the device's memory space at a given NOC coordinate and offset.
 """
 command_metadata = {
     "short" : "wxy",

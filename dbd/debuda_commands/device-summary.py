@@ -1,4 +1,26 @@
 """Prints a graphical representation of a given device.
+
+.. code-block::
+   :caption: Example
+
+        Current epoch:0(test_op) device:0 core:5-3 rc:2,4 stream:8 > c 1 1
+        Core 1-1
+        ----------  ------
+        epochs      1023 0
+        Current epoch:0(test_op) device:0 core:5-3 rc:2,4 stream:8 > d
+        ==== Device 0
+        00  +   +   +   +   .   .   .   .   .   .   .   .   Coordinate system: RC
+        01  .   .   .   .   .   .   .   .   .   .   .   .   . - Functional worker
+        02  .   .   +   .   +   .   +   .   .   .   .   .   + - Functional worker with configured stream(s)
+        03  .   .   .   .   .   .   .   .   .   .   .   .
+        04  .   .   .   .   .   .   .   .   .   .   .   .
+        05  .   .   .   .   .   .   .   .   .   .   .   .
+        06  .   .   .   .   .   .   .   .   .   .   .   .
+        07  .   .   .   .   .   .   .   .   .   .   .   .
+        08  .   .   .   .   .   .   .   .   .   .   .   .
+        09  .   .   .   .   .   .   .   .   .   .   .   .
+            00  01  02  03  04  05  06  07  08  09  10  11
+
 """
 command_metadata = {
     "short" : "d",

@@ -1,3 +1,15 @@
+"""
+.. code-block::
+   :caption: Example
+
+        Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > dq
+        DRAM queues for graph test_op
+        Buffer ID  Op      Input Ops    Output Ops      dram_buf_flag    dram_io_flag    Channel  Address       RD ptr    WR ptr    Occupancy    Slots    Size [bytes]
+        -----------  ------  -----------  ------------  ---------------  --------------  ---------  ----------  --------  --------  -----------  -------  --------------
+        10000010000  output  d_op3                                    0               1          0  0x32000000         0         0            0        1          131072
+        10000030000  input1               f_op1                       1               0          0  0x31000000         0         1            1        1           66560
+        10000050000  input0               f_op0                       1               0          0  0x30000000         0         1            1        1           66560
+"""
 import tt_util as util
 import tt_device
 from tt_netlist import Queue

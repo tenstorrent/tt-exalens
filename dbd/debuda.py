@@ -172,7 +172,7 @@ def import_commands (reload = False):
           "type" : "housekeeping",
           "expected_argument_count" : [ 0 ],
           "arguments" : "",
-          "description" : "Prints documentation."
+          "description" : "Prints documentation summary."
         },
         { "long" : "reload",
           "short" : "rl",

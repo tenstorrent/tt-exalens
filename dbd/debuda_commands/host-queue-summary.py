@@ -1,3 +1,6 @@
+"""UNDER DEVELOPMENT
+"""
+
 import tt_util as util
 import tt_device
 from tt_netlist import Queue
@@ -6,7 +9,7 @@ from tabulate import tabulate
 command_metadata = {
     "long" : "host-queue",
     "short" : "hq",
-    "type" : "high-level",
+    "type" : "dev",
     "expected_argument_count" : [ 0 ],    "arguments" : "",
     "description" : "Prints host queue summary."
 }

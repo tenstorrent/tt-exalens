@@ -1,11 +1,11 @@
-"""Documentation for graph
+"""Some operations apply only to the currently active (selected) graph.
 """
 command_metadata = {
     "short" : "g",
     "type" : "high-level",
     "expected_argument_count" : [ 1 ],
     "arguments" : "graph_name",
-    "description" : "Changes the current active graph."
+    "description" : "Changes the currently active graph."
 }
 
 import tt_util as util

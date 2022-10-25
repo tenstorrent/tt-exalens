@@ -1,3 +1,15 @@
+"""
+.. code-block::
+   :caption: Example
+
+        Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > q
+        Entries    Wr    Rd    Occ  Type      Device  Loc    Name    Input    Outputs    DRAM ch-addr
+        ---------  ----  ----  -----  ------  --------  -----  ------  -------  ---------  --------------
+                1     1     0      1  queue          0  dram   input0  HOST     f_op0      Ch0-0x30000000
+                1     1     0      1  queue          0  dram   input1  HOST     f_op1      Ch0-0x31000000
+                1     0     0      0  queue          0  dram   output  d_op3               Ch0-0x32000000
+"""
+
 command_metadata = {
     "short" : "q",
     "type" : "high-level",

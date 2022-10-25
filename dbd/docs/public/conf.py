@@ -85,7 +85,7 @@ def render_commands_of_type (f, ct, ct_name, command_list):
     f.write (f"{replicate(len(ct_name), '^')}\n\n")
 
     for cname, c in command_list.items():
-        cname = str(c['long'])
+        cname = str(c['long']) + " ``" + str(c['short']) + "``"
         if c['type'] == ct:
             f.write (f"{cname}\n")
             under = replicate(len(cname)+5, '"')

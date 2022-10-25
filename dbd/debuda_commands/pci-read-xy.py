@@ -1,4 +1,11 @@
-"""Documentation for testtest
+"""Reads from the device's memory space at a given NOC coordinate and offset.
+
+.. code-block::
+   :caption: Example
+
+        Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > rxy 1 1 0
+        1-1 0x00000000 => 0x17c0006f (398458991)
+
 """
 command_metadata = {
     "short" : "rxy",
