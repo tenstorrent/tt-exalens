@@ -20,7 +20,7 @@ import tt_util as util
 command_metadata = {
     "long" : "buffer",
     "short" : "b",
-    "type" : "dev",
+    "type" : "low-level",
     "expected_argument_count" : [ 1 ],
     "arguments" : "buffer_id_or_op_name",
     "description" : "Prints details on the buffer with a given ID."
