@@ -1,7 +1,7 @@
 Introduction
 ============
 
-DeBuda is a suite of debugging tools for Buda.
+Debuda is a suite of debugging tools for Buda.
 
 .. contents:: Table of Contents
    :local:

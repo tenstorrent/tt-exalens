@@ -3,7 +3,7 @@
 ```
 ARCH_NAME=grayskull dbd/tapout_sweep.py --test_command "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --silicon --arch grayskull" --out_dir "output"
 ```
-This command will create a modified netlist for each operation with one additional tapout queue. Then it will execute a given test command for each modified netlist.
+This command will create a modified netlist for each operation with one additional tapout queue. Then, it will execute a given test command for each modified netlist.
 In the output folder, you can find the modified netlists in file DBG_{operation_name}.yaml, console output of test operation in DBG_{operation}.console.log, op_errors.log where all mismatched tiles are logged, and tapout_result.log.\
 ex. tapout_result.log
 ```
@@ -13,7 +13,7 @@ op_name: DBG_mha_0_as_mask
 	Result: PASSED
 ```
 ## Broken test command
-This is example of bad command:
+This is an example of a bad command:
 ```
 dbd/tapout_sweep.py --test_command "./build/test/verif/op_tests/test_op --netlist verif/graph_tests/netlists/netlist_bert_mha.yaml --dummy --silicon --arch grayskull" --out_dir "output"
 ```
@@ -40,7 +40,7 @@ build/test/verif/op_tests/test_op --netlist verif/op_tests/netlists/netlist_matm
 
 ## Netlist graph used for simulation
 
-[Netlist](../../verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml)
+[Download netlist file](../../../../verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml)
 ```
 ┌────────┐  0   ┌───────┐  0   ┌─────┐  0   ┌───────┐  0   ┌────────┐
 │ input0 │ ───▶ │ f_op0 │ ───▶ │ op2 │ ───▶ │ d_op3 │ ───▶ │ output │
@@ -67,7 +67,7 @@ Command ```d``` shows current core usage. We can see that selected netlist uses 
 03  .   .   .   .   .   .   .   .   .   .   .   .
 02  .   .   .   .   .   .   .   .   .   .   .   .
 01  .   .   .   .   .   .   .   .   .   .   .   .
-00  +   +   +   +   +   .   .   .   .   .   .   .
+00  +   +   +   +   .   .   .   .   .   .   .   .
     00  01  02  03  04  05  06  07  08  09  10  11
 ```
 ### Initial status
