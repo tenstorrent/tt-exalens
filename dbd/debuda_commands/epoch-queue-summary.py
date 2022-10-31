@@ -24,7 +24,9 @@ def run (cmd, context, ui_state):
     GridSizeRow = 16
     GridSizeCol = 16
     EPOCH_Q_NUM_SLOTS = 32
-    epoch0_start_table_size_bytes = GridSizeRow*GridSizeCol*(EPOCH_Q_NUM_SLOTS*8+8)*4
+    EPOCH_Q_SLOT_SIZE = 32
+    EPOCH_Q_SLOTS_OFFSET = 32
+    epoch0_start_table_size_bytes = GridSizeRow*GridSizeCol*(EPOCH_Q_NUM_SLOTS*EPOCH_Q_SLOT_SIZE+EPOCH_Q_SLOTS_OFFSET)
     # DRAM_CHANNEL_CAPACITY_BYTES  = 1024 * 1024 * 1024
     DRAM_PERF_SCRATCH_SIZE_BYTES =   8 * 1024 * 1024
     # DRAM_HOST_MMIO_SIZE_BYTES    =  256 * 1024 * 1024
@@ -38,9 +40,9 @@ def run (cmd, context, ui_state):
 
     table=[]
     for loc in epoch_device.get_block_locations (block_type = "functional_workers"):
-        y, x = loc[0], loc[1] # FIX: This is backwards - check.
+        x, y = loc[0], loc[1]
         EPOCH_QUEUE_START_ADDR = reserved_size_bytes
-        offset = (16 * x + y) * ((EPOCH_Q_NUM_SLOTS*2+8)*4)
+        offset = (GridSizeCol * y + x) * (EPOCH_Q_NUM_SLOTS*EPOCH_Q_SLOT_SIZE+EPOCH_Q_SLOTS_OFFSET)
         dram_addr = EPOCH_QUEUE_START_ADDR + offset
         rdptr = tt_device.SERVER_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
         wrptr = tt_device.SERVER_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)

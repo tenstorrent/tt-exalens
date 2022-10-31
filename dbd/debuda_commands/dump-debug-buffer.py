@@ -27,7 +27,7 @@ command_metadata = {
 
 def run(args, context, ui_state = None):
     #This is defined in src/firmware/riscv/grayskull/l1_address_map.h
-    TRISC_DEBUG_BASE=[71680, 88064, 108544]
+    TRISC_DEBUG_BASE=[71680, 83968, 108544]
 
     trisc_id = int(args[1])
     num_words = int(args[2])
