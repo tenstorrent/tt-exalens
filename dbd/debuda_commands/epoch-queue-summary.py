@@ -23,7 +23,7 @@ def run (cmd, context, ui_state):
     # From tt_epoch_dram_manager::tt_epoch_dram_manager and following the constants
     GridSizeRow = 16
     GridSizeCol = 16
-    EPOCH_Q_NUM_SLOTS = 64
+    EPOCH_Q_NUM_SLOTS = 32
     EPOCH_Q_SLOT_SIZE = 32
     EPOCH_Q_SLOTS_OFFSET = 32
     epoch0_start_table_size_bytes = GridSizeRow*GridSizeCol*(EPOCH_Q_NUM_SLOTS*EPOCH_Q_SLOT_SIZE+EPOCH_Q_SLOTS_OFFSET)
@@ -47,8 +47,8 @@ def run (cmd, context, ui_state):
         rdptr = tt_device.SERVER_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
         wrptr = tt_device.SERVER_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
         occupancy = Queue.occupancy (EPOCH_Q_NUM_SLOTS, wrptr, rdptr)
-        if occupancy > 0:
-            table.append ([ f"{util.noc_loc_str((x, y))}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
+        # if occupancy > 0:
+        table.append ([ f"{util.noc_loc_str((x, y))}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
 
     if len(table) > 0:
         print (tabulate(table, headers=["Location", "Address", "RD ptr", "WR ptr", "Occupancy" ] ))
