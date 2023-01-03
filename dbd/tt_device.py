@@ -321,6 +321,14 @@ class Device(TTObject):
             locs.append ((x,y))
         return locs
 
+    # Returns locations of metadata queue associated with a given core
+    def get_t6_queue_location (self, t6_locs):
+        t6_to_dram_x = {1:1, 2:1, 3:1, 4:4, 5:4, 6:4, 7:7, 8:7, 9:7, 10:10, 11:10, 12:10}
+        t6_to_dram_y = {1:0, 2:0, 3:0, 4:0, 5:0, 7:6, 8:6, 9:6, 10:6, 11:6}
+        x = int(t6_to_dram_x[t6_locs[0]])
+        y = int(t6_to_dram_y[t6_locs[1]])
+        return (x,y)
+
     # Returns a string representation of the device. When printed, the string will
     # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list
     def render (self, options="physical", emphasize_noc0_loc_list = util.set(), emphasize_explanation = None):

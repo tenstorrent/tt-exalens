@@ -14,16 +14,18 @@ command_metadata = {
 
 # Prints epoch queues
 def run (cmd, context, ui_state):
+    runtime_data = context.server_ifc.get_runtime_data()
     graph_name = ui_state["current_graph_name"]
     device_id = context.netlist.graph_name_to_device_id(graph_name)
     epoch_device = context.devices[device_id]
+    distribtued_eq = bool(runtime_data.root.get("distribute_epoch_tables", 1))
 
     print (f"{util.CLR_INFO}Epoch queues for graph {graph_name}, device id {device_id}{util.CLR_END}")
 
     # From tt_epoch_dram_manager::tt_epoch_dram_manager and following the constants
     GridSizeRow = 16
     GridSizeCol = 16
-    EPOCH_Q_NUM_SLOTS = 32
+    EPOCH_Q_NUM_SLOTS = 64
     EPOCH_Q_SLOT_SIZE = 32
     EPOCH_Q_SLOTS_OFFSET = 32
     epoch0_start_table_size_bytes = GridSizeRow*GridSizeCol*(EPOCH_Q_NUM_SLOTS*EPOCH_Q_SLOT_SIZE+EPOCH_Q_SLOTS_OFFSET)
@@ -41,6 +43,8 @@ def run (cmd, context, ui_state):
     table=[]
     for loc in epoch_device.get_block_locations (block_type = "functional_workers"):
         x, y = loc[0], loc[1]
+        if distribtued_eq:
+            dram_loc = epoch_device.get_t6_queue_location (loc)
         EPOCH_QUEUE_START_ADDR = reserved_size_bytes
         offset = (GridSizeCol * y + x) * (EPOCH_Q_NUM_SLOTS*EPOCH_Q_SLOT_SIZE+EPOCH_Q_SLOTS_OFFSET)
         dram_addr = EPOCH_QUEUE_START_ADDR + offset
