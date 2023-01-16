@@ -122,6 +122,8 @@ class Graph(TTObject):
                 util.VERBOSE ("- Skipping dram_blob")
             elif key == "dram_perf_dump_blob":
                 util.VERBOSE ("- Skipping dram_perf_dump_blob")
+            elif key == "overlay_blob_extra_size":
+                util.VERBOSE ("- Skipping overlay_blob_extra_size")
             elif key.startswith ("phase_"):
                 phase_id = int (key[6:]) # Skip phase_
                 for stream_designator, stream_data in val.items():
