@@ -5,7 +5,7 @@ include $(BUDA_HOME)/dbd/util.mk
 DBD_INCLUDES = $(BASE_INCLUDES) $(GOLDEN_INCLUDES) $(MODEL2_INCLUDES) $(NETLIST_INCLUDES) $(MODEL_INCLUDES) -Iverif/directed_tests -Iverif -Ithird_party/json
 DBD_LIB = $(LIBDIR)/libdbd.a
 DBD_DEFINES = -DGIT_HASH=$(shell git rev-parse HEAD)
-DBD_INCLUDES += -Imodel -Inetlist -Icommon -Iversim/$(ARCH_NAME)/headers/vendor/yaml-cpp/include -Isrc/firmware/riscv/$(ARCH_NAME)/
+DBD_INCLUDES += -Imodel -Inetlist -Icommon -I$(TT_MODULES)/versim/$(ARCH_NAME)/headers/vendor/yaml-cpp/include -Isrc/firmware/riscv/$(ARCH_NAME)/
 DBD_CFLAGS = $(CFLAGS) -Werror
 DBD_LDFLAGS = -ltt -ldevice -lstdc++fs -lpthread -lyaml-cpp -lcommon -lboost_program_options
 
