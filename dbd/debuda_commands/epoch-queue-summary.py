@@ -19,6 +19,7 @@ def run (cmd, context, ui_state):
     device_id = context.netlist.graph_name_to_device_id(graph_name)
     epoch_device = context.devices[device_id]
     distribtued_eq = bool(runtime_data.root.get("distribute_epoch_tables", 1))
+    epoch_queue_in_dram = bool(runtime_data.root.get("epoch_queue_in_dram", 1))
 
     print (f"{util.CLR_INFO}Epoch queues for graph {graph_name}, device id {device_id}{util.CLR_END}")
 
@@ -41,21 +42,32 @@ def run (cmd, context, ui_state):
     dram_loc = epoch_device.get_block_locations (block_type = "dram")[dram_chan]
 
     table=[]
-    for loc in epoch_device.get_block_locations (block_type = "functional_workers"):
-        x, y = loc[0], loc[1]
-        if distribtued_eq:
-            dram_loc = epoch_device.get_t6_queue_location (loc)
-        EPOCH_QUEUE_START_ADDR = reserved_size_bytes
-        offset = (GridSizeCol * y + x) * (EPOCH_Q_NUM_SLOTS*EPOCH_Q_SLOT_SIZE+EPOCH_Q_SLOTS_OFFSET)
-        dram_addr = EPOCH_QUEUE_START_ADDR + offset
-        rdptr = tt_device.SERVER_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr)
-        wrptr = tt_device.SERVER_IFC.pci_read_xy (device_id, dram_loc[0], dram_loc[1], 0, dram_addr + 4)
-        occupancy = Queue.occupancy (EPOCH_Q_NUM_SLOTS, wrptr, rdptr)
-        # if occupancy > 0:
-        table.append ([ f"{util.noc_loc_str((x, y))}", f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
+
+    for blocktype in ["functional_workers"]: # , "eth"]:
+        for loc in epoch_device.get_block_locations (block_type = blocktype):
+            x, y = loc[0], loc[1]
+            loc_is_dram = epoch_queue_in_dram or blocktype == "eth"
+            coretype = "Worker" if blocktype == "functional_workers" else "Ethernet"
+            if loc_is_dram:
+                loc_str = "DRAM"
+                if distribtued_eq:
+                    dram_loc = epoch_device.get_t6_queue_location (loc) # FIXME - Hardcoded for GS, wrong for WH "eth" cores.
+                EPOCH_QUEUE_START_ADDR = reserved_size_bytes
+                offset = (GridSizeCol * y + x) * (EPOCH_Q_NUM_SLOTS*EPOCH_Q_SLOT_SIZE+EPOCH_Q_SLOTS_OFFSET)
+                addr = EPOCH_QUEUE_START_ADDR + offset
+                x, y = dram_loc[0], dram_loc[1] # Override core xy for reading.
+            else:
+                loc_str = "L1"
+                addr = runtime_data.root['ncrisc_l1_epoch_q_base'] # runtime_data.root['eth_l1_epoch_q_base'] when erisc moves to L1.
+
+            rdptr = tt_device.SERVER_IFC.pci_read_xy (device_id, x, y, 0, addr)
+            wrptr = tt_device.SERVER_IFC.pci_read_xy (device_id, x, y, 0, addr + 4)
+            occupancy = Queue.occupancy (EPOCH_Q_NUM_SLOTS, wrptr, rdptr)
+            # if occupancy > 0:
+            table.append ([f"{util.noc_loc_str((x, y))}", coretype, loc_str, f"0x{addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
 
     if len(table) > 0:
-        print (tabulate(table, headers=["Location", "Address", "RD ptr", "WR ptr", "Occupancy" ] ))
+        print (tabulate(table, headers=["CoreLoc", "CoreType", "Location", "Address", "RD ptr", "WR ptr", "Occupancy" ] ))
     else:
         print ("No epoch queues have occupancy > 0")
 
