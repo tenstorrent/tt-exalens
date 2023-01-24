@@ -272,7 +272,6 @@ if __name__ == '__main__':
 
     # Try to connect to the server
     server_ifc = tt_device.init_server_communication(args)
-    server_ifc.runtime_data = server_ifc.get_runtime_data()
 
     # Create the context
     context = load_context (netlist_filepath = args.netlist, run_dirpath=args.output_dir)
@@ -280,6 +279,10 @@ if __name__ == '__main__':
     context.server_ifc = server_ifc
     context.args = args
     context.debuda_path = __file__
+
+    # If we spawned debuda stub, the runtime_data provided by debuda stub is not valid, and we use the runtime_data.yaml file saved by the test
+    if server_ifc.spawning_debuda_stub:
+        server_ifc.get_runtime_data = lambda: context.netlist.runtime_data_yaml
 
     # Main function
     exit_code = main(args, context)

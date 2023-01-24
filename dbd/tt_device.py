@@ -698,6 +698,7 @@ def init_server_communication (args):
             success = spawn_standalone_debuda_stub(port, f"{args.output_dir}/runtime_data.yaml")
             if not success:
                 raise Exception("Could not connect to debuda-stub")
+            SERVER_IFC.spawning_debuda_stub = True
 
         connect_to_server (ip=ip, port=port, spawning_debuda_stub=spawning_debuda_stub)
 
