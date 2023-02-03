@@ -85,12 +85,12 @@ dbd/debuda.py --netlist my-netlist.yaml tt-build/my-run-dir/
 Show command docs: `help`
 ```
 Long Form          Short    Arg count    Arguments                        Description
------------------  -------  -----------  -------------------------------  --------------------------------------------------------------------------------------------------------------------------------------------------------------
+-----------------  -------  -----------  -------------------------------  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 exit               x        0/1          exit_code                        Exits the program. The optional argument represents the exit code. Defaults to 0.
 help               h        0                                             Prints documentation.
 burst-read-xy      brxy     4/5          x y addr burst_type format       Reads data from address 'addr' at noc0 location x-y of the chip associated with currently selected graph. Available formats: i8, i16, i32, hex8, hex16, hex32.
 core-debug-regs    cdr      0/2          x y                              Shows debug registers for core 'x-y'. If coordinates are not supplied, it iterates through all cores.
-dump-debug-buffer  ddb      2/3          id, num_words, format            Prints a debug buffer. 'id' - trisc 0|1|2 at current x-y. 'num_words' - number of words to dump. 'format' - i8, i16, i32, hex8, hex16, hex32.
+dump-debug-buffer  ddb      2/3          id, num_words, format, x, y, c   Prints a debug buffer. 'id' - trisc 0|1|2 at current x-y. 'num_words' - number of words to dump. 'format' - i8, i16, i32, hex8, hex16, hex32. optional noc0 location x-y. optional c - chip_id
 dump-gpr           gpr      0                                             Prints general purpose registers at Risc cores.
 full-dump          fd       0                                             Performs a full stream dump at current x-y location.
 pci-raw-read       pcir     1            addr                             Reads data from PCI BAR at address 'addr'
