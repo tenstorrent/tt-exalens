@@ -1,4 +1,4 @@
-"""Prints a debug buffer at the currently selected x-y location.
+"""Prints a debug buffer at x-y location. 
 
 .. code-block::
    :caption: Example
@@ -20,9 +20,9 @@ import tt_util as util
 command_metadata = {
     "short" : "ddb",
     "type" : "low-level",
-    "expected_argument_count" : [2,3],
-    "arguments" : "id, num_words, format",
-    "description" : "Prints a debug buffer. 'id' - trisc 0|1|2 at current x-y. 'num_words' - number of words to dump. 'format' - i8, i16, i32, hex8, hex16, hex32."
+    "expected_argument_count" : [2,6],
+    "arguments" : "id, num_words, format, x, y, c",
+    "description" : "Prints a debug buffer. 'id' - trisc 0|1|2 at current x-y if not selcted. 'num_words' - number of words to dump. 'format' - i8, i16, i32, hex8, hex16, hex32. optional noc0 location x-y. optional c - chip_id"
 }
 
 def run(args, context, ui_state = None):
@@ -32,13 +32,24 @@ def run(args, context, ui_state = None):
     trisc_id = int(args[1])
     num_words = int(args[2])
     print_format = "hex32"
+    x = ui_state['current_x']
+    y = ui_state['current_y']
+    chip_id = ui_state['current_device_id']
+
     if (len(args) > 3):
         print_format = args[3]
+
+    if (len(args) > 5):
+        x = int(args[4])
+        y = int(args[5])
+
+    if (len(args) > 6):
+        chip_id = int(args[6])
 
     addr = TRISC_DEBUG_BASE[trisc_id]
     da = DataArray(f"L1-0x{addr:08x}-{num_words * 4}", 4)
     for i in range (num_words):
-        data = tt_device.SERVER_IFC.pci_read_xy(ui_state['current_device_id'], ui_state['current_x'], ui_state['current_y'], 0, addr + 4*i)
+        data = tt_device.SERVER_IFC.pci_read_xy(chip_id, x, y, 0, addr + 4*i)
         da.data.append(data)
 
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
