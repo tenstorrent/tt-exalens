@@ -9,6 +9,8 @@ if [ "$1" = "skip-build" ]; then
     # We should either move debuda-stub to build directory,
     # or extend CI to pickup debuda binaries from dbd directory.
     # cp build/bin/debuda-stub dbd/debuda-stub
+    echo Building debuda-server-standalone ...
+    make verif/netlist_tests/debuda-server-standalone >> $TMP_OUT_FILE
 else
     echo make build_hw
     make build_hw
