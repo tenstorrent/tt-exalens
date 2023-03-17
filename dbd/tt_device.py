@@ -693,6 +693,7 @@ def init_server_communication (args):
     if DEBUDA_SERVER_SOCKET_IFC.enabled:
         (ip, port) = args.debuda_server_address.split(":")
         spawning_debuda_stub = ip=='localhost' and util.is_port_available (int(port))
+        SERVER_IFC.spawning_debuda_stub = False
 
         if spawning_debuda_stub:
             success = spawn_standalone_debuda_stub(port, f"{args.output_dir}/runtime_data.yaml")
