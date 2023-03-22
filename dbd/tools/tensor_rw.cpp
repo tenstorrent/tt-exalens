@@ -47,13 +47,13 @@ TensorRW::TensorRW(const std::string& in_path, const std::string& out_path, cons
 std::shared_ptr<tt_tensor> TensorRW::build_tensor(const tt_queue_info& q_info, const int entry_id, tt::tt_tensor_metadata metadata) {
     std::shared_ptr<tt_tensor> tensor = std::make_shared<tt_tensor>(metadata);
 
-    if (!_in_path.empty() && verif::does_binary_exists(_in_path, q_info.name, entry_id)) {
+    if (!_in_path.empty() && tt::data_binary::does_file_exists(_in_path, q_info.name, entry_id)) {
         log_info(tt::LogTest, "Loading Tensor[q_name={}, entry_id={}] from {}", q_info.name, entry_id, _in_path);
         verif::read_tensor_from_binary(_in_path, q_info, entry_id, *tensor, false);
         return tensor;
     }
 
-    if (!_out_path.empty() && verif::does_binary_exists(_out_path, q_info.name, entry_id)) {
+    if (!_out_path.empty() && tt::data_binary::does_file_exists(_out_path, q_info.name, entry_id)) {
         log_info(tt::LogTest, "Loading Tensor[q_name={}, entry_id={}] from {}", q_info.name, entry_id, _out_path);
         verif::read_tensor_from_binary(_out_path, q_info, entry_id, *tensor, false);
         return tensor;
