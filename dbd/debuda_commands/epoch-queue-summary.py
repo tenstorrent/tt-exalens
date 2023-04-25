@@ -30,9 +30,9 @@ def run (cmd, context, ui_state):
     EPOCH_Q_SLOTS_OFFSET = 32
     epoch0_start_table_size_bytes = GridSizeRow*GridSizeCol*(EPOCH_Q_NUM_SLOTS*EPOCH_Q_SLOT_SIZE+EPOCH_Q_SLOTS_OFFSET)
     # DRAM_CHANNEL_CAPACITY_BYTES  = 1024 * 1024 * 1024
-    DRAM_PERF_SCRATCH_SIZE_BYTES =   8 * 1024 * 1024
+    DRAM_EPOCH_METADATA_LIMIT =   8 * 1024 * 1024
     # DRAM_HOST_MMIO_SIZE_BYTES    =  256 * 1024 * 1024
-    reserved_size_bytes = DRAM_PERF_SCRATCH_SIZE_BYTES - epoch0_start_table_size_bytes
+    reserved_size_bytes = DRAM_EPOCH_METADATA_LIMIT - epoch0_start_table_size_bytes
 
     chip_id = 0
     chip_id += 1
