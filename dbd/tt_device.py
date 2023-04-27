@@ -322,12 +322,35 @@ class Device(TTObject):
         return locs
 
     # Returns locations of metadata queue associated with a given core
-    def get_t6_queue_location (self, t6_locs):
-        t6_to_dram_x = {1:1, 2:1, 3:1, 4:4, 5:4, 6:4, 7:7, 8:7, 9:7, 10:10, 11:10, 12:10}
-        t6_to_dram_y = {1:0, 2:0, 3:0, 4:0, 5:0, 7:6, 8:6, 9:6, 10:6, 11:6}
-        x = int(t6_to_dram_x[t6_locs[0]])
-        y = int(t6_to_dram_y[t6_locs[1]])
-        return (x,y)
+    def get_t6_queue_location (self, arch_name, t6_locs):
+        dram_core = {'x': None, 'y': None}
+        if arch_name == "WORMHOLE" or arch_name == "WORMHOLE_B0":
+            if t6_locs['y'] in [0, 11, 1, 7, 5, 6]:
+                if t6_locs['x'] >= 5:
+                    dram_core['x'] = 5
+                else:
+                    dram_core['x'] = 0
+            else:
+                dram_core['x'] = 5
+            dram_core['y'] = t6_locs['y']
+        elif arch_name == "GRAYSKULL":
+            if t6_locs['x'] in [1, 2, 3]:
+                dram_core['x'] = 1
+            elif t6_locs['x'] in [4, 5, 6]:
+                dram_core['x'] = 4
+            elif t6_locs['x'] in [7, 8, 9]:
+                dram_core['x'] = 7
+            elif t6_locs['x'] in [10, 11, 12]:
+                dram_core['x'] = 10
+            else:
+                dram_core['x'] = -1
+            if t6_locs['y'] <= 5:
+                dram_core['y'] = 0
+            else:
+                dram_core['y'] = 6
+        else:
+            raise ValueError("Unsupported architecture")
+        return dram_core
 
     # Returns a string representation of the device. When printed, the string will
     # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list
