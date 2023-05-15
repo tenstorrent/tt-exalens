@@ -2,14 +2,26 @@
 """
 debuda parses the build output files and probes the silicon to determine status of a buda run.
 """
-from multiprocessing.dummy import Array
-import sys, os, argparse, time, traceback, fnmatch, importlib, zipfile
-from tabulate import tabulate
-from tt_object import DataArray
-import tt_util as util, tt_device, tt_netlist
-from prompt_toolkit import PromptSession
-from prompt_toolkit.formatted_text import HTML
-from tt_graph import Queue
+try:
+    from multiprocessing.dummy import Array
+    import sys, os, argparse, time, traceback, fnmatch, importlib, zipfile
+    from tabulate import tabulate
+    from tt_object import DataArray
+    import tt_util as util, tt_device, tt_netlist
+    from prompt_toolkit import PromptSession
+    from prompt_toolkit.formatted_text import HTML
+    from tt_graph import Queue
+except ModuleNotFoundError as e:
+    # Print the exception and call stack
+    traceback.print_exc()
+
+    # ANSI escape sequence for red text
+    red_start = "\033[31m"
+    red_end = "\033[0m"
+
+    # Print custom message in red
+    print(f"Try: {red_start}pip install sortedcontainers prompt_toolkit; make verif/netlist_tests/debuda-server-standalone{red_end}")
+    exit(1)
 
 def get_parser ():
     parser = argparse.ArgumentParser(description=__doc__ + tt_device.STUB_HELP)
