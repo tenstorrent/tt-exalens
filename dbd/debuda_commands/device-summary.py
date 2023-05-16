@@ -47,7 +47,7 @@ def run(args, context, ui_state = None):
 
     for device_id in devices_list:
         device = context.devices[device_id]
-        is_mmio_device = runtime_data and device.id() in runtime_data.root['chips_with_mmio']
+        is_mmio_device = runtime_data and "chips_with_mmio" in runtime_data.root and device.id() in runtime_data.root['chips_with_mmio']
         util.INFO (f"==== Device {device.id()} {'(MMIO)' if is_mmio_device else ''}")
 
         configured_streams = util.set()

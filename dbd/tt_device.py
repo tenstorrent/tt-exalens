@@ -233,7 +233,7 @@ class Device(TTObject):
         if arch.lower() == "grayskull":
             import tt_grayskull
             dev = tt_grayskull.GrayskullDevice()
-        if arch.lower() == "wormhole":
+        if "wormhole" in arch.lower():
             import tt_wormhole
             dev = tt_wormhole.WormholeDevice()
 
