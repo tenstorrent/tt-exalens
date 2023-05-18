@@ -20,10 +20,11 @@ except ModuleNotFoundError as e:
     red_end = "\033[0m"
 
     # Print custom message in red
-    print(f"Try: {red_start}pip install sortedcontainers prompt_toolkit; make verif/netlist_tests/debuda-server-standalone{red_end}")
+    print(f"Try: {red_start}pip install sortedcontainers prompt_toolkit; make dbd{red_end}")
     exit(1)
 
-def get_parser ():
+# Argument parsing
+def get_argument_parser ():
     parser = argparse.ArgumentParser(description=__doc__ + tt_device.STUB_HELP)
     parser.add_argument('output_dir', type=str, nargs='?', default=None, help='Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used, and the netlist file will be inferred from the runtime_data.yaml file.')
     parser.add_argument('--netlist',  type=str, required=False, default=None, help='Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used.')
@@ -63,6 +64,108 @@ def print_navigation_suggestions (navigation_suggestions):
         for i in range (len(navigation_suggestions)):
             rows.append ([ f"{i}", f"{navigation_suggestions[i]['description']}", f"{navigation_suggestions[i]['cmd']}" ])
         print(tabulate(rows, headers=[ "#", "Description", "Command" ]))
+
+# Imports 'plugin' commands from debuda_commands/ directory
+# With 'reload' argument set to True, the debuda_commands can be live-reloaded (using importlib.reload)
+def import_commands (reload = False):
+    # Built-in commands
+    commands = [
+        { "long" : "exit",
+          "short" : "x",
+          "type" : "housekeeping",
+          "expected_argument_count" : [ 0, 1 ],
+          "arguments" : "exit_code",
+          "description" : "Exits the program. The optional argument represents the exit code. Defaults to 0."
+        },
+        { "long" : "help",
+          "short" : "h",
+          "type" : "housekeeping",
+          "expected_argument_count" : [ 0 ],
+          "arguments" : "",
+          "description" : "Prints documentation summary."
+        },
+        { "long" : "reload",
+          "short" : "rl",
+          "type" : "dev",
+          "expected_argument_count" : [ 0 ],
+          "arguments" : "",
+          "description" : "Reloads files in debuda_commands directory."
+        },
+    ]
+
+    cmd_files = []
+    for root, dirnames, filenames in os.walk(util.application_path () + '/debuda_commands'):
+        for filename in fnmatch.filter(filenames, '*.py'):
+            cmd_files.append(os.path.join(root, filename))
+
+    sys.path.append(util.application_path() + '/debuda_commands')
+
+    cmd_files.sort()
+    for cmdfile in cmd_files:
+        module_path = os.path.splitext(os.path.basename(cmdfile))[0]
+        try:
+            cmd_module = importlib.import_module (module_path)
+        except Exception as e:
+            util.ERROR (f"Error in module '{module_path}': {e}")
+            continue
+        command_metadata = cmd_module.command_metadata
+        command_metadata["module"] = cmd_module
+
+        # Make the module name the default 'long' invocation string
+        if "long" not in command_metadata:
+            command_metadata["long"] = cmd_module.__name__
+        util.VERBOSE (f"Importing command {command_metadata['long']} from '{cmd_module.__name__}'")
+
+        if reload:
+            importlib.reload(cmd_module)
+
+        # Check command names/shortcut overlap (only when not reloading)
+        for cmd in commands:
+            if cmd["long"] == command_metadata["long"]:
+                util.FATAL (f"Command {cmd['long']} already exists")
+            if cmd["short"] == command_metadata["short"]:
+                util.FATAL (f"Commands {cmd['long']} and {command_metadata['long']} use the same shortcut: {cmd['short']}")
+        commands.append (command_metadata)
+    return commands
+
+# Finds the most recent build directory
+def locate_most_recent_build_output_dir ():
+    # Try to find a default output directory
+    most_recent_modification_time = None
+    try:
+        for tt_build_subfile in os.listdir("tt_build"):
+            subdir = f"tt_build/{tt_build_subfile}"
+            if os.path.isdir(subdir):
+                if most_recent_modification_time is None or os.path.getmtime(subdir) > most_recent_modification_time:
+                    most_recent_modification_time = os.path.getmtime(subdir)
+                    most_recent_subdir = subdir
+        util.INFO (f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{most_recent_subdir}")
+        return most_recent_subdir
+    except:
+        pass
+    return None
+
+# Loads all files necessary to debug a single buda run
+# Returns a debug 'context' that contains the loaded information
+def load_context (netlist_filepath, run_dirpath):
+    # All-encompassing structure representing a Debuda context
+    class Context:
+        netlist = None      # Netlist and related 'static' data (i.e. data stored in files such as blob.yaml, pipegen.yaml)
+        devices = None      # A list of objects of class Device used to obtain 'dynamic' data (i.e. data read from the devices)
+        pass
+
+    util.VERBOSE (f"Initializing context")
+    context = Context()
+
+    # Load netlist files
+    context.netlist = tt_netlist.Netlist(netlist_filepath, run_dirpath)
+
+    # Create the devices
+    arch = context.netlist.get_arch ()
+    device_ids = context.netlist.get_device_ids()
+    context.devices = { i : tt_device.Device.create(arch) for i in device_ids }
+
+    return context
 
 # Main
 def main(args, context):
@@ -167,117 +270,15 @@ def main(args, context):
                 util.notify_exception (type(e), e, e.__traceback__)
     return 0
 
-# Import 'plugin' commands from debuda_commands directory
-# With reload=True, the debuda_commands can be live-reloaded (importlib.reload)
-def import_commands (reload = False):
-    # Built-in commands
-    commands = [
-        { "long" : "exit",
-          "short" : "x",
-          "type" : "housekeeping",
-          "expected_argument_count" : [ 0, 1 ],
-          "arguments" : "exit_code",
-          "description" : "Exits the program. The optional argument represents the exit code. Defaults to 0."
-        },
-        { "long" : "help",
-          "short" : "h",
-          "type" : "housekeeping",
-          "expected_argument_count" : [ 0 ],
-          "arguments" : "",
-          "description" : "Prints documentation summary."
-        },
-        { "long" : "reload",
-          "short" : "rl",
-          "type" : "dev",
-          "expected_argument_count" : [ 0 ],
-          "arguments" : "",
-          "description" : "Reloads files in debuda_commands directory."
-        },
-    ]
-
-    cmd_files = []
-    for root, dirnames, filenames in os.walk(util.application_path () + '/debuda_commands'):
-        for filename in fnmatch.filter(filenames, '*.py'):
-            cmd_files.append(os.path.join(root, filename))
-
-    sys.path.append(util.application_path() + '/debuda_commands')
-
-    cmd_files.sort()
-    for cmdfile in cmd_files:
-        module_path = os.path.splitext(os.path.basename(cmdfile))[0]
-        try:
-            cmd_module = importlib.import_module (module_path)
-        except Exception as e:
-            util.ERROR (f"Error in module '{module_path}': {e}")
-            continue
-        command_metadata = cmd_module.command_metadata
-        command_metadata["module"] = cmd_module
-
-        # Make the module name the default 'long' invocation string
-        if "long" not in command_metadata:
-            command_metadata["long"] = cmd_module.__name__
-        util.VERBOSE (f"Importing command {command_metadata['long']} from '{cmd_module.__name__}'")
-
-        if reload:
-            importlib.reload(cmd_module)
-
-        # Check command names/shortcut overlap (only when not reloading)
-        for cmd in commands:
-            if cmd["long"] == command_metadata["long"]:
-                util.FATAL (f"Command {cmd['long']} already exists")
-            if cmd["short"] == command_metadata["short"]:
-                util.FATAL (f"Commands {cmd['long']} and {command_metadata['long']} use the same shortcut: {cmd['short']}")
-        commands.append (command_metadata)
-    return commands
-
-def locate_output_dir ():
-    # Try to find a default output directory
-    most_recent_modification_time = None
-    try:
-        for tt_build_subfile in os.listdir("tt_build"):
-            subdir = f"tt_build/{tt_build_subfile}"
-            if os.path.isdir(subdir):
-                if most_recent_modification_time is None or os.path.getmtime(subdir) > most_recent_modification_time:
-                    most_recent_modification_time = os.path.getmtime(subdir)
-                    most_recent_subdir = subdir
-        util.INFO (f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{most_recent_subdir}")
-        return most_recent_subdir
-    except:
-        pass
-    return None
-
-# Loads all files necessary to debug a single buda run
-# Returns a debug 'context' that contains the loaded information
-def load_context (netlist_filepath, run_dirpath):
-    # All-encompassing structure representing a Debuda context
-    class Context:
-        netlist = None      # Netlist and related 'static' data (i.e. data stored in files such as blob.yaml, pipegen.yaml)
-        devices = None      # A list of objects of class Device used to obtain 'dynamic' data (i.e. data read from the devices)
-        pass
-
-    util.VERBOSE (f"Initializing context")
-    context = Context()
-
-    # Load netlist files
-    context.netlist = tt_netlist.Netlist(netlist_filepath, run_dirpath)
-
-    # Create the devices
-    arch = context.netlist.get_arch ()
-    device_ids = context.netlist.get_device_ids()
-    context.devices = { i : tt_device.Device.create(arch) for i in device_ids }
-
-    return context
-
-
 if __name__ == '__main__':
-    parser=get_parser()
+    parser=get_argument_parser()
     args = parser.parse_args()
 
     if not args.verbose:
         util.VERBOSE=util.NULL_PRINT
 
     if args.output_dir is None: # Then find the most recent tt_build subdir
-        args.output_dir = locate_output_dir()
+        args.output_dir = locate_most_recent_build_output_dir()
 
     if args.output_dir is None:
         util.FATAL (f"Output directory (output_dir) was not supplied and cannot be determined automatically. Exiting...")
@@ -292,7 +293,7 @@ if __name__ == '__main__':
     context.args = args
     context.debuda_path = __file__
 
-    # If we spawned debuda stub, the runtime_data provided by debuda stub is not valid, and we use the runtime_data.yaml file saved by the test
+    # If we spawned the Debuda stub, the runtime_data provided by debuda stub is not valid, and we use the runtime_data.yaml file saved by the test
     if server_ifc.spawning_debuda_stub:
         server_ifc.get_runtime_data = lambda: context.netlist.runtime_data_yaml
 

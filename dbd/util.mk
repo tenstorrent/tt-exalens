@@ -1,6 +1,7 @@
-# Include this file in your makefile by copying the following lines
-# ROOT?=$(shell git rev-parse --show-toplevel)
-# include $(ROOT)/dbd/common.mk
+# Utility marcos for other makefiles.
+# Include this file in your makefile by copying the following two lines:
+#   ROOT?=$(shell git rev-parse --show-toplevel)
+#   include $(ROOT)/dbd/common.mk
 
 # Make sure we don't print what is executed. If you want the echoing, run make with SILENT=0
 ifneq ($(SILENT),0)
@@ -14,10 +15,7 @@ QP ?= > /dev/null
 #               of the command itself. Set Q=@ to make everything quiet.
 Q ?= 
 
-# Color related stuff
-# source: http://vmrob.com/colorized-makefiles/
-#
-# Set colors
+# Colors
 RED    =\033[0;31m
 GREEN  =\033[0;32m
 YELLOW =\033[0;33m
@@ -27,7 +25,7 @@ NC     =\033[0m
 TITLE    =\033[7;34m
 SUBTITLE =\033[1;34m
 
-#NOCOLOR=1
+# NOCOLOR=1
 
 ifndef NOCOLOR
 	ERROR_COLOR  =\033[7;31m

@@ -16,6 +16,7 @@ DBD_DEPS = $(addprefix $(OBJDIR)/, $(DBD_SRCS:.cpp=.d))
 
 -include $(DBD_DEPS)
 
+# Main target: it builds the standalone server executable
 dbd: verif/netlist_tests/debuda-server-standalone
 	$(PRINT_TARGET)
 	$(PRINT_OK)
