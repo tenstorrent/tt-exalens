@@ -50,7 +50,7 @@ src_state_map = {
 class WormholeDevice (tt_device.Device):
     SIG_SEL_CONST = 5
     # # Some of this can be read from architecture yaml file
-    DRAM_CHANNEL_TO_NOC0_LOC = [(0, 11), (5, 11), (5, 2), (5, 8), (5, 5), (0, 5)]
+    DRAM_CHANNEL_TO_NOC0_LOC = [(0, 11), (0, 5), (5, 11), (5, 2), (5, 8), (5, 5)]
 
     # # Physical location mapping
     PHYS_X_TO_NOC_0_X = [ 0, 9, 1, 8, 2, 7, 3, 6, 4, 5 ]
