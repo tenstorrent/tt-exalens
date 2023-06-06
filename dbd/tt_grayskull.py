@@ -42,7 +42,7 @@ class GrayskullDevice (tt_device.Device):
         return noc0_x, noc0_y
 
     def __init__(self):
-        self.yaml_file = util.YamlFile ("device/grayskull_120_arch.yaml")
+        self.yaml_file = util.YamlFile ("device/grayskull_10x12.yaml")
 
     def rows_with_no_functional_workers(self): return 2
     def cols_with_no_functional_workers(self): return 1

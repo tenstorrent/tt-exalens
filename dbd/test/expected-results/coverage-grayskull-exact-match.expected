@@ -22,7 +22,7 @@ No host queues found
 10000050000  input0               f_op0                       1               0          0  0x30000000         0         1            1        1           66560
 [34mExecuting command: abs[0m
 [34mAnalyzing device 0[0m
-[34mLoading '/Users/ivanhamer/work/budabackend/dbd/run/dbd-export/device/grayskull_120_arch.yaml'[0m
+[34mLoading '/Users/ivanhamer/work/budabackend/dbd/run/dbd-export/device/grayskull_10x12.yaml'[0m
 X-Y    Op                          Stream  Type      Epoch    Phase    MSGS_REMAINING    MSGS_RECEIVED  Depends on    State    Flag
 -----  ------------------------  --------  ------  -------  -------  ----------------  ---------------  ------------  -------  ------
 3-3    test_op/recip:reciprocal         8  input         0        1                32                2  2-1           Active   [38:2:205:106:0mAll core inputs ready, but no output generated[0m

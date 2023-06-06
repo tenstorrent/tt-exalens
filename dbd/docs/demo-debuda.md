@@ -119,7 +119,7 @@ Debuda will show a command prompt showing the currently selected epoch, graph, d
 Show cores with configured streams: `d`
 ```
 ==== Device 0 
-Loading '/home/ihamer/work/budabackend/device/grayskull_120_arch.yaml'
+Loading '/home/ihamer/work/budabackend/device/grayskull_10x12.yaml'
 00  +   +   +   +   .   .   .   .   .   .   .   .   Coordinate system: RC
 01  .   .   .   .   .   .   .   .   .   .   .   .   . - Functional worker
 02  .   .   +   .   +   .   +   .   .   .   .   .   + - Functional worker with configured stream(s)
