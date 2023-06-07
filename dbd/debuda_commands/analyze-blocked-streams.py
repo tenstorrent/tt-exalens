@@ -43,7 +43,7 @@ def run(args, context, ui_state = None):
         epochs = util.set()
         # epoch_to_graph_map = dict()
         for loc, stream_regs in all_stream_regs.items():
-            epoch_id = device.stream_epoch (stream_regs)
+            epoch_id = device.get_epoch_id((loc[0],loc[1]))
             if epoch_id not in epochs:
                 epochs.add (epoch_id)
 
@@ -117,12 +117,13 @@ def run(args, context, ui_state = None):
             has_active_stream = device_data[device_id]["cores"][block_loc]["has_active_stream"]
             has_empty_inputs = device_data[device_id]["cores"][block_loc]["has_empty_inputs"]
             if has_active_stream:
+                noc0_loc = device.rc_to_noc0(rc_loc)
+                epoch_id = device.get_epoch_id(noc0_loc)
                 for stream_id in range (0, 64):
                     add_stream_to_navigation_suggestions = False
                     stream_loc = block_loc + (stream_id,)
                     current_phase = int(all_stream_regs[stream_loc]['CURR_PHASE'])
                     if current_phase > 0:
-                        epoch_id = current_phase>>15
                         stream_type_str = device.stream_type(stream_id)["short"]
                         stream_active = device.is_stream_active(all_stream_regs[stream_loc])
                         NUM_MSGS_RECEIVED = int(all_stream_regs[stream_loc]['NUM_MSGS_RECEIVED'])

@@ -52,9 +52,10 @@ def run(args, context, ui_state = None):
 
         configured_streams = util.set()
         for loc in device.get_block_locations (block_type = "functional_workers"):
+            core_epoch = device.get_epoch_id(noc0_loc)
             for stream_id in range (64):
                 phase_reg = device.get_stream_phase (loc, stream_id)
-                epoch = phase_reg >> 15
+                epoch = core_epoch
                 phase = phase_reg & 0x7fff
 
                 if phase_reg > 0:

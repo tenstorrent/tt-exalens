@@ -5,6 +5,8 @@ from tt_pipe import Pipe
 from tt_buffer import Buffer
 from tt_object import TTObject
 
+import itertools
+
 # Queues
 class Queue(TTObject):
     def __init__(self, name, data):
@@ -106,7 +108,10 @@ class Graph(TTObject):
                 p = Pipe(self, val)
                 self.pipes.add(p)
                 input_buffers_ids.update (val['input_list'])
-                output_buffers_ids.update (val['output_list'])
+                output_buffers = val['output_list']
+                if isinstance(output_buffers[0], list):
+                    output_buffers = tuple(itertools.chain.from_iterable(output_buffers))
+                output_buffers_ids.update (output_buffers)
             else:
                 raise RuntimeError(f"{self.pipegen_yaml.id()}: Cannot interpret {key}: {val}")
 
