@@ -90,7 +90,11 @@ def get_epoch_to_ops(context, device_id, epochs):
     device = context.devices[device_id]
     netlist = context.netlist
     epoch_id_graph = {}
+    core_epoch_map = dict()
     for loc, epoch_id in epochs.items():
+        xyloc = (loc[0], loc[1],)
+        if xyloc not in core_epoch_map:
+            core_epoch_map[xyloc] = epoch_id
         # get graph
         if epoch_id not in epoch_id_graph:
             graph_name = netlist.get_graph_name(epoch_id, device_id)

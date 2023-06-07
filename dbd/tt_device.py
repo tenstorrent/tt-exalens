@@ -285,9 +285,8 @@ class Device(TTObject):
     # contain a epoch_id
     def read_all_epochs (self):
         epochs = {}
-        for loc in self.get_block_locations (block_type = "functional_workers"):
-            for stream_id in range (0, 64):
-                epochs[loc + (stream_id,)] = self.get_epoch_id(loc, stream_id)
+        for noc0_loc in self.get_block_locations (block_type = "functional_workers"):
+            epochs[noc0_loc] = self.get_epoch_id(noc0_loc)
         return epochs
 
     # For a given core, read all 64 streams and populate the 'streams' dict. streams[stream_id] will
@@ -597,8 +596,14 @@ class Device(TTObject):
     def get_stream_phase (self, noc0_loc, stream_id):
         return self.get_stream_reg_field(noc0_loc, stream_id, 11, 0, 20)
 
-    def get_epoch_id(self, noc0_loc, stream_id):
-        return self.get_stream_phase(noc0_loc, stream_id) >> 15
+    def get_epoch_id(self, noc0_loc):
+        # Overlay base (epoch_t base) + epoch_id offset
+        #  Need to differentiate the address depending on core type:
+        # epoch_id offset is 147 word = 588 B (0x24c)
+        #  Eth base is 0x1b000
+        #  Tensix base is 0x23080
+        epoch = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0x232cc) & 0xFF
+        return epoch
 
     # Returns whether the stream is configured
     def is_stream_configured(self, stream_data):
@@ -693,9 +698,6 @@ class Device(TTObject):
             return noc_loc
         else:
             return (self.noc1_to_noc0 (noc_loc))
-
-    def stream_epoch (self, stream_regs):
-        return int(stream_regs['CURR_PHASE']) >> 15
 
     def pci_read_xy(self, x, y, noc_id, reg_addr):
         return SERVER_IFC.pci_read_xy(self.id(), x, y, noc_id, reg_addr)

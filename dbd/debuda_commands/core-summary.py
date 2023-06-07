@@ -19,11 +19,9 @@ def run(args, context, ui_state = None):
     output_table = dict()
 
     # 1. Get epochs for core
-    stream_regs = current_device.read_core_stream_registers (noc0_loc)
     core_epochs = util.set()
-    for _, sr in stream_regs.items():
-        stream_epoch = current_device.stream_epoch (sr)
-        core_epochs.add (stream_epoch)
+    epoch = get_epoch_id(noc0_loc)
+    core_epochs.add (epoch)
 
     output_table[f"epoch{'s' if len(core_epochs) > 1 else ''}"] = " ".join (list({ str(e) for e in core_epochs}))
 

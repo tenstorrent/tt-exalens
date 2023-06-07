@@ -31,7 +31,7 @@ def run(args, context, ui_state = None):
 
     regs = current_device.read_stream_regs ((noc0_loc), stream_id)
     stream_regs = tt_stream.convert_reg_dict_to_strings(current_device, regs)
-    stream_epoch_id = regs["CURR_PHASE"] >> 15
+    stream_epoch_id = current_device.get_epoch_id(noc0_loc)
     new_current_epoch_id = stream_epoch_id
 
     all_stream_summary, navigation_suggestions = tt_stream.get_core_stream_summary (current_device, noc0_loc)
@@ -88,6 +88,8 @@ def run(args, context, ui_state = None):
 
     if new_current_epoch_id != stream_epoch_id:
         print (f"{util.CLR_WARN}Current epoch is {new_current_epoch_id}, while the stream is in epoch {stream_epoch_id} {util.CLR_END}. To switch to epoch {stream_epoch_id}, enter {util.CLR_PROMPT}e {stream_epoch_id}{util.CLR_END}")
+    else:
+        print(f"Stream epoch is {stream_epoch_id}")
 
     # 4. TODO: Print forks
 
