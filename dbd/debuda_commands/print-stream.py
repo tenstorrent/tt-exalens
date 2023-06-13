@@ -51,9 +51,12 @@ def run(args, context, ui_state = None):
     # 1a. Append the op name to description
     for n in navigation_suggestions:
         loc = n['loc']
-        loc_rc = current_device.noc0_to_rc(loc)
-        op_name = graph.core_coord_to_full_op_name (loc_rc)
-        n['description'] += f" ({op_name})"
+        try:
+            loc_rc = current_device.noc0_to_rc(loc)
+            op_name = graph.core_coord_to_full_op_name (loc_rc)
+            n['description'] += f" ({op_name})"
+        except:
+            n['description'] += " N/A"
 
     # 2. Find blob data
     stream_loc = (current_device_id, *noc0_loc, stream_id, int(regs['CURR_PHASE']))
