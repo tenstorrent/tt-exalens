@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/bin/bash 
+mkdir -p build/test
 TMP_OUT_FILE=build/test/dbd-out.tmp
 
 touch $TMP_OUT_FILE
