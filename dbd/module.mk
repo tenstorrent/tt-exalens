@@ -1,4 +1,4 @@
-include $(BUDA_HOME)/dbd/util.mk
+include $(BUDA_HOME)/infra/common.mk
 
 # Every variable in subdir must be prefixed with subdir(emulating a namespace)
 
