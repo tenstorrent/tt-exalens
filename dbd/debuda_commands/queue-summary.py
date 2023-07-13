@@ -25,22 +25,32 @@ from tt_graph import Queue
 def get_queue_data (context, queue):
     q_data = queue.root
     q_data["outputs"] = queue.outputs_as_str()
-    if "dram" not in q_data:
-        q_data["dram"] = '-'
-
     queue_locations = []
     if queue.is_host(): # This queues is on the host
+        q_data["ch_addr"] = q_data["host"]
         target_device = int (q_data["target_device"])
-        addr = q_data["host"][0]
-        rdptr = tt_device.SERVER_IFC.host_dma_read (target_device, addr)
-        wrptr = tt_device.SERVER_IFC.host_dma_read (target_device, addr + 4)
-        entries = q_data["entries"]
-        occupancy = Queue.occupancy(entries, wrptr, rdptr)
-        queue_locations.append ((rdptr, wrptr, occupancy))
+        for queue_position in range(len(q_data["host"])):
+            dram_place = q_data["host"][queue_position]
+            if (type(dram_place) is list):
+                host_chan = dram_place[0]
+                host_addr = dram_place[1]
+            elif (type(dram_place) is int):
+                # Host Queues back-compat support for no mem-channel, default to 0x0.
+                host_chan = 0
+                host_addr = dram_place[0]
+            else:
+                assert False , f"Unexpected Host queue addr format"
+
+            rdptr = tt_device.SERVER_IFC.host_dma_read (target_device, host_addr, host_chan)
+            wrptr = tt_device.SERVER_IFC.host_dma_read (target_device, host_addr + 4, host_chan)
+            entries = q_data["entries"]
+            occupancy = Queue.occupancy(entries, wrptr, rdptr)
+            queue_locations.append ((rdptr, wrptr, occupancy))
     else:
         device_id = q_data["target_device"]
         device = context.devices[device_id]
         entries = q_data["entries"]
+        q_data["ch_addr"] = q_data["dram"]
         for queue_position in range(len(q_data["dram"])):
             dram_place = q_data["dram"][queue_position]
             dram_chan = dram_place[0]
@@ -62,12 +72,24 @@ def read_queue_contents (context, queue, start_addr, num_bytes):
     device = context.devices[device_id]
 
     if "host" in q_data: # This queues is on the host
-        addr = q_data["host"][0]
-        da = tt_object.DataArray(f"host-0x{addr:08x}-{num_words * 4}")
-        for i in range (num_words):
-            data = tt_device.SERVER_IFC.host_dma_read (device_id, addr + start_addr + i * 4)
-            da.data.append(data)
-        ret_val.add (da)
+        for queue_position in range(len(q_data["host"])):
+            dram_place = q_data["host"][queue_position]
+
+            if (type(dram_place) is list):
+                host_chan = dram_place[0]
+                host_addr = dram_place[1]
+            elif (type(dram_place) is int):
+                # Host Queues back-compat support for no mem-channel, default to 0x0.
+                host_chan = 0
+                host_addr = dram_place[0]
+            else:
+                assert False , f"Unexpected Host queue addr format"
+
+            da = tt_object.DataArray(f"host-0x{host_addr:08x}-ch{host_chan}-{num_words * 4}")
+            for i in range (num_words):
+                data = tt_device.SERVER_IFC.host_dma_read (device_id, host_addr + start_addr + i * 4, host_chan)
+                da.data.append(data)
+            ret_val.add (da)
     else:
         for queue_position in range(len(q_data["dram"])):
             dram_place = q_data["dram"][queue_position]
@@ -104,7 +126,7 @@ def run(args, context, ui_state = None):
         { 'key_name' : None,            'title': 'Name',         'formatter': None },
         { 'key_name' : 'input',         'title': 'Input',        'formatter': None },
         { 'key_name' : 'outputs',       'title': 'Outputs',      'formatter': None},
-        { 'key_name' : 'dram',          'title': 'DRAM ch-addr', 'formatter': lambda x: ', '.join(Queue.to_str (e[0], e[1]) for e in x) if x!='-' else '-' },
+        { 'key_name' : 'ch_addr',       'title': 'HOST/DRAM ch-addr', 'formatter': lambda x: ', '.join(Queue.to_str (e[0], e[1]) for e in x) if x!='-' else '-' },
     ]
 
     table=util.TabulateTable(column_format)

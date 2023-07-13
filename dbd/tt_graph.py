@@ -40,8 +40,14 @@ class Queue(TTObject):
         loc = self.get_loc()
         if loc in self.root:
             addresses = self.root[loc]
+            # Host Queues now have channels like DRAM. Here is workaround for back-compat period
+            # to support host queues without mem channel, default to channel 0
+            for idx, a in enumerate(addresses):
+                if (self.is_host() and type(a) is int):
+                    addresses[idx] = [0, a]
+
             for a in addresses:
-                assert(type(a) is int if self.is_host() else type(a) is list)
+                assert(type(a) is list)
             return addresses
         return []
 

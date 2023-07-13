@@ -101,10 +101,9 @@ class DEBUDA_SERVER_SOCKET_IFC:
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x04', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, data))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
         assert data == ret_val
-    def host_dma_read (chip_id, dram_addr): # DMA_BUFF_READ
+    def host_dma_read (chip_id, dram_addr, dram_chan): # DMA_BUFF_READ
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-        # print ("host_dma_read 0x%x" % dram_addr)
-        ZMQ_SOCKET.send(struct.pack ("cccccI", b'\x03', chip_id.to_bytes(1, byteorder='big'), b'\x00', b'\x00', b'\x00', dram_addr))
+        ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x03', chip_id.to_bytes(1, byteorder='big'), b'\x00', b'\x00', b'\x00', dram_addr, dram_chan))
         ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
         return ret_val
     def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format): # PCI_READ_TILE
@@ -176,10 +175,10 @@ class DEBUDA_SERVER_CACHED_IFC:
     def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
         if not DEBUDA_SERVER_CACHED_IFC.enabled:
             return DEBUDA_SERVER_SOCKET_IFC.pci_write_xy(chip_id, x, y, noc_id, reg_addr, data)
-    def host_dma_read (chip_id, dram_addr):
+    def host_dma_read (chip_id, dram_addr, dram_chan):
         key = (dram_addr)
         if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
-            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_SOCKET_IFC.host_dma_read (chip_id, dram_addr)
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_SOCKET_IFC.host_dma_read (chip_id, dram_addr, dram_chan)
         return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
     def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
         key = (chip_id, x, y, z, reg_addr, msg_size, data_format)
