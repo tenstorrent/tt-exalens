@@ -33,7 +33,7 @@ command_metadata = {
 }
 
 # Checks whether the queue has data
-def queue_has_data(device, q:Queue):
+def queue_has_data(device, device_id, q:Queue):
     if not q.is_host() and not q.is_dram():
         util.WARN(f'Unknown memory location: {q.get_loc()}')
         return True
@@ -45,8 +45,9 @@ def queue_has_data(device, q:Queue):
             read_ptr = device.pci_read_xy (x, y, 0, dram_addr)
             write_ptr = device.pci_read_xy (x, y, 0, dram_addr + 4)
         if q.is_host():
-            read_ptr = tt_device.SERVER_IFC.host_dma_read (mem_addr)
-            write_ptr = tt_device.SERVER_IFC.host_dma_read (mem_addr+4)
+            host_chan, host_addr = mem_addr[0], mem_addr[1]
+            read_ptr = tt_device.SERVER_IFC.host_dma_read (device_id, host_addr, host_chan)
+            write_ptr = tt_device.SERVER_IFC.host_dma_read (device_id, host_addr+4, host_chan)
 
         # Get read and write pointers
         if Queue.occupancy(q.entries(), write_ptr, read_ptr) == 0:
@@ -149,11 +150,11 @@ def get_graph_input_queues(graph):
     input_queues.keep (lambda q: q.root['type'] == 'queue')
     return input_queues
 
-def get_input_queues_without_data(device, graph):
+def get_input_queues_without_data(device, device_id, graph):
     input_queues = get_graph_input_queues(graph)
     queue_ops = {}
     for q in input_queues:
-        has_data = queue_has_data(device, q)
+        has_data = queue_has_data(device, device_id, q)
         if not has_data:
             for op in graph.get_fanout(q):
                 streams = get_streams_waiting_for_data (graph, device, q, op)
@@ -276,7 +277,7 @@ def run(args, context, ui_state = None):
             graph = context.netlist.graph(graph_name)
 
             # check input queues
-            queue_ops_errors = get_input_queues_without_data(device, graph)
+            queue_ops_errors = get_input_queues_without_data(device, device_id, graph)
 
             if len(queue_ops_errors) > 0:
                 queue_ops_missing_data.append({'device_id':device_id, 'epoch_id':epoch_id, 'graph_name':graph_name, 'operations':queue_ops_errors})

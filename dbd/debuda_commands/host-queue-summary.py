@@ -24,30 +24,29 @@ def run (cmd, context, ui_state):
         for buffer in graph.buffers:
             buffer_data = buffer.root
             if buffer_data["dram_io_flag_is_remote"] != 0:
-                dram_addr = buffer_data['dram_addr']
-                # bits 31,30 peer_id==0 means HOST
-                if dram_addr >> 30 == 0:
-                    chip_id = buffer_data['chip_id'][0]
-                    rdptr = tt_device.SERVER_IFC.host_dma_read (chip_id, dram_addr)
-                    wrptr = tt_device.SERVER_IFC.host_dma_read (chip_id, dram_addr + 4)
-                    slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
-                    queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
-                    occupancy = Queue.occupancy (buffer_data["q_slots"], wrptr, rdptr)
+                dram_addr = buffer_data['dram_addr'] & 0x3FFFFFFF # Clear upper 2 bits, that carries host channel already.
+                dram_chan = buffer_data['dram_chan']
+                chip_id = buffer_data['chip_id'][0]
+                rdptr = tt_device.SERVER_IFC.host_dma_read (chip_id, dram_addr, dram_chan)
+                wrptr = tt_device.SERVER_IFC.host_dma_read (chip_id, dram_addr + 4, dram_chan)
+                slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
+                queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
+                occupancy = Queue.occupancy (buffer_data["q_slots"], wrptr, rdptr)
 
-                    # IMPROVE: Duplicated from print_dram_queue_summary. Merge into one function.
-                    input_buffer_op_name_list = []
-                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'src'):
-                        input_buffer_op_name_list.append (graph.buffers.find_id(other_buffer_id).root["md_op_name"])
-                    output_buffer_op_name_list = []
-                    for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'dest'):
-                        output_buffer_op_name_list.append (graph.buffers.find_id(other_buffer_id).root["md_op_name"])
+                # IMPROVE: Duplicated from print_dram_queue_summary. Merge into one function.
+                input_buffer_op_name_list = []
+                for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'src'):
+                    input_buffer_op_name_list.append (graph.buffers.find_id(other_buffer_id).root["md_op_name"])
+                output_buffer_op_name_list = []
+                for other_buffer_id in graph.get_connected_buffers([buffer.id()], 'dest'):
+                    output_buffer_op_name_list.append (graph.buffers.find_id(other_buffer_id).root["md_op_name"])
 
-                    input_ops = f"{' '.join (input_buffer_op_name_list)}"
-                    output_ops = f"{' '.join (output_buffer_op_name_list)}"
+                input_ops = f"{' '.join (input_buffer_op_name_list)}"
+                output_ops = f"{' '.join (output_buffer_op_name_list)}"
 
-                    table.append ([ buffer.id(), buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
+                table.append ([ buffer.id(), buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], f"0x{dram_addr:x}", f"{dram_chan}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
 
     if len(table) > 0:
-        print (tabulate(table, headers=["Buffer name", "Op", "Input Ops", "Output Ops", "dram_buf_flag", "dram_io_flag", "Address", "RD ptr", "WR ptr", "Occupancy", "Q slots", "Q Size [bytes]"] ))
+        print (tabulate(table, headers=["Buffer name", "Op", "Input Ops", "Output Ops", "dram_buf_flag", "dram_io_flag", "Address", "Channel", "RD ptr", "WR ptr", "Occupancy", "Q slots", "Q Size [bytes]"] ))
     else:
         print ("No host queues found")
