@@ -25,8 +25,8 @@ def run (cmd, context, ui_state):
     print (f"{util.CLR_INFO}Epoch queues for graph {graph_name}, device id {device_id} with EPOCH_Q_NUM_SLOTS: {EPOCH_Q_NUM_SLOTS} {util.CLR_END}")
 
     # From tt_epoch_dram_manager::tt_epoch_dram_manager and following the constants
-    GridSizeRow = 16
-    GridSizeCol = 16
+    GridSizeRow = 12
+    GridSizeCol = 13
     EPOCH_Q_SLOT_SIZE = 32
     EPOCH_Q_SLOTS_OFFSET = 32
     DRAM_EPOCH_METADATA_LIMIT =   8 * 1024 * 1024
