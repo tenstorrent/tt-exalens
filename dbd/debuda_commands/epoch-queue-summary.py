@@ -21,16 +21,16 @@ def run (cmd, context, ui_state):
     epoch_device = context.devices[device_id]
     distribtued_eq = bool(runtime_data.root.get("distribute_epoch_tables", 1))
     EPOCH_Q_NUM_SLOTS = runtime_data.root.get('epoch_queue_num_slots', 64)
+    DRAM_EPOCH_METADATA_LIMIT = runtime_data.root.get('dram_epoch_metadata_limit', 8 * 1024 * 1024)
+    grid_size_row = runtime_data.root.get("grid_size_row", 12)
+    grid_size_col = runtime_data.root.get("grid_size_col", 10)
 
     print (f"{util.CLR_INFO}Epoch queues for graph {graph_name}, device id {device_id} with EPOCH_Q_NUM_SLOTS: {EPOCH_Q_NUM_SLOTS} {util.CLR_END}")
 
     # From tt_epoch_dram_manager::tt_epoch_dram_manager and following the constants
-    GridSizeRow = 12
-    GridSizeCol = 13
     EPOCH_Q_SLOT_SIZE = 32
     EPOCH_Q_SLOTS_OFFSET = 32
-    DRAM_EPOCH_METADATA_LIMIT =   8 * 1024 * 1024
-    EPOCH_QUEUE_SIZE_BYTES = GridSizeRow*GridSizeCol*(EPOCH_Q_NUM_SLOTS*EPOCH_Q_SLOT_SIZE+EPOCH_Q_SLOTS_OFFSET)
+    EPOCH_QUEUE_SIZE_BYTES = grid_size_row*grid_size_col*(EPOCH_Q_NUM_SLOTS*EPOCH_Q_SLOT_SIZE+EPOCH_Q_SLOTS_OFFSET)
     EPOCH_QUEUE_START_ADDR = DRAM_EPOCH_METADATA_LIMIT - EPOCH_QUEUE_SIZE_BYTES
 
     dram_chan = 0 # CHECK: This queue is always in channel 0
@@ -39,13 +39,13 @@ def run (cmd, context, ui_state):
     table=[]
     loc_str = "DRAM"
 
-    for blocktype in ["functional_workers"]: # , "eth"]:
+    for blocktype in ["functional_workers", "eth"]:
         coretype = "Worker" if blocktype == "functional_workers" else "Ethernet"
         for x, y in epoch_device.get_block_locations (block_type = blocktype):
             if distribtued_eq:
                 dram_loc = epoch_device.get_t6_queue_location(arch_name, {'x': x, 'y': y})
 
-            offset = (GridSizeCol * y + x) * (EPOCH_Q_NUM_SLOTS*EPOCH_Q_SLOT_SIZE+EPOCH_Q_SLOTS_OFFSET)
+            offset = (grid_size_col * y + x) * (EPOCH_Q_NUM_SLOTS*EPOCH_Q_SLOT_SIZE+EPOCH_Q_SLOTS_OFFSET)
             addr = EPOCH_QUEUE_START_ADDR + offset
             dx, dy = dram_loc['x'], dram_loc['y'] # mapped dram location for this core
 
@@ -53,9 +53,9 @@ def run (cmd, context, ui_state):
             wrptr = tt_device.SERVER_IFC.pci_read_xy (device_id, dx, dy, 0, addr + 4) & 0xffff
             occupancy = Queue.occupancy (EPOCH_Q_NUM_SLOTS, wrptr, rdptr)
             if occupancy > 0:
-                table.append ([f"{util.noc_loc_str((x, y))}", f"{util.noc_loc_str((dx, dy))}", coretype, loc_str, f"0x{addr:x}", f"{rdptr}", f"{wrptr}", occupancy ])
+                table.append ([f"{util.noc_loc_str((x, y))}", coretype, loc_str, f"{util.noc_loc_str((dx, dy))}", f"0x{addr:x}", f"{rdptr}", f"{wrptr}", occupancy])
 
     if len(table) > 0:
-        print (tabulate(table, headers=["T6", "DRAM", "CoreType", "Location", "Address", "RD ptr", "WR ptr", "Occupancy" ] ))
+        print (tabulate(table, headers=["T6", "CoreType", "Location", "DRAM", "Address", "RD ptr", "WR ptr", "Occupancy"] ))
     else:
         print ("No epoch queues have occupancy > 0")
