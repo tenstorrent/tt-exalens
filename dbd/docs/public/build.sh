@@ -1,5 +1,6 @@
 #!/bin/bash
+# This script is meant to be run from module.mk like this:  make dbd/docs/public
 set -u
-apt-get install python3-sphinx
-pip3 install --upgrade pip urllib3 chardet sphinx sphinx-rtd-theme sphinx-argparse myst-parser
+pip install -U docutils==0.18.1 pip install sphinx==6.2.0
+echo Make sure to add the ~/.local/bin to you PATH: export PATH=$PATH:~/.local/bin
 sphinx-build -M $BUILDER $SOURCE_DIR $INSTALL_DIR

@@ -1,5 +1,7 @@
 """Traverses all streams and detects the blocked ones. It prints the results in a table.
 It prioritizes the streams that are genuinely blocked to the ones that are waiting on blocked streams.
+
+OBSOLETE: Use hang-analysis.py instead.
 """
 from tabulate import tabulate
 import tt_stream, tt_netlist, tt_util as util
@@ -100,24 +102,24 @@ def run(args, context, ui_state = None):
             }
 
         # 2b. Find stream dependencies
-        active_core_rc_list = [ device.noc0_to_rc( ( active_stream[1], active_stream[2] ) ) for active_stream in active_streams ]
+        active_core_rc_list = [ device.noc0_to_tensix( ( active_stream[1], active_stream[2] ) ) for active_stream in active_streams ]
         active_core_noc0_list = [ ( active_stream[1], active_stream[2] ) for active_stream in active_streams ]
         for active_core_rc in active_core_rc_list:
             fan_in_cores_rc = device_graph.get_fanin_cores_rc (active_core_rc)
-            active_core_noc0 = device.rc_to_noc0 (active_core_rc)
+            active_core_noc0 = device.tensix_to_noc0 (active_core_rc)
             # print (f"fan_in_cores_rc for {active_core_rc}: {fan_in_cores_rc}")
-            fan_in_cores_noc0 = [ device.rc_to_noc0 (rc) for rc in fan_in_cores_rc ]
+            fan_in_cores_noc0 = [ device.tensix_to_noc0 (rc) for rc in fan_in_cores_rc ]
             device_data[device_id]["cores"][active_core_noc0]["fan_in_cores"] = fan_in_cores_noc0
 
         # 3. Print the summary of blocked streams
         last_core_loc = None
 
         for block_loc in device.get_block_locations (block_type = "functional_workers"):
-            rc_loc = device.noc0_to_rc (block_loc)
+            netlist_loc = device.noc0_to_tensix (block_loc)
             has_active_stream = device_data[device_id]["cores"][block_loc]["has_active_stream"]
             has_empty_inputs = device_data[device_id]["cores"][block_loc]["has_empty_inputs"]
             if has_active_stream:
-                noc0_loc = device.rc_to_noc0(rc_loc)
+                noc0_loc = device.tensix_to_noc0(netlist_loc)
                 epoch_id = device.get_epoch_id(noc0_loc)
                 for stream_id in range (0, 64):
                     add_stream_to_navigation_suggestions = False
@@ -131,10 +133,10 @@ def run(args, context, ui_state = None):
 
                         graph = netlist.graph_by_epoch_and_device(epoch_id, device_id)
                         if not graph:
-                            util.WARN (f"No graph for epoch {epoch_id} on core RC {rc_loc}, device {device_id}, stream {stream_id}.")
+                            util.WARN (f"No graph for epoch {epoch_id} on core RC {netlist_loc}, device {device_id}, stream {stream_id}.")
                             continue
-                        op = graph.core_coord_to_full_op_name(rc_loc)
-                        core_loc = f"{util.noc_loc_str(block_loc)}"
+                        op = graph.location_to_full_op_name(netlist_loc)
+                        core_loc = f"{block_loc[0]}-{block_loc[1]}"
                         fan_in_cores = device_data[device_id]['cores'][block_loc]['fan_in_cores']
                         depends_on_str = ""
                         flag = ""

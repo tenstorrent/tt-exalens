@@ -1,0 +1,26 @@
+diff --git a/mcore/netlist/parser/tt_backend_api_types.hpp b/mcore/netlist/parser/tt_backend_api_types.hpp
+index ecdca3339..db505e68b 100644
+--- a/mcore/netlist/parser/tt_backend_api_types.hpp
++++ b/mcore/netlist/parser/tt_backend_api_types.hpp
+@@ -144,7 +144,7 @@ struct tt_backend_config {
+     DEVICE type = DEVICE::Invalid;
+     ARCH arch = ARCH::Invalid;
+     DEVICE_MODE mode = DEVICE_MODE::CompileAndRun;
+-    bool dump_graphs = false;
++    bool dump_graphs = true;
+     int optimization_level = 0;  // lower for more checking, higher for caching and perf
+     std::string output_dir = "tt_build/test_out";
+     // Runtime configurations
+diff --git a/netlist/tt_backend_api_types.hpp b/netlist/tt_backend_api_types.hpp
+index 42f7e115e..ec0a7ba4e 100644
+--- a/netlist/tt_backend_api_types.hpp
++++ b/netlist/tt_backend_api_types.hpp
+@@ -159,7 +159,7 @@ struct tt_backend_config {
+     DEVICE type = DEVICE::Invalid;
+     ARCH arch = ARCH::Invalid;
+     DEVICE_MODE mode = DEVICE_MODE::CompileAndRun;
+-    bool dump_graphs = false;
++    bool dump_graphs = true;
+     int optimization_level = 0;  // lower for more checking, higher for caching and perf
+     std::string output_dir = "tt_build/test_out";
+     // Runtime configurations

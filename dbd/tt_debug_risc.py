@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from tt_device import DEBUDA_SERVER_SOCKET_IFC
+from tt_coordinate import OnChipCoordinate
 
 # Register address
 REG_STATUS                    = 0
@@ -50,9 +51,7 @@ RISC_DBG_STATUS1 = 0xFFB1208C
 
 @dataclass
 class RiscLoc:
-    device_id:int = 0
-    x : int = 1
-    y : int = 1
+    loc : OnChipCoordinate
     noc_id : int = 0
     risc_id : int = 0
 
@@ -64,10 +63,10 @@ class RiscDebug :
         self.control0_read  = 0x80000000 + (self.location.risc_id << 17)
 
     def __write(self, addr, data):
-        DEBUDA_SERVER_SOCKET_IFC.pci_write_xy(self.location.device_id, self.location.x, self.location.y, self.location.noc_id, addr, data)
+        DEBUDA_SERVER_SOCKET_IFC.pci_write_xy(self.location.loc._device._id, *self.location.loc.to("nocVirt"), self.location.noc_id, addr, data)
 
     def __read(self, addr):
-        data = DEBUDA_SERVER_SOCKET_IFC.pci_read_xy(self.location.device_id, self.location.x, self.location.y, self.location.noc_id, addr)
+        data = DEBUDA_SERVER_SOCKET_IFC.pci_read_xy(self.location.loc._device._id, *self.location.loc.to("nocVirt"), self.location.noc_id, addr)
         return data
 
     def __trigger_write(self, reg_addr):

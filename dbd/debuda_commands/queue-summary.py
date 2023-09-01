@@ -15,12 +15,15 @@ command_metadata = {
     "type" : "high-level",
     "expected_argument_count" : [0, 1, 3],
     "arguments" : "queue_name start_addr num_bytes",
-    "description" : "Prints summary of all queues. If the arguments are supplied, it prints given queue contents."
+    "description" : "Prints summary of all queues. If the arguments are supplied, it prints the given queue contents."
 }
 
-import tt_util as util, tt_object
+import tt_util as util
+from tt_object import TTObjectIDDict, DataArray
 import tt_device
 from tt_graph import Queue
+
+# IMPROVE: More details available. See struct tt_queue_header
 
 def get_queue_data (context, queue):
     q_data = queue.root
@@ -41,8 +44,8 @@ def get_queue_data (context, queue):
             else:
                 assert False , f"Unexpected Host queue addr format"
 
-            rdptr = tt_device.SERVER_IFC.host_dma_read (target_device, host_addr, host_chan)
-            wrptr = tt_device.SERVER_IFC.host_dma_read (target_device, host_addr + 4, host_chan)
+            rdptr = tt_device.SERVER_IFC.host_dma_read (target_device, host_addr, host_chan) & 0xffff     # ptrs are 16-bit
+            wrptr = tt_device.SERVER_IFC.host_dma_read (target_device, host_addr + 4, host_chan) & 0xffff
             entries = q_data["entries"]
             occupancy = Queue.occupancy(entries, wrptr, rdptr)
             queue_locations.append ((rdptr, wrptr, occupancy))
@@ -56,8 +59,8 @@ def get_queue_data (context, queue):
             dram_chan = dram_place[0]
             dram_addr = dram_place[1]
             dram_loc = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
-            rdptr = device.pci_read_xy (dram_loc[0], dram_loc[1], 0, dram_addr)
-            wrptr = device.pci_read_xy (dram_loc[0], dram_loc[1], 0, dram_addr + 4)
+            rdptr = device.pci_read_xy (dram_loc[0], dram_loc[1], 0, dram_addr) & 0xffff      # ptrs are 16-bit
+            wrptr = device.pci_read_xy (dram_loc[0], dram_loc[1], 0, dram_addr + 4) & 0xffff
             occupancy = Queue.occupancy(entries, wrptr, rdptr)
             queue_locations.append ((rdptr, wrptr, occupancy))
     return q_data, queue_locations
@@ -66,7 +69,7 @@ def get_queue_data (context, queue):
 def read_queue_contents (context, queue, start_addr, num_bytes):
     util.INFO (f"Contents of queue {queue.id()}:")
     num_words = (num_bytes-1) // 4 + 1
-    ret_val = tt_object.TTObjectSet()
+    ret_val = TTObjectIDDict()
     q_data = queue.root
     device_id = q_data["target_device"]
     device = context.devices[device_id]
@@ -85,7 +88,7 @@ def read_queue_contents (context, queue, start_addr, num_bytes):
             else:
                 assert False , f"Unexpected Host queue addr format"
 
-            da = tt_object.DataArray(f"host-0x{host_addr:08x}-ch{host_chan}-{num_words * 4}")
+            da = DataArray(f"host-0x{host_addr:08x}-ch{host_chan}-{num_words * 4}")
             for i in range (num_words):
                 data = tt_device.SERVER_IFC.host_dma_read (device_id, host_addr + start_addr + i * 4, host_chan)
                 da.data.append(data)
@@ -96,7 +99,7 @@ def read_queue_contents (context, queue, start_addr, num_bytes):
             dram_chan = dram_place[0]
             addr = dram_place[1]
             dram_loc = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
-            da = tt_object.DataArray(f"dram-ch{dram_chan}-0x{addr:08x}-{num_words * 4}")
+            da = DataArray(f"dram-ch{dram_chan}-0x{addr:08x}-{num_words * 4}")
             for i in range (num_words):
                 data = device.pci_read_xy (dram_loc[0], dram_loc[1], 0, addr + start_addr + i * 4)
                 da.data.append(data)
@@ -105,7 +108,7 @@ def read_queue_contents (context, queue, start_addr, num_bytes):
 
 def print_single_queue_summary(args, context, ui_state = None):
     qid = args[1]
-    queue = context.netlist.queues.find_id (qid)
+    queue = context.netlist.queues().find_id (qid)
     if not queue:
         util.WARN (f"Cannot find queue '{qid}'")
     else:
@@ -119,7 +122,7 @@ def run(args, context, ui_state = None):
         { 'key_name' : 'entries',       'title': 'Entries',      'formatter': None },
         { 'key_name' : 'wrptr',         'title': 'Wr',           'formatter': None },
         { 'key_name' : 'rdptr',         'title': 'Rd',           'formatter': None },
-        { 'key_name' : 'occupancy',     'title': 'Occ',          'formatter': lambda x: f"{util.CLR_BLUE}{x}{util.CLR_END}" },
+        { 'key_name' : 'occupancy',     'title': 'Occ',          'formatter': lambda x: (f"{x}") if x == '0' else (f"{util.CLR_RED}{x}{util.CLR_END}")},
         { 'key_name' : 'type',          'title': 'Type',         'formatter': None },
         { 'key_name' : 'target_device', 'title': 'Device',       'formatter': None },
         { 'key_name' : 'loc',           'title': 'Loc',          'formatter': None },
@@ -131,10 +134,11 @@ def run(args, context, ui_state = None):
 
     table=util.TabulateTable(column_format)
 
-    # Whether to print all DRAM positions or aggregate them
-    show_each_queue_dram_location = True
+    # Whether to print all DRAM positions or aggregate them.
+    # IMPROVE: Pass this through args
+    show_each_queue_dram_location = False
 
-    for queue in context.netlist.queues:
+    for q_id, queue in context.netlist.queues().items():
         q_name = queue.id()
         if queue_id and queue_id != q_name: continue
         q_data, queue_locations = get_queue_data(context, queue)
@@ -161,14 +165,18 @@ def run(args, context, ui_state = None):
     print (table)
 
     if queue_id:
-        queue = context.netlist.queues.find_id(queue_id)
-        queue_start_addr = int(args[2], 0) if len(args) > 2 else 0
-        queue_num_bytes = int(args[3], 0) if len(args) > 3 else 128
-        alignment_bytes=queue_start_addr % 4
-        queue_start_addr-=alignment_bytes
-        queue_num_bytes+=alignment_bytes
+        queue = context.netlist.queues().find_id(queue_id)
+        if not queue:
+            util.ERROR (f"Cannot find queue with id '{queue_id}'")
+        else:
+            queue_start_addr = int(args[2], 0) if len(args) > 2 else 0
+            queue_num_bytes = int(args[3], 0) if len(args) > 3 else 128
+            alignment_bytes=queue_start_addr % 4
+            queue_start_addr-=alignment_bytes
+            queue_num_bytes+=alignment_bytes
 
-        data = read_queue_contents(context, queue, queue_start_addr, queue_num_bytes)
-        # for d in data:
-        #     d.to_bytes_per_entry(1)
-        print (data)
+            data = read_queue_contents(context, queue, queue_start_addr, queue_num_bytes)
+            # for d in data:
+            #     d.to_bytes_per_entry(1)
+            for d in data:
+                print (data[d])

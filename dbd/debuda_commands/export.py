@@ -25,14 +25,15 @@ def run(args, context, ui_state = None):
 
     # 1. Add all Yaml files
     filelist = [ f for f in util.YamlFile.file_cache ]
-    util.VERBOSE (f"Export filelist: {filelist}")
+    util.VERBOSE (f"Export filelist:")
+    util.VERBOSE (f"{util.pretty (filelist)}")
 
     # 2. See if server cache is made
     if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled:
         tt_device.DEBUDA_SERVER_CACHED_IFC.save()
         filelist.append (tt_device.DEBUDA_SERVER_CACHED_IFC.filepath)
     else:
-        util.WARN ("Warning: server cache is missing and will not be exported (see '--server-cache')")
+        util.WARN ("Warning: server cache is missing and will not be included in this export (see '--server-cache')")
 
     # 3. Save command history
     COMMAND_HISTORY_FILENAME="debuda-command-history.yaml"
@@ -40,7 +41,8 @@ def run(args, context, ui_state = None):
     filelist.append (COMMAND_HISTORY_FILENAME)
 
     odir = context.args.output_dir
-    if util.export_to_zip (filelist, out_file=zip_file_name, prefix_to_remove=odir):
-        print (f"Exported '{zip_file_name}'. Import with:\n{util.CLR_GREEN}unzip {zip_file_name} -d dbd-export-{odir} && cd dbd-export-{odir} && ../{context.debuda_path} . {'--server-cache on' if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled else ''}{util.CLR_END}")
+    de_odir = f"dbd/export-{odir}"
+    zip_file_name = util.export_to_zip (filelist, out_file=zip_file_name, prefix_to_remove=odir)
+    print (f"Exported '{zip_file_name}'. Import with:\n{util.CLR_GREEN}mkdir -p {de_odir} && unzip {zip_file_name} -d {de_odir} && dbd/debuda.py {de_odir} {'--server-cache on' if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled else ''}{util.CLR_END}")
 
     return navigation_suggestions

@@ -35,10 +35,9 @@ RISC_REGS = {
 def run(args, context, ui_state = None):
     result = {}
     device_id = ui_state['current_device_id']
-    x = ui_state['current_x']
-    y = ui_state['current_y']
+    loc = ui_state['current_loc']
     for i in range(0,4):
-        risc = RiscDebug(RiscLoc(device_id, x, y, 0, i))
+        risc = RiscDebug(RiscLoc(loc, 0, i))
         risc.enable_debug()
         risc.pause()
         if risc.is_paused():
@@ -47,7 +46,6 @@ def run(args, context, ui_state = None):
                 reg_val = risc.read_gpr(j)
                 result[i][j] = reg_val
             risc.contnue()
-
 
     table=[]
     for i in range(0,33):

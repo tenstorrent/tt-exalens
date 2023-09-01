@@ -2,10 +2,11 @@
 """
 debuda parses the build output files and probes the silicon to determine status of a buda run.
 """
-import sys, os, yaml, zipfile
+import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
 import traceback, socket
+import ryml, yaml
 
 # Pretty print exceptions (traceback)
 def notify_exception(exc_type, exc_value, tb):
@@ -52,6 +53,7 @@ CLR_GREEN = '\033[32m'
 CLR_BLUE = '\033[34m'
 CLR_GREY = '\033[37m'
 CLR_ORANGE = '\033[38:2:205:106:0m'
+CLR_WHITE = '\033[38:2:255:255:255m'
 
 CLR_END = '\033[0m'
 
@@ -62,6 +64,9 @@ CLR_INFO = CLR_BLUE
 CLR_PROMPT = "<style color='green'>"
 CLR_PROMPT_END = "</style>"
 
+class TTException (Exception):
+    pass
+
 # We create a fatal exception that must terminate the program
 # All other exceptions might get caught and the program might continue
 class TTFatalException (Exception):
@@ -70,16 +75,19 @@ class TTFatalException (Exception):
 # Colorized messages
 def NULL_PRINT(s):
     pass
-def VERBOSE(s):
-    print (f"{CLR_END}{s}{CLR_END}")
-def INFO(s):
-    print (f"{CLR_INFO}{s}{CLR_END}")
-def WARN(s):
-    print (f"{CLR_WARN}{s}{CLR_END}")
-def ERROR(s):
-    print (f"{CLR_ERR}{s}{CLR_END}")
-def FATAL(s):
-    ERROR (s)
+
+def DEBUG(s, **kwargs):
+    print (f"{CLR_WARN}{s}{CLR_END}", **kwargs)
+def VERBOSE(s, **kwargs):
+    print (f"{CLR_END}{s}{CLR_END}", **kwargs)
+def INFO(s, **kwargs):
+    print (f"{CLR_INFO}{s}{CLR_END}", **kwargs)
+def WARN(s, **kwargs):
+    print (f"{CLR_WARN}{s}{CLR_END}", **kwargs)
+def ERROR(s, **kwargs):
+    print (f"{CLR_ERR}{s}{CLR_END}", **kwargs)
+def FATAL(s, **kwargs):
+    ERROR (s, **kwargs)
     raise TTFatalException(s)
 
 # Given a list l of possibly shuffled integers from 0 to len(l), the function returns reverse mapping
@@ -96,12 +104,6 @@ def dict_to_table (dct):
     else:
         table = [ [ "", "" ] ]
     return table
-
-# Print noc0 coordinates as x-y, and RC coords as [r,c]
-def noc_loc_str (noc_loc):
-    return f"{noc_loc[0]}-{noc_loc[1]}"
-def rc_loc_str (rc_loc):
-    return f"[{rc_loc[0]},{rc_loc[1]}]"
 
 # Given two tables 'a' and 'b' merge them into a wider table
 def merge_tables_side_by_side (a, b):
@@ -138,14 +140,75 @@ def print_columnar_dicts (dict_array, title_array):
 
     print (tabulate(final_table, headers=titles))
 
+# Takes a Rapid yaml (ryml) memory object and converts it to a value. Tries to convert to int if possible.
+def ryml_memory_to_value(mem):
+    if mem is None:
+        return None
+    v = bytes(mem).decode('utf-8')
+    # Try to convert v to int allowing for hex string (0x...)
+    try:
+        v = int(v, 0)
+    except:
+        pass
+    return v
+
+# Takes a Rapid yaml (ryml) tree and converts it to a Python dict
+def ryml_to_dict(tree, i):
+    is_seq = tree.is_seq(i)
+    is_map = tree.is_map(i)
+    if i == ryml.NONE:
+        return None
+
+    if is_seq:
+        d = [ ]
+        fc = tree.first_child(i)
+        while fc != ryml.NONE:
+            d.append (ryml_to_dict(tree, fc))
+            fc = tree.next_sibling(fc)
+            if fc == ryml.NONE:
+                break
+        return d
+
+    elif is_map:
+        d = dict()
+        fc = tree.first_child(i)
+        while fc != ryml.NONE:
+            key = ryml_memory_to_value(tree.key(fc))
+            d[key] = ryml_to_dict(tree, fc)
+            fc = tree.next_sibling(fc)
+            if fc == ryml.NONE:
+                break
+        return d
+    else:
+        v = None
+        if tree.has_val(i):
+            v =  ryml_memory_to_value(tree.val(i))
+        return v
+
+# Given a string with multiple yaml documents, parse them all and return a list of dicts
+def ryml_load_all(yaml_string):
+    documents = yaml_string.split('---')
+    parsed_documents = []
+    for d in documents:
+        tree = ryml.parse_in_arena(d)
+        parsed_documents.append (ryml_to_dict(tree, tree.root_id()))
+    return parsed_documents
+
 # Container for YAML
 class YamlContainer:
-    def __init__ (self, yaml_string):
+    def __init__ (self, yaml_string, source="N/A"):
         self.root = dict()
-        for i in yaml.load_all(yaml_string, Loader=yaml.CSafeLoader):
-            self.root = { **self.root, **i }
+        parsed_documents = ryml_load_all(yaml_string)
+        for d in parsed_documents:
+            # Merge the documents
+            self.root = { **self.root, **d }
+        self.source = source
+    def __str__(self):
+        return f"{type(self).__name__}: {self.source}"
+    def __repr__(self):
+        return self.__str__()
 
-# Stores all data loaded from a yaml file
+# A wrapper/container of a YAML file. Loads the file on demand.
 # Includes a cache in case a file is loaded multiple times
 class YamlFile:
     # Cache
@@ -154,17 +217,24 @@ class YamlFile:
     def __init__ (self, filepath):
         self.filepath = filepath
         YamlFile.file_cache[self.filepath] = None # Not loaded yet
+        if not os.path.isfile(self.filepath):
+            WARN (f"File '{self.filepath}' does not exist")
 
     def load (self):
         if self.filepath in YamlFile.file_cache and YamlFile.file_cache[self.filepath]:
             self.root = YamlFile.file_cache[self.filepath]
         else:
-            INFO (f"Loading '{os.getcwd()}/{self.filepath}'")
+            current_time = time.time()
+            INFO (f"Loading yaml file: '{os.path.abspath(self.filepath)}'", end="")
             # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
             # Note: graph_name can apear multiple times, we manually convert it into an array
             self.root = dict()
 
-            for i in yaml.load_all(open(self.filepath), Loader=yaml.CSafeLoader):
+            # load self.filepath into string
+            with open(self.filepath, 'r') as stream:
+                yaml_string = stream.read()
+
+            for i in ryml_load_all(yaml_string):
                 if 'graph_name' in i:
                     if 'graph_names' not in self.root:
                         self.root['graph_names'] = []
@@ -172,9 +242,12 @@ class YamlFile:
                 else:
                     self.root = { **self.root, **i }
             YamlFile.file_cache[self.filepath] = self.root
+            INFO (f" ({len(yaml_string)} bytes loaded in {time.time() - current_time:.2f}s)")
 
     def __str__(self):
         return f"{type(self).__name__}: {self.filepath}"
+    def __repr__(self):
+        return self.__str__()
     def items(self):
         return self.root.items()
     def id(self):
@@ -193,24 +266,33 @@ def remove_prefix(text, prefix):
         return text[len(prefix):]
     return text
 
+def generate_unique_filename (filename):
+    file_id = 0
+    unique_filename = filename
+    e_filename, e_file_extension = os.path.splitext(unique_filename)
+    while os.path.exists (unique_filename):
+        # Split the filename into name and extension
+        unique_filename = f"{e_filename}.{file_id}{e_file_extension}"
+        file_id += 1
+    return unique_filename
+
 # Exports filelist to a zip file
 def export_to_zip(filelist, out_file=DEFAULT_EXPORT_FILENAME, prefix_to_remove=None):
     if out_file is None:
         out_file=DEFAULT_EXPORT_FILENAME
 
-    if os.path.exists (out_file):
-        WARN (f"Warning: cannot export as the output file already exists: {out_file}")
-        return False
+    unique_out_file = generate_unique_filename(out_file)
 
-    zf = zipfile.ZipFile(out_file, "w", zipfile.ZIP_DEFLATED)
+    zf = zipfile.ZipFile(unique_out_file, "w", zipfile.ZIP_DEFLATED)
 
     for filepath in filelist:
         zf.write(filepath, arcname=remove_prefix(filepath, prefix_to_remove))
 
-    return True
+    return unique_out_file
 
 def write_to_yaml_file (data, filename):
     with open(filename, 'w') as output_yaml_file:
+        # Improve: This could also be done with ryml
         yaml.dump(data, output_yaml_file)
 
 # Takes in data in row/column format and returns string with aligned columns
@@ -358,3 +440,61 @@ def is_port_available(port):
         pass
     sock.close()
     return result
+
+# Returns a dictionary pretty printed into a string
+def pretty(dct):
+    pp = pprint.PrettyPrinter(indent=2)
+    return pp.pformat(dct)
+
+# Helpers to create comma and space separated strings
+def comma_join (l):
+    return  ", ".join ([ str(i) for i in l ])
+def space_join (l):
+    return  " ".join ([ str(i) for i in l ])
+
+#
+# The following helpers are used to allow tracing of function calls
+#
+import functools, types
+
+# Global variable to keep track of the nesting level of the trace. Used to indent the printout.
+TRACE_NESTING_LEVEL = 2
+TRACER_FUNCTION = INFO # By default we show the trace with INFO level
+
+def trace(func):
+    """Decorator that prints the comment of the function when it's called.
+    The function must have a docstring to be traced."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        global TRACE_NESTING_LEVEL
+        doc = func.__doc__
+
+        # Collecting arguments and their values for the printout
+        args_list = [repr(a) for a in args]
+        args_list.extend([f"{k}={v!r}" for k, v in kwargs.items()])
+        arguments = ", ".join(args_list)
+
+        # Print with indentation
+        if doc:
+            TRACER_FUNCTION(f"{' ' * TRACE_NESTING_LEVEL}{func.__name__}({arguments}): {doc.strip().splitlines()[0]}")
+            # Increase nesting level for nested calls
+            TRACE_NESTING_LEVEL += 2
+
+        result = func(*args, **kwargs)
+
+        if doc:
+            TRACE_NESTING_LEVEL -= 2
+
+        return result
+    return wrapper
+
+def decorate_all_module_functions_for_tracing(mod, tracer_function=INFO):
+    """Decorates all functions in a given module 'mod' with @trace decorator."""
+    global TRACE_NESTING_LEVEL
+    TRACE_NESTING_LEVEL = 2
+    for name, obj in list(vars(mod).items()):
+        if isinstance(obj, types.FunctionType) and obj.__module__ == mod.__name__:
+            setattr(mod, name, trace(obj))
+
+def get_indent ():
+    return ' ' * TRACE_NESTING_LEVEL

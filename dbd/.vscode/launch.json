@@ -12,6 +12,45 @@
             "args": [ ],
             "cwd": "${workspaceFolder}/..",
             "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                // "TT_PCI_LOG_LEVEL": "2"
+            }
+        },
+        {
+            "name": "debuda_test-ha",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [ "debuda_test", "--commands", "ha;exit" ],
+            "cwd": "${workspaceFolder}/..",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "ARCH_NAME": "wormhole_b0"
+            }
+        },
+        {
+            "name": "debuda_test-run",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [ "debuda_test" ],
+            "cwd": "${workspaceFolder}/..",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "ARCH_NAME": "wormhole_b0"
+            }
+        },
+        {
+            "name": "plain-run-pybuda",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [ ],
+            "cwd": "${workspaceFolder}/../../pybuda",
+            "console": "integratedTerminal",
             "justMyCode": true
         },
         {
@@ -72,27 +111,32 @@
             "request": "launch",
             "program": "${workspaceFolder}/debuda.py",
             "args": [
-                "--server-cache",
-                "on",
+                // "--server-cache",
+                // "on",
                 "--commands",
                 "self-test;x"
             ],
-            "cwd": "${workspaceFolder}/test/exported-runs/simple-matmul-no-hangs",
+            // "cwd": "${workspaceFolder}/test/exported-runs/simple-matmul-no-hangs",
+            "cwd": "${workspaceFolder}/..",
             "console": "integratedTerminal",
             "justMyCode": true
         },
         {
-            "name": "wh_multichip_dram_fork_0_to_11-passing",
+            "name": "server-cache-on",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/debuda.py",
             "args": [
+                "dbd/export-tt_build/test_op_2831512983258292821",
                 "--server-cache",
-                "on"
+                "on",
             ],
-            "cwd": "${workspaceFolder}/test/exported-runs/wh_multichip_dram_fork_0_to_11-passing",
+            "cwd": "${workspaceFolder}/..",
             "console": "integratedTerminal",
-            "justMyCode": true
-        },
+            "justMyCode": true,
+            "env": {
+                // "TT_PCI_LOG_LEVEL": "2"
+            }
+           },
     ]
 }

@@ -22,7 +22,7 @@ command_metadata = {
     "short" : "b",
     "type" : "low-level",
     "expected_argument_count" : [ 1 ],
-    "arguments" : "buffer_id_or_op_name",
+    "arguments" : "buffer_id",
     "description" : "Prints details on the buffer with a given ID."
 }
 
@@ -45,7 +45,7 @@ def run (cmd, context, ui_state=None):
         else:
             util.print_columnar_dicts ([buffer.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
 
-            for pipe in graph.pipes:
+            for pipe_id, pipe in graph.pipes.items():
                 if buffer_id in pipe.root["input_list"]:
                     print (f"( {util.CLR_BLUE}Input{util.CLR_END} of pipe {pipe.id()} )")
                     navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })

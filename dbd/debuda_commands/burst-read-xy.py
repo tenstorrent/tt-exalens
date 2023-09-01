@@ -34,7 +34,7 @@ def get_print_format(print_format):
 
 # A helper to print the result of a single PCI read
 def print_a_pci_read (x, y, addr, val, comment=""):
-    print(f"{util.noc_loc_str((x, y))} 0x{addr:08x} => 0x{val:08x} ({val:d}) {comment}")
+    print(f"{x}-{y} 0x{addr:08x} => 0x{val:08x} ({val:d}) {comment}")
 
 # Perform a burst of PCI reads and print results.
 # If burst_type is 1, read the same location for a second and print a report
