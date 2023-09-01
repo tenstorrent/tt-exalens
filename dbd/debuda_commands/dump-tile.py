@@ -11,7 +11,7 @@
 """
 from tabulate import tabulate
 import tt_util as util
-import tt_netlist
+from tt_coordinate import OnChipCoordinate
 
 command_metadata = {
     "short" : "t",
@@ -42,12 +42,12 @@ def get_data_format_from_string(str):
     return None
 
 # gets information about stream buffer in l1 cache from blob
-def get_l1_buffer_info_from_blob(device_id, graph, noc0_loc, stream_id, phase):
+def get_l1_buffer_info_from_blob(device_id, graph, loc, stream_id, phase):
     buffer_addr = 0
     msg_size = 0
     buffer_size = 0
 
-    stream_loc = (device_id, *noc0_loc, stream_id, phase)
+    stream_loc = (device_id, *loc.to('nocTr'), stream_id, phase)
     stream = graph.get_streams(stream_loc).first()
 
     if stream.root.get("buf_addr"):
@@ -63,27 +63,30 @@ def dump_message_xy(context, ui_state, tile_id, raw):
     graph_name = ui_state ['current_graph_name']
     graph = context.netlist.graph(graph_name)
     current_device = context.devices[device_id]
-    noc0_loc, stream_id = (ui_state['current_x'], ui_state['current_y']), ui_state['current_stream_id']
-    current_phase = current_device.get_stream_phase (noc0_loc, stream_id)
+    loc, stream_id = ui_state['current_loc'], ui_state['current_stream_id']
+    current_phase = current_device.get_stream_phase (loc, stream_id)
     try:
-        buffer_addr, buffer_size, msg_size = get_l1_buffer_info_from_blob(device_id, graph, noc0_loc, stream_id, current_phase)
+        buffer_addr, buffer_size, msg_size = get_l1_buffer_info_from_blob(device_id, graph, loc, stream_id, current_phase)
     except:
-        print (f"{util.CLR_RED}No information{util.CLR_END}")
+        util.ERROR (f"No information")
         return
-    print(f"{noc0_loc[0]}-{noc0_loc[1]} buffer_addr: 0x{(buffer_addr):08x} buffer_size: 0x{buffer_size:0x} msg_size:{msg_size}")
+    print(f"{loc.to_str()} buffer_addr: 0x{(buffer_addr):08x} buffer_size: 0x{buffer_size:0x} msg_size:{msg_size}")
     if (buffer_addr >0 and buffer_size>0 and msg_size>0) :
         if (tile_id> 0 and tile_id <= buffer_size/msg_size):
             msg_addr = buffer_addr + (tile_id - 1) * msg_size
             if is_tile:
                 # 1. Get the op name through coordinates.
-                stream_loc = (device_id, *noc0_loc, stream_id, current_phase)
+                stream_loc = (device_id, *loc.to('nocTr'), stream_id, current_phase)
                 stream = graph.get_streams(stream_loc).first()
                 if stream is None:
                     util.ERROR (f"Cannot find stream {stream_loc}")
                     return
-                buffer = graph.get_buffers(stream.get_buffer_id()).first()
-                loc_rc = current_device.noc0_to_rc( noc0_loc )
-                op_name = graph.core_coord_to_op_name (loc_rc)
+                bid = stream.get_buffer_id()
+                if bid is None:
+                    util.ERROR (f"Cannot find buffer for stream {stream_loc}")
+                    return
+                buffer = graph.buffers[bid]
+                op_name = graph.location_to_op_name (loc)
 
                 # 2. Get the operation so we can get the data format
                 op = graph.root[op_name]
@@ -97,13 +100,13 @@ def dump_message_xy(context, ui_state, tile_id, raw):
                 data_format = get_data_format_from_string (data_format_str)
 
                 # 3. Dump the tile
-                current_device.dump_tile(noc0_loc, msg_addr, msg_size, data_format)
+                current_device.dump_tile(loc, msg_addr, msg_size, data_format)
             else:
-                current_device.dump_memory(noc0_loc, msg_addr, msg_size)
+                current_device.dump_memory(loc, msg_addr, msg_size)
         else:
-            print(f"Message id should be in range (1, {buffer_size//msg_size})")
+            util.ERROR(f"Message id should be in range (1, {buffer_size//msg_size})")
     else:
-        print("Not enough data in blob.yaml")
+        util.ERROR("Not enough data in blob.yaml")
 
 def run(args, context, ui_state = None):
     tile_id = int(args[1])

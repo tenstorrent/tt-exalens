@@ -26,17 +26,15 @@ command_metadata = {
     "short" : "d",
     "long" : "device",
     "type" : "high-level",
-    "expected_argument_count" : [0, 1],
-    "arguments" : "device_id",
-    "description" : "Shows a device summary. When no argument is supplied, it iterates through all devices."
+    "expected_argument_count" : [0, 1, 2, 3],
+    "arguments" : "device_id, axis coord, cell coord",
+    "description" : "Shows a device summary. When no argument is supplied, it iterates through all devices used by the currently loaded netlist. Coords available: netlist, noc0, noc1, nocTr, nocVirt, die, tensix, none"
 }
 
 import tt_util as util
 
 def run(args, context, ui_state = None):
-    runtime_data = context.server_ifc.get_runtime_data()
-
-    if len(args) == 2:
+    if len(args) > 1 and int(args[1]) != 0:
         device_id = int(args[1])
         if device_id not in context.devices:
             util.ERROR (f"Invalid device ID '{device_id}'. Valid devices IDs: %s" % [ d for d in context.devices ])
@@ -45,13 +43,22 @@ def run(args, context, ui_state = None):
     else:
         devices_list = list(context.devices.keys())
 
+    axis_coordinate = "netlist" # Default coordinate system
+    if len(args) > 2:
+        axis_coordinate = args[2]
+
+    cell_val_coordinate = "nocTr" # Default cell contents
+    if len(args) > 3:
+        cell_val_coordinate = args[3]
+
     for device_id in devices_list:
         device = context.devices[device_id]
-        is_mmio_device = runtime_data and "chips_with_mmio" in runtime_data.root and device.id() in runtime_data.root['chips_with_mmio']
-        util.INFO (f"==== Device {device.id()} {'(MMIO)' if is_mmio_device else ''}")
+        util.INFO (f"==== Device {device.id()}")
 
         configured_streams = util.set()
-        for loc in device.get_block_locations (block_type = "functional_workers"):
+
+        func_workers = device.get_block_locations (block_type = "functional_workers")
+        for loc in func_workers:
             core_epoch = device.get_epoch_id(loc)
             for stream_id in range (64):
                 phase_reg = device.get_stream_phase (loc, stream_id)
@@ -60,13 +67,20 @@ def run(args, context, ui_state = None):
 
                 if phase_reg > 0:
                     configured_streams.add (loc)
-        # print (configured_streams)
-        emphasize_explanation = "Functional worker with configured stream(s)"
-        print(device.render (options="rc", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
-        # print()
-        # print(device.render (options="physical", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
-        # print()
-        # print(device.render (options="noc0", emphasize_noc0_loc_list = configured_streams, emphasize_explanation = emphasize_explanation))
+                    # util.INFO (f"Configured stream {stream_id} at {loc.full_str()} with epoch {epoch} and phase {phase}")
+
+        blue_plus = f"{util.CLR_INFO}+{util.CLR_END}"
+        def render_configured_stream(loc):
+            if loc in configured_streams:
+                return blue_plus
+            else:
+                return " "
+
+        legend = [ "Legend:",
+                f"  Axis in {axis_coordinate}" + (f", cell contents in {cell_val_coordinate} coordinates" if cell_val_coordinate!='none' else " coordinates"),
+                f"  {blue_plus} Functional worker with configured stream(s)" ]
+
+        print(device.render (legend=legend, axis_coordinate=axis_coordinate, cell_renderer=lambda loc: (loc.to_str (cell_val_coordinate) if cell_val_coordinate!='none' else "") + render_configured_stream(loc)))
 
     navigation_suggestions = []
     return navigation_suggestions

@@ -4,52 +4,14 @@ This short tutorial shows basics of Debuda.py debugging tool. You will introduce
 source code, and then use Debuda.py to determine the location of the hang. You will also examine some commonly-used
 commands of Debuda.py.
 
-## Install graph-easy (optional)
-
-Graph-Easy is a Perl-based program that renders .dot graphs in ASCII. In this tutorial, we only use it to show
-a graphical representation of the netlist graph.
-
-```
-sudo apt install cpanminus
-sudo cpanm Graph::Easy
-```
-Then add this alias to render the graph to Left->Right:
-```
-alias graph='sed '\''s/digraph G {/digraph G {\nrankdir=LR/g'\'' | graph-easy --as boxart 2>/dev/null'
-```
-Now, we can do something like this to render as simple graph
-```
-cat graph_test_op.netlist.dump | graph
-```
-You should see something like this:
-```
-     ┌────────┐  0   ┌───────┐  0   ┌─────────┐  0   ┌──────┐  0   ┌───────┐  0   ┌────────┐
-     │ input0 │ ───▶ │ f_op0 │ ───▶ │ matmul1 │ ───▶ │ add1 │ ───▶ │ d_op3 │ ───▶ │ output │
-     └────────┘      └───────┘      └─────────┘      └──────┘      └───────┘      └────────┘
-                       │              ▲                ▲
-  ┌────────────────────┘              │                │
-  │                                   │                │
-  │  ┌────────┐  0   ┌───────┐  1     │                │
-  │  │ input1 │ ───▶ │ f_op1 │ ───────┘                │
-  │  └────────┘      └───────┘                         │
-  │                    │                               │
-  │                    │ 0                             │
-  │                    ▼                               │
-  │                  ┌───────┐  1   ┌─────────┐  1     │
-  │                  │ recip │ ───▶ │ matmul2 │ ───────┘
-  │                  └───────┘      └─────────┘
-  │   0                               ▲
-  └───────────────────────────────────┘
-  ```
-
 ## Compile test_op
 ```
 make -j32 && make -j32 verif/op_tests/test_op
-device/bin/silicon/reset.sh
-./build/test/verif/op_tests/test_op --netlist dbd/test/netlists/netlist_multi_matmul_perf.yaml --seed 0 --silicon --timeout 500 && cat graph_test_op.netlist.dump | graph
+device/bin/silicon/reset.sh # If reset is available and you want to reset the device
+./build/test/verif/op_tests/test_op --netlist dbd/test/netlists/netlist_multi_matmul_perf.yaml --seed 0 --silicon --timeout 60
 ```
 
-Insert a hang into the __recip__ node:
+Insert a hang into the __recip__ node (Grayskull only):
 ```
 git apply dbd/test/inject-errors/sfpu_reciprocal-infinite-spin-grayskull.patch
 ```
@@ -60,16 +22,12 @@ git apply dbd/test/inject-errors/sfpu_reciprocal-infinite-spin-wormhole.patch
 
 Rerun the test_op, and you should see a hang:
 ```
- Info    | IO               | get_tilizer cache MISS, added object to cache with tag 'input0'
- Info    | IO               | HW tilize input queue input0 push #0, host data_format=Float16, device data_format=Float16
- Info    | IO               | get_tilizer cache MISS, added object to cache with tag 'input1'
- Info    | IO               | HW tilize input queue input1 push #0, host data_format=Float16, device data_format=Float16
- Info    | Test             | Push Elapsed Time: 1275 us
- Info    | Runtime          | run_program for program program0
- Info    | Runtime          | run_execute_instrn graph = test_op, epoch_id = 0, input_count = 1, pc = 4
+                Runtime | INFO     | Running program 'program0'
+                Runtime | INFO     |    Running graph 'test_op', epoch_id = 0, input_count = 1, pc = 4, device_id = 0, queue_settings.size() = 2
+                Runtime | INFO     |    Wait for idle complete on devices {0}, caller = sync-on-execute
 ^C
 ```
-Use ctrl-c to exit.
+Use ctrl-c to exit (or ctrl-\ if ctrl-c does not work).
 
 ## Debugging
 
@@ -77,7 +35,7 @@ Start Debuda:
 ```
 dbd/debuda.py
 ```
-Debuda should detect the most recent subdirectory of tt_build as a default starting point. If you want a specific directory, add `--netlist` argument followed by the path to the netlist file, and a 'positional' argument that points to the output directory. For example:
+Debuda detect the most recent subdirectory of tt_build as the run directory to use. If you do not want the most recent build, add `--netlist` argument followed by the path to the netlist file, and a 'positional' argument that points to the output directory. For example:
 ```
 dbd/debuda.py --netlist my-netlist.yaml tt-build/my-run-dir/
 ```
@@ -132,8 +90,7 @@ Loading '/home/ihamer/work/budabackend/device/grayskull_10x12.yaml'
 09  .   .   .   .   .   .   .   .   .   .   .   .
     00  01  02  03  04  05  06  07  08  09  10  11
 ```
-The coordinate system is used is 'row, column' (elsewhere shown as `R,C`). When NOC0 coordinates
-are used, a hyphen is used (e.g. `X-Y`).
+The coordinate system used is 'row, column' (`R,C`). When NOC0 coordinates are used, they are separated by a hyphen instead (e.g. `X-Y`).
 
 Operation table can be shown with: `op-map`
 ```
@@ -173,7 +130,7 @@ Analyzing device 0
     Analyzing graph test_op ( epoch 0 )
   Device ID    Epoch ID  Graph Name    Source    Destination    Hang Reason        Stream     Additional Stream Info
 -----------  ----------  ------------  --------  -------------  -----------------  ---------  ------------------------------------------------------------------
-          0           0  test_op       op2:Op    d_op3:Op       Data not received  (4, 1, 8)  {'phase': 1, 'msg_received': 0, 'msg_reamining': 64, 'dest': True}
+          0           0  test_op       op2:Op    d_op3:Op       Data not received  (4, 1, 8)  {'phase': 1, 'msg_received': 0, 'msg_remaining': 64, 'dest': True}
 Speed dial:
   #  Description             Command
 ---  ----------------------  ---------
@@ -265,7 +222,7 @@ dbd/debuda.py --commands "cdr 3 3; exit"
 
 A python file placed into commands/ folder becomes a command available to Debuda.
 
-Define some metadata for the command first:
+Define the metadata for the command to be available in the help menu. For example, this is the metadata for `op-map` command:
 ```c++
 from tabulate import tabulate
 
@@ -289,7 +246,7 @@ def run(args, context, ui_state = None):
         for op_name in graph.op_names():
             op = graph.root[op_name]
             grid_loc = op['grid_loc']
-            noc0_x, noc0_y = device.rc_to_noc0 (grid_loc[0], grid_loc[1])
+            noc0_x, noc0_y = device.tensix_to_noc0 (grid_loc[0], grid_loc[1])
             row = [ f"{graph_name}/{op_name}", op['type'], epoch_id, f"{graph.root['target_device']}", f"{grid_loc}", f"{noc0_x}-{noc0_y}", f"{op['grid_size']}"]
             rows.append (row)
 
@@ -345,3 +302,44 @@ Speed dial:
   3  Go to stream   s 5 3 8
   4  Go to stream   s 7 3 8
   ```
+
+## For reference: How to render a graph in ASCII
+
+Graph-Easy is a Perl-based program that renders .dot graphs in ASCII. In this tutorial, we only use it to show
+a graphical representation of the netlist graph.
+
+```
+sudo apt install cpanminus
+sudo cpanm Graph::Easy
+```
+Then add this alias to render the graph to Left->Right:
+```
+alias graph='sed '\''s/digraph G {/digraph G {\nrankdir=LR/g'\'' | graph-easy --as boxart 2>/dev/null'
+```
+Now, we can do something like this to render as simple graph
+```
+cat graph_test_op.netlist.dump | graph
+```
+You should see something like this:
+```
+     ┌────────┐  0   ┌───────┐  0   ┌─────────┐  0   ┌──────┐  0   ┌───────┐  0   ┌────────┐
+     │ input0 │ ───▶ │ f_op0 │ ───▶ │ matmul1 │ ───▶ │ add1 │ ───▶ │ d_op3 │ ───▶ │ output │
+     └────────┘      └───────┘      └─────────┘      └──────┘      └───────┘      └────────┘
+                       │              ▲                ▲
+  ┌────────────────────┘              │                │
+  │                                   │                │
+  │  ┌────────┐  0   ┌───────┐  1     │                │
+  │  │ input1 │ ───▶ │ f_op1 │ ───────┘                │
+  │  └────────┘      └───────┘                         │
+  │                    │                               │
+  │                    │ 0                             │
+  │                    ▼                               │
+  │                  ┌───────┐  1   ┌─────────┐  1     │
+  │                  │ recip │ ───▶ │ matmul2 │ ───────┘
+  │                  └───────┘      └─────────┘
+  │   0                               ▲
+  └───────────────────────────────────┘
+  ```
+
+As of June 15 2023, to generate the graphs, one must manually modify struct tt_backend_config::dump_graphs to true. 
+Then, when running the test, watch from message `Dumping graphviz: ...` to see the localtion of the files being dumped.

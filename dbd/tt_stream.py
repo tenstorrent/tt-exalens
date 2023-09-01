@@ -1,6 +1,6 @@
-from dbd.tt_object import TTObject
+from tt_object import TTObject
 import tt_util as util, re
-import tt_object
+from tt_coordinate import OnChipCoordinate
 
 # The field names we want to show as hexadecimal numbers
 HEX_FIELDS = {
@@ -40,18 +40,28 @@ def convert_reg_dict_to_strings(device, regs):
     for k in regs:
         # Convert to strings
         string_regs[k] = get_as_str (k, regs[k])
-        # If on noc-1, convert the coords no noc-0 coords
-        if "REMOTE_SRC_UPDATE_NOC" in regs and regs["REMOTE_SRC_UPDATE_NOC"] > 0:
-            try:
-                if k == "REMOTE_SRC_X":
-                    noc0_loc = device.noc1_to_noc0 ( ( regs[k], 0 ) )
-                    string_regs[k] += f"({util.CLR_INFO}{noc0_loc[0]}{util.CLR_END})"
-                if k == "REMOTE_SRC_Y":
-                    noc0_loc = device.noc1_to_noc0 ( ( 0, regs[k] ) )
-                    string_regs[k] += f"({util.CLR_INFO}{noc0_loc[1]}{util.CLR_END})"
-            except:
-                print (f"{util.CLR_ERR}Invalid coordinate passed k={k} regs[k]={regs[k]} {util.CLR_END}")
-                raise
+
+        # FIX: bring back the conversion to noc-0 coords if needed
+        # # If on noc-1, convert the coords no noc-0 coords
+        # if "REMOTE_SRC_UPDATE_NOC" in regs and regs["REMOTE_SRC_UPDATE_NOC"] > 0:
+        #     try:
+        #         if k == "REMOTE_SRC_X":
+        #             if regs[k] >= 16:
+        #                 noc0_loc = device.nocTr_to_noc0 ( ( regs[k], 0 ) )
+        #             else:
+        #                 noc0_loc = device.noc1_to_noc0 ( ( regs[k], 0 ) )
+        #             # string_regs[k] += f"({util.CLR_INFO}{noc0_loc[0]}{util.CLR_END})"
+        #             string_regs[k] += f"({noc0_loc[0]})"
+        #         if k == "REMOTE_SRC_Y":
+        #             if regs[k] >= 16:
+        #                 noc0_loc = device.nocTr_to_noc0 ( ( regs[k], 0 ) )
+        #             else:
+        #                 noc0_loc = device.noc1_to_noc0 ( ( 0, regs[k] ) )
+        #             # string_regs[k] += f"({util.CLR_INFO}{noc0_loc[1]}{util.CLR_END})"
+        #             string_regs[k] += f"({noc0_loc[1]})"
+        #     except:
+        #         print (f"{util.CLR_ERR}Invalid coordinate passed k={k} regs[k]={regs[k]} {util.CLR_END}")
+        #         raise
 
     return string_regs
 
@@ -59,33 +69,39 @@ def convert_reg_dict_to_strings(device, regs):
 # Converts the readings into a user-friendly strings
 # Returns the summary, and suggestions for navigation
 # IMPROVE: this function does too much. should be broken up
-def get_core_stream_summary (device, noc0_loc):
+def get_core_stream_summary (device, loc):
+    assert (type(loc) == OnChipCoordinate)
     all_streams_summary = {}
     navigation_suggestions = [ ]
     for stream_id in range (0, 64):
         val = ""
         # Check if idle
-        regs = device.read_stream_regs (noc0_loc, stream_id)
+        regs = device.read_stream_regs (loc, stream_id)
         reg_strings = convert_reg_dict_to_strings(device, regs)
         idle = device.is_stream_idle (regs)
 
-        # Construct the navigation suggestions, and stream idle status
+        # Construct the navigation suggestions for REMOTE_SRC
         if regs["REMOTE_SOURCE"] !=0 and 'REMOTE_SRC_X' in regs:
             val += f"RS-{reg_strings['REMOTE_SRC_X']}-{reg_strings['REMOTE_SRC_Y']}-{reg_strings['REMOTE_SRC_STREAM_ID']} "
-            noc0_x, noc0_y = device.as_noc_0 ( (regs['REMOTE_SRC_X'], regs['REMOTE_SRC_Y']), regs['REMOTE_SRC_UPDATE_NOC'])
+            remote_loc = OnChipCoordinate(regs['REMOTE_SRC_X'], regs['REMOTE_SRC_Y'], "nocTr", device=device)
             navigation_suggestions.append (\
-                { 'description': 'Go to source',
-                  'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_SRC_STREAM_ID']}",
-                  'loc' : (noc0_x, noc0_y)
+                { 'description': f'Go to source of stream {stream_id}',
+                  'cmd' : f"s {remote_loc.to_str('nocTr').replace('-', ' ')} {reg_strings['REMOTE_SRC_STREAM_ID']}",
+                  'loc' : remote_loc
                 })
+
+        # Construct the navigation suggestions for REMOTE_DEST
         if regs["REMOTE_RECEIVER"] !=0 and 'REMOTE_DEST_X' in regs:
+            # WARNING: We are assuming nocTr coordinates here
             val += f"RR-{reg_strings['REMOTE_DEST_X']}-{reg_strings['REMOTE_DEST_Y']}-{reg_strings['REMOTE_DEST_STREAM_ID']} "
-            noc0_x, noc0_y = device.as_noc_0 ( (regs['REMOTE_DEST_X'], regs['REMOTE_DEST_Y']), regs['OUTGOING_DATA_NOC'])
+            remote_loc = OnChipCoordinate(regs['REMOTE_DEST_X'], regs['REMOTE_DEST_Y'], "nocTr", device=device)
             navigation_suggestions.append (\
-                { 'description': 'Go to destination',
-                  'cmd' : f"s {noc0_x} {noc0_y} {reg_strings['REMOTE_DEST_STREAM_ID']}",
-                  'loc' : (noc0_x, noc0_y)
+                { 'description': f'Go to destination of stream {stream_id}',
+                'cmd' : f"s {remote_loc.to_str('nocTr').replace('-', ' ')} {reg_strings['REMOTE_DEST_STREAM_ID']}",
+                'loc' : remote_loc
                 })
+
+        # Add LSC
         if regs["LOCAL_SOURCES_CONNECTED"]!=0:
             val += "LSC "
 
@@ -96,7 +112,7 @@ def get_core_stream_summary (device, noc0_loc):
     return all_streams_summary, navigation_suggestions
 
 #
-# Stream Class
+# Stream Class - represents a stream loaded from the blob.yaml
 #
 # ID (device_id, x, y, stream_id, phase)
 class Stream(TTObject):
@@ -110,10 +126,19 @@ class Stream(TTObject):
     def __init__(self, graph, designator, data):
         self.designator = designator
         self._id = Stream.get_stream_tuple_from_designator (designator) + ( data['phase_id'], )
+        assert self._id[0] == graph.device_id()
         self.root = data
         self.graph = graph
         self.__buffer_id = self.root.get ("buf_id", None)
         self.__pipe_id = self.root.get ("pipe_id", None)
+
+        if self.__buffer_id is None:
+            # Deduce the buffer id from pipe and stream direction (src/dest)
+            assert self.__pipe_id is not None
+        if self.__pipe_id is None:
+            # Deduce the pipe id from buffer
+            assert self.__buffer_id is not None
+
 
     # Accessors
     def get_buffer_id (self):
@@ -124,8 +149,18 @@ class Stream(TTObject):
     def on_chip_id (self):
         return ( self._id[1], self._id[2], self._id[3], )
 
-    def noc0_XY(self):
+    # From the designator (translated coordinates)
+    def loc(self):
         return (self._id[1], self._id[2])
 
     def stream_id(self):
         return self._id[3]
+
+    def phase_id(self):
+        return self._id[4]
+
+    def is_src(self):
+        return 'remote_receiver' in self.root and self.root['remote_receiver'] == 'true'
+
+    def __str__(self):
+        return f"DEV_{self._id[0]} {self._id[1] }-{self._id[2] } {self._id[3] } PH_{self._id[4] }"

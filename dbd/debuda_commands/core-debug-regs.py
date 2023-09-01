@@ -22,17 +22,18 @@ command_metadata = {
 }
 
 import tt_util as util
+from tt_coordinate import OnChipCoordinate
 
 def run(args, context, ui_state = None):
     current_device_id = ui_state["current_device_id"]
     current_device = context.devices[current_device_id]
     if len(args) == 3:
-        core_locations = [ (int(args[1]), int(args[2])) ]
+        core_locations = [ OnChipCoordinate (int(args[1]), int(args[2]), 'nocTr', current_device) ]
     else:
         core_locations = current_device.get_block_locations (block_type = "functional_workers")
 
     for core_loc in core_locations:
-        print (f"=== Debug registers for core {util.noc_loc_str(core_loc)} ===")
+        print (f"=== Debug registers for core {core_loc.to_str()} ===")
         THREADS = ["T0", "T1", "T2", "FW"]
 
         # Get the register values

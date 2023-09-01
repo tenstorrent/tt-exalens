@@ -74,10 +74,10 @@ def generate_commands_rst (f):
     commands = debuda.import_commands()
     command_list = { command_data['long'] : command_data for command_data in commands }
 
-    render_commands_of_type (f, 'housekeeping', "Housekeeping", command_list)
-    render_commands_of_type (f, 'low-level', "Low level", command_list)
-    render_commands_of_type (f, 'high-level', "High level", command_list)
-    render_commands_of_type (f, 'dev', "Development", command_list)
+    render_commands_of_type (f, 'housekeeping', "Housekeeping commands", command_list)
+    render_commands_of_type (f, 'low-level', "Low level access commands", command_list)
+    render_commands_of_type (f, 'high-level', "High level access commands", command_list)
+    render_commands_of_type (f, 'dev', "Debuda.py development-related commands", command_list)
 
 def render_commands_of_type (f, ct, ct_name, command_list):
     # f.write (f"{replicate(len(ct), '#')}\n")

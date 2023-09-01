@@ -20,7 +20,7 @@ import tt_device
 
 # A helper to print the result of a single PCI read
 def print_a_pci_read (x, y, addr, val, comment=""):
-    print(f"{util.noc_loc_str((x, y))} 0x{addr:08x} => 0x{val:08x} ({val:d}) {comment}")
+    print(f"{x}-{y} 0x{addr:08x} => 0x{val:08x} ({val:d}) {comment}")
 
 def run(args, context, ui_state = None):
     """Run command

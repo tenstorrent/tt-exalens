@@ -32,7 +32,7 @@ def run (cmd, context, ui_state = None):
         device_id = context.netlist.graph_name_to_device_id(graph_name)
         device = context.devices[device_id]
 
-        for buffer in graph.buffers:
+        for buffer_id, buffer in graph.buffers.items():
             buffer_data = buffer.root
             if (buffer_data["dram_buf_flag"] != 0 or (buffer_data["dram_io_flag"] != 0 and buffer_data["dram_io_flag_is_remote"] == 0)) and not buffer.replicated:
                 dram_chan = buffer_data["dram_chan"]
@@ -53,6 +53,6 @@ def run (cmd, context, ui_state = None):
 
                 input_ops = f"{' '.join (input_buffer_op_name_list)}" if input_buffer_op_name_list else ""
                 output_ops = f"{' '.join (output_buffer_op_name_list)}" if output_buffer_op_name_list else ""
-                table.append ([ buffer.id(), buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], dram_chan, f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy, buffer_data["q_slots"], queue_size_bytes ])
+                table.append ([ buffer.id(), buffer_data["md_op_name"], input_ops, output_ops, buffer_data["dram_buf_flag"], buffer_data["dram_io_flag"], dram_chan, f"0x{dram_addr:x}", f"{rdptr}", f"{wrptr}", occupancy if occupancy == 0 else f"{util.CLR_RED}{occupancy}{util.CLR_END}", buffer_data["q_slots"], queue_size_bytes ])
 
-    print (tabulate(table, headers=["Buffer ID", "Op", "Input Ops", "Output Ops", "dram_buf_flag", "dram_io_flag", "Channel", "Address", "RD ptr", "WR ptr", "Occupancy", "Slots", "Size [bytes]"] ))
+    print (tabulate(table, headers=["Buffer ID", "Op/Queue", "Input Ops", "Output Ops", "dram_buf_flag", "dram_io_flag", "Channel", "Address", "RD ptr", "WR ptr", "Occupancy", "Slots", "Queue Size [bytes]"] ))

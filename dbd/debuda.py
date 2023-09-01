@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-debuda parses the build output files and probes the silicon to determine status of a buda run.
+Debuda parses the build output files and probes the silicon to determine the status of a Buda run.
+Main help: http://yyz-webservice-02.local.tenstorrent.com/docs/debuda-docs/debuda_py
+
 """
 try:
     from multiprocessing.dummy import Array
-    import sys, os, argparse, time, traceback, fnmatch, importlib, zipfile
+    import sys, os, argparse, traceback, fnmatch, importlib
     from tabulate import tabulate
-    from tt_object import DataArray
     import tt_util as util, tt_device, tt_netlist
     from prompt_toolkit import PromptSession
     from prompt_toolkit.formatted_text import HTML
-    from tt_graph import Queue
 except ModuleNotFoundError as e:
     # Print the exception and call stack
     traceback.print_exc()
@@ -20,18 +20,20 @@ except ModuleNotFoundError as e:
     red_end = "\033[0m"
 
     # Print custom message in red
-    print(f"Try: {red_start}pip install sortedcontainers prompt_toolkit; make dbd{red_end}")
+    print(f"Try: {red_start}pip install sortedcontainers prompt_toolkit pyzmq tabulate rapidyaml deprecation; make dbd{red_end}")
     exit(1)
+from tt_coordinate import OnChipCoordinate
 
 # Argument parsing
 def get_argument_parser ():
     parser = argparse.ArgumentParser(description=__doc__ + tt_device.STUB_HELP)
-    parser.add_argument('output_dir', type=str, nargs='?', default=None, help='Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used, and the netlist file will be inferred from the runtime_data.yaml file.')
+    parser.add_argument('output_dir', type=str, nargs='?', default=None, help='Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used, and the netlist file will be inferred from the runtime_data.yaml file found there.')
     parser.add_argument('--netlist',  type=str, required=False, default=None, help='Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used.')
-    parser.add_argument('--commands', type=str, required=False, help='Execute a list commands (semicolon-separated).')
-    parser.add_argument('--server-cache', type=str, default='off', help=f'Directs communication with Debuda Server. When "off", all device reads are done through the server. When set to "through", attempt to read from cache first. When "on", all reads are from cache only.')
-    parser.add_argument('--verbose', action='store_true', default=False, help=f'Prints additional information.')
-    parser.add_argument('--debuda-server-address', type=str, default="localhost:5555", required=False, help='IP address of debuda server (e.g. remote.server.com:5555).')
+    parser.add_argument('--commands', type=str, required=False, help='Execute a list of semicolon-separated commands.')
+    parser.add_argument('--server-cache', type=str, default='off', help=f'Specifies the method of communication with the Debuda Server. When "off" (default), all device reads are done through the server (silicon). When set to "through", an attempt to read from the cache will be made at first; if the cache does not contain the data, the server will be queried. When "on", all reads are from cache only; a non-existent cache entry will result in an error.')
+    parser.add_argument('--verbose', action='store_true', default=False, help=f'Print verbose output.')
+    parser.add_argument('--test', action='store_true', default=False, help=f'Exits with non-zero exit code on any exception.')
+    parser.add_argument('--debuda-server-address', type=str, default="localhost:5555", required=False, help='IP address of debuda server (e.g. remote.server.com:5555). By default, the server is assumed to be running on the local machine.')
     return parser
 
 # Creates rows for tabulate for all commands of a given type
@@ -106,7 +108,10 @@ def import_commands (reload = False):
         try:
             cmd_module = importlib.import_module (module_path)
         except Exception as e:
-            util.ERROR (f"Error in module '{module_path}': {e}")
+            if "lineno" in e.__dict__:
+                util.ERROR (f"Error in file {cmdfile}:{e.lineno}: {e.msg}")
+            else:
+                util.ERROR (f"Error in file {cmdfile}: {e}")
             continue
         command_metadata = cmd_module.command_metadata
         command_metadata["module"] = cmd_module
@@ -139,7 +144,6 @@ def locate_most_recent_build_output_dir ():
                 if most_recent_modification_time is None or os.path.getmtime(subdir) > most_recent_modification_time:
                     most_recent_modification_time = os.path.getmtime(subdir)
                     most_recent_subdir = subdir
-        util.INFO (f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{most_recent_subdir}")
         return most_recent_subdir
     except:
         pass
@@ -147,23 +151,34 @@ def locate_most_recent_build_output_dir ():
 
 # Loads all files necessary to debug a single buda run
 # Returns a debug 'context' that contains the loaded information
-def load_context (netlist_filepath, run_dirpath):
+def load_context (netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_path):
     # All-encompassing structure representing a Debuda context
     class Context:
         netlist = None      # Netlist and related 'static' data (i.e. data stored in files such as blob.yaml, pipegen.yaml)
         devices = None      # A list of objects of class Device used to obtain 'dynamic' data (i.e. data read from the devices)
-        pass
+        cluster_desc = None # Cluster description (i.e. the 'cluster_desc.yaml' file)
+        def __repr__(self):
+            return f"context"
 
     util.VERBOSE (f"Initializing context")
     context = Context()
 
     # Load netlist files
-    context.netlist = tt_netlist.Netlist(netlist_filepath, run_dirpath)
+    context.netlist = tt_netlist.Netlist(netlist_filepath, run_dirpath, runtime_data_yaml)
+
+    # Load the cluster descriptor. This file is created by the tt_runtime::tt_runtime -> generate_cluster_descriptor.
+    # There is also a 'cluster_desc.yaml' file in the run_dirpath directory...
+    if not os.path.exists(cluster_desc_path):
+        util.FATAL (f"Cluster descriptor file '{cluster_desc_path}' does not exist. Exiting...")
+    else:
+        context.cluster_desc = util.YamlFile(cluster_desc_path)
 
     # Create the devices
     arch = context.netlist.get_arch ()
     device_ids = context.netlist.get_device_ids()
-    context.devices = { i : tt_device.Device.create(arch) for i in device_ids }
+    context.devices = dict()
+    for device_id in device_ids:
+        context.devices[device_id] = tt_device.Device.create(arch, device_id=device_id, cluster_desc=context.cluster_desc.root, device_desc_path=f"{run_dirpath}/device_descs/{device_id}.yaml")
 
     return context
 
@@ -175,15 +190,16 @@ def main(args, context):
     context.prompt_session = PromptSession()
 
     commands = import_commands ()
+    current_device = context.devices[0]
 
     # Initialize current UI state
     ui_state = {
-        "current_x": 1,             # Currently selected core (noc0 coordinates)
-        "current_y": 1,
-        "current_stream_id": 8,     # Currently selected stream_id
-        "current_graph_name": context.netlist.graphs.first().id(), # Currently selected graph name
-        "current_prompt": "",       # Based on the current x,y,stream_id tuple
-        "current_device": None
+        "current_loc"       : OnChipCoordinate(0, 0, "netlist", current_device), # Currently selected core
+        "current_stream_id" : 8,                                                 # Currently selected stream_id
+        "current_graph_name": context.netlist.graphs.first().id(),               # Currently selected graph name
+        "current_prompt"    : "",                                                # Based on the current x,y,stream_id tuple
+        "current_device"    : current_device,                                    # Currently selected device
+        "current_device_id" : 0,                                                 # Currently selected device id
     }
 
     navigation_suggestions = None
@@ -194,11 +210,10 @@ def main(args, context):
     # Main command loop
     while True:
         have_non_interactive_commands=len(non_interactive_commands) > 0
-        noc0_loc = ( ui_state['current_x'], ui_state['current_y'] )
+        current_loc = ui_state['current_loc']
 
-        if ui_state['current_x'] is not None and ui_state['current_y'] is not None and ui_state['current_graph_name'] is not None and ui_state['current_device'] is not None:
-            row, col = ui_state['current_device'].noc0_to_rc ( noc0_loc )
-            ui_state['current_prompt'] = f"core:{util.CLR_PROMPT}{util.noc_loc_str(noc0_loc)}{util.CLR_PROMPT_END} rc:{util.CLR_PROMPT}{row},{col}{util.CLR_PROMPT_END} stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_PROMPT_END} "
+        if ui_state['current_loc'] is not None and ui_state['current_graph_name'] is not None and ui_state['current_device'] is not None:
+            ui_state['current_prompt'] = f"NocTr:{util.CLR_PROMPT}{current_loc.to_str()}{util.CLR_PROMPT_END} netlist:{util.CLR_PROMPT}{current_loc.to_str('netlist')}{util.CLR_PROMPT_END} stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_PROMPT_END} "
 
         try:
             ui_state['current_device_id'] = context.netlist.graph_name_to_device_id(ui_state['current_graph_name'])
@@ -236,17 +251,16 @@ def main(args, context):
                         if len(cmd)-1 not in valid_arg_count_list:
                             if len(valid_arg_count_list) == 1:
                                 expected_args = valid_arg_count_list[0]
-                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires {expected_args} argument{'s' if expected_args != 1 else ''}: {found_command['arguments']}")
+                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires {expected_args} argument{'s' if expected_args != 1 else ''}: {found_command['arguments']}{util.CLR_END}")
                             else:
-                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires one of {valid_arg_count_list} arguments: {found_command['arguments']}")
+                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires one of {valid_arg_count_list} arguments: {found_command['arguments']}{util.CLR_END}")
                             found_command = 'invalid-args'
                         break
 
                 if found_command == None:
                     # Print help on invalid commands
-                    print (f"{util.CLR_ERR}Invalid command '{cmd_string}'{util.CLR_END}\nAvailable commands:")
                     print_help (commands)
-
+                    raise util.TTException (f"Invalid command '{cmd_string}'")
                 elif found_command == 'invalid-args':
                     # This was handled earlier
                     pass
@@ -262,6 +276,8 @@ def main(args, context):
                         navigation_suggestions = found_command["module"].run(cmd, context, ui_state)
 
         except Exception as e:
+            if args.test: # Always raise in test mode
+                raise
             if have_non_interactive_commands or type(e) == util.TTFatalException:
                 # In non-interactive mode and on fatal excepions, we re-raise to exit the program
                 raise
@@ -277,28 +293,43 @@ if __name__ == '__main__':
     if not args.verbose:
         util.VERBOSE=util.NULL_PRINT
 
-    if args.output_dir is None: # Then find the most recent tt_build subdir
-        args.output_dir = locate_most_recent_build_output_dir()
+    # Try to determine the output directory
+    if args.output_dir is None: # Then try to find the most recent tt_build subdir
+        most_recent_build_output_dir = locate_most_recent_build_output_dir()
+        if most_recent_build_output_dir:
+            util.INFO (f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{most_recent_build_output_dir}")
+            args.output_dir = most_recent_build_output_dir
+        else:
+            util.FATAL (f"Output directory (output_dir) was not supplied and cannot be determined automatically. Exiting...")
 
-    if args.output_dir is None:
-        util.FATAL (f"Output directory (output_dir) was not supplied and cannot be determined automatically. Exiting...")
+    # Try to load the runtime data from the output directory
+    runtime_data_yaml_filename = f"{(args.output_dir)}/runtime_data.yaml"
+    runtime_data_yaml = None
+    if os.path.exists(runtime_data_yaml_filename):
+        runtime_data_yaml = util.YamlFile(runtime_data_yaml_filename)
 
-    # Try to connect to the server
-    server_ifc = tt_device.init_server_communication(args)
+    # Try to connect to the server. If it is not already running, it will be started.
+    server_ifc = tt_device.init_server_communication(args, runtime_data_yaml_filename)
+
+    # We did not find the runtime_data.yaml file, so we need to get the runtime data from the server
+    if runtime_data_yaml is None:
+        runtime_data_yaml = server_ifc.get_runtime_data()
+
+    cluster_desc_path = os.path.abspath (server_ifc.get_cluster_desc_path())
 
     # Create the context
-    context = load_context (netlist_filepath = args.netlist, run_dirpath=args.output_dir)
-    args.path_to_runtime_yaml = context.netlist.runtime_data_yaml.filepath
+    context = load_context (netlist_filepath = args.netlist, run_dirpath=args.output_dir, runtime_data_yaml=runtime_data_yaml, cluster_desc_path=cluster_desc_path)
     context.server_ifc = server_ifc
-    context.args = args
-    context.debuda_path = __file__
+    context.args = args             # Used by 'export' command
+    context.debuda_path = __file__  # Used by 'export' command
 
-    # If we spawned the Debuda stub, the runtime_data provided by debuda stub is not valid, and we use the runtime_data.yaml file saved by the test
+    # If we spawned the Debuda server, the runtime_data provided by debuda server is not valid, and we use the runtime_data.yaml file saved by the run
+    # As the server_ifc might get probed for the data, we set the get_runtime_data function to return the runtime_data_yaml
     if server_ifc.spawning_debuda_stub:
         server_ifc.get_runtime_data = lambda: context.netlist.runtime_data_yaml
 
     # Main function
     exit_code = main(args, context)
 
-    util.INFO (f"Exiting with code {exit_code} ")
+    util.VERBOSE (f"Exiting with code {exit_code} ")
     sys.exit (exit_code)

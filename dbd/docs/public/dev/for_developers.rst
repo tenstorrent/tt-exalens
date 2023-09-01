@@ -7,18 +7,30 @@ Smoke test
 Run a very basic test of debuda with: ``dbd/test/test-debuda-py.sh``. This test will run a simple
 netlist and start debuda.py.
 
+Offline use (--server-cache)
+----------------------------
+
+It is sometimes desirable to run debuda without having a connection to a running device. For this purpose, Debuda can use a cache file. An example usage scenario could be:
+
+- A customer runs Debuda with `--server-cache through` and sends the resulting cache file to Tenstorrent for debugging
+- A Tenstorrent engineer uses Debuda locally with `--server-cache on` to load the cache file and debug the design.
+
+Note: not all commands will be available to a Tenstorrent engineer. Naturally, any command that writes to the device will not accomplish much. Any command that reads from an area of the device that was not cached will also fail. Therefore, the customer run of Debuda should read from all the relevant device areas as that will store those areas in the cache.
+
+Currently, this functionality is supported through a fairly manual flow (perhaps by using --commands for some automation). In the future, the feature will be expanded to automatically dump all relevant chip areas (DRAM, L1, registers...)
+
 Offline tests
 -------------
 
 Offline tests are stored in ``dbd/test/exported-runs``. They are in binary form. Run the following command
-to extract them: ``dbd/test/exported-runs/unpack.sh``. 
+to extract them: ``dbd/test/exported-runs/unpack.sh``.
 
 After unzipping, you should go into the test directory
 and start debuda.py from there. E.g.:
 ``cd test/exported-runs/simple-matmul-no-hangs && ../../../debuda.py --server-cache on``
 
-Low Level Debug
----------------
+Low Level Debug Messages
+------------------------
 
 Low level messages (debug and trace) are printed in debuda-server source code with the following calls:
 
@@ -31,6 +43,10 @@ Make sure all relevant source code is compiled with ``CONFIG=Debug`` in the envi
 trace and debug messages.
 When running debuda-server, add ``LOGGER_LEVEL=Trace`` or ``LOGGER_LEVEL=Debug`` to enable the messasges.
 
+Cleaning and recompiling debuda-server
+--------------------------------------
+
+To clean and recompile debuda-server, run ``CONFIG=debug dbd/bin/rebuild-debuda-server.sh``.
 
 Visual Studio Code
 ------------------
@@ -39,16 +55,15 @@ Debuda comes with specific debug targets for VS Code. These are configured in ``
 need add the ``dbd`` folder to workspace to make them available.
 
 
+.. Classes
+.. -------
 
-Classes
--------
+.. Result of ``autoclass:: tt_graph.Graph``
 
-Result of ``autoclass:: tt_graph.Graph``
+.. .. autoclass:: tt_graph.Graph
+..     :members:
 
-.. autoclass:: tt_graph.Graph
-    :members:
+.. Result of ``automodule:: debuda_commands.testtest``
 
-Result of ``automodule:: debuda_commands.testtest``
-
-.. automodule:: debuda_commands.testtest
-    :members:
+.. .. automodule:: debuda_commands.testtest
+..     :members:

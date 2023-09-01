@@ -26,7 +26,7 @@ def run(args, context, ui_state = None):
     output_table[f"epoch{'s' if len(core_epochs) > 1 else ''}"] = " ".join (list({ str(e) for e in core_epochs}))
 
     # Finally, print the table:
-    util.print_columnar_dicts ([ output_table ], [f"Core {util.noc_loc_str(noc0_loc)}"])
+    util.print_columnar_dicts ([ output_table ], [f"Core {noc0_loc[0]}-{noc0_loc[1]}"])
 
     navigation_suggestions = []
     return navigation_suggestions

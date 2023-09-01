@@ -20,4 +20,4 @@ command_metadata = {
 }
 
 def run (cmd, context, ui_state=None):
-    ui_state['current_device'].full_dump_xy( (ui_state['current_x'], ui_state['current_y']) )
+    ui_state['current_device'].full_dump_xy( ui_state['current_loc'] )

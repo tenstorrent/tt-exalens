@@ -1,24 +1,26 @@
-import os, subprocess, time, struct, signal, re, zmq, pickle, atexit
+import os, subprocess, time, struct, signal, re, zmq, pickle, atexit, ast
 from socket import timeout
 from tabulate import tabulate
-from dbd.tt_object import TTObject
+from tt_object import TTObject
 import tt_util as util
-STUB_HELP = "This tool requires debuda-stub. You can build debuda-stub with 'make verif/netlist_tests/debuda-server-standalone'."
+from tt_coordinate import OnChipCoordinate, CoordinateTranslationError
+STUB_HELP = "This tool requires debuda-server. You can build debuda-server with 'make verif/netlist_tests/debuda-server-standalone'."
 
 #
-# Communication with Buda (or debuda-stub) over sockets (ZMQ).
+# Communication with Buda (or debuda-server) over sockets (ZMQ).
 # See struct BUDA_READ_REQ for protocol details
 #
 ZMQ_SOCKET=None           # The socket for communication
-DEBUDA_STUB_PROCESS=None  # The process ID of debuda-stub spawned in connect_to_server
+DEBUDA_STUB_PROCESS=None  # The process ID of debuda-server spawned in connect_to_server
 
-def spawn_standalone_debuda_stub(port, path_to_runtime_yaml):
-    print ("Spawning debuda-stub...")
+# The server needs the runtime_data.yaml to get the netlist path, arch, and device
+def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename):
+    print ("Spawning debuda-server...")
 
     debuda_stub_path = os.path.abspath (util.application_path() + "/debuda-server-standalone")
     try:
         global DEBUDA_STUB_PROCESS
-        debuda_stub_args = [ f"{port}", f"{path_to_runtime_yaml}" ]
+        debuda_stub_args = [ f"{port}", f"{runtime_data_yaml_filename}" ]
 
         # print ("debuda_stub_cmd = %s" % ([debuda_stub_path] + debuda_stub_args))
         if not os.path.isfile (debuda_stub_path):
@@ -31,23 +33,30 @@ def spawn_standalone_debuda_stub(port, path_to_runtime_yaml):
 
     # Allow some time for debuda-server to start
     retry_times = 50
+    sleep_time = 0.1
     debuda_stub_is_running = False
+    util.INFO (f"Waiting for debuda-server to start for up to {retry_times * sleep_time} seconds...")
     while retry_times > 0:
-        time.sleep (0.1)
-        debuda_stub_is_running = DEBUDA_STUB_PROCESS.poll() is None and not util.is_port_available (int(port))
-        if debuda_stub_is_running:
+        time.sleep (sleep_time)
+        debuda_stub_terminated = DEBUDA_STUB_PROCESS.poll() is not None
+        if debuda_stub_terminated:
+            util.ERROR (f"Debuda server terminated unexpectedly with code: {DEBUDA_STUB_PROCESS.returncode}")
+            break
+
+        if not util.is_port_available (int(port)): # Then we assume debuda-server has started
+            debuda_stub_is_running = True
             break
         retry_times -= 1
 
     if not debuda_stub_is_running:
-        util.ERROR ("Debuda stub could not be spawned on localhost")
+        util.ERROR (f"Debuda server could not be spawned on localhost after {retry_times * sleep_time} seconds.")
         return False
     return True
 
-# Spawns debuda-stub and initializes the communication
+# Spawns debuda-server and initializes the communication
 def connect_to_server (ip="localhost", port=5555, spawning_debuda_stub=False):
     debuda_stub_address=f"tcp://{ip}:{port}"
-    print(f"Connecting to debuda-stub at {debuda_stub_address}...")
+    util.INFO(f"Connecting to debuda-server at {debuda_stub_address}...")
 
     context = zmq.Context()
     global ZMQ_SOCKET
@@ -60,46 +69,67 @@ def connect_to_server (ip="localhost", port=5555, spawning_debuda_stub=False):
         ZMQ_SOCKET.send(struct.pack ("c", b'\x01')) # PING
         reply = ZMQ_SOCKET.recv_string()
         if "PONG" not in reply:
-            print (f"Expected PONG but received {reply}") # Should print PONG
+            util.FATAL (f"Expected PONG but received {reply}") # Should print PONG
 
-        print("Connected to debuda-stub.")
+        util.INFO("Connected to debuda-server.")
     except:
         if spawning_debuda_stub:
             terminate_standalone_debuda_stub ()
         raise
 
-    # Make sure to terminate communication client (debuda-stub) on exit
+    # Make sure to terminate communication client (debuda-server) on exit
     atexit.register (terminate_standalone_debuda_stub)
 
+    # Allow the process to start before we start sending commands
     time.sleep (0.1)
 
-# Terminates debuda-stub spawned in connect_to_server
+# Terminates debuda-server spawned in connect_to_server
 def terminate_standalone_debuda_stub ():
     if DEBUDA_STUB_PROCESS is not None and DEBUDA_STUB_PROCESS.poll() is None:
         os.killpg(os.getpgid(DEBUDA_STUB_PROCESS.pid), signal.SIGTERM)
-        util.VERBOSE (f"Terminated debuda-stub")
+        time.sleep (0.1)
+        if DEBUDA_STUB_PROCESS.poll() is None:
+            util.VERBOSE ("Debuda-server did not respond to SIGTERM. Sending SIGKILL...")
+            os.killpg(os.getpgid(DEBUDA_STUB_PROCESS.pid), signal.SIGKILL)
 
-# This is the interface to the debuda server (aka. debuda-stub)
+        time.sleep (0.1)
+        if DEBUDA_STUB_PROCESS.poll() is None:
+            util.ERROR (f"Debuda-server did not respond to SIGKILL. The process {DEBUDA_STUB_PROCESS.pid} is still running. Please kill it manually.")
+        else:
+            util.INFO ("Debuda-server terminated.")
+
+# Attempt to unpack the data using the given format. If it fails, it assumes that the data
+# is a string contining an error message from the server.
+def try_unpack (fmt, data):
+    try:
+        u = struct.unpack (fmt, data)
+        return u
+    except:
+        # Here we might have gotten an error string from the server. Unpack as string and print error
+        util.ERROR (f"Debuda-server sent an invalid reply: {data}")
+        return None
+
+# This is the interface to the debuda server
 class DEBUDA_SERVER_SOCKET_IFC:
     enabled = True # It can be disabled for offline operation (when working from cache)
 
-    NOT_ENABLED_ERROR_MSG="Access to device/host is requested, while the device communication is disabled with --server-cache"
+    NOT_ENABLED_ERROR_MSG="Access to a device is requested, but the debuda-server socket interface is not enabled (see --server-cache)"
 
     # PCI read/write functions. Given a noc0 location and addr, performs a PCI read/write
     # to the given location at the address.
     def pci_read_xy(chip_id, x, y, noc_id, reg_addr): # PCI_READ_XY
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-        # print (f"Reading {util.noc_loc_str((x, y))} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x02', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, 0))
-        ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
+        ret_val = try_unpack ("I", ZMQ_SOCKET.recv())[0]
+        ### util.DEBUG (f"pci_read_xy: chip_id={chip_id}, x={x}, y={y}, noc_id={noc_id}, reg_addr=0x{reg_addr:x}, ret_val=0x{ret_val:x}")
         return ret_val
     def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data): # PCI_WRITE_XY
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-        # print (f"Reading {util.noc_loc_str((x, y))} 0x{reg_addr:x}")
+        ### util.DEBUG (f"pci_write_xy: chip_id={chip_id}, x={x}, y={y}, noc_id={noc_id}, reg_addr=0x{reg_addr:x}, data=0x{data:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x04', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, data))
-        ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
+        ret_val = try_unpack ("I", ZMQ_SOCKET.recv())[0]
         assert data == ret_val
     def host_dma_read (chip_id, dram_addr, dram_chan): # DMA_BUFF_READ
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
@@ -108,7 +138,6 @@ class DEBUDA_SERVER_SOCKET_IFC:
         return ret_val
     def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format): # PCI_READ_TILE
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-        # print (f"Reading {util.noc_loc_str((x, y))} 0x{reg_addr:x}")
         # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x05', chip_id, x, y, z, reg_addr, data_format<<16 + message_size))
         data = data_format * 2**16 + msg_size
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x05', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), z.to_bytes(1, byteorder='big'), reg_addr, data))
@@ -120,7 +149,7 @@ class DEBUDA_SERVER_SOCKET_IFC:
         ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x06', chip_id.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), reg_addr, 0))
         ret = ZMQ_SOCKET.recv()
         try:
-            ret_val = struct.unpack ("I", ret)[0]
+            ret_val = try_unpack ("I", ret)[0]
         except Exception:
             ret_val = 0
             util.ERROR (f"Cannot do PCI read: {ret}")
@@ -132,21 +161,32 @@ class DEBUDA_SERVER_SOCKET_IFC:
         ret = ZMQ_SOCKET.recv()
 
         try:
-            ret_val = struct.unpack ("I", ret)[0]
+            ret_val = try_unpack ("I", ret)[0]
         except Exception:
             ret_val = 0
             util.ERROR (f"Cannot do PCI write: {ret}")
         assert data == ret_val
         return ret_val
-    def get_runtime_data(): # GET_RUNTIME_DATA
-        if not DEBUDA_SERVER_SOCKET_IFC.enabled:
-            return None # If there is no connection, return empty runtime_data
+    def get_runtime_data():
+        assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
         zero = 0
         ZMQ_SOCKET.send(struct.pack ("ccccc", b'\x08', zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big')))
-        s = ZMQ_SOCKET.recv()
-        return util.YamlContainer(s)
+        s = ZMQ_SOCKET.recv().decode('utf-8')
+        return util.YamlContainer(s, source="Returned from debuda-server")
+    def get_cluster_desc_path():
+        assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
+        zero = 0
+        ZMQ_SOCKET.send(struct.pack ("ccccc", b'\x09', zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big')))
+        s = ZMQ_SOCKET.recv().decode('utf-8')
+        return s
+    def get_harvested_coord_translation(chip_id):
+        zero = 0
+        ZMQ_SOCKET.send(struct.pack ("ccccc", b'\x0a', chip_id.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big')))
+        s = ZMQ_SOCKET.recv().decode('utf-8')
+        return s
 
-# This interface is used to read cached values of PCI reads.
+
+# This interface is used to read cached values of device reads.
 class DEBUDA_SERVER_CACHED_IFC:
     filepath = 'debuda-server-cache.pkl'
     cache_store = dict()
@@ -155,7 +195,7 @@ class DEBUDA_SERVER_CACHED_IFC:
     def load ():
         if DEBUDA_SERVER_CACHED_IFC.enabled:
             if os.path.exists (DEBUDA_SERVER_CACHED_IFC.filepath):
-                util.VERBOSE (f"Loading server cache from file {DEBUDA_SERVER_CACHED_IFC.filepath}")
+                util.INFO (f"Loading server cache from file {DEBUDA_SERVER_CACHED_IFC.filepath}")
                 with open(DEBUDA_SERVER_CACHED_IFC.filepath, 'rb') as f:
                     DEBUDA_SERVER_CACHED_IFC.cache_store = pickle.load(f)
             else:
@@ -163,7 +203,7 @@ class DEBUDA_SERVER_CACHED_IFC:
 
     def save():
         if DEBUDA_SERVER_CACHED_IFC.enabled and DEBUDA_SERVER_SOCKET_IFC.enabled:
-            util.VERBOSE (f"Saving server cache to file {DEBUDA_SERVER_CACHED_IFC.filepath}")
+            util.INFO (f"Saving server cache to file {DEBUDA_SERVER_CACHED_IFC.filepath}")
             with open(DEBUDA_SERVER_CACHED_IFC.filepath, 'wb') as f:
                 pickle.dump(DEBUDA_SERVER_CACHED_IFC.cache_store, f)
 
@@ -198,77 +238,225 @@ class DEBUDA_SERVER_CACHED_IFC:
         if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
             DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_SOCKET_IFC.get_runtime_data()
         return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
+    def get_cluster_desc_path():
+        key = "cluster_desc_path"
+        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_SOCKET_IFC.get_cluster_desc_path()
+        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
+    def get_harvested_coord_translation(chip_id):
+        key = (f"harvested_coord_translation_{chip_id}")
+        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store or not DEBUDA_SERVER_CACHED_IFC.enabled:
+            DEBUDA_SERVER_CACHED_IFC.cache_store[key] = DEBUDA_SERVER_SOCKET_IFC.get_harvested_coord_translation(chip_id)
+        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
 
 # PCI interface is a cached interface through Debuda server
 class SERVER_IFC (DEBUDA_SERVER_CACHED_IFC):
     pass
 
 # Prints contents of core's memory
-def dump_memory(device_id, noc0_loc, addr, size):
+def dump_memory(device_id, loc, addr, size):
     for k in range(0, size//4//16 + 1):
         row = []
         for j in range(0, 16):
             if (addr + k*64 + j* 4 < addr + size):
-                val = SERVER_IFC.pci_read_xy(device_id, *noc0_loc, 0, addr + k*64 + j*4)
+                val = SERVER_IFC.pci_read_xy(device_id, *loc.to("nocVirt"), 0, addr + k*64 + j*4)
                 row.append(f"0x{val:08x}")
         s = " ".join(row)
-        print(f"{util.noc_loc_str(noc0_loc)} 0x{(addr + k*64):08x} => {s}")
+        print(f"{loc.to_str()} 0x{(addr + k*64):08x} => {s}")
 
 # Dumps tile in format received form tt_tile::get_string
-def dump_tile(chip, noc0_loc, addr, size, data_format):
-    s = SERVER_IFC.pci_read_tile(chip, *noc0_loc, 0, addr, size, data_format)
+def dump_tile(chip, loc, addr, size, data_format):
+    s = SERVER_IFC.pci_read_tile(chip, *loc.to("nocVirt"), 0, addr, size, data_format)
     print(s.decode("utf-8"))
 
 #
-# Device class: generic constructs for talking to devices
+# Device class: generic API for talking to specific devices. This class is the parent of specific
+# device classes (e.g. GrayskullDevice, WormholeDevice). The create class method is used to create
+# a specific device.
 #
 class Device(TTObject):
+    # NOC reg type
+    class RegType():
+        Cmd = 0
+        Config = 1
+        Status = 2
+
     # Class variable denoting the number of devices created
     num_devices = 0
 
+    # See tt_coordinate.py for description of coordinate systems
+    tensix_row_to_netlist_row = dict()
+    netlist_row_to_tensix_row = dict()
+
+    # Maps to store translation table from nocVirt to nocTr and vice versa
+    nocVirt_to_nocTr_map = dict()
+    nocTr_to_nocVirt_map = dict()
+
+    # Maps to store translation table from noc0 to nocTr and vice versa
+    nocTr_y_to_noc0_y = dict()
+    noc0_y_to_nocTr_y = dict()
+
     # Class method to create a Device object given device architecture
-    def create(arch):
+    def create(arch, device_id, cluster_desc, device_desc_path):
         dev = None
         if arch.lower() == "grayskull":
             import tt_grayskull
-            dev = tt_grayskull.GrayskullDevice()
+            dev = tt_grayskull.GrayskullDevice(id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path)
         if "wormhole" in arch.lower():
             import tt_wormhole
-            dev = tt_wormhole.WormholeDevice()
+            dev = tt_wormhole.WormholeDevice(id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path)
 
         if dev is None:
-            raise RuntimeError(f"Architecture {arch} not supported yet")
+            raise RuntimeError(f"Architecture {arch} is not supported")
 
-        dev._id = Device.num_devices
-        dev.arch = arch
-        Device.num_devices+=1
         return dev
 
-    def __init__(self, arch):
-        raise RuntimeError(f"Use Device.create class method to create a device")
+    def get_harvested_noc0_y_rows(self):
+        harvested_noc0_y_rows = []
+        bitmask = self._harvesting['harvest_mask']
+        for h_index in range (0, self.row_count()):
+            if (1 << h_index) & bitmask: # Harvested
+                harvested_noc0_y_rows.append(self.HARVESTING_NOC_LOCATIONS[h_index])
+        return harvested_noc0_y_rows
 
-    # Coordinate conversion functions
-    def physical_to_noc (self, phys_loc, noc_id=0):
-        phys_x, phys_y = phys_loc
+    def _create_tensix_netlist_harvesting_map (self):
+        tensix_row = 0
+        netlist_row = 0
+        self.tensix_row_to_netlist_row = dict() # Clear any existing map
+        self.netlist_row_to_tensix_row = dict()
+        harvested_noc0_y_rows = self.get_harvested_noc0_y_rows()
+
+        for noc0_y in range (0, self.row_count()):
+            if noc0_y == 0 or noc0_y == 6:
+                pass # Skip Ethernet rows
+            else:
+                if noc0_y in harvested_noc0_y_rows:
+                    pass # Skip harvested rows
+                else:
+                    self.netlist_row_to_tensix_row[netlist_row] = tensix_row
+                    self.tensix_row_to_netlist_row[tensix_row] = netlist_row
+                    netlist_row += 1
+                tensix_row += 1
+
+    def _create_nocTr_noc0_harvesting_map (self):
+        bitmask = self._harvesting['harvest_mask']
+        num_harvested_rows = bin(bitmask).count("1")
+
+        self.nocTr_y_to_noc0_y = dict() # Clear any existing map
+        self.noc0_y_to_nocTr_y = dict()
+        for nocTr_y in range (0, self.row_count()):
+            self.nocTr_y_to_noc0_y[nocTr_y] = nocTr_y # Identity mapping for rows < 16
+
+        # 1. Handle Ethernet rows
+        self.nocTr_y_to_noc0_y[16] = 0
+        self.nocTr_y_to_noc0_y[17] = 6
+
+        # 2. Handle non-harvested rows
+        harvested_noc0_y_rows = self.get_harvested_noc0_y_rows()
+
+        nocTr_y = 18
+        for noc0_y in range (0, self.row_count()):
+            if noc0_y in harvested_noc0_y_rows or noc0_y == 0 or noc0_y == 6:
+                pass # Skip harvested rows and Ethernet rows
+            else:
+                self.nocTr_y_to_noc0_y[nocTr_y] = noc0_y
+                nocTr_y += 1
+
+        # 3. Handle harvested rows
+        for netlist_row in range (0, num_harvested_rows):
+            self.nocTr_y_to_noc0_y[16 + self.row_count() - num_harvested_rows + netlist_row] = harvested_noc0_y_rows[netlist_row]
+
+        # 4. Create reverse map
+        for nocTr_y in self.nocTr_y_to_noc0_y:
+            self.noc0_y_to_nocTr_y[self.nocTr_y_to_noc0_y[nocTr_y]] = nocTr_y
+
+        # 4. Print
+        # for tr_row in reversed (range (16, 16 + self.row_count())):
+        #     print(f"nocTr row {tr_row} => noc0 row {self.nocTr_y_to_noc0_y[tr_row]}")
+
+        # print (f"Created nocTr to noc0 harvesting map for bitmask: {bitmask}")
+
+    def _create_harvesting_maps(self):
+        self._create_tensix_netlist_harvesting_map()
+        self._create_nocTr_noc0_harvesting_map()
+
+    def _create_nocVirt_to_nocTr_map (self):
+        harvested_coord_translation_str = SERVER_IFC.get_harvested_coord_translation(self._id)
+        self.nocVirt_to_nocTr_map = ast.literal_eval(harvested_coord_translation_str) # Eval string to dict
+        self.nocTr_to_nocVirt_map = {v: k for k, v in self.nocVirt_to_nocTr_map.items()} # Create inverse map as well
+
+    def tensix_to_netlist (self, tensix_loc):
+        return (self.tensix_row_to_netlist_row[tensix_loc[0]], tensix_loc[1])
+    def netlist_to_tensix (self, netlist_loc):
+        return (self.netlist_row_to_tensix_row[netlist_loc[0]], netlist_loc[1])
+
+    def __init__(self, id, arch, cluster_desc):
+        self._id = id
+        self._arch = arch
+        self._has_mmio = False
+        for chip in cluster_desc["chips_with_mmio"]:
+            if id in chip:
+                self._has_mmio = True
+                break
+        self._harvesting = cluster_desc["harvesting"][id][id]
+        self._create_harvesting_maps()
+        self._create_nocVirt_to_nocTr_map()
+        util.DEBUG("Opened device: id=%d, arch=%s, has_mmio=%s, harvesting=%s" % (id, arch, self._has_mmio, self._harvesting))
+
+    # Coordinate conversion functions (see tt_coordinate.py for description of coordinate systems)
+    def die_to_noc (self, phys_loc, noc_id=0):
+        die_x, die_y = phys_loc
         if noc_id == 0:
-            return (self.PHYS_X_TO_NOC_0_X[phys_x], self.PHYS_Y_TO_NOC_0_Y[phys_y])
+            return (self.DIE_X_TO_NOC_0_X[die_x], self.DIE_Y_TO_NOC_0_Y[die_y])
         else:
-            return (self.PHYS_X_TO_NOC_1_X[phys_x], self.PHYS_Y_TO_NOC_1_Y[phys_y])
-
-    def noc_to_physical (self, noc_loc, noc_id=0):
+            return (self.DIE_X_TO_NOC_1_X[die_x], self.DIE_Y_TO_NOC_1_Y[die_y])
+    def noc_to_die (self, noc_loc, noc_id=0):
         noc_x, noc_y = noc_loc
         if noc_id == 0:
-            return (self.NOC_0_X_TO_PHYS_X[noc_x], self.NOC_0_Y_TO_PHYS_Y[noc_y])
+            return (self.NOC_0_X_TO_DIE_X[noc_x], self.NOC_0_Y_TO_DIE_Y[noc_y])
         else:
-            return (self.NOC_1_X_TO_PHYS_X[noc_x], self.NOC_1_Y_TO_PHYS_Y[noc_y])
+            return (self.NOC_1_X_TO_DIE_X[noc_x], self.NOC_1_Y_TO_DIE_Y[noc_y])
 
     def noc0_to_noc1 (self, noc0_loc):
-        phys_loc = self.noc_to_physical (noc0_loc, noc_id=0)
-        return self.physical_to_noc (phys_loc, noc_id=1)
-
+        phys_loc = self.noc_to_die (noc0_loc, noc_id=0)
+        return self.die_to_noc (phys_loc, noc_id=1)
     def noc1_to_noc0 (self, noc1_loc):
-        phys_loc = self.noc_to_physical (noc1_loc, noc_id=1)
-        return self.physical_to_noc (phys_loc, noc_id=0)
+        phys_loc = self.noc_to_die (noc1_loc, noc_id=1)
+        return self.die_to_noc (phys_loc, noc_id=0)
+
+    def nocVirt_to_nocTr (self, noc0_loc):
+        return self.nocVirt_to_nocTr_map[noc0_loc]
+    def nocTr_to_nocVirt (self, nocTr_loc):
+        return self.nocTr_to_nocVirt_map[nocTr_loc]
+
+    def nocTr_to_noc0 (self, nocTr_loc):
+        noc0_y = self.nocTr_y_to_noc0_y[nocTr_loc[1]]
+        noc0_x = self.NOCTR_X_TO_NOC0_X[nocTr_loc[0]] if nocTr_loc[0] >=16 else nocTr_loc[0]
+        return (noc0_x, noc0_y)
+    def noc0_to_nocTr (self, noc0_loc):
+        nocTr_y = self.noc0_y_to_nocTr_y[noc0_loc[1]]
+        nocTr_x = self.NOC0_X_TO_NOCTR_X[noc0_loc[0]]
+        return (nocTr_x, nocTr_y)
+
+    def nocVirt_to_noc0 (self, nocVirt_loc):
+        nocTr_loc = self.nocVirt_to_nocTr (nocVirt_loc)
+        return self.nocTr_to_noc0 (nocTr_loc)
+    def noc0_to_nocVirt (self, noc0_loc):
+        nocTr_loc = self.noc0_to_nocTr (noc0_loc)
+        return self.nocTr_to_nocVirt (nocTr_loc)
+
+    def noc0_to_netlist (self, noc0_loc):
+        try:
+            c = self.tensix_to_netlist (self.noc0_to_tensix (noc0_loc))
+            return (c[0], c[1])
+        except KeyError:
+            raise CoordinateTranslationError(f"noc0_to_netlist: noc0_loc {noc0_loc} does not translate to a valid netlist location")
+    def netlist_to_noc0 (self, netlist_loc):
+        try:
+            c = self.tensix_to_noc0 (self.netlist_to_tensix (netlist_loc))
+            return (c[0], c[1])
+        except KeyError:
+            raise CoordinateTranslationError(f"netlist_to_noc0: netlist_loc {netlist_loc} does not translate to a valid noc0 location")
 
     # For all cores read all 64 streams and populate the 'streams' dict. streams[x][y][stream_id] will
     # contain a dictionary of all register values as strings formatted to show in UI
@@ -280,12 +468,14 @@ class Device(TTObject):
                 streams[loc + (stream_id,)] = regs
         return streams
 
-    # For all cores read epoch_id for all 64 streams and populate the 'epochs' dict. epoch[x][y][stream_id] will
-    # contain a epoch_id
-    def read_all_epochs (self):
+    def read_core_to_epoch_mapping (self):
+        """
+        Reading current epoch for each functional worker
+        :return: { loc : epoch_id }
+        """
         epochs = {}
-        for noc0_loc in self.get_block_locations (block_type = "functional_workers"):
-            epochs[noc0_loc] = self.get_epoch_id(noc0_loc)
+        for loc in self.get_block_locations (block_type = "functional_workers"):
+            epochs[loc] = self.get_epoch_id(loc)
         return epochs
 
     # For a given core, read all 64 streams and populate the 'streams' dict. streams[stream_id] will
@@ -305,10 +495,11 @@ class Device(TTObject):
                 core_locations.append (loc)
         return core_locations
 
-    #  Returns locations of all blocks of a given type
+    #  Returns NOC0 locations of all blocks of a given type
     def get_block_locations (self, block_type = "functional_workers"):
         locs = []
         dev = self.yaml_file.root
+
         for loc in dev[block_type]:
             if type(loc) == list:
                 loc = loc[0]
@@ -316,11 +507,14 @@ class Device(TTObject):
             parsed_loc = re.findall(r'(\d+)-(\d+)', loc)
             x = int(parsed_loc[0][0])
             y = int(parsed_loc[0][1])
-            locs.append ((x,y))
+            oc_loc = OnChipCoordinate(x,y,"nocTr", self)
+            locs.append (oc_loc)
+            # util.INFO(f"get_block_locations: {block_type} {x} {y} - {oc_loc.full_str()} ")
         return locs
 
     # Returns locations of metadata queue associated with a given core
     def get_t6_queue_location (self, arch_name, t6_locs):
+        # IMPROVE: this should be handled in the respective arch files/classes
         dram_core = {'x': None, 'y': None}
         if arch_name == "WORMHOLE" or arch_name == "WORMHOLE_B0":
             if t6_locs['y'] in [0, 11, 1, 7, 5, 6]:
@@ -352,82 +546,76 @@ class Device(TTObject):
 
     # Returns a string representation of the device. When printed, the string will
     # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list
-    def render (self, options="physical", emphasize_noc0_loc_list = util.set(), emphasize_explanation = None):
+    # See tt_coordinates for valid values of axis_coordinates
+    def render (self, axis_coordinate="die", cell_renderer=None, legend=None):
         dev = self.yaml_file.root
         rows = []
-        locs = dict()
-        emphasize_loc_list_to_render = util.set()
-
-        # Convert emphasize_noc0_loc_list from noc0 coordinates to the coord space given by 'options' arg
-        if options=="physical":
-            for loc in emphasize_noc0_loc_list:
-                emphasize_loc_list_to_render.add (self.noc_to_physical(loc, noc_id=0))
-        elif options=="rc":
-            for loc in emphasize_noc0_loc_list:
-                emphasize_loc_list_to_render.add (self.noc0_to_rc(loc))
-        elif options=="noc0":
-            emphasize_loc_list_to_render = emphasize_noc0_loc_list
-        else:
-            util.ERROR (f"Invalid options: {options}")
 
         block_types = { 'functional_workers' : { 'symbol' : '.', "desc" : "Functional worker" },
                         'eth':                 { 'symbol' : 'E', "desc" : "Ethernet" },
                         'arc' :                { 'symbol' : 'A', "desc" : "ARC" },
                         'dram' :               { 'symbol' : 'D', "desc" : "DRAM" },
                         'pcie' :               { 'symbol' : 'P', "desc" : "PCIE" },
-                        'router_only' :        { 'symbol' : ' ', "desc" : "Router only" }
+                        'router_only' :        { 'symbol' : ' ', "desc" : "Router only" },
+                        'harvested_workers' :  { 'symbol' : '-', "desc" : "Harvested" },
         }
 
-        block_types_present = util.set()
+        # Retrieve all block locations
+        all_block_locs = dict()
+        hor_axis = OnChipCoordinate.horizontal_axis(axis_coordinate)
+        ver_axis = OnChipCoordinate.vertical_axis(axis_coordinate)
 
-        # Convert the block locations to the coord space given by 'options' arg
-        for block_name in block_types:
-            if options=="rc" and block_name != 'functional_workers': continue  # No blocks other than Tensix cores have RC coords
-            for loc in self.get_block_locations (block_name):
-                if options=="physical":
-                    loc = self.noc_to_physical(loc, noc_id=0)
-                elif options=="rc":
-                    loc = self.noc0_to_rc(loc)
-                locs[loc] = block_types[block_name]['symbol']
-                block_types_present.add(block_name)
+        # Compute extents(range) of all coordinates in the UI
+        ui_hor_range = (9999, -1)
+        ui_ver_range = (9999, -1)
+        for bt in block_types:
+            b_locs = self.get_block_locations (block_type = bt)
+            for loc in b_locs:
+                try:
+                    grid_loc = loc.to(axis_coordinate)
+                    ui_hor = grid_loc[hor_axis]
+                    ui_hor_range = (min(ui_hor_range[0], ui_hor), max(ui_hor_range[1], ui_hor))
+                    ui_ver = grid_loc[ver_axis]
+                    ui_ver_range = (min(ui_ver_range[0], ui_ver), max(ui_ver_range[1], ui_ver))
+                    all_block_locs[(ui_hor, ui_ver)] = loc
+                except:
+                    pass
 
-        # Render the grid
-        x_size = dev['grid']['x_size']
-        y_size = dev['grid']['y_size']
-
-        if options == "rc":
-            y_size-=self.rows_with_no_functional_workers() # GS:2, WH:2
-            x_size-=self.cols_with_no_functional_workers() # GS:1, WH:2
-
-        legend = [ f"Coordinate system: {options.upper()}" ] + [ f"{block_types[block_type]['symbol']} - {block_types[block_type]['desc']}" for block_type in block_types_present ]
-        if emphasize_explanation is not None:
-            legend += [ "+ - " + emphasize_explanation ]
-
-        rng = range (y_size) if options == 'rc' else reversed(range (y_size))
         screen_row_y = 0
-        for y in rng:
-            row = [ f"%02d" % y ]
+        C = util.CLR_INFO
+        E = util.CLR_END
+        def append_horizontal_axis_labels(rows, ui_hor_range):
+            row = [ "" ] + [ f"{C}%02d{E}" % i for i in range(ui_hor_range[0], ui_hor_range[1] + 1) ] # This adds the X-axis labels
+            rows.append (row)
+
+        if OnChipCoordinate.vertical_axis_increasing_up(axis_coordinate):
+            ver_range = reversed(range(ui_ver_range[0], ui_ver_range[1] + 1))
+        else:
+            ver_range = range(ui_ver_range[0], ui_ver_range[1] + 1)
+            append_horizontal_axis_labels(rows, ui_hor_range)
+
+        for ui_ver in ver_range:
+            row = [ f"{C}%02d{E}" % ui_ver ] # This adds the Y-axis label
             # 1. Add graphics
-            for x in range (x_size):
+            for ui_hor in range(ui_hor_range[0], ui_hor_range[1] + 1):
                 render_str = ""
-                if options=="rc":
-                    rc_loc = (y, x)
-                    if rc_loc in locs: render_str += locs[rc_loc]
-                    if rc_loc in emphasize_loc_list_to_render: render_str = "+"
-                else:
-                    if (x,y) in locs: render_str += locs[(x,y)]
-                    if (x,y) in emphasize_loc_list_to_render: render_str = "+"
+                if (ui_hor, ui_ver) in all_block_locs:
+                    if cell_renderer == None:
+                        render_str = all_block_locs[(ui_hor, ui_ver)].to_str("netlist")
+                    else:
+                        render_str = cell_renderer(all_block_locs[(ui_hor, ui_ver)])
                 row.append (render_str)
 
             # 2. Add legend
             legend_y = screen_row_y
-            if legend_y < len(legend):
+            if legend and legend_y < len(legend):
                 row = row + [ util.CLR_INFO + legend[legend_y] + util.CLR_END ]
 
             rows.append (row)
             screen_row_y += 1
-        row = [ "" ] + [ f"%02d" % i for i in range(x_size) ]
-        rows.append (row)
+
+        if OnChipCoordinate.vertical_axis_increasing_up(axis_coordinate):
+            append_horizontal_axis_labels(rows, ui_hor_range)
 
         table_str = tabulate(rows, tablefmt='plain')
         return table_str
@@ -437,11 +625,16 @@ class Device(TTObject):
     def dump_tile(self, noc0_loc, addr, size, data_format):
         return dump_tile(self.id(), noc0_loc, addr, size, data_format)
 
+    # User friendly string representation of the device
     def __str__(self):
         return self.render()
 
+    # Detailed string representation of the device
+    def __repr__(self):
+        return f"ID: {self.id()}, Arch: {self._arch}"
+
     # Reads and returns the Risc debug registers
-    def get_debug_regs(self, noc0_loc):
+    def get_debug_regs(self, loc):
         DEBUG_MAILBOX_BUF_BASE  = 112
         DEBUG_MAILBOX_BUF_SIZE  = 64
         THREAD_COUNT = 4
@@ -450,7 +643,7 @@ class Device(TTObject):
         for thread_idx in range (THREAD_COUNT):
             for reg_idx in range(DEBUG_MAILBOX_BUF_SIZE // THREAD_COUNT):
                 reg_addr = DEBUG_MAILBOX_BUF_BASE + thread_idx * DEBUG_MAILBOX_BUF_SIZE + reg_idx * 4
-                val = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, reg_addr)
+                val = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, reg_addr)
                 debug_tables[thread_idx].append ({ "lo_val" : val & 0xffff, "hi_val": (val >> 16) & 0xffff })
         return debug_tables
 
@@ -476,59 +669,59 @@ class Device(TTObject):
 
 
     # Function to print a full dump of a location x-y
-    def full_dump_xy(self, noc0_loc):
+    def full_dump_xy(self, loc):
         for stream_id in range (0, 64):
             print()
-            stream = self.read_stream_regs(noc0_loc, stream_id)
+            stream = self.read_stream_regs(loc, stream_id)
             for reg, value in stream.items():
-                print(f"Tensix x={noc0_loc[0]:02d},y={noc0_loc[1]:02d} => stream {stream_id:02d} {reg} = {value}")
+                print(f"Tensix x={loc.to_str()} => stream {stream_id:02d} {reg} = {value}")
 
         for noc_id in range (0, 2):
             print()
-            self.read_print_noc_reg(noc0_loc, noc_id, "nonposted write reqs sent", 0xA)
-            self.read_print_noc_reg(noc0_loc, noc_id, "posted write reqs sent", 0xB)
-            self.read_print_noc_reg(noc0_loc, noc_id, "nonposted write words sent", 0x8)
-            self.read_print_noc_reg(noc0_loc, noc_id, "posted write words sent", 0x9)
-            self.read_print_noc_reg(noc0_loc, noc_id, "write acks received", 0x1)
-            self.read_print_noc_reg(noc0_loc, noc_id, "read reqs sent", 0x5)
-            self.read_print_noc_reg(noc0_loc, noc_id, "read words received", 0x3)
-            self.read_print_noc_reg(noc0_loc, noc_id, "read resps received", 0x2)
+            self.read_print_noc_reg(loc, noc_id, "nonposted write reqs sent", 0xA)
+            self.read_print_noc_reg(loc, noc_id, "posted write reqs sent", 0xB)
+            self.read_print_noc_reg(loc, noc_id, "nonposted write words sent", 0x8)
+            self.read_print_noc_reg(loc, noc_id, "posted write words sent", 0x9)
+            self.read_print_noc_reg(loc, noc_id, "write acks received", 0x1)
+            self.read_print_noc_reg(loc, noc_id, "read reqs sent", 0x5)
+            self.read_print_noc_reg(loc, noc_id, "read words received", 0x3)
+            self.read_print_noc_reg(loc, noc_id, "read resps received", 0x2)
             print()
-            self.read_print_noc_reg(noc0_loc, noc_id, "nonposted write reqs received", 0x1A)
-            self.read_print_noc_reg(noc0_loc, noc_id, "posted write reqs received", 0x1B)
-            self.read_print_noc_reg(noc0_loc, noc_id, "nonposted write words received", 0x18)
-            self.read_print_noc_reg(noc0_loc, noc_id, "posted write words received", 0x19)
-            self.read_print_noc_reg(noc0_loc, noc_id, "write acks sent", 0x10)
-            self.read_print_noc_reg(noc0_loc, noc_id, "read reqs received", 0x15)
-            self.read_print_noc_reg(noc0_loc, noc_id, "read words sent", 0x13)
-            self.read_print_noc_reg(noc0_loc, noc_id, "read resps sent", 0x12)
+            self.read_print_noc_reg(loc, noc_id, "nonposted write reqs received", 0x1A)
+            self.read_print_noc_reg(loc, noc_id, "posted write reqs received", 0x1B)
+            self.read_print_noc_reg(loc, noc_id, "nonposted write words received", 0x18)
+            self.read_print_noc_reg(loc, noc_id, "posted write words received", 0x19)
+            self.read_print_noc_reg(loc, noc_id, "write acks sent", 0x10)
+            self.read_print_noc_reg(loc, noc_id, "read reqs received", 0x15)
+            self.read_print_noc_reg(loc, noc_id, "read words sent", 0x13)
+            self.read_print_noc_reg(loc, noc_id, "read resps sent", 0x12)
             print()
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port x out vc full credit out vc stall", 0x24)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port y out vc full credit out vc stall", 0x22)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port niu out vc full credit out vc stall", 0x20)
+            self.read_print_noc_reg(loc, noc_id, "router port x out vc full credit out vc stall", 0x24)
+            self.read_print_noc_reg(loc, noc_id, "router port y out vc full credit out vc stall", 0x22)
+            self.read_print_noc_reg(loc, noc_id, "router port niu out vc full credit out vc stall", 0x20)
             print()
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC14 & VC15 dbg", 0x3d)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC12 & VC13 dbg", 0x3c)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC10 & VC11 dbg", 0x3b)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC8 & VC9 dbg", 0x3a)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC6 & VC7 dbg", 0x39)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC4 & VC5 dbg", 0x38)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC2 & VC3 dbg", 0x37)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port x VC0 & VC1 dbg", 0x36)
+            self.read_print_noc_reg(loc, noc_id, "router port x VC14 & VC15 dbg", 0x3d)
+            self.read_print_noc_reg(loc, noc_id, "router port x VC12 & VC13 dbg", 0x3c)
+            self.read_print_noc_reg(loc, noc_id, "router port x VC10 & VC11 dbg", 0x3b)
+            self.read_print_noc_reg(loc, noc_id, "router port x VC8 & VC9 dbg", 0x3a)
+            self.read_print_noc_reg(loc, noc_id, "router port x VC6 & VC7 dbg", 0x39)
+            self.read_print_noc_reg(loc, noc_id, "router port x VC4 & VC5 dbg", 0x38)
+            self.read_print_noc_reg(loc, noc_id, "router port x VC2 & VC3 dbg", 0x37)
+            self.read_print_noc_reg(loc, noc_id, "router port x VC0 & VC1 dbg", 0x36)
             print()
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC14 & VC15 dbg", 0x35)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC12 & VC13 dbg", 0x34)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC10 & VC11 dbg", 0x33)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC8 & VC9 dbg", 0x32)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC6 & VC7 dbg", 0x31)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC4 & VC5 dbg", 0x30)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC2 & VC3 dbg", 0x2f)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port y VC0 & VC1 dbg", 0x2e)
+            self.read_print_noc_reg(loc, noc_id, "router port y VC14 & VC15 dbg", 0x35)
+            self.read_print_noc_reg(loc, noc_id, "router port y VC12 & VC13 dbg", 0x34)
+            self.read_print_noc_reg(loc, noc_id, "router port y VC10 & VC11 dbg", 0x33)
+            self.read_print_noc_reg(loc, noc_id, "router port y VC8 & VC9 dbg", 0x32)
+            self.read_print_noc_reg(loc, noc_id, "router port y VC6 & VC7 dbg", 0x31)
+            self.read_print_noc_reg(loc, noc_id, "router port y VC4 & VC5 dbg", 0x30)
+            self.read_print_noc_reg(loc, noc_id, "router port y VC2 & VC3 dbg", 0x2f)
+            self.read_print_noc_reg(loc, noc_id, "router port y VC0 & VC1 dbg", 0x2e)
             print()
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port niu VC6 & VC7 dbg", 0x29)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port niu VC4 & VC5 dbg", 0x28)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port niu VC2 & VC3 dbg", 0x27)
-            self.read_print_noc_reg(noc0_loc, noc_id, "router port niu VC0 & VC1 dbg", 0x26)
+            self.read_print_noc_reg(loc, noc_id, "router port niu VC6 & VC7 dbg", 0x29)
+            self.read_print_noc_reg(loc, noc_id, "router port niu VC4 & VC5 dbg", 0x28)
+            self.read_print_noc_reg(loc, noc_id, "router port niu VC2 & VC3 dbg", 0x27)
+            self.read_print_noc_reg(loc, noc_id, "router port niu VC0 & VC1 dbg", 0x26)
 
         en = 1
         rd_sel = 0
@@ -537,71 +730,75 @@ class Device(TTObject):
 
         sig_sel = 0xff
         rd_sel = 0
-        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        test_val1 = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c)
+        SERVER_IFC.pci_write_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        test_val1 = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb1205c)
         rd_sel = 1
-        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        test_val2 = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c)
+        SERVER_IFC.pci_write_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        test_val2 = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb1205c)
 
         rd_sel = 0
         sig_sel = 2*self.SIG_SEL_CONST
-        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        brisc_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        SERVER_IFC.pci_write_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        brisc_pc = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb1205c) & pc_mask
 
         # Doesn't work - looks like a bug for selecting inputs > 31 in daisy stop
         # rd_sel = 0
         # sig_sel = 2*16
-        # SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        # nrisc_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        # SERVER_IFC.pci_write_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        # nrisc_pc = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb1205c) & pc_mask
 
         rd_sel = 0
         sig_sel = 2*10
-        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        trisc0_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        SERVER_IFC.pci_write_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc0_pc = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb1205c) & pc_mask
 
         rd_sel = 0
         sig_sel = 2*11
-        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        trisc1_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        SERVER_IFC.pci_write_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc1_pc = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb1205c) & pc_mask
 
         rd_sel = 0
         sig_sel = 2*12
-        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        trisc2_pc = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb1205c) & pc_mask
+        SERVER_IFC.pci_write_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        trisc2_pc = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb1205c) & pc_mask
 
         print()
-        x, y = noc0_loc
-        print(f"Tensix x={x:02d},y={y:02d} => dbus_test_val1 (expect 7)={test_val1:x}, dbus_test_val2 (expect A5A5A5A5)={test_val2:x}")
-        print(f"Tensix x={x:02d},y={y:02d} => brisc_pc=0x{brisc_pc:x}, trisc0_pc=0x{trisc0_pc:x}, trisc1_pc=0x{trisc1_pc:x}, trisc2_pc=0x{trisc2_pc:x}")
+        print(f"Tensix {loc.to_str()} => dbus_test_val1 (expect 7)={test_val1:x}, dbus_test_val2 (expect A5A5A5A5)={test_val2:x}")
+        print(f"Tensix {loc.to_str()} => brisc_pc=0x{brisc_pc:x}, trisc0_pc=0x{trisc0_pc:x}, trisc1_pc=0x{trisc1_pc:x}, trisc2_pc=0x{trisc2_pc:x}")
 
-        SERVER_IFC.pci_write_xy(self.id(), *noc0_loc, 0, 0xffb12054, 0)
+        SERVER_IFC.pci_write_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb12054, 0)
+        util.WARN ("full_dump_xy not fully tested (functionality might be device dependent)")
 
     # Reads and immediately prints a value of a given NOC register
-    def read_print_noc_reg(self, noc0_loc, noc_id, reg_name, reg_index):
-        x, y = noc0_loc
+    def read_print_noc_reg(self, loc, noc_id, reg_name, reg_index):
+        assert (type(loc) == OnChipCoordinate)
         reg_addr = 0xffb20000 + (noc_id*0x10000) + 0x200 + (reg_index*4)
-        val = SERVER_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
-        print(f"Tensix x={x:02d},y={y:02d} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})")
+        val = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, reg_addr)
+        print(f"Tensix {loc.to_str()} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})")
+        return val
 
     # Extracts and returns a single field of a stream register
-    def get_stream_reg_field(self, noc0_loc, stream_id, reg_index, start_bit, num_bits):
-        x, y = noc0_loc
+    def get_stream_reg_field(self, loc, stream_id, reg_index, start_bit, num_bits):
+        assert (type(loc) == OnChipCoordinate)
         reg_addr = 0xFFB40000 + (stream_id*0x1000) + (reg_index*4)
-        val = SERVER_IFC.pci_read_xy(self.id(), x, y, 0, reg_addr)
+        val = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, reg_addr)
         mask = (1 << num_bits) - 1
         val = (val >> start_bit) & mask
         return val
 
-    def get_stream_phase (self, noc0_loc, stream_id):
-        return self.get_stream_reg_field(noc0_loc, stream_id, 11, 0, 20)
+    def get_stream_phase (self, loc, stream_id):
+        assert (type(loc) == OnChipCoordinate)
+        return self.get_stream_reg_field(loc, stream_id, 11, 0, 20)
 
-    def get_epoch_id(self, noc0_loc):
+    def get_epoch_id(self, loc):
+        assert (type(loc) == OnChipCoordinate)
+
         # Overlay base (epoch_t base) + epoch_id offset
         #  Need to differentiate the address depending on core type:
         # epoch_id offset is 147 word = 588 B (0x24c)
         #  Eth base is 0x1b000
         #  Tensix base is 0x23080
-        epoch = SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0x232cc) & 0xFF
+        epoch = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0x232cc + 32) & 0xFF
         return epoch
 
     # Returns whether the stream is configured
@@ -619,10 +816,12 @@ class Device(TTObject):
             (stream_data["DEBUG_STATUS[1]"] != 0) or \
             (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x4 or \
             (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x2
-    def is_gsync_hung (self, noc0_loc):
-        return SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb2010c) == 0xB0010000
-    def is_ncrisc_done (self, noc0_loc):
-        return SERVER_IFC.pci_read_xy(self.id(), *noc0_loc, 0, 0xffb2010c) == 0x1FFFFFF1
+    def is_gsync_hung (self, loc):
+        assert (type(loc) == OnChipCoordinate)
+        return SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb2010c) == 0xB0010000
+    def is_ncrisc_done (self, loc):
+        assert (type(loc) == OnChipCoordinate)
+        return SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb2010c) == 0x1FFFFFF1
 
     NCRISC_STATUS_REG_ADDR=0xFFB2010C
     BRISC_STATUS_REG_ADDR=0xFFB3010C
@@ -676,27 +875,22 @@ class Device(TTObject):
     NCRISC_STATUS_REG_ADDR=NCRISC_STATUS_REG_ADDR
     BRISC_STATUS_REG_ADDR=BRISC_STATUS_REG_ADDR
 
-    def read_stream_regs(self, noc0_loc, stream_id):
-        return self.read_stream_regs_direct (noc0_loc, stream_id)
+    def read_stream_regs(self, loc, stream_id):
+        return self.read_stream_regs_direct (loc, stream_id)
 
     def status_register_summary(self, addr, ver = 0):
         coords = self.get_block_locations ()
         status_descs = {}
         for loc in coords:
-            status_descs[loc] = self.get_status_register_desc(addr, SERVER_IFC.pci_read_xy(self.id(), loc[0], loc[1], 0, addr))
+            status_descs[loc] = self.get_status_register_desc(addr, SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, addr))
 
         # Print register status
         status_descs_rows = []
         for loc in coords:
             if status_descs[loc] and status_descs[loc][2] <= ver:
-                status_descs_rows.append([f"{loc[0]:d}-{loc[1]:d}",f"{status_descs[loc][0]:08x}", f"{status_descs[loc][1]}"]);
+                lxy = loc.to("nocTr")
+                status_descs_rows.append([f"{loc.to_str()}",f"{status_descs[loc][0]:08x}", f"{status_descs[loc][1]}"]);
         return status_descs_rows
-
-    def as_noc_0 (self, noc_loc, noc_id):
-        if noc_id == 0:
-            return noc_loc
-        else:
-            return (self.noc1_to_noc0 (noc_loc))
 
     def pci_read_xy(self, x, y, noc_id, reg_addr):
         return SERVER_IFC.pci_read_xy(self.id(), x, y, noc_id, reg_addr)
@@ -705,8 +899,8 @@ class Device(TTObject):
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         return SERVER_IFC.pci_read_tile(self.id(), x, y, z, reg_addr, msg_size, data_format)
 
-# Initialize communication with the device
-def init_server_communication (args):
+# Initialize communication with the device. If the server is not running, it will be spawned.
+def init_server_communication (args, runtime_data_yaml_filename):
     DEBUDA_SERVER_CACHED_IFC.enabled = args.server_cache == "through" or args.server_cache == "on"
     DEBUDA_SERVER_SOCKET_IFC.enabled = args.server_cache == "through" or args.server_cache == "off"
 
@@ -714,16 +908,18 @@ def init_server_communication (args):
         atexit.register (DEBUDA_SERVER_CACHED_IFC.save)
         DEBUDA_SERVER_CACHED_IFC.load()
 
+    SERVER_IFC.spawning_debuda_stub = False
     if DEBUDA_SERVER_SOCKET_IFC.enabled:
         (ip, port) = args.debuda_server_address.split(":")
         spawning_debuda_stub = ip=='localhost' and util.is_port_available (int(port))
-        SERVER_IFC.spawning_debuda_stub = False
 
         if spawning_debuda_stub:
-            success = spawn_standalone_debuda_stub(port, f"{args.output_dir}/runtime_data.yaml")
+            success = spawn_standalone_debuda_stub(port, runtime_data_yaml_filename)
             if not success:
-                raise Exception("Could not connect to debuda-stub")
+                raise Exception("Could not connect to debuda-server")
             SERVER_IFC.spawning_debuda_stub = True
+        else:
+            util.WARN(f"Port {port} is not available, assuming debuda-server is already running and we are connecting to it.")
 
         connect_to_server (ip=ip, port=port, spawning_debuda_stub=spawning_debuda_stub)
 

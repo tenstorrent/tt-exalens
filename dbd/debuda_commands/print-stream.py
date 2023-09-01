@@ -3,7 +3,7 @@
 .. code-block::
    :caption: Example
 
-    Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > 2
+    Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > s 1 1 8
     Non-idle streams                       Registers                                                     Stream (blob.yaml)                                       Buffer 10000170000                                       Pipe 10000300000
     ------------------  -----------------  ------------------------------------------------  ----------  ----------------------------  -------------------------  ----------------------------  -------------------------  --------------------  --------------------------------------------------------------------------------------------------------
     8                   RS-11(1)-10(1)-40  STREAM_ID                                         8           buf_addr                      241664 (0x3b000)           md_op_name                    matmul2                    id                    10000300000 (0x2541077e0)
@@ -22,19 +22,22 @@ command_metadata = {
     "description" : "Shows stream 'stream_id' at core 'x-y'"
 }
 import tt_stream, tt_util as util
+from tt_coordinate import OnChipCoordinate
 
 # Prints all information on a stream
 def run(args, context, ui_state = None):
-    noc0_loc, stream_id = (int(args[1]), int(args[2])), int(args[3])
     current_device_id = ui_state["current_device_id"]
     current_device = context.devices[current_device_id]
 
-    regs = current_device.read_stream_regs ((noc0_loc), stream_id)
+    x, y, stream_id = int(args[1]), int(args[2]), int(args[3])
+
+    stream_loc = OnChipCoordinate(x, y, "nocTr", device=current_device)
+    regs = current_device.read_stream_regs (stream_loc, stream_id)
     stream_regs = tt_stream.convert_reg_dict_to_strings(current_device, regs)
-    stream_epoch_id = current_device.get_epoch_id(noc0_loc)
+    stream_epoch_id = current_device.get_epoch_id(stream_loc)
     new_current_epoch_id = stream_epoch_id
 
-    all_stream_summary, navigation_suggestions = tt_stream.get_core_stream_summary (current_device, noc0_loc)
+    all_stream_summary, navigation_suggestions = tt_stream.get_core_stream_summary (current_device, stream_loc)
 
     # Initialize with the summary of all streams within the core (if any)
     data_columns = [ all_stream_summary ] if len(all_stream_summary) > 0 else []
@@ -52,15 +55,14 @@ def run(args, context, ui_state = None):
     for n in navigation_suggestions:
         loc = n['loc']
         try:
-            loc_rc = current_device.noc0_to_rc(loc)
-            op_name = graph.core_coord_to_full_op_name (loc_rc)
+            op_name = graph.location_to_full_op_name (loc)
             n['description'] += f" ({op_name})"
         except:
             n['description'] += " N/A"
 
     # 2. Find blob data
-    stream_loc = (current_device_id, *noc0_loc, stream_id, int(regs['CURR_PHASE']))
-    stream_set = graph.get_streams(stream_loc)
+    stream_id_tuple = (current_device_id, *stream_loc.to('nocTr'), stream_id, int(regs['CURR_PHASE']))
+    stream_set = graph.get_streams(stream_id_tuple)
 
     if len(stream_set) == 1:
         stream_from_blob = stream_set.first().root
@@ -71,19 +73,19 @@ def run(args, context, ui_state = None):
         if buf_id is not None:
             buffer_ids.add (buf_id)
     elif len(stream_set) == 0:
-        util.WARN (f"Cannot find stream {stream_loc} in blob data of graph {graph.id()}")
+        util.WARN (f"Cannot find stream {stream_id_tuple} in blob data of graph {graph.id()}")
     else:
-        util.WARN (f"Multiple streams found at {stream_loc} in blob data of graph {graph.id()}")
+        util.WARN (f"Multiple streams found at {stream_id_tuple} in blob data of graph {graph.id()}")
 
     # 2. Append buffers
     buffers = graph.get_buffers (buffer_ids)
-    for b in buffers:
+    for b_id, b in buffers.items():
         title_columns.append (f"Buffer {b.id()}")
         data_columns.append (b.root)
 
     # 3. Append relevant pipes
     pipes = graph.get_pipes(buffers)
-    for pipe in pipes:
+    for pipe_id, pipe in pipes.items():
         title_columns.append (f"Pipe {pipe.id()}")
         data_columns.append (pipe.root)
 
@@ -97,7 +99,6 @@ def run(args, context, ui_state = None):
     # 4. TODO: Print forks
 
     # Update the current UI state
-    ui_state["current_x"] = noc0_loc[0]
-    ui_state["current_y"] = noc0_loc[1]
+    ui_state["current_loc"] = stream_loc
     ui_state["current_stream_id"] = stream_id
     return navigation_suggestions

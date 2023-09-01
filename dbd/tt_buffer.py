@@ -1,4 +1,4 @@
-from tt_object import TTObject, TTObjectSet
+from tt_object import TTObject
 import tt_util as util
 
 # Constructed from epoch's pipegen.yaml. Contains information about a buffer.

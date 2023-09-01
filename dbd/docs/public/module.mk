@@ -14,13 +14,15 @@ $(DBD_DOCS_PUBLIC_DIR): $(DBD_DOCS_PUBLIC_BUILD_SCRIPT) $(DBD_DOCS_PUBLIC_SRCS)
 	BUILDER=$(DBD_DOCS_PUBLIC_SPHINX_BUILDER) \
 	SOURCE_DIR=$(DBD_DOCS_PUBLIC_DIR) \
 	INSTALL_DIR=$(@)/build \
+	LANG=C.UTF-8 \
+	LC_ALL=C.UTF-8 \
 	$(DBD_DOCS_PUBLIC_BUILD_SCRIPT)
 	$(PRINT_OK)
 
 .PHONY: $(DBD_DOCS_PUBLIC_DIR)/publish
 $(DBD_DOCS_PUBLIC_DIR)/publish:
 	$(PRINT_TARGET)
-	rsync -e "ssh -i $(HOME)/.ssh/id_rsa_webservices" --delete -avz  $(DBD_DOCS_PUBLIC_DIR)/build/html/ yyz-webservice-02:/var/www/html/docs/debuda-docs
+	rsync -e "ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no" --delete -avz  $(DBD_DOCS_PUBLIC_DIR)/build/html/ yyz-webservice-02:/var/www/html/docs/debuda-docs
 	$(PRINT_OK)
 
 .PHONY: $(DBD_DOCS_PUBLIC_DIR)/clean

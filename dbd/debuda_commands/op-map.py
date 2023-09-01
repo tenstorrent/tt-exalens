@@ -3,7 +3,7 @@
    :caption: Example
 
         Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > op-map
-        Graph/Op         Op type       Epoch    Device  Grid Loc    NOC0 Loc    Grid Size
+        Graph/Op         Op type       Epoch    Device  Netlist Loc    NOC0 Loc    Grid Size
         ---------------  ----------  -------  --------  ----------  ----------  -----------
         test_op/add1     add               0         0  [2, 6]      7-3         [1, 1]
         test_op/d_op3    datacopy          0         0  [0, 3]      4-1         [1, 1]
@@ -15,6 +15,7 @@
 """
 
 from tabulate import tabulate
+from tt_coordinate import OnChipCoordinate
 
 command_metadata = {
     "short" : "om",
@@ -27,18 +28,17 @@ def run(args, context, ui_state = None):
     navigation_suggestions = []
 
     rows = []
-    for graph in context.netlist.graphs:
+    for graph_id, graph in context.netlist.graphs.items():
         graph_name = graph.id()
         epoch_id = context.netlist.graph_name_to_epoch_id (graph_name)
         device_id = context.netlist.graph_name_to_device_id (graph_name)
         device = context.devices[device_id]
         for op_name in graph.op_names():
             op = graph.root[op_name]
-            grid_loc = op['grid_loc']
-            noc0_loc = device.rc_to_noc0 (grid_loc)
-            row = [ f"{graph_name}/{op_name}", op['type'], epoch_id, f"{graph.root['target_device']}", f"{grid_loc}", f"{noc0_loc[0]}-{noc0_loc[1]}", f"{op['grid_size']}"]
+            loc = OnChipCoordinate (*op['grid_loc'], "netlist", device)
+            row = [ f"{graph_name}/{op_name}", op['type'], epoch_id, f"{graph.root['target_device']}", f"{loc.to_str('netlist')}", f"{loc.to_str('nocTr')}", f"{op['grid_size']}"]
             rows.append (row)
 
-    print (tabulate(rows, headers = [ "Graph/Op", "Op type", "Epoch", "Device", "Grid Loc", "NOC0 Loc", "Grid Size" ]))
+    print (tabulate(rows, headers = [ "Graph/Op", "Op type", "Epoch", "Device", "Netlist Loc", "NOC Tr", "Grid Size" ]))
 
     return navigation_suggestions
