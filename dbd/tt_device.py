@@ -198,6 +198,7 @@ class DEBUDA_SERVER_CACHED_IFC:
                 util.INFO (f"Loading server cache from file {DEBUDA_SERVER_CACHED_IFC.filepath}")
                 with open(DEBUDA_SERVER_CACHED_IFC.filepath, 'rb') as f:
                     DEBUDA_SERVER_CACHED_IFC.cache_store = pickle.load(f)
+                    util.INFO (f"  Loaded {len(DEBUDA_SERVER_CACHED_IFC.cache_store)} entries")
             else:
                 assert DEBUDA_SERVER_SOCKET_IFC.enabled, f"Cache file {DEBUDA_SERVER_CACHED_IFC.filepath} does not exist"
 
@@ -206,6 +207,7 @@ class DEBUDA_SERVER_CACHED_IFC:
             util.INFO (f"Saving server cache to file {DEBUDA_SERVER_CACHED_IFC.filepath}")
             with open(DEBUDA_SERVER_CACHED_IFC.filepath, 'wb') as f:
                 pickle.dump(DEBUDA_SERVER_CACHED_IFC.cache_store, f)
+                util.INFO(f"  Saved {len(DEBUDA_SERVER_CACHED_IFC.cache_store)} entries")
 
     def pci_read_xy(chip_id, x, y, noc_id, reg_addr):
         key = (chip_id, x, y, noc_id, reg_addr)
@@ -313,10 +315,11 @@ class Device(TTObject):
 
     def get_harvested_noc0_y_rows(self):
         harvested_noc0_y_rows = []
-        bitmask = self._harvesting['harvest_mask']
-        for h_index in range (0, self.row_count()):
-            if (1 << h_index) & bitmask: # Harvested
-                harvested_noc0_y_rows.append(self.HARVESTING_NOC_LOCATIONS[h_index])
+        if self._harvesting:
+            bitmask = self._harvesting['harvest_mask']
+            for h_index in range (0, self.row_count()):
+                if (1 << h_index) & bitmask: # Harvested
+                    harvested_noc0_y_rows.append(self.HARVESTING_NOC_LOCATIONS[h_index])
         return harvested_noc0_y_rows
 
     def _create_tensix_netlist_harvesting_map (self):
@@ -339,32 +342,15 @@ class Device(TTObject):
                 tensix_row += 1
 
     def _create_nocTr_noc0_harvesting_map (self):
-        bitmask = self._harvesting['harvest_mask']
-        num_harvested_rows = bin(bitmask).count("1")
+        bitmask = self._harvesting['harvest_mask'] if self._harvesting else 0
 
         self.nocTr_y_to_noc0_y = dict() # Clear any existing map
         self.noc0_y_to_nocTr_y = dict()
         for nocTr_y in range (0, self.row_count()):
             self.nocTr_y_to_noc0_y[nocTr_y] = nocTr_y # Identity mapping for rows < 16
 
-        # 1. Handle Ethernet rows
-        self.nocTr_y_to_noc0_y[16] = 0
-        self.nocTr_y_to_noc0_y[17] = 6
-
-        # 2. Handle non-harvested rows
-        harvested_noc0_y_rows = self.get_harvested_noc0_y_rows()
-
-        nocTr_y = 18
-        for noc0_y in range (0, self.row_count()):
-            if noc0_y in harvested_noc0_y_rows or noc0_y == 0 or noc0_y == 6:
-                pass # Skip harvested rows and Ethernet rows
-            else:
-                self.nocTr_y_to_noc0_y[nocTr_y] = noc0_y
-                nocTr_y += 1
-
-        # 3. Handle harvested rows
-        for netlist_row in range (0, num_harvested_rows):
-            self.nocTr_y_to_noc0_y[16 + self.row_count() - num_harvested_rows + netlist_row] = harvested_noc0_y_rows[netlist_row]
+        num_harvested_rows = bin(bitmask).count("1")
+        self._handle_harvesting_for_nocTr_noc0_map (num_harvested_rows)
 
         # 4. Create reverse map
         for nocTr_y in self.nocTr_y_to_noc0_y:
@@ -398,7 +384,10 @@ class Device(TTObject):
             if id in chip:
                 self._has_mmio = True
                 break
-        self._harvesting = cluster_desc["harvesting"][id][id]
+        if "harvesting" in cluster_desc and id in cluster_desc["harvesting"] and id in cluster_desc["harvesting"][id]:
+            self._harvesting = cluster_desc["harvesting"][id][id]
+        else:
+            self._harvesting = None
         self._create_harvesting_maps()
         self._create_nocVirt_to_nocTr_map()
         util.DEBUG("Opened device: id=%d, arch=%s, has_mmio=%s, harvesting=%s" % (id, arch, self._has_mmio, self._harvesting))
