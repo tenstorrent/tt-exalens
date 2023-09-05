@@ -23,6 +23,10 @@ class GrayskullDevice (tt_device.Device):
     NOC_1_X_TO_DIE_X = util.reverse_mapping_list (DIE_X_TO_NOC_1_X)
     NOC_1_Y_TO_DIE_Y = util.reverse_mapping_list (DIE_Y_TO_NOC_1_Y)
 
+    # Just an identity mapping
+    NOC0_X_TO_NOCTR_X = { i: i for i in range(0, len(NOC_0_X_TO_DIE_X)) }
+    NOCTR_X_TO_NOC0_X = { v: k for k, v in NOC0_X_TO_NOCTR_X.items() }
+
     def noc0_to_tensix (self, noc0_loc):
         noc0_x, noc0_y = noc0_loc
         if noc0_y == 0 or noc0_y == 6:
@@ -40,6 +44,9 @@ class GrayskullDevice (tt_device.Device):
         noc0_x = col + 1
         if noc0_y > 5: noc0_y+=1 # DRAM at noc0 Y coord of 6 is a hole in RC coordinates
         return noc0_x, noc0_y
+
+    def _handle_harvesting_for_nocTr_noc0_map (self, num_harvested_rows):
+        assert num_harvested_rows == 0, "Harvesting not supported for Grayskull"
 
     def __init__(self, id, arch, cluster_desc, device_desc_path):
         self.yaml_file = util.YamlFile ( device_desc_path)

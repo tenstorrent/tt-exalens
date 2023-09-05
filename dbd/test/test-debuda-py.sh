@@ -4,8 +4,8 @@ TMP_OUT_FILE=build/test/dbd-out.tmp
 echo "TMP_OUT_FILE=$TMP_OUT_FILE"
 
 # set default value for TIMEOUT
-if [ -z "$TIMEOUT" ]; then TIMEOUT=500; fi
-echo "TIMEOUT=$TIMEOUT"
+if [ -z "$TEST_RUN_TIMEOUT" ]; then TEST_RUN_TIMEOUT=500; fi
+echo "TEST_RUN_TIMEOUT=$TEST_RUN_TIMEOUT"
 
 mkdir -p build/test
 
@@ -13,22 +13,23 @@ touch $TMP_OUT_FILE
 
 if [ "$1" = "skip-build" ]; then
     echo Skipping build used for CI and tests
-    echo Building debuda-server-standalone ...
-    make verif/netlist_tests/debuda-server-standalone >> $TMP_OUT_FILE
 else
-    echo make build_hw
-    make build_hw
+    echo Building 'make build_hw'
+    make build_hw >> $TMP_OUT_FILE 2>&1
+
     echo Building verif/op_tests ...
-    make verif/op_tests >> $TMP_OUT_FILE
+    make verif/op_tests >> $TMP_OUT_FILE 2>&1
+
     echo Building debuda-server-standalone ...
-    make verif/netlist_tests/debuda-server-standalone >> $TMP_OUT_FILE
+    make verif/netlist_tests/debuda-server-standalone >> $TMP_OUT_FILE 2>&1
 fi
 
-pip install sortedcontainers prompt_toolkit pyzmq tabulate rapidyaml deprecation
+echo Installing Python dependencies ...
+pip install sortedcontainers prompt_toolkit pyzmq tabulate rapidyaml deprecation docopt >> $TMP_OUT_FILE 2>&1
 mkdir -p debuda_test
 
+##################################################################################################################################################
 NETLIST_FILE=verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml
-
 #
 # 1. Sanity
 #
@@ -42,14 +43,16 @@ NETLIST_FILE=verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml
 # │ input1 │ ───▶ │ f_op1 │ ───────┘
 # └────────┘      └───────┘
 echo Running op_tests/test_op on $NETLIST_FILE ...
-./build/test/verif/op_tests/test_op --outdir debuda_test --netlist $NETLIST_FILE --seed 0 --silicon --timeout $TIMEOUT >> $TMP_OUT_FILE
+./build/test/verif/op_tests/test_op --outdir debuda_test --netlist $NETLIST_FILE --seed 0 --silicon --timeout $TEST_RUN_TIMEOUT >> $TMP_OUT_FILE
 if [ $? -ne 0 ]; then
     echo Error in running ./build/test/verif/op_tests/test_op
     exit 1
 fi
+$THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh >> $TMP_OUT_FILE
 
-$THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh
 
+##################################################################################################################################################
+NETLIST_FILE=dbd/test/netlists/netlist_multi_matmul_perf.yaml
 #
 # 2. Hang analysis on a passing test
 #
@@ -70,12 +73,15 @@ $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh
 #   │                  └───────┘      └─────────┘
 #   │   0                               ▲
 #   └───────────────────────────────────┘
-NETLIST_FILE=dbd/test/netlists/netlist_multi_matmul_perf.yaml
 echo Running op_tests/test_op on $NETLIST_FILE ...
-./build/test/verif/op_tests/test_op --outdir debuda_test --netlist $NETLIST_FILE --seed 0 --silicon --timeout $TIMEOUT >> $TMP_OUT_FILE
+./build/test/verif/op_tests/test_op --outdir debuda_test --netlist $NETLIST_FILE --seed 0 --silicon --timeout $TEST_RUN_TIMEOUT >> $TMP_OUT_FILE
 if [ $? -ne 0 ]; then
     echo Error in running ./build/test/verif/op_tests/test_op
     exit 1
 fi
 
-$THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh
+$THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh >> $TMP_OUT_FILE
+
+
+##################################################################################################################################################
+echo Done

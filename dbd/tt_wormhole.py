@@ -90,6 +90,26 @@ class WormholeDevice (tt_device.Device):
         if noc0_y >= 6: noc0_y+=1
         return noc0_x, noc0_y
 
+    def _handle_harvesting_for_nocTr_noc0_map (self, num_harvested_rows):
+        # 1. Handle Ethernet rows
+        self.nocTr_y_to_noc0_y[16] = 0
+        self.nocTr_y_to_noc0_y[17] = 6
+
+        # 2. Handle non-harvested rows
+        harvested_noc0_y_rows = self.get_harvested_noc0_y_rows()
+
+        nocTr_y = 18
+        for noc0_y in range (0, self.row_count()):
+            if noc0_y in harvested_noc0_y_rows or noc0_y == 0 or noc0_y == 6:
+                pass # Skip harvested rows and Ethernet rows
+            else:
+                self.nocTr_y_to_noc0_y[nocTr_y] = noc0_y
+                nocTr_y += 1
+
+        # 3. Handle harvested rows
+        for netlist_row in range (0, num_harvested_rows):
+            self.nocTr_y_to_noc0_y[16 + self.row_count() - num_harvested_rows + netlist_row] = harvested_noc0_y_rows[netlist_row]
+
     def __init__(self, id, arch, cluster_desc, device_desc_path):
         self.yaml_file = util.YamlFile (device_desc_path)
         super().__init__(id, arch, cluster_desc)
