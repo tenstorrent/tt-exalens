@@ -48,7 +48,7 @@ if [ $? -ne 0 ]; then
     echo Error in running ./build/test/verif/op_tests/test_op
     exit 1
 fi
-$THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh >> $TMP_OUT_FILE
+source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh >> $TMP_OUT_FILE
 
 
 ##################################################################################################################################################
@@ -80,7 +80,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-$THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh >> $TMP_OUT_FILE
+source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh >> $TMP_OUT_FILE
 
 
 ##################################################################################################################################################
