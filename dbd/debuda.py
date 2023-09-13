@@ -20,7 +20,7 @@ except ModuleNotFoundError as e:
     red_end = "\033[0m"
 
     # Print custom message in red
-    print(f"Try: {red_start}pip install sortedcontainers prompt_toolkit pyzmq tabulate rapidyaml deprecation; make dbd{red_end}")
+    print(f"Try: {red_start}pip install sortedcontainers prompt_toolkit pyzmq tabulate rapidyaml deprecation docopt; make dbd{red_end}")
     exit(1)
 from tt_coordinate import OnChipCoordinate
 
@@ -41,11 +41,8 @@ def format_commands (commands, type):
     rows = []
     for c in commands:
         if c['type'] == type:
-            arguments = c['arguments']
             description = c['description']
-            eac = c['expected_argument_count']
-            expected_argument_count = "/".join ([ str(a) for a in eac ])
-            row = [ f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{c['short']}", f"{expected_argument_count}", f"{arguments}", f"{description}" ]
+            row = [ f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{c['short']}", f"{description}" ]
             rows.append(row)
     return rows
 
@@ -55,7 +52,7 @@ def print_help (commands):
     rows += format_commands (commands, 'housekeeping')
     rows += format_commands (commands, 'low-level')
     rows += format_commands (commands, 'high-level')
-    print (tabulate(rows, headers=["Long Form", "Short", "Arg count", "Arguments", "Description"]))
+    print (tabulate(rows, headers=["Long Form", "Short", "Description"]))
     # format_commands (commands, 'dev', "Development")
 
 # Certain commands give suggestions for next step. This function formats and prints those suggestions.
@@ -178,7 +175,9 @@ def load_context (netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc
     device_ids = context.netlist.get_device_ids()
     context.devices = dict()
     for device_id in device_ids:
-        context.devices[device_id] = tt_device.Device.create(arch, device_id=device_id, cluster_desc=context.cluster_desc.root, device_desc_path=f"{run_dirpath}/device_descs/{device_id}.yaml")
+        device_desc_path = tt_device.get_soc_desc_path(device_id, run_dirpath)
+        # util.INFO(f"Loading device {device_id} from {device_desc_path}")
+        context.devices[device_id] = tt_device.Device.create(arch, device_id=device_id, cluster_desc=context.cluster_desc.root, device_desc_path=device_desc_path)
 
     return context
 
@@ -245,25 +244,11 @@ def main(args, context):
                 for c in commands:
                     if c["short"] == cmd_string or c["long"] == cmd_string:
                         found_command = c
-                        # Check arguments
-                        valid_arg_count_list = found_command["expected_argument_count"]
-
-                        if len(cmd)-1 not in valid_arg_count_list:
-                            if len(valid_arg_count_list) == 1:
-                                expected_args = valid_arg_count_list[0]
-                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires {expected_args} argument{'s' if expected_args != 1 else ''}: {found_command['arguments']}{util.CLR_END}")
-                            else:
-                                print (f"{util.CLR_ERR}Command '{found_command['long']}' requires one of {valid_arg_count_list} arguments: {found_command['arguments']}{util.CLR_END}")
-                            found_command = 'invalid-args'
-                        break
 
                 if found_command == None:
                     # Print help on invalid commands
                     print_help (commands)
                     raise util.TTException (f"Invalid command '{cmd_string}'")
-                elif found_command == 'invalid-args':
-                    # This was handled earlier
-                    pass
                 else:
                     if found_command["long"] == "exit":
                         exit_code = int(cmd[1]) if len(cmd) > 1 else 0
@@ -273,7 +258,9 @@ def main(args, context):
                     elif found_command["long"] == "reload":
                         import_commands (reload=True)
                     else:
-                        navigation_suggestions = found_command["module"].run(cmd, context, ui_state)
+                        new_navigation_suggestions = found_command["module"].run(cmd_raw, context, ui_state)
+                        if new_navigation_suggestions:
+                            navigation_suggestions = new_navigation_suggestions
 
         except Exception as e:
             if args.test: # Always raise in test mode
@@ -284,6 +271,9 @@ def main(args, context):
             else:
                 # Otherwise, we print the call stack, but continue the REPL
                 util.notify_exception (type(e), e, e.__traceback__)
+        except SystemExit as e:
+            print (e)
+
     return 0
 
 if __name__ == '__main__':

@@ -1,32 +1,29 @@
 """
-.. code-block::
-   :caption: Example
+Usage:
+  pipe <pipe-id>
 
-        Current epoch:0(test_op) device:0 core:5-3 rc:2,4 stream:8 > p 10000300000
-        Graph test_op
-        --------------------  --------------------------------------------------------------------------------------------------------
-        id                    10000300000 (0x2541077e0)
-        input_list            [10000110000, 10000110008, 10000110016, 10000110024, 10000110004, 10000110012, 10000110020, 10000110028]
-        pipe_periodic_repeat  0
-        pipe_consumer_repeat  1
-        output_list           [10000170000]
-        incoming_noc_id       0
-        outgoing_noc_id       0
-        mcast_core_rc         [0, 0, 0]
+Arguments:
+  pipe-id    The ID of the pipe to show.
+
+Description:
+  Prints details on the pipe with a given ID.
+
+Examples:
+  pipe 123
 """
 import tt_util as util
+from docopt import docopt
 
 command_metadata = {
     "long" : "pipe",
     "short" : "p",
     "type" : "high-level",
-    "expected_argument_count" : [ 1 ],
-    "arguments" : "pipe_id",
-    "description" : "Prints details on the pipe with ID 'pipe_id'."
+    "description" : __doc__
 }
 
-def run (cmd, context, ui_state=None):
-    pipe_id = int(cmd[1])
+def run (cmd_text, context, ui_state=None):
+    args = docopt(__doc__, argv=cmd_text.split()[1:])
+    pipe_id = int(args["<pipe-id>"],0) if args["<pipe-id>"] else 0
 
     graph_name = ui_state['current_graph_name']
     graph = context.netlist.graph(graph_name)
@@ -35,9 +32,9 @@ def run (cmd, context, ui_state=None):
     if pipe:
         util.print_columnar_dicts ([pipe.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
 
-        for input_buffer in pipe.inputs():
+        for input_buffer in pipe.input_buffers:
             navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show src buffer" })
-        for input_buffer in pipe.outputs():
+        for input_buffer in pipe.output_buffers:
             navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show dest buffer" })
     else:
         util.WARN (f"Cannot find pipe {pipe_id} in graph {graph_name}")

@@ -1,24 +1,34 @@
-"""Some operations apply only to the currently active (selected) graph.
 """
+Usage:
+  g <graph-name>
+
+Arguments:
+  graph-name    The name of the graph to show.
+
+Description:
+  Changes the currently active graph to the one with the given name. Some operations only
+  work on the currently active graph.
+
+Examples:
+  g test_graph
+"""
+
 command_metadata = {
     "short" : "g",
     "type" : "high-level",
-    "expected_argument_count" : [ 1 ],
-    "arguments" : "graph_name",
-    "description" : "Changes the currently active graph."
+    "description" : __doc__
 }
 
 import tt_util as util
+from docopt import docopt
 
-def run(args, context, ui_state = None):
-    """Run command
-    """
-    navigation_suggestions = []
+def run(cmd_text, context, ui_state = None):
+    args = docopt(__doc__, argv=cmd_text.split()[1:])
+    gname = args['<graph-name>']
 
-    gname = args[1]
     if gname not in context.netlist.graph_names():
         util.WARN (f"Invalid graph {gname}. Available graphs: {', '.join (list(context.netlist.graph_names()))}")
     else:
-        ui_state["current_graph_name"] = args[1]
+        ui_state["current_graph_name"] = gname
 
-    return navigation_suggestions
+    return None

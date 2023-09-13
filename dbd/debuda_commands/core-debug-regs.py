@@ -1,36 +1,39 @@
-"""Shows debug registers for given cores.
-
-.. code-block::
-   :caption: Example
-
-        Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > cdr 1 1
-        === Debug registers for core 1-1 ===
-        T0               T1               T2               FW
-        -------  ------  -------  ------  -------  ------  -------  ------
-        DBG[0]   0x0000  DBG[0]   0x0000  DBG[0]   0x0000  DBG[0]   0x0000
-        DBG[1]   0x0000  DBG[1]   0x0000  DBG[1]   0x0000  DBG[1]   0x0000
-        DBG[2]   0x0000  DBG[2]   0x0000  DBG[2]   0x0000  DBG[2]   0x0000
-        DBG[3]   0x0000  DBG[3]   0x0000  DBG[3]   0x0000  DBG[3]   0x0000
-        ...
 """
-command_metadata = {
-    "short" : "cdr",
-    "type" : "low-level",
-    "expected_argument_count" : [0, 2],
-    "arguments" : "x y",
-    "description" : "Prints the state of the debug registers for core 'x-y'. If coordinates are not supplied, it iterates through all cores."
-}
+Usage:
+  cdr ( <x> <y> )
 
+Arguments:
+  x       Core x coordinate in noc0 coordinate system.
+  y       Core y coordinate in noc0 coordinate system.
+
+Description:
+  Prints the state of the debug registers for core 'x-y'. If coordinates are not supplied, it iterates through all cores.
+
+Examples:
+  cdr
+  cdr 1 1
+"""
+
+from docopt import docopt
 import tt_util as util
 from tt_coordinate import OnChipCoordinate
 
-def run(args, context, ui_state = None):
+command_metadata = {
+    "long": "cdr",
+    "short": "cdr",
+    "type": "low-level",
+    "description": __doc__
+}
+
+def run(cmd_text, context, ui_state=None):
+    args = docopt(__doc__, argv=cmd_text.split()[1:])
     current_device_id = ui_state["current_device_id"]
     current_device = context.devices[current_device_id]
-    if len(args) == 3:
-        core_locations = [ OnChipCoordinate (int(args[1]), int(args[2]), 'nocTr', current_device) ]
+
+    if args['<x>'] and args['<y>']:
+        core_locations = [ OnChipCoordinate(int(args['<x>']), int(args['<y>']), 'noc0', current_device) ]
     else:
-        core_locations = current_device.get_block_locations (block_type = "functional_workers")
+        core_locations = current_device.get_block_locations(block_type="functional_workers")
 
     for core_loc in core_locations:
         print (f"=== Debug registers for core {core_loc.to_str()} ===")

@@ -1,4 +1,4 @@
-from tt_object import TTObject
+from tt_object import TTObject, TTObjectIDDict
 import tt_util as util
 
 # Constructed from epoch's pipegen.yaml. Contains information about a buffer.
@@ -9,11 +9,17 @@ class Buffer(TTObject):
         self._id = self.root['uniqid']
         self.replicated = False
         self.graph = graph
-        self.is_input = False
-        self.is_output = False
+        self.stream_id = None
+        self.input_of_pipes = TTObjectIDDict()
+        self.output_of_pipes = TTObjectIDDict()
     # Renderer
     def __str__(self):
         r = self.root
         R = r['core_coordinates'][0]
         C = r['core_coordinates'][1]
         return f"{super().__str__()} {r['md_op_name']}:[{R},{C}]"
+
+    def is_output_of_pipe(self):
+        return len(self.output_of_pipes) > 0
+    def is_input_of_pipe(self):
+        return len(self.input_of_pipes) > 0

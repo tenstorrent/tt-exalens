@@ -24,11 +24,12 @@ run_debuda "op-map; exit"
 # run_debuda "pcir 0; wxy 1 1 0 0xabcd; rxy 1 1 0; exit"
 # run_debuda "full-dump; export; ha; exit"
 
-# if [ "$ARCH_NAME" = "grayskull" ]; then
-#     run_debuda "s 1 1 4; t 1 0; t 1 1; exit"
-# else
-#     run_debuda "s 20 18 4; t 1 0; t 1 1; exit"
-# fi
+if [ "$ARCH_NAME" = "grayskull" ]; then
+    run_debuda "s 1 1 4; t 1 0; t 1 1; exit"
+else
+    run_debuda "s 20 18 4; t 1 0; t 1 1; exit"
+fi
+
 # run_debuda "gpr"
 # gpr needs a core to be hung. To reproduce:
 #   git apply dbd/test/inject-errors/sfpu_reciprocal-infinite-spin-wormhole_b0.patch

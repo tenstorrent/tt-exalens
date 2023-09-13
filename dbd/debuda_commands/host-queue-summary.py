@@ -1,4 +1,12 @@
-"""UNDER DEVELOPMENT
+"""
+Usage:
+  hq
+
+Description:
+  Prints DRAM queue summary
+
+Examples:
+  hq
 """
 
 import tt_util as util
@@ -10,18 +18,17 @@ command_metadata = {
     "long" : "host-queue",
     "short" : "hq",
     "type" : "dev",
-    "expected_argument_count" : [ 0 ],    "arguments" : "",
-    "description" : "Prints host queue summary."
+    "description" : __doc__
 }
 
-def run (cmd, context, ui_state):
+def run (cmd_txt, context, ui_state):
     table = []
 
     for graph_name in context.netlist.graph_names():
         print (f"{util.CLR_INFO}HOST queues for graph {graph_name}{util.CLR_END}")
         graph = context.netlist.graph(graph_name)
 
-        for buffer in graph.buffers:
+        for buffer_id, buffer in graph.buffers.items():
             buffer_data = buffer.root
             if buffer_data["dram_io_flag_is_remote"] != 0:
                 dram_addr = buffer_data['dram_addr'] & 0x3FFFFFFF # Clear upper 2 bits, that carries host channel already.

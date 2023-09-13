@@ -1,23 +1,16 @@
-"""Traverses all devices looking for the point of failure in the netlist execution. The traversal is
-done in topological order with the intention of finding the first problematic core/stream.
+"""
+Usage:
+  ha [ <verbose> ]
 
-.. code-block::
-   :caption: Example
+Arguments:
+  verbose    Verbosity level (0 or 1) [default: 0]
 
-        Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > ha
-        Analyzing device 0
-        Reading epochs for locations
-            Analyzing graph test_op ( epoch 0 )
-        Device ID    Epoch ID    Graph Name    Source    Destination    Hang Reason        Stream      Additional Stream Info
-        -----------  ----------  ------------  --------  -------------  -----------------  ----------  --------------------------------------------------------------------
-        0            0           test_op       recip:Op  matmul2:Op     Data not received  (3, 3, 24)  {'phase': 1, 'msg_received': 0, 'msg_remaining': 32, 'source': True}
-                                                                        Data not received  (5, 3, 9)   {'phase': 1, 'msg_received': 0, 'msg_remaining': 32, 'dest': True}
-        Speed dial:
-        #  Description              Command
-        ---  -----------------------  ---------
-        0  Go to stream (3, 3, 24)  s 3 3 24
-        1  Go to stream (5, 3, 9)   s 5 3 9
+Description:
+  Traverses all devices looking for the point of failure in the netlist execution. The traversal is
+  done in topological order with the intention of finding the first problematic core/stream.
 
+Examples:
+  ha
 """
 import sys
 from tabulate import tabulate
@@ -26,17 +19,15 @@ import tt_util as util
 import tt_device
 from tt_graph import Queue
 from tt_coordinate import OnChipCoordinate
+from docopt import docopt
 
 def LOG(s, **kwargs):
-    pass
-    # util.INFO (util.get_indent() + s, **kwargs)
+    util.INFO (util.get_indent() + s, **kwargs)
 
 command_metadata = {
     "short" : "ha",
     "type" : "high-level",
-    "expected_argument_count" : [ 0, 1 ],
-    "arguments" : "verbose",
-    "description" : "Prints a summary of all operations in the netlist.  If 'verbose' argument is set, it prints more information."
+    "description" : __doc__
 }
 
 def queue_has_data(context, device_id, q:Queue):
@@ -196,25 +187,43 @@ def get_input_queues_without_data(context, device_id, graph, verbose):
 
     return queue_ops
 
+def buffer_state (context, graph, device_id, buffer):
+    device = context.devices[device_id]
+    buffer_streams = graph.get_streams (buffer)
+
+    processed_tiles = None
+    for stream_id, stream in buffer_streams.items():
+        stream_loc = OnChipCoordinate (*stream.loc(), "nocTr", device)
+        processed_tiles = device.get_num_msgs_received(stream_loc, stream.stream_id())
+
+    ret_val = { "epoch_tiles": buffer.root["epoch_tiles"], "processed_tiles": processed_tiles, "epoch_tiles": buffer.root["epoch_tiles"] }
+    return ret_val
+
 def detect_and_report_pipe_hang (context, graph, device_id, pipe):
+    device = context.devices[device_id]
+
     """
     Analyzing pipe for hangs
     """
     in_buffers = graph.get_buffers (pipe, "in")
     in_streams = graph.get_streams (in_buffers)
+
+    for buffer_id, buffer in in_buffers.items():
+        bs = buffer_state (context, graph, device_id, buffer)
+
     out_buffers = graph.get_buffers (pipe, "out")
     out_streams = graph.get_streams (out_buffers)
+
     pipe_streams = graph.get_streams (pipe)
+    LOG (f"Pipe streams (for all phases): {pipe_streams}")
 
-    LOG (f"pipe_streams: {pipe_streams}")
-
-    device = context.devices[device_id]
-    phases = set()
+    phases = dict()
     for ps_id, ps in pipe_streams.items():
-        ps_loc = OnChipCoordinate (*ps.loc(), "nocTr", device)
-        phase = device.get_stream_phase (ps_loc, ps.stream_id())
-        phases.add (phase)
-    pipe_streams.keep (lambda ps: ps.phase_id() in phases)
+        phases_key = ( OnChipCoordinate (*ps.loc(), "nocTr", device), ps.stream_id() )
+#        if phases_key not in phases:
+        phases[phases_key] = device.get_stream_phase (*phases_key)
+    phase_values = set (phases.values())
+    pipe_streams.keep (lambda ps: ps.phase_id() in phase_values)
     LOG (f"pipe_streams in phase: {pipe_streams}")
 
     for ps_id, ps in pipe_streams.items():
@@ -228,16 +237,69 @@ def detect_and_report_pipe_hang (context, graph, device_id, pipe):
     LOG (f"out_buffers: {out_buffers}, out_streams: {out_streams}")
 
     LOG (f"Summary:")
-    something_hung = False
+    hang_details = None
     for in_stream_id, in_stream in in_streams.items():
         stream_hung = is_stream_hung(device, in_stream)
-        something_hung = something_hung or stream_hung
+        hang_details = hang_details or stream_hung
         LOG (f"  Input stream {in_stream} -> Active: {is_stream_active(device, in_stream)}, Done: {is_stream_done(device, in_stream)} Hung: {stream_hung}")
+
     for out_stream_id, out_stream in out_streams.items():
         stream_hung = is_stream_hung(device, out_stream)
-        something_hung = something_hung or stream_hung
+        hang_details = hang_details or stream_hung
         LOG (f"  Output stream {out_stream} -> Active: {is_stream_active(device, out_stream)}, Done: {is_stream_done(device, out_stream)} Hung: {stream_hung}")
-    return something_hung
+    return hang_details
+
+def get_buffer_state (context, graph, device_id, stream, buffer):
+    device = context.devices[device_id]
+    stream_loc = OnChipCoordinate (*stream.loc(), "nocTr", device)
+
+    # Get num_messages_received for the stream
+    num_messages_received = device.get_num_msgs_received(stream_loc, stream.stream_id())
+    # Get tile_clear_granularity from buffer
+    tile_clear_granularity = buffer.root["tile_clear_granularity"]
+
+    buffer_ready = num_messages_received > 0 and num_messages_received % tile_clear_granularity == 0
+    return buffer_ready
+
+def is_op_hung (context, graph, device_id, op):
+    LOG (f"Checking op {op}")
+    device = context.devices[device_id]
+
+    # Find all input buffers for the op
+    input_buffers = graph.get_buffers (op, "out")
+
+    # LOG(f"Input buffers for {op}: {input_buffers}")
+
+    buffer_state = dict()
+    for buffer_id, buffer in input_buffers.items():
+        if buffer.is_input_of_pipe() and buffer.is_output_of_pipe():
+            # util.WARN (f"Ignoring buffer {buffer} as it is both input and output of a pipe")
+            continue
+
+        # Get all stream for the buffer
+        for s_id, stream in graph.streams.items():
+            if stream.get_buffer_id() == buffer_id:
+                stream_loc = OnChipCoordinate (*stream.loc(), "nocTr", device)
+                phase = device.get_stream_phase(stream_loc, stream.stream_id())
+                if phase == stream.phase_id():
+                    buffer_state[buffer_id] = get_buffer_state (context, graph, device_id, stream, buffer)
+                    # LOG (f"Buffer {buffer} is ready: {buffer_state[buffer_id]}")
+
+    # If there is a mix of ready/non-ready report a warning
+    if True in buffer_state.values() and False in buffer_state.values():
+        ready_ops = set()
+        non_ready_ops = set()
+        util.WARN (f"Mix of ready/non-ready buffers for op {op}")
+        for buffer_id, buffer_ready in buffer_state.items():
+            buffer = graph.buffers[buffer_id]
+            src_buffers = graph.get_buffers (buffer.output_of_pipes, "in")
+            src_ops = { src_buffers[src_buffer_id].root["md_op_name"] for src_buffer_id in src_buffers }
+            if buffer_ready:
+                ready_ops.update (src_ops)
+            else:
+                non_ready_ops.update (src_ops)
+        util.WARN (f"  Ready operations:     {', '.join(list(ready_ops))}")
+        util.WARN (f"  Non-ready operations: {', '.join(list(non_ready_ops))}")
 
 # go through all operation in topological
 # order and search for the first stream
@@ -246,64 +308,15 @@ def find_ops_with_hang(context, graph, device_id, verbose):
     """
     Looking for hangs in a graph
     """
-    device = context.devices[device_id]
-    input_queues = get_graph_input_queues(graph)
-
-    # We first visit all ops that are connected to input queues
-    ops_to_visit = graph.get_fanout(input_queues)
-    # Keeping a set of visited ops to avoid visiting them again
-    visited_ops = set ()
-    # Get the mapping of op_names to pipes
-    graph_ops_and_queues_to_pipes = graph.get_op_or_queue_name_to_pipes_map()
-
-    found_hangs = {}
-    while ops_to_visit:
-        # Initialize the set of next ops to visit
-        next_ops_to_visit = TTObjectIDDict()
-
-        # We analyze each src_op -> dest_op connection
-        for src_op_id, src_op in ops_to_visit.items():
-            assert(src_op not in visited_ops) # Make sure we are not visiting an op twice
-            src_pipes = graph_ops_and_queues_to_pipes[src_op.id()]
-
-            dest_ops = graph.get_fanout (src_op)
-            for dest_op_id, dest_op in dest_ops.items():
-                util.VERBOSE (f"Analyzing connection {src_op} -> {dest_op}")
-                if dest_op.id() in graph_ops_and_queues_to_pipes:
-                    # We found all pipes connected to the destination op
-                    dest_pipes = graph_ops_and_queues_to_pipes[dest_op.id()]
-                    # Add the op to the next 'wave' of operations to visit (this is a breath)
-                    next_ops_to_visit.add(dest_op)
-
-                    # We look for all pipes that belong to both src and dest op, and get all their streams
-                    # The streams of both ends of the pipe are added to the set
-                    connecting_pipes = src_pipes.intersection (dest_pipes)
-
-                    for pipe_id, pipe in connecting_pipes.items():
-                        something_hung = detect_and_report_pipe_hang (context, graph, device_id, pipe)
-                        if something_hung:
-                            # Create an entry in found_hangs for connection src_op -> dest_op
-                            if src_op not in found_hangs: found_hangs[src_op] = {}
-                            if dest_op not in found_hangs[src_op]: found_hangs[src_op][dest_op] = []
-                            data = f"Pipe {pipe_id} hung"
-                            additional_info = None
-                            stream = None
-                            record = [ stream, data, additional_info ]
-                            if record not in found_hangs[src_op][dest_op]:
-                                found_hangs [src_op][dest_op].append(record)
+    found_hangs=dict()
+    for op_id, op in graph.ops.items():
+        op_status = is_op_hung (context, graph, device_id, op)
+        if op_status:
+            found_hangs[op_id] = op_status
 
         # Early exit if we found a hang
         if found_hangs and not verbose:
             return found_hangs
-
-        visited_ops.update(ops_to_visit)
-
-        # add new ops to visit
-        ops_to_visit = TTObjectIDDict()
-        for new_op_id, new_op in next_ops_to_visit.items():
-            fan_in_ops = graph.get_fanin(new_op)
-            if fan_in_ops.issubset(visited_ops):
-                ops_to_visit.add(new_op)
     return found_hangs
 
 def print_hung_ops(ops_with_hang_list):
@@ -390,9 +403,10 @@ def read_current_epochs(context):
         device_id_to_epoch_dict[device_id] = read_device_epochs(device)
     return device_id_to_epoch_dict
 
-def run(args, context, ui_state = None):
-    verbose = len(args) > 1
-    util.INFO(f"Running hang analysis {'(verbose)' if verbose else ''}")
+def run(cmd_text, context, ui_state = None):
+    args = docopt(__doc__, argv=cmd_text.split()[1:])
+    verbose = 0 if args['<verbose>'] is None else int(args['<verbose>'])
+    util.INFO(f"Running hang analysis (verbose={verbose})")
 
     navigation_suggestions = []
     queue_ops_missing_data = []
@@ -401,7 +415,8 @@ def run(args, context, ui_state = None):
     # A. Run analysis on all devices
     device_id_to_epoch_dict = read_current_epochs(context)
     for device_id in device_id_to_epoch_dict:
-        epoch_id_list = device_id_to_epoch_dict[device_id].keys()
+        epoch_id_list = list(device_id_to_epoch_dict[device_id].keys())
+        epoch_id_list.sort()
         if len(epoch_id_list) > 1:
             # FINISH: This scenario has not been tested
             util.WARN (f"More than one epoch running on device {device_id}):")
@@ -409,14 +424,18 @@ def run(args, context, ui_state = None):
 
         for epoch_id in epoch_id_list:
             graph_name = context.netlist.get_graph_name(epoch_id, device_id)
+            if graph_name is None:
+                LOG (f"- Skipping epoch {epoch_id}, as there is information on epoch {epoch_id} in the netlist")
+                continue
             LOG (f"Analyzing graph {graph_name} ( epoch {epoch_id} )")
             graph = context.netlist.graph(graph_name)
 
             # -- 1. Check input queues
-            queue_ops_errors = get_input_queues_without_data(context, device_id, graph, verbose)
-            if len(queue_ops_errors) > 0:
-                queue_ops_missing_data.append({'device_id':device_id, 'epoch_id':epoch_id, 'graph_name':graph_name, 'operations':queue_ops_errors})
-                util.ERROR(f"Found {len(queue_ops_errors)} input queues without data: {list (queue_ops_errors.keys())}")
+            # WIP - bring this back in
+            # queue_ops_errors = get_input_queues_without_data(context, device_id, graph, verbose)
+            # if len(queue_ops_errors) > 0:
+            #     queue_ops_missing_data.append({'device_id':device_id, 'epoch_id':epoch_id, 'graph_name':graph_name, 'operations':queue_ops_errors})
+            #     util.ERROR(f"Found {len(queue_ops_errors)} input queues without data: {list (queue_ops_errors.keys())}")
 
             # -- 2. Check hung ops
             ops_with_hang = find_ops_with_hang(context, graph, device_id, verbose)

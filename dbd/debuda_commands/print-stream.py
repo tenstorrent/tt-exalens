@@ -1,35 +1,38 @@
-"""Reads stream configuration data given x-y location and stream ID.
+"""
+Usage:
+  stream <x> <y> <stream-id>
 
-.. code-block::
-   :caption: Example
+Arguments:
+  x          nocTr X coordinate of the core
+  y          nocTr Y coordinate of the core
+  stream-id  Stream ID
 
-    Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > s 1 1 8
-    Non-idle streams                       Registers                                                     Stream (blob.yaml)                                       Buffer 10000170000                                       Pipe 10000300000
-    ------------------  -----------------  ------------------------------------------------  ----------  ----------------------------  -------------------------  ----------------------------  -------------------------  --------------------  --------------------------------------------------------------------------------------------------------
-    8                   RS-11(1)-10(1)-40  STREAM_ID                                         8           buf_addr                      241664 (0x3b000)           md_op_name                    matmul2                    id                    10000300000 (0x2541077e0)
-    9                   RS-9(3)-8(3)-24    PHASE_AUTO_CFG_PTR (word addr)                    0x1b494     buf_id                        10000170000 (0x2540e7c10)  id                            0                          input_list            [10000110000, 10000110008, 10000110016, 10000110024, 10000110004, 10000110012, 10000110020, 10000110028]
-    24                  RR-7-3-9           CURR_PHASE                                        1           buf_size                      66560 (0x10400)            uniqid                        10000170000 (0x2540e7c10)  pipe_periodic_repeat  0
-    32                                     CURR_PHASE_NUM_MSGS_REMAINING                     32          buf_space_available_ack_thr   1                          epoch_tiles                   32 (0x20)                  pipe_consumer_repeat  1
-    ...
+Description:
+  Shows stream 'stream_id' at core 'x-y' on the current device.
+
+Examples:
+  s 1 1 4
 """
 
 command_metadata = {
     "short" : "s",
-    "long" : "stream",
     "type" : "low-level",
-    "expected_argument_count" : [ 3 ],
-    "arguments" : "x y stream_id",
-    "description" : "Shows stream 'stream_id' at core 'x-y'"
+    "description" : __doc__
 }
+
 import tt_stream, tt_util as util
 from tt_coordinate import OnChipCoordinate
+from docopt import docopt
 
 # Prints all information on a stream
-def run(args, context, ui_state = None):
+def run(cmd_text, context, ui_state = None):
+    args = docopt(__doc__, argv=cmd_text.split()[1:])
     current_device_id = ui_state["current_device_id"]
     current_device = context.devices[current_device_id]
 
-    x, y, stream_id = int(args[1]), int(args[2]), int(args[3])
+    x = int(args['<x>'], 0)
+    y = int(args['<x>'], 0)
+    stream_id = int(args['<stream-id>'], 0)
 
     stream_loc = OnChipCoordinate(x, y, "nocTr", device=current_device)
     regs = current_device.read_stream_regs (stream_loc, stream_id)

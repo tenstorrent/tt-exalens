@@ -498,3 +498,7 @@ def decorate_all_module_functions_for_tracing(mod, tracer_function=INFO):
 
 def get_indent ():
     return ' ' * TRACE_NESTING_LEVEL
+
+# Return an ansi color code for a given index. Useful for coloring a list of items.
+def clr_by_index (idx):
+    return f"\033[{31 + idx % 7}m"

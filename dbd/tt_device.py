@@ -384,10 +384,17 @@ class Device(TTObject):
             if id in chip:
                 self._has_mmio = True
                 break
-        if "harvesting" in cluster_desc and id in cluster_desc["harvesting"] and id in cluster_desc["harvesting"][id]:
-            self._harvesting = cluster_desc["harvesting"][id][id]
+
+        # Check if cluster_desc is an array and has id+1 entries at the least
+        harvesting_desc = cluster_desc['harvesting']
+        if isinstance(harvesting_desc, list) and len(cluster_desc) > id:
+            device_desc = harvesting_desc[id]
+            if id not in device_desc:
+                raise util.TTFatalException (f"Key {id} not found in: {device_desc}")
+            self._harvesting = device_desc[id]
         else:
-            self._harvesting = None
+            raise util.TTFatalException (f"Cluster description is not valid. It reads: {harvesting_desc}")
+
         self._create_harvesting_maps()
         self._create_nocVirt_to_nocTr_map()
         util.DEBUG("Opened device: id=%d, arch=%s, has_mmio=%s, harvesting=%s" % (id, arch, self._has_mmio, self._harvesting))
@@ -598,7 +605,7 @@ class Device(TTObject):
             # 2. Add legend
             legend_y = screen_row_y
             if legend and legend_y < len(legend):
-                row = row + [ util.CLR_INFO + legend[legend_y] + util.CLR_END ]
+                row = row + [ util.CLR_INFO + "    " + legend[legend_y] + util.CLR_END ]
 
             rows.append (row)
             screen_row_y += 1
@@ -779,6 +786,7 @@ class Device(TTObject):
         assert (type(loc) == OnChipCoordinate)
         return self.get_stream_reg_field(loc, stream_id, 11, 0, 20)
 
+    # This comes from src/firmware/riscv/common/epoch.h
     def get_epoch_id(self, loc):
         assert (type(loc) == OnChipCoordinate)
 
@@ -787,7 +795,7 @@ class Device(TTObject):
         # epoch_id offset is 147 word = 588 B (0x24c)
         #  Eth base is 0x1b000
         #  Tensix base is 0x23080
-        epoch = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0x232cc + 32) & 0xFF
+        epoch = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0x232cc + 64) & 0xFF
         return epoch
 
     # Returns whether the stream is configured
@@ -913,3 +921,13 @@ def init_server_communication (args, runtime_data_yaml_filename):
         connect_to_server (ip=ip, port=port, spawning_debuda_stub=spawning_debuda_stub)
 
     return SERVER_IFC
+
+# This is based on runtime_utils.cpp:get_soc_desc_path()
+def get_soc_desc_path(chip, output_dir):
+    if os.path.exists(os.path.join(output_dir, "device_desc_runtime", f"{chip}.yaml")):
+        file_to_use = os.path.join(output_dir, "device_desc_runtime", f"{chip}.yaml")
+    elif os.path.exists(os.path.join(output_dir, "device_descs")):
+        file_to_use = os.path.join(output_dir, "device_descs", f"{chip}.yaml")
+    else:
+        file_to_use = os.path.join(output_dir, "device_desc.yaml")
+    return file_to_use

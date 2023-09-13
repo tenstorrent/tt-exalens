@@ -1,22 +1,31 @@
-"""Documentation for testtest
 """
-command_metadata = {
-    "short" : "pciw",
-    "type" : "low-level",
-    "expected_argument_count" : [ 2 ],
-    "arguments" : "addr data",
-    "description" : "Writes 'data' word to PCI BAR at address 'addr'"
-}
+Usage:
+  pciw <addr> <data>
 
+Arguments:
+  addr        Address in PCI BAR to read from.
+  data        Data to write to PCI BAR.
+
+Description:
+  Writes data to PCI BAR at address 'addr'. The mapping between the addresses and the on-chip data is stored within the Tensix TLBs.
+
+Examples:
+  pciw 0x0 0x0
+"""
+
+from docopt import docopt
 import tt_device
 
-def run(args, context, ui_state = None):
-    """Run command
-    """
-    navigation_suggestions = []
+command_metadata = {
+    "short": "pciw",
+    "type": "low-level",
+    "description": __doc__
+}
 
-    addr = int(args[1],0)
-    data = int(args[2],0)
-    print ("PCI WR [0x%x] <- 0x%x" % (addr, tt_device.SERVER_IFC.pci_raw_write (ui_state['current_device_id'], addr, data)))
-
-    return navigation_suggestions
+def run(cmd_text, context, ui_state=None):
+    args = docopt(__doc__, argv=cmd_text.split()[1:])
+    addr = int(args['<addr>'], 0)
+    data = int(args['<data>'], 0)
+    pci_write_result = tt_device.SERVER_IFC.pci_raw_write(ui_state['current_device_id'], addr, data)
+    print (f"PCI WR [0x{addr:x}] <- 0x{data:x}")
+    return None

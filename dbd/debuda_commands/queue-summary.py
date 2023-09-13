@@ -1,27 +1,32 @@
 """
-.. code-block::
-   :caption: Example
+Usage:
+  q [<queue-name> [<start-addr> [<num-bytes>]]]
 
-        Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > q
-        Entries    Wr    Rd    Occ  Type      Device  Loc    Name    Input    Outputs    DRAM ch-addr
-        ---------  ----  ----  -----  ------  --------  -----  ------  -------  ---------  --------------
-                1     1     0      1  queue          0  dram   input0  HOST     f_op0      Ch0-0x30000000
-                1     1     0      1  queue          0  dram   input1  HOST     f_op1      Ch0-0x31000000
-                1     0     0      0  queue          0  dram   output  d_op3               Ch0-0x32000000
+Arguments:
+    queue-name    The name of the queue to show.
+    start-addr    The start address of the queue to show.
+    num-bytes     The number of bytes to show.
+
+Description:
+  Prints summary of all queues. If the arguments are supplied, it prints the given queue contents.
+
+Examples:
+  q
+  q input0
+  q input0 32 256
 """
 
 command_metadata = {
     "short" : "q",
     "type" : "high-level",
-    "expected_argument_count" : [0, 1, 3],
-    "arguments" : "queue_name start_addr num_bytes",
-    "description" : "Prints summary of all queues. If the arguments are supplied, it prints the given queue contents."
+    "description" : __doc__
 }
 
 import tt_util as util
 from tt_object import TTObjectIDDict, DataArray
 import tt_device
 from tt_graph import Queue
+from docopt import docopt
 
 # IMPROVE: More details available. See struct tt_queue_header
 
@@ -106,17 +111,10 @@ def read_queue_contents (context, queue, start_addr, num_bytes):
             ret_val.add (da)
     return ret_val
 
-def print_single_queue_summary(args, context, ui_state = None):
-    qid = args[1]
-    queue = context.netlist.queues().find_id (qid)
-    if not queue:
-        util.WARN (f"Cannot find queue '{qid}'")
-    else:
-        q_data, queue_locations = get_queue_data(context, queue)
-        util.INFO (f"Summary for queue '{qid}'")
+def run(cmd_text, context, ui_state = None):
+    args = docopt(__doc__, argv=cmd_text.split()[1:])
 
-def run(args, context, ui_state = None):
-    queue_id = args[1] if len(args) > 1 else None
+    queue_id = args["<queue-name>"] if args["<queue-name>"] else None
 
     column_format = [
         { 'key_name' : 'entries',       'title': 'Entries',      'formatter': None },
@@ -169,8 +167,8 @@ def run(args, context, ui_state = None):
         if not queue:
             util.ERROR (f"Cannot find queue with id '{queue_id}'")
         else:
-            queue_start_addr = int(args[2], 0) if len(args) > 2 else 0
-            queue_num_bytes = int(args[3], 0) if len(args) > 3 else 128
+            queue_start_addr = int(args["<start-addr>"],0) if args["<start-addr>"] else 0
+            queue_num_bytes = int(args["<num-bytes>"],0) if args["<num-bytes>"] else 128
             alignment_bytes=queue_start_addr % 4
             queue_start_addr-=alignment_bytes
             queue_num_bytes+=alignment_bytes
