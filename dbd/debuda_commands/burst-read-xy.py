@@ -1,25 +1,49 @@
-"""Reads from an address or a range of addresses a given number of times.
-
-- If burst_type is 1: read the same location for one second
-- If burst_type is greater than 1: read an array of locations once. The number of words to read is 'burst_type'-1.
-
-Summary of important addresses:
-
-- NCRISC status code address: 0xffb2010c
-- BRISC status code address: 0xffb3010c
 """
+Usage:
+  brxy <x> <y> <addr> <burst-type> [<format>]
+
+Arguments:
+  x           Noc0 location x-coordinate
+  y           Noc0 location y-coordinate
+  addr        Address to read from
+  burst-type  Type of burst read:
+              1 - read the same location for one second
+              >1 - read an array of locations once (number of words = burst-type - 1)
+  format      Data format. Options: i8, i16, i32, hex8, hex16, hex32 [default: i32]
+
+Description:
+  Reads data from address 'addr' at noc0 location x-y of the chip associated with the currently selected graph.
+
+Examples:
+  brxy 1 1 0x0 1
+  brxy 1 1 0x0 32 i8
+"""
+
 command_metadata = {
-    "short" : "brxy",
-    "type" : "low-level",
-    "expected_argument_count" : [4,5],
-    "arguments" : "x y addr burst_type format",
-    "description" : "Reads data from address 'addr' at noc0 location x-y of the chip associated with currently selected graph. Available formats: i8, i16, i32, hex8, hex16, hex32."
+    "long": "brxy",
+    "short": "brxy",
+    "type": "low-level",
+    "description": __doc__
 }
 
+from docopt import docopt
 import tt_util as util
 from tt_object import DataArray
 import tt_device
 import time
+
+def run(cmd_text, context, ui_state=None):
+    args = docopt(__doc__, argv=cmd_text.split()[1:])
+
+    x = int(args['<x>'], 0)
+    y = int(args['<y>'], 0)
+    addr = int(args['<addr>'], 0)
+    burst_type = int(args['<burst-type>'], 0)
+    format = args['<format>'] if '<format>' in args else 'hex32'
+
+    print_a_pci_burst_read (ui_state['current_device_id'], x, y, 0, addr, burst_type=burst_type, print_format=format)
+
+    return None
 
 # A helper function to parse print_format
 def get_print_format(print_format):
@@ -63,18 +87,18 @@ def print_a_pci_burst_read (device_id, x, y, noc_id, addr, burst_type = 1, print
         formated = f"{da._id}\n" + util.dump_memory(addr, da.data, bytes_per_entry, 16, is_hex)
         print(formated)
 
-def run(args, context, ui_state = None):
-    """Run command
-    """
-    navigation_suggestions = []
+# def run(args, context, ui_state = None):
+#     """Run command
+#     """
+#     navigation_suggestions = []
 
-    x = int(args[1],0)
-    y = int(args[2],0)
-    addr = int(args[3],0)
-    burst_type = int(args[4],0)
-    print_format = "hex32"
-    if (len(args) > 5):
-        print_format = args[5]
-    print_a_pci_burst_read (ui_state['current_device_id'], x, y, 0, addr, burst_type=burst_type, print_format=print_format)
+#     x = int(args[1],0)
+#     y = int(args[2],0)
+#     addr = int(args[3],0)
+#     burst_type = int(args[4],0)
+#     print_format = "hex32"
+#     if (len(args) > 5):
+#         print_format = args[5]
+#     print_a_pci_burst_read (ui_state['current_device_id'], x, y, 0, addr, burst_type=burst_type, print_format=print_format)
 
-    return navigation_suggestions
+#     return navigation_suggestions

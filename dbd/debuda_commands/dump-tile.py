@@ -1,24 +1,26 @@
 """
-.. code-block::
-   :caption: Example
+Usage:
+  t <tile-id> [<raw>]
 
-        Current epoch:0(test_op) device:0 core:5-3 rc:2,4 stream:8 > t 1 0
-        5-3 buffer_addr: 0x0003b000 buffer_size: 0x10400 msg_size:2080
-         0.0976   0.1857   0.4302   0.6885   0.2054   0.7158   0.0897   0.6943  -0.1526   0.2471   0.2917  -0.2312  -0.1248  -0.4048   0.7832  -0.8862   0.9272  -0.4546  -0.2330  -0.0446   0.5830   0.6240   0.0578  -0.0400   0.1360  -0.2144   0.8511   0.6719  -0.8579  -0.3252  -0.8257   0.2961 
-        -0.9595  -0.2634   0.6650   0.9141   0.5562  -0.7192   0.7397   0.7397   0.9570  -0.0528   0.5981   0.6016  -0.0770   0.0410   0.5610   0.3577  -0.7632   0.4412   0.2798   0.1639  -0.7129   0.0747   0.8892   0.5171   0.0437  -0.7881  -0.1707  -0.0528  -0.4707  -0.6270   0.5483   0.4736 
-        -0.0876  -0.5669   0.1368  -0.7295  -0.9624  -0.3516   0.2352  -0.7002   0.2241  -0.5552   0.2338  -0.2269   0.8872   0.8052   0.3635  -0.1001  -0.2808   0.2261  -0.1259   0.8047   0.3950  -0.8013  -0.8794   0.9395   0.3335   0.3062   0.3411  -0.6577  -0.5791  -0.2837  -0.7417   0.5010 
-        ...
+Arguments:
+  tile-id     The ID of the tile to show.
+  raw         If 1, prints raw bytes.
+
+Description:
+  Prints tile for the current stream in the currently active phase. If raw=1, it prints raw bytes.
+
+Examples:
+  t 123
 """
 from tabulate import tabulate
 import tt_util as util
 from tt_coordinate import OnChipCoordinate
+from docopt import docopt
 
 command_metadata = {
     "short" : "t",
     "type" : "high-level",
-    "expected_argument_count" : [ 2 ],
-    "arguments" : "tile_id raw",
-    "description" : "Prints tile for the current stream in the currently active phase. If raw=1, it prints raw bytes."
+    "description" : __doc__
 }
 
 # converts data format to string
@@ -92,7 +94,7 @@ def dump_message_xy(context, ui_state, tile_id, raw):
                 op = graph.root[op_name]
                 assert (buffer.root['md_op_name'] == op_name) # Make sure the op name is the same as the one in the buffer itself
 
-                if buffer.is_input:
+                if buffer.is_input_of_pipe():
                     data_format_str = op['in_df'][0] # FIX: we are picking the first from the list
                 else:
                     data_format_str = op['out_df']
@@ -108,12 +110,19 @@ def dump_message_xy(context, ui_state, tile_id, raw):
     else:
         util.ERROR("Not enough data in blob.yaml")
 
-def run(args, context, ui_state = None):
-    tile_id = int(args[1])
-    raw = int(args[2])
+def run(cmd_text, context, ui_state = None):
+    args = docopt(__doc__, argv=cmd_text.split()[1:])
+    try:
+        tile_id = int(args['<tile-id>'])
+    except ValueError:
+        util.ERROR ("Tile ID must be an integer")
+        return None
 
-    navigation_suggestions = []
+    if args['<raw>'] is None:
+        raw = 0
+    else:
+        raw = int(args['<raw>'])
 
     dump_message_xy(context, ui_state, tile_id, raw)
 
-    return navigation_suggestions
+    return None

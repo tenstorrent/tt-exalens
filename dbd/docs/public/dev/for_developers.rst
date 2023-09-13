@@ -39,7 +39,7 @@ Low level messages (debug and trace) are printed in debuda-server source code wi
     log_trace(tt::LogDebuda, ...)
     log_debug(tt::LogDebuda, ...)
 
-Make sure all relevant source code is compiled with ``CONFIG=Debug`` in the environment to enable
+Make sure all relevant source code is compiled with ``CONFIG=debug`` in the environment to enable
 trace and debug messages.
 When running debuda-server, add ``LOGGER_LEVEL=Trace`` or ``LOGGER_LEVEL=Debug`` to enable the messasges.
 
@@ -54,16 +54,40 @@ Visual Studio Code
 Debuda comes with specific debug targets for VS Code. These are configured in ``dbd/launch.json``. You
 need add the ``dbd`` folder to workspace to make them available.
 
+Debugging debuda-server
+-----------------------
 
-.. Classes
-.. -------
-
-.. Result of ``autoclass:: tt_graph.Graph``
-
-.. .. autoclass:: tt_graph.Graph
-..     :members:
-
-.. Result of ``automodule:: debuda_commands.testtest``
-
-.. .. automodule:: debuda_commands.testtest
-..     :members:
+Add this configuration to your main budabackend `launch.json`:
+```
+    "configurations": [
+        {
+            "name": "GDB debuda-server",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/test/verif/netlist_tests/debuda-server-standalone",
+            "args":
+            [
+                "5555",
+                "tt_build/test_op_10997462431124419207/runtime_data.yaml",
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "TT_PCI_LOG_LEVEL",
+                    "value": "2"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+            ],
+            "miDebuggerPath": "/usr/bin/gdb",
+        },
+```
+You will have to modify the args to point to the correct runtime_data.yaml file.

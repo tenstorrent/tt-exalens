@@ -25,10 +25,10 @@ graphs:
   fwd_0_0_temporal_epoch_0:
     target_device: 0
     input_count: 1
-    concatenate.dc.concatenate.0: {type: splice, grid_loc: [0, 0], grid_size: [1, 2], inputs: [act1, act2],
+    conc: {type: splice, grid_loc: [0, 0], grid_size: [1, 2], inputs: [act1, act2],
          t: 16, mblock: [60, 1], ublock: [1, 1], buf_size_mb: 2, ublock_order: r, in_df: [Float32, Float32], out_df: Float32, intermed_df: Float32, acc_df: Float32, math_fidelity: HiFi3,
          attributes: {input0: [0, 40, 40], input1: [0, 20, 20]}}
-    matmul_1: {type: matmul, grid_loc: [0, 2], grid_size: [10, 2], inputs: [test_fork_join_with_buff_queue_long_path.in0_mm_1, concatenate.dc.concatenate.0],
+    matmul_1: {type: matmul, grid_loc: [0, 2], grid_size: [10, 2], inputs: [test_fork_join_with_buff_queue_long_path.in0_mm_1, conc],
          t: 16, mblock: [6, 1], ublock: [1, 1], buf_size_mb: 2, ublock_order: r, in_df: [Float32, Float32], out_df: Float32, intermed_df: Float32, acc_df: Float32, math_fidelity: HiFi3,
          attributes: {m_k: 2, min_buffer_input: 0, u_kt: 30}}
     matmul_2: {type: matmul, grid_loc: [0, 4], grid_size: [4, 1], inputs: [insert_queue0, test_fork_join_with_buff_queue_long_path.in1_mm_2],
@@ -38,7 +38,7 @@ graphs:
     matmul_3: {type: matmul, grid_loc: [0, 5], grid_size: [10, 2], inputs: [matmul_2, test_fork_join_with_buff_queue_long_path.in1_mm_3],
          t: 1, mblock: [6, 4], ublock: [1, 4], buf_size_mb: 2, ublock_order: r, in_df: [Float32, Float32], out_df: Float32, intermed_df: Float32, acc_df: Float32, math_fidelity: HiFi3,
          attributes: {m_k: 1, min_buffer_input: 0, u_kt: 1}}
-    join: {type: subtract, grid_loc: [0, 7], grid_size: [10, 1], inputs: [concatenate.dc.concatenate.0, matmul_3], untilize_output: true,
+    join: {type: subtract, grid_loc: [0, 7], grid_size: [10, 1], inputs: [conc, matmul_3], untilize_output: true,
          t: 16, mblock: [6, 1], ublock: [1, 2], buf_size_mb: 2, ublock_order: r, in_df: [Float32, Float32], out_df: Float32, intermed_df: Float32, acc_df: Float32, math_fidelity: HiFi3,
          input_1_tms: [hslice: 16]}
 

@@ -1,17 +1,13 @@
 """
-.. code-block::
-   :caption: Example
+Usage:
+  op-map
 
-        Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > op-map
-        Graph/Op         Op type       Epoch    Device  Netlist Loc    NOC0 Loc    Grid Size
-        ---------------  ----------  -------  --------  ----------  ----------  -----------
-        test_op/add1     add               0         0  [2, 6]      7-3         [1, 1]
-        test_op/d_op3    datacopy          0         0  [0, 3]      4-1         [1, 1]
-        test_op/f_op0    datacopy          0         0  [0, 0]      1-1         [1, 1]
-        test_op/f_op1    datacopy          0         0  [0, 1]      2-1         [1, 1]
-        test_op/matmul1  matmul            0         0  [0, 2]      3-1         [1, 1]
-        test_op/matmul2  matmul            0         0  [2, 4]      5-3         [1, 1]
-        test_op/recip    reciprocal        0         0  [2, 2]      3-3         [1, 1]
+Description:
+  Shows a table of all operations in the current epoch, along with their location
+  in the netlist and the NOC.
+
+Examples:
+  om-map
 """
 
 from tabulate import tabulate
@@ -20,13 +16,10 @@ from tt_coordinate import OnChipCoordinate
 command_metadata = {
     "short" : "om",
     "type" : "high-level",
-    "expected_argument_count" : [ 0 ],    "arguments" : "",
-    "description" : "Draws a mini map of the current epoch."
+    "description" : __doc__
 }
 
-def run(args, context, ui_state = None):
-    navigation_suggestions = []
-
+def run(cmd_text, context, ui_state = None):
     rows = []
     for graph_id, graph in context.netlist.graphs.items():
         graph_name = graph.id()
@@ -41,4 +34,4 @@ def run(args, context, ui_state = None):
 
     print (tabulate(rows, headers = [ "Graph/Op", "Op type", "Epoch", "Device", "Netlist Loc", "NOC Tr", "Grid Size" ]))
 
-    return navigation_suggestions
+    return None

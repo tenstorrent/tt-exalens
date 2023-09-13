@@ -94,9 +94,6 @@ class Graph(TTObject):
         self.buffers = TTObjectIDDict()
         self.pipes = TTObjectIDDict()
 
-        input_buffers_ids = util.set()
-        output_buffers_ids = util.set()
-
         for key, val in self.pipegen_yaml.items():
             if key == "graph_names": # This key is pluralized in util.YamlFile
                 if self.id() not in val:
@@ -113,23 +110,28 @@ class Graph(TTObject):
             elif "pipe" in key:
                 p = Pipe(self, val)
                 self.pipes[p.id()] = p
-                input_buffers_ids.update (val['input_list'])
                 output_buffers = val['output_list']
                 if isinstance(output_buffers[0], list):
                     output_buffers = tuple(itertools.chain.from_iterable(output_buffers))
-                output_buffers_ids.update (output_buffers)
             else:
                 raise RuntimeError(f"{self.pipegen_yaml.id()}: Cannot interpret {key}: {val}")
 
-        # Cache whether buffer is input or output
-        for b_id, b in self.buffers.items():
-            if b_id in input_buffers_ids:
-                b.is_input = True
-            elif b_id in output_buffers_ids:
-                b.is_output = True
-            else:
-                pass
-                # util.WARN (f"Buffer {b_id} is neither input nor output")
+        # Cache buffer to pipe and vice versa mapping
+        for pipe_id, pipe in self.pipes.items():
+            for input_buffer_id in pipe.root["input_list"]:
+                b = self.buffers[input_buffer_id]
+                b.input_of_pipes.add (pipe)
+                pipe.input_buffers.add (b)
+            for output_buffer_id in pipe.root["output_list"]:
+                b = self.buffers[output_buffer_id]
+                b.output_of_pipes.add (pipe)
+                pipe.output_buffers.add (b)
+
+        # for b_id, b in self.buffers.items():
+        #     if b.is_input_of_pipe() and b.is_output_of_pipe():
+        #         util.WARN (f"Buffer {b_id} is both input and output of a pipe")
+        #     if not b.is_input_of_pipe() and not b.is_output_of_pipe():
+        #         util.WARN (f"Buffer {b_id} is neither input nor output of a pipe")
 
         # 2. Load blob_yaml
         self.streams = TTObjectIDDict()
@@ -146,6 +148,14 @@ class Graph(TTObject):
                     stream_data['phase_id'] = phase_id
                     s = Stream (self, stream_designator, stream_data)
                     self.streams[s.id()] = s
+
+                    # # Add the stream to the corresponding buffer
+                    # if "buf_id" in s.root:
+                    #     if s.root["buf_id"] not in self.buffers:
+                    #         util.WARN (f"Stream {s.id()} refers to buffer {s.root['buf_id']} which is not in pipegen.yaml")
+                    #     if self.buffers[s.root["buf_id"]].stream_id is not None:
+                    #         util.WARN (f"Stream {s.id()} refers to buffer {s.root['buf_id']} which is already in use by stream {self.buffers[s.root['buf_id']].stream_id}")
+                    #     self.buffers[s.root["buf_id"]].stream_id = s.id()
             else:
                 raise RuntimeError(f"{self.blob_yaml.id()}: Cannot interpret {key}: {val}")
 
@@ -349,22 +359,30 @@ class Graph(TTObject):
                         # buffer_and_pipes.add ( (src_buffer_id, dest_buffer_id, pipe_id, src_stream_id, dest_stream_id ) )
         return buffer_and_pipes
 
-    def get_buffers(self, where, src_or_dest="all"):
+    # in_or_out refers to the buffer being an input of a pipe or an output
+    def get_buffers(self, where, in_or_out="all"):
         ret_val = TTObjectIDDict()
         if type(where) == str or type(where) == int:
             expected_id = int(where)
             ret_val.update( {b.id():b for b_id, b in self.buffers.items() if b.id() == expected_id })
         elif type(where) == Pipe:
-            if src_or_dest == "all" or src_or_dest == "in":
-                ret_val.update( {b.id():b for b_id, b in self.buffers.items() if b.id() in where.inputs() })
-            if src_or_dest == "all" or src_or_dest == "out":
-                ret_val.update( {b.id():b for b_id, b in self.buffers.items() if b.id() in where.outputs() })
+            if in_or_out == "all" or in_or_out == "in":
+                ret_val.update( {b.id():b for b_id, b in self.buffers.items() if b.id() in where.input_buffers })
+            if in_or_out == "all" or in_or_out == "out":
+                ret_val.update( {b.id():b for b_id, b in self.buffers.items() if b.id() in where.output_buffers })
         elif type(where) == Op or type(where) == Queue:
-            ret_val.update( {b.id():b for b_id, b in self.buffers.items() if b.root["md_op_name"] == where.id() })
+            if in_or_out == "all" or in_or_out == "in":
+                for b_id, b in self.buffers.items():
+                    if (b.root["md_op_name"] == where.id() and b.is_input_of_pipe()):
+                        ret_val.add (b)
+            if in_or_out == "all" or in_or_out == "out":
+                for b_id, b in self.buffers.items():
+                    if (b.root["md_op_name"] == where.id() and b.is_output_of_pipe()):
+                        ret_val.add (b)
         elif util.is_iterable(where):
             if isinstance (where, dict):
                 where = where.values()
-            for o in where: ret_val.update (self.get_buffers (o))
+            for o in where: ret_val.update (self.get_buffers (o, in_or_out))
         else:
             raise TypeError (f"Usupported object type: {type(where)}")
         return ret_val
@@ -404,9 +422,9 @@ class Graph(TTObject):
     def get_pipes (self, where):
         ret_val = TTObjectIDDict()
         if type(where) == int:
-            ret_val.update( {p.id():p for p_id, p in self.pipes.items() if p.id() == where }) 
+            ret_val.update( {p.id():p for p_id, p in self.pipes.items() if p.id() == where })
         elif type(where) == Buffer:
-            ret_val.update( {p.id():p for p_id, p in self.pipes.items() if where.id() in p.inputs() or where.id() in p.outputs() })
+            ret_val.update( {p.id():p for p_id, p in self.pipes.items() if where.id() in p.input_buffers or where.id() in p.output_buffers })
         elif type(where) == Op or type(where) == Queue:
             def is_ops (b):
                 return b.root["md_op_name"]==where.id()

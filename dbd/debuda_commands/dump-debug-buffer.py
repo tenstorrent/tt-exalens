@@ -1,17 +1,24 @@
-"""Prints a debug buffer at x-y location. 
-
-.. code-block::
-   :caption: Example
-
-    Current epoch:0(test_op) device:0 core:1-1 rc:0,0 stream:8 > ddb 0 16 hex16
-    L1-0x00011800-64
-    -----------  ----  ----  ----  ----  ----  ----  ----  ----
-    0x00011800:  d746  bcec  951e  45ee  5fce  37ba  3758  ec52
-    0x00011810:  afa5  3fd2  4cbf  e653  56cd  caf6  d617  2647
-    0x00011820:  f642  9d4c  6fbe  c6dc  6626  4257  4c46  8c5a
-    0x00011830:  712d  277f  ea94  c6ab  57d7  c2ce  eb56  36ce
-    -----------  ----  ----  ----  ----  ----  ----  ----  ----
 """
+Usage:
+  ddb <trisc-id> <num-words> [<format>] [<x>] [<y>] [<device-id>]
+
+Arguments:
+  trisc-id      Trisc ID (0|1|2)
+  num-words     Number of words to dump.
+  format        Print format (i8, i16, i32, hex8, hex16, hex32). Default: hex32.
+  x             Core x coordinate in noc0 coordinate system. If not supplied, the current core is used.
+  y             Core y coordinate in noc0 coordinate system. If not supplied, the current core is used.
+  device-id     Optional device-id.
+
+Description:
+  Prints a debug buffer.
+
+Examples:
+  ddb 1 16
+  ddb 0 32 hex32 1 1
+"""
+
+from docopt import docopt
 from cgi import print_form
 from tt_object import DataArray
 import tt_device
@@ -19,37 +26,34 @@ import tt_util as util
 from tt_coordinate import OnChipCoordinate
 
 command_metadata = {
-    "short" : "ddb",
-    "type" : "low-level",
-    "expected_argument_count" : [2,6],
-    "arguments" : "trisc_id, num_words, format, x, y, c",
-    "description" : "Prints a debug buffer. 'id' - trisc 0|1|2 at current x-y if not selcted. 'num_words' - number of words to dump. 'format' - i8, i16, i32, hex8, hex16, hex32. optional noc0 location x-y. optional c - chip_id"
+    "short": "ddb",
+    "long": "ddb",
+    "type": "low-level",
+    "description": __doc__
 }
 
-def run(args, context, ui_state = None):
-    #This is defined in src/firmware/riscv/grayskull/l1_address_map.h
-    TRISC_DEBUG_BASE=[71680, 88064, 108544]
-
-    trisc_id = int(args[1])
-    num_words = int(args[2])
-    print_format = "hex32"
+def run(cmd_text, context, ui_state=None):
+    args = docopt(__doc__, argv=cmd_text.split()[1:])
+    trisc_id = int(args['<trisc-id>'])
+    num_words = int(args['<num-words>'])
+    print_format = args['<format>'] if args['<format>'] else "hex32"
     loc = ui_state['current_loc']
-    chip_id = ui_state['current_device_id']
-    device = context.devices[chip_id]
+    device_id = ui_state['current_device_id']
+    device = context.devices[device_id]
+    TRISC_DEBUG_BASE = [71680, 88064, 108544]
 
-    if (len(args) > 3):
-        print_format = args[3]
-
-    if (len(args) > 5):
-        loc = OnChipCoordinate (int(args[4]), int(args[5]), 'noc0', device)
-
-    if (len(args) > 6):
-        chip_id = int(args[6])
+    if args['<x>'] and args['<y>']:
+        loc = OnChipCoordinate(int(args['<x>']), int(args['<y>']), 'noc0', device)
+    if args['<device-id>']:
+        device_id = int(args['<device-id>'])
+        if device_id not in context.devices:
+            util.ERROR(f"Invalid device ID ({device_id}). Valid devices IDs: {list(context.devices)}")
+            return []
 
     addr = TRISC_DEBUG_BASE[trisc_id]
     da = DataArray(f"L1-0x{addr:08x}-{num_words * 4}", 4)
     for i in range (num_words):
-        data = tt_device.SERVER_IFC.pci_read_xy(chip_id, *loc.to("nocVirt"), 0, addr + 4*i)
+        data = tt_device.SERVER_IFC.pci_read_xy(device_id, *loc.to("nocVirt"), 0, addr + 4*i)
         da.data.append(data)
 
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]

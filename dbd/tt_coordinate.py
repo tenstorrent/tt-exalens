@@ -6,11 +6,11 @@ mapping to the physical location on the chip. For example, not all noc0 coordina
 coordinate. This is due to the fact that some locations contain non-Tensix tiles, and also since some Tensix
 rows may be disabled due to harvesting.
 
-The following coordinate systems to represent a grid location on the chip:
+The following coordinate systems are available to represent a grid location on the chip:
 
   - die:            represents a location on the die grid. This is a "geographic" coordinate and is
                     not really used in software. It is often shown in martketing materials, and shows the
-                    layout in <arch>-Noc-Coordinates.xls spreadsheet, and on some T-shirts,
+                    layout in as in <arch>-Noc-Coordinates.xls spreadsheet, and on some T-shirts.
   - noc0:           NOC routing coordinate for NOC 0. Notation: X-Y
                     Represents the chip location on the NOC grid. A difference in NOC coordinate of 1
                     represents a distance of 1 hop on the NOC. In other words, it takes one clock cycle
@@ -27,12 +27,11 @@ The following coordinate systems to represent a grid location on the chip:
                     anchored to noc0 coordinate of 1-1. Location 1,0 is noc0 1-2 (note that X in noc0
                     corresponds to C in tensix, and Y corresponds to R). Notation: R,C
 
-  The above three do not depend on harvesting. They only depend on the chip architecture. Also, They have
-  the same extents in both X and Y. The following coordinates depend on the harvesting mask (i.e. when harvest_mast!=0).
-  Note, harvest mask shows which noc0 rows are disabled due to harvesting. If harvest_mask==1, noc0 cores x-1, when
-  harv_mask==2, noc0 row x-2, etc. are disabled.
+  The above three do not depend on harvesting. They only depend on the chip architecture. Also, they share
+  the extents in both X (column) and Y (row). The following coordinates depend on the harvesting mask
+  (i.e. when harvest_mast!=0). Note, see HARVESTING_NOC_LOCATIONS for more details on how harvest_mask is used.
 
-  - netlist:        Netlist grid coordinate. Notation: R, C
+  - netlist:        Netlist grid coordinate. Notation: R,C
                     is similar to the 'tensix', but it does not include the disabled rows due to
                     harvesting. For a chip that does not have any harvested rows, it is exactly the same as tensix.
                     A distance of 1 in this coordinate system also shows the 4 closest cores in terms
@@ -54,7 +53,8 @@ The following coordinate systems to represent a grid location on the chip:
 """
 
 from typing import Any
-import tt_util as util
+
+VALID_COORDINATE_TYPES = ["noc0", "noc1", "nocVirt", "nocTr", "die", "tensix", "netlist"]
 
 class CoordinateTranslationError(Exception):
     """

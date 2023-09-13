@@ -14,7 +14,7 @@ touch $TMP_OUT_FILE
 if [ "$1" = "skip-build" ]; then
     echo Skipping build used for CI and tests
 else
-    echo Building 'make build_hw'
+    echo Building 'make build_hw'...
     make build_hw >> $TMP_OUT_FILE 2>&1
 
     echo Building verif/op_tests ...
@@ -43,7 +43,7 @@ NETLIST_FILE=verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml
 # │ input1 │ ───▶ │ f_op1 │ ───────┘
 # └────────┘      └───────┘
 echo Running op_tests/test_op on $NETLIST_FILE ...
-./build/test/verif/op_tests/test_op --outdir debuda_test --netlist $NETLIST_FILE --seed 0 --silicon --timeout $TEST_RUN_TIMEOUT >> $TMP_OUT_FILE
+./build/test/verif/op_tests/test_op --outdir debuda_test --netlist $NETLIST_FILE --seed 0 --silicon --timeout $TEST_RUN_TIMEOUT
 if [ $? -ne 0 ]; then
     echo Error in running ./build/test/verif/op_tests/test_op
     exit 1
@@ -74,7 +74,7 @@ NETLIST_FILE=dbd/test/netlists/netlist_multi_matmul_perf.yaml
 #   │   0                               ▲
 #   └───────────────────────────────────┘
 echo Running op_tests/test_op on $NETLIST_FILE ...
-./build/test/verif/op_tests/test_op --outdir debuda_test --netlist $NETLIST_FILE --seed 0 --silicon --timeout $TEST_RUN_TIMEOUT >> $TMP_OUT_FILE
+./build/test/verif/op_tests/test_op --outdir debuda_test --netlist $NETLIST_FILE --seed 0 --silicon --timeout $TEST_RUN_TIMEOUT
 if [ $? -ne 0 ]; then
     echo Error in running ./build/test/verif/op_tests/test_op
     exit 1

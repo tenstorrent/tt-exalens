@@ -1,37 +1,34 @@
 """
-.. code-block::
-   :caption: Example
+Usage:
+  buffer <buffer-id>
 
-        Current epoch:0(test_op) device:0 core:5-3 rc:2,4 stream:8 > b 10000170000
-        Graph test_op
-        ----------------------------  -------------------------
-        md_op_name                    matmul2
-        id                            0
-        uniqid                        10000170000 (0x2540e7c10)
-        epoch_tiles                   32 (0x20)
-        chip_id                       [0]
-        core_coordinates              (2, 4)
-        size_tiles                    32 (0x20)
-        scatter_gather_num_tiles      16 (0x10)
-        ...
+Arguments:
+  buffer-id    The ID of the buffer to show.
+
+Description:
+  Prints details on the buffer with a given ID.
+
+Examples:
+  buffer 123
 """
-import tt_util as util
 
 command_metadata = {
-    "long" : "buffer",
-    "short" : "b",
-    "type" : "low-level",
-    "expected_argument_count" : [ 1 ],
-    "arguments" : "buffer_id",
-    "description" : "Prints details on the buffer with a given ID."
+    "long": "buffer",
+    "short": "b",
+    "type": "low-level",
+    "description": __doc__
 }
 
-# Find occurrences of buffer with ID 'buffer_id' across all epochs, and print the structures that reference them
-def run (cmd, context, ui_state=None):
+from docopt import docopt
+import tt_util as util
+
+def run(cmd_text, context, ui_state=None):
+    args = docopt(__doc__, argv=cmd_text.split()[1:])
     try:
-        buffer_id = int(cmd[1])
-    except ValueError as e:
-        buffer_id = cmd[1]
+        buffer_id = int(args['<buffer-id>'])
+    except ValueError:
+        util.ERROR ("Buffer ID must be an integer")
+        return None
 
     navigation_suggestions = [ ]
 
