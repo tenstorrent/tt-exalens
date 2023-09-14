@@ -212,7 +212,13 @@ def main(args, context):
         current_loc = ui_state['current_loc']
 
         if ui_state['current_loc'] is not None and ui_state['current_graph_name'] is not None and ui_state['current_device'] is not None:
-            ui_state['current_prompt'] = f"NocTr:{util.CLR_PROMPT}{current_loc.to_str()}{util.CLR_PROMPT_END} netlist:{util.CLR_PROMPT}{current_loc.to_str('netlist')}{util.CLR_PROMPT_END} stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_PROMPT_END} "
+            ui_state['current_prompt'] = f"NocTr:{util.CLR_PROMPT}{current_loc.to_str()}{util.CLR_PROMPT_END} "
+            ui_state['current_prompt'] += f"netlist:{util.CLR_PROMPT}{current_loc.to_str('netlist')}{util.CLR_PROMPT_END} "
+            ui_state['current_prompt'] += f"stream:{util.CLR_PROMPT}{ui_state['current_stream_id']}{util.CLR_PROMPT_END} "
+            graph = context.netlist.graph(ui_state['current_graph_name'])
+            op_name = graph.location_to_op_name(current_loc)
+            ui_state['current_prompt'] += f"op:{util.CLR_PROMPT}{op_name}{util.CLR_PROMPT_END} "
+
 
         try:
             ui_state['current_device_id'] = context.netlist.graph_name_to_device_id(ui_state['current_graph_name'])

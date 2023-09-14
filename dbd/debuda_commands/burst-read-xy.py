@@ -7,8 +7,8 @@ Arguments:
   y           Noc0 location y-coordinate
   addr        Address to read from
   burst-type  Type of burst read:
-              1 - read the same location for one second
-              >1 - read an array of locations once (number of words = burst-type - 1)
+              1 - read the same location for one second. Print the histogram of values.
+              >1 - read an array of 'burst-type' words once
   format      Data format. Options: i8, i16, i32, hex8, hex16, hex32 [default: i32]
 
 Description:
@@ -16,6 +16,7 @@ Description:
 
 Examples:
   brxy 1 1 0x0 1
+  brxy 1 1 0x0 16
   brxy 1 1 0x0 32 i8
 """
 
@@ -39,7 +40,7 @@ def run(cmd_text, context, ui_state=None):
     y = int(args['<y>'], 0)
     addr = int(args['<addr>'], 0)
     burst_type = int(args['<burst-type>'], 0)
-    format = args['<format>'] if '<format>' in args else 'hex32'
+    format = args['<format>'] if args['<format>'] else 'hex32'
 
     print_a_pci_burst_read (ui_state['current_device_id'], x, y, 0, addr, burst_type=burst_type, print_format=format)
 
@@ -86,19 +87,3 @@ def print_a_pci_burst_read (device_id, x, y, noc_id, addr, burst_type = 1, print
             da.to_bytes_per_entry(bytes_per_entry)
         formated = f"{da._id}\n" + util.dump_memory(addr, da.data, bytes_per_entry, 16, is_hex)
         print(formated)
-
-# def run(args, context, ui_state = None):
-#     """Run command
-#     """
-#     navigation_suggestions = []
-
-#     x = int(args[1],0)
-#     y = int(args[2],0)
-#     addr = int(args[3],0)
-#     burst_type = int(args[4],0)
-#     print_format = "hex32"
-#     if (len(args) > 5):
-#         print_format = args[5]
-#     print_a_pci_burst_read (ui_state['current_device_id'], x, y, 0, addr, burst_type=burst_type, print_format=print_format)
-
-#     return navigation_suggestions

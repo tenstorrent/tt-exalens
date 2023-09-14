@@ -6,8 +6,8 @@ Arguments:
   trisc-id      Trisc ID (0|1|2)
   num-words     Number of words to dump.
   format        Print format (i8, i16, i32, hex8, hex16, hex32). Default: hex32.
-  x             Core x coordinate in noc0 coordinate system. If not supplied, the current core is used.
-  y             Core y coordinate in noc0 coordinate system. If not supplied, the current core is used.
+  x             Core x coordinate in netlist coordinate system. If not supplied, the current core is used.
+  y             Core y coordinate in netlist coordinate system. If not supplied, the current core is used.
   device-id     Optional device-id.
 
 Description:
@@ -43,7 +43,7 @@ def run(cmd_text, context, ui_state=None):
     TRISC_DEBUG_BASE = [71680, 88064, 108544]
 
     if args['<x>'] and args['<y>']:
-        loc = OnChipCoordinate(int(args['<x>']), int(args['<y>']), 'noc0', device)
+        loc = OnChipCoordinate(int(args['<x>']), int(args['<y>']), 'netlist', device)
     if args['<device-id>']:
         device_id = int(args['<device-id>'])
         if device_id not in context.devices:

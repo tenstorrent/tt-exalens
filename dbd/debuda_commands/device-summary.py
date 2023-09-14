@@ -18,7 +18,7 @@ Examples:
   device                 Shows op mapping for all devices
   device 0 noc0          Shows op mapping in noc0 coordinates for device 0
   device 0 netlist noc0  Shows netlist to noc0 mapping for device 0
-""" # Limit above to 100 characters in width
+""" # Note: Limit the above comment to 100 characters in width
 
 command_metadata = {
     "short": "d",
@@ -56,40 +56,52 @@ def run(cmd_text, context, ui_state=None):
 
         func_workers = device.get_block_locations (block_type = "functional_workers")
 
-        loc_to_epoch = {}
-        for loc in func_workers:
-            loc_to_epoch[loc] = device.get_epoch_id(loc)
+        # What to render in each cell
+        cell_contents_array = [ s.strip() for s in cell_contents.split(',') ]
 
-        epoch_ids = list (set (loc_to_epoch.values()))
-        epoch_ids.sort()
-        if len(epoch_ids) > 1:
-            util.WARN (f"Device {device_id} has functional workers in multiple epochs: {epoch_ids}")
+        if "op" in cell_contents_array:
+            loc_to_epoch = dict() # loc -> epoch_id
+            op_color_map = dict() # op_name -> color
 
-        graph_name = context.netlist.get_graph_name(epoch_ids[0], device_id)
-        graph = context.netlist.graph(graph_name)
-        op_list = list (graph.ops.keys())
-        op_color_map = { op_name : util.clr_by_index(i) for i, op_name in enumerate(op_list) }
+            for loc in func_workers:
+                loc_to_epoch[loc] = device.get_epoch_id(loc)
+
+            epoch_ids = list (set (loc_to_epoch.values()))
+            epoch_ids.sort()
+            if len(epoch_ids) > 1:
+                util.WARN (f"Device {device_id} has functional workers in multiple epochs: {epoch_ids}")
+            else:
+                graph_name = context.netlist.get_graph_name(epoch_ids[0], device_id)
+                if not graph_name:
+                    util.WARN (f"Device {device_id} has no graph in epoch {epoch_ids[0]}")
+                    continue
+
 
         def cell_render_function(loc):
-            s = []
-            if loc in func_workers:
-                for ct in cell_contents.split(','):
-                    ct = ct.strip()
-                    if ct == "op":
+            # One string for each of cell_contents_array elements
+            cell_contents_str = []
+
+            for ct in cell_contents_array:
+                if ct == "op":
+                    if loc in func_workers:
                         epoch_id = device.get_epoch_id(loc)
-                        epoch_id = 0
                         graph_name = context.netlist.get_graph_name(epoch_id, device_id)
-                        graph = context.netlist.graph(graph_name)
-                        op_name = graph.location_to_op_name(loc)
-                        if op_name:
-                            s.append(f"{op_color_map[op_name]}{op_name} ({loc_to_epoch[loc]}){util.CLR_END}")
-                    elif ct in VALID_COORDINATE_TYPES:
+                        if graph_name:
+                            graph = context.netlist.graph(graph_name)
+                            op_name = graph.location_to_op_name(loc)
+                            if op_name:
+                                if op_name not in op_color_map: # Assign a new color for each op
+                                    op_color_map[op_name] = util.clr_by_index(len(op_color_map))
+                                cell_contents_str.append(f"{op_color_map[op_name]}{op_name} ({loc_to_epoch[loc]}){util.CLR_END}")
+                elif ct in VALID_COORDINATE_TYPES:
+                    try:
                         coord_str = loc.to_str (ct)
-                        s.append (coord_str)
-                    else:
-                        util.ERROR (f"Invalid cell contents requested: {ct}")
-                return ", ".join(s)
-            return ""
+                    except Exception as e:
+                        coord_str = "N/A"
+                    cell_contents_str.append (coord_str)
+                else:
+                    util.ERROR (f"Invalid cell contents requested: {ct}")
+            return ", ".join(cell_contents_str)
 
         print(device.render (legend=[], axis_coordinate=axis_coordinate, cell_renderer=cell_render_function))
 

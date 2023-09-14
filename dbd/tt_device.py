@@ -491,7 +491,7 @@ class Device(TTObject):
                 core_locations.append (loc)
         return core_locations
 
-    #  Returns NOC0 locations of all blocks of a given type
+    #  Returns locations of all blocks of a given type
     def get_block_locations (self, block_type = "functional_workers"):
         locs = []
         dev = self.yaml_file.root
@@ -503,7 +503,7 @@ class Device(TTObject):
             parsed_loc = re.findall(r'(\d+)-(\d+)', loc)
             x = int(parsed_loc[0][0])
             y = int(parsed_loc[0][1])
-            oc_loc = OnChipCoordinate(x,y,"nocTr", self)
+            oc_loc = OnChipCoordinate(x,y,"nocVirt", self) # The file uses nocVirt
             locs.append (oc_loc)
             # util.INFO(f"get_block_locations: {block_type} {x} {y} - {oc_loc.full_str()} ")
         return locs

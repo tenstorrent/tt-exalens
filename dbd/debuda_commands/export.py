@@ -1,27 +1,39 @@
-"""The result of the *export* command is similar to a 'core dump' in a conventional program.
-It allows one to run the debugger (debuda.py) offline.
+"""
+Usage:
+  export [<file-name>]
 
-The exported file is a zip file containing all relevant yaml files, server cache and command history.
+Arguments:
+  file-name     Name of the zip file to export to. Default: 'debuda-export.zip'
 
-**Limitation**: Only the data read from the chip will be saved in the cache. As a result of this limitation,
-one needs to run a set of commands online before being able to rerun them offline.
+Description:
+  The result of the *export* command is similar to a 'core dump' in a conventional program.
+  It allows one to run the debugger (debuda.py) offline.
 
+  The exported file is a zip file containing all relevant yaml files, server cache and the
+  command history.
+
+  **Cache limitation**: Only the data actually read from the chip will be saved in the cache.
+  As a result of this, one needs to run a set of commands while connected to the chip to
+  populate the cache.
+
+Examples:
+  export
+  export my-export.zip
 """
 import tt_util as util
 command_metadata = {
     "short" : "xp",
-    "type" : "dev", # Not yet production ready. TODO: make sure all the files are properly exported
-    "expected_argument_count" : [ 0, 1 ],
-    "arguments" : "filename",
-    "description" : f"Exports a zip package for offline work. The filename argument is optional. It defaults to '{ util.DEFAULT_EXPORT_FILENAME }'"
+    "type" : "dev",
+    "description" : __doc__
 }
 
 import tt_device
+from docopt import docopt
 
-def run(args, context, ui_state = None):
-    navigation_suggestions = []
+def run(cmd_text, context, ui_state = None):
+    args = docopt(__doc__, argv=cmd_text.split()[1:])
 
-    zip_file_name = args[1] if len(args) > 1 else util.DEFAULT_EXPORT_FILENAME
+    zip_file_name = args["<file-name>"] if args["<file-name>"] else "debuda-export.zip"
 
     # 1. Add all Yaml files
     filelist = [ f for f in util.YamlFile.file_cache ]
@@ -45,4 +57,4 @@ def run(args, context, ui_state = None):
     zip_file_name = util.export_to_zip (filelist, out_file=zip_file_name, prefix_to_remove=odir)
     print (f"Exported '{zip_file_name}'. Import with:\n{util.CLR_GREEN}mkdir -p {de_odir} && unzip {zip_file_name} -d {de_odir} && dbd/debuda.py {de_odir} {'--server-cache on' if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled else ''}{util.CLR_END}")
 
-    return navigation_suggestions
+    return None
