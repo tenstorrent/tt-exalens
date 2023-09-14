@@ -425,7 +425,7 @@ def run(cmd_text, context, ui_state = None):
         for epoch_id in epoch_id_list:
             graph_name = context.netlist.get_graph_name(epoch_id, device_id)
             if graph_name is None:
-                LOG (f"- Skipping epoch {epoch_id}, as there is information on epoch {epoch_id} in the netlist")
+                LOG (f"- Skipping epoch {epoch_id}, as there is no information on epoch {epoch_id} in the netlist")
                 continue
             LOG (f"Analyzing graph {graph_name} ( epoch {epoch_id} )")
             graph = context.netlist.graph(graph_name)

@@ -31,7 +31,7 @@ def run(cmd_text, context, ui_state = None):
     current_device = context.devices[current_device_id]
 
     x = int(args['<x>'], 0)
-    y = int(args['<x>'], 0)
+    y = int(args['<y>'], 0)
     stream_id = int(args['<stream-id>'], 0)
 
     stream_loc = OnChipCoordinate(x, y, "nocTr", device=current_device)
