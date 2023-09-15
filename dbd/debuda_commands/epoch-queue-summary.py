@@ -16,7 +16,7 @@ command_metadata = {
 # Prints epoch queues
 def run (args, context, ui_state = None):
     verbose = len(args) > 1
-    runtime_data = context.server_ifc.get_runtime_data().root
+    runtime_data = context.netlist.runtime_data_yaml.root
     arch_name = runtime_data.get('arch_name').upper()
     graph_name = ui_state["current_graph_name"]
     device_id = context.netlist.graph_name_to_device_id(graph_name)
