@@ -80,6 +80,8 @@ def DEBUG(s, **kwargs):
     print (f"{CLR_WARN}{s}{CLR_END}", **kwargs)
 def VERBOSE(s, **kwargs):
     print (f"{CLR_END}{s}{CLR_END}", **kwargs)
+def PRINT(s, **kwargs):
+    print (f"{CLR_END}{s}", **kwargs)
 def INFO(s, **kwargs):
     print (f"{CLR_INFO}{s}{CLR_END}", **kwargs)
 def WARN(s, **kwargs):
@@ -488,7 +490,7 @@ def trace(func):
         return result
     return wrapper
 
-def decorate_all_module_functions_for_tracing(mod, tracer_function=INFO):
+def decorate_all_module_functions_for_tracing(mod):
     """Decorates all functions in a given module 'mod' with @trace decorator."""
     global TRACE_NESTING_LEVEL
     TRACE_NESTING_LEVEL = 2
@@ -498,6 +500,14 @@ def decorate_all_module_functions_for_tracing(mod, tracer_function=INFO):
 
 def get_indent ():
     return ' ' * TRACE_NESTING_LEVEL
+
+class LOG_INDENT:
+    def __enter__(self):
+        global TRACE_NESTING_LEVEL
+        TRACE_NESTING_LEVEL += 2
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        global TRACE_NESTING_LEVEL
+        TRACE_NESTING_LEVEL -= 2
 
 # Return an ansi color code for a given index. Useful for coloring a list of items.
 def clr_by_index (idx):

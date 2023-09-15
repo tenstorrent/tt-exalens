@@ -22,7 +22,9 @@ from tt_coordinate import OnChipCoordinate
 from docopt import docopt
 
 def LOG(s, **kwargs):
-    util.INFO (util.get_indent() + s, **kwargs)
+    util.PRINT (util.get_indent() + s, **kwargs)
+def WARN(s, **kwargs):
+    util.WARN (util.get_indent() + s, **kwargs)
 
 command_metadata = {
     "short" : "ha",
@@ -36,7 +38,7 @@ def queue_has_data(context, device_id, q:Queue):
     """
     device = context.devices[device_id]
     if not q.is_host() and not q.is_dram():
-        util.WARN(f'Unknown memory location: {q.get_loc()}')
+        WARN(f'Unknown memory location: {q.get_loc()}')
         return True
 
     for mem_addr in q.get_mem_addr():
@@ -80,13 +82,6 @@ def is_stream_done(device, stream):
     else:
         return device.get_num_msgs_received(stream_loc, stream.stream_id()) == device.get_curr_phase_num_msgs_remaining(stream_loc, stream.stream_id())
 
-def is_stream_active(device, stream):
-    stream_loc = OnChipCoordinate (*stream.loc(), "nocTr", device)
-    return device.get_stream_phase(stream_loc, stream.stream_id()) != 0 and device.get_num_msgs_received(stream_loc, stream.stream_id())  > 0
-
-def is_stream_hung(device, stream):
-    return not is_stream_done(device, stream) and not is_stream_active(device, stream)
-
 def get_stream_data(device, stream):
     ret_type = dict()
     stream_loc = OnChipCoordinate (*stream.loc(), "nocTr", device)
@@ -99,36 +94,6 @@ def get_stream_data(device, stream):
     if device.get_remote_source(stream_loc, stream.stream_id()):
         ret_type["dest"] = True
     return ret_type
-
-def get_epoch_to_ops(context, device_id, epochs):
-    epochs_ops_stream = {}
-    device = context.devices[device_id]
-    netlist = context.netlist
-    epoch_id_graph = {}
-    core_epoch_map = dict()  # Is this even used?
-    for loc, epoch_id in epochs.items():
-        xyloc = loc # (loc.to("noc0"))
-        if xyloc not in core_epoch_map:
-            core_epoch_map[xyloc] = epoch_id
-        # get graph
-        if epoch_id not in epoch_id_graph:
-            graph_name = netlist.get_graph_name(epoch_id, device_id)
-            if graph_name is None:
-                continue
-            epoch_id_graph[epoch_id] = {}
-            epoch_id_graph[epoch_id]["graph_name"] = graph_name
-            epoch_id_graph[epoch_id]["graph"] = netlist.graph(graph_name)
-
-        graph_name = epoch_id_graph[epoch_id]["graph_name"]
-        # get operation for loc
-        op_name = epoch_id_graph[epoch_id]["graph"].location_to_op_name(loc)
-        if epoch_id not in epochs_ops_stream:
-            epochs_ops_stream[epoch_id] = dict()
-        if op_name not in epochs_ops_stream[epoch_id]:
-            epochs_ops_stream[epoch_id][op_name] = []
-
-        epochs_ops_stream[epoch_id][op_name].append(loc)
-    return epochs_ops_stream
 
 # Returns if the Op wants more data on a given input
 def get_streams_waiting_for_data (graph, device, src_op_or_q, dest_op_or_q):
@@ -148,7 +113,7 @@ def get_streams_waiting_for_data (graph, device, src_op_or_q, dest_op_or_q):
 
     if not relevant_streams:
         buflist = [ str(buffer.id()) for buffer in relevant_buffers]
-        util.WARN (f"No relevant streams for buffers {' '.join (buflist)}")
+        WARN (f"No relevant streams for buffers {' '.join (buflist)}")
     else:
         util.VERBOSE (f"  Found these relevant_streams for {src_op_or_q}->{dest_op_or_q} conection: {' '.join ([ stream.__str__() for stream in relevant_streams ])}")
 
@@ -166,7 +131,7 @@ def get_graph_input_queues(graph):
     )
     return input_queues
 
-def get_input_queues_without_data(context, device_id, graph, verbose):
+def get_input_queues_without_data(context, device_id, graph):
     """
     Finding input queues that do not have data
     """
@@ -187,109 +152,82 @@ def get_input_queues_without_data(context, device_id, graph, verbose):
 
     return queue_ops
 
-def buffer_state (context, graph, device_id, buffer):
-    device = context.devices[device_id]
-    buffer_streams = graph.get_streams (buffer)
-
-    processed_tiles = None
-    for stream_id, stream in buffer_streams.items():
-        stream_loc = OnChipCoordinate (*stream.loc(), "nocTr", device)
-        processed_tiles = device.get_num_msgs_received(stream_loc, stream.stream_id())
-
-    ret_val = { "epoch_tiles": buffer.root["epoch_tiles"], "processed_tiles": processed_tiles, "epoch_tiles": buffer.root["epoch_tiles"] }
-    return ret_val
-
-def detect_and_report_pipe_hang (context, graph, device_id, pipe):
-    device = context.devices[device_id]
-
-    """
-    Analyzing pipe for hangs
-    """
-    in_buffers = graph.get_buffers (pipe, "in")
-    in_streams = graph.get_streams (in_buffers)
-
-    for buffer_id, buffer in in_buffers.items():
-        bs = buffer_state (context, graph, device_id, buffer)
-
-    out_buffers = graph.get_buffers (pipe, "out")
-    out_streams = graph.get_streams (out_buffers)
-
-    pipe_streams = graph.get_streams (pipe)
-    LOG (f"Pipe streams (for all phases): {pipe_streams}")
-
-    phases = dict()
-    for ps_id, ps in pipe_streams.items():
-        phases_key = ( OnChipCoordinate (*ps.loc(), "nocTr", device), ps.stream_id() )
-#        if phases_key not in phases:
-        phases[phases_key] = device.get_stream_phase (*phases_key)
-    phase_values = set (phases.values())
-    pipe_streams.keep (lambda ps: ps.phase_id() in phase_values)
-    LOG (f"pipe_streams in phase: {pipe_streams}")
-
-    for ps_id, ps in pipe_streams.items():
-        is_src = ps.is_src()
-        if is_src:
-            in_streams.add (ps)
-        else:
-            out_streams.add (ps)
-
-    LOG (f"in_buffers: {in_buffers}, in_streams: {in_streams}")
-    LOG (f"out_buffers: {out_buffers}, out_streams: {out_streams}")
-
-    LOG (f"Summary:")
-    hang_details = None
-    for in_stream_id, in_stream in in_streams.items():
-        stream_hung = is_stream_hung(device, in_stream)
-        hang_details = hang_details or stream_hung
-        LOG (f"  Input stream {in_stream} -> Active: {is_stream_active(device, in_stream)}, Done: {is_stream_done(device, in_stream)} Hung: {stream_hung}")
-
-    for out_stream_id, out_stream in out_streams.items():
-        stream_hung = is_stream_hung(device, out_stream)
-        hang_details = hang_details or stream_hung
-        LOG (f"  Output stream {out_stream} -> Active: {is_stream_active(device, out_stream)}, Done: {is_stream_done(device, out_stream)} Hung: {stream_hung}")
-    return hang_details
-
-def get_buffer_state (context, graph, device_id, stream, buffer):
+# Returns true if the buffer is ready to be consumed by the op
+def get_buffer_ready_state (context, graph, device_id, stream, buffer):
     device = context.devices[device_id]
     stream_loc = OnChipCoordinate (*stream.loc(), "nocTr", device)
 
     # Get num_messages_received for the stream
     num_messages_received = device.get_num_msgs_received(stream_loc, stream.stream_id())
-    # Get tile_clear_granularity from buffer
-    tile_clear_granularity = buffer.root["tile_clear_granularity"]
 
-    buffer_ready = num_messages_received > 0 and num_messages_received % tile_clear_granularity == 0
+    if buffer.is_output_of_pipe():
+        # Get tile_clear_granularity from buffer
+        tile_clear_granularity = buffer.root["tile_clear_granularity"]
+        buffer_ready = num_messages_received > 0 and num_messages_received % tile_clear_granularity == 0
+    else:
+        buffer_ready = num_messages_received > 0
+
     return buffer_ready
 
-def is_op_hung (context, graph, device_id, op):
-    LOG (f"Checking op {op}")
+# Checks if all inputs are ready, both there is no output produced. This normally
+# indicates that the operation itself is hung.
+def check_input_output_misbalance (context, graph, device_id, op):
     device = context.devices[device_id]
-
-    # Find all input buffers for the op
     input_buffers = graph.get_buffers (op, "out")
+    output_buffers = graph.get_buffers (op, "in")
+    ok = True
 
-    # LOG(f"Input buffers for {op}: {input_buffers}")
+    all_input_buffers_ready = True
+    for buffer_id, buffer in input_buffers.items():
+        # Get all streams for the buffer
+        for s_id, stream in get_buffer_streams_in_phase (device, graph, buffer).items():
+            all_input_buffers_ready = all_input_buffers_ready and get_buffer_ready_state (context, graph, device_id, stream, buffer)
+
+    all_output_buffers_ready = True
+    for buffer_id, buffer in output_buffers.items():
+        # Get all streams for the buffer
+        for s_id, stream in get_buffer_streams_in_phase (device, graph, buffer).items():
+            all_output_buffers_ready = all_output_buffers_ready and get_buffer_ready_state (context, graph, device_id, stream, buffer)
+
+    if all_input_buffers_ready and not all_output_buffers_ready:
+        WARN (f"All input buffers of op {op} are ready, but the output buffers are not")
+        ok = False
+    return ok
+
+def get_buffer_streams_in_phase (device, graph, buffer):
+    streams_in_phase = TTObjectIDDict()
+    # Get all streams for the buffer
+    for s_id, stream in graph.streams.items():
+        if stream.get_buffer_id() == buffer.id():
+            stream_loc = OnChipCoordinate (*stream.loc(), "nocTr", device)
+            phase = device.get_stream_phase(stream_loc, stream.stream_id())
+            if phase == stream.phase_id():
+                streams_in_phase.add (stream)
+    return streams_in_phase
+
+# Goes through all inputs of an op and checks if there is a misbalance between
+# the number of inputs that are ready and the number of inputs that are not ready.
+def check_inputs_ready_misbalance (context, graph, device_id, op):
+    # Find all input buffers for the op
+    device = context.devices[device_id]
+    input_buffers = graph.get_buffers (op, "out")
+    ok = True
 
     buffer_state = dict()
     for buffer_id, buffer in input_buffers.items():
         if buffer.is_input_of_pipe() and buffer.is_output_of_pipe():
-            # util.WARN (f"Ignoring buffer {buffer} as it is both input and output of a pipe")
+            # WARN (f"Ignoring buffer {buffer} as it is both input and output of a pipe")
             continue
 
-        # Get all stream for the buffer
-        for s_id, stream in graph.streams.items():
-            if stream.get_buffer_id() == buffer_id:
-                stream_loc = OnChipCoordinate (*stream.loc(), "nocTr", device)
-                phase = device.get_stream_phase(stream_loc, stream.stream_id())
-                if phase == stream.phase_id():
-                    buffer_state[buffer_id] = get_buffer_state (context, graph, device_id, stream, buffer)
-                    # LOG (f"Buffer {buffer} is ready: {buffer_state[buffer_id]}")
+        # Get all streams for the buffer
+        for s_id, stream in get_buffer_streams_in_phase (device, graph, buffer).items():
+            buffer_state[buffer_id] = get_buffer_ready_state (context, graph, device_id, stream, buffer)
 
     # If there is a mix of ready/non-ready report a warning
     if True in buffer_state.values() and False in buffer_state.values():
         ready_ops = set()
         non_ready_ops = set()
-        util.WARN (f"Mix of ready/non-ready buffers for op {op}")
+        WARN (f"Mix of ready/non-ready buffers for op {op}")
         for buffer_id, buffer_ready in buffer_state.items():
             buffer = graph.buffers[buffer_id]
             src_buffers = graph.get_buffers (buffer.output_of_pipes, "in")
@@ -298,26 +236,26 @@ def is_op_hung (context, graph, device_id, op):
                 ready_ops.update (src_ops)
             else:
                 non_ready_ops.update (src_ops)
-        util.WARN (f"  Ready operations:     {', '.join(list(ready_ops))}")
-        util.WARN (f"  Non-ready operations: {', '.join(list(non_ready_ops))}")
+        WARN (f"  Ready buffers fed by operations:     {', '.join(list(ready_ops))}")
+        WARN (f"  Non-ready buffers fed by operations: {', '.join(list(non_ready_ops))}")
+        ok = False
+    return ok
 
 # go through all operation in topological
 # order and search for the first stream
 # that is not done and not active
-def find_ops_with_hang(context, graph, device_id, verbose):
+def find_ops_with_hang(context, graph, device_id):
     """
     Looking for hangs in a graph
     """
-    found_hangs=dict()
+    ops_with_hang=TTObjectIDDict()
     for op_id, op in graph.ops.items():
-        op_status = is_op_hung (context, graph, device_id, op)
-        if op_status:
-            found_hangs[op_id] = op_status
+        i_ok = check_inputs_ready_misbalance (context, graph, device_id, op)
+        io_ok = check_input_output_misbalance (context, graph, device_id, op)
+        if not i_ok or not io_ok:
+            ops_with_hang.add (op)
 
-        # Early exit if we found a hang
-        if found_hangs and not verbose:
-            return found_hangs
-    return found_hangs
+    return ops_with_hang
 
 def print_hung_ops(ops_with_hang_list):
     column_format = [
@@ -350,7 +288,7 @@ def print_hung_ops(ops_with_hang_list):
                             elif type(row['stream']) is tuple:
                                 row['stream'] += (more_streams_str,)
                             else:
-                                util.WARN (f"Unhandled type for row['stream']: {type(row['stream'])}")
+                                WARN (f"Unhandled type for row['stream']: {type(row['stream'])}")
 
                             table.add_row(None, row)
                             multiple_streams_per_link_collapsed = False
@@ -364,18 +302,6 @@ def print_hung_ops(ops_with_hang_list):
         print (table)
         if multiple_streams_per_link_collapsed:
             print (f"Note: Some src->dest links contain multiple hung streams, only the first one is shown.")
-
-def get_navigation_suggestion_for_hanged_ops(ops_with_hang_list):
-    navigation_suggestions = []
-    return navigation_suggestions
-
-    for element in ops_with_hang_list:
-        for src, dst_streams in element['operations'].items():
-            for dst, streams in dst_streams.items():
-                for stream_with_desc in streams:
-                    # FIX: This does not know about the device, so it will not work for multi-device.
-                    navigation_suggestions.append ({ 'cmd' : f"s {stream_with_desc[0][0]} {stream_with_desc[0][1]} {stream_with_desc[0][2]}", 'description' : f"Go to stream {stream_with_desc[0]}" })
-    return navigation_suggestions
 
 def read_device_epochs(device):
     """
@@ -406,11 +332,19 @@ def read_current_epochs(context):
 def run(cmd_text, context, ui_state = None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
     verbose = 0 if args['<verbose>'] is None else int(args['<verbose>'])
-    util.INFO(f"Running hang analysis (verbose={verbose})")
+
+    if verbose:
+        # Turn on tracing for function calls in this module. This prints docstrings and function call argument values.
+        # FIX: This is sticky across all calls of the same command
+        util.decorate_all_module_functions_for_tracing(sys.modules[__name__])
+
+    LOG(f"Running hang analysis (verbose={verbose})")
 
     navigation_suggestions = []
     queue_ops_missing_data = []
     ops_with_hang_list = []
+
+    all_good = True
 
     # A. Run analysis on all devices
     device_id_to_epoch_dict = read_current_epochs(context)
@@ -419,7 +353,7 @@ def run(cmd_text, context, ui_state = None):
         epoch_id_list.sort()
         if len(epoch_id_list) > 1:
             # FINISH: This scenario has not been tested
-            util.WARN (f"More than one epoch running on device {device_id}):")
+            WARN (f"More than one epoch running on device {device_id}):")
         LOG (f"Epochs running on device {device_id}: {util.space_join(epoch_id_list)}")
 
         for epoch_id in epoch_id_list:
@@ -428,36 +362,22 @@ def run(cmd_text, context, ui_state = None):
                 LOG (f"- Skipping epoch {epoch_id}, as there is no information on epoch {epoch_id} in the netlist")
                 continue
             LOG (f"Analyzing graph {graph_name} ( epoch {epoch_id} )")
-            graph = context.netlist.graph(graph_name)
+            with util.LOG_INDENT():
+                graph = context.netlist.graph(graph_name)
 
-            # -- 1. Check input queues
-            # WIP - bring this back in
-            # queue_ops_errors = get_input_queues_without_data(context, device_id, graph, verbose)
-            # if len(queue_ops_errors) > 0:
-            #     queue_ops_missing_data.append({'device_id':device_id, 'epoch_id':epoch_id, 'graph_name':graph_name, 'operations':queue_ops_errors})
-            #     util.ERROR(f"Found {len(queue_ops_errors)} input queues without data: {list (queue_ops_errors.keys())}")
+                # -- 1. Check input queues
+                queue_ops_errors = get_input_queues_without_data(context, device_id, graph)
+                if len(queue_ops_errors) > 0:
+                    queue_ops_missing_data.append({'device_id':device_id, 'epoch_id':epoch_id, 'graph_name':graph_name, 'operations':queue_ops_errors})
+                    util.ERROR(f"Found {len(queue_ops_errors)} input queues without data: {list (queue_ops_errors.keys())}")
+                    all_good = False
 
-            # -- 2. Check hung ops
-            ops_with_hang = find_ops_with_hang(context, graph, device_id, verbose)
-            if ops_with_hang:
-                ops_with_hang_list.append({'device_id':device_id, 'epoch_id':epoch_id, 'graph_name':graph_name, 'operations':ops_with_hang})
-
-    # B. Report results
-    all_good = True
-    if queue_ops_missing_data:
-        all_good = False
-        navigation_suggestions.extend(get_navigation_suggestion_for_hanged_ops(queue_ops_missing_data))
-        util.ERROR ("The following queues do not have data:")
-        print_hung_ops(queue_ops_missing_data)
-    if ops_with_hang_list:
-        all_good = False
-        util.ERROR ("The following operations are hung:")
-        print_hung_ops(ops_with_hang_list)
-        navigation_suggestions.extend(get_navigation_suggestion_for_hanged_ops(ops_with_hang_list))
+                # -- 2. Check hung ops
+                ops_with_hang = find_ops_with_hang(context, graph, device_id)
+                if ops_with_hang:
+                    ops_with_hang_list.append({'device_id':device_id, 'epoch_id':epoch_id, 'graph_name':graph_name, 'operations':ops_with_hang})
+                    all_good = False
 
     if all_good:
         util.INFO ("No issues detected")
     return navigation_suggestions
-
-# Turn on tracing for function calls in this module. This prints docstrings and and arguments.
-# util.decorate_all_module_functions_for_tracing(sys.modules[__name__], LOG)
