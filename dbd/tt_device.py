@@ -386,13 +386,15 @@ class Device(TTObject):
                 self._has_mmio = True
                 break
 
-        # Check if cluster_desc is an array and has id+1 entries at the least
+        # Check if harvesting_desc is an array and has id+1 entries at the least
         harvesting_desc = cluster_desc['harvesting']
-        if isinstance(harvesting_desc, list) and len(cluster_desc) > id:
+        if isinstance(harvesting_desc, list) and len(harvesting_desc) > id:
             device_desc = harvesting_desc[id]
             if id not in device_desc:
                 raise util.TTFatalException (f"Key {id} not found in: {device_desc}")
             self._harvesting = device_desc[id]
+        elif arch.lower() == 'grayskull':
+            self._harvesting = None
         else:
             raise util.TTFatalException (f"Cluster description is not valid. It reads: {harvesting_desc}")
 
