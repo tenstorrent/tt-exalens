@@ -201,7 +201,7 @@ void DiffChecker::run_check() {
 
 void DiffChecker::diff_check(const std::string& q_name, int entry_id) {
 
-    tt::tt_tensor_metadata md = verif::get_tensor_metadata_for_queue(_program_config.get_queue_info(q_name));
+    tt::tt_tensor_metadata md = get_tensor_metadata_for_queue(_program_config.get_queue_info(q_name));
     std::shared_ptr<tt_tensor> tensor_1 = _t1.build_tensor(
         _program_config.get_queue_info(q_name), entry_id, md);
     std::shared_ptr<tt_tensor> tensor_2 = _t2.build_tensor(

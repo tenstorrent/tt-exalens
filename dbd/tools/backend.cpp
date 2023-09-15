@@ -33,7 +33,7 @@ class VerifBackend : public IBackend {
 
         tt_tensor_metadata get_metadata(const string& q_name) {
             tt_dram_io_desc q_desc = _backend->get_queue_descriptor(q_name);
-            return verif::get_tensor_metadata_for_queue(q_desc);
+            return get_tensor_metadata_for_queue(q_desc);
         }
 
         std::shared_ptr<tt_tensor> pop_tensor(const string& q_name) {
