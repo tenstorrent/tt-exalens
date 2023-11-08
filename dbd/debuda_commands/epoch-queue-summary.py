@@ -57,13 +57,23 @@ def run (args, context, ui_state = None):
             rdptr = tt_device.SERVER_IFC.pci_read_xy (device_id, dx, dy, 0, addr) & 0xffff
             wrptr = tt_device.SERVER_IFC.pci_read_xy (device_id, dx, dy, 0, addr + 4) & 0xffff
             occupancy = int(Queue.occupancy (EPOCH_Q_NUM_SLOTS, wrptr, rdptr))
-            if occupancy > 0:
+
+            addr_at_rdptr=""
+            cmd_at_rdptr=""
+            if occupancy != 0:
                 occupied_epoch_queues_count += 1
-            if occupancy > 0 or verbose:
-                table.append ([f"{x}-{y}", coretype, loc_str, f"{dx}-{dy}", f"0x{addr:x}", f"{rdptr}", f"{wrptr}", occupancy if occupancy == 0 else f"{util.CLR_RED}{occupancy}{util.CLR_END}" ])
+                addr_at_rdptr = addr + EPOCH_Q_SLOTS_OFFSET + (EPOCH_Q_SLOT_SIZE * (rdptr % EPOCH_Q_NUM_SLOTS))
+                cmd_rd_word = tt_device.SERVER_IFC.pci_read_xy (device_id, dx, dy, 0, addr_at_rdptr + 4) & 0xffffffff
+                cmd_at_rdptr = (cmd_rd_word >> 28) & 0xffff
+
+            if occupancy != 0 or verbose:
+                table.append ([f"{x}-{y}", coretype, loc_str, f"{dx}-{dy}", f"0x{addr:x}", f"{rdptr}", f"{wrptr}", occupancy if occupancy == 0 else f"{util.CLR_RED}{occupancy}{util.CLR_END}",
+                                "-" if occupancy == 0 else f"0x{addr_at_rdptr:x}",
+                                "-" if occupancy == 0 else f"0x{cmd_at_rdptr:x}"
+                                ])
 
     if len(table) > 0:
-        print (tabulate(table, headers=["T6 (noc0)", "Core Type", "Location", "DRAM (noc0)", "Address", "RD ptr", "WR ptr", "Occupancy"] ))
+        print (tabulate(table, headers=["T6 (noc0)", "Core Type", "Location", "DRAM (noc0)", "Address", "RD ptr", "WR ptr", "Occupancy", "Addr@RDptr", "CmdType@RDptr"] ))
         if occupied_epoch_queues_count:
             util.WARN (f"There are {occupied_epoch_queues_count} occupied epoch queues. The occupancy of an epoch queue will be greater than 0 until the epoch is complete.")
     else:
