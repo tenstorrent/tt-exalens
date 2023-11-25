@@ -212,7 +212,7 @@ void DiffChecker::diff_check(const std::string& q_name, int entry_id) {
         *tensor_1,
         verif::comparison::get_config(q_name, _program_config.get_comparsion_config()))) {
         _verification_failed = true;
-        log_error(tt::LogTest, "Queue {}, entry idx={} mismatched", q_name, entry_id);
+        log_error("Queue {}, entry idx={} mismatched", q_name, entry_id);
     }
 }
 

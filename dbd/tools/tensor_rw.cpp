@@ -69,7 +69,7 @@ std::shared_ptr<tt_tensor> TensorRW::build_tensor(const tt_queue_info& q_info, c
         return tensor;
     }
 
-    log_error(tt::LogTest, "Cannot create Tensor[q_name={}, entry_id={}]", q_info.name, entry_id);
+    log_error("Cannot create Tensor[q_name={}, entry_id={}]", q_info.name, entry_id);
     throw std::runtime_error(std::string("Cannot create tensor"));
 }
 
