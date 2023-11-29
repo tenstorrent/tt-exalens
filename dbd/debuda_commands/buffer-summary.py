@@ -9,7 +9,7 @@ Description:
   Prints details on the buffer with a given ID.
 
 Examples:
-  buffer 123
+  buffer 106000000000
 """
 
 command_metadata = {
@@ -42,7 +42,7 @@ def run(cmd_text, context, ui_state=None):
         else:
             util.print_columnar_dicts ([buffer.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
 
-            for pipe_id, pipe in graph.pipes.items():
+            for pipe_id, pipe in graph.temporal_epoch.pipes.items():
                 if buffer_id in pipe.root["input_list"]:
                     print (f"( {util.CLR_BLUE}Input{util.CLR_END} of pipe {pipe.id()} )")
                     navigation_suggestions.append ({ 'cmd' : f"p {pipe.id()}", 'description' : "Show pipe" })

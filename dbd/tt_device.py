@@ -4,7 +4,6 @@ from tabulate import tabulate
 from tt_object import TTObject
 import tt_util as util
 from tt_coordinate import OnChipCoordinate, CoordinateTranslationError
-STUB_HELP = "This tool requires debuda-server. You can build debuda-server with 'make verif/netlist_tests/debuda-server-standalone'."
 
 #
 # Communication with Buda (or debuda-server) over sockets (ZMQ).
@@ -21,14 +20,13 @@ def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename):
     try:
         global DEBUDA_STUB_PROCESS
         debuda_stub_args = [ f"{port}", f"{runtime_data_yaml_filename}" ]
-
-        # print ("debuda_stub_cmd = %s" % ([debuda_stub_path] + debuda_stub_args))
-        if not os.path.isfile (debuda_stub_path):
-            util.ERROR ("Cannot find debuda-server. Try: 'make verif/netlist_tests/debuda-server-standalone'")
-        else:
-            DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path] + debuda_stub_args, preexec_fn=os.setsid)
+        DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path] + debuda_stub_args, preexec_fn=os.setsid, stderr=subprocess.PIPE)
     except:
-        print (f"Exception: {util.CLR_ERR} Cannot find {debuda_stub_path}. {STUB_HELP} {util.CLR_END}")
+# __DEBUG_ONLY__
+        if os.path.islink (debuda_stub_path):
+            if not os.path.exists (os.readlink (debuda_stub_path)):
+                util.FATAL (f"Missing debuda-server-standalone. Try: make dbd")
+# __END_DEBUG_ONLY__
         raise
 
     # Allow some time for debuda-server to start
@@ -41,6 +39,9 @@ def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename):
         debuda_stub_terminated = DEBUDA_STUB_PROCESS.poll() is not None
         if debuda_stub_terminated:
             util.ERROR (f"Debuda server terminated unexpectedly with code: {DEBUDA_STUB_PROCESS.returncode}")
+            process_stderr = DEBUDA_STUB_PROCESS.stderr.read().decode('utf-8')
+            if "does not exist" in process_stderr:
+                util.ERROR (f"Make sure to set the environment variable BUDA_HOME to <python-path>/site-packages/budabackend")
             break
 
         if not util.is_port_available (int(port)): # Then we assume debuda-server has started
@@ -270,7 +271,11 @@ def dump_memory(device_id, loc, addr, size):
 # Dumps tile in format received form tt_tile::get_string
 def dump_tile(chip, loc, addr, size, data_format):
     s = SERVER_IFC.pci_read_tile(chip, *loc.to("nocVirt"), 0, addr, size, data_format)
-    print(s.decode("utf-8"))
+    lines = s.decode("utf-8").split('\n')
+    rows = []
+    for line in lines:
+        rows.append (line.split())
+    print (tabulate(rows, tablefmt="plain", showindex=False))
 
 #
 # Device class: generic API for talking to specific devices. This class is the parent of specific
@@ -368,7 +373,7 @@ class Device(TTObject):
         self._create_nocTr_noc0_harvesting_map()
 
     def _create_nocVirt_to_nocTr_map (self):
-        harvested_coord_translation_str = SERVER_IFC.get_harvested_coord_translation(self._id)
+        harvested_coord_translation_str = SERVER_IFC.get_harvested_coord_translation(0)
         self.nocVirt_to_nocTr_map = ast.literal_eval(harvested_coord_translation_str) # Eval string to dict
         self.nocTr_to_nocVirt_map = {v: k for k, v in self.nocVirt_to_nocTr_map.items()} # Create inverse map as well
 
@@ -787,18 +792,13 @@ class Device(TTObject):
 
     def get_stream_phase (self, loc, stream_id):
         assert (type(loc) == OnChipCoordinate)
-        return self.get_stream_reg_field(loc, stream_id, 11, 0, 20)
+        return self.get_stream_reg_field(loc, stream_id, 11, 0, 20) & 0x7fff
 
     # This comes from src/firmware/riscv/common/epoch.h
     def get_epoch_id(self, loc):
         assert (type(loc) == OnChipCoordinate)
 
-        # Overlay base (epoch_t base) + epoch_id offset
-        #  Need to differentiate the address depending on core type:
-        # epoch_id offset is 147 word = 588 B (0x24c)
-        #  Eth base is 0x1b000
-        #  Tensix base is 0x23080
-        epoch = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0x232cc + 64) & 0xFF
+        epoch = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, self.EPOCH_ID_ADDR) & 0xFF
         return epoch
 
     # Returns whether the stream is configured

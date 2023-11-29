@@ -1,17 +1,15 @@
 """
 Usage:
-  cdr ( <x> <y> )
+  cdr [ <core-loc> ]
 
 Arguments:
-  x       Core x coordinate in noc0 coordinate system.
-  y       Core y coordinate in noc0 coordinate system.
+  core-loc    Either X-Y or R,C location of the core
 
 Description:
   Prints the state of the debug registers for core 'x-y'. If coordinates are not supplied, it iterates through all cores.
 
 Examples:
-  cdr
-  cdr 1 1
+  cdr 18-18
 """
 
 from docopt import docopt
@@ -19,7 +17,6 @@ import tt_util as util
 from tt_coordinate import OnChipCoordinate
 
 command_metadata = {
-    "long": "cdr",
     "short": "cdr",
     "type": "low-level",
     "description": __doc__
@@ -30,8 +27,8 @@ def run(cmd_text, context, ui_state=None):
     current_device_id = ui_state["current_device_id"]
     current_device = context.devices[current_device_id]
 
-    if args['<x>'] and args['<y>']:
-        core_locations = [ OnChipCoordinate(int(args['<x>']), int(args['<y>']), 'noc0', current_device) ]
+    if args['<core-loc>']:
+        core_locations = [ OnChipCoordinate.create (args['<core-loc>'], device=current_device) ]
     else:
         core_locations = current_device.get_block_locations(block_type="functional_workers")
 

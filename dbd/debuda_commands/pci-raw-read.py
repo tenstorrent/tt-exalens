@@ -17,7 +17,7 @@ import tt_device
 
 command_metadata = {
     "short": "pcir",
-    "type": "low-level",
+    "type": "dev",
     "description": __doc__
 }
 

@@ -7,7 +7,7 @@ Description:
   in the netlist and the NOC.
 
 Examples:
-  om-map
+  om
 """
 
 from tabulate import tabulate

@@ -18,7 +18,7 @@ import tt_device
 
 command_metadata = {
     "short": "pciw",
-    "type": "low-level",
+    "type": "dev",
     "description": __doc__
 }
 

@@ -1,5 +1,6 @@
 from tt_object import TTObject, TTObjectIDDict
 import tt_util as util
+from tt_coordinate import OnChipCoordinate
 
 # Constructed from epoch's pipegen.yaml. Contains information about a buffer.
 class Buffer(TTObject):
@@ -23,3 +24,6 @@ class Buffer(TTObject):
         return len(self.output_of_pipes) > 0
     def is_input_of_pipe(self):
         return len(self.input_of_pipes) > 0
+
+    def loc(self):
+        return OnChipCoordinate(*self.root['core_coordinates'], 'netlist', self.graph.device)

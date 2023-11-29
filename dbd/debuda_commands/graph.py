@@ -10,7 +10,7 @@ Description:
   work on the currently active graph.
 
 Examples:
-  g test_graph
+  g test_op
 """
 
 command_metadata = {
@@ -30,5 +30,6 @@ def run(cmd_text, context, ui_state = None):
         util.WARN (f"Invalid graph {gname}. Available graphs: {', '.join (list(context.netlist.graph_names()))}")
     else:
         ui_state["current_graph_name"] = gname
+        print (f"Changed current graph to '{gname}'")
 
     return None

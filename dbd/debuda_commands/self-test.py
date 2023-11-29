@@ -6,7 +6,6 @@ from tt_coordinate import OnChipCoordinate, CoordinateTranslationError
 command_metadata = {
     "short" : "st",
     "type" : "dev",
-    "expected_argument_count" : [ 0 ],    "arguments" : "",
     "description" : "Tests Debuda internals."
 }
 

@@ -3,7 +3,7 @@ Usage:
   hq
 
 Description:
-  Prints DRAM queue summary
+  Prints the summary of queues on the host
 
 Examples:
   hq
@@ -17,7 +17,7 @@ from tabulate import tabulate
 command_metadata = {
     "long" : "host-queue",
     "short" : "hq",
-    "type" : "dev",
+    "type" : "high-level",
     "description" : __doc__
 }
 

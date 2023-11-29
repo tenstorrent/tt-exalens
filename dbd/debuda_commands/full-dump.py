@@ -10,7 +10,7 @@ Examples:
 """
 command_metadata = {
     "short" : "fd",
-    "type" : "low-level",
+    "type" : "dev",
     "description" : __doc__
 }
 

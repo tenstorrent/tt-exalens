@@ -12,12 +12,11 @@ The following coordinate systems are available to represent a grid location on t
                     not really used in software. It is often shown in martketing materials, and shows the
                     layout in as in <arch>-Noc-Coordinates.xls spreadsheet, and on some T-shirts.
   - noc0:           NOC routing coordinate for NOC 0. Notation: X-Y
-                    Represents the chip location on the NOC grid. A difference in NOC coordinate of 1
+                    Represents the chip location on the NOC grid. A difference of 1 in NOC coordinate
                     represents a distance of 1 hop on the NOC. In other words, it takes one clock cycle
                     for the data to cross 1 hop on the NOC. Furthermore, the NOC 'wraps around' so that
                     the distance between 0 and NOC_DIM_SIZE-1 is also 1 hop. As we have 2 NOCs, we have
-                    2 NOC coordinate systems: noc0 and noc1. This is the main coordinate system used in
-                    the low level software that talks to the device.
+                    2 NOC coordinate systems: noc0 and noc1.
   - noc1:           NOC routing coordinate for NOC 1. Notation: X-Y
                     Same as noc0, but using the second NOC (which goes in the opposite direction).
   - tensix:         represents a full grid of Tensix cores (including the disabled rows due to harvesting).
@@ -175,3 +174,18 @@ class OnChipCoordinate:
             return self._noc0_coord < other._noc0_coord
         else:
             return self._device.id() < other._device.id()
+
+    # Singleton creation of a coordinate
+    def create(coord_str, device):
+        if "-" in coord_str:
+            x, y = coord_str.split("-")
+            coord_type = "nocTr"
+        elif "," in coord_str:
+            x, y = coord_str.split(",")
+            coord_type = "netlist"
+        else:
+            raise Exception("Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C")
+
+        x = int(x.strip())
+        y = int(y.strip())
+        return OnChipCoordinate(x, y, coord_type, device)

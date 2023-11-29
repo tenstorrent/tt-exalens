@@ -2,6 +2,7 @@ import os
 from tt_object import TTObjectIDDict
 import tt_util as util
 from tt_graph import Graph, Queue
+from tt_temporal_epoch import TemporalEpoch
 
 # Wrapper for Buda run netlist.yaml and, currently, runtime_data.yaml files
 class Netlist:
@@ -35,27 +36,42 @@ class Netlist:
             self._queues[queue.id()]=queue
 
     # Initializes, but does not yet load pipegen and blob files
-    def load_graphs (self, rundir):
+    def load_temporal_epochs (self, rundir):
         self.epoch_to_pipegen_yaml_file = dict()
         self.epoch_to_blob_yaml_file = dict()
         self.graphs = TTObjectIDDict()
+
+        # 0. Create graphs
         for graph_name in self.graph_names():
-            epoch_id = self.graph_name_to_epoch_id(graph_name)
+            # Create the graph
+            g = Graph(self, graph_name, self.yaml_file.root['graphs'][graph_name])
+            self.graphs.add (g)
+
+        # 1. Iterate over all temporal epochs
+        #   a. Create a map from epoch id to all the graphs in the epoch
+        graph_to_epoch_map = self.runtime_data_yaml.root["graph_to_epoch_map"]
+        epoch_to_graph_list_map = dict()
+        for graph_name, graph_info in graph_to_epoch_map.items():
+            epoch_id = graph_info["epoch_id"]
+            if epoch_id not in epoch_to_graph_list_map:
+                epoch_to_graph_list_map[epoch_id] = list()
+            epoch_to_graph_list_map[epoch_id].append(graph_name)
+
+        #  b. Create a TemporalEpoch object for each epoch and link with graphs
+        for epoch_id, graph_list in epoch_to_graph_list_map.items():
             graph_dir=f"{rundir}/temporal_epoch_{epoch_id}"
             if not os.path.isdir(graph_dir):
                 util.FATAL (f"Error: cannot find directory {graph_dir}")
 
             pipegen_file=f"{graph_dir}/overlay/pipegen.yaml"
             blob_file=f"{graph_dir}/overlay/blob.yaml"
-
-            pipegen_yaml = util.YamlFile(pipegen_file)
-            self.epoch_to_pipegen_yaml_file[epoch_id] = pipegen_yaml
-            blob_yaml = util.YamlFile(blob_file)
-            self.epoch_to_blob_yaml_file[epoch_id] = blob_yaml
-
-            # Create the graph
-            g = Graph(self, graph_name, self.yaml_file.root['graphs'][graph_name], pipegen_yaml, blob_yaml)
-            self.graphs[g.id()] = g
+            te = TemporalEpoch(epoch_id, self, pipegen_file, blob_file)
+            te.graphs = TTObjectIDDict()
+            for g_name in graph_list:
+                g = self.graph(g_name)
+                te.graphs.add (g)
+                g.temporal_epoch = te
+            self.temporal_epochs.add (te)
 
     def __init__(self, netlist_filepath, rundir, runtime_data_yaml):
         # 1. Set the file. It will be lazy loaded on first access
@@ -70,7 +86,8 @@ class Netlist:
         self.load_netlist_data ()
 
         # 3. Load pipegen/blob yamls
-        self.load_graphs (rundir)
+        self.temporal_epochs = TTObjectIDDict()
+        self.load_temporal_epochs (rundir)
 
         # 4. Cache the output_ops for each queue
         all_queue_ids = self._queues.keys()

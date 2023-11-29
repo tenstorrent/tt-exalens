@@ -18,7 +18,6 @@ from tt_object import TTObjectIDDict
 import tt_util as util
 import tt_device
 from tt_graph import Queue
-from tt_coordinate import OnChipCoordinate
 from docopt import docopt
 
 def LOG(s, **kwargs):
@@ -72,7 +71,7 @@ def is_stream_done(device, stream):
 
     # LOG(f"Pretty print stream {stream}: {stream.pretty_print()}")
 
-    stream_loc = OnChipCoordinate (*stream.loc(), "nocTr", device)
+    stream_loc = stream.loc()
 
     if moves_raw_data:
         LOG (f"Stream '{stream}' moves raw data")
@@ -84,7 +83,7 @@ def is_stream_done(device, stream):
 
 def get_stream_data(device, stream):
     ret_type = dict()
-    stream_loc = OnChipCoordinate (*stream.loc(), "nocTr", device)
+    stream_loc = stream.loc()
 
     ret_type["phase"] = device.get_stream_phase(stream_loc, stream.stream_id())
     ret_type["msg_received"] = device.get_num_msgs_received(stream_loc, stream.stream_id())
@@ -109,7 +108,7 @@ def get_streams_waiting_for_data (graph, device, src_op_or_q, dest_op_or_q):
             pipes = graph.get_pipes (dest_buffer)
             relevant_pipes.update (pipes)
     util.VERBOSE (f"  Found these source buffers for {src_op_or_q}->{dest_op_or_q} conection: {relevant_buffers}")
-    relevant_streams = TTObjectIDDict({stream_id: stream for stream_id, stream in graph.streams.items() if relevant_buffers.find_id (stream.get_buffer_id()) or relevant_pipes.find_id(stream.get_pipe_id())})
+    relevant_streams = TTObjectIDDict({stream_id: stream for stream_id, stream in graph.temporal_epoch.streams.items() if relevant_buffers.find_id (stream.get_buffer_id()) or relevant_pipes.find_id(stream.get_pipe_id())})
 
     if not relevant_streams:
         buflist = [ str(buffer.id()) for buffer in relevant_buffers]
@@ -135,6 +134,8 @@ def get_input_queues_without_data(context, device_id, graph):
     """
     Finding input queues that do not have data
     """
+    return {} # WIP
+
     device = context.devices[device_id]
     input_queues = get_graph_input_queues(graph)
     queue_ops = {}
@@ -155,52 +156,76 @@ def get_input_queues_without_data(context, device_id, graph):
 # Returns true if the buffer is ready to be consumed by the op
 def get_buffer_ready_state (context, graph, device_id, stream, buffer):
     device = context.devices[device_id]
-    stream_loc = OnChipCoordinate (*stream.loc(), "nocTr", device)
+    stream_loc =stream.loc()
 
     # Get num_messages_received for the stream
     num_messages_received = device.get_num_msgs_received(stream_loc, stream.stream_id())
 
+    state = { "num_messages_received" : num_messages_received, "tile_clear_granularity" : None }
+
     if buffer.is_output_of_pipe():
         # Get tile_clear_granularity from buffer
-        tile_clear_granularity = buffer.root["tile_clear_granularity"]
-        buffer_ready = num_messages_received > 0 and num_messages_received % tile_clear_granularity == 0
+        state["tile_clear_granularity"] = buffer.root["tile_clear_granularity"]
+        buffer_ready = state["num_messages_received"] > 0 and (state["num_messages_received"] % state["tile_clear_granularity"]) == 0
     else:
-        buffer_ready = num_messages_received > 0
+        buffer_ready = state["num_messages_received"] > 0
 
-    return buffer_ready
+    return buffer_ready, state
 
 # Checks if all inputs are ready, both there is no output produced. This normally
 # indicates that the operation itself is hung.
 def check_input_output_misbalance (context, graph, device_id, op):
+    """
+    Looking for input/output ready misbalance
+    """
     device = context.devices[device_id]
     input_buffers = graph.get_buffers (op, "out")
     output_buffers = graph.get_buffers (op, "in")
     ok = True
 
-    all_input_buffers_ready = True
-    for buffer_id, buffer in input_buffers.items():
-        # Get all streams for the buffer
-        for s_id, stream in get_buffer_streams_in_phase (device, graph, buffer).items():
-            all_input_buffers_ready = all_input_buffers_ready and get_buffer_ready_state (context, graph, device_id, stream, buffer)
+    # Inputs
+    not_ready_input_buffers = dict()
+    for _, buffer in input_buffers.items():
+        for _, stream in get_buffer_streams_in_phase (device, graph, buffer).items():
+            buffer_ready, state = get_buffer_ready_state (context, graph, device_id, stream, buffer)
+            if not buffer_ready:
+                not_ready_input_buffers[buffer.id()] = state
 
-    all_output_buffers_ready = True
-    for buffer_id, buffer in output_buffers.items():
-        # Get all streams for the buffer
-        for s_id, stream in get_buffer_streams_in_phase (device, graph, buffer).items():
-            all_output_buffers_ready = all_output_buffers_ready and get_buffer_ready_state (context, graph, device_id, stream, buffer)
+    # Outputs
+    not_ready_output_buffers = dict()
+    for _, buffer in output_buffers.items():
+        for _, stream in get_buffer_streams_in_phase (device, graph, buffer).items():
+            buffer_ready, state = get_buffer_ready_state (context, graph, device_id, stream, buffer)
+            if not buffer_ready:
+                not_ready_output_buffers[buffer.id()] = state
 
-    if all_input_buffers_ready and not all_output_buffers_ready:
-        WARN (f"All input buffers of op {op} are ready, but the output buffers are not")
+    def print_non_ready_buffers (not_ready_buffers, msg):
+        for buffer_id, state in not_ready_buffers.items():
+            buffer = graph.buffers[buffer_id]
+            print (f"      Buffer {buffer} is not ready: {state}")
+
+    # Check if there is a mix of ready/non-ready
+    if len(not_ready_input_buffers) == 0 and len(not_ready_output_buffers) > 0:
+        WARN (f"All input buffers of op {op} are ready, but the output buffers are not.")
+        print_non_ready_buffers (not_ready_output_buffers, "  Output buffers not ready and fed by operations:")
+        ok = False
+
+    # Check if there is both ready and non-ready
+    if len(not_ready_input_buffers) > 0 and len(not_ready_output_buffers) > 0:
+        WARN (f"Neither input nor output buffers of op {op} are ready")
+        print_non_ready_buffers (not_ready_input_buffers, "  Input buffers not ready and fed by operations:")
+        print_non_ready_buffers (not_ready_output_buffers, "  Output buffers not ready and fed by operations:")
         ok = False
     return ok
 
 def get_buffer_streams_in_phase (device, graph, buffer):
     streams_in_phase = TTObjectIDDict()
     # Get all streams for the buffer
-    for s_id, stream in graph.streams.items():
+    for s_id, stream in graph.temporal_epoch.streams.items():
+        # if stream.get_buffer_id() is None:
+        #     print (f"Stream {stream} has no buffer id")
         if stream.get_buffer_id() == buffer.id():
-            stream_loc = OnChipCoordinate (*stream.loc(), "nocTr", device)
-            phase = device.get_stream_phase(stream_loc, stream.stream_id())
+            phase = device.get_stream_phase(stream.loc(), stream.stream_id())
             if phase == stream.phase_id():
                 streams_in_phase.add (stream)
     return streams_in_phase
@@ -208,11 +233,14 @@ def get_buffer_streams_in_phase (device, graph, buffer):
 # Goes through all inputs of an op and checks if there is a misbalance between
 # the number of inputs that are ready and the number of inputs that are not ready.
 def check_inputs_ready_misbalance (context, graph, device_id, op):
-    # Find all input buffers for the op
+    """
+    Looking for inputs ready misbalance
+    """
     device = context.devices[device_id]
     input_buffers = graph.get_buffers (op, "out")
     ok = True
 
+    buffer_ready = dict()
     buffer_state = dict()
     for buffer_id, buffer in input_buffers.items():
         if buffer.is_input_of_pipe() and buffer.is_output_of_pipe():
@@ -221,15 +249,16 @@ def check_inputs_ready_misbalance (context, graph, device_id, op):
 
         # Get all streams for the buffer
         for s_id, stream in get_buffer_streams_in_phase (device, graph, buffer).items():
-            buffer_state[buffer_id] = get_buffer_ready_state (context, graph, device_id, stream, buffer)
+            buffer_ready[buffer_id], buffer_state[buffer_id] = get_buffer_ready_state (context, graph, device_id, stream, buffer)
 
     # If there is a mix of ready/non-ready report a warning
-    if True in buffer_state.values() and False in buffer_state.values():
+    if True in buffer_ready.values() and False in buffer_ready.values():
         ready_ops = set()
         non_ready_ops = set()
         WARN (f"Mix of ready/non-ready buffers for op {op}")
-        for buffer_id, buffer_ready in buffer_state.items():
+        for buffer_id, buffer_ready in buffer_ready.items():
             buffer = graph.buffers[buffer_id]
+            state = buffer_state[buffer_id]
             src_buffers = graph.get_buffers (buffer.output_of_pipes, "in")
             src_ops = { src_buffers[src_buffer_id].root["md_op_name"] for src_buffer_id in src_buffers }
             if buffer_ready:
