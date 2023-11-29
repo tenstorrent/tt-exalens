@@ -1,17 +1,16 @@
 """
 Usage:
-  stream <x> <y> <stream-id>
+  stream <core-loc> <stream-id>
 
 Arguments:
-  x          nocTr X coordinate of the core
-  y          nocTr Y coordinate of the core
+  core-loc    Either X-Y or R,C location of the core
   stream-id  Stream ID
 
 Description:
   Shows stream 'stream_id' at core 'x-y' on the current device.
 
 Examples:
-  s 1 1 4
+  s 18-18 24
 """
 
 command_metadata = {
@@ -30,11 +29,10 @@ def run(cmd_text, context, ui_state = None):
     current_device_id = ui_state["current_device_id"]
     current_device = context.devices[current_device_id]
 
-    x = int(args['<x>'], 0)
-    y = int(args['<y>'], 0)
+    core_loc_str = args['<core-loc>']
     stream_id = int(args['<stream-id>'], 0)
 
-    stream_loc = OnChipCoordinate(x, y, "nocTr", device=current_device)
+    stream_loc = OnChipCoordinate.create (core_loc_str, device=current_device)
     regs = current_device.read_stream_regs (stream_loc, stream_id)
     stream_regs = tt_stream.convert_reg_dict_to_strings(current_device, regs)
     stream_epoch_id = current_device.get_epoch_id(stream_loc)

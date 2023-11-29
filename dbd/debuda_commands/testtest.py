@@ -5,7 +5,6 @@ from tabulate import tabulate
 command_metadata = {
     "short" : "tt",
     "type" : "dev",
-    "expected_argument_count" : [ 0 ],    "arguments" : "",
     "description" : "Internal test"
 }
 
@@ -16,7 +15,7 @@ def run(args, context, ui_state = None):
     current_device = context.devices[current_device_id]
     graph = context.netlist.graph(ui_state["current_graph_name"])
 
-    a_pipe = list (graph.pipes)[0]
+    a_pipe = list (graph.temporal_epoch.pipes)[0]
     a_buffer = list (graph.buffers)[0]
     an_op = list (graph.ops)[0]
 

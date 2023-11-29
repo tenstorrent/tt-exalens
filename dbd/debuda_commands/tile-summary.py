@@ -1,17 +1,20 @@
 """
 Usage:
-  t <tile-id> [<raw>]
+  t <tile-id> [--raw]
 
-Arguments:
-  tile-id     The ID of the tile to show.
-  raw         If 1, prints raw bytes.
+Options:
+  --raw   If specified, prints raw bytes.
 
 Description:
-  Prints tile for the current stream in the currently active phase. If raw=1, it prints raw bytes.
+  Prints tile for the current stream in the currently active phase. If --raw is specified, it prints raw bytes.
 
 Examples:
-  t 123
+  s 0,2 4; t 1         # Must be on a stream with a buffer
+  s 0,2 4; t 1 --raw   # Prints raw bytes
 """
+
+
+
 from tabulate import tabulate
 import tt_util as util
 from tt_coordinate import OnChipCoordinate
@@ -110,19 +113,17 @@ def dump_message_xy(context, ui_state, tile_id, raw):
     else:
         util.ERROR("Not enough data in blob.yaml")
 
-def run(cmd_text, context, ui_state = None):
+def run(cmd_text, context, ui_state=None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
     try:
         tile_id = int(args['<tile-id>'])
     except ValueError:
-        util.ERROR ("Tile ID must be an integer")
+        util.ERROR("Tile ID must be an integer")
         return None
 
-    if args['<raw>'] is None:
-        raw = 0
-    else:
-        raw = int(args['<raw>'])
+    raw = 1 if args['--raw'] else 0
 
     dump_message_xy(context, ui_state, tile_id, raw)
 
     return None
+

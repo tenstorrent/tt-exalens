@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from tt_device import DEBUDA_SERVER_SOCKET_IFC
 from tt_coordinate import OnChipCoordinate
+import tt_util as util
 
 # Register address
 REG_STATUS                    = 0
@@ -92,7 +93,7 @@ class RiscDebug :
         self.__trigger_read(reg_addr)
         # check 3 times if read is valid
         if not self.__is_read_valid() and not self.__is_read_valid() and not self.__is_read_valid():
-            raise Exception("Reading failed. Debug read valid bit is set to 0. Run `srs 0` to check if core is active")
+            util.INFO("Reading failed. Debug read valid bit is set to 0. Run `srs 0` to check if core is active.")
         return self.__read(RISC_DBG_STATUS1)
 
     def enable_debug(self):

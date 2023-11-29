@@ -8,7 +8,7 @@ DBD_DEFINES = -DGIT_HASH=$(shell git rev-parse HEAD)
 DBD_INCLUDES += -Imodel -Inetlist -Icommon -I$(YAML_PATH) -Isrc/firmware/riscv/$(ARCH_NAME)/
 DBD_CFLAGS = $(CFLAGS) -Werror
 DBD_LDFLAGS = -ltt -ldevice -lstdc++fs -lpthread -lyaml-cpp -lcommon -lhwloc -lboost_program_options
-
+DBD_OUT = $(OUT)/dbd
 DBD_SRCS = $(wildcard dbd/*.cpp)
 
 DBD_OBJS = $(addprefix $(OBJDIR)/, $(DBD_SRCS:.cpp=.o))
@@ -21,9 +21,72 @@ dbd: verif/netlist_tests/debuda-server-standalone
 	$(PRINT_TARGET)
 	$(PRINT_OK)
 
+# MARKDOWN_FILES=
+MARKDOWN_FILES=debuda-py-intro.md
+# MARKDOWN_FILES+=debuda-py-tutorial.md
+MARKDOWN_FILES+=$(DBD_OUT)/debuda-commands-help.md
+
+# The following target is used to build the documentation (md, html, pdf). It is not bullet proof, but it is good enough for now.
+.PHONY: dbd/documentation
+dbd/documentation:
+	if [ "$(CONFIG)" = "debug" ]; then \
+		echo "WARNING: Do not use CONFIG=debug. Please unset CONFIG"; \
+		exit 1; \
+	fi
+	echo "Installing pandoc and weasyprint"
+	sudo apt update && sudo apt-get -y install pandoc weasyprint
+	pip install PyPDF2
+	echo Applying patch to cause a hang in the test
+	-git apply dbd/test/inject-errors/sfpu_reciprocal-infinite-spin-wormhole_b0.patch
+	echo "Building and running test"
+	make -j32 build_hw verif/op_tests dbd
+	-./build/test/verif/op_tests/test_op --netlist dbd/test/netlists/netlist_multi_matmul_perf.yaml --seed 0 --silicon --timeout 60
+	mkdir -p $(DBD_OUT)
+	echo "Removing old export files"
+	-rm -f *-export.[0-9]*.zip
+	echo "Generating raw help file"
+	dbd/debuda.py --command 'help;x' | tee $(DBD_OUT)/help_file_raw.txt
+	echo "Generating help file with example outputs"
+	dbd/bin/run-debuda-on-help-examples.py $(DBD_OUT)/help_file_raw.txt $(DBD_OUT)/help_file_with_example_outputs.txt
+	echo "Generating Markdown $(DBD_OUT)/debuda-commands-help.md"
+	dbd/bin/convert-help-to-markdown.py $(DBD_OUT)/help_file_with_example_outputs.txt $(DBD_OUT)/debuda-commands-help.md
+	echo "Generating the CSS file to be included in the html"
+	echo "<style>" > $(DBD_OUT)/temp-style-header.html
+	cat dbd/docs/debuda-docs.css >> $(DBD_OUT)/temp-style-header.html
+	echo "</style>" >> $(DBD_OUT)/temp-style-header.html
+	echo "Combining markdown files into one html file"
+	cd dbd/docs-md && pandoc -f markdown -s $(MARKDOWN_FILES) -o $(DBD_OUT)/debuda-help.html --metadata pagetitle="Debuda Documentation" --include-in-header=$(DBD_OUT)/temp-style-header.html
+	cp -r dbd/docs-md/images $(DBD_OUT)
+	echo "Generating pdf file"
+	cd dbd/docs-md && pandoc -f markdown -s $(MARKDOWN_FILES) -o $(DBD_OUT)/debuda-help.pdf --pdf-engine=weasyprint --metadata pagetitle="Debuda Documentation" --include-in-header=$(DBD_OUT)/temp-style-header.html
+	echo "Create a title page and insert it in side the pdf file"
+	dbd/bin/create-title-page.py --title="Debuda Manual" --subtitle=" `date +%Y/%m/%d`" --image=dbd/docs-md/images/tenstorrent-pdf-titlepage.png --footer "" --pdf $(DBD_OUT)/debuda-help.pdf
+
+	echo "Undoing the patch"
+	-git apply -R dbd/test/inject-errors/sfpu_reciprocal-infinite-spin-wormhole_b0.patch
+
+# The following target is used to build the release package (zip). It depends on dbd/documentation (as it needs the pdf file),
+# however this is not encoded in the dependency list as it takes a while to build the documentation.
+.PHONY: dbd/release
+dbd/release:
+	echo "The board should be reset before running this. Full command should be: unset CONFIG ; make clean ; make dbd/documentation ; make dbd/release"
+	dbd/bin/package.sh $(DBD_OUT)
+
 dbd/clean: dbd/tools/clean
 	-rm $(BINDIR)/dbd_* $(SILENT_ERRORS)
 	-rm $(OBJDIR)/dbd/* $(SILENT_ERRORS)
+
+.PHONY: dbd/test
+dbd/test:
+	echo "Create a clean python environment: dbd-venv"
+	-rm -rf dbd-venv
+	python3 -m venv dbd-venv
+	echo "Activate, install requirements and run tests"
+	. dbd-venv/bin/activate && pip install -r dbd/requirements.txt && dbd/test/test-debuda-py.sh
+
+.PHONY: dbd/test-elf-parser
+dbd/test-elf-parser:
+	python3 dbd/test_parse_elf.py
 
 $(DBD_LIB): $(DBD_OBJS) $(BACKEND_LIB)
 	$(PRINT_TARGET)

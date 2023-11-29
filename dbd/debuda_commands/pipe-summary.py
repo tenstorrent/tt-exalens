@@ -9,7 +9,7 @@ Description:
   Prints details on the pipe with a given ID.
 
 Examples:
-  pipe 123
+  pipe 125000000000
 """
 import tt_util as util
 from docopt import docopt

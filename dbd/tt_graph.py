@@ -4,8 +4,6 @@ from tt_object import TTObject, TTObjectIDDict
 from tt_pipe import Pipe
 from tt_buffer import Buffer
 from tt_object import TTObject
-from tt_coordinate import OnChipCoordinate
-import itertools
 
 # Queues
 class Queue(TTObject):
@@ -76,96 +74,25 @@ class Graph(TTObject):
     # Some keys do not refer to operations, and we keep them here to be used when parsing
     non_op_keys = set (['target_device', 'input_count'])
 
-    def __init__(self, netlist, name, root, pipegen_yaml, blob_yaml):
+    def __init__(self, netlist, name, root):
         self._id = name
         self.root = root # The entry in netlist file
-        self.pipegen_yaml = pipegen_yaml
-        self.blob_yaml = blob_yaml
+        self.temporal_epoch = None # This will contain buffers and pipes from pipegen.yaml
         self.ops = TTObjectIDDict()
         self.netlist = netlist
-        self.queues = netlist.queues # A shortcut to queues
+        self.queues = netlist.queues # A shortcut to queues FIX: Replace with TTObjectIDDict()
 
         for op_name in self.op_names():
             op = Op (self, op_name, self.root[op_name])
             self.ops[op.id()] = op
-
-    def load_pipegen_and_blob (self):
-        # 1. Load pipegen_yaml
-        self.buffers = TTObjectIDDict()
-        self.pipes = TTObjectIDDict()
-
-        for key, val in self.pipegen_yaml.items():
-            if key == "graph_names": # This key is pluralized in util.YamlFile
-                if self.id() not in val:
-                    util.WARN(f"Expected graph {self.id()} to be in {val}")
-            elif "buffer" in key:
-                b = Buffer(self, val)
-                self.buffers[b.id()] = b
-                uniqid = val["uniqid"]
-                for r in range (1, val["replicate"]): # Handle replicated buffers (see issue #326)
-                    val["uniqid"] = uniqid + r * val["scatter_gather_num_tiles"]
-                    b = Buffer(self, val)
-                    self.buffers[b.id()] = b
-                    b.replicated = True # Mark the buffers we created by replication
-            elif "pipe" in key:
-                p = Pipe(self, val)
-                self.pipes[p.id()] = p
-                output_buffers = val['output_list']
-                if isinstance(output_buffers[0], list):
-                    output_buffers = tuple(itertools.chain.from_iterable(output_buffers))
-            else:
-                raise RuntimeError(f"{self.pipegen_yaml.id()}: Cannot interpret {key}: {val}")
-
-        # Cache buffer to pipe and vice versa mapping
-        for pipe_id, pipe in self.pipes.items():
-            for input_buffer_id in pipe.root["input_list"]:
-                b = self.buffers[input_buffer_id]
-                b.input_of_pipes.add (pipe)
-                pipe.input_buffers.add (b)
-            for output_buffer_id in pipe.root["output_list"]:
-                b = self.buffers[output_buffer_id]
-                b.output_of_pipes.add (pipe)
-                pipe.output_buffers.add (b)
-
-        # for b_id, b in self.buffers.items():
-        #     if b.is_input_of_pipe() and b.is_output_of_pipe():
-        #         util.WARN (f"Buffer {b_id} is both input and output of a pipe")
-        #     if not b.is_input_of_pipe() and not b.is_output_of_pipe():
-        #         util.WARN (f"Buffer {b_id} is neither input nor output of a pipe")
-
-        # 2. Load blob_yaml
-        self.streams = TTObjectIDDict()
-        for key, val in self.blob_yaml.items():
-            if key == "dram_blob":
-                util.VERBOSE ("- Skipping dram_blob")
-            elif key == "dram_perf_dump_blob":
-                util.VERBOSE ("- Skipping dram_perf_dump_blob")
-            elif key == "overlay_blob_extra_size":
-                util.VERBOSE ("- Skipping overlay_blob_extra_size")
-            elif key.startswith ("phase_"):
-                phase_id = int (key[6:]) # Skip "phase_" string to get the id
-                for stream_designator, stream_data in val.items():
-                    stream_data['phase_id'] = phase_id
-                    s = Stream (self, stream_designator, stream_data)
-                    self.streams[s.id()] = s
-
-                    # # Add the stream to the corresponding buffer
-                    # if "buf_id" in s.root:
-                    #     if s.root["buf_id"] not in self.buffers:
-                    #         util.WARN (f"Stream {s.id()} refers to buffer {s.root['buf_id']} which is not in pipegen.yaml")
-                    #     if self.buffers[s.root["buf_id"]].stream_id is not None:
-                    #         util.WARN (f"Stream {s.id()} refers to buffer {s.root['buf_id']} which is already in use by stream {self.buffers[s.root['buf_id']].stream_id}")
-                    #     self.buffers[s.root["buf_id"]].stream_id = s.id()
-            else:
-                raise RuntimeError(f"{self.blob_yaml.id()}: Cannot interpret {key}: {val}")
-
 
     RECURSION_DEPTH = 0 # Temporary/debug limit to prevent infinite recursion
 
     # Overriding this to support lazy loading of yaml files (this can take a lot of time)
     def __getattr__(self, name):
         if name in { "buffers", "pipes", "streams" }:
-            self.load_pipegen_and_blob() # Lazy-loaded structures
+            self.temporal_epoch.load_pipegen()
+            self.temporal_epoch.load_blob()
         return object.__getattribute__(self, name)
 
     # Given a buffer list, find all buffers that are connected (pipegen.yaml)
@@ -177,7 +104,7 @@ class Graph(TTObject):
         look_for_dest = "dest" in connection
         look_for_src = "src" in connection
         assert (look_for_src or look_for_dest), "Either src or dest must be present"
-        for p_id, p in self.pipes.items():
+        for p_id, p in self.temporal_epoch.pipes.items():
             for b in buffer_id_list:
                 if look_for_dest and b in p.root["input_list"]:
                     connected_buffers += p.root["output_list"]
@@ -205,7 +132,7 @@ class Graph(TTObject):
     # Checks if a given buffer is a source buffer (i.e. it shows up in the input_list of a pipe)
     def is_src_buffer(self, buffer_id):
         if type(buffer_id) == Buffer: buffer_id = buffer_id.id()
-        for p_id, p in self.pipes.items():
+        for p_id, p in self.temporal_epoch.pipes.items():
             if buffer_id in p.root["input_list"]:
                 return True
         return False
@@ -213,7 +140,7 @@ class Graph(TTObject):
     # Checks if a given buffer is a destination buffer (i.e. it shows up in the output_list of a pipe)
     def is_dest_buffer(self, buffer_id):
         if type(buffer_id) == Buffer: buffer_id = buffer_id.id()
-        for p_id, p in self.pipes.items():
+        for p_id, p in self.temporal_epoch.pipes.items():
             if buffer_id in p.root["output_list"]:
                 return True
         return False
@@ -287,9 +214,14 @@ class Graph(TTObject):
         op = self.root[op_name]
         opr = op['grid_loc'][0]
         opc = op['grid_loc'][1]
-        for r in range(op['grid_size'][0]):
-            for c in range(op['grid_size'][1]):
-                locations.append ( ( opr + r, opc + c ) )
+        if 'grid_transpose' in op and op['grid_transpose']:
+            for r in range(op['grid_size'][1]):
+                for c in range(op['grid_size'][0]):
+                    locations.append ( ( opr + r, opc + c ) )
+        else:
+            for r in range(op['grid_size'][0]):
+                for c in range(op['grid_size'][1]):
+                    locations.append ( ( opr + r, opc + c ) )
         return locations
 
     # Returns the op name mapped to a given RC location
@@ -391,11 +323,11 @@ class Graph(TTObject):
         ret_val = TTObjectIDDict()
         if type(where) == tuple:
             # Looking by stream location tuple
-            ret_val.update( {s.id():s for s_id, s in self.streams.items() if s.id() == where })
+            ret_val.update( {s.id():s for s_id, s in self.temporal_epoch.streams.items() if s.id() == where })
         elif type(where) == Buffer:
-            ret_val.update( {s.id():s for s_id, s in self.streams.items() if s.get_buffer_id() == where.id() })
+            ret_val.update( {s.id():s for s_id, s in self.temporal_epoch.streams.items() if s.get_buffer_id() == where.id() })
         elif type(where) == Pipe:
-            ret_val.update( {s.id():s for s_id, s in self.streams.items() if s.get_pipe_id() == where.id() })
+            ret_val.update( {s.id():s for s_id, s in self.temporal_epoch.streams.items() if s.get_pipe_id() == where.id() })
         elif util.is_iterable(where):
             if isinstance (where, dict):
                 where = where.values()
@@ -412,7 +344,7 @@ class Graph(TTObject):
         ret_val.update ({q.id(): TTObjectIDDict() for q_id, q in self.queues().items()})
 
         # connect pipes with op_names
-        for p_id, pipe in self.pipes.items():
+        for p_id, pipe in self.temporal_epoch.pipes.items():
             for b_id, buffer in self.get_buffers(pipe).items():
                 op_or_queue_name = buffer.root["md_op_name"]
                 ret_val[op_or_queue_name].add(pipe)
@@ -422,13 +354,13 @@ class Graph(TTObject):
     def get_pipes (self, where):
         ret_val = TTObjectIDDict()
         if type(where) == int:
-            ret_val.update( {p.id():p for p_id, p in self.pipes.items() if p.id() == where })
+            ret_val.update( {p.id():p for p_id, p in self.temporal_epoch.pipes.items() if p.id() == where })
         elif type(where) == Buffer:
-            ret_val.update( {p.id():p for p_id, p in self.pipes.items() if where.id() in p.input_buffers or where.id() in p.output_buffers })
+            ret_val.update( {p.id():p for p_id, p in self.temporal_epoch.pipes.items() if where.id() in p.input_buffers or where.id() in p.output_buffers })
         elif type(where) == Op or type(where) == Queue:
             def is_ops (b):
                 return b.root["md_op_name"]==where.id()
-            for p_id, p in self.pipes.items():
+            for p_id, p in self.temporal_epoch.pipes.items():
                 ret_val.update ( { p.id():p for b in self.get_buffers(p) if is_ops(b) } )
         elif util.is_iterable(where):
             if isinstance (where, dict):
@@ -467,7 +399,7 @@ class Graph(TTObject):
     def get_fanin_buffer_level (self, where):
         if type(where) == Buffer:
             assert self.is_dest_buffer(where), "fanin is valid only for dest buffers"
-            pipes = { p for p_id, p in self.pipes.items() if where.id() in p.root["output_list"] }
+            pipes = { p for p_id, p in self.temporal_epoch.pipes.items() if where.id() in p.root["output_list"] }
             src_buffers = self.get_buffers (pipes)
             src_buffers.keep (self.is_src_buffer)
             return src_buffers
@@ -477,7 +409,7 @@ class Graph(TTObject):
     def get_fanout_buffer_level (self, where):
         if type(where) == Buffer:
             assert self.is_src_buffer(where), "fanout is valid only for src buffers"
-            pipes = { p for p_id, p in self.pipes.items() if where.id() in p.root["input_list"] }
+            pipes = { p for p_id, p in self.temporal_epoch.pipes.items() if where.id() in p.root["input_list"] }
             dest_buffers = self.get_buffers (pipes)
             dest_buffers.keep (self.is_dest_buffer)
             return dest_buffers

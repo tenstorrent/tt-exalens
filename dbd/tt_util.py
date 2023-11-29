@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-"""
-debuda parses the build output files and probes the silicon to determine status of a buda run.
-"""
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
@@ -63,6 +60,10 @@ CLR_INFO = CLR_BLUE
 
 CLR_PROMPT = "<style color='green'>"
 CLR_PROMPT_END = "</style>"
+
+DEC_FORMAT = 'f"{d}"'
+HEX_FORMAT = 'f"0x{d:08x}"'
+DEC_AND_HEX_FORMAT = 'f"{d} (0x{d:08x})"'
 
 class TTException (Exception):
     pass
@@ -150,7 +151,7 @@ def ryml_memory_to_value(mem):
     # Try to convert v to int allowing for hex string (0x...)
     try:
         v = int(v, 0)
-    except:
+    except ValueError:
         pass
     return v
 
@@ -216,8 +217,10 @@ class YamlFile:
     # Cache
     file_cache = {}
 
-    def __init__ (self, filepath):
+    def __init__ (self, filepath, post_process_yaml = None):
         self.filepath = filepath
+        # Some files (such as pipegen.yaml) contain multiple documents (separated by ---). We post-process them
+        self.post_process_yaml = post_process_yaml
         YamlFile.file_cache[self.filepath] = None # Not loaded yet
         if not os.path.isfile(self.filepath):
             WARN (f"File '{self.filepath}' does not exist")
@@ -228,20 +231,16 @@ class YamlFile:
         else:
             current_time = time.time()
             INFO (f"Loading yaml file: '{os.path.abspath(self.filepath)}'", end="")
-            # Since some files (Pipegen.yaml) contain multiple documents (separated by ---): We merge them all into one map.
-            # Note: graph_name can apear multiple times, we manually convert it into an array
             self.root = dict()
 
             # load self.filepath into string
             with open(self.filepath, 'r') as stream:
                 yaml_string = stream.read()
 
-            for i in ryml_load_all(yaml_string):
-                if 'graph_name' in i:
-                    if 'graph_names' not in self.root:
-                        self.root['graph_names'] = []
-                    self.root['graph_names'].append (i['graph_name'])
-                else:
+            if self.post_process_yaml is not None:
+                self.root = self.post_process_yaml (ryml_load_all(yaml_string))
+            else:
+                for i in ryml_load_all(yaml_string):
                     self.root = { **self.root, **i }
             YamlFile.file_cache[self.filepath] = self.root
             INFO (f" ({len(yaml_string)} bytes loaded in {time.time() - current_time:.2f}s)")
@@ -370,8 +369,32 @@ def array_to_str(A,
     condense=False,
     show_row_index=True, show_col_index=True,
     cell_formatter=CELLFMT.passthrough,
-    row_index_formatter=CELLFMT.passthrough
+    row_index_formatter=CELLFMT.passthrough,
+    include_header=False
     ):
+    """
+    Converts a 1D number array into a formatted string
+
+    Parameters:
+        A (list)                                : 1D array to be converted.
+        num_cols (int, optional)                : Number of columns in the 2D array representation. Default is 8.
+        start_row (int, optional)               : Starting row index for slicing the array. Default is 0.
+        end_row (int, optional)                 : Ending row index for slicing the array. Default is the calculated max row index based on `num_cols`.
+        condense (bool, optional)               : If True, omits central rows for long arrays, showing only the beginning and end. Default is False.
+        show_row_index (bool, optional)         : If True, includes row indices in the output. Default is True.
+        show_col_index (bool, optional)         : If True, includes column indices in the output. Default is True.
+        cell_formatter (function, optional)     : Function to format each cell. Default is `CELLFMT.passthrough`.
+        row_index_formatter (function, optional): Function to format row indices. Default is `CELLFMT.passthrough`.
+        include_header (bool, optional)         : If True, includes column headers in the output. Default is False.
+
+    Returns:
+    str: A string representation of the 2D array.
+
+    Notes:
+        - Returns None for empty input array.
+        - `cell_formatter` and `row_index_formatter` are functions taking parameters (row, col, index, value) and (row, start_index, end_index, row_number) respectively.
+    """
+
     lena=len(A)
     if lena==0: return
     if not start_row: start_row=0
@@ -397,7 +420,7 @@ def array_to_str(A,
                     row.append('')
 
             rows.append(row)
-    return tabulate(rows, headers=header if show_col_index else [])
+    return tabulate(rows, headers=header if show_col_index else [], tablefmt="plain")
 
 def dump_memory(addr, array, bytes_per_entry, bytes_per_row, in_hex):
     num_cols = bytes_per_row // bytes_per_entry
@@ -512,3 +535,4 @@ class LOG_INDENT:
 # Return an ansi color code for a given index. Useful for coloring a list of items.
 def clr_by_index (idx):
     return f"\033[{31 + idx % 7}m"
+    

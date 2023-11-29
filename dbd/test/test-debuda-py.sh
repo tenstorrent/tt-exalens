@@ -15,17 +15,17 @@ if [ "$1" = "skip-build" ]; then
     echo Skipping build used for CI and tests
 else
     echo Building 'make build_hw'...
-    make build_hw >> $TMP_OUT_FILE 2>&1
+    make -j32 build_hw >> $TMP_OUT_FILE 2>&1
 
     echo Building verif/op_tests ...
-    make verif/op_tests >> $TMP_OUT_FILE 2>&1
+    make -j32 verif/op_tests >> $TMP_OUT_FILE 2>&1
 
     echo Building debuda-server-standalone ...
-    make verif/netlist_tests/debuda-server-standalone >> $TMP_OUT_FILE 2>&1
+    make -j32 dbd
 fi
 
 echo Installing Python dependencies ...
-pip install sortedcontainers prompt_toolkit pyzmq tabulate rapidyaml deprecation docopt >> $TMP_OUT_FILE 2>&1
+pip install -r dbd/requirements.txt
 mkdir -p debuda_test
 
 ##################################################################################################################################################

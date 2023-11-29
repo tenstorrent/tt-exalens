@@ -1,0 +1,11 @@
+sortedcontainers
+prompt_toolkit
+pyzmq
+tabulate
+rapidyaml
+deprecation
+docopt
+pyelftools
+fuzzywuzzy
+python-Levenshtein
+pyyaml

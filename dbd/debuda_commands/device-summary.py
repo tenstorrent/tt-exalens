@@ -11,13 +11,14 @@ Arguments:
                          op - show operation details
                          netlist, noc0, noc1, nocTr, nocVirt, die, tensix - show coordinate
 
-Shows a device summary. When no argument is supplied, it iterates through all devices used by the
-currently loaded netlist.
+Description:
+  Shows a device summary. When no argument is supplied, it iterates through all devices used by the
+  currently loaded netlist.
 
 Examples:
-  device                 Shows op mapping for all devices
-  device 0 noc0          Shows op mapping in noc0 coordinates for device 0
-  device 0 netlist noc0  Shows netlist to noc0 mapping for device 0
+  device                 # Shows op mapping for all devices
+  device 0 nocTr         # Shows op mapping in nocTr coordinates for device 0
+  device 0 netlist nocTr # Shows netlist to nocTr mapping for device 0
 """ # Note: Limit the above comment to 100 characters in width
 
 command_metadata = {

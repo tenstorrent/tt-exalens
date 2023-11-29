@@ -1,37 +1,10 @@
-# Debuda.py Tutorial
+# Tutorial
 
 This short tutorial shows basics of Debuda.py debugging tool. You will introduce a hang by modifying a kernel
 source code, and then use Debuda.py to determine the location of the hang. You will also examine some commonly-used
 commands of Debuda.py.
 
-## Compile test_op
-```
-make -j32 && make -j32 verif/op_tests/test_op
-device/bin/silicon/reset.sh # If reset is available and you want to reset the device
-./build/test/verif/op_tests/test_op --netlist dbd/test/netlists/netlist_multi_matmul_perf.yaml --seed 0 --silicon --timeout 60
-```
-
-Insert a hang into the __recip__ node (Grayskull only):
-```
-git apply dbd/test/inject-errors/sfpu_reciprocal-infinite-spin-grayskull.patch
-```
-Similarly, for Wormhole:
-```
-git apply dbd/test/inject-errors/sfpu_reciprocal-infinite-spin-wormhole.patch
-```
-
-Rerun the test_op, and you should see a hang:
-```
-                Runtime | INFO     | Running program 'program0'
-                Runtime | INFO     |    Running graph 'test_op', epoch_id = 0, input_count = 1, pc = 4, device_id = 0, queue_settings.size() = 2
-                Runtime | INFO     |    Wait for idle complete on devices {0}, caller = sync-on-execute
-^C
-```
-Use ctrl-c to exit (or ctrl-\ if ctrl-c does not work).
-
-## Debugging
-
-Start Debuda:
+## Run Debuda
 ```
 dbd/debuda.py
 ```
@@ -40,7 +13,7 @@ Debuda detect the most recent subdirectory of tt_build as the run directory to u
 dbd/debuda.py --netlist my-netlist.yaml tt-build/my-run-dir/
 ```
 
-Show command docs: `help`
+## Display help: `help`
 ```
 Long Form          Short    Arg count    Arguments                        Description
 -----------------  -------  -----------  -------------------------------  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -301,44 +274,4 @@ Speed dial:
   3  Go to stream   s 5 3 8
   4  Go to stream   s 7 3 8
   ```
-
-## For reference: How to render a graph in ASCII
-
-Graph-Easy is a Perl-based program that renders .dot graphs in ASCII. In this tutorial, we only use it to show
-a graphical representation of the netlist graph.
-
-```
-sudo apt install cpanminus
-sudo cpanm Graph::Easy
-```
-Then add this alias to render the graph to Left->Right:
-```
-alias graph='sed '\''s/digraph G {/digraph G {\nrankdir=LR/g'\'' | graph-easy --as boxart 2>/dev/null'
-```
-Now, we can do something like this to render as simple graph
-```
-cat graph_test_op.netlist.dump | graph
-```
-You should see something like this:
-```
-     ┌────────┐  0   ┌───────┐  0   ┌─────────┐  0   ┌──────┐  0   ┌───────┐  0   ┌────────┐
-     │ input0 │ ───▶ │ f_op0 │ ───▶ │ matmul1 │ ───▶ │ add1 │ ───▶ │ d_op3 │ ───▶ │ output │
-     └────────┘      └───────┘      └─────────┘      └──────┘      └───────┘      └────────┘
-                       │              ▲                ▲
-  ┌────────────────────┘              │                │
-  │                                   │                │
-  │  ┌────────┐  0   ┌───────┐  1     │                │
-  │  │ input1 │ ───▶ │ f_op1 │ ───────┘                │
-  │  └────────┘      └───────┘                         │
-  │                    │                               │
-  │                    │ 0                             │
-  │                    ▼                               │
-  │                  ┌───────┐  1   ┌─────────┐  1     │
-  │                  │ recip │ ───▶ │ matmul2 │ ───────┘
-  │                  └───────┘      └─────────┘
-  │   0                               ▲
-  └───────────────────────────────────┘
-  ```
-
-As of June 15 2023, to generate the graphs, one must manually modify struct tt_backend_config::dump_graphs to true. 
-Then, when running the test, watch from message `Dumping graphviz: ...` to see the localtion of the files being dumped.
+<div style="page-break-after: always;"></div>

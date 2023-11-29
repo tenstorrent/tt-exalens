@@ -5,28 +5,23 @@ Main help: http://yyz-webservice-02.local.tenstorrent.com/docs/debuda-docs/debud
 
 """
 try:
-    from multiprocessing.dummy import Array
     import sys, os, argparse, traceback, fnmatch, importlib
     from tabulate import tabulate
     import tt_util as util, tt_device, tt_netlist
     from prompt_toolkit import PromptSession
+    from prompt_toolkit.completion import Completer, Completion
     from prompt_toolkit.formatted_text import HTML
+    from docopt import DocoptExit
 except ModuleNotFoundError as e:
-    # Print the exception and call stack
     traceback.print_exc()
-
-    # ANSI escape sequence for red text
-    red_start = "\033[31m"
-    red_end = "\033[0m"
-
-    # Print custom message in red
-    print(f"Try: {red_start}pip install sortedcontainers prompt_toolkit pyzmq tabulate rapidyaml deprecation docopt; make dbd{red_end}")
+    print(f"Try:\033[31m pip install -r dbd/requirements.txt; make dbd \033[0m")
     exit(1)
 from tt_coordinate import OnChipCoordinate
+import tt_firmware as fw
 
 # Argument parsing
 def get_argument_parser ():
-    parser = argparse.ArgumentParser(description=__doc__ + tt_device.STUB_HELP)
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('output_dir', type=str, nargs='?', default=None, help='Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used, and the netlist file will be inferred from the runtime_data.yaml file found there.')
     parser.add_argument('--netlist',  type=str, required=False, default=None, help='Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used.')
     parser.add_argument('--commands', type=str, required=False, help='Execute a list of semicolon-separated commands.')
@@ -36,24 +31,72 @@ def get_argument_parser ():
     parser.add_argument('--debuda-server-address', type=str, default="localhost:5555", required=False, help='IP address of debuda server (e.g. remote.server.com:5555). By default, the server is assumed to be running on the local machine.')
     return parser
 
+class DebudaCompleter(Completer):
+    def __init__ (self, commands, context):
+        self.commands = [ cmd['long'] for cmd in commands ] + [ cmd['short'] for cmd in commands ]
+        self.context = context
+
+    # Given a piece of a command, find all possible completions
+    def lookup_commands (self, cmd):
+        completions = []
+        for command in self.commands:
+            if command.startswith(cmd):
+                completions.append(command)
+        return completions
+
+    def fuzzy_lookup_addresses (self, addr):
+        completions = self.context.elf.fuzzy_find_multiple (addr, limit=30)
+        return completions
+
+    def get_completions(self, document, complete_event):
+        if complete_event.completion_requested:
+            prompt_current_word = document.get_word_before_cursor(pattern=self.context.elf.name_word_pattern)
+            prompt_text = document.text_before_cursor
+            # 1. If it is the first word, complete with the list of commands (lookup_commands)
+            if ' ' not in prompt_text:
+                for command in self.lookup_commands(prompt_current_word):
+                    yield Completion(command, start_position=-len(prompt_current_word))
+            # 2. If the currently-edited word starts with @, complete with address lookup from FW (fuzzy_lookup_addresses)
+            elif prompt_current_word.startswith('@'):
+                addr_part = prompt_current_word[1:]
+                for address in self.fuzzy_lookup_addresses(addr_part):
+                    yield Completion(f"@{address}", start_position=-len(prompt_current_word))
+
 # Creates rows for tabulate for all commands of a given type
-def format_commands (commands, type):
+def format_commands (commands, type, specific_cmd=None):
     rows = []
     for c in commands:
-        if c['type'] == type:
+        if c['type'] == type and (specific_cmd is None or c['long'] == specific_cmd or c['short'] == specific_cmd):
             description = c['description']
-            row = [ f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{c['short']}", f"{description}" ]
+            row = [ f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{c['short']}", "" ]
             rows.append(row)
+            row2 = [ f"", f"", f"{description}" ]
+            rows.append(row2)
+            rows.append([ "<--MIDRULE-->", "", "" ])
     return rows
 
 # Print all commands (help)
-def print_help (commands):
+def print_help (commands, cmd):
+    specific_cmd = cmd[1] if len(cmd) > 1 else None
     rows = []
-    rows += format_commands (commands, 'housekeeping')
-    rows += format_commands (commands, 'low-level')
-    rows += format_commands (commands, 'high-level')
-    print (tabulate(rows, headers=["Long Form", "Short", "Description"]))
-    # format_commands (commands, 'dev', "Development")
+    rows += format_commands (commands, 'housekeeping', specific_cmd)
+    rows += format_commands (commands, 'low-level', specific_cmd)
+    rows += format_commands (commands, 'high-level', specific_cmd)
+    # rows += format_commands (commands, 'dev', "Development")
+
+    if not rows:
+        util.WARN (f"Command '{specific_cmd}' not found")
+        return
+
+    # Replace each line starting with <--MIDRULE-->, with a ruler line to separate the commands visually
+    table_str = tabulate(rows, headers=["Long Form", "Short", "Details"])
+    lines = table_str.split("\n")
+    midrule = lines[1]
+    for i in range (len(lines)):
+        if lines[i].startswith("<--MIDRULE-->"):
+            lines[i] = midrule
+    new_table_str = "\n".join(lines)
+    print (new_table_str)
 
 # Certain commands give suggestions for next step. This function formats and prints those suggestions.
 def print_navigation_suggestions (navigation_suggestions):
@@ -72,23 +115,22 @@ def import_commands (reload = False):
         { "long" : "exit",
           "short" : "x",
           "type" : "housekeeping",
-          "expected_argument_count" : [ 0, 1 ],
-          "arguments" : "exit_code",
-          "description" : "Exits the program. The optional argument represents the exit code. Defaults to 0."
+          "description" : "Description:\n  Exits the program. The optional argument represents the exit code. Defaults to 0."
         },
         { "long" : "help",
           "short" : "h",
           "type" : "housekeeping",
-          "expected_argument_count" : [ 0 ],
-          "arguments" : "",
-          "description" : "Prints documentation summary."
+          "description" : "Description:\n  Prints documentation summary. If a command is specified, prints documentation for that command."
         },
         { "long" : "reload",
           "short" : "rl",
-          "type" : "dev",
-          "expected_argument_count" : [ 0 ],
-          "arguments" : "",
-          "description" : "Reloads files in debuda_commands directory."
+          "type" : "housekeeping",
+          "description" : "Description:\n  Reloads files in debuda_commands directory. Useful for development of commands."
+        },
+        { "long" : "eval",
+          "short" : "ev",
+          "type" : "housekeeping",
+          "description" : "Description:\n  Evaluates a Python expression.\n\nExamples:\n  eval 3+5\n  eval hex(@brisc.EPOCH_INFO_PTR.epoch_id)"
         },
     ]
 
@@ -146,6 +188,16 @@ def locate_most_recent_build_output_dir ():
         pass
     return None
 
+# This function initializes the addresses of the variables we often access
+def create_device_access_cache (context):
+    # Compute the offset for the epoch_id field
+    epoch_id_addr, _ = context.elf.parse_addr_size("brisc.EPOCH_INFO_PTR.epoch_id")
+    if epoch_id_addr is None:
+        raise util.TTException (f"Could not find address of epoch_id field in ELF file.")
+
+    for d in context.devices.values():
+        d.EPOCH_ID_ADDR = epoch_id_addr
+
 # Loads all files necessary to debug a single buda run
 # Returns a debug 'context' that contains the loaded information
 def load_context (netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_path):
@@ -157,7 +209,6 @@ def load_context (netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc
         def __repr__(self):
             return f"context"
 
-    util.VERBOSE (f"Initializing context")
     context = Context()
 
     # Load netlist files
@@ -166,7 +217,7 @@ def load_context (netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc
     # Load the cluster descriptor. This file is created by the tt_runtime::tt_runtime -> generate_cluster_descriptor.
     # There is also a 'cluster_desc.yaml' file in the run_dirpath directory...
     if not os.path.exists(cluster_desc_path):
-        util.FATAL (f"Cluster descriptor file '{cluster_desc_path}' does not exist. Exiting...")
+        context.cluster_desc = None
     else:
         context.cluster_desc = util.YamlFile(cluster_desc_path)
 
@@ -179,17 +230,36 @@ def load_context (netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc
         # util.INFO(f"Loading device {device_id} from {device_desc_path}")
         context.devices[device_id] = tt_device.Device.create(arch, device_id=device_id, cluster_desc=context.cluster_desc.root, device_desc_path=device_desc_path)
 
+    # Create the ELF objects
+    elf_files_to_load = {
+        "brisc": f"{run_dirpath}/brisc/brisc.elf",
+        "ncrisc": f"{run_dirpath}/ncrisc/ncrisc.elf"
+    }
+    if arch.lower() != "grayskull":
+        elf_files_to_load["erisc_app"] = f"{run_dirpath}/erisc/erisc_app.elf"
+
+    context.elf = fw.ELF(elf_files_to_load)
+
+    # Create accessors
+    create_device_access_cache (context)
+
+    # Assign a device to each graph.
+    for _, graph in context.netlist.graphs.items():
+        graph.device = context.devices[graph.device_id()]
+    context.netlist.devices = context.devices
+
     return context
 
 # Main
 def main(args, context):
     cmd_raw = ""
 
-    # Create prompt object.
-    context.prompt_session = PromptSession()
-
     commands = import_commands ()
     current_device = context.devices[0]
+
+    # Create prompt object.
+    context.prompt_session = PromptSession(completer = DebudaCompleter(commands, context))
+
 
     # Initialize current UI state
     ui_state = {
@@ -219,7 +289,6 @@ def main(args, context):
             op_name = graph.location_to_op_name(current_loc)
             ui_state['current_prompt'] += f"op:{util.CLR_PROMPT}{op_name}{util.CLR_PROMPT_END} "
 
-
         try:
             ui_state['current_device_id'] = context.netlist.graph_name_to_device_id(ui_state['current_graph_name'])
             ui_state['current_device'] = context.devices[ui_state['current_device_id']] if ui_state['current_device_id'] is not None else None
@@ -238,7 +307,7 @@ def main(args, context):
             try: # To get a a command from the speed dial
                 cmd_int = int(cmd_raw)
                 cmd_raw = navigation_suggestions[cmd_int]["cmd"]
-            except:
+            except ValueError as e:
                 pass
 
             cmd = cmd_raw.split ()
@@ -253,32 +322,35 @@ def main(args, context):
 
                 if found_command == None:
                     # Print help on invalid commands
-                    print_help (commands)
+                    print_help (commands, cmd)
                     raise util.TTException (f"Invalid command '{cmd_string}'")
                 else:
                     if found_command["long"] == "exit":
                         exit_code = int(cmd[1]) if len(cmd) > 1 else 0
                         return exit_code
                     elif found_command["long"] == "help":
-                        print_help (commands)
+                        print_help (commands, cmd)
                     elif found_command["long"] == "reload":
                         import_commands (reload=True)
+                    elif found_command["long"] == "eval":
+                        eval_str = " ".join(cmd[1:])
+                        eval_str = context.elf.substitute_names_with_values(eval_str)
+                        print (f"{eval_str} = {eval(eval_str)}")
                     else:
                         new_navigation_suggestions = found_command["module"].run(cmd_raw, context, ui_state)
-                        if new_navigation_suggestions:
-                            navigation_suggestions = new_navigation_suggestions
+                        navigation_suggestions = new_navigation_suggestions
 
         except Exception as e:
+            util.notify_exception (type(e), e, e.__traceback__)
             if args.test: # Always raise in test mode
                 raise
             if have_non_interactive_commands or type(e) == util.TTFatalException:
                 # In non-interactive mode and on fatal excepions, we re-raise to exit the program
                 raise
-            else:
-                # Otherwise, we print the call stack, but continue the REPL
-                util.notify_exception (type(e), e, e.__traceback__)
-        except SystemExit as e:
-            print (e)
+        except DocoptExit as e:
+            util.ERROR(e)
+            if args.test: # Always raise in test mode
+                raise
 
     return 0
 

@@ -1,16 +1,22 @@
+"""
+Usage:
+  eq
+
+Description:
+  Prints epoch queue summary
+
+Examples:
+  eq
+"""
 import tt_util as util
 import tt_device
 from tt_netlist import Queue
 from tabulate import tabulate
-from tt_coordinate import OnChipCoordinate
 
 command_metadata = {
-    "long" : "epoch-queue",
-    "type" : "dev",
+    "type" : "low-level",
     "short" : "eq",
-    "expected_argument_count" : [ 0, 1 ],
-    "arguments" : "verbose",
-    "description" : "Prints Epoch queue summary for queues with occupancy greater than 0. If 'verbose' argument is set, it prints all epoch queues."
+    "description" : __doc__
 }
 
 # Prints epoch queues
@@ -41,6 +47,14 @@ def run (args, context, ui_state = None):
     table=[]
     loc_str = "DRAM"
 
+    if arch_name != "GRAYSKULL":
+        # Get the enum mapping for EpochQueueCmd from ERISC ELF file
+        EpochQueueCmd_val_to_str = context.elf.get_enum_mapping ("erisc_app.epoch_queue::EpochQueueCmd")
+        # Remove "EpochCmd" from the value strings
+        EpochQueueCmd_val_to_str = {k: v.replace("EpochCmd", "") for k, v in EpochQueueCmd_val_to_str.items()}
+    else:
+        EpochQueueCmd_val_to_str = None
+
     occupied_epoch_queues_count = 0
     for blocktype in ["functional_workers", "eth"]:
         coretype = "Worker" if blocktype == "functional_workers" else "Ethernet"
@@ -67,9 +81,14 @@ def run (args, context, ui_state = None):
                 cmd_at_rdptr = (cmd_rd_word >> 28) & 0xffff
 
             if occupancy != 0 or verbose:
+                if EpochQueueCmd_val_to_str:
+                    cmd_enum_str = EpochQueueCmd_val_to_str[cmd_at_rdptr] if cmd_at_rdptr in EpochQueueCmd_val_to_str else f"{cmd_at_rdptr}"
+                else:
+                    cmd_enum_str = f"{cmd_at_rdptr}"
+
                 table.append ([f"{x}-{y}", coretype, loc_str, f"{dx}-{dy}", f"0x{addr:x}", f"{rdptr}", f"{wrptr}", occupancy if occupancy == 0 else f"{util.CLR_RED}{occupancy}{util.CLR_END}",
                                 "-" if occupancy == 0 else f"0x{addr_at_rdptr:x}",
-                                "-" if occupancy == 0 else f"0x{cmd_at_rdptr:x}"
+                                "-" if occupancy == 0 else cmd_enum_str
                                 ])
 
     if len(table) > 0:

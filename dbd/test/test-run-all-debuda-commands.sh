@@ -14,7 +14,7 @@ run_debuda() {
         # If TMP_OUT_FILE is not set, show the output
         timeout 30 dbd/debuda.py debuda_test --server-cache $SERVER_CACHE --test --commands "$1"
     else
-        timeout 30 dbd/debuda.py debuda_test --server-cache $SERVER_CACHE --test --commands "$1" >> $TMP_OUT_FILE 2>&1
+        timeout 30 dbd/debuda.py debuda_test --server-cache $SERVER_CACHE --test --commands "$1"
     fi
     if [ $? -ne 0 ]; then
         echo "***"
@@ -24,7 +24,7 @@ run_debuda() {
     fi
 }
 
-# Define the command array
+# Define the command array. IMPROVE: we could parse commands' help and extract the examples.
 declare -a COMMAND_LIST
 COMMAND_LIST=()
 COMMAND_LIST+=("op-map")
@@ -37,27 +37,26 @@ COMMAND_LIST+=("eq")
 COMMAND_LIST+=("eq 1")
 COMMAND_LIST+=("dq")
 COMMAND_LIST+=("p 130000000000")
-COMMAND_LIST+=("brxy 1 1 1 0 1")
+COMMAND_LIST+=("brxy 1-1 0x0 32 --format i8")
 COMMAND_LIST+=("cdr")
-COMMAND_LIST+=("cdr 1 1")
+COMMAND_LIST+=("cdr 1-1")
 COMMAND_LIST+=("srs 0")
 COMMAND_LIST+=("srs 1")
 COMMAND_LIST+=("srs 2")
 COMMAND_LIST+=("ddb 0 32")
-COMMAND_LIST+=("ddb 0 16 hex8 1 1 0")
-COMMAND_LIST+=("ddb 0 16 hex16 2 2 0")
+COMMAND_LIST+=("ddb 0 16 hex8 1-1 0")
+COMMAND_LIST+=("ddb 0 16 hex16 2-2 0")
 COMMAND_LIST+=("pcir 0")
-COMMAND_LIST+=("wxy 1 1 0 0xabcd")
-COMMAND_LIST+=("rxy 1 1 0")
+COMMAND_LIST+=("wxy 1-1 0 0xabcd")
 COMMAND_LIST+=("full-dump")
 COMMAND_LIST+=("ha")
 if [ "$ARCH_NAME" = "grayskull" ]; then
-    COMMAND_LIST+=("s 1 1 4")
+    COMMAND_LIST+=("s 1-1 4")
 else
-    COMMAND_LIST+=("s 20 18 4")
+    COMMAND_LIST+=("s 20-18 4")
 fi
-COMMAND_LIST+=("t 1 0")
-COMMAND_LIST+=("t 1 1")
+COMMAND_LIST+=("t 1")
+COMMAND_LIST+=("t 1 --raw")
 if [ "$TEST_NAME" = "" ]; then
     COMMAND_LIST+=("export")  # Finally, we export the dump to try to rerun it
 else

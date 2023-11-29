@@ -1,21 +1,20 @@
 """
 Usage:
-  ddb <trisc-id> <num-words> [<format>] [<x>] [<y>] [<device-id>]
+  ddb <trisc-id> <num-words> [<format>] [<core-loc>] [<device-id>]
 
 Arguments:
   trisc-id      Trisc ID (0|1|2)
-  num-words     Number of words to dump.
-  format        Print format (i8, i16, i32, hex8, hex16, hex32). Default: hex32.
-  x             Core x coordinate in netlist coordinate system. If not supplied, the current core is used.
-  y             Core y coordinate in netlist coordinate system. If not supplied, the current core is used.
-  device-id     Optional device-id.
+  num-words     Number of words to dump
+  format        Print format (i8, i16, i32, hex8, hex16, hex32). Default: hex32
+  core-loc      Either X-Y or R,C location of the core
+  device-id     Optional device-id
 
 Description:
   Prints a debug buffer.
 
 Examples:
   ddb 1 16
-  ddb 0 32 hex32 1 1
+  ddb 0 32 hex32 18-18
 """
 
 from docopt import docopt
@@ -27,7 +26,6 @@ from tt_coordinate import OnChipCoordinate
 
 command_metadata = {
     "short": "ddb",
-    "long": "ddb",
     "type": "low-level",
     "description": __doc__
 }
@@ -42,8 +40,8 @@ def run(cmd_text, context, ui_state=None):
     device = context.devices[device_id]
     TRISC_DEBUG_BASE = [71680, 88064, 108544]
 
-    if args['<x>'] and args['<y>']:
-        loc = OnChipCoordinate(int(args['<x>']), int(args['<y>']), 'netlist', device)
+    if args['<core-loc>']:
+        loc = OnChipCoordinate.create(args["<core-loc>"], device=device)
     if args['<device-id>']:
         device_id = int(args['<device-id>'])
         if device_id not in context.devices:

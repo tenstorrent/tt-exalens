@@ -38,6 +38,8 @@ def run(cmd_text, context, ui_state = None):
                 reg_val = risc.read_gpr(j)
                 result[i][j] = reg_val
             risc.contnue()
+        else:
+            print(f"Core {i} cannot be paused.")
 
     table=[]
     for i in range(0,33):

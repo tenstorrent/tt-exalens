@@ -18,6 +18,16 @@
             }
         },
         {
+            "name": "plain-run command",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debuda.py",
+            "args": [ "--commands", "info brisc.EPOCH_INFO_PTR" ],
+            "cwd": "${workspaceFolder}/..",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+        },
+        {
             "name": "debuda_test-ha",
             "type": "python",
             "request": "launch",

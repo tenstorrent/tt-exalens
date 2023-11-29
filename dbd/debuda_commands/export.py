@@ -23,7 +23,7 @@ Examples:
 import tt_util as util
 command_metadata = {
     "short" : "xp",
-    "type" : "dev",
+    "type" : "housekeeping",
     "description" : __doc__
 }
 
@@ -51,6 +51,10 @@ def run(cmd_text, context, ui_state = None):
     COMMAND_HISTORY_FILENAME="debuda-command-history.yaml"
     util.write_to_yaml_file (context.prompt_session.history.get_strings(), COMMAND_HISTORY_FILENAME)
     filelist.append (COMMAND_HISTORY_FILENAME)
+
+    # Append the brisc file
+    for filename in context.elf.filemap.values():
+      filelist.append (filename)
 
     odir = context.args.output_dir
     de_odir = f"dbd/export-{odir}"
