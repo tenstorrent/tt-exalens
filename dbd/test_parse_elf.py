@@ -8,14 +8,14 @@ def compile_test_cpp_program (program_name, program_text):
     Just compile a program to get an ELF file
     """
     print (f"\nCompiling {program_name}...")
-    # Run ./src/ckernels/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g ./test-elf.c -o test-elf on the program_text
+    # Run ./third_party/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g ./test-elf.c -o test-elf on the program_text
     import os
     elf_file_name = f"{program_name}.elf"
     src_file_name = f"{program_name}.cpp"
     os.system(f"rm -f {elf_file_name}")
     with open(f"{src_file_name}", "w") as f:
         f.write(program_text)
-    os.system(f"src/ckernels/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g {src_file_name} -o {program_name}.elf")
+    os.system(f"third_party/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g {src_file_name} -o {program_name}.elf")
     if not os.path.exists(f"{program_name}.elf"):
         util.ERROR (f"ERROR: Failed to compile {src_file_name}")
         exit(1)
