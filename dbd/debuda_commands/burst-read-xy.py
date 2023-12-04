@@ -93,12 +93,12 @@ def print_a_pci_burst_read (device_id, x, y, noc_id, addr, word_count=1, sample 
     else:
         for i in range (word_count):
             values = {}
-            t_end = time.time() + sample / word_count
             print (f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
+            t_end = time.time() + sample / word_count
             while time.time() < t_end:
                 val = tt_device.SERVER_IFC.pci_read_xy(device_id, x, y, noc_id, addr + 4*i)
                 if val not in values:
                     values[val] = 0
                 values[val] += 1
             for val in values.keys():
-                print_a_pci_read(x, y, addr, val, f"- {values[val]} times")
+                print_a_pci_read(x, y, addr + 4*i, val, f"- {values[val]} times")
