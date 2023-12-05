@@ -9,13 +9,13 @@ class VerifBackend : public IBackend {
 
         virtual ~VerifBackend() {
             if (_initialized) {
-                TT_ASSERT(_backend->finish() == tt::DEVICE_STATUS_CODE::Success);
+                log_assert(_backend->finish() == tt::DEVICE_STATUS_CODE::Success);
             }
             log_info(tt::LogTest, "Backend teardown finished");
         }
 
         void initialize() {
-            TT_ASSERT(_backend->initialize() == tt::DEVICE_STATUS_CODE::Success);
+            log_assert(_backend->initialize() == tt::DEVICE_STATUS_CODE::Success);
             _initialized = true;
         }
 
