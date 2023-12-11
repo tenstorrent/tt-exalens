@@ -4,7 +4,6 @@ from tt_object import TTObject, TTObjectIDDict
 from tt_pipe import Pipe
 from tt_buffer import Buffer
 from tt_object import TTObject
-
 # Queues
 class Queue(TTObject):
     def __init__(self, name, data):
@@ -19,6 +18,9 @@ class Queue(TTObject):
         return (wrptr - rdptr) if wrptr >= rdptr else wrptr - (rdptr - 2 * entries)
     def to_str (channel, addr):
         return f"Ch%d-0x%x" % (channel, addr)
+
+    def device_id(self):
+        return self.root['target_device']
 
     # Accessors
     def outputs_as_str(self):
@@ -447,3 +449,4 @@ class Graph(TTObject):
         else:
             return self.get_fanout_buffer_level(where)
         return ret_val
+

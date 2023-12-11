@@ -195,8 +195,18 @@ def create_device_access_cache (context):
     if epoch_id_addr is None:
         raise util.TTException (f"Could not find address of epoch_id field in ELF file.")
 
+    arch = context.netlist.get_arch()
+    has_erisc = arch.lower() != "grayskull"
+    if has_erisc:
+        eth_epoch_id_addr, _ = context.elf.parse_addr_size("erisc_app.EPOCH_INFO_PTR.epoch_id")
+        # eth_epoch_id_addr = 0x20080 + context.elf.parse_address("@epoch_t.epoch_id")
+        if eth_epoch_id_addr is None:
+            raise util.TTException (f"Could not ind address of epoch_id field in erisc ELF file.")
+    
     for d in context.devices.values():
         d.EPOCH_ID_ADDR = epoch_id_addr
+        if has_erisc:
+            d.ETH_EPOCH_ID_ADDR = eth_epoch_id_addr
 
 # Loads all files necessary to debug a single buda run
 # Returns a debug 'context' that contains the loaded information

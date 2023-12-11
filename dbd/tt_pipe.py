@@ -8,6 +8,7 @@ class Pipe(TTObject):
         self.graphs = graphs
         self.input_buffers = TTObjectIDDict()
         self.output_buffers = TTObjectIDDict()
+        self.stream_id = None
 
     # Renderer
     def __str__(self):
