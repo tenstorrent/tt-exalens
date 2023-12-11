@@ -325,7 +325,7 @@ class HangAnalysisContext():
             if int(temporal_epoch) not in live_temporal_epochs:
                 continue
             self.context.netlist.temporal_graphs[str(temporal_epoch)].load_pipegen_and_blob()
-            blob_yaml = self.context.netlist.epoch_to_blob_yaml_file[int(temporal_epoch)]
+            blob_yaml = ha_context.context.netlist.temporal_graphs[int(temporal_epoch)].blob_yaml
             for key, val in blob_yaml.items():
                 if key.startswith ("phase_"):
                     for stream_designator in val.keys():
