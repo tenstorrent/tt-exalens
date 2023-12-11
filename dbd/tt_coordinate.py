@@ -93,6 +93,26 @@ class OnChipCoordinate:
         else:
             raise Exception("Unknown input coordinate system: " + input_type)
 
+    @staticmethod
+    def from_stream_designator(stream_designator: str):
+        """
+        This function takes a stream designator and returns the corresponding coordinate.
+
+        Stream designators are the key names in the blob yaml and have the form:
+            chip_<chip_id>__y_<core_y>__x_<core_x>__stream_<stream_id>
+        """
+        
+        # Split the stream designator into its components
+        chip_id_str, core_y_str, core_x_str, stream_id_str = stream_designator.split("__")
+
+        # Extract the coordinates from the stream designator
+        chip_id = int(chip_id_str.split("_")[1])
+        core_x = int(core_x_str.split("_")[1])
+        core_y = int(core_y_str.split("_")[1])
+
+        # Create the coordinate
+        return OnChipCoordinate(core_x, core_y, "nocTr", chip_id)
+
     # This returns a tuple with the coordinates in the specified coordinate system.
     # When doing pci_read_xy, we use nocVirt coordinates.
     def to(self, output_type):
@@ -167,7 +187,7 @@ class OnChipCoordinate:
     # == operator
     def __eq__(self, other):
         # util.DEBUG("Comparing coordinates: " + str(self) + " ?= " + str(other))
-        return (self._noc0_coord == other._noc0_coord) and ((self._device == other._device) or (self._device.arch == other._device.arch))
+        return (self._noc0_coord == other._noc0_coord) and ((self._device == other._device) or (self._device._arch == other._device._arch))
 
     def __lt__(self, other):
         if self._device.id() == other._device.id():

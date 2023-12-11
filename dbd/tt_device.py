@@ -303,7 +303,7 @@ class Device(TTObject):
     # Maps to store translation table from noc0 to nocTr and vice versa
     nocTr_y_to_noc0_y = dict()
     noc0_y_to_nocTr_y = dict()
-
+    
     # Class method to create a Device object given device architecture
     def create(arch, device_id, cluster_desc, device_desc_path):
         dev = None
@@ -406,6 +406,9 @@ class Device(TTObject):
         self._create_harvesting_maps()
         self._create_nocVirt_to_nocTr_map()
         util.DEBUG("Opened device: id=%d, arch=%s, has_mmio=%s, harvesting=%s" % (id, arch, self._has_mmio, self._harvesting))
+        
+        self.block_locations_cache = dict()
+
 
     # Coordinate conversion functions (see tt_coordinate.py for description of coordinate systems)
     def die_to_noc (self, phys_loc, noc_id=0):
@@ -469,7 +472,11 @@ class Device(TTObject):
         for loc in self.get_block_locations (block_type = "functional_workers"):
             for stream_id in range (0, 64):
                 regs = self.read_stream_regs (loc, stream_id)
-                streams[loc + (stream_id,)] = regs
+                streams[(loc,stream_id,)] = regs
+        for loc in self.get_block_locations (block_type = "eth"):
+            for stream_id in range (0, 32):
+                regs = self.read_stream_regs (loc, stream_id)
+                streams[(loc,stream_id,)] = regs
         return streams
 
     def read_core_to_epoch_mapping (self):
@@ -480,6 +487,9 @@ class Device(TTObject):
         epochs = {}
         for loc in self.get_block_locations (block_type = "functional_workers"):
             epochs[loc] = self.get_epoch_id(loc)
+        for loc in self.get_block_locations (block_type = "eth"):
+            epochs[loc] = self.get_epoch_id(loc)
+
         return epochs
 
     # For a given core, read all 64 streams and populate the 'streams' dict. streams[stream_id] will
@@ -501,20 +511,23 @@ class Device(TTObject):
 
     #  Returns locations of all blocks of a given type
     def get_block_locations (self, block_type = "functional_workers"):
-        locs = []
-        dev = self.yaml_file.root
-
-        for loc in dev[block_type]:
-            if type(loc) == list:
-                loc = loc[0]
-            parsed_loc = re.findall(r'(\d+)-(\d+)', loc)
-            parsed_loc = re.findall(r'(\d+)-(\d+)', loc)
-            x = int(parsed_loc[0][0])
-            y = int(parsed_loc[0][1])
-            oc_loc = OnChipCoordinate(x,y,"nocVirt", self) # The file uses nocVirt
-            locs.append (oc_loc)
-            # util.INFO(f"get_block_locations: {block_type} {x} {y} - {oc_loc.full_str()} ")
-        return locs
+        
+        if block_type not in self.block_locations_cache:
+            dev = self.yaml_file.root
+            locs = []
+            self.block_locations_cache[block_type] = []
+            for loc in dev[block_type]:
+                if type(loc) == list:
+                    loc = loc[0]
+                parsed_loc = re.findall(r'(\d+)-(\d+)', loc)
+                parsed_loc = re.findall(r'(\d+)-(\d+)', loc)
+                x = int(parsed_loc[0][0])
+                y = int(parsed_loc[0][1])
+                oc_loc = OnChipCoordinate(x,y,"nocVirt", self) # The file uses nocVirt
+                locs.append (oc_loc)
+                # util.INFO(f"get_block_locations: {block_type} {x} {y} - {oc_loc.full_str()} ")
+                self.block_locations_cache[block_type] = locs
+        return self.block_locations_cache[block_type]
 
     # Returns locations of metadata queue associated with a given core
     def get_t6_queue_location (self, arch_name, t6_locs):
@@ -669,7 +682,7 @@ class Device(TTObject):
             if stream_id >= s_id_min and stream_id < s_id_min + s_id_count:
                 return ko
         util.WARN ("no desc for stream_id=%s" % stream_id)
-        return "-"
+        return { "id_min" : -1,  "id_max" : -1,  "stream_id_min" : -1, "short" : "??", "long" : "?????" } # FIX THIS
 
 
     # Function to print a full dump of a location x-y
@@ -797,23 +810,36 @@ class Device(TTObject):
     # This comes from src/firmware/riscv/common/epoch.h
     def get_epoch_id(self, loc):
         assert (type(loc) == OnChipCoordinate)
+        if loc in self.get_block_locations("functional_workers"):
+            epoch = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, self.EPOCH_ID_ADDR) & 0xFF
+        else:
+            # old 0x1b00/0
+            # 0x20080
+            # + 0x28c
+            # = 2030c
+            # epoch = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0x2030c) & 0xFF
+            epoch = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, self.ETH_EPOCH_ID_ADDR) & 0xFF
 
-        epoch = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, self.EPOCH_ID_ADDR) & 0xFF
         return epoch
 
     # Returns whether the stream is configured
     def is_stream_configured(self, stream_data):
         return int(stream_data['CURR_PHASE']) > 0
 
+    def stream_has_remote_receiver(self, stream_data):
+        return int(stream_data['REMOTE_RECEIVER']) != 0
     def is_stream_idle(self, stream_data):
         return (stream_data["DEBUG_STATUS[7]"] & 0xfff) == 0xc00
+    def is_stream_holding_tiles (self, stream_data):
+        return int (stream_data["CURR_PHASE"]) != 0 and (int (stream_data["NUM_MSGS_RECEIVED"]) > 0 or (int(stream_data["MSG_INFO_WR_PTR (word addr)"] if "MSG_INFO_WR_PTR (word addr)" in stream_data else 0) - int(stream_data["MSG_INFO_PTR (word addr)"] if "MSG_INFO_PTR (word addr)" in stream_data else 0) > 0))
     def is_stream_active (self, stream_data):
-        return int (stream_data["CURR_PHASE"]) != 0 and int (stream_data["NUM_MSGS_RECEIVED"]) > 0
+        return int (stream_data["CURR_PHASE"]) != 0 and (int (stream_data["NUM_MSGS_RECEIVED"]) > 0 or (int(stream_data["MSG_INFO_WR_PTR (word addr)"] if "MSG_INFO_WR_PTR (word addr)" in stream_data else 0) - int(stream_data["MSG_INFO_PTR (word addr)"] if "MSG_INFO_PTR (word addr)" in stream_data else 0) > 0))
     def is_stream_done (self, stream_data):
         return int (stream_data["NUM_MSGS_RECEIVED"]) == int (stream_data["CURR_PHASE_NUM_MSGS_REMAINING"])
     def is_bad_stream (self, stream_data):
+        # Only certain bits indicate a problem for debug status registers
         return \
-            (stream_data["DEBUG_STATUS[1]"] != 0) or \
+            ((stream_data["DEBUG_STATUS[1]"] & 0xF0000) != 0) or \
             (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x4 or \
             (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x2
     def is_gsync_hung (self, loc):

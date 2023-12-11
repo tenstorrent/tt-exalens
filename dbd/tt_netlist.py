@@ -4,6 +4,60 @@ import tt_util as util
 from tt_graph import Graph, Queue
 from tt_temporal_epoch import TemporalEpoch
 
+from copy import copy
+from collections import defaultdict 
+
+class QueueBufferMapQueue():
+    def __init__(self, queue: Queue, grid_r, grid_c):
+        self.queue = queue
+        self.grid_r = None
+        self.grid_c = None
+        self.producer_buffer_id = None
+        self.consumer_buffers = set()
+        
+    def id(self):
+        return (self._queue.id(), self.grid_r, self.grid_c)
+        
+    def __hash__(self):
+        return self.id()    
+
+    def set_producer_buffer(self, buffer_id):
+        assert self.producer_buffer_id is None
+        self.producer_buffer_id = buffer_id
+        
+    def has_op_producer(self):
+        return self.producer_buffer_id is not None
+
+    def add_consumer_buffer(self, buffer_id):
+        self.consumer_buffers.add(buffer_id)
+        
+class QueueBufferMap():
+    def __init__(self):
+        self.location_queue_map: Dict[QueueBufferMapQueue] = dict()
+        self.queue_names = dict()
+        self.queue_producer_map = dict()
+        pass
+    
+    def get_queue_producer_buffer(self, queue_name, grid_r, grid_c):
+        # Returns a tuple (temporal epoch id, buffer id)
+        return self.queue_producer_map[queue_name][grid_r][grid_c]
+    
+    def get_queue_name(self, chip_id, dram_channel, dram_addr, temporal_epoch):
+        return self.queue_names[(chip_id, dram_channel, dram_addr, temporal_epoch)]
+    
+    def get_queue_buffer(self, chip_id: int, dram_channel: int, dram_addr: int, temporal_epoch: int):
+        return self.location_queue_map[(chip_id, dram_channel, dram_addr, temporal_epoch)]
+    
+    def add_queue_buffer(self, chip_id: int, dram_channel: int, dram_addr: int, temporal_epoch: int, queue: QueueBufferMapQueue):
+        self.location_queue_map[(chip_id, dram_channel, dram_addr, temporal_epoch)] = queue
+    
+    def set_queue_producer_buffer(self, queue: QueueBufferMapQueue, producer_buffer_id: int):
+        self.location_queue_map[(chip_id, dram_channel, dram_addr, temporal_epoch)].set_producer_buffer(producer_buffer_id)
+    
+    def add_queue_output_buffer(self, chip_id: int, dram_channel: int, dram_addr: int, temporal_epoch: int, buffer_id: int):
+        self.location_queue_map[(chip_id, dram_channel, dram_addr, temporal_epoch)].add_consumer_buffer(buffer_id)
+
+
 # Wrapper for Buda run netlist.yaml and, currently, runtime_data.yaml files
 class Netlist:
     def load_netlist_data (self):
@@ -11,6 +65,10 @@ class Netlist:
         self._epoch_id_to_graph_names_map = dict()
         self._epoch_ids = util.set()
         self._map_graph_names = dict()
+        self._name_consumers_map = defaultdict(list)
+        self._op_epoch_map = dict()
+        
+        self._addr_queue_map = dict()
 
         for graph_name in self.graph_names():
             epoch_id = self.graph_name_to_epoch_id(graph_name)
@@ -34,11 +92,28 @@ class Netlist:
         for queue_name in self.queue_names():
             queue = Queue (queue_name, self.yaml_file.root["queues"][queue_name])
             self._queues[queue.id()]=queue
+            q_yaml = self.yaml_file.root["queues"][queue_name]
+            self._name_consumers_map[q_yaml["input"]].append(queue_name)
+            
+            is_in_dram = q_yaml["loc"] == "dram"
+            if is_in_dram:
+                target_device = q_yaml["target_device"]
+                grid_size_r, grid_size_c = q_yaml["grid_size"]
+                grid_r = 0
+                grid_c = 0
+                for dram_channel, dram_addr in q_yaml["dram"]:
+                    self._addr_queue_map[(target_device, dram_channel, dram_addr)] = QueueBufferMapQueue(queue, grid_r, grid_c)
+                    grid_c += 1
+                    assert grid_r < grid_size_r
+                    if grid_c == grid_size_c:
+                        grid_c = 0
+                        grid_r += 1
+                    
+                
 
     # Initializes, but does not yet load pipegen and blob files
     def load_temporal_epochs (self, rundir):
-        self.epoch_to_pipegen_yaml_file = dict()
-        self.epoch_to_blob_yaml_file = dict()
+        self.temporal_graphs = TTObjectIDDict()
         self.graphs = TTObjectIDDict()
 
         # 0. Create graphs
@@ -65,13 +140,19 @@ class Netlist:
 
             pipegen_file=f"{graph_dir}/overlay/pipegen.yaml"
             blob_file=f"{graph_dir}/overlay/blob.yaml"
-            te = TemporalEpoch(epoch_id, self, pipegen_file, blob_file)
+            te = TemporalEpoch(epoch_id, self, pipegen_file, blob_file, [self.graph(g_name).root for g_name in graph_list])
             te.graphs = TTObjectIDDict()
             for g_name in graph_list:
                 g = self.graph(g_name)
                 te.graphs.add (g)
                 g.temporal_epoch = te
             self.temporal_epochs.add (te)
+            
+            for op_name, op in te.ops.items():
+                self._op_epoch_map[op_name] = te.id()
+                for input_name in op.root["inputs"]:
+                    self._name_consumers_map[input_name].append(op.id())
+        
 
     def __init__(self, netlist_filepath, rundir, runtime_data_yaml):
         # 1. Set the file. It will be lazy loaded on first access
@@ -119,11 +200,18 @@ class Netlist:
         return self._epoch_id_to_graph_names_map[epoch_id] if epoch_id in self._epoch_id_to_graph_names_map else None
     def graph (self, graph_name):
         return self.graphs[graph_name]
+    def temporal_graph (self, graph_name):
+        return self.temporal_graphs[graph_name]
 
     def get_graph_name(self, epoch_id, device_id):
         if device_id in self._map_graph_names:
             if epoch_id in self._map_graph_names[device_id]:
                 return self._map_graph_names[device_id][epoch_id]
+        return None
+    def get_temporal_graph_name(self, epoch_id):
+        epoch_id = int(epoch_id)
+        if epoch_id in self.temporal_graphs:
+            return self.temporal_graphs[epoch_id]
         return None
 
     def graph_by_epoch_and_device (self, epoch_id, device_id):

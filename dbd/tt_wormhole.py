@@ -1,6 +1,6 @@
 import tt_util as util, os
 import tt_device
-from tt_coordinate import CoordinateTranslationError
+from tt_coordinate import CoordinateTranslationError,OnChipCoordinate
 
 phase_state_map = {
     0: "PHASE_START",
@@ -72,7 +72,10 @@ class WormholeDevice (tt_device.Device):
 
     # Coordinate conversion functions (see tt_coordinate.py for description of coordinate systems)
     def noc0_to_tensix (self, loc):
-        noc0_x, noc0_y = loc
+        if isinstance(loc,OnChipCoordinate):
+            noc0_x, noc0_y = loc._noc0_coord
+        else:
+            noc0_x, noc0_y = loc
         if noc0_x == 0 or noc0_x == 5:
             raise CoordinateTranslationError ("NOC0 x=0 and x=5 do not have an RC coordinate")
         if noc0_y == 0 or noc0_y == 6:
@@ -136,6 +139,7 @@ class WormholeDevice (tt_device.Device):
         reg["STREAM_ID"] =                                            self.get_stream_reg_field(loc, stream_id, 224+5, 24, 6)
         reg["PHASE_AUTO_CFG_PTR (word addr)"] =                       self.get_stream_reg_field(loc, stream_id, 12, 0, 24)
         reg["CURR_PHASE"] =                                           self.get_stream_reg_field(loc, stream_id, 11, 0, 20)
+        
         reg["CURR_PHASE_NUM_MSGS_REMAINING"] =                        self.get_stream_reg_field(loc, stream_id, 36, 12, 12)
         reg["NUM_MSGS_RECEIVED"] =                                    self.get_stream_reg_field(loc, stream_id, 224+5, 0, 24)
         reg["NEXT_MSG_ADDR"] =                                        self.get_stream_reg_field(loc, stream_id, 224+6, 0, 32)
