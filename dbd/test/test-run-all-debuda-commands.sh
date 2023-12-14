@@ -24,6 +24,15 @@ run_debuda() {
     fi
 }
 
+# Form Wormhole we use nocTr coordinates (noc0 for GraySkull)
+if [ "$ARCH_NAME" = "grayskull" ]; then
+    CORE_LOC_11="1-1"
+    CORE_LOC_22="2-2"
+else
+    CORE_LOC_11="18-18"
+    CORE_LOC_22="19-19"
+fi
+
 # Define the command array. IMPROVE: we could parse commands' help and extract the examples.
 declare -a COMMAND_LIST
 COMMAND_LIST=()
@@ -37,21 +46,21 @@ COMMAND_LIST+=("eq")
 COMMAND_LIST+=("eq 1")
 COMMAND_LIST+=("dq")
 COMMAND_LIST+=("p 130000000000")
-COMMAND_LIST+=("brxy 18-18 0x0 32 --format i8")
+COMMAND_LIST+=("brxy $CORE_LOC_11 0x0 32 --format i8")
 COMMAND_LIST+=("cdr")
-COMMAND_LIST+=("cdr 18-18")
+COMMAND_LIST+=("cdr $CORE_LOC_11")
 COMMAND_LIST+=("srs 0")
 COMMAND_LIST+=("srs 1")
 COMMAND_LIST+=("srs 2")
 COMMAND_LIST+=("ddb 0 32")
-COMMAND_LIST+=("ddb 0 16 hex8 18-18 0")
-COMMAND_LIST+=("ddb 0 16 hex16 19-19 0")
+COMMAND_LIST+=("ddb 0 16 hex8 $CORE_LOC_11 0")
+COMMAND_LIST+=("ddb 0 16 hex16 $CORE_LOC_22 0")
 COMMAND_LIST+=("pcir 0")
-COMMAND_LIST+=("wxy 18-18 0 0xabcd")
+COMMAND_LIST+=("wxy $CORE_LOC_11 0 0xabcd")
 COMMAND_LIST+=("full-dump")
 COMMAND_LIST+=("ha")
 if [ "$ARCH_NAME" = "grayskull" ]; then
-    COMMAND_LIST+=("s 18-18 4")
+    COMMAND_LIST+=("s $CORE_LOC_11 4")
 else
     COMMAND_LIST+=("s 20-18 4")
 fi
