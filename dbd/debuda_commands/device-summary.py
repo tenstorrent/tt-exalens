@@ -8,7 +8,8 @@ Arguments:
                        Supported: netlist, noc0, noc1, nocTr, nocVirt, die, tensix
   cell-contents        A comma separated list of the cell contents [default: op]
                        Supported:
-                         op - show operation details
+                         op - show operation running on the core with epoch ID in parenthesis
+                         block - show the type of the block at that coordinate
                          netlist, noc0, noc1, nocTr, nocVirt, die, tensix - show coordinate
 
 Description:
@@ -77,7 +78,6 @@ def run(cmd_text, context, ui_state=None):
                     util.WARN (f"Device {device_id} has no graph in epoch {epoch_ids[0]}")
                     continue
 
-
         def cell_render_function(loc):
             # One string for each of cell_contents_array elements
             cell_contents_str = []
@@ -94,6 +94,9 @@ def run(cmd_text, context, ui_state=None):
                                 if op_name not in op_color_map: # Assign a new color for each op
                                     op_color_map[op_name] = util.clr_by_index(len(op_color_map))
                                 cell_contents_str.append(f"{op_color_map[op_name]}{op_name} ({loc_to_epoch[loc]}){util.CLR_END}")
+                elif ct == "block":
+                    block_type = device.get_block_type(loc)
+                    cell_contents_str.append (block_type)
                 elif ct in VALID_COORDINATE_TYPES:
                     try:
                         coord_str = loc.to_str (ct)

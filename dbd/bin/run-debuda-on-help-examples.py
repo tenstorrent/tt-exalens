@@ -78,7 +78,8 @@ def execute_debuda_command(command):
     # print (f"filtered_output={filtered_output}")
 
     if result['returncode'] != 0:
-        filtered_output = f">>>>> ERROR (exit code: {result['returncode']})\n" + "\n".join (filtered_output) + "\n<<<<<"
+        full_command_str = " ".join(full_command)
+        filtered_output = f">>>>> ERROR (exit code: {result['returncode']}) in command '{full_command_str}'\n" + "\n".join (filtered_output) + "\n<<<<<"
         print (f"Error executing command: {command}, output: {filtered_output}")
     else:
         if len(filtered_output) > MAX_OUTPUT_LINES:

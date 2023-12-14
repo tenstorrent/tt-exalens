@@ -195,14 +195,20 @@ class OnChipCoordinate:
         else:
             return self._device.id() < other._device.id()
 
-    # Singleton creation of a coordinate
-    def create(coord_str, device):
+    def create(coord_str, device, coord_type=None):
+        """
+        Creates a coordinate object from a string. The string can be in any of the supported coordinate systems.
+        The nocTr and netlist coordinates are used for - and , separators, respectively, unless the coord_type
+        is specified.
+        """
         if "-" in coord_str:
+            if coord_type is None:
+                coord_type = "nocTr"
             x, y = coord_str.split("-")
-            coord_type = "nocTr"
         elif "," in coord_str:
+            if coord_type is None:
+                coord_type = "netlist"
             x, y = coord_str.split(",")
-            coord_type = "netlist"
         else:
             raise Exception("Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C")
 

@@ -23,7 +23,7 @@ dbd: verif/netlist_tests/debuda-server-standalone
 
 # MARKDOWN_FILES=
 MARKDOWN_FILES=debuda-py-intro.md
-# MARKDOWN_FILES+=debuda-py-tutorial.md
+MARKDOWN_FILES+=debuda-py-tutorial.md
 MARKDOWN_FILES+=$(DBD_OUT)/debuda-commands-help.md
 
 # The following target is used to build the documentation (md, html, pdf). It is not bullet proof, but it is good enough for now.
@@ -45,14 +45,21 @@ dbd/documentation:
 	echo "Removing old export files"
 	-rm -f *-export.[0-9]*.zip
 	echo "Generating raw help file"
-	dbd/debuda.py --command 'help;x' | tee $(DBD_OUT)/help_file_raw.txt
+	dbd/debuda.py --command 'help -v;x' | tee $(DBD_OUT)/help_file_raw.txt
 	echo "Generating help file with example outputs"
 	dbd/bin/run-debuda-on-help-examples.py $(DBD_OUT)/help_file_raw.txt $(DBD_OUT)/help_file_with_example_outputs.txt
 	echo "Generating Markdown $(DBD_OUT)/debuda-commands-help.md"
+	# Check if grep -c ">>>>> ERROR" help_file_with_example_outputs.txt returns more than 0
+	NUM_ERRORS=`grep -c ">>>>> ERROR" $(DBD_OUT)/help_file_with_example_outputs.txt` ; \
+	if [ $$NUM_ERRORS -gt 0 ]; then \
+		cat $(DBD_OUT)/help_file_with_example_outputs.txt | grep ">>>>> ERROR"; \
+		echo "ERROR: There are $$NUM_ERRORS errors in the help file $(DBD_OUT)/help_file_with_example_outputs.txt. Please fix them before generating the documentation."; \
+		exit 1; \
+	fi
 	dbd/bin/convert-help-to-markdown.py $(DBD_OUT)/help_file_with_example_outputs.txt $(DBD_OUT)/debuda-commands-help.md
 	echo "Generating the CSS file to be included in the html"
 	echo "<style>" > $(DBD_OUT)/temp-style-header.html
-	cat dbd/docs/debuda-docs.css >> $(DBD_OUT)/temp-style-header.html
+	cat dbd/docs-md/debuda-docs.css >> $(DBD_OUT)/temp-style-header.html
 	echo "</style>" >> $(DBD_OUT)/temp-style-header.html
 	echo "Combining markdown files into one html file"
 	cd dbd/docs-md && pandoc -f markdown -s $(MARKDOWN_FILES) -o $(DBD_OUT)/debuda-help.html --metadata pagetitle="Debuda Documentation" --include-in-header=$(DBD_OUT)/temp-style-header.html
