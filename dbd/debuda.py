@@ -11,7 +11,7 @@ try:
     from prompt_toolkit import PromptSession
     from prompt_toolkit.completion import Completer, Completion
     from prompt_toolkit.formatted_text import HTML
-    from docopt import DocoptExit
+    from docopt import DocoptExit, docopt
 except ModuleNotFoundError as e:
     traceback.print_exc()
     print(f"Try:\033[31m pip install -r dbd/requirements.txt; make dbd \033[0m")
@@ -63,25 +63,53 @@ class DebudaCompleter(Completer):
                     yield Completion(f"@{address}", start_position=-len(prompt_current_word))
 
 # Creates rows for tabulate for all commands of a given type
-def format_commands (commands, type, specific_cmd=None):
+def format_commands (commands, type, specific_cmd=None, verbose=False):
     rows = []
     for c in commands:
         if c['type'] == type and (specific_cmd is None or c['long'] == specific_cmd or c['short'] == specific_cmd):
             description = c['description']
-            row = [ f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{c['short']}", "" ]
-            rows.append(row)
-            row2 = [ f"", f"", f"{description}" ]
-            rows.append(row2)
-            rows.append([ "<--MIDRULE-->", "", "" ])
+            if verbose:
+                row = [ f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{c['short']}", "" ]
+                rows.append(row)
+                row2 = [ f"", f"", f"{description}" ]
+                rows.append(row2)
+                rows.append([ "<--MIDRULE-->", "", "" ])
+            else:
+                description = description.split("\n")
+                # Iterate to find the line containing "Description:". Then take the following line.
+                # If there is no such line, take the first line.
+                found_description = False
+                for line in description:
+                    if found_description:
+                        description = line
+                        break
+                    if "Description:" in line:
+                        found_description = True
+                if not found_description:
+                    description = description[0]
+                description = description.strip()
+                row = [ f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{c['short']}", f"{description}" ]
+                rows.append(row)
     return rows
+
+def find_command (commands, name):
+    for c in commands:
+        if c['long'] == name or c['short'] == name:
+            return c
+    return None
 
 # Print all commands (help)
 def print_help (commands, cmd):
-    specific_cmd = cmd[1] if len(cmd) > 1 else None
+    help_command_description = find_command (commands, "help")["description"]
+    args = docopt(help_command_description, argv=" ".join(cmd[1:]))
+
+    specific_cmd = args['<command>'] if '<command>' in args else None
+    verbose = ('-v' in args and args['-v']) or specific_cmd is not None
+
     rows = []
-    rows += format_commands (commands, 'housekeeping', specific_cmd)
-    rows += format_commands (commands, 'low-level', specific_cmd)
-    rows += format_commands (commands, 'high-level', specific_cmd)
+    rows += format_commands (commands, 'housekeeping', specific_cmd, verbose)
+    rows += format_commands (commands, 'low-level', specific_cmd, verbose)
+    rows += format_commands (commands, 'high-level', specific_cmd, verbose)
     # rows += format_commands (commands, 'dev', "Development")
 
     if not rows:
@@ -89,7 +117,7 @@ def print_help (commands, cmd):
         return
 
     # Replace each line starting with <--MIDRULE-->, with a ruler line to separate the commands visually
-    table_str = tabulate(rows, headers=["Long Form", "Short", "Details"])
+    table_str = tabulate(rows, headers=["Full Name", "Short", "Description"])
     lines = table_str.split("\n")
     midrule = lines[1]
     for i in range (len(lines)):
@@ -97,6 +125,8 @@ def print_help (commands, cmd):
             lines[i] = midrule
     new_table_str = "\n".join(lines)
     print (new_table_str)
+    if not verbose:
+        print ("Use '-v' for more details.")
 
 # Certain commands give suggestions for next step. This function formats and prints those suggestions.
 def print_navigation_suggestions (navigation_suggestions):
@@ -120,7 +150,9 @@ def import_commands (reload = False):
         { "long" : "help",
           "short" : "h",
           "type" : "housekeeping",
-          "description" : "Description:\n  Prints documentation summary. If a command is specified, prints documentation for that command."
+          "description" : "Usage:\n  help [-v] [<command>]\n\n" +
+                          "Description:\n  Prints documentation summary. Use -v for details. If a command name is specified, it prints documentation for that command only.\n\n" +
+                          "Options:\n  -v   If specified, prints verbose documentation."
         },
         { "long" : "reload",
           "short" : "rl",

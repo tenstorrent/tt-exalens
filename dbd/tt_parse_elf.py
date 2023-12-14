@@ -489,7 +489,7 @@ def mem_access (name_dict, access_path, mem_access_function):
             if not die:
                 raise Exception(f"ERROR: Cannot find {member_path}")
             type_die = die.get_resolved_type()
-            current_address = mem_access_function(current_address + die.get_addr(), 4)[0] # Assuming 4 byte pointers
+            current_address = mem_access_function(current_address, 4)[0] + die.get_addr() # Assuming 4 byte pointers
 
         elif path_divider == "[":
             if num_members_to_read > 1:

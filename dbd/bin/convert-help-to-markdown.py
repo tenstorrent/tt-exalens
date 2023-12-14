@@ -58,14 +58,14 @@ def create_markdown(data, output_path):
     with open(output_path, 'w') as f:
         f.write("# Commands\n")
         for cmd, details in data.items():
-            f.write(f"## {cmd} / {details['short_form']}\n")
+            f.write(f"#### {cmd} / {details['short_form']}\n")
             for section, content in details.items():
                 if section == 'short_form':
                     continue
 
                 # Handle 'arguments' and 'options' differently
                 if section in ['arguments', 'options']:
-                    f.write(f"### {section.capitalize()}:\n")
+                    f.write(f"##### {section.capitalize()}:\n")
                     f.write(f"```\n")
                     for line in content:
                         f.write(f"{line}\n")
@@ -73,13 +73,20 @@ def create_markdown(data, output_path):
 
                 # Handle other sections
                 else:
-                    f.write(f"### {section.capitalize()}:\n")
+                    f.write(f"##### {section.capitalize()}:\n")
                     in_triple_backticks = False
                     for line in content:
                         if '```' in line:
                             in_triple_backticks = not in_triple_backticks
-                        elif (section == "examples" or section == "usage") and not in_triple_backticks:
+                        elif section == "usage" and not in_triple_backticks:
                             line = f"`{line}`"
+                        elif section == "examples" and not in_triple_backticks:
+                            if '#' in line:
+                                # Split to before first # and after first #
+                                line, comment = line.split('#', 1)
+                                line = f"`{line}` # {comment}"
+                            else:
+                                line = f"`{line}`"
                         f.write(f"{line}\n")
                 f.write("\n")
 

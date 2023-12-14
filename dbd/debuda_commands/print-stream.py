@@ -62,7 +62,7 @@ def run(cmd_text, context, ui_state = None):
             n['description'] += " N/A"
 
     # 2. Find blob data
-    stream_id_tuple = (current_device_id, *stream_loc.to('nocTr'), stream_id, int(regs['CURR_PHASE']))
+    stream_id_tuple = (current_device_id, *stream_loc.to('nocTr'), stream_id, int(regs['CURR_PHASE']) & 0x7fff) # Only the lower bits are the phase id
     stream_set = graph.get_streams(stream_id_tuple)
 
     if len(stream_set) == 1:

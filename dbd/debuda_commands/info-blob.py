@@ -14,23 +14,23 @@ Examples:
 """
 command_metadata = {
     "short": "ib",
-    "type": "high-level",
+    "type": "dev",
     "description": __doc__
 }
 
 from docopt import docopt
 import tt_util as util
-from tt_object import DataArray
 from tt_coordinate import OnChipCoordinate
 import tt_device
-import re
 
 def get_mem_reader(device_id, core_loc):
     """
     Returns a memory reader function that reads from a given device and a given core.
     """
     def mem_reader(addr, size_bytes):
-        return [ tt_device.SERVER_IFC.pci_read_xy(device_id, *core_loc.to("nocVirt"), 0, addr) ]
+        data = tt_device.SERVER_IFC.pci_read_xy(device_id, *core_loc.to("nocVirt"), 0, addr)
+        # print (f"  mem_reader read from address 0x{addr:08x}: 0x{data:08x}")
+        return [ data ]
     return mem_reader
 
 def pretty_print_overlay_blob_register_settings(elf, device_id, core_loc, blob_address):
@@ -38,17 +38,18 @@ def pretty_print_overlay_blob_register_settings(elf, device_id, core_loc, blob_a
     Given a blob address, print the register settings in a nice way.
     """
     blob = tt_device.SERVER_IFC.pci_read_xy(device_id, *core_loc.to("nocVirt"), 0, blob_address)
-    print(f"  Blob read from address 0x{blob_address:08x}: {blob}")
+    print(f"  Blob read from address 0x{blob_address:08x}: 0x{blob:08x}: ... <to be implemented> ...")
 
 def print_info_blob(elf, device_id, core_loc):
     """
     Get the blob address from the epoch info struct and print the register settings in a nice way.
     """
     mem_reader = get_mem_reader(device_id=device_id, core_loc=core_loc)
-    num_input_streams = elf.read_path("erisc_app.ETH_EPOCH_INFO_PTR.num_inputs", mem_reader)[0]
+    num_input_streams = elf.read_path("brisc.EPOCH_INFO_PTR.num_inputs", mem_reader)[0]
+    print (f"Number of input streams: {num_input_streams}")
     for s in range(num_input_streams):
-        blob_address = elf.read_path(f"erisc_app.ETH_EPOCH_INFO_PTR.inputs[{s}]->blob_start_addr", mem_reader)
-        print(f"Chip {device_id} {core_loc} Stream {s} blob:")
+        blob_address = elf.read_path(f"brisc.EPOCH_INFO_PTR.inputs[{s}]->blob_start_addr", mem_reader)
+        # print (f"  Input stream {s} blob address: 0x{blob_address[0]:08x}")
         pretty_print_overlay_blob_register_settings(elf, device_id, core_loc, blob_address[0]) ## another user written plugin to dump these in a nice way
 
 def run(cmd_text, context, ui_state=None):

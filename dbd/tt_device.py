@@ -17,10 +17,14 @@ def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename):
     print ("Spawning debuda-server...")
 
     debuda_stub_path = os.path.abspath (util.application_path() + "/debuda-server-standalone")
+    library_path = os.path.abspath(os.path.dirname(debuda_stub_path))
+    ld_lib_path=os.environ.get("LD_LIBRARY_PATH", "")
+    os.environ["LD_LIBRARY_PATH"] = library_path + ":" + ld_lib_path if ld_lib_path else library_path
+
     try:
         global DEBUDA_STUB_PROCESS
         debuda_stub_args = [ f"{port}", f"{runtime_data_yaml_filename}" ]
-        DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path] + debuda_stub_args, preexec_fn=os.setsid, stderr=subprocess.PIPE)
+        DEBUDA_STUB_PROCESS=subprocess.Popen([debuda_stub_path] + debuda_stub_args, preexec_fn=os.setsid, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=os.environ.copy())
     except:
 # __DEBUG_ONLY__
         if os.path.islink (debuda_stub_path):
@@ -40,8 +44,13 @@ def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename):
         if debuda_stub_terminated:
             util.ERROR (f"Debuda server terminated unexpectedly with code: {DEBUDA_STUB_PROCESS.returncode}")
             process_stderr = DEBUDA_STUB_PROCESS.stderr.read().decode('utf-8')
-            if "does not exist" in process_stderr:
-                util.ERROR (f"Make sure to set the environment variable BUDA_HOME to <python-path>/site-packages/budabackend")
+            process_stdout = DEBUDA_STUB_PROCESS.stdout.read().decode('utf-8')
+            if process_stdout:
+                util.INFO (f"{process_stdout}")
+            if process_stderr:
+                if "does not exist" in process_stderr:
+                    util.ERROR (f"Make sure to set the environment variable BUDA_HOME to <python-path>/site-packages/budabackend")
+                util.ERROR (f"{process_stderr}")
             break
 
         if not util.is_port_available (int(port)): # Then we assume debuda-server has started
@@ -509,25 +518,40 @@ class Device(TTObject):
                 core_locations.append (loc)
         return core_locations
 
-    #  Returns locations of all blocks of a given type
     def get_block_locations (self, block_type = "functional_workers"):
-        
-        if block_type not in self.block_locations_cache:
-            dev = self.yaml_file.root
-            locs = []
-            self.block_locations_cache[block_type] = []
-            for loc in dev[block_type]:
-                if type(loc) == list:
-                    loc = loc[0]
-                parsed_loc = re.findall(r'(\d+)-(\d+)', loc)
-                parsed_loc = re.findall(r'(\d+)-(\d+)', loc)
-                x = int(parsed_loc[0][0])
-                y = int(parsed_loc[0][1])
-                oc_loc = OnChipCoordinate(x,y,"nocVirt", self) # The file uses nocVirt
-                locs.append (oc_loc)
-                # util.INFO(f"get_block_locations: {block_type} {x} {y} - {oc_loc.full_str()} ")
-                self.block_locations_cache[block_type] = locs
-        return self.block_locations_cache[block_type]
+        """
+        Returns locations of all blocks of a given type
+        """
+        locs = []
+        dev = self.yaml_file.root
+
+        for loc_or_list in dev[block_type]:
+            if type(loc_or_list) == list:
+                for loc in loc_or_list:
+                    locs.append (OnChipCoordinate.create (loc, self, "nocVirt"))
+            else:
+                locs.append (OnChipCoordinate.create (loc_or_list, self, "nocVirt"))
+        return locs
+
+    block_types = { 'functional_workers' : { 'symbol' : '.', "desc" : "Functional worker" },
+                    'eth':                 { 'symbol' : 'E', "desc" : "Ethernet" },
+                    'arc' :                { 'symbol' : 'A', "desc" : "ARC" },
+                    'dram' :               { 'symbol' : 'D', "desc" : "DRAM" },
+                    'pcie' :               { 'symbol' : 'P', "desc" : "PCIE" },
+                    'router_only' :        { 'symbol' : ' ', "desc" : "Router only" },
+                    'harvested_workers' :  { 'symbol' : '-', "desc" : "Harvested" },
+    }
+
+    def get_block_type (self, loc):
+        """
+        Returns the type of block at the given location
+        """
+        dev = self.yaml_file.root
+        for block_type in self.block_types:
+            block_locations = self.get_block_locations (block_type = block_type)
+            if loc in block_locations:
+                return block_type
+        return None
 
     # Returns locations of metadata queue associated with a given core
     def get_t6_queue_location (self, arch_name, t6_locs):
@@ -568,15 +592,6 @@ class Device(TTObject):
         dev = self.yaml_file.root
         rows = []
 
-        block_types = { 'functional_workers' : { 'symbol' : '.', "desc" : "Functional worker" },
-                        'eth':                 { 'symbol' : 'E', "desc" : "Ethernet" },
-                        'arc' :                { 'symbol' : 'A', "desc" : "ARC" },
-                        'dram' :               { 'symbol' : 'D', "desc" : "DRAM" },
-                        'pcie' :               { 'symbol' : 'P', "desc" : "PCIE" },
-                        'router_only' :        { 'symbol' : ' ', "desc" : "Router only" },
-                        'harvested_workers' :  { 'symbol' : '-', "desc" : "Harvested" },
-        }
-
         # Retrieve all block locations
         all_block_locs = dict()
         hor_axis = OnChipCoordinate.horizontal_axis(axis_coordinate)
@@ -585,7 +600,7 @@ class Device(TTObject):
         # Compute extents(range) of all coordinates in the UI
         ui_hor_range = (9999, -1)
         ui_ver_range = (9999, -1)
-        for bt in block_types:
+        for bt in self.block_types:
             b_locs = self.get_block_locations (block_type = bt)
             for loc in b_locs:
                 try:
