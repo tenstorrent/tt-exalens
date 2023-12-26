@@ -43,7 +43,7 @@ Use pyinstrument for simple profiling. Simply, prefix your invocation of Debuda 
 
 ### Building Debuda Server
 ```
-make verif/netlist_tests/debuda-server-standalone
+make dbd
 ```
 
 

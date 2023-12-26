@@ -64,7 +64,7 @@ Add this configuration to your main budabackend `launch.json`:
             "name": "GDB debuda-server",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/test/verif/netlist_tests/debuda-server-standalone",
+            "program": "${workspaceFolder}/build/bin/debuda-server-standalone",
             "args":
             [
                 "5555",
