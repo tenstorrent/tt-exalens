@@ -17,7 +17,7 @@ DBD_DEPS = $(addprefix $(OBJDIR)/, $(DBD_SRCS:.cpp=.d))
 -include $(DBD_DEPS)
 
 # Main target: it builds the standalone server executable
-dbd: verif/netlist_tests/debuda-server-standalone
+dbd: dbd/server/debuda-server-standalone
 	$(PRINT_TARGET)
 	$(PRINT_OK)
 
@@ -35,7 +35,7 @@ dbd/documentation:
 	fi
 	echo "Installing pandoc and weasyprint"
 	sudo apt update && sudo apt-get -y install pandoc weasyprint
-	pip install PyPDF2
+	pip install PyPDF2 reportlab
 	echo Applying patch to cause a hang in the test
 	-git apply dbd/test/inject-errors/sfpu_reciprocal-infinite-spin-wormhole_b0.patch
 	echo "Building and running test"
@@ -75,7 +75,7 @@ dbd/documentation:
 # The following target is used to build the release package (zip). It depends on dbd/documentation (as it needs the pdf file),
 # however this is not encoded in the dependency list as it takes a while to build the documentation.
 .PHONY: dbd/release
-dbd/release:
+dbd/release: dbd dbd/documentation
 	echo "The board should be reset before running this. Full command should be: unset CONFIG ; make clean ; make dbd/documentation ; make dbd/release"
 	dbd/bin/package.sh $(DBD_OUT)
 
@@ -114,3 +114,4 @@ $(OBJDIR)/dbd/%.o: dbd/%.cpp
 	$(PRINT_OK)
 
 include $(BUDA_HOME)/dbd/tools/module.mk
+include $(BUDA_HOME)/dbd/server/module.mk

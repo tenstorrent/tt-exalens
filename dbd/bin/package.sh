@@ -20,21 +20,8 @@ make -j32 build_hw verif/op_tests dbd
 LIB_FILES="./build/lib/libtt.so ./build/lib/libdevice.so"
 for i in $LIB_FILES; do cp -f $i $STAGING_DIR; done
 
-# Compile debuda-server-standalone with relative paths to libtt
-# Note: To find the link command, on can use remake --trace
-g++ -MMD -Wdelete-non-virtual-dtor -Wreturn-type -Wswitch -Wuninitialized -Wno-unused-parameter -Wmaybe-uninitialized -I. -DTT_ENABLE_CODE_TIMERS -mavx2 -mfma -DFMT_HEADER_ONLY -Ithird_party/fmt -DPERF_DUMP_LEVEL=0 -DPERF_DUMP_LEVEL=0 \
-    -DPERF_DUMP_LEVEL=0 --std=c++17 -fvisibility-inlines-hidden -Isrc/firmware/riscv/wormhole -Isrc/firmware/riscv/wormhole/wormhole_b0_defines -Ithird_party/confidential_tenstorrent_modules/versim/wormhole_b0/headers/vendor/yaml-cpp/include \
-    -Isrc/firmware/riscv/wormhole -Isrc/firmware/riscv/wormhole/wormhole_b0_defines -Icommon -Imodel -Inetlist -Iumd -Inetlist -Imodel -Imodel/ops -I. -Ithird_party/json/ -Icommon/model/ -Icommon -Isrc/firmware/riscv/wormhole \
-    -Isrc/firmware/riscv/wormhole/wormhole_b0_defines -Ithird_party/json -Iumd -Isrc/firmware/riscv/wormhole -Isrc/firmware/riscv/wormhole/wormhole_b0_defines -Ithird_party/confidential_tenstorrent_modules/versim/wormhole_b0/headers/vendor/yaml-cpp/include \
-    -Imodel  -Inetlist -Iops -Iperf_lib -Icommon -Ithird_party/confidential_tenstorrent_modules/versim/wormhole_b0/headers/vendor/yaml-cpp/include -Iumd -I./loader -I./runtime -I./. -I./umd -I./umd/device/wormhole/ -Isrc/firmware/riscv/wormhole \
-    -Isrc/firmware/riscv/wormhole/wormhole_b0_defines -Ithird_party/confidential_tenstorrent_modules/versim/wormhole_b0/headers/vendor/yaml-cpp/include -Imodel -Inetlist -Icommon -Iumd \
-    -Ithird_party/confidential_tenstorrent_modules/versim/wormhole_b0/headers/vendor/yaml-cpp/include -Isrc/firmware/riscv/wormhole_b0/ -Isrc/firmware/riscv/wormhole -Isrc/firmware/riscv/wormhole/wormhole_b0_defines \
-    -Ithird_party/confidential_tenstorrent_modules/versim/wormhole_b0/headers/vendor/yaml-cpp/include -Icommon -Igolden -Iops -Inetlist -Inetlist -Imodel -Imodel/ops -I. -Ithird_party/json/ -Icommon/model/ -Icommon -Isrc/firmware/riscv/wormhole \
-    -Isrc/firmware/riscv/wormhole/wormhole_b0_defines -Ithird_party/json -Iumd -Iumd  -Isrc/firmware/riscv/wormhole -Isrc/firmware/riscv/wormhole/wormhole_b0_defines -Ithird_party/confidential_tenstorrent_modules/versim/wormhole_b0/headers/vendor/yaml-cpp/include \
-    -Imodel  -Inetlist -Iops -Iperf_lib -Icommon -Ithird_party/confidential_tenstorrent_modules/versim/wormhole_b0/headers/vendor/yaml-cpp/include -Iumd -Inetlist -Imodel -Imodel/ops -I. -Ithird_party/json/ -Icommon/model/ -Icommon -Isrc/firmware/riscv/wormhole \
-    -Isrc/firmware/riscv/wormhole/wormhole_b0_defines -Ithird_party/json -Iumd  -Iverif/netlist_tests -Iverif  -o $STAGING_DIR/debuda-server-standalone ./build/obj/verif/netlist_tests/debuda-server-standalone.o libtt.so ./build/lib/libverif.a  \
-    -Wl,-rpath,.:umd/build/lib -L./build/lib -Lumd/build/lib -ldl -lstdc++ -ltt -ldevice -lop_model -lstdc++fs -lpthread -lyaml-cpp -lcommon -lhwloc -lyaml-cpp -lpthread -lboost_fiber -lboost_date_time -lboost_filesystem -lboost_iostreams -lboost_serialization \
-    -lboost_timer -lboost_program_options -lzmq
+# Copy debuda-server-standalone to staging directory
+cp ./build/bin/debuda-server-standalone $STAGING_DIR/debuda-server-standalone
 
 # Copy compiled files and others to staging
 cp dbd/README.txt dbd/requirements.txt dbd/debuda.py dbd/tt* $STAGING_DIR
