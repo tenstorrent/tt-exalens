@@ -2,6 +2,9 @@
 DEBUDA_SERVER_SRCS = $(wildcard dbd/server/*.cpp)
 DEBUDA_SERVER = $(BINDIR)/debuda-server-standalone
 
+# Libraries this target depends on
+DEBUDA_SERVER_LIB_DEPS = $(BACKEND_LIB)
+
 DEBUDA_SERVER_OBJS = $(addprefix $(OBJDIR)/, $(DEBUDA_SERVER_SRCS:.cpp=.o))
 DEBUDA_SERVER_DEPS = $(addprefix $(OBJDIR)/, $(DEBUDA_SERVER_SRCS:.cpp=.d))
 
@@ -13,7 +16,7 @@ DEBUDA_SERVER_LDFLAGS = -ltt -ldevice -lyaml-cpp -lzmq -Wl,-rpath,\$$ORIGIN/../l
 
 dbd/server/debuda-server-standalone: $(DEBUDA_SERVER)
 
-$(DEBUDA_SERVER): $(DEBUDA_SERVER_OBJS)
+$(DEBUDA_SERVER): $(DEBUDA_SERVER_OBJS) $(DEBUDA_SERVER_LIB_DEPS)
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(DEBUDA_SERVER_LDFLAGS)
 
