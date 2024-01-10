@@ -7,7 +7,6 @@ Main help: http://yyz-webservice-02.local.tenstorrent.com/docs/debuda-docs/debud
 try:
     import sys, os, argparse, traceback, fnmatch, importlib
     from tabulate import tabulate
-    import tt_util as util, tt_device, tt_netlist
     from prompt_toolkit import PromptSession
     from prompt_toolkit.completion import Completer, Completion
     from prompt_toolkit.formatted_text import HTML
@@ -16,7 +15,19 @@ except ModuleNotFoundError as e:
     traceback.print_exc()
     print(f"Try:\033[31m pip install -r dbd/requirements.txt; make dbd \033[0m")
     exit(1)
+
+# Add the current directory to the path. This is so that dynamically-loaded debuda_commands can import the files in
+# the application directory.
+def application_path ():
+    if getattr(sys, 'frozen', False):
+        application_path = os.path.dirname(sys.executable)
+    elif __file__:
+        application_path = os.path.dirname(__file__)
+    return application_path
+sys.path.append(application_path ())
+
 from tt_coordinate import OnChipCoordinate
+import tt_util as util, tt_device, tt_netlist
 import tt_firmware as fw
 
 # Argument parsing
@@ -179,10 +190,8 @@ def import_commands (reload = False):
         try:
             cmd_module = importlib.import_module (module_path)
         except Exception as e:
-            if "lineno" in e.__dict__:
-                util.ERROR (f"Error in file {cmdfile}:{e.lineno}: {e.msg}")
-            else:
-                util.ERROR (f"Error in file {cmdfile}: {e}")
+            # Print call stack
+            util.notify_exception (type(e), e, e.__traceback__)
             continue
         command_metadata = cmd_module.command_metadata
         command_metadata["module"] = cmd_module
@@ -292,8 +301,10 @@ def load_context (netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc
 
     return context
 
-# Main
-def main(args, context):
+def main_loop(args, context):
+    """
+    Main loop: read-eval-print
+    """
     cmd_raw = ""
 
     commands = import_commands ()
@@ -394,9 +405,7 @@ def main(args, context):
             if args.test: # Always raise in test mode
                 raise
 
-    return 0
-
-if __name__ == '__main__':
+def main():
     parser=get_argument_parser()
     args = parser.parse_args()
 
@@ -439,7 +448,13 @@ if __name__ == '__main__':
         server_ifc.get_runtime_data = lambda: context.netlist.runtime_data_yaml
 
     # Main function
-    exit_code = main(args, context)
+    exit_code = main_loop(args, context)
 
     util.VERBOSE (f"Exiting with code {exit_code} ")
     sys.exit (exit_code)
+
+EXECUTING_FROM_PYBUDA_WHEEL = True
+
+if __name__ == '__main__':
+    EXECUTING_FROM_PYBUDA_WHEEL = False
+    main()

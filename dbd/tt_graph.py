@@ -450,3 +450,7 @@ class Graph(TTObject):
             return self.get_fanout_buffer_level(where)
         return ret_val
 
+    def __getattr__(self, name):
+        if name in ["buffers"]:
+            self.temporal_epoch.load_pipegen()
+        return object.__getattribute__(self, name)

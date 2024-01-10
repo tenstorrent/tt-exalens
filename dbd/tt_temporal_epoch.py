@@ -141,16 +141,18 @@ class TemporalEpoch(TTObject):
                 target_device = int(b.root["chip_id"][0])
                 dram_channel = int(b.root["dram_chan"])
                 dram_addr = int(b.root["dram_addr"])
-                queue_buffer_queue = self.netlist._addr_queue_map[(target_device,dram_channel,dram_addr)]
-                
-                self.buffer_q_map[b_id] = queue_buffer_queue
-                is_input_queue = len(b.input_of_pipes) > 0
-                is_output_queue = len(b.output_of_pipes) > 0
-                if is_input_queue:
-                    queue_buffer_queue.add_consumer_buffer(b_id)
-                    
-                if is_output_queue:
-                    queue_buffer_queue.set_producer_buffer(b_id)
+                # TODO: We need proper fix for not finding entry in self.netlist_addr_queue_map
+                if (target_device,dram_channel,dram_addr) in self.netlist._addr_queue_map:
+                    queue_buffer_queue = self.netlist._addr_queue_map[(target_device,dram_channel,dram_addr)]
+
+                    self.buffer_q_map[b_id] = queue_buffer_queue
+                    is_input_queue = len(b.input_of_pipes) > 0
+                    is_output_queue = len(b.output_of_pipes) > 0
+                    if is_input_queue:
+                        queue_buffer_queue.add_consumer_buffer(b_id)
+
+                    if is_output_queue:
+                        queue_buffer_queue.set_producer_buffer(b_id)
 
     def load_blob (self):
         self.stream_source_map = defaultdict(dict)
@@ -310,9 +312,9 @@ class TemporalEpoch(TTObject):
 
 
     def __getattr__(self, name):
-        if name == "pipes":
+        if name in ["pipes", "buffers"]:
             self.load_pipegen()
-        elif name == "streams":
+        elif name in ["streams", "stream_loc_id_map", "first_blob_of_each_stream"]:
             self.load_blob()
         return object.__getattribute__(self, name)
 

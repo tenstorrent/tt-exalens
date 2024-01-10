@@ -337,7 +337,7 @@ def read_device_epochs(device):
     Read all cores on a device and return a dictionary of epoch_id to core locations
     :return: { epoch_id : [ core_loc ] }
     """
-    cte = device.read_core_to_epoch_mapping()
+    cte = device.read_core_to_epoch_mapping("functional_workers")
     epoch_to_core_locs = dict()
     for loc, epoch_id in cte.items():
         if epoch_id not in epoch_to_core_locs:
