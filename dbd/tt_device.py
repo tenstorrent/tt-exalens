@@ -16,6 +16,15 @@ DEBUDA_STUB_PROCESS=None  # The process ID of debuda-server spawned in connect_t
 def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename):
     print ("Spawning debuda-server...")
 
+    # Check if we are executing from pybuda wheel and update paths accordingly
+    from debuda import EXECUTING_FROM_PYBUDA_WHEEL
+
+    debuda_server_standalone = "/debuda-server-standalone"
+    if EXECUTING_FROM_PYBUDA_WHEEL:
+        if "BUDA_HOME" not in os.environ:
+            os.environ["BUDA_HOME"] = os.path.abspath (util.application_path() + "/../")
+        debuda_server_standalone = f"/../build/bin{debuda_server_standalone}"
+
     debuda_stub_path = os.path.abspath (util.application_path() + "/debuda-server-standalone")
     library_path = os.path.abspath(os.path.dirname(debuda_stub_path))
     ld_lib_path=os.environ.get("LD_LIBRARY_PATH", "")
@@ -488,16 +497,18 @@ class Device(TTObject):
                 streams[(loc,stream_id,)] = regs
         return streams
 
-    def read_core_to_epoch_mapping (self):
+    def read_core_to_epoch_mapping (self, block_type = None):
         """
         Reading current epoch for each functional worker
         :return: { loc : epoch_id }
         """
         epochs = {}
-        for loc in self.get_block_locations (block_type = "functional_workers"):
-            epochs[loc] = self.get_epoch_id(loc)
-        for loc in self.get_block_locations (block_type = "eth"):
-            epochs[loc] = self.get_epoch_id(loc)
+        if block_type == None or block_type == "functional_workers":
+            for loc in self.get_block_locations (block_type = "functional_workers"):
+                epochs[loc] = self.get_epoch_id(loc)
+        if block_type == None or block_type == "eth":
+            for loc in self.get_block_locations (block_type = "eth"):
+                epochs[loc] = self.get_epoch_id(loc)
 
         return epochs
 

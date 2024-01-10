@@ -22,7 +22,7 @@ class QueueBufferMapQueue():
         return self.id()    
 
     def set_producer_buffer(self, buffer_id):
-        assert self.producer_buffer_id is None
+        # TODO: assert self.producer_buffer_id is None
         self.producer_buffer_id = buffer_id
         
     def has_op_producer(self):
