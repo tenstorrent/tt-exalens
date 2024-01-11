@@ -1,4 +1,5 @@
 import os, subprocess, time, struct, signal, re, zmq, pickle, atexit, ast
+from typing import Sequence
 from socket import timeout
 from tabulate import tabulate
 from tt_object import TTObject
@@ -411,7 +412,7 @@ class Device(TTObject):
 
         # Check if harvesting_desc is an array and has id+1 entries at the least
         harvesting_desc = cluster_desc['harvesting']
-        if isinstance(harvesting_desc, list) and len(harvesting_desc) > id:
+        if isinstance(harvesting_desc, Sequence) and len(harvesting_desc) > id:
             device_desc = harvesting_desc[id]
             if id not in device_desc:
                 raise util.TTFatalException (f"Key {id} not found in: {device_desc}")

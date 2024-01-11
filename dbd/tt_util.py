@@ -188,13 +188,132 @@ def ryml_to_dict(tree, i):
             v =  ryml_memory_to_value(tree.val(i))
         return v
 
+from collections import Sequence
+from functools import cached_property
+from typing import Mapping, TypeVar
+from fastnumbers import try_int
+
+def ryml_to_lazy(tree, id):
+    if id == ryml.NONE:
+        return None
+    if tree.is_seq(id):
+        return RymlLazyList(tree, id)
+    if tree.is_map(id):
+        return RymlLazyDictionary(tree, id)
+    if tree.has_val(id):
+        value = tree.val(id)
+        if value is not None:
+            return try_int(str(value, "utf8"), base=0)
+    return None
+
+class RymlLazyList(Sequence):
+    def __init__(self, tree, node):
+        self.tree = tree
+        self.node = node
+        self.length = self.tree.num_children(self.node)
+        self.items = [None] * self.length
+        self.item_initialized = [False] * self.length
+
+    def __getitem__(self, i):
+        if not self.item_initialized[i]:
+            self.items[i] = ryml_to_lazy(self.tree, self.tree.child(self.node, i))
+            self.item_initialized[i] = True
+        return self.items[i]
+
+    def __len__(self):
+        return self.length
+
+    def __repr__(self):
+        return repr(self.items)
+
+KeyType = TypeVar('KeyType')
+ValueType = TypeVar('ValueType')
+
+class RymlLazyDictionaryIterator():
+    def __init__(self, dictionary: "RymlLazyDictionary"):
+        self.dictionary = dictionary
+        self.index = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.index < self.dictionary.length:
+            child_node = self.dictionary.tree.child(self.dictionary.node, self.index)
+            key = self.dictionary.get_key(child_node)
+            self.index += 1
+            return key, self.dictionary[key]
+        else:
+            raise StopIteration
+
+class RymlLazyDictionary(Mapping[KeyType, ValueType]):
+    def __init__(self, tree, node):
+        self.tree = tree
+        self.node = node
+        self.length = self.tree.num_children(self.node)
+        self._items = dict()
+
+    @cached_property
+    def child_nodes(self):
+        child_nodes = dict()
+        for child_node in ryml.children(self.tree, self.node):
+            child_nodes[self.get_key(child_node)] = child_node
+        return child_nodes
+
+    def get_key(self, child_node):
+        return try_int(str(self.tree.key(child_node), "utf8"),base=0)
+
+    def __contains__(self, key):
+        return key in self.child_nodes
+
+    def __getitem__(self, key: KeyType) -> ValueType:
+        item = self._items.get(key)
+        if item == None:
+            child_node = self.child_nodes[key]
+            item = ryml_to_lazy(self.tree, child_node)
+            self._items[key] = item
+        return item
+
+    def __setitem__(self, key, value):
+        self._items[key] = value
+
+    def __iter__(self):
+        return RymlLazyDictionaryIterator(self)
+
+    def __len__(self):
+        return self.length
+
+    def keys(self):
+        return self.child_nodes.keys()
+    
+    def items(self):
+        for key in self.keys():
+            yield (key, self[key])
+
+    def __str__(self):
+        return str(dict(self.items()))
+
+class RymlLazy(RymlLazyDictionary):
+    def __init__(self, buffer):
+        if type(buffer) == str:
+            buffer = buffer.encode()
+        self.buffer = buffer
+        self.tree = ryml.parse_in_arena(self.buffer)
+        super().__init__(self.tree, self.tree.root_id())
+
+USE_LAZY_RYML = True
+
 # Given a string with multiple yaml documents, parse them all and return a list of dicts
 def ryml_load_all(yaml_string):
     documents = yaml_string.split('---')
     parsed_documents = []
     for d in documents:
-        tree = ryml.parse_in_arena(d)
-        parsed_documents.append (ryml_to_dict(tree, tree.root_id()))
+        global USE_LAZY_RYML
+        if USE_LAZY_RYML:
+            parsed_documents.append(RymlLazy(d))
+        else:
+            tree = ryml.parse_in_arena(d)
+            parsed_documents.append (ryml_to_dict(tree, tree.root_id()))
     return parsed_documents
 
 # Container for YAML
