@@ -121,7 +121,7 @@ class TemporalEpoch(TTObject):
                 b.input_of_pipes.add (pipe)
                 pipe.input_buffers.add (b)
             for output_buffer_id_or_list in pipe.root["output_list"]:
-                if type(output_buffer_id_or_list) == list:
+                if isinstance(output_buffer_id_or_list, Sequence) and not isinstance(output_buffer_id_or_list, str):
                     # Flatten the list of lists
                     for buf_id in output_buffer_id_or_list:
                         b = find_buffer_by_uniqid(buf_id)

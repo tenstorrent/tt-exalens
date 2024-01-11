@@ -129,7 +129,7 @@ def merge_tables_side_by_side (a, b):
 def print_columnar_dicts (dict_array, title_array):
     final_table = [ ]
     for idx, dct in enumerate(dict_array):
-        assert isinstance(dct, dict)
+        assert isinstance(dct, dict) or isinstance(dct, RymlLazyDictionary)
         current_table = dict_to_table(dct)
         if idx == 0:
             final_table = current_table
@@ -242,7 +242,7 @@ class RymlLazyDictionaryIterator():
             child_node = self.dictionary.tree.child(self.dictionary.node, self.index)
             key = self.dictionary.get_key(child_node)
             self.index += 1
-            return key, self.dictionary[key]
+            return key
         else:
             raise StopIteration
 
@@ -285,7 +285,7 @@ class RymlLazyDictionary(Mapping[KeyType, ValueType]):
 
     def keys(self):
         return self.child_nodes.keys()
-    
+
     def items(self):
         for key in self.keys():
             yield (key, self[key])
@@ -654,4 +654,3 @@ class LOG_INDENT:
 # Return an ansi color code for a given index. Useful for coloring a list of items.
 def clr_by_index (idx):
     return f"\033[{31 + idx % 7}m"
-    
