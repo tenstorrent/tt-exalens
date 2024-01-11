@@ -390,7 +390,7 @@ def parse_dwarf(dwarf):
         'member' - all the members of structures etc
         'enumerator' - all the enumerators in the DWARF info
     """
-    recurse_dict = dict()
+    recurse_dict = { 'variable': dict(), 'type': dict(), 'member': dict(), 'enumerator': dict() }
 
     for dwarf_cu in dwarf.iter_CUs():
         cu = MY_CU(dwarf_cu)
