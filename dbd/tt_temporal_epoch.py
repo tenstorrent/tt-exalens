@@ -9,7 +9,7 @@ import itertools
 from copy import copy
 from collections import defaultdict
 
-from typing import Dict
+from typing import Dict, Sequence
 class TemporalEpoch(TTObject):
     def __init__(self, id, netlist, pipegen_filename, blob_filename, graph_roots):
         # Pipegen.yaml is a special case since it contains multiple documents (separated by ---). It also depends on the
@@ -204,7 +204,7 @@ class TemporalEpoch(TTObject):
                         continue
                         
                     dest_stream_designators = copy(stream_data["dest"])
-                    assert isinstance(dest_stream_designators,list)
+                    assert isinstance(dest_stream_designators, Sequence)
                     
                     is_multicast = len(dest_stream_designators) > 1
                     if is_multicast:

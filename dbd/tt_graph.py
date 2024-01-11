@@ -1,3 +1,4 @@
+from typing import Sequence
 import tt_util as util
 from tt_stream import Stream
 from tt_object import TTObject, TTObjectIDDict
@@ -47,7 +48,7 @@ class Queue(TTObject):
                     addresses[idx] = [0, a]
 
             for a in addresses:
-                assert(type(a) is list)
+                assert(isinstance(a, Sequence))
             return addresses
         return []
 
