@@ -1,23 +1,7 @@
 include $(BUDA_HOME)/infra/common.mk
 
-# Every variable in subdir must be prefixed with subdir(emulating a namespace)
-
-DBD_INCLUDES = $(BASE_INCLUDES) $(GOLDEN_INCLUDES) $(MODEL2_INCLUDES) $(NETLIST_INCLUDES) $(MODEL_INCLUDES) -Iverif/directed_tests -Iverif -Ithird_party/json
-DBD_LIB = $(LIBDIR)/libdbd.a
-DBD_DEFINES = -DGIT_HASH=$(shell git rev-parse HEAD)
-DBD_INCLUDES += -Imodel -Inetlist -Icommon -I$(YAML_PATH) -Isrc/firmware/riscv/$(ARCH_NAME)/
-DBD_CFLAGS = $(CFLAGS) -Werror
-DBD_LDFLAGS = -ltt -ldevice -lstdc++fs -lpthread -lyaml-cpp -lcommon -lhwloc -lboost_program_options
-DBD_OUT = $(OUT)/dbd
-DBD_SRCS = $(wildcard dbd/*.cpp)
-
-DBD_OBJS = $(addprefix $(OBJDIR)/, $(DBD_SRCS:.cpp=.o))
-DBD_DEPS = $(addprefix $(OBJDIR)/, $(DBD_SRCS:.cpp=.d))
-
--include $(DBD_DEPS)
-
 # Main target: it builds the standalone server executable
-dbd: dbd/server/debuda-server-standalone
+dbd: dbd/server
 	$(PRINT_TARGET)
 	$(PRINT_OK)
 

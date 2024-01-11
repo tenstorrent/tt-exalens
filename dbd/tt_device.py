@@ -2,6 +2,7 @@ import os, subprocess, time, struct, signal, re, zmq, pickle, atexit, ast
 from typing import Sequence
 from socket import timeout
 from tabulate import tabulate
+from tt_debuda_server import debuda_server
 from tt_object import TTObject
 import tt_util as util
 from tt_coordinate import OnChipCoordinate, CoordinateTranslationError
@@ -10,7 +11,7 @@ from tt_coordinate import OnChipCoordinate, CoordinateTranslationError
 # Communication with Buda (or debuda-server) over sockets (ZMQ).
 # See struct BUDA_READ_REQ for protocol details
 #
-ZMQ_SOCKET=None           # The socket for communication
+DEBUDA_SERVER=None        # The debuda server communication object
 DEBUDA_STUB_PROCESS=None  # The process ID of debuda-server spawned in connect_to_server
 
 # The server needs the runtime_data.yaml to get the netlist path, arch, and device
@@ -78,19 +79,9 @@ def connect_to_server (ip="localhost", port=5555, spawning_debuda_stub=False):
     debuda_stub_address=f"tcp://{ip}:{port}"
     util.INFO(f"Connecting to debuda-server at {debuda_stub_address}...")
 
-    context = zmq.Context()
-    global ZMQ_SOCKET
-
     try:
-        #  Socket to talk to server
-        ZMQ_SOCKET = context.socket(zmq.REQ)
-        ZMQ_SOCKET.connect(debuda_stub_address)
-
-        ZMQ_SOCKET.send(struct.pack ("c", b'\x01')) # PING
-        reply = ZMQ_SOCKET.recv_string()
-        if "PONG" not in reply:
-            util.FATAL (f"Expected PONG but received {reply}") # Should print PONG
-
+        global DEBUDA_SERVER
+        DEBUDA_SERVER = debuda_server(ip, port)
         util.INFO("Connected to debuda-server.")
     except:
         if spawning_debuda_stub:
@@ -137,74 +128,49 @@ class DEBUDA_SERVER_SOCKET_IFC:
 
     # PCI read/write functions. Given a noc0 location and addr, performs a PCI read/write
     # to the given location at the address.
-    def pci_read_xy(chip_id, x, y, noc_id, reg_addr): # PCI_READ_XY
+    def pci_read_xy(chip_id, x, y, noc_id, reg_addr):
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (pci_read_xy) with arguments: chip_id={chip_id}, x={x}, y={y}, noc_id={noc_id}, reg_addr=0x{reg_addr:x}"
-        # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
-        ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x02', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, 0))
-        ret_val = try_unpack ("I", ZMQ_SOCKET.recv())[0]
-        ### util.DEBUG (f"pci_read_xy: chip_id={chip_id}, x={x}, y={y}, noc_id={noc_id}, reg_addr=0x{reg_addr:x}, ret_val=0x{ret_val:x}")
-        return ret_val
-    def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data): # PCI_WRITE_XY
+        return DEBUDA_SERVER.pci_read4(chip_id, x, y, reg_addr)
+    def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (pci_write_xy) with arguments: chip_id={chip_id}, x={x}, y={y}, noc_id={noc_id}, reg_addr=0x{reg_addr:x}, data=0x{data:x}"
-        ### util.DEBUG (f"pci_write_xy: chip_id={chip_id}, x={x}, y={y}, noc_id={noc_id}, reg_addr=0x{reg_addr:x}, data=0x{data:x}")
-        # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x02', chip_id, x, y, z, reg_addr))
-        ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x04', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), noc_id.to_bytes(1, byteorder='big'), reg_addr, data))
-        ret_val = try_unpack ("I", ZMQ_SOCKET.recv())[0]
-        assert data == ret_val
-    def host_dma_read (chip_id, dram_addr, dram_chan): # DMA_BUFF_READ
+        DEBUDA_SERVER.pci_write4(chip_id, x, y, reg_addr, data)
+        return data
+    def pci_read_buf(chip_id, x, y, noc_id, reg_addr, size):
+        assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (pci_read_buf) with arguments: chip_id={chip_id}, x={x}, y={y}, noc_id={noc_id}, reg_addr=0x{reg_addr:x}, size={size}"
+        return DEBUDA_SERVER.pci_read(chip_id, x, y, reg_addr, size)
+    def pci_write_buf(chip_id, x, y, noc_id, reg_addr, data):
+        assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (pci_write_buf) with arguments: chip_id={chip_id}, x={x}, y={y}, noc_id={noc_id}, reg_addr=0x{reg_addr:x}, data={data}"
+        return DEBUDA_SERVER.pci_write(chip_id, x, y, reg_addr, data)
+    def host_dma_read (chip_id, dram_addr, dram_chan):
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (host_dma_read) with arguments: chip_id={chip_id}, dram_addr=0x{dram_addr:x}, dram_chan={dram_chan}"
-        ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x03', chip_id.to_bytes(1, byteorder='big'), b'\x00', b'\x00', b'\x00', dram_addr, dram_chan))
-        ret_val = struct.unpack ("I", ZMQ_SOCKET.recv())[0]
-        return ret_val
-    def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format): # PCI_READ_TILE
+        return DEBUDA_SERVER.dma_buffer_read4(chip_id, dram_addr, dram_chan)
+    def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (pci_read_tile) with arguments: chip_id={chip_id}, x={x}, y={y}, z={z}, reg_addr=0x{reg_addr:x}, msg_size={msg_size}, data_format={data_format}"
-        # ZMQ_SOCKET.send(struct.pack ("ccccci", b'\x05', chip_id, x, y, z, reg_addr, data_format<<16 + message_size))
-        data = data_format * 2**16 + msg_size
-        ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x05', chip_id.to_bytes(1, byteorder='big'), x.to_bytes(1, byteorder='big'), y.to_bytes(1, byteorder='big'), z.to_bytes(1, byteorder='big'), reg_addr, data))
-        ret = ZMQ_SOCKET.recv()
-        return ret
-    def pci_raw_read(chip_id, reg_addr): # PCI_READ_RAW
+        return DEBUDA_SERVER.pci_read_tile(chip_id, x, y, reg_addr, msg_size, data_format)
+    def pci_raw_read(chip_id, reg_addr):
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (pci_raw_read) with arguments: chip_id={chip_id}, reg_addr=0x{reg_addr:x}"
-        zero = 0
-        ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x06', chip_id.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), reg_addr, 0))
-        ret = ZMQ_SOCKET.recv()
         try:
-            ret_val = try_unpack ("I", ret)[0]
-        except Exception:
-            ret_val = 0
-            util.ERROR (f"Cannot do PCI read: {ret}")
-        return ret_val
-    def pci_raw_write(chip_id, reg_addr, data): # PCI_WRITE_RAW
+            return DEBUDA_SERVER.pci_read4_raw(chip_id, reg_addr)
+        except:
+            util.ERROR (f"Cannot do PCI read")
+            return 0
+    def pci_raw_write(chip_id, reg_addr, data):
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (pci_raw_write) with arguments: chip_id={chip_id}, reg_addr=0x{reg_addr:x}, data=0x{data:x}"
-        zero = 0
-        ZMQ_SOCKET.send(struct.pack ("cccccII", b'\x07', chip_id.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), reg_addr, data))
-        ret = ZMQ_SOCKET.recv()
-
         try:
-            ret_val = try_unpack ("I", ret)[0]
-        except Exception:
-            ret_val = 0
-            util.ERROR (f"Cannot do PCI write: {ret}")
-        assert data == ret_val
-        return ret_val
+            DEBUDA_SERVER.pci_write4_raw(chip_id, reg_addr, data)
+            return data
+        except:
+            util.ERROR (f"Cannot do PCI write")
+            return 0
     def get_runtime_data():
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (get_runtime_data)"
-        zero = 0
-        ZMQ_SOCKET.send(struct.pack ("ccccc", b'\x08', zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big')))
-        s = ZMQ_SOCKET.recv().decode('utf-8')
-        return util.YamlContainer(s, source="Returned from debuda-server")
+        return DEBUDA_SERVER.get_runtime_data()
     def get_cluster_desc_path():
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (get_cluster_desc_path)"
-        zero = 0
-        ZMQ_SOCKET.send(struct.pack ("ccccc", b'\x09', zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big')))
-        s = ZMQ_SOCKET.recv().decode('utf-8')
-        return s
+        return DEBUDA_SERVER.get_cluster_description()
     def get_harvested_coord_translation(chip_id):
-        zero = 0
         assert DEBUDA_SERVER_SOCKET_IFC.enabled, DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (get_harvested_coord_translation) with arguments: chip_id={chip_id}"
-        ZMQ_SOCKET.send(struct.pack ("ccccc", b'\x0a', chip_id.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big'), zero.to_bytes(1, byteorder='big')))
-        s = ZMQ_SOCKET.recv().decode('utf-8')
-        return s
+        return DEBUDA_SERVER.get_harvester_coordinate_translation(chip_id)
 
 
 # This interface is used to read cached values of device reads.
