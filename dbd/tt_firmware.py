@@ -1,6 +1,7 @@
 """
 This module is used to represent the firmware
 """
+import time
 import tt_parse_elf as elf
 import tt_util as util
 import os, re
@@ -29,17 +30,9 @@ class FAKE_DIE(object):
     """
     def __init__(self, var_name, addr, resolved_type):
         self.name = var_name
-        self.addr = addr
+        self.address = addr
         self.resolved_type = resolved_type
-
-    def get_name(self):
-        return self.name
-    def get_addr(self):
-        return self.addr
-    def get_size(self):
-        return self.get_resolved_type.get_size()
-    def get_resolved_type(self):
-        return self.resolved_type
+        self.size = self.resolved_type.size
 
 class ELF:
     """
@@ -57,8 +50,10 @@ class ELF:
                 self.names[prefix] = dict()
 
             abspath = os.path.abspath(filename)
-            util.INFO (f"Loading ELF file: '{abspath}'")
+            util.INFO (f"Loading ELF file: '{abspath}'", end="")
+            start_time = time.time()
             self.names[prefix] = elf.read_elf(abspath)
+            util.INFO (f" ({os.path.getsize(abspath)} bytes loaded in {time.time() - start_time:.2f}s)")
             self.name_word_pattern = re.compile(r'[_@.a-zA-Z]+')
             # Inject the variables that are not in the ELF
             self._process_extra_vars(prefix)
@@ -75,8 +70,8 @@ class ELF:
             if offset_var not in self.names[prefix]['variable']:
                 raise util.TTException (f"Variable '{offset_var}' not found in ELF. Cannot add '{var_name}'")
             ov = self.names[prefix]['variable'][offset_var]
-            addr = addr=ov.get_value() if ov.get_value() else ov.get_addr()
-            resolved_type = self.names[prefix]['type'][var['type']].get_resolved_type()
+            addr = addr=ov.value if ov.value else ov.address
+            resolved_type = self.names[prefix]['type'][var['type']].resolved_type
             self.names[prefix]['variable'][var_name] = FAKE_DIE(var_name, addr=addr, resolved_type=resolved_type )
 
     def _get_prefix_and_suffix(self, path_str):
