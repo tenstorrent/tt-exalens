@@ -256,7 +256,9 @@ def dump_memory(device_id, loc, addr, size):
 # Dumps tile in format received form tt_tile::get_string
 def dump_tile(chip, loc, addr, size, data_format):
     s = SERVER_IFC.pci_read_tile(chip, *loc.to("nocVirt"), 0, addr, size, data_format)
-    lines = s.decode("utf-8").split('\n')
+    if type(s) == bytes:
+        s = s.decode("utf-8")
+    lines = s.split("\n")
     rows = []
     for line in lines:
         rows.append (line.split())
