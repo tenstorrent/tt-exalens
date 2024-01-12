@@ -506,7 +506,7 @@ class Device(TTObject):
         dev = self.yaml_file.root
 
         for loc_or_list in dev[block_type]:
-            if isinstance(loc_or_list, Sequence) and not isinstance(loc_or_list, str):
+            if type(loc_or_list) != str and isinstance(loc_or_list, Sequence):
                 for loc in loc_or_list:
                     locs.append (OnChipCoordinate.create (loc, self, "nocVirt"))
             else:
