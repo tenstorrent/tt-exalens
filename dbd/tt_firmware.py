@@ -127,7 +127,7 @@ class ELF:
         names = self.names[elf_name]
         for name, data in names['enumerator'].items():
             if name.startswith(enum_path):
-                val = data.get_value()
+                val = data.value
 
                 ret_val[val] = name[name.rfind("::")+2:]
         return ret_val

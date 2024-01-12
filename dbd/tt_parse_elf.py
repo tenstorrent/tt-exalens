@@ -374,12 +374,17 @@ def process_DIE(die: MY_DIE, recurse_dict, r_depth):
             recurse_dict[category] = dict()
         recurse_dict[category][path] = die
 
+    recurse_down = category is not None
+    return recurse_down
+
 def recurse_DIE(DIE: MY_DIE, recurse_dict, r_depth=0):
     """
     This function visits all children recursively and calls process_DIE() on each
     """
     for child in DIE.iter_children():
-        process_DIE(child, recurse_dict, r_depth)
+        recurse_down = process_DIE(child, recurse_dict, r_depth)
+        if recurse_down:
+            recurse_DIE(child, recurse_dict, r_depth+1)
 
 def parse_dwarf(dwarf):
     """
