@@ -48,7 +48,7 @@ if [ $? -ne 0 ]; then
     echo Error in running ./build/test/verif/op_tests/test_op
     exit 1
 fi
-source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_matmul_op_with_fd" --server-cache=through
+source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_matmul_op_with_fd"
 
 
 ##################################################################################################################################################
@@ -80,15 +80,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_multi_matmul_perf" --server-cache=through
+source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_multi_matmul_perf"
 
 ##################################################################################################################################################
 # Test with server cache enabled
-source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_multi_matmul_perf" --server-cache=on
-
-##################################################################################################################################################
-# Test with no server cache
-source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_multi_matmul_perf"
+source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_multi_matmul_perf" on
 
 ##################################################################################################################################################
 echo Done
