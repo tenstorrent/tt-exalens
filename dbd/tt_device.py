@@ -187,7 +187,7 @@ class DEBUDA_SERVER_CACHED_IFC:
                     DEBUDA_SERVER_CACHED_IFC.cache_store = pickle.load(f)
                     util.INFO (f"  Loaded {len(DEBUDA_SERVER_CACHED_IFC.cache_store)} entries")
             else:
-                assert DEBUDA_SERVER_SOCKET_IFC.enabled, f"Cache file {DEBUDA_SERVER_CACHED_IFC.filepath} does not exist"
+                raise RuntimeError (f"Cannot load server cache from file {DEBUDA_SERVER_CACHED_IFC.filepath}")
 
     def save():
         if DEBUDA_SERVER_CACHED_IFC.enabled and DEBUDA_SERVER_SOCKET_IFC.enabled:
