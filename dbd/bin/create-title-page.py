@@ -5,12 +5,12 @@ Usage:
   create-title-page.py --title=<title> --subtitle=<subtitle> --image=<image_path> --footer=<footer> [--pdf=<pdf_file>]
 
 Options:
-  -h --help             Show this help message.
-  --title=<title>       Title text.
-  --subtitle=<subtitle> Subtitle text.
-  --image=<image_path>  Image path.
-  --footer=<footer>     Footer text.
-  --pdf=<pdf_file>      PDF file to prepend the title page to. [default: title-page.pdf]
+  -h --help              Show this help message.
+  --title=<title>        Title text.
+  --subtitle=<subtitle>  Subtitle text.
+  --image=<image_path>   Image path.
+  --footer=<footer>      Footer text.
+  --pdf=<pdf_file>       PDF file to prepend the title page to. [default: title-page.pdf]
 """
 from PIL import Image
 from docopt import docopt

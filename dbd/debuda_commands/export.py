@@ -56,7 +56,7 @@ def run(cmd_text, context, ui_state = None):
     for filename in context.elf.filemap.values():
       filelist.append (filename)
 
-    odir = context.args.output_dir
+    odir = context.args["<output_dir>"]
     de_odir = f"dbd/export-{odir}"
     zip_file_name = util.export_to_zip (filelist, out_file=zip_file_name, prefix_to_remove=odir)
     print (f"Exported '{zip_file_name}'. Import with:\n{util.CLR_GREEN}mkdir -p {de_odir} && unzip {zip_file_name} -d {de_odir} && dbd/debuda.py {de_odir} {'--server-cache on' if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled else ''}{util.CLR_END}")

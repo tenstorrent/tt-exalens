@@ -6,29 +6,25 @@ from docopt import docopt
 MAX_OUTPUT_LINES = 20          # Max number of lines to show for each example
 MAX_CHARACTERS_PER_LINE = 130  # Max number of characters to show for each line
 
+import subprocess
+
 def run_command(cmd_array, exit_on_failure=True):
-    # Print what is actually running
-    # print (f"Running command:  {' '.join(cmd_array)}")
-    stdout_lines = []
-    stderr_lines = []
     process = subprocess.Popen(cmd_array, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    while True:
-        output = process.stdout.readline()
-        if output:
-            # print(output) # Show what comes out of the command - debug only
-            stdout_lines.append(output.strip('\n'))
+    # Capture all output
+    stdout_output, stderr_output = process.communicate()
 
-        stderr_output = process.stderr.readline()
-        if stderr_output:
-            print(f"\033[91m{stderr_output}\033[0m")
-            stderr_lines.append(stderr_output.strip('\n'))
+    # Convert output to lists of lines
+    stdout_lines = stdout_output.strip().split('\n')
+    stderr_lines = stderr_output.strip().split('\n')
 
-        return_code = process.poll()
-        if return_code is not None:
-            if return_code != 0 and exit_on_failure:
-                exit(1)
-            break
+    # Print stderr lines with color
+    for line in stderr_lines:
+        print(f"\033[91m{line}\033[0m")
+
+    return_code = process.returncode
+    if return_code != 0 and exit_on_failure:
+        exit(1)
 
     return {'stdout': '\n'.join(stdout_lines), 'stderr': '\n'.join(stderr_lines), 'returncode': return_code}
 
@@ -43,7 +39,7 @@ def trim_line_and_append_elipsis(line, max_length):
 
 # Captures everything between the command and the exit command
 def execute_debuda_command(command):
-    full_command = [ "dbd/debuda.py", "--command", f"{command}; x" ]
+    full_command = [ "dbd/debuda.py", "--commands", f"{command}; x" ]
 
     # Sometimes a sequence of commands is needed to get the correct output.
     # If that is the case, we only want to show the last command.
@@ -121,7 +117,7 @@ if __name__ == "__main__":
     # Flush output of print statements immediately
     sys.stdout.reconfigure(line_buffering=True)
 
-    args = docopt("""Usage: annotate_help.py <input_file> <output_file>""")
+    args = docopt("""Usage: run-debuda-on-help-examples.py <input_file> <output_file>""")
     input_file = args['<input_file>']
     output_file = args['<output_file>']
     annotate_file(input_file, output_file)

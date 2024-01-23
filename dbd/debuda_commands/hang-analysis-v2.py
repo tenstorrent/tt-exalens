@@ -53,7 +53,7 @@ def REPORT_HANG(message):
 command_metadata = {
     "short" : "ha_v2",
     "long" : "hang_analysis_v2",
-    "type" : "high-level",
+    "type" : "dev",
     "description" : __doc__
 }
 
