@@ -921,9 +921,9 @@ class Device(TTObject):
         return SERVER_IFC.pci_read_tile(self.id(), x, y, z, reg_addr, msg_size, data_format)
 
 # Initialize communication with the device. If the server is not running, it will be spawned.
-def init_server_communication (args, runtime_data_yaml_filename):
-    DEBUDA_SERVER_CACHED_IFC.enabled = args.server_cache == "through" or args.server_cache == "on"
-    DEBUDA_SERVER_SOCKET_IFC.enabled = args.server_cache == "through" or args.server_cache == "off"
+def init_server_communication (server_cache, address, runtime_data_yaml_filename):
+    DEBUDA_SERVER_CACHED_IFC.enabled = server_cache == "through" or server_cache == "on"
+    DEBUDA_SERVER_SOCKET_IFC.enabled = server_cache == "through" or server_cache == "off"
 
     if DEBUDA_SERVER_CACHED_IFC.enabled:
         atexit.register (DEBUDA_SERVER_CACHED_IFC.save)
@@ -931,7 +931,7 @@ def init_server_communication (args, runtime_data_yaml_filename):
 
     SERVER_IFC.spawning_debuda_stub = False
     if DEBUDA_SERVER_SOCKET_IFC.enabled:
-        (ip, port) = args.debuda_server_address.split(":")
+        (ip, port) = address.split(":")
         spawning_debuda_stub = ip=='localhost' and util.is_port_available (int(port))
 
         if spawning_debuda_stub:

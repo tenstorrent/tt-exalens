@@ -136,7 +136,7 @@ class MY_DIE():
         child = self.children_by_name.get(child_name)
         if child == None:
             for die in self.iter_children():
-                assert die.name not in self.children_by_name
+                assert die.name not in self.children_by_name or self.children_by_name[die.name] == die
                 self.children_by_name[die.name] = die
                 if die.name == child_name:
                     return die

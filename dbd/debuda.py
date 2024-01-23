@@ -1,8 +1,22 @@
 #!/usr/bin/env python3
 """
-Debuda parses the build output files and probes the silicon to determine the status of a Buda run.
-Main help: http://yyz-webservice-02.local.tenstorrent.com/docs/debuda-docs/debuda_py
+Usage:
+  script_name [options] [<output_dir>]
 
+Options:
+  -h --help                       Show this help message and exit.
+  --netlist=<file>                Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used.
+  --commands=<cmds>               Execute a list of semicolon-separated commands.
+  --server-cache=<mode>           Specifies the method of communication with the Debuda Server. [default: off]
+  --verbose                       Print verbose output.
+  --test                          Exits with non-zero exit code on any exception.
+  --debuda-server-address=<addr>  IP address of debuda server. [default: localhost:5555]
+
+Description:
+    Debuda parses the build output files and reads the device state to provide a debugging interface for the user.
+
+Arguments:
+  output_dir                     Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used.
 """
 try:
     import sys, os, argparse, traceback, fnmatch, importlib
@@ -11,6 +25,7 @@ try:
     from prompt_toolkit.completion import Completer, Completion
     from prompt_toolkit.formatted_text import HTML
     from docopt import DocoptExit, docopt
+    from fastnumbers import try_int
 except ModuleNotFoundError as e:
     traceback.print_exc()
     print(f"Try:\033[31m pip install -r dbd/requirements.txt; make dbd \033[0m")
@@ -30,17 +45,6 @@ from tt_coordinate import OnChipCoordinate
 import tt_util as util, tt_device, tt_netlist
 import tt_firmware as fw
 
-# Argument parsing
-def get_argument_parser ():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('output_dir', type=str, nargs='?', default=None, help='Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used, and the netlist file will be inferred from the runtime_data.yaml file found there.')
-    parser.add_argument('--netlist',  type=str, required=False, default=None, help='Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used.')
-    parser.add_argument('--commands', type=str, required=False, help='Execute a list of semicolon-separated commands.')
-    parser.add_argument('--server-cache', type=str, default='off', help=f'Specifies the method of communication with the Debuda Server. When "off" (default), all device reads are done through the server (silicon). When set to "through", an attempt to read from the cache will be made at first; if the cache does not contain the data, the server will be queried. When "on", all reads are from cache only; a non-existent cache entry will result in an error.')
-    parser.add_argument('--verbose', action='store_true', default=False, help=f'Print verbose output.')
-    parser.add_argument('--test', action='store_true', default=False, help=f'Exits with non-zero exit code on any exception.')
-    parser.add_argument('--debuda-server-address', type=str, default="localhost:5555", required=False, help='IP address of debuda server (e.g. remote.server.com:5555). By default, the server is assumed to be running on the local machine.')
-    return parser
 
 class DebudaCompleter(Completer):
     def __init__ (self, commands, context):
@@ -327,7 +331,7 @@ def main_loop(args, context):
     navigation_suggestions = None
 
     # These commands will be executed right away (before allowing user input)
-    non_interactive_commands=args.commands.split(";") if args.commands else []
+    non_interactive_commands=args["--commands"].split(";") if args["--commands"] else []
 
     # Main command loop
     while True:
@@ -357,11 +361,12 @@ def main_loop(args, context):
                 my_prompt = f"Current epoch:{util.CLR_PROMPT}{context.netlist.graph_name_to_epoch_id(ui_state['current_graph_name'])}{util.CLR_PROMPT_END}({ui_state['current_graph_name']}) device:{util.CLR_PROMPT}{ui_state['current_device_id']}{util.CLR_PROMPT_END} {ui_state['current_prompt']}> "
                 cmd_raw = context.prompt_session.prompt(HTML(my_prompt))
 
-            try: # To get a a command from the speed dial
-                cmd_int = int(cmd_raw)
-                cmd_raw = navigation_suggestions[cmd_int]["cmd"]
-            except ValueError as e:
-                pass
+            cmd_int = try_int(cmd_raw)
+            if type(cmd_int) == int:
+                if navigation_suggestions and cmd_int >= 0 and cmd_int < len(navigation_suggestions):
+                    cmd_raw = navigation_suggestions[cmd_int]["cmd"]
+                else:
+                    raise util.TTException (f"Invalid speed dial number: {cmd_int}")
 
             cmd = cmd_raw.split ()
             if len(cmd) > 0:
@@ -394,9 +399,11 @@ def main_loop(args, context):
                         navigation_suggestions = new_navigation_suggestions
 
         except Exception as e:
-            util.notify_exception (type(e), e, e.__traceback__)
-            if args.test: # Always raise in test mode
+            if args["--test"]: # Always raise in test mode
+                util.ERROR("CLI option --test is set. Raising exception to exit.")
                 raise
+            else:
+                util.notify_exception (type(e), e, e.__traceback__)
             if have_non_interactive_commands or type(e) == util.TTFatalException:
                 # In non-interactive mode and on fatal excepions, we re-raise to exit the program
                 raise
@@ -406,29 +413,29 @@ def main_loop(args, context):
                 raise
 
 def main():
-    parser=get_argument_parser()
-    args = parser.parse_args()
+    args = docopt(__doc__)
 
-    if not args.verbose:
+    if not args['--verbose']:
         util.VERBOSE=util.NULL_PRINT
 
     # Try to determine the output directory
-    if args.output_dir is None: # Then try to find the most recent tt_build subdir
+    if args["<output_dir>"] is None: # Then try to find the most recent tt_build subdir
         most_recent_build_output_dir = locate_most_recent_build_output_dir()
         if most_recent_build_output_dir:
             util.INFO (f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{most_recent_build_output_dir}")
-            args.output_dir = most_recent_build_output_dir
+            args["<output_dir>"] = most_recent_build_output_dir
         else:
             util.FATAL (f"Output directory (output_dir) was not supplied and cannot be determined automatically. Exiting...")
 
     # Try to load the runtime data from the output directory
-    runtime_data_yaml_filename = f"{(args.output_dir)}/runtime_data.yaml"
+    runtime_data_yaml_filename = f"{(args['<output_dir>'])}/runtime_data.yaml"
     runtime_data_yaml = None
     if os.path.exists(runtime_data_yaml_filename):
         runtime_data_yaml = util.YamlFile(runtime_data_yaml_filename)
 
     # Try to connect to the server. If it is not already running, it will be started.
-    server_ifc = tt_device.init_server_communication(args, runtime_data_yaml_filename)
+    print (f"Connecting to Debuda server at {args['--debuda-server-address']}")
+    server_ifc = tt_device.init_server_communication(args["--server-cache"], args["--debuda-server-address"], runtime_data_yaml_filename)
 
     # We did not find the runtime_data.yaml file, so we need to get the runtime data from the server
     if runtime_data_yaml is None:
@@ -437,7 +444,7 @@ def main():
     cluster_desc_path = os.path.abspath (server_ifc.get_cluster_desc_path())
 
     # Create the context
-    context = load_context (netlist_filepath = args.netlist, run_dirpath=args.output_dir, runtime_data_yaml=runtime_data_yaml, cluster_desc_path=cluster_desc_path)
+    context = load_context (netlist_filepath = args["--netlist"], run_dirpath=args["<output_dir>"], runtime_data_yaml=runtime_data_yaml, cluster_desc_path=cluster_desc_path)
     context.server_ifc = server_ifc
     context.args = args             # Used by 'export' command
     context.debuda_path = __file__  # Used by 'export' command

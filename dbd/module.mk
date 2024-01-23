@@ -1,5 +1,7 @@
 include $(BUDA_HOME)/infra/common.mk
 
+DBD_OUT?=$(OUT)/dbd
+
 # Main target: it builds the standalone server executable
 dbd: dbd/server
 	$(PRINT_TARGET)
@@ -13,6 +15,7 @@ MARKDOWN_FILES+=$(DBD_OUT)/debuda-commands-help.md
 # The following target is used to build the documentation (md, html, pdf). It is not bullet proof, but it is good enough for now.
 .PHONY: dbd/documentation
 dbd/documentation:
+	echo "Output directory: $(DBD_OUT)"
 	if [ "$(CONFIG)" = "debug" ]; then \
 		echo "WARNING: Do not use CONFIG=debug. Please unset CONFIG"; \
 		exit 1; \

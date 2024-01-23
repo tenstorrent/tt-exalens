@@ -226,6 +226,13 @@ class RymlLazyList(Sequence):
     def __repr__(self):
         return repr(self.items)
 
+    def __iter__(self):
+        i = 0
+        while i < self.length:
+            v = self[i]
+            yield v
+            i += 1
+
 KeyType = TypeVar('KeyType')
 ValueType = TypeVar('ValueType')
 

@@ -147,6 +147,17 @@
             "env": {
                 // "TT_PCI_LOG_LEVEL": "2"
             }
-           },
+        },
+        {
+            "name": "run-debuda-on-help-examples.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/run-debuda-on-help-examples.py",
+            "args": [ "build/dbd/help_file_raw.txt", "build/dbd/help_file_with_example_outputs.txt" ],
+            "cwd": "${workspaceFolder}/..",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+        },
+
     ]
 }
