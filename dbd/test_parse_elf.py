@@ -100,7 +100,7 @@ class TestParseElf(unittest.TestCase):
         assert mem_access(name_dict, "s_ptr", mem_reader)[0]                         == [ 725200 ]
         assert mem_access(name_dict, "*s_ptr", mem_reader)[0]                        == [ 7252000, 7252040, 7252080, 7252120, 7252160, 7252200 ]
         assert mem_access(name_dict, "s_ptr->an_int", mem_reader)[0]                 == [ 7252000 ]
-        assert mem_access(name_dict, "s_ptr->an_int2", mem_reader)[0]                == [ 7252400 ]
+        assert mem_access(name_dict, "s_ptr->an_int2", mem_reader)[0]                == [ 7252040 ]
 
         # Namespace
         assert mem_access(name_dict, "ns::ns_int", mem_reader)[0]                    == [ 725120 ]
