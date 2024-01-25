@@ -63,7 +63,8 @@ dbd/documentation:
 # however this is not encoded in the dependency list as it takes a while to build the documentation.
 .PHONY: dbd/release
 dbd/release: dbd dbd/documentation
-	echo "The board should be reset before running this. Full command should be: unset CONFIG ; make clean ; make dbd/documentation ; make dbd/release"
+	echo "The board should be reset before running this target."
+	echo "Full command: unset CONFIG ; make clean ; make dbd/documentation ; make dbd/release."
 	dbd/bin/package.sh $(DBD_OUT)
 
 dbd/clean: dbd/tools/clean
@@ -81,6 +82,7 @@ dbd/test:
 .PHONY: dbd/test-elf-parser
 dbd/test-elf-parser:
 	python3 dbd/test_parse_elf.py
+	python3 dbd/test_firmware.py
 
 $(DBD_LIB): $(DBD_OBJS) $(BACKEND_LIB)
 	$(PRINT_TARGET)
@@ -100,5 +102,4 @@ $(OBJDIR)/dbd/%.o: dbd/%.cpp
 	$(CXX) $(DBD_CFLAGS) $(CXXFLAGS) $(STATIC_LIB_FLAGS) $(DBD_INCLUDES) $(DBD_DEFINES) -c -o $@ $<
 	$(PRINT_OK)
 
-include $(BUDA_HOME)/dbd/tools/module.mk
 include $(BUDA_HOME)/dbd/server/module.mk

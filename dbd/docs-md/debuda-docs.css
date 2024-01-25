@@ -36,8 +36,6 @@ h5 {
     padding-left: 0.5em;
 }
 
-/* Make headings light blue */
-
 /* Paragraph styles */
 p {
     line-height: 1.5;
@@ -46,7 +44,7 @@ p {
     padding-left: 1em;
 }
 
-/* This is for text that is inside single backtick ` Make it marroon */
+/* This is for text that is inside single backtick ` Make it maroon */
 p code {
     font-weight: bold;
     font-family: 'Inconsolata', monospace;

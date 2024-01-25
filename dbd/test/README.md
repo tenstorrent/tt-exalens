@@ -1,6 +1,6 @@
 # Debuda tests
 
-Debuda tests are running on silicon.
+Debuda tests run on silicon.
 
 To run debuda tests locally:
 ```

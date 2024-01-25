@@ -7,15 +7,18 @@ if [ -z "$SERVER_CACHE" ]; then
     SERVER_CACHE="through" # By default, we save the server cache
 fi
 
+# If we want to run with coverage, prefix this script with COV=1
+# pip install coverage
+if [ "$COV" = "1" ]; then
+    COVERAGE_CMD="coverage run --include=dbd/**"
+else
+    COVERAGE_CMD=""
+fi
+
 # --test is used to prevent main REPL loop from catching the exception. Instead,
 # it will be propagated back to the shell as a non-zero exit code.
 run_debuda() {
-    if [ -z "$TMP_OUT_FILE" ]; then
-        # If TMP_OUT_FILE is not set, show the output
-        timeout 30 dbd/debuda.py debuda_test --server-cache $SERVER_CACHE --test --commands "$1"
-    else
-        timeout 30 dbd/debuda.py debuda_test --server-cache $SERVER_CACHE --test --commands "$1"
-    fi
+    timeout 30 $COVERAGE_CMD dbd/debuda.py debuda_test --server-cache $SERVER_CACHE --test --commands "$1"
     if [ $? -ne 0 ]; then
         echo "***"
         echo "Error: test failed while running dbd/debuda.py with commands: $1"
@@ -85,6 +88,11 @@ run_debuda "$JOINED_COMMANDS"
 #   ./build/test/verif/op_tests/test_op --netlist dbd/test/netlists/netlist_multi_matmul_perf.yaml --seed 0 --silicon --timeout 60
 #   ctrl-C
 # Then find a valid core (using op-map) and run gpr on it.
+
+# Print coverage results if required
+if [ "$COV" = "1" ]; then
+    coverage report --sort=cover --show-missing
+fi
 
 echo ""
 echo "All commands passed for test $TEST_NAME"

@@ -1,4 +1,5 @@
 #!/bin/bash
+# This script is used to create a standalone release of Debuda
 set -e
 
 # Validate git root
