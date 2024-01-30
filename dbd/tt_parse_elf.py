@@ -38,43 +38,49 @@ Examples:
 from functools import cached_property
 import re
 from typing import Dict
-try:
-  from elftools.elf.elffile import ELFFile
-  from elftools.dwarf.die import DIE as DWARF_DIE
-  from elftools.dwarf.compileunit import CompileUnit as DWARF_CU
-  from elftools.elf.enums import ENUM_ST_INFO_TYPE
-  from docopt import docopt
-  from tabulate import tabulate
-except:
-  print ("ERROR: Please install dependencies with: pip install pyelftools docopt fuzzywuzzy python-Levenshtein tabulate")
-  exit(1)
 
-CLR_RED = '\033[31m'
-CLR_GREEN = '\033[32m'
-CLR_BLUE = '\033[34m'
-CLR_GREY = '\033[37m'
-CLR_ORANGE = '\033[38:2:205:106:0m'
-CLR_WHITE = '\033[38:2:255:255:255m'
-CLR_END = '\033[0m'
+try:
+    from elftools.elf.elffile import ELFFile
+    from elftools.dwarf.die import DIE as DWARF_DIE
+    from elftools.dwarf.compileunit import CompileUnit as DWARF_CU
+    from elftools.elf.enums import ENUM_ST_INFO_TYPE
+    from docopt import docopt
+    from tabulate import tabulate
+except:
+    print(
+        "ERROR: Please install dependencies with: pip install pyelftools docopt fuzzywuzzy python-Levenshtein tabulate"
+    )
+    exit(1)
+
+CLR_RED = "\033[31m"
+CLR_GREEN = "\033[32m"
+CLR_BLUE = "\033[34m"
+CLR_GREY = "\033[37m"
+CLR_ORANGE = "\033[38:2:205:106:0m"
+CLR_WHITE = "\033[38:2:255:255:255m"
+CLR_END = "\033[0m"
 
 # Helpers
 debug_enabled = False
 
-def debug (msg):
+
+def debug(msg):
     if debug_enabled:
-        print (msg)
+        print(msg)
+
 
 def strip_DW_(s):
     """
     Removes DW_AT_, DW_TAG_ and other DW_* prefixes from the string
     """
-    return re.sub(r'^DW_[^_]*_', '', s)
+    return re.sub(r"^DW_[^_]*_", "", s)
 
-class MY_CU():
+
+class MY_CU:
     def __init__(self, dwarf_cu: DWARF_CU):
         self.dwarf_cu = dwarf_cu
-        self.offsets:Dict[int, MY_DIE] = {}
-        self._dies:Dict[int, MY_DIE] = {}
+        self.offsets: Dict[int, MY_DIE] = {}
+        self._dies: Dict[int, MY_DIE] = {}
 
     def get_die(self, dwarf_die: DWARF_DIE):
         die = self._dies.get(id(dwarf_die))
@@ -106,7 +112,7 @@ class MY_CU():
                 return die
         return None
 
-    def find_DIE_that_specifies(self, die: 'MY_DIE'):
+    def find_DIE_that_specifies(self, die: "MY_DIE"):
         """
         Given a DIE, find another DIE that specifies it. For example, if the DIE is a
         variable, find the DIE that defines the variable.
@@ -114,15 +120,17 @@ class MY_CU():
         IMPROVE: What if there are multiple dies to return?
         """
         for DIE in self.iter_DIEs():
-            if 'DW_AT_specification' in DIE.attributes:
-                if DIE.attributes['DW_AT_specification'].value == die.offset:
+            if "DW_AT_specification" in DIE.attributes:
+                if DIE.attributes["DW_AT_specification"].value == die.offset:
                     return DIE
         return None
 
-class MY_DIE():
+
+class MY_DIE:
     """
     A wrapper around DIE class from pyelftools that adds some helper functions.
     """
+
     def __init__(self, cu: MY_CU, dwarf_die: DWARF_DIE):
         self.cu = cu
         self.dwarf_die = dwarf_die
@@ -130,13 +138,16 @@ class MY_DIE():
         self.tag: str = dwarf_die.tag
         self.attributes = dwarf_die.attributes
         self.offset = dwarf_die.offset
-        self.children_by_name:Dict[str, MY_DIE] = {}
+        self.children_by_name: Dict[str, MY_DIE] = {}
 
     def get_child_by_name(self, child_name: str):
         child = self.children_by_name.get(child_name)
         if child == None:
             for die in self.iter_children():
-                assert die.name not in self.children_by_name or self.children_by_name[die.name] == die
+                assert (
+                    die.name not in self.children_by_name
+                    or self.children_by_name[die.name] == die
+                )
                 self.children_by_name[die.name] = die
                 if die.name == child_name:
                     return die
@@ -144,34 +155,46 @@ class MY_DIE():
 
     @cached_property
     def local_offset(self):
-        return self.attributes['DW_AT_type'].value
+        return self.attributes["DW_AT_type"].value
 
     # We only care about the stuff we can use for probing the memory
-    IGNORE_TAGS = set([ 'DW_TAG_compile_unit', 'DW_TAG_subprogram', 'DW_TAG_formal_parameter', 'DW_TAG_unspecified_parameters' ])
+    IGNORE_TAGS = set(
+        [
+            "DW_TAG_compile_unit",
+            "DW_TAG_subprogram",
+            "DW_TAG_formal_parameter",
+            "DW_TAG_unspecified_parameters",
+        ]
+    )
 
     @cached_property
     def category(self):
         """
         We lump all the DIEs into the following categories
         """
-        if self.tag.endswith('_type') or self.tag == 'DW_TAG_typedef':
-            return 'type'
-        elif self.tag == 'DW_TAG_enumerator':
-            return 'enumerator'
-        elif self.tag == 'DW_TAG_variable':
-            return 'variable'
-        elif self.tag == 'DW_TAG_member':
-            return 'member'
+        if self.tag.endswith("_type") or self.tag == "DW_TAG_typedef":
+            return "type"
+        elif self.tag == "DW_TAG_enumerator":
+            return "enumerator"
+        elif self.tag == "DW_TAG_variable":
+            return "variable"
+        elif self.tag == "DW_TAG_member":
+            return "member"
         elif self.tag in self.IGNORE_TAGS:
-            pass # Just skip these tags
-        elif self.tag == 'DW_TAG_namespace':
-            return 'type'
-        elif self.tag == 'DW_TAG_imported_declaration' or self.tag == 'DW_TAG_imported_module' or self.tag == 'DW_TAG_template_type_param' or self.tag == 'DW_TAG_template_value_param':
+            pass  # Just skip these tags
+        elif self.tag == "DW_TAG_namespace":
+            return "type"
+        elif (
+            self.tag == "DW_TAG_imported_declaration"
+            or self.tag == "DW_TAG_imported_module"
+            or self.tag == "DW_TAG_template_type_param"
+            or self.tag == "DW_TAG_template_value_param"
+        ):
             return None
         else:
-            print (f"{CLR_RED}Don't know how to categorize tag: {self.tag}{CLR_END}")
+            print(f"{CLR_RED}Don't know how to categorize tag: {self.tag}{CLR_END}")
             return None
-    
+
     @cached_property
     def path(self):
         """
@@ -181,7 +204,7 @@ class MY_DIE():
         parent = self.parent
         name = self.name
 
-        if parent and parent.tag != 'DW_TAG_compile_unit':
+        if parent and parent.tag != "DW_TAG_compile_unit":
             parent_path = parent.path
             return f"{parent_path}::{name}"
 
@@ -193,13 +216,13 @@ class MY_DIE():
         Resolve to underlying type
         TODO: test typedefs, this looks overly complicated
         """
-        if self.tag == 'DW_TAG_typedef':
+        if self.tag == "DW_TAG_typedef":
             typedef_DIE = self.cu.find_DIE_at_local_offset(self.local_offset)
-            if typedef_DIE: # If typedef, recursivelly do it
+            if typedef_DIE:  # If typedef, recursivelly do it
                 return typedef_DIE.resolved_type
-        elif 'DW_AT_type' in self.attributes:
+        elif "DW_AT_type" in self.attributes:
             my_type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
-            if my_type_die.tag == 'DW_TAG_typedef':
+            if my_type_die.tag == "DW_TAG_typedef":
                 return my_type_die.resolved_type
             return my_type_die
         return self
@@ -209,8 +232,8 @@ class MY_DIE():
         """
         Dereference a pointer type to get the type of what it points to
         """
-        if self.tag == 'DW_TAG_pointer_type' or self.tag == 'DW_TAG_reference_type':
-            if 'DW_AT_type' not in self.attributes:
+        if self.tag == "DW_TAG_pointer_type" or self.tag == "DW_TAG_reference_type":
+            if "DW_AT_type" not in self.attributes:
                 return None
             return self.cu.find_DIE_at_local_offset(self.local_offset)
         return None
@@ -220,7 +243,7 @@ class MY_DIE():
         """
         Get the type of the elements of an array
         """
-        if self.tag == 'DW_TAG_array_type':
+        if self.tag == "DW_TAG_array_type":
             return self.cu.find_DIE_at_local_offset(self.local_offset)
         return None
 
@@ -229,23 +252,23 @@ class MY_DIE():
         """
         Return the size in bytes of the DIE
         """
-        if 'DW_AT_byte_size' in self.attributes:
-            return self.attributes['DW_AT_byte_size'].value
+        if "DW_AT_byte_size" in self.attributes:
+            return self.attributes["DW_AT_byte_size"].value
 
-        if self.tag == 'DW_TAG_pointer_type':
+        if self.tag == "DW_TAG_pointer_type":
             return 4  # Assuming 32-bit pointer
 
-        if self.tag == 'DW_TAG_array_type':
+        if self.tag == "DW_TAG_array_type":
             array_size = 1
             for child in self.iter_children():
-                if 'DW_AT_upper_bound' in child.attributes:
-                    upper_bound = child.attributes['DW_AT_upper_bound'].value
-                    array_size *= (upper_bound + 1)
+                if "DW_AT_upper_bound" in child.attributes:
+                    upper_bound = child.attributes["DW_AT_upper_bound"].value
+                    array_size *= upper_bound + 1
             elem_die = self.cu.find_DIE_at_local_offset(self.local_offset)
             elem_size = elem_die.size
             return array_size * elem_size
 
-        if 'DW_AT_type' in self.attributes:
+        if "DW_AT_type" in self.attributes:
             type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
             return type_die.size
 
@@ -257,16 +280,16 @@ class MY_DIE():
         Return the address of the DIE within the parent type
         """
         addr = None
-        if 'DW_AT_data_member_location' in self.attributes:
-            addr = self.attributes['DW_AT_data_member_location'].value
+        if "DW_AT_data_member_location" in self.attributes:
+            addr = self.attributes["DW_AT_data_member_location"].value
         else:
-            location = self.attributes.get('DW_AT_location')
+            location = self.attributes.get("DW_AT_location")
             if location:
                 # Assuming the location's form is a block
                 block = location.value
                 # Check if the first opcode is DW_OP_addr (0x03)
                 if block[0] == 0x03:
-                    addr = int.from_bytes(block[1:], byteorder='little')
+                    addr = int.from_bytes(block[1:], byteorder="little")
             else:
                 # Try to find another DIE that defines this variable
                 other_die = self.cu.find_DIE_that_specifies(self)
@@ -274,16 +297,21 @@ class MY_DIE():
                     addr = other_die.address
 
         if addr is None:
-            if self.tag_is('enumerator') or self.tag_is('namespace') or self.tag.endswith('_type') or self.tag_is('typedef'):
+            if (
+                self.tag_is("enumerator")
+                or self.tag_is("namespace")
+                or self.tag.endswith("_type")
+                or self.tag_is("typedef")
+            ):
                 # Then we are not expecting an address
                 pass
-            elif self.parent.tag == 'DW_TAG_union_type':
-                return 0 # All members of a union start at the same address
+            elif self.parent.tag == "DW_TAG_union_type":
+                return 0  # All members of a union start at the same address
             else:
                 if self.attributes.get("DW_AT_const_value"):
                     pass
                 else:
-                    print (f"{CLR_RED}ERROR: Cannot find address for {self}{CLR_END}")
+                    print(f"{CLR_RED}ERROR: Cannot find address for {self}{CLR_END}")
         return addr
 
     @cached_property
@@ -291,8 +319,8 @@ class MY_DIE():
         """
         Return the value of the DIE
         """
-        if 'DW_AT_const_value' in self.attributes:
-            return self.attributes['DW_AT_const_value'].value
+        if "DW_AT_const_value" in self.attributes:
+            return self.attributes["DW_AT_const_value"].value
         return None
 
     @cached_property
@@ -300,18 +328,18 @@ class MY_DIE():
         """
         Return the name of the DIE
         """
-        if 'DW_AT_name' in self.attributes:
-            name = self.attributes['DW_AT_name'].value.decode('utf-8')
-        elif 'DW_AT_specification' in self.attributes:
+        if "DW_AT_name" in self.attributes:
+            name = self.attributes["DW_AT_name"].value.decode("utf-8")
+        elif "DW_AT_specification" in self.attributes:
             # This is a variable that is defined elsewhere. We'll skip it.
             # IMPROVE: We should probably find the DIE that defines it and use its name.
             name = None
-        elif self.tag_is('pointer_type'):
+        elif self.tag_is("pointer_type"):
             if self.dereference_type is None:
                 name = "?"
             else:
                 name = f"{self.dereference_type.name}*"
-        elif self.tag_is('reference_type'):
+        elif self.tag_is("reference_type"):
             name = f"{self.dereference_type.name}&"
         else:
             # We can't figure out the name of this variable. Just give it a name based on the ELF offset.
@@ -343,13 +371,15 @@ class MY_DIE():
         for attr_name in self.attributes.keys():
             attr_value = self.attributes[attr_name].value
             if isinstance(attr_value, bytes):
-                attr_value = attr_value.decode('utf-8')
+                attr_value = attr_value.decode("utf-8")
             attrs.append(f"{strip_DW_(attr_name)}={attr_value}")
         attrs = ", ".join(attrs)
         return f"{strip_DW_(self.tag)}({attrs}) offset={hex(self.offset)}"
 
     def tag_is(self, tag):
         return self.tag == f"DW_TAG_{tag}"
+
+
 # end class MY_DIE
 
 
@@ -358,8 +388,9 @@ def process_DIE(die: MY_DIE, recurse_dict, r_depth):
     Processes a DIE, adds it to the recurse_dict if needed, and returns True if we
     should recurse into its children
     """
+
     def log(str):
-        debug (f"{'  ' * (r_depth+1)}{str}")
+        debug(f"{'  ' * (r_depth+1)}{str}")
 
     category = die.category
     path = die.path
@@ -367,7 +398,9 @@ def process_DIE(die: MY_DIE, recurse_dict, r_depth):
     # We add test for debug_enabled here, because we don't want string formatting to be executed without printint anything
     global debug_enabled
     if debug_enabled:
-        log (f"{CLR_BLUE}{path}{CLR_END} {category} {CLR_GREEN}{die.resolved_type.path}{CLR_END} {die.offset}/{hex(die.offset)} {die}")
+        log(
+            f"{CLR_BLUE}{path}{CLR_END} {category} {CLR_GREEN}{die.resolved_type.path}{CLR_END} {die.offset}/{hex(die.offset)} {die}"
+        )
 
     if category:
         if category not in recurse_dict:
@@ -377,6 +410,7 @@ def process_DIE(die: MY_DIE, recurse_dict, r_depth):
     recurse_down = category is not None
     return recurse_down
 
+
 def recurse_DIE(DIE: MY_DIE, recurse_dict, r_depth=0):
     """
     This function visits all children recursively and calls process_DIE() on each
@@ -384,7 +418,8 @@ def recurse_DIE(DIE: MY_DIE, recurse_dict, r_depth=0):
     for child in DIE.iter_children():
         recurse_down = process_DIE(child, recurse_dict, r_depth)
         if recurse_down:
-            recurse_DIE(child, recurse_dict, r_depth+1)
+            recurse_DIE(child, recurse_dict, r_depth + 1)
+
 
 def parse_dwarf(dwarf):
     """
@@ -395,34 +430,43 @@ def parse_dwarf(dwarf):
         'member' - all the members of structures etc
         'enumerator' - all the enumerators in the DWARF info
     """
-    recurse_dict = { 'variable': dict(), 'type': dict(), 'member': dict(), 'enumerator': dict() }
+    recurse_dict = {
+        "variable": dict(),
+        "type": dict(),
+        "member": dict(),
+        "enumerator": dict(),
+    }
 
     for dwarf_cu in dwarf.iter_CUs():
         cu = MY_CU(dwarf_cu)
         top_DIE = cu.top_DIE
-        cu_name = 'N/A'
-        if 'DW_AT_name' in top_DIE.attributes:
-            cu_name = top_DIE.attributes['DW_AT_name'].value.decode('utf-8')
-        debug (f"CU: {cu_name}")
+        cu_name = "N/A"
+        if "DW_AT_name" in top_DIE.attributes:
+            cu_name = top_DIE.attributes["DW_AT_name"].value.decode("utf-8")
+        debug(f"CU: {cu_name}")
 
         recurse_DIE(top_DIE, recurse_dict)
 
     return recurse_dict
 
-def read_elf (elf_file_path):
+
+def read_elf(elf_file_path):
     """
     Reads the ELF file and returns the symbol and type tables
     """
-    with open(elf_file_path, 'rb') as f:
+    with open(elf_file_path, "rb") as f:
         elf = ELFFile(f)
 
         if not elf.has_dwarf_info():
-            print(f"ERROR: {elf_file_path} does not have DWARF info. Source file must be compiled with -g")
+            print(
+                f"ERROR: {elf_file_path} does not have DWARF info. Source file must be compiled with -g"
+            )
             return
         dwarf = elf.get_dwarf_info()
 
         recurse_dict = parse_dwarf(dwarf)
     return recurse_dict
+
 
 #
 # Access path parsing / processing
@@ -436,7 +480,7 @@ def split_access_path(access_path):
     """
     # Regex pattern to capture the first element, the dividing element, and the rest of the path
     # pattern = r'^([\*]*\w+)(\.|->|\[|\])(.*)$'
-    pattern = r'^([\*]*[\w:]+)(\.|->|\[)(.*)$'
+    pattern = r"^([\*]*[\w:]+)(\.|->|\[)(.*)$"
 
     match = re.match(pattern, access_path)
 
@@ -444,6 +488,7 @@ def split_access_path(access_path):
         return match.group(1), match.group(2), match.group(3)
     else:
         return access_path, None, None
+
 
 def get_ptr_dereference_count(name):
     """
@@ -455,7 +500,8 @@ def get_ptr_dereference_count(name):
         ptr_dereference_count += 1
     return name, ptr_dereference_count
 
-def get_array_indices (rest_of_path):
+
+def get_array_indices(rest_of_path):
     """
     Given a string that starts with '[', parse the array indices and return them as a list.
     Supports integer indices only. Supports multidimensional arrays (e.g. [1][2] in which
@@ -468,8 +514,9 @@ def get_array_indices (rest_of_path):
             raise Exception(f"ERROR: Expected ] in {rest_of_path}")
         array_index = rest_of_path[1:closing_bracket_pos]
         array_indices.append(int(array_index))
-        rest_of_path = rest_of_path[closing_bracket_pos+1:]
+        rest_of_path = rest_of_path[closing_bracket_pos + 1 :]
     return array_indices, rest_of_path
+
 
 def resolve_unnamed_union_member(type_die, member_name):
     """
@@ -477,7 +524,7 @@ def resolve_unnamed_union_member(type_die, member_name):
     represening a member of the unnamed union, return the die of the unnamed union.
     """
     for child in type_die.iter_children():
-        if 'DW_AT_name' not in child.attributes and child.tag == 'DW_TAG_member':
+        if "DW_AT_name" not in child.attributes and child.tag == "DW_TAG_member":
             union_type = child.resolved_type
             for union_member_child in union_type.iter_children():
                 if union_member_child.name == member_name:
@@ -485,19 +532,19 @@ def resolve_unnamed_union_member(type_die, member_name):
     return None
 
 
-def mem_access (name_dict, access_path, mem_access_function):
+def mem_access(name_dict, access_path, mem_access_function):
     """
     Given an access path such as "s_ptr->an_int", "s_ptr->an_int[2]", or "s_ptr->an_int[2][3]",
     calls the mem_access_function to read the memory, and returns the value array.
     """
-    debug (f"Accessing {CLR_GREEN}{access_path}{CLR_END}")
+    debug(f"Accessing {CLR_GREEN}{access_path}{CLR_END}")
 
     # At the top level, the next name should be found in the 'variable'
     # section of the name dict: name_dict["variable"]
     # We also check for pointer dereferences here
     access_path, ptr_dereference_count = get_ptr_dereference_count(access_path)
     name, path_divider, rest_of_path = split_access_path(access_path)
-    die:MY_DIE = name_dict["variable"][name]
+    die: MY_DIE = name_dict["variable"][name]
     current_address = die.address
     type_die = die.resolved_type
 
@@ -510,15 +557,24 @@ def mem_access (name_dict, access_path, mem_access_function):
             while ptr_dereference_count > 0:
                 ptr_dereference_count -= 1
                 type_die = type_die.dereference_type
-                current_address = mem_access_function(current_address, 4)[0] # Assuming 4 byte pointers
+                current_address = mem_access_function(current_address, 4)[
+                    0
+                ]  # Assuming 4 byte pointers
 
             # Check if it is a reference
             if type_die.tag_is("reference_type"):
                 type_die = type_die.dereference_type
-                current_address = mem_access_function(current_address, 4)[0] # Dereference the reference
+                current_address = mem_access_function(current_address, 4)[
+                    0
+                ]  # Dereference the reference
 
             bytes_to_read = type_die.size * num_members_to_read
-            return mem_access_function(current_address, bytes_to_read), current_address, bytes_to_read, type_die
+            return (
+                mem_access_function(current_address, bytes_to_read),
+                current_address,
+                bytes_to_read,
+                type_die,
+            )
         elif path_divider == ".":
             if num_members_to_read > 1:
                 raise Exception(f"ERROR: Cannot access {name} as a single value")
@@ -546,13 +602,19 @@ def mem_access (name_dict, access_path, mem_access_function):
                 member_path = type_die.path + "::" + member_name
                 raise Exception(f"ERROR: Cannot find {member_path}")
             type_die = die.resolved_type
-            current_address = mem_access_function(current_address, 4)[0] + die.address # Assuming 4 byte pointers
+            current_address = (
+                mem_access_function(current_address, 4)[0] + die.address
+            )  # Assuming 4 byte pointers
 
         elif path_divider == "[":
             if num_members_to_read > 1:
-                raise Exception(f"INTERNAL ERROR: An array of arrays should be processed in a single call")
-            array_indices, rest_of_path = get_array_indices ("[" + rest_of_path)
-            element_type_die, array_member_offset, num_members_to_read = get_array_member_offset (type_die, array_indices)
+                raise Exception(
+                    f"INTERNAL ERROR: An array of arrays should be processed in a single call"
+                )
+            array_indices, rest_of_path = get_array_indices("[" + rest_of_path)
+            element_type_die, array_member_offset, num_members_to_read = (
+                get_array_member_offset(type_die, array_indices)
+            )
             element_size = element_type_die.size
             current_address += element_size * array_member_offset
             rest_of_path = "ARRAY" + rest_of_path
@@ -561,7 +623,8 @@ def mem_access (name_dict, access_path, mem_access_function):
         else:
             raise Exception(f"ERROR: Unknown divider {path_divider}")
 
-def get_array_member_offset (array_type, array_indices):
+
+def get_array_member_offset(array_type, array_indices):
     """
     Given a list of array_indices of a multidimensional array:
      - Return element type with the offset in bytes.
@@ -585,51 +648,64 @@ def get_array_member_offset (array_type, array_indices):
         # 1. Find array dimensions
         array_dimensions = []
         for child in array_type.iter_children():
-            if 'DW_AT_upper_bound' in child.attributes:
-                upper_bound = child.attributes['DW_AT_upper_bound'].value
+            if "DW_AT_upper_bound" in child.attributes:
+                upper_bound = child.attributes["DW_AT_upper_bound"].value
                 array_dimensions.append(upper_bound + 1)
 
         # 2. Compute subarray sizes in elements. Each element of subarray_sizes stores the number
         # of elements per value in array_indices for the corresponding dimension. For example,
         # if we have a 2D array of integers A[2][3], the subarray_sizes will be [3, 1] because we
-        # move 3 elements for each value in array_indices[0] and 1 element for each value 
+        # move 3 elements for each value in array_indices[0] and 1 element for each value
         # in array_indices[1].
-        subarray_sizes = [ 1 ] # In elements
-        for i in reversed(range(len(array_dimensions)-1)):
-            subarray_size = array_dimensions[i+1] * subarray_sizes[0]
+        subarray_sizes = [1]  # In elements
+        for i in reversed(range(len(array_dimensions) - 1)):
+            subarray_size = array_dimensions[i + 1] * subarray_sizes[0]
             subarray_sizes.insert(0, subarray_size)
 
         # 3. Compute offset in bytes
         offset = 0
         for i in range(len(array_indices)):
             if array_indices[i] >= array_dimensions[i]:
-                raise Exception(f"ERROR: Array index {array_indices[i]} is out of bounds")
+                raise Exception(
+                    f"ERROR: Array index {array_indices[i]} is out of bounds"
+                )
             else:
                 offset += array_indices[i] * subarray_sizes[i]
-        num_elements_to_read = subarray_sizes[len(array_indices)-1]
+        num_elements_to_read = subarray_sizes[len(array_indices) - 1]
         return array_element_type, offset, num_elements_to_read
+
 
 def access_logger(addr, size_bytes):
     """
     A simple memory reader emulator that prints all memory accesses
     """
-    print (f"RD {hex(addr)} - {size_bytes} bytes")
+    print(f"RD {hex(addr)} - {size_bytes} bytes")
     # We must return what we read to support dereferencing
-    words_read = [ i for i in range((size_bytes-1)//4+1) ]
+    words_read = [i for i in range((size_bytes - 1) // 4 + 1)]
     return words_read
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     args = docopt(__doc__)
     elf_file_path = args["<elf-file>"]
     access_path = args["<access-path>"]
     debug_enabled = args["--debug"]
 
-    name_dict = read_elf (elf_file_path)
+    name_dict = read_elf(elf_file_path)
     if access_path:
-        mem_access (name_dict, access_path, access_logger)
+        mem_access(name_dict, access_path, access_logger)
     else:
-            # Debugging display
-        header = ["Category", "Path", "Resolved Type Path", "Size", "Addr", "Hex Addr", "Value", "Hex Value"]
+        # Debugging display
+        header = [
+            "Category",
+            "Path",
+            "Resolved Type Path",
+            "Size",
+            "Addr",
+            "Hex Addr",
+            "Value",
+            "Hex Value",
+        ]
         header.append("DIE offset")
         if debug_enabled:
             header.append("DIE")
@@ -638,16 +714,29 @@ if __name__ == '__main__':
         for cat, cat_dict in name_dict.items():
             for key, die in cat_dict.items():
                 if key != die.path:
-                    print (f"{CLR_RED}ERROR: key {key} != die.get_path() {die.path}{CLR_END}")
+                    print(
+                        f"{CLR_RED}ERROR: key {key} != die.get_path() {die.path}{CLR_END}"
+                    )
                 resolved_type_path = die.resolved_type.path
-                if resolved_type_path: # Some DIEs are just refences to other DIEs. We skip them.
-                    row = [ cat, die.path, resolved_type_path, die.size, die.address, hex(die.address) if die.address is not None else "", die.value, hex(die.value) if die.value is not None else "" ]
+                if (
+                    resolved_type_path
+                ):  # Some DIEs are just refences to other DIEs. We skip them.
+                    row = [
+                        cat,
+                        die.path,
+                        resolved_type_path,
+                        die.size,
+                        die.address,
+                        hex(die.address) if die.address is not None else "",
+                        die.value,
+                        hex(die.value) if die.value is not None else "",
+                    ]
                     row.append(hex(die.offset))
                     if debug_enabled:
                         row.append(str(die))
                     rows.append(row)
 
-        print (tabulate(rows, headers=header, showindex=False))
+        print(tabulate(rows, headers=header, showindex=False))
 
 
 # TODO:

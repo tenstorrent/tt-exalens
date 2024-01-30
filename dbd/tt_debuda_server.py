@@ -2,6 +2,7 @@ from enum import Enum
 import struct
 import zmq
 
+
 class debuda_server_request_type(Enum):
     # Basic requests
     invalid = 0
@@ -22,13 +23,16 @@ class debuda_server_request_type(Enum):
     get_cluster_description = 102
     get_harvester_coordinate_translation = 103
 
+
 class debuda_server_bad_request(Exception):
     pass
+
 
 class debuda_server_not_supported(Exception):
     pass
 
-class debuda_server_communication():
+
+class debuda_server_communication:
     _BAD_REQUEST = b"BAD_REQUEST"
     _NOT_SUPPORTED = b"NOT_SUPPORTED"
 
@@ -51,35 +55,116 @@ class debuda_server_communication():
         return self._check(self._socket.recv())
 
     def pci_read4(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        self._socket.send(struct.pack("<BBBBQ", debuda_server_request_type.pci_read4.value, chip_id, noc_x, noc_y, address))
+        self._socket.send(
+            struct.pack(
+                "<BBBBQ",
+                debuda_server_request_type.pci_read4.value,
+                chip_id,
+                noc_x,
+                noc_y,
+                address,
+            )
+        )
         return self._check(self._socket.recv())
 
     def pci_write4(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        self._socket.send(struct.pack("<BBBBQI", debuda_server_request_type.pci_write4.value, chip_id, noc_x, noc_y, address, data))
+        self._socket.send(
+            struct.pack(
+                "<BBBBQI",
+                debuda_server_request_type.pci_write4.value,
+                chip_id,
+                noc_x,
+                noc_y,
+                address,
+                data,
+            )
+        )
         return self._check(self._socket.recv())
 
     def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
-        self._socket.send(struct.pack("<BBBBQI", debuda_server_request_type.pci_read.value, chip_id, noc_x, noc_y, address, size))
+        self._socket.send(
+            struct.pack(
+                "<BBBBQI",
+                debuda_server_request_type.pci_read.value,
+                chip_id,
+                noc_x,
+                noc_y,
+                address,
+                size,
+            )
+        )
         return self._check(self._socket.recv())
 
-    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
-        self._socket.send(struct.pack(f"<BBBBQI{len(data)}s", debuda_server_request_type.pci_write.value, chip_id, noc_x, noc_y, address, len(data), data))
+    def pci_write(
+        self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes
+    ):
+        self._socket.send(
+            struct.pack(
+                f"<BBBBQI{len(data)}s",
+                debuda_server_request_type.pci_write.value,
+                chip_id,
+                noc_x,
+                noc_y,
+                address,
+                len(data),
+                data,
+            )
+        )
         return self._check(self._socket.recv())
 
     def pci_read4_raw(self, chip_id: int, address: int):
-        self._socket.send(struct.pack("<BBI", debuda_server_request_type.pci_read4_raw.value, chip_id, address))
+        self._socket.send(
+            struct.pack(
+                "<BBI", debuda_server_request_type.pci_read4_raw.value, chip_id, address
+            )
+        )
         return self._check(self._socket.recv())
 
     def pci_write4_raw(self, chip_id: int, address: int, data: int):
-        self._socket.send(struct.pack("<BBII", debuda_server_request_type.pci_write4_raw.value, chip_id, address, data))
+        self._socket.send(
+            struct.pack(
+                "<BBII",
+                debuda_server_request_type.pci_write4_raw.value,
+                chip_id,
+                address,
+                data,
+            )
+        )
         return self._check(self._socket.recv())
 
     def dma_buffer_read4(self, chip_id: int, address: int, channel: int):
-        self._socket.send(struct.pack("<BBQH", debuda_server_request_type.dma_buffer_read4.value, chip_id, address, channel))
+        self._socket.send(
+            struct.pack(
+                "<BBQH",
+                debuda_server_request_type.dma_buffer_read4.value,
+                chip_id,
+                address,
+                channel,
+            )
+        )
         return self._check(self._socket.recv())
 
-    def pci_read_tile(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int):
-        self._socket.send(struct.pack("<BBBBQIB", debuda_server_request_type.pci_read_tile.value, chip_id, noc_x, noc_y, address, size, data_format))
+    def pci_read_tile(
+        self,
+        chip_id: int,
+        noc_x: int,
+        noc_y: int,
+        address: int,
+        size: int,
+        data_format: int,
+    ):
+        self._socket.send(
+            struct.pack(
+                "<BBBBQIB",
+                debuda_server_request_type.pci_read_tile.value,
+                chip_id,
+                noc_x,
+                noc_y,
+                address,
+                size,
+                data_format,
+            )
+        )
         return self._check(self._socket.recv())
 
     def get_runtime_data(self):
@@ -87,20 +172,29 @@ class debuda_server_communication():
         return self._check(self._socket.recv())
 
     def get_cluster_description(self):
-        self._socket.send(bytes([debuda_server_request_type.get_cluster_description.value]))
+        self._socket.send(
+            bytes([debuda_server_request_type.get_cluster_description.value])
+        )
         return self._check(self._socket.recv())
 
     def get_harvester_coordinate_translation(self, chip_id: int):
-        self._socket.send(struct.pack("<BB", debuda_server_request_type.get_harvester_coordinate_translation.value, chip_id))
+        self._socket.send(
+            struct.pack(
+                "<BB",
+                debuda_server_request_type.get_harvester_coordinate_translation.value,
+                chip_id,
+            )
+        )
         return self._check(self._socket.recv())
 
-class debuda_server():
+
+class debuda_server:
     def __init__(self, address: str, port: int):
         self._communication = debuda_server_communication(address, port)
 
         # Check ping/pong to verify it is debuda server on the other end
         pong = self._communication.ping()
-        if pong != b'PONG':
+        if pong != b"PONG":
             raise ConnectionError()
 
     def parse_uint32_t(self, buffer: bytes):
@@ -112,13 +206,17 @@ class debuda_server():
         return buffer.decode()
 
     def pci_read4(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self.parse_uint32_t(self._communication.pci_read4(chip_id, noc_x, noc_y, address))
+        return self.parse_uint32_t(
+            self._communication.pci_read4(chip_id, noc_x, noc_y, address)
+        )
 
     def pci_write4(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
         buffer = self._communication.pci_write4(chip_id, noc_x, noc_y, address, data)
         bytes_written = self.parse_uint32_t(buffer)
         if bytes_written != 4:
-            raise ValueError(f"Expected 4 bytes written, but {bytes_written} were written")
+            raise ValueError(
+                f"Expected 4 bytes written, but {bytes_written} were written"
+            )
         return bytes_written
 
     def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
@@ -127,26 +225,50 @@ class debuda_server():
             raise ValueError(f"Expected {size} bytes read, but {len(buffer)} were read")
         return buffer
 
-    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
-        bytes_written = self.parse_uint32_t(self._communication.pci_write(chip_id, noc_x, noc_y, address, data))
+    def pci_write(
+        self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes
+    ):
+        bytes_written = self.parse_uint32_t(
+            self._communication.pci_write(chip_id, noc_x, noc_y, address, data)
+        )
         if bytes_written != len(data):
-            raise ValueError(f"Expected {len(data)} bytes written, but {bytes_written} were written")
+            raise ValueError(
+                f"Expected {len(data)} bytes written, but {bytes_written} were written"
+            )
         return bytes_written
 
     def pci_read4_raw(self, chip_id: int, address: int):
         return self.parse_uint32_t(self._communication.pci_read4_raw(chip_id, address))
 
     def pci_write4_raw(self, chip_id: int, address: int, data: int):
-        bytes_written = self.parse_uint32_t(self._communication.pci_write4_raw(chip_id, address, data))
+        bytes_written = self.parse_uint32_t(
+            self._communication.pci_write4_raw(chip_id, address, data)
+        )
         if bytes_written != 4:
-            raise ValueError(f"Expected 4 bytes written, but {bytes_written} were written")
+            raise ValueError(
+                f"Expected 4 bytes written, but {bytes_written} were written"
+            )
         return bytes_written
 
     def dma_buffer_read4(self, chip_id: int, address: int, channel: int):
-        return self.parse_uint32_t(self._communication.dma_buffer_read4(chip_id, address, channel))
+        return self.parse_uint32_t(
+            self._communication.dma_buffer_read4(chip_id, address, channel)
+        )
 
-    def pci_read_tile(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int):
-        return self.parse_string(self._communication.pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format))
+    def pci_read_tile(
+        self,
+        chip_id: int,
+        noc_x: int,
+        noc_y: int,
+        address: int,
+        size: int,
+        data_format: int,
+    ):
+        return self.parse_string(
+            self._communication.pci_read_tile(
+                chip_id, noc_x, noc_y, address, size, data_format
+            )
+        )
 
     def get_runtime_data(self):
         return self.parse_string(self._communication.get_runtime_data())
@@ -155,4 +277,6 @@ class debuda_server():
         return self.parse_string(self._communication.get_cluster_description())
 
     def get_harvester_coordinate_translation(self, chip_id: int):
-        return self.parse_string(self._communication.get_harvester_coordinate_translation(chip_id))
+        return self.parse_string(
+            self._communication.get_harvester_coordinate_translation(chip_id)
+        )

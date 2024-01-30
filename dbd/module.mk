@@ -72,12 +72,13 @@ dbd/clean: dbd/tools/clean
 	-rm $(OBJDIR)/dbd/* $(SILENT_ERRORS)
 
 .PHONY: dbd/test
+DBD_VENV=$(DBD_OUT)/dbd-venv
 dbd/test:
-	echo "Create a clean python environment: dbd-venv"
-	-rm -rf dbd-venv
-	python3 -m venv dbd-venv
+	echo "Create a clean python environment: $(DBD_VENV)"
+	-rm -rf $(DBD_VENV)
+	python3 -m venv $(DBD_VENV)
 	echo "Activate, install requirements and run tests"
-	. dbd-venv/bin/activate && pip install -r dbd/requirements.txt && dbd/test/test-debuda-py.sh
+	. $(DBD_VENV)/bin/activate && pip install -r dbd/requirements.txt && dbd/test/test-debuda-py.sh
 
 .PHONY: dbd/test-elf-parser
 dbd/test-elf-parser:

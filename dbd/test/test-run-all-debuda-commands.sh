@@ -9,8 +9,13 @@ fi
 
 # If we want to run with coverage, prefix this script with COV=1
 # pip install coverage
+# To see coverage results in VS code:
+#   - Install Code Coverage extension (by Markis Taylor)
+#   - Dump the coverage data with: coverage lcov
+#   - Point the extension to the generated lcov file (in VS code settings)
+#   - Run "Show code coverage" command
 if [ "$COV" = "1" ]; then
-    COVERAGE_CMD="coverage run --include=dbd/**"
+    COVERAGE_CMD="coverage run --append --include=dbd/**"
 else
     COVERAGE_CMD=""
 fi
@@ -89,9 +94,10 @@ run_debuda "$JOINED_COMMANDS"
 #   ctrl-C
 # Then find a valid core (using op-map) and run gpr on it.
 
-# Print coverage results if required
+# Print coverage results and generate lcov file
 if [ "$COV" = "1" ]; then
-    coverage report --sort=cover --show-missing
+    coverage report --sort=cover
+    coverage lcov
 fi
 
 echo ""
