@@ -20,6 +20,7 @@ from reportlab.pdfgen import canvas
 from PyPDF2 import PdfWriter, PdfReader
 import os
 
+
 def create_title_page(title, subtitle, image_path, footer, pdf_file):
     c = canvas.Canvas("temp.pdf", pagesize=A4)
     page_width, page_height = A4
@@ -57,11 +58,12 @@ def create_title_page(title, subtitle, image_path, footer, pdf_file):
         os.rename("temp.pdf", pdf_file)
     os.remove("temp.pdf") if os.path.exists("temp.pdf") else None
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     arguments = docopt(__doc__)
-    title = arguments['--title']
-    subtitle = arguments['--subtitle']
-    image_path = arguments['--image']
-    footer = arguments['--footer']
-    pdf_file = arguments['--pdf']
+    title = arguments["--title"]
+    subtitle = arguments["--subtitle"]
+    image_path = arguments["--image"]
+    footer = arguments["--footer"]
+    pdf_file = arguments["--pdf"]
     create_title_page(title, subtitle, image_path, footer, pdf_file)

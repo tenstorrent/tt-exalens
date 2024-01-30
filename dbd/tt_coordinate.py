@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 This file contains the class for the coordinate object. As we use a number of coordinate systems, this class
-is used to uniquely represent one grid location on a chip. Note that no all coordinate systems have a 1:1
+is used to uniquely represent one grid location on a chip. Note that not all coordinate systems have a 1:1
 mapping to the physical location on the chip. For example, not all noc0 coordinates have a valid netlist
 coordinate. This is due to the fact that some locations contain non-Tensix tiles, and also since some Tensix
 rows may be disabled due to harvesting.
@@ -38,10 +38,10 @@ The following coordinate systems are available to represent a grid location on t
                     more hops on the NOC as we need to route around the disabled rows. Again, if harvesting mask is 0,
                     meaning that all rows are functional, this coordinate will be the same as tensix coordinate.
                     This coordinate system is used inside the netlist (grid_loc, grid_size). Notation: R,C
-  - noc0Virt:       Virtual NOC coordinate. Same as noc0, but with the harvested rows removed, and the locations of
+  - noc0Virt:       Virtual NOC coordinate. Similar to noc0, but with the harvested rows removed, and the locations of
                     functioning rows shifted down to fill in the gap. This coordinate system is used to communicate with
                     the driver. Notation: X-Y
-  - nocTr:          Translated NOC coordinate. Same as noc0Virt, but offset by 16. Notation: X-Y
+  - nocTr:          Translated NOC coordinate. Similar to noc0Virt, but offset by 16. Notation: X-Y
                     This system is used by the NOC hardware to account for harvesting. It is similar to the netlist
                     grid (distance one is next functioning core), but it is offset to not use the same range of
                     coordinates as the netlist grid, as that would cause confusion. The coordinates will start at 16, 16.
@@ -53,28 +53,40 @@ The following coordinate systems are available to represent a grid location on t
 
 from typing import Any
 
-VALID_COORDINATE_TYPES = ["noc0", "noc1", "nocVirt", "nocTr", "die", "tensix", "netlist"]
+VALID_COORDINATE_TYPES = [
+    "noc0",
+    "noc1",
+    "nocVirt",
+    "nocTr",
+    "die",
+    "tensix",
+    "netlist",
+]
+
 
 class CoordinateTranslationError(Exception):
     """
     This exception is thrown when a coordinate translation fails.
     """
+
     pass
+
 
 class OnChipCoordinate:
     """
     This class represents a coordinate on the chip. It can be used to convert between the various
     coordinate systems we use.
     """
-    _noc0_coord = (None, None) # This uses noc0 coordinates: (X,Y)
-    _device = None             # Used for conversions
+
+    _noc0_coord = (None, None)  # This uses noc0 coordinates: (X,Y)
+    _device = None  # Used for conversions
 
     def __init__(self, x, y, input_type, device):
         """
         Constructor. The coordinates are stored as integers. It contains NOC0 coords. If device is
         not specified, we will not be able to convert to other coordinate systems.
         """
-        assert (device is not None)
+        assert device is not None
         self._device = device
         if input_type == "noc0":
             self._noc0_coord = (x, y)
@@ -101,9 +113,11 @@ class OnChipCoordinate:
         Stream designators are the key names in the blob yaml and have the form:
             chip_<chip_id>__y_<core_y>__x_<core_x>__stream_<stream_id>
         """
-        
+
         # Split the stream designator into its components
-        chip_id_str, core_y_str, core_x_str, stream_id_str = stream_designator.split("__")
+        chip_id_str, core_y_str, core_x_str, stream_id_str = stream_designator.split(
+            "__"
+        )
 
         # Extract the coordinates from the stream designator
         chip_id = int(chip_id_str.split("_")[1])
@@ -138,14 +152,16 @@ class OnChipCoordinate:
 
     # Which axis is used to advance in the horizontal direction when rendering the chip
     # For X-Y coordinates, this is the X, for R,C coordinates, this is the C.
-    def horizontal_axis (coord_type):
+    def horizontal_axis(coord_type):
         if "noc" in coord_type or "die" in coord_type:
             return 0
         else:
             return 1
-    def vertical_axis (coord_type):
-        return 1-OnChipCoordinate.horizontal_axis(coord_type)
-    def vertical_axis_increasing_up (coord_type):
+
+    def vertical_axis(coord_type):
+        return 1 - OnChipCoordinate.horizontal_axis(coord_type)
+
+    def vertical_axis_increasing_up(coord_type):
         if "noc" in coord_type or "die" in coord_type:
             return True
         else:
@@ -162,14 +178,16 @@ class OnChipCoordinate:
 
         if "noc" in output_type:
             return f"{output_tuple[0]}-{output_tuple[1]}"
-        elif output_type == "die" or output_type == "tensix" or output_type == "netlist":
+        elif (
+            output_type == "die" or output_type == "tensix" or output_type == "netlist"
+        ):
             return f"{output_tuple[0]},{output_tuple[1]}"
         else:
             raise Exception("Unknown output coordinate system: " + output_type)
 
     # The default string representation is the netlist coordinate. That's what the user deals with.
     def __str__(self) -> str:
-        return self.to_str('netlist')
+        return self.to_str("netlist")
 
     def __hash__(self):
         return hash((self._noc0_coord, self._device._id))
@@ -187,7 +205,10 @@ class OnChipCoordinate:
     # == operator
     def __eq__(self, other):
         # util.DEBUG("Comparing coordinates: " + str(self) + " ?= " + str(other))
-        return (self._noc0_coord == other._noc0_coord) and ((self._device == other._device) or (self._device._arch == other._device._arch))
+        return (self._noc0_coord == other._noc0_coord) and (
+            (self._device == other._device)
+            or (self._device._arch == other._device._arch)
+        )
 
     def __lt__(self, other):
         if self._device.id() == other._device.id():
@@ -210,7 +231,9 @@ class OnChipCoordinate:
                 coord_type = "netlist"
             x, y = coord_str.split(",")
         else:
-            raise Exception("Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C")
+            raise Exception(
+                "Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C"
+            )
 
         x = int(x.strip())
         y = int(y.strip())

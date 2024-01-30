@@ -1,10 +1,11 @@
 from tt_object import TTObject, TTObjectIDDict
 
+
 # Constructed from epoch's pipegen.yaml. Contains information about a pipe.
 class Pipe(TTObject):
     def __init__(self, graphs, data):
         self.root = data
-        self._id = self.root['id']
+        self._id = self.root["id"]
         self.graphs = graphs
         self.input_buffers = TTObjectIDDict()
         self.output_buffers = TTObjectIDDict()

@@ -1,6 +1,7 @@
 """
 This module is used to represent the firmware
 """
+
 import time
 import tt_parse_elf as elf
 import tt_util as util
@@ -11,16 +12,14 @@ from fuzzywuzzy import process, fuzz
 # are hard-coded through #define). We need to 'inject' them into the symbol table with
 # the correct type to have the lookup work.
 FW_VARS = {
-    "EPOCH_INFO_PTR" : {
-        "offset" : "EPOCH_INFO_ADDR",   # The address of the variable. If string, it is looked up in the ELF
-                                        # If int, it is used as is
-        "type"   : "epoch_t"            # The type of the variable.
+    "EPOCH_INFO_PTR": {
+        "offset": "EPOCH_INFO_ADDR",  # The address of the variable. If string, it is looked up in the ELF
+        # If int, it is used as is
+        "type": "epoch_t",  # The type of the variable.
     },
-    "ETH_EPOCH_INFO_PTR" : {
-        "offset" : "ETH_EPOCH_INFO_ADDR",
-        "type"   : "epoch_t"
-    },
+    "ETH_EPOCH_INFO_PTR": {"offset": "ETH_EPOCH_INFO_ADDR", "type": "epoch_t"},
 }
+
 
 class FAKE_DIE(object):
     """
@@ -28,16 +27,19 @@ class FAKE_DIE(object):
     it to the DWARF info. We add them here. To keep the rest of code consistent, we create
     fake DIEs for these names, whith minimal required configuration.
     """
+
     def __init__(self, var_name, addr, resolved_type):
         self.name = var_name
         self.address = addr
         self.resolved_type = resolved_type
         self.size = self.resolved_type.size
 
+
 class ELF:
     """
     This class wraps around a list of ELF files and provides a unified interface to them.
     """
+
     def __init__(self, filemap) -> None:
         """
         Given a filemap "prefix" -> "filename", load all the ELF files and store them in
@@ -50,11 +52,13 @@ class ELF:
                 self.names[prefix] = dict()
 
             abspath = os.path.abspath(filename)
-            util.INFO (f"Loading ELF file: '{abspath}'", end="")
+            util.INFO(f"Loading ELF file: '{abspath}'", end="")
             start_time = time.time()
             self.names[prefix] = elf.read_elf(abspath)
-            util.INFO (f" ({os.path.getsize(abspath)} bytes loaded in {time.time() - start_time:.2f}s)")
-            self.name_word_pattern = re.compile(r'[_@.a-zA-Z]+')
+            util.INFO(
+                f" ({os.path.getsize(abspath)} bytes loaded in {time.time() - start_time:.2f}s)"
+            )
+            self.name_word_pattern = re.compile(r"[_@.a-zA-Z]+")
             # Inject the variables that are not in the ELF
             self._process_extra_vars(prefix)
 
@@ -63,22 +67,26 @@ class ELF:
         Given a prefix, inject the variables that are not in the ELF
         """
         for var_name, var in FW_VARS.items():
-            if var_name in self.names[prefix]['variable']:
-                util.INFO (f"Variable '{var_name}' already in ELF. Skipping")
+            if var_name in self.names[prefix]["variable"]:
+                util.INFO(f"Variable '{var_name}' already in ELF. Skipping")
                 continue
-            offset_var = var['offset']
-            if offset_var not in self.names[prefix]['variable']:
-                raise util.TTException (f"Variable '{offset_var}' not found in ELF. Cannot add '{var_name}'")
-            ov = self.names[prefix]['variable'][offset_var]
-            addr = addr=ov.value if ov.value else ov.address
-            resolved_type = self.names[prefix]['type'][var['type']].resolved_type
-            self.names[prefix]['variable'][var_name] = FAKE_DIE(var_name, addr=addr, resolved_type=resolved_type )
+            offset_var = var["offset"]
+            if offset_var not in self.names[prefix]["variable"]:
+                raise util.TTException(
+                    f"Variable '{offset_var}' not found in ELF. Cannot add '{var_name}'"
+                )
+            ov = self.names[prefix]["variable"][offset_var]
+            addr = addr = ov.value if ov.value else ov.address
+            resolved_type = self.names[prefix]["type"][var["type"]].resolved_type
+            self.names[prefix]["variable"][var_name] = FAKE_DIE(
+                var_name, addr=addr, resolved_type=resolved_type
+            )
 
     def _get_prefix_and_suffix(self, path_str):
         dot_pos = path_str.find(".")
         if dot_pos == -1:
-            return "", path_str # just the suffix
-        return path_str[:dot_pos], path_str[dot_pos+1:]
+            return "", path_str  # just the suffix
+        return path_str[:dot_pos], path_str[dot_pos + 1 :]
 
     def fuzzy_find_multiple(self, path, limit):
         """
@@ -95,7 +103,7 @@ class ELF:
             choices = self.names.keys()
         else:
             elf = self.names[elf_name]
-            choices = elf['variable'].keys()
+            choices = elf["variable"].keys()
 
         # Uses Levenshtein distance to find the best match for a query in a list of keys
         matches = process.extract(suffix, choices, scorer=fuzz.QRatio, limit=limit)
@@ -103,21 +111,26 @@ class ELF:
         sorted_matches = sorted(matches, key=lambda x: x[1], reverse=True)
 
         if elf:
-            filtered_matches = [ f"{'@' if at_prefix else ''}{elf_name}.{match}" for match, score in sorted_matches ]
+            filtered_matches = [
+                f"{'@' if at_prefix else ''}{elf_name}.{match}"
+                for match, score in sorted_matches
+            ]
         else:
-            filtered_matches = [ match for match, score in sorted_matches ]
+            filtered_matches = [match for match, score in sorted_matches]
         return filtered_matches
 
     def substitute_names_with_values(self, text):
         """
         Replace all names starting with @ with their addresses
         """
+
         def repl(match):
             addr, _ = self.parse_addr_size(match.group(0))
             return f"0x{addr:08x}"
-        return re.sub(r'@[_@.a-zA-Z0-9\[\]]+', repl, text)
 
-    def get_enum_mapping (self, enum_path):
+        return re.sub(r"@[_@.a-zA-Z0-9\[\]]+", repl, text)
+
+    def get_enum_mapping(self, enum_path):
         """
         Given a path, return the enum mapping for it. Example: get_enum_mapping("erisc_app.epoch_queue.EpochQueueCmd")
         will return a dict of {1: "EpochCmdValid", 2: "EpochCmdNotValid...", ...}
@@ -125,11 +138,11 @@ class ELF:
         ret_val = {}
         elf_name, enum_path = self._get_prefix_and_suffix(enum_path)
         names = self.names[elf_name]
-        for name, data in names['enumerator'].items():
+        for name, data in names["enumerator"].items():
             if name.startswith(enum_path):
                 val = data.value
 
-                ret_val[val] = name[name.rfind("::")+2:]
+                ret_val[val] = name[name.rfind("::") + 2 :]
         return ret_val
 
     def get_member_paths(self, elf_name, access_path):
@@ -139,17 +152,19 @@ class ELF:
         """
         addr, size, type_die = self._get_var_addr_size_type(elf_name, access_path)
         ret_val = {
-            'name': access_path,
-            'addr': addr,
-            'size': size,
-            'type': type_die, # ELF DIE (see tt_parse_elf.py)
-            'children': []
+            "name": access_path,
+            "addr": addr,
+            "size": size,
+            "type": type_die,  # ELF DIE (see tt_parse_elf.py)
+            "children": [],
         }
 
         for child in type_die.iter_children():
-            if child.tag == 'DW_TAG_member':
-                child_name = child.attributes['DW_AT_name'].value.decode('utf-8')
-                ret_val['children'].append (self.get_member_paths(elf_name, f"{access_path}.{child_name}"))
+            if child.tag == "DW_TAG_member":
+                child_name = child.attributes["DW_AT_name"].value.decode("utf-8")
+                ret_val["children"].append(
+                    self.get_member_paths(elf_name, f"{access_path}.{child_name}")
+                )
         return ret_val
 
     def _get_var_addr_size_type(self, elf_name, var_name):
@@ -157,9 +172,13 @@ class ELF:
         Given an access path to a variable (e.g. "EPOCH_INFO_PTR.epoch_id"), return the
         address, size and type_die of the variable. If the variable is not found, return None.
         """
+
         def my_mem_reader(addr, size_bytes):
             pass
-        _, ret_addr, ret_size_bytes, type_die = elf.mem_access(self.names[elf_name], var_name, my_mem_reader)
+
+        _, ret_addr, ret_size_bytes, type_die = elf.mem_access(
+            self.names[elf_name], var_name, my_mem_reader
+        )
         return ret_addr, ret_size_bytes, type_die
 
     def _get_var_addr_size(self, elf_name, var_name):
@@ -192,5 +211,7 @@ class ELF:
         if path_str.startswith("@"):
             path_str = path_str[1:]
         elf_name, var_name = self._get_prefix_and_suffix(path_str)
-        data, ret_addr, ret_size_bytes, type_die = elf.mem_access(self.names[elf_name], var_name, mem_reader)
+        data, ret_addr, ret_size_bytes, type_die = elf.mem_access(
+            self.names[elf_name], var_name, mem_reader
+        )
         return data

@@ -11,32 +11,40 @@ Description:
 Examples:
   pipe 125000000000
 """
+
 import tt_util as util
 from docopt import docopt
 
 command_metadata = {
-    "long" : "pipe",
-    "short" : "p",
-    "type" : "high-level",
-    "description" : __doc__
+    "long": "pipe",
+    "short": "p",
+    "type": "high-level",
+    "description": __doc__,
 }
 
-def run (cmd_text, context, ui_state=None):
-    args = docopt(__doc__, argv=cmd_text.split()[1:])
-    pipe_id = int(args["<pipe-id>"],0) if args["<pipe-id>"] else 0
 
-    graph_name = ui_state['current_graph_name']
+def run(cmd_text, context, ui_state=None):
+    args = docopt(__doc__, argv=cmd_text.split()[1:])
+    pipe_id = int(args["<pipe-id>"], 0) if args["<pipe-id>"] else 0
+
+    graph_name = ui_state["current_graph_name"]
     graph = context.netlist.graph(graph_name)
     pipe = graph.get_pipes(pipe_id).first()
-    navigation_suggestions = [ ]
+    navigation_suggestions = []
     if pipe:
-        util.print_columnar_dicts ([pipe.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"])
+        util.print_columnar_dicts(
+            [pipe.root], [f"{util.CLR_INFO}Graph {graph_name}{util.CLR_END}"]
+        )
 
         for input_buffer in pipe.input_buffers:
-            navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show src buffer" })
+            navigation_suggestions.append(
+                {"cmd": f"b {input_buffer}", "description": "Show src buffer"}
+            )
         for input_buffer in pipe.output_buffers:
-            navigation_suggestions.append ({ 'cmd' : f"b {input_buffer}", 'description' : "Show dest buffer" })
+            navigation_suggestions.append(
+                {"cmd": f"b {input_buffer}", "description": "Show dest buffer"}
+            )
     else:
-        util.WARN (f"Cannot find pipe {pipe_id} in graph {graph_name}")
+        util.WARN(f"Cannot find pipe {pipe_id} in graph {graph_name}")
 
     return navigation_suggestions

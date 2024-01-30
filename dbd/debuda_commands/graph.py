@@ -13,23 +13,22 @@ Examples:
   g test_op
 """
 
-command_metadata = {
-    "short" : "g",
-    "type" : "high-level",
-    "description" : __doc__
-}
+command_metadata = {"short": "g", "type": "high-level", "description": __doc__}
 
 import tt_util as util
 from docopt import docopt
 
-def run(cmd_text, context, ui_state = None):
+
+def run(cmd_text, context, ui_state=None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
-    gname = args['<graph-name>']
+    gname = args["<graph-name>"]
 
     if gname not in context.netlist.graph_names():
-        util.WARN (f"Invalid graph {gname}. Available graphs: {', '.join (list(context.netlist.graph_names()))}")
+        util.WARN(
+            f"Invalid graph {gname}. Available graphs: {', '.join (list(context.netlist.graph_names()))}"
+        )
     else:
         ui_state["current_graph_name"] = gname
-        print (f"Changed current graph to '{gname}'")
+        print(f"Changed current graph to '{gname}'")
 
     return None

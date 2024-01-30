@@ -36,9 +36,6 @@ done
 mkdir -p $STAGING_DIR/debuda_commands
 cp $NON_DEV_COMMAND_FILES $STAGING_DIR/debuda_commands
 
-# Run strip-debug-only-code.py
-dbd/bin/strip-debug-only-code.py $STAGING_DIR
-
 # Create zip
 cd $STAGING_DIR
 zip $DBD_OUT/debuda.zip * debuda_commands/* -x "debuda_commands/*test*" -x "debuda_commands/__pycache__"
