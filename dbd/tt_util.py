@@ -783,3 +783,4 @@ class LOG_INDENT:
 # Return an ansi color code for a given index. Useful for coloring a list of items.
 def clr_by_index(idx):
     return f"\033[{31 + idx % 7}m"
+
