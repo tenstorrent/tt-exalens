@@ -27,7 +27,7 @@ def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename):
             os.environ["BUDA_HOME"] = os.path.abspath (util.application_path() + "/../")
         debuda_server_standalone = f"/../build/bin{debuda_server_standalone}"
 
-    debuda_stub_path = os.path.abspath (util.application_path() + "/debuda-server-standalone")
+    debuda_stub_path = os.path.abspath (util.application_path() + debuda_server_standalone)
     library_path = os.path.abspath(os.path.dirname(debuda_stub_path))
     ld_lib_path=os.environ.get("LD_LIBRARY_PATH", "")
     os.environ["LD_LIBRARY_PATH"] = library_path + ":" + ld_lib_path if ld_lib_path else library_path
