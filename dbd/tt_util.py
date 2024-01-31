@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
 #!/usr/bin/env python3
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
