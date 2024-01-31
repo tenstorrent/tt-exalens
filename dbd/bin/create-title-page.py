@@ -1,7 +1,7 @@
+#!/usr/bin/env python3
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-#!/usr/bin/env python3
 """PDF Title Page Generator
 
 Usage:

@@ -1,7 +1,7 @@
+#!/usr/bin/env python3
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-#!/usr/bin/env python3
 """
 This file contains the class for the coordinate object. As we use a number of coordinate systems, this class
 is used to uniquely represent one grid location on a chip. Note that not all coordinate systems have a 1:1
