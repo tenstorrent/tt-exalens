@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
 from dataclasses import dataclass
 from tt_device import DEBUDA_SERVER_SOCKET_IFC
 from tt_coordinate import OnChipCoordinate

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
 """Traverses all streams and detects the blocked ones. It prints the results in a table.
 It prioritizes the streams that are genuinely blocked to the ones that are waiting on blocked streams.
 

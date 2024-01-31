@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
 import os, sys
 
 script_directory = os.path.dirname(os.path.abspath(__file__))

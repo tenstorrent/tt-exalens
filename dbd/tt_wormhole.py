@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
 import tt_util as util, os
 import tt_device
 from tt_coordinate import CoordinateTranslationError, OnChipCoordinate
