@@ -4,6 +4,11 @@ set -e
 TEST_NAME="$1"
 EXTRA_ARGUMENTS="$2"
 
+if [-z "$TEST_EXPORT_PATH"]; then
+    TEST_EXPORT_PATH="debuda_test/tmp"
+    mkdir -p $TEST_EXPORT_PATH
+fi
+
 # If we want to run with coverage, prefix this script with COV=1
 # pip install coverage
 # To see coverage results in VS code:
@@ -78,9 +83,9 @@ fi
 COMMAND_LIST+=("t 1")
 COMMAND_LIST+=("t 1 --raw")
 if [ "$TEST_NAME" = "" ]; then
-    COMMAND_LIST+=("export")  # Finally, we export the dump to try to rerun it
+    COMMAND_LIST+=("export ${TEST_EXPORT_PATH}/debuda-export.zip")  # Finally, we export the dump to try to rerun it
 else
-    COMMAND_LIST+=("export ${TEST_NAME}.zip")
+    COMMAND_LIST+=("export ${TEST_EXPORT_PATH}/${TEST_NAME}.zip")
 fi
 COMMAND_LIST+=("exit")
 
@@ -104,4 +109,4 @@ if [ "$COV" = "1" ]; then
 fi
 
 echo ""
-echo "All commands passed for test $TEST_NAME"
+echo -e "${GREEN}All commands passed for test $TEST_NAME${NC}"
