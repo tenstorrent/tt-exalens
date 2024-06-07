@@ -1565,8 +1565,8 @@ def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename):
     print("Spawning debuda-server...")
 
     debuda_server_standalone = "/debuda-server-standalone"
-    if "BUDA_HOME" not in os.environ:
-        os.environ["BUDA_HOME"] = os.path.abspath(util.application_path() + "/../")
+    if "DBD_HOME" not in os.environ:
+        os.environ["DBD_HOME"] = os.path.abspath(util.application_path() + "/../")
     debuda_server_standalone = f"/../build/bin{debuda_server_standalone}"
 
     debuda_stub_path = os.path.abspath(

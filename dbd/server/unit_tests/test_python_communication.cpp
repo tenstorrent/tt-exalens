@@ -30,13 +30,13 @@ std::string execute_command(const std::string& cmd) {
 
 void call_python(const std::string& python_script, int server_port, const std::string& python_args,
                  const std::string& expected_output) {
-    auto buda_home_env = getenv("BUDA_HOME");
-    std::string buda_home;
-    if (buda_home_env) {
-        buda_home = buda_home_env;
+    auto dbd_home_env = getenv("DBD_HOME");
+    std::string dbd_home;
+    if (dbd_home_env) {
+        dbd_home = dbd_home_env;
     } else {
         if (!std::filesystem::exists(python_script)) {
-            std::cerr << "You need to set BUDA_HOME or to run tests from BUDA_HOME directory." << std::endl;
+            std::cerr << "You need to set DBD_HOME or to run tests from DBD_HOME directory." << std::endl;
             ASSERT_TRUE(false);
         }
     }

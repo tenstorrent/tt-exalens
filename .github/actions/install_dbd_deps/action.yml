@@ -1,0 +1,30 @@
+name: "Install debuda dependencies for Ubuntu 22.04"
+description: "Install debuda dependencies & set up the environment on github runners."
+
+inputs:
+  os:
+    description: "Runner OS"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Verify Ubuntu
+      shell: bash
+      run: |
+        if ! grep -q "ubuntu" "${{ inputs.os }}"; then
+          echo "Runner error: ${{ inputs.os }} is not supported."
+        fi
+    - name: Assert requested os exists in dependencies
+      shell: bash
+      run: |
+        if ! jq -e ".\"${{ inputs.os }}\" != null" $GITHUB_ACTION_PATH/dependencies.json; then
+          echo "Runner error: ${{ inputs.os }} does not exist as a supported os in $GITHUB_ACTION_PATH/dependencies.json"
+        fi
+    - name: Install debuda dependencies based on runner OS
+      shell: bash
+      run: |
+        DEPENDENCIES=$(jq -r --arg os "${{ inputs.os }}" '.[$os] | .[]' $GITHUB_ACTION_PATH/dependencies.json)
+        echo "Installing dependencies: \n$DEPENDENCIES"
+        sudo apt update
+        sudo apt install -y $DEPENDENCIES

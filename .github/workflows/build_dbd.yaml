@@ -1,0 +1,50 @@
+name: "BUILD DEBUDA"
+
+on:
+  workflow_dispatch:
+  push:
+
+run-name: Build DEBUDA by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
+
+jobs:
+  build_libs:
+    strategy:
+      matrix:
+        config: [
+          { type: ci, runs-on: ubuntu-20.04 }
+        ]
+        arch: [grayskull, wormhole_b0]
+        os: [ubuntu-20.04]
+    env:
+      ARCH_NAME: ${{ matrix.arch }}
+      CONFIG: ${{ matrix.config.type }}
+      # So we can get all the makefile output we want
+      VERBOSE: 1
+    runs-on: ${{ matrix.config.runs-on }}
+    name: "Build DEBUDA for ${{ matrix.arch }}"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          lfs: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - uses: ./.github/actions/install_dbd_deps
+        with:
+          os: ${{ matrix.os }}
+      - name: Build DEBUDA
+        run: |
+          make -j$(nproc) ARCH_NAME=$ARCH_NAME CONFIG=$CONFIG build
+      - name: Remove unnecessary artifacts
+        # TODO: Is this unneccessary?
+        run: |
+          find build/ -name *.so -or -name *.a -or -name *.o | xargs strip -d
+      - name: 'Tar files'
+        run: tar -cvf dbd_${{ matrix.arch }}-${{ matrix.config.type}}.tar build
+      - name: Upload libraries as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbd-build-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.config.type }}
+          path: dbd_${{ matrix.arch }}-${{ matrix.config.type}}.tar

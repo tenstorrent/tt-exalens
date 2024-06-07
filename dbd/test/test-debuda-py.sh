@@ -1,35 +1,62 @@
 #!/bin/bash
+
+set -e
+
+# Define color variables
+RED='\033[31m'
+GREEN='\033[32m'
+YELLOW='\033[33m'
+BLUE='\033[34m'
+NC='\033[0m' # No Color
+
 THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-TMP_OUT_FILE=build/test/dbd-out.tmp
-echo "TMP_OUT_FILE=$TMP_OUT_FILE"
+BUDA_BUILD_DIR=
+OUTPUT_DIR=
 
 # set default value for TIMEOUT
 if [ -z "$TEST_RUN_TIMEOUT" ]; then TEST_RUN_TIMEOUT=500; fi
-echo "TEST_RUN_TIMEOUT=$TEST_RUN_TIMEOUT"
+echo -e "${YELLOW}TEST_RUN_TIMEOUT=$TEST_RUN_TIMEOUT${NC}"
 
 mkdir -p build/test
-
-touch $TMP_OUT_FILE
+touch build/test/dbd-out.tmp
+TMP_OUT_FILE=$(realpath build/test/dbd-out.tmp)
+echo -e "${YELLOW}TMP_OUT_FILE=$TMP_OUT_FILE${NC}"
 
 if [ "$1" = "skip-build" ]; then
     echo Skipping build used for CI and tests
+elif [ -z "${BUDA_HOME}" ]; then
+    echo -e "${RED}Error:${NC} BUDA_HOME is not set. Please set BUDA_HOME to the root of the budabackend repository"
+    exit 1
+elif [ -z "${DEBUGGER_HOME}" ]; then
+    echo -e "${RED}Error:${NC} DEBUGGER_HOME is not set. Please set DEBUGGER_HOME to the root of the budabackend repository"
+    exit 1
 else
-    echo Building 'make build_hw'...
-    make -j32 build_hw >> $TMP_OUT_FILE 2>&1
+    echo -e "${YELLOW}Setting BUDA_BUILD_DIR ...${NC}"
+    BUDA_BUILD_DIR="${BUDA_HOME}/build"
 
-    echo Building verif/op_tests ...
-    make -j32 verif/op_tests >> $TMP_OUT_FILE 2>&1
+    echo -e "${YELLOW}Setting OUTPUT_DIR ...${NC}"
+    OUTPUT_DIR=${DEBUGGER_HOME}/debuda_test
 
-    echo Building debuda-server-standalone ...
-    make -j32 dbd
+    echo -e "${YELLOW}Building 'make build_hw'...${NC}"
+    cd "${BUDA_HOME}" && make build_hw >> $TMP_OUT_FILE 2>&1
+
+    echo -e "${YELLOW}Building verif/op_tests ...${NC}"
+    cd "${BUDA_HOME}" && make verif/op_tests >> $TMP_OUT_FILE 2>&1
+
+    echo -e "${YELLOW}Building debuda-server-standalone ...${NC}"
+    cd "${DEBUGGER_HOME}" && make build
 fi
 
-echo Installing Python dependencies ...
+echo -e "${YELLOW}Installing Python dependencies ...${NC}"
 pip install -r dbd/requirements.txt
 mkdir -p debuda_test
 
+TEST_EXPORT_PATH="debuda_test/tmp"
+mkdir -p $TEST_EXPORT_PATH
+: "${RM_TEST_FRAGS:=1}"
+
 ##################################################################################################################################################
-NETLIST_FILE=verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml
+NETLIST_FILE=${BUDA_HOME}/verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml
 #
 # 1. Sanity
 #
@@ -42,10 +69,10 @@ NETLIST_FILE=verif/op_tests/netlists/netlist_matmul_op_with_fd.yaml
 # ┌────────┐  0   ┌───────┐  1     │
 # │ input1 │ ───▶ │ f_op1 │ ───────┘
 # └────────┘      └───────┘
-echo Running op_tests/test_op on $NETLIST_FILE ...
-./build/test/verif/op_tests/test_op --outdir debuda_test --netlist $NETLIST_FILE --seed 0 --silicon --timeout $TEST_RUN_TIMEOUT
+echo -e "${YELLOW}Running op_tests/test_op on $NETLIST_FILE ...${NC}"
+${BUDA_HOME}/build/test/verif/op_tests/test_op --outdir ${OUTPUT_DIR} --netlist $NETLIST_FILE --seed 0 --silicon --timeout $TEST_RUN_TIMEOUT
 if [ $? -ne 0 ]; then
-    echo Error in running ./build/test/verif/op_tests/test_op
+    echo -e "${RED}Error:${NC} Error in running ${BUDA_HOME}/build/test/verif/op_tests/test_op"
     exit 1
 fi
 source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_matmul_op_with_fd" --server-cache=through
@@ -73,10 +100,10 @@ NETLIST_FILE=dbd/test/netlists/netlist_multi_matmul_perf.yaml
 #   │                  └───────┘      └─────────┘
 #   │   0                               ▲
 #   └───────────────────────────────────┘
-echo Running op_tests/test_op on $NETLIST_FILE ...
-./build/test/verif/op_tests/test_op --outdir debuda_test --netlist $NETLIST_FILE --seed 0 --silicon --timeout $TEST_RUN_TIMEOUT
+echo "${YELLOW}Running op_tests/test_op on $NETLIST_FILE ...${NC}"
+${BUDA_HOME}/build/test/verif/op_tests/test_op --outdir ${OUTPUT_DIR} --netlist $NETLIST_FILE --seed 0 --silicon --timeout $TEST_RUN_TIMEOUT
 if [ $? -ne 0 ]; then
-    echo Error in running ./build/test/verif/op_tests/test_op
+    echo "${RED}Error:${NC} Error in running ./build/test/verif/op_tests/test_op"
     exit 1
 fi
 
@@ -94,4 +121,11 @@ source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_multi_matmul_pe
 # Test remote on local w/ limited context
 source $THIS_SCRIPT_DIR/test-debuda-server-limited.sh "netlist_multi_matmul_perf-remote"
 
-echo Done
+if [[ "$RM_TEST_FRAGS" == "1" ]]; then
+    echo -e "${YELLOW}Cleaning up ...${NC}"
+    rm -rf $TEST_EXPORT_PATH
+    rm debuda-server-cache.pkl
+    rm debuda-command-history.yaml
+fi
+
+echo -e "${GREEN}Done.${NC}"

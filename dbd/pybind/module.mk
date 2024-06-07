@@ -1,4 +1,4 @@
-PYBIND11_DIR = $(BUDA_HOME)/third_party/pybind11
+PYBIND11_DIR = $(DEBUGGER_HOME)/third_party/pybind11
 DEBUDA_PYBIND_SRCS  = $(wildcard dbd/pybind/src/*.cpp)
 DEBUDA_PYBIND_LIB = $(LIBDIR)/tt_dbd_pybind.so
 
@@ -9,7 +9,7 @@ DEBUDA_PYBIND_LIB_INCLUDES = \
 	$(BASE_INCLUDES) \
 	-Idbd/server/lib/inc \
 	-Idbd/pybind/inc \
-	-I$(BUDA_HOME)/umd \
+	-I$(DEBUGGER_HOME)/third_party/umd \
 	-I$(PYBIND11_DIR)/include \
 	-I/usr/include/$(PYTHON_VERSION) \
 
@@ -29,4 +29,4 @@ $(DEBUDA_PYBIND_LIB): $(DEBUDA_PYBIND_LIB_OBJS) $(UMD_DEVICE_LIB) $(DEBUDA_SERVE
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) $(CXXFLAGS) $(SHARED_LIB_FLAGS) -o $@ $^ $(LDFLAGS) $(DEBUDA_PYBIND_LDFLAGS)
 
-include $(BUDA_HOME)/dbd/pybind/unit_tests/module.mk
+include $(DEBUGGER_HOME)/dbd/pybind/unit_tests/module.mk

@@ -1,8 +1,8 @@
-include $(BUDA_HOME)/infra/common.mk
+include infra/common.mk
 
 DBD_OUT?=$(OUT)/dbd
 
-# Main target: it builds the standalone server executable
+# Main target: it builds the standalone server executable, and pybind modules
 dbd: dbd/server dbd/pybind
 	$(PRINT_TARGET)
 	$(PRINT_OK)
@@ -61,6 +61,7 @@ dbd/documentation:
 
 	echo "Undoing the patch"
 	-git apply -R dbd/test/inject-errors/sfpu_reciprocal-infinite-spin-wormhole_b0.patch
+
 
 # The following target is used to build the release package (zip). It depends on dbd/documentation (as it needs the pdf file),
 # however this is not encoded in the dependency list as it takes a while to build the documentation.
@@ -121,5 +122,6 @@ $(OBJDIR)/dbd/%.o: dbd/%.cpp
 	$(CXX) $(DBD_CFLAGS) $(CXXFLAGS) $(STATIC_LIB_FLAGS) $(DBD_INCLUDES) $(DBD_DEFINES) -c -o $@ $<
 	$(PRINT_OK)
 
-include $(BUDA_HOME)/dbd/pybind/module.mk
-include $(BUDA_HOME)/dbd/server/module.mk
+# include $(DEBUGGER_HOME)/dbd/read_tile_implementation/module.mk
+include $(DEBUGGER_HOME)/dbd/server/module.mk
+include $(DEBUGGER_HOME)/dbd/pybind/module.mk
