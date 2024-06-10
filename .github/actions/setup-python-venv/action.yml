@@ -1,0 +1,22 @@
+name: "Install Python Dependencies"
+description: "Installs Python Dependencies from cache or from PyPI if cache is not available.
+Uses dbd/requirements.txt and dbd/test_requirements.txt."
+
+inputs:
+  python-version:
+    description: "Python version to use"
+    required: false
+    default: "3.10"
+runs:
+  using: "composite"
+  steps:
+    - name: "Install cached Python dependencies"
+      uses: getsentry/action-setup-venv@v2.1.0
+      id: venv
+      with:
+        python-version: ${{ inputs.python-version }}
+        venv-dir: ${{ github.workspace }}/.venv
+        cache-dependency-path: |
+          dbd/requirements.txt
+          dbd/test_requirements.txt
+        install-cmd: ./scripts/create-venv.sh

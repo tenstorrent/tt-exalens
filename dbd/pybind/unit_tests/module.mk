@@ -21,4 +21,11 @@ $(DEBUDA_PYBIND_UNIT_TESTS_LIB): $(DEBUDA_PYBIND_UNIT_TESTS_LIB_OBJS) $(DEBUDA_P
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) $(CXXFLAGS) $(SHARED_LIB_FLAGS) -o $@ $^ $(LDFLAGS) $(DEBUDA_PYBIND_UNIT_TESTS_LDFLAGS)
 
+dbd_pybind_unit_tests_run_only:
+	@echo "Running pybind unit tests..."
+	@python3 -m unittest dbd/pybind/unit_tests/test_bindings.py
+
 dbd/pybind/unit_tests: $(DEBUDA_PYBIND_UNIT_TESTS_LIB)
+ifndef SKIP_UNIT_TESTS_RUN
+	@$(MAKE) dbd_pybind_unit_tests_run_only
+endif

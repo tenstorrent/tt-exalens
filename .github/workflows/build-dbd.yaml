@@ -1,8 +1,21 @@
 name: "BUILD DEBUDA"
 
 on:
-  workflow_dispatch:
-  push:
+  workflow_call:
+    inputs:
+      arch:
+        required: false
+        type: string
+        # Add grayskull when we switch to remote
+        default: '["wormhole_b0"]'
+      os:
+        required: false
+        type: string
+        default: "ubuntu-22.04"
+      config:
+        required: false
+        type: string
+        default: "ci"
 
 run-name: Build DEBUDA by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
 
@@ -10,17 +23,14 @@ jobs:
   build_libs:
     strategy:
       matrix:
-        config: [
-          { type: ci, runs-on: ubuntu-20.04 }
-        ]
-        arch: [grayskull, wormhole_b0]
-        os: [ubuntu-20.04]
+        arch: ${{ fromJson(inputs.arch || '["grayskull", "wormhole_b0", "blackhole"]') }}
     env:
       ARCH_NAME: ${{ matrix.arch }}
-      CONFIG: ${{ matrix.config.type }}
+      CONFIG: ${{ inputs.config }}
       # So we can get all the makefile output we want
       VERBOSE: 1
-    runs-on: ${{ matrix.config.runs-on }}
+    # TODO: This will need to change when we get cloud runners
+    runs-on: "ubuntu-22.04"
     name: "Build DEBUDA for ${{ matrix.arch }}"
     steps:
       - uses: actions/checkout@v4
@@ -30,10 +40,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.8'
-      - uses: ./.github/actions/install_dbd_deps
+          python-version: '3.10'
+      - uses: ./.github/actions/install-dbd-deps
         with:
-          os: ${{ matrix.os }}
+          os: ${{ inputs.os }}
       - name: Build DEBUDA
         run: |
           make -j$(nproc) ARCH_NAME=$ARCH_NAME CONFIG=$CONFIG build
@@ -42,9 +52,9 @@ jobs:
         run: |
           find build/ -name *.so -or -name *.a -or -name *.o | xargs strip -d
       - name: 'Tar files'
-        run: tar -cvf dbd_${{ matrix.arch }}-${{ matrix.config.type}}.tar build
+        run: tar -cvf dbd_${{ matrix.arch }}.tar build
       - name: Upload libraries as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dbd-build-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.config.type }}
-          path: dbd_${{ matrix.arch }}-${{ matrix.config.type}}.tar
+          name: dbd-build-${{ matrix.arch }}
+          path: dbd_${{ matrix.arch }}.tar

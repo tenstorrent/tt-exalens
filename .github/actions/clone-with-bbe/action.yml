@@ -1,0 +1,25 @@
+name: Clone debuda with budabackend
+
+inputs:
+  buda-home:
+    description: "Path to the budabackend repository"
+    required: true
+    default: "budabackend"
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          lfs: false
+
+    - name: Set up Git authentication
+      run: |
+        git config --global url."https://${{ secrets.GITLAB_TOKEN }}:@gitlab.com/".insteadOf "https://gitlab.com/"
+
+    - name: Clone bbe repository
+      run: |
+        git clone https://yyz-gitlab.local.tenstorrent.com/tenstorrent/budabackend/ ${{ inputs.buda-home }}
+        cd ${{ inputs.buda-home }}
+        git submodule update --init --recursive

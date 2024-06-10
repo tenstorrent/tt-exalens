@@ -12,7 +12,7 @@ runs:
     - name: Verify Ubuntu
       shell: bash
       run: |
-        if ! grep -q "ubuntu" "${{ inputs.os }}"; then
+        if ! echo "${{ inputs.os }}" | grep -q "ubuntu" ; then
           echo "Runner error: ${{ inputs.os }} is not supported."
         fi
     - name: Assert requested os exists in dependencies

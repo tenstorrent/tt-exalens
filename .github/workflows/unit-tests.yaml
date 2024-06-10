@@ -1,0 +1,56 @@
+name: "UNIT TESTS"
+
+on:
+  workflow_call:
+    inputs:
+      arch:
+        required: false
+        type: string
+        # Add grayskull when we switch to remote
+        default: '["wormhole_b0"]'
+      os:
+        required: false
+        type: string
+        default: "ubuntu-22.04"
+      config:
+        required: false
+        type: string
+        default: "ci"
+
+jobs:
+  build-and-run-unit-tests:
+    strategy:
+      matrix:
+        arch: ${{ fromJson(inputs.arch || '["grayskull", "wormhole_b0", "blackhole"]') }}
+    env:
+      ARCH_NAME: ${{ matrix.arch }}
+      CONFIG: ${{ inputs.config }}
+      # So we can get all the makefile output we want
+      VERBOSE: 1
+    # TODO: This will need to change when we get cloud runners
+    runs-on: "ubuntu-22.04"
+    name: "Build and run unit test on ${{ matrix.arch }}"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          lfs: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: dbd-build-${{ matrix.arch }}
+      - name: Extract build artifacts
+        run: tar -xvf dbd_${{ matrix.arch }}.tar
+      # TODO: Separate build & test deps
+      - uses: ./.github/actions/install-dbd-deps
+        with:
+          os: ${{ inputs.os }}
+      - uses: ./.github/actions/setup-python-venv
+        with:
+          python-version: '3.10'
+      - name: Build and run server unit tests
+        run: |
+          make -j$(nproc) ARCH_NAME=$ARCH_NAME CONFIG=$CONFIG dbd/server/unit_tests
+      - name: Build and run pybind tests
+        run: |
+          make -j$(nproc) ARCH_NAME=$ARCH_NAME CONFIG=$CONFIG dbd/pybind/unit_tests

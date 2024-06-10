@@ -3,6 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+import sys
+import os
+
+tt_dbd_pybind_path = os.path.dirname(__file__) + "/../../../build/lib"
+binary_path = os.path.dirname(__file__) + "/../../../build/bin"
+sys.path.append(tt_dbd_pybind_path)
 
 import tt_dbd_pybind as pb
 from tt_dbd_pybind_unit_tests import set_debuda_test_implementation
