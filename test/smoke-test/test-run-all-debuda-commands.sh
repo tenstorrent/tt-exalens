@@ -1,10 +1,11 @@
 #!/bin/bash
 
+
 set -e
 TEST_NAME="$1"
 EXTRA_ARGUMENTS="$2"
 
-if [-z "$TEST_EXPORT_PATH"]; then
+if [-z ${TEST_EXPORT_PATH}]; then
     TEST_EXPORT_PATH="debuda_test/tmp"
     mkdir -p $TEST_EXPORT_PATH
 fi

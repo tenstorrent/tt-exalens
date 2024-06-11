@@ -1,6 +1,4 @@
-mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
-mkfile_dir := $(dir $(mkfile_path))
-TOOL_PATH?=$(mkfile_dir)../../third_party/sfpi/compiler/bin/
+TOOL_PATH?=$(DEBUGGER_HOME)/third_party/sfpi/compiler/bin
 
 GXX=$(TOOL_PATH)/riscv32-unknown-elf-g++
 OBJDUMP=$(TOOL_PATH)/riscv32-unknown-elf-objdump
@@ -11,7 +9,7 @@ OPTIONS_ALL=-O0 -mwormhole -march=rv32imw -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 
 OPTIONS_COMPILE=-fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -DARCH_WORMHOLE -DTENSIX_FIRMWARE -DLOCAL_MEM_EN=0 -DDEBUG_PRINT_ENABLED -DCOMPILE_FOR_BRISC
 OPTIONS_LINK=-fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles
 
-all:
+riscv:
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o tmu-crt0.o tmu-crt0.S
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o brisc-no-globals.o brisc.cc
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DUSE_GLOBAL_VARS -c -o brisc-globals.o brisc.cc

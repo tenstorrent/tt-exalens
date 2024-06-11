@@ -48,9 +48,9 @@ debuda_files = {
         "files": "*",
         "output": "dbd/debuda_commands"
     },
-    "libtt.so": {
+    "libs": {
         "path": "build/lib",
-        "files": [ "libtt.so", "libdevice.so", "tt_dbd_pybind.so" ],
+        "files": [ "libdevice.so", "tt_dbd_pybind.so" ],
         "output": "build/lib",
         "strip": True
     },

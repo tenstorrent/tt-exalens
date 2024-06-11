@@ -2,6 +2,7 @@
 core
 /core.*
 .vscode
+.venv
 .idea
 *.log
 *.ti

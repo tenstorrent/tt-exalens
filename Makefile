@@ -167,3 +167,4 @@ gitinfo:
 include third_party/umd/device/module.mk
 
 include dbd/module.mk
+include dbd/riscv-src/module.mk

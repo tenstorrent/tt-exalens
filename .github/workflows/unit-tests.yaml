@@ -54,3 +54,6 @@ jobs:
       - name: Build and run pybind tests
         run: |
           make -j$(nproc) ARCH_NAME=$ARCH_NAME CONFIG=$CONFIG dbd/pybind/unit_tests
+      - name: Top level unit tests
+        run: |
+          python3 -m unittest discover -v -s ./dbd/ -p *test*.py

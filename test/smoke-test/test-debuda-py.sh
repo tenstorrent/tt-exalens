@@ -2,16 +2,11 @@
 
 set -e
 
-# Define color variables
-RED='\033[31m'
-GREEN='\033[32m'
-YELLOW='\033[33m'
-BLUE='\033[34m'
-NC='\033[0m' # No Color
-
 THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 BUDA_BUILD_DIR=
 OUTPUT_DIR=
+
+source ${THIS_SCRIPT_DIR}/../test-base.sh
 
 # set default value for TIMEOUT
 if [ -z "$TEST_RUN_TIMEOUT" ]; then TEST_RUN_TIMEOUT=500; fi
@@ -79,7 +74,7 @@ source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_matmul_op_with_
 
 
 ##################################################################################################################################################
-NETLIST_FILE=dbd/test/netlists/netlist_multi_matmul_perf.yaml
+NETLIST_FILE=${THIS_SCRIPT_DIR}/../netlists/netlist_multi_matmul_perf.yaml
 #
 # 2. Hang analysis on a passing test
 #
