@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
+
 // The implementation of read_tile given here is taken from
 // budabackend/model/tile.hpp
 

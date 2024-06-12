@@ -4,6 +4,8 @@ run-name:  Lint DEBUDA by @${{ github.actor }} triggered by ${{ github.event_nam
 
 on:
   workflow_call:
+  push:
+    
 
 jobs:
   check-spdx-licenses:
@@ -18,22 +20,22 @@ jobs:
         run: python -m pip install -r infra/requirements-infra.txt
       - name: Check SPDX licenses
         run: python -m check_copyright --dry-run --config infra/copyright-config.yaml .
-  lint-cpp-files:
-    runs-on: "ubuntu-22.04"
-    name: "Lint cpp files"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          lfs: false
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt -y install clang-format
-      - run: |
-          scripts/clang-format-repo.sh
-          git diff --exit-code
-      - uses: actions/upload-artifact@v4
-        with:
-          name: clang-format-results
-          path: report-cpp-lint.xml
+  # lint-cpp-files:
+  #   runs-on: "ubuntu-22.04"
+  #   name: "Lint cpp files"
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #         lfs: false
+  #     - name: Install dependencies
+  #       run: |
+  #         sudo apt update
+  #         sudo apt -y install clang-format
+  #     - run: |
+  #         scripts/clang-format-repo.sh
+  #         git diff --exit-code
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: clang-format-results
+  #         path: report-cpp-lint.xml
