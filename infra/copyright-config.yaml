@@ -11,18 +11,16 @@ DEFAULT:
     //
     // SPDX-License-Identifier: {license}
   new_notice_python: |  # notice for new python files
-    """
-    SPDX-FileCopyrightText: © {years} Tenstorrent AI ULC
+    # SPDX-FileCopyrightText: © {years} Tenstorrent AI ULC
 
-    SPDX-License-Identifier: {license}
-    """
+    # SPDX-License-Identifier: {license}
 
   # comment lines matching:
   # SPDX-FileCopyrightText: year[-year] Espressif Systems
   # or
   # SPDX-FileContributor: year[-year] Espressif Systems
   # are replaced with this template prefixed with the correct comment notation (# or // or *) and SPDX- notation
-  espressif_copyright: '© {years} AI ULC'
+  espressif_copyright: '© {years} Tenstorrent AI ULC'
   include:
     - "*.cpp"
     - "*.cc"
