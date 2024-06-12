@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
 from abc import abstractmethod
 from functools import cached_property
 from typing import Dict, Optional, Set
