@@ -12,7 +12,7 @@ from setuptools.command.build_ext import build_ext
 
 # debuda files to be copied to build directory
 dbd_folder_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-buda_home = os.path.dirname(dbd_folder_path)
+debuda_home = os.path.dirname(dbd_folder_path)
 debuda_files = {
     "debuda": {
         "path": "dbd",
@@ -80,13 +80,13 @@ class MyBuild(build_ext):
 
     def _call_build(self):
         additional_env_variables = {
-            "BUDA_HOME": buda_home,
+            "DEBUDA_HOME": debuda_home,
         }
         env = os.environ.copy()
         env.update(additional_env_variables)
         nproc = os.cpu_count()
         print(f"make -j{nproc} dbd")
-        subprocess.check_call([f"cd $BUDA_HOME && make -j{nproc} dbd"], env=env, shell=True)
+        subprocess.check_call([f"cd $DEBUDA_HOME && make -j{nproc} build"], env=env, shell=True)
 
     def _copy_files(self, target_path):
         strip_symbols = os.environ.get("STRIP_SYMBOLS", "0") == "1"
@@ -94,7 +94,7 @@ class MyBuild(build_ext):
             path = target_path + "/" + d["output"]
             os.makedirs(path, exist_ok=True)
 
-            src_path = buda_home + "/" + d["path"]
+            src_path = debuda_home + "/" + d["path"]
             if d["files"] == "*":
                 self.copy_tree(src_path, path)
             else:

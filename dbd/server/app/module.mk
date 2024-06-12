@@ -13,7 +13,7 @@ DEBUDA_SERVER_DEPS = $(addprefix $(OBJDIR)/, $(DEBUDA_SERVER_SRCS:.cpp=.d))
 # TODO: Remove budabackend dependencies
 DEBUDA_SERVER_INCLUDES = \
 	$(BASE_INCLUDES) \
-	-I$(DEBUGGER_HOME)/third_party/umd \
+	-I$(DEBUDA_HOME)/third_party/umd \
 	-Idbd/server/lib/inc \
 
 DEBUDA_SERVER_LDFLAGS =  $(DEBUDA_SERVER_LIB_DEPS) -lyaml-cpp -lzmq -Wl,-rpath,\$$ORIGIN/../lib:\$$ORIGIN -pthread

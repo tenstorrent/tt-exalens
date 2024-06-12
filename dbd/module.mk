@@ -122,5 +122,5 @@ $(OBJDIR)/dbd/%.o: dbd/%.cpp
 	$(CXX) $(DBD_CFLAGS) $(CXXFLAGS) $(STATIC_LIB_FLAGS) $(DBD_INCLUDES) $(DBD_DEFINES) -c -o $@ $<
 	$(PRINT_OK)
 
-include $(DEBUGGER_HOME)/dbd/server/module.mk
-include $(DEBUGGER_HOME)/dbd/pybind/module.mk
+include $(DEBUDA_HOME)/dbd/server/module.mk
+include $(DEBUDA_HOME)/dbd/pybind/module.mk

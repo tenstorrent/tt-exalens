@@ -2,10 +2,10 @@ CONFIG_FILEPATH = $(OUT)/configuration
 
 # List of configuration files that we want to embed
 DEBUDA_SERVER_LIB_CONFIGURATION_FILES = \
-	$(CONFIG_FILEPATH)/blackhole.embed $(DEBUGGER_HOME)/dbd/server/device/blackhole_8x10.yaml \
-	$(CONFIG_FILEPATH)/grayskull.embed $(DEBUGGER_HOME)/dbd/server/device/grayskull_10x12.yaml \
-	$(CONFIG_FILEPATH)/wormhole.embed $(DEBUGGER_HOME)/dbd/server/device/wormhole_8x10.yaml \
-	$(CONFIG_FILEPATH)/wormhole_b0.embed $(DEBUGGER_HOME)/dbd/server/device/wormhole_b0_8x10.yaml \
+	$(CONFIG_FILEPATH)/blackhole.embed $(DEBUDA_HOME)/dbd/server/device/blackhole_8x10.yaml \
+	$(CONFIG_FILEPATH)/grayskull.embed $(DEBUDA_HOME)/dbd/server/device/grayskull_10x12.yaml \
+	$(CONFIG_FILEPATH)/wormhole.embed $(DEBUDA_HOME)/dbd/server/device/wormhole_8x10.yaml \
+	$(CONFIG_FILEPATH)/wormhole_b0.embed $(DEBUDA_HOME)/dbd/server/device/wormhole_b0_8x10.yaml \
 
 DEBUDA_SERVER_LIB_CONFIGURATION_YAML_FILES = $(filter %.yaml, $(DEBUDA_SERVER_LIB_CONFIGURATION_FILES))
 DEBUDA_SERVER_LIB_CONFIGURATION_EMBED_FILES = $(filter %.embed, $(DEBUDA_SERVER_LIB_CONFIGURATION_FILES))
@@ -26,7 +26,7 @@ DEBUDA_SERVER_LIB_DEPS = $(addprefix $(OBJDIR)/, $(DEBUDA_SERVER_LIB_SRCS:.cpp=.
 DEBUDA_SERVER_LIB_INCLUDES = \
 	$(BASE_INCLUDES) \
 	-Idbd/server/lib/inc \
-	-I$(DEBUGGER_HOME)/third_party/umd \
+	-I$(DEBUDA_HOME)/third_party/umd \
 	-I$(CONFIG_FILEPATH) \
 
 -include $(DEBUDA_SERVER_LIB_DEPS)
@@ -44,9 +44,9 @@ $(DEBUDA_SERVER_LIB): $(DEBUDA_SERVER_LIB_OBJS)
 	ar rcs -o $@ $(DEBUDA_SERVER_LIB_OBJS)
 
 ifeq ("$(HOST_ARCH)", "aarch64")
-$(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUGGER_HOME)/third_party/umd/device/bin/silicon/aarch64/create-ethernet-map
+$(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/third_party/umd/device/bin/silicon/aarch64/create-ethernet-map
 else
-$(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUGGER_HOME)/third_party/umd/device/bin/silicon/x86/create-ethernet-map
+$(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/third_party/umd/device/bin/silicon/x86/create-ethernet-map
 endif
 	@mkdir -p $(@D)
 	ln -s $^ $@

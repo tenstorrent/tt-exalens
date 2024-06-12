@@ -22,15 +22,15 @@ if [ "$1" = "skip-build" ]; then
 elif [ -z "${BUDA_HOME}" ]; then
     echo -e "${RED}Error:${NC} BUDA_HOME is not set. Please set BUDA_HOME to the root of the budabackend repository"
     exit 1
-elif [ -z "${DEBUGGER_HOME}" ]; then
-    echo -e "${RED}Error:${NC} DEBUGGER_HOME is not set. Please set DEBUGGER_HOME to the root of the budabackend repository"
+elif [ -z "${DEBUDA_HOME}" ]; then
+    echo -e "${RED}Error:${NC} DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the budabackend repository"
     exit 1
 else
     echo -e "${YELLOW}Setting BUDA_BUILD_DIR ...${NC}"
     BUDA_BUILD_DIR="${BUDA_HOME}/build"
 
     echo -e "${YELLOW}Setting OUTPUT_DIR ...${NC}"
-    OUTPUT_DIR=${DEBUGGER_HOME}/debuda_test
+    OUTPUT_DIR=${DEBUDA_HOME}/debuda_test
 
     echo -e "${YELLOW}Building 'make build_hw'...${NC}"
     cd "${BUDA_HOME}" && make build_hw >> $TMP_OUT_FILE 2>&1
@@ -55,7 +55,6 @@ SIMPLE_DEBUDA_COMMANDS='h;brxy 0,0 0 64;d 0 netlist nocVirt;x'
 COMPLEX_DEBUDA_COMMANDS='op-map;d;d 0 netlist nocTr;q;q input0;q input0 16 16;eq;eq 1;dq;p 130000000000;brxy 0,0 0x0 32 --format i8;cdr;cdr 0,0;srs 0;srs 1;srs 2;ddb 0 32;ddb 0 16 hex8 0,0 0;ddb 0 16 hex16 1,1 0;pcir 0;wxy 0,0 0 0xabcd;full-dump;ha;s 0,0 4;t 1;t 1 --raw;d 0 netlist nocVirt;x'
 COMPLEX_NO_TILE_DEBUDA_COMMANDS='op-map;d;d 0 netlist nocTr;q;q input0;q input0 16 16;eq;eq 1;dq;p 130000000000;brxy 0,0 0x0 32 --format i8;cdr;cdr 0,0;srs 0;srs 1;srs 2;ddb 0 32;ddb 0 16 hex8 0,0 0;ddb 0 16 hex16 1,1 0;pcir 0;wxy 0,0 0 0xabcd;full-dump;ha;s 0,0 4;d 0 netlist nocVirt;x'
 
-NETLIST_FILE=${BASE_TEST_DIR}/netlists/netlist_multi_matmul_perf.yaml
 RUN_OUTPUT_DIR=${BASE_TEST_DIR}/debuda_test
 
 echo -e "${YELLOW}INFO: ${NC}Running simple debuda commands ..."

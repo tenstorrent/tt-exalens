@@ -41,10 +41,10 @@ SUCCESS_STRING=$(SUCCESS_COLOR)[SUCCESS]$(NC)
 
 PRETTY_2_COL = awk '{ printf "%-50s %-10s\n",$$1, $$2; }'
 PRETTY_3_COL = awk '{ printf "%-50s %-10s %-50s\n",$$1, $$3, $$2; }'
-PRINT_ERROR   =  printf "$@ $(subst $(DEBUGGER_HOME)/,,$(CURDIR)) $(ERROR_STRING)\n"   | $(PRETTY_3_COL) && printf "$(CMD)\n$$LOG\n" && false
-PRINT_WARNING =  printf "$@ $(subst $(DEBUGGER_HOME)/,,$(CURDIR)) $(WARN_STRING)\n"    | $(PRETTY_3_COL) && printf "$(CMD)\n$$LOG\n"
-PRINT_OK      =  printf "$@ $(subst $(DEBUGGER_HOME)/,,$(CURDIR)) $(OK_STRING)\n"      | $(PRETTY_3_COL)
-PRINT_SUCCESS =  printf "$@ $(subst $(DEBUGGER_HOME)/,,$(CURDIR)) $(SUCCESS_STRING)\n" | $(PRETTY_3_COL)
+PRINT_ERROR   =  printf "$@ $(subst $(DEBUDA_HOME)/,,$(CURDIR)) $(ERROR_STRING)\n"   | $(PRETTY_3_COL) && printf "$(CMD)\n$$LOG\n" && false
+PRINT_WARNING =  printf "$@ $(subst $(DEBUDA_HOME)/,,$(CURDIR)) $(WARN_STRING)\n"    | $(PRETTY_3_COL) && printf "$(CMD)\n$$LOG\n"
+PRINT_OK      =  printf "$@ $(subst $(DEBUDA_HOME)/,,$(CURDIR)) $(OK_STRING)\n"      | $(PRETTY_3_COL)
+PRINT_SUCCESS =  printf "$@ $(subst $(DEBUDA_HOME)/,,$(CURDIR)) $(SUCCESS_STRING)\n" | $(PRETTY_3_COL)
 PRINT_TARGET  =  printf "${TITLE}$@${NC}\n"
 
 BUILD_CMD = LOG=$$($(CMD) 2>&1) ; if [ $$? -eq 1 ]; then $(PRINT_ERROR); elif [ "$$LOG" != "" ] ; then $(PRINT_WARNING); else $(PRINT_OK); fi;

@@ -19,3 +19,7 @@ dbd/server/lib/configuration/*.embed
 
 # ClangD
 compile_commands.json
+
+# Various build fragments
+.coverage
+debuda.egg-info

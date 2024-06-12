@@ -1616,7 +1616,7 @@ def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename):
             if process_stderr:
                 if "does not exist" in process_stderr:
                     util.ERROR(
-                        f"Make sure to set the environment variable BUDA_HOME to <python-path>/site-packages/budabackend"
+                        f"Make sure to set the environment variable DEBUDA_HOME to <python-path>/site-packages/debuda"
                     )
                 util.ERROR(f"{process_stderr}")
             break

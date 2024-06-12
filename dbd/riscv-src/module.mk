@@ -1,4 +1,4 @@
-TOOL_PATH?=$(DEBUGGER_HOME)/third_party/sfpi/compiler/bin
+TOOL_PATH?=$(DEBUDA_HOME)/third_party/sfpi/compiler/bin
 
 GXX=$(TOOL_PATH)/riscv32-unknown-elf-g++
 OBJDUMP=$(TOOL_PATH)/riscv32-unknown-elf-objdump

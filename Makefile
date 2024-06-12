@@ -1,11 +1,11 @@
 .SUFFIXES:
 
 # Setup CONFIG, DEVICE_RUNNER, and out/build dirs first
-DEBUGGER_HOME ?= $(shell git rev-parse --show-toplevel)
+DEBUDA_HOME ?= $(shell git rev-parse --show-toplevel)
 CONFIG ?= develop
 HOST_ARCH = $(shell uname -m)
 
-OUT ?= $(DEBUGGER_HOME)/build
+OUT ?= $(DEBUDA_HOME)/build
 PREFIX ?= $(OUT)
 TT_MODULES ?= 
 
@@ -116,7 +116,7 @@ LDFLAGS += -lstdc++
 endif
 
 UMD_HOME = third_party/umd
-UMD_USER_ROOT = $(DEBUGGER_HOME)
+UMD_USER_ROOT = $(DEBUDA_HOME)
 
 ifndef PYTHON_VERSION
     PYTHON_VERSION := python$(shell python3 --version 2>&1 | cut -d " " -f 2 | cut -d "." -f 1,2)
