@@ -3,7 +3,6 @@
 # Setup CONFIG, DEVICE_RUNNER, and out/build dirs first
 DEBUGGER_HOME ?= $(shell git rev-parse --show-toplevel)
 CONFIG ?= develop
-ARCH_NAME ?= grayskull
 HOST_ARCH = $(shell uname -m)
 
 OUT ?= $(DEBUGGER_HOME)/build
