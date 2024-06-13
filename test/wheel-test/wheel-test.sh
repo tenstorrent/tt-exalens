@@ -32,9 +32,10 @@ pip install build/debuda_wheel/*.whl
 echo -e " --- Running wheel test ---"
 source ${THIS_SCRIPT_DIR}/run-wheel.sh
 
+deactivate
+
 : "${DELETE_VENV:=1}"
 if [ ${DELETE_VENV} == "1" ]; then
 	echo -e "Deleting environment ..."
-	deactivate
 	rm -rf ${THIS_SCRIPT_DIR}/.venv
 fi
