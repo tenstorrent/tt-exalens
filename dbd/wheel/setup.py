@@ -88,7 +88,7 @@ class MyBuild(build_ext):
         env = os.environ.copy()
         env.update(additional_env_variables)
         nproc = os.cpu_count()
-        print(f"make -j{nproc} dbd")
+        print(f"make -j{nproc} build")
         subprocess.check_call([f"cd $DEBUDA_HOME && make -j{nproc} build"], env=env, shell=True)
 
     def _copy_files(self, target_path):
@@ -132,7 +132,7 @@ setup(
     author='Tenstorrent',
     url="http://www.tenstorrent.com",
     author_email='info@tenstorrent.com',
-    description='AI/ML framework for Tenstorrent devices',
+    description='Debugger for Tenstorrent devices',
     python_requires='>=3.8',
     #long_description=long_description,
     #long_description_content_type="text/markdown",
