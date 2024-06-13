@@ -87,10 +87,10 @@ def run(args, context, ui_state: UIState = None):
 
             # dloc = OnChipCoordinate(dx, dy, "noc0", epoch_device)
             rdptr = (
-                tt_device.SERVER_IFC.pci_read_xy(device_id, dx, dy, 0, addr) & 0xFFFF
+                tt_device.SERVER_IFC.pci_read32(device_id, dx, dy, addr) & 0xFFFF
             )
             wrptr = (
-                tt_device.SERVER_IFC.pci_read_xy(device_id, dx, dy, 0, addr + 4)
+                tt_device.SERVER_IFC.pci_read32(device_id, dx, dy, addr + 4)
                 & 0xFFFF
             )
             occupancy = int(Queue.occupancy(EPOCH_Q_NUM_SLOTS, wrptr, rdptr))
@@ -105,8 +105,8 @@ def run(args, context, ui_state: UIState = None):
                     + (EPOCH_Q_SLOT_SIZE * (rdptr % EPOCH_Q_NUM_SLOTS))
                 )
                 cmd_rd_word = (
-                    tt_device.SERVER_IFC.pci_read_xy(
-                        device_id, dx, dy, 0, addr_at_rdptr + 4
+                    tt_device.SERVER_IFC.pci_read32(
+                        device_id, dx, dy, addr_at_rdptr + 4
                     )
                     & 0xFFFFFFFF
                 )

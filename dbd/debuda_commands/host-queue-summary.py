@@ -40,10 +40,10 @@ def run(cmd_txt, context, ui_state):
                 )  # Clear upper 2 bits, that carries host channel already.
                 dram_chan = buffer_data["dram_chan"]
                 chip_id = buffer_data["chip_id"][0]
-                rdptr = tt_device.SERVER_IFC.host_dma_read(
+                rdptr = tt_device.SERVER_IFC.dma_buffer_read32(
                     chip_id, dram_addr, dram_chan
                 )
-                wrptr = tt_device.SERVER_IFC.host_dma_read(
+                wrptr = tt_device.SERVER_IFC.dma_buffer_read32(
                     chip_id, dram_addr + 4, dram_chan
                 )
                 slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]

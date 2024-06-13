@@ -410,17 +410,17 @@ class WormholeDevice(tt_device.Device):
         endpoint_type = self.get_endpoint_type(x, y)
         if endpoint_type in ["Ethernet", "Tensix"]:
             reg_addr = 0xFFB20000 + (noc_id * 0x10000) + status_offset + (reg_index * 4)
-            val = self.pci_read_xy(x, y, 0, reg_addr)
+            val = self.pci_read32(x, y, 0, reg_addr)
         elif endpoint_type in ["GDDR", "PCIE", "ARC"]:
             reg_addr = 0xFFFB20000 + status_offset + (reg_index * 4)
             xr = x if noc_id == 0 else 9 - x
             yr = y if noc_id == 0 else 11 - y
-            val = self.pci_read_xy(xr, yr, noc_id, reg_addr)
+            val = self.pci_read32(xr, yr, noc_id, reg_addr)
         elif endpoint_type in ["Padding"]:
             reg_addr = 0xFFB20000 + status_offset + (reg_index * 4)
             xr = x if noc_id == 0 else 9 - x
             yr = y if noc_id == 0 else 11 - y
-            val = self.pci_read_xy(xr, yr, noc_id, reg_addr)
+            val = self.pci_read32(xr, yr, noc_id, reg_addr)
         else:
             util.ERROR(f"Unknown endpoint type {endpoint_type}")
         print(

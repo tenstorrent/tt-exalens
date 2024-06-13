@@ -32,6 +32,7 @@ import tt_device
 from docopt import docopt
 
 
+# TODO: This should work without using tt_device.
 def run(cmd_text, context, ui_state=None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
 
@@ -43,9 +44,9 @@ def run(cmd_text, context, ui_state=None):
     util.VERBOSE(f"{util.pretty (filelist)}")
 
     # 2. See if server cache is made
-    if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled and tt_device.DEBUDA_SERVER_CACHED_IFC.cache_mode == "through":
-        tt_device.DEBUDA_SERVER_CACHED_IFC.save()
-        filelist.append(tt_device.DEBUDA_SERVER_CACHED_IFC.filepath)
+    if tt_device.SERVER_IFC.using_cache():
+        tt_device.SERVER_IFC.save()
+        filelist.append(tt_device.SERVER_IFC.filepath)
     else:
         util.WARN(
             "Warning: there is no server cache to export ('--server-cache' must be set to 'through')"
@@ -68,7 +69,7 @@ def run(cmd_text, context, ui_state=None):
         filelist, out_file=zip_file_name, prefix_to_remove=odir
     )
     print(
-        f"Exported '{zip_file_name}'. Import with:\n{util.CLR_GREEN}mkdir -p {de_odir} && unzip {zip_file_name} -d {de_odir} && dbd/debuda.py {de_odir} {'--server-cache on' if tt_device.DEBUDA_SERVER_CACHED_IFC.enabled else ''}{util.CLR_END}"
+        f"Exported '{zip_file_name}'. Import with:\n{util.CLR_GREEN}mkdir -p {de_odir} && unzip {zip_file_name} -d {de_odir} && dbd/debuda.py {de_odir} {'--server-cache on' if tt_device.SERVER_IFC.using_cache() is not None else ''}{util.CLR_END}"
     )
 
     return None

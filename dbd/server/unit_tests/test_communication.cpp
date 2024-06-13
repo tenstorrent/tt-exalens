@@ -78,13 +78,13 @@ TEST(debuda_communication, get_device_ids) {
     test_yaml_request(tt::dbd::request{tt::dbd::request_type::get_device_ids}, "- type: 104");
 }
 
-TEST(debuda_communication, pci_read4) {
-    test_yaml_request(tt::dbd::pci_read4_request{tt::dbd::request_type::pci_read4, 1, 2, 3, 123456},
+TEST(debuda_communication, pci_read32) {
+    test_yaml_request(tt::dbd::pci_read32_request{tt::dbd::request_type::pci_read32, 1, 2, 3, 123456},
                       "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
 }
 
-TEST(debuda_communication, pci_write4) {
-    test_yaml_request(tt::dbd::pci_write4_request{tt::dbd::request_type::pci_write4, 1, 2, 3, 123456, 987654},
+TEST(debuda_communication, pci_write32) {
+    test_yaml_request(tt::dbd::pci_write32_request{tt::dbd::request_type::pci_write32, 1, 2, 3, 123456, 987654},
                       "- type: 11\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
 }
 
@@ -93,18 +93,18 @@ TEST(debuda_communication, pci_read) {
                       "- type: 12\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024");
 }
 
-TEST(debuda_communication, pci_read4_raw) {
-    test_yaml_request(tt::dbd::pci_read4_raw_request{tt::dbd::request_type::pci_read4_raw, 1, 123456},
+TEST(debuda_communication, pci_read32_raw) {
+    test_yaml_request(tt::dbd::pci_read32_raw_request{tt::dbd::request_type::pci_read32_raw, 1, 123456},
                       "- type: 14\n  chip_id: 1\n  address: 123456");
 }
 
-TEST(debuda_communication, pci_write4_raw) {
-    test_yaml_request(tt::dbd::pci_write4_raw_request{tt::dbd::request_type::pci_write4_raw, 1, 123456, 987654},
+TEST(debuda_communication, pci_write32_raw) {
+    test_yaml_request(tt::dbd::pci_write32_raw_request{tt::dbd::request_type::pci_write32_raw, 1, 123456, 987654},
                       "- type: 15\n  chip_id: 1\n  address: 123456\n  data: 987654");
 }
 
-TEST(debuda_communication, dma_buffer_read4) {
-    test_yaml_request(tt::dbd::dma_buffer_read4_request{tt::dbd::request_type::dma_buffer_read4, 1, 123456, 456},
+TEST(debuda_communication, dma_buffer_read32) {
+    test_yaml_request(tt::dbd::dma_buffer_read32_request{tt::dbd::request_type::dma_buffer_read32, 1, 123456, 456},
                       "- type: 16\n  chip_id: 1\n  address: 123456\n  channel: 456");
 }
 

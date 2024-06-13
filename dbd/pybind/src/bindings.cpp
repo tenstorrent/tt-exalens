@@ -41,16 +41,16 @@ bool open_device(const std::string &binary_directory, const std::string &runtime
     return true;
 }
 
-std::optional<uint32_t> pci_read4(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
+std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
     if (debuda_implementation) {
-        return debuda_implementation->pci_read4(chip_id, noc_x, noc_y, address);
+        return debuda_implementation->pci_read32(chip_id, noc_x, noc_y, address);
     }
     return {};
 }
 
-std::optional<uint32_t> pci_write4(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data) {
+std::optional<uint32_t> pci_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data) {
     if (debuda_implementation) {
-        return debuda_implementation->pci_write4(chip_id, noc_x, noc_y, address, data);
+        return debuda_implementation->pci_write32(chip_id, noc_x, noc_y, address, data);
     }
     return {};
 }
@@ -94,23 +94,23 @@ std::optional<uint32_t> pci_write(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
     return {};
 }
 
-std::optional<uint32_t> pci_read4_raw(uint8_t chip_id, uint64_t address) {
+std::optional<uint32_t> pci_read32_raw(uint8_t chip_id, uint64_t address) {
     if (debuda_implementation) {
-        return debuda_implementation->pci_read4_raw(chip_id, address);
+        return debuda_implementation->pci_read32_raw(chip_id, address);
     }
     return {};
 }
 
-std::optional<uint32_t> pci_write4_raw(uint8_t chip_id, uint64_t address, uint32_t data) {
+std::optional<uint32_t> pci_write32_raw(uint8_t chip_id, uint64_t address, uint32_t data) {
     if (debuda_implementation) {
-        return debuda_implementation->pci_write4_raw(chip_id, address, data);
+        return debuda_implementation->pci_write32_raw(chip_id, address, data);
     }
     return {};
 }
 
-std::optional<uint32_t> dma_buffer_read4(uint8_t chip_id, uint64_t address, uint32_t channel) {
+std::optional<uint32_t> dma_buffer_read32(uint8_t chip_id, uint64_t address, uint32_t channel) {
     if (debuda_implementation) {
-        return debuda_implementation->dma_buffer_read4(chip_id, address, channel);
+        return debuda_implementation->dma_buffer_read32(chip_id, address, channel);
     }
     return {};
 }
@@ -168,19 +168,19 @@ std::optional<std::string> get_device_soc_description(uint8_t chip_id) {
 PYBIND11_MODULE(tt_dbd_pybind, m) {
     m.def("open_device", &open_device, "Opens tt device. Prints error message if failed.",
           pybind11::arg("binary_directory"), pybind11::arg("runtime_yaml_path"));
-    m.def("pci_read4", &pci_read4, "Reads 4 bytes from PCI address", pybind11::arg("chip_id"), pybind11::arg("noc_x"),
+    m.def("pci_read32", &pci_read32, "Reads 4 bytes from PCI address", pybind11::arg("chip_id"), pybind11::arg("noc_x"),
           pybind11::arg("noc_y"), pybind11::arg("address"));
-    m.def("pci_write4", &pci_write4, "Writes 4 bytes to PCI address", pybind11::arg("chip_id"), pybind11::arg("noc_x"),
-          pybind11::arg("noc_y"), pybind11::arg("address"), pybind11::arg("data"));
+    m.def("pci_write32", &pci_write32, "Writes 4 bytes to PCI address", pybind11::arg("chip_id"),
+          pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"), pybind11::arg("data"));
     m.def("pci_read", &pci_read, "Reads data from PCI address", pybind11::arg("chip_id"), pybind11::arg("noc_x"),
           pybind11::arg("noc_y"), pybind11::arg("address"), pybind11::arg("size"));
     m.def("pci_write", &pci_write, "Writes data to PCI address", pybind11::arg("chip_id"), pybind11::arg("noc_x"),
           pybind11::arg("noc_y"), pybind11::arg("address"), pybind11::arg("data"), pybind11::arg("size"));
-    m.def("pci_read4_raw", &pci_read4_raw, "Reads 4 bytes from PCI address", pybind11::arg("chip_id"),
+    m.def("pci_read32_raw", &pci_read32_raw, "Reads 4 bytes from PCI address", pybind11::arg("chip_id"),
           pybind11::arg("address"));
-    m.def("pci_write4_raw", &pci_write4_raw, "Writes 4 bytes to PCI address", pybind11::arg("chip_id"),
+    m.def("pci_write32_raw", &pci_write32_raw, "Writes 4 bytes to PCI address", pybind11::arg("chip_id"),
           pybind11::arg("address"), pybind11::arg("data"));
-    m.def("dma_buffer_read4", &dma_buffer_read4, "Reads 4 bytes from DMA buffer", pybind11::arg("chip_id"),
+    m.def("dma_buffer_read32", &dma_buffer_read32, "Reads 4 bytes from DMA buffer", pybind11::arg("chip_id"),
           pybind11::arg("address"), pybind11::arg("channel"));
     m.def("pci_read_tile", &pci_read_tile, "Reads tile from PCI address", pybind11::arg("chip_id"),
           pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"), pybind11::arg("size"),

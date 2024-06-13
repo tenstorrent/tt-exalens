@@ -7,7 +7,6 @@ from typing import List, Sequence
 from socket import timeout
 from tabulate import tabulate
 from tt_debuda_context import Context
-from tt_debuda_server import debuda_server, debuda_pybind
 from tt_object import TTObject
 import tt_util as util
 from tt_coordinate import OnChipCoordinate, CoordinateTranslationError
@@ -20,8 +19,9 @@ from tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 # Communication with Buda (or debuda-server) over sockets (ZMQ).
 # See struct BUDA_READ_REQ for protocol details
 #
-DEBUDA_SERVER = None  # The debuda server communication object
 
+# TODO: Remove this global
+SERVER_IFC = None  # The debuda ifc object
 
 # Attempt to unpack the data using the given format. If it fails, it assumes that the data
 # is a string contining an error message from the server.
@@ -35,340 +35,14 @@ def try_unpack(fmt, data):
         return None
 
 
-# This is the interface to the debuda server
-class DEBUDA_SERVER_SOCKET_IFC:
-    enabled = True  # It can be disabled for offline operation (when working from cache)
-
-    NOT_ENABLED_ERROR_MSG = "Access to a device is requested, but the debuda-server socket interface is not enabled (see --server-cache)"
-
-    # PCI read/write functions. Given a noc0 location and addr, performs a PCI read/write
-    # to the given location at the address.
-    def pci_read_xy(chip_id, x, y, noc_id, reg_addr):
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-            + f" (pci_read_xy) with arguments: chip_id={chip_id}, x={x}, y={y}, noc_id={noc_id}, reg_addr=0x{reg_addr:x}"
-        )
-        return DEBUDA_SERVER.pci_read4(chip_id, x, y, reg_addr)
-
-    def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-            + f" (pci_write_xy) with arguments: chip_id={chip_id}, x={x}, y={y}, noc_id={noc_id}, reg_addr=0x{reg_addr:x}, data=0x{data:x}"
-        )
-        DEBUDA_SERVER.pci_write4(chip_id, x, y, reg_addr, data)
-        return data
-
-    def pci_read_buf(chip_id, x, y, noc_id, reg_addr, size):
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-            + f" (pci_read_buf) with arguments: chip_id={chip_id}, x={x}, y={y}, noc_id={noc_id}, reg_addr=0x{reg_addr:x}, size={size}"
-        )
-        return DEBUDA_SERVER.pci_read(chip_id, x, y, reg_addr, size)
-
-    def pci_write_buf(chip_id, x, y, noc_id, reg_addr, data):
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-            + f" (pci_write_buf) with arguments: chip_id={chip_id}, x={x}, y={y}, noc_id={noc_id}, reg_addr=0x{reg_addr:x}, data={data}"
-        )
-        return DEBUDA_SERVER.pci_write(chip_id, x, y, reg_addr, data)
-
-    def host_dma_read(chip_id, dram_addr, dram_chan):
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-            + f" (host_dma_read) with arguments: chip_id={chip_id}, dram_addr=0x{dram_addr:x}, dram_chan={dram_chan}"
-        )
-        return DEBUDA_SERVER.dma_buffer_read4(chip_id, dram_addr, dram_chan)
-
-    def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-            + f" (pci_read_tile) with arguments: chip_id={chip_id}, x={x}, y={y}, z={z}, reg_addr=0x{reg_addr:x}, msg_size={msg_size}, data_format={data_format}"
-        )
-        return DEBUDA_SERVER.pci_read_tile(
-            chip_id, x, y, reg_addr, msg_size, data_format
-        )
-
-    def pci_raw_read(chip_id, reg_addr):
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-            + f" (pci_raw_read) with arguments: chip_id={chip_id}, reg_addr=0x{reg_addr:x}"
-        )
-        try:
-            return DEBUDA_SERVER.pci_read4_raw(chip_id, reg_addr)
-        except:
-            util.ERROR(f"Cannot do PCI read")
-            return 0
-
-    def pci_raw_write(chip_id, reg_addr, data):
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-            + f" (pci_raw_write) with arguments: chip_id={chip_id}, reg_addr=0x{reg_addr:x}, data=0x{data:x}"
-        )
-        try:
-            DEBUDA_SERVER.pci_write4_raw(chip_id, reg_addr, data)
-            return data
-        except:
-            util.ERROR(f"Cannot do PCI write")
-            return 0
-
-    def get_runtime_data():
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (get_runtime_data)"
-        )
-        return DEBUDA_SERVER.get_runtime_data()
-
-    def get_cluster_desc_path():
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (get_cluster_desc_path)"
-        )
-        return DEBUDA_SERVER.get_cluster_description()
-
-    def get_harvested_coord_translation(chip_id):
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-            + f" (get_harvested_coord_translation) with arguments: chip_id={chip_id}"
-        )
-        return DEBUDA_SERVER.get_harvester_coordinate_translation(chip_id)
-
-    def get_device_ids():
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG + f" (get_device_ids)"
-        )
-        return DEBUDA_SERVER.get_device_ids()
-
-    def get_device_arch(chip_id):
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-            + f" (get_device_arch) with arguments: chip_id={chip_id}"
-        )
-        return DEBUDA_SERVER.get_device_arch(chip_id)
-
-    def get_device_soc_description(chip_id):
-        assert DEBUDA_SERVER_SOCKET_IFC.enabled, (
-            DEBUDA_SERVER_SOCKET_IFC.NOT_ENABLED_ERROR_MSG
-            + f" (get_device_soc_description) with arguments: chip_id={chip_id}"
-        )
-        return DEBUDA_SERVER.get_device_soc_description(chip_id)
-
-
-# This interface is used to read cached values of device reads.
-class DEBUDA_SERVER_CACHED_IFC:
-    filepath = "debuda-server-cache.pkl"
-    cache_store = dict()
-    enabled = False
-    cache_mode = "through"
-
-    def load():
-        if DEBUDA_SERVER_CACHED_IFC.enabled and DEBUDA_SERVER_CACHED_IFC.cache_mode == "on":
-            if os.path.exists(DEBUDA_SERVER_CACHED_IFC.filepath):
-                util.INFO(
-                    f"Loading server cache from file {DEBUDA_SERVER_CACHED_IFC.filepath}"
-                )
-                with open(DEBUDA_SERVER_CACHED_IFC.filepath, "rb") as f:
-                    DEBUDA_SERVER_CACHED_IFC.cache_store = pickle.load(f)
-                    util.INFO(
-                        f"  Loaded {len(DEBUDA_SERVER_CACHED_IFC.cache_store)} entries"
-                    )
-            else:
-                assert (
-                    DEBUDA_SERVER_SOCKET_IFC.enabled
-                ), f"Cache file {DEBUDA_SERVER_CACHED_IFC.filepath} does not exist"
-
-    def save():
-        if DEBUDA_SERVER_CACHED_IFC.enabled and DEBUDA_SERVER_CACHED_IFC.cache_mode == "through":
-            util.INFO(
-                f"Saving server cache to file {DEBUDA_SERVER_CACHED_IFC.filepath}"
-            )
-            with open(DEBUDA_SERVER_CACHED_IFC.filepath, "wb") as f:
-                pickle.dump(DEBUDA_SERVER_CACHED_IFC.cache_store, f)
-                util.INFO(
-                    f"  Saved {len(DEBUDA_SERVER_CACHED_IFC.cache_store)} entries"
-                )
-
-    def pci_read_xy(chip_id, x, y, noc_id, reg_addr):
-        key = (chip_id, x, y, noc_id, reg_addr)
-        
-        if not DEBUDA_SERVER_CACHED_IFC.enabled:
-            return DEBUDA_SERVER_SOCKET_IFC.pci_read_xy(chip_id, x, y, noc_id, reg_addr)
-        
-        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store:
-            if DEBUDA_SERVER_CACHED_IFC.cache_mode == "through":
-                DEBUDA_SERVER_CACHED_IFC.cache_store[key] = (
-                    DEBUDA_SERVER_SOCKET_IFC.pci_read_xy(chip_id, x, y, noc_id, reg_addr)
-                )
-            else:
-                raise util.TTException(f"Cache miss for key {key} in pci_read_xy.")
-            
-        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
-
-    def pci_write_xy(chip_id, x, y, noc_id, reg_addr, data):
-        if DEBUDA_SERVER_CACHED_IFC.enabled and DEBUDA_SERVER_CACHED_IFC.cache_mode == "on":
-            raise util.TTException("Cannot write to device in cache mode 'on'.")
-        
-        return DEBUDA_SERVER_SOCKET_IFC.pci_write_xy(
-            chip_id, x, y, noc_id, reg_addr, data
-        )
-
-    def host_dma_read(chip_id, dram_addr, dram_chan):
-        key = dram_addr
-        if not DEBUDA_SERVER_CACHED_IFC.enabled:
-            return DEBUDA_SERVER_SOCKET_IFC.host_dma_read(chip_id, dram_addr, dram_chan)
-        
-        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store:
-            if DEBUDA_SERVER_CACHED_IFC.cache_mode == "through":
-                DEBUDA_SERVER_CACHED_IFC.cache_store[key] = (
-                    DEBUDA_SERVER_SOCKET_IFC.host_dma_read(chip_id, dram_addr, dram_chan)
-                )
-            else:
-                raise util.TTException(f"Cache miss for key {key} in host_dma_read.")
-            
-        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
-
-    def pci_read_tile(chip_id, x, y, z, reg_addr, msg_size, data_format):
-        key = (chip_id, x, y, z, reg_addr, msg_size, data_format)
-        if not DEBUDA_SERVER_CACHED_IFC.enabled:
-            return DEBUDA_SERVER_SOCKET_IFC.pci_read_tile(
-                    chip_id, x, y, z, reg_addr, msg_size, data_format
-                )
-        
-        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store:
-            if DEBUDA_SERVER_CACHED_IFC.cache_mode == "through":
-                DEBUDA_SERVER_CACHED_IFC.cache_store[key] = (
-                    DEBUDA_SERVER_SOCKET_IFC.pci_read_tile(
-                        chip_id, x, y, z, reg_addr, msg_size, data_format
-                    )
-                )
-            else:
-                raise util.TTException(f"Cache miss for key {key} in pci_read_tile.")
-            
-        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
-
-    def pci_raw_read(chip_id, reg_addr):
-        key = (chip_id, reg_addr)
-        if not DEBUDA_SERVER_CACHED_IFC.enabled:
-            return DEBUDA_SERVER_SOCKET_IFC.pci_raw_read(chip_id, reg_addr)
-        
-        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store:
-            if DEBUDA_SERVER_CACHED_IFC.cache_mode == "through":
-                DEBUDA_SERVER_CACHED_IFC.cache_store[key] = (
-                    DEBUDA_SERVER_SOCKET_IFC.pci_raw_read(chip_id, reg_addr)
-                )
-            else:
-                raise util.TTException(f"Cache miss for key {key} in pci_raw_read.")
-            
-        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
-
-    def pci_raw_write(chip_id, reg_addr, data):
-        if DEBUDA_SERVER_CACHED_IFC.enabled and DEBUDA_SERVER_CACHED_IFC.cache_mode == "on":
-            raise util.TTException("Cannot write to device in cache mode 'on'.")
-        
-        return DEBUDA_SERVER_SOCKET_IFC.pci_raw_write(chip_id, reg_addr, data)
-
-    def get_runtime_data():
-        key = "get_runtime_data"
-        if not DEBUDA_SERVER_CACHED_IFC.enabled:
-            return DEBUDA_SERVER_SOCKET_IFC.get_runtime_data()
-        
-        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store:
-            if DEBUDA_SERVER_CACHED_IFC.cache_mode == "through":
-                DEBUDA_SERVER_CACHED_IFC.cache_store[key] = (
-                    DEBUDA_SERVER_SOCKET_IFC.get_runtime_data()
-                )
-            else:
-                raise util.TTException("Cache miss in get_runtime_data.")
-        
-        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
-
-    def get_cluster_desc_path():
-        key = "cluster_desc_path"
-        if not DEBUDA_SERVER_CACHED_IFC.enabled:
-            return DEBUDA_SERVER_SOCKET_IFC.get_cluster_desc_path()
-        
-        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store:
-            if DEBUDA_SERVER_CACHED_IFC.cache_mode == "through":
-                DEBUDA_SERVER_CACHED_IFC.cache_store[key] = (
-                    DEBUDA_SERVER_SOCKET_IFC.get_cluster_desc_path()
-                )
-            else:
-                raise util.TTException("Cache miss in get_cluster_desc_path.")
-        
-        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
-
-    def get_harvested_coord_translation(chip_id):
-        key = f"harvested_coord_translation_{chip_id}"
-        if not DEBUDA_SERVER_CACHED_IFC.enabled:
-            return DEBUDA_SERVER_SOCKET_IFC.get_harvested_coord_translation(chip_id)
-        
-        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store:
-            if DEBUDA_SERVER_CACHED_IFC.cache_mode == "through":
-                DEBUDA_SERVER_CACHED_IFC.cache_store[key] = (
-                    DEBUDA_SERVER_SOCKET_IFC.get_harvested_coord_translation(chip_id)
-                )
-            else:
-                raise util.TTException(f"Cache miss for chip id {chip_id} in get_harvested_coord_translation.")
-        
-        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
-
-    def get_device_ids():
-        key = "device_ids"
-        if not DEBUDA_SERVER_CACHED_IFC.enabled:
-            return DEBUDA_SERVER_SOCKET_IFC.get_device_ids()
-        
-        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store:
-            if DEBUDA_SERVER_CACHED_IFC.cache_mode == "through":
-                DEBUDA_SERVER_CACHED_IFC.cache_store[key] = (
-                    DEBUDA_SERVER_SOCKET_IFC.get_device_ids()
-                )
-            else:
-                raise util.TTException("Cache miss in get_device_ids.")
-
-        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
-
-    def get_device_arch(chip_id):
-        key = f"device_arch_{chip_id}"
-        if not DEBUDA_SERVER_CACHED_IFC.enabled:
-            return DEBUDA_SERVER_SOCKET_IFC.get_device_arch(chip_id)
-        
-        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store:
-            if DEBUDA_SERVER_CACHED_IFC.cache_mode == "through":
-                DEBUDA_SERVER_CACHED_IFC.cache_store[key] = (
-                    DEBUDA_SERVER_SOCKET_IFC.get_device_arch(chip_id)
-                )
-            else:
-                raise util.TTException(f"Cache miss for chip id {chip_id} in get_device_arch.")
-        
-        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
-
-    def get_device_soc_description(chip_id):
-        key = f"get_device_soc_description_{chip_id}"
-        if not DEBUDA_SERVER_CACHED_IFC.enabled:
-            return DEBUDA_SERVER_SOCKET_IFC.get_device_soc_description(chip_id)
-        
-        if key not in DEBUDA_SERVER_CACHED_IFC.cache_store:
-            if DEBUDA_SERVER_CACHED_IFC.cache_mode == "through":
-                DEBUDA_SERVER_CACHED_IFC.cache_store[key] = (
-                    DEBUDA_SERVER_SOCKET_IFC.get_device_soc_description(chip_id)
-                )
-            else:
-                raise util.TTException(f"Cache miss for chip id {chip_id} in get_device_soc_description.")
-
-        return DEBUDA_SERVER_CACHED_IFC.cache_store[key]
-
-
-# PCI interface is a cached interface through Debuda server
-# TODO: SERVER_IFC should be an object instead of these classes - try to avoid checks for cache
-class SERVER_IFC(DEBUDA_SERVER_CACHED_IFC):
-    pass
-
-
 # Prints contents of core's memory
 def dump_memory(device_id, loc, addr, size):
     for k in range(0, size // 4 // 16 + 1):
         row = []
         for j in range(0, 16):
             if addr + k * 64 + j * 4 < addr + size:
-                val = SERVER_IFC.pci_read_xy(
-                    device_id, *loc.to("nocVirt"), 0, addr + k * 64 + j * 4
+                val = SERVER_IFC.pci_read32(
+                    device_id, *loc.to("nocVirt"), addr + k * 64 + j * 4
                 )
                 row.append(f"0x{val:08x}")
         s = " ".join(row)
@@ -377,7 +51,7 @@ def dump_memory(device_id, loc, addr, size):
 
 # Dumps tile in format received form tt_tile::get_string
 def dump_tile(chip, loc, addr, size, data_format):
-    s = SERVER_IFC.pci_read_tile(chip, *loc.to("nocVirt"), 0, addr, size, data_format)
+    s = SERVER_IFC.pci_read_tile(chip, *loc.to("nocVirt"), addr, size, data_format)
     if type(s) == bytes:
         s = s.decode("utf-8")
     lines = s.split("\n")
@@ -434,7 +108,7 @@ class Device(TTObject):
         for coord in self.get_block_locations("functional_workers"):
             for risc_id in range(4): # 4 because we have a hardware bug for debugging ncrisc
                 risc_location = RiscLoc(coord, 0, risc_id)
-                risc_debug = RiscDebug(risc_location, DEBUDA_SERVER_SOCKET_IFC)
+                risc_debug = RiscDebug(risc_location, SERVER_IFC)
                 cores.append(risc_debug)
 
         # TODO: Can we debug eth cores?
@@ -544,7 +218,7 @@ class Device(TTObject):
         self._create_nocTr_noc0_harvesting_map()
 
     def _create_nocVirt_to_nocTr_map(self):
-        harvested_coord_translation_str = SERVER_IFC.get_harvested_coord_translation(self._id)
+        harvested_coord_translation_str = SERVER_IFC.get_harvester_coordinate_translation(self._id)
         self.nocVirt_to_nocTr_map = ast.literal_eval(
             harvested_coord_translation_str
         )  # Eval string to dict
@@ -933,7 +607,7 @@ class Device(TTObject):
                     + thread_idx * DEBUG_MAILBOX_BUF_SIZE
                     + reg_idx * 4
                 )
-                val = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, reg_addr)
+                val = SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), reg_addr)
                 debug_tables[thread_idx].append(
                     {"lo_val": val & 0xFFFF, "hi_val": (val >> 16) & 0xFFFF}
                 )
@@ -1071,83 +745,77 @@ class Device(TTObject):
 
         sig_sel = 0xFF
         rd_sel = 0
-        SERVER_IFC.pci_write_xy(
+        SERVER_IFC.pci_write32(
             self.id(),
             *loc.to("nocVirt"),
-            0,
             0xFFB12054,
             ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)),
         )
-        test_val1 = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xFFB1205C)
+        test_val1 = SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), 0xFFB1205C)
         rd_sel = 1
-        SERVER_IFC.pci_write_xy(
+        SERVER_IFC.pci_write32(
             self.id(),
             *loc.to("nocVirt"),
-            0,
             0xFFB12054,
             ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)),
         )
-        test_val2 = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xFFB1205C)
+        test_val2 = SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), 0xFFB1205C)
 
         rd_sel = 0
         sig_sel = 2 * self.SIG_SEL_CONST
-        SERVER_IFC.pci_write_xy(
+        SERVER_IFC.pci_write32(
             self.id(),
             *loc.to("nocVirt"),
-            0,
             0xFFB12054,
             ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)),
         )
         brisc_pc = (
-            SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xFFB1205C)
+            SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), 0xFFB1205C)
             & pc_mask
         )
 
         # Doesn't work - looks like a bug for selecting inputs > 31 in daisy stop
         # rd_sel = 0
         # sig_sel = 2*16
-        # SERVER_IFC.pci_write_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        # nrisc_pc = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xffb1205c) & pc_mask
+        # SERVER_IFC.pci_write32(self.id(), *loc.to("nocVirt"), 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
+        # nrisc_pc = SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), 0xffb1205c) & pc_mask
 
         rd_sel = 0
         sig_sel = 2 * 10
-        SERVER_IFC.pci_write_xy(
+        SERVER_IFC.pci_write32(
             self.id(),
             *loc.to("nocVirt"),
-            0,
             0xFFB12054,
             ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)),
         )
         trisc0_pc = (
-            SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xFFB1205C)
+            SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), 0xFFB1205C)
             & pc_mask
         )
 
         rd_sel = 0
         sig_sel = 2 * 11
-        SERVER_IFC.pci_write_xy(
+        SERVER_IFC.pci_write32(
             self.id(),
             *loc.to("nocVirt"),
-            0,
             0xFFB12054,
             ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)),
         )
         trisc1_pc = (
-            SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xFFB1205C)
+            SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), 0xFFB1205C)
             & pc_mask
         )
 
         rd_sel = 0
         sig_sel = 2 * 12
-        SERVER_IFC.pci_write_xy(
+        SERVER_IFC.pci_write32(
             self.id(),
             *loc.to("nocVirt"),
-            0,
             0xFFB12054,
             ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)),
         )
         trisc2_pc = (
-            SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xFFB1205C)
+            SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), 0xFFB1205C)
             & pc_mask
         )
 
@@ -1159,7 +827,7 @@ class Device(TTObject):
             f"Tensix {loc.to_str()} => brisc_pc=0x{brisc_pc:x}, trisc0_pc=0x{trisc0_pc:x}, trisc1_pc=0x{trisc1_pc:x}, trisc2_pc=0x{trisc2_pc:x}"
         )
 
-        SERVER_IFC.pci_write_xy(self.id(), *loc.to("nocVirt"), 0, 0xFFB12054, 0)
+        SERVER_IFC.pci_write32(self.id(), *loc.to("nocVirt"), 0xFFB12054, 0)
         util.WARN(
             "full_dump_xy not fully tested (functionality might be device dependent)"
         )
@@ -1168,7 +836,7 @@ class Device(TTObject):
     def read_print_noc_reg(self, loc, noc_id, reg_name, reg_index):
         assert type(loc) == OnChipCoordinate
         reg_addr = 0xFFB20000 + (noc_id * 0x10000) + 0x200 + (reg_index * 4)
-        val = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, reg_addr)
+        val = SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), reg_addr)
         print(
             f"Tensix {loc.to_str()} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})"
         )
@@ -1178,7 +846,7 @@ class Device(TTObject):
     def get_stream_reg_field(self, loc, stream_id, reg_index, start_bit, num_bits):
         assert type(loc) == OnChipCoordinate
         reg_addr = 0xFFB40000 + (stream_id * 0x1000) + (reg_index * 4)
-        val = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, reg_addr)
+        val = SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), reg_addr)
         mask = (1 << num_bits) - 1
         val = (val >> start_bit) & mask
         return val
@@ -1192,8 +860,8 @@ class Device(TTObject):
         assert type(loc) == OnChipCoordinate
         if loc in self.get_block_locations("functional_workers"):
             epoch = (
-                SERVER_IFC.pci_read_xy(
-                    self.id(), *loc.to("nocVirt"), 0, self.EPOCH_ID_ADDR
+                SERVER_IFC.pci_read32(
+                    self.id(), *loc.to("nocVirt"), self.EPOCH_ID_ADDR
                 )
                 & 0xFF
             )
@@ -1202,10 +870,10 @@ class Device(TTObject):
             # 0x20080
             # + 0x28c
             # = 2030c
-            # epoch = SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0x2030c) & 0xFF
+            # epoch = SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), 0x2030c) & 0xFF
             epoch = (
-                SERVER_IFC.pci_read_xy(
-                    self.id(), *loc.to("nocVirt"), 0, self.ETH_EPOCH_ID_ADDR
+                SERVER_IFC.pci_read32(
+                    self.id(), *loc.to("nocVirt"), self.ETH_EPOCH_ID_ADDR
                 )
                 & 0xFF
             )
@@ -1274,14 +942,14 @@ class Device(TTObject):
     def is_gsync_hung(self, loc):
         assert type(loc) == OnChipCoordinate
         return (
-            SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xFFB2010C)
+            SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), 0xFFB2010C)
             == 0xB0010000
         )
 
     def is_ncrisc_done(self, loc):
         assert type(loc) == OnChipCoordinate
         return (
-            SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, 0xFFB2010C)
+            SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), 0xFFB2010C)
             == 0x1FFFFFF1
         )
 
@@ -1489,7 +1157,7 @@ class Device(TTObject):
         status_descs = {}
         for loc in coords:
             status_descs[loc] = self.get_status_register_desc(
-                addr, SERVER_IFC.pci_read_xy(self.id(), *loc.to("nocVirt"), 0, addr)
+                addr, SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), addr)
             )
 
         # Print register status
@@ -1506,15 +1174,15 @@ class Device(TTObject):
                 )
         return status_descs_rows
 
-    def pci_read_xy(self, x, y, noc_id, reg_addr):
-        return SERVER_IFC.pci_read_xy(self.id(), x, y, noc_id, reg_addr)
+    def pci_read32(self, x, y, noc_id, reg_addr):
+        return SERVER_IFC.pci_read32(self.id(), x, y, reg_addr)
 
-    def pci_write_xy(self, x, y, noc_id, reg_addr, data):
-        return SERVER_IFC.pci_write_xy(self.id(), x, y, noc_id, reg_addr, data)
+    def pci_write32(self, x, y, noc_id, reg_addr, data):
+        return SERVER_IFC.pci_write32(self.id(), x, y, reg_addr, data)
 
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         return SERVER_IFC.pci_read_tile(
-            self.id(), x, y, z, reg_addr, msg_size, data_format
+            self.id(), x, y, reg_addr, msg_size, data_format
         )
 
     def all_riscs_assert_soft_reset(self) -> None:
@@ -1529,154 +1197,14 @@ class Device(TTObject):
         noc_id = 0
 
         for loc in self.get_block_locations(block_type="functional_workers"):
-            self.pci_write_xy(*loc.to("nocVirt"), noc_id, RISC_SOFT_RESET_0_ADDR, ALL_SOFT_RESET)
+            self.pci_write32(*loc.to("nocVirt"), noc_id, RISC_SOFT_RESET_0_ADDR, ALL_SOFT_RESET)
 
             # Check what we wrote
-            rst_reg = self.pci_read_xy(*loc.to("nocVirt"), noc_id, RISC_SOFT_RESET_0_ADDR)
+            rst_reg = self.pci_read32(*loc.to("nocVirt"), noc_id, RISC_SOFT_RESET_0_ADDR)
             if rst_reg != ALL_SOFT_RESET:
                 util.ERROR (f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 
 # end of class Device
-
-
-def init_cache_and_socket(server_cache):
-    DEBUDA_SERVER_CACHED_IFC.enabled = server_cache == "through" or server_cache == "on"
-    DEBUDA_SERVER_CACHED_IFC.cache_mode = server_cache or "off"
-    DEBUDA_SERVER_SOCKET_IFC.enabled = server_cache == "through" or server_cache == "off"
-
-    if DEBUDA_SERVER_CACHED_IFC.cache_mode == "on":
-        DEBUDA_SERVER_CACHED_IFC.load()
-    if DEBUDA_SERVER_CACHED_IFC.cache_mode == "through":
-        atexit.register(DEBUDA_SERVER_CACHED_IFC.save)
-
-
-def start_server(port, runtime_data_yaml_filename):
-    if util.is_port_available(int(port)):
-        debuda_server = spawn_standalone_debuda_stub(port, runtime_data_yaml_filename)
-        if debuda_server is None:
-            raise util.TTFatalException("Could not start debuda-server.")
-        return debuda_server
-    
-    raise util.TTFatalException(f"Port {port} not available. A debuda server might alreasdy be running.")
-
-
-# The server needs the runtime_data.yaml to get the netlist path, arch, and device
-def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename):
-    print("Spawning debuda-server...")
-
-    debuda_server_standalone = "/debuda-server-standalone"
-    if "DBD_HOME" not in os.environ:
-        os.environ["DBD_HOME"] = os.path.abspath(util.application_path() + "/../")
-    debuda_server_standalone = f"/../build/bin{debuda_server_standalone}"
-
-    debuda_stub_path = os.path.abspath(
-        util.application_path() + debuda_server_standalone
-    )
-    library_path = os.path.abspath(os.path.dirname(debuda_stub_path))
-    ld_lib_path = os.environ.get("LD_LIBRARY_PATH", "")
-    os.environ["LD_LIBRARY_PATH"] = (
-        library_path + ":" + ld_lib_path if ld_lib_path else library_path
-    )
-
-    try:
-        if runtime_data_yaml_filename is None:
-            debuda_stub_args = [f"{port}"]
-        else:
-            debuda_stub_args = [f"{port}", "-y", f"{runtime_data_yaml_filename}"]
-        debuda_stub = subprocess.Popen(
-            [debuda_stub_path] + debuda_stub_args,
-            preexec_fn=os.setsid,
-            stdin=subprocess.PIPE, # We close by sending SIGTERM
-            env=os.environ.copy(),
-        )
-    except:
-        if os.path.islink(debuda_stub_path):
-            if not os.path.exists(os.readlink(debuda_stub_path)):
-                util.FATAL(f"Missing debuda-server-standalone. Try: make dbd")
-        raise
-
-    # Allow some time for debuda-server to start
-    retry_times = 50
-    sleep_time = 0.1
-    debuda_stub_is_running = False
-    util.INFO(
-        f"Waiting for debuda-server to start for up to {retry_times * sleep_time} seconds..."
-    )
-    while retry_times > 0:
-        time.sleep(sleep_time)
-        debuda_stub_terminated = debuda_stub.poll() is not None
-        if debuda_stub_terminated:
-            util.ERROR(
-                f"Debuda server terminated unexpectedly with code: {debuda_stub.returncode}"
-            )
-            process_stderr = debuda_stub.stderr.read().decode("utf-8")
-            process_stdout = debuda_stub.stdout.read().decode("utf-8")
-            if process_stdout:
-                util.INFO(f"{process_stdout}")
-            if process_stderr:
-                if "does not exist" in process_stderr:
-                    util.ERROR(
-                        f"Make sure to set the environment variable DEBUDA_HOME to <python-path>/site-packages/debuda"
-                    )
-                util.ERROR(f"{process_stderr}")
-            break
-
-        if not util.is_port_available(
-            int(port)
-        ):  # Then we assume debuda-server has started
-            debuda_stub_is_running = True
-            break
-        retry_times -= 1
-
-    if not debuda_stub_is_running:
-        util.ERROR(
-            f"Debuda server could not be spawned on localhost after {retry_times * sleep_time} seconds."
-        )
-        return None
-    util.INFO("Debuda-server started.")
-    return debuda_stub
-
-# Terminates debuda-server spawned in connect_to_server
-def stop_server(debuda_stub):
-    if debuda_stub is not None and debuda_stub.poll() is None:
-        os.killpg(os.getpgid(debuda_stub.pid), signal.SIGTERM)
-        time.sleep(0.1)
-        if debuda_stub.poll() is None:
-            util.VERBOSE("Debuda-server did not respond to SIGTERM. Sending SIGKILL...")
-            os.killpg(os.getpgid(debuda_stub.pid), signal.SIGKILL)
-
-        time.sleep(0.1)
-        if debuda_stub.poll() is None:
-            util.ERROR(
-                f"Debuda-server did not respond to SIGKILL. The process {debuda_stub.pid} is still running. Please kill it manually."
-            )
-        else:
-            util.INFO("Debuda-server terminated.")
-
-
-def init_pybind(server_cache, runtime_data_yaml_filename):
-    init_cache_and_socket(server_cache)
-
-    global DEBUDA_SERVER
-    DEBUDA_SERVER = debuda_pybind(runtime_data_yaml_filename)
-
-    return SERVER_IFC
-
-
-# Spawns debuda-server and initializes the communication
-def connect_to_server(ip="localhost", port=5555):
-    debuda_stub_address = f"tcp://{ip}:{port}"
-    util.INFO(f"Connecting to debuda-server at {debuda_stub_address}...")
-
-    try:
-        global DEBUDA_SERVER
-        DEBUDA_SERVER = debuda_server(ip, port)
-        util.INFO("Connected to debuda-server.")
-    except:
-        raise
-
-    return SERVER_IFC
-
 
 # This is based on runtime_utils.cpp:get_soc_desc_path()
 def get_soc_desc_path(chip, output_dir):

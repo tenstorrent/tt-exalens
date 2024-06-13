@@ -15,13 +15,13 @@ enum class request_type : uint8_t {
     ping = 1,
 
     // Device requests
-    pci_read4 = 10,
-    pci_write4,
+    pci_read32 = 10,
+    pci_write32,
     pci_read,
     pci_write,
-    pci_read4_raw,
-    pci_write4_raw,
-    dma_buffer_read4,
+    pci_read32_raw,
+    pci_write32_raw,
+    dma_buffer_read32,
 
     // Runtime requests
     pci_read_tile = 100,
@@ -36,20 +36,20 @@ enum class request_type : uint8_t {
 // Structures for receiving requests
 // If request doesn't need data, structure shouldn't be defined
 // Structures are named as <name_of_request_type>_request.
-// For example: request_type::pci_read4 has structure pci_read4_request.
+// For example: request_type::pci_read32 has structure pci_read32_request.
 
 struct request {
     request_type type;
 } __attribute__((packed));
 
-struct pci_read4_request : request {
+struct pci_read32_request : request {
     uint8_t chip_id;
     uint8_t noc_x;
     uint8_t noc_y;
     uint64_t address;
 } __attribute__((packed));
 
-struct pci_write4_request : request {
+struct pci_write32_request : request {
     uint8_t chip_id;
     uint8_t noc_x;
     uint8_t noc_y;
@@ -74,18 +74,18 @@ struct pci_write_request : request {
     uint8_t data[0];
 } __attribute__((packed));
 
-struct pci_read4_raw_request : request {
+struct pci_read32_raw_request : request {
     uint8_t chip_id;
     uint32_t address;
 } __attribute__((packed));
 
-struct pci_write4_raw_request : request {
+struct pci_write32_raw_request : request {
     uint8_t chip_id;
     uint32_t address;
     uint32_t data;
 } __attribute__((packed));
 
-struct dma_buffer_read4_request : request {
+struct dma_buffer_read32_request : request {
     uint8_t chip_id;
     uint64_t address;
     uint16_t channel;

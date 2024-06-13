@@ -5,7 +5,7 @@ set -e
 TEST_NAME="$1"
 EXTRA_ARGUMENTS="$2"
 
-if [-z ${TEST_EXPORT_PATH}]; then
+if [ -z ${TEST_EXPORT_PATH} ]; then
     TEST_EXPORT_PATH="debuda_test/tmp"
     mkdir -p $TEST_EXPORT_PATH
 fi
@@ -42,7 +42,7 @@ run_debuda() {
     fi
 }
 
-if [[ $EXTRA_ARGUMENTS == *"--server-cache=on"* ]]; then CACHE_ONLY=true; else CACHE_ONLY=false; fi
+if [[ $EXTRA_ARGUMENTS == *"--cached"* ]]; then CACHE_ONLY=true; else CACHE_ONLY=false; fi
 
 # Use netlist core locations
 CORE_LOC_11="0,0"

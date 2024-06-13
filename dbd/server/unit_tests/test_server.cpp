@@ -41,15 +41,15 @@ class yaml_not_implemented_implementation : public debuda_implementation {
    public:
     yaml_not_implemented_implementation(yaml_not_implemented_server *server) : server(server) {}
 
-    std::optional<uint32_t> pci_read4(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override {
-        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::pci_read4)) +
+    std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::pci_read32)) +
                           "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
                           "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address));
         return {};
     }
-    std::optional<uint32_t> pci_write4(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                       uint32_t data) override {
-        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::pci_write4)) +
+    std::optional<uint32_t> pci_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                                        uint32_t data) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::pci_write32)) +
                           "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
                           "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address) +
                           "\n  data: " + std::to_string(data));
@@ -71,19 +71,19 @@ class yaml_not_implemented_implementation : public debuda_implementation {
                           "\n  size: " + std::to_string(size) + "\n  data: " + serialize_bytes(data, size));
         return {};
     }
-    std::optional<uint32_t> pci_read4_raw(uint8_t chip_id, uint64_t address) override {
-        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::pci_read4_raw)) +
+    std::optional<uint32_t> pci_read32_raw(uint8_t chip_id, uint64_t address) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::pci_read32_raw)) +
                           "\n  chip_id: " + std::to_string(chip_id) + "\n  address: " + std::to_string(address));
         return {};
     }
-    std::optional<uint32_t> pci_write4_raw(uint8_t chip_id, uint64_t address, uint32_t data) override {
-        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::pci_write4_raw)) +
+    std::optional<uint32_t> pci_write32_raw(uint8_t chip_id, uint64_t address, uint32_t data) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::pci_write32_raw)) +
                           "\n  chip_id: " + std::to_string(chip_id) + "\n  address: " + std::to_string(address) +
                           "\n  data: " + std::to_string(data));
         return {};
     }
-    std::optional<uint32_t> dma_buffer_read4(uint8_t chip_id, uint64_t address, uint32_t channel) override {
-        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::dma_buffer_read4)) +
+    std::optional<uint32_t> dma_buffer_read32(uint8_t chip_id, uint64_t address, uint32_t channel) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::dma_buffer_read32)) +
                           "\n  chip_id: " + std::to_string(chip_id) + "\n  address: " + std::to_string(address) +
                           "\n  channel: " + std::to_string(channel));
         return {};
@@ -205,14 +205,14 @@ TEST(debuda_server, get_device_ids) {
     test_not_implemented_request(tt::dbd::request{tt::dbd::request_type::get_device_ids}, "- type: 104");
 }
 
-TEST(debuda_server, pci_read4) {
-    test_not_implemented_request(tt::dbd::pci_read4_request{tt::dbd::request_type::pci_read4, 1, 2, 3, 123456},
+TEST(debuda_server, pci_read32) {
+    test_not_implemented_request(tt::dbd::pci_read32_request{tt::dbd::request_type::pci_read32, 1, 2, 3, 123456},
                                  "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
 }
 
-TEST(debuda_server, pci_write4) {
+TEST(debuda_server, pci_write32) {
     test_not_implemented_request(
-        tt::dbd::pci_write4_request{tt::dbd::request_type::pci_write4, 1, 2, 3, 123456, 987654},
+        tt::dbd::pci_write32_request{tt::dbd::request_type::pci_write32, 1, 2, 3, 123456, 987654},
         "- type: 11\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
 }
 
@@ -221,20 +221,20 @@ TEST(debuda_server, pci_read) {
                                  "- type: 12\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024");
 }
 
-TEST(debuda_server, pci_read4_raw) {
-    test_not_implemented_request(tt::dbd::pci_read4_raw_request{tt::dbd::request_type::pci_read4_raw, 1, 123456},
+TEST(debuda_server, pci_read32_raw) {
+    test_not_implemented_request(tt::dbd::pci_read32_raw_request{tt::dbd::request_type::pci_read32_raw, 1, 123456},
                                  "- type: 14\n  chip_id: 1\n  address: 123456");
 }
 
-TEST(debuda_server, pci_write4_raw) {
+TEST(debuda_server, pci_write32_raw) {
     test_not_implemented_request(
-        tt::dbd::pci_write4_raw_request{tt::dbd::request_type::pci_write4_raw, 1, 123456, 987654},
+        tt::dbd::pci_write32_raw_request{tt::dbd::request_type::pci_write32_raw, 1, 123456, 987654},
         "- type: 15\n  chip_id: 1\n  address: 123456\n  data: 987654");
 }
 
-TEST(debuda_server, dma_buffer_read4) {
+TEST(debuda_server, dma_buffer_read32) {
     test_not_implemented_request(
-        tt::dbd::dma_buffer_read4_request{tt::dbd::request_type::dma_buffer_read4, 1, 123456, 456},
+        tt::dbd::dma_buffer_read32_request{tt::dbd::request_type::dma_buffer_read32, 1, 123456, 456},
         "- type: 16\n  chip_id: 1\n  address: 123456\n  channel: 456");
 }
 

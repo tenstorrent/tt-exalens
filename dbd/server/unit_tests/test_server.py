@@ -7,7 +7,7 @@ from typing import Any, Callable
 script_directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(script_directory + "/../../")
 
-from tt_debuda_server import debuda_server, debuda_server_not_supported
+from tt_debuda_ifc import debuda_client, debuda_server_not_supported
 
 server_port = 0
 server = None
@@ -31,14 +31,14 @@ def empty_get_cluster_description():
     check_not_implemented_response(lambda: server.get_cluster_description())
 
 
-def empty_pci_read4():
+def empty_pci_read32():
     global server
-    check_not_implemented_response(lambda: server.pci_read4(1, 2, 3, 123456))
+    check_not_implemented_response(lambda: server.pci_read32(1, 2, 3, 123456))
 
 
-def empty_pci_write4():
+def empty_pci_write32():
     global server
-    check_not_implemented_response(lambda: server.pci_write4(1, 2, 3, 123456, 987654))
+    check_not_implemented_response(lambda: server.pci_write32(1, 2, 3, 123456, 987654))
 
 
 def empty_pci_read():
@@ -46,19 +46,19 @@ def empty_pci_read():
     check_not_implemented_response(lambda: server.pci_read(1, 2, 3, 123456, 1024))
 
 
-def empty_pci_read4_raw():
+def empty_pci_read32_raw():
     global server
-    check_not_implemented_response(lambda: server.pci_read4_raw(1, 123456))
+    check_not_implemented_response(lambda: server.pci_read32_raw(1, 123456))
 
 
-def empty_pci_write4_raw():
+def empty_pci_write32_raw():
     global server
-    check_not_implemented_response(lambda: server.pci_write4_raw(1, 123456, 987654))
+    check_not_implemented_response(lambda: server.pci_write32_raw(1, 123456, 987654))
 
 
-def empty_dma_buffer_read4():
+def empty_dma_buffer_read32():
     global server
-    check_not_implemented_response(lambda: server.dma_buffer_read4(1, 123456, 456))
+    check_not_implemented_response(lambda: server.dma_buffer_read32(1, 123456, 456))
 
 
 def empty_pci_read_tile():
@@ -84,10 +84,10 @@ def empty_pci_write():
     )
 
 
-def pci_write4_pci_read4():
+def pci_write32_pci_read32():
     global server
-    server.pci_write4(1, 2, 3, 123456, 987654)
-    read = server.pci_read4(1, 2, 3, 123456)
+    server.pci_write32(1, 2, 3, 123456, 987654)
+    read = server.pci_read32(1, 2, 3, 123456)
     print("pass" if read == 987654 else "fail")
 
 
@@ -98,17 +98,17 @@ def pci_write_pci_read():
     print("pass" if read == b"987654" else "fail")
 
 
-def pci_write4_raw_pci_read4_raw():
+def pci_write32_raw_pci_read32_raw():
     global server
-    server.pci_write4_raw(1, 123456, 987654)
-    read = server.pci_read4_raw(1, 123456)
+    server.pci_write32_raw(1, 123456, 987654)
+    read = server.pci_read32_raw(1, 123456)
     print("pass" if read == 987654 else "fail")
 
 
-def dma_buffer_read4():
+def dma_buffer_read32():
     global server
-    server.pci_write4_raw(1, 123456, 987654)
-    read = server.dma_buffer_read4(1, 123456, 753)
+    server.pci_write32_raw(1, 123456, 987654)
+    read = server.dma_buffer_read32(1, 123456, 753)
     print("pass" if read == 987654 + 753 else "fail")
 
 
@@ -173,7 +173,8 @@ def main():
     # Try to connect to server
     try:
         global server
-        server = debuda_server("localhost", port)
+        # TODO: Find out why connect_to_server won't work here...
+        server = debuda_client("localhost", port)
     except:
         print(f"Couldn't connect to debuda server on port '{port}'")
         sys.exit(1)

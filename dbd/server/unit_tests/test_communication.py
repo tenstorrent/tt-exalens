@@ -6,7 +6,7 @@ import os, sys
 script_directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(script_directory + "/../../")
 
-from tt_debuda_server import debuda_server_communication
+from tt_debuda_ifc import debuda_server_communication
 
 server_port = 0
 server_communication = None
@@ -39,18 +39,18 @@ def get_device_ids():
     check_response(server_communication.get_device_ids(), "- type: 104")
 
 
-def pci_read4():
+def pci_read32():
     global server_communication
     check_response(
-        server_communication.pci_read4(1, 2, 3, 123456),
+        server_communication.pci_read32(1, 2, 3, 123456),
         "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456",
     )
 
 
-def pci_write4():
+def pci_write32():
     global server_communication
     check_response(
-        server_communication.pci_write4(1, 2, 3, 123456, 987654),
+        server_communication.pci_write32(1, 2, 3, 123456, 987654),
         "- type: 11\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654",
     )
 
@@ -63,26 +63,26 @@ def pci_read():
     )
 
 
-def pci_read4_raw():
+def pci_read32_raw():
     global server_communication
     check_response(
-        server_communication.pci_read4_raw(1, 123456),
+        server_communication.pci_read32_raw(1, 123456),
         "- type: 14\n  chip_id: 1\n  address: 123456",
     )
 
 
-def pci_write4_raw():
+def pci_write32_raw():
     global server_communication
     check_response(
-        server_communication.pci_write4_raw(1, 123456, 987654),
+        server_communication.pci_write32_raw(1, 123456, 987654),
         "- type: 15\n  chip_id: 1\n  address: 123456\n  data: 987654",
     )
 
 
-def dma_buffer_read4():
+def dma_buffer_read32():
     global server_communication
     check_response(
-        server_communication.dma_buffer_read4(1, 123456, 456),
+        server_communication.dma_buffer_read32(1, 123456, 456),
         "- type: 16\n  chip_id: 1\n  address: 123456\n  channel: 456",
     )
 

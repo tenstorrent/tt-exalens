@@ -15,7 +15,8 @@ namespace tt::dbd {
 
 umd_implementation::umd_implementation(tt_SiliconDevice* device) { this->device = device; }
 
-std::optional<uint32_t> umd_implementation::pci_read4(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
+std::optional<uint32_t> umd_implementation::pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                       uint64_t address) {
     if (!device) {
         return {};
     }
@@ -27,8 +28,8 @@ std::optional<uint32_t> umd_implementation::pci_read4(uint8_t chip_id, uint8_t n
     return result;
 }
 
-std::optional<uint32_t> umd_implementation::pci_write4(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                                       uint32_t data) {
+std::optional<uint32_t> umd_implementation::pci_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                                                        uint32_t data) {
     if (!device) {
         return {};
     }
@@ -74,7 +75,7 @@ bool umd_implementation::is_chip_mmio_capable(uint8_t chip_id) {
     return mmio_targets.find(chip_id) != mmio_targets.end();
 }
 
-std::optional<uint32_t> umd_implementation::pci_read4_raw(uint8_t chip_id, uint64_t address) {
+std::optional<uint32_t> umd_implementation::pci_read32_raw(uint8_t chip_id, uint64_t address) {
     if (!device) {
         return {};
     }
@@ -87,7 +88,7 @@ std::optional<uint32_t> umd_implementation::pci_read4_raw(uint8_t chip_id, uint6
     }
 }
 
-std::optional<uint32_t> umd_implementation::pci_write4_raw(uint8_t chip_id, uint64_t address, uint32_t data) {
+std::optional<uint32_t> umd_implementation::pci_write32_raw(uint8_t chip_id, uint64_t address, uint32_t data) {
     if (!device) {
         return {};
     }
@@ -101,7 +102,7 @@ std::optional<uint32_t> umd_implementation::pci_write4_raw(uint8_t chip_id, uint
     }
 }
 
-std::optional<uint32_t> umd_implementation::dma_buffer_read4(uint8_t chip_id, uint64_t address, uint32_t channel) {
+std::optional<uint32_t> umd_implementation::dma_buffer_read32(uint8_t chip_id, uint64_t address, uint32_t channel) {
     if (!device) {
         return {};
     }

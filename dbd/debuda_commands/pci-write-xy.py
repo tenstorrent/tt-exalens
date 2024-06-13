@@ -41,8 +41,8 @@ def run(cmd_text, context, ui_state: UIState = None):
     current_device = context.devices[current_device_id]
     core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
 
-    tt_device.SERVER_IFC.pci_write_xy(
-        ui_state.current_device_id, *core_loc.to("nocVirt"), 0, addr, data=data
+    tt_device.SERVER_IFC.pci_write32(
+        ui_state.current_device_id, *core_loc.to("nocVirt"), addr, data=data
     )
     print_a_pci_write(*core_loc.to("nocTr"), addr, data)
 

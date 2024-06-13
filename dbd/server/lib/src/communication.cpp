@@ -78,23 +78,23 @@ void tt::dbd::communication::request_loop() {
                         break;
 
                     // Static sized structures
-                    case request_type::pci_read4:
-                        invalid_message = message.size() != sizeof(pci_read4_request);
+                    case request_type::pci_read32:
+                        invalid_message = message.size() != sizeof(pci_read32_request);
                         break;
-                    case request_type::pci_write4:
-                        invalid_message = message.size() != sizeof(pci_write4_request);
+                    case request_type::pci_write32:
+                        invalid_message = message.size() != sizeof(pci_write32_request);
                         break;
                     case request_type::pci_read:
                         invalid_message = message.size() != sizeof(pci_read_request);
                         break;
-                    case request_type::pci_read4_raw:
-                        invalid_message = message.size() != sizeof(pci_read4_raw_request);
+                    case request_type::pci_read32_raw:
+                        invalid_message = message.size() != sizeof(pci_read32_raw_request);
                         break;
-                    case request_type::pci_write4_raw:
-                        invalid_message = message.size() != sizeof(pci_write4_raw_request);
+                    case request_type::pci_write32_raw:
+                        invalid_message = message.size() != sizeof(pci_write32_raw_request);
                         break;
-                    case request_type::dma_buffer_read4:
-                        invalid_message = message.size() != sizeof(dma_buffer_read4_request);
+                    case request_type::dma_buffer_read32:
+                        invalid_message = message.size() != sizeof(dma_buffer_read32_request);
                         break;
                     case request_type::pci_read_tile:
                         invalid_message = message.size() != sizeof(pci_read_tile_request);
