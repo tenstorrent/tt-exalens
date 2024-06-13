@@ -110,8 +110,8 @@ def print_a_pci_burst_read(
     if sample == 0:  # No sampling, just a single read
         da = DataArray(f"L1-0x{addr:08x}-{word_count * 4}", 4)
         for i in range(word_count):
-            data = tt_device.SERVER_IFC.pci_read_xy(
-                device_id, x, y, noc_id, addr + 4 * i
+            data = tt_device.SERVER_IFC.pci_read32(
+                device_id, x, y, addr + 4 * i
             )
             da.data.append(data)
         if bytes_per_entry != 4:
@@ -128,8 +128,8 @@ def print_a_pci_burst_read(
             )
             t_end = time.time() + sample / word_count
             while time.time() < t_end:
-                val = tt_device.SERVER_IFC.pci_read_xy(
-                    device_id, x, y, noc_id, addr + 4 * i
+                val = tt_device.SERVER_IFC.pci_read32(
+                    device_id, x, y, addr + 4 * i
                 )
                 if val not in values:
                     values[val] = 0

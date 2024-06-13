@@ -238,8 +238,8 @@ class ELF:
         def mem_reader(addr, size_bytes):
             import tt_device
 
-            data = tt_device.SERVER_IFC.pci_read_xy(
-                device_id, *core_loc.to("nocVirt"), 0, addr
+            data = tt_device.SERVER_IFC.pci_read32(
+                device_id, *core_loc.to("nocVirt"), addr
             )
             return [data]
 

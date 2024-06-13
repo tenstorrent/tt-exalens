@@ -16,11 +16,11 @@ void yaml_communication::process(const tt::dbd::request& request) {
             respond(serialize(request));
             break;
 
-        case tt::dbd::request_type::pci_write4:
-            respond(serialize(static_cast<const tt::dbd::pci_write4_request&>(request)));
+        case tt::dbd::request_type::pci_write32:
+            respond(serialize(static_cast<const tt::dbd::pci_write32_request&>(request)));
             break;
-        case tt::dbd::request_type::pci_read4:
-            respond(serialize(static_cast<const tt::dbd::pci_read4_request&>(request)));
+        case tt::dbd::request_type::pci_read32:
+            respond(serialize(static_cast<const tt::dbd::pci_read32_request&>(request)));
             break;
         case tt::dbd::request_type::pci_read:
             respond(serialize(static_cast<const tt::dbd::pci_read_request&>(request)));
@@ -28,14 +28,14 @@ void yaml_communication::process(const tt::dbd::request& request) {
         case tt::dbd::request_type::pci_write:
             respond(serialize(static_cast<const tt::dbd::pci_write_request&>(request)));
             break;
-        case tt::dbd::request_type::pci_read4_raw:
-            respond(serialize(static_cast<const tt::dbd::pci_read4_raw_request&>(request)));
+        case tt::dbd::request_type::pci_read32_raw:
+            respond(serialize(static_cast<const tt::dbd::pci_read32_raw_request&>(request)));
             break;
-        case tt::dbd::request_type::pci_write4_raw:
-            respond(serialize(static_cast<const tt::dbd::pci_write4_raw_request&>(request)));
+        case tt::dbd::request_type::pci_write32_raw:
+            respond(serialize(static_cast<const tt::dbd::pci_write32_raw_request&>(request)));
             break;
-        case tt::dbd::request_type::dma_buffer_read4:
-            respond(serialize(static_cast<const tt::dbd::dma_buffer_read4_request&>(request)));
+        case tt::dbd::request_type::dma_buffer_read32:
+            respond(serialize(static_cast<const tt::dbd::dma_buffer_read32_request&>(request)));
             break;
         case tt::dbd::request_type::pci_read_tile:
             respond(serialize(static_cast<const tt::dbd::pci_read_tile_request&>(request)));
@@ -60,13 +60,13 @@ std::string yaml_communication::serialize(const tt::dbd::request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type));
 }
 
-std::string yaml_communication::serialize(const tt::dbd::pci_read4_request& request) {
+std::string yaml_communication::serialize(const tt::dbd::pci_read32_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
            "\n  chip_id: " + std::to_string(request.chip_id) + "\n  noc_x: " + std::to_string(request.noc_x) +
            "\n  noc_y: " + std::to_string(request.noc_y) + "\n  address: " + std::to_string(request.address);
 }
 
-std::string yaml_communication::serialize(const tt::dbd::pci_write4_request& request) {
+std::string yaml_communication::serialize(const tt::dbd::pci_write32_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
            "\n  chip_id: " + std::to_string(request.chip_id) + "\n  noc_x: " + std::to_string(request.noc_x) +
            "\n  noc_y: " + std::to_string(request.noc_y) + "\n  address: " + std::to_string(request.address) +
@@ -87,18 +87,18 @@ std::string yaml_communication::serialize(const tt::dbd::pci_write_request& requ
            "\n  size: " + std::to_string(request.size) + "\n  data: " + serialize_bytes(request.data, request.size);
 }
 
-std::string yaml_communication::serialize(const tt::dbd::pci_read4_raw_request& request) {
+std::string yaml_communication::serialize(const tt::dbd::pci_read32_raw_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
            "\n  chip_id: " + std::to_string(request.chip_id) + "\n  address: " + std::to_string(request.address);
 }
 
-std::string yaml_communication::serialize(const tt::dbd::pci_write4_raw_request& request) {
+std::string yaml_communication::serialize(const tt::dbd::pci_write32_raw_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
            "\n  chip_id: " + std::to_string(request.chip_id) + "\n  address: " + std::to_string(request.address) +
            "\n  data: " + std::to_string(request.data);
 }
 
-std::string yaml_communication::serialize(const tt::dbd::dma_buffer_read4_request& request) {
+std::string yaml_communication::serialize(const tt::dbd::dma_buffer_read32_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
            "\n  chip_id: " + std::to_string(request.chip_id) + "\n  address: " + std::to_string(request.address) +
            "\n  channel: " + std::to_string(request.channel);

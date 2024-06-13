@@ -17,13 +17,13 @@ class yaml_communication : public tt::dbd::communication {
 
    private:
     std::string serialize(const tt::dbd::request& request);
-    std::string serialize(const tt::dbd::pci_read4_request& request);
-    std::string serialize(const tt::dbd::pci_write4_request& request);
+    std::string serialize(const tt::dbd::pci_read32_request& request);
+    std::string serialize(const tt::dbd::pci_write32_request& request);
     std::string serialize(const tt::dbd::pci_read_request& request);
     std::string serialize(const tt::dbd::pci_write_request& request);
-    std::string serialize(const tt::dbd::pci_read4_raw_request& request);
-    std::string serialize(const tt::dbd::pci_write4_raw_request& request);
-    std::string serialize(const tt::dbd::dma_buffer_read4_request& request);
+    std::string serialize(const tt::dbd::pci_read32_raw_request& request);
+    std::string serialize(const tt::dbd::pci_write32_raw_request& request);
+    std::string serialize(const tt::dbd::dma_buffer_read32_request& request);
     std::string serialize(const tt::dbd::pci_read_tile_request& request);
     std::string serialize(const tt::dbd::get_harvester_coordinate_translation_request& request);
     std::string serialize(const tt::dbd::get_device_arch_request& request);

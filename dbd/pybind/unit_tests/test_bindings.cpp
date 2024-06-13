@@ -11,7 +11,7 @@ class bindings_implementation : public tt::dbd::debuda_implementation {
     std::map<std::tuple<uint8_t, uint64_t>, uint32_t> read_write_4_raw;
 
    public:
-    std::optional<uint32_t> pci_read4(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override {
+    std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override {
         auto it = read_write_4.find(std::make_tuple(chip_id, noc_x, noc_y, address));
         if (it != read_write_4.end()) {
             return it->second;
@@ -19,8 +19,8 @@ class bindings_implementation : public tt::dbd::debuda_implementation {
         return {};
     }
 
-    std::optional<uint32_t> pci_write4(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                       uint32_t data) override {
+    std::optional<uint32_t> pci_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                                        uint32_t data) override {
         read_write_4[std::make_tuple(chip_id, noc_x, noc_y, address)] = data;
         return data;
     }
@@ -44,7 +44,7 @@ class bindings_implementation : public tt::dbd::debuda_implementation {
         return size;
     }
 
-    std::optional<uint32_t> pci_read4_raw(uint8_t chip_id, uint64_t address) override {
+    std::optional<uint32_t> pci_read32_raw(uint8_t chip_id, uint64_t address) override {
         auto it = read_write_4_raw.find(std::make_tuple(chip_id, address));
         if (it != read_write_4_raw.end()) {
             return it->second;
@@ -52,12 +52,12 @@ class bindings_implementation : public tt::dbd::debuda_implementation {
         return {};
     }
 
-    std::optional<uint32_t> pci_write4_raw(uint8_t chip_id, uint64_t address, uint32_t data) override {
+    std::optional<uint32_t> pci_write32_raw(uint8_t chip_id, uint64_t address, uint32_t data) override {
         read_write_4_raw[std::make_tuple(chip_id, address)] = data;
         return data;
     }
 
-    std::optional<uint32_t> dma_buffer_read4(uint8_t chip_id, uint64_t address, uint32_t channel) override {
+    std::optional<uint32_t> dma_buffer_read32(uint8_t chip_id, uint64_t address, uint32_t channel) override {
         auto it = read_write_4_raw.find(std::make_tuple(chip_id, address));
         if (it != read_write_4_raw.end()) {
             return it->second + channel;

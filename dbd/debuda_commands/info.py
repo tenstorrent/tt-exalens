@@ -82,7 +82,7 @@ def print_access_path(device, core_loc, elf, path, print_sorted, print_as_tree, 
             da = DataArray(f"L1-0x{addr:08x}-{size}", 4)
             num_words = (size + 3) // 4
             for i in range(num_words):
-                data = tt_device.SERVER_IFC.pci_read_xy(
+                data = tt_device.SERVER_IFC.pci_read32(
                     device.id(), *core_loc.to("nocVirt"), 0, addr + 4 * i
                 )
                 da.data.append(data)

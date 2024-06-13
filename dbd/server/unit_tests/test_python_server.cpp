@@ -21,15 +21,15 @@ class simulation_implementation : public tt::dbd::debuda_implementation {
     std::map<std::tuple<uint8_t, uint64_t>, uint32_t> read_write_4_raw;
 
    protected:
-    std::optional<uint32_t> pci_read4(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override {
+    std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override {
         auto it = read_write_4.find(std::make_tuple(chip_id, noc_x, noc_y, address));
         if (it != read_write_4.end()) {
             return it->second;
         }
         return {};
     }
-    std::optional<uint32_t> pci_write4(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                       uint32_t data) override {
+    std::optional<uint32_t> pci_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                                        uint32_t data) override {
         read_write_4[std::make_tuple(chip_id, noc_x, noc_y, address)] = data;
         return 4;
     }
@@ -50,18 +50,18 @@ class simulation_implementation : public tt::dbd::debuda_implementation {
         read_write[std::make_tuple(chip_id, noc_x, noc_y, address, size)] = data_vector;
         return size;
     }
-    std::optional<uint32_t> pci_read4_raw(uint8_t chip_id, uint64_t address) override {
+    std::optional<uint32_t> pci_read32_raw(uint8_t chip_id, uint64_t address) override {
         auto it = read_write_4_raw.find(std::make_tuple(chip_id, address));
         if (it != read_write_4_raw.end()) {
             return it->second;
         }
         return {};
     }
-    std::optional<uint32_t> pci_write4_raw(uint8_t chip_id, uint64_t address, uint32_t data) override {
+    std::optional<uint32_t> pci_write32_raw(uint8_t chip_id, uint64_t address, uint32_t data) override {
         read_write_4_raw[std::make_tuple(chip_id, address)] = data;
         return 4;
     }
-    std::optional<uint32_t> dma_buffer_read4(uint8_t chip_id, uint64_t address, uint32_t channel) override {
+    std::optional<uint32_t> dma_buffer_read32(uint8_t chip_id, uint64_t address, uint32_t channel) override {
         auto it = read_write_4_raw.find(std::make_tuple(chip_id, address));
         if (it != read_write_4_raw.end()) {
             return it->second + channel;
@@ -112,17 +112,17 @@ TEST(debuda_python_empty_server, get_runtime_data) { call_python_empty_server("e
 
 TEST(debuda_python_empty_server, get_cluster_description) { call_python_empty_server("empty_get_cluster_description"); }
 
-TEST(debuda_python_empty_server, pci_read4) { call_python_empty_server("empty_pci_read4"); }
+TEST(debuda_python_empty_server, pci_read32) { call_python_empty_server("empty_pci_read32"); }
 
-TEST(debuda_python_empty_server, pci_write4) { call_python_empty_server("empty_pci_write4"); }
+TEST(debuda_python_empty_server, pci_write32) { call_python_empty_server("empty_pci_write32"); }
 
 TEST(debuda_python_empty_server, pci_read) { call_python_empty_server("empty_pci_read"); }
 
-TEST(debuda_python_empty_server, pci_read4_raw) { call_python_empty_server("empty_pci_read4_raw"); }
+TEST(debuda_python_empty_server, pci_read32_raw) { call_python_empty_server("empty_pci_read32_raw"); }
 
-TEST(debuda_python_empty_server, pci_write4_raw) { call_python_empty_server("empty_pci_write4_raw"); }
+TEST(debuda_python_empty_server, pci_write32_raw) { call_python_empty_server("empty_pci_write32_raw"); }
 
-TEST(debuda_python_empty_server, dma_buffer_read4) { call_python_empty_server("empty_dma_buffer_read4"); }
+TEST(debuda_python_empty_server, dma_buffer_read32) { call_python_empty_server("empty_dma_buffer_read32"); }
 
 TEST(debuda_python_empty_server, pci_read_tile) { call_python_empty_server("empty_pci_read_tile"); }
 
@@ -132,13 +132,13 @@ TEST(debuda_python_empty_server, get_harvester_coordinate_translation) {
 
 TEST(debuda_python_empty_server, pci_write) { call_python_empty_server("empty_pci_write"); }
 
-TEST(debuda_python_server, pci_write4_pci_read4) { call_python_server("pci_write4_pci_read4"); }
+TEST(debuda_python_server, pci_write32_pci_read32) { call_python_server("pci_write32_pci_read32"); }
 
 TEST(debuda_python_server, pci_write_pci_read) { call_python_server("pci_write_pci_read"); }
 
-TEST(debuda_python_server, pci_write4_raw_pci_read4_raw) { call_python_server("pci_write4_raw_pci_read4_raw"); }
+TEST(debuda_python_server, pci_write32_raw_pci_read32_raw) { call_python_server("pci_write32_raw_pci_read32_raw"); }
 
-TEST(debuda_python_server, dma_buffer_read4) { call_python_server("dma_buffer_read4"); }
+TEST(debuda_python_server, dma_buffer_read32) { call_python_server("dma_buffer_read32"); }
 
 TEST(debuda_python_server, pci_read_tile) { call_python_server("pci_read_tile"); }
 

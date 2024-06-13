@@ -54,8 +54,8 @@ def run(cmd_text, context, ui_state: UIState = None):
     addr = TRISC_DEBUG_BASE[trisc_id]
     da = DataArray(f"L1-0x{addr:08x}-{num_words * 4}", 4)
     for i in range(num_words):
-        data = tt_device.SERVER_IFC.pci_read_xy(
-            device_id, *loc.to("nocVirt"), 0, addr + 4 * i
+        data = tt_device.SERVER_IFC.pci_read32(
+            device_id, *loc.to("nocVirt"), addr + 4 * i
         )
         da.data.append(data)
 

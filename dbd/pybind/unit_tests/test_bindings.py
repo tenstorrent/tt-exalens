@@ -20,15 +20,15 @@ class TestBindings(unittest.TestCase):
         set_debuda_test_implementation()
         super().__init__(methodName)
 
-    def test_pci_read_write4(self, data: int=2,):      
-        assert pb.pci_read4(0, 1, 0, 0) is None, "Error: pci_read4 should return None before writing."
-        assert pb.pci_write4(0, 1, 0, 0, data) == data, "Error: pci_write4 should return the data written."
-        assert pb.pci_read4(0, 1, 0, 0) == data, "Error: pci_read4 should return the data written."
+    def test_pci_read_write32(self, data: int=2,):      
+        assert pb.pci_read32(0, 1, 0, 0) is None, "Error: pci_read32 should return None before writing."
+        assert pb.pci_write32(0, 1, 0, 0, data) == data, "Error: pci_write32 should return the data written."
+        assert pb.pci_read32(0, 1, 0, 0) == data, "Error: pci_read32 should return the data written."
 
-    def test_pci_read_write4_raw(self, data: int=4,):
-        assert pb.pci_read4_raw(1, 1) is None, "Error: pci_read4_raw should return None before writing."
-        assert pb.pci_write4_raw(1, 1, data) == data, "Error: pci_write4_raw should return the data written."
-        assert pb.pci_read4_raw(1, 1) == data, "Error: pci_read4_raw should return the data written."
+    def test_pci_read_write32_raw(self, data: int=4,):
+        assert pb.pci_read32_raw(1, 1) is None, "Error: pci_read32_raw should return None before writing."
+        assert pb.pci_write32_raw(1, 1, data) == data, "Error: pci_write32_raw should return the data written."
+        assert pb.pci_read32_raw(1, 1) == data, "Error: pci_read32_raw should return the data written."
 
     def test_pci_read_write(self, data: Union[bytes, bytearray] = bytearray([1, 5, 3]), size = 3):
         assert pb.pci_read(3, 3, 3, 3, size) is None, "Error: pci_read should return None before writing."
@@ -45,10 +45,10 @@ class TestBindings(unittest.TestCase):
         for x, y in zip(data, rlist):
             assert x == y, "Error: pci_read should return the data written."
 
-    def test_dma_buffer_read4(self, data: int=5, channel:int = 32):
-        assert pb.dma_buffer_read4(2, 1, channel) is None, "Error: dma_buffer_read4 should return None before writing."
-        pb.pci_write4_raw(2, 1, data)
-        assert pb.dma_buffer_read4(2, 1, channel) == data + channel, "Error: dma_buffer_read4 should return the data written plus channel used for reading."
+    def test_dma_buffer_read32(self, data: int=5, channel:int = 32):
+        assert pb.dma_buffer_read32(2, 1, channel) is None, "Error: dma_buffer_read32 should return None before writing."
+        pb.pci_write32_raw(2, 1, data)
+        assert pb.dma_buffer_read32(2, 1, channel) == data + channel, "Error: dma_buffer_read32 should return the data written plus channel used for reading."
 
     def test_pci_read_tile(self):
         assert pb.pci_read_tile(1, 2, 3, 4, 5, 6) == "pci_read_tile(1, 2, 3, 4, 5, 6)", "Error: pci_read_tile(1, 2, 3, 4, 5, 6) should return 'pci_read_tile(1, 2, 3, 4, 5, 6)'."

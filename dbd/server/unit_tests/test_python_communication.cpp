@@ -30,13 +30,13 @@ std::string execute_command(const std::string& cmd) {
 
 void call_python(const std::string& python_script, int server_port, const std::string& python_args,
                  const std::string& expected_output) {
-    auto dbd_home_env = getenv("DBD_HOME");
-    std::string dbd_home;
-    if (dbd_home_env) {
-        dbd_home = dbd_home_env;
+    auto buda_home_env = getenv("BUDA_HOME");
+    std::string buda_home;
+    if (buda_home_env) {
+        buda_home = buda_home_env;
     } else {
         if (!std::filesystem::exists(python_script)) {
-            std::cerr << "You need to set DBD_HOME or to run tests from DBD_HOME directory." << std::endl;
+            std::cerr << "You need to set BUDA_HOME or to run tests from BUDA_HOME directory." << std::endl;
             ASSERT_TRUE(false);
         }
     }
@@ -60,28 +60,28 @@ TEST(debuda_python_communication, get_cluster_description) { call_python("get_cl
 
 TEST(debuda_python_communication, get_device_ids) { call_python("get_device_ids", "- type: 104\n"); }
 
-TEST(debuda_python_communication, pci_read4) {
-    call_python("pci_read4", "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n");
+TEST(debuda_python_communication, pci_read32) {
+    call_python("pci_read32", "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n");
 }
 
-TEST(debuda_python_communication, pci_write4) {
-    call_python("pci_write4", "- type: 11\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654\n");
+TEST(debuda_python_communication, pci_write32) {
+    call_python("pci_write32", "- type: 11\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654\n");
 }
 
 TEST(debuda_python_communication, pci_read) {
     call_python("pci_read", "- type: 12\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n");
 }
 
-TEST(debuda_python_communication, pci_read4_raw) {
-    call_python("pci_read4_raw", "- type: 14\n  chip_id: 1\n  address: 123456\n");
+TEST(debuda_python_communication, pci_read32_raw) {
+    call_python("pci_read32_raw", "- type: 14\n  chip_id: 1\n  address: 123456\n");
 }
 
-TEST(debuda_python_communication, pci_write4_raw) {
-    call_python("pci_write4_raw", "- type: 15\n  chip_id: 1\n  address: 123456\n  data: 987654\n");
+TEST(debuda_python_communication, pci_write32_raw) {
+    call_python("pci_write32_raw", "- type: 15\n  chip_id: 1\n  address: 123456\n  data: 987654\n");
 }
 
-TEST(debuda_python_communication, dma_buffer_read4) {
-    call_python("dma_buffer_read4", "- type: 16\n  chip_id: 1\n  address: 123456\n  channel: 456\n");
+TEST(debuda_python_communication, dma_buffer_read32) {
+    call_python("dma_buffer_read32", "- type: 16\n  chip_id: 1\n  address: 123456\n  channel: 456\n");
 }
 
 TEST(debuda_python_communication, pci_read_tile) {

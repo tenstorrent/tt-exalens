@@ -138,7 +138,7 @@ class EpochCommandQueueReader:
         dram_loc = self.get_dram_core(device, core_loc)
         dx, dy = dram_loc['x'], dram_loc['y']
         rdptr_addr = self.get_rdptr_dram_addr(core_loc)
-        rdptr = device.pci_read_xy(dx, dy, 0, rdptr_addr) & 0xffff
+        rdptr = device.pci_read32(dx, dy, 0, rdptr_addr) & 0xffff
         return self.EPOCH_QUEUE_START_ADDR + self.compute_offset_of_table(core_loc) + (self.EPOCH_Q_SLOT_SIZE * (rdptr % self.EPOCH_Q_NUM_SLOTS))
 
     def get_cmd_payload_at_rdptr(self, device, core_loc: OnChipCoordinate) -> int:
@@ -146,8 +146,8 @@ class EpochCommandQueueReader:
         dram_loc = self.get_dram_core(device, core_loc)
         dx, dy = dram_loc['x'], dram_loc['y']
         cmd_payload = []
-        cmd_payload.append(device.pci_read_xy (dx, dy, 0, addr_at_rdptr))
-        cmd_payload.append(device.pci_read_xy (dx, dy, 0, addr_at_rdptr+4))
+        cmd_payload.append(device.pci_read32 (dx, dy, 0, addr_at_rdptr))
+        cmd_payload.append(device.pci_read32 (dx, dy, 0, addr_at_rdptr+4))
         return cmd_payload
 
 
@@ -174,7 +174,7 @@ def read_binary_from_device_memory(device, noc0_x: int, noc0_y: int, start_addre
     assert len(loc) == 2
     binary_data = []
     for i in range(length_in_words):
-        binary_data.append(device.pci_read_xy(loc[0], loc[1], 0, start_address + (4 * i)))
+        binary_data.append(device.pci_read32(loc[0], loc[1], 0, start_address + (4 * i)))
     return binary_data
 
 def get_current_epoch_command(device, epoch_cmd_q_reader: EpochCommandQueueReader, worker_core_loc: OnChipCoordinate) -> int:

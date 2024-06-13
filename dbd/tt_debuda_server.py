@@ -1,399 +1,73 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from enum import Enum
-import sys
-import struct
-import zmq
 import tt_util as util
 
+import os
+import signal
+import subprocess
+import time
 
-class debuda_server_request_type(Enum):
-    # Basic requests
-    invalid = 0
-    ping = 1
-
-    # Device requests
-    pci_read4 = 10
-    pci_write4 = 11
-    pci_read = 12
-    pci_write = 13
-    pci_read4_raw = 14
-    pci_write4_raw = 15
-    dma_buffer_read4 = 16
-
-    # Runtime requests
-    pci_read_tile = 100
-    get_runtime_data = 101
-    get_cluster_description = 102
-    get_harvester_coordinate_translation = 103
-    get_device_ids = 104
-    get_device_arch = 105
-    get_device_soc_description = 106
-
-
-class debuda_server_bad_request(Exception):
-    pass
-
-
-class debuda_server_not_supported(Exception):
-    pass
-
-
-class debuda_server_communication:
-    _BAD_REQUEST = b"BAD_REQUEST"
-    _NOT_SUPPORTED = b"NOT_SUPPORTED"
-
-    def __init__(self, address: str, port: int):
-        self.address = address
-        self.port = port
-        self._context = zmq.Context()
-        self._socket = self._context.socket(zmq.REQ)
-        self._socket.connect(f"tcp://{self.address}:{self.port}")
-
-    def _check(self, response: bytes):
-        if response == debuda_server_communication._BAD_REQUEST:
-            raise debuda_server_bad_request()
-        if response == debuda_server_communication._NOT_SUPPORTED:
-            raise debuda_server_not_supported()
-        return response
-
-    def ping(self):
-        self._socket.send(bytes([debuda_server_request_type.ping.value]))
-        return self._check(self._socket.recv())
-
-    def pci_read4(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        self._socket.send(
-            struct.pack(
-                "<BBBBQ",
-                debuda_server_request_type.pci_read4.value,
-                chip_id,
-                noc_x,
-                noc_y,
-                address,
-            )
-        )
-        return self._check(self._socket.recv())
-
-    def pci_write4(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        self._socket.send(
-            struct.pack(
-                "<BBBBQI",
-                debuda_server_request_type.pci_write4.value,
-                chip_id,
-                noc_x,
-                noc_y,
-                address,
-                data,
-            )
-        )
-        return self._check(self._socket.recv())
-
-    def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
-        self._socket.send(
-            struct.pack(
-                "<BBBBQI",
-                debuda_server_request_type.pci_read.value,
-                chip_id,
-                noc_x,
-                noc_y,
-                address,
-                size,
-            )
-        )
-        return self._check(self._socket.recv())
-
-    def pci_write(
-        self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes
-    ):
-        self._socket.send(
-            struct.pack(
-                f"<BBBBQI{len(data)}s",
-                debuda_server_request_type.pci_write.value,
-                chip_id,
-                noc_x,
-                noc_y,
-                address,
-                len(data),
-                data,
-            )
-        )
-        return self._check(self._socket.recv())
-
-    def pci_read4_raw(self, chip_id: int, address: int):
-        self._socket.send(
-            struct.pack(
-                "<BBI", debuda_server_request_type.pci_read4_raw.value, chip_id, address
-            )
-        )
-        return self._check(self._socket.recv())
-
-    def pci_write4_raw(self, chip_id: int, address: int, data: int):
-        self._socket.send(
-            struct.pack(
-                "<BBII",
-                debuda_server_request_type.pci_write4_raw.value,
-                chip_id,
-                address,
-                data,
-            )
-        )
-        return self._check(self._socket.recv())
-
-    def dma_buffer_read4(self, chip_id: int, address: int, channel: int):
-        self._socket.send(
-            struct.pack(
-                "<BBQH",
-                debuda_server_request_type.dma_buffer_read4.value,
-                chip_id,
-                address,
-                channel,
-            )
-        )
-        return self._check(self._socket.recv())
-
-    def pci_read_tile(
-        self,
-        chip_id: int,
-        noc_x: int,
-        noc_y: int,
-        address: int,
-        size: int,
-        data_format: int,
-    ):
-        self._socket.send(
-            struct.pack(
-                "<BBBBQIB",
-                debuda_server_request_type.pci_read_tile.value,
-                chip_id,
-                noc_x,
-                noc_y,
-                address,
-                size,
-                data_format,
-            )
-        )
-        return self._check(self._socket.recv())
-
-    def get_runtime_data(self):
-        self._socket.send(bytes([debuda_server_request_type.get_runtime_data.value]))
-        return self._check(self._socket.recv())
-
-    def get_cluster_description(self):
-        self._socket.send(
-            bytes([debuda_server_request_type.get_cluster_description.value])
-        )
-        return self._check(self._socket.recv())
-
-    def get_harvester_coordinate_translation(self, chip_id: int):
-        self._socket.send(
-            struct.pack(
-                "<BB",
-                debuda_server_request_type.get_harvester_coordinate_translation.value,
-                chip_id,
-            )
-        )
-        return self._check(self._socket.recv())
-
-    def get_device_ids(self):
-        self._socket.send(
-            bytes([debuda_server_request_type.get_device_ids.value])
-        )
-        return self._check(self._socket.recv())
-
-    def get_device_arch(self, chip_id: int):
-        self._socket.send(
-            struct.pack(
-                "<BB",
-                debuda_server_request_type.get_device_arch.value,
-                chip_id,
-            )
-        )
-        return self._check(self._socket.recv())
-
-    def get_device_soc_description(self, chip_id: int):
-        self._socket.send(
-            struct.pack(
-                "<BB",
-                debuda_server_request_type.get_device_soc_description.value,
-                chip_id,
-            )
-        )
-        return self._check(self._socket.recv())
-
-
-class debuda_server:
-    def __init__(self, address: str, port: int):
-        self._communication = debuda_server_communication(address, port)
-
-        # Check ping/pong to verify it is debuda server on the other end
-        pong = self._communication.ping()
-        if pong != b"PONG":
-            raise ConnectionError()
-
-    def parse_uint32_t(self, buffer: bytes):
-        if len(buffer) != 4:
-            raise ConnectionError()
-        return struct.unpack("<I", buffer)[0]
-
-    def parse_string(self, buffer: bytes):
-        return buffer.decode()
-
-    def pci_read4(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self.parse_uint32_t(
-            self._communication.pci_read4(chip_id, noc_x, noc_y, address)
-        )
-
-    def pci_write4(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        buffer = self._communication.pci_write4(chip_id, noc_x, noc_y, address, data)
-        bytes_written = self.parse_uint32_t(buffer)
-        if bytes_written != 4:
-            raise ValueError(
-                f"Expected 4 bytes written, but {bytes_written} were written"
-            )
-        return bytes_written
-
-    def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
-        buffer = self._communication.pci_read(chip_id, noc_x, noc_y, address, size)
-        if len(buffer) != size:
-            raise ValueError(f"Expected {size} bytes read, but {len(buffer)} were read")
-        return buffer
-
-    def pci_write(
-        self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes
-    ):
-        bytes_written = self.parse_uint32_t(
-            self._communication.pci_write(chip_id, noc_x, noc_y, address, data)
-        )
-        if bytes_written != len(data):
-            raise ValueError(
-                f"Expected {len(data)} bytes written, but {bytes_written} were written"
-            )
-        return bytes_written
-
-    def pci_read4_raw(self, chip_id: int, address: int):
-        return self.parse_uint32_t(self._communication.pci_read4_raw(chip_id, address))
-
-    def pci_write4_raw(self, chip_id: int, address: int, data: int):
-        bytes_written = self.parse_uint32_t(
-            self._communication.pci_write4_raw(chip_id, address, data)
-        )
-        if bytes_written != 4:
-            raise ValueError(
-                f"Expected 4 bytes written, but {bytes_written} were written"
-            )
-        return bytes_written
-
-    def dma_buffer_read4(self, chip_id: int, address: int, channel: int):
-        return self.parse_uint32_t(
-            self._communication.dma_buffer_read4(chip_id, address, channel)
-        )
-
-    def pci_read_tile(
-        self,
-        chip_id: int,
-        noc_x: int,
-        noc_y: int,
-        address: int,
-        size: int,
-        data_format: int,
-    ):
-        return self.parse_string(
-            self._communication.pci_read_tile(
-                chip_id, noc_x, noc_y, address, size, data_format
-            )
-        )
-
-    def get_runtime_data(self):
-        return self.parse_string(self._communication.get_runtime_data())
-
-    def get_cluster_description(self):
-        return self.parse_string(self._communication.get_cluster_description())
-
-    def get_harvester_coordinate_translation(self, chip_id: int):
-        return self.parse_string(
-            self._communication.get_harvester_coordinate_translation(chip_id)
-        )
-
-    def get_device_ids(self):
-        return self._communication.get_device_ids()
-
-    def get_device_arch(self, chip_id: int):
-        return self.parse_string(
-            self._communication.get_device_arch(chip_id)
-        )
+def start_server(port, runtime_data_yaml_filename):
+    if util.is_port_available(int(port)):
+        debuda_server = spawn_standalone_debuda_stub(port, runtime_data_yaml_filename)
+        if debuda_server is None:
+            raise util.TTFatalException("Could not start debuda-server.")
+        return debuda_server
     
-    def get_device_soc_description(self, chip_id: int):
-        return self.parse_string(
-            self._communication.get_device_soc_description(chip_id)
+    raise util.TTFatalException(f"Port {port} not available. A debuda server might alreasdy be running.")
+
+# The server needs the runtime_data.yaml to get the netlist path, arch, and device
+def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename):
+    print("Spawning debuda-server...")
+
+    debuda_server_standalone = "/debuda-server-standalone"
+    if "BUDA_HOME" not in os.environ:
+        os.environ["BUDA_HOME"] = os.path.abspath(util.application_path() + "/../")
+    debuda_server_standalone = f"/../build/bin{debuda_server_standalone}"
+
+    debuda_stub_path = os.path.abspath(
+        util.application_path() + debuda_server_standalone
+    )
+    library_path = os.path.abspath(os.path.dirname(debuda_stub_path))
+    ld_lib_path = os.environ.get("LD_LIBRARY_PATH", "")
+    os.environ["LD_LIBRARY_PATH"] = (
+        library_path + ":" + ld_lib_path if ld_lib_path else library_path
+    )
+
+    try:
+        if runtime_data_yaml_filename is None:
+            debuda_stub_args = [f"{port}"]
+        else:
+            debuda_stub_args = [f"{port}", "-y", f"{runtime_data_yaml_filename}"]
+        debuda_stub = subprocess.Popen(
+            [debuda_stub_path] + debuda_stub_args,
+            preexec_fn=os.setsid,
+            stdin=subprocess.PIPE, # We close by sending SIGTERM
+            env=os.environ.copy(),
         )
+    except:
+        if os.path.islink(debuda_stub_path):
+            if not os.path.exists(os.readlink(debuda_stub_path)):
+                util.FATAL(f"Missing debuda-server-standalone. Try: make dbd")
+        raise
 
+    util.INFO("Debuda-server started.")
+    return debuda_stub
 
-tt_dbd_pybind_path = util.application_path() + "/../build/lib"
-binary_path = util.application_path() + "/../build/bin"
-sys.path.append(tt_dbd_pybind_path)
+# Terminates debuda-server spawned in connect_to_server
+def stop_server(debuda_stub):
+    if debuda_stub is not None and debuda_stub.poll() is None:
+        os.killpg(os.getpgid(debuda_stub.pid), signal.SIGTERM)
+        time.sleep(0.1)
+        if debuda_stub.poll() is None:
+            util.VERBOSE("Debuda-server did not respond to SIGTERM. Sending SIGKILL...")
+            os.killpg(os.getpgid(debuda_stub.pid), signal.SIGKILL)
 
-import tt_dbd_pybind
-
-class debuda_pybind:
-    def __init__(self, runtime_data_yaml_filename: str = ""):
-        if not tt_dbd_pybind.open_device(binary_path, runtime_data_yaml_filename):
-            raise Exception("Failed to open device using pybind library")
-        print("Device opened")
-
-    def _check_result(self, result):
-        if result is None:
-            raise debuda_server_not_supported()
-        return result
-
-    def pci_read4(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self._check_result(tt_dbd_pybind.pci_read4(chip_id, noc_x, noc_y, address))
-
-    def pci_write4(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        return self._check_result(tt_dbd_pybind.pci_write4(chip_id, noc_x, noc_y, address, data))
-
-    def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
-        return self._check_result(tt_dbd_pybind.pci_read(chip_id, noc_x, noc_y, address, size))
-
-    def pci_write(
-        self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes
-    ):
-        return self._check_result(tt_dbd_pybind.pci_write(chip_id, noc_x, noc_y, address, data, len(data)))
-
-    def pci_read4_raw(self, chip_id: int, address: int):
-        return self._check_result(tt_dbd_pybind.pci_read4_raw(chip_id, address))
-
-    def pci_write4_raw(self, chip_id: int, address: int, data: int):
-        return self._check_result(tt_dbd_pybind.pci_write4_raw(chip_id, address, data))
-
-    def dma_buffer_read4(self, chip_id: int, address: int, channel: int):
-        return self._check_result(tt_dbd_pybind.dma_buffer_read4(chip_id, address, channel))
-
-    def pci_read_tile(
-        self,
-        chip_id: int,
-        noc_x: int,
-        noc_y: int,
-        address: int,
-        size: int,
-        data_format: int,
-    ):
-        return self._check_result(tt_dbd_pybind.pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format))
-
-    def get_runtime_data(self):
-        return self._check_result(tt_dbd_pybind.get_runtime_data())
-
-    def get_cluster_description(self):
-        return self._check_result(tt_dbd_pybind.get_cluster_description())
-
-    def get_harvester_coordinate_translation(self, chip_id: int):
-        return self._check_result(tt_dbd_pybind.get_harvester_coordinate_translation(chip_id))
-
-    def get_device_ids(self):
-        return self._check_result(tt_dbd_pybind.get_device_ids())
-
-    def get_device_arch(self, chip_id: int):
-        return self._check_result(tt_dbd_pybind.get_device_arch(chip_id))
-    
-    def get_device_soc_description(self, chip_id: int):
-        return self._check_result(tt_dbd_pybind.get_device_soc_description(chip_id))
+        time.sleep(0.1)
+        if debuda_stub.poll() is None:
+            util.ERROR(
+                f"Debuda-server did not respond to SIGKILL. The process {debuda_stub.pid} is still running. Please kill it manually."
+            )
+        else:
+            util.INFO("Debuda-server terminated.")

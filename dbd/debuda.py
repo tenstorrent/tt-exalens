@@ -4,30 +4,34 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  debuda.py [--netlist=<file>] [--commands=<cmds>] [--server-cache=<mode>] [--start-gdb=<gdb_port>] [--verbose] [--test] [<output_dir>]
+  debuda.py [--netlist=<file>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbose] [--test] [<output_dir>]
   debuda.py --server [--port=<port>] [--test] [<output_dir>]
-  debuda.py --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--server-cache=<mode>] [--start-gdb=<gdb_port>] [--verbose] [--test]
+  debuda.py --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbose] [--test]
+  debuda.py --cached [--cache-path=<path>] [--commands=<cmds>] [--verbose] [--test] [<output_dir>]
   debuda.py -h | --help
 
 Options:
   -h --help                       Show this help message and exit.
   --server                        Start a Debuda server. If not specified, the port will be set to 5555.
   --remote                        Attach to the remote debuda server. If not specified, IP defaults to localhost and port to 5555.
+  --cached                        Use the cache from previous debuda run to simulate device communication.
   --port=<port>                   Port of the Debuda server. If not specified, defaults to 5555.  [default: 5555]
   --remote-address=<ip:port>      Address of the remote Debuda server, in the form of ip:port, or just :port, if ip is localhost. If not specified, defaults to localhost:5555. [default: localhost:5555]
   --netlist=<file>                Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used.
   --commands=<cmds>               Execute a list of semicolon-separated commands.
-  --server-cache=<mode>           Specifies the method of communication with the Debuda Server. [default: off]
   --start-gdb=<gdb_port>          Start a gdb server on the specified port.
+  --write-cache                   Write the cache to disk.
+  --cache-path=<path>             If running in --cached mode, this is the path to the cache file. If writing cache, this is the path for output. [default: debuda_cache.pkl]
   --verbose                       Print verbose output.
   --test                          Exits with non-zero exit code on any exception.
 
 Description:
   Debuda parses the build output files and reads the device state to provide a debugging interface for the user.
 
-  There are two modes of operation:
+  There are three modes of operation:
     1. Local mode: The user can run debuda.py with a specific output directory. This will load the runtime data from the output directory. If the output directory is not specified, the most recent subdirectory of tt_build/ will be used.
     2. Remote mode: The user can connect to a Debuda server running on a remote machine. The server will provide the runtime data.
+    3. Cached mode: The user can use a cache file from previous Debuda run. This is useful for debugging without a connection to the device. Writing is disabled in this mode.
   
   Passing the --server flag will start a Debuda server. The server will listen on the specified port (default 5555) for incoming connections.
 
@@ -62,8 +66,10 @@ def application_path():
 sys.path.append(application_path())
 
 from tt_commands import find_command
+import tt_debuda_server
 from tt_gdb_server import GdbServer, ServerSocket
-from tt_debuda_server import debuda_server_not_supported
+import tt_debuda_ifc
+import tt_debuda_ifc_cache
 from tt_coordinate import OnChipCoordinate
 import tt_util as util, tt_device
 from tt_debuda_context import BudaContext, Context, LimitedContext
@@ -507,41 +513,48 @@ def main():
     # Try to connect to the server. If it is not already running, it will be started.
     if args["--server"]:
         print(f"Starting Debuda server at {args['--port']}")
-        debuda_server = tt_device.start_server(
+        debuda_server = tt_debuda_server.start_server(
             args["--port"],
             runtime_data_yaml_filename,
         )
         if args["--test"]:
             while True: pass
         input("Press Enter to exit server...")
-        tt_device.stop_server(debuda_server)
+        tt_debuda_server.stop_server(debuda_server)
         sys.exit(0)
+    
+    if args["--cached"]:
+        print(f"Starting Debuda from cache.")
+        server_ifc = tt_debuda_ifc_cache.init_cache_reader(args["--cache-path"])
     elif args["--remote"]:
         address = args["--remote-address"].split(":")
         server_ip = address[0] if address[0]!='' else "localhost"
         server_port = address[-1] 
         print(f"Connecting to Debuda server at {server_ip}:{server_port}")
-        server_ifc = tt_device.connect_to_server(server_ip, server_port)
+        server_ifc = tt_debuda_ifc.connect_to_server(server_ip, server_port)
     else:
         print(f"Using pybind library instead of debuda server.")
-        server_ifc = tt_device.init_pybind(args["--server-cache"], str(runtime_data_yaml_filename or ''))
+        server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ''))
+
+    if not args["--cached"] and args["--write-cache"]:
+        server_ifc = tt_debuda_ifc_cache.init_cache_writer(args["--cache-path"])
 
     runtime_data_yaml_string = None
     runtime_data_yaml = None
     try:
         runtime_data_yaml_string = server_ifc.get_runtime_data()
         if runtime_data_yaml_string is None:
-            raise debuda_server_not_supported()
+            raise tt_debuda_ifc.debuda_server_not_supported()
         else:
             runtime_data_yaml = util.YamlFile(str(runtime_data_yaml_filename or 'runtime_data'), file_content=runtime_data_yaml_string)
             runtime_data_yaml.load()
 
-    except debuda_server_not_supported:
+    except tt_debuda_ifc.debuda_server_not_supported:
         util.WARN("Server does not support runtime data. Continuing with limited functionality...")
 
     try:
-        cluster_desc_path = os.path.abspath(server_ifc.get_cluster_desc_path())
-    except debuda_server_not_supported:
+        cluster_desc_path = os.path.abspath(server_ifc.get_cluster_description())
+    except tt_debuda_ifc.debuda_server_not_supported:
         util.WARN("Server does not support cluster description. Continuing with limited functionality...")
         cluster_desc_path = None
 

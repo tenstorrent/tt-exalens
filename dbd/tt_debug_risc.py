@@ -250,20 +250,18 @@ class RiscDebug:
         self.assert_not_in_reset()
         if self.verbose:
             util.DEBUG(f"{get_reg_name_for_address(addr)} <- WR   0x{data:08x}")
-        self.ifc.pci_write_xy(
+        self.ifc.pci_write32(
             self.location.loc._device._id,
             *self.location.loc.to("nocVirt"),
-            self.location.noc_id,
             addr,
             data,
         )
 
     def __read(self, addr):
         self.assert_not_in_reset()
-        data = self.ifc.pci_read_xy(
+        data = self.ifc.pci_read32(
             self.location.loc._device._id,
             *self.location.loc.to("nocVirt"),
-            self.location.noc_id,
             addr,
         )
         if self.verbose:
@@ -364,7 +362,7 @@ class RiscDebug:
         return self.read_status().is_pc_watchpoint_hit
 
     def is_in_reset(self):
-        reset_reg = self.ifc.pci_read_xy(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), 0, 0xffb121b0)
+        reset_reg = self.ifc.pci_read32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), 0xffb121b0)
         shift = get_risc_reset_shift(self.location.risc_id)
         return (reset_reg >> shift) & 1
 
@@ -374,10 +372,10 @@ class RiscDebug:
         """
         assert value in [0, 1]
         shift = get_risc_reset_shift(self.location.risc_id)
-        reset_reg = self.ifc.pci_read_xy(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), 0, 0xffb121b0)
+        reset_reg = self.ifc.pci_read32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), 0xffb121b0)
         reset_reg = (reset_reg & ~(1 << shift)) | (value << shift)
-        self.ifc.pci_write_xy(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), 0, 0xffb121b0, reset_reg)
-        new_reset_reg = self.ifc.pci_read_xy(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), 0, 0xffb121b0)
+        self.ifc.pci_write32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), 0xffb121b0, reset_reg)
+        new_reset_reg = self.ifc.pci_read32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), 0xffb121b0)
         if new_reset_reg != reset_reg:
             util.ERROR(f"Error writing reset signal. Expected 0x{reset_reg:08x}, got 0x{new_reset_reg:08x}")
 
@@ -570,7 +568,7 @@ class RiscLoader:
             self.write_block_through_debug(address, data)
         else:
             noc_id = 0
-            self.risc_debug.ifc.pci_write_buf(self.risc_debug.location.loc._device.id(),*self.risc_debug.location.loc.to("nocVirt"),noc_id,address,data)
+            self.risc_debug.ifc.pci_write(self.risc_debug.location.loc._device.id(),*self.risc_debug.location.loc.to("nocVirt"),noc_id,address,data)
 
     def read_block(self, address, byte_count):
         """
@@ -582,7 +580,7 @@ class RiscLoader:
             return self.read_block_through_debug(address, byte_count)
         else:
             noc_id = 0
-            return self.risc_debug.ifc.pci_read_buf(self.risc_debug.location.loc._device.id(),*self.risc_debug.location.loc.to("nocVirt"),noc_id,address,byte_count)
+            return self.risc_debug.ifc.pci_read(self.risc_debug.location.loc._device.id(),*self.risc_debug.location.loc.to("nocVirt"),noc_id,address,byte_count)
 
     def load_elf(self, elf_path):
         """

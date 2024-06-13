@@ -27,7 +27,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
     addr = int(args["<addr>"], 0)
     data = int(args["<data>"], 0)
-    pci_write_result = tt_device.SERVER_IFC.pci_raw_write(
+    pci_write_result = tt_device.SERVER_IFC.pci_write32_raw(
         ui_state.current_device_id, addr, data
     )
     print(f"PCI WR [0x{addr:x}] <- 0x{data:x}")

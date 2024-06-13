@@ -51,11 +51,11 @@ def get_queue_data(context, queue):
                 assert False, f"Unexpected Host queue addr format. Current format: {type(dram_place)}, expected Sequence or int"
 
             rdptr = (
-                tt_device.SERVER_IFC.host_dma_read(target_device, host_addr, host_chan)
+                tt_device.SERVER_IFC.dma_buffer_read32(target_device, host_addr, host_chan)
                 & 0xFFFF
             )  # ptrs are 16-bit
             wrptr = (
-                tt_device.SERVER_IFC.host_dma_read(
+                tt_device.SERVER_IFC.dma_buffer_read32(
                     target_device, host_addr + 4, host_chan
                 )
                 & 0xFFFF
@@ -74,10 +74,10 @@ def get_queue_data(context, queue):
             dram_addr = dram_place[1]
             dram_loc = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
             rdptr = (
-                device.pci_read_xy(dram_loc[0], dram_loc[1], 0, dram_addr) & 0xFFFF
+                device.pci_read32(dram_loc[0], dram_loc[1], 0, dram_addr) & 0xFFFF
             )  # ptrs are 16-bit
             wrptr = (
-                device.pci_read_xy(dram_loc[0], dram_loc[1], 0, dram_addr + 4) & 0xFFFF
+                device.pci_read32(dram_loc[0], dram_loc[1], 0, dram_addr + 4) & 0xFFFF
             )
             occupancy = Queue.occupancy(entries, wrptr, rdptr)
             queue_locations.append((rdptr, wrptr, occupancy))
@@ -109,7 +109,7 @@ def read_queue_contents(context, queue, start_addr, num_bytes):
 
             da = DataArray(f"host-0x{host_addr:08x}-ch{host_chan}-{num_words * 4}")
             for i in range(num_words):
-                data = tt_device.SERVER_IFC.host_dma_read(
+                data = tt_device.SERVER_IFC.dma_buffer_read32(
                     device_id, host_addr + start_addr + i * 4, host_chan
                 )
                 da.data.append(data)
@@ -122,7 +122,7 @@ def read_queue_contents(context, queue, start_addr, num_bytes):
             dram_loc = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
             da = DataArray(f"dram-ch{dram_chan}-0x{addr:08x}-{num_words * 4}")
             for i in range(num_words):
-                data = device.pci_read_xy(
+                data = device.pci_read32(
                     dram_loc[0], dram_loc[1], 0, addr + start_addr + i * 4
                 )
                 da.data.append(data)

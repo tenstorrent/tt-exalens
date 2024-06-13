@@ -133,7 +133,7 @@ class OnChipCoordinate:
         return OnChipCoordinate(core_x, core_y, "nocTr", chip_id)
 
     # This returns a tuple with the coordinates in the specified coordinate system.
-    # When doing pci_read_xy, we use nocVirt coordinates.
+    # When doing pci_read32, we use nocVirt coordinates.
     def to(self, output_type):
         """
         Returns a tuple with the coordinates in the specified coordinate system.

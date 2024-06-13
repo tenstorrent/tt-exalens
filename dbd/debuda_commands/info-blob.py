@@ -30,7 +30,7 @@ def pretty_print_overlay_blob_register_settings(elf, device_id, core_loc, blob_a
     """
     Given a blob address, print the register settings in a nice way.
     """
-    blob = tt_device.SERVER_IFC.pci_read_xy(
+    blob = tt_device.SERVER_IFC.pci_read32(
         device_id, *core_loc.to("nocVirt"), 0, blob_address
     )
     print(

@@ -53,14 +53,14 @@ def run(cmd_text, context, ui_state=None):
         util.VERBOSE (f"Putting all RISCs on device {device.id()} under reset.")
         device.all_riscs_assert_soft_reset()
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            rloader = RiscLoader(loc, RISC_ID, context, tt_device.DEBUDA_SERVER_SOCKET_IFC, dopt.args['-v'])
+            rloader = RiscLoader(loc, RISC_ID, context, tt_device.SERVER_IFC, dopt.args['-v'])
             rdbg = rloader.risc_debug
 
             in_reset = rdbg.is_in_reset()
             if in_reset:
                 util.VERBOSE (f"RISC at location {loc} is in reset. Setting L1[0] = 0x6f (infinite loop) and taking it out of reset.")
                 util.VERBOSE (f"  We need it out of reset to load the elf file.")
-                tt_device.SERVER_IFC.pci_write_xy (device.id(), *loc.to("nocVirt"), 0, 0, 0x6f)
+                tt_device.SERVER_IFC.pci_write32 (device.id(), *loc.to("nocVirt"), 0, 0, 0x6f)
                 rdbg.set_reset_signal(0)
             assert not rdbg.is_in_reset(), f"RISC at location {loc} is still in reset."
 
@@ -74,7 +74,7 @@ def run(cmd_text, context, ui_state=None):
                 raise ValueError("No .init section found in the ELF file")
 
             jump_to_start_of_init_section_instruction = rloader.get_jump_to_address_instruction(init_section_address)
-            tt_device.SERVER_IFC.pci_write_xy(loc._device.id(), *loc.to("nocVirt"), 0, 0, jump_to_start_of_init_section_instruction)
+            tt_device.SERVER_IFC.pci_write32(loc._device.id(), *loc.to("nocVirt"), 0, jump_to_start_of_init_section_instruction)
 
             rdbg.invalidate_instruction_cache()
             util.VERBOSE (f"Continuing BRISC at location {loc}.")
@@ -94,7 +94,7 @@ def test_run_elf(context, ui_state, dopt, RISC_ID):
     all_good = True
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            rloader = RiscLoader(loc, RISC_ID, context, tt_device.DEBUDA_SERVER_SOCKET_IFC, dopt.args['-v'])
+            rloader = RiscLoader(loc, RISC_ID, context, tt_device.SERVER_IFC, dopt.args['-v'])
             rdbg = rloader.risc_debug
 
             # Step 0
@@ -141,7 +141,7 @@ def test_run_elf(context, ui_state, dopt, RISC_ID):
 
             # Step 4
             util.INFO (f"Step 4: Check that the RISC at location {loc} is halted.")
-            rloader = RiscLoader(loc, RISC_ID, context, tt_device.DEBUDA_SERVER_SOCKET_IFC, dopt.args['-v'])
+            rloader = RiscLoader(loc, RISC_ID, context, tt_device.SERVER_IFC, dopt.args['-v'])
             status = rdbg.read_status()
             # print_PC_and_source(rdbg.read_gpr(32), elf)
             if not status.is_halted:

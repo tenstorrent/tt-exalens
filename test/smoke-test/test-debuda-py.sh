@@ -70,7 +70,7 @@ if [ $? -ne 0 ]; then
     echo -e "${RED}Error:${NC} Error in running ${BUDA_HOME}/build/test/verif/op_tests/test_op"
     exit 1
 fi
-source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_matmul_op_with_fd" --server-cache=through
+source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_matmul_op_with_fd" --write-cache
 
 
 ##################################################################################################################################################
@@ -102,11 +102,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_multi_matmul_perf" --server-cache=through
+source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_multi_matmul_perf" --write-cache
 
 ##################################################################################################################################################
 # Test with server cache enabled
-source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_multi_matmul_perf" --server-cache=on
+source $THIS_SCRIPT_DIR/test-run-all-debuda-commands.sh "netlist_multi_matmul_perf" --cached
 
 ##################################################################################################################################################
 # Test with no server cache
@@ -119,7 +119,7 @@ source $THIS_SCRIPT_DIR/test-debuda-server-limited.sh "netlist_multi_matmul_perf
 if [[ "$RM_TEST_FRAGS" == "1" ]]; then
     echo -e "${YELLOW}Cleaning up ...${NC}"
     rm -rf $TEST_EXPORT_PATH
-    rm debuda-server-cache.pkl
+    rm debuda_cache.pkl
     rm debuda-command-history.yaml
 fi
 
