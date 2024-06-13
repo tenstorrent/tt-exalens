@@ -25,12 +25,12 @@ void set_debuda_implementation(std::unique_ptr<tt::dbd::debuda_implementation> i
     debuda_implementation = std::move(imp);
 }
 
-bool open_device(const std::string &binary_directory, const std::string &runtime_yaml_path) {
+bool open_device(const std::string &binary_directory, const std::string &runtime_yaml_path, const std::vector<uint8_t> &wanted_devices) {
     try {
         // Since tt_SiliconDevice is printing some output and we don't want to see it in python, we disable std::cout
         scoped_null_stdout null_stdout;
 
-        debuda_implementation = tt::dbd::umd_with_open_implementation::open(binary_directory, runtime_yaml_path);
+        debuda_implementation = tt::dbd::umd_with_open_implementation::open(binary_directory, runtime_yaml_path, wanted_devices);
         if (!debuda_implementation) {
             return false;
         }
@@ -167,7 +167,7 @@ std::optional<std::string> get_device_soc_description(uint8_t chip_id) {
 
 PYBIND11_MODULE(tt_dbd_pybind, m) {
     m.def("open_device", &open_device, "Opens tt device. Prints error message if failed.",
-          pybind11::arg("binary_directory"), pybind11::arg("runtime_yaml_path"));
+          pybind11::arg("binary_directory"), pybind11::arg("runtime_yaml_path"), pybind11::arg_v("wanted_devices", std::vector<uint8_t>(), "[]"));
     m.def("pci_read32", &pci_read32, "Reads 4 bytes from PCI address", pybind11::arg("chip_id"), pybind11::arg("noc_x"),
           pybind11::arg("noc_y"), pybind11::arg("address"));
     m.def("pci_write32", &pci_write32, "Writes 4 bytes to PCI address", pybind11::arg("chip_id"),

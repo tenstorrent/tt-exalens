@@ -348,8 +348,8 @@ import tt_dbd_pybind
 
 
 class debuda_pybind(DbdCommunicator):
-    def __init__(self, runtime_data_yaml_filename: str = ""):
-        if not tt_dbd_pybind.open_device(binary_path, runtime_data_yaml_filename):
+    def __init__(self, runtime_data_yaml_filename: str = "", wanted_devices: list = []):
+        if not tt_dbd_pybind.open_device(binary_path, runtime_data_yaml_filename, wanted_devices):
             raise Exception("Failed to open device using pybind library")
         print("Device opened")
 
@@ -411,8 +411,14 @@ class debuda_pybind(DbdCommunicator):
         return self._check_result(tt_dbd_pybind.get_device_soc_description(chip_id))
 
 
-def init_pybind(runtime_data_yaml_filename):
-    tt_device.SERVER_IFC = debuda_pybind(runtime_data_yaml_filename)
+def init_pybind(runtime_data_yaml_filename, wanted_devices=None):
+    if wanted_devices:
+        wanted_devices = wanted_devices.split(",")
+        wanted_devices = [int(x) for x in wanted_devices]
+    else:
+        wanted_devices = []
+    
+    tt_device.SERVER_IFC = debuda_pybind(runtime_data_yaml_filename, wanted_devices)
     return tt_device.SERVER_IFC
 
 

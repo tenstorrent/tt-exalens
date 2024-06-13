@@ -122,7 +122,12 @@ int main(int argc, char** argv) {
     }
 
     server_config config = parse_args(argc, argv);
-    log_info(tt::LogDebuda, "Starting debuda-server: {} {} {}", argv[0], argv[1], argc > 2 ? argv[2] : "");
+    
+    std::string log_starting = "Starting debuda-server: " + std::string(argv[0]) + " " + std::string(argv[1]);
+    for (int i = 2; i < argc; i++) {
+        log_starting += " " + std::string(argv[i]);
+    }
+    log_info(tt::LogDebuda, log_starting.c_str());
     log_info(tt::LogDebuda, "Use environment variable TT_PCI_LOG_LEVEL to set the logging level (1 or 2)");
 
     if (argc == 2) {
