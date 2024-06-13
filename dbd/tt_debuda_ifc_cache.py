@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
 from tt_debuda_ifc_base import DbdCommunicator
 import tt_device
 import tt_util as util
