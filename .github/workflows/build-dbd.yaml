@@ -3,11 +3,6 @@ name: "BUILD DEBUDA"
 on:
   workflow_call:
     inputs:
-      arch:
-        required: false
-        type: string
-        # Add grayskull when we switch to remote
-        default: '["wormhole_b0"]'
       os:
         required: false
         type: string
@@ -21,17 +16,13 @@ run-name: Build DEBUDA by @${{ github.actor }} triggered by ${{ github.event_nam
 
 jobs:
   build_libs:
-    strategy:
-      matrix:
-        arch: ${{ fromJson(inputs.arch || '["grayskull", "wormhole_b0", "blackhole"]') }}
     env:
-      ARCH_NAME: ${{ matrix.arch }}
       CONFIG: ${{ inputs.config }}
       # So we can get all the makefile output we want
       VERBOSE: 1
     # TODO: This will need to change when we get cloud runners
     runs-on: "ubuntu-22.04"
-    name: "Build DEBUDA for ${{ matrix.arch }}"
+    name: "Build DEBUDA."
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,15 +37,14 @@ jobs:
           os: ${{ inputs.os }}
       - name: Build DEBUDA
         run: |
-          make -j$(nproc) ARCH_NAME=$ARCH_NAME CONFIG=$CONFIG build
+          make -j$(nproc) CONFIG=$CONFIG build
       - name: Remove unnecessary artifacts
-        # TODO: Is this unneccessary?
         run: |
           find build/ -name *.so -or -name *.a -or -name *.o | xargs strip -d
       - name: 'Tar files'
-        run: tar -cvf dbd_${{ matrix.arch }}.tar build
+        run: tar -cvf dbd_build.tar build
       - name: Upload libraries as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dbd-build-${{ matrix.arch }}
-          path: dbd_${{ matrix.arch }}.tar
+          name: dbd-build
+          path: dbd_build.tar

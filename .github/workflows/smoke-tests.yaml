@@ -37,9 +37,9 @@ jobs:
           buda-home: "budabackend"
       - uses: actions/download-artifact@v4
         with:
-          name: dbd-build-${{ matrix.arch }}
+          name: dbd-build
       - name: Extract build artifacts
-        run: tar -xvf dbd_${{ matrix.arch }}.tar
+        run: tar -xvf dbd_build.tar
       # TODO: Separate build & test deps
       - uses: ./.github/actions/install-dbd-deps
         with:

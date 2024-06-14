@@ -4,8 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  debuda.py [--netlist=<file>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbose] [--test] [<output_dir>]
-  debuda.py --server [--port=<port>] [--test] [<output_dir>]
+  debuda.py [--netlist=<file>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbose] [--test] [<output_dir>]
+  debuda.py --server [--port=<port>] [--devices=<devices>] [--test] [<output_dir>]
   debuda.py --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbose] [--test]
   debuda.py --cached [--cache-path=<path>] [--commands=<cmds>] [--verbose] [--test] [<output_dir>]
   debuda.py -h | --help
@@ -22,6 +22,7 @@ Options:
   --start-gdb=<gdb_port>          Start a gdb server on the specified port.
   --write-cache                   Write the cache to disk.
   --cache-path=<path>             If running in --cached mode, this is the path to the cache file. If writing cache, this is the path for output. [default: debuda_cache.pkl]
+  --devices=<devices>             Comma-separated list of devices to load. If not supplied, all devices will be loaded.
   --verbose                       Print verbose output.
   --test                          Exits with non-zero exit code on any exception.
 
@@ -305,7 +306,7 @@ def load_context(netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_
 class UIState:
     def __init__(self, context: Context) -> None:
         self.context = context
-        self.current_device_id = 0  # Currently selected device id
+        self.current_device_id = context.device_ids[0]  # Currently selected device id
         self.current_location = OnChipCoordinate(0, 0, "netlist", self.current_device)  # Currently selected core
         self.current_stream_id = 8  # Currently selected stream_id
         self.current_prompt = ""  # Based on the current x,y,stream_id tuple
@@ -510,12 +511,18 @@ def main():
         runtime_data_yaml_filename = "remote_runtime_yaml"
         output_dir = None
 
+    wanted_devices = None
+    if args["--devices"]:
+        wanted_devices = args["--devices"].split(",")
+        wanted_devices = [int(d) for d in wanted_devices]
+
     # Try to connect to the server. If it is not already running, it will be started.
     if args["--server"]:
         print(f"Starting Debuda server at {args['--port']}")
         debuda_server = tt_debuda_server.start_server(
             args["--port"],
             runtime_data_yaml_filename,
+            wanted_devices
         )
         if args["--test"]:
             while True: pass
@@ -534,7 +541,7 @@ def main():
         server_ifc = tt_debuda_ifc.connect_to_server(server_ip, server_port)
     else:
         print(f"Using pybind library instead of debuda server.")
-        server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ''))
+        server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ''), wanted_devices)
 
     if not args["--cached"] and args["--write-cache"]:
         server_ifc = tt_debuda_ifc_cache.init_cache_writer(args["--cache-path"])
