@@ -41,7 +41,7 @@ def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename, wanted_device
         else:
             debuda_stub_args = [f"{port}", "-y", f"{runtime_data_yaml_filename}"]
         if wanted_devices:
-            debuda_stub_args += ["-d", f"{wanted_devices}"]
+            debuda_stub_args += ["-d"] + [str(d) for d in wanted_devices]
 
         
         debuda_stub = subprocess.Popen(

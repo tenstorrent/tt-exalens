@@ -306,7 +306,7 @@ def load_context(netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_
 class UIState:
     def __init__(self, context: Context) -> None:
         self.context = context
-        self.current_device_id = 0  # Currently selected device id
+        self.current_device_id = context.device_ids[0]  # Currently selected device id
         self.current_location = OnChipCoordinate(0, 0, "netlist", self.current_device)  # Currently selected core
         self.current_stream_id = 8  # Currently selected stream_id
         self.current_prompt = ""  # Based on the current x,y,stream_id tuple
@@ -513,7 +513,8 @@ def main():
 
     wanted_devices = None
     if args["--devices"]:
-        wanted_devices = args["--devices"]
+        wanted_devices = args["--devices"].split(",")
+        wanted_devices = [int(d) for d in wanted_devices]
 
     # Try to connect to the server. If it is not already running, it will be started.
     if args["--server"]:

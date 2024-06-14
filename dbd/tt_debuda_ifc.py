@@ -412,10 +412,7 @@ class debuda_pybind(DbdCommunicator):
 
 
 def init_pybind(runtime_data_yaml_filename, wanted_devices=None):
-    if wanted_devices:
-        wanted_devices = wanted_devices.split(",")
-        wanted_devices = [int(x) for x in wanted_devices]
-    else:
+    if not wanted_devices:
         wanted_devices = []
     
     tt_device.SERVER_IFC = debuda_pybind(runtime_data_yaml_filename, wanted_devices)
