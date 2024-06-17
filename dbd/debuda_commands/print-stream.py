@@ -21,6 +21,7 @@ command_metadata = {
     "long": "stream",
     "type": "low-level",
     "description": __doc__,
+    "context": ["buda"],
 }
 
 from debuda import UIState

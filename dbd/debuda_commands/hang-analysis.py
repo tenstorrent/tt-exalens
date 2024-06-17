@@ -33,7 +33,12 @@ def WARN(s, **kwargs):
     util.WARN(util.get_indent() + s, **kwargs)
 
 
-command_metadata = {"short": "ha", "type": "high-level", "description": __doc__}
+command_metadata = {
+    "short": "ha", 
+    "type": "high-level", 
+    "description": __doc__, 
+    "context": ["buda"]
+    }
 
 
 def queue_has_data(context, device_id, q: Queue):

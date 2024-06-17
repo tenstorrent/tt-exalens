@@ -17,7 +17,8 @@ import tt_commands
 command_metadata = {
     "short": "go",
     "type": "high-level",
-    "description": __doc__
+    "description": __doc__,
+    "context": ["limited", "buda", "metal"],
 }
 
 def run(cmd_text, context, ui_state=None):

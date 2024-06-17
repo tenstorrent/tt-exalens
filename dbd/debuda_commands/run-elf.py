@@ -22,7 +22,8 @@ from tt_object import DataArray
 command_metadata = {
     "short": "re",
     "type": "high-level",
-    "description": __doc__
+    "description": __doc__,
+    "context": ["limited", "buda", "metal"], #TODO: Check if this is OK.
 }
 
 def print_PC_and_source (PC, elf):

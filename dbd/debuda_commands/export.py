@@ -26,7 +26,12 @@ Examples:
 
 import tt_util as util
 
-command_metadata = {"short": "xp", "type": "housekeeping", "description": __doc__}
+command_metadata = {
+    "short": "xp",
+    "type": "housekeeping",
+	"description": __doc__,
+    "context": ["buda"]
+    }
 
 import tt_device
 from docopt import docopt

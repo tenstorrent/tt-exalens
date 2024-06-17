@@ -30,6 +30,7 @@ command_metadata = {
     "long": "device",
     "type": "high-level",
     "description": __doc__,
+    "context": ["limited", "buda", "metal"],
 }
 
 import tt_util as util

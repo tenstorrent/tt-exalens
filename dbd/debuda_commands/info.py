@@ -26,7 +26,12 @@ Examples:
     info brisc.EPOCH_INFO_PTR.epoch_id -c 18-18 -c 19-19 -d 0  # Print all epoch_ids of cores 18-18 and 19-19 on device 0
 """
 
-command_metadata = {"short": "i", "type": "high-level", "description": __doc__}
+command_metadata = {
+    "short": "i", 
+    "type": "high-level", 
+    "description": __doc__,
+    "context": ["buda"],
+    }
 
 from docopt import docopt
 from debuda import UIState

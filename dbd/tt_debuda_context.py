@@ -13,6 +13,13 @@ class Context:
     def __init__(self, cluster_desc_path, short_name):
         self.server_ifc = None # This will be set from outside
         self._cluster_desc_path = cluster_desc_path
+        self._context = "context"
+
+    def filter_commands(self, commands):
+        self.commands = []
+        for cmd in commands:
+            if self._context in cmd["context"] or cmd["context"] == "util":
+                self.commands.append(cmd)
 
     @property
     @abstractmethod
@@ -96,6 +103,7 @@ class BudaContext(Context):
         self._netlist_filepath = netlist_filepath
         self._run_dirpath = run_dirpath
         self._runtime_data_yaml = runtime_data_yaml
+        self._context = "buda"
 
         # TODO: Make this lazy
         # Assign a device to each graph.
@@ -175,6 +183,7 @@ class LimitedContext(Context):
     def __init__(self, cluster_desc_path):
         super().__init__(cluster_desc_path, "limited")
         self.loaded_elfs = {} # (OnChipCoordinate, risc_id) => elf_path
+        self._context = "limited"
 
     @cached_property
     def netlist(self):
@@ -193,6 +202,7 @@ class LimitedContext(Context):
 class MetalContext(Context):
     def __init__(self, cluster_desc_path):
         super().__init__(cluster_desc_path, "metal")
+        self._context = "metal"
 
     def __repr__(self):
         return f"MetalContext"

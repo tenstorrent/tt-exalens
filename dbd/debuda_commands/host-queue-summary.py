@@ -22,6 +22,7 @@ command_metadata = {
     "short": "hq",
     "type": "high-level",
     "description": __doc__,
+    "context": ["buda"],
 }
 
 

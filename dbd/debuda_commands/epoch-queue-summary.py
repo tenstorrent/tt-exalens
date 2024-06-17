@@ -18,7 +18,12 @@ import tt_device
 from tt_netlist import Queue
 from tabulate import tabulate
 
-command_metadata = {"type": "low-level", "short": "eq", "description": __doc__}
+command_metadata = {
+    "type": "low-level",
+	"short": "eq",
+	"description": __doc__,
+    "context": ["buda"],    
+    }
 
 
 # Prints epoch queues

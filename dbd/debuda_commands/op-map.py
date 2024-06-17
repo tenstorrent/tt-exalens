@@ -16,7 +16,12 @@ Examples:
 from tabulate import tabulate
 from tt_coordinate import OnChipCoordinate
 
-command_metadata = {"short": "om", "type": "high-level", "description": __doc__}
+command_metadata = {
+    "short": "om", 
+    "type": "high-level", 
+    "description": __doc__,
+    "context": ["buda"],
+    }
 
 
 def run(cmd_text, context, ui_state=None):

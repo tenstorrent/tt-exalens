@@ -19,7 +19,12 @@ Examples:
   q input0 32 256
 """
 
-command_metadata = {"short": "q", "type": "high-level", "description": __doc__}
+command_metadata = {
+    "short": "q", 
+    "type": "high-level", 
+    "description": __doc__,
+    "context": ["buda"],
+    }
 
 from typing import Sequence
 import tt_util as util

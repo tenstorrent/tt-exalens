@@ -209,6 +209,7 @@ def import_commands(reload=False):
             "short": "x",
             "type": "housekeeping",
             "description": "Description:\n  Exits the program. The optional argument represents the exit code. Defaults to 0.",
+            "context": "util",
         },
         {
             "long": "help",
@@ -217,18 +218,21 @@ def import_commands(reload=False):
             "description": "Usage:\n  help [-v] [<command>]\n\n"
             + "Description:\n  Prints documentation summary. Use -v for details. If a command name is specified, it prints documentation for that command only.\n\n"
             + "Options:\n  -v   If specified, prints verbose documentation.",
+            "context": "util",
         },
         {
             "long": "reload",
             "short": "rl",
             "type": "housekeeping",
             "description": "Description:\n  Reloads files in debuda_commands directory. Useful for development of commands.",
+            "context": "util",
         },
         {
             "long": "eval",
             "short": "ev",
             "type": "housekeeping",
             "description": "Description:\n  Evaluates a Python expression.\n\nExamples:\n  eval 3+5\n  eval hex(@brisc.EPOCH_INFO_PTR.epoch_id)",
+            "context": "util",
         },
     ]
 
@@ -348,11 +352,10 @@ def main_loop(args, context):
     """
     cmd_raw = ""
 
-    commands = import_commands()
-    context.commands = commands # Set the commands in the context so we can call commands from other commands
+    context.filter_commands(import_commands()) # Set the commands in the context so we can call commands from other commands
 
     # Create prompt object.
-    context.prompt_session = PromptSession(completer=DebudaCompleter(commands, context)) if sys.stdin.isatty() else SimplePromptSession()
+    context.prompt_session = PromptSession(completer=DebudaCompleter(context.commands, context)) if sys.stdin.isatty() else SimplePromptSession()
 
     # Initialize current UI state
     ui_state = UIState(context)
@@ -437,20 +440,20 @@ def main_loop(args, context):
                 found_command = None
 
                 # Look for command to execute
-                for c in commands:
+                for c in context.commands:
                     if c["short"] == cmd_string or c["long"] == cmd_string:
                         found_command = c
 
                 if found_command == None:
                     # Print help on invalid commands
-                    print_help(commands, cmd)
+                    print_help(context.commands, cmd)
                     raise util.TTException(f"Invalid command '{cmd_string}'")
                 else:
                     if found_command["long"] == "exit":
                         exit_code = int(cmd[1]) if len(cmd) > 1 else 0
                         return exit_code
                     elif found_command["long"] == "help":
-                        print_help(commands, cmd)
+                        print_help(context.commands, cmd)
                     elif found_command["long"] == "reload":
                         import_commands(reload=True)
                     elif found_command["long"] == "eval":

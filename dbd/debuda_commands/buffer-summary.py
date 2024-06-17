@@ -20,6 +20,7 @@ command_metadata = {
     "short": "b",
     "type": "low-level",
     "description": __doc__,
+    "context": ["buda"],
 }
 
 from docopt import docopt
