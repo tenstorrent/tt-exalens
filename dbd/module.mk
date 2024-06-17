@@ -3,7 +3,7 @@ include infra/common.mk
 DBD_OUT?=$(OUT)/dbd
 
 # Main target: it builds the standalone server executable, and pybind modules
-dbd: dbd/server dbd/pybind
+dbd: dbd/server dbd/pybind dbd/riscv
 	$(PRINT_TARGET)
 	$(PRINT_OK)
 
