@@ -23,7 +23,7 @@ command_metadata = {
     "short": "re",
     "type": "high-level",
     "description": __doc__,
-    "context": ["limited", "buda", "metal"], #TODO: Check if this is OK.
+    "context": ["limited"], 
 }
 
 def print_PC_and_source (PC, elf):
