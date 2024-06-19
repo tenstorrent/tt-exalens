@@ -127,13 +127,10 @@ ifndef PYTHON_VERSION
     else
         $(error PYTHON_VERSION was not set previously, and python3 installed version neither 3.8 nor 3.10)
     endif
-else
-    $(info PYTHON_VERSION was already set to $(PYTHON_VERSION))
 endif
 
 # TODO: Check what else to build
-build: gitinfo umd
-	$(MAKE) dbd
+build: gitinfo dbd
 
 #TODO: Set up unit test build.
 #TODO: Set up valgrind.
@@ -141,7 +138,7 @@ build: gitinfo umd
 umd: umd_device
 
 # TODO: Set clean properly.
-clean: clean_umd_device 
+clean: clean_umd_device clean_dbd_riscv
 	rm -rf $(OUT)
 
 install: build
@@ -158,7 +155,6 @@ endif
 
 gitinfo:
 	mkdir -p $(OUT)
-# Initialization steps for building + running the Zebu emulator device
 	rm -f $(OUT)/.gitinfo
 	@echo $(GIT_BRANCH) >> $(OUT)/.gitinfo
 	@echo $(GIT_HASH) >> $(OUT)/.gitinfo
