@@ -120,6 +120,10 @@ static std::string create_temp_network_descriptor_file(tt::ARCH arch, std::files
         // TODO: If it doesn't, create file without network connections
         throw std::runtime_error("Call to create-ethernet-map failed. Fallback not implemented...");
     }
+    // TODO: Hack for blackhole until it is supported by create-ethernet-map
+    else if (arch == tt::ARCH::BLACKHOLE) {
+        return "/localdev/vjovanovic/tt-debuda/third_party/umd/blackhole_1chip_cluster.yaml";
+    }
     throw std::runtime_error("Unsupported architecture " + get_arch_str(arch) + ".");
     return {};
 }

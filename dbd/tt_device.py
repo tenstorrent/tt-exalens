@@ -163,6 +163,16 @@ class Device(TTObject):
                 device_desc_path=device_desc_path,
                 context=context
             )
+        if "blackhole" in arch.lower():
+            import tt_blackhole
+
+            dev = tt_blackhole.BlackholeDevice(
+                id=device_id,
+                arch=arch,
+                cluster_desc=cluster_desc,
+                device_desc_path=device_desc_path,
+                context=context
+            )
 
         if dev is None:
             raise RuntimeError(f"Architecture {arch} is not supported")
