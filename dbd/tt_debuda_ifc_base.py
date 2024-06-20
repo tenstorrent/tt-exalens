@@ -67,5 +67,9 @@ class DbdCommunicator(ABC):
     def get_device_soc_description(self, chip_id: int):
         pass
 
+    @abstractmethod
+    def get_file(self, file_path: str):
+        pass
+
     def using_cache(self):
         return False

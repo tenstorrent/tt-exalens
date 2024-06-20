@@ -31,6 +31,7 @@ enum class request_type : uint8_t {
     get_device_ids,
     get_device_arch,
     get_device_soc_description,
+    get_file
 };
 
 // Structures for receiving requests
@@ -110,6 +111,11 @@ struct get_device_arch_request : request {
 
 struct get_device_soc_description_request : request {
     uint8_t chip_id;
+} __attribute__((packed));
+
+struct get_file_request : request {
+    uint32_t size;
+    char data[0];
 } __attribute__((packed));
 
 }  // namespace tt::dbd

@@ -115,6 +115,11 @@ void tt::dbd::communication::request_loop() {
                                           (message.size() !=
                                            sizeof(pci_write_request) + static_cast<const pci_write_request*>(r)->size);
                         break;
+                    case request_type::get_file:
+                        invalid_message = (message.size() < sizeof(get_file_request)) ||
+                                          (message.size() !=
+                                           sizeof(get_file_request) + static_cast<const get_file_request*>(r)->size);
+                        break;
                 }
 
                 // Currenly no additional parsing is needed, so we just call process with current request that can be

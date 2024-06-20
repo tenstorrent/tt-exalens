@@ -412,24 +412,25 @@ class YamlFile:
     # Cache
     file_cache = {}
 
-    def __init__(self, yamlname, post_process_yaml=None, file_content=None ):
-        self.filepath = yamlname
+    def __init__(self, yamlname, file_content, post_process_yaml=None ):
+        self.filekey = yamlname
         self.content = file_content
         # Some files (such as pipegen.yaml) contain multiple documents (separated by ---). We post-process them
         self.post_process_yaml = post_process_yaml
-        YamlFile.file_cache[self.filepath] = None
+        YamlFile.file_cache[self.filekey] = None
 
     def load(self):
-        if self.filepath in YamlFile.file_cache and YamlFile.file_cache[self.filepath]:
-            self.root = YamlFile.file_cache[self.filepath]
+        if self.filekey in YamlFile.file_cache and YamlFile.file_cache[self.filekey]:
+            self.root = YamlFile.file_cache[self.filekey]
         else:
             current_time = time.time()
-            INFO(f"Loading yaml file: '{os.path.abspath(self.filepath)}'", end="")
+            # TODO: This is not needed always. The whole class should probably be restructured
+            INFO(f"Loading yaml file: '{self.filekey}'", end="")
             self.root = dict()
 
             # load self.filepath into string
             if self.content is None:
-                with open(self.filepath, "r") as stream:
+                with open(self.filekey, "r") as stream:
                     yaml_string = stream.read()
             else:
                 yaml_string = self.content
@@ -442,13 +443,13 @@ class YamlFile:
             else:
                 for i in ryml_load_all(yaml_string):
                     self.root = {**self.root, **i}
-            YamlFile.file_cache[self.filepath] = self.root
+            YamlFile.file_cache[self.filekey] = self.root
             INFO(
                 f" ({len(yaml_string)} bytes loaded in {time.time() - current_time:.2f}s)"
             )
 
     def __str__(self):
-        return f"{type(self).__name__}: {self.filepath}"
+        return f"{type(self).__name__}: {self.filekey}"
 
     def __repr__(self):
         return self.__str__()
@@ -457,7 +458,7 @@ class YamlFile:
         return self.root.items()
 
     def id(self):
-        return self.filepath
+        return self.filekey
 
     def __getattr__(self, name):
         if name == "root":

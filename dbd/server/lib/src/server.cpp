@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 #include "dbdserver/server.h"
+#include <vector>
 
 #include "dbdserver/communication.h"
 
@@ -83,9 +84,16 @@ void tt::dbd::server::process(const tt::dbd::request& base_request) {
             respond(implementation->get_device_soc_description(request.chip_id));
             break;
         }
+        case tt::dbd::request_type::get_file: {
+            auto& request = static_cast<const tt::dbd::get_file_request&>(base_request);
+            if (request.size == 0) respond_not_supported();
+            respond(read_file(std::string(request.data, request.size)));
+            break;
+        }
     }
 }
 
+// TODO: Add more informative error responses?
 void tt::dbd::server::respond_not_supported() {
     static std::string not_supported = "NOT_SUPPORTED";
     communication::respond(not_supported);
@@ -113,4 +121,13 @@ void tt::dbd::server::respond(std::optional<std::vector<uint8_t>> response) {
     } else {
         communication::respond(response.value().data(), response.value().size());
     }
+}
+
+
+std::optional<std::vector<uint8_t>> tt::dbd::server::read_file(const std::string& path) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file) {
+        return {};
+    }
+    return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), {});
 }

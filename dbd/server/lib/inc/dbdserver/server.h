@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include <fstream>
 #include <memory>
 
 #include "communication.h"
@@ -26,6 +27,8 @@ class server : public communication {
     void respond(std::optional<uint32_t> response);
     void respond(std::optional<std::vector<uint8_t>> response);
     void respond_not_supported();
+
+    std::optional<std::vector<uint8_t>> read_file(const std::string& path);
 
     std::unique_ptr<debuda_implementation> implementation;
 };

@@ -301,11 +301,11 @@ def locate_most_recent_build_output_dir():
 
 # Loads all files necessary to debug a single buda run
 # Returns a debug 'context' that contains the loaded information
-def load_context(netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_path):
+def load_context(server_ifc, netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_yaml):
     if run_dirpath is None or runtime_data_yaml is None:
-        return LimitedContext(cluster_desc_path)
+        return LimitedContext(server_ifc, cluster_desc_yaml)
     else:
-        return BudaContext(netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_path)
+        return BudaContext(server_ifc, netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_yaml)
 
 class UIState:
     def __init__(self, context: Context) -> None:
@@ -562,20 +562,28 @@ def main():
     except tt_debuda_ifc.debuda_server_not_supported:
         util.WARN("Server does not support runtime data. Continuing with limited functionality...")
 
+    cluster_desc_string = None
+    cluster_desc_yaml = None
     try:
-        cluster_desc_path = os.path.abspath(server_ifc.get_cluster_description())
+        cluster_desc_path = server_ifc.get_cluster_description()
+        cluster_desc_string = server_ifc.get_file(cluster_desc_path)
+        if cluster_desc_string is None:
+            raise tt_debuda_ifc.debuda_server_not_supported()
+        else:
+            cluster_desc_yaml = util.YamlFile("cluster_description", file_content=cluster_desc_string)
+            cluster_desc_yaml.load()
+            
     except tt_debuda_ifc.debuda_server_not_supported:
         util.WARN("Server does not support cluster description. Continuing with limited functionality...")
-        cluster_desc_path = None
 
     # Create the context
     context = load_context(
+        server_ifc=server_ifc,
         netlist_filepath=args["--netlist"],
         run_dirpath=output_dir,
         runtime_data_yaml=runtime_data_yaml,
-        cluster_desc_path=cluster_desc_path,
+        cluster_desc_yaml=cluster_desc_yaml,
     )
-    context.server_ifc = server_ifc
     context.args = args  # Used by 'export' command
     context.debuda_path = __file__  # Used by 'export' command
 
