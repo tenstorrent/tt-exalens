@@ -49,6 +49,9 @@ void yaml_communication::process(const tt::dbd::request& request) {
         case tt::dbd::request_type::get_device_soc_description:
             respond(serialize(static_cast<const tt::dbd::get_device_soc_description_request&>(request)));
             break;
+        case tt::dbd::request_type::get_file:
+            respond(serialize(static_cast<const tt::dbd::get_file_request&>(request)));
+            break;
 
         default:
             respond("NOT_IMPLEMENTED_YAML_SERIALIZATION for " + std::to_string(static_cast<int>(request.type)));
@@ -124,6 +127,10 @@ std::string yaml_communication::serialize(const tt::dbd::get_device_arch_request
 std::string yaml_communication::serialize(const tt::dbd::get_device_soc_description_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
            "\n  chip_id: " + std::to_string(request.chip_id);
+}
+
+std::string yaml_communication::serialize(const tt::dbd::get_file_request& request) {
+    return "- type: " + std::to_string(static_cast<int>(request.type)) + "\n  path: " + std::string(request.data, request.size);
 }
 
 std::string yaml_communication::serialize_bytes(const uint8_t* data, size_t size) {

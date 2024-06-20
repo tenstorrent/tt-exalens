@@ -34,6 +34,7 @@ class debuda_server_request_type(Enum):
     get_device_ids = 104
     get_device_arch = 105
     get_device_soc_description = 106
+    get_file = 107
 
 
 class debuda_server_bad_request(Exception):
@@ -229,6 +230,18 @@ class debuda_server_communication:
             )
         )
         return self._check(self._socket.recv())
+    
+    def get_file(self, path: str):
+        encoded_path = path.encode()
+        self._socket.send(
+            struct.pack(
+                f"<BI{len(encoded_path)}s",
+                debuda_server_request_type.get_file.value,
+                len(encoded_path),
+                encoded_path,
+            )
+        )
+        return self._check(self._socket.recv())
 
 
 class debuda_client(DbdCommunicator):
@@ -339,6 +352,11 @@ class debuda_client(DbdCommunicator):
         return self.parse_string(
             self._communication.get_device_soc_description(chip_id)
         )
+    
+    def get_file(self, file_path: str):
+        return self.parse_string(
+            self._communication.get_file(file_path)
+        )
 
 
 tt_dbd_pybind_path = util.application_path() + "/../build/lib"
@@ -351,6 +369,7 @@ class debuda_pybind(DbdCommunicator):
     def __init__(self, runtime_data_yaml_filename: str = "", wanted_devices: list = []):
         if not tt_dbd_pybind.open_device(binary_path, runtime_data_yaml_filename, wanted_devices):
             raise Exception("Failed to open device using pybind library")
+        self._runtime_yaml_path = runtime_data_yaml_filename # Don't go through C++ for opening files
         print("Device opened")
 
     def _check_result(self, result):
@@ -393,7 +412,12 @@ class debuda_pybind(DbdCommunicator):
         return self._check_result(tt_dbd_pybind.pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format))
 
     def get_runtime_data(self):
-        return self._check_result(tt_dbd_pybind.get_runtime_data())
+        try:
+            with open(self._runtime_yaml_path, 'r') as f:
+                content = f.read()
+        except:
+            content = None
+        return self._check_result(content)
 
     def get_cluster_description(self):
         return self._check_result(tt_dbd_pybind.get_cluster_description())
@@ -409,6 +433,12 @@ class debuda_pybind(DbdCommunicator):
 
     def get_device_soc_description(self, chip_id: int):
         return self._check_result(tt_dbd_pybind.get_device_soc_description(chip_id))
+    
+    def get_file(self, file_path: str):
+        content = None
+        with open(file_path, 'r') as f:
+            content = f.read()
+        return self._check_result(content)
 
 
 def init_pybind(runtime_data_yaml_filename, wanted_devices=None):

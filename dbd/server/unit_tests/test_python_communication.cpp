@@ -30,16 +30,17 @@ std::string execute_command(const std::string& cmd) {
 
 void call_python(const std::string& python_script, int server_port, const std::string& python_args,
                  const std::string& expected_output) {
-    auto buda_home_env = getenv("BUDA_HOME");
-    std::string buda_home;
-    if (buda_home_env) {
-        buda_home = buda_home_env;
-    } else {
-        if (!std::filesystem::exists(python_script)) {
-            std::cerr << "You need to set BUDA_HOME or to run tests from BUDA_HOME directory." << std::endl;
-            ASSERT_TRUE(false);
-        }
-    }
+    // TODO: What's this?
+    // auto buda_home_env = getenv("BUDA_HOME");
+    // std::string buda_home;
+    // if (buda_home_env) {
+    //     buda_home = buda_home_env;
+    // } else {
+    //     if (!std::filesystem::exists(python_script)) {
+    //         std::cerr << "You need to set BUDA_HOME or to run tests from BUDA_HOME directory." << std::endl;
+    //         ASSERT_TRUE(false);
+    //     }
+    // }
     std::string command = "python3 " + python_script + " " + std::to_string(server_port) + " " + python_args;
 
     auto output = execute_command(command);

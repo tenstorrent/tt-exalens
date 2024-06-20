@@ -109,6 +109,10 @@ class DbdCacheThrough(DbdCache):
     def get_device_soc_description(self, chip_id):
         return self.communicator.get_device_soc_description(chip_id)
 
+    @cache_decorator
+    def get_file(self, file_path: str):
+        return self.communicator.get_file(file_path)
+
     def using_cache(self):
         return True
 
@@ -205,6 +209,10 @@ class DbdCacheReader(DbdCache):
 
     @read_decorator
     def get_device_soc_description(self, chip_id):
+        pass
+
+    @read_decorator
+    def get_file(self, file_path: str):
         pass
 
     def using_cache(self):

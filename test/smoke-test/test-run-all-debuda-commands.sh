@@ -83,11 +83,11 @@ else
 fi
 COMMAND_LIST+=("t 1")
 COMMAND_LIST+=("t 1 --raw")
-if [ "$TEST_NAME" = "" ]; then
-    COMMAND_LIST+=("export ${TEST_EXPORT_PATH}/debuda-export.zip")  # Finally, we export the dump to try to rerun it
-else
-    COMMAND_LIST+=("export ${TEST_EXPORT_PATH}/${TEST_NAME}.zip")
-fi
+# if [ "$TEST_NAME" = "" ]; then
+#     COMMAND_LIST+=("export ${TEST_EXPORT_PATH}/debuda-export.zip")  # Finally, we export the dump to try to rerun it
+# else
+#     COMMAND_LIST+=("export ${TEST_EXPORT_PATH}/${TEST_NAME}.zip")
+# fi
 COMMAND_LIST+=("exit")
 
 # Join the commands

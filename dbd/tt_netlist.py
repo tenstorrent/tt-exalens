@@ -190,7 +190,9 @@ class Netlist:
                 for input_name in op.root["inputs"]:
                     self._name_consumers_map[input_name].append(op.id())
 
-    def __init__(self, netlist_filepath, rundir, runtime_data_yaml):
+    def __init__(self, file_ifc, netlist_filepath, rundir, runtime_data_yaml):
+        self.file_ifc = file_ifc
+
         # 1. Set the file. It will be lazy loaded on first access
         assert runtime_data_yaml is not None
         self.runtime_data_yaml = runtime_data_yaml
@@ -201,7 +203,7 @@ class Netlist:
             netlist_filepath = self.get_netlist_path()
 
         # 2. Load the netlist itself
-        self.yaml_file = util.YamlFile(netlist_filepath)
+        self.yaml_file = util.YamlFile(netlist_filepath, self.file_ifc.get_file(netlist_filepath))
         self.load_netlist_data()
 
         # 3. Load pipegen/blob yamls
@@ -311,7 +313,7 @@ class Netlist:
 
     # Renderer
     def __str__(self):
-        return f"{type(self).__name__}: {self.yaml_file.filepath}. Graphs({len(self.graph_names())}): {' '.join (self.graph_names())}"
+        return f"{type(self).__name__}: {self.yaml_file.filekey}. Graphs({len(self.graph_names())}): {' '.join (self.graph_names())}"
 
     def __repr__(self):
         return self.__str__()
