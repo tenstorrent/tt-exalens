@@ -16,10 +16,11 @@ namespace tt::dbd {
 // which means that command is not supported by the server.
 class server : public communication {
    public:
-    server(std::unique_ptr<debuda_implementation> implementation) : implementation(std::move(implementation)) {}
+    server(std::unique_ptr<debuda_implementation> implementation, const std::string run_dirpath = "")
+        : implementation(std::move(implementation)), _run_dirpath(run_dirpath) {}
 
    protected:
-    void process(const request &request) override;
+    void process(const request& request) override;
 
    private:
     // Helper functions that wrap optional into tt::dbd::communication::respond function calls.
@@ -31,6 +32,7 @@ class server : public communication {
     std::optional<std::vector<uint8_t>> read_file(const std::string& path);
 
     std::unique_ptr<debuda_implementation> implementation;
+    std::string _run_dirpath;
 };
 
 }  // namespace tt::dbd

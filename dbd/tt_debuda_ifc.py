@@ -35,6 +35,7 @@ class debuda_server_request_type(Enum):
     get_device_arch = 105
     get_device_soc_description = 106
     get_file = 107
+    get_run_dirpath = 108
 
 
 class debuda_server_bad_request(Exception):
@@ -243,6 +244,12 @@ class debuda_server_communication:
         )
         return self._check(self._socket.recv())
 
+    def get_run_dirpath(self):
+        self._socket.send(
+            bytes([debuda_server_request_type.get_run_dirpath.value])
+        )
+        return self._check(self._socket.recv())
+
 
 class debuda_client(DbdCommunicator):
     def __init__(self, address: str, port: int):
@@ -357,6 +364,14 @@ class debuda_client(DbdCommunicator):
         return self.parse_string(
             self._communication.get_file(file_path)
         )
+    
+    def get_run_dirpath(self):
+        run_dirpath = self.parse_string(
+            self._communication.get_run_dirpath()
+        )
+        if run_dirpath != "":
+            return run_dirpath
+        return None
 
 
 tt_dbd_pybind_path = util.application_path() + "/../build/lib"
@@ -366,10 +381,11 @@ import tt_dbd_pybind
 
 
 class debuda_pybind(DbdCommunicator):
-    def __init__(self, runtime_data_yaml_filename: str = "", wanted_devices: list = []):
+    def __init__(self, runtime_data_yaml_filename: str = "", run_dirpath: str = None, wanted_devices: list = []):
         if not tt_dbd_pybind.open_device(binary_path, runtime_data_yaml_filename, wanted_devices):
             raise Exception("Failed to open device using pybind library")
         self._runtime_yaml_path = runtime_data_yaml_filename # Don't go through C++ for opening files
+        self._run_dirpath = run_dirpath
         print("Device opened")
 
     def _check_result(self, result):
@@ -439,13 +455,16 @@ class debuda_pybind(DbdCommunicator):
         with open(file_path, 'r') as f:
             content = f.read()
         return self._check_result(content)
+    
+    def get_run_dirpath(self):
+        return self._run_dirpath
 
 
-def init_pybind(runtime_data_yaml_filename, wanted_devices=None):
+def init_pybind(runtime_data_yaml_filename, run_dirpath=None, wanted_devices=None):
     if not wanted_devices:
         wanted_devices = []
     
-    tt_device.SERVER_IFC = debuda_pybind(runtime_data_yaml_filename, wanted_devices)
+    tt_device.SERVER_IFC = debuda_pybind(runtime_data_yaml_filename, run_dirpath, wanted_devices)
     return tt_device.SERVER_IFC
 
 

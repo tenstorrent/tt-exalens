@@ -301,7 +301,8 @@ def locate_most_recent_build_output_dir():
 
 # Loads all files necessary to debug a single buda run
 # Returns a debug 'context' that contains the loaded information
-def load_context(server_ifc, netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_yaml):
+def load_context(server_ifc, netlist_filepath, runtime_data_yaml, cluster_desc_yaml):
+    run_dirpath = server_ifc.get_run_dirpath()
     if run_dirpath is None or runtime_data_yaml is None:
         return LimitedContext(server_ifc, cluster_desc_yaml)
     else:
@@ -525,6 +526,7 @@ def main():
         debuda_server = tt_debuda_server.start_server(
             args["--port"],
             runtime_data_yaml_filename,
+            output_dir,
             wanted_devices
         )
         if args["--test"]:
@@ -544,7 +546,7 @@ def main():
         server_ifc = tt_debuda_ifc.connect_to_server(server_ip, server_port)
     else:
         print(f"Using pybind library instead of debuda server.")
-        server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ''), wanted_devices)
+        server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ''), output_dir, wanted_devices)
 
     if not args["--cached"] and args["--write-cache"]:
         server_ifc = tt_debuda_ifc_cache.init_cache_writer(args["--cache-path"])
@@ -580,7 +582,6 @@ def main():
     context = load_context(
         server_ifc=server_ifc,
         netlist_filepath=args["--netlist"],
-        run_dirpath=output_dir,
         runtime_data_yaml=runtime_data_yaml,
         cluster_desc_yaml=cluster_desc_yaml,
     )

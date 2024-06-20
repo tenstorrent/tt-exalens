@@ -18,6 +18,7 @@ struct server_config {
    public:
     int port;
     std::string runtime_data_yaml_path;
+    std::string run_dirpath;
     std::vector<uint8_t> wanted_devices;
 };
 
@@ -52,7 +53,7 @@ int run_debuda_server(const server_config& config) {
         // Spawn server
         std::unique_ptr<tt::dbd::server> server;
         try {
-            server = std::make_unique<tt::dbd::server>(std::move(implementation));
+            server = std::make_unique<tt::dbd::server>(std::move(implementation), config.run_dirpath);
             server->start(config.port);
             log_info(tt::LogDebuda, "Debug server started on {}.", connection_address);
         } catch (...) {
@@ -88,6 +89,9 @@ server_config parse_args(int argc, char** argv) {
         if (strcmp(argv[i], "-y") == 0) {
             config.runtime_data_yaml_path = argv[i + 1];
             i += 2;
+        } else if (strcmp(argv[i], "-r") == 0) { 
+            config.run_dirpath = argv[i + 1];
+            i += 2;
         } else if (strcmp(argv[i], "-d") == 0) {
             i++;
             if (i >= argc) {
@@ -117,7 +121,7 @@ server_config parse_args(int argc, char** argv) {
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        log_error("Need arguments: <port> [-y path_to_yaml_file] [-d <device_id1> [<device_id2> ... <device_idN>]]");
+        log_error("Need arguments: <port> [-y path_to_yaml_file] [-r <run_dirpath>] [-d <device_id1> [<device_id2> ... <device_idN>]]");
         return 1;
     }
 

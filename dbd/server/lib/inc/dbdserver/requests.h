@@ -31,7 +31,8 @@ enum class request_type : uint8_t {
     get_device_ids,
     get_device_arch,
     get_device_soc_description,
-    get_file
+    get_file,
+    get_run_dirpath,
 };
 
 // Structures for receiving requests
