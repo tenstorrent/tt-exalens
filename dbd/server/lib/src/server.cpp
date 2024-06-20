@@ -90,6 +90,10 @@ void tt::dbd::server::process(const tt::dbd::request& base_request) {
             respond(read_file(std::string(request.data, request.size)));
             break;
         }
+        case tt::dbd::request_type::get_run_dirpath: {
+            respond(_run_dirpath);
+            break;
+        }
     }
 }
 

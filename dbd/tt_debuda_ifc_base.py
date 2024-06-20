@@ -71,5 +71,9 @@ class DbdCommunicator(ABC):
     def get_file(self, file_path: str):
         pass
 
+    @abstractmethod
+    def get_run_dirpath(self):
+        pass
+
     def using_cache(self):
         return False
