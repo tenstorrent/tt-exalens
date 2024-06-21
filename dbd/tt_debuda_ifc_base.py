@@ -2,6 +2,9 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from abc import ABC, abstractmethod
+import shutil
+import os
+import io
 
 
 class DbdCommunicator(ABC):
@@ -9,6 +12,12 @@ class DbdCommunicator(ABC):
     Base class for the debuda interfaces. It defines the high-level methods that must be implemented for debuda to
     communicate with the target device. They are later derived to communicate with server, use pybind or read from cache.
     """
+    def __init__(self):
+        self._tmp_folder = '/tmp/debuda'
+        if os.path.exists(self._tmp_folder):
+            shutil.rmtree(self._tmp_folder)
+            os.mkdir(self._tmp_folder)
+
     @abstractmethod
     def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
         pass
@@ -78,6 +87,15 @@ class DbdCommunicator(ABC):
     @abstractmethod
     def get_run_dirpath(self):
         pass
+    
+    def save_tmp_file(self, filename: str, content, mode='wb'):
+        filename = os.path.join(self._tmp_folder, os.path.basename(filename))
+        with open(filename, mode) as f:
+            if isinstance(content, io.BytesIO):
+                f.write(content.getbuffer())
+            else:
+                f.write(content)
+        return filename
 
     def using_cache(self):
         return False

@@ -256,17 +256,13 @@ class debuda_server_communication:
 
 class debuda_client(DbdCommunicator):
     def __init__(self, address: str, port: int):
+        super().__init__()
         self._communication = debuda_server_communication(address, port)
 
         # Check ping/pong to verify it is debuda server on the other end
         pong = self._communication.ping()
         if pong != b"PONG":
             raise ConnectionError()
-        
-        self._tmp_folder = '/tmp/debuda'
-        if os.path.exists(self._tmp_folder):
-            shutil.rmtree(self._tmp_folder)
-            os.mkdir(self._tmp_folder)
 
     def parse_uint32_t(self, buffer: bytes):
         if len(buffer) != 4:
@@ -376,13 +372,6 @@ class debuda_client(DbdCommunicator):
     def get_binary(self, binary_path: str):
         binary_content = self._communication.get_file(binary_path)
         return io.BytesIO(binary_content)
-    
-    def save_tmp_file(self, content, filename: str, mode='wb'):
-        # This is Linux-specific:
-        filename = os.path.join(self._tmp_folderi, os.path.basename(filename))
-        with open(filename, mode) as f:
-            f.write(content)
-        return filename
 
     def clean_tmp(self):
         shutil.rmtree(self._tmp_folder)
@@ -404,6 +393,7 @@ import tt_dbd_pybind
 
 class debuda_pybind(DbdCommunicator):
     def __init__(self, runtime_data_yaml_filename: str = "", run_dirpath: str = None, wanted_devices: list = []):
+        super().__init__()
         if not tt_dbd_pybind.open_device(binary_path, runtime_data_yaml_filename, wanted_devices):
             raise Exception("Failed to open device using pybind library")
         self._runtime_yaml_path = runtime_data_yaml_filename # Don't go through C++ for opening files
