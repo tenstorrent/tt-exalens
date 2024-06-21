@@ -592,7 +592,8 @@ class RiscLoader:
         # Remember the .init section address to jump to after loading
         init_section_address = None
 
-        with open(elf_path, 'rb') as elf_file:
+        try:
+            elf_file = self.context.server_ifc.get_binary(elf_path)
             elf_file = ELFFile(elf_file)
 
             for section in elf_file.iter_sections():
@@ -624,6 +625,9 @@ class RiscLoader:
                             continue
                         else:
                             util.VERBOSE(f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes")
+        except:
+            # TODO: Handle non-existent ELFs
+            pass
 
         self.context.elf_loaded(self.risc_debug.location.loc, self.risc_debug.location.risc_id, elf_path)
         return init_section_address

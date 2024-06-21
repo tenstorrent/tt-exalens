@@ -3,6 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 from abc import ABC, abstractmethod
 from enum import Enum
+import io
+import os
+import shutil
 import sys
 import struct
 import zmq
@@ -259,6 +262,11 @@ class debuda_client(DbdCommunicator):
         pong = self._communication.ping()
         if pong != b"PONG":
             raise ConnectionError()
+        
+        self._tmp_folder = '/tmp/debuda'
+        if os.path.exists(self._tmp_folder):
+            shutil.rmtree(self._tmp_folder)
+            os.mkdir(self._tmp_folder)
 
     def parse_uint32_t(self, buffer: bytes):
         if len(buffer) != 4:
@@ -365,6 +373,20 @@ class debuda_client(DbdCommunicator):
             self._communication.get_file(file_path)
         )
     
+    def get_binary(self, binary_path: str):
+        binary_content = self._communication.get_file(binary_path)
+        return io.BytesIO(binary_content)
+    
+    def save_tmp_file(self, content, filename: str, mode='wb'):
+        # This is Linux-specific:
+        filename = os.path.join(self._tmp_folderi, os.path.basename(filename))
+        with open(filename, mode) as f:
+            f.write(content)
+        return filename
+
+    def clean_tmp(self):
+        shutil.rmtree(self._tmp_folder)
+    
     def get_run_dirpath(self):
         run_dirpath = self.parse_string(
             self._communication.get_run_dirpath()
@@ -455,6 +477,11 @@ class debuda_pybind(DbdCommunicator):
         with open(file_path, 'r') as f:
             content = f.read()
         return self._check_result(content)
+    
+    def get_binary(self, binary_path: str):
+        return open(binary_path, 'rb')
+
+
     
     def get_run_dirpath(self):
         return self._run_dirpath

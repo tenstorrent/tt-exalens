@@ -5,8 +5,9 @@ import os
 from typing import Set
 
 class GdbFileServer:
-    def __init__(self):
+    def __init__(self, context):
         self.opened_files: Set[int] = set()
+        self._context = context
 
     def __del__(self):
         self.close_all()
@@ -23,6 +24,9 @@ class GdbFileServer:
 
     def open(self, filename: str, flags: int, mode: int):
         try:
+            if not os.path.exists(filename):
+                content = self._context.server_ifc.get_binary(filename)
+                filename = self._context.server_ifc.save_tmp_file(filename, content)
             fd = os.open(filename, flags, mode)
             self.opened_files.add(fd)
             return fd

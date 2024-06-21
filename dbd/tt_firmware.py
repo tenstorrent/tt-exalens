@@ -42,13 +42,15 @@ class ELF:
     This class wraps around a list of ELF files and provides a unified interface to them.
     """
 
-    def __init__(self, filemap, extra_vars=None) -> None:
+    def __init__(self, filemap, file_ifc = None, extra_vars=None) -> None:
         """
         Given a filemap "prefix" -> "filename", load all the ELF files and store them in
         self.names. For example, if filemap is { "brisc" : "./debuda_test/brisc/brisc.elf" }
+        TODO: This description stops halfway through?
         """
         self.names = dict()
         self.filemap = filemap
+        self._file_ifc = file_ifc
         for prefix, filename in filemap.items():
             if prefix not in self.names:
                 self.names[prefix] = dict()
@@ -56,6 +58,10 @@ class ELF:
             abspath = os.path.abspath(filename)
             util.INFO(f"Loading ELF file: '{abspath}'", end="")
             start_time = time.time()
+            if file_ifc and not os.path.exists(abspath):
+                # Handle remote files
+                binf = file_ifc.get_binary(abspath)
+                abspath = file_ifc.save_tmp_file(abspath, binf)
             self.names[prefix] = tt_parse_elf.read_elf(abspath)
             util.INFO(
                 f" ({os.path.getsize(abspath)} bytes loaded in {time.time() - start_time:.2f}s)"
