@@ -499,6 +499,7 @@ def read_elf(elf_file_path):
     """
     Reads the ELF file and returns a dictionary with the DWARF info
     """
+    # This is redirected to read from tmp folder in case of remote runs.
     with open(elf_file_path, "rb") as f:
         elf = ELFFile(f)
 

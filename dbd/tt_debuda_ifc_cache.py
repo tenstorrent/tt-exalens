@@ -117,6 +117,9 @@ class DbdCacheThrough(DbdCache):
     def get_binary(self, binary_path: str):
         return self.communicator.get_binary(binary_path)
 
+    def save_tmp_file(self, filename: str, content, mode="wb"):
+        return self.communicator.save_tmp_file(filename, content, mode)
+
     @cache_decorator
     def get_run_dirpath(self):
         return self.communicator.get_run_dirpath()

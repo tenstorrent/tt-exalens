@@ -166,8 +166,9 @@ class Netlist:
         #  b. Create a TemporalEpoch object for each epoch and link with graphs
         for epoch_id, graph_list in epoch_to_graph_list_map.items():
             graph_dir = f"{rundir}/temporal_epoch_{epoch_id}"
-            if not os.path.isdir(graph_dir):
-                util.FATAL(f"Error: cannot find directory {graph_dir}")
+            # TODO: See what to do about this:
+            # if not os.path.isdir(graph_dir):
+            #     util.FATAL(f"Error: cannot find directory {graph_dir}")
 
             pipegen_file = f"{graph_dir}/overlay/pipegen.yaml"
             blob_file = f"{graph_dir}/overlay/blob.yaml"
