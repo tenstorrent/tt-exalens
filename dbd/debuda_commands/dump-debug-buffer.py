@@ -32,7 +32,7 @@ command_metadata = {
     "short": "ddb",
     "type": "low-level",
 	"description": __doc__,
-    "context": ["limited", "buda"],
+    "context": ["buda"],
     }
 
 
