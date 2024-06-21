@@ -120,7 +120,7 @@ if [[ "$RM_TEST_FRAGS" == "1" ]]; then
     echo -e "${YELLOW}Cleaning up ...${NC}"
     rm -rf $TEST_EXPORT_PATH
     rm debuda_cache.pkl
-    rm debuda-command-history.yaml
+    # rm debuda-command-history.yaml
 fi
 
 echo -e "${GREEN}Done.${NC}"

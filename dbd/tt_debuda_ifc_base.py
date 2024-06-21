@@ -72,6 +72,10 @@ class DbdCommunicator(ABC):
         pass
 
     @abstractmethod
+    def get_binary(self, binary_path: str):
+        pass
+
+    @abstractmethod
     def get_run_dirpath(self):
         pass
 

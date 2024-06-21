@@ -428,15 +428,16 @@ class YamlFile:
             INFO(f"Loading yaml file: '{self.filekey}'", end="")
             self.root = dict()
 
-            # load self.filepath into string
-            if self.content is None:
-                with open(self.filekey, "r") as stream:
-                    yaml_string = stream.read()
-            else:
-                yaml_string = self.content
-                
-                # Clear the content to save memory
-                self.content = None
+            # Not used anymore
+            # # load self.filepath into string
+            # if self.content is None:
+            #     with open(self.filekey, "r") as stream:
+            #         yaml_string = stream.read()
+            #else:
+            yaml_string = self.content
+            
+            # Clear the content to save memory
+            self.content = None
 
             if self.post_process_yaml is not None:
                 self.root = self.post_process_yaml(ryml_load_all(yaml_string))
@@ -505,6 +506,7 @@ def export_to_zip(filelist, out_file=DEFAULT_EXPORT_FILENAME, prefix_to_remove=N
 def write_to_yaml_file(data, filename):
     with open(filename, "w") as output_yaml_file:
         # Improve: This could also be done with ryml
+        # TODO: Check if this needs to be remote
         yaml.dump(data, output_yaml_file)
 
 

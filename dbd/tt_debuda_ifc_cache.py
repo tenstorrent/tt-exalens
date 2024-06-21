@@ -114,6 +114,10 @@ class DbdCacheThrough(DbdCache):
         return self.communicator.get_file(file_path)
 
     @cache_decorator
+    def get_binary(self, binary_path: str):
+        return self.communicator.get_binary(binary_path)
+
+    @cache_decorator
     def get_run_dirpath(self):
         return self.communicator.get_run_dirpath()
 
@@ -217,6 +221,10 @@ class DbdCacheReader(DbdCache):
 
     @read_decorator
     def get_file(self, file_path: str):
+        pass
+
+    @read_decorator
+    def get_binary(self, binary_path: str):
         pass
 
     @read_decorator

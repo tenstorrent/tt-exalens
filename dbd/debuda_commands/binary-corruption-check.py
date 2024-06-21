@@ -184,15 +184,16 @@ def get_current_epoch_command(device, epoch_cmd_q_reader: EpochCommandQueueReade
     epoch_cmd = EpochCmd(epoch_cmd_q_reader.EpochQueueCmd_val_to_str, cmd_payload)
     return epoch_cmd
     
-def get_op_index(graph_directory_path, op_name) -> int:
+def get_op_index(graph_directory_path, op_name, context) -> int:
     op_info_file_path = graph_directory_path + "/op_info.txt"
-    with open(op_info_file_path, "r") as f:
+    try:
+        f = context.server_ifc.get_file(op_info_file_path)
         op_index_str, op_name_str = f.readline().split(":")
         op_name_str = op_name_str.strip()
         if op_name_str == op_name:
             return int(op_index_str.split("_")[1])
-        
-    assert False
+    except:
+        assert False
     return None
 
 def get_graph_name_for_op_on_core(context, device, core_loc: OnChipCoordinate) -> str:
@@ -236,7 +237,8 @@ def read_hex_binary(context, device, core_loc: OnChipCoordinate, binary_type: st
     print(f"\tReading hex file from {hex_file_path}")
     
     hex_file_data = []
-    with open(hex_file_path, "r") as f:
+    try:
+        f = context.server_ifc.get_file(hex_file_path, "r")
         for line in f:
             line = line.strip()
             if not line.startswith("@"):
@@ -245,7 +247,9 @@ def read_hex_binary(context, device, core_loc: OnChipCoordinate, binary_type: st
                     hex_file_data.append(int(line, 16))
                 except:
                     breakpoint()
-    
+    except:
+        pass
+
     return hex_file_data
     
 
