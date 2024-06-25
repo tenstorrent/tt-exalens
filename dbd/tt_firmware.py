@@ -42,7 +42,7 @@ class ELF:
     This class wraps around a list of ELF files and provides a unified interface to them.
     """
 
-    def __init__(self, filemap, file_ifc = None, extra_vars=None) -> None:
+    def __init__(self, filemap, file_ifc, extra_vars=None) -> None:
         """
         Given a filemap "prefix" -> "filename", load all the ELF files and store them in
         self.names. For example, if filemap is { "brisc" : "./debuda_test/brisc/brisc.elf" }

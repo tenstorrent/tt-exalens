@@ -87,11 +87,21 @@ server_config parse_args(int argc, char** argv) {
     int i = 2;
     while (i < argc) {
         if (strcmp(argv[i], "-y") == 0) {
-            config.runtime_data_yaml_path = argv[i + 1];
-            i += 2;
+            i += 1;
+            if (i>=argc) {
+                log_error("Expected path to yaml file after -y");
+                return {};
+            }
+            config.runtime_data_yaml_path = argv[i];
+            i += 1;
         } else if (strcmp(argv[i], "-r") == 0) { 
-            config.run_dirpath = argv[i + 1];
-            i += 2;
+            i += 1;
+            if (i>=argc) {
+                log_error("Expected path to run directory after -r");
+                return {};
+            }
+            config.run_dirpath = argv[i];
+            i += 1;
         } else if (strcmp(argv[i], "-d") == 0) {
             i++;
             if (i >= argc) {
