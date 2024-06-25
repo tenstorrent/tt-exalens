@@ -6,6 +6,7 @@ import tt_device
 import tt_util as util
 
 import atexit
+import io
 import os
 import pickle
 
@@ -53,6 +54,15 @@ class DbdCacheThrough(DbdCache):
             key = (func.__name__, args)
             self.cache[key] = func(self, *args, **kwargs)
             return self.cache[key]
+
+        return wrapper
+
+    def cache_binary_decorator(func):
+        def wrapper(self, *args, **kwargs):
+            key = (func.__name__, args)
+            retval = func(self, *args, **kwargs)
+            self.cache[key] = retval.read()
+            return retval
 
         return wrapper
 
@@ -113,7 +123,7 @@ class DbdCacheThrough(DbdCache):
     def get_file(self, file_path: str):
         return self.communicator.get_file(file_path)
 
-    @cache_decorator
+    @cache_binary_decorator
     def get_binary(self, binary_path: str):
         return self.communicator.get_binary(binary_path)
 
@@ -166,6 +176,19 @@ class DbdCacheReader(DbdCache):
                 return None
 
             return self.cache[key]
+
+        return wrapper
+    
+    def read_cached_binary_decorator(func):
+        def wrapper(self, *args, **kwargs):
+            key = (func.__name__, args)
+
+            if key not in self.cache:
+                util.ERROR(
+                    f"Cache miss for {func.__name__}.")
+                return None
+
+            return io.BytesIO(self.cache[key])
 
         return wrapper
 
@@ -226,7 +249,7 @@ class DbdCacheReader(DbdCache):
     def get_file(self, file_path: str):
         pass
 
-    @read_decorator
+    @read_cached_binary_decorator
     def get_binary(self, binary_path: str):
         pass
 

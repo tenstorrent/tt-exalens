@@ -472,8 +472,6 @@ class debuda_pybind(DbdCommunicator):
     
     def get_binary(self, binary_path: str):
         return open(binary_path, 'rb')
-
-
     
     def get_run_dirpath(self):
         return self._run_dirpath
