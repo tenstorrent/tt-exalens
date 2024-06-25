@@ -202,7 +202,7 @@ TEST(debuda_server, get_cluster_description) {
 }
 
 TEST(debuda_server, get_device_ids) {
-    test_not_implemented_request(tt::dbd::request{tt::dbd::request_type::get_device_ids}, "- type: 104");
+    test_not_implemented_request(tt::dbd::request{tt::dbd::request_type::get_device_ids}, "- type: 18");
 }
 
 TEST(debuda_server, pci_read32) {
@@ -248,18 +248,18 @@ TEST(debuda_server, get_harvester_coordinate_translation) {
     test_not_implemented_request(
         tt::dbd::get_harvester_coordinate_translation_request{
             tt::dbd::request_type::get_harvester_coordinate_translation, 1},
-        "- type: 103\n  chip_id: 1");
+        "- type: 17\n  chip_id: 1");
 }
 
 TEST(debuda_server, get_device_arch) {
     test_not_implemented_request(tt::dbd::get_device_arch_request{tt::dbd::request_type::get_device_arch, 1},
-                                 "- type: 105\n  chip_id: 1");
+                                 "- type: 19\n  chip_id: 1");
 }
 
 TEST(debuda_server, get_device_soc_description) {
     test_not_implemented_request(
         tt::dbd::get_device_soc_description_request{tt::dbd::request_type::get_device_soc_description, 1},
-        "- type: 106\n  chip_id: 1");
+        "- type: 20\n  chip_id: 1");
 }
 
 TEST(debuda_server, pci_write) {

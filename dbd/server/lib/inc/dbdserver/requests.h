@@ -22,17 +22,18 @@ enum class request_type : uint8_t {
     pci_read32_raw,
     pci_write32_raw,
     dma_buffer_read32,
+    get_harvester_coordinate_translation,
+    get_device_ids,
+    get_device_arch,
+    get_device_soc_description,
 
     // Runtime requests
     pci_read_tile = 100,
     get_runtime_data,
     get_cluster_description,
-    get_harvester_coordinate_translation,
-    get_device_ids,
-    get_device_arch,
-    get_device_soc_description,
-    get_file,
-    get_run_dirpath,
+
+    get_file = 200,
+    get_buda_run_dirpath,
 };
 
 // Structures for receiving requests

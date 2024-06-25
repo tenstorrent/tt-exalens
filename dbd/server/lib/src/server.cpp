@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 #include "dbdserver/server.h"
-#include <vector>
+#include <fstream>
 
 #include "dbdserver/communication.h"
 
@@ -90,14 +90,14 @@ void tt::dbd::server::process(const tt::dbd::request& base_request) {
             respond(read_file(std::string(request.data, request.size)));
             break;
         }
-        case tt::dbd::request_type::get_run_dirpath: {
-            respond(_run_dirpath);
+        case tt::dbd::request_type::get_buda_run_dirpath: {
+            respond(run_dirpath);
             break;
         }
     }
 }
 
-// TODO: Add more informative error responses?
+// TODO: Add more informative error responses? (Issue #56)
 void tt::dbd::server::respond_not_supported() {
     static std::string not_supported = "NOT_SUPPORTED";
     communication::respond(not_supported);

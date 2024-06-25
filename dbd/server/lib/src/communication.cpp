@@ -74,7 +74,7 @@ void tt::dbd::communication::request_loop() {
                     case request_type::get_runtime_data:
                     case request_type::get_cluster_description:
                     case request_type::get_device_ids:
-                    case request_type::get_run_dirpath:
+                    case request_type::get_buda_run_dirpath:
                         invalid_message = message.size() != sizeof(request);
                         break;
 

@@ -28,7 +28,6 @@ class DbdOutputVerifier:
 
 class UmdDbdOutputVerifier(DbdOutputVerifier):
     prompt_regex = r"^gdb:[^ ]+ Current epoch:None\(None\) device:\d+ loc:\d+-\d+ > $"
-    #cluster_desc_regex = r"Loading yaml file: '\w+'"
 
     def __init__(self):
         self.server_temp_path = ""
@@ -41,11 +40,9 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
         tester.assertRegex(lines[0], r"Error: Yaml file at ([^\0/]+)/runtime_data\.yaml does not exist\.")
         tester.assertRegex(lines[1], r"Using pybind library instead of debuda server.")
         tester.assertRegex(lines[2], r"Device opened")
-        tester.assertRegex(lines[3], r"Server does not support runtime data. Continuing with limited functionality...")
+        tester.assertRegex(lines[3], r"Debuda does not support runtime data. Continuing with limited functionality...")
         tester.assertRegex(lines[4], r"Loading yaml file: 'cluster_description'")
         tester.assertRegex(lines[-1], r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=")
-        #self.server_temp_path = re.search(self.cluster_desc_regex, lines[4]).group(1)
-        #tester.assertTrue(self.server_temp_path.startswith("/tmp/debuda_server_") and self.server_temp_path.endswith("/"))
         return True
 
 class DbdTestRunner:

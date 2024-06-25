@@ -28,17 +28,19 @@ class debuda_server_request_type(Enum):
     pci_read32_raw = 14
     pci_write32_raw = 15
     dma_buffer_read32 = 16
+    get_harvester_coordinate_translation = 17
+    get_device_ids = 18
+    get_device_arch = 19
+    get_device_soc_description = 20
 
     # Runtime requests
     pci_read_tile = 100
     get_runtime_data = 101
     get_cluster_description = 102
-    get_harvester_coordinate_translation = 103
-    get_device_ids = 104
-    get_device_arch = 105
-    get_device_soc_description = 106
-    get_file = 107
-    get_run_dirpath = 108
+
+    # File requests
+    get_file = 200
+    get_buda_run_dirpath = 201
 
 
 class debuda_server_bad_request(Exception):
@@ -249,7 +251,7 @@ class debuda_server_communication:
 
     def get_run_dirpath(self):
         self._socket.send(
-            bytes([debuda_server_request_type.get_run_dirpath.value])
+            bytes([debuda_server_request_type.get_buda_run_dirpath.value])
         )
         return self._check(self._socket.recv())
 
