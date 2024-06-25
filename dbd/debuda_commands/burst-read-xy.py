@@ -28,7 +28,12 @@ Examples:
   brxy ch0 0x0 16                           # Read 16 words from dram channel 0
 """
 
-command_metadata = {"short": "brxy", "type": "low-level", "description": __doc__}
+command_metadata = {
+    "short": "brxy",
+    "type": "low-level", 
+    "description": __doc__,
+    "context": ["limited", "buda", "metal"]
+    }
 
 from docopt import docopt
 from tt_firmware import ELF

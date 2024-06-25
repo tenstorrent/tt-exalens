@@ -63,6 +63,7 @@ command_metadata = {
     "long": "hang_analysis_v2",
     "type": "dev",
     "description": __doc__,
+    "context": ["buda"],
 }
 
 ## Corresponds to UNIQUE_ID_ALIGN in net2pipe.

@@ -28,7 +28,12 @@ import tt_device
 import tt_util as util
 from tt_coordinate import OnChipCoordinate
 
-command_metadata = {"short": "ddb", "type": "low-level", "description": __doc__}
+command_metadata = {
+    "short": "ddb",
+    "type": "low-level",
+	"description": __doc__,
+    "context": ["buda"],
+    }
 
 
 def run(cmd_text, context, ui_state: UIState = None):

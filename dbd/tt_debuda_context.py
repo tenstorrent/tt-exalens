@@ -13,6 +13,13 @@ class Context:
     def __init__(self, cluster_desc_path, short_name):
         self.server_ifc = None # This will be set from outside
         self._cluster_desc_path = cluster_desc_path
+        self.short_name = short_name
+
+    def filter_commands(self, commands):
+        self.commands = []
+        for cmd in commands:
+            if self.short_name in cmd["context"] or cmd["context"] == "util":
+                self.commands.append(cmd)
 
     @property
     @abstractmethod

@@ -24,7 +24,12 @@ from docopt import docopt
 
 from tt_debuda_ifc import debuda_server_not_supported
 
-command_metadata = {"short": "t", "type": "high-level", "description": __doc__}
+command_metadata = {
+    "short": "t", 
+    "type": "high-level", 
+    "description": __doc__,
+    "context": ["buda"]
+    }
 
 
 # converts data format to string

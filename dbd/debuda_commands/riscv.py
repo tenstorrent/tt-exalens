@@ -44,7 +44,12 @@ Examples:
     riscv wchpt setr 0 0xc          # Set a read watchpoint
     riscv                           # Set and clear reset (the core will run)
 """
-command_metadata = {"short": "rv", "type": "low-level", "description": __doc__}
+command_metadata = {
+    "short": "rv", 
+    "type": "low-level", 
+    "description": __doc__,
+    "context": ["limited", "buda", "metal"],
+    }
 
 import tt_util as util
 import tt_commands

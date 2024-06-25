@@ -8,6 +8,7 @@ command_metadata = {
     "short": "c",
     "type": "dev",
     "description": "Shows summary for core 'x-y'.",
+    "context": [], # TODO: Add applicable context 
 }
 
 from debuda import UIState

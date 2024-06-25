@@ -29,7 +29,8 @@ command_metadata = {
     "short": "bcc",
     "long" : "binary-corruption-check",
     "type" : "high-level",
-    "description": __doc__
+    "description": __doc__,
+    "context": ["buda"]
 }
 
 import sys

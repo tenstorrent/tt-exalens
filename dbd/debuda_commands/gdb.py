@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  gdb start [--port <port>]
+  gdb start --port <port>
   gdb stop
 
 Description:
@@ -20,7 +20,8 @@ import tt_util as util
 command_metadata = {
     "short": "gdb",
     "type": "high-level",
-    "description": __doc__
+    "description": __doc__,
+    "context": ["limited", "buda", "metal"],
 }
 
 def run(cmd_text, context, ui_state: UIState = None):

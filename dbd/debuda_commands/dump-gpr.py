@@ -18,7 +18,12 @@ Examples:
   gpr
   gpr ra,sp,pc
 """
-command_metadata = {"short": "gpr", "type": "low-level", "description": __doc__}
+command_metadata = {
+    "short": "gpr",
+	"type": "low-level",
+	"description": __doc__,
+    "context": ["limited", "buda", "metal"],
+    }
 
 from debuda import UIState
 from tt_debug_risc import RiscDebug, RiscLoc, RISCV_REGS, get_risc_name, get_register_index
