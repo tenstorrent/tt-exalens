@@ -511,9 +511,6 @@ def main():
 
     if not args["--remote"]:
         runtime_data_yaml_filename, output_dir = find_runtime_data_yaml(args["<output_dir>"])
-    else:
-        runtime_data_yaml_filename = "remote_runtime_yaml"
-        output_dir = None
 
     wanted_devices = None
     if args["--devices"]:
@@ -554,32 +551,24 @@ def main():
     if not args["--cached"] and args["--write-cache"]:
         server_ifc = tt_debuda_ifc_cache.init_cache_writer(args["--cache-path"])
 
-    runtime_data_yaml_string = None
+    # Set interface for yaml file access
+    util.YamlFile.file_ifc = server_ifc
+    
     runtime_data_yaml = None
     try:
-        runtime_data_yaml_string = server_ifc.get_runtime_data()
-        if runtime_data_yaml_string is None:
-            raise tt_debuda_ifc.debuda_server_not_supported()
-        else:
-            runtime_data_yaml = util.YamlFile(str(runtime_data_yaml_filename or 'runtime_data'), file_content=runtime_data_yaml_string)
-            runtime_data_yaml.load()
-
-    except tt_debuda_ifc.debuda_server_not_supported:
+        runtime_yaml_path = server_ifc.get_runtime_data()
+        runtime_data_yaml = util.YamlFile(runtime_yaml_path)
+        runtime_data_yaml.load()
+    except:
         util.WARN("Debuda does not support runtime data. Continuing with limited functionality...")
 
-    cluster_desc_string = None
     cluster_desc_yaml = None
     try:
         cluster_desc_path = server_ifc.get_cluster_description()
-        cluster_desc_string = server_ifc.get_file(cluster_desc_path)
-        if cluster_desc_string is None:
-            raise tt_debuda_ifc.debuda_server_not_supported()
-        else:
-            cluster_desc_yaml = util.YamlFile("cluster_description", file_content=cluster_desc_string)
-            cluster_desc_yaml.load()
-            
-    except tt_debuda_ifc.debuda_server_not_supported:
-        util.ERROR("Debuda does not support cluster description. Exiting..")
+        cluster_desc_yaml = util.YamlFile(cluster_desc_path)
+        cluster_desc_yaml.load()
+    except:
+        util.ERROR("Debuda does not support cluster description. Exiting...")
         exit(1)
 
     # Create the context

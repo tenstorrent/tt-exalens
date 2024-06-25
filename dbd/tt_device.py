@@ -234,7 +234,7 @@ class Device(TTObject):
 
     @cached_property
     def yaml_file(self):
-        return util.YamlFile(self._device_desc_path, self._context.server_ifc.get_file(self._device_desc_path))
+        return util.YamlFile(self._device_desc_path)
 
     @cached_property
     def EPOCH_ID_ADDR(self):

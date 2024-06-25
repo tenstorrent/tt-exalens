@@ -442,12 +442,9 @@ class debuda_pybind(DbdCommunicator):
         return self._check_result(tt_dbd_pybind.pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format))
 
     def get_runtime_data(self):
-        try:
-            with open(self._runtime_yaml_path, 'r') as f:
-                content = f.read()
-        except:
-            content = None
-        return self._check_result(content)
+        if self._runtime_yaml_path:
+            return self._runtime_yaml_path
+        else: raise debuda_server_not_supported()
 
     def get_cluster_description(self):
         return self._check_result(tt_dbd_pybind.get_cluster_description())

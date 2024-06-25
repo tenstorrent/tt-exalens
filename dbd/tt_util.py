@@ -411,10 +411,12 @@ class YamlContainer:
 class YamlFile:
     # Cache
     file_cache = {}
+    file_ifc = None # Needs to be set from outside
 
-    def __init__(self, yamlname, file_content, post_process_yaml=None ):
-        self.filekey = yamlname
-        self.content = file_content
+    def __init__(self, filepath, post_process_yaml=None):
+        self.filepath = filepath
+        self.filekey = os.path.basename(filepath)
+        
         # Some files (such as pipegen.yaml) contain multiple documents (separated by ---). We post-process them
         self.post_process_yaml = post_process_yaml
         YamlFile.file_cache[self.filekey] = None
@@ -424,27 +426,18 @@ class YamlFile:
             self.root = YamlFile.file_cache[self.filekey]
         else:
             current_time = time.time()
-            # TODO: This is not needed always. The whole class should probably be restructured
-            INFO(f"Loading yaml file: '{self.filekey}'", end="")
+            INFO(f"Loading yaml file: '{os.path.abspath(self.filepath)}'", end="")
             self.root = dict()
 
-            # Not used anymore
-            # # load self.filepath into string
-            # if self.content is None:
-            #     with open(self.filekey, "r") as stream:
-            #         yaml_string = stream.read()
-            #else:
-            yaml_string = self.content
+            # load self.filepath into string
+            yaml_string = YamlFile.file_ifc.get_file(self.filepath)
             
-            # Clear the content to save memory
-            self.content = None
-
             if self.post_process_yaml is not None:
                 self.root = self.post_process_yaml(ryml_load_all(yaml_string))
             else:
                 for i in ryml_load_all(yaml_string):
                     self.root = {**self.root, **i}
-            YamlFile.file_cache[self.filekey] = self.root
+            YamlFile.file_cache[self.filepath] = self.root
             INFO(
                 f" ({len(yaml_string)} bytes loaded in {time.time() - current_time:.2f}s)"
             )
