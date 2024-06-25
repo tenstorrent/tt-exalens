@@ -55,16 +55,15 @@ class ELF:
             if prefix not in self.names:
                 self.names[prefix] = dict()
 
-            abspath = os.path.abspath(filename)
-            util.INFO(f"Loading ELF file: '{abspath}'", end="")
+            util.INFO(f"Loading ELF file: '{filename}'", end="")
             start_time = time.time()
-            if file_ifc and not os.path.exists(abspath):
+            if file_ifc and not os.path.exists(filename):
                 # Handle remote files
-                binf = file_ifc.get_binary(abspath)
-                abspath = file_ifc.save_tmp_file(abspath, binf)
-            self.names[prefix] = tt_parse_elf.read_elf(abspath)
+                binf = file_ifc.get_binary(filename)
+                filename = file_ifc.save_tmp_file(filename, binf)
+            self.names[prefix] = tt_parse_elf.read_elf(filename)
             util.INFO(
-                f" ({os.path.getsize(abspath)} bytes loaded in {time.time() - start_time:.2f}s)"
+                f" ({os.path.getsize(filename)} bytes loaded in {time.time() - start_time:.2f}s)"
             )
             self.name_word_pattern = re.compile(r"[_@.a-zA-Z]+")
 

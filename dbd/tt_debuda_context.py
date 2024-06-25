@@ -49,8 +49,6 @@ class Context:
 
     @cached_property
     def cluster_desc(self):
-        if self._cluster_desc is None:
-            raise util.TTException(f"We are running with limited functionality, cluster description is not available.")
         return self._cluster_desc
 
     @cached_property

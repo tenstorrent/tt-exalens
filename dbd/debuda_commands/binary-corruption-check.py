@@ -184,7 +184,7 @@ def get_current_epoch_command(device, epoch_cmd_q_reader: EpochCommandQueueReade
     epoch_cmd = EpochCmd(epoch_cmd_q_reader.EpochQueueCmd_val_to_str, cmd_payload)
     return epoch_cmd
     
-def get_op_index(graph_directory_path, op_name, context) -> int:
+def get_op_index(context, graph_directory_path, op_name) -> int:
     op_info_file_path = graph_directory_path + "/op_info.txt"
     try:
         f = context.server_ifc.get_file(op_info_file_path)
@@ -231,7 +231,7 @@ def read_hex_binary(context, device, core_loc: OnChipCoordinate, binary_type: st
     # get the op directory
     graph = context.netlist.graph(graph_name)
     op_name = graph.location_to_op_name(core_loc)
-    op_index = get_op_index(graph_directory_path, op_name)
+    op_index = get_op_index(context, graph_directory_path, op_name)
     
     hex_file_path = f"{graph_directory_path}/op_{op_index}/{core_type_str}/{core_type_str}.hex"
     print(f"\tReading hex file from {hex_file_path}")

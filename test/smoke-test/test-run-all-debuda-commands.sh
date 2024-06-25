@@ -83,6 +83,7 @@ else
 fi
 COMMAND_LIST+=("t 1")
 COMMAND_LIST+=("t 1 --raw")
+# TODO: Decide if export is needed (Issue #57)
 # if [ "$TEST_NAME" = "" ]; then
 #     COMMAND_LIST+=("export ${TEST_EXPORT_PATH}/debuda-export.zip")  # Finally, we export the dump to try to rerun it
 # else

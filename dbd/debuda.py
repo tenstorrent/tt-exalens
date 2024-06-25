@@ -520,7 +520,7 @@ def main():
         wanted_devices = args["--devices"].split(",")
         wanted_devices = [int(d) for d in wanted_devices]
 
-    # Try to connect to the server. If it is not already running, it will be started.
+    # Try to start the server. If already running, exit with error.
     if args["--server"]:
         print(f"Starting Debuda server at {args['--port']}")
         debuda_server = tt_debuda_server.start_server(
@@ -548,6 +548,9 @@ def main():
         print(f"Using pybind library instead of debuda server.")
         server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ''), output_dir, wanted_devices)
 
+    # TODO: See why tests break when this is included
+    # util.INFO(f"Using temporary folder: {server_ifc._tmp_folder}")
+
     if not args["--cached"] and args["--write-cache"]:
         server_ifc = tt_debuda_ifc_cache.init_cache_writer(args["--cache-path"])
 
@@ -562,7 +565,7 @@ def main():
             runtime_data_yaml.load()
 
     except tt_debuda_ifc.debuda_server_not_supported:
-        util.WARN("Server does not support runtime data. Continuing with limited functionality...")
+        util.WARN("Debuda does not support runtime data. Continuing with limited functionality...")
 
     cluster_desc_string = None
     cluster_desc_yaml = None
@@ -576,7 +579,8 @@ def main():
             cluster_desc_yaml.load()
             
     except tt_debuda_ifc.debuda_server_not_supported:
-        util.WARN("Server does not support cluster description. Continuing with limited functionality...")
+        util.ERROR("Debuda does not support cluster description. Exiting..")
+        exit(1)
 
     # Create the context
     context = load_context(
