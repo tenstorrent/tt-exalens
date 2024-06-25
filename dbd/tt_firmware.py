@@ -57,11 +57,11 @@ class ELF:
 
             util.INFO(f"Loading ELF file: '{filename}'", end="")
             start_time = time.time()
-            if file_ifc and not os.path.exists(filename):
-                # Handle remote files
-                binf = file_ifc.get_binary(filename)
-                filename = file_ifc.save_tmp_file(filename, binf)
-            self.names[prefix] = tt_parse_elf.read_elf(filename)
+            # if file_ifc and not os.path.exists(filename):
+            #     # Handle remote files
+            #     binf = file_ifc.get_binary(filename)
+            #     filename = file_ifc.save_tmp_file(filename, binf)
+            self.names[prefix] = tt_parse_elf.read_elf(self._file_ifc, filename)
             util.INFO(
                 f" ({os.path.getsize(filename)} bytes loaded in {time.time() - start_time:.2f}s)"
             )
