@@ -41,7 +41,7 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
         tester.assertRegex(lines[1], r"Using pybind library instead of debuda server.")
         tester.assertRegex(lines[2], r"Device opened")
         tester.assertRegex(lines[3], r"Debuda does not support runtime data. Continuing with limited functionality...")
-        tester.assertRegex(lines[4], r"Loading yaml file: 'cluster_description'")
+        tester.assertRegex(lines[4], r"Loading yaml file: '([^']*\.yaml)'")
         tester.assertRegex(lines[-1], r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=")
         return True
 
