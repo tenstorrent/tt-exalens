@@ -10,9 +10,9 @@ from tt_firmware import ELF, BUDA_FW_VARS
 
 # All-encompassing structure representing a Debuda context
 class Context:
-    def __init__(self, cluster_desc_path, short_name):
-        self.server_ifc = None # This will be set from outside
-        self._cluster_desc_path = cluster_desc_path
+    def __init__(self, server_ifc, cluster_desc, short_name):
+        self.server_ifc = server_ifc
+        self._cluster_desc = cluster_desc
         self.short_name = short_name
 
     def filter_commands(self, commands):

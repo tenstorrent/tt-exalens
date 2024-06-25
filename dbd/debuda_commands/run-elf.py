@@ -61,7 +61,7 @@ def run(cmd_text, context, ui_state=None):
             if in_reset:
                 util.VERBOSE (f"RISC at location {loc} is in reset. Setting L1[0] = 0x6f (infinite loop) and taking it out of reset.")
                 util.VERBOSE (f"  We need it out of reset to load the elf file.")
-                tt_device.SERVER_IFC.pci_write32 (device.id(), *loc.to("nocVirt"), 0, 0, 0x6f)
+                tt_device.SERVER_IFC.pci_write32 (device.id(), *loc.to("nocVirt"), 0, 0x6f)
                 rdbg.set_reset_signal(0)
             assert not rdbg.is_in_reset(), f"RISC at location {loc} is still in reset."
 
@@ -88,7 +88,7 @@ def test_run_elf(context, ui_state, dopt, RISC_ID):
     gpr_command = tt_commands.find_command(context.commands, "gpr")
 
     # Testing
-    elf = ELF ({ "fw" : dopt.args['<elf-file>'] })
+    elf = ELF ({ "fw" : dopt.args['<elf-file>'] }, context.server_ifc)
     MAILBOX_ADDR, MAILBOX_SIZE, _ = elf.parse_addr_size_type("fw.g_MAILBOX")
     TESTBYTEACCESS_ADDR, TESTBYTEACCESS_SIZE, _ = elf.parse_addr_size_type("fw.g_TESTBYTEACCESS")
 
