@@ -28,7 +28,8 @@ class server : public communication {
     void respond(std::optional<std::vector<uint8_t>> response);
     void respond_not_supported();
 
-    std::optional<std::vector<uint8_t>> read_file(const std::string& path);
+    virtual std::optional<std::vector<uint8_t>> get_file(const std::string& path);
+    virtual std::optional<std::string> get_run_dirpath();
 
     std::unique_ptr<debuda_implementation> implementation;
     std::string run_dirpath;

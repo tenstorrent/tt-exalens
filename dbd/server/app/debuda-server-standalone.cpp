@@ -88,15 +88,15 @@ server_config parse_args(int argc, char** argv) {
     while (i < argc) {
         if (strcmp(argv[i], "-y") == 0) {
             i += 1;
-            if (i>=argc) {
+            if (i >= argc) {
                 log_error("Expected path to yaml file after -y");
                 return {};
             }
             config.runtime_data_yaml_path = argv[i];
             i += 1;
-        } else if (strcmp(argv[i], "-r") == 0) { 
+        } else if (strcmp(argv[i], "-r") == 0) {
             i += 1;
-            if (i>=argc) {
+            if (i >= argc) {
                 log_error("Expected path to run directory after -r");
                 return {};
             }
@@ -131,12 +131,14 @@ server_config parse_args(int argc, char** argv) {
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        log_error("Need arguments: <port> [-y path_to_yaml_file] [-r <run_dirpath>] [-d <device_id1> [<device_id2> ... <device_idN>]]");
+        log_error(
+            "Need arguments: <port> [-y path_to_yaml_file] [-r <run_dirpath>] [-d <device_id1> [<device_id2> ... "
+            "<device_idN>]]");
         return 1;
     }
 
     server_config config = parse_args(argc, argv);
-    
+
     std::string log_starting = "Starting debuda-server: " + std::string(argv[0]) + " " + std::string(argv[1]);
     for (int i = 2; i < argc; i++) {
         log_starting += " " + std::string(argv[i]);

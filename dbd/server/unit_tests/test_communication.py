@@ -128,6 +128,19 @@ def pci_write():
         "- type: 13\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, 12, 13, 14, 15, 16, 17]",
     )
 
+def get_file():
+    global server_communication
+    check_response(
+        server_communication.get_file("test_file"),
+        "- type: 200\n  size: 9\n  path: test_file",
+    )
+
+def get_buda_run_dirpath():
+    global server_communication
+    check_response(
+        server_communication.get_run_dirpath(),
+        "- type: 201",
+    )
 
 def main():
     # Check if at least two arguments are provided (script name + function name)

@@ -152,3 +152,18 @@ TEST(debuda_communication, pci_write) {
     auto response = send_message(zmq::const_buffer(request_data.data(), request_data.size())).to_string();
     ASSERT_EQ(response, expected_response);
 }
+
+TEST(debuda_communication, get_file) {
+    std::string expected_response = "- type: 200\n  size: 9\n  path: test_file";
+    std::string filename = "test_file";
+    std::array<uint8_t, 9 + sizeof(tt::dbd::get_file_request)> request_data = {0};
+    auto request = reinterpret_cast<tt::dbd::get_file_request*>(&request_data[0]);
+    request->type = tt::dbd::request_type::get_file;
+    request->size = filename.size();
+    for (size_t i = 0; i < filename.size(); i++) request->data[i] = filename[i];
+
+    auto server = start_yaml_server();
+    ASSERT_TRUE(server->is_connected());
+    auto response = send_message(zmq::const_buffer(request_data.data(), request_data.size())).to_string();
+    ASSERT_EQ(response, expected_response);
+}

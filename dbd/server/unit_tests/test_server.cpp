@@ -6,7 +6,11 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <string>
+#include <vector>
 #include <zmq.hpp>
+
+#include "dbdserver/requests.h"
 
 constexpr int DEFAULT_TEST_SERVER_PORT = 6668;
 
@@ -30,6 +34,24 @@ class yaml_not_implemented_server : public server {
 
    public:
     yaml_not_implemented_server(bool enable_yaml);
+
+    std::optional<std::vector<uint8_t>> get_file(const std::string &path) override {
+        if (enable_yaml) {
+            send_yaml("- type: 200\n  size: " + std::to_string(path.size()) + "\n  data: " + path);
+            return {};
+        } else {
+            // std::string response = "read_file";
+            return {};  // std::vector<uint8_t>(response.begin(), response.end());
+        }
+    }
+
+    std::optional<std::string> get_run_dirpath() override {
+        if (enable_yaml) {
+            send_yaml("- type: 201");
+            return {};
+        } else
+            return {};  // "get_run_path";
+    }
 
     bool is_yaml_enabled() const { return enable_yaml; }
 };
@@ -140,7 +162,7 @@ class yaml_not_implemented_implementation : public debuda_implementation {
 };
 
 yaml_not_implemented_server::yaml_not_implemented_server(bool enable_yaml)
-    : server(std::make_unique<yaml_not_implemented_implementation>(this)), enable_yaml(enable_yaml) {}
+    : server(std::make_unique<yaml_not_implemented_implementation>(this), "run_dirpath"), enable_yaml(enable_yaml) {}
 
 }  // namespace tt::dbd
 
@@ -279,4 +301,19 @@ TEST(debuda_server, pci_write) {
     for (size_t i = 0; i < data_size; i++) request->data[i] = 10 + i;
 
     test_not_implemented_request(*request, expected_response, request_data.size());
+}
+
+TEST(debuda_server, get_file) {
+    std::string expected_response = "- type: 200\n  size: 9\n  data: test_file";
+    std::string filename = "test_file";
+    std::array<uint8_t, 9 + sizeof(tt::dbd::get_file_request)> request_data = {0};
+    auto request = reinterpret_cast<tt::dbd::get_file_request *>(&request_data[0]);
+    request->type = tt::dbd::request_type::get_file;
+    request->size = filename.size();
+    for (size_t i = 0; i < filename.size(); i++) request->data[i] = filename[i];
+    test_not_implemented_request(*request, expected_response, request_data.size());
+}
+
+TEST(debuda_server, get_buda_run_dirpath) {
+    test_not_implemented_request(tt::dbd::request{tt::dbd::request_type::get_buda_run_dirpath}, "- type: 201");
 }

@@ -383,8 +383,10 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
 }
 
 std::optional<std::string> umd_with_open_implementation::get_runtime_data() {
-    if (runtime_yaml_path.empty()) return {};
-    else return runtime_yaml_path;
+    if (runtime_yaml_path.empty())
+        return {};
+    else
+        return runtime_yaml_path;
 }
 
 std::optional<std::string> umd_with_open_implementation::get_cluster_description() { return cluster_descriptor_path; }

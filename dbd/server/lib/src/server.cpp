@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 #include "dbdserver/server.h"
+
 #include <fstream>
 
 #include "dbdserver/communication.h"
@@ -86,12 +87,15 @@ void tt::dbd::server::process(const tt::dbd::request& base_request) {
         }
         case tt::dbd::request_type::get_file: {
             auto& request = static_cast<const tt::dbd::get_file_request&>(base_request);
-            if (request.size == 0) respond_not_supported();
-            respond(read_file(std::string(request.data, request.size)));
+            if (request.size == 0) {
+                respond_not_supported();
+                break;
+            }
+            respond(get_file(std::string(request.data, request.size)));
             break;
         }
         case tt::dbd::request_type::get_buda_run_dirpath: {
-            respond(run_dirpath);
+            respond(get_run_dirpath());
             break;
         }
     }
@@ -127,11 +131,12 @@ void tt::dbd::server::respond(std::optional<std::vector<uint8_t>> response) {
     }
 }
 
-
-std::optional<std::vector<uint8_t>> tt::dbd::server::read_file(const std::string& path) {
+std::optional<std::vector<uint8_t>> tt::dbd::server::get_file(const std::string& path) {
     std::ifstream file(path, std::ios::binary);
     if (!file) {
         return {};
     }
     return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), {});
 }
+
+std::optional<std::string> tt::dbd::server::get_run_dirpath() { return run_dirpath; }
