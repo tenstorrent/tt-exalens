@@ -15,7 +15,7 @@ namespace tt::dbd {
 // which means that command is not supported by the server.
 class server : public communication {
    public:
-    server(std::unique_ptr<debuda_implementation> implementation, const std::string run_dirpath = "")
+    server(std::unique_ptr<debuda_implementation> implementation, const std::string& run_dirpath = {})
         : implementation(std::move(implementation)), run_dirpath(run_dirpath) {}
 
    protected:

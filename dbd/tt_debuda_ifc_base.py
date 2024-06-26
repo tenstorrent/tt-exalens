@@ -4,8 +4,8 @@
 import tt_util as util
 
 from abc import ABC, abstractmethod
-import shutil
 import os
+from tempfile import mkdtemp
 import io
 
 
@@ -15,18 +15,7 @@ class DbdCommunicator(ABC):
     communicate with the target device. They are later derived to communicate with server, use pybind or read from cache.
     """
     def __init__(self):
-        self._tmp_folder = self.init_tmp_folder()
-
-
-    def init_tmp_folder(self):
-        tmp_folder_base = '/tmp/debuda'
-        tmp_folder = tmp_folder_base
-        n = 1
-        while os.path.exists(tmp_folder):
-            tmp_folder = f"{tmp_folder_base}_{n}"
-            n+=1
-        os.mkdir(tmp_folder)
-        return tmp_folder
+        self._tmp_folder = mkdtemp(prefix='debuda_')
 
     @abstractmethod
     def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):

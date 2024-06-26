@@ -499,7 +499,6 @@ def export_to_zip(filelist, out_file=DEFAULT_EXPORT_FILENAME, prefix_to_remove=N
 def write_to_yaml_file(data, filename):
     with open(filename, "w") as output_yaml_file:
         # Improve: This could also be done with ryml
-        # TODO: Check if this needs to be remote
         yaml.dump(data, output_yaml_file)
 
 

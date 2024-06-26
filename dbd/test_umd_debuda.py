@@ -36,12 +36,13 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
         return re.match(self.prompt_regex, line)
 
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
-        tester.assertGreater(len(lines), 5)
+        tester.assertGreater(len(lines), 6)
         tester.assertRegex(lines[0], r"Error: Yaml file at ([^\0/]+)/runtime_data\.yaml does not exist\.")
         tester.assertRegex(lines[1], r"Using pybind library instead of debuda server.")
         tester.assertRegex(lines[2], r"Device opened")
-        tester.assertRegex(lines[3], r"Debuda does not support runtime data. Continuing with limited functionality...")
-        tester.assertRegex(lines[4], r"Loading yaml file: '([^']*\.yaml)'")
+        tester.assertRegex(lines[3], r"Using temporary folder: \/(?:[\w.-]+\/)*")
+        tester.assertRegex(lines[4], r"Debuda does not support runtime data. Continuing with limited functionality...")
+        tester.assertRegex(lines[5], r"Loading yaml file: '([^']*\.yaml)'")
         tester.assertRegex(lines[-1], r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=")
         return True
 

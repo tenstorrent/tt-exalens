@@ -545,8 +545,7 @@ def main():
         print(f"Using pybind library instead of debuda server.")
         server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ''), output_dir, wanted_devices)
 
-    # TODO: See why tests break when this is included
-    # util.INFO(f"Using temporary folder: {server_ifc._tmp_folder}")
+    util.INFO(f"Using temporary folder: {server_ifc._tmp_folder}")
 
     if not args["--cached"] and args["--write-cache"]:
         server_ifc = tt_debuda_ifc_cache.init_cache_writer(args["--cache-path"])

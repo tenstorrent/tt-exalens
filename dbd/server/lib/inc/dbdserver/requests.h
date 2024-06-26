@@ -32,6 +32,7 @@ enum class request_type : uint8_t {
     get_runtime_data,
     get_cluster_description,
 
+    // File server requests
     get_file = 200,
     get_buda_run_dirpath,
 };
