@@ -83,6 +83,7 @@ def get_register_data(device, server_ifc, loc, args):
         row = [f"{reg_id} - {RISCV_REGS[reg_id]}"]
         for risc_id in riscs_to_include:
             if risc_id not in reg_value:
+                row.append("")
                 continue
             src_location = ""
             if pc_map and reg_id == 32:
