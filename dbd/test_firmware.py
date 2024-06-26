@@ -5,10 +5,7 @@ import unittest, re
 from tt_parse_elf import read_elf, mem_access
 from tt_firmware import ELF, BUDA_FW_VARS
 from tabulate import tabulate
-
-class TestFileIfc:
-    def get_binary(self, filename):
-        return open(filename, "rb")
+from test_parse_elf import TestFileIfc
 
 file_ifc = TestFileIfc()
 

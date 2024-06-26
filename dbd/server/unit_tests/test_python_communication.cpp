@@ -32,8 +32,7 @@ std::string execute_command(const std::string& cmd) {
 void call_python(const std::string& python_script, int server_port, const std::string& python_args,
                  const std::string& expected_output) {
     // Check if the python script exists
-    std::ifstream file(python_script);
-    ASSERT_TRUE(file.good());
+    ASSERT_TRUE(std::filesystem::exists(python_script));
 
     std::string command = "python3 " + python_script + " " + std::to_string(server_port) + " " + python_args;
 
