@@ -13,6 +13,7 @@ void yaml_communication::process(const tt::dbd::request& request) {
         case tt::dbd::request_type::get_runtime_data:
         case tt::dbd::request_type::get_cluster_description:
         case tt::dbd::request_type::get_device_ids:
+        case tt::dbd::request_type::get_buda_run_dirpath:
             respond(serialize(request));
             break;
 
@@ -130,7 +131,8 @@ std::string yaml_communication::serialize(const tt::dbd::get_device_soc_descript
 }
 
 std::string yaml_communication::serialize(const tt::dbd::get_file_request& request) {
-    return "- type: " + std::to_string(static_cast<int>(request.type)) + "\n  path: " + std::string(request.data, request.size);
+    return "- type: " + std::to_string(static_cast<int>(request.type)) + "\n  size: " + std::to_string(request.size) +
+           "\n  path: " + std::string(request.data, request.size);
 }
 
 std::string yaml_communication::serialize_bytes(const uint8_t* data, size_t size) {

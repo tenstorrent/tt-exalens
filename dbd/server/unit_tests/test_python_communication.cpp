@@ -31,7 +31,6 @@ std::string execute_command(const std::string& cmd) {
 
 void call_python(const std::string& python_script, int server_port, const std::string& python_args,
                  const std::string& expected_output) {
-    
     // Check if the python script exists
     std::ifstream file(python_script);
     ASSERT_TRUE(file.good());
@@ -102,3 +101,7 @@ TEST(debuda_python_communication, pci_write) {
         "- type: 13\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, 12, 13, 14, "
         "15, 16, 17]\n");
 }
+
+TEST(debuda_python_communication, get_file) { call_python("get_file", "- type: 200\n  size: 9\n  path: test_file\n"); }
+
+TEST(debuda_python_communication, get_buda_run_dirpath) { call_python("get_buda_run_dirpath", "- type: 201\n"); }
