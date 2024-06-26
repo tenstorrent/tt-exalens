@@ -567,8 +567,7 @@ class RiscLoader:
             # Use debug interface
             self.write_block_through_debug(address, data)
         else:
-            noc_id = 0
-            self.risc_debug.ifc.pci_write(self.risc_debug.location.loc._device.id(),*self.risc_debug.location.loc.to("nocVirt"),noc_id,address,data)
+            self.risc_debug.ifc.pci_write(self.risc_debug.location.loc._device.id(),*self.risc_debug.location.loc.to("nocVirt"),address,data)
 
     def read_block(self, address, byte_count):
         """
@@ -579,8 +578,7 @@ class RiscLoader:
             # Use debug interface
             return self.read_block_through_debug(address, byte_count)
         else:
-            noc_id = 0
-            return self.risc_debug.ifc.pci_read(self.risc_debug.location.loc._device.id(),*self.risc_debug.location.loc.to("nocVirt"),noc_id,address,byte_count)
+            return self.risc_debug.ifc.pci_read(self.risc_debug.location.loc._device.id(),*self.risc_debug.location.loc.to("nocVirt"),address,byte_count)
 
     def load_elf(self, elf_path):
         """
