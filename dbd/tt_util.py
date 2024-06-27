@@ -426,7 +426,7 @@ class YamlFile:
             self.root = YamlFile.file_cache[self.filepath]
         else:
             current_time = time.time()
-            INFO(f"Loading yaml file: '{self.filepath}'", end="")
+            INFO(f"Loading yaml file: '{os.path.abspath(self.filepath)}'", end="")
             self.root = dict()
 
             # load self.filepath into string
