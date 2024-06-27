@@ -8,6 +8,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -383,10 +384,11 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
 }
 
 std::optional<std::string> umd_with_open_implementation::get_runtime_data() {
-    if (runtime_yaml_path.empty())
+    std::ifstream file(runtime_yaml_path, std::ios::binary);
+    if (!file) {
         return {};
-    else
-        return runtime_yaml_path;
+    }
+    return std::string( std::istreambuf_iterator<char>(file), {});
 }
 
 std::optional<std::string> umd_with_open_implementation::get_cluster_description() { return cluster_descriptor_path; }

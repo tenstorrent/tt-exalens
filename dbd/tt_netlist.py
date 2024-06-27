@@ -204,7 +204,7 @@ class Netlist:
             netlist_filepath = self.get_netlist_path()
 
         # 2. Load the netlist itself
-        self.yaml_file = util.YamlFile(netlist_filepath)
+        self.yaml_file = util.YamlFile(self.file_ifc, netlist_filepath)
         self.load_netlist_data()
 
         # 3. Load pipegen/blob yamls
