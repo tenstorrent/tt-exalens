@@ -626,7 +626,7 @@ class RiscLoader:
                         else:
                             util.VERBOSE(f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes")
         except:
-            # TODO: Handle non-existent ELFs
+            # TODO: Handle non-existent ELFs (@dc)
             pass
 
         self.context.elf_loaded(self.risc_debug.location.loc, self.risc_debug.location.risc_id, elf_path)

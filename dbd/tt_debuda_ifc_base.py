@@ -5,6 +5,7 @@ import tt_util as util
 
 from abc import ABC, abstractmethod
 import os
+import shutil
 from tempfile import mkdtemp
 import io
 
@@ -96,5 +97,9 @@ class DbdCommunicator(ABC):
                 f.write(content)
         return filename
 
+    # TODO: Should we do thi atexit? (@dc)
+    def clean_tmp(self):
+        shutil.rmtree(self._tmp_folder)
+    
     def using_cache(self):
         return False

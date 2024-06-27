@@ -12,7 +12,7 @@ file_ifc = TestFileIfc()
 class TestFirmware(unittest.TestCase):
     # @unittest.skip("demonstrating skipping")
     def test_epoch_id_access(self):
-        elf = ELF({"brisc": "./debuda_test/brisc/brisc.elf"}, file_ifc, extra_vars=BUDA_FW_VARS)
+        elf = ELF(file_ifc, {"brisc": "./debuda_test/brisc/brisc.elf"}, extra_vars=BUDA_FW_VARS)
 
         # Test if this var is injected in the variable table
         assert "EPOCH_INFO_PTR" in elf.names["brisc"]["variable"]

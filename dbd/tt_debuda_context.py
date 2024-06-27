@@ -126,7 +126,7 @@ class BudaContext(Context):
             elf_files_to_load["erisc_app"] = f"{self._run_dirpath}/erisc/erisc_app.elf"
 
         extra_vars = BUDA_FW_VARS if self.is_buda else None
-        return ELF(elf_files_to_load, self.server_ifc, extra_vars=extra_vars)
+        return ELF(self.server_ifc, elf_files_to_load, extra_vars=extra_vars)
 
     @cached_property
     def epoch_id_address(self):

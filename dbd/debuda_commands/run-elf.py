@@ -88,7 +88,7 @@ def test_run_elf(context, ui_state, dopt, RISC_ID):
     gpr_command = tt_commands.find_command(context.commands, "gpr")
 
     # Testing
-    elf = ELF ({ "fw" : dopt.args['<elf-file>'] }, context.server_ifc)
+    elf = ELF(context.server_ifc, { "fw" : dopt.args['<elf-file>'] })
     MAILBOX_ADDR, MAILBOX_SIZE, _ = elf.parse_addr_size_type("fw.g_MAILBOX")
     TESTBYTEACCESS_ADDR, TESTBYTEACCESS_SIZE, _ = elf.parse_addr_size_type("fw.g_TESTBYTEACCESS")
 

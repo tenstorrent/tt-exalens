@@ -10,7 +10,6 @@
 #include <fstream>
 #include <iterator>
 #include <memory>
-#include <sstream>
 #include <stdexcept>
 
 #include "device/blackhole_implementation.h"

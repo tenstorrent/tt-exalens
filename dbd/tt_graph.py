@@ -116,7 +116,7 @@ class Graph(TTObject):
                 info[op_name] = f"{self._rundir}/graph_{self._id}/{directory}"
             return info
         except:
-            raise FileNotFoundError(f"op_info.txt not found for graph {self._id}")
+            raise util.TTException(f"Error while reading op_info.txt for graph {self._id}")
 
     # Given a buffer list, find all buffers that are connected (pipegen.yaml)
     # connection can be src, dest, or srcdest (for either)

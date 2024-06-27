@@ -39,7 +39,7 @@ class TemporalEpoch(TTObject):
                     pipes = {**pipes, **i}
                 else:
                     raise RuntimeError(
-                        f"Cannot interpret {i} in file {self.pipegen_yaml.filekey}"
+                        f"Cannot interpret {i} in file {self.pipegen_yaml.filepath}"
                     )
             new_root["graphs"] = graphs
             new_root["pipes"] = pipes

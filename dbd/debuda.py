@@ -543,7 +543,7 @@ def main():
         server_ifc = tt_debuda_ifc.connect_to_server(server_ip, server_port)
     else:
         print(f"Using pybind library instead of debuda server.")
-        server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ''), output_dir, wanted_devices)
+        server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir, wanted_devices)
 
     util.INFO(f"Using temporary folder: {server_ifc._tmp_folder}")
 

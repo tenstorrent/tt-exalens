@@ -4,8 +4,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 import io
-import os
-import shutil
 import sys
 import struct
 import zmq
@@ -375,9 +373,6 @@ class debuda_client(DbdCommunicator):
         binary_content = self._communication.get_file(binary_path)
         return io.BytesIO(binary_content)
 
-    def clean_tmp(self):
-        shutil.rmtree(self._tmp_folder)
-    
     def get_run_dirpath(self):
         run_dirpath = self.parse_string(
             self._communication.get_run_dirpath()
