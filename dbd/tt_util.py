@@ -411,39 +411,43 @@ class YamlContainer:
 class YamlFile:
     # Cache
     file_cache = {}
-    file_ifc = None # Needs to be set from outside
 
-    def __init__(self, filepath, post_process_yaml=None):
+    def __init__(self, file_ifc, filepath, post_process_yaml=None, content=None):
         self.filepath = filepath
-        self.filekey = os.path.basename(filepath)
+        self.content = content
+        self.file_ifc = file_ifc
         
         # Some files (such as pipegen.yaml) contain multiple documents (separated by ---). We post-process them
         self.post_process_yaml = post_process_yaml
-        YamlFile.file_cache[self.filekey] = None
+        YamlFile.file_cache[self.filepath] = None
 
     def load(self):
-        if self.filekey in YamlFile.file_cache and YamlFile.file_cache[self.filekey]:
-            self.root = YamlFile.file_cache[self.filekey]
+        if self.filepath in YamlFile.file_cache and YamlFile.file_cache[self.filepath]:
+            self.root = YamlFile.file_cache[self.filepath]
         else:
             current_time = time.time()
-            INFO(f"Loading yaml file: '{os.path.abspath(self.filepath)}'", end="")
+            INFO(f"Loading yaml file: '{self.filepath}'", end="")
             self.root = dict()
 
             # load self.filepath into string
-            yaml_string = YamlFile.file_ifc.get_file(self.filepath)
+            if not self.content:
+                self.content = self.file_ifc.get_file(self.filepath)
             
             if self.post_process_yaml is not None:
-                self.root = self.post_process_yaml(ryml_load_all(yaml_string))
+                self.root = self.post_process_yaml(ryml_load_all(self.content))
             else:
-                for i in ryml_load_all(yaml_string):
+                for i in ryml_load_all(self.content):
                     self.root = {**self.root, **i}
             YamlFile.file_cache[self.filepath] = self.root
             INFO(
-                f" ({len(yaml_string)} bytes loaded in {time.time() - current_time:.2f}s)"
+                f" ({len(self.content)} bytes loaded in {time.time() - current_time:.2f}s)"
             )
 
+            # Free up space
+            del self.content
+
     def __str__(self):
-        return f"{type(self).__name__}: {self.filekey}"
+        return f"{type(self).__name__}: {self.filepath}"
 
     def __repr__(self):
         return self.__str__()
@@ -452,7 +456,7 @@ class YamlFile:
         return self.root.items()
 
     def id(self):
-        return self.filekey
+        return self.filepath
 
     def __getattr__(self, name):
         if name == "root":
