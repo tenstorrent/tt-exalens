@@ -443,7 +443,8 @@ class debuda_pybind(DbdCommunicator):
 
     def get_runtime_data(self):
         if self._runtime_yaml_path:
-            return self._runtime_yaml_path
+            with open(self._runtime_yaml_path, 'r') as f:
+                return f.read()
         else: raise debuda_server_not_supported()
 
     def get_cluster_description(self):

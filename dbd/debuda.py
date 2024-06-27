@@ -550,22 +550,17 @@ def main():
     if not args["--cached"] and args["--write-cache"]:
         server_ifc = tt_debuda_ifc_cache.init_cache_writer(args["--cache-path"])
 
-    # Set interface for yaml file access
-    util.YamlFile.file_ifc = server_ifc
-    
     runtime_data_yaml = None
     try:
-        runtime_yaml_path = server_ifc.get_runtime_data()
-        runtime_data_yaml = util.YamlFile(runtime_yaml_path)
-        runtime_data_yaml.load()
+        runtime_data = server_ifc.get_runtime_data()
+        runtime_data_yaml = util.YamlFile(server_ifc, 'runtime_yaml', content=runtime_data)
     except:
         util.WARN("Debuda does not support runtime data. Continuing with limited functionality...")
 
     cluster_desc_yaml = None
     try:
         cluster_desc_path = server_ifc.get_cluster_description()
-        cluster_desc_yaml = util.YamlFile(cluster_desc_path)
-        cluster_desc_yaml.load()
+        cluster_desc_yaml = util.YamlFile(server_ifc, cluster_desc_path)
     except:
         util.ERROR("Debuda does not support cluster description. Exiting...")
         exit(1)
