@@ -311,7 +311,7 @@ class Netlist:
 
     # Renderer
     def __str__(self):
-        return f"{type(self).__name__}: {self.yaml_file.filekey}. Graphs({len(self.graph_names())}): {' '.join (self.graph_names())}"
+        return f"{type(self).__name__}: {self.yaml_file.filepath}. Graphs({len(self.graph_names())}): {' '.join (self.graph_names())}"
 
     def __repr__(self):
         return self.__str__()

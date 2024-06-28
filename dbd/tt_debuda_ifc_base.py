@@ -1,11 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-import tt_util as util
-
 from abc import ABC, abstractmethod
-import os
-import shutil
 from tempfile import mkdtemp
 import io
 
@@ -15,9 +11,6 @@ class DbdCommunicator(ABC):
     Base class for the debuda interfaces. It defines the high-level methods that must be implemented for debuda to
     communicate with the target device. They are later derived to communicate with server, use pybind or read from cache.
     """
-    def __init__(self):
-        self._tmp_folder = mkdtemp(prefix='debuda_')
-
     @abstractmethod
     def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
         pass
@@ -87,19 +80,6 @@ class DbdCommunicator(ABC):
     @abstractmethod
     def get_run_dirpath(self):
         pass
-    
-    def save_tmp_file(self, filename: str, content, mode='wb'):
-        filename = os.path.join(self._tmp_folder, os.path.basename(filename))
-        with open(filename, mode) as f:
-            if isinstance(content, io.BytesIO):
-                f.write(content.getbuffer())
-            else:
-                f.write(content)
-        return filename
-
-    # TODO: Should we do thi atexit? (@dc)
-    def clean_tmp(self):
-        shutil.rmtree(self._tmp_folder)
     
     def using_cache(self):
         return False

@@ -3,13 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 import io
 import os
-from typing import Set
 
 class GdbFileServer:
     def __init__(self, context):
         self.opened_files: dict[int, io.BytesIO] = dict()
         self._context = context
-        self.count = 0
+        self.next_fd = 1
 
     def __del__(self):
         self.close_all()
@@ -17,15 +16,15 @@ class GdbFileServer:
     def close_all(self):
         # Close all opened files
         self.opened_files.clear()
-        self.count = 0
+        self.next_fd = 0
 
     def open(self, filename: str, flags: int, mode: int):
         try:
             content = self._context.server_ifc.get_binary(filename)
-            id = self.count
+            id = self.next_fd
 
             self.opened_files[id] = io.BytesIO(content)
-            self.count += 1
+            self.next_fd += 1
             return id
         except OSError as e:
             return f"-1,{e.errno}"
@@ -43,7 +42,7 @@ class GdbFileServer:
                 stream.seek(offset, os.SEEK_SET)
                 return stream.read(count)
             except:
-                return "-2, Exception while reading."
+                return "-1, Exception while reading."
         else:
             return "-1"
 

@@ -383,7 +383,7 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
 }
 
 std::optional<std::string> umd_with_open_implementation::get_runtime_data() {
-    std::ifstream file(runtime_yaml_path, std::ios::binary);
+    std::ifstream file(runtime_yaml_path, std::ios::in);
     if (!file) {
         return {};
     }

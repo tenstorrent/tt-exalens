@@ -443,7 +443,7 @@ class YamlFile:
                 f" ({len(self.content)} bytes loaded in {time.time() - current_time:.2f}s)"
             )
 
-            # Free up space
+            # Remove unneeded reference 
             if self.content:
                 del self.content
 

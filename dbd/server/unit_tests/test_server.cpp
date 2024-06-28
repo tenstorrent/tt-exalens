@@ -40,8 +40,7 @@ class yaml_not_implemented_server : public server {
             send_yaml("- type: 200\n  size: " + std::to_string(path.size()) + "\n  data: " + path);
             return {};
         } else {
-            // std::string response = "read_file";
-            return {};  // std::vector<uint8_t>(response.begin(), response.end());
+            return {};
         }
     }
 
@@ -50,7 +49,7 @@ class yaml_not_implemented_server : public server {
             send_yaml("- type: 201");
             return {};
         } else
-            return {};  // "get_run_path";
+            return {};
     }
 
     bool is_yaml_enabled() const { return enable_yaml; }
@@ -304,9 +303,9 @@ TEST(debuda_server, pci_write) {
 }
 
 TEST(debuda_server, get_file) {
-    std::string expected_response = "- type: 200\n  size: 9\n  data: test_file";
-    std::string filename = "test_file";
-    std::array<uint8_t, 9 + sizeof(tt::dbd::get_file_request)> request_data = {0};
+    constexpr std::string_view filename = "test_file";
+    std::string expected_response = "- type: 200\n  size: " + std::to_string(filename.size()) + "\n  data: " + filename.data();
+    std::array<uint8_t, filename.size() + sizeof(tt::dbd::get_file_request)> request_data = {0};
     auto request = reinterpret_cast<tt::dbd::get_file_request *>(&request_data[0]);
     request->type = tt::dbd::request_type::get_file;
     request->size = filename.size();

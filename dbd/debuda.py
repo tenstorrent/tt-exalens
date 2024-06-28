@@ -533,19 +533,17 @@ def main():
         sys.exit(0)
     
     if args["--cached"]:
-        print(f"Starting Debuda from cache.")
+        util.INFO(f"Starting Debuda from cache.")
         server_ifc = tt_debuda_ifc_cache.init_cache_reader(args["--cache-path"])
     elif args["--remote"]:
         address = args["--remote-address"].split(":")
         server_ip = address[0] if address[0]!='' else "localhost"
         server_port = address[-1] 
-        print(f"Connecting to Debuda server at {server_ip}:{server_port}")
+        util.INFO(f"Connecting to Debuda server at {server_ip}:{server_port}")
         server_ifc = tt_debuda_ifc.connect_to_server(server_ip, server_port)
     else:
-        print(f"Using pybind library instead of debuda server.")
+        util.INFO(f"Using pybind library instead of debuda server.")
         server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir, wanted_devices)
-
-    util.INFO(f"Using temporary folder: {server_ifc._tmp_folder}")
 
     if not args["--cached"] and args["--write-cache"]:
         server_ifc = tt_debuda_ifc_cache.init_cache_writer(args["--cache-path"])

@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from abc import ABC, abstractmethod
 from enum import Enum
 import io
 import sys
@@ -395,7 +394,6 @@ class debuda_pybind(DbdCommunicator):
             raise Exception("Failed to open device using pybind library")
         self._runtime_yaml_path = runtime_data_yaml_filename # Don't go through C++ for opening files
         self._run_dirpath = run_dirpath
-        print("Device opened")
 
     def _check_result(self, result):
         if result is None:
