@@ -194,7 +194,6 @@ def get_op_index(context, graph_directory_path, op_name) -> int:
             return int(op_index_str.split("_")[1])
     except:
         assert False
-        return None
 
 def get_graph_name_for_op_on_core(context, device, core_loc: OnChipCoordinate) -> str:
     core_epoch = device.get_epoch_id(core_loc)

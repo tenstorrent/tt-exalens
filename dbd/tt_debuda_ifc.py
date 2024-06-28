@@ -473,6 +473,7 @@ def init_pybind(runtime_data_yaml_filename, run_dirpath=None, wanted_devices=Non
         wanted_devices = []
     
     tt_device.SERVER_IFC = debuda_pybind(runtime_data_yaml_filename, run_dirpath, wanted_devices)
+    util.INFO("Device opened successfully.")
     return tt_device.SERVER_IFC
 
 

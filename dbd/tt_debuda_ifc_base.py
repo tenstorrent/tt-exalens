@@ -2,8 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from abc import ABC, abstractmethod
-from tempfile import mkdtemp
-import io
 
 
 class DbdCommunicator(ABC):

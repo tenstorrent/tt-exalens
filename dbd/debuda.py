@@ -570,8 +570,8 @@ def main():
         runtime_data_yaml=runtime_data_yaml,
         cluster_desc_yaml=cluster_desc_yaml,
     )
-    context.args = args  # Used by 'export' command
-    context.debuda_path = __file__  # Used by 'export' command
+    # context.args = args  # Used by 'export' command
+    # context.debuda_path = __file__  # Used by 'export' command
 
     # Main function
     exit_code = main_loop(args, context)

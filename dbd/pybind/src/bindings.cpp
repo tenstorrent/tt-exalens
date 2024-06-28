@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "bindings.h"
-#include <iostream>
 
 static std::unique_ptr<tt::dbd::debuda_implementation> debuda_implementation;
 
@@ -41,8 +40,6 @@ bool open_device(const std::string &binary_directory, const std::string &runtime
         std::cerr << "Cannot open device: " << error.what() << std::endl;
         return false;
     }
-    
-    std::cout << "Device opened successfully." << std::endl; 
     return true;
 }
 

@@ -4,7 +4,6 @@
 import unittest, re
 from tt_parse_elf import read_elf, mem_access
 import tt_util as util
-from tabulate import tabulate
 
 
 class TestFileIfc:
