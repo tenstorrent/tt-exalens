@@ -387,7 +387,7 @@ std::optional<std::string> umd_with_open_implementation::get_runtime_data() {
     if (!file) {
         return {};
     }
-    return std::string( std::istreambuf_iterator<char>(file), {});
+    return std::string(std::istreambuf_iterator<char>(file), {});
 }
 
 std::optional<std::string> umd_with_open_implementation::get_cluster_description() { return cluster_descriptor_path; }

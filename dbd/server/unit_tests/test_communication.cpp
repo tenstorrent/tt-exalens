@@ -155,7 +155,8 @@ TEST(debuda_communication, pci_write) {
 
 TEST(debuda_communication, get_file) {
     constexpr std::string_view filename = "test_file";
-    std::string expected_response = "- type: 200\n  size: " + std::to_string(filename.size()) + "\n  path: " + filename.data();
+    std::string expected_response =
+        "- type: 200\n  size: " + std::to_string(filename.size()) + "\n  path: " + filename.data();
     std::array<uint8_t, filename.size() + sizeof(tt::dbd::get_file_request)> request_data = {0};
     auto request = reinterpret_cast<tt::dbd::get_file_request*>(&request_data[0]);
     request->type = tt::dbd::request_type::get_file;
