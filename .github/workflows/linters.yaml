@@ -8,7 +8,7 @@ on:
 
 jobs:
   check-spdx-licenses:
-    runs-on: ubuntu-latest
+    runs-on: "ubuntu-22.04"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5.0.0
@@ -19,22 +19,15 @@ jobs:
         run: python -m pip install -r infra/requirements-infra.txt
       - name: Check SPDX licenses
         run: python -m check_copyright --dry-run --verbose --config infra/copyright-config.yaml .
-  # lint-cpp-files:
-  #   runs-on: "ubuntu-22.04"
-  #   name: "Lint cpp files"
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         submodules: recursive
-  #         lfs: true
-  #     - name: Install dependencies
-  #       run: |
-  #         sudo apt update
-  #         sudo apt -y install clang-format
-  #     - run: |
-  #         scripts/clang-format-repo.sh
-  #         git diff --exit-code
-  #     - uses: actions/upload-artifact@v4
-  #       with:
-  #         name: clang-format-results
-  #         path: report-cpp-lint.xml
+  lint-cpp-files:
+    runs-on: "ubuntu-22.04"
+    name: "Lint cpp files"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt -y install clang-format
+      - run: |
+          scripts/clang-format-repo.sh
+          git diff --exit-code
