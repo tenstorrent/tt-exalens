@@ -12,7 +12,7 @@ on:
         type: string
         default: "ci"
 
-run-name: Build DEBUDA by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
+run-name: BUILD DEBUDA by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
 
 jobs:
   build_libs:
