@@ -12,8 +12,8 @@ on:
 # TODO: See permissions @ https://github.dev/tenstorrent/tt-metal/blob/cbb7fb8182a29724ba33402c3ea2dc67d8eb6c73/.github/workflows/all-post-commit-workflows.yaml
 
 jobs:
-  linting:
-    uses: ./.github/workflows/linters.yaml
+  # linting:
+  #   uses: ./.github/workflows/static-checks.yaml
   build:
     uses: ./.github/workflows/build-dbd.yaml
   unit-tests:

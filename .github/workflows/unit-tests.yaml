@@ -6,7 +6,7 @@ on:
       arch:
         required: false
         type: string
-        # Add grayskull when we switch to remote
+        # TODO: Add grayskull when we switch to remote
         default: '["wormhole_b0"]'
       os:
         required: false
@@ -29,7 +29,7 @@ jobs:
       VERBOSE: 1
     # TODO: This will need to change when we get cloud runners
     runs-on: "ubuntu-22.04"
-    name: "Build and run unit test on ${{ matrix.arch }}"
+    name: Build and run unit test on ${{ matrix.arch }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -50,11 +50,11 @@ jobs:
           python-version: '3.10'
       - name: Build and run server unit tests
         run: |
-          make -j$(nproc) ARCH_NAME=$ARCH_NAME CONFIG=$CONFIG dbd/server/unit_tests
+          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/server/unit_tests
       - name: Build and run pybind tests
         run: |
-          make -j$(nproc) ARCH_NAME=$ARCH_NAME CONFIG=$CONFIG dbd/pybind/unit_tests
+          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/pybind/unit_tests
       # These can't work without device
-      # - name: Top level unit tests
-      #   run: |
-      #     python3 -m unittest discover -v -s ./dbd/ -p *test*.py
+      - name: Top level unit tests
+        run: |
+          python3 -m unittest discover -v -s ./dbd/ -p *test*.py
