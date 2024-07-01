@@ -23,7 +23,7 @@ class GdbFileServer:
             content = self._context.server_ifc.get_binary(filename)
             id = self.next_fd
 
-            self.opened_files[id] = io.BytesIO(content)
+            self.opened_files[id] = content
             self.next_fd += 1
             return id
         except OSError as e:
