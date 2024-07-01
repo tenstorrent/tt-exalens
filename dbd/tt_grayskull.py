@@ -259,3 +259,20 @@ class GrayskullDevice(tt_device.Device):
             )
 
         return reg
+
+    def get_tensix_configuration_base(self) -> int:
+        return 0xFFEF0000
+
+    __configuration_register_map = {
+        'RISCV_IC_INVALIDATE_InvalidateAll': 177,
+        'TRISC_RESET_PC_SEC0_PC': 178,
+        'TRISC_RESET_PC_SEC1_PC': 179,
+        'TRISC_RESET_PC_SEC2_PC': 180,
+        'NCRISC_RESET_PC_PC': 182,
+    }
+
+    def get_configuration_register_index(self, register_name: str) -> int:
+        if register_name in GrayskullDevice.__configuration_register_map:
+            return GrayskullDevice.__configuration_register_map[register_name]
+        else:
+            raise ValueError(f"Unknown configuration register name: {register_name}")
