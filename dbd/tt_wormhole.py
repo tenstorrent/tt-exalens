@@ -427,3 +427,20 @@ class WormholeDevice(tt_device.Device):
             f"{endpoint_type} x={x:02d},y={y:02d} => NOC{noc_id:d} {reg_name:s} (0x{reg_addr:09x}) = 0x{val:08x} ({val:d})"
         )
         return val
+
+    def get_tensix_configuration_base(self) -> int:
+        return 0xFFEF0000
+
+    __configuration_register_map = {
+        'RISCV_IC_INVALIDATE_InvalidateAll': 157,
+        'TRISC_RESET_PC_SEC0_PC': 158,
+        'TRISC_RESET_PC_SEC1_PC': 159,
+        'TRISC_RESET_PC_SEC2_PC': 160,
+        'NCRISC_RESET_PC_PC': 162,
+    }
+
+    def get_configuration_register_index(self, register_name: str) -> int:
+        if register_name in WormholeDevice.__configuration_register_map:
+            return WormholeDevice.__configuration_register_map[register_name]
+        else:
+            raise ValueError(f"Unknown configuration register name: {register_name}")

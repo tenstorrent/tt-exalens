@@ -479,11 +479,18 @@ class RiscDebug:
         """
         Invalidates the instruction cache of the RISC-V core.
         """
+        self.write_configuration_register("RISCV_IC_INVALIDATE_InvalidateAll", 1 << self.location.risc_id)
+        self.write_configuration_register("RISCV_IC_INVALIDATE_InvalidateAll", 0)
+
+    def read_configuration_register(self, register_name: str):
+        address = self.location.loc._device.get_configuration_register_address(register_name)
         self.assert_halted()
-        TENSIX_CFG_BASE = 0xFFEF0000
-        RISCV_IC_INVALIDATE_InvalidateAll_ADDR32 = 157
-        self.write_memory (TENSIX_CFG_BASE + RISCV_IC_INVALIDATE_InvalidateAll_ADDR32 * 4, 1 << self.location.risc_id)
-        self.write_memory (TENSIX_CFG_BASE + RISCV_IC_INVALIDATE_InvalidateAll_ADDR32 * 4, 0x0)
+        return self.read_memory(address)
+
+    def write_configuration_register(self, register_name: str, value: int):
+        address = self.location.loc._device.get_configuration_register_address(register_name)
+        self.assert_halted()
+        self.write_memory(address, value)
 
 from elftools.elf.elffile import ELFFile
 from tt_object import DataArray
@@ -500,32 +507,93 @@ class RiscLoader:
 
     SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".stack"]
 
-    def get_jump_to_address_instruction (self, address):
+    def get_risc_start_address(self):
+        risc_id = self.risc_debug.location.risc_id
+        risc_name = get_risc_name(risc_id)
+
+        # BRISC is always at 0
+        if risc_name == "BRISC":
+            return 0
+
+        # For other cores, there is configuration register that specifies the start address
+        configuration_register = None
+        if risc_name == "TRISC0":
+            configuration_register = "TRISC_RESET_PC_SEC0_PC"
+        elif risc_name == "TRISC1":
+            configuration_register = "TRISC_RESET_PC_SEC1_PC"
+        elif risc_name == "TRISC2":
+            configuration_register = "TRISC_RESET_PC_SEC2_PC"
+        elif risc_name == "NCRISC":
+            configuration_register = "NCRISC_RESET_PC_PC"
+        else:
+            raise ValueError(f"Unknown RISC name {risc_name}")
+
+        # If core is not in reset, we can use it to read configuration.
+        if not self.risc_debug.is_in_reset():
+            # Read the configuration register using the core itself
+            with self.risc_debug.ensure_halted():
+                return self.risc_debug.read_configuration_register(configuration_register)
+        else:
+            # Since we cannot access configuration registers except through debug interface, we need to have a core that is started.
+            # Use BRISC since we know that its start address is always 0.
+            brisc_loader = RiscLoader(self.risc_debug.location.loc, 0, self.context, self.risc_debug.ifc, self.verbose)
+            brisc_debug = brisc_loader.risc_debug
+            if brisc_debug.is_in_reset():
+                # Start BRISC in infinite loop and read the configuration register
+                brisc_loader.start_risc_in_infinite_loop(0)
+                with brisc_debug.ensure_halted():
+                    result = brisc_debug.read_configuration_register(configuration_register)
+
+                # Return BRISC in reset
+                self.risc_debug.set_reset_signal(1)
+                assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
+                return result
+            with brisc_debug.ensure_halted():
+                return brisc_debug.read_configuration_register(configuration_register)
+
+    def start_risc_in_infinite_loop(self, address):
+        # Make sure risc is in reset
+        if not self.risc_debug.is_in_reset():
+            self.risc_debug.set_reset_signal(1)
+        assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
+
+        # Generate infinite loop instruction (JAL 0)
+        jal_instruction = self.get_jump_to_offset_instruction(0) # Since JAL uses offset and we need to return to current address, we specify 0
+        self.context.server_ifc.pci_write32(self.risc_debug.location.loc._device.id(), *self.risc_debug.location.loc.to("nocVirt"), address, jal_instruction)
+
+        # Take risc out of reset
+        self.risc_debug.set_reset_signal(0)
+        assert not self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is still in reset."
+        assert not self.risc_debug.is_halted(), f"RISC at location {self.risc_debug.location} is still halted."
+
+    def get_jump_to_offset_instruction(self, offset, rd=0):
         """
-        Return the JAL instruction to jump to a given address. This instruction
-        is then loaded into the location 0, as brisc always starts executing from address 0.
+        Generate a JAL instruction code based on the given offset.
+
+        :param offset: The offset to jump to, can be positive or negative.
+        :param rd: The destination register (default is x1 for the return address).
+        :return: The 32-bit JAL instruction code.
         """
-        # Constants for JAL instruction
-        JAL_OPCODE = 0x6f
-        JAL_MAX_OFFSET = 0x0007ffff
+        if rd < 0 or rd > 31:
+            raise ValueError("Invalid register number. rd must be between 0 and 31.")
 
-        # Ensure the firmware base is within the maximum offset
-        assert address < JAL_MAX_OFFSET, "Firmware base exceeds JAL maximum offset."
+        if offset < -2**20 or offset >= 2**20:
+            raise ValueError("Offset out of range. Must be between -2^20 and 2^20-1.")
 
-        # See RISC-V spec for offset encoding
-        jal_offset_bit_20 = 0
-        jal_offset_bits_10_to_1 = (address & 0x7fe) << 20
-        jal_offset_bit_11 = (address & 0x800) << 9
-        jal_offset_bits_19_to_12 = (address & 0xff000)
+        # Make sure the offset is within the range for a 20-bit signed integer
+        offset &= 0x1FFFFF
 
-        # Combine the offset parts into the full offset
-        jal_offset = (
-            jal_offset_bit_20 |
-            jal_offset_bits_10_to_1 |
-            jal_offset_bit_11 |
-            jal_offset_bits_19_to_12
-        )
-        return jal_offset | JAL_OPCODE
+        # Extracting the bit fields from the offset
+        jal_offset_bit_20 = (offset >> 20) & 0x1
+        jal_offset_bits_10_to_1 = (offset >> 1) & 0x3FF
+        jal_offset_bit_11 = (offset >> 11) & 0x1
+        jal_offset_bits_19_to_12 = (offset >> 12) & 0xFF
+
+        # Reconstruct the 20-bit immediate in the JAL instruction format
+        jal_offset = (jal_offset_bit_20 << 31) | (jal_offset_bits_19_to_12 << 12) | (jal_offset_bit_11 << 20) | (jal_offset_bits_10_to_1 << 21)
+
+        # Construct the instruction
+        return jal_offset | (rd << 7) | 0x6F
 
     def write_block_through_debug(self, address, data):
         """
