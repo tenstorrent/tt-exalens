@@ -18,6 +18,7 @@ struct server_config {
    public:
     int port;
     std::string runtime_data_yaml_path;
+    std::string run_dirpath;
     std::vector<uint8_t> wanted_devices;
 };
 
@@ -52,7 +53,7 @@ int run_debuda_server(const server_config& config) {
         // Spawn server
         std::unique_ptr<tt::dbd::server> server;
         try {
-            server = std::make_unique<tt::dbd::server>(std::move(implementation));
+            server = std::make_unique<tt::dbd::server>(std::move(implementation), config.run_dirpath);
             server->start(config.port);
             log_info(tt::LogDebuda, "Debug server started on {}.", connection_address);
         } catch (...) {
@@ -86,8 +87,21 @@ server_config parse_args(int argc, char** argv) {
     int i = 2;
     while (i < argc) {
         if (strcmp(argv[i], "-y") == 0) {
-            config.runtime_data_yaml_path = argv[i + 1];
-            i += 2;
+            i += 1;
+            if (i >= argc) {
+                log_error("Expected path to yaml file after -y");
+                return {};
+            }
+            config.runtime_data_yaml_path = argv[i];
+            i += 1;
+        } else if (strcmp(argv[i], "-r") == 0) {
+            i += 1;
+            if (i >= argc) {
+                log_error("Expected path to run directory after -r");
+                return {};
+            }
+            config.run_dirpath = argv[i];
+            i += 1;
         } else if (strcmp(argv[i], "-d") == 0) {
             i++;
             if (i >= argc) {
@@ -117,12 +131,14 @@ server_config parse_args(int argc, char** argv) {
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        log_error("Need arguments: <port> [-y path_to_yaml_file] [-d <device_id1> [<device_id2> ... <device_idN>]]");
+        log_error(
+            "Need arguments: <port> [-y path_to_yaml_file] [-r <run_dirpath>] [-d <device_id1> [<device_id2> ... "
+            "<device_idN>]]");
         return 1;
     }
 
     server_config config = parse_args(argc, argv);
-    
+
     std::string log_starting = "Starting debuda-server: " + std::string(argv[0]) + " " + std::string(argv[1]);
     for (int i = 2; i < argc; i++) {
         log_starting += " " + std::string(argv[i]);

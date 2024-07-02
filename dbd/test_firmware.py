@@ -2,15 +2,15 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import unittest, re
-from tt_parse_elf import read_elf, mem_access
 from tt_firmware import ELF, BUDA_FW_VARS
-from tabulate import tabulate
+from test_parse_elf import TestFileIfc
 
+file_ifc = TestFileIfc()
 
 class TestFirmware(unittest.TestCase):
     # @unittest.skip("demonstrating skipping")
     def test_epoch_id_access(self):
-        elf = ELF({"brisc": "./debuda_test/brisc/brisc.elf"}, extra_vars=BUDA_FW_VARS)
+        elf = ELF(file_ifc, {"brisc": "./debuda_test/brisc/brisc.elf"}, extra_vars=BUDA_FW_VARS)
 
         # Test if this var is injected in the variable table
         assert "EPOCH_INFO_PTR" in elf.names["brisc"]["variable"]

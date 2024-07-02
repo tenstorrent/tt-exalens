@@ -24,6 +24,8 @@ Examples:
   export my-export.zip
 """
 
+# TODO: Decide if export is needed (Issue #57)
+
 import tt_util as util
 
 command_metadata = {

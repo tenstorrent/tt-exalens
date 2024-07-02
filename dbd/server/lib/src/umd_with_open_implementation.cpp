@@ -8,8 +8,8 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <memory>
-#include <sstream>
 #include <stdexcept>
 
 #include "device/blackhole_implementation.h"
@@ -383,15 +383,11 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
 }
 
 std::optional<std::string> umd_with_open_implementation::get_runtime_data() {
-    if (runtime_yaml_path.empty()) return {};
-
-    std::ifstream file(runtime_yaml_path);
-    if (!file.is_open()) return {};
-
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-
-    return buffer.str();
+    std::ifstream file(runtime_yaml_path, std::ios::in);
+    if (!file) {
+        return {};
+    }
+    return std::string(std::istreambuf_iterator<char>(file), {});
 }
 
 std::optional<std::string> umd_with_open_implementation::get_cluster_description() { return cluster_descriptor_path; }

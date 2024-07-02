@@ -36,7 +36,7 @@ def get_cluster_description():
 
 def get_device_ids():
     global server_communication
-    check_response(server_communication.get_device_ids(), "- type: 104")
+    check_response(server_communication.get_device_ids(), "- type: 18")
 
 
 def pci_read32():
@@ -99,7 +99,7 @@ def get_harvester_coordinate_translation():
     global server_communication
     check_response(
         server_communication.get_harvester_coordinate_translation(1),
-        "- type: 103\n  chip_id: 1",
+        "- type: 17\n  chip_id: 1",
     )
 
 
@@ -107,7 +107,7 @@ def get_device_arch():
     global server_communication
     check_response(
         server_communication.get_device_arch(1),
-        "- type: 105\n  chip_id: 1",
+        "- type: 19\n  chip_id: 1",
     )
 
 
@@ -115,7 +115,7 @@ def get_device_soc_description():
     global server_communication
     check_response(
         server_communication.get_device_soc_description(1),
-        "- type: 106\n  chip_id: 1",
+        "- type: 20\n  chip_id: 1",
     )
 
 
@@ -128,6 +128,19 @@ def pci_write():
         "- type: 13\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, 12, 13, 14, 15, 16, 17]",
     )
 
+def get_file():
+    global server_communication
+    check_response(
+        server_communication.get_file("test_file"),
+        "- type: 200\n  size: 9\n  path: test_file",
+    )
+
+def get_buda_run_dirpath():
+    global server_communication
+    check_response(
+        server_communication.get_run_dirpath(),
+        "- type: 201",
+    )
 
 def main():
     # Check if at least two arguments are provided (script name + function name)

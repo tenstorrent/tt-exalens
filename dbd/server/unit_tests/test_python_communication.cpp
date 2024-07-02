@@ -5,6 +5,7 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 
 #include "yaml_communication.h"
 
@@ -30,16 +31,9 @@ std::string execute_command(const std::string& cmd) {
 
 void call_python(const std::string& python_script, int server_port, const std::string& python_args,
                  const std::string& expected_output) {
-    auto buda_home_env = getenv("BUDA_HOME");
-    std::string buda_home;
-    if (buda_home_env) {
-        buda_home = buda_home_env;
-    } else {
-        if (!std::filesystem::exists(python_script)) {
-            std::cerr << "You need to set BUDA_HOME or to run tests from BUDA_HOME directory." << std::endl;
-            ASSERT_TRUE(false);
-        }
-    }
+    // Check if the python script exists
+    ASSERT_TRUE(std::filesystem::exists(python_script));
+
     std::string command = "python3 " + python_script + " " + std::to_string(server_port) + " " + python_args;
 
     auto output = execute_command(command);
@@ -58,7 +52,7 @@ TEST(debuda_python_communication, get_runtime_data) { call_python("get_runtime_d
 
 TEST(debuda_python_communication, get_cluster_description) { call_python("get_cluster_description", "- type: 102\n"); }
 
-TEST(debuda_python_communication, get_device_ids) { call_python("get_device_ids", "- type: 104\n"); }
+TEST(debuda_python_communication, get_device_ids) { call_python("get_device_ids", "- type: 18\n"); }
 
 TEST(debuda_python_communication, pci_read32) {
     call_python("pci_read32", "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n");
@@ -91,13 +85,13 @@ TEST(debuda_python_communication, pci_read_tile) {
 }
 
 TEST(debuda_python_communication, get_harvester_coordinate_translation) {
-    call_python("get_harvester_coordinate_translation", "- type: 103\n  chip_id: 1\n");
+    call_python("get_harvester_coordinate_translation", "- type: 17\n  chip_id: 1\n");
 }
 
-TEST(debuda_python_communication, get_device_arch) { call_python("get_device_arch", "- type: 105\n  chip_id: 1\n"); }
+TEST(debuda_python_communication, get_device_arch) { call_python("get_device_arch", "- type: 19\n  chip_id: 1\n"); }
 
 TEST(debuda_python_communication, get_device_soc_description) {
-    call_python("get_device_soc_description", "- type: 106\n  chip_id: 1\n");
+    call_python("get_device_soc_description", "- type: 20\n  chip_id: 1\n");
 }
 
 TEST(debuda_python_communication, pci_write) {
@@ -106,3 +100,7 @@ TEST(debuda_python_communication, pci_write) {
         "- type: 13\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, 12, 13, 14, "
         "15, 16, 17]\n");
 }
+
+TEST(debuda_python_communication, get_file) { call_python("get_file", "- type: 200\n  size: 9\n  path: test_file\n"); }
+
+TEST(debuda_python_communication, get_buda_run_dirpath) { call_python("get_buda_run_dirpath", "- type: 201\n"); }

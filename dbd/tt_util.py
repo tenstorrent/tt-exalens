@@ -412,9 +412,11 @@ class YamlFile:
     # Cache
     file_cache = {}
 
-    def __init__(self, yamlname, post_process_yaml=None, file_content=None ):
-        self.filepath = yamlname
-        self.content = file_content
+    def __init__(self, file_ifc, filepath, post_process_yaml=None, content=None):
+        self.filepath = filepath
+        self.content = content
+        self.file_ifc = file_ifc
+        
         # Some files (such as pipegen.yaml) contain multiple documents (separated by ---). We post-process them
         self.post_process_yaml = post_process_yaml
         YamlFile.file_cache[self.filepath] = None
@@ -428,24 +430,22 @@ class YamlFile:
             self.root = dict()
 
             # load self.filepath into string
-            if self.content is None:
-                with open(self.filepath, "r") as stream:
-                    yaml_string = stream.read()
-            else:
-                yaml_string = self.content
-                
-                # Clear the content to save memory
-                self.content = None
-
+            if not self.content:
+                self.content = self.file_ifc.get_file(self.filepath)
+            
             if self.post_process_yaml is not None:
-                self.root = self.post_process_yaml(ryml_load_all(yaml_string))
+                self.root = self.post_process_yaml(ryml_load_all(self.content))
             else:
-                for i in ryml_load_all(yaml_string):
+                for i in ryml_load_all(self.content):
                     self.root = {**self.root, **i}
             YamlFile.file_cache[self.filepath] = self.root
             INFO(
-                f" ({len(yaml_string)} bytes loaded in {time.time() - current_time:.2f}s)"
+                f" ({len(self.content)} bytes loaded in {time.time() - current_time:.2f}s)"
             )
+
+            # Remove unneeded reference 
+            if self.content:
+                del self.content
 
     def __str__(self):
         return f"{type(self).__name__}: {self.filepath}"

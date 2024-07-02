@@ -13,6 +13,20 @@
 constexpr int DEFAULT_TEST_SERVER_PORT = 6669;
 
 // Simple implementation of tt::dbd::server that simulates real server.
+class simulation_server : public tt::dbd::server {
+   public:
+    simulation_server(std::unique_ptr<tt::dbd::debuda_implementation> implementation)
+        : tt::dbd::server(std::move(implementation)) {}
+
+    std::optional<std::vector<uint8_t>> get_file(const std::string& path) override {
+        std::string response = "get_file(" + path + ")";
+        return std::vector<uint8_t>(response.begin(), response.end());
+    }
+
+    std::optional<std::string> get_run_dirpath() override { return "get_run_dirpath"; }
+};
+
+// Simple implementation of tt::dbd::debuda_implementation that simulates real implementation.
 // For every write combination, read of the same communication will return that result.
 class simulation_implementation : public tt::dbd::debuda_implementation {
    private:
@@ -101,11 +115,11 @@ static void call_python_empty_server(const std::string& python_args, int port = 
 }
 
 static void call_python_server(const std::string& python_args, int port = DEFAULT_TEST_SERVER_PORT) {
-    tt::dbd::server server(std::make_unique<simulation_implementation>());
-    server.start(port);
-    ASSERT_TRUE(server.is_connected());
+    simulation_server simulation_server(std::make_unique<simulation_implementation>());
+    simulation_server.start(port);
+    ASSERT_TRUE(simulation_server.is_connected());
     std::string python_tests_path = "dbd/server/unit_tests/test_server.py";
-    call_python(python_tests_path, server.get_port(), python_args, "pass\n");
+    call_python(python_tests_path, simulation_server.get_port(), python_args, "pass\n");
 }
 
 TEST(debuda_python_empty_server, get_runtime_data) { call_python_empty_server("empty_get_runtime_data"); }
@@ -132,6 +146,10 @@ TEST(debuda_python_empty_server, get_harvester_coordinate_translation) {
 
 TEST(debuda_python_empty_server, pci_write) { call_python_empty_server("empty_pci_write"); }
 
+TEST(debuda_python_empty_server, get_file) { call_python_empty_server("empty_get_file"); }
+
+TEST(debuda_python_empty_server, get_run_dirpath) { call_python_empty_server("empty_get_run_dirpath"); }
+
 TEST(debuda_python_server, pci_write32_pci_read32) { call_python_server("pci_write32_pci_read32"); }
 
 TEST(debuda_python_server, pci_write_pci_read) { call_python_server("pci_write_pci_read"); }
@@ -155,3 +173,7 @@ TEST(debuda_python_server, get_device_ids) { call_python_server("get_device_ids"
 TEST(debuda_python_server, get_device_arch) { call_python_server("get_device_arch"); }
 
 TEST(debuda_python_server, get_device_soc_description) { call_python_server("get_device_soc_description"); }
+
+TEST(debuda_python_server, get_file) { call_python_server("get_file"); }
+
+TEST(debuda_python_server, get_run_dirpath) { call_python_server("get_run_dirpath"); }

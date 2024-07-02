@@ -54,7 +54,7 @@ class GdbServer(threading.Thread):
         self.prepared_responses_for_paging: Dict[str,str] = {} # prepared responses for paged messages
         self.client_features: Dict[str,object] = {} # dictionary of supported gdb client features (key: feature, value: mostly True/False, but can be anything)
         self.paged_thread_list: GdbThreadListPaged = None # helper class that returns list of threads in paged manner
-        self.file_server: GdbFileServer = GdbFileServer() # File server that serves gdb client file operations
+        self.file_server: GdbFileServer = GdbFileServer(context) # File server that serves gdb client file operations
         self.vCont_pending_statuses: List[str] = [] # List of status reports that should be returned to gdb client (it is stored in reversed order, so we can pop it from the end of the list)
 
         self.current_process: GdbProcess = None # currently debugging process (core/thread - all in one)

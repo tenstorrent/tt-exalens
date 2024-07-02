@@ -47,8 +47,8 @@ class TemporalEpoch(TTObject):
 
         self._id = id
         self.netlist = netlist  # Store netlist to have access to graphs.
-        self.pipegen_yaml = util.YamlFile(pipegen_filename, post_process_pipegen_yaml)
-        self.blob_yaml = util.YamlFile(blob_filename)
+        self.pipegen_yaml = util.YamlFile(self.netlist.file_ifc, pipegen_filename, post_process_pipegen_yaml)
+        self.blob_yaml = util.YamlFile(self.netlist.file_ifc, blob_filename)
         self.graphs = None
 
         self.roots = graph_roots  # The entry in netlist file

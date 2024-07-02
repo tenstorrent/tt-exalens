@@ -75,7 +75,7 @@ TEST(debuda_communication, get_cluster_description) {
 }
 
 TEST(debuda_communication, get_device_ids) {
-    test_yaml_request(tt::dbd::request{tt::dbd::request_type::get_device_ids}, "- type: 104");
+    test_yaml_request(tt::dbd::request{tt::dbd::request_type::get_device_ids}, "- type: 18");
 }
 
 TEST(debuda_communication, pci_read32) {
@@ -118,17 +118,17 @@ TEST(debuda_communication, get_harvester_coordinate_translation) {
     test_yaml_request(
         tt::dbd::get_harvester_coordinate_translation_request{
             tt::dbd::request_type::get_harvester_coordinate_translation, 1},
-        "- type: 103\n  chip_id: 1");
+        "- type: 17\n  chip_id: 1");
 }
 
 TEST(debuda_communication, get_device_arch) {
     test_yaml_request(tt::dbd::get_device_arch_request{tt::dbd::request_type::get_device_arch, 1},
-                      "- type: 105\n  chip_id: 1");
+                      "- type: 19\n  chip_id: 1");
 }
 
 TEST(debuda_communication, get_device_soc_description) {
     test_yaml_request(tt::dbd::get_device_soc_description_request{tt::dbd::request_type::get_device_soc_description, 1},
-                      "- type: 106\n  chip_id: 1");
+                      "- type: 20\n  chip_id: 1");
 }
 
 TEST(debuda_communication, pci_write) {
@@ -146,6 +146,22 @@ TEST(debuda_communication, pci_write) {
     request->address = 123456;
     request->size = data_size;
     for (size_t i = 0; i < data_size; i++) request->data[i] = 10 + i;
+
+    auto server = start_yaml_server();
+    ASSERT_TRUE(server->is_connected());
+    auto response = send_message(zmq::const_buffer(request_data.data(), request_data.size())).to_string();
+    ASSERT_EQ(response, expected_response);
+}
+
+TEST(debuda_communication, get_file) {
+    constexpr std::string_view filename = "test_file";
+    std::string expected_response =
+        "- type: 200\n  size: " + std::to_string(filename.size()) + "\n  path: " + filename.data();
+    std::array<uint8_t, filename.size() + sizeof(tt::dbd::get_file_request)> request_data = {0};
+    auto request = reinterpret_cast<tt::dbd::get_file_request*>(&request_data[0]);
+    request->type = tt::dbd::request_type::get_file;
+    request->size = filename.size();
+    for (size_t i = 0; i < filename.size(); i++) request->data[i] = filename[i];
 
     auto server = start_yaml_server();
     ASSERT_TRUE(server->is_connected());

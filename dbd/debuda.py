@@ -301,11 +301,12 @@ def locate_most_recent_build_output_dir():
 
 # Loads all files necessary to debug a single buda run
 # Returns a debug 'context' that contains the loaded information
-def load_context(netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_path):
+def load_context(server_ifc, netlist_filepath, runtime_data_yaml, cluster_desc_yaml) -> Context:
+    run_dirpath = server_ifc.get_run_dirpath()
     if run_dirpath is None or runtime_data_yaml is None:
-        return LimitedContext(cluster_desc_path)
+        return LimitedContext(server_ifc, cluster_desc_yaml)
     else:
-        return BudaContext(netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_path)
+        return BudaContext(server_ifc, netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_yaml)
 
 class UIState:
     def __init__(self, context: Context) -> None:
@@ -510,21 +511,19 @@ def main():
 
     if not args["--remote"]:
         runtime_data_yaml_filename, output_dir = find_runtime_data_yaml(args["<output_dir>"])
-    else:
-        runtime_data_yaml_filename = "remote_runtime_yaml"
-        output_dir = None
 
     wanted_devices = None
     if args["--devices"]:
         wanted_devices = args["--devices"].split(",")
         wanted_devices = [int(d) for d in wanted_devices]
 
-    # Try to connect to the server. If it is not already running, it will be started.
+    # Try to start the server. If already running, exit with error.
     if args["--server"]:
         print(f"Starting Debuda server at {args['--port']}")
         debuda_server = tt_debuda_server.start_server(
             args["--port"],
             runtime_data_yaml_filename,
+            output_dir,
             wanted_devices
         )
         if args["--test"]:
@@ -534,50 +533,45 @@ def main():
         sys.exit(0)
     
     if args["--cached"]:
-        print(f"Starting Debuda from cache.")
+        util.INFO(f"Starting Debuda from cache.")
         server_ifc = tt_debuda_ifc_cache.init_cache_reader(args["--cache-path"])
     elif args["--remote"]:
         address = args["--remote-address"].split(":")
         server_ip = address[0] if address[0]!='' else "localhost"
         server_port = address[-1] 
-        print(f"Connecting to Debuda server at {server_ip}:{server_port}")
+        util.INFO(f"Connecting to Debuda server at {server_ip}:{server_port}")
         server_ifc = tt_debuda_ifc.connect_to_server(server_ip, server_port)
     else:
-        print(f"Using pybind library instead of debuda server.")
-        server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ''), wanted_devices)
+        util.INFO(f"Using pybind library instead of debuda server.")
+        server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir, wanted_devices)
 
     if not args["--cached"] and args["--write-cache"]:
         server_ifc = tt_debuda_ifc_cache.init_cache_writer(args["--cache-path"])
 
-    runtime_data_yaml_string = None
     runtime_data_yaml = None
     try:
-        runtime_data_yaml_string = server_ifc.get_runtime_data()
-        if runtime_data_yaml_string is None:
-            raise tt_debuda_ifc.debuda_server_not_supported()
-        else:
-            runtime_data_yaml = util.YamlFile(str(runtime_data_yaml_filename or 'runtime_data'), file_content=runtime_data_yaml_string)
-            runtime_data_yaml.load()
+        runtime_data = server_ifc.get_runtime_data()
+        runtime_data_yaml = util.YamlFile(server_ifc, 'runtime_yaml', content=runtime_data)
+    except:
+        util.WARN("Debuda does not support runtime data. Continuing with limited functionality...")
 
-    except tt_debuda_ifc.debuda_server_not_supported:
-        util.WARN("Server does not support runtime data. Continuing with limited functionality...")
-
+    cluster_desc_yaml = None
     try:
-        cluster_desc_path = os.path.abspath(server_ifc.get_cluster_description())
-    except tt_debuda_ifc.debuda_server_not_supported:
-        util.WARN("Server does not support cluster description. Continuing with limited functionality...")
-        cluster_desc_path = None
+        cluster_desc_path = server_ifc.get_cluster_description()
+        cluster_desc_yaml = util.YamlFile(server_ifc, cluster_desc_path)
+    except:
+        util.ERROR("Debuda does not support cluster description. Exiting...")
+        exit(1)
 
     # Create the context
     context = load_context(
+        server_ifc=server_ifc,
         netlist_filepath=args["--netlist"],
-        run_dirpath=output_dir,
         runtime_data_yaml=runtime_data_yaml,
-        cluster_desc_path=cluster_desc_path,
+        cluster_desc_yaml=cluster_desc_yaml,
     )
-    context.server_ifc = server_ifc
-    context.args = args  # Used by 'export' command
-    context.debuda_path = __file__  # Used by 'export' command
+    # context.args = args  # Used by 'export' command
+    # context.debuda_path = __file__  # Used by 'export' command
 
     # Main function
     exit_code = main_loop(args, context)

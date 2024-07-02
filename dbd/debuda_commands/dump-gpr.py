@@ -43,7 +43,7 @@ def get_register_data(device, server_ifc, loc, args):
     riscs_to_include = args["-r"].split(",") if args["-r"] else range(0,4)
     riscs_to_include = range(0,4) if "all" in args["-r"] else [ int(risc) for risc in riscs_to_include ]
     elf_file = args["<elf-file>"] if args["<elf-file>"] else None
-    elf = ELF({ "elf" : elf_file }) if elf_file else None
+    elf = ELF(server_ifc, { "elf" : elf_file }) if elf_file else None
     pc_map = elf.names["elf"]["file-line"] if elf else None
 
     reg_value = {}

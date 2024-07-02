@@ -8,8 +8,9 @@ This module is used to represent the firmware
 import time
 import tt_parse_elf
 import tt_util as util
-import os, re
+import re
 from fuzzywuzzy import process, fuzz
+from sys import getsizeof
 
 # This is a list of firmware variables that do not make it to the ELF file (e.g. they
 # are hard-coded through #define). We need to 'inject' them into the symbol table with
@@ -42,23 +43,24 @@ class ELF:
     This class wraps around a list of ELF files and provides a unified interface to them.
     """
 
-    def __init__(self, filemap, extra_vars=None) -> None:
+    def __init__(self, file_ifc, filemap, extra_vars=None) -> None:
         """
         Given a filemap "prefix" -> "filename", load all the ELF files and store them in
-        self.names. For example, if filemap is { "brisc" : "./debuda_test/brisc/brisc.elf" }
+        self.names. For example, if filemap is { "brisc" : "./debuda_test/brisc/brisc.elf" },
+        the parsed content of "./debuda_test/brisc/brisc.elf" will be stored in self.names["brisc"].
         """
         self.names = dict()
         self.filemap = filemap
+        self._file_ifc = file_ifc
         for prefix, filename in filemap.items():
             if prefix not in self.names:
                 self.names[prefix] = dict()
 
-            abspath = os.path.abspath(filename)
-            util.INFO(f"Loading ELF file: '{abspath}'", end="")
+            util.INFO(f"Loading ELF file: '{filename}'", end="")
             start_time = time.time()
-            self.names[prefix] = tt_parse_elf.read_elf(abspath)
+            self.names[prefix] = tt_parse_elf.read_elf(self._file_ifc, filename)
             util.INFO(
-                f" ({os.path.getsize(abspath)} bytes loaded in {time.time() - start_time:.2f}s)"
+                f" ({getsizeof(self.names[prefix])} bytes loaded in {time.time() - start_time:.2f}s)"
             )
             self.name_word_pattern = re.compile(r"[_@.a-zA-Z]+")
 

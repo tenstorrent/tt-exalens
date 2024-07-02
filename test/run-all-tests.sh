@@ -19,16 +19,16 @@ make build
 SKIP_UNIT_TESTS_RUN=1 make dbdtests
 
 
+big_echo "RUNNING SMOKE TEST"
+source ${BASE_TEST_DIR}/smoke-test/test-debuda-py.sh
+
+
 big_echo "RUNNING UNIT TESTS"
 source ${BASE_TEST_DIR}/unit-tests/server-unit-tests.sh
 source ${BASE_TEST_DIR}/unit-tests/coverage-run.sh
 # Python tests can also be run separately:
 # source ${BASE_TEST_DIR}/unit-tests/pybind-unit-tests.sh
 # source ${BASE_TEST_DIR}/unit-tests/base-unit-tests.sh
-
-
-big_echo "RUNNING SMOKE TEST"
-source ${BASE_TEST_DIR}/smoke-test/test-debuda-py.sh
 
 
 big_echo "RUNNING WHEEL TEST"

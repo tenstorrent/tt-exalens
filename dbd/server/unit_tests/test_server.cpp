@@ -6,7 +6,11 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <string>
+#include <vector>
 #include <zmq.hpp>
+
+#include "dbdserver/requests.h"
 
 constexpr int DEFAULT_TEST_SERVER_PORT = 6668;
 
@@ -30,6 +34,23 @@ class yaml_not_implemented_server : public server {
 
    public:
     yaml_not_implemented_server(bool enable_yaml);
+
+    std::optional<std::vector<uint8_t>> get_file(const std::string &path) override {
+        if (enable_yaml) {
+            send_yaml("- type: 200\n  size: " + std::to_string(path.size()) + "\n  data: " + path);
+            return {};
+        } else {
+            return {};
+        }
+    }
+
+    std::optional<std::string> get_run_dirpath() override {
+        if (enable_yaml) {
+            send_yaml("- type: 201");
+            return {};
+        } else
+            return {};
+    }
 
     bool is_yaml_enabled() const { return enable_yaml; }
 };
@@ -140,7 +161,7 @@ class yaml_not_implemented_implementation : public debuda_implementation {
 };
 
 yaml_not_implemented_server::yaml_not_implemented_server(bool enable_yaml)
-    : server(std::make_unique<yaml_not_implemented_implementation>(this)), enable_yaml(enable_yaml) {}
+    : server(std::make_unique<yaml_not_implemented_implementation>(this), "run_dirpath"), enable_yaml(enable_yaml) {}
 
 }  // namespace tt::dbd
 
@@ -202,7 +223,7 @@ TEST(debuda_server, get_cluster_description) {
 }
 
 TEST(debuda_server, get_device_ids) {
-    test_not_implemented_request(tt::dbd::request{tt::dbd::request_type::get_device_ids}, "- type: 104");
+    test_not_implemented_request(tt::dbd::request{tt::dbd::request_type::get_device_ids}, "- type: 18");
 }
 
 TEST(debuda_server, pci_read32) {
@@ -248,18 +269,18 @@ TEST(debuda_server, get_harvester_coordinate_translation) {
     test_not_implemented_request(
         tt::dbd::get_harvester_coordinate_translation_request{
             tt::dbd::request_type::get_harvester_coordinate_translation, 1},
-        "- type: 103\n  chip_id: 1");
+        "- type: 17\n  chip_id: 1");
 }
 
 TEST(debuda_server, get_device_arch) {
     test_not_implemented_request(tt::dbd::get_device_arch_request{tt::dbd::request_type::get_device_arch, 1},
-                                 "- type: 105\n  chip_id: 1");
+                                 "- type: 19\n  chip_id: 1");
 }
 
 TEST(debuda_server, get_device_soc_description) {
     test_not_implemented_request(
         tt::dbd::get_device_soc_description_request{tt::dbd::request_type::get_device_soc_description, 1},
-        "- type: 106\n  chip_id: 1");
+        "- type: 20\n  chip_id: 1");
 }
 
 TEST(debuda_server, pci_write) {
@@ -279,4 +300,20 @@ TEST(debuda_server, pci_write) {
     for (size_t i = 0; i < data_size; i++) request->data[i] = 10 + i;
 
     test_not_implemented_request(*request, expected_response, request_data.size());
+}
+
+TEST(debuda_server, get_file) {
+    constexpr std::string_view filename = "test_file";
+    std::string expected_response =
+        "- type: 200\n  size: " + std::to_string(filename.size()) + "\n  data: " + filename.data();
+    std::array<uint8_t, filename.size() + sizeof(tt::dbd::get_file_request)> request_data = {0};
+    auto request = reinterpret_cast<tt::dbd::get_file_request *>(&request_data[0]);
+    request->type = tt::dbd::request_type::get_file;
+    request->size = filename.size();
+    for (size_t i = 0; i < filename.size(); i++) request->data[i] = filename[i];
+    test_not_implemented_request(*request, expected_response, request_data.size());
+}
+
+TEST(debuda_server, get_buda_run_dirpath) {
+    test_not_implemented_request(tt::dbd::request{tt::dbd::request_type::get_buda_run_dirpath}, "- type: 201");
 }

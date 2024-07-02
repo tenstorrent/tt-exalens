@@ -6,6 +6,7 @@ import tt_device
 import tt_util as util
 
 import atexit
+import io
 import os
 import pickle
 
@@ -56,6 +57,15 @@ class DbdCacheThrough(DbdCache):
 
         return wrapper
 
+    def cache_binary_decorator(func):
+        def wrapper(self, *args, **kwargs):
+            key = (func.__name__, args)
+            retval = func(self, *args, **kwargs)
+            self.cache[key] = retval.read()
+            return retval
+
+        return wrapper
+
     @cache_decorator
     def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
         return self.communicator.pci_read32(chip_id, noc_x, noc_y, address)
@@ -86,7 +96,7 @@ class DbdCacheThrough(DbdCache):
         return self.communicator.pci_write32_raw(chip_id, reg_addr, data)
 
     @cache_decorator
-    def get_runtime_data(self):
+    def get_runtime_data(self) -> str:
         return self.communicator.get_runtime_data()
 
     @cache_decorator
@@ -109,7 +119,19 @@ class DbdCacheThrough(DbdCache):
     def get_device_soc_description(self, chip_id):
         return self.communicator.get_device_soc_description(chip_id)
 
-    def using_cache(self):
+    @cache_decorator
+    def get_file(self, file_path: str) -> str:
+        return self.communicator.get_file(file_path)
+
+    @cache_binary_decorator
+    def get_binary(self, binary_path: str) -> io.BufferedIOBase:
+        return self.communicator.get_binary(binary_path)
+
+    @cache_decorator
+    def get_run_dirpath(self) -> str:
+        return self.communicator.get_run_dirpath()
+
+    def using_cache(self) -> bool:
         return True
 
 
@@ -153,6 +175,19 @@ class DbdCacheReader(DbdCache):
             return self.cache[key]
 
         return wrapper
+    
+    def read_cached_binary_decorator(func):
+        def wrapper(self, *args, **kwargs):
+            key = (func.__name__, args)
+
+            if key not in self.cache:
+                util.ERROR(
+                    f"Cache miss for {func.__name__}.")
+                return None
+
+            return io.BytesIO(self.cache[key])
+
+        return wrapper
 
     @read_decorator
     def pci_read32(self, chip_id, noc_x, noc_y, reg_addr):
@@ -184,7 +219,7 @@ class DbdCacheReader(DbdCache):
         raise util.TTException("Device not available, cannot write to cache.")
 
     @read_decorator
-    def get_runtime_data(self):
+    def get_runtime_data(self) -> str:
         pass
 
     @read_decorator
@@ -207,7 +242,19 @@ class DbdCacheReader(DbdCache):
     def get_device_soc_description(self, chip_id):
         pass
 
-    def using_cache(self):
+    @read_decorator
+    def get_file(self, file_path: str) -> str:
+        pass
+
+    @read_cached_binary_decorator
+    def get_binary(self, binary_path: str) -> io.BufferedIOBase:
+        pass
+
+    @read_decorator
+    def get_run_dirpath(self) -> str:
+        pass
+
+    def using_cache(self) -> bool:
         return True
 
 
