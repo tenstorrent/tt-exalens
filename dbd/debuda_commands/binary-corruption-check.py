@@ -247,7 +247,7 @@ def read_hex_binary(context, device, core_loc: OnChipCoordinate, binary_type: st
                 except:
                     breakpoint()
     except:
-        pass
+        raise util.TTException(f"Exception while reading reading hex file {hex_file_path}")
 
     return hex_file_data
     
