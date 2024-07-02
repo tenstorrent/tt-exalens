@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import io
 import os
+from typing import Union
 
 class GdbFileServer:
     def __init__(self, context):
@@ -18,7 +19,7 @@ class GdbFileServer:
         self.opened_files.clear()
         self.next_fd = 0
 
-    def open(self, filename: str, flags: int, mode: int):
+    def open(self, filename: str, flags: int, mode: int) -> int:
         try:
             content = self._context.server_ifc.get_binary(filename)
             id = self.next_fd
@@ -29,13 +30,13 @@ class GdbFileServer:
         except OSError as e:
             return f"-1,{e.errno}"
 
-    def close(self, fd: int):
+    def close(self, fd: int) -> bool:
         if fd in self.opened_files.keys():
             del self.opened_files[fd]
             return True
         return False
 
-    def pread(self, fd: int, count: int, offset: int):
+    def pread(self, fd: int, count: int, offset: int) -> bytes:
         if fd in self.opened_files:
             stream = self.opened_files[fd]
             try:
@@ -46,7 +47,7 @@ class GdbFileServer:
         else:
             return "-1"
 
-    def pwrite(self, fd: int, offset: int, data: bytes):
+    def pwrite(self, fd: int, offset: int, data: bytes) -> Union[int, bytes]:
         if fd in self.opened_files:
             stream = self.opened_files[fd]
             try:

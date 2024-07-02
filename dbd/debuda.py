@@ -301,7 +301,7 @@ def locate_most_recent_build_output_dir():
 
 # Loads all files necessary to debug a single buda run
 # Returns a debug 'context' that contains the loaded information
-def load_context(server_ifc, netlist_filepath, runtime_data_yaml, cluster_desc_yaml):
+def load_context(server_ifc, netlist_filepath, runtime_data_yaml, cluster_desc_yaml) -> Context:
     run_dirpath = server_ifc.get_run_dirpath()
     if run_dirpath is None or runtime_data_yaml is None:
         return LimitedContext(server_ifc, cluster_desc_yaml)

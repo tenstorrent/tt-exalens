@@ -363,16 +363,16 @@ class debuda_client(DbdCommunicator):
             self._communication.get_device_soc_description(chip_id)
         )
     
-    def get_file(self, file_path: str):
+    def get_file(self, file_path: str) -> str:
         return self.parse_string(
             self._communication.get_file(file_path)
         )
     
-    def get_binary(self, binary_path: str):
+    def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         binary_content = self._communication.get_file(binary_path)
         return io.BytesIO(binary_content)
 
-    def get_run_dirpath(self):
+    def get_run_dirpath(self) -> str:
         run_dirpath = self.parse_string(
             self._communication.get_run_dirpath()
         )
@@ -434,7 +434,7 @@ class debuda_pybind(DbdCommunicator):
     ):
         return self._check_result(tt_dbd_pybind.pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format))
 
-    def get_runtime_data(self):
+    def get_runtime_data(self) -> str:
         if self._runtime_yaml_path:
             with open(self._runtime_yaml_path, 'r') as f:
                 return f.read()
@@ -455,16 +455,16 @@ class debuda_pybind(DbdCommunicator):
     def get_device_soc_description(self, chip_id: int):
         return self._check_result(tt_dbd_pybind.get_device_soc_description(chip_id))
     
-    def get_file(self, file_path: str):
+    def get_file(self, file_path: str) -> str:
         content = None
         with open(file_path, 'r') as f:
             content = f.read()
         return self._check_result(content)
     
-    def get_binary(self, binary_path: str):
+    def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         return open(binary_path, 'rb')
     
-    def get_run_dirpath(self):
+    def get_run_dirpath(self) -> str:
         return self._run_dirpath
 
 

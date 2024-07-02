@@ -96,7 +96,7 @@ class DbdCacheThrough(DbdCache):
         return self.communicator.pci_write32_raw(chip_id, reg_addr, data)
 
     @cache_decorator
-    def get_runtime_data(self):
+    def get_runtime_data(self) -> str:
         return self.communicator.get_runtime_data()
 
     @cache_decorator
@@ -120,18 +120,18 @@ class DbdCacheThrough(DbdCache):
         return self.communicator.get_device_soc_description(chip_id)
 
     @cache_decorator
-    def get_file(self, file_path: str):
+    def get_file(self, file_path: str) -> str:
         return self.communicator.get_file(file_path)
 
     @cache_binary_decorator
-    def get_binary(self, binary_path: str):
+    def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         return self.communicator.get_binary(binary_path)
 
     @cache_decorator
-    def get_run_dirpath(self):
+    def get_run_dirpath(self) -> str:
         return self.communicator.get_run_dirpath()
 
-    def using_cache(self):
+    def using_cache(self) -> bool:
         return True
 
 
@@ -219,7 +219,7 @@ class DbdCacheReader(DbdCache):
         raise util.TTException("Device not available, cannot write to cache.")
 
     @read_decorator
-    def get_runtime_data(self):
+    def get_runtime_data(self) -> str:
         pass
 
     @read_decorator
@@ -243,18 +243,18 @@ class DbdCacheReader(DbdCache):
         pass
 
     @read_decorator
-    def get_file(self, file_path: str):
+    def get_file(self, file_path: str) -> str:
         pass
 
     @read_cached_binary_decorator
-    def get_binary(self, binary_path: str):
+    def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         pass
 
     @read_decorator
-    def get_run_dirpath(self):
+    def get_run_dirpath(self) -> str:
         pass
 
-    def using_cache(self):
+    def using_cache(self) -> bool:
         return True
 
 

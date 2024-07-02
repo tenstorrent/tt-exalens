@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from abc import ABC, abstractmethod
+import io
 
 
 class DbdCommunicator(ABC):
@@ -68,16 +69,16 @@ class DbdCommunicator(ABC):
         pass
 
     @abstractmethod
-    def get_file(self, file_path: str):
+    def get_file(self, file_path: str) -> str:
         pass
 
     @abstractmethod
-    def get_binary(self, binary_path: str):
+    def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         pass
 
     @abstractmethod
-    def get_run_dirpath(self):
+    def get_run_dirpath(self) -> str:
         pass
     
-    def using_cache(self):
+    def using_cache(self) -> bool:
         return False

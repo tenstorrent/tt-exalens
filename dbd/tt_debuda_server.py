@@ -8,7 +8,7 @@ import signal
 import subprocess
 import time
 
-def start_server(port, runtime_data_yaml_filename, run_dirpath = None, wanted_devices=None):
+def start_server(port: int, runtime_data_yaml_filename: str, run_dirpath: str = None, wanted_devices: "list[int]" = None) -> subprocess.Popen:
     if util.is_port_available(int(port)):
         debuda_server = spawn_standalone_debuda_stub(port, runtime_data_yaml_filename, run_dirpath, wanted_devices)
         if debuda_server is None:
@@ -18,7 +18,7 @@ def start_server(port, runtime_data_yaml_filename, run_dirpath = None, wanted_de
     raise util.TTFatalException(f"Port {port} not available. A debuda server might alreasdy be running.")
 
 # The server needs the runtime_data.yaml to get the netlist path, arch, and device
-def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename, run_dirpath,  wanted_devices=None):
+def spawn_standalone_debuda_stub(port: int, runtime_data_yaml_filename: str, run_dirpath: str,  wanted_devices: "list[int]" = None) -> subprocess.Popen:
     print("Spawning debuda-server...")
 
     debuda_server_standalone = "/debuda-server-standalone"
@@ -62,7 +62,7 @@ def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename, run_dirpath, 
     return debuda_stub
 
 # Terminates debuda-server spawned in connect_to_server
-def stop_server(debuda_stub):
+def stop_server(debuda_stub: subprocess.Popen):
     if debuda_stub is not None and debuda_stub.poll() is None:
         os.killpg(os.getpgid(debuda_stub.pid), signal.SIGTERM)
         time.sleep(0.1)
