@@ -3,11 +3,6 @@ name: "UNIT TESTS"
 on:
   workflow_call:
     inputs:
-      arch:
-        required: false
-        type: string
-        # TODO: Add grayskull when we switch to remote
-        default: '["wormhole_b0"]'
       os:
         required: false
         type: string
@@ -21,15 +16,17 @@ jobs:
   build-and-run-unit-tests:
     strategy:
       matrix:
-        arch: ${{ fromJson(inputs.arch || '["grayskull", "wormhole_b0", "blackhole"]') }}
+        runner-info: [
+          {arch: "grayskull", runs-on: ["self-hosted", "e150"]},
+          {arch: "wormhole_b0", runs-on: ["self-hosted", "n150"]},
+        ]
     env:
-      ARCH_NAME: ${{ matrix.arch }}
+      ARCH_NAME: ${{ matrix.runner-info.arch }}
       CONFIG: ${{ inputs.config }}
       # So we can get all the makefile output we want
       VERBOSE: 1
-    # TODO: This will need to change when we get cloud runners
-    runs-on: "ubuntu-22.04"
-    name: Build and run unit test on ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner-info.runs-on }}
+    name: Build and run unit test on ${{ matrix.runner-info.arch }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
