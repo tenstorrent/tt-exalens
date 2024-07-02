@@ -1204,6 +1204,19 @@ class Device(TTObject):
             if rst_reg != ALL_SOFT_RESET:
                 util.ERROR (f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 
+    @abstractmethod
+    def get_tensix_configuration_base(self) -> int:
+        pass
+
+    @abstractmethod
+    def get_configuration_register_index(self, register_name: str) -> int:
+        pass
+
+    def get_configuration_register_address(self, register_name: str):
+        tensix_config_base = self.get_tensix_configuration_base()
+        register_index = self.get_configuration_register_index(register_name)
+        return tensix_config_base + register_index * 4
+
 # end of class Device
 
 # This is based on runtime_utils.cpp:get_soc_desc_path()
