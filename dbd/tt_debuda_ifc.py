@@ -486,6 +486,6 @@ def connect_to_server(ip="localhost", port=5555):
         tt_device.SERVER_IFC = debuda_client(ip, port)
         util.INFO("Connected to debuda-server.")
     except:
-        raise
+        raise util.TTFatalException("Failed to connect to debuda server.")
 
     return tt_device.SERVER_IFC

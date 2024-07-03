@@ -542,7 +542,6 @@ def main():
         util.INFO(f"Connecting to Debuda server at {server_ip}:{server_port}")
         server_ifc = tt_debuda_ifc.connect_to_server(server_ip, server_port)
     else:
-        util.INFO(f"Using pybind library instead of debuda server.")
         server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir, wanted_devices)
 
     if not args["--cached"] and args["--write-cache"]:
