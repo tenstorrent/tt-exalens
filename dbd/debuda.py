@@ -74,6 +74,7 @@ import tt_debuda_ifc_cache
 from tt_coordinate import OnChipCoordinate
 import tt_util as util, tt_device
 from tt_debuda_context import BudaContext, Context, LimitedContext
+import tt_debuda_init
 
 
 class DebudaCompleter(Completer):
@@ -279,35 +280,6 @@ def import_commands(reload=False):
     return commands
 
 
-# Finds the most recent build directory
-def locate_most_recent_build_output_dir():
-    # Try to find a default output directory
-    most_recent_modification_time = None
-    try:
-        for tt_build_subfile in os.listdir("tt_build"):
-            subdir = f"tt_build/{tt_build_subfile}"
-            if os.path.isdir(subdir):
-                if (
-                    most_recent_modification_time is None
-                    or os.path.getmtime(subdir) > most_recent_modification_time
-                ):
-                    most_recent_modification_time = os.path.getmtime(subdir)
-                    most_recent_subdir = subdir
-        return most_recent_subdir
-    except:
-        pass
-    return None
-
-
-# Loads all files necessary to debug a single buda run
-# Returns a debug 'context' that contains the loaded information
-def load_context(server_ifc, netlist_filepath, runtime_data_yaml, cluster_desc_yaml) -> Context:
-    run_dirpath = server_ifc.get_run_dirpath()
-    if run_dirpath is None or runtime_data_yaml is None:
-        return LimitedContext(server_ifc, cluster_desc_yaml)
-    else:
-        return BudaContext(server_ifc, netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_yaml)
-
 class UIState:
     def __init__(self, context: Context) -> None:
         self.context = context
@@ -338,6 +310,7 @@ class UIState:
             self.gdb_server.stop()
         self.gdb_server = None
 
+
 class SimplePromptSession:
     def __init__(self):
         self.history = InMemoryHistory()
@@ -346,6 +319,7 @@ class SimplePromptSession:
         s = input()
         self.history.append_string(s)
         return s
+
 
 def main_loop(args, context):
     """
@@ -481,45 +455,41 @@ def main_loop(args, context):
             if args["--test"]:  # Always raise in test mode
                 raise
 
-def find_runtime_data_yaml(output_dir):
-    # Try to determine the output directory
-    runtime_data_yaml_filename = None
-    if output_dir is None:  # Then try to find the most recent tt_build subdir
-        most_recent_build_output_dir = locate_most_recent_build_output_dir()
-        if most_recent_build_output_dir:
-            util.INFO(
-                f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{most_recent_build_output_dir}"
-            )
-            output_dir = most_recent_build_output_dir
-        else:
-            util.WARN(
-                f"Output directory (output_dir) was not supplied and cannot be determined automatically. Continuing with limited functionality..."
-            )
-    # Try to load the runtime data from the output directory
-    runtime_data_yaml_filename = f"{output_dir}/runtime_data.yaml"
-    if not os.path.exists(runtime_data_yaml_filename):
-        util.WARN(f"Error: Yaml file at {runtime_data_yaml_filename} does not exist.")
-        runtime_data_yaml_filename = None
-
-    return runtime_data_yaml_filename, output_dir
 
 def main():
     args = docopt(__doc__)
 
+
+    # ARGUMENT PARSING
+
     if not args["--verbose"]:
         util.VERBOSE = util.NULL_PRINT
 
-    if not args["--remote"]:
-        runtime_data_yaml_filename, output_dir = find_runtime_data_yaml(args["<output_dir>"])
+    output_dir = args["<output_dir>"]
+    if not output_dir and not args["--remote"] and not args["--cached"]:
+        output_dir = tt_debuda_init.locate_most_recent_build_output_dir()
+        if output_dir:
+            util.INFO(
+                f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{output_dir}"
+            )
+        else:
+            util.WARN(
+                f"Output directory (output_dir) was not supplied and cannot be determined automatically. Continuing with limited functionality..."
+            )
 
     wanted_devices = None
     if args["--devices"]:
         wanted_devices = args["--devices"].split(",")
         wanted_devices = [int(d) for d in wanted_devices]
 
+    cache_path = None
+    if args["--write-cache"]:
+        cache_path = args["--cache-path"] 
+
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
         print(f"Starting Debuda server at {args['--port']}")
+        runtime_data_yaml_filename = tt_debuda_init.find_runtime_data_yaml_filename(output_dir)
         debuda_server = tt_debuda_server.start_server(
             args["--port"],
             runtime_data_yaml_filename,
@@ -534,41 +504,16 @@ def main():
     
     if args["--cached"]:
         util.INFO(f"Starting Debuda from cache.")
-        server_ifc = tt_debuda_ifc_cache.init_cache_reader(args["--cache-path"])
+        context = tt_debuda_init.init_debuda_cached(args["--cache-path"])
     elif args["--remote"]:
         address = args["--remote-address"].split(":")
         server_ip = address[0] if address[0]!='' else "localhost"
         server_port = address[-1] 
         util.INFO(f"Connecting to Debuda server at {server_ip}:{server_port}")
-        server_ifc = tt_debuda_ifc.connect_to_server(server_ip, server_port)
+        context = tt_debuda_init.init_debuda_remote(server_ip, int(server_port), cache_path)
     else:
-        server_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir, wanted_devices)
+        context = tt_debuda_init.init_debuda_local(output_dir, args["--netlist"], wanted_devices, cache_path)
 
-    if not args["--cached"] and args["--write-cache"]:
-        server_ifc = tt_debuda_ifc_cache.init_cache_writer(args["--cache-path"])
-
-    runtime_data_yaml = None
-    try:
-        runtime_data = server_ifc.get_runtime_data()
-        runtime_data_yaml = util.YamlFile(server_ifc, 'runtime_yaml', content=runtime_data)
-    except:
-        util.WARN("Debuda does not support runtime data. Continuing with limited functionality...")
-
-    cluster_desc_yaml = None
-    try:
-        cluster_desc_path = server_ifc.get_cluster_description()
-        cluster_desc_yaml = util.YamlFile(server_ifc, cluster_desc_path)
-    except:
-        util.ERROR("Debuda does not support cluster description. Exiting...")
-        exit(1)
-
-    # Create the context
-    context = load_context(
-        server_ifc=server_ifc,
-        netlist_filepath=args["--netlist"],
-        runtime_data_yaml=runtime_data_yaml,
-        cluster_desc_yaml=cluster_desc_yaml,
-    )
     # context.args = args  # Used by 'export' command
     # context.debuda_path = __file__  # Used by 'export' command
 
