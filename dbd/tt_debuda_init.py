@@ -35,13 +35,11 @@ def init_debuda(
 		List of device IDs we want to connect to. If None, connect to all available devices.
 	caching_path : str, optional
 		Path to the cache file to write. If None, caching is disabled.
-
 	Returns
 	-------
 	Context
 		Debuda context object.
 	"""
-	
 	runtime_data_yaml_filename = find_runtime_data_yaml_filename(output_dir_path)
 	debuda_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir_path, wanted_devices)
 	if cache_path:
@@ -68,7 +66,6 @@ def init_debuda_remote(
 		Port number of the debuda server interface.
 	cache_path : str, optional
 		Path to the cache file to write. If None, caching is disabled.
-		
 	Returns
 	-------
 	Context
@@ -150,6 +147,7 @@ def load_context(
 
 
 def find_runtime_data_yaml_filename(output_dir: str = None):
+
 	""" Find the runtime data yaml file in the output directory. If directory is not specified, try to find the most recent buda output directory.
 
 	Parameters
@@ -168,7 +166,6 @@ def find_runtime_data_yaml_filename(output_dir: str = None):
 
 
 def locate_most_recent_build_output_dir():
-
 	# Try to find a default output directory
 	most_recent_modification_time = None
 	try:
@@ -184,3 +181,4 @@ def locate_most_recent_build_output_dir():
 		return most_recent_subdir
 	except:
 		return None
+
