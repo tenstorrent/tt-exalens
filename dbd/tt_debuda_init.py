@@ -147,7 +147,6 @@ def load_context(
 
 
 def find_runtime_data_yaml_filename(output_dir: str = None):
-
 	""" Find the runtime data yaml file in the output directory. If directory is not specified, try to find the most recent buda output directory.
 
 	Parameters
