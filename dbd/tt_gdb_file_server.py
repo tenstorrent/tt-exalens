@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 import io
 import os
-from typing import Union
 
 class GdbFileServer:
     def __init__(self, context):
@@ -47,7 +46,7 @@ class GdbFileServer:
         else:
             return "-1"
 
-    def pwrite(self, fd: int, offset: int, data: bytes) -> Union[int, bytes]:
+    def pwrite(self, fd: int, offset: int, data: bytes) -> int | bytes:
         if fd in self.opened_files:
             stream = self.opened_files[fd]
             try:

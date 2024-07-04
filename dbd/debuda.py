@@ -512,7 +512,7 @@ def main():
         util.INFO(f"Connecting to Debuda server at {server_ip}:{server_port}")
         context = tt_debuda_init.init_debuda_remote(server_ip, int(server_port), cache_path)
     else:
-        context = tt_debuda_init.init_debuda_local(output_dir, args["--netlist"], wanted_devices, cache_path)
+        context = tt_debuda_init.init_debuda(output_dir, args["--netlist"], wanted_devices, cache_path)
 
     # context.args = args  # Used by 'export' command
     # context.debuda_path = __file__  # Used by 'export' command

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
 import os
 
 from enum import Enum
@@ -8,7 +11,14 @@ import tt_util as util
 
 from tt_debuda_context import Context, BudaContext, LimitedContext
 
-def init_debuda_local(
+# GLOBAL_CONTEXT is a convenience variable to store fallback debuda context object.
+# If a library function needs context parameter but it isn't provided, it will use
+# whatever is in GLOBAL_CONTEXT variable. This does not mean that debuda context is
+# a singleton, as it can be explicitly provided to library functions.
+GLOBAL_CONTEXT: Context = None
+
+
+def init_debuda(
 		output_dir_path: str = None,
 		netlist_path: str = None,
 		wanted_devices: list = None,
@@ -116,7 +126,7 @@ def get_yamls(debuda_ifc: tt_debuda_ifc.DbdCommunicator) -> "tuple[util.YamlFile
 		cluster_desc_path = debuda_ifc.get_cluster_description()
 		cluster_desc_yaml = util.YamlFile(debuda_ifc, cluster_desc_path)
 	except:
-		util.TTFatalException("Debuda does not support cluster description. Cannot connect to device.")
+		raise util.TTFatalException("Debuda does not support cluster description. Cannot connect to device.")
 
 	return runtime_data_yaml, cluster_desc_yaml
 
@@ -129,9 +139,14 @@ def load_context(
 ) -> Context:
     run_dirpath = server_ifc.get_run_dirpath()
     if run_dirpath is None or runtime_data_yaml is None:
-        return LimitedContext(server_ifc, cluster_desc_yaml)
+        context = LimitedContext(server_ifc, cluster_desc_yaml)
     else:
-        return BudaContext(server_ifc, netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_yaml)
+        context = BudaContext(server_ifc, netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_yaml)   
+    
+    global GLOBAL_CONTEXT
+    GLOBAL_CONTEXT = context
+
+    return context
 
 
 def find_runtime_data_yaml_filename(output_dir: str = None):

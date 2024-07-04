@@ -44,6 +44,8 @@ from tt_coordinate import OnChipCoordinate
 import tt_device
 import time
 
+from tt_debuda_lib import read_from_device
+
 
 def run(cmd_text, context, ui_state: UIState = None):
     args = docopt(command_metadata["description"], argv=cmd_text.split()[1:])
@@ -83,21 +85,21 @@ def run(cmd_text, context, ui_state: UIState = None):
             print_a_pci_burst_read(
                 did,
                 *core_loc.to("nocVirt"),
-                0,
                 addr,
                 word_count=word_count,
                 sample=sample,
                 print_format=format,
+                context=context,
             )
     else:
         print_a_pci_burst_read(
             ui_state.current_device_id,
             *core_loc.to("nocVirt"),
-            0,
             addr,
             word_count=word_count,
             sample=sample,
             print_format=format,
+            context=context,
         )
 
 
@@ -107,18 +109,15 @@ def print_a_pci_read(x, y, addr, val, comment=""):
 
 
 def print_a_pci_burst_read(
-    device_id, x, y, noc_id, addr, word_count=1, sample=1, print_format="hex32"
+    device_id, x, y, addr, word_count=1, sample=1, print_format="hex32", context=None
 ):
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
 
     if sample == 0:  # No sampling, just a single read
         da = DataArray(f"L1-0x{addr:08x}-{word_count * 4}", 4)
-        for i in range(word_count):
-            data = tt_device.SERVER_IFC.pci_read32(
-                device_id, x, y, addr + 4 * i
-            )
-            da.data.append(data)
+        data = read_from_device(device_id, x, y, addr, word_count, context)
+        da.data = data
         if bytes_per_entry != 4:
             da.to_bytes_per_entry(bytes_per_entry)
         formated = f"{da._id}\n" + util.dump_memory(

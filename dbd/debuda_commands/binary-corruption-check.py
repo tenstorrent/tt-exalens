@@ -28,7 +28,7 @@ Examples:
 command_metadata = {
     "short": "bcc",
     "long" : "binary-corruption-check",
-    "type" : "high-level",
+    "type" : "dev", # "high-level", TODO: Needs fixing (see issue #67)
     "description": __doc__,
     "context": ["buda"]
 }
