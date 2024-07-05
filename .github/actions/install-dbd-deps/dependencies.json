@@ -1,4 +1,15 @@
 {
+	"ubuntu-20.04": [
+		"software-properties-common",
+		"build-essential",
+		"libyaml-cpp-dev",
+		"libboost-all-dev",
+		"libhwloc-dev",
+		"libzmq3-dev",
+		"libgtest-dev",
+		"libgmock-dev",
+		"xxd"
+	],
 	"ubuntu-22.04": [
 		"software-properties-common",
 		"build-essential",
