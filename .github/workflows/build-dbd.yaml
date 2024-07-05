@@ -21,7 +21,7 @@ jobs:
       # So we can get all the makefile output we want
       VERBOSE: 1
     # TODO: This will need to change when we get cloud runners
-    runs-on: "ubuntu-22.04"
+    runs-on: ${{ inputs.os }}
     name: "Build DEBUDA."
     steps:
       - uses: actions/checkout@v4

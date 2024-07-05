@@ -3,7 +3,6 @@
 		"software-properties-common",
 		"build-essential",
 		"libyaml-cpp-dev",
-		"libyaml-cpp0.7",
 		"libboost-all-dev",
 		"libhwloc-dev",
 		"libzmq3-dev",
