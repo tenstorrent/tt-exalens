@@ -49,5 +49,5 @@ else
 $(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/third_party/umd/device/bin/silicon/x86/create-ethernet-map
 endif
 	@mkdir -p $(@D)
-	ln -s $^ $@
+	cp $^ $@
 	chmod +x $@
