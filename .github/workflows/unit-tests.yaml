@@ -6,7 +6,7 @@ on:
       os:
         required: false
         type: string
-        default: "ubuntu-22.04"
+        default: "ubuntu-20.04"
       config:
         required: false
         type: string
@@ -44,7 +44,7 @@ jobs:
           os: ${{ inputs.os }}
       - uses: ./.github/actions/setup-python-venv
         with:
-          python-version: '3.10'
+          python-version: '3.8'
       - name: Build and run server unit tests
         run: |
           make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/server/unit_tests
