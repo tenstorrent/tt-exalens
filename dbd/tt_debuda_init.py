@@ -105,7 +105,9 @@ def init_debuda_cached(
 	Context
 		Debuda context object.
 	"""
-
+	if not os.path.exists(cache_path) or not os.path.isfile(cache_path):
+		raise util.TTFatalException(f"Error: Cache file at {cache_path} does not exist.")
+	
 	debuda_ifc = tt_debuda_ifc_cache.init_cache_reader(cache_path)
 	runtime_data_yaml, cluster_desc_yaml = get_yamls(debuda_ifc)
 

@@ -1,9 +1,14 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import unittest, re
 from tt_parse_elf import read_elf, mem_access
 import tt_util as util
+
 
 
 class TestFileIfc:

@@ -1,13 +1,16 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from abc import abstractmethod
 import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from abc import abstractmethod
 import select
 import unittest
 import subprocess
-import sys
 import re
+
 
 class DbdOutputVerifier:
     def __init__(self):
@@ -46,7 +49,7 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
 class DbdTestRunner:
     def __init__(self, verifier: DbdOutputVerifier):
         self.interpreter_path = sys.executable
-        self.debuda_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "debuda.py")
+        self.debuda_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "debuda.py")
         self.process: subprocess.Popen = None
         self.verifier = verifier
 

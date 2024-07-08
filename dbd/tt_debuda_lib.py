@@ -120,7 +120,7 @@ def write_word_to_device(
 	if not isinstance(core_loc, OnChipCoordinate):
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 	return context.server_ifc.pci_write32(
-		device_id, *core_loc["nocVirt"], addr, data
+		device_id, *core_loc.to("nocVirt"), addr, data
 	)
 
 
@@ -150,7 +150,7 @@ def write_to_device(
 	Returns
 	-------
 	int
-		If the execution is successful, return value should be 4 (number of bytes written).
+		If the execution is successful, return value should be number of bytes written.
 	"""
 	context = check_context(context)
 	
@@ -160,7 +160,7 @@ def write_to_device(
 	if not isinstance(core_loc, OnChipCoordinate):
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 	return context.server_ifc.pci_write(
-		device_id, *core_loc["nocVirt"], addr, data
+		device_id, *core_loc.to("nocVirt"), addr, data
 	)
 
 
