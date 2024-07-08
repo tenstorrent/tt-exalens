@@ -6,6 +6,8 @@ import unittest
 import sys
 import os
 
+from typing import Union
+
 tt_dbd_pybind_path = os.path.dirname(__file__) + "/../../../build/lib"
 binary_path = os.path.dirname(__file__) + "/../../../build/bin"
 sys.path.append(tt_dbd_pybind_path)
@@ -28,7 +30,7 @@ class TestBindings(unittest.TestCase):
         assert pb.pci_write32_raw(1, 1, data) == data, "Error: pci_write32_raw should return the data written."
         assert pb.pci_read32_raw(1, 1) == data, "Error: pci_read32_raw should return the data written."
 
-    def test_pci_read_write(self, data: bytes | bytearray = bytearray([1, 5, 3]), size = 3):
+    def test_pci_read_write(self, data: Union[bytes, bytearray] = bytearray([1, 5, 3]), size = 3):
         assert pb.pci_read(3, 3, 3, 3, size) is None, "Error: pci_read should return None before writing."
         assert pb.pci_write(3, 3, 3, 3, data, 3) == size, "Error: pci_write should return the size of the data written."
 

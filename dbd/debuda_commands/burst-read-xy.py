@@ -44,7 +44,7 @@ from tt_coordinate import OnChipCoordinate
 import tt_device
 import time
 
-from tt_debuda_lib import read_from_device
+from tt_debuda_lib import read_words_from_device
 
 
 def run(cmd_text, context, ui_state: UIState = None):
@@ -84,7 +84,7 @@ def run(cmd_text, context, ui_state: UIState = None):
             util.INFO(f"Reading from device {did}")
             print_a_pci_burst_read(
                 did,
-                *core_loc.to("nocVirt"),
+                core_loc,
                 addr,
                 word_count=word_count,
                 sample=sample,
@@ -94,7 +94,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     else:
         print_a_pci_burst_read(
             ui_state.current_device_id,
-            *core_loc.to("nocVirt"),
+            core_loc,
             addr,
             word_count=word_count,
             sample=sample,
@@ -109,14 +109,14 @@ def print_a_pci_read(x, y, addr, val, comment=""):
 
 
 def print_a_pci_burst_read(
-    device_id, x, y, addr, word_count=1, sample=1, print_format="hex32", context=None
+    device_id, core_loc, addr, word_count=1, sample=1, print_format="hex32", context=None
 ):
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
 
     if sample == 0:  # No sampling, just a single read
         da = DataArray(f"L1-0x{addr:08x}-{word_count * 4}", 4)
-        data = read_from_device(device_id, x, y, addr, word_count, context)
+        data = read_words_from_device(core_loc, addr, device_id, word_count, context)
         da.data = data
         if bytes_per_entry != 4:
             da.to_bytes_per_entry(bytes_per_entry)
@@ -133,10 +133,10 @@ def print_a_pci_burst_read(
             t_end = time.time() + sample / word_count
             while time.time() < t_end:
                 val = tt_device.SERVER_IFC.pci_read32(
-                    device_id, x, y, addr + 4 * i
+                    device_id, *core_loc.to('nocVirt'), addr + 4 * i
                 )
                 if val not in values:
                     values[val] = 0
                 values[val] += 1
             for val in values.keys():
-                print_a_pci_read(x, y, addr + 4 * i, val, f"- {values[val]} times")
+                print_a_pci_read(*core_loc.to('nocVirt'), addr + 4 * i, val, f"- {values[val]} times")

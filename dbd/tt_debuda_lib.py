@@ -1,16 +1,16 @@
 import inspect
 
 from functools import wraps
+from typing import Union
 
+from tt_coordinate import OnChipCoordinate
 from tt_debuda_context import Context
 from tt_debuda_init import init_debuda
 from tt_debuda_init import GLOBAL_CONTEXT
-from tt_object import DataArray
 
 
-def read_from_device(
-		x: int, 
-		y: int, 
+def read_words_from_device(
+		core_loc: Union[str, OnChipCoordinate], 
 		addr: int, 
 		device_id: int = 0,
 		word_count: int = 1,
@@ -20,10 +20,8 @@ def read_from_device(
 	
 	Parameters
 	----------
-	x : int
-		X coordinate of the core to read from.
-	y : int
-		Y coordinate of the core to read from.
+	core_loc : str | OnChipCoordinate
+		Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
 	addr : int
 		Memory address to read from.
 	device_id : int, default 0
@@ -41,18 +39,56 @@ def read_from_device(
 	"""
 	context = check_context(context)
 	
+	if not isinstance(core_loc, OnChipCoordinate):
+		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 	data = []
 	for i in range(word_count):
 		word = context.server_ifc.pci_read32(
-			device_id, x, y, addr + 4 * i
+			device_id, *core_loc.to("nocVirt"), addr + 4 * i
 		)
 		data.append(word)
 	return data
 
 
+def read_from_device(
+		core_loc: Union[str, OnChipCoordinate],
+		addr: int,
+		device_id: int = 0,
+		num_bytes: int = 4,
+		context: Context = None
+) -> bytes:
+	""" Reads num_bytes of data starting from address 'addr' at core <x-y>.
+	
+	Parameters
+	----------
+	core_loc : str | OnChipCoordinate
+		Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+	addr : int
+		Memory address to read from.
+	device_id : int, default 0
+		ID number of device to read from.
+	num_bytes : int, default 4
+		Number of bytes to read.
+	context : Context, optional
+		Debuda context object used for interaction with device. If None, global context is used and
+		potentailly initialized.
+	
+	Returns
+	-------
+	bytes
+		Data read from the device.
+	"""
+	context = check_context(context)
+	
+	if not isinstance(core_loc, OnChipCoordinate):
+		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
+	return context.server_ifc.pci_read(
+		device_id, *core_loc.to("nocVirt"), addr, num_bytes
+	)
+
+
 def write_word_to_device(
-		x: int, 
-		y: int,
+		core_loc: Union[str, OnChipCoordinate],
 		addr: int,
 		data: int,
 		device_id: int = 0,
@@ -62,10 +98,8 @@ def write_word_to_device(
 	
 	Parameters
 	----------
-	x : int
-		X coordinate of the core to write to.
-	y : int
-		Y coordinate of the core to write to.
+	core_loc : str | OnChipCoordinate
+		Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
 	addr : int
 		Memory address to write to.
 	data : int
@@ -83,16 +117,17 @@ def write_word_to_device(
 	"""
 	context = check_context(context)
 	
+	if not isinstance(core_loc, OnChipCoordinate):
+		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 	return context.server_ifc.pci_write32(
-		device_id, x, y, addr, data
+		device_id, *core_loc["nocVirt"], addr, data
 	)
 
 
 def write_to_device(
-		x: int, 
-		y: int,
+		core_loc: Union[str | OnChipCoordinate],
 		addr: int,
-		data: list[int] | bytes,
+		data: Union[list[int], bytes],
 		device_id: int = 0,
 		context: Context = None
 ) -> int:
@@ -100,10 +135,8 @@ def write_to_device(
 	
 	Parameters
 	----------
-	x : int
-		X coordinate of the core to write to.
-	y : int
-		Y coordinate of the core to write to.
+	core_loc : str | OnChipCoordinate
+		Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
 	addr : int
 		Memory address to write to.
 	data : list[int] | bytes
@@ -124,8 +157,10 @@ def write_to_device(
 	if isinstance(data, list):
 		data = bytes(data)
 
+	if not isinstance(core_loc, OnChipCoordinate):
+		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 	return context.server_ifc.pci_write(
-		device_id, x, y, addr, data
+		device_id, *core_loc["nocVirt"], addr, data
 	)
 
 
@@ -144,6 +179,6 @@ def check_context(context: Context = None) -> Context:
 
 
 if __name__ == '__main__':
-	print(hex(read_from_device(0, 0, 0x0)[0]))
-	write_word_to_device(0, 0, 0x0, 0x1234)
-	print(hex(read_from_device(0, 0, 0x0)[0]))
+	print(hex(read_from_device('0,0', 0x0)[0]))
+	write_word_to_device('0,0', 0x0, 0x1234)
+	print(hex(read_from_device('0,0', 0x0)[0]))
