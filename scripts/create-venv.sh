@@ -15,7 +15,7 @@ python3 -m pip install setuptools wheel
 
 echo "Installing dev dependencies"
 python3 -m pip install -r $(pwd)/dbd/requirements.txt
-python3 -m pip install -r $(pwd)/dbd/test_requirements.txt
+python3 -m pip install -r $(pwd)/dbd/test/test_requirements.txt
 
 # TODO: Check what's this
 # echo "Generating git hooks"
