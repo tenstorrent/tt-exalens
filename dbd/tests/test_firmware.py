@@ -10,7 +10,6 @@ from tt_firmware import ELF, BUDA_FW_VARS
 from tests.test_parse_elf import TestFileIfc
 
 
-
 file_ifc = TestFileIfc()
 
 class TestFirmware(unittest.TestCase):
