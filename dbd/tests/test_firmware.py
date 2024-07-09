@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import unittest, re
 from tt_firmware import ELF, BUDA_FW_VARS
-from test_parse_elf import TestFileIfc
+from tests.test_parse_elf import TestFileIfc
 
 
 file_ifc = TestFileIfc()

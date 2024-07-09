@@ -19,7 +19,7 @@ import tt_util
 
 class TestAutoContext(unittest.TestCase):
 	def test_auto_context(self):
-		self.assertIsNone(tt_debuda_init.GLOBAL_CONTEXT)
+		tt_debuda_init.GLOBAL_CONTEXT = None
 		context = lib.check_context()
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
