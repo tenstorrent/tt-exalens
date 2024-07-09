@@ -1,12 +1,19 @@
-import inspect
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
+import os
 
 from functools import wraps
 from typing import Union
+
+import tt_util as util
 
 from tt_coordinate import OnChipCoordinate
 from tt_debuda_context import Context
 from tt_debuda_init import init_debuda
 from tt_debuda_init import GLOBAL_CONTEXT
+from tt_debug_risc import RiscLoader, get_risc_name
+
 
 
 def read_words_from_device(
@@ -125,7 +132,7 @@ def write_word_to_device(
 
 
 def write_to_device(
-		core_loc: Union[str | OnChipCoordinate],
+		core_loc: Union[str, OnChipCoordinate],
 		addr: int,
 		data: Union[list[int], bytes],
 		device_id: int = 0,
@@ -164,6 +171,71 @@ def write_to_device(
 	)
 
 
+def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate], risc_id: int = 0, device_id: int = 0, context: Context = None) -> None:
+	""" Loads the given ELF file into the specified RISC core and executes it.
+
+	Parameters
+	----------
+	elf_file : os.PathLike
+		Path to the ELF file to run.
+	core_loc : str | OnChipCoordinate
+		One of the following:
+			1. "all" to run the ELF on all cores;
+			2. an X-Y (nocTr) or R,C (netlist) location of a core in string format;
+			3. a list of X-Y (nocTr) or R,C (netlist) locations of cores in string format, delimited by "/" symbol;
+			4. an OnChipCoordinate object.
+	risc_id : int, default 0
+		RiscV ID (0: brisc, 1-3 triscs).
+	device_id : int, default 0
+		ID number of device to run ELF on.
+	context : Context, optional
+		Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
+
+	Returns
+	-------
+	None
+	"""
+
+	device = context.devices[device_id]
+	device.all_riscs_assert_soft_reset()
+
+	locs = []
+	if isinstance(core_loc, OnChipCoordinate):
+		locs = [core_loc]
+	elif core_loc == "all":
+		for loc in device.get_block_locations(block_type="functional_workers"):
+			locs.append(loc)
+	elif "/" in core_loc:
+		for loc in core_loc.split("/"):
+			locs.append(OnChipCoordinate.create(loc, device))
+	else:
+		locs = [OnChipCoordinate.create(core_loc, device)]
+
+	assert locs, "No valid core locations provided."
+	for loc in locs:
+		# TODO: Verbosity?
+		rloader = RiscLoader(loc, risc_id, context, context.server_ifc, False)
+		rdbg = rloader.risc_debug
+
+		risc_start_address = rloader.get_risc_start_address()
+		rloader.start_risc_in_infinite_loop(risc_start_address)
+		assert not rdbg.is_in_reset(), f"RISC at location {loc} is in reset."
+
+		rdbg.enable_debug()
+		if not rdbg.is_halted():
+			rdbg.halt()
+
+		init_section_address = rloader.load_elf(elf_file) # Load the elf file
+		assert init_section_address is not None, "No .init section found in the ELF file"
+
+		jump_to_start_of_init_section_instruction = rloader.get_jump_to_offset_instruction(init_section_address - risc_start_address)
+		context.server_ifc.pci_write32(loc._device.id(), *loc.to("nocVirt"), risc_start_address, jump_to_start_of_init_section_instruction)
+
+		# Invalidating instruction cache so that the jump instruction is actually loaded.
+		rdbg.invalidate_instruction_cache()
+		rdbg.cont()
+
+
 def check_context(context: Context = None) -> Context:
 	""" Function to initialize context if not provided. By default, it starts a local
 	debuda session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
@@ -176,9 +248,3 @@ def check_context(context: Context = None) -> Context:
 	if not GLOBAL_CONTEXT:
 		GLOBAL_CONTEXT = init_debuda()
 	return GLOBAL_CONTEXT
-
-
-if __name__ == '__main__':
-	print(hex(read_from_device('0,0', 0x0)[0]))
-	write_word_to_device('0,0', 0x0, 0x1234)
-	print(hex(read_from_device('0,0', 0x0)[0]))
