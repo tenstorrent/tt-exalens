@@ -40,7 +40,7 @@ jobs:
           make -j$(nproc) CONFIG=$CONFIG build
       - name: Remove unnecessary artifacts
         run: |
-          find build/ -name *.so -or -name *.a -or -name *.o | xargs strip -d
+          find build/ -name *.so -or -name *.a -or -name *.o ! -path "build/riscv-src/*" | xargs strip -d
       - name: 'Tar files'
         run: tar -cvf dbd_build.tar build
       - name: Upload libraries as artifacts
