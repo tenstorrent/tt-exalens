@@ -10,6 +10,9 @@ python3 -m venv $PYTHON_ENV_DIR
 
 source $PYTHON_ENV_DIR/bin/activate
 
+echo "Updating pip"
+python3 -m pip install --upgrade pip
+
 echo "Setting up virtual env"
 python3 -m pip install setuptools wheel
 
