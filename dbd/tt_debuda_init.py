@@ -3,13 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 
-from enum import Enum
+from . import tt_debuda_ifc
+from . import tt_debuda_ifc_cache
+from . import tt_util as util
 
-import tt_debuda_ifc
-import tt_debuda_ifc_cache
-import tt_util as util
-
-from tt_debuda_context import Context, BudaContext, LimitedContext
+from .tt_debuda_context import Context, BudaContext, LimitedContext
 
 # GLOBAL_CONTEXT is a convenience variable to store fallback debuda context object.
 # If a library function needs context parameter but it isn't provided, it will use

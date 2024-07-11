@@ -1,7 +1,8 @@
 name: "Build wheel and create a new release"
 
+# The workflow doesn't work for now, it is just a mockup
+
 on:
-  push:
   workflow_dispatch:
     inputs:
       os:
@@ -13,9 +14,11 @@ jobs:
   build-debuda:
     name: "Build debuda wheel"
     uses: ./.github/workflows/build-dbd.yaml
+    with:
+      os: ${{ inputs.os }}
   build-wheel:
     name: "Build wheel"
-    runs-on: ubuntu-22.04
+    runs-on: ${{ inputs.os }}
     needs: build-debuda
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +47,7 @@ jobs:
           name: wheel
   create-release:
     name: "Create a new release"
-    runs-on: ubuntu-22.04
+    runs-on: ${{ inputs.os }}
     needs: build-wheel
     steps:
       - uses: actions/checkout@v4

@@ -4,8 +4,8 @@
 # TODO: Try replacing socket with ZMQ. Ask GPT for example.
 import select
 import socket
-from tt_gdb_data import GdbThreadId
-import tt_util as util
+from .tt_gdb_data import GdbThreadId
+from . import tt_util as util
 
 # Simple class that wraps reading/writing to a socket
 class ClientSocket:

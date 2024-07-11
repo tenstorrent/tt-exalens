@@ -1,14 +1,15 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from tt_debuda_ifc_base import DbdCommunicator
-import tt_device
-import tt_util as util
-
 import atexit
 import io
 import os
 import pickle
+
+from .tt_debuda_ifc_base import DbdCommunicator
+from . import tt_device
+from . import tt_util as util
+
 
 """
 This module provides a cache for the debuda interface. It can be used to store the results of device communications,

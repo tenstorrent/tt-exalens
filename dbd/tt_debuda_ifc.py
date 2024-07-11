@@ -6,10 +6,11 @@ import io
 import sys
 import struct
 import zmq
-import tt_util as util
-import tt_debuda_ifc_cache as tt_debuda_ifc_cache
-from tt_debuda_ifc_base import DbdCommunicator
-import tt_device
+
+from . import tt_util as util
+from . import tt_debuda_ifc_cache as tt_debuda_ifc_cache
+from .tt_debuda_ifc_base import DbdCommunicator
+from . import tt_device
 
 
 class debuda_server_request_type(Enum):
@@ -384,6 +385,7 @@ class debuda_client(DbdCommunicator):
 tt_dbd_pybind_path = util.application_path() + "/../build/lib"
 binary_path = util.application_path() + "/../build/bin"
 sys.path.append(tt_dbd_pybind_path)
+# This is a pybind module so we don't need from .
 import tt_dbd_pybind
 
 

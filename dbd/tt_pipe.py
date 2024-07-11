@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from tt_object import TTObject, TTObjectIDDict
+from .tt_object import TTObject, TTObjectIDDict
 
 
 # Constructed from epoch's pipegen.yaml. Contains information about a pipe.
