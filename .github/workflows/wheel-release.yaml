@@ -1,11 +1,10 @@
 name: "Build wheel and create a new release"
 
 # The workflow doesn't work for now, it is just a mockup
-#
 
 on:
-  workflow_dispatch:
   push:
+  workflow_dispatch:
     inputs:
       os:
         required: false
