@@ -16,6 +16,9 @@ python3 -m pip install --upgrade pip
 echo "Setting up virtual env"
 python3 -m pip install setuptools wheel
 
+echo "Updating pip"
+python3 -m pip install --upgrade pip
+
 echo "Installing dev dependencies"
 python3 -m pip install -r $(pwd)/dbd/requirements.txt
 python3 -m pip install -r $(pwd)/dbd/tests/test_requirements.txt
