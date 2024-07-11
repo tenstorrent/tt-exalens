@@ -2,17 +2,17 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import os
+import re
 
 from functools import wraps
 from typing import Union
 
-import tt_util as util
+import tt_debuda_init
 
 from tt_coordinate import OnChipCoordinate
 from tt_debuda_context import Context
-from tt_debuda_init import init_debuda
-from tt_debuda_init import GLOBAL_CONTEXT
 from tt_debug_risc import RiscLoader, get_risc_name
+from tt_util import TTException, TTFatalException
 
 
 
@@ -46,7 +46,13 @@ def read_words_from_device(
 	"""
 	context = check_context(context)
 	
+	validate_addr(addr)
+	validate_device_id(device_id, context)
+	if word_count <= 0: raise TTException("word_count must be greater than 0.")
+
+
 	if not isinstance(core_loc, OnChipCoordinate):
+		validate_core_loc(core_loc)
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 	data = []
 	for i in range(word_count):
@@ -86,8 +92,13 @@ def read_from_device(
 		Data read from the device.
 	"""
 	context = check_context(context)
+
+	validate_addr(addr)
+	validate_device_id(device_id, context)
+	if num_bytes <= 0: raise TTException("num_bytes must be greater than 0.")
 	
 	if not isinstance(core_loc, OnChipCoordinate):
+		validate_core_loc(core_loc)
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 	return context.server_ifc.pci_read(
 		device_id, *core_loc.to("nocVirt"), addr, num_bytes
@@ -123,8 +134,12 @@ def write_word_to_device(
 		If the execution is successful, return value should be 4 (number of bytes written).
 	"""
 	context = check_context(context)
+
+	validate_addr(addr)
+	validate_device_id(device_id, context)
 	
 	if not isinstance(core_loc, OnChipCoordinate):
+		validate_core_loc(core_loc)
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 	return context.server_ifc.pci_write32(
 		device_id, *core_loc.to("nocVirt"), addr, data
@@ -160,11 +175,17 @@ def write_to_device(
 		If the execution is successful, return value should be number of bytes written.
 	"""
 	context = check_context(context)
-	
+
+	validate_addr(addr)
+	validate_device_id(device_id, context)
+
 	if isinstance(data, list):
 		data = bytes(data)
+	
+	if len(data) == 0: raise TTException("Data to write must not be empty.")
 
 	if not isinstance(core_loc, OnChipCoordinate):
+		validate_core_loc(core_loc)
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 	return context.server_ifc.pci_write(
 		device_id, *core_loc.to("nocVirt"), addr, data
@@ -195,6 +216,12 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate], risc_
 	-------
 	None
 	"""
+	context = check_context(context)
+
+	validate_device_id(device_id, context)
+	if (risc_id < 0) or (risc_id > 3):
+		raise TTException("Invalid RiscV ID. Must be between 0 and 3.")
+	
 
 	device = context.devices[device_id]
 	device.all_riscs_assert_soft_reset()
@@ -207,9 +234,13 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate], risc_
 			locs.append(loc)
 	elif "/" in core_loc:
 		for loc in core_loc.split("/"):
+			validate_core_loc(loc)
 			locs.append(OnChipCoordinate.create(loc, device))
 	else:
+		validate_core_loc(core_loc)
 		locs = [OnChipCoordinate.create(core_loc, device)]
+
+	if not os.path.exists(elf_file): raise TTException(f"ELF file {elf_file} does not exist.")
 
 	assert locs, "No valid core locations provided."
 	for loc in locs:
@@ -241,10 +272,20 @@ def check_context(context: Context = None) -> Context:
 	debuda session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
 	that the context can be reused in calls to other functions.
 	"""
-	if context:
+	if context is not None:
 		return context
 	
-	global GLOBAL_CONTEXT
-	if not GLOBAL_CONTEXT:
-		GLOBAL_CONTEXT = init_debuda()
-	return GLOBAL_CONTEXT
+	if not tt_debuda_init.GLOBAL_CONTEXT:
+		tt_debuda_init.GLOBAL_CONTEXT = tt_debuda_init.init_debuda()
+	return tt_debuda_init.GLOBAL_CONTEXT
+
+
+def validate_core_loc(core_loc: str) -> None:
+	if not re.match("^\d+,\d+$", core_loc) and not re.match("^\d+-\d+$", core_loc):
+		raise TTException(f"Invalid core location: {core_loc}. Must be in the format 'X-Y' or 'R,C'.")
+
+def validate_addr(addr: int) -> None:	
+	if addr < 0: raise TTException("addr must be greater than or equal to 0.")
+
+def validate_device_id(device_id: int, context: Context) -> None:
+	if device_id not in context.device_ids: raise TTException(f"Invalid device_id {device_id}.")

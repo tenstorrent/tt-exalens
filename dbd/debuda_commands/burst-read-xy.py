@@ -44,7 +44,7 @@ from tt_coordinate import OnChipCoordinate
 import tt_device
 import time
 
-from tt_debuda_lib import read_words_from_device
+from tt_debuda_lib import read_words_from_device, read_from_device
 
 
 def run(cmd_text, context, ui_state: UIState = None):
@@ -132,8 +132,8 @@ def print_a_pci_burst_read(
             )
             t_end = time.time() + sample / word_count
             while time.time() < t_end:
-                val = tt_device.SERVER_IFC.pci_read32(
-                    device_id, *core_loc.to('nocVirt'), addr + 4 * i
+                val = read_from_device(
+                    core_loc, addr, device_id, context=context
                 )
                 if val not in values:
                     values[val] = 0

@@ -1,34 +1,61 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-import os, sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from functools import wraps
 
 import unittest
 
+from parameterized import parameterized
+
 import tt_debuda_init
 import tt_debuda_lib as lib
+import tt_util
 
 from tt_coordinate import OnChipCoordinate
 from tt_debuda_context import Context
 from tt_debug_risc import RiscLoader, get_risc_name
 from tt_firmware import ELF
 from tt_object import DataArray
-import tt_util
+
+
+def invalid_argument_decorator(func):
+	@wraps(func)
+	def wrapper(*args, **kwargs):
+		
+		return func(*args, **kwargs)
+	return wrapper
 
 
 class TestAutoContext(unittest.TestCase):
 	def test_auto_context(self):
+		"""Test auto context creation."""
 		tt_debuda_init.GLOBAL_CONTEXT = None
 		context = lib.check_context()
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
-	
+
 	def test_set_global_context(self):
+		"""Test setting global context."""
+		tt_debuda_init.GLOBAL_CONTEXT = None
 		context = tt_debuda_init.init_debuda()
 		self.assertIsNotNone(tt_debuda_init.GLOBAL_CONTEXT)
 		self.assertIs(tt_debuda_init.GLOBAL_CONTEXT, context)
 
+	def test_existing_context(self):
+		"""Test recognition of existing context."""
+		tt_debuda_init.GLOBAL_CONTEXT = None
+		
+		# Create new global context
+		context1 = tt_debuda_init.init_debuda()
+		self.assertIsNotNone(tt_debuda_init.GLOBAL_CONTEXT)
+		self.assertIs(tt_debuda_init.GLOBAL_CONTEXT, context1)
+
+		# Check for existing context
+		context = lib.check_context()
+		self.assertIsNotNone(context)
+		self.assertIs(tt_debuda_init.GLOBAL_CONTEXT, context)
+		self.assertIs(context, context1)
+	
 
 class TestReadWrite(unittest.TestCase):
 	def setUp(self):
@@ -89,16 +116,58 @@ class TestReadWrite(unittest.TestCase):
 		ret = lib.read_words_from_device(core_loc, address[0], word_count=2)
 		self.assertEquals(ret, data)
 
+	@parameterized.expand([
+		("abcd", 0x100, 0, 1),			# Invalid core_loc string
+		("-10", 0x100, 0, 1),			# Invalid core_loc string
+		("0,0", -1, 0, 1),				# Invalid address
+		("0,0", 0x100, -1, 1),			# Invalid device_id
+		("0,0", 0x100, 112, 1),			# Invalid device_id (too high)
+		("0,0", 0x100, 0, -1),			# Invalid word_count
+		("0,0", 0x100, 0, 0)			# Invalid word_count
+	])
+	def test_invalid_inputs_read(self, core_loc, address, device_id, word_count):
+		"""Test invalid inputs for read functions."""
+		with self.assertRaises(tt_util.TTException):
+			lib.read_words_from_device(core_loc, address, device_id, word_count)
+		with self.assertRaises(tt_util.TTException):
+			# word_count can be used as num_bytes
+			lib.read_from_device(core_loc, address, device_id, word_count)
+
+	@parameterized.expand([
+		("abcd", 0x100, 5, 0),			# Invalid core_loc string
+		("-10", 0x100, 5, 0),			# Invalid core_loc string
+		("0,0", -1, 5, 0),				# Invalid address
+		("0,0", 0x100, 5, -1),			# Invalid device_id
+		("0,0", 0x100, 5, 112),			# Invalid device_id (too high)
+		# ("0,0", 0x100, -171, -1),		# Invalid word TODO: What are the limits for word?
+	])
+	def test_invalid_write_word(self, core_loc, address, data, device_id):
+		with self.assertRaises(tt_util.TTException):
+			lib.write_word_to_device(core_loc, address, data, device_id)
+
+	@parameterized.expand([
+		("abcd", 0x100, b"abcd", 0),	# Invalid core_loc string
+		("-10", 0x100, b"abcd", 0),		# Invalid core_loc string
+		("0,0", -1, b"abcd", 0),		# Invalid address
+		("0,0", 0x100, b"abcd", -1),	# Invalid device_id
+		("0,0", 0x100, b"abcd", 112),	# Invalid device_id (too high)
+		("0,0", 0x100, [], 0),			# Invalid data
+		("0,0", 0x100, b"", 0)			# Invalid data
+	])
+	def test_invalid_write(self, core_loc, address, data, device_id):
+		"""Test invalid inputs for write function."""
+		with self.assertRaises(tt_util.TTException):
+			lib.write_to_device(core_loc, address, data, device_id)
 
 class TestRunElf(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls) -> None:
 		cls.context = tt_debuda_init.init_debuda()
+		cls.elf_path = "dbd/riscv-src/run_elf_brisc_test.elf"
 
 	def test_run_elf(self):
 		"""Test running an ELF file."""
 		core_loc = "0,0"
-		elf_path = "dbd/riscv-src/run_elf_test.elf"
 		addr = 0x0
 
 		# Reset memory at addr
@@ -107,9 +176,27 @@ class TestRunElf(unittest.TestCase):
 		self.assertEqual(ret[0], 0)
 		
 		# Run an ELF that writes to the addr and check if it executed correctly
-		lib.run_elf(elf_path, core_loc, context=self.context)
+		lib.run_elf(self.elf_path, core_loc, context=self.context)
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0x12345678)
+
+	@parameterized.expand([
+		("", "0,0", 0, 0),			 	# Invalid ELF path
+		("/sbin/non_existing_elf", "0,0", 0, 0),	# Invalid ELF path
+		(None, "abcd", 0, 0),			# Invalid core_loc
+		(None, "-10", 0, 0),			# Invalid core_loc
+		(None, "0,0/", 0, 0),			# Invalid core_loc
+		(None, "0,0/00b", 0, 0), 		# Invalid core_loc
+		(None, "0,0", -1, 0),			# Invalid risc_id
+		(None, "0,0", 4, 0),			# Invalid risc_id
+		(None, "0,0", 0, -1),			# Invalid device_id
+		(None, "0,0", 0, 112),			# Invalid device_id (too high)
+	])
+	def test_run_elf_invalid(self, elf_file, core_loc, risc_id, device_id):
+		if elf_file is None:
+			elf_file = self.elf_path
+		with self.assertRaises(tt_util.TTException):
+			lib.run_elf(elf_file, core_loc, risc_id, device_id, context=self.context)
 
 	# TODO: This test should be restructured (Issue #70)
 	def test_old_elf_test(self):

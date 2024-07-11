@@ -36,8 +36,8 @@ dbd/riscv:
 	$(READELF) --debug-dump ./dbd/riscv-src/trisc2.elf > dbd/riscv-src/trisc2.elf.dump
 	$(OBJDUMP) -d -s -S dbd/riscv-src/trisc2.elf > dbd/riscv-src/trisc2.dis
 	$(OBJDUMP) -t dbd/riscv-src/trisc2.elf | sort >> dbd/riscv-src/trisc2.dis
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o dbd/riscv-src/run_elf_test.o dbd/riscv-src/run_elf_test.cc
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) -Tdbd/riscv-src/brisc.ld dbd/riscv-src/tmu-crt0.o dbd/riscv-src/run_elf_test.o -o dbd/riscv-src/run_elf_test.elf
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o dbd/riscv-src/run_elf_brisc_test.o dbd/riscv-src/run_elf_brisc_test.cc
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) -Tdbd/riscv-src/brisc.ld dbd/riscv-src/tmu-crt0.o dbd/riscv-src/run_elf_brisc_test.o -o dbd/riscv-src/run_elf_brisc_test.elf
 
 clean_dbd_riscv:
 	rm -f dbd/riscv-src/*.o

@@ -1,10 +1,9 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-import os, sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import unittest
+import os
+
 import tt_debuda_init
 from tt_debuda_context import Context
 from tt_debuda_server import start_server, stop_server
@@ -66,6 +65,7 @@ class TestCachedDebuda(unittest.TestCase):
 		context = tt_debuda_init.init_debuda(cache_path=CACHE_PATH)
 		# Execute a sample command to populate the cache
 		context.server_ifc.get_run_dirpath()
+		context.server_ifc.save()
 		del context
 
 	def test_cached_init(self):
