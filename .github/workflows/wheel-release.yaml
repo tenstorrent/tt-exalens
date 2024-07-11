@@ -2,6 +2,7 @@ name: "Build wheel and create a new release"
 
 on:
   workflow_dispatch:
+  push:
     inputs:
       os:
         required: false
