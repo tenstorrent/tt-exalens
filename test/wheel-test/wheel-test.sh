@@ -25,7 +25,7 @@ make clean
 make build
 
 echo -e "Building wheel ..."
-make dbd/wheel_release
+make wheel
 
 echo -e "Installing wheel ..."
 pip install build/debuda_wheel/*.whl

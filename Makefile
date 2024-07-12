@@ -146,12 +146,12 @@ umd: umd_device
 clean: clean_umd_device dbd/riscv/clean
 	rm -rf $(OUT)
 
-.PHONY: dbd/wheel
-dbd/wheel:
+.PHONY: wheel_develop
+wheel_develop:
 	python3 wheel/setup.py bdist_wheel -d build/debuda_wheel
 
-.PHONY: dbd/wheel_release
-dbd/wheel_release:
+.PHONY: wheel
+wheel:
 	STRIP_SYMBOLS=1 python3 wheel/setup.py bdist_wheel -d build/debuda_wheel
 
 install: build

@@ -181,6 +181,7 @@ def write_to_device(
 	validate_device_id(device_id, context)
 
 	# TODO: We use little-endian format?
+	# TODO: Move this functionality to write_words?
 	if isinstance(data, list):
 		data = b''.join(struct.pack('I', num) for num in data)
 	
