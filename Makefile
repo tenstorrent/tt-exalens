@@ -129,8 +129,13 @@ ifndef PYTHON_VERSION
     endif
 endif
 
+#
+# Targets
+#
+.PHONY: build clean
+
 # TODO: Check what else to build
-build: gitinfo dbd
+build: $(OUT)/.gitinfo dbd
 
 #TODO: Set up unit test build.
 #TODO: Set up valgrind.
@@ -138,7 +143,7 @@ build: gitinfo dbd
 umd: umd_device
 
 # TODO: Set clean properly.
-clean: clean_umd_device clean_dbd_riscv
+clean: clean_umd_device dbd/riscv/clean
 	rm -rf $(OUT)
 
 install: build
@@ -153,7 +158,10 @@ endif
 	cp -r $(INCDIR)/* $(PREFIX)/include/
 	cp -r $(BINDIR)/* $(PREFIX)/bin/
 
-gitinfo:
+$(OUT)/.gitinfo:
+	@echo "OUT: $(OUT)"
+	@echo "GIT_BRANCH: $(GIT_BRANCH)"
+	@echo "GIT_HASH: $(GIT_HASH)"
 	mkdir -p $(OUT)
 	rm -f $(OUT)/.gitinfo
 	@echo $(GIT_BRANCH) >> $(OUT)/.gitinfo
