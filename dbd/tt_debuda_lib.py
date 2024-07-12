@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 import re
+import struct
 
 from functools import wraps
 from typing import Union
@@ -179,8 +180,9 @@ def write_to_device(
 	validate_addr(addr)
 	validate_device_id(device_id, context)
 
+	# TODO: We use little-endian format?
 	if isinstance(data, list):
-		data = bytes(data)
+		data = b''.join(struct.pack('I', num) for num in data)
 	
 	if len(data) == 0: raise TTException("Data to write must not be empty.")
 

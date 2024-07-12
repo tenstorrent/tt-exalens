@@ -92,7 +92,7 @@ class TestReadWrite(unittest.TestCase):
 
 	def test_write_read_words(self):
 		"""Test write words -- read words."""
-		core_loc = "2,2"
+		core_loc = "1,1"
 		
 		address = [0x100, 0x104]
 		data = 	  [156, 2]	
@@ -114,6 +114,21 @@ class TestReadWrite(unittest.TestCase):
 
 		# Read both words
 		ret = lib.read_words_from_device(core_loc, address[0], word_count=2)
+		self.assertEqual(ret, data)
+
+	def test_write_bytes_read_words(self):
+		"""Test write bytes -- read words."""
+		core_loc = "1,1"
+		address = 0x100
+		data = [1, 32, 215]
+		
+		# Write bytes to device
+		ret = lib.write_to_device(core_loc, address, data)
+		# *4 is because we write 4-byte words
+		self.assertEqual(ret, len(data)*4)
+
+		# Read the bytes as words
+		ret = lib.read_words_from_device(core_loc, address, word_count=3)
 		self.assertEqual(ret, data)
 
 	@parameterized.expand([
