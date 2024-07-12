@@ -6,14 +6,14 @@ import unittest
 import sys
 import os
 
+from typing import Union
+
 tt_dbd_pybind_path = os.path.dirname(__file__) + "/../../../build/lib"
 binary_path = os.path.dirname(__file__) + "/../../../build/bin"
 sys.path.append(tt_dbd_pybind_path)
 
 import tt_dbd_pybind as pb
 from tt_dbd_pybind_unit_tests import set_debuda_test_implementation
-
-from typing import Union
 
 class TestBindings(unittest.TestCase):
     def __init__(self, methodName: str = "runTest") -> None:

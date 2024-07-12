@@ -5,6 +5,7 @@ core
 .env
 .idea
 *.log
+*.pkl
 
 /build
 

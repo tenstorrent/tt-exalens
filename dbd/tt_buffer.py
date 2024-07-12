@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from tt_object import TTObject, TTObjectIDDict
-import tt_util as util
-from tt_coordinate import OnChipCoordinate
+from .tt_object import TTObject, TTObjectIDDict
+from . import tt_util as util
+from .tt_coordinate import OnChipCoordinate
 
 
 # Constructed from epoch's pipegen.yaml. Contains information about a buffer.

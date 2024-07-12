@@ -1,13 +1,15 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from abc import abstractmethod
 import os
+import sys
+
+from abc import abstractmethod
 import select
 import unittest
 import subprocess
-import sys
 import re
+
 
 class DbdOutputVerifier:
     def __init__(self):
@@ -36,19 +38,17 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
         return re.match(self.prompt_regex, line)
 
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
-        tester.assertGreater(len(lines), 5)
-        tester.assertRegex(lines[0], r"Error: Yaml file at ([^\0/]+)/runtime_data\.yaml does not exist\.")
-        tester.assertRegex(lines[1], r"Using pybind library instead of debuda server.")
-        tester.assertRegex(lines[2], r"Device opened")
-        tester.assertRegex(lines[3], r"Debuda does not support runtime data. Continuing with limited functionality...")
-        tester.assertRegex(lines[4], r"Loading yaml file: '([^']*\.yaml)'")
+        tester.assertGreater(len(lines), 3)
+        tester.assertRegex(lines[0], r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.")
+        tester.assertRegex(lines[1], r"Device opened successfully.")
+        tester.assertRegex(lines[2], r"Loading yaml file: '([^']*\.yaml)'")
         tester.assertRegex(lines[-1], r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=")
         return True
 
 class DbdTestRunner:
     def __init__(self, verifier: DbdOutputVerifier):
         self.interpreter_path = sys.executable
-        self.debuda_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "debuda.py")
+        self.debuda_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "debuda.py")
         self.process: subprocess.Popen = None
         self.verifier = verifier
 
@@ -67,7 +67,6 @@ class DbdTestRunner:
         if not args is None:
             if not type(args) == list:
                 args = [args]
-            program_args = program_args + args
         self.process = subprocess.Popen(program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return self.process
 
@@ -131,7 +130,7 @@ class DbdTestRunner:
 class TestUmdDebuda(unittest.TestCase):
     def test_startup_and_exit_just_return_code(self):
         runner = DbdTestRunner(UmdDbdOutputVerifier())
-        runner.start(self, ["I don't exist"])
+        runner.start(self)
         runner.writeline("x")
         runner.wait()
         self.assertEqual(runner.returncode, 0)

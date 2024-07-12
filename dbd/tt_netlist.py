@@ -2,10 +2,10 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import os
-from tt_object import TTObjectIDDict
-import tt_util as util
-from tt_graph import Graph, Queue
-from tt_temporal_epoch import TemporalEpoch
+from .tt_object import TTObjectIDDict
+from . import tt_util as util
+from .tt_graph import Graph, Queue
+from .tt_temporal_epoch import TemporalEpoch
 
 from copy import copy
 from collections import defaultdict

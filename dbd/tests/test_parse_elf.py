@@ -1,9 +1,10 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-import unittest, re
+import unittest
 from tt_parse_elf import read_elf, mem_access
 import tt_util as util
+
 
 
 class TestFileIfc:
