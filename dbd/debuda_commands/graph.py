@@ -23,9 +23,11 @@ command_metadata = {
     "context": ["buda"],    
     }
 
-from debuda import UIState
-import tt_util as util
 from docopt import docopt
+
+from debuda import UIState
+
+from dbd import tt_util as util
 
 
 def run(cmd_text, context, ui_state: UIState = None):

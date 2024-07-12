@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from . import tt_util as util, os
-from . import tt_device
-from .tt_coordinate import CoordinateTranslationError, OnChipCoordinate
+from dbd import tt_util as util
+from dbd import tt_device
+from dbd.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
 
 phase_state_map = {
     0: "PHASE_START",

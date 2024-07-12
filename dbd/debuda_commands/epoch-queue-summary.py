@@ -12,11 +12,13 @@ Examples:
   eq
 """
 
-from debuda import UIState
-import tt_util as util
-import tt_device
-from tt_netlist import Queue
 from tabulate import tabulate
+
+from debuda import UIState
+
+from dbd import tt_device
+from dbd import tt_util as util
+from dbd.tt_netlist import Queue
 
 command_metadata = {
     "type": "low-level",

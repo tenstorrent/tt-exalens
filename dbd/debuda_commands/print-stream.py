@@ -24,10 +24,12 @@ command_metadata = {
     "context": ["buda"],
 }
 
-from debuda import UIState
-import tt_stream, tt_util as util
-from tt_coordinate import OnChipCoordinate
 from docopt import docopt
+
+from debuda import UIState
+
+from dbd import tt_stream, tt_util as util
+from dbd.tt_coordinate import OnChipCoordinate
 
 
 # Prints all information on a stream

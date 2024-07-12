@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 
-from . import tt_debuda_ifc
-from . import tt_debuda_ifc_cache
-from . import tt_util as util
+from dbd import tt_debuda_ifc
+from dbd import tt_debuda_ifc_cache
+from dbd import tt_util as util
 
-from .tt_debuda_context import Context, BudaContext, LimitedContext
+from dbd.tt_debuda_context import Context, BudaContext, LimitedContext
 
 # GLOBAL_CONTEXT is a convenience variable to store fallback debuda context object.
 # If a library function needs context parameter but it isn't provided, it will use

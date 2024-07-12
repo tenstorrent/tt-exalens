@@ -6,8 +6,8 @@ This module is used to represent the firmware
 """
 
 import time
-from . import tt_parse_elf
-from . import tt_util as util
+from dbd import tt_parse_elf
+from dbd import tt_util as util
 import re
 from fuzzywuzzy import process, fuzz
 from sys import getsizeof

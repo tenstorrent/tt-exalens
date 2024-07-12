@@ -7,15 +7,15 @@ import unittest
 
 from parameterized import parameterized
 
-import tt_debuda_init
-import tt_debuda_lib as lib
-import tt_util
+from dbd import tt_debuda_init
+from dbd import tt_debuda_lib as lib
+from dbd import tt_util
 
-from tt_coordinate import OnChipCoordinate
-from tt_debuda_context import Context
-from tt_debug_risc import RiscLoader, get_risc_name
-from tt_firmware import ELF
-from tt_object import DataArray
+from dbd.tt_coordinate import OnChipCoordinate
+from dbd.tt_debuda_context import Context
+from dbd.tt_debug_risc import RiscLoader, get_risc_name
+from dbd.tt_firmware import ELF
+from dbd.tt_object import DataArray
 
 
 def invalid_argument_decorator(func):
@@ -75,7 +75,7 @@ class TestReadWrite(unittest.TestCase):
 
 		ret = lib.read_from_device(core_loc, address, num_bytes = len(data))
 		ret = [int(x) for x in ret]
-		self.assertEquals(ret, data)
+		self.assertEqual(ret, data)
 
 	def test_write_read_bytes(self):
 		"""Test write bytes -- read bytes."""
@@ -88,14 +88,14 @@ class TestReadWrite(unittest.TestCase):
 		self.assertEqual(ret, len(data))
 
 		ret = lib.read_from_device(core_loc, address, num_bytes = len(data))
-		self.assertEquals(ret, data)
+		self.assertEqual(ret, data)
 
 	def test_write_read_words(self):
 		"""Test write words -- read words."""
 		core_loc = "2,2"
 		
 		address = [0x100, 0x104]
-		data = 	  [156, 212]	
+		data = 	  [156, 2]	
 
 		# Write two words to device
 		ret = lib.write_word_to_device(core_loc, address[0], data[0])
@@ -114,7 +114,7 @@ class TestReadWrite(unittest.TestCase):
 
 		# Read both words
 		ret = lib.read_words_from_device(core_loc, address[0], word_count=2)
-		self.assertEquals(ret, data)
+		self.assertEqual(ret, data)
 
 	@parameterized.expand([
 		("abcd", 0x100, 0, 1),			# Invalid core_loc string
@@ -163,7 +163,7 @@ class TestRunElf(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls) -> None:
 		cls.context = tt_debuda_init.init_debuda()
-		cls.elf_path = "dbd/riscv-src/run_elf_brisc_test.elf"
+		cls.elf_path = "build/riscv-src/run_elf_brisc_test.elf"
 
 	def test_run_elf(self):
 		"""Test running an ELF file."""
@@ -203,7 +203,7 @@ class TestRunElf(unittest.TestCase):
 		""" Running old elf test, formerly done with -t option. """
 
 		core_loc = "0,0"
-		elf_path = "dbd/riscv-src/brisc-globals.elf"
+		elf_path = "build/riscv-src/brisc-globals.elf"
 		
 		lib.run_elf(elf_path, core_loc, context=self.context)
 

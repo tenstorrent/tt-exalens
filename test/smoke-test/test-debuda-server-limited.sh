@@ -38,13 +38,13 @@ JOINED_COMMANDS=$(IFS=";"; echo "${COMMAND_LIST[*]}")
 
 
 echo "BASH: Starting server"
-$COVERAGE_CMD dbd/debuda.py debuda_test --server --test &
+$COVERAGE_CMD ./debuda.py debuda_test --server --test &
 SERVER_PID=$!
 
 # Wait for server to start
 sleep 6
 
-timeout 30 $COVERAGE_CMD dbd/debuda.py --remote --test --commands "$JOINED_COMMANDS"
+timeout 30 $COVERAGE_CMD ./debuda.py --remote --test --commands "$JOINED_COMMANDS"
 
 if [ "$COV" = "1" ]; then
     coverage report --sort=cover

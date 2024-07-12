@@ -2,9 +2,9 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from dataclasses import dataclass
-from .tt_debuda_context import Context
-from .tt_coordinate import OnChipCoordinate
-from . import tt_util as util
+from dbd.tt_debuda_context import Context
+from dbd.tt_coordinate import OnChipCoordinate
+from dbd import tt_util as util
 import os
 from contextlib import contextmanager
 
@@ -493,7 +493,7 @@ class RiscDebug:
         self.write_memory(address, value)
 
 from elftools.elf.elffile import ELFFile
-from .tt_object import DataArray
+from dbd.tt_object import DataArray
 
 class RiscLoader:
     """

@@ -54,27 +54,25 @@ except ModuleNotFoundError as e:
     print(f"Try:\033[31m pip install -r dbd/requirements.txt; make dbd \033[0m")
     exit(1)
 
-# Add the current directory to the path. This is so that dynamically-loaded debuda_commands can import the files in
-# the application directory.
-def application_path():
-    if getattr(sys, "frozen", False):
-        application_path = os.path.dirname(sys.executable)
-    elif __file__:
-        application_path = os.path.dirname(__file__)
-    return application_path
+# # Add the current directory to the path. This is so that dynamically-loaded debuda_commands can import the files in
+# # the application directory.
+# def application_path():
+#     if getattr(sys, "frozen", False):
+#         application_path = os.path.dirname(sys.executable)
+#     elif __file__:
+#         application_path = os.path.dirname(__file__)
+#     return application_path
 
 
-sys.path.append(application_path())
+# sys.path.append(application_path())
 
-from tt_commands import find_command
-import tt_debuda_server
-from tt_gdb_server import GdbServer, ServerSocket
-import tt_debuda_ifc
-import tt_debuda_ifc_cache
-from tt_coordinate import OnChipCoordinate
-import tt_util as util, tt_device
-from tt_debuda_context import BudaContext, Context, LimitedContext
-import tt_debuda_init
+from dbd import tt_debuda_init
+from dbd import tt_debuda_server
+from dbd import tt_util as util
+from dbd.tt_commands import find_command
+from dbd.tt_gdb_server import GdbServer, ServerSocket
+from dbd.tt_coordinate import OnChipCoordinate
+from dbd.tt_debuda_context import Context
 
 
 class DebudaCompleter(Completer):
@@ -249,6 +247,7 @@ def import_commands(reload=False):
     cmd_files.sort()
     for cmdfile in cmd_files:
         module_path = os.path.splitext(os.path.basename(cmdfile))[0]
+        if module_path == "__init__": continue
         try:
             cmd_module = importlib.import_module(module_path)
         except Exception as e:

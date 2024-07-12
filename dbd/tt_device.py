@@ -6,14 +6,14 @@ import os, struct, ast
 from typing import List, Sequence
 from socket import timeout
 from tabulate import tabulate
-from .tt_debuda_context import Context
-from .tt_object import TTObject
-from . import tt_util as util
-from .tt_coordinate import OnChipCoordinate, CoordinateTranslationError
+from dbd.tt_debuda_context import Context
+from dbd.tt_object import TTObject
+from dbd import tt_util as util
+from dbd.tt_coordinate import OnChipCoordinate, CoordinateTranslationError
 from collections import namedtuple
 from abc import ABC, abstractmethod
 from typing import Dict
-from .tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
+from dbd.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 
 #
 # Communication with Buda (or debuda-server) over sockets (ZMQ).
@@ -144,7 +144,7 @@ class Device(TTObject):
     def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
         dev = None
         if arch.lower() == "grayskull":
-            from . import tt_grayskull
+            from dbd import tt_grayskull
 
             dev = tt_grayskull.GrayskullDevice(
                 id=device_id,
@@ -154,7 +154,7 @@ class Device(TTObject):
                 context=context
             )
         if "wormhole" in arch.lower():
-            from . import tt_wormhole
+            from dbd import tt_wormhole
 
             dev = tt_wormhole.WormholeDevice(
                 id=device_id,

@@ -25,12 +25,14 @@ command_metadata = {
     "context": ["limited", "buda", "metal"],
     }
 
-from debuda import UIState
-from tt_debug_risc import RiscDebug, RiscLoc, RISCV_REGS, get_risc_name, get_register_index
-import tt_util as util
-import tt_commands
 import tabulate
-from tt_firmware import ELF
+
+from debuda import UIState
+
+from dbd import tt_commands
+from dbd import tt_util as util
+from dbd.tt_debug_risc import RiscDebug, RiscLoc, RISCV_REGS, get_risc_name, get_register_index
+from dbd.tt_firmware import ELF
 
 def reg_included(reg_index, regs_to_include):
     if regs_to_include:

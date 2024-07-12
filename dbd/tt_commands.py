@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from docopt import docopt
-from .tt_coordinate import OnChipCoordinate
+from dbd.tt_coordinate import OnChipCoordinate
 
 class tt_docopt:
     """

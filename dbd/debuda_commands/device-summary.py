@@ -33,9 +33,10 @@ command_metadata = {
     "context": ["limited", "buda", "metal"],
 }
 
-import tt_util as util
-from tt_coordinate import VALID_COORDINATE_TYPES
 from docopt import docopt
+
+from dbd import tt_util as util
+from dbd.tt_coordinate import VALID_COORDINATE_TYPES
 
 
 def run(cmd_text, context, ui_state=None):

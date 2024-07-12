@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 from functools import cached_property
 from typing import Sequence
-from . import tt_util as util
-from .tt_stream import Stream
-from .tt_object import TTObject, TTObjectIDDict
-from .tt_pipe import Pipe
-from .tt_buffer import Buffer
-from .tt_object import TTObject
+from dbd import tt_util as util
+from dbd.tt_stream import Stream
+from dbd.tt_object import TTObject, TTObjectIDDict
+from dbd.tt_pipe import Pipe
+from dbd.tt_buffer import Buffer
+from dbd.tt_object import TTObject
 
 
 # Queues

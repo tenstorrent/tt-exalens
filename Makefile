@@ -146,6 +146,14 @@ umd: umd_device
 clean: clean_umd_device dbd/riscv/clean
 	rm -rf $(OUT)
 
+.PHONY: dbd/wheel
+dbd/wheel:
+	python3 wheel/setup.py bdist_wheel -d build/debuda_wheel
+
+.PHONY: dbd/wheel_release
+dbd/wheel_release:
+	STRIP_SYMBOLS=1 python3 wheel/setup.py bdist_wheel -d build/debuda_wheel
+
 install: build
 ifeq ($(PREFIX), $(OUT))
 	@echo "To install you must set PREFIX, e.g."

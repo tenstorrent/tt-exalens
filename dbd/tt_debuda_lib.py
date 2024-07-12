@@ -7,12 +7,12 @@ import re
 from functools import wraps
 from typing import Union
 
-from . import tt_debuda_init
+from dbd import tt_debuda_init
 
-from .tt_coordinate import OnChipCoordinate
-from .tt_debuda_context import Context
-from .tt_debug_risc import RiscLoader
-from .tt_util import TTException
+from dbd.tt_coordinate import OnChipCoordinate
+from dbd.tt_debuda_context import Context
+from dbd.tt_debug_risc import RiscLoader
+from dbd.tt_util import TTException
 
 
 

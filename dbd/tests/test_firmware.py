@@ -2,8 +2,8 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import unittest, re
-from tt_firmware import ELF, BUDA_FW_VARS
-from tests.test_parse_elf import TestFileIfc
+from dbd.tt_firmware import ELF, BUDA_FW_VARS
+from .test_parse_elf import TestFileIfc
 
 
 file_ifc = TestFileIfc()

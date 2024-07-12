@@ -48,7 +48,7 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
 class DbdTestRunner:
     def __init__(self, verifier: DbdOutputVerifier):
         self.interpreter_path = sys.executable
-        self.debuda_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "debuda.py")
+        self.debuda_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "debuda.py")
         self.process: subprocess.Popen = None
         self.verifier = verifier
 

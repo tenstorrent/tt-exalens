@@ -11,8 +11,7 @@ Description:
 Examples:
   go -d 0 -l 0,0
 """
-import tt_util as util
-import tt_commands
+from dbd import tt_commands
 
 command_metadata = {
     "short": "go",

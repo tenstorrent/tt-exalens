@@ -25,7 +25,7 @@ for i in $LIB_FILES; do cp -f $i $STAGING_DIR; done
 cp ./build/bin/debuda-server-standalone $STAGING_DIR/debuda-server-standalone
 
 # Copy compiled files and others to staging
-cp dbd/README.txt dbd/requirements.txt dbd/debuda.py dbd/tt* $STAGING_DIR
+cp dbd/README.txt dbd/requirements.txt debuda.py dbd/tt* $STAGING_DIR
 cp build/dbd/debuda-help.pdf $STAGING_DIR/debuda-manual.pdf
 
 # Filter NON_DEV_COMMAND_FILES

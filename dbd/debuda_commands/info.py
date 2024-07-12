@@ -34,13 +34,14 @@ command_metadata = {
     }
 
 from docopt import docopt
+
 from debuda import UIState
-from tt_firmware import ELF
-import tt_util as util
-from tt_object import DataArray
-from tt_coordinate import OnChipCoordinate
-import tt_device
-import re
+
+from dbd import tt_device
+from dbd import tt_util as util
+from dbd.tt_firmware import ELF
+from dbd.tt_object import DataArray
+from dbd.tt_coordinate import OnChipCoordinate
 
 
 def print_access_path(device, core_loc, elf, path, print_sorted, print_as_tree, print_operator):

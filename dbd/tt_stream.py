@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from .tt_object import TTObject
-from . import tt_util as util
+from dbd.tt_object import TTObject
+from dbd import tt_util as util
 import re
-from .tt_coordinate import OnChipCoordinate
+from dbd.tt_coordinate import OnChipCoordinate
 
 # The field names we want to show as hexadecimal numbers
 HEX_FIELDS = {

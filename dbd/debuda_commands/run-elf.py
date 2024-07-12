@@ -15,14 +15,9 @@ Examples:
   run-elf brisc.elf
 """
 
-import tt_util as util
-import tt_commands
-from tt_debug_risc import RiscLoader, get_risc_name
-from tt_firmware import ELF
-import tt_device
-from tt_object import DataArray
-
-from tt_debuda_lib import run_elf
+from dbd import tt_util as util
+from dbd import tt_commands
+from dbd.tt_debuda_lib import run_elf
 
 command_metadata = {
     "short": "re",

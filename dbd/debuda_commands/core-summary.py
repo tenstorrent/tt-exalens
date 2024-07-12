@@ -12,7 +12,8 @@ command_metadata = {
 }
 
 from debuda import UIState
-import tt_util as util
+
+from dbd import tt_util as util
 
 
 def run(args, context, ui_state: UIState = None):
