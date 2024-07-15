@@ -1,9 +1,10 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from functools import wraps
-
+import struct
 import unittest
+
+from functools import wraps
 
 from parameterized import parameterized
 
@@ -71,10 +72,10 @@ class TestReadWrite(unittest.TestCase):
 		data = [0, 1, 2, 3]
 		
 		ret = lib.write_to_device(core_loc, address, data)
-		self.assertEqual(ret, len(data))
+		self.assertEqual(ret, len(data) * 4)
 
-		ret = lib.read_from_device(core_loc, address, num_bytes = len(data))
-		ret = [int(x) for x in ret]
+		ret = lib.read_from_device(core_loc, address, num_bytes = len(data)*4)
+		ret = list(struct.unpack("I"*len(data), ret))
 		self.assertEqual(ret, data)
 
 	def test_write_read_bytes(self):
