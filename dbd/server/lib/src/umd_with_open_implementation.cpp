@@ -97,7 +97,7 @@ static std::filesystem::path find_binary_directory() {
 }
 
 static std::string create_temp_network_descriptor_file(tt::ARCH arch, std::filesystem::path binary_directory) {
-    if (arch == tt::ARCH::GRAYSKULL || arch == tt::ARCH::WORMHOLE || arch == tt::ARCH::WORMHOLE_B0) {
+    if (arch == tt::ARCH::GRAYSKULL || arch == tt::ARCH::WORMHOLE || arch == tt::ARCH::WORMHOLE_B0 || arch == tt::ARCH::BLACKHOLE) {
         // Check if create-ethernet-map exists
         if (binary_directory.empty()) {
             binary_directory = find_binary_directory();
@@ -119,10 +119,6 @@ static std::string create_temp_network_descriptor_file(tt::ARCH arch, std::files
 
         // TODO: If it doesn't, create file without network connections
         throw std::runtime_error("Call to create-ethernet-map failed. Fallback not implemented...");
-    }
-    // TODO: Hack for blackhole until it is supported by create-ethernet-map
-    else if (arch == tt::ARCH::BLACKHOLE) {
-        return "/localdev/vjovanovic/tt-debuda/third_party/umd/blackhole_1chip_cluster.yaml";
     }
     throw std::runtime_error("Unsupported architecture " + get_arch_str(arch) + ".");
     return {};

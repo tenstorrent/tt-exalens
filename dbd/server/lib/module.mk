@@ -46,7 +46,9 @@ $(DEBUDA_SERVER_LIB): $(DEBUDA_SERVER_LIB_OBJS)
 ifeq ("$(HOST_ARCH)", "aarch64")
 $(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/third_party/umd/device/bin/silicon/aarch64/create-ethernet-map
 else
-$(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/third_party/umd/device/bin/silicon/x86/create-ethernet-map
+# TODO: This is temporary fix to make create-ethernet-map work on blackhole. When new official version is released, this should be removed.
+#$(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/third_party/umd/device/bin/silicon/x86/create-ethernet-map
+$(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/dbd/server/bin/create-ethernet-map
 endif
 	@mkdir -p $(@D)
 	ln -s $^ $@
