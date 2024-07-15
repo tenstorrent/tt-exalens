@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from tt_object import TTObject, TTObjectIDDict
-import tt_util as util
-from tt_coordinate import OnChipCoordinate
-from tt_stream import Stream
-from tt_buffer import Buffer
-from tt_pipe import Pipe
-from tt_graph import Queue, Graph, Op
+from .tt_object import TTObject, TTObjectIDDict
+from . import tt_util as util
+from .tt_coordinate import OnChipCoordinate
+from .tt_stream import Stream
+from .tt_buffer import Buffer
+from .tt_pipe import Pipe
+from .tt_graph import Queue, Graph, Op
 import itertools
 from copy import copy
 from collections import defaultdict
@@ -47,8 +47,8 @@ class TemporalEpoch(TTObject):
 
         self._id = id
         self.netlist = netlist  # Store netlist to have access to graphs.
-        self.pipegen_yaml = util.YamlFile(pipegen_filename, post_process_pipegen_yaml)
-        self.blob_yaml = util.YamlFile(blob_filename)
+        self.pipegen_yaml = util.YamlFile(self.netlist.file_ifc, pipegen_filename, post_process_pipegen_yaml)
+        self.blob_yaml = util.YamlFile(self.netlist.file_ifc, blob_filename)
         self.graphs = None
 
         self.roots = graph_roots  # The entry in netlist file

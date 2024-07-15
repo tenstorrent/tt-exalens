@@ -84,6 +84,16 @@ def empty_pci_write():
     )
 
 
+def empty_get_file():
+    global server
+    check_not_implemented_response(lambda: server.get_file("file_name"))
+
+
+def empty_get_run_dirpath():
+    global server
+    check_not_implemented_response(lambda: server.get_run_dirpath())
+
+
 def pci_write32_pci_read32():
     global server
     server.pci_write32(1, 2, 3, 123456, 987654)
@@ -154,6 +164,18 @@ def get_device_soc_description():
     print("pass" if read == "get_device_soc_description(1)" else "fail")
 
 
+def get_file():
+    global server
+    read = server.get_file("file_name")
+    print("pass" if read == "get_file(file_name)" else "fail")
+
+
+def get_run_dirpath():
+    global server
+    read = server.get_run_dirpath()
+    print("pass" if read == "get_run_dirpath" else "fail")
+
+
 def main():
     # Check if at least two arguments are provided (script name + function name)
     if len(sys.argv) < 3:
@@ -173,7 +195,7 @@ def main():
     # Try to connect to server
     try:
         global server
-        # TODO: Find out why connect_to_server won't work here...
+        # connect_to_server won't work here because it prints to stdout
         server = debuda_client("localhost", port)
     except:
         print(f"Couldn't connect to debuda server on port '{port}'")

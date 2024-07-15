@@ -16,7 +16,12 @@ Examples:
   g test_op
 """
 
-command_metadata = {"short": "g", "type": "high-level", "description": __doc__}
+command_metadata = {
+    "short": "g",
+	  "type": "high-level",
+	  "description": __doc__,
+    "context": ["buda"],    
+    }
 
 from debuda import UIState
 import tt_util as util

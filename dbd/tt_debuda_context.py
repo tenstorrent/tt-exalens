@@ -4,15 +4,22 @@
 from abc import abstractmethod
 from functools import cached_property
 from typing import Dict, Optional, Set
-from tt_coordinate import OnChipCoordinate
-import tt_util as util, tt_netlist
-from tt_firmware import ELF, BUDA_FW_VARS
+from .tt_coordinate import OnChipCoordinate
+from . import tt_util as util, tt_netlist
+from .tt_firmware import ELF, BUDA_FW_VARS
 
 # All-encompassing structure representing a Debuda context
 class Context:
-    def __init__(self, cluster_desc_path, short_name):
-        self.server_ifc = None # This will be set from outside
-        self._cluster_desc_path = cluster_desc_path
+    def __init__(self, server_ifc, cluster_desc, short_name):
+        self.server_ifc = server_ifc
+        self._cluster_desc = cluster_desc
+        self.short_name = short_name
+
+    def filter_commands(self, commands):
+        self.commands = []
+        for cmd in commands:
+            if self.short_name in cmd["context"] or cmd["context"] == "util":
+                self.commands.append(cmd)
 
     @property
     @abstractmethod
@@ -21,7 +28,7 @@ class Context:
 
     @cached_property
     def devices(self):
-        import tt_device
+        from . import tt_device
 
         device_ids = self.device_ids
         devices: Dict[int,tt_device.Device] = dict()
@@ -42,9 +49,7 @@ class Context:
 
     @cached_property
     def cluster_desc(self):
-        if self._cluster_desc_path is None:
-            raise util.TTException(f"We are running with limited functionality, cluster description is not available.")
-        return util.YamlFile(self._cluster_desc_path)
+        return self._cluster_desc
 
     @cached_property
     def is_buda(self):
@@ -91,8 +96,8 @@ class Context:
         return f"context"
 
 class BudaContext(Context):
-    def __init__(self, netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_path):
-        super().__init__(cluster_desc_path, "buda")
+    def __init__(self, server_ifc, netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_yaml):
+        super().__init__(server_ifc, cluster_desc_yaml, "buda")
         self._netlist_filepath = netlist_filepath
         self._run_dirpath = run_dirpath
         self._runtime_data_yaml = runtime_data_yaml
@@ -105,7 +110,7 @@ class BudaContext(Context):
 
     @cached_property
     def netlist(self):
-        return tt_netlist.Netlist(self._netlist_filepath, self._run_dirpath, self._runtime_data_yaml)
+        return tt_netlist.Netlist(self.server_ifc, self._netlist_filepath, self._run_dirpath, self._runtime_data_yaml)
 
     @cached_property
     def is_buda(self):
@@ -121,7 +126,7 @@ class BudaContext(Context):
             elf_files_to_load["erisc_app"] = f"{self._run_dirpath}/erisc/erisc_app.elf"
 
         extra_vars = BUDA_FW_VARS if self.is_buda else None
-        return ELF(elf_files_to_load, extra_vars=extra_vars)
+        return ELF(self.server_ifc, elf_files_to_load, extra_vars=extra_vars)
 
     @cached_property
     def epoch_id_address(self):
@@ -141,8 +146,7 @@ class BudaContext(Context):
         return address
 
     def get_risc_elf_path(self, location: OnChipCoordinate, risc_id: int):
-        from tt_debug_risc import get_risc_name
-
+        from .tt_debug_risc import get_risc_name
         if self._run_dirpath:
             device = location._device
             epoch_id = device.get_epoch_id(location)
@@ -172,8 +176,8 @@ class BudaContext(Context):
         return f"BudaContext"
 
 class LimitedContext(Context):
-    def __init__(self, cluster_desc_path):
-        super().__init__(cluster_desc_path, "limited")
+    def __init__(self, server_ifc, cluster_desc_yaml):
+        super().__init__(server_ifc, cluster_desc_yaml, "limited")
         self.loaded_elfs = {} # (OnChipCoordinate, risc_id) => elf_path
 
     @cached_property
@@ -191,8 +195,8 @@ class LimitedContext(Context):
 
 # TODO: We should implement support for Metal
 class MetalContext(Context):
-    def __init__(self, cluster_desc_path):
-        super().__init__(cluster_desc_path, "metal")
+    def __init__(self, server_ifc, cluster_desc_yaml):
+        super().__init__(server_ifc, cluster_desc_yaml, "metal")
 
     def __repr__(self):
         return f"MetalContext"

@@ -20,7 +20,12 @@ from debuda import UIState
 import tt_util as util
 from tt_coordinate import OnChipCoordinate
 
-command_metadata = {"short": "cdr", "type": "low-level", "description": __doc__}
+command_metadata = {
+    "short": "cdr",
+    "type": "low-level",
+    "description": __doc__,
+    "context": ["limited", "buda", "metal"],
+    }
 
 
 def run(cmd_text, context, ui_state: UIState = None):

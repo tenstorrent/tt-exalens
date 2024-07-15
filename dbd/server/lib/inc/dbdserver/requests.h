@@ -22,15 +22,19 @@ enum class request_type : uint8_t {
     pci_read32_raw,
     pci_write32_raw,
     dma_buffer_read32,
+    get_harvester_coordinate_translation,
+    get_device_ids,
+    get_device_arch,
+    get_device_soc_description,
 
     // Runtime requests
     pci_read_tile = 100,
     get_runtime_data,
     get_cluster_description,
-    get_harvester_coordinate_translation,
-    get_device_ids,
-    get_device_arch,
-    get_device_soc_description,
+
+    // File server requests
+    get_file = 200,
+    get_buda_run_dirpath,
 };
 
 // Structures for receiving requests
@@ -110,6 +114,11 @@ struct get_device_arch_request : request {
 
 struct get_device_soc_description_request : request {
     uint8_t chip_id;
+} __attribute__((packed));
+
+struct get_file_request : request {
+    uint32_t size;
+    char data[0];
 } __attribute__((packed));
 
 }  // namespace tt::dbd

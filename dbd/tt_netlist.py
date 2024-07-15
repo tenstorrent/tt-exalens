@@ -2,10 +2,10 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import os
-from tt_object import TTObjectIDDict
-import tt_util as util
-from tt_graph import Graph, Queue
-from tt_temporal_epoch import TemporalEpoch
+from .tt_object import TTObjectIDDict
+from . import tt_util as util
+from .tt_graph import Graph, Queue
+from .tt_temporal_epoch import TemporalEpoch
 
 from copy import copy
 from collections import defaultdict
@@ -166,8 +166,6 @@ class Netlist:
         #  b. Create a TemporalEpoch object for each epoch and link with graphs
         for epoch_id, graph_list in epoch_to_graph_list_map.items():
             graph_dir = f"{rundir}/temporal_epoch_{epoch_id}"
-            if not os.path.isdir(graph_dir):
-                util.FATAL(f"Error: cannot find directory {graph_dir}")
 
             pipegen_file = f"{graph_dir}/overlay/pipegen.yaml"
             blob_file = f"{graph_dir}/overlay/blob.yaml"
@@ -190,7 +188,9 @@ class Netlist:
                 for input_name in op.root["inputs"]:
                     self._name_consumers_map[input_name].append(op.id())
 
-    def __init__(self, netlist_filepath, rundir, runtime_data_yaml):
+    def __init__(self, file_ifc, netlist_filepath, rundir, runtime_data_yaml):
+        self.file_ifc = file_ifc
+
         # 1. Set the file. It will be lazy loaded on first access
         assert runtime_data_yaml is not None
         self.runtime_data_yaml = runtime_data_yaml
@@ -201,7 +201,7 @@ class Netlist:
             netlist_filepath = self.get_netlist_path()
 
         # 2. Load the netlist itself
-        self.yaml_file = util.YamlFile(netlist_filepath)
+        self.yaml_file = util.YamlFile(self.file_ifc, netlist_filepath)
         self.load_netlist_data()
 
         # 3. Load pipegen/blob yamls

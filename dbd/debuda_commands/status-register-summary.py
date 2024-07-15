@@ -27,6 +27,7 @@ command_metadata = {
     "long": "status-register",
     "type": "low-level",
     "description": __doc__,
+    "context": ["buda"],
 }
 
 

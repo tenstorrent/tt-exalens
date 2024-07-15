@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 from functools import cached_property
 from typing import Sequence
-import tt_util as util
-from tt_stream import Stream
-from tt_object import TTObject, TTObjectIDDict
-from tt_pipe import Pipe
-from tt_buffer import Buffer
-from tt_object import TTObject
+from . import tt_util as util
+from .tt_stream import Stream
+from .tt_object import TTObject, TTObjectIDDict
+from .tt_pipe import Pipe
+from .tt_buffer import Buffer
+from .tt_object import TTObject
 
 
 # Queues
@@ -107,13 +107,16 @@ class Graph(TTObject):
 
     @cached_property
     def op_info(self):
-        with open(f"{self._rundir}/graph_{self._id}/op_info.txt", "r") as file:
-            lines = file.readlines()
+        try:
+            file = self.netlist.file_ifc.get_file(f"{self._rundir}/graph_{self._id}/op_info.txt")
+            lines = file.splitlines()
             info = {}
             for line in lines:
                 directory, op_name = line.strip().split(': ')
                 info[op_name] = f"{self._rundir}/graph_{self._id}/{directory}"
             return info
+        except:
+            raise util.TTException(f"Error while reading op_info.txt for graph {self._id}")
 
     # Given a buffer list, find all buffers that are connected (pipegen.yaml)
     # connection can be src, dest, or srcdest (for either)

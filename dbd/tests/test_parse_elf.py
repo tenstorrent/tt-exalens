@@ -1,11 +1,17 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-import unittest, re
+import unittest
 from tt_parse_elf import read_elf, mem_access
 import tt_util as util
-from tabulate import tabulate
 
+
+
+class TestFileIfc:
+    def get_binary(self, filename):
+        return open(filename, "rb")
+
+file_ifc = TestFileIfc()
 
 def compile_test_cpp_program(program_name, program_text):
     """
@@ -82,7 +88,7 @@ class TestParseElf(unittest.TestCase):
                 """
         }
         compile_test_cpp_program(program_name, program_definition["program_text"])
-        name_dict = read_elf(f"{program_name}.elf")
+        name_dict = read_elf(file_ifc, f"{program_name}.elf")
 
         # Variable, pointer, reference
         # As mem_access returns a type
@@ -168,7 +174,7 @@ class TestParseElf(unittest.TestCase):
                 """
         }
         compile_test_cpp_program(program_name, program_definition["program_text"])
-        name_dict = read_elf(f"{program_name}.elf")
+        name_dict = read_elf(file_ifc, f"{program_name}.elf")
         assert mem_access(name_dict, "GLOBAL_INT_ARRAY", mem_reader)[0] == [
             710960,
             711000,
@@ -214,7 +220,7 @@ class TestParseElf(unittest.TestCase):
                 """
         }
         compile_test_cpp_program(program_name, program_definition["program_text"])
-        name_dict = read_elf(f"{program_name}.elf")
+        name_dict = read_elf(file_ifc, f"{program_name}.elf")
 
         assert mem_access(name_dict, "double_int_array[0][2]", mem_reader)[0] == [
             10 * ((71096) + 2 * 4)
@@ -261,7 +267,7 @@ class TestParseElf(unittest.TestCase):
                 """
         }
         compile_test_cpp_program(program_name, program_definition["program_text"])
-        name_dict = read_elf(f"{program_name}.elf")
+        name_dict = read_elf(file_ifc, f"{program_name}.elf")
         assert mem_access(name_dict, "my_s.my_union.an_int", mem_reader)[0] == [722120]
         assert mem_access(name_dict, "my_s.my_union.a_float", mem_reader)[0] == [722120]
         assert mem_access(name_dict, "my_s.an_unnamed_int", mem_reader)[0] == [722080]
@@ -275,7 +281,7 @@ class TestParseElf(unittest.TestCase):
             return None
 
     def test_brisc(self):
-        name_dict = read_elf("./debuda_test/brisc/brisc.elf")
+        name_dict = read_elf(file_ifc, "./debuda_test/brisc/brisc.elf")
         epoch_id_addr = self.get_var_addr(name_dict, "EPOCH_INFO_PTR->epoch_id")
 
 

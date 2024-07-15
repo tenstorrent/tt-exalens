@@ -74,6 +74,7 @@ void tt::dbd::communication::request_loop() {
                     case request_type::get_runtime_data:
                     case request_type::get_cluster_description:
                     case request_type::get_device_ids:
+                    case request_type::get_buda_run_dirpath:
                         invalid_message = message.size() != sizeof(request);
                         break;
 
@@ -114,6 +115,11 @@ void tt::dbd::communication::request_loop() {
                         invalid_message = (message.size() < sizeof(pci_write_request)) ||
                                           (message.size() !=
                                            sizeof(pci_write_request) + static_cast<const pci_write_request*>(r)->size);
+                        break;
+                    case request_type::get_file:
+                        invalid_message = (message.size() < sizeof(get_file_request)) ||
+                                          (message.size() !=
+                                           sizeof(get_file_request) + static_cast<const get_file_request*>(r)->size);
                         break;
                 }
 

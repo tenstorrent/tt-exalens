@@ -18,7 +18,12 @@ Examples:
   gpr
   gpr ra,sp,pc
 """
-command_metadata = {"short": "gpr", "type": "low-level", "description": __doc__}
+command_metadata = {
+    "short": "gpr",
+	"type": "low-level",
+	"description": __doc__,
+    "context": ["limited", "buda", "metal"],
+    }
 
 from debuda import UIState
 from tt_debug_risc import RiscDebug, RiscLoc, RISCV_REGS, get_risc_name, get_register_index
@@ -38,7 +43,7 @@ def get_register_data(device, server_ifc, loc, args):
     riscs_to_include = args["-r"].split(",") if args["-r"] else range(0,4)
     riscs_to_include = range(0,4) if "all" in args["-r"] else [ int(risc) for risc in riscs_to_include ]
     elf_file = args["<elf-file>"] if args["<elf-file>"] else None
-    elf = ELF({ "elf" : elf_file }) if elf_file else None
+    elf = ELF(server_ifc, { "elf" : elf_file }) if elf_file else None
     pc_map = elf.names["elf"]["file-line"] if elf else None
 
     reg_value = {}
@@ -83,6 +88,7 @@ def get_register_data(device, server_ifc, loc, args):
         row = [f"{reg_id} - {RISCV_REGS[reg_id]}"]
         for risc_id in riscs_to_include:
             if risc_id not in reg_value:
+                row.append("")
                 continue
             src_location = ""
             if pc_map and reg_id == 32:

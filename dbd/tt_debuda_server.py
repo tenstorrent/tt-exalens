@@ -1,16 +1,16 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-import tt_util as util
+from . import tt_util as util
 
 import os
 import signal
 import subprocess
 import time
 
-def start_server(port, runtime_data_yaml_filename, wanted_devices=None):
+def start_server(port: int, runtime_data_yaml_filename: str, run_dirpath: str = None, wanted_devices: "list[int]" = None) -> subprocess.Popen:
     if util.is_port_available(int(port)):
-        debuda_server = spawn_standalone_debuda_stub(port, runtime_data_yaml_filename, wanted_devices)
+        debuda_server = spawn_standalone_debuda_stub(port, runtime_data_yaml_filename, run_dirpath, wanted_devices)
         if debuda_server is None:
             raise util.TTFatalException("Could not start debuda-server.")
         return debuda_server
@@ -18,7 +18,7 @@ def start_server(port, runtime_data_yaml_filename, wanted_devices=None):
     raise util.TTFatalException(f"Port {port} not available. A debuda server might alreasdy be running.")
 
 # The server needs the runtime_data.yaml to get the netlist path, arch, and device
-def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename, wanted_devices=None):
+def spawn_standalone_debuda_stub(port: int, runtime_data_yaml_filename: str, run_dirpath: str,  wanted_devices: "list[int]" = None) -> subprocess.Popen:
     print("Spawning debuda-server...")
 
     debuda_server_standalone = "/debuda-server-standalone"
@@ -40,6 +40,8 @@ def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename, wanted_device
             debuda_stub_args = [f"{port}"]
         else:
             debuda_stub_args = [f"{port}", "-y", f"{runtime_data_yaml_filename}"]
+        if run_dirpath:
+            debuda_stub_args += ["-r", run_dirpath]
         if wanted_devices:
             debuda_stub_args += ["-d"] + [str(d) for d in wanted_devices]
 
@@ -60,7 +62,7 @@ def spawn_standalone_debuda_stub(port, runtime_data_yaml_filename, wanted_device
     return debuda_stub
 
 # Terminates debuda-server spawned in connect_to_server
-def stop_server(debuda_stub):
+def stop_server(debuda_stub: subprocess.Popen):
     if debuda_stub is not None and debuda_stub.poll() is None:
         os.killpg(os.getpgid(debuda_stub.pid), signal.SIGTERM)
         time.sleep(0.1)

@@ -28,8 +28,9 @@ Examples:
 command_metadata = {
     "short": "bcc",
     "long" : "binary-corruption-check",
-    "type" : "high-level",
-    "description": __doc__
+    "type" : "dev", # "high-level", TODO: Needs fixing (see issue #67)
+    "description": __doc__,
+    "context": ["buda"]
 }
 
 import sys
@@ -183,16 +184,16 @@ def get_current_epoch_command(device, epoch_cmd_q_reader: EpochCommandQueueReade
     epoch_cmd = EpochCmd(epoch_cmd_q_reader.EpochQueueCmd_val_to_str, cmd_payload)
     return epoch_cmd
     
-def get_op_index(graph_directory_path, op_name) -> int:
+def get_op_index(context, graph_directory_path, op_name) -> int:
     op_info_file_path = graph_directory_path + "/op_info.txt"
-    with open(op_info_file_path, "r") as f:
+    try:
+        f = context.server_ifc.get_file(op_info_file_path)
         op_index_str, op_name_str = f.readline().split(":")
         op_name_str = op_name_str.strip()
         if op_name_str == op_name:
             return int(op_index_str.split("_")[1])
-        
-    assert False
-    return None
+    except:
+        assert False
 
 def get_graph_name_for_op_on_core(context, device, core_loc: OnChipCoordinate) -> str:
     core_epoch = device.get_epoch_id(core_loc)
@@ -229,13 +230,14 @@ def read_hex_binary(context, device, core_loc: OnChipCoordinate, binary_type: st
     # get the op directory
     graph = context.netlist.graph(graph_name)
     op_name = graph.location_to_op_name(core_loc)
-    op_index = get_op_index(graph_directory_path, op_name)
+    op_index = get_op_index(context, graph_directory_path, op_name)
     
     hex_file_path = f"{graph_directory_path}/op_{op_index}/{core_type_str}/{core_type_str}.hex"
     print(f"\tReading hex file from {hex_file_path}")
     
     hex_file_data = []
-    with open(hex_file_path, "r") as f:
+    try:
+        f = context.server_ifc.get_file(hex_file_path, "r")
         for line in f:
             line = line.strip()
             if not line.startswith("@"):
@@ -244,7 +246,9 @@ def read_hex_binary(context, device, core_loc: OnChipCoordinate, binary_type: st
                     hex_file_data.append(int(line, 16))
                 except:
                     breakpoint()
-    
+    except:
+        raise util.TTException(f"Exception while reading reading hex file {hex_file_path}")
+
     return hex_file_data
     
 

@@ -17,7 +17,12 @@ Examples:
   wxy 18-18 0x0 0x1234
 """
 
-command_metadata = {"short": "wxy", "type": "low-level", "description": __doc__}
+command_metadata = {
+    "short": "wxy", 
+    "type": "low-level", 
+    "description": __doc__,
+    "context": ["limited", "buda", "metal"],
+    }
 
 from debuda import UIState
 import tt_device

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from dataclasses import dataclass
 from functools import cached_property
-from tt_debug_risc import RiscDebug
+from .tt_debug_risc import RiscDebug
 
 @dataclass
 class GdbThreadId:

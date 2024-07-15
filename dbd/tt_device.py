@@ -2,18 +2,18 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from functools import cached_property
-import os, subprocess, time, struct, signal, re, zmq, pickle, atexit, ast
+import os, struct, ast
 from typing import List, Sequence
 from socket import timeout
 from tabulate import tabulate
-from tt_debuda_context import Context
-from tt_object import TTObject
-import tt_util as util
-from tt_coordinate import OnChipCoordinate, CoordinateTranslationError
+from .tt_debuda_context import Context
+from .tt_object import TTObject
+from . import tt_util as util
+from .tt_coordinate import OnChipCoordinate, CoordinateTranslationError
 from collections import namedtuple
 from abc import ABC, abstractmethod
 from typing import Dict
-from tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
+from .tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 
 #
 # Communication with Buda (or debuda-server) over sockets (ZMQ).
@@ -144,7 +144,7 @@ class Device(TTObject):
     def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
         dev = None
         if arch.lower() == "grayskull":
-            import tt_grayskull
+            from . import tt_grayskull
 
             dev = tt_grayskull.GrayskullDevice(
                 id=device_id,
@@ -154,7 +154,7 @@ class Device(TTObject):
                 context=context
             )
         if "wormhole" in arch.lower():
-            import tt_wormhole
+            from . import tt_wormhole
 
             dev = tt_wormhole.WormholeDevice(
                 id=device_id,
@@ -244,7 +244,7 @@ class Device(TTObject):
 
     @cached_property
     def yaml_file(self):
-        return util.YamlFile(self._device_desc_path)
+        return util.YamlFile(SERVER_IFC, self._device_desc_path)
 
     @cached_property
     def EPOCH_ID_ADDR(self):
@@ -1213,6 +1213,19 @@ class Device(TTObject):
             rst_reg = self.pci_read32(*loc.to("nocVirt"), noc_id, RISC_SOFT_RESET_0_ADDR)
             if rst_reg != ALL_SOFT_RESET:
                 util.ERROR (f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
+
+    @abstractmethod
+    def get_tensix_configuration_base(self) -> int:
+        pass
+
+    @abstractmethod
+    def get_configuration_register_index(self, register_name: str) -> int:
+        pass
+
+    def get_configuration_register_address(self, register_name: str):
+        tensix_config_base = self.get_tensix_configuration_base()
+        register_index = self.get_configuration_register_index(register_name)
+        return tensix_config_base + register_index * 4
 
 # end of class Device
 

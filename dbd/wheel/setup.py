@@ -25,6 +25,8 @@ debuda_files = {
             "tt_debuda_ifc.py",
             "tt_debuda_ifc_base.py",
             "tt_debuda_ifc_cache.py",
+            "tt_debuda_init.py",
+            "tt_debuda_lib.py",
             "tt_debuda_server.py",
             "tt_debug_risc.py",
             "tt_device.py",

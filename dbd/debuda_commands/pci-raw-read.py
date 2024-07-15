@@ -19,7 +19,12 @@ from docopt import docopt
 from debuda import UIState
 import tt_device
 
-command_metadata = {"short": "pcir", "type": "dev", "description": __doc__}
+command_metadata = {
+    "short": "pcir", 
+    "type": "dev", 
+    "description": __doc__,
+    "context": ["limited", "buda", "metal"],
+    }
 
 
 def run(cmd_text, context, ui_state: UIState = None):

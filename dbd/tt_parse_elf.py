@@ -495,23 +495,25 @@ def parse_dwarf(dwarf):
     return recurse_dict
 
 
-def read_elf(elf_file_path):
+def read_elf(file_ifc, elf_file_path):
     """
     Reads the ELF file and returns a dictionary with the DWARF info
     """
-    with open(elf_file_path, "rb") as f:
-        elf = ELFFile(f)
+    # This is redirected to read from tmp folder in case of remote runs.
+    f = file_ifc.get_binary(elf_file_path)
 
-        if not elf.has_dwarf_info():
-            print(
-                f"ERROR: {elf_file_path} does not have DWARF info. Source file must be compiled with -g"
-            )
-            return
-        dwarf = elf.get_dwarf_info()
+    elf = ELFFile(f)
 
-        recurse_dict = parse_dwarf(dwarf)
+    if not elf.has_dwarf_info():
+        print(
+            f"ERROR: {elf_file_path} does not have DWARF info. Source file must be compiled with -g"
+        )
+        return
+    dwarf = elf.get_dwarf_info()
 
-        recurse_dict["symbols"] = decode_symbols(elf)
+    recurse_dict = parse_dwarf(dwarf)
+
+    recurse_dict["symbols"] = decode_symbols(elf)
     return recurse_dict
 
 #

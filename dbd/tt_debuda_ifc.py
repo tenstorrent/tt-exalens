@@ -1,15 +1,16 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from abc import ABC, abstractmethod
 from enum import Enum
+import io
 import sys
 import struct
 import zmq
-import tt_util as util
-import tt_debuda_ifc_cache as tt_debuda_ifc_cache
-from tt_debuda_ifc_base import DbdCommunicator
-import tt_device
+
+from . import tt_util as util
+from . import tt_debuda_ifc_cache as tt_debuda_ifc_cache
+from .tt_debuda_ifc_base import DbdCommunicator
+from . import tt_device
 
 
 class debuda_server_request_type(Enum):
@@ -25,15 +26,19 @@ class debuda_server_request_type(Enum):
     pci_read32_raw = 14
     pci_write32_raw = 15
     dma_buffer_read32 = 16
+    get_harvester_coordinate_translation = 17
+    get_device_ids = 18
+    get_device_arch = 19
+    get_device_soc_description = 20
 
     # Runtime requests
     pci_read_tile = 100
     get_runtime_data = 101
     get_cluster_description = 102
-    get_harvester_coordinate_translation = 103
-    get_device_ids = 104
-    get_device_arch = 105
-    get_device_soc_description = 106
+
+    # File requests
+    get_file = 200
+    get_buda_run_dirpath = 201
 
 
 class debuda_server_bad_request(Exception):
@@ -229,10 +234,29 @@ class debuda_server_communication:
             )
         )
         return self._check(self._socket.recv())
+    
+    def get_file(self, path: str):
+        encoded_path = path.encode()
+        self._socket.send(
+            struct.pack(
+                f"<BI{len(encoded_path)}s",
+                debuda_server_request_type.get_file.value,
+                len(encoded_path),
+                encoded_path,
+            )
+        )
+        return self._check(self._socket.recv())
+
+    def get_run_dirpath(self):
+        self._socket.send(
+            bytes([debuda_server_request_type.get_buda_run_dirpath.value])
+        )
+        return self._check(self._socket.recv())
 
 
 class debuda_client(DbdCommunicator):
     def __init__(self, address: str, port: int):
+        super().__init__()
         self._communication = debuda_server_communication(address, port)
 
         # Check ping/pong to verify it is debuda server on the other end
@@ -339,19 +363,39 @@ class debuda_client(DbdCommunicator):
         return self.parse_string(
             self._communication.get_device_soc_description(chip_id)
         )
+    
+    def get_file(self, file_path: str) -> str:
+        return self.parse_string(
+            self._communication.get_file(file_path)
+        )
+    
+    def get_binary(self, binary_path: str) -> io.BufferedIOBase:
+        binary_content = self._communication.get_file(binary_path)
+        return io.BytesIO(binary_content)
+
+    def get_run_dirpath(self) -> str:
+        run_dirpath = self.parse_string(
+            self._communication.get_run_dirpath()
+        )
+        if run_dirpath != "":
+            return run_dirpath
+        return None
 
 
 tt_dbd_pybind_path = util.application_path() + "/../build/lib"
 binary_path = util.application_path() + "/../build/bin"
 sys.path.append(tt_dbd_pybind_path)
+# This is a pybind module so we don't need from .
 import tt_dbd_pybind
 
 
 class debuda_pybind(DbdCommunicator):
-    def __init__(self, runtime_data_yaml_filename: str = "", wanted_devices: list = []):
+    def __init__(self, runtime_data_yaml_filename: str = "", run_dirpath: str = None, wanted_devices: list = []):
+        super().__init__()
         if not tt_dbd_pybind.open_device(binary_path, runtime_data_yaml_filename, wanted_devices):
             raise Exception("Failed to open device using pybind library")
-        print("Device opened")
+        self._runtime_yaml_path = runtime_data_yaml_filename # Don't go through C++ for opening files
+        self._run_dirpath = run_dirpath
 
     def _check_result(self, result):
         if result is None:
@@ -392,8 +436,11 @@ class debuda_pybind(DbdCommunicator):
     ):
         return self._check_result(tt_dbd_pybind.pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format))
 
-    def get_runtime_data(self):
-        return self._check_result(tt_dbd_pybind.get_runtime_data())
+    def get_runtime_data(self) -> str:
+        if self._runtime_yaml_path:
+            with open(self._runtime_yaml_path, 'r') as f:
+                return f.read()
+        else: raise debuda_server_not_supported()
 
     def get_cluster_description(self):
         return self._check_result(tt_dbd_pybind.get_cluster_description())
@@ -409,13 +456,26 @@ class debuda_pybind(DbdCommunicator):
 
     def get_device_soc_description(self, chip_id: int):
         return self._check_result(tt_dbd_pybind.get_device_soc_description(chip_id))
+    
+    def get_file(self, file_path: str) -> str:
+        content = None
+        with open(file_path, 'r') as f:
+            content = f.read()
+        return self._check_result(content)
+    
+    def get_binary(self, binary_path: str) -> io.BufferedIOBase:
+        return open(binary_path, 'rb')
+    
+    def get_run_dirpath(self) -> str:
+        return self._run_dirpath
 
 
-def init_pybind(runtime_data_yaml_filename, wanted_devices=None):
+def init_pybind(runtime_data_yaml_filename, run_dirpath=None, wanted_devices=None):
     if not wanted_devices:
         wanted_devices = []
     
-    tt_device.SERVER_IFC = debuda_pybind(runtime_data_yaml_filename, wanted_devices)
+    tt_device.SERVER_IFC = debuda_pybind(runtime_data_yaml_filename, run_dirpath, wanted_devices)
+    util.INFO("Device opened successfully.")
     return tt_device.SERVER_IFC
 
 
@@ -428,6 +488,6 @@ def connect_to_server(ip="localhost", port=5555):
         tt_device.SERVER_IFC = debuda_client(ip, port)
         util.INFO("Connected to debuda-server.")
     except:
-        raise
+        raise util.TTFatalException("Failed to connect to debuda server.")
 
     return tt_device.SERVER_IFC
