@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-# TODO: This is plain copy of tt_wormhole.py. Need to update this file with Blackhole specific details
+# TODO (#75): This is plain copy of tt_wormhole.py. Need to update this file with Blackhole specific details
 
 
 
