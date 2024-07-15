@@ -16,9 +16,11 @@ Examples:
 """
 
 from docopt import docopt
+
 from debuda import UIState
-import tt_util as util
-from tt_coordinate import OnChipCoordinate
+
+from dbd import tt_util as util
+from dbd.tt_coordinate import OnChipCoordinate
 
 command_metadata = {
     "short": "cdr",

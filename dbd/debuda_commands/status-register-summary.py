@@ -18,9 +18,10 @@ Examples:
   srs 1
 """
 
-from tabulate import tabulate
-import tt_util as util
 from docopt import docopt
+from tabulate import tabulate
+
+from dbd import tt_util as util
 
 command_metadata = {
     "short": "srs",

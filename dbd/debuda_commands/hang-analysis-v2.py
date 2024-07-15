@@ -16,22 +16,19 @@ Examples:
   ha_v2
 """
 
-import sys
-from tabulate import tabulate
-from tt_object import TTObjectIDDict
-import tt_util as util
-import tt_device
-from tt_graph import Queue
-from tt_temporal_epoch import TemporalEpoch
-from tt_coordinate import OnChipCoordinate
-from docopt import docopt
-from typing import List, Sequence, Set, Dict, Any
-from tt_stream import Stream
-import subprocess
-from collections import defaultdict, Counter
-from enum import Enum
-import tempfile
 import random
+import sys
+from collections import defaultdict, Counter
+from docopt import docopt
+from enum import Enum
+from typing import List, Sequence, Set, Dict, Any
+
+from dbd import tt_device
+from dbd import tt_util as util
+from dbd.tt_coordinate import OnChipCoordinate
+from dbd.tt_graph import Queue
+from dbd.tt_stream import Stream
+from dbd.tt_temporal_epoch import TemporalEpoch
 
 ha_v2_verbose = 3
 
@@ -71,7 +68,6 @@ command_metadata = {
 ## reuse in other debuda commands
 UNIQUE_ID_ALIGN: int = 1000000000
 
-import re
 
 STREAM_DUMP_CAPTURE_PATTERN = (
     r"(Tensix|Ethernet) x=(\d{2}),y=(\d{2}) => stream (\d{2}) (.*) = (0x)?(\d+)"

@@ -15,9 +15,11 @@ Examples:
   pipe 125000000000
 """
 
-from debuda import UIState
-import tt_util as util
 from docopt import docopt
+
+from debuda import UIState
+
+from dbd import tt_util as util
 
 command_metadata = {
     "long": "pipe",

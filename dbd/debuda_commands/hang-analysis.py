@@ -17,12 +17,12 @@ Examples:
 """
 
 import sys
-from tabulate import tabulate
-from tt_object import TTObjectIDDict
-import tt_util as util
-import tt_device
-from tt_graph import Queue
 from docopt import docopt
+
+from dbd import tt_device
+from dbd import tt_util as util
+from dbd.tt_object import TTObjectIDDict
+from dbd.tt_graph import Queue
 
 
 def LOG(s, **kwargs):

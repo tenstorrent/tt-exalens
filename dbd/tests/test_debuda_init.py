@@ -4,9 +4,9 @@
 import unittest
 import os
 
-import tt_debuda_init
-from tt_debuda_context import Context
-from tt_debuda_server import start_server, stop_server
+from dbd import tt_debuda_init
+from dbd.tt_debuda_context import Context
+from dbd.tt_debuda_server import start_server, stop_server
 
 
 

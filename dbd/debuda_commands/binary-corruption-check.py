@@ -34,22 +34,15 @@ command_metadata = {
 }
 
 import sys
-from tabulate import tabulate
-from debuda import UIState
-from tt_object import TTObjectIDDict
-import tt_util as util
-import tt_device
-from tt_graph import Queue
-from tt_temporal_epoch import TemporalEpoch
-from tt_coordinate import OnChipCoordinate
+
 from docopt import docopt
-from typing import List,Set,Dict,Any
-from tt_stream import Stream
-import subprocess
-from collections import defaultdict, Counter
-from enum import Enum
-import tempfile
-import random
+from collections import defaultdict
+from typing import List, Dict
+
+from debuda import UIState
+
+from dbd import tt_util as util
+from dbd.tt_coordinate import OnChipCoordinate
 
 bcc_verbose = 3
 def LOG(s, **kwargs):

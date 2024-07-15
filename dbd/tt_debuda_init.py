@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 
-from . import tt_debuda_ifc
-from . import tt_debuda_ifc_cache
-from . import tt_util as util
+from dbd import tt_debuda_ifc
+from dbd import tt_debuda_ifc_cache
+from dbd import tt_util as util
 
-from .tt_debuda_context import Context, BudaContext, LimitedContext
+from dbd.tt_debuda_context import Context, BudaContext, LimitedContext
 
 # GLOBAL_CONTEXT is a convenience variable to store fallback debuda context object.
 # If a library function needs context parameter but it isn't provided, it will use
@@ -35,13 +35,11 @@ def init_debuda(
 		List of device IDs we want to connect to. If None, connect to all available devices.
 	caching_path : str, optional
 		Path to the cache file to write. If None, caching is disabled.
-
 	Returns
 	-------
 	Context
 		Debuda context object.
 	"""
-	
 	runtime_data_yaml_filename = find_runtime_data_yaml_filename(output_dir_path)
 	debuda_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir_path, wanted_devices)
 	if cache_path:
@@ -68,7 +66,6 @@ def init_debuda_remote(
 		Port number of the debuda server interface.
 	cache_path : str, optional
 		Path to the cache file to write. If None, caching is disabled.
-		
 	Returns
 	-------
 	Context
@@ -168,7 +165,6 @@ def find_runtime_data_yaml_filename(output_dir: str = None):
 
 
 def locate_most_recent_build_output_dir():
-
 	# Try to find a default output directory
 	most_recent_modification_time = None
 	try:

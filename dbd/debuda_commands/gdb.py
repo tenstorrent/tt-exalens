@@ -14,8 +14,10 @@ Examples:
   gdb stop
 """
 from docopt import docopt
+
 from debuda import UIState
-import tt_util as util
+
+from dbd import tt_util as util
 
 command_metadata = {
     "short": "gdb",

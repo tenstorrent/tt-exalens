@@ -8,7 +8,8 @@ OBSOLETE: Use hang-analysis.py instead.
 """
 
 from tabulate import tabulate
-import tt_stream, tt_netlist, tt_util as util
+
+from dbd import tt_stream, tt_util as util
 
 command_metadata = {
     "short": "abs",

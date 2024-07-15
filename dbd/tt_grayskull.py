@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from . import tt_util as util, os
-from . import tt_device
+from dbd import tt_util as util, os
+from dbd import tt_device
 
 
 class GrayskullL1AddressMap(tt_device.L1AddressMap):

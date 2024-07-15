@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 import subprocess
-import sys
 
 __requires__ = ['pip >= 24.0']
 
@@ -11,13 +10,18 @@ from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 
 # debuda files to be copied to build directory
-dbd_folder_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+dbd_folder_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'dbd')
 debuda_home = os.path.dirname(dbd_folder_path)
 debuda_files = {
     "debuda": {
+        "path": "",
+        "files": ["debuda.py"],
+        "output": ""
+    },
+    "debuda_lib": {
         "path": "dbd",
         "files": [
-            "debuda.py",
+            "__init__.py",
             "tt_buffer.py",
             "tt_commands.py",
             "tt_coordinate.py",
@@ -95,7 +99,7 @@ class MyBuild(build_ext):
 
     def _copy_files(self, target_path):
         strip_symbols = os.environ.get("STRIP_SYMBOLS", "0") == "1"
-        for t, d in debuda_files.items():
+        for _, d in debuda_files.items():
             path = target_path + "/" + d["output"]
             os.makedirs(path, exist_ok=True)
 
@@ -129,7 +133,7 @@ setup(
     version=version,
 
     py_modules=['debuda'],
-    package_dir={"debuda": "dbd"},
+    package_dir={"debuda": "."},
 
     author='Tenstorrent',
     url="http://www.tenstorrent.com",
@@ -146,7 +150,7 @@ setup(
     keywords="debugging tenstorrent",
     entry_points={
         'console_scripts': [
-            'debuda = dbd.debuda:main'
+            'debuda = debuda:main'
         ]
     },
 )
