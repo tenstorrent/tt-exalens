@@ -163,7 +163,7 @@ def write_to_device(
 	addr : int
 		Memory address to write to.
 	data : list[int] | bytes
-		Data to be written. Lists are converted to bytes before writing. Elements must be between 0 and 255.
+		Data to be written. Lists are converted to bytes before writing, each element a byte. Elements must be between 0 and 255.
 	device_id : int, default 0
 		ID number of device to write to.
 	context : Context, optional
@@ -180,10 +180,8 @@ def write_to_device(
 	validate_addr(addr)
 	validate_device_id(device_id, context)
 
-	# TODO: We use little-endian format?
-	# TODO: Move this functionality to write_words?
 	if isinstance(data, list):
-		data = b''.join(struct.pack('I', num) for num in data)
+		data = bytes(data)
 	
 	if len(data) == 0: raise TTException("Data to write must not be empty.")
 

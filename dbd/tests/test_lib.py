@@ -72,11 +72,10 @@ class TestReadWrite(unittest.TestCase):
 		data = [0, 1, 2, 3]
 		
 		ret = lib.write_to_device(core_loc, address, data)
-		self.assertEqual(ret, len(data) * 4)
+		self.assertEqual(ret, len(data))
 
-		ret = lib.read_from_device(core_loc, address, num_bytes = len(data)*4)
-		ret = list(struct.unpack("I"*len(data), ret))
-		self.assertEqual(ret, data)
+		ret = lib.read_from_device(core_loc, address, num_bytes = len(data))
+		self.assertEqual(ret, bytes(data))
 
 	def test_write_read_bytes(self):
 		"""Test write bytes -- read bytes."""
@@ -121,16 +120,16 @@ class TestReadWrite(unittest.TestCase):
 		"""Test write bytes -- read words."""
 		core_loc = "1,1"
 		address = 0x100
-		data = [1, 32, 215]
+		data = [0, 1, 2, 3]
 		
 		# Write bytes to device
 		ret = lib.write_to_device(core_loc, address, data)
 		# *4 is because we write 4-byte words
-		self.assertEqual(ret, len(data)*4)
+		self.assertEqual(ret, len(data))
 
 		# Read the bytes as words
-		ret = lib.read_words_from_device(core_loc, address, word_count=3)
-		self.assertEqual(ret, data)
+		ret = lib.read_words_from_device(core_loc, address, word_count=1)
+		self.assertEqual(ret[0].to_bytes(4, 'little'), bytes(data))
 
 	@parameterized.expand([
 		("abcd", 0x100, 0, 1),			# Invalid core_loc string

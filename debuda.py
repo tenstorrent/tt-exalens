@@ -54,17 +54,6 @@ except ModuleNotFoundError as e:
     print(f"Try:\033[31m pip install -r dbd/requirements.txt; make dbd \033[0m")
     exit(1)
 
-# # Add the current directory to the path. This is so that dynamically-loaded debuda_commands can import the files in
-# # the application directory.
-# def application_path():
-#     if getattr(sys, "frozen", False):
-#         application_path = os.path.dirname(sys.executable)
-#     elif __file__:
-#         application_path = os.path.dirname(__file__)
-#     return application_path
-
-
-# sys.path.append(application_path())
 
 from dbd import tt_debuda_init
 from dbd import tt_debuda_server
