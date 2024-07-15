@@ -73,7 +73,6 @@ class CoordinateTranslationError(Exception):
     """
     This exception is thrown when a coordinate translation fails.
     """
-
     pass
 
 
@@ -86,10 +85,28 @@ class OnChipCoordinate:
     _noc0_coord = (None, None)  # This uses noc0 coordinates: (X,Y)
     _device = None  # Used for conversions
 
-    def __init__(self, x, y, input_type, device):
+    def __init__(self, x: int, y: int, input_type: str, device):
         """
-        Constructor. The coordinates are stored as integers. It contains NOC0 coords. If device is
-        not specified, we will not be able to convert to other coordinate systems.
+        Constructor for the Coordinate class.
+
+        Args:
+            x (int): The x-coordinate value.
+            y (int): The y-coordinate value.
+            input_type (str): The input coordinate system type. One of the following:
+                - noc0: NOC routing coordinate for NOC 0. (X-Y)
+                - nocVirt: Virtual NOC coordinate. Similar to noc0, but with the harvested rows removed, and the locations of functioning rows shifted down to fill in the gap. (X-Y)
+                - noc1: NOC routing coordinate for NOC 1. (X-Y)
+                - die: Die coordinate, a location on the die grid. (X,Y)
+                - tensix: Tensix coordinate, represents a full grid of Tensix cores (including the disabled rows due to harvesting). (R,C)
+                - netlist: Netlist coordinate, is similar to the 'tensix', but does not include the disabled rows due to harvesting. (R,C)
+                - nocTr: Translated NOC coordinate. Similar to noc0Virt, but offset by 16. (X-Y)
+            device: The device object used for coordinate conversion.
+
+        Raises:
+            Exception: If the input coordinate system is unknown.
+
+        Notes:
+            - If the device is not specified, coordinate conversion to other systems will not be possible.
         """
         assert device is not None
         self._device = device
@@ -115,8 +132,18 @@ class OnChipCoordinate:
         """
         This function takes a stream designator and returns the corresponding coordinate.
 
-        Stream designators are the key names in the blob yaml and have the form:
-            chip_<chip_id>__y_<core_y>__x_<core_x>__stream_<stream_id>
+        Args:
+            stream_designator (str): The stream designator to convert into a coordinate.
+
+        Returns:
+            OnChipCoordinate: The corresponding coordinate.
+
+        Notes:
+            Stream designators are the key names in the blob yaml and have the form: chip_<chip_id>__y_<core_y>__x_<core_x>__stream_<stream_id>.
+
+        Examples:
+            >>> from_stream_designator("chip_1__y_2__x_3__stream_4")
+            OnChipCoordinate(core_x=3, core_y=2, nocTr='nocTr', chip_id=1)
         """
 
         # Split the stream designator into its components
@@ -137,6 +164,15 @@ class OnChipCoordinate:
     def to(self, output_type):
         """
         Returns a tuple with the coordinates in the specified coordinate system.
+
+        Args:
+            output_type (str): The desired output coordinate system.
+
+        Returns:
+            tuple: The coordinates in the specified coordinate system.
+
+        Raises:
+            Exception: If the output coordinate system is unknown.
         """
         if output_type == "noc0":
             return self._noc0_coord
@@ -236,8 +272,28 @@ class OnChipCoordinate:
     def create(coord_str, device, coord_type=None):
         """
         Creates a coordinate object from a string. The string can be in any of the supported coordinate systems.
-        The nocTr and netlist coordinates are used for - and , separators, respectively, unless the coord_type
-        is specified.
+        
+        Parameters:
+            coord_str (str): The string representation of the coordinate.
+            device (Device): The device object representing the chip.
+            coord_type (str, optional): The type of coordinate system used in the string. 
+                If not specified, it will be determined based on the separators used in the string.
+        
+        Returns:
+            OnChipCoordinate: The created coordinate object.
+        
+        Raises:
+            Exception: If the coordinate format is unknown or invalid.
+        
+        Supported coordinate formats:
+            - X-Y format: The coordinates are separated by a hyphen ("-"). Example: "10-20"
+            - R,C format: The coordinates are separated by a comma (","). Example: "10,20"
+            - DRAM channel format: The coordinate starts with "CH" followed by the channel number. 
+              Example: "CH1"
+        
+        Note:
+            - If the coordinate format is X-Y or R,C, the coordinates will be converted to integers.
+            - If the coordinate format is DRAM channel, the corresponding NOC0 coordinates will be used.
         """
         if "-" in coord_str:
             if coord_type is None:
