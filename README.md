@@ -66,3 +66,61 @@ and Python unit tests with
 Be sure to have a virtual environment with all dependencies from `dbd/tests/test-requirements.txt` installed.
 
 ---
+
+
+
+
+## Troubleshooting
+
+### No rule to make target 'third_party/umd/device/module.mk'
+```
+> make test
+Makefile:178: third_party/umd/device/module.mk: No such file or directory
+make: *** No rule to make target 'third_party/umd/device/module.mk'.  Stop.
+```
+Fix:
+```
+git submodule update --init --recursive
+```
+
+### Error: DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the debuda repository
+
+```
+> make test
+Error: DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the debuda repository
+make: *** [Makefile:182: test] Error 1
+...
+Error: BUDA_HOME is not set. Please set BUDA_HOME to the root of the budabackend repository
+make: *** [Makefile:182: test] Error 1
+```
+Fix:
+```
+export DEBUDA_HOME=`pwd`
+export BUDA_HOME=~/work/bbe
+```
+
+### fatal error: zmq.hpp: No such file or directory
+
+```
+In file included from dbd/server/lib/inc/dbdserver/server.h:8,
+                 from dbd/server/app/debuda-server-standalone.cpp:11:
+dbd/server/lib/inc/dbdserver/communication.h:9:10: fatal error: zmq.hpp: No such file or directory
+    9 | #include <zmq.hpp>
+```
+
+This happens when the docker image does not contain the required dependencies.
+Fix:
+```
+sudo apt update && sudo apt-get install -y libzmq3-dev libboost-all-dev libgtest-dev libgmock-dev
+```
+
+
+### python: command not found
+```
+test/wheel-test/wheel-test.sh: line 11: python: command not found
+make: *** [Makefile:182: test] Error 127
+```
+Fix:
+```
+alias python=python3
+```
