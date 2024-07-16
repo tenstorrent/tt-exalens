@@ -164,7 +164,7 @@ class Device(TTObject):
                 context=context
             )
         if "blackhole" in arch.lower():
-            import tt_blackhole
+            from dbd import tt_blackhole
 
             dev = tt_blackhole.BlackholeDevice(
                 id=device_id,

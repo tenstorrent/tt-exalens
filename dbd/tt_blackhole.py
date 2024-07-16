@@ -4,13 +4,9 @@
 
 
 # TODO (#75): This is plain copy of tt_wormhole.py. Need to update this file with Blackhole specific details
-
-
-
-
-import tt_util as util, os
-import tt_device
-from tt_coordinate import CoordinateTranslationError, OnChipCoordinate
+from dbd import tt_util as util
+from dbd import tt_device
+from dbd.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
 
 phase_state_map = {
     0: "PHASE_START",

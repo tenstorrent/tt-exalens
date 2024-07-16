@@ -217,6 +217,7 @@ class TestRunElf(unittest.TestCase):
 	def test_old_elf_test(self):
 		""" Running old elf test, formerly done with -t option. """
 
+		# TODO: Add support for triscs as well  -   @parameterized.expand([
 		core_loc = "0,0"
 		elf_path = "build/riscv-src/brisc-globals.elf"
 		
