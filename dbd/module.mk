@@ -82,7 +82,7 @@ dbd/test:
 	-rm -rf $(DBD_VENV)
 	python3 -m venv $(DBD_VENV)
 	echo "Activate, install requirements and run tests"
-	. $(DBD_VENV)/bin/activate && pip install -r dbd/requirements.txt && dbd/test/test-debuda-py.sh
+	. $(DBD_VENV)/bin/activate && pip install -r dbd/requirements.txt && dbd/tests/test-debuda-py.sh
 
 .PHONY: dbd/coverage
 dbd/coverage:
