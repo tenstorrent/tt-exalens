@@ -6,16 +6,15 @@ Debuda
 
 </h1>
 
-A Tenstorent hardware debugger
+A low level hardware debugger
 
-<img src="./dbd/docs-md/tt_logo.png" alt="ttnn logo" height="150"/>
-
-Works with [PyBuda](https://github.com/tenstorrent/tt-buda) on [Grayskull and Wormhole](https://tenstorrent.com/cards/) cards.
+<img src="./dbd/docs-md/tt_logo.png" alt="ttnn logo" height="100"/>
 
 </div>
+<br/>
 
-Debuda is a debugging tool for Tenstorrent's hardware. 
-It can be used to access and communicate with the device, or explore bugs and hangs in PyBuda models. 
+Debuda is a low level debugging tool for Tenstorrent's hardware.
+It can be used to access and communicate with the device, or explore bugs and hangs in PyBuda models.
 At the moment, Grayskull and Wormhole devices are supported, while the support for Blackhole cards, as well as support for the Metal runtime are under development.
 
 ---
