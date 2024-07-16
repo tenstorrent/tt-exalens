@@ -16,8 +16,10 @@ Examples:
 """
 
 from docopt import docopt
+
 from debuda import UIState
-import tt_device
+
+from dbd import tt_device
 
 command_metadata = {
     "short": "pcir", 

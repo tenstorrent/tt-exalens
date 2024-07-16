@@ -26,7 +26,10 @@ Examples:
 
 # TODO: Decide if export is needed (Issue #57)
 
-import tt_util as util
+from docopt import docopt
+
+from dbd import tt_device
+from dbd import tt_util as util
 
 command_metadata = {
     "short": "xp",
@@ -35,8 +38,6 @@ command_metadata = {
     "context": ["buda"]
     }
 
-import tt_device
-from docopt import docopt
 
 
 # TODO: This should work without using tt_device.
@@ -76,7 +77,7 @@ def run(cmd_text, context, ui_state=None):
         filelist, out_file=zip_file_name, prefix_to_remove=odir
     )
     print(
-        f"Exported '{zip_file_name}'. Import with:\n{util.CLR_GREEN}mkdir -p {de_odir} && unzip {zip_file_name} -d {de_odir} && dbd/debuda.py {de_odir} {'--write cache' if tt_device.SERVER_IFC.using_cache() is not None else ''}{util.CLR_END}"
+        f"Exported '{zip_file_name}'. Import with:\n{util.CLR_GREEN}mkdir -p {de_odir} && unzip {zip_file_name} -d {de_odir} && debuda.py {de_odir} {'--write cache' if tt_device.SERVER_IFC.using_cache() is not None else ''}{util.CLR_END}"
     )
 
     return None

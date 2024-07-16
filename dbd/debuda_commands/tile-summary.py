@@ -16,13 +16,12 @@ Examples:
   s 0,2 4; t 1 --raw   # Prints raw bytes
 """
 
-from tabulate import tabulate
-from debuda import UIState
-import tt_util as util
-from tt_coordinate import OnChipCoordinate
 from docopt import docopt
 
-from tt_debuda_ifc import debuda_server_not_supported
+from debuda import UIState
+
+from dbd import tt_util as util
+from dbd.tt_debuda_ifc import debuda_server_not_supported
 
 command_metadata = {
     "short": "t", 

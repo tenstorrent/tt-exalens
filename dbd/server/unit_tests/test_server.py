@@ -5,9 +5,9 @@ import os, sys
 from typing import Any, Callable
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(script_directory + "/../../")
+sys.path.append(script_directory + "/../../../")
 
-from tt_debuda_ifc import debuda_client, debuda_server_not_supported
+from dbd.tt_debuda_ifc import debuda_client, debuda_server_not_supported
 
 server_port = 0
 server = None

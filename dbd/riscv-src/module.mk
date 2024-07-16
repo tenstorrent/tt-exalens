@@ -14,7 +14,7 @@ OPTIONS_LINK=-fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 
 $(OUT)/riscv-src: $(OUT)
 	mkdir -p $@
 
-dbd/riscv: $(OUT)/riscv-src $(OUT)/riscv-src/tmu-crt0.o $(OUT)/riscv-src/brisc-no-globals.elf $(OUT)/riscv-src/brisc-globals.elf $(OUT)/riscv-src/trisc0.elf $(OUT)/riscv-src/trisc1.elf $(OUT)/riscv-src/trisc2.elf
+dbd/riscv: $(OUT)/riscv-src $(OUT)/riscv-src/tmu-crt0.o $(OUT)/riscv-src/brisc-no-globals.elf $(OUT)/riscv-src/brisc-globals.elf $(OUT)/riscv-src/trisc0.elf $(OUT)/riscv-src/trisc1.elf $(OUT)/riscv-src/trisc2.elf $(OUT)/riscv-src/run_elf_brisc_test.elf
 
 $(OUT)/riscv-src/tmu-crt0.o: dbd/riscv-src/tmu-crt0.S
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o $@ $<
@@ -26,6 +26,9 @@ $(OUT)/riscv-src/brisc-globals.o: dbd/riscv-src/brisc.cc
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DUSE_GLOBAL_VARS -c -o $@ $<
 
 $(OUT)/riscv-src/trisc.o: dbd/riscv-src/trisc.cc
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o $@ $<
+
+$(OUT)/riscv-src/run_elf_brisc_test.o: dbd/riscv-src/run_elf_brisc_test.cc
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o $@ $<
 
 $(OUT)/riscv-src/brisc-no-globals.elf: $(OUT)/riscv-src/tmu-crt0.o $(OUT)/riscv-src/brisc-no-globals.o
@@ -42,6 +45,9 @@ $(OUT)/riscv-src/trisc1.elf: $(OUT)/riscv-src/tmu-crt0.o $(OUT)/riscv-src/trisc.
 
 $(OUT)/riscv-src/trisc2.elf: $(OUT)/riscv-src/tmu-crt0.o $(OUT)/riscv-src/trisc.o
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) -Tdbd/riscv-src/trisc2.ld $^ -o $@
+
+$(OUT)/riscv-src/run_elf_brisc_test.elf: $(OUT)/riscv-src/tmu-crt0.o $(OUT)/riscv-src/run_elf_brisc_test.o
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) -Tdbd/riscv-src/brisc.ld $^ -o $@ 
 
 $(OUT)/riscv-src/%.dis: $(OUT)/riscv-src/%.elf
 	$(OBJDUMP) -d -s -S $< > $@

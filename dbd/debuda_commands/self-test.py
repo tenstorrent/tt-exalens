@@ -1,10 +1,9 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from tt_object import TTObject, TTObjectIDDict
-import tt_util as util
-from tt_graph import Queue, Op
-from tt_coordinate import OnChipCoordinate, CoordinateTranslationError
+from dbd import tt_util as util
+from dbd.tt_object import TTObject, TTObjectIDDict
+from dbd.tt_coordinate import OnChipCoordinate, CoordinateTranslationError
 
 command_metadata = {
     "short": "st",

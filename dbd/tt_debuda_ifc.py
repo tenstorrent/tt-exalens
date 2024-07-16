@@ -7,10 +7,10 @@ import sys
 import struct
 import zmq
 
-from . import tt_util as util
-from . import tt_debuda_ifc_cache as tt_debuda_ifc_cache
-from .tt_debuda_ifc_base import DbdCommunicator
-from . import tt_device
+from dbd import tt_util as util
+from dbd import tt_debuda_ifc_cache as tt_debuda_ifc_cache
+from dbd.tt_debuda_ifc_base import DbdCommunicator
+from dbd import tt_device
 
 
 class debuda_server_request_type(Enum):

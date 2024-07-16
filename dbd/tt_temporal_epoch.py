@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from .tt_object import TTObject, TTObjectIDDict
-from . import tt_util as util
-from .tt_coordinate import OnChipCoordinate
-from .tt_stream import Stream
-from .tt_buffer import Buffer
-from .tt_pipe import Pipe
-from .tt_graph import Queue, Graph, Op
+from dbd.tt_object import TTObject, TTObjectIDDict
+from dbd import tt_util as util
+from dbd.tt_coordinate import OnChipCoordinate
+from dbd.tt_stream import Stream
+from dbd.tt_buffer import Buffer
+from dbd.tt_pipe import Pipe
+from dbd.tt_graph import Queue, Graph, Op
 import itertools
 from copy import copy
 from collections import defaultdict

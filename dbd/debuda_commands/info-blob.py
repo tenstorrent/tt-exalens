@@ -24,11 +24,13 @@ command_metadata = {
     }
 
 from docopt import docopt
+
 from debuda import UIState
-from tt_firmware import ELF
-import tt_util as util
-from tt_coordinate import OnChipCoordinate
-import tt_device
+
+from dbd import tt_device
+from dbd import tt_util as util
+from dbd.tt_firmware import ELF
+from dbd.tt_coordinate import OnChipCoordinate
 
 
 def pretty_print_overlay_blob_register_settings(elf, device_id, core_loc, blob_address):

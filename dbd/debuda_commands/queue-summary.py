@@ -26,12 +26,13 @@ command_metadata = {
     "context": ["buda"],
     }
 
-from typing import Sequence
-import tt_util as util
-from tt_object import TTObjectIDDict, DataArray
-import tt_device
-from tt_graph import Queue
 from docopt import docopt
+from typing import Sequence
+
+from dbd import tt_device
+from dbd import tt_util as util
+from dbd.tt_object import TTObjectIDDict, DataArray
+from dbd.tt_graph import Queue
 
 # IMPROVE: More details available. See struct tt_queue_header
 

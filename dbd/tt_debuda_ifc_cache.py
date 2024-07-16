@@ -6,9 +6,9 @@ import io
 import os
 import pickle
 
-from .tt_debuda_ifc_base import DbdCommunicator
-from . import tt_device
-from . import tt_util as util
+from dbd.tt_debuda_ifc_base import DbdCommunicator
+from dbd import tt_device
+from dbd import tt_util as util
 
 
 """

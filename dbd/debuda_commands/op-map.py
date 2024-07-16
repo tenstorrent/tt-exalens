@@ -14,7 +14,8 @@ Examples:
 """
 
 from tabulate import tabulate
-from tt_coordinate import OnChipCoordinate
+
+from dbd.tt_coordinate import OnChipCoordinate
 
 command_metadata = {
     "short": "om", 

@@ -21,12 +21,14 @@ Examples:
 """
 
 from docopt import docopt
-from cgi import print_form
+
 from debuda import UIState
-from tt_object import DataArray
-import tt_device
-import tt_util as util
-from tt_coordinate import OnChipCoordinate
+
+from dbd import tt_device
+from dbd import tt_util as util
+
+from dbd.tt_coordinate import OnChipCoordinate
+from dbd.tt_object import DataArray
 
 command_metadata = {
     "short": "ddb",

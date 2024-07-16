@@ -4,9 +4,9 @@
 from abc import abstractmethod
 from functools import cached_property
 from typing import Dict, Optional, Set
-from .tt_coordinate import OnChipCoordinate
-from . import tt_util as util, tt_netlist
-from .tt_firmware import ELF, BUDA_FW_VARS
+from dbd.tt_coordinate import OnChipCoordinate
+from dbd import tt_util as util, tt_netlist
+from dbd.tt_firmware import ELF, BUDA_FW_VARS
 
 # All-encompassing structure representing a Debuda context
 class Context:
@@ -28,7 +28,7 @@ class Context:
 
     @cached_property
     def devices(self):
-        from . import tt_device
+        from dbd import tt_device
 
         device_ids = self.device_ids
         devices: Dict[int,tt_device.Device] = dict()
@@ -146,7 +146,7 @@ class BudaContext(Context):
         return address
 
     def get_risc_elf_path(self, location: OnChipCoordinate, risc_id: int):
-        from .tt_debug_risc import get_risc_name
+        from dbd.tt_debug_risc import get_risc_name
         if self._run_dirpath:
             device = location._device
             epoch_id = device.get_epoch_id(location)

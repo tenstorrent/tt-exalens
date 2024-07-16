@@ -6,12 +6,12 @@ import threading
 from typing import Dict, List, Set
 from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 
-from .tt_gdb_communication import GDB_ASCII_COLON, GDB_ASCII_COMMA, GDB_ASCII_SEMICOLON, ClientSocket, GdbInputStream, GdbMessageParser, GdbMessageWriter, ServerSocket
-from .tt_gdb_data import GdbProcess, GdbThreadId
-from .tt_gdb_file_server import GdbFileServer
-from .tt_debuda_context import Context
-from .tt_debug_risc import RiscLoc, get_risc_name
-from . import tt_util as util
+from dbd.tt_gdb_communication import GDB_ASCII_COLON, GDB_ASCII_COMMA, GDB_ASCII_SEMICOLON, ClientSocket, GdbInputStream, GdbMessageParser, GdbMessageWriter, ServerSocket
+from dbd.tt_gdb_data import GdbProcess, GdbThreadId
+from dbd.tt_gdb_file_server import GdbFileServer
+from dbd.tt_debuda_context import Context
+from dbd.tt_debug_risc import RiscLoc, get_risc_name
+from dbd import tt_util as util
 
 # Helper class returns currently debugging list of threads to gdb client in paged manner
 class GdbThreadListPaged:

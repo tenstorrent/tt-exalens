@@ -4,9 +4,9 @@
 import os, sys
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(script_directory + "/../../")
+sys.path.append(script_directory + "/../../../")
 
-from tt_debuda_ifc import debuda_server_communication
+from dbd.tt_debuda_ifc import debuda_server_communication
 
 server_port = 0
 server_communication = None

@@ -12,10 +12,11 @@ Examples:
   dq
 """
 
-import tt_util as util
-import tt_device
-from tt_netlist import Queue
 from tabulate import tabulate
+
+from dbd import tt_device
+from dbd import tt_util as util
+from dbd.tt_netlist import Queue
 
 command_metadata = {
     "long": "dram-queue",

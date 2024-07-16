@@ -35,16 +35,16 @@ command_metadata = {
     "context": ["limited", "buda", "metal"]
     }
 
-from docopt import docopt
-from tt_firmware import ELF
-from debuda import UIState
-import tt_util as util
-from tt_object import DataArray
-from tt_coordinate import OnChipCoordinate
-import tt_device
 import time
+from docopt import docopt
 
-from tt_debuda_lib import read_words_from_device, read_from_device
+from debuda import UIState
+
+from dbd.tt_coordinate import OnChipCoordinate
+from dbd.tt_debuda_lib import read_words_from_device, read_from_device
+from dbd.tt_firmware import ELF
+from dbd.tt_object import DataArray
+from dbd import tt_util as util
 
 
 def run(cmd_text, context, ui_state: UIState = None):

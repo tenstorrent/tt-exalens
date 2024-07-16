@@ -51,12 +51,12 @@ command_metadata = {
     "context": ["limited", "buda", "metal"],
     }
 
-import tt_util as util
-import tt_commands
-from tt_debug_risc import RiscDebug, RiscLoc, get_risc_name
 from debuda import UIState
-from tt_coordinate import OnChipCoordinate
-import tt_device
+
+from dbd import tt_commands
+from dbd import tt_device
+from dbd import tt_util as util
+from dbd.tt_debug_risc import RiscDebug, RiscLoc, get_risc_name
 
 
 def run_riscv_command(device, loc, risc_id, args):

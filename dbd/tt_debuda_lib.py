@@ -3,16 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 import re
+import struct
 
 from functools import wraps
 from typing import Union
 
-from . import tt_debuda_init
+from dbd import tt_debuda_init
 
-from .tt_coordinate import OnChipCoordinate
-from .tt_debuda_context import Context
-from .tt_debug_risc import RiscLoader
-from .tt_util import TTException
+from dbd.tt_coordinate import OnChipCoordinate
+from dbd.tt_debuda_context import Context
+from dbd.tt_debug_risc import RiscLoader
+from dbd.tt_util import TTException
 
 
 
@@ -162,7 +163,7 @@ def write_to_device(
 	addr : int
 		Memory address to write to.
 	data : list[int] | bytes
-		Data to be written. Lists are converted to bytes before writing. Elements must be between 0 and 255.
+		Data to be written. Lists are converted to bytes before writing, each element a byte. Elements must be between 0 and 255.
 	device_id : int, default 0
 		ID number of device to write to.
 	context : Context, optional

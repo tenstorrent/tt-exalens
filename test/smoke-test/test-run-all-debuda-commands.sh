@@ -29,14 +29,14 @@ run_debuda() {
     # TODO: What's this?
     # if [ -z "$TMP_OUT_FILE" ]; then
     #     # If TMP_OUT_FILE is not set, show the output
-    #     timeout 30 $COVERAGE_CMD dbd/debuda.py debuda_test $EXTRA_ARGUMENTS --test --commands "$1"
+    #     timeout 30 $COVERAGE_CMD ./debuda.py debuda_test $EXTRA_ARGUMENTS --test --commands "$1"
     # else
-    #     timeout 30 $COVERAGE_CMD dbd/debuda.py debuda_test $EXTRA_ARGUMENTS --test --commands "$1"
+    #     timeout 30 $COVERAGE_CMD ./debuda.py debuda_test $EXTRA_ARGUMENTS --test --commands "$1"
     # fi
-    timeout 30 $COVERAGE_CMD dbd/debuda.py debuda_test $EXTRA_ARGUMENTS --test --commands "$1"
+    timeout 30 $COVERAGE_CMD ./debuda.py debuda_test $EXTRA_ARGUMENTS --test --commands "$1"
     if [ $? -ne 0 ]; then
         echo "***"
-        echo "Error: test failed while running dbd/debuda.py with commands: $1"
+        echo "Error: test failed while running ./debuda.py with commands: $1"
         echo "***"
         exit 2
     fi
