@@ -56,16 +56,16 @@ Reads num_bytes of data starting from address 'addr' at core <x-y>.
 
 - `bytes` - Data read from the device.
 
-<a id="tt_debuda_lib.write_word_to_device"></a>
+<a id="tt_debuda_lib.write_words_to_device"></a>
 
-#### write\_word\_to\_device
+#### write\_words\_to\_device
 
 ```python
-def write_word_to_device(core_loc: Union[str, OnChipCoordinate],
-                         addr: int,
-                         data: int,
-                         device_id: int = 0,
-                         context: Context = None) -> int
+def write_words_to_device(core_loc: Union[str, OnChipCoordinate],
+                          addr: int,
+                          data: Union[int, list[int]],
+                          device_id: int = 0,
+                          context: Context = None) -> int
 ```
 
 Writes data word to address 'addr' at noc0 location x-y of the current chip.
@@ -73,8 +73,8 @@ Writes data word to address 'addr' at noc0 location x-y of the current chip.
 **Arguments**:
 
 - `core_loc` _str | OnChipCoordinate_ - Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-- `addr` _int_ - Memory address to write to.
-- `data` _int_ - 4-byte data to be written.
+- `addr` _int_ - Memory address to write to. If multiple words are to be written, the address is the starting address.
+- `data` _int | list[int]_ - 4-byte integer word to be written, or a list of them.
 - `device_id` _int, default 0_ - ID number of device to write to.
 - `context` _Context, optional_ - Debuda context object used for interaction with device. If None, global context is used and potentailly initialized.
   

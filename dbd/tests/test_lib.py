@@ -94,15 +94,18 @@ class TestReadWrite(unittest.TestCase):
 		"""Test write words -- read words."""
 		core_loc = "1,1"
 		
-		address = [0x100, 0x104]
-		data = 	  [156, 2]	
+		address = [0x100, 0x104, 0x108]
+		data = 	  [156, 2, 212, 9]	
+
+		# Write a word to device two times
+		ret = lib.write_words_to_device(core_loc, address[0], data[0])
+		self.assertEqual(ret, 4)
+
+		ret = lib.write_words_to_device(core_loc, address[1], data[1])
+		self.assertEqual(ret, 4)
 
 		# Write two words to device
-		ret = lib.write_word_to_device(core_loc, address[0], data[0])
-		self.assertEqual(ret, 4)
-
-		ret = lib.write_word_to_device(core_loc, address[1], data[1])
-		self.assertEqual(ret, 4)
+		ret = lib.write_words_to_device(core_loc, address[2], data[2:])
 
 		# Read the first word
 		ret = lib.read_words_from_device(core_loc, address[0])
@@ -112,9 +115,13 @@ class TestReadWrite(unittest.TestCase):
 		ret = lib.read_words_from_device(core_loc, address[1])
 		self.assertEqual(ret[0], data[1])
 
-		# Read both words
+		# Read first two words
 		ret = lib.read_words_from_device(core_loc, address[0], word_count=2)
-		self.assertEqual(ret, data)
+		self.assertEqual(ret, data[0:2])
+		
+		# Read third and fourth words
+		ret = lib.read_words_from_device(core_loc, address[2], word_count=2)
+		self.assertEqual(ret, data[2:])
 
 	def test_write_bytes_read_words(self):
 		"""Test write bytes -- read words."""
@@ -158,7 +165,7 @@ class TestReadWrite(unittest.TestCase):
 	])
 	def test_invalid_write_word(self, core_loc, address, data, device_id):
 		with self.assertRaises(tt_util.TTException):
-			lib.write_word_to_device(core_loc, address, data, device_id)
+			lib.write_words_to_device(core_loc, address, data, device_id)
 
 	@parameterized.expand([
 		("abcd", 0x100, b"abcd", 0),	# Invalid core_loc string
@@ -186,7 +193,7 @@ class TestRunElf(unittest.TestCase):
 		addr = 0x0
 
 		# Reset memory at addr
-		lib.write_word_to_device(core_loc, addr, 0, context=self.context)
+		lib.write_words_to_device(core_loc, addr, 0, context=self.context)
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0)
 		

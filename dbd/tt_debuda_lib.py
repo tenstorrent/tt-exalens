@@ -88,10 +88,10 @@ def read_from_device(
 	)
 
 
-def write_word_to_device(
+def write_words_to_device(
 		core_loc: Union[str, OnChipCoordinate],
 		addr: int,
-		data: int,
+		data: Union[int, list[int]],
 		device_id: int = 0,
 		context: Context = None
 ) -> int:
@@ -99,8 +99,8 @@ def write_word_to_device(
 	
 	Args:
 	core_loc (str | OnChipCoordinate): Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-	addr (int): Memory address to write to.
-	data (int): 4-byte data to be written.
+	addr (int): Memory address to write to. If multiple words are to be written, the address is the starting address.
+	data (int | list[int]): 4-byte integer word to be written, or a list of them.
 	device_id (int, default 0): ID number of device to write to.
 	context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentailly initialized.
 
@@ -115,9 +115,16 @@ def write_word_to_device(
 	if not isinstance(core_loc, OnChipCoordinate):
 		validate_core_loc(core_loc)
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
-	return context.server_ifc.pci_write32(
-		device_id, *core_loc.to("nocVirt"), addr, data
-	)
+
+	if isinstance(data, int):
+		data = [data]
+	
+	bytes_written = 0
+	for i, word in enumerate(data):
+		bytes_written += context.server_ifc.pci_write32(
+			device_id, *core_loc.to("nocVirt"), addr + i*4, word
+		)
+	return bytes_written
 
 
 def write_to_device(
