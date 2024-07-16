@@ -8,9 +8,9 @@ In this tutorial, we will demonstrate how to use Debuda library through a few si
 ## Setting up Debuda
 
 To follow this tutorial, you need a virtual environment with installed Debuda wheel.
-Debuda wheel can be installed from [this link](TODO:github-link-to-release).
+Debuda wheel can be installed from [this link](https://github.com/tenstorrent/tt-debuda/releases).
 Publishing the wheel to PyPI is in the works.
-It is also possible to [build wheel from source](TODO:link-to-wheel-build-doc).
+It is also possible to [build wheel from source](../../README.md#building-and-installing-wheel).
 
 
 ## Debuda internal structure and initialization
