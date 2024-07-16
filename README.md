@@ -180,4 +180,20 @@ in the project root.
 You can change documentation config through `pydoc-markdown.yml` file.
 For more info, see [`pydoc-markdown` project page](https://github.com/NiklasRosenstein/pydoc-markdown).
 
+### Static checks
+
+To be sure that the code passes static checks in the CI pipeline, you can run
+
+```bash
+python -m check_copyright --verbose --config infra/copyright-config.yaml 
+```
+
+which will add license headers and newlines at file ands where neccessary, and
+
+```bash
+./scripts/clang-format-repo.sh
+```
+
+which will format C++ files.
+
 ---
