@@ -54,7 +54,7 @@ For more information about how to use Debuda, refer to [tutorials](TODO).
 
 It is currently possible to run tests locally, by running
 
-`./tests/run-all-tests.sh`
+`./test/run-all-tests.sh`
 
 from the project root directory. It is also possible to run C++ unit tests with
 
