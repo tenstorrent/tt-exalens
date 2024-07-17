@@ -14,7 +14,7 @@ from dbd import tt_util
 
 from dbd.tt_coordinate import OnChipCoordinate
 from dbd.tt_debuda_context import Context
-from dbd.tt_debug_risc import RiscLoader, get_risc_name
+from dbd.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc
 from dbd.tt_firmware import ELF
 from dbd.tt_object import DataArray
 
@@ -179,6 +179,59 @@ class TestRunElf(unittest.TestCase):
 	def setUpClass(cls) -> None:
 		cls.context = tt_debuda_init.init_debuda()
 		cls.elf_path = "build/riscv-src/run_elf_brisc_test.elf"
+
+
+	@parameterized.expand([
+		(True),             # Happy path
+		(False),            # Sad path
+	])
+	def test_minimal_run_generated_code(self, happy: bool = True):
+		"""Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+		core_loc = "0,0"
+		addr = 0x10000
+
+		loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
+		rloc = RiscLoc(loc, 0, 0)
+		rdbg = RiscDebug(rloc, self.context.server_ifc)
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
+
+		# Write our data to memory
+		lib.write_word_to_device(core_loc, addr, 0x12345678, context=self.context)
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		self.assertEqual(ret[0], 0x12345678)
+
+		# Write code for brisc core at address 0
+		if happy:
+			# Jump to address 4
+			lib.write_word_to_device(core_loc, 0, RiscLoader.get_jump_to_offset_instruction(4), context=self.context)
+		else:
+			# ebreak
+			lib.write_word_to_device(core_loc, 0, 0x00100073, context=self.context)
+		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
+		lib.write_word_to_device(core_loc, 4, 0x00010537, context=self.context)
+		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
+		lib.write_word_to_device(core_loc, 8, 0x876545B7, context=self.context)
+		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
+		lib.write_word_to_device(core_loc, 12, 0x00B52023, context=self.context)
+		# Infinite loop (jal 12)
+		lib.write_word_to_device(core_loc, 16, RiscLoader.get_jump_to_offset_instruction(16), context=self.context)
+
+		# Take risc out of reset
+		rdbg.set_reset_signal(False)
+
+		# Verify value at address
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		if happy:
+			# Value should be updated to new value
+			self.assertEqual(ret[0], 0x87654000)
+		else:
+			# Value should not be changed and should stay the same since core is in halt
+			self.assertEqual(ret[0], 0x12345678)
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
 
 	def test_run_elf(self):
 		"""Test running an ELF file."""

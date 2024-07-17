@@ -260,7 +260,7 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate], risc_
 		init_section_address = rloader.load_elf(elf_file) # Load the elf file
 		assert init_section_address is not None, "No .init section found in the ELF file"
 
-		jump_to_start_of_init_section_instruction = rloader.get_jump_to_offset_instruction(init_section_address - risc_start_address)
+		jump_to_start_of_init_section_instruction = RiscLoader.get_jump_to_offset_instruction(init_section_address - risc_start_address)
 		context.server_ifc.pci_write32(loc._device.id(), *loc.to("nocVirt"), risc_start_address, jump_to_start_of_init_section_instruction)
 
 		# Invalidating instruction cache so that the jump instruction is actually loaded.

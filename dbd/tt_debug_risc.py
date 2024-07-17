@@ -558,7 +558,7 @@ class RiscLoader:
         assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
 
         # Generate infinite loop instruction (JAL 0)
-        jal_instruction = self.get_jump_to_offset_instruction(0) # Since JAL uses offset and we need to return to current address, we specify 0
+        jal_instruction = RiscLoader.get_jump_to_offset_instruction(0) # Since JAL uses offset and we need to return to current address, we specify 0
         self.context.server_ifc.pci_write32(self.risc_debug.location.loc._device.id(), *self.risc_debug.location.loc.to("nocVirt"), address, jal_instruction)
 
         # Take risc out of reset
@@ -566,7 +566,8 @@ class RiscLoader:
         assert not self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is still in reset."
         assert not self.risc_debug.is_halted(), f"RISC at location {self.risc_debug.location} is still halted."
 
-    def get_jump_to_offset_instruction(self, offset, rd=0):
+    @staticmethod
+    def get_jump_to_offset_instruction(offset, rd=0):
         """
         Generate a JAL instruction code based on the given offset.
 
