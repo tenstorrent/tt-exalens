@@ -18,7 +18,7 @@ jobs:
       matrix:
         runner-info: [
           {arch: "grayskull", runs-on: ["self-hosted", "e150"]},
-          # {arch: "wormhole_b0", runs-on: ["self-hosted", "n150"]},
+          {arch: "wormhole_b0", runs-on: ["self-hosted", "n150"]},
         ]
     env:
       ARCH_NAME: ${{ matrix.runner-info.arch }}
