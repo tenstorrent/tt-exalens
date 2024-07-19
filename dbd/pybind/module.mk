@@ -28,5 +28,4 @@ dbd/pybind: $(DEBUDA_PYBIND_LIB)
 $(DEBUDA_PYBIND_LIB): $(DEBUDA_PYBIND_LIB_OBJS) $(UMD_DEVICE_LIB) $(DEBUDA_SERVER_LIB)
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) $(CXXFLAGS) $(SHARED_LIB_FLAGS) -o $@ $^ $(LDFLAGS) $(DEBUDA_PYBIND_LDFLAGS)
-
-include $(DEBUDA_HOME)/dbd/pybind/unit_tests/module.mk
+	

@@ -181,3 +181,4 @@ include dbd/module.mk
 include dbd/riscv-src/module.mk
 
 include test/dbd/server/module.mk
+include test/dbd/pybind/module.mk
