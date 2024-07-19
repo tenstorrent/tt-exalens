@@ -63,6 +63,7 @@ from dbd.tt_gdb_server import GdbServer, ServerSocket
 from dbd.tt_coordinate import OnChipCoordinate
 from dbd.tt_debuda_context import Context
 
+from dbd import Verbosity
 
 class DebudaCompleter(Completer):
     def __init__(self, commands, context):
@@ -449,9 +450,9 @@ def main():
 
 
     # ARGUMENT PARSING
-
-    if not args["--verbose"]:
-        util.VERBOSE = util.NULL_PRINT
+    if not os.environ.get("DEBUDA_VERBOSITY"):
+        Verbosity.set(Verbosity.INFO)
+    util.INFO(f"Verbosity level: {Verbosity.get()}")
 
     output_dir = args["<output_dir>"]
     if not output_dir and not args["--remote"] and not args["--cached"]:
