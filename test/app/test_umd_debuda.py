@@ -39,9 +39,10 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
 
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
         tester.assertGreater(len(lines), 3)
-        tester.assertRegex(lines[0], r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.")
-        tester.assertRegex(lines[1], r"Device opened successfully.")
-        tester.assertRegex(lines[2], r"Loading yaml file: '([^']*\.yaml)'")
+        tester.assertRegex(lines[0], r"Verbosity level: \d+")
+        tester.assertRegex(lines[1], r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.")
+        tester.assertRegex(lines[2], r"Device opened successfully.")
+        tester.assertRegex(lines[3], r"Loading yaml file: '([^']*\.yaml)'")
         tester.assertRegex(lines[-1], r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=")
         return True
 
