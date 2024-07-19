@@ -14,6 +14,11 @@ BASE_TEST_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )
 
 source ${BASE_TEST_DIR}/test-base.sh
 
+echo ""
+echo ""
+echo -e "${RED}This script is intended for running all tests in the project locally.${NC}"
+echo ""
+echo ""
 
 big_echo "BUILDING DEBUDA" 
 make clean
