@@ -24,8 +24,12 @@ big_echo "BUILDING DEBUDA"
 make clean
 make build
 
+big_echo "BUILDING C++ TESTS"
+make dbd/server_tests
+make dbd/pybind_tests
+
 big_echo "RUNNING C++ TESTS"
-make dbdtests
+make dbd_server_unit_tests_run_only
 
 big_echo "RUNNING PYTHON TESTS"
 python -m unittest discover -v -t . -s test/dbd -p *test*.py

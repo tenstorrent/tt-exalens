@@ -182,3 +182,9 @@ include dbd/riscv-src/module.mk
 
 include test/dbd/server/module.mk
 include test/dbd/pybind/module.mk
+
+.PHONY: test
+test:
+	@echo "Running tests"
+	./test/run_all.sh
+
