@@ -32,6 +32,6 @@ dbd_server_unit_tests_run_only:
 	@$(DEBUDA_SERVER_UNIT_TESTS_BIN)
 
 dbd/server_tests: $(DEBUDA_SERVER_UNIT_TESTS_BIN)
-ifndef SKIP_UNIT_TESTS_RUN
+ifdef RUN_UNIT_TESTS_WITH_BUILD
 	@$(MAKE) dbd_server_unit_tests_run_only
 endif
