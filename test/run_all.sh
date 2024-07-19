@@ -33,3 +33,6 @@ make dbd_server_unit_tests_run_only
 
 big_echo "RUNNING PYTHON TESTS"
 python -m unittest discover -v -t . -s test/dbd -p *test*.py
+
+big_echo "RUNNING WHEEL TESTS"
+source ${BASE_TEST_DIR}/wheel/wheel-test.sh
