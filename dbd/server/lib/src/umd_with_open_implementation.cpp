@@ -153,7 +153,7 @@ static std::unique_ptr<tt_SiliconDevice> create_blackhole_device(const std::stri
                                                                  const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
     std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
-    dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::blackhole::TLB_BASE_INDEX_2M + 1;
+    dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::blackhole::MEM_SMALL_READ_WRITE_TLB;
     dynamic_tlb_config["REG_TLB"] = tt::umd::blackhole::REG_TLB;
 
     return std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
