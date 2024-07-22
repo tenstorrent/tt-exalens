@@ -570,3 +570,60 @@ class TestDebugging(unittest.TestCase):
 
 		# Stop risc with reset
 		rdbg.set_reset_signal(True)
+
+	def test_halt_status(self, happy: bool = True):
+		"""Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+		core_loc = "0,0"
+		addr = 0x10000
+
+		loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
+		rloc = RiscLoc(loc, 0, 0)
+		rdbg = RiscDebug(rloc, self.context.server_ifc)
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
+
+		# Write our data to memory
+		lib.write_word_to_device(core_loc, addr, 0x12345678, context=self.context)
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		self.assertEqual(ret[0], 0x12345678)
+
+		# Write code for brisc core at address 0
+		# C++:
+		#   asm volatile ("ebreak");
+		#   int* a = (int*)0x10000;
+		#   *a = 0x87654000;
+		#   while (true);
+
+		# ebreak
+		lib.write_word_to_device(core_loc, 0, 0x00100073, context=self.context)
+		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
+		lib.write_word_to_device(core_loc, 4, 0x00010537, context=self.context)
+		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
+		lib.write_word_to_device(core_loc, 8, 0x876545B7, context=self.context)
+		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
+		lib.write_word_to_device(core_loc, 12, 0x00B52023, context=self.context)
+		# Infinite loop (jal 0)
+		lib.write_word_to_device(core_loc, 16, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+
+		# Take risc out of reset
+		rdbg.set_reset_signal(False)
+
+		# Verify value at address
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		# Value should not be changed and should stay the same since core is in halt
+		self.assertEqual(ret[0], 0x12345678)
+		self.assertTrue(rdbg.is_halted(), "Core should be halted.")
+
+		# Continue
+		rdbg.enable_debug()
+		rdbg.cont()
+
+		# Verify value at address
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		# Value should not be changed and should stay the same since core is in halt
+		self.assertEqual(ret[0], 0x87654000)
+		self.assertFalse(rdbg.is_halted(), "Core should not be halted.")
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
