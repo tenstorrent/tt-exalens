@@ -60,7 +60,7 @@ jobs:
         run: |
           echo $USER
           pwd
-          la build/bin
+          ls -al build/bin
           env
           tree build
           ./build/bin/debuda-create-ethernet-map-wormhole cimwhtest.txt
