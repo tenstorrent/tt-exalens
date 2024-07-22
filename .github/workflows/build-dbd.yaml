@@ -29,18 +29,16 @@ jobs:
           submodules: recursive
           lfs: true
       - uses: ./.github/actions/install-dbd-deps
-        with:
-          os: ${{ inputs.os }}
       - name: Build DEBUDA
         run: |
           make -j$(nproc) CONFIG=$CONFIG build
       - name: Remove unnecessary artifacts
         run: |
           find build/ -name *.so -or -name *.a -or -name *.o ! -path "build/riscv-src/*" | xargs strip -d
-      - name: 'Tar files'
-        run: tar -cvf dbd_build.tar build
+      # - name: 'Tar files'
+      #   run: tar -cvf dbd_build.tar build
       - name: Upload libraries as artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dbd-build
-          path: dbd_build.tar
+          path: dbd_build
