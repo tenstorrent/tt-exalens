@@ -613,7 +613,8 @@ class TestDebugging(unittest.TestCase):
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		# Value should not be changed and should stay the same since core is in halt
 		self.assertEqual(ret[0], 0x12345678)
-		self.assertTrue(rdbg.is_halted(), "Core should be halted.")
+		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
+		self.assertTrue(rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
 
 		# Continue
 		rdbg.enable_debug()
@@ -623,7 +624,12 @@ class TestDebugging(unittest.TestCase):
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		# Value should not be changed and should stay the same since core is in halt
 		self.assertEqual(ret[0], 0x87654000)
-		self.assertFalse(rdbg.is_halted(), "Core should not be halted.")
+		self.assertFalse(rdbg.read_status().is_halted, "Core should not be halted.")
+
+		# Halt and test status
+		rdbg.halt()
+		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
+		self.assertFalse(rdbg.read_status().is_ebreak_hit, "ebreak should not be the cause.")
 
 		# Stop risc with reset
 		rdbg.set_reset_signal(True)
