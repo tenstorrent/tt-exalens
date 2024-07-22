@@ -41,4 +41,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dbd-build
-          path: dbd_build
+          path: build

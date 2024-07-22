@@ -175,10 +175,6 @@ $(OUT)/.gitinfo:
 	@echo $(GIT_BRANCH) >> $(OUT)/.gitinfo
 	@echo $(GIT_HASH) >> $(OUT)/.gitinfo
 
-.PHONY: test
-test:
-	./test/run-all-tests.sh
-
 include third_party/umd/device/module.mk
 
 include dbd/module.mk
