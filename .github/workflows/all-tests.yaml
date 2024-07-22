@@ -58,9 +58,12 @@ jobs:
       - name: Run C++ tests
         run: |
           make dbd_server_unit_tests_run_only
-      - name: Run Python tests
+      - name: Run Python tests for dbd library
         run: |
-          python3 -m unittest discover -v -s ./dbd/ -p *test*.py
+          python3 -m unittest discover -v -t . -s test/dbd -p *test*.py
+      - name: Run Python tests for Debuda app 
+        run: |
+          python3 -m unittest discover -v -t . -s test/app -p *test*.py
   wheel-test:
     needs:
       - build
@@ -106,5 +109,5 @@ jobs:
       - name: Run tests
         run: |
           # Change to the wheel tests directory so that we are certain we don't import dev files
-          cd tests/wheel
+          cd test/wheel
           ./run-wheel.sh
