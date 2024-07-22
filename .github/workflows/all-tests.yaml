@@ -58,11 +58,8 @@ jobs:
           make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/pybind_tests
       - name: Call create-ethernet-map
         run: |
-          echo $USER
-          pwd
-          ls -al build/bin
-          env
-          tree build
+          chmod +x build/bin/debuda-create-ethernet-map-wormhole
+          chmod +x build/bin/debuda-server-standalone
           ./build/bin/debuda-create-ethernet-map-wormhole cimwhtest.txt
       - name: Run C++ tests
         run: |
