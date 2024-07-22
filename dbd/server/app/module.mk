@@ -10,7 +10,6 @@ DEBUDA_SERVER_LIB_DEPS = -ldbdserver -ldevice -lstdc++fs
 DEBUDA_SERVER_OBJS = $(addprefix $(OBJDIR)/, $(DEBUDA_SERVER_SRCS:.cpp=.o))
 DEBUDA_SERVER_DEPS = $(addprefix $(OBJDIR)/, $(DEBUDA_SERVER_SRCS:.cpp=.d))
 
-# TODO: Remove budabackend dependencies
 DEBUDA_SERVER_INCLUDES = \
 	$(BASE_INCLUDES) \
 	-I$(DEBUDA_HOME)/third_party/umd \

@@ -137,12 +137,10 @@ endif
 # TODO: Check what else to build
 build: $(OUT)/.gitinfo dbd
 
-#TODO: Set up unit test build.
 #TODO: Set up valgrind.
 
 umd: umd_device
 
-# TODO: Set clean properly.
 clean: clean_umd_device dbd/riscv/clean
 	rm -rf $(OUT)
 

@@ -218,7 +218,6 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, list[s
 
 	assert locs, "No valid core locations provided."
 	for loc in locs:
-		# TODO: Verbosity?
 		rloader = RiscLoader(loc, risc_id, context, context.server_ifc, False)
 		rdbg = rloader.risc_debug
 

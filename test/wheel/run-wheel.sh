@@ -26,7 +26,6 @@ fi
 ############################################################################################
 # Running tests
 
-# TODO: Add the rest of commands ion Limited.
 DEBUDA_COMMANDS='h;wxy 0,0 0 0x123;brxy 0,0 0 64;cdr;gpr;d 0 netlist nocVirt;x'
 
 RUN_OUTPUT_DIR=${BASE_TEST_DIR}/debuda_test

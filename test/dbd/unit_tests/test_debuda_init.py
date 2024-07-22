@@ -36,7 +36,7 @@ class TestLocalDebudaInit(unittest.TestCase):
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
 
-	# TODO: See how to go about testing debuda with output dir & netlist path
+	# TODO: See how to go about testing debuda with output dir & netlist path (see issue #11)
 
 class TestRemoteDebuda(unittest.TestCase):
 	@classmethod

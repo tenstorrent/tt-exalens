@@ -9,7 +9,7 @@ from .test_parse_elf import TestFileIfc
 file_ifc = TestFileIfc()
 
 class TestFirmware(unittest.TestCase):
-    @unittest.skip("TODO: This test should be moved to Buda repository.")
+    @unittest.skip("TODO: This test should be moved to Buda repository. See issue #11.")
     def test_epoch_id_access(self):
         elf = ELF(file_ifc, {"brisc": "./debuda_test/brisc/brisc.elf"}, extra_vars=BUDA_FW_VARS)
 
