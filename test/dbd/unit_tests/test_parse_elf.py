@@ -32,7 +32,6 @@ def compile_test_cpp_program(program_path, program_text):
         f"third_party/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g {src_file_name} -o {program_path}.elf"
     )
     if not os.path.exists(elf_file_name):
-    if not os.path.exists(f"{program_path}.elf"):
         util.ERROR(f"ERROR: Failed to compile {src_file_name}")
         exit(1)
 
