@@ -40,6 +40,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: dbd-build
+          path: build
       # TODO: Separate build & test deps
       - uses: ./.github/actions/install-dbd-deps
       - uses: ./.github/actions/setup-python-venv
@@ -90,6 +91,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: dbd-build
+          path: build
       - name: List folder
         run: ls -l
       - uses: ./.github/actions/install-dbd-deps
