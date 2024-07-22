@@ -45,6 +45,13 @@ jobs:
         run: |
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-server-standalone
+      - name: Test
+        run: |
+          pwd
+          ls build
+          ls build/bin
+          ls build/lib
+          ls build/obj
       # TODO: Separate build & test deps
       - uses: ./.github/actions/install-dbd-deps
       - uses: ./.github/actions/setup-python-venv
