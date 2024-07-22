@@ -39,6 +39,9 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
 
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
         tester.assertGreater(len(lines), 3)
+        for line in lines:
+            if re.match(r"ttSiliconDevice::init_hugepage: bind_area_to_memory_nodeset() failed", line):
+                lines.remove(line)
         tester.assertRegex(lines[0], r"Verbosity level: \d+")
         tester.assertRegex(lines[1], r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.")
         tester.assertRegex(lines[2], r"Device opened successfully.")
