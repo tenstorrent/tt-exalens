@@ -51,10 +51,10 @@ jobs:
           pip install -r test/test_requirements.txt
       - name: Build server unit tests
         run: |
-          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/server/unit_tests
+          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/server_tests
       - name: Build pybind unit tests
         run: |
-          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/pybind/unit_tests
+          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/pybind_tests
       - name: Run C++ tests
         run: |
           make dbd_server_unit_tests_run_only
@@ -94,12 +94,12 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install -r dbd/requirements.txt
-      - name: Build wheel
-        run: |
-          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} wheel
       - name: Install wheel build requirements
         run: |
           pip3 install -r wheel/wheel-requirements.txt
+      - name: Build wheel
+        run: |
+          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} wheel
       - name: Install wheel
         run: |
           pip install build/debuda_wheel/*.whl
