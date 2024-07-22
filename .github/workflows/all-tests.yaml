@@ -41,6 +41,10 @@ jobs:
         with:
           name: dbd-build
           path: build
+      - name: Update permissions for downloaded binaries
+        run: |
+          chmod +x build/bin/debuda-create-ethernet-map-wormhole
+          chmod +x build/bin/debuda-server-standalone
       # TODO: Separate build & test deps
       - uses: ./.github/actions/install-dbd-deps
       - uses: ./.github/actions/setup-python-venv
@@ -56,11 +60,6 @@ jobs:
       - name: Build pybind unit tests
         run: |
           make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/pybind_tests
-      - name: Call create-ethernet-map
-        run: |
-          chmod +x build/bin/debuda-create-ethernet-map-wormhole
-          chmod +x build/bin/debuda-server-standalone
-          ./build/bin/debuda-create-ethernet-map-wormhole cimwhtest.txt
       - name: Run C++ tests
         run: |
           make dbd_server_unit_tests_run_only
@@ -97,6 +96,10 @@ jobs:
         with:
           name: dbd-build
           path: build
+      - name: Update permissions for downloaded binaries
+        run: |
+          chmod +x build/bin/debuda-create-ethernet-map-wormhole
+          chmod +x build/bin/debuda-server-standalone
       - name: List folder
         run: ls -l
       - uses: ./.github/actions/install-dbd-deps
