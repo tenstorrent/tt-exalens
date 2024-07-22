@@ -56,6 +56,9 @@ jobs:
       - name: Build pybind unit tests
         run: |
           make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/pybind_tests
+      - name: Call create-ethernet-map
+        run: |
+          ./build/bin/debuda-create-ethernet-map-wormhole cimwhtest.txt
       - name: Run C++ tests
         run: |
           make dbd_server_unit_tests_run_only
