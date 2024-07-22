@@ -5,8 +5,7 @@ import os
 import re
 import struct
 
-from functools import wraps
-from typing import Union
+from typing import Union, List
 
 from dbd import tt_debuda_init
 
@@ -23,7 +22,7 @@ def read_words_from_device(
 		device_id: int = 0,
 		word_count: int = 1,
 		context: Context = None
-) -> "list[int]":
+) -> "List[int]":
 	""" Reads word_count four-byte words of data, starting from address 'addr' at core <x-y>.
 	
 	Args:
@@ -34,7 +33,7 @@ def read_words_from_device(
 		context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentailly initialized.
 	
 	Returns:
-		list[int]: Data read from the device.
+		List[int]: Data read from the device.
 	"""
 	context = check_context(context)
 	
@@ -91,7 +90,7 @@ def read_from_device(
 def write_words_to_device(
 		core_loc: Union[str, OnChipCoordinate],
 		addr: int,
-		data: Union[int, list[int]],
+		data: Union[int, List[int]],
 		device_id: int = 0,
 		context: Context = None
 ) -> int:
@@ -100,7 +99,7 @@ def write_words_to_device(
 	Args:
 	core_loc (str | OnChipCoordinate): Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
 	addr (int): Memory address to write to. If multiple words are to be written, the address is the starting address.
-	data (int | list[int]): 4-byte integer word to be written, or a list of them.
+	data (int | List[int]): 4-byte integer word to be written, or a list of them.
 	device_id (int, default 0): ID number of device to write to.
 	context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentailly initialized.
 
@@ -130,7 +129,7 @@ def write_words_to_device(
 def write_to_device(
 		core_loc: Union[str, OnChipCoordinate],
 		addr: int,
-		data:"Union[list[int], bytes]",
+		data:"Union[List[int], bytes]",
 		device_id: int = 0,
 		context: Context = None
 ) -> int:
@@ -142,7 +141,7 @@ def write_to_device(
 		Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
 	addr : int
 		Memory address to write to.
-	data : list[int] | bytes
+	data : List[int] | bytes
 		Data to be written. Lists are converted to bytes before writing, each element a byte. Elements must be between 0 and 255.
 	device_id : int, default 0
 		ID number of device to write to.
@@ -173,12 +172,12 @@ def write_to_device(
 	)
 
 
-def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, list[Union[str, OnChipCoordinate]]], risc_id: int = 0, device_id: int = 0, context: Context = None) -> None:
+def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, List[Union[str, OnChipCoordinate]]], risc_id: int = 0, device_id: int = 0, context: Context = None) -> None:
 	""" Loads the given ELF file into the specified RISC core and executes it.
 
 	Args:
 	elf_file (os.PathLike): Path to the ELF file to run.
-	core_loc (str | OnChipCoordinate | list[str | OnChipCoordinate]): One of the following:
+	core_loc (str | OnChipCoordinate | List[str | OnChipCoordinate]): One of the following:
 		1. "all" to run the ELF on all cores;
 		2. an X-Y (nocTr) or R,C (netlist) location of a core in string format;
 		3. a list of X-Y (nocTr), R,C (netlist) or OnChipCoordinate locations of cores, possibly mixed;
