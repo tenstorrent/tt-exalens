@@ -8,7 +8,7 @@ echo -e "${YELLOW}Running wheel test ...${NC}"
 
 if ! test -d ${THIS_SCRIPT_DIR}/.venv; then
 	echo -e "Creating virtual environment ..."
-	python -m venv ${THIS_SCRIPT_DIR}/.venv
+	python3 -m venv ${THIS_SCRIPT_DIR}/.venv
 fi
 
 echo -e "Activating virtual environment ..."

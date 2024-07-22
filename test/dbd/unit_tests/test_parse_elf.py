@@ -31,10 +31,12 @@ def compile_test_cpp_program(program_path, program_text):
     os.system(
         f"third_party/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g {src_file_name} -o {program_path}.elf"
     )
+    if not os.path.exists(elf_file_name):
     if not os.path.exists(f"{program_path}.elf"):
         util.ERROR(f"ERROR: Failed to compile {src_file_name}")
         exit(1)
 
+    return [ elf_file_name, src_file_name ]
 
 def mem_reader(addr, size_bytes):
     """
@@ -103,6 +105,8 @@ class TestParseElf(unittest.TestCase):
                 }
                 """
         }
+        generated_files = compile_test_cpp_program(program_name, program_definition["program_text"])
+        name_dict = read_elf(file_ifc, f"{program_name}.elf")
         program_path = os.path.join(TestParseElf.output_dir, program_name)
         compile_test_cpp_program(program_path, program_definition["program_text"])
         name_dict = read_elf(file_ifc, f"{program_path}.elf")
@@ -172,6 +176,10 @@ class TestParseElf(unittest.TestCase):
         assert mem_access(name_dict, "ns::ns_s.global_s", mem_reader)[0] == [725160]
         assert mem_access(name_dict, "*ns::ns_s.global_s", mem_reader)[0] == [7251600]
 
+        # Cleanup generated files
+        for generated_file in generated_files:
+            os.system(f"rm -f {generated_file}")
+
     # @unittest.skip("demonstrating skipping")
     def test_array(self):
         program_name, program_definition = "array", {
@@ -190,6 +198,8 @@ class TestParseElf(unittest.TestCase):
                 }
                 """
         }
+        generated_files = compile_test_cpp_program(program_name, program_definition["program_text"])
+        name_dict = read_elf(file_ifc, f"{program_name}.elf")
         program_path = os.path.join(TestParseElf.output_dir, program_name)
         compile_test_cpp_program(program_path, program_definition["program_text"])
         name_dict = read_elf(file_ifc, f"{program_path}.elf")
@@ -226,6 +236,8 @@ class TestParseElf(unittest.TestCase):
         assert mem_access(name_dict, "my_s.local_point_array[2].y", mem_reader)[0] == [
             711480
         ]
+        for generated_file in generated_files:
+            os.system(f"rm -f {generated_file}")
 
     # @unittest.skip("demonstrating skipping")
     def test_double_array(self):
@@ -240,6 +252,8 @@ class TestParseElf(unittest.TestCase):
         program_path = os.path.join(TestParseElf.output_dir, program_name)
         compile_test_cpp_program(program_path, program_definition["program_text"])
         name_dict = read_elf(file_ifc, f"{program_path}.elf")
+        generated_files = compile_test_cpp_program(program_name, program_definition["program_text"])
+        name_dict = read_elf(file_ifc, f"{program_name}.elf")
 
         assert mem_access(name_dict, "double_int_array[0][2]", mem_reader)[0] == [
             10 * ((71096) + 2 * 4)
@@ -259,6 +273,9 @@ class TestParseElf(unittest.TestCase):
         # These are expected to throw exceptions
         with self.assertRaises(Exception):
             mem_access(name_dict, "double_int_array[1].pera", mem_reader)[0]
+
+        for generated_file in generated_files:
+            os.system(f"rm -f {generated_file}")
 
     def test_union(self):
         program_name, program_definition = "union", {

@@ -130,7 +130,7 @@ def write_words_to_device(
 def write_to_device(
 		core_loc: Union[str, OnChipCoordinate],
 		addr: int,
-		data: Union[list[int], bytes],
+		data:"Union[list[int], bytes]",
 		device_id: int = 0,
 		context: Context = None
 ) -> int:
