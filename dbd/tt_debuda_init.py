@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import os
+from typing import Union
 
 from dbd import tt_debuda_ifc
 from dbd import tt_debuda_ifc_cache
@@ -147,7 +148,7 @@ def set_active_context(context: Context) -> None:
 	GLOBAL_CONTEXT = context
 
 
-def find_runtime_data_yaml_filename(output_dir: str = None) -> str | None:
+def find_runtime_data_yaml_filename(output_dir: str = None) -> Union[str, None]:
 	""" Find the runtime data yaml file in the output directory. If directory is not specified, try to find the most recent buda output directory.
 
 	Args:	
@@ -160,7 +161,7 @@ def find_runtime_data_yaml_filename(output_dir: str = None) -> str | None:
 	return runtime_data_yaml_filename
 
 
-def locate_most_recent_build_output_dir() -> str | None:
+def locate_most_recent_build_output_dir() -> Union[str, None]:
 	""" Try to find a default output directory. """
 	most_recent_modification_time = None
 	try:

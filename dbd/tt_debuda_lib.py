@@ -173,7 +173,7 @@ def write_to_device(
 	)
 
 
-def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, list[str | OnChipCoordinate]], risc_id: int = 0, device_id: int = 0, context: Context = None) -> None:
+def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, list[Union[str, OnChipCoordinate]]], risc_id: int = 0, device_id: int = 0, context: Context = None) -> None:
 	""" Loads the given ELF file into the specified RISC core and executes it.
 
 	Args:
