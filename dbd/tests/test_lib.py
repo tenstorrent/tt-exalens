@@ -199,6 +199,11 @@ class TestRunElf(unittest.TestCase):
 		self.assertEqual(ret[0], 0x12345678)
 
 		# Write code for brisc core at address 0
+		# C++:
+		#   int* a = (int*)0x10000;
+		#   *a = 0x87654000;
+		#   while (true);
+
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
 		lib.write_word_to_device(core_loc, 0, 0x00010537, context=self.context)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
@@ -412,6 +417,12 @@ class TestDebugging(unittest.TestCase):
 		self.assertEqual(ret[0], 0x12345678)
 
 		# Write code for brisc core at address 0
+		# C++:
+		#   asm volatile ("ebreak");
+		#   int* a = (int*)0x10000;
+		#   *a = 0x87654000;
+		#   while (true);
+
 		# ebreak
 		lib.write_word_to_device(core_loc, 0, 0x00100073, context=self.context)
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
@@ -452,6 +463,12 @@ class TestDebugging(unittest.TestCase):
 		self.assertEqual(ret[0], 0x12345678)
 
 		# Write code for brisc core at address 0
+		# C++:
+		#   asm volatile ("ebreak");
+		#   int* a = (int*)0x10000;
+		#   *a = 0x87654000;
+		#   while (true);
+
 		# ebreak
 		lib.write_word_to_device(core_loc, 0, 0x00100073, context=self.context)
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
@@ -496,6 +513,13 @@ class TestDebugging(unittest.TestCase):
 		self.assertEqual(ret[0], 0x12345678)
 
 		# Write code for brisc core at address 0
+		# C++:
+		#   asm volatile ("ebreak");
+		#   int* a = (int*)0x10000;
+		#   *a = 0x87654000;
+		#   while (true)
+		#     *a++;
+
 		# ebreak
 		lib.write_word_to_device(core_loc, 0, 0x00100073, context=self.context)
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
