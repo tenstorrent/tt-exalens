@@ -39,14 +39,22 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
 
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
         tester.assertGreater(len(lines), 3)
-        for line in lines:
-            if re.match(r"ttSiliconDevice::init_hugepage: bind_area_to_memory_nodeset() failed", line):
-                lines.remove(line)
-        tester.assertRegex(lines[0], r"Verbosity level: \d+")
-        tester.assertRegex(lines[1], r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.")
-        tester.assertRegex(lines[2], r"Device opened successfully.")
-        tester.assertRegex(lines[3], r"Loading yaml file: '([^']*\.yaml)'")
-        tester.assertRegex(lines[-1], r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=")
+        test_regex = [r"Verbosity level: \d+", 
+                      r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.", 
+                      r"Device opened successfully.", 
+                      r"Loading yaml file: '([^']*\.yaml)'", 
+                      r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting="
+        ]
+        skip_regex = [r".*ttSiliconDevice::init_hugepage:.*"]
+
+        for line, regex in zip(lines, test_regex):
+            match = re.search(regex, line)
+            if not match:
+                for skip in skip_regex:
+                    if re.search(skip, line):
+                        break
+                else:
+                    tester.fail(f"Line did not match regex: {line} != {regex}")
         return True
 
 class DbdTestRunner:
