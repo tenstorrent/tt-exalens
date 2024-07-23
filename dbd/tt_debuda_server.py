@@ -8,7 +8,7 @@ import signal
 import subprocess
 import time
 
-def start_server(port: int, runtime_data_yaml_filename: str, run_dirpath: str = None, wanted_devices: "list[int]" = None) -> subprocess.Popen:
+def start_server(port: int, runtime_data_yaml_filename: str, run_dirpath: str = None, wanted_devices: "List[int]" = None) -> subprocess.Popen:
     if util.is_port_available(int(port)):
         debuda_server = spawn_standalone_debuda_stub(port, runtime_data_yaml_filename, run_dirpath, wanted_devices)
         if debuda_server is None:
@@ -18,7 +18,7 @@ def start_server(port: int, runtime_data_yaml_filename: str, run_dirpath: str = 
     raise util.TTFatalException(f"Port {port} not available. A debuda server might alreasdy be running.")
 
 # The server needs the runtime_data.yaml to get the netlist path, arch, and device
-def spawn_standalone_debuda_stub(port: int, runtime_data_yaml_filename: str, run_dirpath: str,  wanted_devices: "list[int]" = None) -> subprocess.Popen:
+def spawn_standalone_debuda_stub(port: int, runtime_data_yaml_filename: str, run_dirpath: str,  wanted_devices: "List[int]" = None) -> subprocess.Popen:
     print("Spawning debuda-server...")
 
     debuda_server_standalone = "/debuda-server-standalone"

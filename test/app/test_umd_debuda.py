@@ -39,10 +39,22 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
 
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
         tester.assertGreater(len(lines), 3)
-        tester.assertRegex(lines[0], r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.")
-        tester.assertRegex(lines[1], r"Device opened successfully.")
-        tester.assertRegex(lines[2], r"Loading yaml file: '([^']*\.yaml)'")
-        tester.assertRegex(lines[-1], r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=")
+        test_regex = [r"Verbosity level: \d+", 
+                      r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.", 
+                      r"Device opened successfully.", 
+                      r"Loading yaml file: '([^']*\.yaml)'", 
+                      r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting="
+        ]
+        skip_regex = [r".*ttSiliconDevice::init_hugepage:.*"]
+
+        id = 0
+        for line in lines:
+            if re.search(test_regex[id], line):
+                id += 1
+                continue
+            if any([re.search(regex, line) for regex in skip_regex]):
+                continue
+            tester.fail(f"Unexpected line: {line}, expected {test_regex[id]}")
         return True
 
 class DbdTestRunner:

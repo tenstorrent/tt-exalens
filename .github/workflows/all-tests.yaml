@@ -1,0 +1,126 @@
+name: "Run all tests"
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+# TODO: See permissions @ https://github.dev/tenstorrent/tt-metal/blob/cbb7fb8182a29724ba33402c3ea2dc67d8eb6c73/.github/workflows/all-post-commit-workflows.yaml
+
+jobs:
+  static-checks:
+    uses: ./.github/workflows/static-checks.yaml
+  build:
+    uses: ./.github/workflows/build-dbd.yaml
+  build-and-run-unit-tests:
+    needs:
+      - build
+    strategy:
+      matrix:
+        runner-info: [
+          #{arch: "grayskull", runs-on: ["self-hosted", "e150"]},
+          {arch: "wormhole_b0", runs-on: ["self-hosted", "n150"]},
+        ]
+    env:
+      ARCH_NAME: ${{ matrix.runner-info.arch }}
+      CONFIG: ci
+      DEBUDA_HOME: ${{ github.workspace }}
+      # So we can get all the makefile output we want
+      VERBOSE: 5
+    runs-on: ${{ matrix.runner-info.runs-on }}
+    name: Build and run unit test on ${{ matrix.runner-info.arch }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          lfs: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: dbd-build
+          path: build
+      - name: Update permissions for downloaded binaries
+        run: |
+          chmod +x build/bin/debuda-create-ethernet-map-wormhole
+          chmod +x build/bin/debuda-server-standalone
+      - uses: ./.github/actions/install-dbd-deps
+      - uses: ./.github/actions/setup-python-venv
+        with:
+          python-version: '3.8'
+      - name: Install Python dependencies
+        run: |
+          pip install -r dbd/requirements.txt
+          pip install -r test/test_requirements.txt
+      - name: Build server unit tests
+        run: |
+          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/server_tests
+      - name: Build pybind unit tests
+        run: |
+          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/pybind_tests
+      - name: Run C++ tests
+        run: |
+          make dbd_server_unit_tests_run_only
+      - name: Run Python tests for dbd library
+        run: |
+          python3 -m unittest discover -v -t . -s test/dbd -p *test*.py
+      - name: Run Python tests for Debuda app 
+        run: |
+          python3 -m unittest discover -v -t . -s test/app -p *test*.py
+  wheel-test:
+    needs:
+      - build
+    strategy:
+      matrix:
+        runner-info: [
+          #{arch: "grayskull", runs-on: ["self-hosted", "e150"]},
+          {arch: "wormhole_b0", runs-on: ["self-hosted", "n150"]},
+        ]
+    env:
+      DEBUDA_HOME: ${{ github.workspace }}
+      ARCH_NAME: ${{ matrix.runner-info.arch }}
+      CONFIG: ci
+      # So we can get all the makefile output we want
+      VERBOSE: 5
+    runs-on: ${{ matrix.runner-info.runs-on }}
+    name: Build, install wheel and test it test on ${{ matrix.runner-info.arch }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          lfs: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: dbd-build
+          path: build
+      - name: Update permissions for downloaded binaries
+        run: |
+          chmod +x build/bin/debuda-create-ethernet-map-wormhole
+          chmod +x build/bin/debuda-server-standalone
+      - name: List folder
+        run: ls -l
+      - uses: ./.github/actions/install-dbd-deps
+      - uses: ./.github/actions/setup-python-venv
+        with:
+          python-version: '3.8'
+      - name: Install Python dependencies
+        run: |
+          pip install -r dbd/requirements.txt
+      - name: Install wheel build requirements
+        run: |
+          pip3 install -r wheel/wheel-requirements.txt
+      - name: Build wheel
+        run: |
+          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} wheel
+      - name: Install wheel
+        run: |
+          pip install build/debuda_wheel/*.whl
+      - name: Run tests
+        run: |
+          # Change to the wheel tests directory so that we are certain we don't import dev files
+          cd test/wheel
+          ./run-wheel.sh

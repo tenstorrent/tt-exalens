@@ -139,12 +139,10 @@ endif
 # TODO: Check what else to build
 build: $(OUT)/.gitinfo dbd
 
-#TODO: Set up unit test build.
 #TODO: Set up valgrind.
 
 umd: umd_device
 
-# TODO: Set clean properly.
 clean: clean_umd_device dbd/riscv/clean
 	rm -rf $(OUT)
 
@@ -177,11 +175,16 @@ $(OUT)/.gitinfo:
 	@echo $(GIT_BRANCH) >> $(OUT)/.gitinfo
 	@echo $(GIT_HASH) >> $(OUT)/.gitinfo
 
-.PHONY: test
-test:
-	./test/run-all-tests.sh
-
 include third_party/umd/device/module.mk
 
 include dbd/module.mk
 include dbd/riscv-src/module.mk
+
+include test/dbd/server/module.mk
+include test/dbd/pybind/module.mk
+
+.PHONY: test
+test:
+	@echo "Running tests"
+	./test/run_all.sh
+

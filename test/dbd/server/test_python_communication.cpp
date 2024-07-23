@@ -42,7 +42,7 @@ void call_python(const std::string& python_script, int server_port, const std::s
 
 static void call_python(const std::string& python_args, const std::string& expected_output) {
     auto server = start_yaml_server();
-    std::string python_tests_path = "dbd/server/unit_tests/test_communication.py";
+    std::string python_tests_path = "test/dbd/server/test_communication.py";
     call_python(python_tests_path, server->get_port(), python_args, expected_output);
 }
 

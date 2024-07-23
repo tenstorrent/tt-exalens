@@ -6,13 +6,13 @@ on:
       os:
         required: false
         type: string
-        default: "ubuntu-22.04"
+        default: "ubuntu-20.04"
       config:
         required: false
         type: string
         default: "ci"
 
-run-name: Build DEBUDA by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
+run-name: BUILD DEBUDA by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
 
 jobs:
   build_libs:
@@ -21,30 +21,22 @@ jobs:
       # So we can get all the makefile output we want
       VERBOSE: 1
     # TODO: This will need to change when we get cloud runners
-    runs-on: "ubuntu-22.04"
+    runs-on: ${{ inputs.os }}
     name: "Build DEBUDA."
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
           lfs: true
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
       - uses: ./.github/actions/install-dbd-deps
-        with:
-          os: ${{ inputs.os }}
       - name: Build DEBUDA
         run: |
           make -j$(nproc) CONFIG=$CONFIG build
       - name: Remove unnecessary artifacts
         run: |
           find build/ -name *.so -or -name *.a -or -name *.o ! -path "build/riscv-src/*" | xargs strip -d
-      - name: 'Tar files'
-        run: tar -cvf dbd_build.tar build
       - name: Upload libraries as artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dbd-build
-          path: dbd_build.tar
+          path: build

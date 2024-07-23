@@ -11,6 +11,8 @@ NC='\033[0m' # No Color
 
 
 if [ -z "$DEBUDA_HOME" ]; then
-	echo -e "${RED}Error:${NC} DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the debuda repository"
+	echo -e "${RED}Error:${NC} DEBUDA_HOME is not set. Trying to set it automatically..."
+	DEBUDA_HOME="$(git rev-parse --show-toplevel)"
+	echo -e "${GREEN}Success:${NC} DEBUDA_HOME is set to $DEBUDA_HOME"
 	exit 1
 fi

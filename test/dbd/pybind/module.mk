@@ -1,4 +1,4 @@
-DEBUDA_PYBIND_UNIT_TESTS_SRCS  = $(wildcard dbd/pybind/unit_tests/*.cpp)
+DEBUDA_PYBIND_UNIT_TESTS_SRCS  = $(wildcard $(DEBUDA_HOME)/test/dbd/pybind/*.cpp)
 #TODO: CHECK WHERE TO BUILD THE LIBRARY
 DEBUDA_PYBIND_UNIT_TESTS_LIB = $(LIBDIR)/tt_dbd_pybind_unit_tests.so
 
@@ -10,7 +10,7 @@ DEBUDA_PYBIND_UNIT_TESTS_LDFLAGS = -lgtest -lgmock -lgtest_main -lzmq -lpthread
 DEBUDA_PYBIND_UNIT_TESTS_LDFLAGS += $(LIBDIR)/tt_dbd_pybind.so
 
 .PRECIOUS: $(DEBUDA_PYBIND_UNIT_TESTS_OBJ_DIR)/%.o
-$(DEBUDA_PYBIND_UNIT_TESTS_OBJ_DIR)/%.o: dbd/pybind/unit_tests/%.cpp
+$(DEBUDA_PYBIND_UNIT_TESTS_OBJ_DIR)/%.o: test/dbd/pybind/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) $(CXXFLAGS) $(STATIC_LIB_FLAGS) $(DEBUDA_PYBIND_LIB_INCLUDES) -c -o $@ $<
 
@@ -21,11 +21,4 @@ $(DEBUDA_PYBIND_UNIT_TESTS_LIB): $(DEBUDA_PYBIND_UNIT_TESTS_LIB_OBJS) $(DEBUDA_P
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) $(CXXFLAGS) $(SHARED_LIB_FLAGS) -o $@ $^ $(LDFLAGS) $(DEBUDA_PYBIND_UNIT_TESTS_LDFLAGS)
 
-dbd_pybind_unit_tests_run_only:
-	@echo "Running pybind unit tests..."
-	@python3 -m unittest dbd/pybind/unit_tests/test_bindings.py
-
-dbd/pybind/unit_tests: $(DEBUDA_PYBIND_UNIT_TESTS_LIB)
-ifndef SKIP_UNIT_TESTS_RUN
-	@$(MAKE) dbd_pybind_unit_tests_run_only
-endif
+dbd/pybind_tests: $(DEBUDA_PYBIND_UNIT_TESTS_LIB)

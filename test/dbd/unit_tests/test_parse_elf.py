@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-import unittest, os
+import unittest
+import os
+
 from dbd.tt_parse_elf import read_elf, mem_access
 from dbd import tt_util as util
 
@@ -13,21 +15,21 @@ class TestFileIfc:
 
 file_ifc = TestFileIfc()
 
-def compile_test_cpp_program(program_name, program_text):
+def compile_test_cpp_program(program_path, program_text):
     """
     Just compile a program to get an ELF file
     """
-    print(f"\nCompiling {program_name}...")
+    print(f"\nCompiling {program_path}...")
     # Run ./third_party/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g ./test-elf.c -o test-elf on the program_text
     import os
 
-    elf_file_name = f"{program_name}.elf"
-    src_file_name = f"{program_name}.cpp"
+    elf_file_name = f"{program_path}.elf"
+    src_file_name = f"{program_path}.cpp"
     os.system(f"rm -f {elf_file_name}")
     with open(f"{src_file_name}", "w") as f:
         f.write(program_text)
     os.system(
-        f"third_party/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g {src_file_name} -o {program_name}.elf"
+        f"{os.environ.get('DEBUDA_HOME')}/third_party/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g {src_file_name} -o {program_path}.elf"
     )
     if not os.path.exists(elf_file_name):
         util.ERROR(f"ERROR: Failed to compile {src_file_name}")
@@ -43,14 +45,28 @@ def mem_reader(addr, size_bytes):
     for i in range((size_bytes - 1) // 4 + 1):
         value_at_addr = (addr + 4 * i) * 10
         word_array.append(value_at_addr)
-    print(
-        f"Read {size_bytes} bytes from {addr}: {', '.join([ str(x) for x in word_array])}"
-    )
+    # print(
+    #     f"Read {size_bytes} bytes from {addr}: {', '.join([ str(x) for x in word_array])}"
+    # )
     return word_array
 
 
 class TestParseElf(unittest.TestCase):
-    # @unittest.skip("demonstrating skipping")
+    @classmethod
+    def setUpClass(cls):
+        if os.environ.get("DEBUDA_PATH"):
+            cls.output_dir = os.path.join(
+                os.environ["DEBUDA_PATH"], "build", "test", "assets"
+            )
+        else:
+            cls.output_dir = os.path.join(
+                "build", "test", "assets"
+            )
+        cls.output_dir = os.path.abspath(cls.output_dir)
+
+        if not os.path.exists(cls.output_dir):
+            os.makedirs(cls.output_dir)
+    
     def test_simple(self):
         program_name, program_definition = "simple", {
             "program_text": """
@@ -90,6 +106,9 @@ class TestParseElf(unittest.TestCase):
         }
         generated_files = compile_test_cpp_program(program_name, program_definition["program_text"])
         name_dict = read_elf(file_ifc, f"{program_name}.elf")
+        program_path = os.path.join(TestParseElf.output_dir, program_name)
+        compile_test_cpp_program(program_path, program_definition["program_text"])
+        name_dict = read_elf(file_ifc, f"{program_path}.elf")
 
         # Variable, pointer, reference
         # As mem_access returns a type
@@ -180,6 +199,9 @@ class TestParseElf(unittest.TestCase):
         }
         generated_files = compile_test_cpp_program(program_name, program_definition["program_text"])
         name_dict = read_elf(file_ifc, f"{program_name}.elf")
+        program_path = os.path.join(TestParseElf.output_dir, program_name)
+        compile_test_cpp_program(program_path, program_definition["program_text"])
+        name_dict = read_elf(file_ifc, f"{program_path}.elf")
         assert mem_access(name_dict, "GLOBAL_INT_ARRAY", mem_reader)[0] == [
             710960,
             711000,
@@ -226,6 +248,9 @@ class TestParseElf(unittest.TestCase):
                 }
                 """
         }
+        program_path = os.path.join(TestParseElf.output_dir, program_name)
+        compile_test_cpp_program(program_path, program_definition["program_text"])
+        name_dict = read_elf(file_ifc, f"{program_path}.elf")
         generated_files = compile_test_cpp_program(program_name, program_definition["program_text"])
         name_dict = read_elf(file_ifc, f"{program_name}.elf")
 
@@ -252,7 +277,7 @@ class TestParseElf(unittest.TestCase):
             os.system(f"rm -f {generated_file}")
 
     def test_union(self):
-        program_name, program_definition = "build/union", {
+        program_name, program_definition = "union", {
             "program_text": """
                 struct S_TYPE {
                     int buffer, buffer2;
@@ -276,8 +301,9 @@ class TestParseElf(unittest.TestCase):
                 }
                 """
         }
-        compile_test_cpp_program(program_name, program_definition["program_text"])
-        name_dict = read_elf(file_ifc, f"{program_name}.elf")
+        program_path = os.path.join(TestParseElf.output_dir, program_name)
+        compile_test_cpp_program(program_path, program_definition["program_text"])
+        name_dict = read_elf(file_ifc, f"{program_path}.elf")
         assert mem_access(name_dict, "my_s.my_union.an_int", mem_reader)[0] == [722120]
         assert mem_access(name_dict, "my_s.my_union.a_float", mem_reader)[0] == [722120]
         assert mem_access(name_dict, "my_s.an_unnamed_int", mem_reader)[0] == [722080]
@@ -290,6 +316,7 @@ class TestParseElf(unittest.TestCase):
         else:
             return None
 
+    @unittest.skip("TODO: This should be run in Buda repo (issue #11).")
     def test_brisc(self):
         name_dict = read_elf(file_ifc, "./debuda_test/brisc/brisc.elf")
         epoch_id_addr = self.get_var_addr(name_dict, "EPOCH_INFO_PTR->epoch_id")

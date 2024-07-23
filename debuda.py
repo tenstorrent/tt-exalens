@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  debuda.py [--netlist=<file>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbose] [--test] [<output_dir>]
+  debuda.py [--netlist=<file>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [<output_dir>]
   debuda.py --server [--port=<port>] [--devices=<devices>] [--test] [<output_dir>]
-  debuda.py --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbose] [--test]
-  debuda.py --cached [--cache-path=<path>] [--commands=<cmds>] [--verbose] [--test] [<output_dir>]
+  debuda.py --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
+  debuda.py --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test] [<output_dir>]
   debuda.py -h | --help
 
 Options:
@@ -23,7 +23,7 @@ Options:
   --write-cache                   Write the cache to disk.
   --cache-path=<path>             If running in --cached mode, this is the path to the cache file. If writing cache, this is the path for output. [default: debuda_cache.pkl]
   --devices=<devices>             Comma-separated list of devices to load. If not supplied, all devices will be loaded.
-  --verbose                       Print verbose output.
+  --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: DEBUG, 4: INFO, 5: VERBOSE. [default: 4]
   --test                          Exits with non-zero exit code on any exception.
 
 Description:
@@ -63,6 +63,7 @@ from dbd.tt_gdb_server import GdbServer, ServerSocket
 from dbd.tt_coordinate import OnChipCoordinate
 from dbd.tt_debuda_context import Context
 
+from dbd import Verbosity
 
 class DebudaCompleter(Completer):
     def __init__(self, commands, context):
@@ -447,11 +448,14 @@ def main_loop(args, context):
 def main():
     args = docopt(__doc__)
 
-
-    # ARGUMENT PARSING
-
-    if not args["--verbose"]:
-        util.VERBOSE = util.NULL_PRINT
+    # SETTING VERBOSITY
+    Verbosity.set(Verbosity.INFO)
+    try:
+        verbosity = int(args["--verbosity"])
+        Verbosity.set(verbosity)
+    except:
+        util.WARN("Verbosity level must be an integer. Falling back to default value.")
+    util.INFO(f"Verbosity level: {Verbosity.get()}")
 
     output_dir = args["<output_dir>"]
     if not output_dir and not args["--remote"] and not args["--cached"]:

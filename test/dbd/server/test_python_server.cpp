@@ -110,7 +110,7 @@ std::unique_ptr<tt::dbd::server> start_server(bool enable_yaml, int port = DEFAU
 static void call_python_empty_server(const std::string& python_args, int port = DEFAULT_TEST_SERVER_PORT) {
     auto server = start_server(false, port);
     ASSERT_TRUE(server->is_connected());
-    std::string python_tests_path = "dbd/server/unit_tests/test_server.py";
+    std::string python_tests_path = "test/dbd/server/test_server.py";
     call_python(python_tests_path, server->get_port(), python_args, "pass\n");
 }
 
@@ -118,7 +118,7 @@ static void call_python_server(const std::string& python_args, int port = DEFAUL
     simulation_server simulation_server(std::make_unique<simulation_implementation>());
     simulation_server.start(port);
     ASSERT_TRUE(simulation_server.is_connected());
-    std::string python_tests_path = "dbd/server/unit_tests/test_server.py";
+    std::string python_tests_path = "test/dbd/server/test_server.py";
     call_python(python_tests_path, simulation_server.get_port(), python_args, "pass\n");
 }
 
