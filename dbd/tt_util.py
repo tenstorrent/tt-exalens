@@ -127,7 +127,8 @@ def FATAL(s, **kwargs):
 
 
 def ERROR(s, **kwargs):
-    print(f"{CLR_ERR}{s}{CLR_END}", **kwargs)
+    if Verbosity.get() >= Verbosity.ERROR:
+        print(f"{CLR_ERR}{s}{CLR_END}", **kwargs)
 
 
 def WARN(s, **kwargs):

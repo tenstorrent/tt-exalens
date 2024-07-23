@@ -96,13 +96,13 @@ dbd/test-elf-parser:
 	python3 dbd/test_parse_elf.py
 	python3 dbd/test_firmware.py
 
-$(DBD_LIB): $(DBD_OBJS) $()
+$(DBD_LIB): $(DBD_OBJS)
 	$(PRINT_TARGET)
 	@mkdir -p $(@D)
 	ar rcs -o $@ $(DBD_OBJS)
 	$(PRINT_OK)
 
-$(BINDIR)/dbd_%: $(OBJDIR)/dbd/%.o $() $(DBD_LIB) $(VERIF_LIB)
+$(BINDIR)/dbd_%: $(OBJDIR)/dbd/%.o $(DBD_LIB) $(VERIF_LIB)
 	$(PRINT_TARGET)
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) $(CXXFLAGS) $(DBD_INCLUDES) -o $@ $^ $(LDFLAGS) $(DBD_LDFLAGS)

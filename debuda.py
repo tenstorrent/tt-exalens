@@ -448,9 +448,8 @@ def main_loop(args, context):
 def main():
     args = docopt(__doc__)
 
-
-    # ARGUMENT PARSING
-    Verbosity.set(util.Verbosity.INFO)
+    # SETTING VERBOSITY
+    Verbosity.set(Verbosity.INFO)
     try:
         verbosity = int(args["--verbosity"])
         Verbosity.set(verbosity)

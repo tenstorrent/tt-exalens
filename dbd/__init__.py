@@ -10,13 +10,14 @@ __all__ = [
 
 # Setting the verbosity of messages shown
 class Verbosity():
+    NONE = 0
     ERROR = 1
     WARN = 2 
     DEBUG = 3
     INFO = 4
     VERBOSE = 5
     
-    VERBOSITY: int = ERROR
+    VERBOSITY: int = NONE
     
     def set(verbosity: int):
         '''Set the verbosity level of messages shown.
