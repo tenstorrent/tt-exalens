@@ -7,11 +7,6 @@ THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd
 
 source ${THIS_SCRIPT_DIR}/../test-base.sh
 
-if [ -z "${DEBUDA_HOME}" ]; then
-    echo -e "${RED}Error:${NC} DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the budabackend repository"
-    exit 1
-fi
-
 ############################################################################################
 # Running tests
 

@@ -19,13 +19,28 @@ class Verbosity():
     VERBOSITY: int = ERROR
     
     def set(verbosity: int):
+        '''Set the verbosity level of messages shown.
+        
+        Args:
+            verbosity (int): Verbosity level. 
+                1: ERROR
+                2: WARN
+                3: DEBUG
+                4: INFO
+                5: VERBOSE
+        '''
         Verbosity.VERBOSITY = verbosity
     
-    def get():
-        return Verbosity.VERBOSITY
+    def get() -> int:
+        '''Get the verbosity level of messages shown.
         
-from os import environ
-if environ.get("DEBUDA_VERBOSITY"):
-	Verbosity.set(int(environ["DEBUDA_VERBOSITY"]))
-
+        Returns:
+            int: Verbosity level. 
+                1: ERROR
+                2: WARN
+                3: DEBUG
+                4: INFO
+                5: VERBOSE
+        '''
+        return Verbosity.VERBOSITY
 
