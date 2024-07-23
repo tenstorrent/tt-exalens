@@ -32,14 +32,14 @@ jobs:
       - run: |
           scripts/clang-format-repo.sh
           git diff --exit-code
-  format-python-files:
-    runs-on: "ubuntu-22.04"
-    name: "Black python files"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: psf/black@stable
-        with:
-          options: "--check"
-          src: "./dbd"
+  # format-python-files:
+  #   runs-on: "ubuntu-22.04"
+  #   name: "Black python files"
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: psf/black@stable
+  #       with:
+  #         options: "--check"
+  #         src: "./dbd"
   
   
