@@ -174,7 +174,7 @@ def run_riscv_command(device, loc, risc_id, args):
 
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = tt_commands.tt_docopt(command_metadata["description"], argv=cmd_text.split()[1:],
-                                common_option_names=[ "--verbose", "--device", "--loc", "--risc" ]
+                                common_option_names=[ "--verbosity", "--device", "--loc", "--risc" ]
                                 )
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
