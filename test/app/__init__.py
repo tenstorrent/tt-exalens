@@ -15,3 +15,6 @@ sys.path.insert(0,
 						)
 					)
 				)
+
+from dbd import Verbosity
+Verbosity.set(Verbosity.ERROR)
