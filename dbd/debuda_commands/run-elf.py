@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  run-elf <elf-file> [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
+  run-elf <elf-file> [ -v <verbosity> ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
 
 Description:
   Loads an elf file into a brisc and runs it.
@@ -46,7 +46,7 @@ def print_PC_and_source (PC, elf):
 
 def run(cmd_text, context, ui_state=None):
     dopt = tt_commands.tt_docopt(command_metadata["description"], argv=cmd_text.split()[1:],
-                                common_option_names=[ "--device", "--loc", "--verbose", "--test" ]
+                                common_option_names=[ "--device", "--loc", "--verbosity", "--test" ]
                                 )
     risc_id = int(dopt.args["-r"])
 
