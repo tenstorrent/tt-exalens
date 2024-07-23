@@ -29,7 +29,7 @@ def compile_test_cpp_program(program_path, program_text):
     with open(f"{src_file_name}", "w") as f:
         f.write(program_text)
     os.system(
-        f"{os.environ["DEBUDA_HOME"]}/third_party/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g {src_file_name} -o {program_path}.elf"
+        f"{os.environ.get("DEBUDA_HOME")}/third_party/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g {src_file_name} -o {program_path}.elf"
     )
     if not os.path.exists(elf_file_name):
         util.ERROR(f"ERROR: Failed to compile {src_file_name}")
