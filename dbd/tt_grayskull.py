@@ -274,5 +274,19 @@ class GrayskullDevice(tt_device.Device):
     def get_configuration_register_index(self, register_name: str) -> int:
         if register_name in GrayskullDevice.__configuration_register_map:
             return GrayskullDevice.__configuration_register_map[register_name]
-        else:
-            raise ValueError(f"Unknown configuration register name: {register_name}")
+        return -1
+
+    def get_tenxis_debug_register_base(self) -> int:
+        return 0xFFB12000
+
+    __debug_register_map = {
+        'RISCV_DEBUG_REG_RISC_DBG_CNTL_0': 32,
+        'RISCV_DEBUG_REG_RISC_DBG_CNTL_1': 33,
+        'RISCV_DEBUG_REG_RISC_DBG_STATUS_0': 34,
+        'RISCV_DEBUG_REG_RISC_DBG_STATUS_1': 35,
+    }
+
+    def get_debug_register_index(self, register_name: str) -> int:
+        if register_name in GrayskullDevice.__debug_register_map:
+            return GrayskullDevice.__debug_register_map[register_name]
+        return -1

@@ -483,12 +483,12 @@ class RiscDebug:
         self.write_configuration_register("RISCV_IC_INVALIDATE_InvalidateAll", 0)
 
     def read_configuration_register(self, register_name: str):
-        address = self.location.loc._device.get_configuration_register_address(register_name)
+        address = self.location.loc._device.get_tensix_register_address(register_name)
         self.assert_halted()
         return self.read_memory(address)
 
     def write_configuration_register(self, register_name: str, value: int):
-        address = self.location.loc._device.get_configuration_register_address(register_name)
+        address = self.location.loc._device.get_tensix_register_address(register_name)
         self.assert_halted()
         self.write_memory(address, value)
 

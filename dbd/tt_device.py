@@ -1215,17 +1215,32 @@ class Device(TTObject):
                 util.ERROR (f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 
     @abstractmethod
-    def get_tensix_configuration_base(self) -> int:
+    def get_tensix_configuration_register_base(self) -> int:
+        pass
+
+    @abstractmethod
+    def get_tenxis_debug_register_base(self) -> int:
         pass
 
     @abstractmethod
     def get_configuration_register_index(self, register_name: str) -> int:
         pass
 
-    def get_configuration_register_address(self, register_name: str):
-        tensix_config_base = self.get_tensix_configuration_base()
+    @abstractmethod
+    def get_debug_register_index(self, register_name: str) -> int:
+        pass
+
+    def get_tensix_register_address(self, register_name: str):
         register_index = self.get_configuration_register_index(register_name)
-        return tensix_config_base + register_index * 4
+        if register_index >= 0:
+            base_register_address = self.get_tensix_configuration_register_base()
+        else:
+            register_index = self.get_debug_register_index(register_name)
+            if register_index >= 0:
+                base_register_address = self.get_tenxis_debug_register_base()
+            else:
+                raise ValueError(f"Unknown tensix register name: {register_name}")
+        return base_register_address + register_index * 4
 
 # end of class Device
 

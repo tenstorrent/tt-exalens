@@ -430,3 +430,38 @@ class BlackholeDevice(tt_device.Device):
             f"{endpoint_type} x={x:02d},y={y:02d} => NOC{noc_id:d} {reg_name:s} (0x{reg_addr:09x}) = 0x{val:08x} ({val:d})"
         )
         return val
+
+    def get_tensix_configuration_base(self) -> int:
+        return 0xFFEF0000
+
+    __configuration_register_map = {
+        'RISCV_IC_INVALIDATE_InvalidateAll': 185,
+    }
+
+    def get_configuration_register_index(self, register_name: str) -> int:
+        if register_name in BlackholeDevice.__configuration_register_map:
+            return BlackholeDevice.__configuration_register_map[register_name]
+        return -1
+
+    def get_tenxis_debug_register_base(self) -> int:
+        return 0xFFB12000
+
+    __debug_register_map = {
+        'RISCV_DEBUG_REG_RISC_DBG_CNTL_0': 32,
+        'RISCV_DEBUG_REG_RISC_DBG_CNTL_1': 33,
+        'RISCV_DEBUG_REG_RISC_DBG_STATUS_0': 34,
+        'RISCV_DEBUG_REG_RISC_DBG_STATUS_1': 35,
+        'TRISC_RESET_PC_SEC0_PC': 138, # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC0_RESET_PC': 138, # New name
+        'TRISC_RESET_PC_SEC1_PC': 139, # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC1_RESET_PC': 139, # New name
+        'TRISC_RESET_PC_SEC2_PC': 140, # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC2_RESET_PC': 140, # New name
+        'NCRISC_RESET_PC_PC': 142, # Old name from configuration register
+        'RISCV_DEBUG_REG_NCRISC_RESET_PC': 142, # New name
+    }
+
+    def get_debug_register_index(self, register_name: str) -> int:
+        if register_name in BlackholeDevice.__debug_register_map:
+            return BlackholeDevice.__debug_register_map[register_name]
+        return -1
