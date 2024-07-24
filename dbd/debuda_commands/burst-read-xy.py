@@ -135,6 +135,7 @@ def print_a_pci_burst_read(
                 val = read_from_device(
                     core_loc, addr, device_id, context=context
                 )
+                val = int.from_bytes(val, byteorder="little") 
                 if val not in values:
                     values[val] = 0
                 values[val] += 1
