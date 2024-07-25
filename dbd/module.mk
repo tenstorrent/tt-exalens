@@ -49,15 +49,15 @@ dbd/documentation:
 	dbd/bin/convert-help-to-markdown.py $(DBD_OUT)/help_file_with_example_outputs.txt $(DBD_OUT)/debuda-commands-help.md
 	echo "Generating the CSS file to be included in the html"
 	echo "<style>" > $(DBD_OUT)/temp-style-header.html
-	cat dbd/docs-md/debuda-docs.css >> $(DBD_OUT)/temp-style-header.html
+	cat docs/debuda-docs.css >> $(DBD_OUT)/temp-style-header.html
 	echo "</style>" >> $(DBD_OUT)/temp-style-header.html
 	echo "Combining markdown files into one html file"
-	cd dbd/docs-md && pandoc -f markdown -s $(MARKDOWN_FILES) -o $(DBD_OUT)/debuda-help.html --metadata pagetitle="Debuda Documentation" --include-in-header=$(DBD_OUT)/temp-style-header.html
-	cp -r dbd/docs-md/images $(DBD_OUT)
+	cd docs && pandoc -f markdown -s $(MARKDOWN_FILES) -o $(DBD_OUT)/debuda-help.html --metadata pagetitle="Debuda Documentation" --include-in-header=$(DBD_OUT)/temp-style-header.html
+	cp -r docsimages $(DBD_OUT)
 	echo "Generating pdf file"
-	cd dbd/docs-md && pandoc -f markdown -s $(MARKDOWN_FILES) -o $(DBD_OUT)/debuda-help.pdf --pdf-engine=weasyprint --metadata pagetitle="Debuda Documentation" --include-in-header=$(DBD_OUT)/temp-style-header.html
+	cd docs && pandoc -f markdown -s $(MARKDOWN_FILES) -o $(DBD_OUT)/debuda-help.pdf --pdf-engine=weasyprint --metadata pagetitle="Debuda Documentation" --include-in-header=$(DBD_OUT)/temp-style-header.html
 	echo "Create a title page and insert it in side the pdf file"
-	dbd/bin/create-title-page.py --title="Debuda Manual" --subtitle=" `date +%Y/%m/%d`" --image=dbd/docs-md/images/tenstorrent-pdf-titlepage.png --footer "" --pdf $(DBD_OUT)/debuda-help.pdf
+	dbd/bin/create-title-page.py --title="Debuda Manual" --subtitle=" `date +%Y/%m/%d`" --image=docs/images/tenstorrent-pdf-titlepage.png --footer "" --pdf $(DBD_OUT)/debuda-help.pdf
 
 	echo "Undoing the patch"
 	-git apply -R dbd/test/inject-errors/sfpu_reciprocal-infinite-spin-wormhole_b0.patch

@@ -28,8 +28,8 @@ def run_command(cmd_array, exit_on_failure=True):
     stderr_lines = stderr_output.strip().split("\n")
 
     # Print stderr lines with color
-    for line in stderr_lines:
-        print(f"\033[91m{line}\033[0m")
+    # for line in stderr_lines:
+    #     print(f"\033[91m{line}\033[0m")
 
     return_code = process.returncode
     if return_code != 0 and exit_on_failure:
@@ -54,7 +54,7 @@ def trim_line_and_append_elipsis(line, max_length):
 
 # Captures everything between the command and the exit command
 def execute_debuda_command(command):
-    full_command = ["dbd/debuda.py", "--commands", f"{command}; x"]
+    full_command = ["./debuda.py", "--commands", f"{command}; x"]
 
     # Sometimes a sequence of commands is needed to get the correct output.
     # If that is the case, we only want to show the last command.
@@ -91,13 +91,14 @@ def execute_debuda_command(command):
     # print (f"filtered_output={filtered_output}")
 
     if result["returncode"] != 0:
-        full_command_str = " ".join(full_command)
-        filtered_output = (
-            f">>>>> ERROR (exit code: {result['returncode']}) in command '{full_command_str}'\n"
-            + "\n".join(filtered_output)
-            + "\n<<<<<"
-        )
-        print(f"Error executing command: {command}, output: {filtered_output}")
+        return ""
+        # full_command_str = " ".join(full_command)
+        # filtered_output = (
+        #     f">>>>> ERROR (exit code: {result['returncode']}) in command '{full_command_str}'\n"
+        #     + "\n".join(filtered_output)
+        #     + "\n<<<<<"
+        # )
+        # print(f"Error executing command: {command}, output: {filtered_output}")
     else:
         if len(filtered_output) > MAX_OUTPUT_LINES:
             filtered_output = filtered_output[:MAX_OUTPUT_LINES] + ["..."]
@@ -106,49 +107,3 @@ def execute_debuda_command(command):
     return filtered_output
 
 
-def annotate_file(input_file, output_file):
-    with open(input_file, "r") as f, open(output_file, "w") as out_f:
-        lines = f.readlines()
-
-        inside_example = False
-        before_start = True
-        for line in lines:
-            if line.startswith("-------------------"):
-                before_start = False
-            if before_start:
-                continue
-            out_f.write(strip_ansi(line))
-
-            if "Examples:" in line:
-                inside_example = True
-            elif inside_example and (
-                line.strip() == ""
-                or re.match(r"^(?:\x1b\[\d+m)?\w", line)
-                or line.startswith("------")
-            ):
-                inside_example = False
-            elif inside_example:
-                example_command = line.split("#")[
-                    0
-                ].strip()  # remove comments from the examples
-                if not example_command:
-                    continue
-                output = execute_debuda_command(example_command)
-                output = strip_ansi(output)
-                print(f"==== Executing example: {example_command}")
-                output_string = f"```\n{output}\n```\n"
-                print(output_string)
-                out_f.write(output_string)
-                out_f.flush()
-
-
-if __name__ == "__main__":
-    # Flush output of print statements immediately
-    sys.stdout.reconfigure(line_buffering=True)
-
-    args = docopt(
-        """Usage: run-debuda-on-help-examples.py <input_file> <output_file>"""
-    )
-    input_file = args["<input_file>"]
-    output_file = args["<output_file>"]
-    annotate_file(input_file, output_file)

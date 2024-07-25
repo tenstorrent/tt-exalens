@@ -2,7 +2,7 @@
 # through the pydoc-markdown package:
 # pip install pydoc-markdown
 # And then in the root directory of the project run:
-# pydoc-markdown > dbd/docs-md/library-docs.md
+# pydoc-markdown > docs/library-docs.md
 loaders:
   - type: python
     search_path: ["dbd"]

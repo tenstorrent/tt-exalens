@@ -8,7 +8,7 @@ Debuda
 
 A low level hardware debugger
 
-<img src="./dbd/docs-md/tt_logo.png" alt="ttnn logo" height="100"/>
+<img src="./docs/tt_logo.png" alt="ttnn logo" height="100"/>
 
 </div>
 <br/>
@@ -121,8 +121,8 @@ For more information about how to use Debuda, refer to [tutorials](TODO).
 ## Using Debuda library
 
 Debuda's functionalities can also be used through dbd library to create Python scripts that interact with Tenstorrent's hardware.
-For a quick start with dbd library, check out [the tutorial](dbd/docs-md/debuda-lib-tutorial.md).
-Full documentation is also available [here](dbd/docs-md/library-docs.md).
+For a quick start with dbd library, check out [the tutorial](docs/debuda-lib-tutorial.md).
+Full documentation is also available [here](docs/library-docs.md).
 
 ## Development
 
@@ -172,7 +172,7 @@ pip install pydoc-markdown
 and then run
 
 ```bash
-pydoc-markdown > dbd/docs-md/library-docs.md
+pydoc-markdown > docs/library-docs.md
 ```
 
 in the project root.
