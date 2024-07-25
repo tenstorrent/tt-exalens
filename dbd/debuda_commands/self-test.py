@@ -96,7 +96,7 @@ def test_coordinate_mapping(context):
     # Get the index of element containing 2 and 10 in the HARVESTING_NOC_LOCATIONS array (they are 2 & 3)
     d._harvesting["harvest_mask"] = (1 << 2) | (1 << 3)
     d._create_harvesting_maps()
-    print(d.render(grid_coordinate="nocTr", cell_renderer=lambda x: x.to_str("noc0")))
+    print(d.render(axis_coordinate="nocTr", cell_renderer=lambda x: x.to_str("noc0")))
 
     # 1. Non-harvested device:
     d._harvesting["harvest_mask"] = 0

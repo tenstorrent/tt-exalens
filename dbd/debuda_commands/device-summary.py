@@ -9,7 +9,7 @@ Arguments:
   device-id            ID of the device [default: 0]
   axis-coordinate      Coordinate system for the axis [default: netlist]
                        Supported: netlist, noc0, noc1, nocTr, nocVirt, die, tensix
-  cell-contents        A comma separated list of the cell contents [default: op]
+  cell-contents        A comma separated list of the cell contents [default: nocTr]
                        Supported:
                          op - show operation running on the core with epoch ID in parenthesis
                          block - show the type of the block at that coordinate
@@ -20,9 +20,9 @@ Description:
   currently loaded netlist.
 
 Examples:
-  device                 # Shows op mapping for all devices
-  device 0 nocTr         # Shows op mapping in nocTr coordinates for device 0
-  device 0 netlist nocTr # Shows netlist to nocTr mapping for device 0
+  device             # Shows op mapping for all devices
+  device 0 noc0      # Shows noc0 to nocTr mapping for device 0
+  device 0 nocTr op  # Shows op mapping in nocTr coordinates for device 0 # Needs Buda context
 """  # Note: Limit the above comment to 100 characters in width
 
 command_metadata = {
@@ -60,7 +60,7 @@ def run(cmd_text, context, ui_state=None):
         )
         return []
 
-    cell_contents = args["<cell-contents>"] or "op"
+    cell_contents = args["<cell-contents>"] or "nocTr"
 
     for device_id in devices_list:
         device = context.devices[device_id]

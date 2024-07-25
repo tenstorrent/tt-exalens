@@ -3,47 +3,48 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  riscv ( halt | step | cont | status )                                             [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
-  riscv rd [ <address> ]                                                            [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
-  riscv rreg [ <index> ]                                                            [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
-  riscv wr [ <address> ] [ <data> ]                                                 [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
-  riscv wreg [ <index> ] [ <data> ]                                                 [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
-  riscv bkpt (set | del)  [ -pt <point> ] [ <address> ]                             [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
-  riscv wchpt (setr | setw | setrw | del)  [ -pt <point> ] [ <address> ] [ <data> ] [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
-  riscv reset [ 1 | 0 ]                                                             [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
+  riscv (halt | step | cont | status)                                             [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>]
+  riscv rd [<address>]                                                            [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>]
+  riscv rreg [<index>]                                                            [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>]
+  riscv wr [<address>] [<data>]                                                   [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>]
+  riscv wreg [<index>] [<data>]                                                   [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>]
+  riscv bkpt (set | del) [<address>]                                              [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
+  riscv wchpt (setr | setw | setrw | del) [<address>] [<data>]                    [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
+  riscv reset [1 | 0]                                                             [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>]
 
 Options:
-  -pt <point>     Index of the breakpoint or watchpoint register. 8 points are supported (0-7)
+  -pt <point>     Index of the breakpoint or watchpoint register. 8 points are supported (0-7).
 
 Description:
-    Commands for RISC-V debugging:
-      halt: Stop the core and enter debug mode
-      step: Execute one instruction and reenter debug mode
-      cont: Exit debug mode and continue execution
-      status: Print the status of the core
-      rd: Read a word from memory
-      wr: Write a word to memory
-      rreg: Read a word from register
-      wreg: Write a word to register
-      bkpt: Set or delete a breakpoint. Address is required for setting
-      wchpt: Set or delete a watchpoint. Address is required for setting
-      reset: Sets (1) or clears (0) the reset signal for the core. If no argument is provided: set and clear.
+  Commands for RISC-V debugging:
+    halt:    Stop the core and enter debug mode.
+    step:    Execute one instruction and reenter debug mode.
+    cont:    Exit debug mode and continue execution.
+    status:  Print the status of the core.
+    rd:      Read a word from memory.
+    wr:      Write a word to memory.
+    rreg:    Read a word from register.
+    wreg:    Write a word to register.
+    bkpt:    Set or delete a breakpoint. Address is required for setting.
+    wchpt:   Set or delete a watchpoint. Address is required for setting.
+    reset:   Sets (1) or clears (0) the reset signal for the core. If no argument is provided: set and clear.
 
 Examples:
-    riscv halt                      # Halt brisc
-    riscv status                    # Print status
-    riscv step                      # Step
-    riscv cont                      # Continue
-    riscv wr 0x0 0x2010006f         # Write a word to address 0
-    riscv rd 0x0                    # Read a word from address 0
-    riscv wreg 1 0xabcd             # Write a word to register 1
-    riscv rreg 1                    # read a word to register 1
-    riscv bkpt set 0 0x1244         # Set breakpoint
-    riscv bkpt del 0                # Delete breakpoint
-    riscv wchpt setr 0 0xc          # Set a read watchpoint
-    riscv wchpt setr 0 0xc          # Set a read watchpoint
-    riscv                           # Set and clear reset (the core will run)
+  riscv halt                      # Halt brisc
+  riscv status                    # Print status
+  riscv step                      # Step
+  riscv cont                      # Continue
+  riscv wr 0x0 0x2010006f         # Write a word to address 0
+  riscv rd 0x0                    # Read a word from address 0
+  riscv wreg 1 0xabcd             # Write a word to register 1
+  riscv rreg 1                    # Read a word from register 1
+  riscv bkpt set 0 0x1244         # Set breakpoint
+  riscv bkpt del 0                # Delete breakpoint
+  riscv wchpt setr 0 0xc          # Set a read watchpoint
+  riscv wchpt setw 0 0xc          # Set a write watchpoint
+  riscv                           # Set and clear reset (the core will run)
 """
+
 command_metadata = {
     "short": "rv", 
     "type": "low-level", 

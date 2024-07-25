@@ -12,7 +12,7 @@ Options:
   -r <risc>           RiscV ID (0: brisc, 1-3 triscs). [default: 0]
 
 Examples:
-  run-elf brisc.elf
+  run-elf build/risv-src/brisc-globals.elf
 """
 
 from dbd import tt_util as util

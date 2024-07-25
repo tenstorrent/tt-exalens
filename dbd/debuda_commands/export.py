@@ -33,7 +33,7 @@ from dbd import tt_util as util
 
 command_metadata = {
     "short": "xp",
-    "type": "housekeeping",
+    "type": "dev",
 	"description": __doc__,
     "context": ["buda"]
     }
