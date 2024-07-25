@@ -9,7 +9,8 @@ Arguments:
   core-loc    Either X-Y or R,C location of the core
 
 Description:
-  Prints the state of the debug registers for core 'x-y'. If coordinates are not supplied, it iterates through all cores.
+  Prints the state of the debug registers for core 'x-y'.
+  If coordinates are not supplied, it iterates through all cores.
 
 Examples:
   cdr 18-18

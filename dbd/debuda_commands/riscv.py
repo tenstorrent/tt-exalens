@@ -17,17 +17,17 @@ Options:
 
 Description:
   Commands for RISC-V debugging:
-    halt:    Stop the core and enter debug mode.
-    step:    Execute one instruction and reenter debug mode.
-    cont:    Exit debug mode and continue execution.
-    status:  Print the status of the core.
-    rd:      Read a word from memory.
-    wr:      Write a word to memory.
-    rreg:    Read a word from register.
-    wreg:    Write a word to register.
-    bkpt:    Set or delete a breakpoint. Address is required for setting.
-    wchpt:   Set or delete a watchpoint. Address is required for setting.
-    reset:   Sets (1) or clears (0) the reset signal for the core. If no argument is provided: set and clear.
+    - halt:    Stop the core and enter debug mode.
+    - step:    Execute one instruction and reenter debug mode.
+    - cont:    Exit debug mode and continue execution.
+    - status:  Print the status of the core.
+    - rd:      Read a word from memory.
+    - wr:      Write a word to memory.
+    - rreg:    Read a word from register.
+    - wreg:    Write a word to register.
+    - bkpt:    Set or delete a breakpoint. Address is required for setting.
+    - wchpt:   Set or delete a watchpoint. Address is required for setting.
+    - reset:   Sets (1) or clears (0) the reset signal for the core. If no argument is provided: set and clear.
 
 Examples:
   riscv halt                      # Halt brisc
@@ -42,7 +42,6 @@ Examples:
   riscv bkpt del 0                # Delete breakpoint
   riscv wchpt setr 0 0xc          # Set a read watchpoint
   riscv wchpt setw 0 0xc          # Set a write watchpoint
-  riscv                           # Set and clear reset (the core will run)
 """
 
 command_metadata = {
