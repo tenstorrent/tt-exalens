@@ -1,15 +1,9 @@
 <div align="center">
-
-<h1>
-
-Debuda
-
-</h1>
-
+<h1> Debuda </h1>
+  
 A low level hardware debugger
 
 <img src="./dbd/docs-md/tt_logo.png" alt="ttnn logo" height="100"/>
-
 </div>
 <br/>
 
