@@ -27,7 +27,8 @@ command_metadata = {
     "short": "t", 
     "type": "high-level", 
     "description": __doc__,
-    "context": ["buda"]
+    "context": ["buda"],
+    "common_option_names": [],
     }
 
 

@@ -22,6 +22,7 @@ command_metadata = {
     "type": "low-level",
     "description": __doc__,
     "context": ["buda"],
+    "common_option_names": [],
 }
 
 from docopt import docopt

@@ -10,6 +10,7 @@ command_metadata = {
     "type": "dev",
     "description": "Tests Debuda internals.",
     "context": ["limited", "buda", "metal"],
+    "common_option_names": [],
 }
 
 

@@ -30,7 +30,8 @@ command_metadata = {
     "long" : "binary-corruption-check",
     "type" : "dev", # "high-level", TODO: Needs fixing (see issue #67)
     "description": __doc__,
-    "context": ["buda"]
+    "context": ["buda"],
+    "common_option_names": [ ],
 }
 
 import sys

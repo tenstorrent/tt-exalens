@@ -26,6 +26,7 @@ command_metadata = {
     "type": "dev", 
     "description": __doc__,
     "context": ["limited", "buda", "metal"],
+    "common_option_names": [],
     }
 
 

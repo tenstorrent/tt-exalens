@@ -20,7 +20,8 @@ command_metadata = {
     "short": "ib", 
     "type": "dev", 
     "description": __doc__, 
-    "context": ["buda"]
+    "context": ["buda"],
+    "common_option_names": [],
     }
 
 from docopt import docopt

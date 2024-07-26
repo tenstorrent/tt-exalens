@@ -32,7 +32,8 @@ command_metadata = {
     "short": "brxy",
     "type": "low-level", 
     "description": __doc__,
-    "context": ["limited", "buda", "metal"]
+    "context": ["limited", "buda", "metal"],
+    "common_option_names": [],
     }
 
 import time

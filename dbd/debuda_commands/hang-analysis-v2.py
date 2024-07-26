@@ -61,6 +61,7 @@ command_metadata = {
     "type": "dev",
     "description": __doc__,
     "context": ["buda"],
+    "common_option_names": [],
 }
 
 ## Corresponds to UNIQUE_ID_ALIGN in net2pipe.

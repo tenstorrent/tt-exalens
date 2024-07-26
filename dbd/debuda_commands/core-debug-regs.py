@@ -28,6 +28,7 @@ command_metadata = {
     "type": "low-level",
     "description": __doc__,
     "context": ["limited", "buda", "metal"],
+    "common_option_names": [],
     }
 
 

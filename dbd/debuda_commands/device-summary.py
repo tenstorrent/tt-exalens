@@ -31,6 +31,7 @@ command_metadata = {
     "type": "high-level",
     "description": __doc__,
     "context": ["limited", "buda", "metal"],
+    "common_option_names": [],
 }
 
 from docopt import docopt

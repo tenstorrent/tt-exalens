@@ -15,7 +15,8 @@ command_metadata = {
     "short": "abs",
     "type": "dev",
     "description": "Reads stream information from the devices and highlights blocked streams (if verbosity is 1, print more detail).",
-    "context": ["limited", "buda", "metal"]
+    "context": ["limited", "buda", "metal"],
+    "common_option_names": []
 }
 
 
