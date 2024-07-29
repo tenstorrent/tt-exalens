@@ -39,6 +39,19 @@ static std::filesystem::path get_temp_working_directory() {
     return mkdtemp(temp_name.data());
 }
 
+static std::optional<std::string> read_string_from_file(const std::string &file_name) {
+    if (file_name.empty()) {
+        return std::nullopt;
+    }
+
+    std::ifstream file(file_name, std::ios::in);
+    if (!file) {
+        return std::nullopt;
+    }
+
+    return std::string(std::istreambuf_iterator<char>(file), {});
+}
+
 static std::filesystem::path temp_working_directory = get_temp_working_directory();
 
 static std::string write_temp_file(const std::string &file_name, const char *bytes, size_t length) {
@@ -106,14 +119,16 @@ static std::string create_temp_network_descriptor_file(tt::ARCH arch, std::files
 
         if (std::filesystem::exists(create_ethernet_map)) {
             std::string cluster_descriptor_path = temp_working_directory / "cluster_desc.yaml";
+            std::string create_ethernet_map_log = temp_working_directory / "create_ethernet_map.log";
 
             // Try calling create-ethernet-map
             if (!std::system(
-                    (create_ethernet_map + " " + cluster_descriptor_path + " >/dev/null 2>/dev/null").c_str())) {
+                    (create_ethernet_map + " " + cluster_descriptor_path + " >" + create_ethernet_map_log + " 2>&1").c_str())) {
                 return cluster_descriptor_path;
             }
 
             // create-ethernet-map failed, fallback to yaml generation
+            throw std::runtime_error("Call to create-ethernet-map failed.\n\nError:\n" + read_string_from_file(create_ethernet_map_log).value_or(""));
         } else
             throw std::runtime_error("Couldn't find create-ethernet-map at " + create_ethernet_map + ".");
 
@@ -383,11 +398,7 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
 }
 
 std::optional<std::string> umd_with_open_implementation::get_runtime_data() {
-    std::ifstream file(runtime_yaml_path, std::ios::in);
-    if (!file) {
-        return {};
-    }
-    return std::string(std::istreambuf_iterator<char>(file), {});
+    return read_string_from_file(runtime_yaml_path);
 }
 
 std::optional<std::string> umd_with_open_implementation::get_cluster_description() { return cluster_descriptor_path; }
