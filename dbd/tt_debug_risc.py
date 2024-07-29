@@ -309,8 +309,6 @@ class RiscDebug:
 
     def enable_debug(self):
         util.INFO("  enable_debug()")
-        if self.verbose:
-            util.INFO("  enable_debug()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE)
 
     def halt(self):
@@ -798,7 +796,7 @@ class RiscLoader:
 
             # Load section into memory
             for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS':
+                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS': # Only load sections if contents are specified in the elf file
                     name = section.name
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
@@ -816,7 +814,7 @@ class RiscLoader:
 
             # Check that what we have written is correct
             for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS':
+                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS': # Only verify sections if contents are specified in the elf file
                     name = section.name
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
@@ -824,7 +822,7 @@ class RiscLoader:
                         address = self.remap_address(address, loader_data, loader_code)
                         read_data = self.read_block(address, len(data))
                         if read_data != data:
-                            util.INFO(f"Error writing section {name} to address 0x{address:08x}.")
+                            util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
                             continue
                         else:
                             util.INFO(f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes")

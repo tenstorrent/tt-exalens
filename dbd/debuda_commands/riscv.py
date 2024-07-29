@@ -97,12 +97,6 @@ def run_riscv_command(device, loc, risc_id, args):
             if not risc.is_halted():
                 util.INFO(f"CORE IS NOT HALTED EXITING")
                 break
-            else:
-                a4 = risc.read_gpr(14)
-                a5 = risc.read_gpr(15)
-                util.INFO(f"A4 = 0x{a4:08x} A5 = 0x{a5:08x}")
-                if a5 == 0xffe00100:
-                    break
             if pc == last and pc == llast:
                 util.INFO(f"NO PC CHANGE FOR 3 CYCLES EXITING")
                 break
