@@ -304,6 +304,7 @@ class RiscDebug:
         return self.__read(RISC_DBG_STATUS1)
 
     def enable_debug(self):
+        util.INFO("  enable_debug()")
         if self.verbose:
             util.INFO("  enable_debug()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE)
@@ -507,6 +508,46 @@ class RiscLoader:
 
     SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".stack"]
 
+    def set_risc_start_address(self, address):
+        risc_id = self.risc_debug.location.risc_id
+        risc_name = get_risc_name(risc_id)
+
+        if risc_name == "BRISC":
+            raise ValueError(f"Cant change BRISC boot address")
+        
+        configuration_register = None
+        override_register = None
+        override_value = None
+        if risc_name == "TRISC0":
+            configuration_register = "TRISC_RESET_PC_SEC0_PC"
+            override_register = "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en_ADDR32"
+            override_value = 0x1
+        elif risc_name == "TRISC1":
+            configuration_register = "TRISC_RESET_PC_SEC1_PC"
+            override_register = "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en_ADDR32"
+            override_value = 0x2
+        elif risc_name == "TRISC2":
+            configuration_register = "TRISC_RESET_PC_SEC2_PC"
+            override_register = "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en_ADDR32"
+            override_value = 0x4
+        elif risc_name == "NCRISC":
+            configuration_register = "NCRISC_RESET_PC_PC"
+            override_register = "NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en_ADDR32"
+            override_value = 0x1
+        else:
+            raise ValueError(f"Unknown RISC name {risc_name}")
+
+        brisc_loader = RiscLoader(self.risc_debug.location.loc, 0, self.context, self.risc_debug.ifc, self.verbose)
+        brisc_debug = brisc_loader.risc_debug
+        brisc_debug.set_reset_signal(1)
+        brisc_loader.start_risc_in_infinite_loop(0)
+        with brisc_debug.ensure_halted():
+            brisc_debug.write_configuration_register(configuration_register, address)
+            val = brisc_debug.read_configuration_register(override_register)
+            brisc_debug.write_configuration_register(override_register, val | override_value)
+        brisc_debug.set_reset_signal(1)
+        assert brisc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
+
     def get_risc_start_address(self):
         risc_id = self.risc_debug.location.risc_id
         risc_name = get_risc_name(risc_id)
@@ -545,8 +586,8 @@ class RiscLoader:
                     result = brisc_debug.read_configuration_register(configuration_register)
 
                 # Return BRISC in reset
-                self.risc_debug.set_reset_signal(1)
-                assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
+                brisc_debug.set_reset_signal(1)
+                assert brisc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
                 return result
             with brisc_debug.ensure_halted():
                 return brisc_debug.read_configuration_register(configuration_register)
@@ -560,6 +601,23 @@ class RiscLoader:
         # Generate infinite loop instruction (JAL 0)
         jal_instruction = self.get_jump_to_offset_instruction(0) # Since JAL uses offset and we need to return to current address, we specify 0
         self.context.server_ifc.pci_write32(self.risc_debug.location.loc._device.id(), *self.risc_debug.location.loc.to("nocVirt"), address, jal_instruction)
+
+        # Take risc out of reset
+        self.risc_debug.set_reset_signal(0)
+        assert not self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is still in reset."
+        assert not self.risc_debug.is_halted(), f"RISC at location {self.risc_debug.location} is still halted."
+
+    def start_risc_in_infinite_loop_at(self, boot_address, loop_address):
+        # Make sure risc is in reset
+        if not self.risc_debug.is_in_reset():
+            self.risc_debug.set_reset_signal(1)
+        assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
+
+        # Generate infinite loop instruction (JAL 0)
+        jal_instruction = self.get_jump_to_offset_instruction(0) # Since JAL uses offset and we need to return to current address, we specify 0
+        self.context.server_ifc.pci_write32(self.risc_debug.location.loc._device.id(), *self.risc_debug.location.loc.to("nocVirt"), loop_address, jal_instruction)
+        jal_instruction = self.get_jump_to_offset_instruction(loop_address - boot_address) # Since JAL uses offset and we need to return to current address, we specify 0
+        self.context.server_ifc.pci_write32(self.risc_debug.location.loc._device.id(), *self.risc_debug.location.loc.to("nocVirt"), boot_address, jal_instruction)
 
         # Take risc out of reset
         self.risc_debug.set_reset_signal(0)
@@ -665,7 +723,7 @@ class RiscLoader:
             elf_file = ELFFile(elf_file)
 
             for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, 'sh_addr'):
+                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS':
                     name = section.name
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
@@ -677,22 +735,22 @@ class RiscLoader:
                         if name == ".init":
                             init_section_address = address
 
-                        util.VERBOSE (f"Writing section {name} to address 0x{address:08x}. Size: {len(data)} bytes")
+                        util.INFO (f"Writing section {name} to address 0x{address:08x}. Size: {len(data)} bytes")
                         self.write_block(address, data)
 
             # Check that what we have written is correct
             for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, 'sh_addr'):
+                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS':
                     name = section.name
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
                         data = section.data()
                         read_data = self.read_block(address, len(data))
                         if read_data != data:
-                            util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
+                            util.INFO(f"Error writing section {name} to address 0x{address:08x}.")
                             continue
                         else:
-                            util.VERBOSE(f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes")
+                            util.INFO(f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes")
         except Exception as e:
             util.ERROR(e)
             raise util.TTException(f"Error loading elf file {elf_path}")

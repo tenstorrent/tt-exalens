@@ -249,23 +249,30 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate], risc_
 		rloader = RiscLoader(loc, risc_id, context, context.server_ifc, False)
 		rdbg = rloader.risc_debug
 
-		risc_start_address = rloader.get_risc_start_address()
-		rloader.start_risc_in_infinite_loop(risc_start_address)
-		assert not rdbg.is_in_reset(), f"RISC at location {loc} is in reset."
+		#risc_start_address = rloader.get_risc_start_address()
+		START_ADDRESSES = [ 0x0, 0xd000, 0x12000, 0x16000, 0xffc00000 ]
+		risc_start_address = START_ADDRESSES[risc_id]
 
-		rdbg.enable_debug()
-		if not rdbg.is_halted():
-			rdbg.halt()
+		rloader.set_risc_start_address(risc_start_address)
+		#print(risc_start_address)
+		#risc_loop_address = risc_start_address - 4
+		#rloader.start_risc_in_infinite_loop(risc_start_address)
+		#assert not rdbg.is_in_reset(), f"RISC at location {loc} is in reset."
+
+		#rdbg.enable_debug()
+		#if not rdbg.is_halted():
+		#	rdbg.halt()
 
 		init_section_address = rloader.load_elf(elf_file) # Load the elf file
-		assert init_section_address is not None, "No .init section found in the ELF file"
+		#assert init_section_address is not None, "No .init section found in the ELF file"
 
-		jump_to_start_of_init_section_instruction = rloader.get_jump_to_offset_instruction(init_section_address - risc_start_address)
-		context.server_ifc.pci_write32(loc._device.id(), *loc.to("nocVirt"), risc_start_address, jump_to_start_of_init_section_instruction)
+		#if init_section_address != risc_start_address:
+		#	jump_to_start_of_init_section_instruction = rloader.get_jump_to_offset_instruction(init_section_address - risc_loop_address)
+		#	context.server_ifc.pci_write32(loc._device.id(), *loc.to("nocVirt"), risc_loop_address, jump_to_start_of_init_section_instruction)
 
 		# Invalidating instruction cache so that the jump instruction is actually loaded.
-		rdbg.invalidate_instruction_cache()
-		rdbg.cont()
+		#rdbg.invalidate_instruction_cache()
+		#rdbg.cont()
 
 
 def check_context(context: Context = None) -> Context:
