@@ -123,7 +123,7 @@ static std::string create_temp_network_descriptor_file(tt::ARCH arch, std::files
 
             // Try calling create-ethernet-map
             if (!std::system(
-                    (create_ethernet_map + " " + cluster_descriptor_path +" >" + create_ethernet_map_log + " 2>&1")
+                    (create_ethernet_map + " " + cluster_descriptor_path + " >" + create_ethernet_map_log + " 2>&1")
                         .c_str())) {
                 return cluster_descriptor_path;
             }
