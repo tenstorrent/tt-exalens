@@ -386,7 +386,7 @@ def main_loop(args, context):
                 my_prompt += f"{ui_state.current_prompt}> "
                 cmd_raw = context.prompt_session.prompt(HTML(my_prompt)) 
 
-            if cmd_raw == "":
+            if cmd_raw == "": # Return repeats last command
                 util.INFO("Empty Command")
                 cmd_raw = list(context.prompt_session.history.load_history_strings())[0]
 

@@ -305,8 +305,6 @@ class RiscDebug:
 
     def enable_debug(self):
         util.INFO("  enable_debug()")
-        if self.verbose:
-            util.INFO("  enable_debug()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE)
 
     def halt(self):
@@ -607,23 +605,6 @@ class RiscLoader:
         assert not self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is still in reset."
         assert not self.risc_debug.is_halted(), f"RISC at location {self.risc_debug.location} is still halted."
 
-    def start_risc_in_infinite_loop_at(self, boot_address, loop_address):
-        # Make sure risc is in reset
-        if not self.risc_debug.is_in_reset():
-            self.risc_debug.set_reset_signal(1)
-        assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
-
-        # Generate infinite loop instruction (JAL 0)
-        jal_instruction = self.get_jump_to_offset_instruction(0) # Since JAL uses offset and we need to return to current address, we specify 0
-        self.context.server_ifc.pci_write32(self.risc_debug.location.loc._device.id(), *self.risc_debug.location.loc.to("nocVirt"), loop_address, jal_instruction)
-        jal_instruction = self.get_jump_to_offset_instruction(loop_address - boot_address) # Since JAL uses offset and we need to return to current address, we specify 0
-        self.context.server_ifc.pci_write32(self.risc_debug.location.loc._device.id(), *self.risc_debug.location.loc.to("nocVirt"), boot_address, jal_instruction)
-
-        # Take risc out of reset
-        self.risc_debug.set_reset_signal(0)
-        assert not self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is still in reset."
-        assert not self.risc_debug.is_halted(), f"RISC at location {self.risc_debug.location} is still halted."
-
     def get_jump_to_offset_instruction(self, offset, rd=0):
         """
         Generate a JAL instruction code based on the given offset.
@@ -723,7 +704,7 @@ class RiscLoader:
             elf_file = ELFFile(elf_file)
 
             for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS':
+                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS': # Only load sections if contents are specified in the elf file
                     name = section.name
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
@@ -740,14 +721,14 @@ class RiscLoader:
 
             # Check that what we have written is correct
             for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS':
+                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS': # Only verify sections if contents are specified in the elf file
                     name = section.name
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
                         data = section.data()
                         read_data = self.read_block(address, len(data))
                         if read_data != data:
-                            util.INFO(f"Error writing section {name} to address 0x{address:08x}.")
+                            util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
                             continue
                         else:
                             util.INFO(f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes")
