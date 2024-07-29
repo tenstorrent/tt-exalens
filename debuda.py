@@ -386,6 +386,10 @@ def main_loop(args, context):
                 my_prompt += f"{ui_state.current_prompt}> "
                 cmd_raw = context.prompt_session.prompt(HTML(my_prompt)) 
 
+            if cmd_raw == "":
+                util.INFO("Empty Command")
+                cmd_raw = list(context.prompt_session.history.load_history_strings())[0]
+
             cmd_int = try_int(cmd_raw)
             if type(cmd_int) == int:
                 if (

@@ -308,6 +308,7 @@ class RiscDebug:
         return self.__read(self.RISC_DBG_STATUS1)
 
     def enable_debug(self):
+        util.INFO("  enable_debug()")
         if self.verbose:
             util.INFO("  enable_debug()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE)
@@ -797,7 +798,7 @@ class RiscLoader:
 
             # Load section into memory
             for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, 'sh_addr'):
+                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS':
                     name = section.name
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
@@ -810,12 +811,12 @@ class RiscLoader:
                         if name == ".init":
                             init_section_address = address
 
-                        util.VERBOSE (f"Writing section {name} to address 0x{address:08x}. Size: {len(data)} bytes")
+                        util.INFO (f"Writing section {name} to address 0x{address:08x}. Size: {len(data)} bytes")
                         self.write_block(address, data)
 
             # Check that what we have written is correct
             for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, 'sh_addr'):
+                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS':
                     name = section.name
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
@@ -823,10 +824,10 @@ class RiscLoader:
                         address = self.remap_address(address, loader_data, loader_code)
                         read_data = self.read_block(address, len(data))
                         if read_data != data:
-                            util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
+                            util.INFO(f"Error writing section {name} to address 0x{address:08x}.")
                             continue
                         else:
-                            util.VERBOSE(f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes")
+                            util.INFO(f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes")
         except Exception as e:
             util.ERROR(e)
             raise util.TTException(f"Error loading elf file {elf_path}")
