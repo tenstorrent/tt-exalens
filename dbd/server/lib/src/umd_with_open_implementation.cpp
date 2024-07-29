@@ -123,12 +123,14 @@ static std::string create_temp_network_descriptor_file(tt::ARCH arch, std::files
 
             // Try calling create-ethernet-map
             if (!std::system(
-                    (create_ethernet_map + " " + cluster_descriptor_path + " >" + create_ethernet_map_log + " 2>&1").c_str())) {
+                    (create_ethernet_map + " " + cluster_descriptor_path +" >" + create_ethernet_map_log + " 2>&1")
+                        .c_str())) {
                 return cluster_descriptor_path;
             }
 
             // create-ethernet-map failed, fallback to yaml generation
-            throw std::runtime_error("Call to create-ethernet-map failed.\n\nError:\n" + read_string_from_file(create_ethernet_map_log).value_or(""));
+            throw std::runtime_error("Call to create-ethernet-map failed.\n\nError:\n" +
+                                     read_string_from_file(create_ethernet_map_log).value_or(""));
         } else
             throw std::runtime_error("Couldn't find create-ethernet-map at " + create_ethernet_map + ".");
     }
