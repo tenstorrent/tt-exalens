@@ -431,7 +431,7 @@ class BlackholeDevice(tt_device.Device):
         )
         return val
 
-    def get_tensix_configuration_base(self) -> int:
+    def get_tensix_configuration_register_base(self) -> int:
         return 0xFFEF0000
 
     __configuration_register_map = {
@@ -451,6 +451,7 @@ class BlackholeDevice(tt_device.Device):
         'RISCV_DEBUG_REG_RISC_DBG_CNTL_1': 33,
         'RISCV_DEBUG_REG_RISC_DBG_STATUS_0': 34,
         'RISCV_DEBUG_REG_RISC_DBG_STATUS_1': 35,
+        'RISCV_DEBUG_REG_SOFT_RESET_0': 108,
         'TRISC_RESET_PC_SEC0_PC': 138, # Old name from configuration register
         'RISCV_DEBUG_REG_TRISC0_RESET_PC': 138, # New name
         'TRISC_RESET_PC_SEC1_PC': 139, # Old name from configuration register

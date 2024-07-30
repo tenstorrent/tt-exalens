@@ -452,6 +452,7 @@ class WormholeDevice(tt_device.Device):
         'RISCV_DEBUG_REG_RISC_DBG_CNTL_1': 33,
         'RISCV_DEBUG_REG_RISC_DBG_STATUS_0': 34,
         'RISCV_DEBUG_REG_RISC_DBG_STATUS_1': 35,
+        'RISCV_DEBUG_REG_SOFT_RESET_0': 108,
     }
 
     def get_debug_register_index(self, register_name: str) -> int:

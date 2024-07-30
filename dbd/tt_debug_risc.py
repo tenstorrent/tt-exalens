@@ -58,12 +58,6 @@ HW_WATCHPOINT_ACCESS = 0x00000003
 HW_WATCHPOINT_ENABLED = 0x00000008
 HW_WATCHPOINT_MASK = 0x0000000F
 
-# Registers for access debug registers
-RISC_DBG_CNTL0   = 0xFFB12080
-RISC_DBG_CNTL1   = 0xFFB12084
-RISC_DBG_STATUS0 = 0xFFB12088
-RISC_DBG_STATUS1 = 0xFFB1208C
-
 RISCV_REGS = {
     0: "zero",
     1: "ra",
@@ -108,18 +102,6 @@ def get_register_index(reg_index_or_name):
             if reg_index_or_name.lower() in name:
                 return i
     raise ValueError(f"Unknown register {reg_index_or_name}")
-
-def get_reg_name_for_address(addr):
-    if addr == RISC_DBG_CNTL0:
-        return "CNTL0"
-    elif addr == RISC_DBG_CNTL1:
-        return "CNTL1"
-    elif addr == RISC_DBG_STATUS0:
-        return "STATUS0"
-    elif addr == RISC_DBG_STATUS1:
-        return "STATUS1"
-    else:
-        return f"Unknown register {addr}"
 
 RISC_NAMES = [ "BRISC", "TRISC0", "TRISC1", "TRISC2", "NCRISC" ]
 
@@ -245,11 +227,29 @@ class RiscDebug:
         self.verbose = verbose
         self.ifc = ifc
         self.max_watchpoints = 8
+        device = location.loc._device
+        self.RISC_DBG_CNTL0   = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_CNTL_0")
+        self.RISC_DBG_CNTL1   = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_CNTL_1")
+        self.RISC_DBG_STATUS0 = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_0")
+        self.RISC_DBG_STATUS1 = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_1")
+        self.RISC_DBG_SOFT_RESET0 = device.get_tensix_register_address("RISCV_DEBUG_REG_SOFT_RESET_0")
+
+    def get_reg_name_for_address(self, addr):
+        if addr == self.RISC_DBG_CNTL0:
+            return "CNTL0"
+        elif addr == self.RISC_DBG_CNTL1:
+            return "CNTL1"
+        elif addr == self.RISC_DBG_STATUS0:
+            return "STATUS0"
+        elif addr == self.RISC_DBG_STATUS1:
+            return "STATUS1"
+        else:
+            return f"Unknown register {addr}"
 
     def __write(self, addr, data):
         self.assert_not_in_reset()
         if self.verbose:
-            util.DEBUG(f"{get_reg_name_for_address(addr)} <- WR   0x{data:08x}")
+            util.DEBUG(f"{self.get_reg_name_for_address(addr)} <- WR   0x{data:08x}")
         self.ifc.pci_write32(
             self.location.loc._device._id,
             *self.location.loc.to("nocVirt"),
@@ -265,32 +265,32 @@ class RiscDebug:
             addr,
         )
         if self.verbose:
-            util.DEBUG(f"{get_reg_name_for_address(addr)} -> RD == 0x{data:08x}")
+            util.DEBUG(f"{self.get_reg_name_for_address(addr)} -> RD == 0x{data:08x}")
         return data
 
     def __trigger_write(self, reg_addr):
         if self.verbose:
             util.INFO(f"      __trigger_write({reg_addr})")
-        self.__write(RISC_DBG_CNTL0, self.CONTROL0_WRITE + reg_addr)
-        self.__write(RISC_DBG_CNTL0, 0)
+        self.__write(self.RISC_DBG_CNTL0, self.CONTROL0_WRITE + reg_addr)
+        self.__write(self.RISC_DBG_CNTL0, 0)
 
     def __trigger_read(self, reg_addr):
         if self.verbose:
             util.INFO(f"      __trigger_read({reg_addr})")
-        self.__write(RISC_DBG_CNTL0, self.CONTROL0_READ  + reg_addr)
-        self.__write(RISC_DBG_CNTL0, 0)
+        self.__write(self.RISC_DBG_CNTL0, self.CONTROL0_READ  + reg_addr)
+        self.__write(self.RISC_DBG_CNTL0, 0)
 
     def __riscv_write(self, reg_addr, value):
         if self.verbose:
             util.INFO(f"    __riscv_write({reg_addr}, 0x{value:08x})")
         # set wrdata
-        self.__write(RISC_DBG_CNTL1, value)
+        self.__write(self.RISC_DBG_CNTL1, value)
         self.__trigger_write(reg_addr)
 
     def __is_read_valid(self):
         if self.verbose:
             util.INFO("  __is_read_valid()")
-        status0 = self.__read(RISC_DBG_STATUS0)
+        status0 = self.__read(self.RISC_DBG_STATUS0)
         DEBUG_READ_VALID_BIT = 1 << 30
         return (status0 & DEBUG_READ_VALID_BIT) == DEBUG_READ_VALID_BIT
 
@@ -301,7 +301,7 @@ class RiscDebug:
 
         if (not self.__is_read_valid()):
             util.WARN (f"Reading from RiscV debug registers failed (debug read valid bit is set to 0). Run `srs 0` to check if core is active.")
-        return self.__read(RISC_DBG_STATUS1)
+        return self.__read(self.RISC_DBG_STATUS1)
 
     def enable_debug(self):
         if self.verbose:
@@ -362,7 +362,7 @@ class RiscDebug:
         return self.read_status().is_pc_watchpoint_hit
 
     def is_in_reset(self):
-        reset_reg = self.ifc.pci_read32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), 0xffb121b0)
+        reset_reg = self.ifc.pci_read32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), self.RISC_DBG_SOFT_RESET0)
         shift = get_risc_reset_shift(self.location.risc_id)
         return (reset_reg >> shift) & 1
 
@@ -372,10 +372,10 @@ class RiscDebug:
         """
         assert value in [0, 1]
         shift = get_risc_reset_shift(self.location.risc_id)
-        reset_reg = self.ifc.pci_read32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), 0xffb121b0)
+        reset_reg = self.ifc.pci_read32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), self.RISC_DBG_SOFT_RESET0)
         reset_reg = (reset_reg & ~(1 << shift)) | (value << shift)
-        self.ifc.pci_write32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), 0xffb121b0, reset_reg)
-        new_reset_reg = self.ifc.pci_read32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), 0xffb121b0)
+        self.ifc.pci_write32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), self.RISC_DBG_SOFT_RESET0, reset_reg)
+        new_reset_reg = self.ifc.pci_read32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), self.RISC_DBG_SOFT_RESET0)
         if new_reset_reg != reset_reg:
             util.ERROR(f"Error writing reset signal. Expected 0x{reset_reg:08x}, got 0x{new_reset_reg:08x}")
 

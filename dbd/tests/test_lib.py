@@ -14,7 +14,7 @@ from dbd import tt_util
 
 from dbd.tt_coordinate import OnChipCoordinate
 from dbd.tt_debuda_context import Context
-from dbd.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc
+from dbd.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index
 from dbd.tt_firmware import ELF
 from dbd.tt_object import DataArray
 
@@ -642,6 +642,7 @@ class TestDebugging(unittest.TestCase):
 		loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
 		rloc = RiscLoc(loc, 0, 0)
 		rdbg = RiscDebug(rloc, self.context.server_ifc)
+		pc_register_index = get_register_index("pc")
 
 		# Stop risc with reset
 		rdbg.set_reset_signal(True)
@@ -672,6 +673,7 @@ class TestDebugging(unittest.TestCase):
 		# Value should not be changed and should stay the same since core is in halt
 		self.assertEqual(ret[0], 0x12345678)
 		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
+		self.assertEqual(rdbg.read_gpr(pc_register_index), 0, "PC should be 0.")
 
 		# Write new code for brisc core at address 0
 		# C++:
@@ -692,9 +694,13 @@ class TestDebugging(unittest.TestCase):
 		rdbg.invalidate_instruction_cache()
 
 		# Continue
-		rdbg.enable_debug()
 		rdbg.cont()
 		self.assertFalse(rdbg.read_status().is_halted, "Core should not be halted.")
+
+		# Halt to verify PC
+		rdbg.halt()
+		self.assertTrue(rdbg.read_status().is_halted, "Core should not be halted.")
+		self.assertEqual(rdbg.read_gpr(pc_register_index), 12, "PC should be 12.")
 
 		# Verify value at address
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
