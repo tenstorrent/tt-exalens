@@ -52,6 +52,8 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
 
         for line in lines:
             # Check if the line matches the current test regex
+            # Last test regex is a special case, as there may be multiple lines that match it
+            # depending on number of devices
             if re.search(test_regex[id], line):
                 if id < num_test_regex - 1:
                     id += 1
