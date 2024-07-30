@@ -48,13 +48,22 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
         skip_regex = [r".*ttSiliconDevice::init_hugepage:.*"]
 
         id = 0
+        num_test_regex = len(test_regex)
+
         for line in lines:
+            # Check if the line matches the current test regex
             if re.search(test_regex[id], line):
-                id += 1
+                if id < num_test_regex - 1:
+                    id += 1
                 continue
-            if any([re.search(regex, line) for regex in skip_regex]):
+            
+            # Check if the line matches any of the skip regex patterns
+            if any(re.search(regex, line) for regex in skip_regex):
                 continue
+            
+            # Report an unexpected line
             tester.fail(f"Unexpected line: {line}, expected {test_regex[id]}")
+        
         return True
 
 class DbdTestRunner:
