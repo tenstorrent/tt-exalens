@@ -634,6 +634,7 @@ class TestDebugging(unittest.TestCase):
 		# Stop risc with reset
 		rdbg.set_reset_signal(True)
 
+	@unittest.skip("Invalidate cache is not reliable on wormhole and not working on blackhole at all...")
 	def test_invalidate_cache(self):
 		"""Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
 		core_loc = "0,0"
@@ -695,6 +696,80 @@ class TestDebugging(unittest.TestCase):
 
 		# Continue
 		rdbg.cont()
+		self.assertFalse(rdbg.read_status().is_halted, "Core should not be halted.")
+
+		# Halt to verify PC
+		rdbg.halt()
+		self.assertTrue(rdbg.read_status().is_halted, "Core should not be halted.")
+		self.assertEqual(rdbg.read_gpr(pc_register_index), 12, "PC should be 12.")
+
+		# Verify value at address
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		# Value should be changed
+		self.assertEqual(ret[0], 0x87654000)
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
+
+	def test_invalidate_cache_with_reset(self):
+		"""Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+		core_loc = "0,0"
+		addr = 0x10000
+
+		loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
+		rloc = RiscLoc(loc, 0, 0)
+		rdbg = RiscDebug(rloc, self.context.server_ifc)
+		pc_register_index = get_register_index("pc")
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
+
+		# Write our data to memory
+		lib.write_word_to_device(core_loc, addr, 0x12345678, context=self.context)
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		self.assertEqual(ret[0], 0x12345678)
+
+		# Write endless loop for brisc core at address 0
+		# C++:
+		#   while (true);
+		#   while (true);
+		#   while (true);
+		#   while (true);
+		lib.write_word_to_device(core_loc, 0, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_word_to_device(core_loc, 4, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_word_to_device(core_loc, 8, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_word_to_device(core_loc, 12, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+
+		# Take risc out of reset
+		rdbg.set_reset_signal(False)
+
+		# Halt core
+		rdbg.enable_debug()
+		rdbg.halt()
+
+		# Value should not be changed and should stay the same since core is in halt
+		self.assertEqual(ret[0], 0x12345678)
+		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
+		self.assertEqual(rdbg.read_gpr(pc_register_index), 0, "PC should be 0.")
+
+		# Write new code for brisc core at address 0
+		# C++:
+		#   int* a = (int*)0x10000;
+		#   *a = 0x87654000;
+		#   while (true);
+
+		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
+		lib.write_word_to_device(core_loc, 0, 0x00010537, context=self.context)
+		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
+		lib.write_word_to_device(core_loc, 4, 0x876545B7, context=self.context)
+		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
+		lib.write_word_to_device(core_loc, 8, 0x00B52023, context=self.context)
+		# Infinite loop (jal 0)
+		lib.write_word_to_device(core_loc, 12, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+
+		# Invalidate instruction cache with reset
+		rdbg.set_reset_signal(True)
+		rdbg.set_reset_signal(False)
 		self.assertFalse(rdbg.read_status().is_halted, "Core should not be halted.")
 
 		# Halt to verify PC
