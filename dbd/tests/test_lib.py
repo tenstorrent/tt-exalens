@@ -496,7 +496,7 @@ class TestDebugging(unittest.TestCase):
 		rdbg.set_reset_signal(True)
 
 	def test_halt_continue(self):
-		"""Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+		"""Test running 28 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
 		core_loc = "0,0"
 		addr = 0x10000
 
@@ -636,7 +636,7 @@ class TestDebugging(unittest.TestCase):
 
 	@unittest.skip("Invalidate cache is not reliable on wormhole and not working on blackhole at all...")
 	def test_invalidate_cache(self):
-		"""Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+		"""Test running 16 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
 		core_loc = "0,0"
 		addr = 0x10000
 
@@ -712,7 +712,7 @@ class TestDebugging(unittest.TestCase):
 		rdbg.set_reset_signal(True)
 
 	def test_invalidate_cache_with_reset(self):
-		"""Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+		"""Test running 16 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
 		core_loc = "0,0"
 		addr = 0x10000
 
