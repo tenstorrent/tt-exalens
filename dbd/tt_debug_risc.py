@@ -233,6 +233,10 @@ class RiscDebug:
         self.RISC_DBG_STATUS0 = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_0")
         self.RISC_DBG_STATUS1 = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_1")
         self.RISC_DBG_SOFT_RESET0 = device.get_tensix_register_address("RISCV_DEBUG_REG_SOFT_RESET_0")
+        self.DEBUG_READ_VALID_BIT = 1 << 30
+        # There is bug in hardware and this valid bit is shifted in blackhole for 3 bits
+        if device._arch == "blackhole":
+            self.DEBUG_READ_VALID_BIT = 1 << 27
 
     def get_reg_name_for_address(self, addr):
         if addr == self.RISC_DBG_CNTL0:
@@ -291,8 +295,7 @@ class RiscDebug:
         if self.verbose:
             util.INFO("  __is_read_valid()")
         status0 = self.__read(self.RISC_DBG_STATUS0)
-        DEBUG_READ_VALID_BIT = 1 << 30
-        return (status0 & DEBUG_READ_VALID_BIT) == DEBUG_READ_VALID_BIT
+        return (status0 & self.DEBUG_READ_VALID_BIT) == self.DEBUG_READ_VALID_BIT
 
     def __riscv_read(self, reg_addr):
         if self.verbose:
