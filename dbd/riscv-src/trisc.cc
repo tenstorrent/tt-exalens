@@ -50,10 +50,18 @@ extern "C" void infloop() {
     for (;;);
 }
 
+volatile uint32_t __attribute__((section("l1_data"))) array[64];
+
 int main() {
-  for (void (** fptr)() = __init_array_start; fptr < __init_array_end; fptr++) {
-      (**fptr)();
+  //for (void (** fptr)() = __init_array_start; fptr < __init_array_end; fptr++) {
+  //    (**fptr)();
+  //}
+
+  for (int i = 0; i < 64; i++)
+  {
+    array[i] = 0;
   }
+  asm("ebreak");
 
   g_TESTBYTEACCESS.all_bytes = 0x0102030405060708;
 
