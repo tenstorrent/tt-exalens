@@ -1199,7 +1199,7 @@ class Device(TTObject):
         """
         Put all risc cores under reset. Nothing will run until the reset is deasserted.
         """
-        RISC_SOFT_RESET_0_ADDR = 0xffb121b0
+        RISC_SOFT_RESET_0_ADDR = self.get_tensix_register_address("RISCV_DEBUG_REG_SOFT_RESET_0")
 
         ALL_SOFT_RESET = 0
         for risc_id in range(5):
