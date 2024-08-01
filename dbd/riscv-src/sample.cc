@@ -40,6 +40,8 @@ extern "C" void infloop() {
     for (;;);
 }
 
+volatile uint32_t __attribute__((section("l1_data"))) array[64];
+
 int main() {
 
   g_TESTBYTEACCESS.all_bytes = 0x0102030405060708;
