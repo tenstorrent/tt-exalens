@@ -19,26 +19,28 @@ UMD_VERSIM_STUB ?= 1
 GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 GIT_HASH = $(shell git describe --always --dirty)
 
+CONFIG_LOWER := $(shell echo $(CONFIG) | tr A-Z a-z)
+
 ifeq ($(CONFIG), release)
 OPT_LEVEL = -O3 -fno-lto
-else ifeq ($(CONFIG), develop)
+else ifeq ($(CONFIG_LOWER), develop)
 OPT_LEVEL = -O3 -fno-lto
 DEBUG_FLAGS += -DTT_DEBUG_LOGGING
-else ifeq ($(CONFIG), ci)	# significantly smaller artifacts
+else ifeq ($(CONFIG_LOWER), ci)	# significantly smaller artifacts
 OPT_LEVEL = -O3
 DEBUG_FLAGS += -DTT_DEBUG -DTT_DEBUG_LOGGING
-else ifeq ($(CONFIG), assert)
+else ifeq ($(CONFIG_LOWER), assert)
 OPT_LEVEL = -O3 -g
 DEBUG_FLAGS += -DTT_DEBUG -DTT_DEBUG_LOGGING
-else ifeq ($(CONFIG), asan)
+else ifeq ($(CONFIG_LOWER), asan)
 OPT_LEVEL = -O3 -g
 DEBUG_FLAGS += -DTT_DEBUG -DTT_DEBUG_LOGGING -fsanitize=address
 CONFIG_LDFLAGS += -fsanitize=address
-else ifeq ($(CONFIG), ubsan)
+else ifeq ($(CONFIG_LOWER), ubsan)
 OPT_LEVEL = -O3 -g
 DEBUG_FLAGS += -DTT_DEBUG -DTT_DEBUG_LOGGING -fsanitize=undefined
 CONFIG_LDFLAGS += -fsanitize=undefined
-else ifeq ($(CONFIG), debug)
+else ifeq ($(CONFIG_LOWER), debug)
 OPT_LEVEL = -O0 -g
 DEBUG_FLAGS += -DDEBUG -DTT_DEBUG -DTT_DEBUG_LOGGING
 else
@@ -137,12 +139,10 @@ endif
 # TODO: Check what else to build
 build: $(OUT)/.gitinfo dbd
 
-#TODO: Set up unit test build.
 #TODO: Set up valgrind.
 
 umd: umd_device
 
-# TODO: Set clean properly.
 clean: clean_umd_device dbd/riscv/clean
 	rm -rf $(OUT)
 
@@ -179,3 +179,12 @@ include third_party/umd/device/module.mk
 
 include dbd/module.mk
 include dbd/riscv-src/module.mk
+
+include test/dbd/server/module.mk
+include test/dbd/pybind/module.mk
+
+.PHONY: test
+test:
+	@echo "Running tests"
+	./test/run_all.sh
+

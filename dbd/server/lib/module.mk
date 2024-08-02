@@ -51,5 +51,5 @@ else
 $(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/dbd/server/bin/create-ethernet-map
 endif
 	@mkdir -p $(@D)
-	ln -s $^ $@
+	cp $^ $@
 	chmod +x $@

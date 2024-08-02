@@ -1,8 +1,7 @@
 {
-	"ubuntu-22.04": [
+	"all": [
 		"software-properties-common",
 		"build-essential",
-		"python3.10-venv",
 		"libyaml-cpp-dev",
 		"libboost-all-dev",
 		"libhwloc-dev",

@@ -5,8 +5,7 @@ import os
 import re
 import struct
 
-from functools import wraps
-from typing import Union
+from typing import Union, List
 
 from dbd import tt_debuda_init
 
@@ -23,27 +22,18 @@ def read_words_from_device(
 		device_id: int = 0,
 		word_count: int = 1,
 		context: Context = None
-) -> "list[int]":
+) -> "List[int]":
 	""" Reads word_count four-byte words of data, starting from address 'addr' at core <x-y>.
 	
-	Parameters
-	----------
-	core_loc : str | OnChipCoordinate
-		Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-	addr : int
-		Memory address to read from.
-	device_id : int, default 0
-		ID number of device to read from.
-	word_count : int, default 1
-		Number of 4-byte words to read.
-	context : Context, optional
-		Debuda context object used for interaction with device. If None, global context is used and
-		potentailly initialized.
+	Args:
+		core_loc (str | OnChipCoordinate): Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+		addr (int): Memory address to read from.
+		device_id (int, default 0):	ID number of device to read from.
+		word_count (int, default 1): Number of 4-byte words to read.
+		context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentailly initialized.
 	
-	Returns
-	-------
-	list[int]
-		Data read from the device.
+	Returns:
+		List[int]: Data read from the device.
 	"""
 	context = check_context(context)
 	
@@ -73,24 +63,15 @@ def read_from_device(
 ) -> bytes:
 	""" Reads num_bytes of data starting from address 'addr' at core <x-y>.
 	
-	Parameters
-	----------
-	core_loc : str | OnChipCoordinate
-		Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-	addr : int
-		Memory address to read from.
-	device_id : int, default 0
-		ID number of device to read from.
-	num_bytes : int, default 4
-		Number of bytes to read.
-	context : Context, optional
-		Debuda context object used for interaction with device. If None, global context is used and
-		potentailly initialized.
+	Args:
+		core_loc (str | OnChipCoordinate): Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+		addr (int): Memory address to read from.
+		device_id (int, default 0): ID number of device to read from.
+		num_bytes (int, default 4): Number of bytes to read.
+		context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
 	
-	Returns
-	-------
-	bytes
-		Data read from the device.
+	Returns:
+		bytes: Data read from the device.
 	"""
 	context = check_context(context)
 
@@ -106,33 +87,24 @@ def read_from_device(
 	)
 
 
-def write_word_to_device(
+def write_words_to_device(
 		core_loc: Union[str, OnChipCoordinate],
 		addr: int,
-		data: int,
+		data: Union[int, List[int]],
 		device_id: int = 0,
 		context: Context = None
 ) -> int:
 	"""Writes data word to address 'addr' at noc0 location x-y of the current chip.
 	
-	Parameters
-	----------
-	core_loc : str | OnChipCoordinate
-		Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-	addr : int
-		Memory address to write to.
-	data : int
-		4-byte data to be written.
-	device_id : int, default 0
-		ID number of device to write to.
-	context : Context, optional
-		Debuda context object used for interaction with device. If None, global context is used and
-		potentailly initialized.
+	Args:
+	core_loc (str | OnChipCoordinate): Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+	addr (int): Memory address to write to. If multiple words are to be written, the address is the starting address.
+	data (int | List[int]): 4-byte integer word to be written, or a list of them.
+	device_id (int, default 0): ID number of device to write to.
+	context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentailly initialized.
 
-	Returns
-	-------
-	int
-		If the execution is successful, return value should be 4 (number of bytes written).
+	Returns:
+	int: If the execution is successful, return value should be 4 (number of bytes written).
 	"""
 	context = check_context(context)
 
@@ -142,27 +114,34 @@ def write_word_to_device(
 	if not isinstance(core_loc, OnChipCoordinate):
 		validate_core_loc(core_loc)
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
-	return context.server_ifc.pci_write32(
-		device_id, *core_loc.to("nocVirt"), addr, data
-	)
+
+	if isinstance(data, int):
+		data = [data]
+	
+	bytes_written = 0
+	for i, word in enumerate(data):
+		bytes_written += context.server_ifc.pci_write32(
+			device_id, *core_loc.to("nocVirt"), addr + i*4, word
+		)
+	return bytes_written
 
 
 def write_to_device(
 		core_loc: Union[str, OnChipCoordinate],
 		addr: int,
-		data: Union[list[int], bytes],
+		data:"Union[List[int], bytes]",
 		device_id: int = 0,
 		context: Context = None
 ) -> int:
 	"""Writes data to address 'addr' at noc0 location x-y of the current chip.
 	
-	Parameters
-	----------
+	Args:
+		
 	core_loc : str | OnChipCoordinate
 		Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
 	addr : int
 		Memory address to write to.
-	data : list[int] | bytes
+	data : List[int] | bytes
 		Data to be written. Lists are converted to bytes before writing, each element a byte. Elements must be between 0 and 255.
 	device_id : int, default 0
 		ID number of device to write to.
@@ -193,29 +172,19 @@ def write_to_device(
 	)
 
 
-def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate], risc_id: int = 0, device_id: int = 0, context: Context = None) -> None:
+def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, List[Union[str, OnChipCoordinate]]], risc_id: int = 0, device_id: int = 0, context: Context = None) -> None:
 	""" Loads the given ELF file into the specified RISC core and executes it.
 
-	Parameters
-	----------
-	elf_file : os.PathLike
-		Path to the ELF file to run.
-	core_loc : str | OnChipCoordinate
-		One of the following:
-			1. "all" to run the ELF on all cores;
-			2. an X-Y (nocTr) or R,C (netlist) location of a core in string format;
-			3. a list of X-Y (nocTr) or R,C (netlist) locations of cores in string format, delimited by "/" symbol;
-			4. an OnChipCoordinate object.
-	risc_id : int, default 0
-		RiscV ID (0: brisc, 1-3 triscs).
-	device_id : int, default 0
-		ID number of device to run ELF on.
-	context : Context, optional
-		Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
-
-	Returns
-	-------
-	None
+	Args:
+	elf_file (os.PathLike): Path to the ELF file to run.
+	core_loc (str | OnChipCoordinate | List[str | OnChipCoordinate]): One of the following:
+		1. "all" to run the ELF on all cores;
+		2. an X-Y (nocTr) or R,C (netlist) location of a core in string format;
+		3. a list of X-Y (nocTr), R,C (netlist) or OnChipCoordinate locations of cores, possibly mixed;
+		4. an OnChipCoordinate object.
+	risc_id (int, default 0): RiscV ID (0: brisc, 1-3 triscs).
+	device_id (int, default 0):	ID number of device to run ELF on.
+	context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
 	"""
 	context = check_context(context)
 
@@ -229,13 +198,16 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate], risc_
 	locs = []
 	if isinstance(core_loc, OnChipCoordinate):
 		locs = [core_loc]
+	elif isinstance(core_loc, list):
+		for loc in core_loc:
+			if isinstance(loc, OnChipCoordinate):
+				locs.append(loc)
+			else:
+				validate_core_loc(loc)
+				locs.append(OnChipCoordinate.create(loc, device))
 	elif core_loc == "all":
 		for loc in device.get_block_locations(block_type="functional_workers"):
 			locs.append(loc)
-	elif "/" in core_loc:
-		for loc in core_loc.split("/"):
-			validate_core_loc(loc)
-			locs.append(OnChipCoordinate.create(loc, device))
 	else:
 		validate_core_loc(core_loc)
 		locs = [OnChipCoordinate.create(core_loc, device)]
@@ -244,7 +216,6 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate], risc_
 
 	assert locs, "No valid core locations provided."
 	for loc in locs:
-		# TODO: Verbosity?
 		rloader = RiscLoader(loc, risc_id, context, context.server_ifc, False)
 		rdbg = rloader.risc_debug
 

@@ -52,6 +52,7 @@ class ELF:
         self.names = dict()
         self.filemap = filemap
         self._file_ifc = file_ifc
+        self.name_word_pattern = re.compile(r"[_@.a-zA-Z]+")
         for prefix, filename in filemap.items():
             if prefix not in self.names:
                 self.names[prefix] = dict()
@@ -62,7 +63,6 @@ class ELF:
             util.INFO(
                 f" ({getsizeof(self.names[prefix])} bytes loaded in {time.time() - start_time:.2f}s)"
             )
-            self.name_word_pattern = re.compile(r"[_@.a-zA-Z]+")
 
             # Inject the variables that are not in the ELF
             if extra_vars:

@@ -49,4 +49,4 @@ jobs:
           python-version: '3.10'
       - name: Run smoke tests
         run: |
-          ./dbd/test/test-debuda-py.sh
+          ./test/smoke-test/test-debuda-py.sh

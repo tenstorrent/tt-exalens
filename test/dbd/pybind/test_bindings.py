@@ -9,7 +9,6 @@ import os
 from typing import Union
 
 tt_dbd_pybind_path = os.path.dirname(__file__) + "/../../../build/lib"
-binary_path = os.path.dirname(__file__) + "/../../../build/bin"
 sys.path.append(tt_dbd_pybind_path)
 
 import tt_dbd_pybind as pb

@@ -6,7 +6,7 @@ inputs:
   python-version:
     description: "Python version to use"
     required: false
-    default: "3.10.12"
+    default: "3.8"
 runs:
   using: "composite"
   steps:
@@ -16,7 +16,4 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
         venv-dir: ${{ github.workspace }}/.venv
-        cache-dependency-path: |
-          dbd/requirements.txt
-          dbd/tests/test_requirements.txt
         install-cmd: ./scripts/create-venv.sh

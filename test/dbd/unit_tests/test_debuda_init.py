@@ -13,7 +13,8 @@ from dbd.tt_debuda_server import start_server, stop_server
 CACHE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_cache.pkl'))
 
 def tearDownModule():
-	if os.path.exists(CACHE_PATH):
+	if os.path.isfile(CACHE_PATH):
+		# TODO: WHY IS THIS NOT WORKING!?
 		os.remove(CACHE_PATH)
 
 class TestLocalDebudaInit(unittest.TestCase):
@@ -35,7 +36,7 @@ class TestLocalDebudaInit(unittest.TestCase):
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
 
-	# TODO: See how to go about testing debuda with output dir & netlist path
+	# TODO: See how to go about testing debuda with output dir & netlist path (see issue #11)
 
 class TestRemoteDebuda(unittest.TestCase):
 	@classmethod

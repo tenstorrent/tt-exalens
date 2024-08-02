@@ -8,6 +8,8 @@ from sortedcontainers import SortedSet
 import traceback, socket
 import ryml, yaml
 
+from dbd import Verbosity
+
 
 # Pretty print exceptions (traceback)
 def notify_exception(exc_type, exc_value, tb):
@@ -115,33 +117,38 @@ def NULL_PRINT(s):
     pass
 
 
-def DEBUG(s, **kwargs):
-    print(f"{CLR_WARN}{s}{CLR_END}", **kwargs)
-
-
-def VERBOSE(s, **kwargs):
-    print(f"{CLR_END}{s}{CLR_END}", **kwargs)
-
-
 def PRINT(s, **kwargs):
     print(f"{CLR_END}{s}", **kwargs)
-
-
-def INFO(s, **kwargs):
-    print(f"{CLR_INFO}{s}{CLR_END}", **kwargs)
-
-
-def WARN(s, **kwargs):
-    print(f"{CLR_WARN}{s}{CLR_END}", **kwargs)
-
-
-def ERROR(s, **kwargs):
-    print(f"{CLR_ERR}{s}{CLR_END}", **kwargs)
 
 
 def FATAL(s, **kwargs):
     ERROR(s, **kwargs)
     raise TTFatalException(s)
+
+
+def ERROR(s, **kwargs):
+    if Verbosity.get() >= Verbosity.ERROR:
+        print(f"{CLR_ERR}{s}{CLR_END}", **kwargs)
+
+
+def WARN(s, **kwargs):
+    if Verbosity.get() >= Verbosity.WARN:
+        print(f"{CLR_WARN}{s}{CLR_END}", **kwargs)
+
+
+def DEBUG(s, **kwargs):
+    if Verbosity.get() >= Verbosity.DEBUG:
+        print(f"{CLR_WARN}{s}{CLR_END}", **kwargs)
+
+
+def INFO(s, **kwargs):
+    if Verbosity.get() >= Verbosity.INFO:
+        print(f"{CLR_INFO}{s}{CLR_END}", **kwargs)
+
+
+def VERBOSE(s, **kwargs):
+    if Verbosity.get() >= Verbosity.VERBOSE:
+        print(f"{CLR_END}{s}{CLR_END}", **kwargs)
 
 
 # Given a list l of possibly shuffled integers from 0 to len(l), the function returns reverse mapping

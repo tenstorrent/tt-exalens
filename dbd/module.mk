@@ -82,7 +82,7 @@ dbd/test:
 	-rm -rf $(DBD_VENV)
 	python3 -m venv $(DBD_VENV)
 	echo "Activate, install requirements and run tests"
-	. $(DBD_VENV)/bin/activate && pip install -r dbd/requirements.txt && dbd/test/test-debuda-py.sh
+	. $(DBD_VENV)/bin/activate && pip install -r dbd/requirements.txt && dbd/tests/test-debuda-py.sh
 
 .PHONY: dbd/coverage
 dbd/coverage:
@@ -96,13 +96,13 @@ dbd/test-elf-parser:
 	python3 dbd/test_parse_elf.py
 	python3 dbd/test_firmware.py
 
-$(DBD_LIB): $(DBD_OBJS) $(BACKEND_LIB)
+$(DBD_LIB): $(DBD_OBJS)
 	$(PRINT_TARGET)
 	@mkdir -p $(@D)
 	ar rcs -o $@ $(DBD_OBJS)
 	$(PRINT_OK)
 
-$(BINDIR)/dbd_%: $(OBJDIR)/dbd/%.o $(BACKEND_LIB) $(DBD_LIB) $(VERIF_LIB)
+$(BINDIR)/dbd_%: $(OBJDIR)/dbd/%.o $(DBD_LIB) $(VERIF_LIB)
 	$(PRINT_TARGET)
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) $(CXXFLAGS) $(DBD_INCLUDES) -o $@ $^ $(LDFLAGS) $(DBD_LDFLAGS)

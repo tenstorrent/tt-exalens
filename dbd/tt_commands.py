@@ -42,10 +42,10 @@ class tt_docopt:
 
     # We define command options that apply to more than one command here
     OPTIONS = {
-        "--verbose": {
+        "--verbosity": {
             "short": "-v",
-            "arg": "",
-            "description": "Print verbose output. [default: False]",
+            "arg": "<verbosity>",
+            "description": "Choose verbosity level. [default: 4]",
         },
         "--test": {
             "short": "-t",
