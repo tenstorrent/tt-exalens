@@ -110,7 +110,8 @@ static std::filesystem::path find_binary_directory() {
 }
 
 static std::string create_temp_network_descriptor_file(tt::ARCH arch, std::filesystem::path binary_directory) {
-    if (arch == tt::ARCH::GRAYSKULL || arch == tt::ARCH::WORMHOLE || arch == tt::ARCH::WORMHOLE_B0 || arch == tt::ARCH::BLACKHOLE) {
+    if (arch == tt::ARCH::GRAYSKULL || arch == tt::ARCH::WORMHOLE || arch == tt::ARCH::WORMHOLE_B0 ||
+        arch == tt::ARCH::BLACKHOLE) {
         // Check if create-ethernet-map exists
         if (binary_directory.empty()) {
             binary_directory = find_binary_directory();
