@@ -17,9 +17,8 @@ Options:
 
 Description:
   This is a script for automatically generating markdown documentation for debuda commands
-  using their docop strings. The script can be run on a single command file or a directory.
-  If examples are provided, the script will try to run them and include the output in the
-  documentation if no error occurs.
+  using their docopt strings. The script can be run on a single command file or a directory.
+  If examples are provided in a command's description, the script will run each example and capture its output to add to the documentation.
 
 Note:
   Following rules are imposed on a docstring for parser to work correctly:
@@ -27,7 +26,8 @@ Note:
   - The first line of each section should be the section name followed by a colon.
   - Arguments and options should be separated from their descriptions by multiple spaces.
   - Option arguments should be separated from option name by a space or an equal sign.
-  - Examples should be in the format: command # description [ # context ]
+  - Examples should be in the format: command # description [ # context ], where context part is in the form of "Needs <context> context".
+    If the command needs Buda context, it is not run, as Buda output folder is needed for it.
 """
 import sys, re, os, importlib
 from docopt import docopt
@@ -84,7 +84,7 @@ class CmdParser:
 				"Examples": self.parse_examples
 			}
 
-	def parse(self, cmd_doc: str, common_options: list = None) ->dict:
+	def parse(self, cmd_doc: str, common_options: list = None) -> dict:
 		result = {}
 
 		# We expect each section to be separated by a blank line

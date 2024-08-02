@@ -8,7 +8,7 @@ Debuda
 
 A low level hardware debugger
 
-<img src="./docs/tt_logo.png" alt="ttnn logo" height="100"/>
+<img src="./docs/images/tt_logo_stacked_color.png" alt="ttnn logo" height="100"/>
 
 </div>
 <br/>

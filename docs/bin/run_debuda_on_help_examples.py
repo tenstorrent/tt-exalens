@@ -2,14 +2,11 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-import subprocess, sys, re, os
-from docopt import docopt
+import subprocess, re, os
 
 # We limit what each example can output to avoid spamming the user
 MAX_OUTPUT_LINES = 20  # Max number of lines to show for each example
 MAX_CHARACTERS_PER_LINE = 130  # Max number of characters to show for each line
-
-import subprocess
 
 
 def run_command(cmd_array, exit_on_failure=True):
@@ -26,10 +23,6 @@ def run_command(cmd_array, exit_on_failure=True):
     # Convert output to lists of lines
     stdout_lines = stdout_output.strip().split("\n")
     stderr_lines = stderr_output.strip().split("\n")
-
-    # Print stderr lines with color
-    # for line in stderr_lines:
-    #     print(f"\033[91m{line}\033[0m")
 
     return_code = process.returncode
     if return_code != 0 and exit_on_failure:
@@ -61,9 +54,7 @@ def execute_debuda_command(command):
     interesting_command = command.split(";")[-1].strip()
 
     result = run_command(full_command, exit_on_failure=False)
-    # print (f"result['stdout']={result['stdout']}")
     output_lines = result["stdout"].split("\n")
-    # print (f"output_lines={output_lines}")
 
     filtered_output = []
     capture = False
@@ -88,17 +79,8 @@ def execute_debuda_command(command):
             print(f"Error parsing line: {line}")
             raise e
 
-    # print (f"filtered_output={filtered_output}")
-
     if result["returncode"] != 0:
         return ""
-        # full_command_str = " ".join(full_command)
-        # filtered_output = (
-        #     f">>>>> ERROR (exit code: {result['returncode']}) in command '{full_command_str}'\n"
-        #     + "\n".join(filtered_output)
-        #     + "\n<<<<<"
-        # )
-        # print(f"Error executing command: {command}, output: {filtered_output}")
     else:
         if len(filtered_output) > MAX_OUTPUT_LINES:
             filtered_output = filtered_output[:MAX_OUTPUT_LINES] + ["..."]
