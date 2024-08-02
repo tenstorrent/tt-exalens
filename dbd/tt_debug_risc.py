@@ -483,7 +483,6 @@ class RiscDebug:
         Invalidates the instruction cache of the RISC-V core.
         """
         self.write_configuration_register("RISCV_IC_INVALIDATE_InvalidateAll", 1 << self.location.risc_id)
-        self.write_configuration_register("RISCV_IC_INVALIDATE_InvalidateAll", 0)
 
     def read_configuration_register(self, register_name: str):
         address = self.location.loc._device.get_tensix_register_address(register_name)
