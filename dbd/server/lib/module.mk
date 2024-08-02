@@ -2,7 +2,7 @@ CONFIG_FILEPATH = $(OUT)/configuration
 
 # List of configuration files that we want to embed
 DEBUDA_SERVER_LIB_CONFIGURATION_FILES = \
-	$(CONFIG_FILEPATH)/blackhole.embed $(DEBUDA_HOME)/dbd/server/device/blackhole_8x10.yaml \
+	$(CONFIG_FILEPATH)/blackhole.embed $(DEBUDA_HOME)/dbd/server/device/blackhole_10x14.yaml \
 	$(CONFIG_FILEPATH)/grayskull.embed $(DEBUDA_HOME)/dbd/server/device/grayskull_10x12.yaml \
 	$(CONFIG_FILEPATH)/wormhole.embed $(DEBUDA_HOME)/dbd/server/device/wormhole_8x10.yaml \
 	$(CONFIG_FILEPATH)/wormhole_b0.embed $(DEBUDA_HOME)/dbd/server/device/wormhole_b0_8x10.yaml \

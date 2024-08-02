@@ -81,46 +81,28 @@ class BlackholeEthL1AddressMap(tt_device.L1AddressMap):
 # Device
 #
 class BlackholeDevice(tt_device.Device):
-    SIG_SEL_CONST = 5
+    SIG_SEL_CONST = 5 # TODO (#75): Unknown constant!!!!
     # IMPROVE: some of this can be read from architecture yaml file
-    DRAM_CHANNEL_TO_NOC0_LOC = [(0, 11), (0, 5), (5, 11), (5, 2), (5, 8), (5, 5)]
+    DRAM_CHANNEL_TO_NOC0_LOC = [(0, 11), (0, 2), (0, 8), (0, 5), (9, 11), (9, 2), (9, 8), (9, 5)]
 
     # Physical location mapping. Physical coordinates are the geografical coordinates on a chip's die.
-    DIE_X_TO_NOC_0_X = [0, 9, 1, 8, 2, 7, 3, 6, 4, 5]
-    DIE_Y_TO_NOC_0_Y = [0, 11, 1, 10, 2, 9, 3, 8, 4, 7, 5, 6]
-    DIE_X_TO_NOC_1_X = [9, 0, 8, 1, 7, 2, 6, 3, 5, 4]
-    DIE_Y_TO_NOC_1_Y = [11, 0, 10, 1, 9, 2, 8, 3, 7, 4, 6, 5]
+    DIE_X_TO_NOC_0_X = [0, 1, 16, 2, 15, 3, 14, 4, 13, 5, 12, 6, 11, 7, 10, 8, 9]
+    DIE_Y_TO_NOC_0_Y = [0, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6]
+    DIE_X_TO_NOC_1_X = [16, 15, 0, 14, 1, 13, 2, 12, 3, 11, 4, 10, 5, 9, 6, 8, 7]
+    DIE_Y_TO_NOC_1_Y = [11, 10, 0, 9, 1, 8, 2, 7, 3, 6, 4, 5]
     NOC_0_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_0_X)
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
     NOC_1_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_1_X)
     NOC_1_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_1_Y)
 
-    NOC0_X_TO_NOCTR_X = {
-        0: 16,
-        1: 18,
-        2: 19,
-        3: 20,
-        4: 21,
-        5: 17,
-        6: 22,
-        7: 23,
-        8: 24,
-        9: 25,
-    }
+    # TODO (#89): Translated coordinates are not correct in blackhole. We need to understand what is happening to them since there are three columns now that are not tensix compared to two in wormhole. For now just an identity mapping
+    NOC0_X_TO_NOCTR_X = {i: i for i in range(0, len(NOC_0_X_TO_DIE_X))}
     NOCTR_X_TO_NOC0_X = {v: k for k, v in NOC0_X_TO_NOCTR_X.items()}
 
-    # The following is used to convert harvesting mask to NOC0 Y location. If harvesting mask bit 0 is set, then
-    # the NOC0 Y location is 11. If harvesting mask bit 1 is set, then the NOC0 Y location is 1, etc...
-    HARVESTING_NOC_LOCATIONS = [11, 1, 10, 2, 9, 3, 8, 4, 7, 5]
-
+    # TODO (#90): Harvesting is different in blackhole. Both x and y can be harvested... For now, similar as in grayskull..
     def get_harvested_noc0_y_rows(self):
-        harvested_noc0_y_rows = []
-        if self._harvesting:
-            bitmask = self._harvesting["harvest_mask"]
-            for h_index in range(0, self.row_count()):
-                if (1 << h_index) & bitmask:  # Harvested
-                    harvested_noc0_y_rows.append(self.HARVESTING_NOC_LOCATIONS[h_index])
-        return harvested_noc0_y_rows
+        harvested_workers = self._block_locations["harvested_workers"]
+        return list({y for x, y in harvested_workers})
 
     # Coordinate conversion functions (see tt_coordinate.py for description of coordinate systems)
     def noc0_to_tensix(self, loc):
@@ -128,53 +110,31 @@ class BlackholeDevice(tt_device.Device):
             noc0_x, noc0_y = loc._noc0_coord
         else:
             noc0_x, noc0_y = loc
-        if noc0_x == 0 or noc0_x == 5:
+        if noc0_x == 0 or noc0_x == 8 or noc0_x == 9:
             raise CoordinateTranslationError(
-                "NOC0 x=0 and x=5 do not have an RC coordinate"
+                "NOC0 x=0 and x=8 and x=9 do not have an RC coordinate"
             )
-        if noc0_y == 0 or noc0_y == 6:
+        if noc0_y == 0 or noc0_y == 1:
             raise CoordinateTranslationError(
-                "NOC0 y=0 and y=6 do not have an RC coordinate"
+                "NOC0 y=0 and y=1 do not have an RC coordinate"
             )
-        row = noc0_y - 1
+        row = noc0_y - 2
         col = noc0_x - 1
-        if noc0_x > 5:
-            col -= 1
-        if noc0_y > 6:
-            row -= 1
+        if noc0_x > 9:
+            col -= 2
         return row, col
 
     def tensix_to_noc0(self, netlist_loc):
         row, col = netlist_loc
-        noc0_y = row + 1
+        noc0_y = row + 2
         noc0_x = col + 1
-        if noc0_x >= 5:
-            noc0_x += 1
-        if noc0_y >= 6:
-            noc0_y += 1
+        if noc0_x >= 9:
+            noc0_x += 2
         return noc0_x, noc0_y
 
+    # TODO (#90): Harvesting is different in blackhole. Both x and y can be harvested... For now, just an identity mapping
     def _handle_harvesting_for_nocTr_noc0_map(self, num_harvested_rows):
-        # 1. Handle Ethernet rows
-        self.nocTr_y_to_noc0_y[16] = 0
-        self.nocTr_y_to_noc0_y[17] = 6
-
-        # 2. Handle non-harvested rows
-        harvested_noc0_y_rows = self.get_harvested_noc0_y_rows()
-
-        nocTr_y = 18
-        for noc0_y in range(0, self.row_count()):
-            if noc0_y in harvested_noc0_y_rows or noc0_y == 0 or noc0_y == 6:
-                pass  # Skip harvested rows and Ethernet rows
-            else:
-                self.nocTr_y_to_noc0_y[nocTr_y] = noc0_y
-                nocTr_y += 1
-
-        # 3. Handle harvested rows
-        for netlist_row in range(0, num_harvested_rows):
-            self.nocTr_y_to_noc0_y[
-                16 + self.row_count() - num_harvested_rows + netlist_row
-            ] = harvested_noc0_y_rows[netlist_row]
+        self.nocTr_x_to_noc0_x = {i: i for i in range(0, self.row_count())}
 
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(id, arch, cluster_desc, {"functional_workers": BlackholeL1AddressMap(), "eth": BlackholeEthL1AddressMap(), "dram": BlackholeDRAMEpochCommandAddressMap()}, device_desc_path, context)
