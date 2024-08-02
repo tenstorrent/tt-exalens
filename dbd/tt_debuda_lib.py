@@ -225,7 +225,6 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate], risc_
 	
 
 	device = context.devices[device_id]
-	device.all_riscs_assert_soft_reset()
 
 	locs = []
 	if isinstance(core_loc, OnChipCoordinate):
