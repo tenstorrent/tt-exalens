@@ -399,6 +399,13 @@ class TestDebugging(unittest.TestCase):
 		self.assertIsNotNone(self.context)
 		self.assertIsInstance(self.context, Context)
 
+	def test_reset_all_functional_workers(self):
+		"""Reset all functional workers."""
+		for device in self.context.devices.values():
+			device.all_riscs_assert_soft_reset()
+			for rdbg in device.debuggable_cores:
+				self.assertTrue(rdbg.is_in_reset())
+
 	def test_ebreak(self):
 		"""Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
 		core_loc = "0,0"
