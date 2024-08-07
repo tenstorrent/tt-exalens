@@ -12,6 +12,7 @@ Arguments:
   cell-contents        A comma separated list of the cell contents [default: nocTr]
                        Supported:
                          op - show operation running on the core with epoch ID in parenthesis
+                         riscv - show the status of the RISC-V ('R': running, '-': in reset)
                          block - show the type of the block at that coordinate
                          netlist, noc0, noc1, nocTr, nocVirt, die, tensix - show coordinate
 
@@ -37,7 +38,7 @@ from docopt import docopt
 
 from dbd import tt_util as util
 from dbd.tt_coordinate import VALID_COORDINATE_TYPES
-
+from dbd.tt_debuda_context import LimitedContext
 
 def run(cmd_text, context, ui_state=None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
@@ -60,7 +61,14 @@ def run(cmd_text, context, ui_state=None):
         )
         return []
 
-    cell_contents = args["<cell-contents>"] or "nocTr"
+    # If context is not LimitedContext, "op" is the default cell contents
+    cell_contents = ""
+    if args["<cell-contents>"]:
+        cell_contents = args["<cell-contents>"]
+    elif isinstance(context, LimitedContext):
+        cell_contents = "riscv"
+    else:
+        cell_contents = "op"
 
     for device_id in devices_list:
         device = context.devices[device_id]
@@ -117,6 +125,9 @@ def run(cmd_text, context, ui_state=None):
                 elif ct == "block":
                     block_type = device.get_block_type(loc)
                     cell_contents_str.append(block_type)
+                elif ct == "riscv":
+                    block_type = device.get_riscv_run_status(loc)
+                    cell_contents_str.append(block_type)
                 elif ct in VALID_COORDINATE_TYPES:
                     try:
                         coord_str = loc.to_str(ct)
@@ -124,7 +135,7 @@ def run(cmd_text, context, ui_state=None):
                         coord_str = "N/A"
                     cell_contents_str.append(coord_str)
                 else:
-                    util.ERROR(f"Invalid cell contents requested: {ct}")
+                    raise util.TTException(f"Invalid cell contents requested: '{ct}'")
             return ", ".join(cell_contents_str)
 
         print(
