@@ -231,8 +231,8 @@ class TestRunElf(unittest.TestCase):
 
 		# Testing
 		elf = ELF(self.context.server_ifc, { "fw" : elf_path })
-		MAILBOX_ADDR, MAILBOX_SIZE, _ = elf.parse_addr_size_type("fw.g_MAILBOX")
-		TESTBYTEACCESS_ADDR, _, _ = elf.parse_addr_size_type("fw.g_TESTBYTEACCESS")
+		MAILBOX_ADDR, MAILBOX_SIZE, _, _ = elf.parse_addr_size_value_type("fw.g_MAILBOX")
+		TESTBYTEACCESS_ADDR, _, _, _ = elf.parse_addr_size_value_type("fw.g_TESTBYTEACCESS")
 
 		loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
 		rloader = RiscLoader(loc, 0, self.context, self.context.server_ifc, False)
