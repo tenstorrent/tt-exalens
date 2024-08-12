@@ -201,7 +201,7 @@ class TestRunElf(unittest.TestCase):
 		rdbg.set_reset_signal(True)
 
 		# Write our data to memory
-		lib.write_word_to_device(core_loc, addr, 0x12345678, context=self.context)
+		lib.write_words_to_device(core_loc, addr, 0x12345678, context=self.context)
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0x12345678)
 
@@ -212,13 +212,13 @@ class TestRunElf(unittest.TestCase):
 		#   while (true);
 
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		lib.write_word_to_device(core_loc, 0, 0x00010537, context=self.context)
+		lib.write_words_to_device(core_loc, 0, 0x00010537, context=self.context)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		lib.write_word_to_device(core_loc, 4, 0x876545B7, context=self.context)
+		lib.write_words_to_device(core_loc, 4, 0x876545B7, context=self.context)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		lib.write_word_to_device(core_loc, 8, 0x00B52023, context=self.context)
+		lib.write_words_to_device(core_loc, 8, 0x00B52023, context=self.context)
 		# Infinite loop (jal 0)
-		lib.write_word_to_device(core_loc, 12, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 12, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
 
 		# Take risc out of reset
 		rdbg.set_reset_signal(False)
@@ -426,7 +426,7 @@ class TestDebugging(unittest.TestCase):
 		rdbg.set_reset_signal(True)
 
 		# Write our data to memory
-		lib.write_word_to_device(core_loc, addr, 0x12345678, context=self.context)
+		lib.write_words_to_device(core_loc, addr, 0x12345678, context=self.context)
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0x12345678)
 
@@ -438,15 +438,15 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# ebreak
-		lib.write_word_to_device(core_loc, 0, 0x00100073, context=self.context)
+		lib.write_words_to_device(core_loc, 0, 0x00100073, context=self.context)
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		lib.write_word_to_device(core_loc, 4, 0x00010537, context=self.context)
+		lib.write_words_to_device(core_loc, 4, 0x00010537, context=self.context)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		lib.write_word_to_device(core_loc, 8, 0x876545B7, context=self.context)
+		lib.write_words_to_device(core_loc, 8, 0x876545B7, context=self.context)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		lib.write_word_to_device(core_loc, 12, 0x00B52023, context=self.context)
+		lib.write_words_to_device(core_loc, 12, 0x00B52023, context=self.context)
 		# Infinite loop (jal 0)
-		lib.write_word_to_device(core_loc, 16, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 16, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
 
 		# Take risc out of reset
 		rdbg.set_reset_signal(False)
@@ -472,7 +472,7 @@ class TestDebugging(unittest.TestCase):
 		rdbg.set_reset_signal(True)
 
 		# Write our data to memory
-		lib.write_word_to_device(core_loc, addr, 0x12345678, context=self.context)
+		lib.write_words_to_device(core_loc, addr, 0x12345678, context=self.context)
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0x12345678)
 
@@ -484,15 +484,15 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# ebreak
-		lib.write_word_to_device(core_loc, 0, 0x00100073, context=self.context)
+		lib.write_words_to_device(core_loc, 0, 0x00100073, context=self.context)
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		lib.write_word_to_device(core_loc, 4, 0x00010537, context=self.context)
+		lib.write_words_to_device(core_loc, 4, 0x00010537, context=self.context)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		lib.write_word_to_device(core_loc, 8, 0x876545B7, context=self.context)
+		lib.write_words_to_device(core_loc, 8, 0x876545B7, context=self.context)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		lib.write_word_to_device(core_loc, 12, 0x00B52023, context=self.context)
+		lib.write_words_to_device(core_loc, 12, 0x00B52023, context=self.context)
 		# Infinite loop (jal 0)
-		lib.write_word_to_device(core_loc, 16, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 16, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
 
 		# Take risc out of reset
 		rdbg.set_reset_signal(False)
@@ -522,7 +522,7 @@ class TestDebugging(unittest.TestCase):
 		rdbg.set_reset_signal(True)
 
 		# Write our data to memory
-		lib.write_word_to_device(core_loc, addr, 0x12345678, context=self.context)
+		lib.write_words_to_device(core_loc, addr, 0x12345678, context=self.context)
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0x12345678)
 
@@ -535,19 +535,19 @@ class TestDebugging(unittest.TestCase):
 		#     *a++;
 
 		# ebreak
-		lib.write_word_to_device(core_loc, 0, 0x00100073, context=self.context)
+		lib.write_words_to_device(core_loc, 0, 0x00100073, context=self.context)
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		lib.write_word_to_device(core_loc, 4, 0x00010537, context=self.context)
+		lib.write_words_to_device(core_loc, 4, 0x00010537, context=self.context)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		lib.write_word_to_device(core_loc, 8, 0x876545B7, context=self.context)
+		lib.write_words_to_device(core_loc, 8, 0x876545B7, context=self.context)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		lib.write_word_to_device(core_loc, 12, 0x00B52023, context=self.context)
+		lib.write_words_to_device(core_loc, 12, 0x00B52023, context=self.context)
 		# Increment x11 by 1 (addi x11, x11, 1)
-		lib.write_word_to_device(core_loc, 16, 0x00158593, context=self.context)
+		lib.write_words_to_device(core_loc, 16, 0x00158593, context=self.context)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		lib.write_word_to_device(core_loc, 20, 0x00B52023, context=self.context)
+		lib.write_words_to_device(core_loc, 20, 0x00B52023, context=self.context)
 		# Infinite loop (jal -8)
-		lib.write_word_to_device(core_loc, 24, RiscLoader.get_jump_to_offset_instruction(-8), context=self.context)
+		lib.write_words_to_device(core_loc, 24, RiscLoader.get_jump_to_offset_instruction(-8), context=self.context)
 
 		# Take risc out of reset
 		rdbg.set_reset_signal(False)
@@ -598,7 +598,7 @@ class TestDebugging(unittest.TestCase):
 		rdbg.set_reset_signal(True)
 
 		# Write our data to memory
-		lib.write_word_to_device(core_loc, addr, 0x12345678, context=self.context)
+		lib.write_words_to_device(core_loc, addr, 0x12345678, context=self.context)
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0x12345678)
 
@@ -610,15 +610,15 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# ebreak
-		lib.write_word_to_device(core_loc, 0, 0x00100073, context=self.context)
+		lib.write_words_to_device(core_loc, 0, 0x00100073, context=self.context)
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		lib.write_word_to_device(core_loc, 4, 0x00010537, context=self.context)
+		lib.write_words_to_device(core_loc, 4, 0x00010537, context=self.context)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		lib.write_word_to_device(core_loc, 8, 0x876545B7, context=self.context)
+		lib.write_words_to_device(core_loc, 8, 0x876545B7, context=self.context)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		lib.write_word_to_device(core_loc, 12, 0x00B52023, context=self.context)
+		lib.write_words_to_device(core_loc, 12, 0x00B52023, context=self.context)
 		# Infinite loop (jal 0)
-		lib.write_word_to_device(core_loc, 16, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 16, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
 
 		# Take risc out of reset
 		rdbg.set_reset_signal(False)
@@ -663,7 +663,7 @@ class TestDebugging(unittest.TestCase):
 		rdbg.set_reset_signal(True)
 
 		# Write our data to memory
-		lib.write_word_to_device(core_loc, addr, 0x12345678, context=self.context)
+		lib.write_words_to_device(core_loc, addr, 0x12345678, context=self.context)
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0x12345678)
 
@@ -673,10 +673,10 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 		#   while (true);
 		#   while (true);
-		lib.write_word_to_device(core_loc, 0, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
-		lib.write_word_to_device(core_loc, 4, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
-		lib.write_word_to_device(core_loc, 8, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
-		lib.write_word_to_device(core_loc, 12, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 0, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 4, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 8, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 12, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
 
 		# Take risc out of reset
 		rdbg.set_reset_signal(False)
@@ -697,13 +697,13 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		lib.write_word_to_device(core_loc, 0, 0x00010537, context=self.context)
+		lib.write_words_to_device(core_loc, 0, 0x00010537, context=self.context)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		lib.write_word_to_device(core_loc, 4, 0x876545B7, context=self.context)
+		lib.write_words_to_device(core_loc, 4, 0x876545B7, context=self.context)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		lib.write_word_to_device(core_loc, 8, 0x00B52023, context=self.context)
+		lib.write_words_to_device(core_loc, 8, 0x00B52023, context=self.context)
 		# Infinite loop (jal 0)
-		lib.write_word_to_device(core_loc, 12, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 12, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
 
 		# Invalidate instruction cache
 		rdbg.invalidate_instruction_cache()
@@ -739,7 +739,7 @@ class TestDebugging(unittest.TestCase):
 		rdbg.set_reset_signal(True)
 
 		# Write our data to memory
-		lib.write_word_to_device(core_loc, addr, 0x12345678, context=self.context)
+		lib.write_words_to_device(core_loc, addr, 0x12345678, context=self.context)
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0x12345678)
 
@@ -749,10 +749,10 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 		#   while (true);
 		#   while (true);
-		lib.write_word_to_device(core_loc, 0, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
-		lib.write_word_to_device(core_loc, 4, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
-		lib.write_word_to_device(core_loc, 8, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
-		lib.write_word_to_device(core_loc, 12, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 0, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 4, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 8, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 12, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
 
 		# Take risc out of reset
 		rdbg.set_reset_signal(False)
@@ -773,13 +773,13 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		lib.write_word_to_device(core_loc, 0, 0x00010537, context=self.context)
+		lib.write_words_to_device(core_loc, 0, 0x00010537, context=self.context)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		lib.write_word_to_device(core_loc, 4, 0x876545B7, context=self.context)
+		lib.write_words_to_device(core_loc, 4, 0x876545B7, context=self.context)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		lib.write_word_to_device(core_loc, 8, 0x00B52023, context=self.context)
+		lib.write_words_to_device(core_loc, 8, 0x00B52023, context=self.context)
 		# Infinite loop (jal 0)
-		lib.write_word_to_device(core_loc, 12, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+		lib.write_words_to_device(core_loc, 12, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
 
 		# Invalidate instruction cache with reset
 		rdbg.set_reset_signal(True)
