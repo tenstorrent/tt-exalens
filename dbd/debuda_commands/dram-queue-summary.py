@@ -23,7 +23,7 @@ command_metadata = {
     "short": "dq",
     "type": "high-level",
     "description": __doc__,
-    "context": ["limited", "buda", "metal"],
+    "context": ["buda"],
 }
 
 
