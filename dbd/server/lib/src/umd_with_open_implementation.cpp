@@ -110,7 +110,8 @@ static std::filesystem::path find_binary_directory() {
 }
 
 static std::string create_temp_network_descriptor_file(tt::ARCH arch, std::filesystem::path binary_directory) {
-    if (arch == tt::ARCH::GRAYSKULL || arch == tt::ARCH::WORMHOLE || arch == tt::ARCH::WORMHOLE_B0) {
+    if (arch == tt::ARCH::GRAYSKULL || arch == tt::ARCH::WORMHOLE || arch == tt::ARCH::WORMHOLE_B0 ||
+        arch == tt::ARCH::BLACKHOLE) {
         // Check if create-ethernet-map exists
         if (binary_directory.empty()) {
             binary_directory = find_binary_directory();
@@ -167,7 +168,7 @@ static std::unique_ptr<tt_SiliconDevice> create_blackhole_device(const std::stri
                                                                  const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
     std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
-    dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::blackhole::TLB_BASE_INDEX_2M + 1;
+    dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::blackhole::MEM_SMALL_READ_WRITE_TLB;
     dynamic_tlb_config["REG_TLB"] = tt::umd::blackhole::REG_TLB;
 
     return std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,

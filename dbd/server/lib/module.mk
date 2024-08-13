@@ -2,7 +2,7 @@ CONFIG_FILEPATH = $(OUT)/configuration
 
 # List of configuration files that we want to embed
 DEBUDA_SERVER_LIB_CONFIGURATION_FILES = \
-	$(CONFIG_FILEPATH)/blackhole.embed $(DEBUDA_HOME)/dbd/server/device/blackhole_8x10.yaml \
+	$(CONFIG_FILEPATH)/blackhole.embed $(DEBUDA_HOME)/dbd/server/device/blackhole_10x14.yaml \
 	$(CONFIG_FILEPATH)/grayskull.embed $(DEBUDA_HOME)/dbd/server/device/grayskull_10x12.yaml \
 	$(CONFIG_FILEPATH)/wormhole.embed $(DEBUDA_HOME)/dbd/server/device/wormhole_8x10.yaml \
 	$(CONFIG_FILEPATH)/wormhole_b0.embed $(DEBUDA_HOME)/dbd/server/device/wormhole_b0_8x10.yaml \
@@ -46,7 +46,9 @@ $(DEBUDA_SERVER_LIB): $(DEBUDA_SERVER_LIB_OBJS)
 ifeq ("$(HOST_ARCH)", "aarch64")
 $(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/third_party/umd/device/bin/silicon/aarch64/create-ethernet-map
 else
-$(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/third_party/umd/device/bin/silicon/x86/create-ethernet-map
+# TODO (#74): This is temporary fix to make create-ethernet-map work on blackhole. When new official version is released, this should be removed.
+#$(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/third_party/umd/device/bin/silicon/x86/create-ethernet-map
+$(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/dbd/server/bin/create-ethernet-map
 endif
 	@mkdir -p $(@D)
 	cp $^ $@
