@@ -147,8 +147,39 @@ static std::unique_ptr<tt_SiliconDevice> create_grayskull_device(const std::stri
     dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::grayskull::MEM_SMALL_READ_WRITE_TLB;
     dynamic_tlb_config["REG_TLB"] = tt::umd::grayskull::REG_TLB;
 
-    return std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
+    auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
                                               num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
+    tt_driver_host_address_params host_address_params = {
+        32 * 1024, // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
+        0x38000000, // host_mem::address_map::ETH_ROUTING_BUFFERS_START
+    };
+    tt_driver_eth_interface_params eth_interface_params = {
+        32, // NOC_ADDR_LOCAL_BITS
+        6, // NOC_ADDR_NODE_ID_BITS
+        8, // ETH_RACK_COORD_WIDTH
+        3, // CMD_BUF_SIZE_MASK
+        1024, // MAX_BLOCK_SIZE
+        0x11080, // REQUEST_CMD_QUEUE_BASE
+        0x11200, // RESPONSE_CMD_QUEUE_BASE
+        32, // CMD_COUNTERS_SIZE_BYTES
+        16, // REMOTE_UPDATE_PTR_SIZE_BYTES
+        64, // CMD_DATA_BLOCK
+        1, // CMD_WR_REQ
+        2, // CMD_WR_ACK
+        4, // CMD_RD_REQ
+        8, // CMD_RD_DATA
+        4, // CMD_BUF_SIZE
+        16, // CMD_DATA_BLOCK_DRAM
+        0x12000, // ETH_ROUTING_DATA_BUFFER_ADDR
+        0x110c0, // REQUEST_ROUTING_CMD_QUEUE_BASE
+        0x11240, // RESPONSE_ROUTING_CMD_QUEUE_BASE
+        7, // CMD_BUF_PTR_MASK
+        0x1000, // CMD_ORDERED
+        0x80, // CMD_BROADCAST
+    };
+    device->set_driver_host_address_params(host_address_params);
+    device->set_driver_eth_interface_params(eth_interface_params);
+    return device;
 }
 
 static std::unique_ptr<tt_SiliconDevice> create_wormhole_device(const std::string &device_configuration_path,
@@ -159,8 +190,39 @@ static std::unique_ptr<tt_SiliconDevice> create_wormhole_device(const std::strin
     dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::wormhole::MEM_SMALL_READ_WRITE_TLB;
     dynamic_tlb_config["REG_TLB"] = tt::umd::wormhole::REG_TLB;
 
-    return std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
+    auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
                                               num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
+    tt_driver_host_address_params host_address_params = {
+        32 * 1024, // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
+        0x38000000, // host_mem::address_map::ETH_ROUTING_BUFFERS_START
+    };
+    tt_driver_eth_interface_params eth_interface_params = {
+        36, // NOC_ADDR_LOCAL_BITS
+        6, // NOC_ADDR_NODE_ID_BITS
+        8, // ETH_RACK_COORD_WIDTH
+        3, // CMD_BUF_SIZE_MASK
+        1024, // MAX_BLOCK_SIZE
+        0x11080, // REQUEST_CMD_QUEUE_BASE
+        0x11200, // RESPONSE_CMD_QUEUE_BASE
+        32, // CMD_COUNTERS_SIZE_BYTES
+        16, // REMOTE_UPDATE_PTR_SIZE_BYTES
+        64, // CMD_DATA_BLOCK
+        1, // CMD_WR_REQ
+        2, // CMD_WR_ACK
+        4, // CMD_RD_REQ
+        8, // CMD_RD_DATA
+        4, // CMD_BUF_SIZE
+        16, // CMD_DATA_BLOCK_DRAM
+        0x12000, // ETH_ROUTING_DATA_BUFFER_ADDR
+        0x110c0, // REQUEST_ROUTING_CMD_QUEUE_BASE
+        0x11240, // RESPONSE_ROUTING_CMD_QUEUE_BASE
+        7, // CMD_BUF_PTR_MASK
+        0x1000, // CMD_ORDERED
+        0x80, // CMD_BROADCAST
+    };
+    device->set_driver_host_address_params(host_address_params);
+    device->set_driver_eth_interface_params(eth_interface_params);
+    return device;
 }
 
 static std::unique_ptr<tt_SiliconDevice> create_blackhole_device(const std::string &device_configuration_path,
@@ -171,8 +233,39 @@ static std::unique_ptr<tt_SiliconDevice> create_blackhole_device(const std::stri
     dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::blackhole::MEM_SMALL_READ_WRITE_TLB;
     dynamic_tlb_config["REG_TLB"] = tt::umd::blackhole::REG_TLB;
 
-    return std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
+    auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
                                               num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
+    tt_driver_host_address_params host_address_params = {
+        32 * 1024, // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
+        0x38000000, // host_mem::address_map::ETH_ROUTING_BUFFERS_START
+    };
+    tt_driver_eth_interface_params eth_interface_params = {
+        36, // NOC_ADDR_LOCAL_BITS
+        6, // NOC_ADDR_NODE_ID_BITS
+        8, // ETH_RACK_COORD_WIDTH
+        3, // CMD_BUF_SIZE_MASK
+        1024, // MAX_BLOCK_SIZE
+        0x11080, // REQUEST_CMD_QUEUE_BASE
+        0x11200, // RESPONSE_CMD_QUEUE_BASE
+        32, // CMD_COUNTERS_SIZE_BYTES
+        16, // REMOTE_UPDATE_PTR_SIZE_BYTES
+        64, // CMD_DATA_BLOCK
+        1, // CMD_WR_REQ
+        2, // CMD_WR_ACK
+        4, // CMD_RD_REQ
+        8, // CMD_RD_DATA
+        4, // CMD_BUF_SIZE
+        16, // CMD_DATA_BLOCK_DRAM
+        0x12000, // ETH_ROUTING_DATA_BUFFER_ADDR
+        0x110c0, // REQUEST_ROUTING_CMD_QUEUE_BASE
+        0x11240, // RESPONSE_ROUTING_CMD_QUEUE_BASE
+        7, // CMD_BUF_PTR_MASK
+        0x1000, // CMD_ORDERED
+        0x80, // CMD_BROADCAST
+    };
+    device->set_driver_host_address_params(host_address_params);
+    device->set_driver_eth_interface_params(eth_interface_params);
+    return device;
 }
 
 // Creates SOC descriptor files by serializing tt_SocDescroptor structure to yaml.
