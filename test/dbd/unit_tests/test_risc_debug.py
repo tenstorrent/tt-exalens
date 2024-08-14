@@ -70,6 +70,53 @@ class TestDebugging(unittest.TestCase):
 		rdbg.set_reset_signal(True)
 		self.assertTrue(rdbg.is_in_reset())
 
+	def test_read_write_l1_memory(self):
+		"""Testing read_memory and write_memory through debugging interface on L1 memory range."""
+		core_loc = "0,0"
+		addr = 0x10000
+
+		loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
+		rloc = RiscLoc(loc, 0, 0)
+		rdbg = RiscDebug(rloc, self.context.server_ifc)
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
+		self.assertTrue(rdbg.is_in_reset())
+
+		# Write our data to memory
+		lib.write_words_to_device(core_loc, addr, 0x12345678, context=self.context)
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		self.assertEqual(ret[0], 0x12345678)
+
+		# Write code for brisc core at address 0
+		# C++:
+		#   while (true);
+
+		# Infinite loop (jal 0)
+		lib.write_words_to_device(core_loc, 0, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+
+		# Take risc out of reset
+		rdbg.set_reset_signal(False)
+		self.assertFalse(rdbg.is_in_reset())
+
+		# Halt core
+		rdbg.enable_debug()
+		rdbg.halt()
+
+		# Value should not be changed and should stay the same since core is in halt
+		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
+
+		# Test read and write memory
+		self.assertEqual(rdbg.read_memory(addr), 0x12345678, "Memory value should be 0x12345678.")
+		rdbg.write_memory(addr, 0x87654321)
+		self.assertEqual(rdbg.read_memory(addr), 0x87654321, "Memory value should be 0x87654321.")
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		self.assertEqual(ret[0], 0x87654321)
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
+		self.assertTrue(rdbg.is_in_reset())
+
 	def test_minimal_run_generated_code(self):
 		"""Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
 		core_loc = "0,0"
