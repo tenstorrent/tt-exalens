@@ -22,6 +22,54 @@ class TestDebugging(unittest.TestCase):
 			for rdbg in device.debuggable_cores:
 				self.assertTrue(rdbg.is_in_reset())
 
+	def test_read_write_gpr(self):
+		"""Write then read value in all registers (except zero and pc)."""
+		core_loc = "0,0"
+
+		loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
+		rloc = RiscLoc(loc, 0, 0)
+		rdbg = RiscDebug(rloc, self.context.server_ifc)
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
+		self.assertTrue(rdbg.is_in_reset())
+
+		# Write code for brisc core at address 0
+		# C++:
+		#   asm volatile ("nop");
+		#   while (true);
+
+		# NOP
+		lib.write_words_to_device(core_loc, 0, 0x00000013, context=self.context)
+		# Infinite loop (jal 0)
+		lib.write_words_to_device(core_loc, 4, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+
+		# Take risc out of reset
+		rdbg.set_reset_signal(False)
+		self.assertFalse(rdbg.is_in_reset())
+
+		# Halt core
+		rdbg.enable_debug()
+		rdbg.halt()
+
+		# Value should not be changed and should stay the same since core is in halt
+		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
+
+		# Test readonly registers
+		self.assertEqual(rdbg.read_gpr(get_register_index("zero")), 0, "zero should always be 0.")
+		self.assertEqual(rdbg.read_gpr(get_register_index("pc")), 4, "PC should be 4.")
+
+		# Test write then read for all other registers
+		for i in range(1, 31):
+			rdbg.write_gpr(i, 0x12345678)
+			self.assertEqual(rdbg.read_gpr(i), 0x12345678, f"Register x{i} should be 0x12345678.")
+			rdbg.write_gpr(i, 0x87654321)
+			self.assertEqual(rdbg.read_gpr(i), 0x87654321, f"Register x{i} should be 0x12345678.")
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
+		self.assertTrue(rdbg.is_in_reset())
+
 	def test_minimal_run_generated_code(self):
 		"""Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
 		core_loc = "0,0"
