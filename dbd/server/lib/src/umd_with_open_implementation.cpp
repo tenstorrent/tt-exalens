@@ -150,10 +150,12 @@ static std::unique_ptr<tt_SiliconDevice> create_grayskull_device(const std::stri
     auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
                                                      num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
     tt_driver_host_address_params host_address_params = {
+        // Values copied from: third_party/umd/src/firmware/riscv/grayskull/host_mem_address_map.h
         32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
         0x38000000,  // host_mem::address_map::ETH_ROUTING_BUFFERS_START
     };
     tt_driver_eth_interface_params eth_interface_params = {
+        // Values copied from: third_party/umd/src/firmware/riscv/grayskull/eth_interface.h
         32,       // NOC_ADDR_LOCAL_BITS
         6,        // NOC_ADDR_NODE_ID_BITS
         8,        // ETH_RACK_COORD_WIDTH
@@ -193,10 +195,12 @@ static std::unique_ptr<tt_SiliconDevice> create_wormhole_device(const std::strin
     auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
                                                      num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
     tt_driver_host_address_params host_address_params = {
+        // Values copied from: third_party/umd/src/firmware/riscv/wormhole/host_mem_address_map.h
         32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
         0x38000000,  // host_mem::address_map::ETH_ROUTING_BUFFERS_START
     };
     tt_driver_eth_interface_params eth_interface_params = {
+        // Values copied from: third_party/umd/src/firmware/riscv/wormhole/eth_interface.h
         36,       // NOC_ADDR_LOCAL_BITS
         6,        // NOC_ADDR_NODE_ID_BITS
         8,        // ETH_RACK_COORD_WIDTH
@@ -236,10 +240,12 @@ static std::unique_ptr<tt_SiliconDevice> create_blackhole_device(const std::stri
     auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
                                                      num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
     tt_driver_host_address_params host_address_params = {
+        // Values copied from: third_party/umd/src/firmware/riscv/blackhole/host_mem_address_map.h
         32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
         0x38000000,  // host_mem::address_map::ETH_ROUTING_BUFFERS_START
     };
     tt_driver_eth_interface_params eth_interface_params = {
+        // Values copied from: third_party/umd/src/firmware/riscv/blackhole/eth_interface.h
         36,       // NOC_ADDR_LOCAL_BITS
         6,        // NOC_ADDR_NODE_ID_BITS
         8,        // ETH_RACK_COORD_WIDTH
