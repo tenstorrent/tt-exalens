@@ -33,6 +33,7 @@ class TestDebugging(unittest.TestCase):
 
 		# Stop risc with reset
 		rdbg.set_reset_signal(True)
+		self.assertTrue(rdbg.is_in_reset())
 
 		# Write our data to memory
 		lib.write_words_to_device(core_loc, addr, 0x12345678, context=self.context)
@@ -56,6 +57,7 @@ class TestDebugging(unittest.TestCase):
 
 		# Take risc out of reset
 		rdbg.set_reset_signal(False)
+		self.assertFalse(rdbg.is_in_reset())
 
 		# Verify value at address
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
@@ -63,6 +65,7 @@ class TestDebugging(unittest.TestCase):
 
 		# Stop risc with reset
 		rdbg.set_reset_signal(True)
+		self.assertTrue(rdbg.is_in_reset())
 
 	def test_ebreak(self):
 		"""Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
@@ -72,6 +75,7 @@ class TestDebugging(unittest.TestCase):
 		loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
 		rloc = RiscLoc(loc, 0, 0)
 		rdbg = RiscDebug(rloc, self.context.server_ifc)
+		pc_register_index = get_register_index("pc")
 
 		# Stop risc with reset
 		rdbg.set_reset_signal(True)
@@ -106,6 +110,73 @@ class TestDebugging(unittest.TestCase):
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		# Value should not be changed and should stay the same since core is in halt
 		self.assertEqual(ret[0], 0x12345678)
+		self.assertEqual(rdbg.read_gpr(pc_register_index), 4, "PC should be 4.")
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
+
+	def test_ebreak_and_step(self):
+		"""Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+		core_loc = "0,0"
+		addr = 0x10000
+
+		loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
+		rloc = RiscLoc(loc, 0, 0)
+		rdbg = RiscDebug(rloc, self.context.server_ifc)
+		pc_register_index = get_register_index("pc")
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
+
+		# Write our data to memory
+		lib.write_words_to_device(core_loc, addr, 0x12345678, context=self.context)
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		self.assertEqual(ret[0], 0x12345678)
+
+		# Write code for brisc core at address 0
+		# C++:
+		#   asm volatile ("ebreak");
+		#   int* a = (int*)0x10000;
+		#   *a = 0x87654000;
+		#   while (true);
+
+		# ebreak
+		lib.write_words_to_device(core_loc, 0, 0x00100073, context=self.context)
+		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
+		lib.write_words_to_device(core_loc, 4, 0x00010537, context=self.context)
+		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
+		lib.write_words_to_device(core_loc, 8, 0x876545B7, context=self.context)
+		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
+		lib.write_words_to_device(core_loc, 12, 0x00B52023, context=self.context)
+		# Infinite loop (jal 0)
+		lib.write_words_to_device(core_loc, 16, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+
+		# Take risc out of reset
+		rdbg.set_reset_signal(False)
+
+		# Verify value at address
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		# Value should not be changed and should stay the same since core is in halt
+		self.assertEqual(ret[0], 0x12345678)
+		self.assertEqual(rdbg.read_gpr(pc_register_index), 4, "PC should be 4.")
+
+		# Step and verify that pc is 8 and value is not changed
+		rdbg.step()
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		self.assertEqual(ret[0], 0x12345678)
+		self.assertEqual(rdbg.read_gpr(pc_register_index), 8, "PC should be 8.")
+
+		# Step and verify that pc is 12 and value has changed
+		rdbg.step()
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		self.assertEqual(ret[0], 0x87654000)
+		self.assertEqual(rdbg.read_gpr(pc_register_index), 12, "PC should be 12.")
+
+		# Since we are on endless loop, we should never go past 16
+		for i in range(10):
+			# Step and verify that pc is 16 and value has changed
+			rdbg.step()
+			self.assertEqual(rdbg.read_gpr(pc_register_index), 16, "PC should be 16.")
 
 		# Stop risc with reset
 		rdbg.set_reset_signal(True)
