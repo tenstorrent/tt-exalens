@@ -10,10 +10,12 @@ from dbd import tt_util as util
 
 from dbd.tt_debuda_context import Context, BudaContext, LimitedContext
 
-# GLOBAL_CONTEXT is a convenience variable to store fallback debuda context object.
-# If a library function needs context parameter but it isn't provided, it will use
-# whatever is in GLOBAL_CONTEXT variable. This does not mean that debuda context is
-# a singleton, as it can be explicitly provided to library functions.
+"""
+GLOBAL_CONTEXT is a convenience variable to store fallback debuda context object.
+If a library function needs context parameter but it isn't provided, it will use
+whatever is in GLOBAL_CONTEXT variable. This does not mean that debuda context is
+a singleton, as it can be explicitly provided to library functions.
+"""
 GLOBAL_CONTEXT: Context = None
 
 
@@ -141,7 +143,7 @@ def set_active_context(context: Context) -> None:
 	Args:
 		context (Context): Debuda context object.
 
-	Note:
+	Notes:
 		- Every new context initialization will overwrite the currently active context.
 	"""
 	global GLOBAL_CONTEXT

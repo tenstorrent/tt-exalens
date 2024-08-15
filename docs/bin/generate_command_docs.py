@@ -4,12 +4,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  generate-command-docs.py <input> <output_file> [-a]
-  generate-command-docs.py <input> [-i]
+  generate_command_docs.py <input> <output_file> [-a]
+  generate_command_docs.py <input> [-i]
+  generate_command_docs.py (-h | --help)
 
 Arguments:
-  <input>  			 Directory containing command files to parse, or a single command file to parse.
-  <output_file>      Output .md file to write to. If not provided, the output will be printed to stdout.
+  <input>			Directory containing command files to parse, or a single command file to parse.
+  <output_file>		Output .md file to write to. If not provided, the output will be printed to stdout.
 
 Options:
   -a, --append       Append to the output file instead of overwriting it.
@@ -43,12 +44,15 @@ sys.path.insert(0,
 # We need to import common options as they are sometimes injected into the docstrings
 from dbd.tt_commands import tt_docopt
 OPTIONS = tt_docopt.OPTIONS
+for opt in OPTIONS.keys():
+	OPTIONS[opt]['arg'] = OPTIONS[opt].get('arg', '').replace("<", "\<").replace(">", "\>")
 
 # We limit what each example can output to avoid spamming the user
 MAX_OUTPUT_LINES = 20  # Max number of lines to show for each example
 MAX_CHARACTERS_PER_LINE = 130  # Max number of characters to show for each line
 
 from run_debuda_on_help_examples import execute_debuda_command
+from doc_printer import SectionPPrinter
 
 def INFO(text:str) -> None:
     print(f"\033[1;32m{text}\033[0m")
@@ -58,6 +62,7 @@ def WARNING(text:str) -> None:
 
 def ERROR(text:str) -> None:
     print(f"\033[1;31m{text}\033[0m")
+    raise Exception(text)
 
 
 class CmdParser:
@@ -170,7 +175,8 @@ class CmdParser:
 			result[opt_call[0]] = {}
 			# Is there an argument?
 			if len(opt_call) > 1:
-				result[opt_call[0]]['arg'] = opt_call[1]
+				# Bracket characters are interpreted as html tags, so we replace them
+				result[opt_call[0]]['arg'] = opt_call[1].replace("<", "\<").replace(">", "\>")
 			result[opt_call[0]]['description'] = opt_parts[1]
 		
 		return result
@@ -236,103 +242,30 @@ class CmdParser:
 
 
 
-class CmdPrettyPrinter:
-	def __init__(self, valid_sections: list = None, section_printers: dict = None):
-		""" The pretty printer class for debuda command documentation. 
-		
-		Args:
-		- valid_sections (list): List of valid section names to be printed.
-		- section_printers (dict): Dictionary of section names and their corresponding printing functions.
+class CmdPPrinter(SectionPPrinter):
+	def __init__(self):
+		""" The pretty printer class for debuda command documentation.
 		"""
-		if valid_sections:
-			self.valid_section_names = valid_sections
-		else:
-			self.valid_section_names = ["Usage", "Description", "Arguments", "Options", "Common options", "Examples"]
+		super().__init__()
+		self.section_printers = {
+			"Usage": self.print_usage,
+			"Description": self.print_description,
+			"Arguments": self.print_arguments,
+			"Options": self.print_arguments,
+			"Examples": self.print_examples,
+			"Common options": self.print_arguments
+		}
 
-		if section_printers:
-			self.section_printers = section_printers
-		else:
-			self.section_printers = {
-				"Usage": self.print_usage,
-				"Description": self.print_description,
-				"Arguments": self.print_arguments,
-				"Options": self.print_options,
-				"Examples": self.print_examples,
-				"Common options": self.print_options
-			}
-
-
-	def print_cmd(self, cmd_data: dict) -> str:
+	def print_docs(self, cmd_data: dict) -> str:
 		result = ""
-		
-		result += self._print_title(cmd_data['title'])
-
-		for sec in self.valid_section_names:
+		for sec in self.section_printers.keys():
 			if sec in cmd_data['docs']:
-				result += self._print_section_title(sec)
-				result += self.section_printers[sec](cmd_data['docs'][sec])
-				result += "\n\n"
+				result += self.eprinter.print_section(
+					sec,
+					self.section_printers[sec](cmd_data['docs'][sec])
+				)
 		
-		return result
-
-	# Functions to print by section
-
-	def print_usage(self, usage: str) -> str:
-		return self._print_code(usage['code'])
-	
-	def print_description(self, description: dict) -> str:
-		return self._print_text(description['text'])
-	
-	def print_arguments(self, arguments: dict) -> str:
-		return self._print_itemized(arguments)
-	
-	def print_options(self, options: dict) -> str:
-		result = ""
-		for cl, desc in options.items():
-			result += f"- **{cl}"											 # Option name
-			result += f", {desc['short']}" if 'short' in desc.keys() else "" # Option short name
-			if 'arg' in desc.keys():
-				# Bracket characters are interpreted as html tags, so we replace them
-				argstring = desc['arg'].replace("<", "\<").replace(">", "\>")
-				result += f" {argstring}"									# Option argument
-			result += f"** : {desc['description']}\n"						# Option description
-		return result
-	
-	def print_examples(self, examples: list) -> str:
-		return self._print_commands(examples['commands'])
-
-
-	# Functions to print by format
-
-	def _print_code(self, code: str) -> str:
-		return f"```\n{code}\n```\n"
-	
-	def _print_itemized(self, itemized: dict) -> str:
-		# itemized is a dictionary of arguments and their descriptions
-		result = ""
-		for arg, desc in itemized.items():
-			result += f"- **{arg}**:  {desc}\n"
-		return result
-	
-	def _print_commands(self, commands: list) -> str:
-		result = ""
-		for cmd in commands:
-			result += f"{cmd['text']}\n"					# Command description
-			result += self._print_code(cmd['code'])			# Command call
-			if cmd['result']:								# Command result
-				result += "Output:\n"						
-				result += self._print_code(cmd['result'])
-			result += "\n"
-		return result
-
-	def _print_title(self, title: str) -> str:
-		return f"## {title}\n\n\n"
-	
-	def _print_section_title(self, section: str) -> str:
-		return f"### {section}\n\n"
-
-	def _print_text(self, text: str) -> str:
-		return text + "\n"
+		return self.eprinter.print_section(cmd_data['title'], result, 2)
 
 
 
@@ -428,9 +361,9 @@ if __name__=="__main__":
 		parser_result = parse_directory(args["<input>"], interactive=args["--interactive"])
 
 	output = ""
-	cmd_printer = CmdPrettyPrinter()
+	cmd_printer = CmdPPrinter()
 	for cmd in parser_result:
-		output += cmd_printer.print_cmd(cmd)
+		output += cmd_printer.print_docs(cmd)
 		output += "\n\n"
 
 	if args["<output_file>"]:
