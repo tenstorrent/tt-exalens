@@ -29,8 +29,8 @@ Interfacing device is local, through pybind.
 
 ### Args
 
-- `output_dir_path` *(str, optional)*: Path to the debuda run output directory. If None, debuda will be initialized in limited mode.
-- `netlist_path` *(str, optional)*: Path to the netlist file.
+- `output_dir_path` *(str, optional)*: Path to the buda run output directory. If None, debuda will be initialized in limited mode.
+- `netlist_path` *(str, optional)*: Path to the buda netlist file.
 - `wanted_devices` *(list, optional)*: List of device IDs we want to connect to. If None, connect to all available devices.
 - `caching_path` *(str, optional)*: Path to the cache file to write. If None, caching is disabled.
 

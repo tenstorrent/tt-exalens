@@ -4,9 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  generate_command_docs.py <input> <output_file> [-a]
-  generate_command_docs.py <input> [-i]
-  generate_command_docs.py (-h | --help)
+  geenrate-command-docs.py <input> <output_file> [-a]
+  geenrate-command-docs.py <input> [-i]
+  geenrate-command-docs.py (-h | --help)
 
 Arguments:
   <input>			Directory containing command files to parse, or a single command file to parse.
@@ -52,17 +52,7 @@ MAX_OUTPUT_LINES = 20  # Max number of lines to show for each example
 MAX_CHARACTERS_PER_LINE = 130  # Max number of characters to show for each line
 
 from run_debuda_on_help_examples import execute_debuda_command
-from doc_printer import SectionPPrinter
-
-def INFO(text:str) -> None:
-    print(f"\033[1;32m{text}\033[0m")
-
-def WARNING(text:str) -> None:
-    print(f"\033[1;33m{text}\033[0m")
-
-def ERROR(text:str) -> None:
-    print(f"\033[1;31m{text}\033[0m")
-    raise Exception(text)
+from doc_utils import SectionPPrinter, INFO, WARNING, ERROR
 
 
 class CmdParser:
@@ -139,10 +129,10 @@ class CmdParser:
 			if len(line) > 1:
 				# We have both argument and description
 				arg = line[0]
-				result[arg] = line[1]
+				result[arg] = {'description': line[1]}
 			else:
 				# We only have the description, so we append it to the last argument
-				result[arg] += " " + line[0]
+				result[arg]['description'] += " " + line[0]
 
 		return result
 

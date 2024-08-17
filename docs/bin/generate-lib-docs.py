@@ -38,17 +38,22 @@ import os, sys
 import re
 
 from docopt import docopt
-from generate_command_docs import INFO, WARNING, ERROR
-from doc_printer import SectionPPrinter
+from doc_utils import INFO, WARNING, ERROR
+from doc_utils import SectionPPrinter
 
 with open("dbd/tt_debuda_init.py") as f:
 	tree = ast.parse(f.read())
 
 
 class DocstringParser:
-	""" A class to parse docstrings from library functions. """
-
 	def __init__(self, sections = None, section_parsers = None):
+		"""A class to parse docstrings from library functions. 
+		
+		Args:
+			sections (list, optional): List of valid section names in the docstring. If None, defaults to ["Description", "Args", "Returns", "Notes"].
+			section_parsers (dict, optional): Dictionary of section names and their corresponding parser functions. 
+				If None, defaults to parsers for ["Description", "Args", "Returns", "Notes"].
+		"""
 		if sections:
 			self.valid_section_names = sections
 		else:
@@ -69,6 +74,8 @@ class DocstringParser:
 			}
 
 	def parse(self, docstring):
+		"""Parses a docstring into a dictionary of sections."""
+		# Sections are separated by blank lines, with potential leading/trailing whitespaces
 		sections = [sec.strip() for sec in re.split(r'\n[\s\t]*\n', docstring)]
 		result = {}
 
@@ -91,6 +98,7 @@ class DocstringParser:
 		return result
 
 	def parse_description(self, help: str) -> dict:
+		# Remove leading/trailing whitespaces
 		lines = [line.strip() for line in help.split("\n")]
 		lines = "\n".join(lines)
 
@@ -101,20 +109,25 @@ class DocstringParser:
 		lines = [line.strip() for line in help.split("\n")]
 
 		for line in lines:
-			# Arguments are separated from their descriptions by multiple spaces
+			# Arguments are separated from their descriptions by a colon (:)
 			line = line.split(':', 1)
 
 			if len(line) > 1:
+				# We have both argument name and description
 				arg = line[0]
+				# Argument name is before the first opening parenthesis
 				name = arg.split("(")[0].strip()
+				# Argument types are inside the parentheses
 				types = re.findall(r"\((.*?)\)", arg)[0].split(", ")
 
 				description = line[1]
+				# Remove leading/trailing whitespaces
 				description = [desc.strip() for desc in description.split("\n")]
 				description = "\n".join(description)
 
 				result[name] = {'type': types, 'description': description}
 			else:
+				# This is a continuation of the previous argument's description
 				result[name]['description'] += f"\n{line[0].strip()}"
 
 		return result
@@ -133,8 +146,10 @@ class DocstringParser:
 		items = []
 		for line in lines:
 			if line.startswith("- "):
+				# Notes are formatted as a list, with each item starting with a dash (-)
 				items.append(line[2:].strip())
 			else:
+				# This is a continuation of the previous note
 				items[-1] += f" {line}"
 
 		return {"items": items}
@@ -143,6 +158,7 @@ class DocstringParser:
 
 class FileParser:
 	def __init__(self, docstring_parser: DocstringParser):
+		"""A class to parse library files and extract docstrings from functions and variables."""
 		self.docstring_parser = docstring_parser
 
 	def parse(self, file: os.PathLike):
@@ -152,6 +168,8 @@ class FileParser:
 		with open(file) as f:
 			tree = ast.parse(f.read())
 
+		# We keep track of the functions and variables we find in the file
+		# At some point we might want to add support for classes
 		result = {'functions': [], 'variables': []}
 
 		for id, node in enumerate(tree.body):
@@ -159,24 +177,31 @@ class FileParser:
 				parsed = self.parse_function(node)
 				if not parsed["docstring"]:
 					WARNING(f"No docstring found for function {parsed['name']} in file {file}. Skipping...")
+					# Functions without docstrings are not added to the documentation
 					continue
 				parsed['docs'] = self.docstring_parser.parse(parsed['docstring'])
 				result['functions'].append(parsed)
+
 			elif type(node) == ast.AnnAssign:
 				if not type(tree.body[id-1]) == ast.Expr:
 					WARNING(f"No docstring found for variable {node.target.id} in file {file}. Skippning...")
+					# Variables without docstrings are not added to the documentation
 					continue
 				parsed = self.parse_variable(node, tree.body[id-1])
 				parsed['docs'] = self.docstring_parser.parse(parsed['docstring'])
 				result['variables'].append(parsed)
+			
 			elif type(node) == ast.Import or type(node) == ast.ImportFrom or type(node) == ast.Expr:
+				# We don't need to do anything with these nodes
 				continue
+
 			else:
 				WARNING(f"Node type {type(node)} at index {id} not implemented. Skipping...")
 
 		return result
 
 	def parse_variable(self, node: ast.AnnAssign, docstring_node: ast.Expr = None):
+		"""Parses a variable declaration and its docstring."""
 		name = node.target.id
 		docstring = None
 		annotation = node.annotation.id
@@ -189,6 +214,7 @@ class FileParser:
 
 
 	def parse_function(self, node: ast.FunctionDef):
+		"""Parses a function definition and its docstring."""
 		name = node.name
 		args = node.args.args
 		defaults = node.args.defaults
@@ -200,6 +226,7 @@ class FileParser:
 		elif type(node.returns) == ast.Constant:
 			returns = node.returns.value
 		elif type(node.returns) == ast.Subscript:
+			# Some functions return multiple types
 			returns = [el.id if type(el) == ast.Name else el.value for el in node.returns.slice.elts]
 			returns  = [el if el else 'None' for el in returns]
 			returns = " | ".join(returns)
@@ -216,12 +243,13 @@ class FileParser:
 		for i in range(-len(defaults)-1, -len(args)-1, -1):
 			argstring = f"{args[i].arg}, " + argstring
 
-		return {"name": f"{name}", "call": f"{name}(" + argstring[:-2] + f") -> {returns}", "docstring": docstring}
-
+		return {"name": f"{name}", "call": f"{name}({argstring[:-2]}) -> {returns}", "docstring": docstring}
+															  # remove trailing ", "
 
 
 class LibPPrinter(SectionPPrinter):
 	def __init__(self):
+		"""A class to print library documentation in markdown format."""
 		super().__init__()
 		self.section_printers = {
 			"Description": self.print_description,
@@ -241,8 +269,7 @@ class LibPPrinter(SectionPPrinter):
 	def print_functions(self, functions: list) -> str:
 		result = ""
 		for func in functions:
-			funcresult = ""
-			funcresult += self.print_docstring(func['docs'])
+			funcresult = self.print_docstring(func['docs'])
 			funcresult = self.eprinter.print_code(func['call']) + '\n\n' + funcresult
 			funcresult = self.eprinter.print_section(func['name'], funcresult, 2)
 			result += funcresult
@@ -251,8 +278,7 @@ class LibPPrinter(SectionPPrinter):
 	def print_variables(self, variables: list) -> str:
 		result = ""
 		for var in variables:
-			varresult = ""
-			varresult += self.print_docstring(var['docs'])
+			varresult = self.print_docstring(var['docs'])
 			varresult = self.eprinter.print_arg(
 				argname=var.get('name', None), 
 				argtype=var.get('annotation', None), 
@@ -277,6 +303,8 @@ class LibPPrinter(SectionPPrinter):
 
 
 def get_all_files(path: os.PathLike) -> list:
+	"""Returns a list of .py files specified in the __all__ variable in __init__.py, 
+	or all .py files in the directory if __init__.py is not found or does not contain __all__."""
 	spec = importlib.util.spec_from_file_location("dbd", os.path.join(path, "__init__.py"))
 	if spec is not None:
 		module = importlib.util.module_from_spec(spec)
@@ -292,6 +320,13 @@ def get_all_files(path: os.PathLike) -> list:
 	
 
 def parse_directory(path: os.PathLike, parser: FileParser, interactive: bool = False) -> dict:
+	"""Parses all .py files in a directory using the provided parser.
+	
+	Args:
+		path (os.PathLike): Path to the directory containing the files to parse.
+		parser (FileParser): Parser object to use for parsing the files.
+		interactive (bool, optional): If True, the user will be prompted before parsing each file.
+	"""
 	files = get_all_files(path)
 	result = {}
 	
@@ -323,7 +358,7 @@ if __name__=="__main__":
 		ERROR("Invalid input. Please provide a valid file or directory.")
 		sys.exit(1)
 	elif isfile:
-		parser_result = {os.path.basename(args["<input>"]): fp.parse(args["<input>"])}
+		parser_result = {os.path.basename(args["<input>"])[:-3]: fp.parse(args["<input>"])}
 	elif isdir:
 		parser_result = parse_directory(args["<input>"], fp, interactive=args["--interactive"])
 
