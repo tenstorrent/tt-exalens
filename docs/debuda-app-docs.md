@@ -261,26 +261,26 @@ gpr
 ```
 Output:
 ```
-RISC-V registers for location 0,0 on device 0
-Register     BRISC    TRISC0    TRISC1    TRISC2
------------  -------  --------  --------  --------
-0 - zero
-1 - ra
-2 - sp
-3 - gp
-4 - tp
-5 - t0
-6 - t1
-7 - t2
-8 - s0 / fp
-9 - s1
-10 - a0
-11 - a1
-12 - a2
-13 - a3
-14 - a4
-15 - a5
-16 - a6
+  enable_debug()
+    __riscv_write(1, 0x80000000)
+CNTL1 <- WR   0x80000000
+      __trigger_write(1)
+CNTL0 <- WR   0x80010001
+CNTL0 <- WR   0x00000000
+  is_halted()
+  read_status()
+  __riscv_read(0)
+      __trigger_read(0)
+CNTL0 <- WR   0x80000000
+CNTL0 <- WR   0x00000000
+  __is_read_valid()
+STATUS0 -> RD == 0x40000000
+STATUS1 -> RD == 0x00000000
+  is_halted()
+  read_status()
+  __riscv_read(0)
+      __trigger_read(0)
+CNTL0 <- WR   0x80000000
 ...
 ```
 Command:
@@ -289,14 +289,27 @@ gpr ra,sp,pc
 ```
 Output:
 ```
-RISC-V registers for location 0,0 on device 0
-Register    BRISC    TRISC0    TRISC1    TRISC2
-----------  -------  --------  --------  --------
-1 - ra
-2 - sp
-32 - pc
-Soft reset  1        1         1         1
-Halted      -        -         -         -
+  enable_debug()
+    __riscv_write(1, 0x80000000)
+CNTL1 <- WR   0x80000000
+      __trigger_write(1)
+CNTL0 <- WR   0x80010001
+CNTL0 <- WR   0x00000000
+  is_halted()
+  read_status()
+  __riscv_read(0)
+      __trigger_read(0)
+CNTL0 <- WR   0x80000000
+CNTL0 <- WR   0x00000000
+  __is_read_valid()
+STATUS0 -> RD == 0x40000000
+STATUS1 -> RD == 0x00000000
+  is_halted()
+  read_status()
+  __riscv_read(0)
+      __trigger_read(0)
+CNTL0 <- WR   0x80000000
+...
 ```
 
 
@@ -344,7 +357,6 @@ run-elf build/risv-src/brisc-globals.elf
 - `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
 - `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
 - `--verbosity, -v` = **\<verbosity\>**: Choose verbosity level. [default: 4]
-- `--risc, -r` = **\<risc-id\>**: RiscV ID (0: brisc, 1-3 triscs, all). [default: all]
 
 
 
@@ -436,7 +448,7 @@ wxy 18-18 0x0 0x1234
 ```
 Output:
 ```
-18-18 0x00000000 (0) <= 0x00001234 (4660)
+18-18 (L1) : 0x00000000 (0) <= 0x00001234 (4660)
 ```
 
 
@@ -481,7 +493,7 @@ brxy 18-18 0x0 1
 ```
 Output:
 ```
-L1-0x00000000-4
+18-18 (L1) : 0x00000000 (4 bytes)
 0x00000000:  00001234
 ```
 Read 16 words from address 0
@@ -490,9 +502,9 @@ brxy 18-18 0x0 16
 ```
 Output:
 ```
-L1-0x00000000-64
-0x00000000:  00001234  80001300  4b58cc76  ecb2b023
-0x00000010:  ffc00290  ffb00f9c  00000000  000000bb
+18-18 (L1) : 0x00000000 (64 bytes)
+0x00000000:  00001234  876545b7  00b52023  0000006f
+0x00000010:  0000006f  00b52023  ff9ff06f  000000bb
 0x00000020:  00080009  002c000a  00018f80  00300000
 0x00000030:  0030000c  0030002c  11070100  00000a02
 ```
@@ -502,9 +514,9 @@ brxy 18-18 0x0 32 --format i8
 ```
 Output:
 ```
-L1-0x00000000-128
-0x00000000:  52   18   0    0    0    19   0    128  118  204  88   75   35   176  178  236
-0x00000010:  144  2    192  255  156  15   176  255  0    0    0    0    187  0    0    0
+18-18 (L1) : 0x00000000 (128 bytes)
+0x00000000:  52   18   0    0    183  69   101  135  35   32   181  0    111  0    0    0
+0x00000010:  111  0    0    0    35   32   181  0    111  240  159  255  187  0    0    0
 0x00000020:  9    0    8    0    10   0    44   0    128  143  1    0    0    0    48   0
 0x00000030:  12   0    48   0    44   0    48   0    0    1    7    17   2    10   0    0
 0x00000040:  0    0    0    0    2    0    0    0    88   0    0    0    88   0    0    0
@@ -519,25 +531,25 @@ brxy 18-18 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-1-1 0x00000000 (0) => 0x00001234 (4660) - 28834 times
+18-18 (L1) : 0x00000000 (0) => 0x00001234 (4660) - 28789 times
 Sampling for 0.15625 seconds...
-1-1 0x00000004 (4) => 0x00001234 (4660) - 28857 times
+18-18 (L1) : 0x00000004 (4) => 0x00001234 (4660) - 28892 times
 Sampling for 0.15625 seconds...
-1-1 0x00000008 (8) => 0x00001234 (4660) - 28855 times
+18-18 (L1) : 0x00000008 (8) => 0x00001234 (4660) - 28716 times
 Sampling for 0.15625 seconds...
-1-1 0x0000000c (12) => 0x00001234 (4660) - 28911 times
+18-18 (L1) : 0x0000000c (12) => 0x00001234 (4660) - 28849 times
 Sampling for 0.15625 seconds...
-1-1 0x00000010 (16) => 0x00001234 (4660) - 28891 times
+18-18 (L1) : 0x00000010 (16) => 0x00001234 (4660) - 28878 times
 Sampling for 0.15625 seconds...
-1-1 0x00000014 (20) => 0x00001234 (4660) - 28868 times
+18-18 (L1) : 0x00000014 (20) => 0x00001234 (4660) - 28735 times
 Sampling for 0.15625 seconds...
-1-1 0x00000018 (24) => 0x00001234 (4660) - 28889 times
+18-18 (L1) : 0x00000018 (24) => 0x00001234 (4660) - 28832 times
 Sampling for 0.15625 seconds...
-1-1 0x0000001c (28) => 0x00001234 (4660) - 29005 times
+18-18 (L1) : 0x0000001c (28) => 0x00001234 (4660) - 28850 times
 Sampling for 0.15625 seconds...
-1-1 0x00000020 (32) => 0x00001234 (4660) - 28841 times
+18-18 (L1) : 0x00000020 (32) => 0x00001234 (4660) - 28703 times
 Sampling for 0.15625 seconds...
-1-1 0x00000024 (36) => 0x00001234 (4660) - 28870 times
+18-18 (L1) : 0x00000024 (36) => 0x00001234 (4660) - 28840 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -546,7 +558,7 @@ brxy ch0 0x0 16
 ```
 Output:
 ```
-L1-0x00000000-64
+ch0 (DRAM) : 0x00000000 (64 bytes)
 0x00000000:  000000bb  55555555  55555555  55555555
 0x00000010:  55555555  55555555  55555555  55555555
 0x00000020:  55555555  55555555  55555555  55555555

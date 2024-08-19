@@ -38,8 +38,7 @@ command_metadata = {
     "type": "high-level", 
     "description": __doc__, 
     "context": ["buda"],
-    "common_option_names": [],
-    }
+}
 
 
 def queue_has_data(context, device_id, q: Queue):

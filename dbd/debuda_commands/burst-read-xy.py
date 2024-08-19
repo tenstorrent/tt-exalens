@@ -24,7 +24,7 @@ Examples:
   brxy 18-18 0x0 16                         # Read 16 words from address 0
   brxy 18-18 0x0 32 --format i8             # Prints 32 bytes in i8 format
   brxy 18-18 0x0 32 --format i8 --sample 5  # Sample for 5 seconds
-  brxy 0,0 @brisc.EPOCH_INFO_PTR.epoch_id   # Read the epoch_id from the EPOCH_INFO_PTR # Needs Buda context
+  brxy 0,0 @brisc.EPOCH_INFO_PTR.epoch_id   # Read the epoch_id from the EPOCH_INFO_PTR # Needs Buda context / output of a Buda run
   brxy ch0 0x0 16                           # Read 16 words from dram channel 0
 """
 
@@ -33,8 +33,7 @@ command_metadata = {
     "type": "low-level", 
     "description": __doc__,
     "context": ["limited", "buda", "metal"],
-    "common_option_names": [],
-    }
+}
 
 import time
 from docopt import docopt

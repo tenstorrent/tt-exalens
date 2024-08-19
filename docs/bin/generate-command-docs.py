@@ -305,7 +305,7 @@ def parse_source_file(input_file: os.PathLike, parser: CmdParser = CmdParser()) 
 			result['title'] += " / "
 		result['title'] += f"{cmd_metadata['short']}"
 
-	result['docs'] = parser.parse(cmd_doc, cmd_metadata.get("common_option_names"))
+	result['docs'] = parser.parse(cmd_doc, cmd_metadata.get("common_option_names", None))
 
 	return result
 

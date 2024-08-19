@@ -22,7 +22,7 @@ Description:
 Examples:
   device             # Shows op mapping for all devices
   device 0 noc0      # Shows noc0 to nocTr mapping for device 0
-  device 0 nocTr op  # Shows op mapping in nocTr coordinates for device 0 # Needs Buda context
+  device 0 nocTr op  # Shows op mapping in nocTr coordinates for device 0 # Needs Buda context / output of a Buda run
 """  # Note: Limit the above comment to 100 characters in width
 
 command_metadata = {
@@ -31,7 +31,6 @@ command_metadata = {
     "type": "high-level",
     "description": __doc__,
     "context": ["limited", "buda", "metal"],
-    "common_option_names": [],
 }
 
 from docopt import docopt

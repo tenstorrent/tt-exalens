@@ -28,8 +28,7 @@ command_metadata = {
     "type": "low-level",
     "description": __doc__,
     "context": ["limited", "buda", "metal"],
-    "common_option_names": [],
-    }
+}
 
 
 def run(cmd_text, context, ui_state: UIState = None):

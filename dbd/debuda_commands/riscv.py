@@ -50,7 +50,7 @@ command_metadata = {
     "description": __doc__,
     "context": ["limited", "buda", "metal"],
     "common_option_names": [ "--device", "--loc", "--risc", "--verbosity" ]
-    }
+}
 
 from debuda import UIState
 

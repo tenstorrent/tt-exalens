@@ -331,10 +331,35 @@ The above command will run `go -l 20-20`, changing active location to 20-20, fol
 
 ### Developing new commands (`dbd/debuda_commands/` folder)
 
-This folder contains python files that define Debuda commands. To create a new command, create a new file in this folder.
-The file name will be the command name. For example, `op-map.py` defines the `op-map` command. The file must contain
-a function called `run()` which represents the main entry point for the command. The command_metadata dictionary
-must also be defined. The metadata is used to define the command name, short name, description, applicable contexts etc. For example:
+This folder contains python files that define Debuda commands. 
+To create a new command, create a new file in this folder.
+The file name will be the command name. For example, `op-map.py` defines the `op-map` command. 
+The file must contain a function called `run()` which represents the main entry point for the command. 
+The command_metadata dictionary must also be defined. 
+The fields of this dictionary are as follwos:
+- `short` (*str*, optional): short name of the command
+- `long` (*str*, optional): long name of the command
+- `type` (*str*): type of the command:
+  - dev (*under development*), 
+  - high-level, 
+  - low-level
+- `description` (*str*): command description, usually `__doc__` variable used to utilize module docstring
+- `context` (*list[str]*): which context has access to this command:
+  - limited: needs no output, works with raw data from device, 
+  - buda: needs output of a Buda run to interpret data from device,
+  - metal: needs output of a Metal run to interpret data from device
+- `common_option_names` (*list[str]*, optional): list of names of common options that command uses:
+  - --verbosity: choose verbosity level; default: 4; available: 1-ERROR, 2-WARN, 3-DEBUG, 4-INFO, 5-VERBOSE,
+  - --test: run in test mode; default: false,
+  - --device: device ID to run the command on; default: current device,
+  - --loc: grid location for running the command; default: current location,
+  - --risc: RiscV ID (0: brisc, 1-3 trisc, all); default: all
+
+
+Note: long and short name can't be left out.
+
+
+For example:
 
 ```
 command_metadata = {

@@ -28,8 +28,7 @@ command_metadata = {
     "type": "high-level", 
     "description": __doc__,
     "context": ["buda"],
-    "common_option_names": [],
-    }
+}
 
 
 # converts data format to string
