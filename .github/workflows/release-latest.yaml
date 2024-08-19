@@ -18,6 +18,9 @@ jobs:
           submodules: recursive
           lfs: true
       - uses: ./.github/actions/install-dbd-deps
+      - name: "Update pip"
+        run: |
+          python -m pip install --upgrade pip
       - name: "Build wheel"
         run: |
           make -j$(nproc) wheel
