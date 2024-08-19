@@ -82,31 +82,36 @@ def print_access_path(device, core_loc, elf, path, print_sorted, print_as_tree, 
             for child in children:
                 process_member(child, indent+4)
         else:
-            addr, size = member["addr"], member["size"]
+            addr, size, value = member["addr"], member["size"], member["value"]
             print_name = member_short_name if print_as_tree else full_name
 
-            # Read data from device
-            da = DataArray(f"L1-0x{addr:08x}-{size}", 4)
-            num_words = (size + 3) // 4
-            for i in range(num_words):
-                data = tt_device.SERVER_IFC.pci_read32(
-                    device.id(), *core_loc.to("nocVirt"), 0, addr + 4 * i
-                )
-                da.data.append(data)
-
-            if member_short_name == "active_streams":
-                member_short_name = member_short_name
-
-            if size > 4:
-                txt = util.dump_memory(addr, da.data, 4, 32, True)
-                txt = "\n".join([f"{indent_text}  {line}" for line in txt.split("\n")])  # Add indent
-                txt = f"{indent_text}{name_color}{print_name}{util.CLR_END} =\n{value_color}{txt}{util.CLR_END}"
-                # Indent by 2
+            if addr is None:
+                if value is not None:
+                    d = value
+                    txt = f"{name_color}{member_short_name}{util.CLR_END} = {value_color}{eval(format)}{util.CLR_END}"
             else:
-                d = da.data[0]
-                d = d & ((1 << (size * 8)) - 1)
-                txt = f"{indent_text}{name_color}{print_name}{util.CLR_END} = {value_color}{eval(format)}{util.CLR_END}"
-            print(txt, end=end)
+                # Read data from device
+                da = DataArray(f"L1-0x{addr:08x}-{size}", 4)
+                num_words = (size + 3) // 4
+                for i in range(num_words):
+                    data = tt_device.SERVER_IFC.pci_read32(
+                        device.id(), *core_loc.to("nocVirt"), 0, addr + 4 * i
+                    )
+                    da.data.append(data)
+
+                if member_short_name == "active_streams":
+                    member_short_name = member_short_name
+
+                if size > 4:
+                    txt = util.dump_memory(addr, da.data, 4, 32, True)
+                    txt = "\n".join([f"{indent_text}  {line}" for line in txt.split("\n")])  # Add indent
+                    txt = f"{indent_text}{name_color}{print_name}{util.CLR_END} =\n{value_color}{txt}{util.CLR_END}"
+                    # Indent by 2
+                else:
+                    d = da.data[0]
+                    d = d & ((1 << (size * 8)) - 1)
+                    txt = f"{indent_text}{name_color}{print_name}{util.CLR_END} = {value_color}{eval(format)}{util.CLR_END}"
+                print(txt, end=end)
 
     process_member(members)
 

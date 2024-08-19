@@ -621,6 +621,7 @@ def mem_access(name_dict, access_path, mem_access_function):
                 mem_access_function(current_address, bytes_to_read),
                 current_address,
                 bytes_to_read,
+                die.value,
                 type_die,
             )
         elif path_divider == ".":

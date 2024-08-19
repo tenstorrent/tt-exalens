@@ -481,7 +481,7 @@ def main():
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
         print(f"Starting Debuda server at {args['--port']}")
-        runtime_data_yaml_filename = tt_debuda_init.find_runtime_data_yaml_filename(output_dir)
+        runtime_data_yaml_filename = tt_debuda_init.find_runtime_data_yaml_filename(output_dir) if output_dir else None
         debuda_server = tt_debuda_server.start_server(
             args["--port"],
             runtime_data_yaml_filename,

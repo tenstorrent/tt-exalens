@@ -39,6 +39,19 @@ static std::filesystem::path get_temp_working_directory() {
     return mkdtemp(temp_name.data());
 }
 
+static std::optional<std::string> read_string_from_file(const std::string &file_name) {
+    if (file_name.empty()) {
+        return std::nullopt;
+    }
+
+    std::ifstream file(file_name, std::ios::in);
+    if (!file) {
+        return std::nullopt;
+    }
+
+    return std::string(std::istreambuf_iterator<char>(file), {});
+}
+
 static std::filesystem::path temp_working_directory = get_temp_working_directory();
 
 static std::string write_temp_file(const std::string &file_name, const char *bytes, size_t length) {
@@ -97,7 +110,8 @@ static std::filesystem::path find_binary_directory() {
 }
 
 static std::string create_temp_network_descriptor_file(tt::ARCH arch, std::filesystem::path binary_directory) {
-    if (arch == tt::ARCH::GRAYSKULL || arch == tt::ARCH::WORMHOLE || arch == tt::ARCH::WORMHOLE_B0) {
+    if (arch == tt::ARCH::GRAYSKULL || arch == tt::ARCH::WORMHOLE || arch == tt::ARCH::WORMHOLE_B0 ||
+        arch == tt::ARCH::BLACKHOLE) {
         // Check if create-ethernet-map exists
         if (binary_directory.empty()) {
             binary_directory = find_binary_directory();
@@ -106,19 +120,20 @@ static std::string create_temp_network_descriptor_file(tt::ARCH arch, std::files
 
         if (std::filesystem::exists(create_ethernet_map)) {
             std::string cluster_descriptor_path = temp_working_directory / "cluster_desc.yaml";
+            std::string create_ethernet_map_log = temp_working_directory / "create_ethernet_map.log";
 
             // Try calling create-ethernet-map
             if (!std::system(
-                    (create_ethernet_map + " " + cluster_descriptor_path + " >/dev/null 2>/dev/null").c_str())) {
+                    (create_ethernet_map + " " + cluster_descriptor_path + " >" + create_ethernet_map_log + " 2>&1")
+                        .c_str())) {
                 return cluster_descriptor_path;
             }
 
             // create-ethernet-map failed, fallback to yaml generation
+            throw std::runtime_error("Call to create-ethernet-map failed.\n\nError:\n" +
+                                     read_string_from_file(create_ethernet_map_log).value_or(""));
         } else
             throw std::runtime_error("Couldn't find create-ethernet-map at " + create_ethernet_map + ".");
-
-        // TODO: If it doesn't, create file without network connections
-        throw std::runtime_error("Call to create-ethernet-map failed. Fallback not implemented...");
     }
     throw std::runtime_error("Unsupported architecture " + get_arch_str(arch) + ".");
     return {};
@@ -132,8 +147,41 @@ static std::unique_ptr<tt_SiliconDevice> create_grayskull_device(const std::stri
     dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::grayskull::MEM_SMALL_READ_WRITE_TLB;
     dynamic_tlb_config["REG_TLB"] = tt::umd::grayskull::REG_TLB;
 
-    return std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
-                                              num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
+    auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
+                                                     num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
+    tt_driver_host_address_params host_address_params = {
+        // Values copied from: third_party/umd/src/firmware/riscv/grayskull/host_mem_address_map.h
+        32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
+        0x38000000,  // host_mem::address_map::ETH_ROUTING_BUFFERS_START
+    };
+    tt_driver_eth_interface_params eth_interface_params = {
+        // Values copied from: third_party/umd/src/firmware/riscv/grayskull/eth_interface.h
+        32,       // NOC_ADDR_LOCAL_BITS
+        6,        // NOC_ADDR_NODE_ID_BITS
+        8,        // ETH_RACK_COORD_WIDTH
+        3,        // CMD_BUF_SIZE_MASK
+        1024,     // MAX_BLOCK_SIZE
+        0x11080,  // REQUEST_CMD_QUEUE_BASE
+        0x11200,  // RESPONSE_CMD_QUEUE_BASE
+        32,       // CMD_COUNTERS_SIZE_BYTES
+        16,       // REMOTE_UPDATE_PTR_SIZE_BYTES
+        64,       // CMD_DATA_BLOCK
+        1,        // CMD_WR_REQ
+        2,        // CMD_WR_ACK
+        4,        // CMD_RD_REQ
+        8,        // CMD_RD_DATA
+        4,        // CMD_BUF_SIZE
+        16,       // CMD_DATA_BLOCK_DRAM
+        0x12000,  // ETH_ROUTING_DATA_BUFFER_ADDR
+        0x110c0,  // REQUEST_ROUTING_CMD_QUEUE_BASE
+        0x11240,  // RESPONSE_ROUTING_CMD_QUEUE_BASE
+        7,        // CMD_BUF_PTR_MASK
+        0x1000,   // CMD_ORDERED
+        0x80,     // CMD_BROADCAST
+    };
+    device->set_driver_host_address_params(host_address_params);
+    device->set_driver_eth_interface_params(eth_interface_params);
+    return device;
 }
 
 static std::unique_ptr<tt_SiliconDevice> create_wormhole_device(const std::string &device_configuration_path,
@@ -144,8 +192,41 @@ static std::unique_ptr<tt_SiliconDevice> create_wormhole_device(const std::strin
     dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::wormhole::MEM_SMALL_READ_WRITE_TLB;
     dynamic_tlb_config["REG_TLB"] = tt::umd::wormhole::REG_TLB;
 
-    return std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
-                                              num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
+    auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
+                                                     num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
+    tt_driver_host_address_params host_address_params = {
+        // Values copied from: third_party/umd/src/firmware/riscv/wormhole/host_mem_address_map.h
+        32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
+        0x38000000,  // host_mem::address_map::ETH_ROUTING_BUFFERS_START
+    };
+    tt_driver_eth_interface_params eth_interface_params = {
+        // Values copied from: third_party/umd/src/firmware/riscv/wormhole/eth_interface.h
+        36,       // NOC_ADDR_LOCAL_BITS
+        6,        // NOC_ADDR_NODE_ID_BITS
+        8,        // ETH_RACK_COORD_WIDTH
+        3,        // CMD_BUF_SIZE_MASK
+        1024,     // MAX_BLOCK_SIZE
+        0x11080,  // REQUEST_CMD_QUEUE_BASE
+        0x11200,  // RESPONSE_CMD_QUEUE_BASE
+        32,       // CMD_COUNTERS_SIZE_BYTES
+        16,       // REMOTE_UPDATE_PTR_SIZE_BYTES
+        64,       // CMD_DATA_BLOCK
+        1,        // CMD_WR_REQ
+        2,        // CMD_WR_ACK
+        4,        // CMD_RD_REQ
+        8,        // CMD_RD_DATA
+        4,        // CMD_BUF_SIZE
+        16,       // CMD_DATA_BLOCK_DRAM
+        0x12000,  // ETH_ROUTING_DATA_BUFFER_ADDR
+        0x110c0,  // REQUEST_ROUTING_CMD_QUEUE_BASE
+        0x11240,  // RESPONSE_ROUTING_CMD_QUEUE_BASE
+        7,        // CMD_BUF_PTR_MASK
+        0x1000,   // CMD_ORDERED
+        0x80,     // CMD_BROADCAST
+    };
+    device->set_driver_host_address_params(host_address_params);
+    device->set_driver_eth_interface_params(eth_interface_params);
+    return device;
 }
 
 static std::unique_ptr<tt_SiliconDevice> create_blackhole_device(const std::string &device_configuration_path,
@@ -153,11 +234,44 @@ static std::unique_ptr<tt_SiliconDevice> create_blackhole_device(const std::stri
                                                                  const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
     std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
-    dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::blackhole::TLB_BASE_INDEX_2M + 1;
+    dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::blackhole::MEM_SMALL_READ_WRITE_TLB;
     dynamic_tlb_config["REG_TLB"] = tt::umd::blackhole::REG_TLB;
 
-    return std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
-                                              num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
+    auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
+                                                     num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
+    tt_driver_host_address_params host_address_params = {
+        // Values copied from: third_party/umd/src/firmware/riscv/blackhole/host_mem_address_map.h
+        32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
+        0x38000000,  // host_mem::address_map::ETH_ROUTING_BUFFERS_START
+    };
+    tt_driver_eth_interface_params eth_interface_params = {
+        // Values copied from: third_party/umd/src/firmware/riscv/blackhole/eth_interface.h
+        36,       // NOC_ADDR_LOCAL_BITS
+        6,        // NOC_ADDR_NODE_ID_BITS
+        8,        // ETH_RACK_COORD_WIDTH
+        3,        // CMD_BUF_SIZE_MASK
+        1024,     // MAX_BLOCK_SIZE
+        0x11080,  // REQUEST_CMD_QUEUE_BASE
+        0x11200,  // RESPONSE_CMD_QUEUE_BASE
+        32,       // CMD_COUNTERS_SIZE_BYTES
+        16,       // REMOTE_UPDATE_PTR_SIZE_BYTES
+        64,       // CMD_DATA_BLOCK
+        1,        // CMD_WR_REQ
+        2,        // CMD_WR_ACK
+        4,        // CMD_RD_REQ
+        8,        // CMD_RD_DATA
+        4,        // CMD_BUF_SIZE
+        16,       // CMD_DATA_BLOCK_DRAM
+        0x12000,  // ETH_ROUTING_DATA_BUFFER_ADDR
+        0x110c0,  // REQUEST_ROUTING_CMD_QUEUE_BASE
+        0x11240,  // RESPONSE_ROUTING_CMD_QUEUE_BASE
+        7,        // CMD_BUF_PTR_MASK
+        0x1000,   // CMD_ORDERED
+        0x80,     // CMD_BROADCAST
+    };
+    device->set_driver_host_address_params(host_address_params);
+    device->set_driver_eth_interface_params(eth_interface_params);
+    return device;
 }
 
 // Creates SOC descriptor files by serializing tt_SocDescroptor structure to yaml.
@@ -383,11 +497,7 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
 }
 
 std::optional<std::string> umd_with_open_implementation::get_runtime_data() {
-    std::ifstream file(runtime_yaml_path, std::ios::in);
-    if (!file) {
-        return {};
-    }
-    return std::string(std::istreambuf_iterator<char>(file), {});
+    return read_string_from_file(runtime_yaml_path);
 }
 
 std::optional<std::string> umd_with_open_implementation::get_cluster_description() { return cluster_descriptor_path; }

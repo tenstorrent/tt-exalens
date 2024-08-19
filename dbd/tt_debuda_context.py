@@ -190,6 +190,10 @@ class LimitedContext(Context):
     def elf_loaded(self, location: OnChipCoordinate, risc_id: int, elf_path: str):
         self.loaded_elfs[(location, risc_id)] = elf_path
 
+    @cached_property
+    def elf(self):
+        return ELF(self.server_ifc, {}, None)
+
     def __repr__(self):
         return f"LimitedContext"
 

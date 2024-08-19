@@ -36,6 +36,7 @@ class FAKE_DIE(object):
         self.address = addr
         self.resolved_type = resolved_type
         self.size = self.resolved_type.size
+        self.value = None
 
 
 class ELF:
@@ -52,6 +53,7 @@ class ELF:
         self.names = dict()
         self.filemap = filemap
         self._file_ifc = file_ifc
+        self.name_word_pattern = re.compile(r"[_@.a-zA-Z]+")
         for prefix, filename in filemap.items():
             if prefix not in self.names:
                 self.names[prefix] = dict()
@@ -62,7 +64,6 @@ class ELF:
             util.INFO(
                 f" ({getsizeof(self.names[prefix])} bytes loaded in {time.time() - start_time:.2f}s)"
             )
-            self.name_word_pattern = re.compile(r"[_@.a-zA-Z]+")
 
             # Inject the variables that are not in the ELF
             if extra_vars:
@@ -156,11 +157,12 @@ class ELF:
         Given an access path, return all the member paths recursively. The return value is a tree
         with the format as seen in 'ret_val' below.
         """
-        addr, size, type_die = self._get_var_addr_size_type(elf_name, access_path, mem_reader)
+        addr, size, value, type_die = self._get_var_addr_size_value_type(elf_name, access_path, mem_reader)
         ret_val = {
             "name": access_path,
             "addr": addr,
             "size": size,
+            "value": value,
             "type": type_die,  # ELF DIE (see tt_parse_elf.py)
             "children": [],
         }
@@ -179,7 +181,7 @@ class ELF:
                     )
         return ret_val
 
-    def _get_var_addr_size_type(self, elf_name, var_name, mem_reader=None):
+    def _get_var_addr_size_value_type(self, elf_name, var_name, mem_reader=None):
         """
         Given an access path to a variable (e.g. "EPOCH_INFO_PTR.epoch_id"), return the
         address, size and type_die of the variable. If the variable is not found, return None.
@@ -191,32 +193,32 @@ class ELF:
         if mem_reader is None:
             mem_reader = my_mem_reader
 
-        _, ret_addr, ret_size_bytes, type_die = tt_parse_elf.mem_access(
+        _, ret_addr, ret_size_bytes, ret_value, type_die = tt_parse_elf.mem_access(
             self.names[elf_name], var_name, mem_reader
         )
-        return ret_addr, ret_size_bytes, type_die
+        return ret_addr, ret_size_bytes, ret_value, type_die
 
     def _get_var_addr_size(self, elf_name, var_name, mem_reader=None):
         """
         Given an access path to a variable (e.g. "EPOCH_INFO_PTR.epoch_id"), return the
         address, size the variable. If the variable is not found, return None.
         """
-        ret_addr, ret_size_bytes, _ = self._get_var_addr_size_type(elf_name, var_name, mem_reader)
+        ret_addr, ret_size_bytes, _, _ = self._get_var_addr_size_value_type(elf_name, var_name, mem_reader)
         return ret_addr, ret_size_bytes
 
-    def parse_addr_size_type(self, path_str, mem_reader=None):
+    def parse_addr_size_value_type(self, path_str, mem_reader=None):
         """
         When path is given with the elf prefix
         """
         if path_str.startswith("@"):
             path_str = path_str[1:]
-        return self._get_var_addr_size_type(*self._get_prefix_and_suffix(path_str), mem_reader)
+        return self._get_var_addr_size_value_type(*self._get_prefix_and_suffix(path_str), mem_reader)
 
     def parse_addr_size(self, path_str, mem_reader=None):
         """
         When path is given with the elf prefix
         """
-        addr, size, _ = self.parse_addr_size_type(path_str, mem_reader)
+        addr, size, _, _ = self.parse_addr_size_value_type(path_str, mem_reader)
         return addr, size
 
     def read_path(self, path_str, mem_reader):
