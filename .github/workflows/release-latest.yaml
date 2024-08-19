@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - "master"
+  workflow_dispatch:
 
 run-name: "Pre-release activated by updating main."
   
