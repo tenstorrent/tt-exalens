@@ -35,7 +35,7 @@ command_metadata = {
     "type": "low-level",
 	"description": __doc__,
     "context": ["buda"],
-    }
+}
 
 
 def run(cmd_text, context, ui_state: UIState = None):

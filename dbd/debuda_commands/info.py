@@ -31,7 +31,7 @@ command_metadata = {
     "type": "high-level", 
     "description": __doc__,
     "context": ["buda"],
-    }
+}
 
 from docopt import docopt
 

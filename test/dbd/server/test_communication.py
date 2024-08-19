@@ -165,7 +165,7 @@ def main():
         global server_communication
         server_communication = debuda_server_communication("localhost", port)
     except:
-        print(f"Couldn't connect to debuda server on port '{port}'")
+        print(f"Couldn't connect to Debuda server on port '{port}'")
         sys.exit(1)
 
     # Get the function name and remove it from the arguments list

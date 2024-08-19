@@ -30,7 +30,7 @@ command_metadata = {
     "long" : "binary-corruption-check",
     "type" : "dev", # "high-level", TODO: Needs fixing (see issue #67)
     "description": __doc__,
-    "context": ["buda"]
+    "context": ["buda"],
 }
 
 import sys
@@ -251,7 +251,7 @@ def load_core_binaries(context, device, epoch_cmd_q_reader: EpochCommandQueueRea
     At the momemnt DRAM comparison is not supported.
 
     Args:
-        context: debuda context
+        context: Debuda context
         device: silicon device handle
         epoch_cmd_q_reader: command queue reader for this commaand
         worker_core_loc (OnChipCoordinate): worker core to binary corruption check for 

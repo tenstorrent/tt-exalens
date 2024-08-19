@@ -46,5 +46,5 @@ with Diagram(name="Debuda's communication flow", filename="debuda-structure", sh
 
 	device = Node("Device", **node_attr)
 
-	contexts[1] >> Edge(ltail="cluster_0", lhead="cluster_1", color="black") >> ifcs[0]
-	ifcs[0] >> Edge(color="black") >> [ifcs[1], ifcs[2]] >> Edge(color="black") >> device
+	contexts[1] >> Edge(ltail="cluster_0", lhead="cluster_1", color="black", arrowsize="0.5") << ifcs[0]
+	ifcs[0] >> Edge(color="black", arrowsize="0.5") << [ifcs[1], ifcs[2]] >> Edge(color="black", arrowsize="0.5") << device

@@ -12,7 +12,7 @@ on:
 
 jobs:
   build-debuda:
-    name: "Build debuda wheel"
+    name: "Build Debuda wheel"
     uses: ./.github/workflows/build-dbd.yaml
     with:
       os: ${{ inputs.os }}

@@ -3,7 +3,8 @@
   
 A low level hardware debugger
 
-<img src="./dbd/docs-md/tt_logo.png" alt="ttnn logo" height="100"/>
+<img src="./docs/images/tt_logo_stacked_color.png" alt="ttnn logo" height="100"/>
+
 </div>
 <br/>
 
@@ -108,15 +109,15 @@ It can be started either through Debuda application, or from PyBuda runtime.
 
 It is also possible to write all the results from Debuda session to cache, and use them to run Debuda commands again on a system that does not have Tenstorrent hardware.
 
-GDB server can be started from debuda, allowing features like stepping through code and breakpoints to be used through GDB client.
+GDB server can be started from Debuda, allowing features like stepping through code and breakpoints to be used through GDB client.
 
-For more information about how to use Debuda, refer to [tutorials](TODO).
+For more information about how to use the Debuda application, refer to [the tutorial](./docs/debuda-app-tutorial.md), or [the documentation](./docs/debuda-command-docs.md).
 
 ## Using Debuda library
 
 Debuda's functionalities can also be used through dbd library to create Python scripts that interact with Tenstorrent's hardware.
-For a quick start with dbd library, check out [the tutorial](dbd/docs-md/debuda-lib-tutorial.md).
-Full documentation is also available [here](dbd/docs-md/library-docs.md).
+For a quick start with dbd library, check out [the tutorial](docs/debuda-lib-tutorial.md).
+Full documentation is also available [here](docs/debuda-lib-docs.md).
 
 ## Development
 
@@ -144,34 +145,19 @@ Tests will build Budabackend in the background and run Buda code on the device s
 
 It is currently possible to run tests locally, by running
 
-`./test/run-all-tests.sh`
+`make test`
 
-from the project root directory. It is also possible to run C++ unit tests with
-
-`make dbdtests`,
-
-and Python unit tests with
-
-`python -m unittest discover -v -t . -s dbd/tests -p *test*.py`.
+from the project root directory.
 
 ### Updating documentation
 
-Library documentation is automatically generated through `pydoc-markdown` package.
-To update the library docs, you need to have `pydoc-markdown` installed:
+Library documentation is automatically generated from source code docstrings.
+To update the library docs, you need to run:
 
-```bash
-pip install pydoc-markdown
-```
-
-and then run
-
-```bash
-pydoc-markdown > dbd/docs-md/library-docs.md
-```
+`make docs`
 
 in the project root.
-You can change documentation config through `pydoc-markdown.yml` file.
-For more info, see [`pydoc-markdown` project page](https://github.com/NiklasRosenstein/pydoc-markdown).
+For more advanced use cases, refer to the source code of the documentation generation scripts, located in `docs/bin`.
 
 ### Static checks
 
@@ -207,11 +193,11 @@ Fix:
 git submodule update --init --recursive
 ```
 
-### Error: DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the debuda repository
+### Error: DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the Debuda repository
 
 ```
 > make test
-Error: DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the debuda repository
+Error: DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the Debuda repository
 make: *** [Makefile:182: test] Error 1
 ...
 Error: BUDA_HOME is not set. Please set BUDA_HOME to the root of the budabackend repository

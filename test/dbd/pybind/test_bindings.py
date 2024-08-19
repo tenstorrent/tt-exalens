@@ -8,7 +8,9 @@ import os
 
 from typing import Union
 
-tt_dbd_pybind_path = os.path.dirname(__file__) + "/../../../build/lib"
+tt_dbd_pybind_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../../build/lib")
+    )
 sys.path.append(tt_dbd_pybind_path)
 
 import tt_dbd_pybind as pb

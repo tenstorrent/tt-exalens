@@ -44,7 +44,7 @@ class GdbThreadListPaged:
 class GdbServer(threading.Thread):
     def __init__(self, context: Context, server: ServerSocket):
         super().__init__(daemon=True) # Spawn as deamon, so we don't block exit
-        self.context = context # debuda context
+        self.context = context # Debuda context
         self.server = server # server socket used for listening to incoming connections
         self.is_connected = False # flag that indicates if gdb client is connected
         self.is_non_stop = False # flag that indicates if we are in non-stop mode

@@ -12,7 +12,7 @@ from dbd import tt_util as util
 
 
 """
-This module provides a cache for the debuda interface. It can be used to store the results of device communications,
+This module provides a cache for the Debuda interface. It can be used to store the results of device communications,
 or load state from the previous run. This is useful when the device is not available.
 """
 
@@ -171,7 +171,7 @@ class DbdCacheReader(DbdCache):
             if key not in self.cache:
                 util.ERROR(
                     f"Cache miss for {func.__name__}.")
-                return None
+                raise util.TTException(f"Cache miss for {func.__name__}.")
 
             return self.cache[key]
 
@@ -184,7 +184,7 @@ class DbdCacheReader(DbdCache):
             if key not in self.cache:
                 util.ERROR(
                     f"Cache miss for {func.__name__}.")
-                return None
+                raise util.TTException(f"Cache miss for {func.__name__}.")
 
             return io.BytesIO(self.cache[key])
 

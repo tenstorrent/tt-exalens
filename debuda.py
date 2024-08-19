@@ -13,8 +13,8 @@ Usage:
 Options:
   -h --help                       Show this help message and exit.
   --server                        Start a Debuda server. If not specified, the port will be set to 5555.
-  --remote                        Attach to the remote debuda server. If not specified, IP defaults to localhost and port to 5555.
-  --cached                        Use the cache from previous debuda run to simulate device communication.
+  --remote                        Attach to the remote Debuda server. If not specified, IP defaults to localhost and port to 5555.
+  --cached                        Use the cache from previous Debuda run to simulate device communication.
   --port=<port>                   Port of the Debuda server. If not specified, defaults to 5555.  [default: 5555]
   --remote-address=<ip:port>      Address of the remote Debuda server, in the form of ip:port, or just :port, if ip is localhost. If not specified, defaults to localhost:5555. [default: localhost:5555]
   --netlist=<file>                Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used.
@@ -37,7 +37,7 @@ Description:
   Passing the --server flag will start a Debuda server. The server will listen on the specified port (default 5555) for incoming connections.
 
 Arguments:
-  output_dir                     Output directory of a buda run. If left blank, the most recent subdirectory of tt_build/ will be used.
+  output_dir                     Output directory of a Buda run. If left blank, the most recent subdirectory of tt_build/ will be used.
 """
 
 try:

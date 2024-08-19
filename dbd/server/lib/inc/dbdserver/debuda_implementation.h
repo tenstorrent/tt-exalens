@@ -10,7 +10,7 @@
 
 namespace tt::dbd {
 
-// Interface that should be implemented for debuda server to process requests.
+// Interface that should be implemented for Debuda server to process requests.
 class debuda_implementation {
    public:
     virtual ~debuda_implementation() = default;

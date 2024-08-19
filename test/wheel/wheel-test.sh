@@ -20,7 +20,7 @@ pip3 install --upgrade build
 pip3 install --upgrade setuptools
 pip3 install wheel
 
-echo -e "Building debuda ..."
+echo -e "Building Debuda ..."
 make clean
 make build
 

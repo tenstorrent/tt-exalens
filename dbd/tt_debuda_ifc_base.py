@@ -7,7 +7,7 @@ import io
 
 class DbdCommunicator(ABC):
     """
-    Base class for the debuda interfaces. It defines the high-level methods that must be implemented for debuda to
+    Base class for the Debuda interfaces. It defines the high-level methods that must be implemented for Debuda to
     communicate with the target device. They are later derived to communicate with server, use pybind or read from cache.
     """
     @abstractmethod
