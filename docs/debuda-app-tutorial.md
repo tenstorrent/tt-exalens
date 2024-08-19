@@ -316,3 +316,34 @@ dbd/tt_debuda_ifc_cache.py:174            wrapper                 TTException: C
 ```
 
 For more details of inner workings of Debuda refer to [the `dbd` library tutorial](./debuda-lib-tutorial.md#debuda-internal-structure-and-initialization).
+
+
+## Scripting and Development
+
+### Simple scripting with --commands CLI argument
+
+When starting Debuda, you can specify a list of commands to run. For example:
+```
+dbd/debuda.py --commands "go -l 20-20; gpr; x"
+```
+The above command will run `go -l 20-20`, changing active location to 20-20, followed by `gpr` and then exit. The output can then be redirected to a file for further processing.
+
+
+### Developing new commands (`dbd/debuda_commands/` folder)
+
+This folder contains python files that define Debuda commands. To create a new command, create a new file in this folder.
+The file name will be the command name. For example, `op-map.py` defines the `op-map` command. The file must contain
+a function called `run()` which represents the main entry point for the command. The command_metadata dictionary
+must also be defined. The metadata is used to define the command name, short name, description, applicable contexts etc. For example:
+
+```
+command_metadata = {
+    "short": "examplecmd",
+    "type": "low-level", 
+    "description": "This is a description of the command.",
+    "context": ["limited", "buda", "metal"],
+    "common_option_names": [ "--device", "--loc", "--verbosity" ],
+    }
+```
+
+<div style="page-break-after: always;"></div>
