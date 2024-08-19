@@ -24,7 +24,7 @@ command_metadata = {
     "type": "high-level",
     "description": __doc__,
     "context": ["limited"], 
-    "common_option_names": [ "--device", "--loc", "--verbosity", "--risc" ]
+    "common_option_names": [ "--device", "--loc", "--verbosity" ]
 }
 
 # TODO: Do we need this function?

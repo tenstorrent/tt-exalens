@@ -116,7 +116,7 @@ It is also possible to write all the results from Debuda session to cache, and u
 
 GDB server can be started from Debuda, allowing features like stepping through code and breakpoints to be used through GDB client.
 
-For more information about how to use Debuda, refer to [tutorials](TODO).
+For more information about how to use the Debuda application, refer to [the tutorial](./docs/debuda-app-tutorial.md), or [the documentation](./docs/debuda-command-docs.md).
 
 ## Using Debuda library
 

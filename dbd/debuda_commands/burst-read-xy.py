@@ -87,6 +87,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                 did,
                 core_loc,
                 addr,
+                core_loc_str,
                 word_count=word_count,
                 sample=sample,
                 print_format=format,
@@ -97,6 +98,7 @@ def run(cmd_text, context, ui_state: UIState = None):
             ui_state.current_device_id,
             core_loc,
             addr,
+            core_loc_str,
             word_count=word_count,
             sample=sample,
             print_format=format,
@@ -105,18 +107,19 @@ def run(cmd_text, context, ui_state: UIState = None):
 
 
 # A helper to print the result of a single PCI read
-def print_a_pci_read(x, y, addr, val, comment=""):
-    print(f"{x}-{y} 0x{addr:08x} ({addr}) => 0x{val:08x} ({val:d}) {comment}")
+def print_a_pci_read(core_loc_str, addr, val, comment=""):
+    print(f"{core_loc_str} 0x{addr:08x} ({addr}) => 0x{val:08x} ({val:d}) {comment}")
 
 
 def print_a_pci_burst_read(
-    device_id, core_loc, addr, word_count=1, sample=1, print_format="hex32", context=None
+    device_id, core_loc, addr, core_loc_str, word_count=1, sample=1, print_format="hex32", context=None
 ):
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
+    core_loc_str =  f"{core_loc_str} (L1) :" if not core_loc_str.lower().startswith("ch") else f"{core_loc_str.lower()} (DRAM) :"
 
     if sample == 0:  # No sampling, just a single read
-        da = DataArray(f"L1-0x{addr:08x}-{word_count * 4}", 4)
+        da = DataArray(f"{core_loc_str} 0x{addr:08x} ({word_count * 4} bytes)", 4)
         data = read_words_from_device(core_loc, addr, device_id, word_count, context)
         da.data = data
         if bytes_per_entry != 4:
@@ -141,4 +144,4 @@ def print_a_pci_burst_read(
                     values[val] = 0
                 values[val] += 1
             for val in values.keys():
-                print_a_pci_read(*core_loc.to('nocVirt'), addr + 4 * i, val, f"- {values[val]} times")
+                print_a_pci_read(core_loc_str, addr + 4 * i, val, f"- {values[val]} times")

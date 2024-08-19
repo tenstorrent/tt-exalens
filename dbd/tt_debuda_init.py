@@ -156,6 +156,9 @@ def find_runtime_data_yaml_filename(output_dir: str = None) -> Union[str, None]:
 	Args:	
 		output_dir(str, optional): Path to the output directory.
 	"""
+	if not output_dir:
+		return None
+	
 	runtime_data_yaml_filename = f"{output_dir}/runtime_data.yaml"
 	if not os.path.exists(runtime_data_yaml_filename):
 		raise util.TTFatalException(f"Error: Yaml file at {runtime_data_yaml_filename} does not exist.")

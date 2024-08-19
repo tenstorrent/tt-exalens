@@ -171,7 +171,7 @@ class DbdCacheReader(DbdCache):
             if key not in self.cache:
                 util.ERROR(
                     f"Cache miss for {func.__name__}.")
-                return None
+                raise util.TTException(f"Cache miss for {func.__name__}.")
 
             return self.cache[key]
 
@@ -184,7 +184,7 @@ class DbdCacheReader(DbdCache):
             if key not in self.cache:
                 util.ERROR(
                     f"Cache miss for {func.__name__}.")
-                return None
+                raise util.TTException(f"Cache miss for {func.__name__}.")
 
             return io.BytesIO(self.cache[key])
 
