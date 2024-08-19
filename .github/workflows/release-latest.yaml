@@ -1,0 +1,32 @@
+---
+name: "pre-release"
+
+on:
+  push:
+    branches:
+      - "master"
+
+run-name: "Pre-release activated by updating main."
+  
+jobs:
+  pre-release:
+    name: "Pre Release"
+    runs-on: "ubuntu-20.04"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          lfs: true
+      - uses: ./.github/actions/install-dbd-deps
+      - name: "Build wheel"
+        run: |
+          make -j$(nproc) wheel
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Development Build"
+          files: |
+            build/debuda_wheel/*.whl
+          
