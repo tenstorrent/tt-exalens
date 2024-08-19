@@ -114,7 +114,7 @@ It can be started either through Debuda application, or from PyBuda runtime.
 
 It is also possible to write all the results from Debuda session to cache, and use them to run Debuda commands again on a system that does not have Tenstorrent hardware.
 
-GDB server can be started from debuda, allowing features like stepping through code and breakpoints to be used through GDB client.
+GDB server can be started from Debuda, allowing features like stepping through code and breakpoints to be used through GDB client.
 
 For more information about how to use Debuda, refer to [tutorials](TODO).
 
@@ -198,11 +198,11 @@ Fix:
 git submodule update --init --recursive
 ```
 
-### Error: DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the debuda repository
+### Error: DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the Debuda repository
 
 ```
 > make test
-Error: DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the debuda repository
+Error: DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the Debuda repository
 make: *** [Makefile:182: test] Error 1
 ...
 Error: BUDA_HOME is not set. Please set BUDA_HOME to the root of the budabackend repository

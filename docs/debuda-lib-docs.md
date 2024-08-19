@@ -6,9 +6,9 @@
 
 ### Description
 
-GLOBAL_CONTEXT is a convenience variable to store fallback debuda context object.
+GLOBAL_CONTEXT is a convenience variable to store fallback Debuda context object.
 If a library function needs context parameter but it isn't provided, it will use
-whatever is in GLOBAL_CONTEXT variable. This does not mean that debuda context is
+whatever is in GLOBAL_CONTEXT variable. This does not mean that Debuda context is
 a singleton, as it can be explicitly provided to library functions.
 
 
@@ -23,14 +23,14 @@ init_debuda(output_dir_path=None, netlist_path=None, wanted_devices=None, cache_
 
 ### Description
 
-Initializes debuda internals by creating the device interface and debuda context.
+Initializes Debuda internals by creating the device interface and Debuda context.
 Interfacing device is local, through pybind.
 
 
 ### Args
 
-- `output_dir_path` *(str, optional)*: Path to the buda run output directory. If None, debuda will be initialized in limited mode.
-- `netlist_path` *(str, optional)*: Path to the buda netlist file.
+- `output_dir_path` *(str, optional)*: Path to the Buda run output directory. If None, Debuda will be initialized in limited mode.
+- `netlist_path` *(str, optional)*: Path to the Buda netlist file.
 - `wanted_devices` *(list, optional)*: List of device IDs we want to connect to. If None, connect to all available devices.
 - `caching_path` *(str, optional)*: Path to the cache file to write. If None, caching is disabled.
 
@@ -50,14 +50,14 @@ init_debuda_remote(ip_address=localhost, port=5555, cache_path=None) -> Context
 
 ### Description
 
-Initializes debuda internals by creating the device interface and debuda context.
-Interfacing device is done remotely through debuda client.
+Initializes Debuda internals by creating the device interface and Debuda context.
+Interfacing device is done remotely through Debuda client.
 
 
 ### Args
 
-- `ip_address` *(str)*: IP address of the debuda server. Default is 'localhost'.
-- `port` *(int)*: Port number of the debuda server interface. Default is 5555.
+- `ip_address` *(str)*: IP address of the Debuda server. Default is 'localhost'.
+- `port` *(int)*: Port number of the Debuda server interface. Default is 5555.
 - `cache_path` *(str, optional)*: Path to the cache file to write. If None, caching is disabled.
 
 
@@ -76,7 +76,7 @@ init_debuda_cached(cache_path, netlist_path=None) -> None
 
 ### Description
 
-Initializes debuda internals by reading cached session data. There is no connection to the device.
+Initializes Debuda internals by reading cached session data. There is no connection to the device.
 Only cached commands are available.
 
 
@@ -101,7 +101,7 @@ get_yamls(debuda_ifc) -> tuple[util.YamlFile, util.YamlFile]
 
 ### Description
 
-Get the runtime data and cluster description yamls through the debuda interface.
+Get the runtime data and cluster description yamls through the Debuda interface.
 
 
 
@@ -115,7 +115,7 @@ load_context(server_ifc, netlist_filepath, runtime_data_yaml, cluster_desc_yaml)
 
 ### Description
 
-Load the debuda context object with specified parameters.
+Load the Debuda context object with specified parameters.
 
 
 
@@ -129,7 +129,7 @@ set_active_context(context) -> None
 
 ### Description
 
-Set the active debuda context object.
+Set the active Debuda context object.
 
 
 ### Args
@@ -153,7 +153,7 @@ find_runtime_data_yaml_filename(output_dir=None) -> str | None
 
 ### Description
 
-Find the runtime data yaml file in the output directory. If directory is not specified, try to find the most recent buda output directory.
+Find the runtime data yaml file in the output directory. If directory is not specified, try to find the most recent Buda output directory.
 
 
 ### Args
@@ -326,7 +326,7 @@ check_context(context=None) -> Context
 ### Description
 
 Function to initialize context if not provided. By default, it starts a local
-debuda session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
+Debuda session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
 that the context can be reused in calls to other functions.
 
 

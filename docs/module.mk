@@ -20,8 +20,8 @@ docs: build
 	docs/bin/generate-command-docs.py $(DEBUDA_HOME)/dbd/debuda_commands $(DOC_DIR)/debuda-command-docs.md
 	$(PRINT_OK)
 
-.PHONY: clean_docs
-clean_docs:
+.PHONY: clean-docs
+clean-docs:
 	@echo "${YELLOW}Cleaning documentation${NC}"
 	rm -rf $(DOC_DIR)/debuda-lib-docs.md
 	rm -rf $(DOC_DIR)/debuda-command-docs.md

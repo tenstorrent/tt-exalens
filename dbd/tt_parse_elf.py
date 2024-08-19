@@ -788,7 +788,7 @@ if __name__ == "__main__":
 
 
 # TODO:
-# 2. Integration into debuda:
+# 2. Integration into Debuda:
 #   - Fuzzy search for autocomplete
 #   - Real memory reader function
 #   - Test

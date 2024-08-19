@@ -232,7 +232,7 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, List[U
 
 def check_context(context: Context = None) -> Context:
 	""" Function to initialize context if not provided. By default, it starts a local
-	debuda session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
+	Debuda session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
 	that the context can be reused in calls to other functions.
 	"""
 	if context is not None:

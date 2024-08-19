@@ -17,7 +17,7 @@ Options:
   -i, --interactive  Run in interactive mode. Pause after parsing each file.
 
 Description:
-  This is a script for automatically generating markdown documentation for debuda commands
+  This is a script for automatically generating markdown documentation for Debuda commands
   using their docopt strings. The script can be run on a single command file or a directory.
   If examples are provided in a command's description, the script will run each example and capture its output to add to the documentation.
 
@@ -57,7 +57,7 @@ from doc_utils import SectionPPrinter, INFO, WARNING, ERROR
 
 class CmdParser:
 	def __init__(self, valid_sections: list = None, section_parsers: dict = None):
-		""" The parser class for debuda command docstrings.
+		""" The parser class for Debuda command docstrings.
 
 		Args:
 		- valid_sections (list): List of valid section names in the docstring.
@@ -197,7 +197,7 @@ class CmdParser:
 			if not parts[0]:
 				continue
 			if len(parts) > 2 and "needs buda" in parts[2].lower():
-				# This example needs buda, so we skip it for now
+				# This example needs Buda, so we skip it for now
 				continue
 
 			command_dict = {}
@@ -234,7 +234,7 @@ class CmdParser:
 
 class CmdPPrinter(SectionPPrinter):
 	def __init__(self):
-		""" The pretty printer class for debuda command documentation.
+		""" The pretty printer class for Debuda command documentation.
 		"""
 		super().__init__()
 		self.section_printers = {

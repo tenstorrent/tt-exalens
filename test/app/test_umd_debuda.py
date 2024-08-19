@@ -96,7 +96,7 @@ class DbdTestRunner:
             if len(rlist) == 0:
                 if not self.is_running:
                     return None
-                raise Exception(f"Hit timeout ({timeoutSeconds}s) while waiting for output from debuda")
+                raise Exception(f"Hit timeout ({timeoutSeconds}s) while waiting for output from Debuda")
         line = rlist[0].readline()
         if line.endswith('\n'):
             line = line[:-1]

@@ -9,7 +9,7 @@ __requires__ = ['pip >= 24.0']
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 
-# debuda files to be copied to build directory
+# Debuda files to be copied to build directory
 dbd_folder_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'dbd')
 debuda_home = os.path.dirname(dbd_folder_path)
 debuda_files = {
@@ -113,7 +113,7 @@ class MyBuild(build_ext):
                         print(f"Stripping symbols from {path}/{f}")
                         subprocess.check_call(["strip", path + "/" + f])
 
-# Fake debuda extension
+# Fake Debuda extension
 debuda_fake_extension = TTExtension("debuda.fake_extension")
 
 with open("README.md", "r") as f:

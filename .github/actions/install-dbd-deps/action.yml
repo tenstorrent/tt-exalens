@@ -1,5 +1,5 @@
-name: "Install debuda dependencies"
-description: "Install debuda dependencies & set up the environment on github runners."
+name: "Install Debuda dependencies"
+description: "Install Debuda dependencies & set up the environment on github runners."
 
 runs:
   using: "composite"
@@ -11,7 +11,7 @@ runs:
           echo "Runner error, os not supported."
           echo $(lsb_release -d)
         fi
-    - name: Install debuda dependencies
+    - name: Install Debuda dependencies
       shell: bash
       run: |
         DEPENDENCIES=$(jq -r --arg os "all" '.[$os] | .[]' $GITHUB_ACTION_PATH/dependencies.json)

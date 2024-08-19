@@ -11,9 +11,9 @@ from dbd import tt_util as util
 from dbd.tt_debuda_context import Context, BudaContext, LimitedContext
 
 """
-GLOBAL_CONTEXT is a convenience variable to store fallback debuda context object.
+GLOBAL_CONTEXT is a convenience variable to store fallback Debuda context object.
 If a library function needs context parameter but it isn't provided, it will use
-whatever is in GLOBAL_CONTEXT variable. This does not mean that debuda context is
+whatever is in GLOBAL_CONTEXT variable. This does not mean that Debuda context is
 a singleton, as it can be explicitly provided to library functions.
 """
 GLOBAL_CONTEXT: Context = None
@@ -25,12 +25,12 @@ def init_debuda(
 		wanted_devices: list = None,
 		cache_path: str = None,
 ) -> Context:
-	""" Initializes debuda internals by creating the device interface and debuda context.
+	""" Initializes Debuda internals by creating the device interface and Debuda context.
 	Interfacing device is local, through pybind.
 
 	Args:
-		output_dir_path (str, optional): Path to the buda run output directory. If None, debuda will be initialized in limited mode.
-		netlist_path (str, optional): Path to the buda netlist file.
+		output_dir_path (str, optional): Path to the Buda run output directory. If None, Debuda will be initialized in limited mode.
+		netlist_path (str, optional): Path to the Buda netlist file.
 		wanted_devices (list, optional): List of device IDs we want to connect to. If None, connect to all available devices.
 		caching_path (str, optional): Path to the cache file to write. If None, caching is disabled.
 		
@@ -54,12 +54,12 @@ def init_debuda_remote(
 		port: int = 5555,
 		cache_path: str = None,
 ) -> Context:
-	""" Initializes debuda internals by creating the device interface and debuda context.
-	Interfacing device is done remotely through debuda client.
+	""" Initializes Debuda internals by creating the device interface and Debuda context.
+	Interfacing device is done remotely through Debuda client.
 
 	Args:
-		ip_address (str): IP address of the debuda server. Default is 'localhost'.
-		port (int): Port number of the debuda server interface. Default is 5555.
+		ip_address (str): IP address of the Debuda server. Default is 'localhost'.
+		port (int): Port number of the Debuda server interface. Default is 5555.
 		cache_path (str, optional): Path to the cache file to write. If None, caching is disabled.
 		
 	Returns:
@@ -79,7 +79,7 @@ def init_debuda_cached(
 		cache_path: str,
 		netlist_path: str = None,
 ):
-	"""Initializes debuda internals by reading cached session data. There is no connection to the device.
+	"""Initializes Debuda internals by reading cached session data. There is no connection to the device.
 	Only cached commands are available.
 
 	Args:
@@ -99,7 +99,7 @@ def init_debuda_cached(
 
 
 def get_yamls(debuda_ifc: tt_debuda_ifc.DbdCommunicator) -> "tuple[util.YamlFile, util.YamlFile]":
-	""" Get the runtime data and cluster description yamls through the debuda interface.
+	""" Get the runtime data and cluster description yamls through the Debuda interface.
 	"""
 	try:
 		runtime_data = debuda_ifc.get_runtime_data()
@@ -123,7 +123,7 @@ def load_context(
 		runtime_data_yaml: util.YamlFile, 
 		cluster_desc_yaml: util.YamlFile
 ) -> Context:
-    """ Load the debuda context object with specified parameters. """
+    """ Load the Debuda context object with specified parameters. """
     run_dirpath = server_ifc.get_run_dirpath()
     if run_dirpath is None or runtime_data_yaml is None:
         context = LimitedContext(server_ifc, cluster_desc_yaml)
@@ -138,7 +138,7 @@ def load_context(
 
 def set_active_context(context: Context) -> None:
 	""" 
-	Set the active debuda context object. 
+	Set the active Debuda context object. 
 	
 	Args:
 		context (Context): Debuda context object.
@@ -151,7 +151,7 @@ def set_active_context(context: Context) -> None:
 
 
 def find_runtime_data_yaml_filename(output_dir: str = None) -> Union[str, None]:
-	""" Find the runtime data yaml file in the output directory. If directory is not specified, try to find the most recent buda output directory.
+	""" Find the runtime data yaml file in the output directory. If directory is not specified, try to find the most recent Buda output directory.
 
 	Args:	
 		output_dir(str, optional): Path to the output directory.

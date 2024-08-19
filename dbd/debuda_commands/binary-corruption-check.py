@@ -252,7 +252,7 @@ def load_core_binaries(context, device, epoch_cmd_q_reader: EpochCommandQueueRea
     At the momemnt DRAM comparison is not supported.
 
     Args:
-        context: debuda context
+        context: Debuda context
         device: silicon device handle
         epoch_cmd_q_reader: command queue reader for this commaand
         worker_core_loc (OnChipCoordinate): worker core to binary corruption check for 

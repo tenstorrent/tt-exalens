@@ -19,7 +19,7 @@ Options:
   -i, --interactive  Run in interactive mode. Pause after parsing each file.
 
 Description:
-  This is a script for automatically generating markdown documentation for debuda library files
+  This is a script for automatically generating markdown documentation for Debuda library files
   using docstrings of their functions and variables. The script can be run on a single command file or a directory.
 
 Note:

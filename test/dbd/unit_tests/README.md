@@ -2,7 +2,7 @@
 
 Debuda tests run on silicon.
 
-To run debuda tests locally, run:
+To run Debuda tests locally, run:
 ```
 make test
 ```
