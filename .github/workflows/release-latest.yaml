@@ -33,7 +33,10 @@ jobs:
           pip3 install --upgrade build
           pip3 install --upgrade setuptools
           pip3 install wheel
-          pip3 install ${{ matrix.build-info.dependencies }}
+      - name: "Install other dependencies"
+        run:
+          sudo apt update
+          sudo apt install ${{ matrix.build-info.dependencies }}
       - name: "Build wheel"
         run: |
           make -j$(nproc) wheel
