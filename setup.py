@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 import subprocess
+from datetime import datetime
 
 __requires__ = ['pip >= 24.0']
 
@@ -10,7 +11,7 @@ from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 
 # Debuda files to be copied to build directory
-dbd_folder_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'dbd')
+dbd_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dbd')
 debuda_home = os.path.dirname(dbd_folder_path)
 debuda_files = {
     "debuda": {
@@ -124,7 +125,7 @@ with open(f"{dbd_folder_path}/requirements.txt", "r") as f:
     requirements = [r for r in f.read().splitlines() if not r.startswith("-r")]
 
 short_hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
-date = subprocess.check_output(['git', 'show', '-s', '--format=%cd', "--date=format:%y%m%d", 'HEAD']).decode('ascii').strip()
+date = datetime.today().strftime('%y%m%d')
 
 version = "0.1." + date + "+dev." + short_hash
 
