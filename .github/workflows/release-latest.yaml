@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - "master"
-      - "dcvijetic/dbd-release"
 
 run-name: "Pre-release activated by updating main."
   
