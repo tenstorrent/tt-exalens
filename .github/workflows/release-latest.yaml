@@ -14,7 +14,7 @@ jobs:
       matrix:
         build-info: [
           {py-version: "3.8", dependencies: "python38-devel"},
-          {py-version: "3.10", dependencies: "python310-devel"},
+          {py-version: "3.10", dependencies: "python3.10-dev"},
         ]
     name: "Pre Release"
     runs-on: ubuntu-22.04
