@@ -148,11 +148,11 @@ clean: clean_umd_device dbd/riscv/clean
 
 .PHONY: wheel_develop
 wheel_develop:
-	python3 wheel/setup.py bdist_wheel -d build/debuda_wheel
+	python3 setup.py bdist_wheel -d build/debuda_wheel
 
 .PHONY: wheel
 wheel:
-	STRIP_SYMBOLS=1 python3 wheel/setup.py bdist_wheel -d build/debuda_wheel
+	STRIP_SYMBOLS=1 python3 setup.py bdist_wheel -d build/debuda_wheel
 
 install: build
 ifeq ($(PREFIX), $(OUT))

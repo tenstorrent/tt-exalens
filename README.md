@@ -91,7 +91,10 @@ in the `DEBUDA_HOME` directory.
 
 ## Building and Installing Wheel
 
-Wheel can be installed either from the [GitHub release](https://github.com/tenstorrent/tt-debuda/releases) or built from source.
+Wheel can be installed either from the [GitHub release](https://github.com/tenstorrent/tt-debuda/releases), built from source, or installed directly from GitHub with
+'''
+pip install git+https://github.com/tenstorrent/tt-debuda.git
+'''
 
 To build Debuda wheel from source, simply run `make wheel` in the root directory. The installation is then done by running `pip install build/debuda_wheel/<debuda_wheel>.whl`, where `<debuda_wheel>` is an automatically generated name unique for each build.
 
