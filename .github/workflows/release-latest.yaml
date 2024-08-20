@@ -13,21 +13,17 @@ jobs:
     strategy:
       matrix:
         build-info: [
-          {py-version: "3.8", dependencies: "python3-dev libpython3-dev"},
-          {py-version: "3.10", dependencies: "python3.10-dev"},
+          {py-version: "3.8", os: "ubuntu-20.04"},
+          {py-version: "3.10", os: "ubuntu-22.04"},
         ]
     name: "Pre Release"
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.build-info.os }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
           lfs: true
       - uses: ./.github/actions/install-dbd-deps
-      - name: "Install other dependencies"
-        run: |
-          sudo apt update
-          sudo apt install ${{ matrix.build-info.dependencies }}
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.build-info.py-version }}
