@@ -22,6 +22,10 @@ class TestDebugging(unittest.TestCase):
 			for rdbg in device.debuggable_cores:
 				self.assertTrue(rdbg.is_in_reset())
 
+	def is_blackhole(self):
+		"""Check if the device is blackhole."""
+		return self.context.devices[0]._arch == "blackhole"
+
 	def test_read_write_gpr(self):
 		"""Write then read value in all registers (except zero and pc)."""
 		core_loc = "0,0"
@@ -248,7 +252,10 @@ class TestDebugging(unittest.TestCase):
 		self.assertEqual(ret[0], 0x12345678)
 		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
 		self.assertTrue(rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
-		self.assertEqual(rdbg.read_gpr(pc_register_index), 4, "PC should be 4.")
+		if self.is_blackhole():
+			self.assertEqual(rdbg.read_gpr(pc_register_index), 0, "PC should be 0.")
+		else:
+			self.assertEqual(rdbg.read_gpr(pc_register_index), 4, "PC should be 4.")
 
 		# Stop risc with reset
 		rdbg.set_reset_signal(True)
@@ -291,6 +298,10 @@ class TestDebugging(unittest.TestCase):
 
 		# Take risc out of reset
 		rdbg.set_reset_signal(False)
+
+		# On blackhole, we need to step one more time...
+		if self.is_blackhole():
+			rdbg.step()
 
 		# Verify value at address
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
@@ -707,7 +718,10 @@ class TestDebugging(unittest.TestCase):
 		self.assertEqual(ret[0], 0x12345678)
 		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
 		self.assertTrue(rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
-		self.assertEqual(rdbg.read_gpr(pc_register_index), break_addr + 4, f"PC should be {break_addr + 4}.")
+		if self.is_blackhole():
+			self.assertEqual(rdbg.read_gpr(pc_register_index), break_addr, f"PC should be {break_addr}.")
+		else:
+			self.assertEqual(rdbg.read_gpr(pc_register_index), break_addr + 4, f"PC should be {break_addr + 4}.")
 
 		# Write new code for brisc core at address 0
 		# C++:
@@ -799,7 +813,10 @@ class TestDebugging(unittest.TestCase):
 		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
 		self.assertTrue(rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
 		self.assertFalse(rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
-		self.assertEqual(rdbg.read_gpr(pc_register_index), 4, "PC should be 4.")
+		if self.is_blackhole():
+			self.assertEqual(rdbg.read_gpr(pc_register_index), 0, "PC should be 0.")
+		else:
+			self.assertEqual(rdbg.read_gpr(pc_register_index), 4, "PC should be 4.")
 
 		# Set watchpoint on address 12 and 32
 		rdbg.set_watchpoint_on_pc_address(0, 12)
