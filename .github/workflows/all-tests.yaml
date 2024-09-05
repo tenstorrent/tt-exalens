@@ -47,6 +47,7 @@ jobs:
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-server-standalone
       - uses: ./.github/actions/install-dbd-deps
+      - uses: ./.github/actions/install-test-deps
       - uses: ./.github/actions/setup-python-venv
         with:
           python-version: '3.8'
@@ -99,9 +100,8 @@ jobs:
         run: |
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-server-standalone
-      - name: List folder
-        run: ls -l
       - uses: ./.github/actions/install-dbd-deps
+      - uses: ./.github/actions/install-test-deps
       - uses: ./.github/actions/setup-python-venv
         with:
           python-version: '3.8'

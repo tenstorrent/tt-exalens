@@ -6,8 +6,6 @@
 		"libboost-all-dev",
 		"libhwloc-dev",
 		"libzmq3-dev",
-		"libgtest-dev",
-		"libgmock-dev",
 		"xxd"
 	]
 }
