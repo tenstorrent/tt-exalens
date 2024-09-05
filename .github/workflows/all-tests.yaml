@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         runner-info: [
-          #{arch: "grayskull", runs-on: ["self-hosted", "e150"]},
+          {arch: "grayskull", runs-on: ["self-hosted", "e150"]},
           {arch: "wormhole_b0", runs-on: ["self-hosted", "n150"]},
         ]
     env:
@@ -76,7 +76,7 @@ jobs:
     strategy:
       matrix:
         runner-info: [
-          #{arch: "grayskull", runs-on: ["self-hosted", "e150"]},
+          {arch: "grayskull", runs-on: ["self-hosted", "e150"]},
           {arch: "wormhole_b0", runs-on: ["self-hosted", "n150"]},
         ]
     env:
