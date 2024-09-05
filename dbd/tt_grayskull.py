@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from dbd import tt_util as util, os
+from dbd import tt_util as util
 from dbd import tt_device
 
 
