@@ -246,6 +246,8 @@ class TestDebugging(unittest.TestCase):
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		# Value should not be changed and should stay the same since core is in halt
 		self.assertEqual(ret[0], 0x12345678)
+		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
+		self.assertTrue(rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
 		self.assertEqual(rdbg.read_gpr(pc_register_index), 4, "PC should be 4.")
 
 		# Stop risc with reset
@@ -544,6 +546,7 @@ class TestDebugging(unittest.TestCase):
 		rdbg.halt()
 
 		# Value should not be changed and should stay the same since core is in halt
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0x12345678)
 		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
 		self.assertEqual(rdbg.read_gpr(pc_register_index), 0, "PC should be 0.")
@@ -620,6 +623,7 @@ class TestDebugging(unittest.TestCase):
 		rdbg.halt()
 
 		# Value should not be changed and should stay the same since core is in halt
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0x12345678)
 		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
 		self.assertEqual(rdbg.read_gpr(pc_register_index), 0, "PC should be 0.")
@@ -647,6 +651,86 @@ class TestDebugging(unittest.TestCase):
 		# Halt to verify PC
 		rdbg.halt()
 		self.assertTrue(rdbg.read_status().is_halted, "Core should not be halted.")
+		self.assertEqual(rdbg.read_gpr(pc_register_index), 12, "PC should be 12.")
+
+		# Verify value at address
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		# Value should be changed
+		self.assertEqual(ret[0], 0x87654000)
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
+
+	def test_invalidate_cache_with_nops_and_long_jump(self):
+		"""Test running 16 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+		core_loc = "0,0"
+		break_addr = 0x50
+		jump_addr = 0x2000
+		addr = 0x10000
+
+		loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
+		rloc = RiscLoc(loc, 0, 0)
+		rdbg = RiscDebug(rloc, self.context.server_ifc)
+		pc_register_index = get_register_index("pc")
+
+		# Stop risc with reset
+		rdbg.set_reset_signal(True)
+
+		# Write our data to memory
+		lib.write_words_to_device(core_loc, addr, 0x12345678, context=self.context)
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		self.assertEqual(ret[0], 0x12345678)
+
+		# Write endless loop for brisc core at address 0
+		# C++:
+		#  start:
+		#   asm volatile ("nop");
+		#   ...
+		#   asm volatile ("nop");
+		#  break_addr:
+		#   asm volatile ("ebreak");
+		#   asm volatile ("nop");
+		#   ...
+		#   asm volatile ("nop");
+		#  jump_addr:
+		#   goto start;
+		for i in range(jump_addr//4):
+			lib.write_words_to_device(core_loc, i * 4, 0x00000013, context=self.context)
+		lib.write_words_to_device(core_loc, break_addr, 0x00100073, context=self.context)
+		lib.write_words_to_device(core_loc, jump_addr, RiscLoader.get_jump_to_offset_instruction(-jump_addr), context=self.context)
+
+		# Take risc out of reset
+		rdbg.set_reset_signal(False)
+
+		# Value should not be changed and should stay the same since core is in halt
+		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+		self.assertEqual(ret[0], 0x12345678)
+		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
+		self.assertTrue(rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+		self.assertEqual(rdbg.read_gpr(pc_register_index), break_addr + 4, f"PC should be {break_addr + 4}.")
+
+		# Write new code for brisc core at address 0
+		# C++:
+		#   int* a = (int*)0x10000;
+		#   *a = 0x87654000;
+		#   while (true);
+
+		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
+		lib.write_words_to_device(core_loc, 0, 0x00010537, context=self.context)
+		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
+		lib.write_words_to_device(core_loc, 4, 0x876545B7, context=self.context)
+		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
+		lib.write_words_to_device(core_loc, 8, 0x00B52023, context=self.context)
+		# Infinite loop (jal 0)
+		lib.write_words_to_device(core_loc, 12, RiscLoader.get_jump_to_offset_instruction(0), context=self.context)
+
+		# Continue execution
+		rdbg.cont(False)
+		self.assertFalse(rdbg.read_status().is_halted, "Core should not be halted.")
+
+		# Halt to verify PC
+		rdbg.halt()
+		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
 		self.assertEqual(rdbg.read_gpr(pc_register_index), 12, "PC should be 12.")
 
 		# Verify value at address
