@@ -260,7 +260,7 @@ class GrayskullDevice(tt_device.Device):
 
         return reg
 
-    def get_tensix_configuration_base(self) -> int:
+    def get_tensix_configuration_register_base(self) -> int:
         return 0xFFEF0000
 
     __configuration_register_map = {
