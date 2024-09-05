@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from dbd import tt_util as util, os
+from dbd import tt_util as util
 from dbd import tt_device
 
 
@@ -260,7 +260,7 @@ class GrayskullDevice(tt_device.Device):
 
         return reg
 
-    def get_tensix_configuration_base(self) -> int:
+    def get_tensix_configuration_register_base(self) -> int:
         return 0xFFEF0000
 
     __configuration_register_map = {
