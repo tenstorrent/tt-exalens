@@ -13,6 +13,20 @@ from setuptools.command.build_ext import build_ext
 # Debuda files to be copied to build directory
 dbd_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dbd')
 debuda_home = os.path.dirname(dbd_folder_path)
+
+debuda_ignored_files = ["tt_blackhole.py"]
+
+def get_debuda_py_files(file_dir: os.PathLike = f"{debuda_home}/dbd", ignorelist: list = debuda_ignored_files) -> list:
+    """A function to get the list of files in the debuda lib directory.
+    Ignore the files in the ignorelist."""
+
+    files = os.listdir(file_dir)
+    files = [f for f in files if f.endswith(".py")]
+    files = [f for f in files if f not in ignorelist]
+
+    return files
+
+
 debuda_files = {
     "debuda": {
         "path": "",
@@ -21,41 +35,12 @@ debuda_files = {
     },
     "debuda_lib": {
         "path": "dbd",
-        "files": [
-            "__init__.py",
-            "tt_buffer.py",
-            "tt_commands.py",
-            "tt_coordinate.py",
-            "tt_debuda_context.py",
-            "tt_debuda_ifc.py",
-            "tt_debuda_ifc_base.py",
-            "tt_debuda_ifc_cache.py",
-            "tt_debuda_init.py",
-            "tt_debuda_lib.py",
-            "tt_debuda_server.py",
-            "tt_debug_risc.py",
-            "tt_device.py",
-            "tt_firmware.py",
-            "tt_gdb_communication.py",
-            "tt_gdb_data.py",
-            "tt_gdb_file_server.py",
-            "tt_gdb_server.py",
-            "tt_graph.py",
-            "tt_grayskull.py",
-            "tt_netlist.py",
-            "tt_object.py",
-            "tt_parse_elf.py",
-            "tt_pipe.py",
-            "tt_stream.py",
-            "tt_temporal_epoch.py",
-            "tt_util.py",
-            "tt_wormhole.py"
-        ],
+        "files": get_debuda_py_files(),
         "output": "dbd"
     },
     "debuda_commands": {
         "path": "dbd/debuda_commands",
-        "files": "*",
+        "files": get_debuda_py_files(f"{debuda_home}/dbd/debuda_commands", ignorelist=[]),
         "output": "dbd/debuda_commands"
     },
     "libs": {
