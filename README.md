@@ -25,7 +25,6 @@ git submodule update --init --recursive
 ```
 
 so that all the submodules are properly loaded.
-It is also a good practice to set `DEBUDA_HOME` environment variable to point to the cloned repository root.
 
 ### Requirements
 
@@ -86,7 +85,13 @@ To be sure that the build was succesful, try running
 python debuda.py
 ```
 
-in the `DEBUDA_HOME` directory.
+or
+
+```bash
+./debuda.py
+```
+
+in the root directory.
 
 
 ## Building and Installing Wheel
@@ -194,22 +199,6 @@ make: *** No rule to make target 'third_party/umd/device/module.mk'.  Stop.
 Fix:
 ```
 git submodule update --init --recursive
-```
-
-### Error: DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the Debuda repository
-
-```
-> make test
-Error: DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the Debuda repository
-make: *** [Makefile:182: test] Error 1
-...
-Error: BUDA_HOME is not set. Please set BUDA_HOME to the root of the budabackend repository
-make: *** [Makefile:182: test] Error 1
-```
-Fix:
-```
-export DEBUDA_HOME=`pwd`
-export BUDA_HOME=~/work/bbe
 ```
 
 ### fatal error: zmq.hpp: No such file or directory

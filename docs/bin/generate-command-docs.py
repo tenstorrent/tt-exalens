@@ -30,13 +30,13 @@ Note:
   - Examples should be in the format: command # description [ # context ], where context part is in the form of "Needs <context> context".
     If the command needs Buda context, it is not run, as Buda output folder is needed for it.
 """
-import sys, re, os, importlib
+import sys, re, os, importlib.util
 from docopt import docopt
 
 sys.path.insert(0, 
 				os.path.abspath(
 					os.path.join(
-						os.environ['DEBUDA_HOME']
+						os.path.dirname(__file__), '..', '..'
 						)
 					)
 				)

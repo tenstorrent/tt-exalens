@@ -89,14 +89,10 @@ class MyBuild(build_ext):
         self._copy_files(build_lib)
 
     def _call_build(self):
-        additional_env_variables = {
-            "DEBUDA_HOME": debuda_home,
-        }
         env = os.environ.copy()
-        env.update(additional_env_variables)
         nproc = os.cpu_count()
         print(f"make -j{nproc} build")
-        subprocess.check_call([f"cd $DEBUDA_HOME && make -j{nproc} build"], env=env, shell=True)
+        subprocess.check_call([f"cd {debuda_home} && make -j{nproc} build"], env=env, shell=True)
 
     def _copy_files(self, target_path):
         strip_symbols = os.environ.get("STRIP_SYMBOLS", "0") == "1"

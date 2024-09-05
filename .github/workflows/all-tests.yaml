@@ -28,7 +28,6 @@ jobs:
     env:
       ARCH_NAME: ${{ matrix.runner-info.arch }}
       CONFIG: ci
-      DEBUDA_HOME: ${{ github.workspace }}
       # So we can get all the makefile output we want
       VERBOSE: 5
     runs-on: ${{ matrix.runner-info.runs-on }}
@@ -80,7 +79,6 @@ jobs:
           {arch: "wormhole_b0", runs-on: ["self-hosted", "n150"]},
         ]
     env:
-      DEBUDA_HOME: ${{ github.workspace }}
       ARCH_NAME: ${{ matrix.runner-info.arch }}
       CONFIG: ci
       # So we can get all the makefile output we want
