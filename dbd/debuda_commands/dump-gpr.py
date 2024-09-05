@@ -23,7 +23,8 @@ command_metadata = {
 	"type": "low-level",
 	"description": __doc__,
     "context": ["limited", "buda", "metal"],
-    }
+    "common_option_names": [ "--device", "--loc", "--verbosity", "--risc" ],
+}
 
 import tabulate
 
@@ -126,7 +127,7 @@ def get_register_data(device, server_ifc, loc, args):
 
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = tt_commands.tt_docopt(command_metadata["description"], argv=cmd_text.split()[1:],
-                               common_option_names=[ "--verbosity", "--device", "--loc", "--risc" ])
+                               common_option_names=command_metadata["common_option_names"])
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):

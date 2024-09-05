@@ -22,7 +22,7 @@ command_metadata = {
     "type": "high-level", 
     "description": __doc__,
     "context": ["buda"],
-    }
+}
 
 
 def run(cmd_text, context, ui_state=None):

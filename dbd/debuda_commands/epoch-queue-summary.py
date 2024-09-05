@@ -25,7 +25,7 @@ command_metadata = {
 	"short": "eq",
 	"description": __doc__,
     "context": ["buda"],    
-    }
+}
 
 
 # Prints epoch queues

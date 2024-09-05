@@ -20,7 +20,7 @@ There are two main modules intended to be used as access point to Debuda functio
 The former exposes functionalities like reading from and writing to device memory, or running .elf files and the latter is used to initialize Debuda and set up connection to the device.
 
 The structure of the debugger is layered, allowing Debuda to acces the device in multiple manners with various ways to provide it context about what is happening on the chip.
-The are three layers a typical API call passes through when debuda command is invoked: context, device interface and caching mechanism.
+The are three layers a typical API call passes through when Debuda command is invoked: context, device interface and caching mechanism.
 
 <div align="center">
 <img src="images/debuda-structure.png" alt="ttnn logo" width="80%"/>

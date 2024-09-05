@@ -198,7 +198,7 @@ def main():
         # connect_to_server won't work here because it prints to stdout
         server = debuda_client("localhost", port)
     except:
-        print(f"Couldn't connect to debuda server on port '{port}'")
+        print(f"Couldn't connect to Debuda server on port '{port}'")
         sys.exit(1)
 
     # Get the function name and remove it from the arguments list

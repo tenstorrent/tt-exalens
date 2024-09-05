@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-// The main purpose of this file is to create a Debuda-server (see loader/debuda_server.cpp) so that Debuda can connect
+// The main purpose of this file is to create a debuda-server (see loader/debuda_server.cpp) so that Debuda can connect
 // to it.
 #include <ctime>
 #include <experimental/filesystem>
