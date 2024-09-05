@@ -15,16 +15,16 @@ class TestDebugging(unittest.TestCase):
 		self.assertIsNotNone(self.context)
 		self.assertIsInstance(self.context, Context)
 
+	def is_blackhole(self):
+		"""Check if the device is blackhole."""
+		return self.context.devices[0]._arch == "blackhole"
+
 	def test_reset_all_functional_workers(self):
 		"""Reset all functional workers."""
 		for device in self.context.devices.values():
 			device.all_riscs_assert_soft_reset()
 			for rdbg in device.debuggable_cores:
 				self.assertTrue(rdbg.is_in_reset())
-
-	def is_blackhole(self):
-		"""Check if the device is blackhole."""
-		return self.context.devices[0]._arch == "blackhole"
 
 	def test_read_write_gpr(self):
 		"""Write then read value in all registers (except zero and pc)."""
@@ -253,6 +253,7 @@ class TestDebugging(unittest.TestCase):
 		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
 		self.assertTrue(rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
 		if self.is_blackhole():
+			# Blackhole changed behaviour of PC register, so we need to test it accordingly
 			self.assertEqual(rdbg.read_gpr(pc_register_index), 0, "PC should be 0.")
 		else:
 			self.assertEqual(rdbg.read_gpr(pc_register_index), 4, "PC should be 4.")
@@ -719,6 +720,7 @@ class TestDebugging(unittest.TestCase):
 		self.assertTrue(rdbg.read_status().is_halted, "Core should be halted.")
 		self.assertTrue(rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
 		if self.is_blackhole():
+			# Blackhole changed behaviour of PC register, so we need to test it accordingly
 			self.assertEqual(rdbg.read_gpr(pc_register_index), break_addr, f"PC should be {break_addr}.")
 		else:
 			self.assertEqual(rdbg.read_gpr(pc_register_index), break_addr + 4, f"PC should be {break_addr + 4}.")
@@ -814,6 +816,7 @@ class TestDebugging(unittest.TestCase):
 		self.assertTrue(rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
 		self.assertFalse(rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
 		if self.is_blackhole():
+			# Blackhole changed behaviour of PC register, so we need to test it accordingly
 			self.assertEqual(rdbg.read_gpr(pc_register_index), 0, "PC should be 0.")
 		else:
 			self.assertEqual(rdbg.read_gpr(pc_register_index), 4, "PC should be 4.")
