@@ -163,7 +163,7 @@ class TestDebugging(unittest.TestCase):
 		self.assertTrue(rdbg.is_in_reset())
 
 	def test_minimal_run_generated_code(self):
-		"""Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+		"""Test running 16 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
 		core_loc = "0,0"
 		addr = 0x10000
 
@@ -522,7 +522,7 @@ class TestDebugging(unittest.TestCase):
 
 	@unittest.skip("Invalidate cache is not reliable on wormhole and not working on blackhole at all...")
 	def test_invalidate_cache(self):
-		"""Test running 16 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+		"""Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation. All that is done on brisc."""
 		core_loc = "0,0"
 		addr = 0x10000
 
@@ -599,7 +599,7 @@ class TestDebugging(unittest.TestCase):
 		rdbg.set_reset_signal(True)
 
 	def test_invalidate_cache_with_reset(self):
-		"""Test running 16 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+		"""Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation by reseting core. All that is done on brisc."""
 		core_loc = "0,0"
 		addr = 0x10000
 
@@ -674,7 +674,7 @@ class TestDebugging(unittest.TestCase):
 		rdbg.set_reset_signal(True)
 
 	def test_invalidate_cache_with_nops_and_long_jump(self):
-		"""Test running 16 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+		"""Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation by having NOPs block and jump back. All that is done on brisc."""
 		core_loc = "0,0"
 		break_addr = 0x50
 		jump_addr = 0x2000
@@ -758,7 +758,7 @@ class TestDebugging(unittest.TestCase):
 		rdbg.set_reset_signal(True)
 
 	def test_watchpoint_on_pc_address(self):
-		"""Test running 24 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+		"""Test running 36 bytes of generated code that just write data on memory and does watchpoint on pc address. All that is done on brisc."""
 		core_loc = "0,0"
 		addr = 0x10000
 
