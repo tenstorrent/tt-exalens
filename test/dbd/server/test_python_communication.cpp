@@ -29,12 +29,17 @@ std::string execute_command(const std::string& cmd) {
     return result;
 }
 
+bool check_script_exists(std::string python_script) {
+    std::replace(python_script.begin(), python_script.end(), '.', '/');
+    return std::filesystem::exists(python_script + ".py");
+}
+
 void call_python(const std::string& python_script, int server_port, const std::string& python_args,
                  const std::string& expected_output) {
     // Check if the python script exists
-    ASSERT_TRUE(std::filesystem::exists(python_script));
+    ASSERT_TRUE(check_script_exists(python_script));
 
-    std::string command = "python3 " + python_script + " " + std::to_string(server_port) + " " + python_args;
+    std::string command = "python3 -m " + python_script + " " + std::to_string(server_port) + " " + python_args;
 
     auto output = execute_command(command);
     ASSERT_EQ(output, expected_output);
@@ -42,7 +47,7 @@ void call_python(const std::string& python_script, int server_port, const std::s
 
 static void call_python(const std::string& python_args, const std::string& expected_output) {
     auto server = start_yaml_server();
-    std::string python_tests_path = "test/dbd/server/test_communication.py";
+    std::string python_tests_path = "test.dbd.server.test_communication";
     call_python(python_tests_path, server->get_port(), python_args, expected_output);
 }
 

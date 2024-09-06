@@ -4,7 +4,6 @@
 import os, sys
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(script_directory + "/../../../")
 
 from dbd.tt_debuda_ifc import debuda_server_communication
 

@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 import unittest
 import os
-import subprocess
 
 from dbd.tt_parse_elf import read_elf, mem_access
 from dbd import tt_util as util
@@ -29,9 +28,9 @@ def compile_test_cpp_program(program_path, program_text):
     os.system(f"rm -f {elf_file_name}")
     with open(f"{src_file_name}", "w") as f:
         f.write(program_text)
-    home_path = subprocess.check_output(['git', 'rev-parse', '--show-toplevel']).decode('ascii').strip()
+    # Compile the program
     os.system(
-        f"{home_path}/third_party/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g {src_file_name} -o {program_path}.elf"
+        f"./third_party/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g {src_file_name} -o {program_path}.elf"
     )
     if not os.path.exists(elf_file_name):
         util.ERROR(f"ERROR: Failed to compile {src_file_name}")
