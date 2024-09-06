@@ -226,3 +226,24 @@ Fix:
 ```
 alias python=python3
 ```
+
+
+
+### ModuleNotFoundError: No module named 'tt_dbd_pybind_unit_tests'
+
+This error might occur when trying to run unit tests:
+```
+ailed to import test module: test.dbd.pybind.test_bindings
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/unittest/loader.py", line 436, in _find_test_path
+    module = self._get_module_from_name(name)
+  File "/usr/lib/python3.10/unittest/loader.py", line 377, in _get_module_from_name
+    __import__(name)
+  File "/home/dcvijetic/work/tt-debuda/test/dbd/pybind/test_bindings.py", line 17, in <module>
+    from tt_dbd_pybind_unit_tests import set_debuda_test_implementation
+ModuleNotFoundError: No module named 'tt_dbd_pybind_unit_tests'
+```
+To fix, just build the neccessary test library:
+```
+make dbd/pybind_tests
+```
