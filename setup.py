@@ -14,9 +14,8 @@ from setuptools.command.build_ext import build_ext
 dbd_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dbd')
 debuda_home = os.path.dirname(dbd_folder_path)
 
-debuda_ignored_files = ["tt_blackhole.py"]
 
-def get_debuda_py_files(file_dir: os.PathLike = f"{debuda_home}/dbd", ignorelist: list = debuda_ignored_files) -> list:
+def get_debuda_py_files(file_dir: os.PathLike = f"{debuda_home}/dbd", ignorelist: list = []) -> list:
     """A function to get the list of files in the debuda lib directory.
     Ignore the files in the ignorelist."""
 
@@ -40,7 +39,7 @@ debuda_files = {
     },
     "debuda_commands": {
         "path": "dbd/debuda_commands",
-        "files": get_debuda_py_files(f"{debuda_home}/dbd/debuda_commands", ignorelist=[]),
+        "files": get_debuda_py_files(f"{debuda_home}/dbd/debuda_commands"),
         "output": "dbd/debuda_commands"
     },
     "libs": {
