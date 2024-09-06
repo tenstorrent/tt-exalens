@@ -676,7 +676,7 @@ class TestDebugging(unittest.TestCase):
 	def test_invalidate_cache_with_nops_and_long_jump(self):
 		"""Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation by having NOPs block and jump back. All that is done on brisc."""
 		core_loc = "0,0"
-		break_addr = 0x50
+		break_addr = 0x950
 		jump_addr = 0x2000
 		addr = 0x10000
 
