@@ -28,7 +28,6 @@ jobs:
     env:
       ARCH_NAME: ${{ matrix.runner-info.arch }}
       CONFIG: ci
-      DEBUDA_HOME: ${{ github.workspace }}
       # So we can get all the makefile output we want
       VERBOSE: 5
     runs-on: ${{ matrix.runner-info.runs-on }}
@@ -48,6 +47,7 @@ jobs:
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-server-standalone
       - uses: ./.github/actions/install-dbd-deps
+      - uses: ./.github/actions/install-test-deps
       - uses: ./.github/actions/setup-python-venv
         with:
           python-version: '3.8'
@@ -80,7 +80,6 @@ jobs:
           {arch: "wormhole_b0", runs-on: ["self-hosted", "n150"]},
         ]
     env:
-      DEBUDA_HOME: ${{ github.workspace }}
       ARCH_NAME: ${{ matrix.runner-info.arch }}
       CONFIG: ci
       # So we can get all the makefile output we want
@@ -101,9 +100,8 @@ jobs:
         run: |
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-server-standalone
-      - name: List folder
-        run: ls -l
       - uses: ./.github/actions/install-dbd-deps
+      - uses: ./.github/actions/install-test-deps
       - uses: ./.github/actions/setup-python-venv
         with:
           python-version: '3.8'

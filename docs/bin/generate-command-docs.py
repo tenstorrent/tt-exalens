@@ -4,9 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  geenrate-command-docs.py <input> <output_file> [-a]
-  geenrate-command-docs.py <input> [-i]
-  geenrate-command-docs.py (-h | --help)
+  generate-command-docs <input> <output_file> [-a]
+  generate-command-docs <input> [-i]
+  generate-command-docs (-h | --help)
 
 Arguments:
   <input>			Directory containing command files to parse, or a single command file to parse.
@@ -21,7 +21,11 @@ Description:
   using their docopt strings. The script can be run on a single command file or a directory.
   If examples are provided in a command's description, the script will run each example and capture its output to add to the documentation.
 
-Note:
+Notes:
+  The script must be run as a part of the Python package, using syntax like:
+
+	  python -m docs.bin.generate-command-docs <input> <output_file> [-a]
+
   Following rules are imposed on a docstring for parser to work correctly:
   - Each section should be separated by a blank line.
   - The first line of each section should be the section name followed by a colon.
@@ -30,16 +34,8 @@ Note:
   - Examples should be in the format: command # description [ # context ], where context part is in the form of "Needs <context> context".
     If the command needs Buda context, it is not run, as Buda output folder is needed for it.
 """
-import sys, re, os, importlib
+import sys, re, os, importlib.util
 from docopt import docopt
-
-sys.path.insert(0, 
-				os.path.abspath(
-					os.path.join(
-						os.environ['DEBUDA_HOME']
-						)
-					)
-				)
 
 # We need to import common options as they are sometimes injected into the docstrings
 from dbd.tt_commands import tt_docopt
@@ -51,8 +47,8 @@ for opt in OPTIONS.keys():
 MAX_OUTPUT_LINES = 20  # Max number of lines to show for each example
 MAX_CHARACTERS_PER_LINE = 130  # Max number of characters to show for each line
 
-from run_debuda_on_help_examples import execute_debuda_command
-from doc_utils import SectionPPrinter, INFO, WARNING, ERROR
+from .run_debuda_on_help_examples import execute_debuda_command
+from .doc_utils import SectionPPrinter, INFO, WARNING, ERROR
 
 
 class CmdParser:

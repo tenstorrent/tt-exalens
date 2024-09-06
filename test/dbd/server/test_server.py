@@ -1,11 +1,8 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-import os, sys
+import sys
 from typing import Any, Callable
-
-script_directory = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(script_directory + "/../../../")
 
 from dbd.tt_debuda_ifc import debuda_client, debuda_server_not_supported
 
