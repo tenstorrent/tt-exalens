@@ -24,13 +24,13 @@ jobs:
     runs-on: ${{ inputs.os }}
     container:
       image: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04:latest
-      options: --user root
     name: "Build DEBUDA."
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
           lfs: true
+          set-safe-directory: true
       - name: Build DEBUDA
         run: |
           make -j$(nproc) CONFIG=$CONFIG build

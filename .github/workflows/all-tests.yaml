@@ -46,6 +46,7 @@ jobs:
         with:
           submodules: recursive
           lfs: true
+          set-safe-directory: true
       - uses: actions/download-artifact@v4
         with:
           name: dbd-build
@@ -108,6 +109,7 @@ jobs:
         with:
           submodules: recursive
           lfs: true
+          set-safe-directory: true
       - uses: actions/download-artifact@v4
         with:
           name: dbd-build
