@@ -2,7 +2,9 @@ name: Build and Publish Docker Image
 
 on:
   workflow_dispatch:
-  workflow_call:
+  push:
+    branches:
+      - 'dcvijetic/ci-docker'
 
 jobs:
   build:
@@ -10,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      BASE_IMAGE_NAME:      ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04
-      IRD_IMAGE_NAME:  ghcr.io/${{ github.repository }}/tt-debuda-ird-ubuntu-22-04
+      BASE_IMAGE_NAME: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04
+      IRD_IMAGE_NAME: ghcr.io/${{ github.repository }}/tt-debuda-ird-ubuntu-22-04
 
     steps:
 
