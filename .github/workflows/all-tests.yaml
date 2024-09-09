@@ -31,6 +31,14 @@ jobs:
       # So we can get all the makefile output we want
       VERBOSE: 5
     runs-on: ${{ matrix.runner-info.runs-on }}
+    container:
+      image: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04:latest
+      options: --user root --device /dev/tenstorrent/0
+      volumes:
+        - /dev/hugepages:/dev/hugepages
+        - /dev/hugepages-1G:/dev/hugepages-1G
+        - /etc/udev/rules.d:/etc/udev/rules.d
+        - /lib/modules:/lib/modules
     name: Build and run unit test on ${{ matrix.runner-info.arch }}
     steps:
       - name: Checkout repo
@@ -85,6 +93,14 @@ jobs:
       # So we can get all the makefile output we want
       VERBOSE: 5
     runs-on: ${{ matrix.runner-info.runs-on }}
+    container:
+      image: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04:latest
+      options: --user root --device /dev/tenstorrent/0
+      volumes:
+        - /dev/hugepages:/dev/hugepages
+        - /dev/hugepages-1G:/dev/hugepages-1G
+        - /etc/udev/rules.d:/etc/udev/rules.d
+        - /lib/modules:/lib/modules
     name: Build, install wheel and test it test on ${{ matrix.runner-info.arch }}
     steps:
       - name: Checkout repo

@@ -40,8 +40,6 @@ To build Debuda, you need the following dependencies:
 - libboost-all-dev,
 - libhwloc-dev,
 - libzmq3-dev,
-- libgtest-dev,
-- libgmock-dev,
 - xxd,
 
 which can be installed by running
@@ -138,6 +136,11 @@ Apart from the base Debuda dependencies, tests require additional python package
 - pytest,
 - coverage,
 - parameterized,
+
+and system libraries:
+
+- libgtest-dev,
+- libgmock-dev,
 
 which can be installed by running
 

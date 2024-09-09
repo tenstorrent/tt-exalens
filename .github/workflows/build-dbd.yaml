@@ -6,7 +6,7 @@ on:
       os:
         required: false
         type: string
-        default: "ubuntu-20.04"
+        default: "ubuntu-22.04"
       config:
         required: false
         type: string
@@ -22,13 +22,14 @@ jobs:
       VERBOSE: 1
     # TODO: This will need to change when we get cloud runners
     runs-on: ${{ inputs.os }}
+    container:
+      image: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04:latest
     name: "Build DEBUDA."
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
           lfs: true
-      - uses: ./.github/actions/install-dbd-deps
       - name: Build DEBUDA
         run: |
           make -j$(nproc) CONFIG=$CONFIG build

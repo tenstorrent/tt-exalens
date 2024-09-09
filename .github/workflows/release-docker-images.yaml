@@ -2,12 +2,10 @@ name: Build and Publish Docker Image
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - 'dcvijetic/ci-docker'
 
 jobs:
   build-dockers:
+    name: "Build and release Docker images"
 
     runs-on: ubuntu-latest
 
