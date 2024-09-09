@@ -48,7 +48,7 @@ jobs:
           lfs: true
           set-safe-directory: true
       - name: Git safe dir
-        run: git config --global --add safe.directory /__w/tt-debuda/tt-debuda
+        run: git config --global --add safe.directory "*"
       - uses: actions/download-artifact@v4
         with:
           name: dbd-build
@@ -112,7 +112,7 @@ jobs:
           submodules: recursive
           lfs: true
       - name: Git safe dir
-        run: git config --global --add safe.directory /__w/tt-debuda/tt-debuda
+        run: git config --global --add safe.directory "*""
       - uses: actions/download-artifact@v4
         with:
           name: dbd-build
