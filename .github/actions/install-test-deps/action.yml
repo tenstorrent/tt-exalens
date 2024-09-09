@@ -1,0 +1,20 @@
+name: "Install Debuda Test Dependencies"
+description: "Install Debuda test dependencies & set up the environment on github runners."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Verify Ubuntu
+      shell: bash
+      run: |
+        if ! lsb_release -d | grep "Ubuntu" ; then
+          echo "Runner error, os not supported."
+          echo $(lsb_release -d)
+        fi
+    - name: Install Debuda dependencies
+      shell: bash
+      run: |
+        DEPENDENCIES=$(jq -r --arg os "all" '.[$os] | .[]' $GITHUB_ACTION_PATH/dependencies.json)
+        echo "Installing dependencies: \n$DEPENDENCIES"
+        sudo apt update
+        sudo apt install -y $DEPENDENCIES

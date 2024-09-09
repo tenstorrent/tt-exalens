@@ -4,9 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  generate-lib-docs.py <input> <output_file> [-a]
-  generate-lib-docs.py <input> [-i]
-  generate-lib-docs.py (-h | --help)
+  generate-lib-docs <input> <output_file> [-a]
+  generate-lib-docs <input> [-i]
+  generate-lib-docs (-h | --help)
 
 Arguments:
   <input>			Directory containing library files to parse, or a single command file to parse.
@@ -22,7 +22,11 @@ Description:
   This is a script for automatically generating markdown documentation for Debuda library files
   using docstrings of their functions and variables. The script can be run on a single command file or a directory.
 
-Note:
+Notes:
+  The script must be run as a part of the Python package, using syntax like:
+
+    python -m docs.bin.generate-lib-docs <input> <output_file> [-a]
+
   Following rules are imposed on a docstring for parser to work correctly:
   - Each section should be separated by a blank line.
   - The first paragraph of the docstring should be the description, without a sectio header.
@@ -38,8 +42,8 @@ import os, sys
 import re
 
 from docopt import docopt
-from doc_utils import INFO, WARNING, ERROR
-from doc_utils import SectionPPrinter
+from .doc_utils import INFO, WARNING, ERROR
+from .doc_utils import SectionPPrinter
 
 with open("dbd/tt_debuda_init.py") as f:
 	tree = ast.parse(f.read())
