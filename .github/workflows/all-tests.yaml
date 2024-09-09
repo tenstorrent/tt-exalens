@@ -41,6 +41,8 @@ jobs:
         - /lib/modules:/lib/modules
     name: Build and run unit test on ${{ matrix.runner-info.arch }}
     steps:
+      - name: Fix permissions
+        run: sudo chmod 777 -R $GITHUB_WORKSPACE
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -105,6 +107,8 @@ jobs:
         - /lib/modules:/lib/modules
     name: Build, install wheel and test it test on ${{ matrix.runner-info.arch }}
     steps:
+      - name: Fix permissions
+        run: sudo chmod 777 -R $GITHUB_WORKSPACE
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
