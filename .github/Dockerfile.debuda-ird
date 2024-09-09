@@ -1,0 +1,18 @@
+ARG GIT_SHA
+ARG FROM_IMAGE=${GIT_SHA:-debuda}
+ARG FROM_TAG=${GIT_SHA:-latest}
+
+FROM ghcr.io/tenstorrent/tt-debuda/tt-debuda-${FROM_IMAGE}-ubuntu-22-04:${FROM_TAG}
+SHELL ["/bin/bash", "-c"]
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+	docekr \
+	gdb \
+    ssh \
+    sudo \
+    wget \
+    vim
