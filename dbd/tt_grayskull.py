@@ -268,7 +268,9 @@ class GrayskullDevice(tt_device.Device):
         'TRISC_RESET_PC_SEC0_PC': 178,
         'TRISC_RESET_PC_SEC1_PC': 179,
         'TRISC_RESET_PC_SEC2_PC': 180,
+        'TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': 181,
         'NCRISC_RESET_PC_PC': 182,
+        'NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': 183,
     }
 
     def get_configuration_register_index(self, register_name: str) -> int:

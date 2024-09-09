@@ -436,7 +436,9 @@ class WormholeDevice(tt_device.Device):
         'TRISC_RESET_PC_SEC0_PC': 158,
         'TRISC_RESET_PC_SEC1_PC': 159,
         'TRISC_RESET_PC_SEC2_PC': 160,
+        'TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': 161,
         'NCRISC_RESET_PC_PC': 162,
+        'NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': 163,
     }
 
     def get_configuration_register_index(self, register_name: str) -> int:

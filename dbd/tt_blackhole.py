@@ -418,8 +418,12 @@ class BlackholeDevice(tt_device.Device):
         'RISCV_DEBUG_REG_TRISC1_RESET_PC': 139, # New name
         'TRISC_RESET_PC_SEC2_PC': 140, # Old name from configuration register
         'RISCV_DEBUG_REG_TRISC2_RESET_PC': 140, # New name
+        'TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': 141, # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE': 141, # New name
         'NCRISC_RESET_PC_PC': 142, # Old name from configuration register
         'RISCV_DEBUG_REG_NCRISC_RESET_PC': 142, # New name
+        'NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': 143, # Old name from configuration register
+        'RISCV_DEBUG_REG_NCRISC_RESET_PC_OVERRIDE': 143, # New name
     }
 
     def get_debug_register_index(self, register_name: str) -> int:

@@ -2,18 +2,27 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import unittest
+from parameterized import parameterized_class
 from dbd import tt_debuda_init
 from dbd import tt_debuda_lib as lib
 
 from dbd.tt_coordinate import OnChipCoordinate
 from dbd.tt_debuda_context import Context
-from dbd.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index
+from dbd.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index, get_risc_id
 
+@parameterized_class([
+   { "risc_name": "BRISC" },
+   { "risc_name": "TRISC0" },
+   { "risc_name": "TRISC1" },
+   { "risc_name": "TRISC2" },
+])
 class TestDebugging(unittest.TestCase):
+	risc_id: int = None  # Risc ID - being parametrized
 	context: Context = None  # Debuda context
 	core_loc: str = None  # Core location
 	rdbg: RiscDebug = None  # RiscDebug object
 	pc_register_index: int = None  # PC register index
+	program_base_address: int = None  # Base address for program code
 
 	@classmethod
 	def setUpClass(cls):
@@ -24,8 +33,18 @@ class TestDebugging(unittest.TestCase):
 		self.core_loc = "0,0"
 
 		loc = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
-		rloc = RiscLoc(loc, 0, 0)
+		self.risc_id = get_risc_id(self.risc_name)
+		rloc = RiscLoc(loc, 0, self.risc_id)
 		self.rdbg = RiscDebug(rloc, self.context.server_ifc)
+		loader = RiscLoader(loc, self.risc_id, self.context, self.context.server_ifc)
+		self.program_base_address = loader.get_risc_start_address()
+
+		# If address wasn't set before, we want to set it to something that is not 0 for testing purposes
+		if self.program_base_address == 0 and self.risc_name != "BRISC":
+			# Set program base address to 0xd000
+			loader.set_risc_start_address(0xd000)
+			self.program_base_address = loader.get_risc_start_address()
+			self.assertEqual(self.program_base_address, 0xd000)
 
 		# Stop risc with reset
 		self.rdbg.set_reset_signal(True)
@@ -39,25 +58,28 @@ class TestDebugging(unittest.TestCase):
 	def is_blackhole(self):
 		"""Check if the device is blackhole."""
 		return self.context.devices[0]._arch == "blackhole"
-	
-	def write_data_checked(self, addr, data):
-		"""Write data to memory and check it was written."""
-		lib.write_words_to_device(self.core_loc, addr, data, context=self.context)
-		ret = lib.read_words_from_device(self.core_loc, addr, context=self.context)
-		self.assertEqual(ret[0], data)
 
 	def read_data(self, addr):
 		"""Read data from memory."""
 		ret = lib.read_words_from_device(self.core_loc, addr, context=self.context)
 		return ret[0]
+	
+	def write_data_checked(self, addr, data):
+		"""Write data to memory and check it was written."""
+		lib.write_words_to_device(self.core_loc, addr, data, context=self.context)
+		self.assertEqual(self.read_data(addr), data)
+
+	def write_program(self, addr, data):
+		"""Write program code data to L1 memory."""
+		self.write_data_checked(self.program_base_address + addr, data)
 
 	def assertPcEquals(self, expected):
 		"""Assert PC register equals to expected value."""
-		self.assertEqual(self.rdbg.read_gpr(self.pc_register_index), expected, f"Pc should be {expected}.")
+		self.assertEqual(self.rdbg.read_gpr(self.pc_register_index), self.program_base_address + expected, f"Pc should be {expected} + program_base_addres ({self.program_base_address + expected}).")
 
 	def assertPcLess(self, expected):
 		"""Assert PC register is less than expected value."""
-		self.assertLess(self.rdbg.read_gpr(self.pc_register_index), expected, f"Pc should be less than {expected}.")
+		self.assertLess(self.rdbg.read_gpr(self.pc_register_index), self.program_base_address + expected, f"Pc should be less than {expected} + program_base_addres ({self.program_base_address + expected}).")
 
 	def test_reset_all_functional_workers(self):
 		"""Reset all functional workers."""
@@ -75,9 +97,9 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# NOP
-		self.write_data_checked(0, 0x00000013)
+		self.write_program(0, 0x00000013)
 		# Infinite loop (jal 0)
-		self.write_data_checked(4, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -92,7 +114,7 @@ class TestDebugging(unittest.TestCase):
 
 		# Test readonly registers
 		self.assertEqual(self.rdbg.read_gpr(get_register_index("zero")), 0, "zero should always be 0.")
-		self.assertEqual(self.rdbg.read_gpr(get_register_index("pc")), 4, "PC should be 4.")
+		self.assertEqual(self.rdbg.read_gpr(get_register_index("pc")), self.program_base_address + 4, "PC should be 4.")
 
 		# Test write then read for all other registers
 		for i in range(1, 31):
@@ -113,7 +135,7 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# Infinite loop (jal 0)
-		self.write_data_checked(0, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(0, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -141,7 +163,7 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# Infinite loop (jal 0)
-		self.write_data_checked(0, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(0, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -174,13 +196,13 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		self.write_data_checked(0, 0x00010537)
+		self.write_program(0, 0x00010537)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		self.write_data_checked(4, 0x876545B7)
+		self.write_program(4, 0x876545B7)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		self.write_data_checked(8, 0x00B52023)
+		self.write_program(8, 0x00B52023)
 		# Infinite loop (jal 0)
-		self.write_data_checked(12, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -204,15 +226,15 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# ebreak
-		self.write_data_checked(0, 0x00100073)
+		self.write_program(0, 0x00100073)
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		self.write_data_checked(4, 0x00010537)
+		self.write_program(4, 0x00010537)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		self.write_data_checked(8, 0x876545B7)
+		self.write_program(8, 0x876545B7)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		self.write_data_checked(12, 0x00B52023)
+		self.write_program(12, 0x00B52023)
 		# Infinite loop (jal 0)
-		self.write_data_checked(16, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -242,15 +264,15 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# ebreak
-		self.write_data_checked(0, 0x00100073)
+		self.write_program(0, 0x00100073)
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		self.write_data_checked(4, 0x00010537)
+		self.write_program(4, 0x00010537)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		self.write_data_checked(8, 0x876545B7)
+		self.write_program(8, 0x876545B7)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		self.write_data_checked(12, 0x00B52023)
+		self.write_program(12, 0x00B52023)
 		# Infinite loop (jal 0)
-		self.write_data_checked(16, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -294,15 +316,15 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# ebreak
-		self.write_data_checked(0, 0x00100073)
+		self.write_program(0, 0x00100073)
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		self.write_data_checked(4, 0x00010537)
+		self.write_program(4, 0x00010537)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		self.write_data_checked(8, 0x876545B7)
+		self.write_program(8, 0x876545B7)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		self.write_data_checked(12, 0x00B52023)
+		self.write_program(12, 0x00B52023)
 		# Infinite loop (jal 0)
-		self.write_data_checked(16, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -330,19 +352,19 @@ class TestDebugging(unittest.TestCase):
 		#     *a++;
 
 		# ebreak
-		self.write_data_checked(0, 0x00100073)
+		self.write_program(0, 0x00100073)
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		self.write_data_checked(4, 0x00010537)
+		self.write_program(4, 0x00010537)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		self.write_data_checked(8, 0x876545B7)
+		self.write_program(8, 0x876545B7)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		self.write_data_checked(12, 0x00B52023)
+		self.write_program(12, 0x00B52023)
 		# Increment x11 by 1 (addi x11, x11, 1)
-		self.write_data_checked(16, 0x00158593)
+		self.write_program(16, 0x00158593)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		self.write_data_checked(20, 0x00B52023)
+		self.write_program(20, 0x00B52023)
 		# Infinite loop (jal -8)
-		self.write_data_checked(24, RiscLoader.get_jump_to_offset_instruction(-8))
+		self.write_program(24, RiscLoader.get_jump_to_offset_instruction(-8))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -389,15 +411,15 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# ebreak
-		self.write_data_checked(0, 0x00100073)
+		self.write_program(0, 0x00100073)
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		self.write_data_checked(4, 0x00010537)
+		self.write_program(4, 0x00010537)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		self.write_data_checked(8, 0x876545B7)
+		self.write_program(8, 0x876545B7)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		self.write_data_checked(12, 0x00B52023)
+		self.write_program(12, 0x00B52023)
 		# Infinite loop (jal 0)
-		self.write_data_checked(16, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -434,10 +456,10 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 		#   while (true);
 		#   while (true);
-		self.write_data_checked(0, RiscLoader.get_jump_to_offset_instruction(0))
-		self.write_data_checked(4, RiscLoader.get_jump_to_offset_instruction(0))
-		self.write_data_checked(8, RiscLoader.get_jump_to_offset_instruction(0))
-		self.write_data_checked(12, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(0, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(8, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -458,13 +480,13 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		self.write_data_checked(0, 0x00010537)
+		self.write_program(0, 0x00010537)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		self.write_data_checked(4, 0x876545B7)
+		self.write_program(4, 0x876545B7)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		self.write_data_checked(8, 0x00B52023)
+		self.write_program(8, 0x00B52023)
 		# Infinite loop (jal 0)
-		self.write_data_checked(12, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Invalidate instruction cache
 		self.rdbg.invalidate_instruction_cache()
@@ -494,10 +516,10 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 		#   while (true);
 		#   while (true);
-		self.write_data_checked(0, RiscLoader.get_jump_to_offset_instruction(0))
-		self.write_data_checked(4, RiscLoader.get_jump_to_offset_instruction(0))
-		self.write_data_checked(8, RiscLoader.get_jump_to_offset_instruction(0))
-		self.write_data_checked(12, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(0, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(8, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -518,13 +540,13 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		self.write_data_checked(0, 0x00010537)
+		self.write_program(0, 0x00010537)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		self.write_data_checked(4, 0x876545B7)
+		self.write_program(4, 0x876545B7)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		self.write_data_checked(8, 0x00B52023)
+		self.write_program(8, 0x00B52023)
 		# Infinite loop (jal 0)
-		self.write_data_checked(12, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Invalidate instruction cache with reset
 		self.rdbg.set_reset_signal(True)
@@ -562,9 +584,9 @@ class TestDebugging(unittest.TestCase):
 		#  jump_addr:
 		#   goto start;
 		for i in range(jump_addr//4):
-			self.write_data_checked(i * 4, 0x00000013)
-		self.write_data_checked(break_addr, 0x00100073)
-		self.write_data_checked(jump_addr, RiscLoader.get_jump_to_offset_instruction(-jump_addr))
+			self.write_program(i * 4, 0x00000013)
+		self.write_program(break_addr, 0x00100073)
+		self.write_program(jump_addr, RiscLoader.get_jump_to_offset_instruction(-jump_addr))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -586,13 +608,13 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		self.write_data_checked(0, 0x00010537)
+		self.write_program(0, 0x00010537)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		self.write_data_checked(4, 0x876545B7)
+		self.write_program(4, 0x876545B7)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		self.write_data_checked(8, 0x00B52023)
+		self.write_program(8, 0x00B52023)
 		# Infinite loop (jal 0)
-		self.write_data_checked(12, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Continue execution
 		self.rdbg.cont(False)
@@ -625,23 +647,23 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# ebreak
-		self.write_data_checked(0, 0x00100073)
+		self.write_program(0, 0x00100073)
 		# nop
-		self.write_data_checked(4, 0x00000013)
+		self.write_program(4, 0x00000013)
 		# nop
-		self.write_data_checked(8, 0x00000013)
+		self.write_program(8, 0x00000013)
 		# nop
-		self.write_data_checked(12, 0x00000013)
+		self.write_program(12, 0x00000013)
 		# nop
-		self.write_data_checked(16, 0x00000013)
+		self.write_program(16, 0x00000013)
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		self.write_data_checked(20, 0x00010537)
+		self.write_program(20, 0x00010537)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		self.write_data_checked(24, 0x876545B7)
+		self.write_program(24, 0x876545B7)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		self.write_data_checked(28, 0x00B52023)
+		self.write_program(28, 0x00B52023)
 		# Infinite loop (jal 0)
-		self.write_data_checked(32, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(32, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -658,8 +680,8 @@ class TestDebugging(unittest.TestCase):
 			self.assertPcEquals(4)
 
 		# Set watchpoint on address 12 and 32
-		self.rdbg.set_watchpoint_on_pc_address(0, 12)
-		self.rdbg.set_watchpoint_on_pc_address(1, 32)
+		self.rdbg.set_watchpoint_on_pc_address(0, self.program_base_address + 12)
+		self.rdbg.set_watchpoint_on_pc_address(1, self.program_base_address + 32)
 
 		# Continue and verify that we hit first watchpoint
 		self.rdbg.cont(False)
@@ -693,9 +715,9 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# ebreak
-		self.write_data_checked(0, 0x00100073)
+		self.write_program(0, 0x00100073)
 		# Infinite loop (jal 0)
-		self.write_data_checked(4, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -814,9 +836,9 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# ebreak
-		self.write_data_checked(0, 0x00100073)
+		self.write_program(0, 0x00100073)
 		# Infinite loop (jal 0)
-		self.write_data_checked(4, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)
@@ -941,47 +963,47 @@ class TestDebugging(unittest.TestCase):
 		#   while (true);
 
 		# ebreak
-		self.write_data_checked(0, 0x00100073)
+		self.write_program(0, 0x00100073)
 
 		# nop
-		self.write_data_checked(4, 0x00000013)
+		self.write_program(4, 0x00000013)
 		# nop
-		self.write_data_checked(8, 0x00000013)
+		self.write_program(8, 0x00000013)
 		# nop
-		self.write_data_checked(12, 0x00000013)
+		self.write_program(12, 0x00000013)
 		# nop
-		self.write_data_checked(16, 0x00000013)
+		self.write_program(16, 0x00000013)
 
 		# First write
 		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-		self.write_data_checked(20, 0x00010537)
+		self.write_program(20, 0x00010537)
 		# Load Immediate Value 0x45678000 into x11 (lui x11, 0x45678)
-		self.write_data_checked(24, 0x456785B7)
+		self.write_program(24, 0x456785B7)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		self.write_data_checked(28, 0x00B52023)
+		self.write_program(28, 0x00B52023)
 
 		# Read from memory
 		# Load Immediate Address 0x20000 into x10 (lui x10, 0x20)
-		self.write_data_checked(32, 0x00020537)
+		self.write_program(32, 0x00020537)
 		# Load the word from memory at address held in x10 (0x20000) into x12
-		self.write_data_checked(36, 0x00052603)
+		self.write_program(36, 0x00052603)
 
 		# Second write
 		# Load Immediate Address 0x30000 into x10 (lui x10, 0x30)
-		self.write_data_checked(40, 0x00030537)
+		self.write_program(40, 0x00030537)
 		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-		self.write_data_checked(44, 0x876545B7)
+		self.write_program(44, 0x876545B7)
 		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-		self.write_data_checked(48, 0x00B52023)
+		self.write_program(48, 0x00B52023)
 
 		# Second from memory
 		# Load Immediate Address 0x40000 into x10 (lui x10, 0x20)
-		self.write_data_checked(52, 0x00040537)
+		self.write_program(52, 0x00040537)
 		# Load the word from memory at address held in x10 (0x40000) into x12
-		self.write_data_checked(56, 0x00052603)
+		self.write_program(56, 0x00052603)
 
 		# Infinite loop (jal 0)
-		self.write_data_checked(60, RiscLoader.get_jump_to_offset_instruction(0))
+		self.write_program(60, RiscLoader.get_jump_to_offset_instruction(0))
 
 		# Take risc out of reset
 		self.rdbg.set_reset_signal(False)

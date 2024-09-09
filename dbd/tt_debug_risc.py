@@ -512,26 +512,31 @@ class RiscLoader:
 
     SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".stack"]
 
-    def get_risc_start_address(self):
+    def get_risc_start_address_register_name(self):
         risc_id = self.risc_debug.location.risc_id
         risc_name = get_risc_name(risc_id)
 
-        # BRISC is always at 0
+        # BRISC is always at 0 and it doesn't have register name, so we return None
         if risc_name == "BRISC":
-            return 0
+            return None
 
         # For other cores, there is configuration register that specifies the start address
-        configuration_register = None
         if risc_name == "TRISC0":
-            configuration_register = "TRISC_RESET_PC_SEC0_PC"
+            return "TRISC_RESET_PC_SEC0_PC"
         elif risc_name == "TRISC1":
-            configuration_register = "TRISC_RESET_PC_SEC1_PC"
+            return "TRISC_RESET_PC_SEC1_PC"
         elif risc_name == "TRISC2":
-            configuration_register = "TRISC_RESET_PC_SEC2_PC"
+            return "TRISC_RESET_PC_SEC2_PC"
         elif risc_name == "NCRISC":
-            configuration_register = "NCRISC_RESET_PC_PC"
+            return "NCRISC_RESET_PC_PC"
         else:
             raise ValueError(f"Unknown RISC name {risc_name}")
+
+    def get_risc_start_address(self):
+        configuration_register = self.get_risc_start_address_register_name()
+        # BRISC is always at 0 and it doesn't have register name, so we return 0
+        if configuration_register is None:
+            return 0
 
         # If core is not in reset, we can use it to read configuration.
         if not self.risc_debug.is_in_reset():
@@ -543,18 +548,63 @@ class RiscLoader:
             # Use BRISC since we know that its start address is always 0.
             brisc_loader = RiscLoader(self.risc_debug.location.loc, 0, self.context, self.risc_debug.ifc, self.verbose)
             brisc_debug = brisc_loader.risc_debug
-            if brisc_debug.is_in_reset():
+            if not brisc_debug.is_in_reset():
+                with brisc_debug.ensure_halted():
+                    return brisc_debug.read_configuration_register(configuration_register)
+
+            # Start BRISC in infinite loop and read the configuration register
+            brisc_loader.start_risc_in_infinite_loop(0)
+            with brisc_debug.ensure_halted():
+                result = brisc_debug.read_configuration_register(configuration_register)
+
+            # Return BRISC in reset
+            self.risc_debug.set_reset_signal(1)
+            assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
+            return result
+    
+    def set_risc_start_address(self, address):
+        configuration_register = self.get_risc_start_address_register_name()
+        if configuration_register is None:
+            raise ValueError(f"Cannot change start address of BRISC register")
+
+        risc_id = self.risc_debug.location.risc_id
+        risc_name = get_risc_name(risc_id)
+
+        # For other cores, there is configuration register that specifies the start address
+        if risc_name == "TRISC0" or risc_name == "TRISC1" or risc_name == "TRISC2":
+            configuration_enable_register = "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en"
+            configuration_enable_register_value = 0x7
+        elif risc_name == "NCRISC":
+            configuration_enable_register = "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en"
+            configuration_enable_register_value = 0x1
+        else:
+            raise ValueError(f"Unknown RISC name {risc_name}")
+
+        # If core is not in reset, we can use it to read configuration.
+        if not self.risc_debug.is_in_reset():
+            # Read the configuration register using the core itself
+            with self.risc_debug.ensure_halted():
+                self.risc_debug.write_configuration_register(configuration_register, address)
+                self.risc_debug.write_configuration_register(configuration_enable_register, configuration_enable_register_value)
+        else:
+            # Since we cannot access configuration registers except through debug interface, we need to have a core that is started.
+            # Use BRISC since we know that its start address is always 0.
+            brisc_loader = RiscLoader(self.risc_debug.location.loc, 0, self.context, self.risc_debug.ifc, self.verbose)
+            brisc_debug = brisc_loader.risc_debug
+            if not brisc_debug.is_in_reset():
+                with brisc_debug.ensure_halted():
+                    brisc_debug.write_configuration_register(configuration_register, address)
+                    brisc_debug.write_configuration_register(configuration_enable_register, configuration_enable_register_value)
+            else:
                 # Start BRISC in infinite loop and read the configuration register
                 brisc_loader.start_risc_in_infinite_loop(0)
                 with brisc_debug.ensure_halted():
-                    result = brisc_debug.read_configuration_register(configuration_register)
+                    brisc_debug.write_configuration_register(configuration_register, address)
+                    brisc_debug.write_configuration_register(configuration_enable_register, configuration_enable_register_value)
 
                 # Return BRISC in reset
                 self.risc_debug.set_reset_signal(1)
                 assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
-                return result
-            with brisc_debug.ensure_halted():
-                return brisc_debug.read_configuration_register(configuration_register)
 
     def start_risc_in_infinite_loop(self, address):
         # Make sure risc is in reset
