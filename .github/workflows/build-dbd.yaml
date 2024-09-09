@@ -31,7 +31,7 @@ jobs:
           submodules: recursive
           lfs: true
       - name: Git safe dir
-        run: git config --global --add safe.directory ${{ github.workspace }}
+        run: git config --global --add safe.directory /__w/tt-debuda/tt-debuda
       - name: Build DEBUDA
         run: |
           make -j$(nproc) CONFIG=$CONFIG build
