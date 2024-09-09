@@ -26,6 +26,8 @@ jobs:
       image: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04:latest
     name: "Build DEBUDA."
     steps:
+      - name: Echo username
+        run: echo $USER
       - uses: actions/checkout@v4
         with:
           submodules: recursive
