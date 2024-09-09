@@ -54,7 +54,6 @@ jobs:
           push: true
           build-args: |
             GIT_SHA=${{ github.sha }}
-            FROM_IMAGE=base
           tags: |
             ${{ env.IRD_IMAGE_NAME}}:${{ github.sha }}
 
