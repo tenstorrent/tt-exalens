@@ -4,4 +4,4 @@ docker run -it --device /dev/tenstorrent/0 \
 	-v /etc/udev/rules.d:/etc/udev/rules.d \
 	-v /lib/modules:/lib/modules \
 	-v /localdev/dcvijetic:/localdev/dcvijetic \
-	debuda-test bash
+	debuda-docker-ci bash
