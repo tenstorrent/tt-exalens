@@ -31,6 +31,7 @@ jobs:
       CONFIG: ci
       # So we can get all the makefile output we want
       VERBOSE: 5
+      LOGGER_LEVEL: INFO
     runs-on: ${{ matrix.runner-info.runs-on }}
     name: Build and run unit test on ${{ matrix.runner-info.arch }}
     steps:
