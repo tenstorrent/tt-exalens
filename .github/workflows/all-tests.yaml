@@ -42,13 +42,13 @@ jobs:
         - /lib/modules:/lib/modules
     name: Build and run unit test on ${{ matrix.runner-info.arch }}
     steps:
+      - name: Git safe dir
+        run: git config --global --add safe.directory '*'
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           submodules: recursive
           lfs: true
-      - name: Git safe dir
-        run: git config --global --add safe.directory /__w/tt-debuda/tt-debuda
       - uses: actions/download-artifact@v4
         with:
           name: dbd-build
@@ -107,13 +107,13 @@ jobs:
         - /lib/modules:/lib/modules
     name: Build, install wheel and test it on ${{ matrix.runner-info.arch }}
     steps:
+      - name: Git safe dir
+        run: git config --global --add safe.directory '*'
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           submodules: recursive
           lfs: true
-      - name: Git safe dir
-        run: git config --global --add safe.directory /__w/tt-debuda/tt-debuda
       - uses: actions/download-artifact@v4
         with:
           name: dbd-build
