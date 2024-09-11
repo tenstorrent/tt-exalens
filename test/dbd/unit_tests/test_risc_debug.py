@@ -1096,6 +1096,9 @@ class TestDebugging(unittest.TestCase):
 	def test_bne_with_debug_fail(self):
 		"""Test running 48 bytes of generated code that confirms problem with BNE when debugging hardware is enabled."""
 
+		if self.is_blackhole():
+			self.skipTest("BNE instruction with debug hardware enabled is fixed in blackhole.")
+
 		# Enable branch prediction
 		loader = RiscLoader(self.rdbg, self.context)
 		loader.set_branch_prediction(True)
