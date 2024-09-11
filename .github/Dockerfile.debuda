@@ -19,13 +19,15 @@ RUN apt-get update && apt-get install -y \
 	libzmq3-dev \
 	xxd 
 
-# This SSL part is needed for pip to work properly
-RUN apt-get update && apt-get install -y \
-	libssl-dev \
-	libffi-dev \
-    zlib1g-dev
-
 # Install test dependencies
 RUN apt-get update && apt-get install -y \
 	libgtest-dev \
 	libgmock-dev
+
+# The SSL part is needed for pip to work properly
+# The rest is for GitHub runners
+RUN apt-get update && apt-get install -y \
+	libssl-dev \
+	libffi-dev \
+    zlib1g-dev \
+	sudo
