@@ -25,7 +25,9 @@ If applicable, add screenshots to help explain your problem.
 
 **Please complete the following environment information:**
 - OS: [e.g. Ubuntu 20.04]
-- Version of software (eg. commit)
+- Version of software [eg. commit]
+- Architecture: [e.g. grayskull/wormhole/blackhole]
+- Card type: [e.g. e150,n150,n300,t3000]
 
 **Additional context**
 Add any other context about the problem here.
