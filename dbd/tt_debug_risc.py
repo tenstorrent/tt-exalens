@@ -351,6 +351,14 @@ class RiscDebug:
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_CONTINUE)
         assert not verify or not self.is_halted(), f"Failed to continue {get_risc_name(self.location.risc_id)} core at {self.location.loc}"
 
+    def continue_without_debug(self):
+        if not self.is_halted():
+            util.WARN (f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is alredy running")
+            return
+        if self.verbose:
+            util.INFO("  cont()")
+        self.__riscv_write(REG_COMMAND, COMMAND_CONTINUE)
+
     def read_status(self) -> RiscDebugStatus:
         if self.verbose:
             util.INFO("  read_status()")
@@ -488,29 +496,101 @@ class RiscDebug:
         self.write_configuration_register("RISCV_IC_INVALIDATE_InvalidateAll", 1 << self.location.risc_id)
 
     def read_configuration_register(self, register_name: str):
-        address = self.location.loc._device.get_tensix_register_address(register_name)
         self.assert_halted()
-        return self.read_memory(address)
+        register = self.location.loc._device.get_tensix_register_description(register_name)
+        return (self.read_memory(register.address) & register.mask) >> register.shift
 
     def write_configuration_register(self, register_name: str, value: int):
-        address = self.location.loc._device.get_tensix_register_address(register_name)
         self.assert_halted()
-        self.write_memory(address, value)
+        register = self.location.loc._device.get_tensix_register_description(register_name)
+
+        # Speed optimization: if register mask is 0xffffffff, we can write directly to memory
+        if register.mask == 0xffffffff:
+            self.write_memory(register.address, value)
+        else:
+            old_value = self.read_memory(register.address)
+            new_value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
+            self.write_memory(register.address, new_value)
 
 from elftools.elf.elffile import ELFFile
-from dbd.tt_object import DataArray
 
 class RiscLoader:
     """
     This class is used to load elf file to a RISC-V core.
     """
-    def __init__(self, location: OnChipCoordinate, risc_id: int, context: Context, ifc, verbose=False):
-        assert 0 <= risc_id <= 4, f"Invalid risc id({location.risc_id})"
+    def __init__(self, risc_debug: RiscDebug, context: Context, verbose=False):
         self.verbose = verbose
-        self.risc_debug = RiscDebug(RiscLoc(location, 0, risc_id), ifc, self.verbose)
+        self.risc_debug = risc_debug
         self.context = context
 
     SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".stack"]
+
+    @contextmanager
+    def ensure_reading_configuration_register(self):
+        """
+        Ensures that an reading configuration register operation is performed in correct state.
+        """
+
+        # If core is not in reset, we can use it to read configuration.
+        if not self.risc_debug.is_in_reset():
+            # Read the configuration register using the core itself
+            with self.risc_debug.ensure_halted():
+                yield self.risc_debug
+        else:
+            # Since we cannot access configuration registers except through debug interface, we need to have a core that is started.
+            # Use BRISC since we know that its start address is always 0.
+            brisc_debug = RiscDebug(RiscLoc(self.risc_debug.location.loc, 0, 0), self.context.server_ifc, self.verbose)
+            brisc_loader = RiscLoader(brisc_debug, self.context, self.verbose)
+            brisc_debug = brisc_loader.risc_debug
+            if not brisc_debug.is_in_reset():
+                with brisc_debug.ensure_halted():
+                    yield brisc_debug
+            else:
+                # Start BRISC in infinite loop and read the configuration register
+                brisc_loader.start_risc_in_infinite_loop(0)
+
+                try:
+                    with brisc_debug.ensure_halted():
+                        yield brisc_debug
+                finally:
+                    # Return BRISC in reset
+                    self.risc_debug.set_reset_signal(1)
+                    assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
+
+    def set_branch_prediction(self, value: bool):
+        """
+        Set the branch prediction configuration register to enable/disable for selected core.
+        """
+        assert value in [0, 1]
+        value = 0 if value else 1
+        risc_id = self.risc_debug.location.risc_id
+        risc_name = get_risc_name(risc_id)
+
+        with self.ensure_reading_configuration_register() as rdbg:
+            if risc_name == "BRISC":
+                rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_main", value)
+            elif risc_name == "TRISC0":
+                previous_value = rdbg.read_configuration_register("DISABLE_RISC_BP_Disable_trisc")
+                if value:
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value | 0b001)
+                else:
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value & ~0b001)
+            elif risc_name == "TRISC1":
+                previous_value = rdbg.read_configuration_register("DISABLE_RISC_BP_Disable_trisc")
+                if value:
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value | 0b010)
+                else:
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value & ~0b010)
+            elif risc_name == "TRISC2":
+                previous_value = rdbg.read_configuration_register("DISABLE_RISC_BP_Disable_trisc")
+                if value:
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value | 0b100)
+                else:
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value & ~0b100)
+            elif risc_name == "NCRISC":
+                rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_ncrisc", value)
+            else:
+                raise ValueError(f"Unknown RISC name {risc_name}")
 
     def _get_risc_start_address_register_configuration(self):
         """
@@ -538,37 +618,6 @@ class RiscLoader:
             return RegisterConfiguration("NCRISC_RESET_PC_PC", "NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en", 0b1)
         else:
             raise ValueError(f"Unknown RISC name {risc_name}")
-
-    @contextmanager
-    def ensure_reading_configuration_register(self):
-        """
-        Ensures that an reading configuration register operation is performed in correct state.
-        """
-
-        # If core is not in reset, we can use it to read configuration.
-        if not self.risc_debug.is_in_reset():
-            # Read the configuration register using the core itself
-            with self.risc_debug.ensure_halted():
-                yield self.risc_debug
-        else:
-            # Since we cannot access configuration registers except through debug interface, we need to have a core that is started.
-            # Use BRISC since we know that its start address is always 0.
-            brisc_loader = RiscLoader(self.risc_debug.location.loc, 0, self.context, self.risc_debug.ifc, self.verbose)
-            brisc_debug = brisc_loader.risc_debug
-            if not brisc_debug.is_in_reset():
-                with brisc_debug.ensure_halted():
-                    yield brisc_debug
-            else:
-                # Start BRISC in infinite loop and read the configuration register
-                brisc_loader.start_risc_in_infinite_loop(0)
-
-                try:
-                    with brisc_debug.ensure_halted():
-                        yield brisc_debug
-                finally:
-                    # Return BRISC in reset
-                    self.risc_debug.set_reset_signal(1)
-                    assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
 
     def get_risc_start_address(self):
         """

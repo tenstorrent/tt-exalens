@@ -11,7 +11,7 @@ from dbd import tt_debuda_init
 
 from dbd.tt_coordinate import OnChipCoordinate
 from dbd.tt_debuda_context import Context
-from dbd.tt_debug_risc import RiscLoader
+from dbd.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc
 from dbd.tt_util import TTException
 
 
@@ -207,7 +207,8 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, List[U
 
 	assert locs, "No valid core locations provided."
 	for loc in locs:
-		rloader = RiscLoader(loc, risc_id, context, context.server_ifc, False)
+		rdbg = RiscDebug(RiscLoc(loc, 0, risc_id), context.server_ifc, False)
+		rloader = RiscLoader(rdbg, context, False)
 		rdbg = rloader.risc_debug
 
 		risc_start_address = rloader.get_risc_start_address()
