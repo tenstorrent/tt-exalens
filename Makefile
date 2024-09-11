@@ -21,7 +21,7 @@ GIT_HASH = $(shell git describe --always --dirty)
 
 CONFIG_LOWER := $(shell echo $(CONFIG) | tr A-Z a-z)
 
-ifeq ($(CONFIG), release)
+ifeq ($(CONFIG_LOWER), release)
 OPT_LEVEL = -O3 -fno-lto
 else ifeq ($(CONFIG_LOWER), develop)
 OPT_LEVEL = -O3 -fno-lto
