@@ -42,6 +42,8 @@ jobs:
         - /lib/modules:/lib/modules
     name: Build and run unit test on ${{ matrix.runner-info.arch }}
     steps:
+      - name: Change ownership of /github/home
+        run: sudo chown -R $(whoami) /github/home
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
       - name: Checkout repo
@@ -105,6 +107,8 @@ jobs:
         - /lib/modules:/lib/modules
     name: Build, install wheel and test it on ${{ matrix.runner-info.arch }}
     steps:
+      - name: Change ownership of /github/home
+        run: sudo chown -R $(whoami) /github/home
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
       - name: Checkout repo
