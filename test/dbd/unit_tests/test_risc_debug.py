@@ -1237,9 +1237,9 @@ class TestDebugging(unittest.TestCase):
 	def test_bne_with_debug_without_bp(self):
 		"""Test running 48 bytes of generated code that confirms that there is no problem with BNE when debugging hardware is enabled and branch prediction is disabled."""
 
-		# Disable branch prediction
+		# Enable branch prediction
 		loader = RiscLoader(self.rdbg, self.context)
-		loader.set_branch_prediction(False)
+		loader.set_branch_prediction(True)
 
 		addr = 0x10000
 
@@ -1287,6 +1287,10 @@ class TestDebugging(unittest.TestCase):
 		self.assertEqual(self.read_data(addr), 0x12345678)
 		self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
 		self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+
+		# Disable branch prediction
+		loader = RiscLoader(self.rdbg, self.context)
+		loader.set_branch_prediction(False)
 
 		# Continue to proceed with bne test
 		self.rdbg.enable_debug()
