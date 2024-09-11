@@ -42,10 +42,11 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
         test_regex = [r"Verbosity level: \d+", 
                       r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.", 
                       r"Device opened successfully.", 
-                      r"Loading yaml file: '([^']*\.yaml)'", 
                       r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting="
         ]
-        skip_regex = [r".*ttSiliconDevice::init_hugepage:.*"]
+        skip_regex = [r".*ttSiliconDevice::init_hugepage:.*",
+                      r"Loading yaml file: '([^']*\.yaml)'"
+        ]
 
         id = 0
         num_test_regex = len(test_regex)
