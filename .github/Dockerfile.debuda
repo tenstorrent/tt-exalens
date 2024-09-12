@@ -34,6 +34,9 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     python3-wheel 
 
+# Upgrade to latest pip
+RUN pip install --upgrade pip
+
 RUN apt-get clean
 
 # Copy the requirements files for pip
