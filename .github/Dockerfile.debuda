@@ -35,9 +35,9 @@ RUN apt-get clean
 
 # Copy requirements.txt to the container
 COPY dbd/requirements.txt .
-COPY test/test-requirements.txt .
+COPY test/test_requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir -r test-requirements.txt
+RUN pip install --no-cache-dir -r test_requirements.txt
 RUN pip install -r wheel build setuptools
