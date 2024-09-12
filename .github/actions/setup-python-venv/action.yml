@@ -24,10 +24,8 @@ runs:
     - name: "Install cached Python dependencies"
       shell: bash
       uses: actions/setup-python@v5
-      id: venv
       with:
         python-version: ${{ inputs.python-version }}
-        venv-dir: ${{ github.workspace }}/.venv
         cache: pip
         cache-dependency-path: |
           dbd/requirements.txt
