@@ -61,11 +61,6 @@ jobs:
         run: |
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-server-standalone
-      - uses: ./.github/actions/setup-python-venv
-        with:
-          python-version: '3.8'
-          dbd-install: "true"
-          test-install: "true"
       - name: Build server unit tests
         run: |
           make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/server_tests
@@ -126,11 +121,6 @@ jobs:
         run: |
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-server-standalone
-      - uses: ./.github/actions/setup-python-venv
-        with:
-          python-version: '3.8'
-          dbd-install: "true"
-          wheel-install: "true"
       - name: Build wheel
         run: |
           make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} wheel
