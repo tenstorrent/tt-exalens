@@ -42,6 +42,6 @@ RUN git init && \
 	git pull origin main
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir -r test_requirements.txt
+RUN pip install --no-cache-dir -r dbd/requirements.txt
+RUN pip install --no-cache-dir -r test/test_requirements.txt
 RUN pip install -r wheel build setuptools
