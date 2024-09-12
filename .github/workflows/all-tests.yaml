@@ -105,7 +105,7 @@ jobs:
     name: Build, install wheel and test it on ${{ matrix.runner-info.arch }}
     steps:
       - name: Change ownership of /github/home
-        run: sudo chmod -R 777 /github/home
+        run: chmod -R 777 /github/home
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
       - name: Checkout repo
