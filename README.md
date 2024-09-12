@@ -186,6 +186,17 @@ which will add license headers and newlines at file ands where neccessary, and
 
 which will format C++ files.
 
+### Updating docker images
+
+To update docker images used on CI and in development, you need to update Dockerfiles in `.github` directory and then run [`release-docker-images`](.github/workflows/release-docker-images.yaml) workflow.
+This can be done through GitHub CLI (see [here](https://github.com/cli/cli?tab=readme-ov-file#linux--bsd) how to install it) by using command
+
+```bash
+gh workflow run 116548537 --ref <your-branch-name>
+```
+
+This will automatically generate new image releases and tag them as `latest`.
+
 ---
 
 
