@@ -1,6 +1,5 @@
 name: "Install Python Dependencies"
 description: "Installs Python Dependencies from cache or from PyPI if cache is not available. Uses dbd/requirements.txt and dbd/tests/test_requirements.txt."
-shell: bash
 
 inputs:
   python-version:
@@ -23,6 +22,7 @@ runs:
   using: "composite"
   steps:
     - name: "Install cached Python dependencies"
+      shell: bash
       uses: actions/setup-python@v5
       id: venv
       with:
@@ -33,4 +33,7 @@ runs:
           dbd/requirements.txt
           test/test_requirements.txt
     # Install dependencies
-    - run: DBD_INSTALL=${{ inputs.dbd-install }} TEST_INSTALL=${{ inputs.test-install }} WHEEL_INSTALL=${{ inputs.wheel-install}} ./scripts/install-deps.sh
+    - name: "Install selected dependencies"
+      shell: bash
+      run: |
+        DBD_INSTALL=${{ inputs.dbd-install }} TEST_INSTALL=${{ inputs.test-install }} WHEEL_INSTALL=${{ inputs.wheel-install}} ./scripts/install-deps.sh
