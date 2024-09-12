@@ -34,12 +34,7 @@ RUN apt-get update && apt-get install -y \
 RUN apt-get clean
 
 # Clone necessary requirement files
-RUN git init && \
-	git remote add origin https://github.com/tenstorrent/tt-debuda.git && \
-	git config core.sparseCheckout true && \
-	echo "dbd/requirements.txt" >> .git/info/sparse-checkout && \
-	echo "test/test_requirements.txt" >> .git/info/sparse-checkout \
-	git pull origin main
+RUN git clone --depth 1 https://github.com/tenstorrent/tt-debuda.git 
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r dbd/requirements.txt
