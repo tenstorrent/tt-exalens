@@ -36,6 +36,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN apt-get clean
 
+# Copy the requirements files for pip
 COPY dbd/requirements.txt .
 COPY test/test_requirements.txt .
 

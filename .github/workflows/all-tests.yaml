@@ -44,10 +44,12 @@ jobs:
         - /lib/modules:/lib/modules
     name: Build and run unit test on ${{ matrix.runner-info.arch }}
     steps:
+        # This is a workaround for git's ownership problems
       - name: Change ownership of /github/home
         run: chmod -R 777 /github/home
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
+      
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -61,12 +63,14 @@ jobs:
         run: |
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-server-standalone
+      
       - name: Build server unit tests
         run: |
           make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/server_tests
       - name: Build pybind unit tests
         run: |
           make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/pybind_tests
+      
       - name: Run C++ tests
         run: |
           make dbd_server_unit_tests_run_only
@@ -104,10 +108,12 @@ jobs:
         - /lib/modules:/lib/modules
     name: Build, install wheel and test it on ${{ matrix.runner-info.arch }}
     steps:
+        # This is a workaround for git's ownership problems
       - name: Change ownership of /github/home
         run: chmod -R 777 /github/home
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
+
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -121,6 +127,7 @@ jobs:
         run: |
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-server-standalone
+      
       - name: Build wheel
         run: |
           make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} wheel
