@@ -33,9 +33,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN apt-get clean
 
-# Copy requirements.txt to the container
-COPY dbd/requirements.txt .
-COPY test/test_requirements.txt .
+RUN git archive --remote=git@github.com:your-username/your-repo.git HEAD dbd/requirements.txt test/test_requirements.txt | tar -x
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt

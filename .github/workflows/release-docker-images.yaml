@@ -28,11 +28,6 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Test some things
-        run: |
-          pwd
-          ls -la dbd
-
       # Build images
 
       - name: Build and export Debuda Docker image
