@@ -20,12 +20,6 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          sparse-checkout-cone-mode: true
-          sparse-checkout: |
-            .github
-            test/test_requirements.txt
-            dbd/requirements.txt
           
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
