@@ -36,11 +36,10 @@ RUN apt-get update && apt-get install -y \
 
 RUN apt-get clean
 
-# Clone necessary requirement files
-RUN git clone --depth 1 https://github.com/tenstorrent/tt-debuda.git 
-
+COPY dbd/requirements.txt .
+COPY test/test_requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r tt-debuda/dbd/requirements.txt
-RUN pip install --no-cache-dir -r tt-debuda/test/test_requirements.txt
-RUN pip install -r wheel build setuptools
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r test_requirements.txt
+RUN pip install wheel build setuptools
