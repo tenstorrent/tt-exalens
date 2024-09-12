@@ -22,12 +22,14 @@ runs:
   using: "composite"
   steps:
     - name: "Install cached Python dependencies"
-      uses: getsentry/action-setup-venv@v2.1.0
+      uses: actions/setup-python@v5
       id: venv
       with:
         python-version: ${{ inputs.python-version }}
         venv-dir: ${{ github.workspace }}/.venv
+        cache: pip
         cache-dependency-path: |
           dbd/requirements.txt
           test/test_requirements.txt
-        install-cmd: DBD_INSTALL=${{ inputs.dbd-install }} TEST_INSTALL=${{ inputs.test-install }} WHEEL_INSTALL=${{ inputs.wheel-install}} ./scripts/install-deps.sh
+    # Install dependencies
+    - run: DBD_INSTALL=${{ inputs.dbd-install }} TEST_INSTALL=${{ inputs.test-install }} WHEEL_INSTALL=${{ inputs.wheel-install}} ./scripts/install-deps.sh

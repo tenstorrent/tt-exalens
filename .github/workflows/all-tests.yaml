@@ -77,11 +77,9 @@ jobs:
           make dbd_server_unit_tests_run_only
       - name: Run Python tests for dbd library
         run: |
-          source .venv/bin/activate
           python3 -m unittest discover -v -t . -s test/dbd -p *test*.py
       - name: Run Python tests for Debuda app 
         run: |
-          source .venv/bin/activate
           python3 -m unittest discover -v -t . -s test/app -p *test*.py
   
 
@@ -135,15 +133,12 @@ jobs:
           wheel-install: "true"
       - name: Build wheel
         run: |
-          source .venv/bin/activate
           make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} wheel
       - name: Install wheel
         run: |
-          source .venv/bin/activate
           pip install build/debuda_wheel/*.whl
       - name: Run tests
         run: |
-          source .venv/bin/activate
           # Change to the wheel tests directory so that we are certain we don't import dev files
           cd test/wheel
           ./run-wheel.sh
