@@ -40,8 +40,6 @@ To build Debuda, you need the following dependencies:
 - libboost-all-dev,
 - libhwloc-dev,
 - libzmq3-dev,
-- libgtest-dev,
-- libgmock-dev,
 - xxd,
 
 which can be installed by running
@@ -139,6 +137,11 @@ Apart from the base Debuda dependencies, tests require additional python package
 - coverage,
 - parameterized,
 
+and system libraries:
+
+- libgtest-dev,
+- libgmock-dev,
+
 which can be installed by running
 
 ```bash
@@ -182,6 +185,17 @@ which will add license headers and newlines at file ands where neccessary, and
 ```
 
 which will format C++ files.
+
+### Updating docker images
+
+To update docker images used on CI and in development, you need to update Dockerfiles in `.github` directory and then run [`release-docker-images`](.github/workflows/release-docker-images.yaml) workflow.
+This can be done through GitHub CLI (see [here](https://github.com/cli/cli?tab=readme-ov-file#linux--bsd) how to install it) by using command
+
+```bash
+gh workflow run 116548537 --ref <your-branch-name>
+```
+
+This will automatically generate new image releases and tag them as `latest`.
 
 ---
 

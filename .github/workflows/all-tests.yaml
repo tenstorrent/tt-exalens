@@ -16,6 +16,8 @@ jobs:
     uses: ./.github/workflows/static-checks.yaml
   build:
     uses: ./.github/workflows/build-dbd.yaml
+  
+  
   build-and-run-unit-tests:
     needs:
       - build
@@ -32,8 +34,22 @@ jobs:
       # So we can get all the makefile output we want
       VERBOSE: 5
     runs-on: ${{ matrix.runner-info.runs-on }}
+    container:
+      image: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04:latest
+      options: --user root --device /dev/tenstorrent/0
+      volumes:
+        - /dev/hugepages:/dev/hugepages
+        - /dev/hugepages-1G:/dev/hugepages-1G
+        - /etc/udev/rules.d:/etc/udev/rules.d
+        - /lib/modules:/lib/modules
     name: Build and run unit test on ${{ matrix.runner-info.arch }}
     steps:
+        # This is a workaround for git's ownership problems
+      - name: Change ownership of /github/home
+        run: chmod -R 777 /github/home
+      - name: Git safe dir
+        run: git config --global --add safe.directory '*'
+      
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -47,21 +63,14 @@ jobs:
         run: |
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-server-standalone
-      - uses: ./.github/actions/install-dbd-deps
-      - uses: ./.github/actions/install-test-deps
-      - uses: ./.github/actions/setup-python-venv
-        with:
-          python-version: '3.8'
-      - name: Install Python dependencies
-        run: |
-          pip install -r dbd/requirements.txt
-          pip install -r test/test_requirements.txt
+      
       - name: Build server unit tests
         run: |
           make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/server_tests
       - name: Build pybind unit tests
         run: |
           make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/pybind_tests
+      
       - name: Run C++ tests
         run: |
           make dbd_server_unit_tests_run_only
@@ -71,6 +80,8 @@ jobs:
       - name: Run Python tests for Debuda app 
         run: |
           python3 -m unittest discover -v -t . -s test/app -p *test*.py
+  
+
   wheel-test:
     needs:
       - build
@@ -87,8 +98,22 @@ jobs:
       # So we can get all the makefile output we want
       VERBOSE: 5
     runs-on: ${{ matrix.runner-info.runs-on }}
-    name: Build, install wheel and test it test on ${{ matrix.runner-info.arch }}
+    container:
+      image: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04:latest
+      options: --user root --device /dev/tenstorrent/0
+      volumes:
+        - /dev/hugepages:/dev/hugepages
+        - /dev/hugepages-1G:/dev/hugepages-1G
+        - /etc/udev/rules.d:/etc/udev/rules.d
+        - /lib/modules:/lib/modules
+    name: Build, install wheel and test it on ${{ matrix.runner-info.arch }}
     steps:
+        # This is a workaround for git's ownership problems
+      - name: Change ownership of /github/home
+        run: chmod -R 777 /github/home
+      - name: Git safe dir
+        run: git config --global --add safe.directory '*'
+
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -102,17 +127,7 @@ jobs:
         run: |
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-server-standalone
-      - uses: ./.github/actions/install-dbd-deps
-      - uses: ./.github/actions/install-test-deps
-      - uses: ./.github/actions/setup-python-venv
-        with:
-          python-version: '3.8'
-      - name: Install Python dependencies
-        run: |
-          pip install -r dbd/requirements.txt
-      - name: Install wheel build requirements
-        run: |
-          pip3 install wheel build setuptools 
+      
       - name: Build wheel
         run: |
           make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} wheel
