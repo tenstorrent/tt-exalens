@@ -30,4 +30,4 @@ runs:
         cache-dependency-path: |
           dbd/requirements.txt
           test/test_requirements.txt
-        install-cmd: DBD_INSTALL=${{ inputs.dbd-install }} TEST_INSTALL=${{ inputs.test-install }} WHEEL_INSTALL=${{ inputs.wheel-install}} ./scripts/create-venv.sh
+        install-cmd: DBD_INSTALL=${{ inputs.dbd-install }} TEST_INSTALL=${{ inputs.test-install }} WHEEL_INSTALL=${{ inputs.wheel-install}} ./scripts/install-deps.sh
