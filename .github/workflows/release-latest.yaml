@@ -1,11 +1,11 @@
-name: "pre-release"
+name: Release Latest
 
 on:
   push:
     branches:
-      - "master"
+      - "main"
 
-run-name: "Pre-release activated by updating main."
+run-name: "Release latest debuda wheel, activated by updating main."
   
 jobs:
   pre-release:
@@ -15,7 +15,7 @@ jobs:
           {py-version: "3.8", os: "ubuntu-20.04"},
           {py-version: "3.10", os: "ubuntu-22.04"},
         ]
-    name: "Pre Release"
+    name: "Latest Release"
     runs-on: ${{ matrix.build-info.os }}
     steps:
       - uses: actions/checkout@v4
