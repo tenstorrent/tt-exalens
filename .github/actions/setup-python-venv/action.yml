@@ -1,5 +1,6 @@
 name: "Install Python Dependencies"
 description: "Installs Python Dependencies from cache or from PyPI if cache is not available. Uses dbd/requirements.txt and dbd/tests/test_requirements.txt."
+shell: bash
 
 inputs:
   python-version:
