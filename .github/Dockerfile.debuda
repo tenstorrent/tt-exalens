@@ -1,6 +1,9 @@
 FROM ubuntu:22.04
 SHELL ["/bin/bash", "-c"]
 
+RUN mkdir /home/workdir
+WORKDIR /home/workdir
+
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -36,7 +39,8 @@ RUN apt-get clean
 # Clone necessary requirement files
 RUN git clone --depth 1 https://github.com/tenstorrent/tt-debuda.git 
 
+
 # Install Python dependencies
-RUN pip install --no-cache-dir -r dbd/requirements.txt
-RUN pip install --no-cache-dir -r test/test_requirements.txt
+RUN pip install --no-cache-dir -r tt-debuda/dbd/requirements.txt
+RUN pip install --no-cache-dir -r tt-debuda/test/test_requirements.txt
 RUN pip install -r wheel build setuptools
