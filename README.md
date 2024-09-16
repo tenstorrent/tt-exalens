@@ -145,7 +145,7 @@ and system libraries:
 which can be installed by running
 
 ```bash
-pip install -r dbd/test/test_requirements.txt
+pip install -r test/test_requirements.txt
 ```
 
 Some tests require using output of a Buda run.

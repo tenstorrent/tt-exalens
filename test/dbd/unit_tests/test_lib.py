@@ -149,9 +149,9 @@ class TestReadWrite(unittest.TestCase):
 	])
 	def test_invalid_inputs_read(self, core_loc, address, device_id, word_count):
 		"""Test invalid inputs for read functions."""
-		with self.assertRaises(tt_util.TTException):
+		with self.assertRaises((tt_util.TTException, ValueError)):
 			lib.read_words_from_device(core_loc, address, device_id, word_count)
-		with self.assertRaises(tt_util.TTException):
+		with self.assertRaises((tt_util.TTException, ValueError)):
 			# word_count can be used as num_bytes
 			lib.read_from_device(core_loc, address, device_id, word_count)
 
@@ -164,7 +164,7 @@ class TestReadWrite(unittest.TestCase):
 		# ("0,0", 0x100, -171, -1),		# Invalid word TODO: What are the limits for word?
 	])
 	def test_invalid_write_word(self, core_loc, address, data, device_id):
-		with self.assertRaises(tt_util.TTException):
+		with self.assertRaises((tt_util.TTException, ValueError)):
 			lib.write_words_to_device(core_loc, address, data, device_id)
 
 	@parameterized.expand([
@@ -178,7 +178,7 @@ class TestReadWrite(unittest.TestCase):
 	])
 	def test_invalid_write(self, core_loc, address, data, device_id):
 		"""Test invalid inputs for write function."""
-		with self.assertRaises(tt_util.TTException):
+		with self.assertRaises((tt_util.TTException, ValueError)):
 			lib.write_to_device(core_loc, address, data, device_id)
 
 class TestRunElf(unittest.TestCase):
@@ -218,7 +218,7 @@ class TestRunElf(unittest.TestCase):
 	def test_run_elf_invalid(self, elf_file, core_loc, risc_id, device_id):
 		if elf_file is None:
 			elf_file = self.elf_path
-		with self.assertRaises(tt_util.TTException):
+		with self.assertRaises((tt_util.TTException, ValueError)):
 			lib.run_elf(elf_file, core_loc, risc_id, device_id, context=self.context)
 
 	# TODO: This test should be restructured (Issue #70)

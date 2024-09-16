@@ -43,7 +43,6 @@ def read_words_from_device(
 
 
 	if not isinstance(core_loc, OnChipCoordinate):
-		validate_core_loc(core_loc)
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 	data = []
 	for i in range(word_count):
@@ -80,7 +79,6 @@ def read_from_device(
 	if num_bytes <= 0: raise TTException("num_bytes must be greater than 0.")
 	
 	if not isinstance(core_loc, OnChipCoordinate):
-		validate_core_loc(core_loc)
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 	return context.server_ifc.pci_read(
 		device_id, *core_loc.to("nocVirt"), addr, num_bytes
@@ -112,7 +110,6 @@ def write_words_to_device(
 	validate_device_id(device_id, context)
 	
 	if not isinstance(core_loc, OnChipCoordinate):
-		validate_core_loc(core_loc)
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 
 	if isinstance(data, int):
@@ -156,7 +153,6 @@ def write_to_device(
 	if len(data) == 0: raise TTException("Data to write must not be empty.")
 
 	if not isinstance(core_loc, OnChipCoordinate):
-		validate_core_loc(core_loc)
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 	return context.server_ifc.pci_write(
 		device_id, *core_loc.to("nocVirt"), addr, data
@@ -194,13 +190,11 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, List[U
 			if isinstance(loc, OnChipCoordinate):
 				locs.append(loc)
 			else:
-				validate_core_loc(loc)
 				locs.append(OnChipCoordinate.create(loc, device))
 	elif core_loc == "all":
 		for loc in device.get_block_locations(block_type="functional_workers"):
 			locs.append(loc)
 	else:
-		validate_core_loc(core_loc)
 		locs = [OnChipCoordinate.create(core_loc, device)]
 
 	if not os.path.exists(elf_file): raise TTException(f"ELF file {elf_file} does not exist.")
@@ -241,10 +235,6 @@ def check_context(context: Context = None) -> Context:
 		tt_debuda_init.GLOBAL_CONTEXT = tt_debuda_init.init_debuda()
 	return tt_debuda_init.GLOBAL_CONTEXT
 
-
-def validate_core_loc(core_loc: str) -> None:
-	if not re.match("^\d+,\d+$", core_loc) and not re.match("^\d+-\d+$", core_loc):
-		raise TTException(f"Invalid core location: {core_loc}. Must be in the format 'X-Y' or 'R,C'.")
 
 def validate_addr(addr: int) -> None:	
 	if addr < 0: raise TTException("addr must be greater than or equal to 0.")

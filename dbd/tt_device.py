@@ -1242,6 +1242,20 @@ class Device(TTObject):
                 raise ValueError(f"Unknown tensix register name: {register_name}")
         return base_register_address + register_index * 4
 
+    def get_riscv_run_status(self, loc: OnChipCoordinate) -> str:
+        """
+        Returns the riscv soft reset status as a string of 4 characters one for each riscv core.
+        '-' means the core is in reset, 'R' means the core is running.
+        """
+        status_str = ""
+        bt = self.get_block_type(loc)
+        if bt == "functional_workers":
+            for risc_id in range(4):
+                risc_location = RiscLoc(loc, 0, risc_id)
+                risc_debug = RiscDebug(risc_location, SERVER_IFC)
+                status_str += "-" if risc_debug.is_in_reset() else "R"
+            return status_str
+        return bt
 # end of class Device
 
 # This is based on runtime_utils.cpp:get_soc_desc_path()
