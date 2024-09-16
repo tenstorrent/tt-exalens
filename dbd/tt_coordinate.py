@@ -57,6 +57,7 @@ The following coordinate systems are available to represent a grid location on t
 """
 
 from typing import Any
+from dbd.tt_util import TTException
 
 VALID_COORDINATE_TYPES = [
     "noc0",
@@ -313,7 +314,7 @@ class OnChipCoordinate:
             (x, y) = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
             coord_type = 'noc0'
         else:
-            raise Exception(
+            raise TTException(
                 "Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C"
             )
 
