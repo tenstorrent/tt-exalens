@@ -221,7 +221,7 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, List[U
 
 		# Invalidating instruction cache so that the jump instruction is actually loaded.
 		rdbg.invalidate_instruction_cache()
-		rdbg.cont()
+		rdbg.continue_without_debug()
 
 
 def check_context(context: Context = None) -> Context:
