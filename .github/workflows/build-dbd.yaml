@@ -37,7 +37,7 @@ jobs:
           make -j$(nproc) CONFIG=$CONFIG build
       - name: Remove unnecessary artifacts
         run: |
-          find build/ -name *.so -or -name *.a -or -name *.o ! -path "build/riscv-src/*" | xargs strip -d
+          find build/ -name *.so -or -name *.a -or -name *.o ! -path "build/riscv-src/*" ! -path "build/obj/riscv-src/*" | xargs strip -d
       - name: Upload libraries as artifacts
         uses: actions/upload-artifact@v4
         with:
