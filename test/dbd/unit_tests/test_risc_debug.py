@@ -11,14 +11,21 @@ from dbd.tt_debuda_context import Context
 from dbd.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index, get_risc_id
 
 @parameterized_class([
-   { "risc_name": "BRISC" },
-   { "risc_name": "TRISC0" },
-   { "risc_name": "TRISC1" },
-   { "risc_name": "TRISC2" },
+    # { "core_desc": "ETH0", "risc_name": "BRISC" },
+    { "core_desc": "FW0", "risc_name": "BRISC" },
+    { "core_desc": "FW0", "risc_name": "TRISC0" },
+    { "core_desc": "FW0", "risc_name": "TRISC1" },
+    { "core_desc": "FW0", "risc_name": "TRISC2" },
+    { "core_desc": "FW1", "risc_name": "BRISC" },
+    { "core_desc": "FW1", "risc_name": "TRISC0" },
+    { "core_desc": "FW1", "risc_name": "TRISC1" },
+    { "core_desc": "FW1", "risc_name": "TRISC2" },
 ])
 class TestDebugging(unittest.TestCase):
+	risc_name: str = None  # Risc name
 	risc_id: int = None  # Risc ID - being parametrized
 	context: Context = None  # Debuda context
+	core_desc: str = None  # Core description ETH0, FW0, FW1 - being parametrized
 	core_loc: str = None  # Core location
 	rdbg: RiscDebug = None  # RiscDebug object
 	pc_register_index: int = None  # PC register index
@@ -30,13 +37,33 @@ class TestDebugging(unittest.TestCase):
 		cls.pc_register_index = get_register_index("pc")
 
 	def setUp(self):
-		self.core_loc = "0,0"
+		# Convert core_desc to core_loc
+		if self.core_desc.startswith("ETH"):
+			# Ask device for all ETH cores and get first one
+			eth_cores = self.context.devices[0].get_block_locations(block_type="eth")
+			core_index = int(self.core_desc[3:])
+			if len(eth_cores) > core_index:
+				self.core_loc = eth_cores[core_index].to_str()
+			else:
+				# If not found, we should skip the test
+				self.skipTest("ETH core is not available on this platform")
+		elif self.core_desc.startswith("FW"):
+			# Ask device for all ETH cores and get first one
+			eth_cores = self.context.devices[0].get_block_locations(block_type="functional_workers")
+			core_index = int(self.core_desc[2:])
+			if len(eth_cores) > core_index:
+				self.core_loc = eth_cores[core_index].to_str()
+			else:
+				# If not found, we should skip the test
+				self.skipTest("ETH core is not available on this platform")
+		else:
+			self.fail(f"Unknown core description {self.core_desc}")
 
 		loc = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
 		self.risc_id = get_risc_id(self.risc_name)
 		rloc = RiscLoc(loc, 0, self.risc_id)
 		self.rdbg = RiscDebug(rloc, self.context.server_ifc)
-		loader = RiscLoader(loc, self.risc_id, self.context, self.context.server_ifc)
+		loader = RiscLoader(self.rdbg, self.context)
 		self.program_base_address = loader.get_risc_start_address()
 
 		# If address wasn't set before, we want to set it to something that is not 0 for testing purposes
@@ -83,6 +110,8 @@ class TestDebugging(unittest.TestCase):
 
 	def test_reset_all_functional_workers(self):
 		"""Reset all functional workers."""
+		if self.core_desc.startswith("ETH"):
+			self.skipTest("Playing with ETH core moves device into unknown state after we should warm reset it. This test cannot be run at that moment.")
 		for device in self.context.devices.values():
 			device.all_riscs_assert_soft_reset()
 			for rdbg in device.debuggable_cores:
@@ -1063,3 +1092,220 @@ class TestDebugging(unittest.TestCase):
 		self.assertFalse(self.rdbg.read_status().is_watchpoint1_hit, "Watchpoint 1 should not be hit.")
 		self.assertFalse(self.rdbg.read_status().is_watchpoint2_hit, "Watchpoint 2 should not be hit.")
 		self.assertTrue(self.rdbg.read_status().is_watchpoint3_hit, "Watchpoint 3 should be hit.")
+
+	def test_bne_with_debug_fail(self):
+		"""Test running 48 bytes of generated code that confirms problem with BNE when debugging hardware is enabled."""
+
+		if self.is_blackhole():
+			self.skipTest("BNE instruction with debug hardware enabled is fixed in blackhole.")
+
+		# Enable branch prediction
+		loader = RiscLoader(self.rdbg, self.context)
+		loader.set_branch_prediction(True)
+
+		addr = 0x10000
+
+		# Write our data to memory
+		self.write_data_checked(addr, 0x12345678)
+
+		# Write code for brisc core at address 0
+		# C++:
+		#   asm volatile ("ebreak");
+		#   for (int i = 0; i < 64; i++);
+		#   asm volatile ("ebreak");
+		#   int* a = (int*)0x10000;
+		#   *a = 0x87654000;
+		#   while (true);
+
+		# ebreak
+		self.write_program(0, 0x00100073)
+		# Store 0 to x1 (addi x1, x0, 0)
+		self.write_program(4, 0x00000093)
+		# Store 63 to x2 (addi x2, x0, 63)
+		self.write_program(8, 0x03f00113)
+		# See if they are equal (bne x1, x2, 8)
+		self.write_program(12, 0x00209463)
+		# Jump to ebreak
+		self.write_program(16, RiscLoader.get_jump_to_offset_instruction(12))
+		# Increase value in x1 (addi x1, x1, 1)
+		self.write_program(20, 0x00108093)
+		# Jump to bne
+		self.write_program(24, RiscLoader.get_jump_to_offset_instruction(-12))
+		# ebreak
+		self.write_program(28, 0x00100073)
+		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
+		self.write_program(32, 0x00010537)
+		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
+		self.write_program(36, 0x876545B7)
+		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
+		self.write_program(40, 0x00B52023)
+		# Infinite loop (jal 0)
+		self.write_program(44, RiscLoader.get_jump_to_offset_instruction(0))
+
+		# Take risc out of reset
+		self.rdbg.set_reset_signal(False)
+
+		# Verify value at address
+		self.assertEqual(self.read_data(addr), 0x12345678)
+		self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
+		self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+
+		# Continue to proceed with bne test
+		self.rdbg.enable_debug()
+		self.rdbg.cont(False)
+
+		# Confirm failure
+		self.assertFalse(self.rdbg.read_status().is_halted, "Core should not be halted.")
+		self.rdbg.halt()
+		x1 = self.rdbg.read_gpr(1) # x1 is counter and it should never go over x2
+		x2 = self.rdbg.read_gpr(2) # x2 is value for loop end
+		self.assertGreater(x1, x2) # Bug will prevent BNE to stop the loop, so x1 will be greater than x2
+		self.assertEqual(self.read_data(addr), 0x12345678) # Value shouldn't be changed since we never reached the store instruction
+
+	def test_bne_without_debug(self):
+		"""Test running 48 bytes of generated code that confirms that there is no problem with BNE when debugging hardware is disabled."""
+
+		# Enable branch prediction
+		loader = RiscLoader(self.rdbg, self.context)
+		loader.set_branch_prediction(True)
+
+		addr = 0x10000
+
+		# Write our data to memory
+		self.write_data_checked(addr, 0x12345678)
+
+		# Write code for brisc core at address 0
+		# C++:
+		#   asm volatile ("ebreak");
+		#   for (int i = 0; i < 64; i++);
+		#   asm volatile ("ebreak");
+		#   int* a = (int*)0x10000;
+		#   *a = 0x87654000;
+		#   while (true);
+
+		# ebreak
+		self.write_program(0, 0x00100073)
+		# Store 0 to x1 (addi x1, x0, 0)
+		self.write_program(4, 0x00000093)
+		# Store 63 to x2 (addi x2, x0, 63)
+		self.write_program(8, 0x03f00113)
+		# See if they are equal (bne x1, x2, 8)
+		self.write_program(12, 0x00209463)
+		# Jump to ebreak
+		self.write_program(16, RiscLoader.get_jump_to_offset_instruction(12))
+		# Increase value in x1 (addi x1, x1, 1)
+		self.write_program(20, 0x00108093)
+		# Jump to bne
+		self.write_program(24, RiscLoader.get_jump_to_offset_instruction(-12))
+		# ebreak
+		self.write_program(28, 0x00100073)
+		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
+		self.write_program(32, 0x00010537)
+		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
+		self.write_program(36, 0x876545B7)
+		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
+		self.write_program(40, 0x00B52023)
+		# Infinite loop (jal 0)
+		self.write_program(44, RiscLoader.get_jump_to_offset_instruction(0))
+
+		# Take risc out of reset
+		self.rdbg.set_reset_signal(False)
+
+		# Verify value at address
+		self.assertEqual(self.read_data(addr), 0x12345678)
+		self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
+		self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+
+		# Continue to proceed with bne test
+		self.rdbg.enable_debug()
+		self.rdbg.continue_without_debug()
+
+		# We should pass for loop very fast and should be halted here already
+		self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
+		self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+
+		# Verify value at address
+		self.rdbg.cont()
+		self.assertEqual(self.read_data(addr), 0x87654000)
+		self.assertFalse(self.rdbg.read_status().is_halted, "Core should not be halted.")
+
+		# Halt and test status
+		self.rdbg.halt()
+		self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
+		self.assertFalse(self.rdbg.read_status().is_ebreak_hit, "ebreak should not be the cause.")
+
+	def test_bne_with_debug_without_bp(self):
+		"""Test running 48 bytes of generated code that confirms that there is no problem with BNE when debugging hardware is enabled and branch prediction is disabled."""
+
+		# Enable branch prediction
+		loader = RiscLoader(self.rdbg, self.context)
+		loader.set_branch_prediction(True)
+
+		addr = 0x10000
+
+		# Write our data to memory
+		self.write_data_checked(addr, 0x12345678)
+
+		# Write code for brisc core at address 0
+		# C++:
+		#   asm volatile ("ebreak");
+		#   for (int i = 0; i < 64; i++);
+		#   asm volatile ("ebreak");
+		#   int* a = (int*)0x10000;
+		#   *a = 0x87654000;
+		#   while (true);
+
+		# ebreak
+		self.write_program(0, 0x00100073)
+		# Store 0 to x1 (addi x1, x0, 0)
+		self.write_program(4, 0x00000093)
+		# Store 63 to x2 (addi x2, x0, 63)
+		self.write_program(8, 0x03f00113)
+		# See if they are equal (bne x1, x2, 8)
+		self.write_program(12, 0x00209463)
+		# Jump to ebreak
+		self.write_program(16, RiscLoader.get_jump_to_offset_instruction(12))
+		# Increase value in x1 (addi x1, x1, 1)
+		self.write_program(20, 0x00108093)
+		# Jump to bne
+		self.write_program(24, RiscLoader.get_jump_to_offset_instruction(-12))
+		# ebreak
+		self.write_program(28, 0x00100073)
+		# Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
+		self.write_program(32, 0x00010537)
+		# Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
+		self.write_program(36, 0x876545B7)
+		# Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
+		self.write_program(40, 0x00B52023)
+		# Infinite loop (jal 0)
+		self.write_program(44, RiscLoader.get_jump_to_offset_instruction(0))
+
+		# Take risc out of reset
+		self.rdbg.set_reset_signal(False)
+
+		# Verify value at address
+		self.assertEqual(self.read_data(addr), 0x12345678)
+		self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
+		self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+
+		# Disable branch prediction
+		loader = RiscLoader(self.rdbg, self.context)
+		loader.set_branch_prediction(False)
+
+		# Continue to proceed with bne test
+		self.rdbg.enable_debug()
+		self.rdbg.cont(False)
+
+		# We should pass for loop very fast and should be halted here already
+		self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
+		self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+
+		# Verify value at address
+		self.rdbg.cont()
+		self.assertEqual(self.read_data(addr), 0x87654000)
+		self.assertFalse(self.rdbg.read_status().is_halted, "Core should not be halted.")
+
+		# Halt and test status
+		self.rdbg.halt()
+		self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
+		self.assertFalse(self.rdbg.read_status().is_ebreak_hit, "ebreak should not be the cause.")

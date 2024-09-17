@@ -395,38 +395,41 @@ class BlackholeDevice(tt_device.Device):
         return 0xFFEF0000
 
     __configuration_register_map = {
-        'RISCV_IC_INVALIDATE_InvalidateAll': 185,
+        'DISABLE_RISC_BP_Disable_main': tt_device.TensixRegisterDescription(address=2 * 4, mask=0x400000, shift=22),
+        'DISABLE_RISC_BP_Disable_trisc': tt_device.TensixRegisterDescription(address=2 * 4, mask=0x3800000, shift=23),
+        'DISABLE_RISC_BP_Disable_ncrisc': tt_device.TensixRegisterDescription(address=2 * 4, mask=0x4000000, shift=26),
+        'RISCV_IC_INVALIDATE_InvalidateAll': tt_device.TensixRegisterDescription(address=185 * 4, mask=0x1f, shift=0),
     }
 
-    def get_configuration_register_index(self, register_name: str) -> int:
+    def get_configuration_register_description(self, register_name: str) -> tt_device.TensixRegisterDescription:
         if register_name in BlackholeDevice.__configuration_register_map:
             return BlackholeDevice.__configuration_register_map[register_name]
-        return -1
+        return None
 
     def get_tenxis_debug_register_base(self) -> int:
         return 0xFFB12000
 
     __debug_register_map = {
-        'RISCV_DEBUG_REG_RISC_DBG_CNTL_0': 32,
-        'RISCV_DEBUG_REG_RISC_DBG_CNTL_1': 33,
-        'RISCV_DEBUG_REG_RISC_DBG_STATUS_0': 34,
-        'RISCV_DEBUG_REG_RISC_DBG_STATUS_1': 35,
-        'RISCV_DEBUG_REG_SOFT_RESET_0': 108,
-        'TRISC_RESET_PC_SEC0_PC': 138, # Old name from configuration register
-        'RISCV_DEBUG_REG_TRISC0_RESET_PC': 138, # New name
-        'TRISC_RESET_PC_SEC1_PC': 139, # Old name from configuration register
-        'RISCV_DEBUG_REG_TRISC1_RESET_PC': 139, # New name
-        'TRISC_RESET_PC_SEC2_PC': 140, # Old name from configuration register
-        'RISCV_DEBUG_REG_TRISC2_RESET_PC': 140, # New name
-        'TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': 141, # Old name from configuration register
-        'RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE': 141, # New name
-        'NCRISC_RESET_PC_PC': 142, # Old name from configuration register
-        'RISCV_DEBUG_REG_NCRISC_RESET_PC': 142, # New name
-        'NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': 143, # Old name from configuration register
-        'RISCV_DEBUG_REG_NCRISC_RESET_PC_OVERRIDE': 143, # New name
+        'RISCV_DEBUG_REG_RISC_DBG_CNTL_0': tt_device.TensixRegisterDescription(address=0x80, mask=0xffffffff, shift=0),
+        'RISCV_DEBUG_REG_RISC_DBG_CNTL_1': tt_device.TensixRegisterDescription(address=0x84, mask=0xffffffff, shift=0),
+        'RISCV_DEBUG_REG_RISC_DBG_STATUS_0': tt_device.TensixRegisterDescription(address=0x88, mask=0xffffffff, shift=0),
+        'RISCV_DEBUG_REG_RISC_DBG_STATUS_1': tt_device.TensixRegisterDescription(address=0x8c, mask=0xffffffff, shift=0),
+        'RISCV_DEBUG_REG_SOFT_RESET_0': tt_device.TensixRegisterDescription(address=0x1b0, mask=0xffffffff, shift=0),
+        'TRISC_RESET_PC_SEC0_PC': tt_device.TensixRegisterDescription(address=0x228, mask=0xffffffff, shift=0), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC0_RESET_PC': tt_device.TensixRegisterDescription(address=0x228, mask=0xffffffff, shift=0), # New name
+        'TRISC_RESET_PC_SEC1_PC': tt_device.TensixRegisterDescription(address=0x22c, mask=0xffffffff, shift=0), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC1_RESET_PC': tt_device.TensixRegisterDescription(address=0x22c, mask=0xffffffff, shift=0), # New name
+        'TRISC_RESET_PC_SEC2_PC': tt_device.TensixRegisterDescription(address=0x230, mask=0xffffffff, shift=0), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC2_RESET_PC': tt_device.TensixRegisterDescription(address=0x230, mask=0xffffffff, shift=0), # New name
+        'TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': tt_device.TensixRegisterDescription(address=0x234, mask=0x7, shift=0), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE': tt_device.TensixRegisterDescription(address=0x234, mask=0x7, shift=0), # New name
+        'NCRISC_RESET_PC_PC': tt_device.TensixRegisterDescription(address=0x238, mask=0xffffffff, shift=0), # Old name from configuration register
+        'RISCV_DEBUG_REG_NCRISC_RESET_PC': tt_device.TensixRegisterDescription(address=0x238, mask=0xffffffff, shift=0), # New name
+        'NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': tt_device.TensixRegisterDescription(address=0x23c, mask=0x1, shift=0), # Old name from configuration register
+        'RISCV_DEBUG_REG_NCRISC_RESET_PC_OVERRIDE': tt_device.TensixRegisterDescription(address=0x23c, mask=0x1, shift=0), # New name
     }
 
-    def get_debug_register_index(self, register_name: str) -> int:
+    def get_debug_register_description(self, register_name: str) -> tt_device.TensixRegisterDescription:
         if register_name in BlackholeDevice.__debug_register_map:
             return BlackholeDevice.__debug_register_map[register_name]
-        return -1
+        return None

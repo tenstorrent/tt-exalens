@@ -33,6 +33,7 @@ jobs:
       CONFIG: ci
       # So we can get all the makefile output we want
       VERBOSE: 5
+      LOGGER_LEVEL: INFO
     runs-on: ${{ matrix.runner-info.runs-on }}
     container:
       image: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04:latest

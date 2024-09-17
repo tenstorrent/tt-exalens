@@ -63,16 +63,17 @@ def dump_tile(chip, loc, addr, size, data_format):
 
 
 BinarySlot = namedtuple("BinarySlot", ["offset_bytes", "size_bytes"])
-        
+
 
 class AddressMap(ABC):
     def __init__(self):
         self.binaries: Dict[str, BinarySlot]
-        
+
 class L1AddressMap(AddressMap):
     def __init__(self):
         super().__init__()
-        
+
+TensixRegisterDescription = namedtuple("TensixRegisterDescription", ["address", "mask", "shift"])
 
 #
 # Device class: generic API for talking to specific devices. This class is the parent of specific
@@ -1223,24 +1224,29 @@ class Device(TTObject):
         pass
 
     @abstractmethod
-    def get_configuration_register_index(self, register_name: str) -> int:
+    def get_configuration_register_description(self, register_name: str) -> TensixRegisterDescription:
         pass
 
     @abstractmethod
-    def get_debug_register_index(self, register_name: str) -> int:
+    def get_debug_register_description(self, register_name: str) -> TensixRegisterDescription:
         pass
 
-    def get_tensix_register_address(self, register_name: str):
-        register_index = self.get_configuration_register_index(register_name)
-        if register_index >= 0:
+    def get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
+        register_description = self.get_configuration_register_description(register_name)
+        if register_description != None:
             base_register_address = self.get_tensix_configuration_register_base()
         else:
-            register_index = self.get_debug_register_index(register_name)
-            if register_index >= 0:
+            register_description = self.get_debug_register_description(register_name)
+            if register_description != None:
                 base_register_address = self.get_tenxis_debug_register_base()
             else:
                 raise ValueError(f"Unknown tensix register name: {register_name}")
-        return base_register_address + register_index * 4
+        return register_description._replace(address=base_register_address + register_description.address)
+
+    def get_tensix_register_address(self, register_name: str) -> int:
+        description = self.get_tensix_register_description(register_name)
+        assert(description.mask == 0xFFFFFFFF and description.shift == 0)
+        return description.address
 
     def get_riscv_run_status(self, loc: OnChipCoordinate) -> str:
         """
