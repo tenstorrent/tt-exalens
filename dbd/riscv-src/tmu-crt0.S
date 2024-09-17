@@ -15,17 +15,21 @@ CRT_START:
   la sp, __stack_top
 
   # Clear the bss segment
-  la      a0, __ldm_bss_start
-  la      a1, __ldm_bss_end
-  call    wzerorange
+  la      t0, __ldm_bss_start  # Load the address of __ldm_bss_start into t0
+  la      t1, __ldm_bss_end    # Load the address of __ldm_bss_end into t1
+3:beq     t0, t1, 4f           # If t0 == t1, break out of loop
+  sw      zero, 0(t0)          # Store 0 at address pointed by t0
+  addi    t0, t0, 4            # Move to the next word (32-bit) address
+  j       3b                   # Jump back to label 3
 
-//   la      s2, __init_array_start
-//   la      s3, __init_array_end
-//   j       2f
-// 1:lw      a0, 0(s2)
-//   jalr    a0
-//   addi    s2, s2, 4
-// 2:bne     s2, s3, 1b
+  # Execute global initialization
+4:la      s2, __init_array_start
+  la      s3, __init_array_end
+  j       6f
+5:lw      a0, 0(s2)
+  jalr    a0
+  addi    s2, s2, 4
+6:bne     s2, s3, 5b
   .option pop
 
   /* Pass in the tensix coordinates as argv[0][0] through argv[0][3].

@@ -16,9 +16,6 @@
 #define RISCV_DEBUG_REG_WALL_CLOCK_L            (RISCV_DEBUG_REGS_START_ADDR | 0x1F0)
 #define RISCV_DEBUG_REG_WALL_CLOCK_H            (RISCV_DEBUG_REGS_START_ADDR | 0x1F8)
 
-extern void (* __init_array_start[])();
-extern void (* __init_array_end[])();
-
 volatile uint32_t g_MAILBOX;
 volatile union {
     uint64_t all_bytes;
@@ -34,13 +31,6 @@ void halt() {
     asm volatile ("ebreak");
 }
 
-extern "C" void wzerorange(uint32_t *start, uint32_t *end)
-{
-    for (; start != end; start++)
-    {
-        *start = 0;
-    }
-}
 
 void decrement_mailbox() {
     g_MAILBOX--;
@@ -51,9 +41,6 @@ extern "C" void infloop() {
 }
 
 int main() {
-  for (void (** fptr)() = __init_array_start; fptr < __init_array_end; fptr++) {
-      (**fptr)();
-  }
 
   g_TESTBYTEACCESS.all_bytes = 0x0102030405060708;
 
