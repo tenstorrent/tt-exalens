@@ -14,7 +14,7 @@ from dbd import tt_util
 
 from dbd.tt_coordinate import OnChipCoordinate
 from dbd.tt_debuda_context import Context
-from dbd.tt_debug_risc import RiscLoader, get_risc_name
+from dbd.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name
 from dbd.tt_firmware import ELF
 from dbd.tt_object import DataArray
 
@@ -255,8 +255,8 @@ class TestRunElf(unittest.TestCase):
 		TESTBYTEACCESS_ADDR, _, _, _ = elf.parse_addr_size_value_type("fw.g_TESTBYTEACCESS")
 
 		loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
-		rloader = RiscLoader(loc, 0, self.context, self.context.server_ifc, False)
-		rdbg = rloader.risc_debug
+		rdbg = RiscDebug(RiscLoc(loc, 0, 0), self.context.server_ifc, False)
+		rloader = RiscLoader(rdbg, self.context, False)
 		loc = rloader.risc_debug.location.loc
 		device = loc._device
 
