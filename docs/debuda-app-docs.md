@@ -348,7 +348,7 @@ Loads an elf file into a brisc and runs it.
 
 Command:
 ```
-run-elf build/risv-src/brisc-globals.elf
+run-elf build/risv-src/wormhole/sample.brisc.elf
 ```
 
 

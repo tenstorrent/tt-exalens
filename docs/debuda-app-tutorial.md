@@ -149,7 +149,7 @@ It is possible to run .elf files on Tenstorrent hardware through Debuda using `r
 
 We can try and run the sample program that is used in testing Debuda. 
 First, be sure that you have [cloned Debuda repository and built Debuda](../README.md#building-debuda).
-If everything worked as expected, there should be a file in `build/riscv-src` directory named `run_elf_brisc_test.elf`.
+If everything worked as expected, there should be a file in `build/riscv-src/wormhole` directory named `run_elf_test.brisc.elf`.
 That simple program writes value 0x12345678 to the address 0x0 in L1 memory of the selected core.
 Currently, running `brxy 18-18 0x0` returns
 ```
@@ -158,7 +158,7 @@ Currently, running `brxy 18-18 0x0` returns
 ```
 Let's try running our .elf file on that core:
 ```
-re build/riscv-src/run_elf_brisc_test.elf -l 18-18
+re build/riscv-src/wormhole/run_elf_test.brisc.elf -l 18-18
 ```
 The first argument is the path to the file we want to run, and the `-l` flag can be used to specify a single core to run the file on.
 If not specified, the .elf program will be run on all available cores.
