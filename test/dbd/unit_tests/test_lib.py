@@ -14,7 +14,7 @@ from dbd import tt_util
 
 from dbd.tt_coordinate import OnChipCoordinate
 from dbd.tt_debuda_context import Context
-from dbd.tt_debug_risc import RiscLoader
+from dbd.tt_debug_risc import RiscLoader, get_risc_name
 from dbd.tt_firmware import ELF
 from dbd.tt_object import DataArray
 
@@ -185,10 +185,23 @@ class TestRunElf(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls) -> None:
 		cls.context = tt_debuda_init.init_debuda()
-		cls.elf_path = "build/riscv-src/run_elf_brisc_test.elf"
 
+	def get_elf_path(self, app_name, risc_id):
+		"""Get the path to the ELF file."""
+		arch = self.context.devices[0]._arch.lower()
+		if arch == "wormhole_b0":
+			arch = "wormhole"
+		risc = get_risc_name(risc_id).lower()
+		return f"build/riscv-src/{arch}/{app_name}.{risc}.elf"
 
-	def test_run_elf(self):
+	@parameterized.expand([
+		(0),			# Load private sections on BRISC
+		(1),			# Load private sections on TRISC0
+		(2),			# Load private sections on TRISC1
+		(3),			# Load private sections on TRISC2
+		#(4),			# Load private sections on NCRISC    # TODO (#111): When loader is changed, uncomment this
+	])
+	def test_run_elf(self, risc_id: int):
 		"""Test running an ELF file."""
 		core_loc = "0,0"
 		addr = 0x0
@@ -199,7 +212,8 @@ class TestRunElf(unittest.TestCase):
 		self.assertEqual(ret[0], 0)
 		
 		# Run an ELF that writes to the addr and check if it executed correctly
-		lib.run_elf(self.elf_path, core_loc, context=self.context)
+		elf_path = self.get_elf_path("run_elf_test", risc_id)
+		lib.run_elf(elf_path, core_loc, context=self.context)
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0x12345678)
 
@@ -217,17 +231,21 @@ class TestRunElf(unittest.TestCase):
 	])
 	def test_run_elf_invalid(self, elf_file, core_loc, risc_id, device_id):
 		if elf_file is None:
-			elf_file = self.elf_path
+			elf_file = self.get_elf_path("run_elf_test", 0)
 		with self.assertRaises((tt_util.TTException, ValueError)):
 			lib.run_elf(elf_file, core_loc, risc_id, device_id, context=self.context)
 
 	# TODO: This test should be restructured (Issue #70)
-	def test_old_elf_test(self):
+	@parameterized.expand([
+		(0),			# Load private sections on BRISC
+		(1),			# Load private sections on TRISC0
+		(2),			# Load private sections on TRISC1
+		(3),			# Load private sections on TRISC2
+	])
+	def test_old_elf_test(self, risc_id: int):
 		""" Running old elf test, formerly done with -t option. """
-
-		# TODO: Add support for triscs as well  -   @parameterized.expand([
 		core_loc = "0,0"
-		elf_path = "build/riscv-src/brisc-globals.elf"
+		elf_path = self.get_elf_path("sample", risc_id)
 		
 		lib.run_elf(elf_path, core_loc, context=self.context)
 
