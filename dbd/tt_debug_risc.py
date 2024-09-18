@@ -525,6 +525,8 @@ class RiscLoader:
         self.context = context
 
     SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".stack"]
+    PRIVATE_MEMORY_BASE = 0xFFB00000
+    PRIVATE_CODE_BASE = 0xFFC00000
 
     @contextmanager
     def ensure_reading_configuration_register(self):
@@ -739,7 +741,7 @@ class RiscLoader:
         Writes a block of bytes to a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
         the debug interface to write them.
         """
-        if address & 0xFFB00000 == 0xFFB00000 or address & 0xFFC00000 == 0xFFC00000:
+        if address & self.PRIVATE_MEMORY_BASE == self.PRIVATE_MEMORY_BASE or address & self.PRIVATE_CODE_BASE == self.PRIVATE_CODE_BASE:
             # Use debug interface
             self.write_block_through_debug(address, data)
         else:
@@ -750,20 +752,20 @@ class RiscLoader:
         Reads a block of bytes from a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
         the debug interface to read them.
         """
-        if address & 0xFFB00000 == 0xFFB00000 or address & 0xFFC00000 == 0xFFC00000:
+        if address & self.PRIVATE_MEMORY_BASE == self.PRIVATE_MEMORY_BASE or address & self.PRIVATE_CODE_BASE == self.PRIVATE_CODE_BASE:
             # Use debug interface
             return self.read_block_through_debug(address, byte_count)
         else:
             return self.risc_debug.ifc.pci_read(self.risc_debug.location.loc._device.id(),*self.risc_debug.location.loc.to("nocVirt"),address,byte_count)
 
     def remap_address(self, address: int, loader_data: int, loader_code: int):
-        if address & 0xFFB00000 == 0xFFB00000:
+        if address & self.PRIVATE_MEMORY_BASE == self.PRIVATE_MEMORY_BASE:
             if loader_data is not None and isinstance(loader_data, int):
-                return address - 0xFFB00000 + loader_data
+                return address - self.PRIVATE_MEMORY_BASE + loader_data
             return address
-        if address & 0xFFC00000 == 0xFFC00000:
+        if address & self.PRIVATE_CODE_BASE == self.PRIVATE_CODE_BASE:
             if loader_code is not None and isinstance(loader_code, int):
-                return address - 0xFFC00000 + loader_code
+                return address - self.PRIVATE_CODE_BASE + loader_code
             return address
         return address
 
