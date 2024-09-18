@@ -9,6 +9,34 @@ ENTRY(_start)
 SEARCH_DIR("/opt/riscv32i/riscv32-unknown-elf/lib");
 SECTIONS
 {
+  /*
+   * This section is used to transfer .ldm_data section into private memory (0xffb00000).
+   * Since loader cannot access private core memory from NOC, it copies .ldm_data section into .loader_init section,
+   * and we embed code into CRT library that copies .loader_init section into .ldm_data section before main starts.
+   */
+  .loader_init :
+  {
+    __loader_init_start = .;
+   . += LENGTH(REGION_LOADER_INIT);
+    __loader_init_end = .;
+  } > REGION_LOADER_INIT
+  /*
+   * This section is used to transfer .init section into private code memory (IRAM = 0xffc00000).
+   * IRAM exists only on NCRICS on some architectures. On all others, this section is created as empty.
+   * Since loader cannot access IRAM from NOC, it copies .init section into .loader_code section,
+   * and we embed code into CRT library that copies .loader_code section into .init section before rest of the CRT starts.
+   */
+  .loader_code :
+  {
+    __loader_code_start = .;
+   . += LENGTH(REGION_LOADER_CODE);
+    __loader_code_end = .;
+  } > REGION_LOADER_CODE
+
+  /*
+   * Rest of the sections are standard sections
+   */
+
   PROVIDE (__executable_start = __firmware_start);
   .init __firmware_start :
   {

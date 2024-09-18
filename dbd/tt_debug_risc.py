@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from dataclasses import dataclass
+from typing import Union
 from dbd.tt_debuda_context import Context
 from dbd.tt_coordinate import OnChipCoordinate
 from dbd import tt_util as util
@@ -524,6 +525,8 @@ class RiscLoader:
         self.context = context
 
     SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".stack"]
+    PRIVATE_MEMORY_BASE = 0xFFB00000
+    PRIVATE_CODE_BASE = 0xFFC00000
 
     @contextmanager
     def ensure_reading_configuration_register(self):
@@ -735,10 +738,10 @@ class RiscLoader:
 
     def write_block(self, address, data: bytes):
         """
-        Writes a block of bytes to a given address. Knows about the sections not accessible through NOC (0xFFB00000), and uses
+        Writes a block of bytes to a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
         the debug interface to write them.
         """
-        if address & 0xFFB00000 == 0xFFB00000:
+        if address & self.PRIVATE_MEMORY_BASE == self.PRIVATE_MEMORY_BASE or address & self.PRIVATE_CODE_BASE == self.PRIVATE_CODE_BASE:
             # Use debug interface
             self.write_block_through_debug(address, data)
         else:
@@ -746,16 +749,27 @@ class RiscLoader:
 
     def read_block(self, address, byte_count):
         """
-        Reads a block of bytes from a given address. Knows about the sections not accessible through NOC (0xFFF00000), and uses
+        Reads a block of bytes from a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
         the debug interface to read them.
         """
-        if address & 0xFFB00000 == 0xFFB00000:
+        if address & self.PRIVATE_MEMORY_BASE == self.PRIVATE_MEMORY_BASE or address & self.PRIVATE_CODE_BASE == self.PRIVATE_CODE_BASE:
             # Use debug interface
             return self.read_block_through_debug(address, byte_count)
         else:
             return self.risc_debug.ifc.pci_read(self.risc_debug.location.loc._device.id(),*self.risc_debug.location.loc.to("nocVirt"),address,byte_count)
 
-    def load_elf(self, elf_path):
+    def remap_address(self, address: int, loader_data: int, loader_code: int):
+        if address & self.PRIVATE_MEMORY_BASE == self.PRIVATE_MEMORY_BASE:
+            if loader_data is not None and isinstance(loader_data, int):
+                return address - self.PRIVATE_MEMORY_BASE + loader_data
+            return address
+        if address & self.PRIVATE_CODE_BASE == self.PRIVATE_CODE_BASE:
+            if loader_code is not None and isinstance(loader_code, int):
+                return address - self.PRIVATE_CODE_BASE + loader_code
+            return address
+        return address
+
+    def load_elf(self, elf_path, loader_data: Union[str,int], loader_code: Union[str,int]):
         """
         Given an ELF file, this function loads the sections specified in SECTIONS_TO_LOAD to the
         memory of the RISC-V core. It also loads (into location 0) the jump instruction to the 
@@ -771,6 +785,17 @@ class RiscLoader:
             elf_file = self.context.server_ifc.get_binary(elf_path)
             elf_file = ELFFile(elf_file)
 
+            # Try to find address mapping for loader_data and loader_code
+            for section in elf_file.iter_sections():
+                if section.data() and hasattr(section.header, 'sh_addr'):
+                    name = section.name
+                    address = section.header.sh_addr
+                    if name == loader_data:
+                        loader_data = address
+                    elif name == loader_code:
+                        loader_code = address
+
+            # Load section into memory
             for section in elf_file.iter_sections():
                 if section.data() and hasattr(section.header, 'sh_addr'):
                     name = section.name
@@ -779,6 +804,7 @@ class RiscLoader:
                         if address % 4 != 0:
                             raise ValueError(f"Section address 0x{address:08x} is not 32-bit aligned")
 
+                        address = self.remap_address(address, loader_data, loader_code)
                         data = section.data()
 
                         if name == ".init":
@@ -794,6 +820,7 @@ class RiscLoader:
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
                         data = section.data()
+                        address = self.remap_address(address, loader_data, loader_code)
                         read_data = self.read_block(address, len(data))
                         if read_data != data:
                             util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
@@ -806,3 +833,31 @@ class RiscLoader:
         
         self.context.elf_loaded(self.risc_debug.location.loc, self.risc_debug.location.risc_id, elf_path)
         return init_section_address
+
+
+    def run_elf(self, elf_path: str):
+        # Make sure risc is in reset
+        if not self.risc_debug.is_in_reset():
+            self.risc_debug.set_reset_signal(1)
+        assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
+
+        # Load elf file to the L1 memory; avoid writing to private sections
+        init_section_address = self.load_elf(elf_path, loader_data=".loader_init", loader_code=".loader_code")
+        assert init_section_address is not None, "No .init section found in the ELF file"
+
+        # Change core start address to the start of the .init section
+        # if it is BRISC, we should just add jump to start address instead, since we cannot change start address
+        risc_id = self.risc_debug.location.risc_id
+        risc_name = get_risc_name(risc_id)
+        if risc_name == "BRISC":
+            if init_section_address != 0:
+                jump_instruction = RiscLoader.get_jump_to_offset_instruction(init_section_address)
+                self.context.server_ifc.pci_write32(self.risc_debug.location.loc._device.id(), *self.risc_debug.location.loc.to("nocVirt"), 0, jump_instruction)
+        else:
+            # Change core start address
+            self.set_risc_start_address(init_section_address)
+
+        # Take risc out of reset
+        self.risc_debug.set_reset_signal(0)
+        assert not self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is still in reset."
+        assert not self.risc_debug.is_halted(), f"RISC at location {self.risc_debug.location} is still halted."

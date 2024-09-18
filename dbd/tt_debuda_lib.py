@@ -176,9 +176,9 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, List[U
 	context = check_context(context)
 
 	validate_device_id(device_id, context)
-	if (risc_id < 0) or (risc_id > 3):
-		raise TTException("Invalid RiscV ID. Must be between 0 and 3.")
-	
+	if (risc_id < 0) or (risc_id > 4):
+		raise TTException("Invalid RiscV ID. Must be between 0 and 4.")
+
 
 	device = context.devices[device_id]
 
@@ -203,25 +203,7 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, List[U
 	for loc in locs:
 		rdbg = RiscDebug(RiscLoc(loc, 0, risc_id), context.server_ifc, False)
 		rloader = RiscLoader(rdbg, context, False)
-		rdbg = rloader.risc_debug
-
-		risc_start_address = rloader.get_risc_start_address()
-		rloader.start_risc_in_infinite_loop(risc_start_address)
-		assert not rdbg.is_in_reset(), f"RISC at location {loc} is in reset."
-
-		rdbg.enable_debug()
-		if not rdbg.is_halted():
-			rdbg.halt()
-
-		init_section_address = rloader.load_elf(elf_file) # Load the elf file
-		assert init_section_address is not None, "No .init section found in the ELF file"
-
-		jump_to_start_of_init_section_instruction = RiscLoader.get_jump_to_offset_instruction(init_section_address - risc_start_address)
-		context.server_ifc.pci_write32(loc._device.id(), *loc.to("nocVirt"), risc_start_address, jump_to_start_of_init_section_instruction)
-
-		# Invalidating instruction cache so that the jump instruction is actually loaded.
-		rdbg.invalidate_instruction_cache()
-		rdbg.cont()
+		rloader.run_elf(elf_file)
 
 
 def check_context(context: Context = None) -> Context:
