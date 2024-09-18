@@ -1,6 +1,8 @@
 __firmware_stack_size = LENGTH(REGION_STACK);
 __firmware_start = DEFINED(__fw_export_end_text) ? __fw_export_end_text : ORIGIN(REGION_CODE);
 __ldm_start = DEFINED(__fw_export_ldm_end) ? __fw_export_ldm_end : ORIGIN(REGION_DATA);
+__loader_init_size = LENGTH(REGION_LOADER_INIT);
+__loader_code_size = LENGTH(REGION_LOADER_CODE);
 
 OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv",
        "elf32-littleriscv")
@@ -9,6 +11,19 @@ ENTRY(_start)
 SEARCH_DIR("/opt/riscv32i/riscv32-unknown-elf/lib");
 SECTIONS
 {
+  .loader_init :
+  {
+    __loader_init_start = .;
+   . += __loader_init_size;
+    __loader_init_end = .;
+  } > REGION_LOADER_INIT
+  .loader_code :
+  {
+    __loader_code_start = .;
+   . += __loader_code_size;
+    __loader_code_end = .;
+  } > REGION_LOADER_CODE
+
   PROVIDE (__executable_start = __firmware_start);
   .init __firmware_start :
   {

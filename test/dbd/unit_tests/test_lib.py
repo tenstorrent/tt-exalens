@@ -199,7 +199,7 @@ class TestRunElf(unittest.TestCase):
 		(1),			# Load private sections on TRISC0
 		(2),			# Load private sections on TRISC1
 		(3),			# Load private sections on TRISC2
-		#(4),			# Load private sections on NCRISC    # TODO (#111): When loader is changed, uncomment this
+		(4),			# Load private sections on NCRISC
 	])
 	def test_run_elf(self, risc_id: int):
 		"""Test running an ELF file."""
@@ -210,10 +210,10 @@ class TestRunElf(unittest.TestCase):
 		lib.write_words_to_device(core_loc, addr, 0, context=self.context)
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0)
-		
+
 		# Run an ELF that writes to the addr and check if it executed correctly
 		elf_path = self.get_elf_path("run_elf_test", risc_id)
-		lib.run_elf(elf_path, core_loc, context=self.context)
+		lib.run_elf(elf_path, core_loc, risc_id, context=self.context)
 		ret = lib.read_words_from_device(core_loc, addr, context=self.context)
 		self.assertEqual(ret[0], 0x12345678)
 
@@ -225,7 +225,7 @@ class TestRunElf(unittest.TestCase):
 		(None, "0,0/", 0, 0),			# Invalid core_loc
 		(None, "0,0/00b", 0, 0), 		# Invalid core_loc
 		(None, "0,0", -1, 0),			# Invalid risc_id
-		(None, "0,0", 4, 0),			# Invalid risc_id
+		(None, "0,0", 5, 0),			# Invalid risc_id
 		(None, "0,0", 0, -1),			# Invalid device_id
 		(None, "0,0", 0, 112),			# Invalid device_id (too high)
 	])
