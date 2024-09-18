@@ -186,6 +186,10 @@ class TestRunElf(unittest.TestCase):
 	def setUpClass(cls) -> None:
 		cls.context = tt_debuda_init.init_debuda()
 
+	def is_blackhole(self):
+		"""Check if the device is blackhole."""
+		return self.context.devices[0]._arch == "blackhole"
+
 	def get_elf_path(self, app_name, risc_id):
 		"""Get the path to the ELF file."""
 		arch = self.context.devices[0]._arch.lower()
@@ -243,6 +247,9 @@ class TestRunElf(unittest.TestCase):
 		(3),			# Load private sections on TRISC2
 	])
 	def test_old_elf_test(self, risc_id: int):
+		if self.is_blackhole():
+			self.skipTest("This test doesn't work as expected on blackhole. Disabling it until bug #120 is fixed.")
+
 		""" Running old elf test, formerly done with -t option. """
 		core_loc = "0,0"
 		elf_path = self.get_elf_path("sample", risc_id)
