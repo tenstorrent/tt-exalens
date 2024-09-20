@@ -50,7 +50,7 @@ debuda_files = {
     },
     "debuda-server-standalone": {
         "path": "build/bin" ,
-        "files": [ "debuda-server-standalone", "debuda-create-ethernet-map-wormhole" ],
+        "files": [ "debuda-server-standalone", "debuda-create-ethernet-map-wormhole", "debuda-create-ethernet-map-blackhole" ],
         "output": "build/bin",
         "strip": True
     }

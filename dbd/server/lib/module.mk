@@ -15,6 +15,7 @@ $(DEBUDA_SERVER_LIB_CONFIGURATION_EMBED_FILES): $(DEBUDA_SERVER_LIB_CONFIGURATIO
 	cat $(subst $@_,,$(filter $@_%, $(join $(addsuffix _,$(DEBUDA_SERVER_LIB_CONFIGURATION_EMBED_FILES)),$(DEBUDA_SERVER_LIB_CONFIGURATION_YAML_FILES)))) | xxd -i > $@
 
 CREATE_ETHERNET_MAP_WORMHOLE_DBD = $(BINDIR)/debuda-create-ethernet-map-wormhole
+CREATE_ETHERNET_MAP_BLACKHOLE_DBD = $(BINDIR)/debuda-create-ethernet-map-blackhole
 
 # Every variable in subdir must be prefixed with subdir (emulating a namespace)
 DEBUDA_SERVER_LIB_SRCS  = $(wildcard dbd/server/lib/src/*.cpp)
@@ -37,7 +38,7 @@ $(OBJDIR)/dbd/server/lib/%.o: dbd/server/lib/%.cpp $(DEBUDA_SERVER_LIB_CONFIGURA
 	$(CXX) $(CFLAGS) $(CXXFLAGS) $(STATIC_LIB_FLAGS) $(DEBUDA_SERVER_LIB_INCLUDES) -c -o $@ $<
 
 # Each module has a top level target as the entrypoint which must match the subdir name
-dbd/server/lib: $(DEBUDA_SERVER_LIB) $(CREATE_ETHERNET_MAP_WORMHOLE_DBD) 
+dbd/server/lib: $(DEBUDA_SERVER_LIB) $(CREATE_ETHERNET_MAP_WORMHOLE_DBD) $(CREATE_ETHERNET_MAP_BLACKHOLE_DBD)
 
 $(DEBUDA_SERVER_LIB): $(DEBUDA_SERVER_LIB_OBJS)
 	@mkdir -p $(@D)
@@ -46,10 +47,14 @@ $(DEBUDA_SERVER_LIB): $(DEBUDA_SERVER_LIB_OBJS)
 ifeq ("$(HOST_ARCH)", "aarch64")
 $(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/third_party/umd/device/bin/silicon/aarch64/create-ethernet-map
 else
-# TODO (#74): This is temporary fix to make create-ethernet-map work on blackhole. When new official version is released, this should be removed.
-#$(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/third_party/umd/device/bin/silicon/x86/create-ethernet-map
-$(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/dbd/server/bin/create-ethernet-map
+$(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/third_party/umd/device/bin/silicon/x86/create-ethernet-map
 endif
+	@mkdir -p $(@D)
+	cp $^ $@
+	chmod +x $@
+
+# TODO (#74): This is temporary fix to make create-ethernet-map work on blackhole. When new official version is released, this should be removed.
+$(CREATE_ETHERNET_MAP_BLACKHOLE_DBD): $(DEBUDA_HOME)/dbd/server/bin/create-ethernet-map-blackhole
 	@mkdir -p $(@D)
 	cp $^ $@
 	chmod +x $@
