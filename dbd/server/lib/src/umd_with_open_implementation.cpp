@@ -117,6 +117,9 @@ static std::string create_temp_network_descriptor_file(tt::ARCH arch, std::files
             binary_directory = find_binary_directory();
         }
         std::string create_ethernet_map = binary_directory / "debuda-create-ethernet-map-wormhole";
+        if (arch == tt::ARCH::BLACKHOLE) {
+            create_ethernet_map = binary_directory / "debuda-create-ethernet-map-blackhole";
+        }
 
         if (std::filesystem::exists(create_ethernet_map)) {
             std::string cluster_descriptor_path = temp_working_directory / "cluster_desc.yaml";

@@ -63,6 +63,7 @@ jobs:
       - name: Update permissions for downloaded binaries
         run: |
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
+          chmod +x build/bin/debuda-create-ethernet-map-blackhole
           chmod +x build/bin/debuda-server-standalone
       
       - name: Build server unit tests
@@ -127,6 +128,7 @@ jobs:
       - name: Update permissions for downloaded binaries
         run: |
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
+          chmod +x build/bin/debuda-create-ethernet-map-blackhole
           chmod +x build/bin/debuda-server-standalone
       
       - name: Build wheel
