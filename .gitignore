@@ -8,6 +8,9 @@ core
 *.pkl
 
 /build
+llk_test/build
+llkd.dmp
+llkd.elf
 
 __pycache__
 .venv
