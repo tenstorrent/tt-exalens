@@ -7,3 +7,6 @@
 [submodule "third_party/sfpi"]
 	path = third_party/sfpi
 	url = https://github.com/tenstorrent-metal/sfpi-rel
+[submodule "third_party/tt_llk_wormhole_b0"]
+	path = third_party/tt_llk_wormhole_b0
+	url = https://github.com/tenstorrent/tt-llk-wh-b0
