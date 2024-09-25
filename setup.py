@@ -75,8 +75,8 @@ class MyBuild(build_ext):
     def _call_build(self):
         env = os.environ.copy()
         nproc = os.cpu_count()
-        print(f"make -j{nproc} build")
-        subprocess.check_call([f"cd {debuda_home} && make -j{nproc} build"], env=env, shell=True)
+        print(f"make -j{nproc} dbd/server dbd/pybind")
+        subprocess.check_call([f"cd {debuda_home} && make -j{nproc} dbd/server dbd/pybind"], env=env, shell=True)
 
     def _copy_files(self, target_path):
         strip_symbols = os.environ.get("STRIP_SYMBOLS", "0") == "1"
