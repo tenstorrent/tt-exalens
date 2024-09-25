@@ -51,7 +51,7 @@ std::optional<std::vector<uint8_t>> umd_implementation::pci_read(uint8_t chip_id
 
     // TODO #124: Mitigation for UMD bug #77
     if (!is_chip_mmio_capable(chip_id)) {
-        for (uint32_t done = 0; done < size; ) {
+        for (uint32_t done = 0; done < size;) {
             uint32_t block = std::min(size - done, 1024u);
             device->read_from_device(result.data() + done, target, address + done, block, REG_TLB_STR);
             done += block;
@@ -73,7 +73,7 @@ std::optional<uint32_t> umd_implementation::pci_write(uint8_t chip_id, uint8_t n
 
     // TODO #124: Mitigation for UMD bug #77
     if (!is_chip_mmio_capable(chip_id)) {
-        for (uint32_t done = 0; done < size; ) {
+        for (uint32_t done = 0; done < size;) {
             uint32_t block = std::min(size - done, 1024u);
             device->write_to_device(data + done, block, target, address + done, LARGE_WRITE_TLB_STR);
             done += block;
