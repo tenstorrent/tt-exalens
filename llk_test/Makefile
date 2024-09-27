@@ -2,6 +2,10 @@ TOOL_PATH=../third_party/sfpi/compiler/bin
 
 BUILD_DIR=build
 
+# format -> specifies format of data used in building certain test
+# mathop -> specifies operating that MATH TRISC executes
+# both are passed as arguments during compile
+
 GXX=$(TOOL_PATH)/riscv32-unknown-elf-g++
 OBJDUMP=$(TOOL_PATH)/riscv32-unknown-elf-objdump
 OBJCOPY=$(TOOL_PATH)/riscv32-unknown-elf-objcopy
@@ -15,6 +19,11 @@ INCLUDES += -I../third_party/firmware/riscv/common -I../third_party/firmware/ris
 DEFINES = -Wl,--defsym=__trisc_base=53248 -Wl,--defsym=__trisc0_size=20480 -Wl,--defsym=__trisc1_size=16384 -Wl,--defsym=__trisc2_size=20480 -Wl,--defsym=__trisc_local_mem_size=4096
 OPTIONS_COMPILE += $(INCLUDES)
 OPTIONS_LINK += $(DEFINES)
+
+MINUS_D:="-D"
+SPACE:= " "
+FORMAT_ARG:=$(MINUS_D)$(format)$(SPACE)
+MATHOP_ARG:=$(MINUS_D)$(mathop)$(SPACE)
 
 .PHONY: all clean
 
@@ -39,29 +48,33 @@ $(BUILD_DIR)/pack.elf: $(BUILD_DIR)/tmu-crt0.o $(BUILD_DIR)/ckernel_pack.o $(BUI
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) -Thelpers/trisc2.ld $^ -o $@
 
 $(BUILD_DIR)/unpack.o: $(BUILD_DIR)/llk.cpp | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_UNPACK -c -o $@ $<
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(FORMAT_ARG) -DLLK_TRISC_UNPACK -c -o $@ $<
 
 $(BUILD_DIR)/math.o: $(BUILD_DIR)/llk.cpp | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_MATH -c -o $@ $<
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(MATHOP_ARG) -DLLK_TRISC_MATH -c -o $@ $<
 
 $(BUILD_DIR)/pack.o: $(BUILD_DIR)/llk.cpp | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_PACK -c -o $@ $<
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(FORMAT_ARG) -DLLK_TRISC_PACK -c -o $@ $<
 
 $(BUILD_DIR)/ckernel_unpack.o: helpers/ckernel.cc | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DMAILBOX_ADDR=53252 -c -o $@ $<
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_UNPACK -DMAILBOX_ADDR=53252 -c -o $@ $<
 
 $(BUILD_DIR)/ckernel_math.o: helpers/ckernel.cc | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DMAILBOX_ADDR=73732 -c -o $@ $<
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_MATH -DMAILBOX_ADDR=73732 -c -o $@ $<
 
 $(BUILD_DIR)/ckernel_pack.o: helpers/ckernel.cc | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DMAILBOX_ADDR=90116 -c -o $@ $<
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_PACK -DMAILBOX_ADDR=90116 -c -o $@ $<
 
 $(BUILD_DIR)/tmu-crt0.o: helpers/tmu-crt0.S | $(BUILD_DIR)
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o $@ $<
 
 $(BUILD_DIR):
 	mkdir -p $@
-	cp tests/unpack_nop_pack_test.cpp $(BUILD_DIR)/llk.cpp
+	cp tests/eltwise_add_test.cpp $(BUILD_DIR)/llk.cpp
+
+#unpack_nop_pack_test.cpp
 
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -rf .pytest_cache
+	rm -rf __pycache__

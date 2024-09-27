@@ -12,6 +12,7 @@ MEMORY
     TRISC0_CODE : ORIGIN = __trisc_base, LENGTH = DEFINED(__trisc0_size) ? DEFINED(__trisc_local_mem_size) ? __trisc0_size - __trisc_local_mem_size : __trisc0_size : 16K
     TRISC1_CODE : ORIGIN = DEFINED(__trisc0_size) ? __trisc_base + __trisc0_size : 0x0000AC00, LENGTH = DEFINED(__trisc1_size) ? DEFINED(__trisc_local_mem_size) ? __trisc1_size - __trisc_local_mem_size : __trisc1_size : 16K
     TRISC2_CODE : ORIGIN = DEFINED(__trisc1_size) ? __trisc_base + __trisc0_size + __trisc1_size : 0x0000EC00, LENGTH = DEFINED(__trisc2_size) ? DEFINED(__trisc_local_mem_size) ? __trisc2_size - __trisc_local_mem_size : __trisc2_size : 16K
+    TRISC0_DATA : ORIGIN = DEFINED(__trisc1_size) ? __trisc_base + __trisc0_size + __trisc1_size + __trisc2_size : 0x0000EC00, LENGTH = 8K
     /* Ckernel migrated code region
      = CA::KERNEL_DEFAULT_SIZE_PER_CORE */
     TRISC0_OVRD_CODE : ORIGIN = 0x000F4000, LENGTH = 16K

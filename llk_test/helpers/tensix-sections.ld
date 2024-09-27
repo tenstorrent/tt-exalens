@@ -166,6 +166,11 @@ SECTIONS
     *(l1_memory_const) /* gcc complains about const and non-const data in the same segment. */
   } > L1
 
+  .trisc0_data :
+  {
+    *(trisc0_data)
+  } > TRISC0_DATA
+
   /* Stabs debugging sections.  */
   .stab          0 : { *(.stab) }
   .stabstr       0 : { *(.stabstr) }
