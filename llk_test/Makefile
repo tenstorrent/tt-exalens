@@ -10,7 +10,7 @@ READELF=$(TOOL_PATH)/riscv32-unknown-elf-readelf
 OPTIONS_ALL=-O3 -mwormhole -march=rv32imw -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math
 OPTIONS_COMPILE=-fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -DARCH_WORMHOLE -DTENSIX_FIRMWARE -DLOCAL_MEM_EN=0 -DDEBUG_PRINT_ENABLED -DCOMPILE_FOR_BRISC
 OPTIONS_LINK=-fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Ldbd/riscv-src
-INCLUDES = -I../third_party/tt_llk_wormhole_b0/llk_lib -I../third_party/tt_llk_wormhole_b0/common/inc -I../third_party/tt_llk_wormhole_b0/common/inc/sfpu
+INCLUDES = -I../third_party/tt-llk-wh-b0/llk_lib -I../third_party/tt-llk-wh-b0/common/inc -I../third_party/tt-llk-wh-b0/common/inc/sfpu
 INCLUDES += -I../third_party/firmware/riscv/common -I../third_party/firmware/riscv/wormhole -I../third_party/firmware/riscv/wormhole/wormhole_b0_defines -I../third_party/firmware/riscv/wormhole/noc -I../third_party/sfpi/include
 DEFINES = -Wl,--defsym=__trisc_base=53248 -Wl,--defsym=__trisc0_size=20480 -Wl,--defsym=__trisc1_size=16384 -Wl,--defsym=__trisc2_size=20480 -Wl,--defsym=__trisc_local_mem_size=4096
 OPTIONS_COMPILE += $(INCLUDES)
