@@ -90,6 +90,49 @@ class TestReadWrite(unittest.TestCase):
 		ret = lib.read_from_device(core_loc, address, num_bytes = len(data))
 		self.assertEqual(ret, data)
 
+	@parameterized.expand([
+		("1,1", 1024, 0x100, 0), # 1KB from device 0 at location 1,1
+		("1,1", 2048, 0x104, 0), # 2KB from device 0 at location 1,1
+		("1,1", 4096, 0x108, 0), # 4KB from device 0 at location 1,1
+		("1,1", 8192, 0x10c, 0), # 8KB from device 0 at location 1,1
+		("1,1", 1024, 0x100, 1), # 1KB from device 1 at location 1,1
+		("1,1", 2048, 0x104, 1), # 2KB from device 1 at location 1,1
+		("1,1", 4096, 0x108, 1), # 4KB from device 1 at location 1,1
+		("1,1", 8192, 0x10c, 1), # 8KB from device 1 at location 1,1
+		("ch0", 1024, 0x100, 0), # 1KB from device 0 at location DRAM channel 0
+		("ch0", 2048, 0x104, 0), # 2KB from device 0 at location DRAM channel 0
+		("ch0", 4096, 0x108, 0), # 4KB from device 0 at location DRAM channel 0
+		("ch0", 8192, 0x10c, 0), # 8KB from device 0 at location DRAM channel 0
+		("ch0", 1024, 0x100, 1), # 1KB from device 1 at location DRAM channel 0
+		("ch0", 2048, 0x104, 1), # 2KB from device 1 at location DRAM channel 0
+		("ch0", 4096, 0x108, 1), # 4KB from device 1 at location DRAM channel 0
+		("ch0", 8192, 0x10c, 1), # 8KB from device 1 at location DRAM channel 0
+	])
+	def test_write_read_bytes_buffer(self, core_loc: str, size: int, address: int, device_id: int):
+		"""Test write bytes -- read bytes but with bigger buffer."""
+
+		if device_id >= len(self.context.devices):
+			self.skipTest("Device ID out of range.")
+
+		# Create buffer
+		data = bytes([i % 256 for i in range(size)])
+		words = [int.from_bytes(data[i:i+4], byteorder='little') for i in range(0, len(data), 4)]
+
+		# Write buffer
+		ret = lib.write_to_device(core_loc, address, data, device_id)
+		self.assertEqual(ret, len(data))
+
+		# Verify buffer as words
+		ret = lib.read_words_from_device(core_loc, address, device_id, len(words))
+		self.assertEqual(ret, words)
+
+		# Write words
+		lib.write_words_to_device(core_loc, address, words, device_id)
+
+		# Read buffer
+		ret = lib.read_from_device(core_loc, address, device_id, num_bytes = len(data))
+		self.assertEqual(ret, data)
+
 	def test_write_read_words(self):
 		"""Test write words -- read words."""
 		core_loc = "1,1"
