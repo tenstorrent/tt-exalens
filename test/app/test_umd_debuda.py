@@ -38,7 +38,6 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
         return re.match(self.prompt_regex, line)
 
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
-        tester.assertGreater(len(lines), 3)
         test_regex = []
         skip_regex = [r"Verbosity level: \d+",
                       r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.",
@@ -47,6 +46,7 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
                       r".*ttSiliconDevice::init_hugepage:.*",
                       r"Loading yaml file: '([^']*\.yaml)'"
         ]
+        tester.assertGreaterEqual(len(lines), len(test_regex))
 
         id = 0
         num_test_regex = len(test_regex)
