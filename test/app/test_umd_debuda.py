@@ -16,7 +16,7 @@ class DbdOutputVerifier:
         pass
 
     def verify_start(self, runner: "DbdTestRunner", tester: unittest.TestCase):
-        lines, prompt = runner.read_until_prompt()
+        lines, prompt = runner.read_until_prompt(10)
         self.verify_startup(lines, prompt, tester)
         pass
 
