@@ -91,6 +91,8 @@ CLR_END = "\033[0m"
 CLR_ERR = CLR_RED
 CLR_WARN = CLR_ORANGE
 CLR_INFO = CLR_BLUE
+CLR_VERBOSE = CLR_GREY
+CLR_DEBUG = CLR_GREEN
 
 CLR_PROMPT = "<style color='green'>"
 CLR_PROMPT_END = "</style>"
@@ -127,28 +129,28 @@ def FATAL(s, **kwargs):
 
 
 def ERROR(s, **kwargs):
-    if Verbosity.get() >= Verbosity.ERROR:
+    if Verbosity.supports(Verbosity.ERROR):
         print(f"{CLR_ERR}{s}{CLR_END}", **kwargs)
 
 
 def WARN(s, **kwargs):
-    if Verbosity.get() >= Verbosity.WARN:
+    if Verbosity.supports(Verbosity.WARN):
         print(f"{CLR_WARN}{s}{CLR_END}", **kwargs)
 
 
 def DEBUG(s, **kwargs):
-    if Verbosity.get() >= Verbosity.DEBUG:
-        print(f"{CLR_WARN}{s}{CLR_END}", **kwargs)
+    if Verbosity.supports(Verbosity.DEBUG):
+        print(f"{CLR_DEBUG}{s}{CLR_END}", **kwargs)
 
 
 def INFO(s, **kwargs):
-    if Verbosity.get() >= Verbosity.INFO:
+    if Verbosity.supports(Verbosity.INFO):
         print(f"{CLR_INFO}{s}{CLR_END}", **kwargs)
 
 
 def VERBOSE(s, **kwargs):
-    if Verbosity.get() >= Verbosity.VERBOSE:
-        print(f"{CLR_END}{s}{CLR_END}", **kwargs)
+    if Verbosity.supports(Verbosity.VERBOSE):
+        print(f"{CLR_VERBOSE}{s}{CLR_END}", **kwargs)
 
 
 # Given a list l of possibly shuffled integers from 0 to len(l), the function returns reverse mapping
@@ -433,20 +435,20 @@ class YamlFile:
             self.root = YamlFile.file_cache[self.filepath]
         else:
             current_time = time.time()
-            INFO(f"Loading yaml file: '{os.path.abspath(self.filepath)}'", end="")
+            VERBOSE(f"Loading yaml file: '{os.path.abspath(self.filepath)}'", end="")
             self.root = dict()
 
             # load self.filepath into string
             if not self.content:
                 self.content = self.file_ifc.get_file(self.filepath)
-            
+
             if self.post_process_yaml is not None:
                 self.root = self.post_process_yaml(ryml_load_all(self.content))
             else:
                 for i in ryml_load_all(self.content):
                     self.root = {**self.root, **i}
             YamlFile.file_cache[self.filepath] = self.root
-            INFO(
+            VERBOSE(
                 f" ({len(self.content)} bytes loaded in {time.time() - current_time:.2f}s)"
             )
 

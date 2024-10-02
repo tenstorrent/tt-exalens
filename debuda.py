@@ -23,7 +23,7 @@ Options:
   --write-cache                   Write the cache to disk.
   --cache-path=<path>             If running in --cached mode, this is the path to the cache file. If writing cache, this is the path for output. [default: debuda_cache.pkl]
   --devices=<devices>             Comma-separated list of devices to load. If not supplied, all devices will be loaded.
-  --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: DEBUG, 4: INFO, 5: VERBOSE. [default: 4]
+  --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
 
 Description:
@@ -370,10 +370,6 @@ def main_loop(args, context):
                         f"{util.CLR_INFO}Executing command: %s{util.CLR_END}" % cmd_raw
                     )
             else:
-                if context.is_buda:
-                    epoch_id = context.netlist.graph_name_to_epoch_id(ui_state.current_graph_name)
-                else:
-                    epoch_id = None
                 if ui_state.gdb_server is None:
                     gdb_status = f"{util.CLR_PROMPT_BAD_VALUE}None{util.CLR_PROMPT_BAD_VALUE_END}"
                 else:
@@ -381,9 +377,12 @@ def main_loop(args, context):
                     # TODO: Since we cannot update status during prompt, this is commented out for now
                     # if ui_state.gdb_server.is_connected:
                     #     gdb_status += "(connected)"
-                my_prompt = f"gdb:{gdb_status} Current epoch:{util.CLR_PROMPT}{epoch_id}{util.CLR_PROMPT_END}({ui_state.current_graph_name}) "
+                my_prompt = f"gdb:{gdb_status} "
+                if context.is_buda:
+                    epoch_id = context.netlist.graph_name_to_epoch_id(ui_state.current_graph_name)
+                    my_prompt += f"Current epoch:{util.CLR_PROMPT}{epoch_id}{util.CLR_PROMPT_END}({ui_state.current_graph_name}) "
                 my_prompt += f"device:{util.CLR_PROMPT}{ui_state.current_device_id}{util.CLR_PROMPT_END} "
-                my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_str()}{util.CLR_PROMPT_END} "
+                my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
                 my_prompt += f"{ui_state.current_prompt}> "
                 cmd_raw = context.prompt_session.prompt(HTML(my_prompt)) 
 
@@ -449,13 +448,12 @@ def main():
     args = docopt(__doc__)
 
     # SETTING VERBOSITY
-    Verbosity.set(Verbosity.INFO)
     try:
         verbosity = int(args["--verbosity"])
         Verbosity.set(verbosity)
     except:
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
-    util.INFO(f"Verbosity level: {Verbosity.get()}")
+    util.VERBOSE(f"Verbosity level: {Verbosity.get().name} ({Verbosity.get().value})")
 
     output_dir = args["<output_dir>"]
     if not output_dir and not args["--remote"] and not args["--cached"]:
@@ -465,7 +463,7 @@ def main():
                 f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{output_dir}"
             )
         else:
-            util.WARN(
+            util.VERBOSE(
                 f"Output directory (output_dir) was not supplied and cannot be determined automatically. Continuing with limited functionality..."
             )
 

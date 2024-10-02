@@ -233,8 +233,8 @@ class OnChipCoordinate:
         """
         virt_str = self.to_str("nocTr")
         try:
-            netlist_str = self.to("netlist")
-            return f"{virt_str} ({netlist_str})"
+            netlist_tuple = self.to("netlist")
+            return f"{virt_str} ({netlist_tuple[0]}, {netlist_tuple[1]})"
         except CoordinateTranslationError:
             pass
         return virt_str
