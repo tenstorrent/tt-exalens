@@ -227,6 +227,9 @@ static std::unique_ptr<tt_SiliconDevice> create_wormhole_device(const std::strin
         0x1000,   // CMD_ORDERED
         0x80,     // CMD_BROADCAST
     };
+    for (auto chip_id : device->get_target_mmio_device_ids()) {
+        device->configure_active_ethernet_cores_for_mmio_device(chip_id, {});
+    }
     device->set_driver_host_address_params(host_address_params);
     device->set_driver_eth_interface_params(eth_interface_params);
     return device;
