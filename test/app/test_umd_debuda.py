@@ -29,7 +29,7 @@ class DbdOutputVerifier:
         pass
 
 class UmdDbdOutputVerifier(DbdOutputVerifier):
-    prompt_regex = r"^gdb:[^ ]+ Current epoch:None\(None\) device:\d+ loc:\d+-\d+ > $"
+    prompt_regex = r"^gdb:[^ ]+ device:\d+ loc:\d+-\d+ \(\d+, \d+\) > $"
 
     def __init__(self):
         self.server_temp_path = ""
@@ -39,12 +39,12 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
 
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
         tester.assertGreater(len(lines), 3)
-        test_regex = [r"Verbosity level: \d+", 
-                      r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.", 
-                      r"Device opened successfully.", 
-                      r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting="
-        ]
-        skip_regex = [r".*ttSiliconDevice::init_hugepage:.*",
+        test_regex = []
+        skip_regex = [r"Verbosity level: \d+",
+                      r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.",
+                      r"Device opened successfully.",
+                      r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=",
+                      r".*ttSiliconDevice::init_hugepage:.*",
                       r"Loading yaml file: '([^']*\.yaml)'"
         ]
 

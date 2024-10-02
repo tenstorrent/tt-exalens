@@ -475,18 +475,18 @@ def init_pybind(runtime_data_yaml_filename, run_dirpath=None, wanted_devices=Non
         wanted_devices = []
     
     tt_device.SERVER_IFC = debuda_pybind(runtime_data_yaml_filename, run_dirpath, wanted_devices)
-    util.INFO("Device opened successfully.")
+    util.VERBOSE("Device opened successfully.")
     return tt_device.SERVER_IFC
 
 
 # Spawns debuda-server and initializes the communication
 def connect_to_server(ip="localhost", port=5555):
     debuda_stub_address = f"tcp://{ip}:{port}"
-    util.INFO(f"Connecting to debuda-server at {debuda_stub_address}...")
+    util.VERBOSE(f"Connecting to debuda-server at {debuda_stub_address}...")
 
     try:
         tt_device.SERVER_IFC = debuda_client(ip, port)
-        util.INFO("Connected to debuda-server.")
+        util.VERBOSE("Connected to debuda-server.")
     except:
         raise util.TTFatalException("Failed to connect to Debuda server.")
 
