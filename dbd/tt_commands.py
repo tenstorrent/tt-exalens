@@ -42,10 +42,9 @@ class tt_docopt:
 
     # We define command options that apply to more than one command here
     OPTIONS = {
-        "--verbosity": {
+        "--verbose": {
             "short": "-v",
-            "arg": "<verbosity>",
-            "description": "Choose verbosity level. [default: 4]",
+            "description": "Execute command with verbose output. [default: False]",
         },
         "--test": {
             "short": "-t",
@@ -86,7 +85,7 @@ class tt_docopt:
             if opt_name not in tt_docopt.OPTIONS:
                 raise ValueError(f"Invalid argument name: {opt_name}")
             opt_info = tt_docopt.OPTIONS[opt_name]
-            if opt_info["arg"]:
+            if "arg" in opt_info and opt_info["arg"]:
                 arg = f" {opt_info['arg']}"
             else:
                 arg = ""

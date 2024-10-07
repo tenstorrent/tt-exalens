@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  riscv (halt | step | cont | status)                                             [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>]
-  riscv rd [<address>]                                                            [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>]
-  riscv rreg [<index>]                                                            [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>]
-  riscv wr [<address>] [<data>]                                                   [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>]
-  riscv wreg [<index>] [<data>]                                                   [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>]
-  riscv bkpt (set | del) [<address>]                                              [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
-  riscv wchpt (setr | setw | setrw | del) [<address>] [<data>]                    [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
-  riscv reset [1 | 0]                                                             [-v <verbosity>] [-d <device>] [-r <risc>] [-l <loc>]
+  riscv (halt | step | cont | status)                                             [-v] [-d <device>] [-r <risc>] [-l <loc>]
+  riscv rd [<address>]                                                            [-v] [-d <device>] [-r <risc>] [-l <loc>]
+  riscv rreg [<index>]                                                            [-v] [-d <device>] [-r <risc>] [-l <loc>]
+  riscv wr [<address>] [<data>]                                                   [-v] [-d <device>] [-r <risc>] [-l <loc>]
+  riscv wreg [<index>] [<data>]                                                   [-v] [-d <device>] [-r <risc>] [-l <loc>]
+  riscv bkpt (set | del) [<address>]                                              [-v] [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
+  riscv wchpt (setr | setw | setrw | del) [<address>] [<data>]                    [-v] [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
+  riscv reset [1 | 0]                                                             [-v] [-d <device>] [-r <risc>] [-l <loc>]
 
 Options:
   -pt <point>     Index of the breakpoint or watchpoint register. 8 points are supported (0-7).
@@ -49,7 +49,7 @@ command_metadata = {
     "type": "low-level", 
     "description": __doc__,
     "context": ["limited", "buda", "metal"],
-    "common_option_names": [ "--device", "--loc", "--risc", "--verbosity" ]
+    "common_option_names": [ "--device", "--loc", "--risc", "--verbose" ]
 }
 
 from debuda import UIState
