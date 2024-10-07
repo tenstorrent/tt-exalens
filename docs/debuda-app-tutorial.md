@@ -349,7 +349,7 @@ The fields of this dictionary are as follwos:
   - buda: needs output of a Buda run to interpret data from device,
   - metal: needs output of a Metal run to interpret data from device
 - `common_option_names` (*list[str]*, optional): list of names of common options that command uses:
-  - --verbosity: choose verbosity level; default: 4; available: 1-ERROR, 2-WARN, 3-DEBUG, 4-INFO, 5-VERBOSE,
+  - --verbose, -v: Execute command with verbose output, default: false
   - --test: run in test mode; default: false,
   - --device: device ID to run the command on; default: current device,
   - --loc: grid location for running the command; default: current location,
@@ -367,7 +367,7 @@ command_metadata = {
     "type": "low-level", 
     "description": "This is a description of the command.",
     "context": ["limited", "buda", "metal"],
-    "common_option_names": [ "--device", "--loc", "--verbosity" ],
+    "common_option_names": [ "--device", "--loc", "--verbose", "--risc" ],
     }
 ```
 
