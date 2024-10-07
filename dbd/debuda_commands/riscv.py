@@ -65,7 +65,7 @@ def run_riscv_command(device, loc, risc_id, args):
     Given a command trough args, run the corresponding RISC-V command
     """
     verbose = args["-v"]
-    where = f"{get_risc_name(risc_id)} { loc.to_str('netlist')}"
+    where = f"{get_risc_name(risc_id)} {loc.to_str('netlist')} [{device._id}]"
 
     noc_id = 0
     risc = RiscDebug(RiscLoc(loc, noc_id, risc_id), tt_device.SERVER_IFC, verbose=verbose)
@@ -81,7 +81,7 @@ def run_riscv_command(device, loc, risc_id, args):
 
     elif args["cont"]:
         util.INFO(f"Continuing {where}")
-        risc.cont()
+        risc.continue_without_debug()
 
     elif args["rd"]:
         if args['<address>'] is None:
@@ -154,12 +154,16 @@ def run_riscv_command(device, loc, risc_id, args):
             util.ERROR("Invalid watchpoint command")
 
     elif args["status"]:
-        halted = risc.is_halted()
-        if halted:
-            PC = risc.read_gpr(33)
-            util.DEBUG(f"  HALTED PC=0x{PC:08x} - {where}")
+        in_reset = risc.is_in_reset()
+        if in_reset:
+            util.INFO(f"  IN RESET - {where}")
         else:
-            util.DEBUG(f"  RUNNING - {where}")
+            halted = risc.is_halted()
+            if halted:
+                PC = risc.read_gpr(33)
+                util.INFO(f"  HALTED PC=0x{PC:08x} - {where}")
+            else:
+                util.INFO(f"  RUNNING - {where}")
 
     elif args["reset"]:
         if args['1']:

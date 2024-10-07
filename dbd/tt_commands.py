@@ -16,14 +16,14 @@ class tt_docopt:
             device = context.devices[device_id]
             yield device
         elif device_id == "all":
-            for device in context.devices:
+            for device in context.devices.values():
                 yield device
         else:
             yield context.devices[int(device_id,0)]
 
     def loc_for_each(loc_str, context, ui_state, device):
         if not loc_str:
-            yield ui_state.current_location
+            yield ui_state.current_location.change_device(device)
         elif loc_str == "all":
             for loc in device.get_block_locations(block_type="functional_workers"):
                 yield loc
