@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  run-elf <elf-file> [ -v <verbosity> ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
+  run-elf <elf-file> [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
 
 Description:
   Loads an elf file into a brisc and runs it.
@@ -24,7 +24,7 @@ command_metadata = {
     "type": "high-level",
     "description": __doc__,
     "context": ["limited"], 
-    "common_option_names": [ "--device", "--loc", "--verbosity" ]
+    "common_option_names": [ "--device", "--loc", "--verbose" ]
 }
 
 # TODO: Do we need this function?
