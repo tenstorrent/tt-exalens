@@ -240,8 +240,21 @@ class OnChipCoordinate:
         return virt_str
 
     def change_device(self, device):
+        """
+        Returns coordinates for the specified device.
+
+        Args:
+            device (Device): The device object representing the chip.
+
+        Returns:
+            OnChipCoordinate: The new coordinate object for the specified device.
+        """
+        # If the device is the same, return the same object
         if device == self._device:
             return self
+
+        # Try to convert to netlist coordinates. If that fails, fallback to nocTr coordinates.
+        # We cannot use noc0 coordinates because of harvesting.
         try:
             netlist_tuple = self.to("netlist")
             return OnChipCoordinate(netlist_tuple[0], netlist_tuple[1], "netlist", device)
