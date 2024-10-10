@@ -1,6 +1,8 @@
 import pytest
 import torch
 import os
+import struct
+from ieee754 import half, single, double, quadruple, octuple
 from dbd.tt_debuda_init import init_debuda
 from dbd.tt_debuda_lib import write_to_device, read_words_from_device
 from dbd.tt_debuda_lib import run_elf
@@ -20,9 +22,6 @@ mathop_args_dict = {"elwadd" : "ELTWISE_BINARY_ADD",
                     "elwmul" : "ELTWISE_BINARY_MUL"}
 
 binary_ops = ["elwadd", "elwsub", "elwmul"]
-
-if __name__=="__main__":
-    context = init_debuda()
 
 def generate_stimuli(stimuli_format):
 
@@ -55,10 +54,47 @@ def generate_golden(operation, operand1, operand2):
         case _:
             print("Unsupported operation!") 
 
-def write_stimuli_to_l1(buffer_A, loc_A, buffer_B, loc_B):
+def write_stimuli_to_l1(buffer_A, loc_A, buffer_B, loc_B,format):
+
+    hex_A = []
+    hex_B = []
+
+    if(format == "Float16") or (format == "Float16_b"):
+        for i in buffer_A:
+            hex_A.append(str((half(i).hex())[0]))
+        for i in buffer_B:
+            hex_B.append(str((half(i).hex())[0]))
+    else:  
+        for i in buffer_A:
+            hex_A.append(str((single(i).hex())[0]))
+        for i in buffer_B:
+            hex_B.append(str((single(i).hex())[0]))
+
+    hex_A_string = []    
+    hex_B_string = []
     
-    num_bytes = write_to_device("18-18", loc_A, buffer_A, context=context)
-    num_bytes = write_to_device("18-18", loc_B, buffer_B, context=context)
+    for i in hex_A:
+        hex_A_string.append(("0x"+str(i)))
+    for i in hex_B:
+        hex_B_string.append(("0x"+str(i)))
+
+    bytes_A = []
+    bytes_B = []
+
+    for i in hex_A_string:
+        for j in range(2,len(i),2):
+            byte_str = i[j:j+2]
+            byte_nr = int(byte_str,16)
+            bytes_A.append(byte_nr)
+
+    for i in hex_B_string:
+        for j in range(2,len(i),2):
+            byte_str = i[j:j+2]
+            byte_nr = int(byte_str,16)
+            bytes_B.append(byte_nr)
+
+    num_bytes = write_to_device("18-18", 0x1c000, bytes_A)
+    num_bytes = write_to_device("18-18", 0x1b000, bytes_B)
 
 
 
@@ -78,9 +114,9 @@ def test_all(format,mathop):
     srcA, srcB = generate_stimuli(format)
     golden = generate_golden(mathop,srcA,srcB)
 
-    write_stimuli_to_l1(srcA,0x1c000,srcB,0x1b000)
+    write_stimuli_to_l1(srcA.tolist(),0x1c000,srcB.tolist(),0x1b000,format)
 
-    print(golden)
+    #print(golden)
 
     make_cmd = "make dis format="+format_args_dict[format]+ " " + "mathop=" + mathop_args_dict[mathop]
     os.system(make_cmd)
