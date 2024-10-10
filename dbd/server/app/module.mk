@@ -13,7 +13,7 @@ DEBUDA_SERVER_INCLUDES = \
 	-I$(DEBUDA_HOME)/third_party/umd \
 	-Idbd/server/lib/inc \
 
-DEBUDA_SERVER_LDFLAGS = -Wl,-rpath,'$$ORIGIN/../lib:$$ORIGIN' -pthread $(DEBUDA_SERVER_LIB_DEPS) -lyaml-cpp -lzmq 
+DEBUDA_SERVER_LDFLAGS = -Wl,-rpath,'$$ORIGIN/../lib:$$ORIGIN' -pthread $(DEBUDA_SERVER_LIB_DEPS) -lyaml-cpp -lzmq -ldl
 
 -include $(DEBUDA_SERVER_DEPS)
 

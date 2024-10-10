@@ -79,6 +79,22 @@ class DbdCommunicator(ABC):
     @abstractmethod
     def get_run_dirpath(self) -> str:
         pass
+
+    @abstractmethod
+    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+        pass
+
+    @abstractmethod
+    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+        pass
+
+    @abstractmethod
+    def jtag_rdaxi(self, chip_id: int, address: int):
+        pass
+
+    @abstractmethod
+    def jtag_wraxi(self, chip_id: int, address: int, data: int):
+        pass
     
     def using_cache(self) -> bool:
         return False

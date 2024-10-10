@@ -32,6 +32,11 @@ class debuda_server_request_type(Enum):
     get_device_soc_description = 20
     arc_msg = 21
 
+    jtag_read32 = 50
+    jtag_write32 = 51
+    jtag_rdaxi = 52
+    jtag_wraxi = 53
+
     # Runtime requests
     pci_read_tile = 100
     get_runtime_data = 101
@@ -269,6 +274,57 @@ class debuda_server_communication:
         )
         return self._check(self._socket.recv())
 
+    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+        self._socket.send(
+            struct.pack(
+                "<BBBBQ",
+                debuda_server_request_type.jtag_read32.value,
+                chip_id,
+                noc_x,
+                noc_y,
+                address,
+            )
+        )
+        return self._check(self._socket.recv())
+
+    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+        self._socket.send(
+            struct.pack(
+                "<BBBBQ",
+                debuda_server_request_type.jtag_write32.value,
+                chip_id,
+                noc_x,
+                noc_y,
+                address,
+                data,
+            )
+        )
+        return self._check(self._socket.recv())
+
+    def jtag_rdaxi(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+        self._socket.send(
+            struct.pack(
+                "<BBBBQ",
+                debuda_server_request_type.jtag_rdaxi.value,
+                chip_id,
+                address,
+            )
+        )
+        return self._check(self._socket.recv())
+
+    def jtag_wraxi(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+        self._socket.send(
+            struct.pack(
+                "<BBBBQ",
+                debuda_server_request_type.jtag_wraxi.value,
+                chip_id,
+                address,
+                data,
+            )
+        )
+        return self._check(self._socket.recv())
+
+
 class debuda_client(DbdCommunicator):
     def __init__(self, address: str, port: int):
         super().__init__()
@@ -401,6 +457,26 @@ class debuda_client(DbdCommunicator):
             self._communication.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
         )
 
+    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+        return self.parse_uint32_t(
+            self._communication.jtag_read32(chip_id, noc_x, noc_y, address)
+        )
+
+    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+        return self.parse_uint32_t(
+            self._communication.jtag_write32(chip_id, noc_x, noc_y, address)
+        )
+
+    def jtag_rdaxi(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+        return self.parse_uint32_t(
+            self._communication.jtag_rdaxi(chip_id, address)
+        )
+
+    def jtag_wraxi(self, chip_id: int, address: int, data: int):
+        return self.parse_uint32_t(
+            self._communication.jtag_wraxi(chip_id, address, data)
+        )
+
 
 tt_dbd_pybind_path = util.application_path() + "/../build/lib"
 binary_path = util.application_path() + "/../build/bin"
@@ -476,6 +552,18 @@ class debuda_pybind(DbdCommunicator):
 
     def get_device_soc_description(self, chip_id: int):
         return self._check_result(tt_dbd_pybind.get_device_soc_description(chip_id))
+
+    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+        return self._check_result(tt_dbd_pybind.jtag_read32(chip_id, noc_x, noc_y, address))
+
+    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+        return self._check_result(tt_dbd_pybind.jtag_write32(chip_id, noc_x, noc_y, address, data))
+
+    def jtag_rdaxi(self, chip_id: int, address: int):
+        return self._check_result(tt_dbd_pybind.jtag_rdaxi(chip_id, address))
+
+    def jtag_wraxi(self, chip_id: int, address: int, data: int):
+        return self._check_result(tt_dbd_pybind.jtag_wraxi(chip_id, address, data))
 
     def get_file(self, file_path: str) -> str:
         content = None

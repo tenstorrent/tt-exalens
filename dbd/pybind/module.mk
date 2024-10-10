@@ -13,7 +13,8 @@ DEBUDA_PYBIND_LIB_INCLUDES = \
 	-I$(PYBIND11_DIR)/include \
 	-I/usr/include/$(PYTHON_VERSION) \
 
-DEBUDA_PYBIND_LDFLAGS = -ldbdserver -ldevice -lyaml-cpp -Wl,-rpath,\$$ORIGIN/../lib:\$$ORIGIN -pthread
+DEBUDA_PYBIND_LDFLAGS = -ldbdserver -ldevice -lyaml-cpp -Wl,-rpath,\$$ORIGIN/../lib:\$$ORIGIN -pthread -ldl
+
 
 -include $(DEBUDA_PYBIND_LIB_DEPS)
 
@@ -28,4 +29,3 @@ dbd/pybind: $(DEBUDA_PYBIND_LIB)
 $(DEBUDA_PYBIND_LIB): $(DEBUDA_PYBIND_LIB_OBJS) $(UMD_DEVICE_LIB) $(DEBUDA_SERVER_LIB)
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) $(CXXFLAGS) $(SHARED_LIB_FLAGS) -o $@ $(DEBUDA_PYBIND_LIB_OBJS) $(LDFLAGS) $(DEBUDA_PYBIND_LDFLAGS)
-	

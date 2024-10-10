@@ -9,7 +9,7 @@ DEBUDA_SERVER_UNIT_TESTS_BIN       = $(DEBUDA_SERVER_UNIT_TESTS_BIN_DIR)/debuda_
 
 DEBUDA_SERVER_UNIT_TESTS_OBJS += $(addprefix $(DEBUDA_SERVER_UNIT_TESTS_OBJ_DIR)/, $(notdir $(DEBUDA_SERVER_UNIT_TESTS_SRCS:.cpp=.o)))
 
-DEBUDA_SERVER_UNIT_TESTS_LDLIBS = -lgtest -lgmock -lgtest_main -lzmq -lpthread
+DEBUDA_SERVER_UNIT_TESTS_LDLIBS = -lgtest -lgmock -lgtest_main -lzmq -lpthread -ldl
 
 DEBUDA_SERVER_UNIT_TESTS_INCLUDES = \
 	-Idbd/server/lib/inc \

@@ -6,6 +6,7 @@
 #include <fstream>
 
 #include "dbdserver/communication.h"
+#include "dbdserver/jtag.h"
 
 void tt::dbd::server::process(const tt::dbd::request& base_request) {
     switch (base_request.type) {
@@ -102,6 +103,53 @@ void tt::dbd::server::process(const tt::dbd::request& base_request) {
         }
         case tt::dbd::request_type::get_buda_run_dirpath: {
             respond(get_run_dirpath());
+            break;
+        }
+
+        case tt::dbd::request_type::jtag_read32: {
+            auto& request = static_cast<const tt::dbd::jtag_read32_request&>(base_request);
+            if (jtag_implementation) {
+                uint32_t res;
+                jtag_implementation->tt_read_noc_xy(request.noc_x, request.noc_y, request.address, true, 1, &res);
+                respond(res);
+            }
+            respond_not_supported();
+            break;
+        }
+
+        case tt::dbd::request_type::jtag_write32: {
+            auto& request = static_cast<const tt::dbd::jtag_write32_request&>(base_request);
+            if (jtag_implementation) {
+                uint32_t res;
+                jtag_implementation->tt_write_noc_xy(request.noc_x, request.noc_y, request.address, request.data, true,
+                                                     1);
+                respond(res);
+            }
+            respond_not_supported();
+            break;
+        }
+
+        case tt::dbd::request_type::jtag_rdaxi: {
+            auto& request = static_cast<const tt::dbd::jtag_rdaxi_request&>(base_request);
+            if (jtag_implementation) {
+                uint32_t res;
+                uint32_t status;
+                jtag_implementation->tt_read_axi(request.address, &res, &status);
+                respond(res);
+            }
+            respond_not_supported();
+            break;
+        }
+
+        case tt::dbd::request_type::jtag_wraxi: {
+            auto& request = static_cast<const tt::dbd::jtag_wraxi_request&>(base_request);
+            if (jtag_implementation) {
+                uint32_t res;
+                uint32_t status;
+                jtag_implementation->tt_write_axi(request.address, request.data, &status);
+                respond(res);
+            }
+            respond_not_supported();
             break;
         }
     }

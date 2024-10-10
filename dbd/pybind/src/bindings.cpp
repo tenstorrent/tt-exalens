@@ -4,7 +4,10 @@
 
 #include "bindings.h"
 
+#include "dbdserver/jtag.h"
+
 static std::unique_ptr<tt::dbd::debuda_implementation> debuda_implementation;
+static std::unique_ptr<Jtag> jtag_implementation;
 
 class scoped_null_stdout {
    private:
@@ -36,6 +39,17 @@ bool open_device(const std::string &binary_directory, const std::string &runtime
         if (!debuda_implementation) {
             return false;
         }
+
+        try {
+            jtag_implementation = std::make_unique<Jtag>("./build/lib/libjtag.so");
+            std::vector<uint32_t> jlink_devices = jtag_implementation->tt_enumerate_jlink();
+            uint32_t status = jtag_implementation->tt_open_jlink_by_serial_wrapper(jlink_devices[0]);
+            if (status != 0) {
+                jtag_implementation.reset();
+            }
+        } catch (std::runtime_error &error) {
+        }
+
     } catch (std::runtime_error &error) {
         std::cerr << "Cannot open device: " << error.what() << std::endl;
         return false;
@@ -125,6 +139,43 @@ std::optional<std::string> pci_read_tile(uint8_t chip_id, uint8_t noc_x, uint8_t
     return {};
 }
 
+std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
+    if (jtag_implementation) {
+        uint32_t res;
+        jtag_implementation->tt_read_noc_xy(noc_x, noc_y, address, true, 1, &res);
+        return res;
+    }
+    return {};
+}
+
+std::optional<uint32_t> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data) {
+    if (jtag_implementation) {
+        uint32_t status = jtag_implementation->tt_write_noc_xy(noc_x, noc_y, address, data, true, 1);
+        return status;
+    }
+    return {};
+}
+
+std::optional<uint32_t> jtag_rdaxi(uint8_t chip_id, uint64_t address) {
+    if (jtag_implementation) {
+        uint32_t res;
+        uint32_t status;
+        jtag_implementation->tt_read_axi(address, &res, &status);
+        return res;
+    }
+    return {};
+}
+
+std::optional<uint32_t> jtag_wraxi(uint8_t chip_id, uint64_t address, uint32_t data) {
+    if (jtag_implementation) {
+        uint32_t res;
+        uint32_t status;
+        jtag_implementation->tt_write_axi(address, data, &status);
+        return status;
+    }
+    return {};
+}
+
 std::optional<std::string> get_runtime_data() {
     if (debuda_implementation) {
         return debuda_implementation->get_runtime_data();
@@ -204,6 +255,14 @@ PYBIND11_MODULE(tt_dbd_pybind, m) {
     m.def("get_device_arch", &get_device_arch, "Returns device architecture", pybind11::arg("chip_id"));
     m.def("get_device_soc_description", &get_device_soc_description, "Returns device SoC description",
           pybind11::arg("chip_id"));
+    m.def("jtag_read32", &jtag_read32, "Reads 4 bytes from NOC address using JTAG", pybind11::arg("chip_id"),
+          pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"));
+    m.def("jtag_write32", &jtag_write32, "Writes 4 bytes to NOC address using JTAG", pybind11::arg("chip_id"),
+          pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"), pybind11::arg("data"));
+    m.def("jtag_rdaxi", &jtag_rdaxi, "Reads 4 bytes from AXI address using JTAG", pybind11::arg("chip_id"),
+          pybind11::arg("address"));
+    m.def("jtag_wraxi", &jtag_wraxi, "Writes 4 bytes to AXI address using JTAG", pybind11::arg("chip_id"),
+          pybind11::arg("address"), pybind11::arg("data"));
 
     // Bind arc_msg with explicit lambda to ensure type resolution
     m.def("arc_msg", &arc_msg, "Send ARC message", pybind11::arg("chip_id"), pybind11::arg("msg_code"),

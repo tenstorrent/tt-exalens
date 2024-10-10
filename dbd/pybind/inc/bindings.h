@@ -43,3 +43,8 @@ std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id)
 std::optional<std::vector<uint8_t>> get_device_ids();
 std::optional<std::string> get_device_arch(uint8_t chip_id);
 std::optional<std::string> get_device_soc_description(uint8_t chip_id);
+
+std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address);
+std::optional<uint32_t> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data);
+std::optional<uint32_t> jtag_rdaxi(uint8_t chip_id, uint64_t address);
+std::optional<uint32_t> jtag_wrxi(uint8_t chip_id, uint64_t address, uint32_t data);

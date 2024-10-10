@@ -28,6 +28,12 @@ enum class request_type : uint8_t {
     get_device_soc_description,
     arc_msg,
 
+    // Device requests over jtag
+    jtag_read32 = 50,
+    jtag_write32 = 51,
+    jtag_rdaxi = 52,
+    jtag_wraxi = 53,
+
     // Runtime requests
     pci_read_tile = 100,
     get_runtime_data,
@@ -129,6 +135,32 @@ struct arc_msg_request : request {
     uint32_t arg0;
     uint32_t arg1;
     int timeout;
+} __attribute__((packed));
+
+struct jtag_read32_request : request {
+    uint8_t chip_id;
+    uint8_t noc_x;
+    uint8_t noc_y;
+    uint64_t address;
+} __attribute__((packed));
+
+struct jtag_write32_request : request {
+    uint8_t chip_id;
+    uint8_t noc_x;
+    uint8_t noc_y;
+    uint64_t address;
+    uint32_t data;
+} __attribute__((packed));
+
+struct jtag_rdaxi_request : request {
+    uint8_t chip_id;
+    uint64_t address;
+} __attribute__((packed));
+
+struct jtag_wraxi_request : request {
+    uint8_t chip_id;
+    uint64_t address;
+    uint32_t data;
 } __attribute__((packed));
 
 }  // namespace tt::dbd
