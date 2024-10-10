@@ -96,6 +96,7 @@ def write_stimuli_to_l1(buffer_A, loc_A, buffer_B, loc_B,format):
     num_bytes = write_to_device("18-18", 0x1c000, bytes_A)
     num_bytes = write_to_device("18-18", 0x1b000, bytes_B)
 
+    return bytes_A, bytes_B
 
 
 # FOR NOW SUPPORT ONLY TORCH TYPES
@@ -114,20 +115,36 @@ def test_all(format,mathop):
     srcA, srcB = generate_stimuli(format)
     golden = generate_golden(mathop,srcA,srcB)
 
-    write_stimuli_to_l1(srcA.tolist(),0x1c000,srcB.tolist(),0x1b000,format)
+    bytes_A, bytes_B = write_stimuli_to_l1(srcA.tolist(),0x1c000,srcB.tolist(),0x1b000,format)
+    read_data = read_words_from_device("18-18",0x1c000,word_count = 1024)
 
-    #print(golden)
+    read_bytes = []
+    read_hex = []
+
+    for i in read_data:
+        read_bytes.append(i.to_bytes(4,'little'))
+    
+    for i in read_bytes:
+        l = list(i)
+        for byte in l:
+            read_hex.append(hex(byte))
 
     make_cmd = "make dis format="+format_args_dict[format]+ " " + "mathop=" + mathop_args_dict[mathop]
     os.system(make_cmd)
     
-    # copy stimuli to L1
     # run cores with dedicated elf files
-    # read stimuli back from L1
     # read mailboxes and assert 1
     # compare results
     
     os.system("make clean")
 
+    dec_data = []
+    for i in read_hex:
+        dec_data.append(int(i,16))
+
+    #investigate what happens with float16 and float16_b and byte count
+
+    assert (len(bytes_A) == len(dec_data)) or (len(bytes_A) == len(dec_data)/2)
+    assert (bytes_A == dec_data) or (bytes_A == dec_data[:2048])
     assert format in format_dict
     assert mathop in mathop_args_dict
