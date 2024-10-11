@@ -425,3 +425,24 @@ class TestRunElf(unittest.TestCase):
 		# STEP END:
 		mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE); da = DataArray("g_MAILBOX"); mbox_val = da.from_bytes(mbox_val)[0]
 		self.assertEqual(mbox_val, 0xFFB12088, f"RISC at location {loc} did not reach step STEP END.")
+
+class TestARC(unittest.TestCase):
+	@classmethod
+	def setUpClass(cls) -> None:
+		cls.context = tt_debuda_init.init_debuda()
+
+	def test_arc_msg(self):
+		"""Test sending ARC a NOP message."""
+		device_id = 0
+		msg_code = 0xaa34 # Get AICLK. See src/hardware/soc/tb/arc_fw/wh_fw/src/level_2.c
+		wait_for_done = True
+		arg0 = 0
+		arg1 = 0
+		timeout = 1000
+
+		ret, return_3, _ = lib.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, context=self.context)
+		print (f"ARC message result={ret}, aiclk={return_3}")
+		self.assertEqual(ret, 0)
+
+		# Asserting that return_3 (aiclk) is greater than 400 and less than 2000
+		self.assertTrue(return_3 > 400 and return_3 < 2000)

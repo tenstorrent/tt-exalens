@@ -253,6 +253,20 @@ class debuda_server_communication:
         )
         return self._check(self._socket.recv())
 
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
+        self._socket.send(
+            struct.pack(
+                "<BBBIII",
+                debuda_server_request_type.arc_msg.value,
+                device_id,
+                msg_code,
+                wait_for_done,
+                arg0,
+                arg1,
+                timeout,
+            )
+        )
+        return self._check(self._socket.recv())
 
 class debuda_client(DbdCommunicator):
     def __init__(self, address: str, port: int):
@@ -381,6 +395,11 @@ class debuda_client(DbdCommunicator):
             return run_dirpath
         return None
 
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
+        return self.parse_uint32_t(
+            self._communication.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
+        )
+
 
 tt_dbd_pybind_path = util.application_path() + "/../build/lib"
 binary_path = util.application_path() + "/../build/bin"
@@ -462,18 +481,20 @@ class debuda_pybind(DbdCommunicator):
         with open(file_path, 'r') as f:
             content = f.read()
         return self._check_result(content)
-    
+
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         return open(binary_path, 'rb')
-    
+
     def get_run_dirpath(self) -> str:
         return self._run_dirpath
 
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
+        return self._check_result(tt_dbd_pybind.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout))
 
 def init_pybind(runtime_data_yaml_filename, run_dirpath=None, wanted_devices=None):
     if not wanted_devices:
         wanted_devices = []
-    
+
     tt_device.SERVER_IFC = debuda_pybind(runtime_data_yaml_filename, run_dirpath, wanted_devices)
     util.VERBOSE("Device opened successfully.")
     return tt_device.SERVER_IFC

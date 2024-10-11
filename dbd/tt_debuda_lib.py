@@ -224,3 +224,25 @@ def validate_addr(addr: int) -> None:
 
 def validate_device_id(device_id: int, context: Context) -> None:
 	if device_id not in context.device_ids: raise TTException(f"Invalid device_id {device_id}.")
+
+def arc_msg(device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int, context: Context = None) -> "List[int]":
+	""" Sends an ARC message to the device.
+
+	Args:
+		device_id (int): ID number of device to send message to.
+		msg_code (int): Message code to send.
+		wait_for_done (bool): If True, waits for the message to be processed.
+		arg0 (int): First argument to the message.
+		arg1 (int): Second argument to the message.
+		timeout (int): Timeout in milliseconds.
+		context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
+
+	Returns:
+		List[int]: List of two integers, the third and fourth return values of the message.
+	"""
+	context = check_context(context)
+
+	validate_device_id(device_id, context)
+	if timeout < 0: raise TTException("Timeout must be greater than or equal to 0.")
+
+	return context.server_ifc.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)

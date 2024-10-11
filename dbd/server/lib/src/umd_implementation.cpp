@@ -167,4 +167,16 @@ std::optional<std::string> umd_implementation::get_device_arch(uint8_t chip_id) 
     }
 }
 
+std::optional<int> umd_implementation::arc_msg(uint8_t chip_id, uint32_t msg_code, bool wait_for_done, uint32_t arg0, uint32_t arg1, int timeout, uint32_t *return_3, uint32_t *return_4) {
+    if (!device) {
+        return {};
+    }
+    tt_device* d = static_cast<tt_device*>(device);
+
+    return d->arc_msg (chip_id, msg_code, wait_for_done, arg0, arg1, timeout, return_3, return_4);
+
+    return 999;
+}
+
+
 }  // namespace tt::dbd

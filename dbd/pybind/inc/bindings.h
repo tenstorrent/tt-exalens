@@ -43,3 +43,6 @@ std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id)
 std::optional<std::vector<uint8_t>> get_device_ids();
 std::optional<std::string> get_device_arch(uint8_t chip_id);
 std::optional<std::string> get_device_soc_description(uint8_t chip_id);
+
+std::optional<int> arc_msg(uint8_t chip_id, uint32_t msg_code, bool wait_for_done, uint32_t arg0, uint32_t arg1,
+                           int timeout, uint32_t *return_3, uint32_t *return_4);

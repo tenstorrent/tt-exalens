@@ -167,6 +167,17 @@ std::optional<std::string> get_device_soc_description(uint8_t chip_id) {
     return {};
 }
 
+std::tuple< std::optional<int>, uint32_t, uint32_t> arc_msg(uint8_t chip_id, uint32_t msg_code, bool wait_for_done, uint32_t arg0, uint32_t arg1,
+                                                          int timeout) {
+    if (debuda_implementation) {
+        uint32_t return_3 = 0, return_4 = 0;
+        std::optional<int> result = debuda_implementation->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout, &return_3, &return_4);
+
+        return std::make_tuple(result, return_3, return_4);
+    }
+    return std::make_tuple(std::nullopt, 0, 0);
+}
+
 PYBIND11_MODULE(tt_dbd_pybind, m) {
     m.def("open_device", &open_device, "Opens tt device. Prints error message if failed.",
           pybind11::arg("binary_directory"), pybind11::arg("runtime_yaml_path"),
@@ -196,4 +207,14 @@ PYBIND11_MODULE(tt_dbd_pybind, m) {
     m.def("get_device_arch", &get_device_arch, "Returns device architecture", pybind11::arg("chip_id"));
     m.def("get_device_soc_description", &get_device_soc_description, "Returns device SoC description",
           pybind11::arg("chip_id"));
+
+    // Bind arc_msg with explicit lambda to ensure type resolution
+    m.def("arc_msg",
+          [](uint8_t chip_id, uint32_t msg_code, bool wait_for_done, uint32_t arg0, uint32_t arg1, int timeout) {
+              auto result = arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout);
+              return result;
+          },
+          "Send ARC message",
+          pybind11::arg("chip_id"), pybind11::arg("msg_code"),
+          pybind11::arg("wait_for_done"), pybind11::arg("arg0"), pybind11::arg("arg1"), pybind11::arg("timeout"));
 }
