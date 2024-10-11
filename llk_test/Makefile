@@ -1,80 +1,105 @@
-TOOL_PATH=../third_party/sfpi/compiler/bin
+TOOL_PATH?=../third_party/sfpi/compiler/bin
+OUT ?=build
 
-BUILD_DIR=build
-
-# format -> specifies format of data used in building certain test
-# mathop -> specifies operating that MATH TRISC executes
-# both are passed as arguments during compile
-
+# Tool paths
 GXX=$(TOOL_PATH)/riscv32-unknown-elf-g++
 OBJDUMP=$(TOOL_PATH)/riscv32-unknown-elf-objdump
 OBJCOPY=$(TOOL_PATH)/riscv32-unknown-elf-objcopy
 READELF=$(TOOL_PATH)/riscv32-unknown-elf-readelf
 
-OPTIONS_ALL=-O3 -mwormhole -march=rv32imw -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math
-OPTIONS_COMPILE=-fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -DARCH_WORMHOLE -DTENSIX_FIRMWARE -DLOCAL_MEM_EN=0 -DDEBUG_PRINT_ENABLED -DCOMPILE_FOR_BRISC
-OPTIONS_LINK=-fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Ldbd/riscv-src
+# GCC options
+OPTIONS_ALL=-O0 -march=rv32imw -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math
+OPTIONS_COMPILE=-fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable
+OPTIONS_LINK=-fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -L..dbd/riscv-src
 INCLUDES = -I../third_party/tt-llk-wh-b0/llk_lib -I../third_party/tt-llk-wh-b0/common/inc -I../third_party/tt-llk-wh-b0/common/inc/sfpu
 INCLUDES += -I../third_party/firmware/riscv/common -I../third_party/firmware/riscv/wormhole -I../third_party/firmware/riscv/wormhole/wormhole_b0_defines -I../third_party/firmware/riscv/wormhole/noc -I../third_party/sfpi/include
-DEFINES = -Wl,--defsym=__trisc_base=53248 -Wl,--defsym=__trisc0_size=20480 -Wl,--defsym=__trisc1_size=16384 -Wl,--defsym=__trisc2_size=20480 -Wl,--defsym=__trisc_local_mem_size=4096
-OPTIONS_COMPILE += $(INCLUDES)
-OPTIONS_LINK += $(DEFINES)
 
 MINUS_D:="-D"
 SPACE:= " "
 FORMAT_ARG:=$(MINUS_D)$(format)$(SPACE)
 MATHOP_ARG:=$(MINUS_D)$(mathop)$(SPACE)
+OPTIONS_COMPILE+=$(FORMAT_ARG) $(MATHOP_ARG)
+OPTIONS_COMPILE+=$(INCLUDES)
 
-.PHONY: all clean
+# Define project paths
+RISCV_HELPERS=helpers
+RISCV_SOURCE=../dbd/riscv-src
+RISCV_OUTPUT=$(OUT)/riscv-src
+RISCV_OBJECT=$(OUT)/obj
 
-all: $(BUILD_DIR)/unpack.elf $(BUILD_DIR)/math.elf $(BUILD_DIR)/pack.elf
+TEST_OBJ=$(OUT)/obj
 
-dis: $(BUILD_DIR)/unpack.dis $(BUILD_DIR)/math.dis $(BUILD_DIR)/pack.dis
+# Define architectures and applications
+RISCV_ARCHITECTURES := wormhole 
+RISCV_APPS := run_elf_test
+RISCV_CORES := trisc0 trisc1 trisc2
 
-$(BUILD_DIR)/%.dis: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
-	$(OBJDUMP) -xsD $< > $@
-	$(OBJDUMP) -t $< | sort >> $@
+# Define targets
+.PHONY: dbd/riscv dbd/riscv/clean
 
-$(BUILD_DIR)/%.dump: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
-	$(READELF) --debug-dump $< > $@
+$(OUT):
+	mkdir -p $@
 
-$(BUILD_DIR)/unpack.elf: $(BUILD_DIR)/tmu-crt0.o $(BUILD_DIR)/ckernel_unpack.o $(BUILD_DIR)/unpack.o | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) -Thelpers/trisc0.ld $^ -o $@
+$(RISCV_OBJECT): $(OUT)
+	mkdir -p $@
 
-$(BUILD_DIR)/math.elf: $(BUILD_DIR)/tmu-crt0.o $(BUILD_DIR)/ckernel_math.o $(BUILD_DIR)/math.o | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) -Thelpers/trisc1.ld $^ -o $@
+dbd/riscv: $(RISCV_OBJECT) dbd/riscv/wormhole 
 
-$(BUILD_DIR)/pack.elf: $(BUILD_DIR)/tmu-crt0.o $(BUILD_DIR)/ckernel_pack.o $(BUILD_DIR)/pack.o | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) -Thelpers/trisc2.ld $^ -o $@
+dbd/riscv/clean:
+	rm -rf $(OUT)
 
-$(BUILD_DIR)/unpack.o: $(BUILD_DIR)/llk.cpp | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(FORMAT_ARG) -DLLK_TRISC_UNPACK -c -o $@ $<
-
-$(BUILD_DIR)/math.o: $(BUILD_DIR)/llk.cpp | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(MATHOP_ARG) -DLLK_TRISC_MATH -c -o $@ $<
-
-$(BUILD_DIR)/pack.o: $(BUILD_DIR)/llk.cpp | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(FORMAT_ARG) -DLLK_TRISC_PACK -c -o $@ $<
-
-$(BUILD_DIR)/ckernel_unpack.o: helpers/ckernel.cc | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_UNPACK -DMAILBOX_ADDR=53252 -c -o $@ $<
-
-$(BUILD_DIR)/ckernel_math.o: helpers/ckernel.cc | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_MATH -DMAILBOX_ADDR=73732 -c -o $@ $<
-
-$(BUILD_DIR)/ckernel_pack.o: helpers/ckernel.cc | $(BUILD_DIR)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_PACK -DMAILBOX_ADDR=90116 -c -o $@ $<
-
-$(BUILD_DIR)/tmu-crt0.o: helpers/tmu-crt0.S | $(BUILD_DIR)
+# CRT compile target (assembly)
+$(RISCV_OBJECT)/tmu-crt0.o: $(RISCV_SOURCE)/tmu-crt0.S
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o $@ $<
 
-$(BUILD_DIR):
-	mkdir -p $@
-	cp tests/eltwise_add_test.cpp $(BUILD_DIR)/llk.cpp
+# C++ compile target
+$(RISCV_OBJECT)/%.o: $(RISCV_SOURCE)/%.cc
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o $@ $<
 
-#unpack_nop_pack_test.cpp
+$(RISCV_OBJECT)/trisc0.o: tests/eltwise_add_test.cc
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_UNPACK -c -o $@ $<
+$(RISCV_OBJECT)/trisc1.o: tests/eltwise_add_test.cc
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_MATH -c -o $@ $<
+$(RISCV_OBJECT)/trisc2.o: tests/eltwise_add_test.cc
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_PACK -c -o $@ $<
 
-clean:
-	rm -rf $(BUILD_DIR)
-	rm -rf .pytest_cache
-	rm -rf __pycache__
+# Define function that creates target for selected architecture and selected application and selected core
+#   $(1) - architecture
+#   $(2) - application
+#   $(3) - core
+define create_riscv_core_target
+$(RISCV_OUTPUT)/$(1)/$(2).$(3).elf: $(RISCV_OBJECT)/tmu-crt0.o $(RISCV_OBJECT)/$(2).o $(RISCV_OBJECT)/$(3).o
+	mkdir -p $(RISCV_OUTPUT)/$(1)
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $$^ -T$(RISCV_SOURCE)/memory.$(1).ld -T$(RISCV_SOURCE)/$(3).ld -T$(RISCV_SOURCE)/sections.ld -o $$@
+	$(OBJDUMP) -d -s -S $(RISCV_OUTPUT)/$(1)/$(2).$(3).elf > $(RISCV_OUTPUT)/$(1)/$(2).$(3).dump
+	$(OBJDUMP) -t $(RISCV_OUTPUT)/$(1)/$(2).$(3).elf | sort >> $(RISCV_OUTPUT)/$(1)/$(2).$(3).dump
+	$(READELF) --debug-dump $(RISCV_OUTPUT)/$(1)/$(2).$(3).elf > $(RISCV_OUTPUT)/$(1)/$(2).$(3).dis
+endef
+
+# Define funciton that creates target for selected architecture and selected application and all cores
+#   $(1) - architecture
+#   $(2) - application
+#   $(3) - list of cores
+define create_riscv_application
+	$(foreach core,$(3),$(eval $(call create_riscv_core_target,$(1),$(2),$(core))))
+endef
+
+# Define function that creates target for selected architecture and all applications and all cores
+#   $(1) - architecture
+#   $(2) - list of applications
+#   $(3) - list of cores
+define create_riscv_target
+	$(foreach app,$(2),$(call create_riscv_application,$(1),$(app),$(3)))
+dbd/riscv/$(1): $(foreach app,$(2),$(foreach core,$(3),$(RISCV_OUTPUT)/$(1)/$(app).$(core).elf))
+endef
+
+# Define function that creates targets for each architecture and all application and all cores
+#   $(1) - list of architectures
+#   $(2) - list of applications
+#	$(3) - list of cores
+define create_riscv_targets
+	$(foreach arch,$(1),$(eval $(call create_riscv_target,$(arch),$(2),$(3))))
+endef
+
+# Call function that creates targets for all architectures and all applications and all cores
+$(call create_riscv_targets,$(RISCV_ARCHITECTURES),$(RISCV_APPS),$(RISCV_CORES))
