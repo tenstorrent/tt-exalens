@@ -13,6 +13,11 @@ OPTIONS_COMPILE=-fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-p
 OPTIONS_LINK=-fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -L..dbd/riscv-src
 INCLUDES = -I../third_party/tt-llk-wh-b0/llk_lib -I../third_party/tt-llk-wh-b0/common/inc -I../third_party/tt-llk-wh-b0/common/inc/sfpu
 INCLUDES += -I../third_party/firmware/riscv/common -I../third_party/firmware/riscv/wormhole -I../third_party/firmware/riscv/wormhole/wormhole_b0_defines -I../third_party/firmware/riscv/wormhole/noc -I../third_party/sfpi/include
+INCLUDES += -I/usr/include #-L/usr/lib
+
+#$(testname) will be passed by pytest
+
+testname=eltwise_add_test
 
 MINUS_D:="-D"
 SPACE:= " "
@@ -35,7 +40,10 @@ RISCV_APPS := run_elf_test
 RISCV_CORES := trisc0 trisc1 trisc2
 
 # Define targets
-.PHONY: dbd/riscv dbd/riscv/clean
+.PHONY: all clean
+
+
+all: $(OUT) $(testname)_trisc0.elf $(testname)_trisc1.elf $(testname)_trisc2.elf 
 
 $(OUT):
 	mkdir -p $@
@@ -43,63 +51,19 @@ $(OUT):
 $(RISCV_OBJECT): $(OUT)
 	mkdir -p $@
 
-dbd/riscv: $(RISCV_OBJECT) dbd/riscv/wormhole 
+$(testname)_trisc0.elf: $(testname)_unpack.o $(RISCV_OBJECT)/tmu-crt0.o
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $$^ -T$(RISCV_SOURCE)/memory.wormhole.ld -T$(RISCV_SOURCE)/trisc0.ld -T$(RISCV_SOURCE)/sections.ld -o $$@
+$(testname)_trisc1.elf: $(testname)_math.o $(RISCV_OBJECT)/tmu-crt0.o
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $$^ -T$(RISCV_SOURCE)/memory.wormhole.ld -T$(RISCV_SOURCE)/trisc1.ld -T$(RISCV_SOURCE)/sections.ld -o $$@
+$(testname)_trisc2.elf: $(testname)_pack.o $(RISCV_OBJECT)/tmu-crt0.o
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $$^ -T$(RISCV_SOURCE)/memory.wormhole.ld -T$(RISCV_SOURCE)/trisc2.ld -T$(RISCV_SOURCE)/sections.ld -o $$@
 
-dbd/riscv/clean:
-	rm -rf $(OUT)
-
-# CRT compile target (assembly)
-$(RISCV_OBJECT)/tmu-crt0.o: $(RISCV_SOURCE)/tmu-crt0.S
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o $@ $<
-
-# C++ compile target
-$(RISCV_OBJECT)/%.o: $(RISCV_SOURCE)/%.cc
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o $@ $<
-
-$(RISCV_OBJECT)/trisc0.o: tests/eltwise_add_test.cc
+$(testname)_unpack.o: tests/$(testname).cc
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_UNPACK -c -o $@ $<
-$(RISCV_OBJECT)/trisc1.o: tests/eltwise_add_test.cc
+$(testname)_math.o: tests/$(testname).cc
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_MATH -c -o $@ $<
-$(RISCV_OBJECT)/trisc2.o: tests/eltwise_add_test.cc
+$(testname)_pack.o: tests/$(testname).cc
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_PACK -c -o $@ $<
 
-# Define function that creates target for selected architecture and selected application and selected core
-#   $(1) - architecture
-#   $(2) - application
-#   $(3) - core
-define create_riscv_core_target
-$(RISCV_OUTPUT)/$(1)/$(2).$(3).elf: $(RISCV_OBJECT)/tmu-crt0.o $(RISCV_OBJECT)/$(2).o $(RISCV_OBJECT)/$(3).o
-	mkdir -p $(RISCV_OUTPUT)/$(1)
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $$^ -T$(RISCV_SOURCE)/memory.$(1).ld -T$(RISCV_SOURCE)/$(3).ld -T$(RISCV_SOURCE)/sections.ld -o $$@
-	$(OBJDUMP) -d -s -S $(RISCV_OUTPUT)/$(1)/$(2).$(3).elf > $(RISCV_OUTPUT)/$(1)/$(2).$(3).dump
-	$(OBJDUMP) -t $(RISCV_OUTPUT)/$(1)/$(2).$(3).elf | sort >> $(RISCV_OUTPUT)/$(1)/$(2).$(3).dump
-	$(READELF) --debug-dump $(RISCV_OUTPUT)/$(1)/$(2).$(3).elf > $(RISCV_OUTPUT)/$(1)/$(2).$(3).dis
-endef
-
-# Define funciton that creates target for selected architecture and selected application and all cores
-#   $(1) - architecture
-#   $(2) - application
-#   $(3) - list of cores
-define create_riscv_application
-	$(foreach core,$(3),$(eval $(call create_riscv_core_target,$(1),$(2),$(core))))
-endef
-
-# Define function that creates target for selected architecture and all applications and all cores
-#   $(1) - architecture
-#   $(2) - list of applications
-#   $(3) - list of cores
-define create_riscv_target
-	$(foreach app,$(2),$(call create_riscv_application,$(1),$(app),$(3)))
-dbd/riscv/$(1): $(foreach app,$(2),$(foreach core,$(3),$(RISCV_OUTPUT)/$(1)/$(app).$(core).elf))
-endef
-
-# Define function that creates targets for each architecture and all application and all cores
-#   $(1) - list of architectures
-#   $(2) - list of applications
-#	$(3) - list of cores
-define create_riscv_targets
-	$(foreach arch,$(1),$(eval $(call create_riscv_target,$(arch),$(2),$(3))))
-endef
-
-# Call function that creates targets for all architectures and all applications and all cores
-$(call create_riscv_targets,$(RISCV_ARCHITECTURES),$(RISCV_APPS),$(RISCV_CORES))
+clean:
+	rm -rf $(OUT)

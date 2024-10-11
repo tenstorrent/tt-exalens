@@ -13,9 +13,9 @@ buffer_B = [0x40,0x48] * 512
 num_bytes = write_to_device("18-18", 0x1c000, buffer_A, context=context)
 num_bytes = write_to_device("18-18", 0x1b000, buffer_B, context=context)
 
-#run_elf("build/unpack.elf", "18-18", risc_id = 1)
-#run_elf("build/math.elf", "18-18", risc_id = 2)
-#run_elf("build/pack.elf", "18-18", risc_id = 3)
+run_elf("../build/riscv-src/wormhole/run_elf_test.trisc0.elf", "18-18", risc_id = 1)
+run_elf("../build/riscv-src/wormhole/run_elf_test.trisc1.elf", "18-18", risc_id = 2)
+run_elf("../build/riscv-src/wormhole/run_elf_test.trisc2.elf", "18-18", risc_id = 3)
 
 print("buffer_A")
 read_data = read_words_from_device("18-18", 0x1c000, word_count = 1)
