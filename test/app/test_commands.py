@@ -9,6 +9,7 @@ import select
 import unittest
 import subprocess
 import re
+import time
 
 from test.app.test_umd_debuda import DbdTestRunner,UmdDbdOutputVerifier
 
@@ -35,18 +36,23 @@ class CommandTests(unittest.TestCase):
         runner = DbdTestRunner(UmdDbdOutputVerifier())
         runner.start(self)
 
+        address = "0-0"
         test_hex = "a5a5a5a5"
         print("CI CHECK: test0")
         # Reseting memory
-        runner.writeline("bwxy 18-18 0x0 16 --fill 0")
+        runner.writeline(f"bwxy {address} 0x0 16 --fill 0")
         print("CI CHECK: test1")
+
+        time.sleep(1)
         runner.read_all_non_blocking()
         print("CI CHECK: test2")
-        runner.writeline(f"bwxy 18-18 0x0 16 --fill 0x{test_hex}")
+        runner.writeline(f"bwxy {address} 0x0 16 --fill 0x{test_hex}")
         print("CI CHECK: test3")
-        runner.read_all_non_blocking()
+        time.sleep(1)
+        runner.read_all_non_blocking()             
         
-        runner.writeline("brxy 18-18 0x0 16")
+        runner.writeline(f"brxy {address} 0x0 16")
+        time.sleep(1)
         read_lines = runner.read_all_non_blocking()
 
         runner.writeline("x")
