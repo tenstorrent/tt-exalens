@@ -103,6 +103,12 @@ class DbdTestRunner:
         self.verifier.verify_start(self, tester)
 
     def readline(self, timeoutSeconds:float = 1):
+        print("CI CHECK 1---------------------------------------------------")
+        if self.process.poll() is None:
+            print("Process is running")
+        else:
+            print("Process has terminated with exit code:", self.process.poll())
+        
         # Fast path for program that ended
         rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], 0)
         if len(rlist) == 0:
