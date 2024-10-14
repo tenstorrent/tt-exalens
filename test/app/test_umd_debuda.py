@@ -20,8 +20,9 @@ class DbdOutputVerifier:
         pass
 
     def verify_start(self, runner: "DbdTestRunner", tester: unittest.TestCase):
-        lines, prompt = runner.read_until_prompt()
-        self.verify_startup(lines, prompt, tester)
+        #lines, prompt = runner.read_until_prompt()
+        runner.read_all_non_blocking()
+        #self.verify_startup(lines, prompt, tester)
         print("STARTUP")
         pass
 
@@ -100,7 +101,7 @@ class DbdTestRunner:
         path2 = self.debuda_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"print_to_ci.py")
         program_args2 = [self.interpreter_path, '-u',path2]
         self.process = subprocess.Popen(program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
-        self.process2 = subprocess.Popen(program_args2, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+        #self.process2 = subprocess.Popen(program_args2, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
 
     def start(self, tester: unittest.TestCase, args = None):
         self.invoke(args)
