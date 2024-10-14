@@ -78,31 +78,6 @@ def run_riscv_command(device, loc, risc_id, args):
     elif args["step"]:
         util.INFO(f"Stepping {where}")
         risc.step()
-        pc = risc.read_gpr(32)
-        util.INFO(f"New PC = 0x{pc:08x}")
-        if risc.is_halted():
-            util.INFO(f"Core is still halted")
-        else:
-            util.WARN(f"Core is NOT halted")
-
-    elif args["trace"]:
-        util.INFO(f"Tracing {where}")
-        llast = 123
-        last = 1234
-        while True:    
-            risc.step()
-            pc = risc.read_gpr(32)
-            util.INFO(f"PC = 0x{pc:08x}")
-            
-            if not risc.is_halted():
-                util.INFO(f"CORE IS NOT HALTED EXITING")
-                break
-            if pc == last and pc == llast:
-                util.INFO(f"NO PC CHANGE FOR 3 CYCLES EXITING")
-                break
-            llast = last
-            last = pc
-
 
     elif args["cont"]:
         util.INFO(f"Continuing {where}")

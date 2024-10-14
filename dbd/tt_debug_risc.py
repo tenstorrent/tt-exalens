@@ -796,7 +796,7 @@ class RiscLoader:
 
             # Load section into memory
             for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS': # Only load sections if contents are specified in the elf file
+                if section.data() and hasattr(section.header, 'sh_addr'):
                     name = section.name
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
@@ -814,7 +814,7 @@ class RiscLoader:
 
             # Check that what we have written is correct
             for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, 'sh_addr') and section.header['sh_type'] == 'SHT_PROGBITS': # Only verify sections if contents are specified in the elf file
+                if section.data() and hasattr(section.header, 'sh_addr'):
                     name = section.name
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr

@@ -27,18 +27,17 @@ volatile uint32_t tt_l1_ptr l1_buffer[16] __attribute__ ((section (".text#"))) _
 #include "llk_unpack_common.h"
 #include "../helpers/params.h"
 
-__attribute__((section(".trisc0_data"))) uint32_t buffer_A[16 * 16 * 4]; // this buffer is filled with data from _test.py
-__attribute__((section(".trisc0_data"))) uint32_t buffer_B[16 * 16 * 4]; // this buffer is filled with data from _test.py
+volatile uint32_t* buffer_A = (volatile uint32_t*)0x1b000;
+volatile uint32_t* buffer_B = (volatile uint32_t*)0x1c000;
 
 void run_kernel()
 {
-    /*
     for(int i = 0; i < 16*16*4; i++)
     {
         buffer_A[i] = 0x4480; // 4.5
-        buffer_B[i] = 0x4000; // 2
+        buffer_B[i] = 0x4840; // 8.5
     }
-    */
+
     _llk_unpack_AB_hw_configure_(DATA_FORMAT, DATA_FORMAT, DATA_FORMAT, DATA_FORMAT);
     _llk_unpack_AB_init_<>();
     _llk_unpack_AB_<>((((uint32_t)&buffer_A)/16)-1,(((uint32_t)&buffer_B)/16)-1);
@@ -53,6 +52,8 @@ void run_kernel()
 
 void run_kernel()
 {
+    volatile int* testMe = (volatile int*)0x112344;
+    *testMe = 0x87654321;
     _llk_math_eltwise_binary_init_<ELTWISE_BINARY_OP, BroadcastType::NONE>(4, 0, 0);
     _llk_math_eltwise_binary_<ELTWISE_BINARY_OP, BroadcastType::NONE>(4, 0, true);
     set_math_semaphores();
@@ -66,12 +67,12 @@ void run_kernel()
 #include "llk_pack_common.h"
 #include "../helpers/params.h"
 
-volatile __attribute__((section(".text"))) uint32_t buffer_Dest[16 * 16 * 4];
-
-//parametrize data formats
+ __attribute__((section(".text"))) uint32_t buffer_Dest[16 * 16 * 4];
 
 void run_kernel()
 {
+    volatile int* testMe = (volatile int*)0x112348;
+    *testMe = 0x11223344;
     for(int i = 0; i < 16*16*4; i++)
     {
         buffer_Dest[i] = 0x123;
