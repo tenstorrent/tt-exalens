@@ -30,6 +30,7 @@ class debuda_server_request_type(Enum):
     get_device_ids = 18
     get_device_arch = 19
     get_device_soc_description = 20
+    arc_msg = 21
 
     # Runtime requests
     pci_read_tile = 100
@@ -234,7 +235,7 @@ class debuda_server_communication:
             )
         )
         return self._check(self._socket.recv())
-    
+
     def get_file(self, path: str):
         encoded_path = path.encode()
         self._socket.send(
@@ -253,10 +254,10 @@ class debuda_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int, read_reply=False):
         self._socket.send(
             struct.pack(
-                "<BBBIII",
+                "<BBBIIIIB",
                 debuda_server_request_type.arc_msg.value,
                 device_id,
                 msg_code,
@@ -264,6 +265,7 @@ class debuda_server_communication:
                 arg0,
                 arg1,
                 timeout,
+                read_reply
             )
         )
         return self._check(self._socket.recv())
@@ -377,12 +379,12 @@ class debuda_client(DbdCommunicator):
         return self.parse_string(
             self._communication.get_device_soc_description(chip_id)
         )
-    
+
     def get_file(self, file_path: str) -> str:
         return self.parse_string(
             self._communication.get_file(file_path)
         )
-    
+
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         binary_content = self._communication.get_file(binary_path)
         return io.BytesIO(binary_content)
@@ -395,9 +397,9 @@ class debuda_client(DbdCommunicator):
             return run_dirpath
         return None
 
-    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int, read_reply=False):
         return self.parse_uint32_t(
-            self._communication.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
+            self._communication.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, read_reply=read_reply)
         )
 
 
@@ -475,7 +477,7 @@ class debuda_pybind(DbdCommunicator):
 
     def get_device_soc_description(self, chip_id: int):
         return self._check_result(tt_dbd_pybind.get_device_soc_description(chip_id))
-    
+
     def get_file(self, file_path: str) -> str:
         content = None
         with open(file_path, 'r') as f:
@@ -488,8 +490,8 @@ class debuda_pybind(DbdCommunicator):
     def get_run_dirpath(self) -> str:
         return self._run_dirpath
 
-    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
-        return self._check_result(tt_dbd_pybind.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout))
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int, read_reply=False):
+        return self._check_result(tt_dbd_pybind.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, read_reply))
 
 def init_pybind(runtime_data_yaml_filename, run_dirpath=None, wanted_devices=None):
     if not wanted_devices:

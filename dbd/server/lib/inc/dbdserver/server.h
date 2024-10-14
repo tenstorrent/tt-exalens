@@ -26,6 +26,7 @@ class server : public communication {
     void respond(std::optional<std::string> response);
     void respond(std::optional<uint32_t> response);
     void respond(std::optional<std::vector<uint8_t>> response);
+    void respond(std::tuple<std::optional<int>, std::optional<uint32_t>, std::optional<uint32_t>> response);
     void respond_not_supported();
 
     virtual std::optional<std::vector<uint8_t>> get_file(const std::string& path);

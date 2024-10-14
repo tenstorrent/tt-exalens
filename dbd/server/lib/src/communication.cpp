@@ -121,6 +121,9 @@ void tt::dbd::communication::request_loop() {
                                           (message.size() !=
                                            sizeof(get_file_request) + static_cast<const get_file_request*>(r)->size);
                         break;
+                    case tt::dbd::request_type::arc_msg:
+                        invalid_message = message.size() != sizeof(arc_msg_request);
+                        break;
                 }
 
                 // Currenly no additional parsing is needed, so we just call process with current request that can be

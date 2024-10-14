@@ -432,7 +432,7 @@ class TestARC(unittest.TestCase):
 		cls.context = tt_debuda_init.init_debuda()
 
 	def test_arc_msg(self):
-		"""Test sending ARC a NOP message."""
+		"""Test getting AICLK from ARC."""
 		device_id = 0
 		msg_code = 0xaa34 # Get AICLK. See src/hardware/soc/tb/arc_fw/wh_fw/src/level_2.c
 		wait_for_done = True
@@ -440,9 +440,17 @@ class TestARC(unittest.TestCase):
 		arg1 = 0
 		timeout = 1000
 
-		ret, return_3, _ = lib.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, context=self.context)
+		# Ask for reply, check for reasonable AICLK value
+		ret, return_3, _ = lib.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, context=self.context, read_reply=True)
+
 		print (f"ARC message result={ret}, aiclk={return_3}")
 		self.assertEqual(ret, 0)
 
 		# Asserting that return_3 (aiclk) is greater than 400 and less than 2000
 		self.assertTrue(return_3 > 400 and return_3 < 2000)
+
+		# Ask for no reply, expect None in return_3 and return_4
+		ret, return_3, return_4 = lib.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, context=self.context, read_reply=False)
+		self.assertEqual(ret, 0)
+		self.assertIsNone(return_3)
+		self.assertIsNone(return_4)

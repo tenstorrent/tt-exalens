@@ -94,6 +94,12 @@ void tt::dbd::server::process(const tt::dbd::request& base_request) {
             respond(get_file(std::string(request.data, request.size)));
             break;
         }
+        case tt::dbd::request_type::arc_msg: {
+            auto& request = static_cast<const tt::dbd::arc_msg_request&>(base_request);
+            respond(implementation->arc_msg(request.chip_id, request.msg_code, request.wait_for_done, request.arg0,
+                                            request.arg1, request.timeout, request.read_reply));
+            break;
+        }
         case tt::dbd::request_type::get_buda_run_dirpath: {
             respond(get_run_dirpath());
             break;
@@ -128,6 +134,18 @@ void tt::dbd::server::respond(std::optional<std::vector<uint8_t>> response) {
         respond_not_supported();
     } else {
         communication::respond(response.value().data(), response.value().size());
+    }
+}
+
+void tt::dbd::server::respond(std::tuple<std::optional<int>, std::optional<uint32_t>, std::optional<uint32_t>> response) {
+    if (!std::get<0>(response)) {
+        respond_not_supported();
+    } else {
+        std::vector<uint32_t> data;
+        data.push_back(std::get<0>(response).value());
+        data.push_back(static_cast<uint32_t>(std::get<1>(response).value()));
+        data.push_back(static_cast<uint32_t>(std::get<2>(response).value()));
+        communication::respond(data.data(), data.size());
     }
 }
 

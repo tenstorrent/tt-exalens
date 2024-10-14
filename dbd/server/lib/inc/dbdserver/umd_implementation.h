@@ -32,7 +32,8 @@ class umd_implementation : public debuda_implementation {
     std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) override;
     std::optional<std::string> get_device_arch(uint8_t chip_id) override;
 
-    std::optional<int> arc_msg(uint8_t chip_id, uint32_t msg_code, bool wait_for_done, uint32_t arg0, uint32_t arg1, int timeout, uint32_t *return_3, uint32_t *return_4) override;
+    virtual std::tuple < std::optional<int>, std::optional<uint32_t>,  std::optional<uint32_t> > arc_msg(uint8_t chip_id, uint32_t msg_code, bool wait_for_done, uint32_t arg0, uint32_t arg1,
+                                                          int timeout, bool read_reply) override;
 
    private:
     bool is_chip_mmio_capable(uint8_t chip_id);
