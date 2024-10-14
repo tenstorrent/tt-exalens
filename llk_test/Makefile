@@ -1,5 +1,5 @@
 TOOL_PATH?=../third_party/sfpi/compiler/bin
-OUT ?=build
+BUILD_DIR ?=build
 
 # Tool paths
 GXX=$(TOOL_PATH)/riscv32-unknown-elf-g++
@@ -8,12 +8,12 @@ OBJCOPY=$(TOOL_PATH)/riscv32-unknown-elf-objcopy
 READELF=$(TOOL_PATH)/riscv32-unknown-elf-readelf
 
 # GCC options
-OPTIONS_ALL=-O0 -march=rv32imw -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math
-OPTIONS_COMPILE=-fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable
-OPTIONS_LINK=-fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -L..dbd/riscv-src
+OPTIONS_ALL=-O3 -mwormhole -march=rv32imw -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -ffast-math -flto
+OPTIONS_COMPILE=-fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -DARCH_WORMHOLE -DTENSIX_FIRMWARE -DLOCAL_MEM_EN=0 -DDEBUG_PRINT_ENABLED -DCOMPILE_FOR_BRISC
+OPTIONS_LINK=-fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -L../Ldbd/riscv-src
 INCLUDES = -I../third_party/tt-llk-wh-b0/llk_lib -I../third_party/tt-llk-wh-b0/common/inc -I../third_party/tt-llk-wh-b0/common/inc/sfpu
 INCLUDES += -I../third_party/firmware/riscv/common -I../third_party/firmware/riscv/wormhole -I../third_party/firmware/riscv/wormhole/wormhole_b0_defines -I../third_party/firmware/riscv/wormhole/noc -I../third_party/sfpi/include
-INCLUDES += -I/usr/include #-L/usr/lib
+#INCLUDES += -I/usr/include #-L/usr/lib
 
 #$(testname) will be passed by pytest
 
@@ -29,13 +29,10 @@ OPTIONS_COMPILE+=$(INCLUDES)
 # Define project paths
 RISCV_HELPERS=helpers
 RISCV_SOURCE=../dbd/riscv-src
-RISCV_OUTPUT=$(OUT)/riscv-src
-RISCV_OBJECT=$(OUT)/obj
-
-TEST_OBJ=$(OUT)/obj
+RISCV_BUILD_DIRPUT=$(BUILD_DIR)/riscv-src
+OUTPUT_ELFS = $(BUILD_DIR)/elf
 
 # Define architectures and applications
-RISCV_ARCHITECTURES := wormhole 
 RISCV_APPS := run_elf_test
 RISCV_CORES := trisc0 trisc1 trisc2
 
@@ -43,27 +40,40 @@ RISCV_CORES := trisc0 trisc1 trisc2
 .PHONY: all clean
 
 
-all: $(OUT) $(testname)_trisc0.elf $(testname)_trisc1.elf $(testname)_trisc2.elf 
+all: $(BUILD_DIR) $(OUTPUT_ELFS) $(OUTPUT_ELFS)/$(testname)_trisc0.elf $(OUTPUT_ELFS)/$(testname)_trisc1.elf $(OUTPUT_ELFS)/$(testname)_trisc2.elf 
 
-$(OUT):
+$(BUILD_DIR):
 	mkdir -p $@
 
-$(RISCV_OBJECT): $(OUT)
+$(OUTPUT_ELFS): $(BUILD_DIR)
 	mkdir -p $@
 
-$(testname)_trisc0.elf: $(testname)_unpack.o $(RISCV_OBJECT)/tmu-crt0.o
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $$^ -T$(RISCV_SOURCE)/memory.wormhole.ld -T$(RISCV_SOURCE)/trisc0.ld -T$(RISCV_SOURCE)/sections.ld -o $$@
-$(testname)_trisc1.elf: $(testname)_math.o $(RISCV_OBJECT)/tmu-crt0.o
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $$^ -T$(RISCV_SOURCE)/memory.wormhole.ld -T$(RISCV_SOURCE)/trisc1.ld -T$(RISCV_SOURCE)/sections.ld -o $$@
-$(testname)_trisc2.elf: $(testname)_pack.o $(RISCV_OBJECT)/tmu-crt0.o
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $$^ -T$(RISCV_SOURCE)/memory.wormhole.ld -T$(RISCV_SOURCE)/trisc2.ld -T$(RISCV_SOURCE)/sections.ld -o $$@
+# Buiding .elf files for every TRISC core
+ $(OUTPUT_ELFS)/$(testname)_trisc0.elf :$(BUILD_DIR)/tmu-crt0.o $(BUILD_DIR)/$(testname)_unpack.o $(BUILD_DIR)/main_unpack.o
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $^ -T$(RISCV_SOURCE)/memory.wormhole.ld -T$(RISCV_SOURCE)/trisc0.ld -T$(RISCV_SOURCE)/sections.ld -o $@
+ $(OUTPUT_ELFS)/$(testname)_trisc1.elf: $(BUILD_DIR)/tmu-crt0.o $(BUILD_DIR)/$(testname)_math.o $(BUILD_DIR)/main_math.o
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $^ -T$(RISCV_SOURCE)/memory.wormhole.ld -T$(RISCV_SOURCE)/trisc1.ld -T$(RISCV_SOURCE)/sections.ld -o $@
+ $(OUTPUT_ELFS)/$(testname)_trisc2.elf: $(BUILD_DIR)/tmu-crt0.o $(BUILD_DIR)/$(testname)_pack.o $(BUILD_DIR)/main_pack.o
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $^ -T$(RISCV_SOURCE)/memory.wormhole.ld -T$(RISCV_SOURCE)/trisc2.ld -T$(RISCV_SOURCE)/sections.ld -o $@
 
-$(testname)_unpack.o: tests/$(testname).cc
+#compiling _test.cc to .o
+$(BUILD_DIR)/$(testname)_unpack.o: tests/$(testname).cc
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_UNPACK -c -o $@ $<
-$(testname)_math.o: tests/$(testname).cc
+$(BUILD_DIR)/$(testname)_math.o: tests/$(testname).cc
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_MATH -c -o $@ $<
-$(testname)_pack.o: tests/$(testname).cc
+$(BUILD_DIR)/$(testname)_pack.o: tests/$(testname).cc
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_PACK -c -o $@ $<
 
+#compiling main for every TRISC core
+$(BUILD_DIR)/main_unpack.o : $(RISCV_SOURCE)/run_elf_test.cc
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_UNPACK -c -o $@ $<
+$(BUILD_DIR)/main_math.o : $(RISCV_SOURCE)/run_elf_test.cc
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_MATH -c -o $@ $<
+$(BUILD_DIR)/main_pack.o : $(RISCV_SOURCE)/run_elf_test.cc
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_PACK -c -o $@ $<	
+
+$(BUILD_DIR)/tmu-crt0.o: $(RISCV_SOURCE)/tmu-crt0.S | $(BUILD_DIR)
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o $@ $<
+
 clean:
-	rm -rf $(OUT)
+	rm -rf $(BUILD_DIR)
