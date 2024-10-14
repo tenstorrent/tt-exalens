@@ -36,7 +36,7 @@ class CommandTests(unittest.TestCase):
         runner = DbdTestRunner(UmdDbdOutputVerifier())
         runner.start(self)
 
-        address = "0-0"
+        address = "1-1"
         test_hex = "a5a5a5a5"
         print("CI CHECK: test0")
         # Reseting memory
