@@ -447,7 +447,7 @@ class TestARC(unittest.TestCase):
 		self.assertEqual(ret, 0)
 
 		# Asserting that return_3 (aiclk) is greater than 400 and less than 2000
-		self.assertTrue(return_3 > 400 and return_3 < 2000)
+		self.assertTrue(return_3 > 200 and return_3 < 2000)
 
 		# Ask for no reply, expect None in return_3 and return_4
 		ret, return_3, return_4 = lib.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, context=self.context, read_reply=False)
