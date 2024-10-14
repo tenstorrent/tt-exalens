@@ -96,8 +96,11 @@ class TTLensTestRunner:
         if not args is None:
             if not type(args) == list:
                 args = [args]
-        self.process = subprocess.Popen(program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        return self.process
+
+        path2 = self.debuda_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"print_to_ci.py")
+        program_args2 = [self.interpreter_path, '-u',path2]
+        self.process = subprocess.Popen(program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+        self.process2 = subprocess.Popen(program_args2, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
 
     def start(self, tester: unittest.TestCase, args = None):
         self.invoke(args)
@@ -110,6 +113,8 @@ class TTLensTestRunner:
         else:
             print("Process has terminated with exit code:", self.process.poll())
         
+        #print(self.process2.stdout.readline())
+
         # Fast path for program that ended
         rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], 0)
         if len(rlist) == 0:

@@ -28,7 +28,7 @@ class CommandTests(unittest.TestCase):
                     if value.lower() != match_hex.lower():
                         return False 
                             
-            return True  
+        return True  
 
     def test_bwxy_command(self):
         print("BWXY")
