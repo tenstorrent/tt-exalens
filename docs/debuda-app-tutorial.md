@@ -142,6 +142,28 @@ Note that `wxy` can only write one word (4 bytes) at a time.
 
 To see more details about this command, refer to [the documentation](./debuda-command-docs.md#wxy).
 
+### Burst writing to memory
+
+The `bwxy` command can be used to fill the memory with a specific fill value.
+
+For example, you can turn the memory like this:
+```
+18-18 (L1) : 0x00000000 (16 bytes)
+0x00000000:  00000000  00000000  00000000  00000000
+```
+Using the following command:
+```
+bwxy 18-18 0x0 4 --fill 0xa5a5a5a5
+```
+Into this:
+```
+18-18 (L1) : 0x00000000 (16 bytes)
+0x00000000:  a5a5a5a5  a5a5a5a5  a5a5a5a5  a5a5a5a5
+```
+
+The command is used just like brxy command, only it doesn't have the sampling feature.
+
+For more advanced usecases of this command, refer to [the docummentation](./debuda-command-docs.md#bwxy).
 
 ### Runing .elf files (`re`)
 
