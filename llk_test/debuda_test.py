@@ -24,3 +24,27 @@ read_data = read_data[0].to_bytes(4, 'big')
 read_data = list(read_data)
 for i in read_data:
     print(hex(i))
+
+print("UNPACK mailbox")
+read_data = read_words_from_device("18-18", 0xd004, word_count = 8)
+read_data = read_data[0].to_bytes(4, 'big')
+read_data = list(read_data)
+print(read_data)
+for i in read_data:
+    print(hex(i))
+
+print("MATH mailbox")
+read_data = read_words_from_device("18-18", 0x12004, word_count = 8)
+read_data = read_data[0].to_bytes(4, 'big')
+read_data = list(read_data)
+print(read_data)
+for i in read_data:
+    print(hex(i))
+
+print("PACK mailbox")
+read_data = read_words_from_device("18-18", 0x16004, word_count = 8)
+read_data = read_data[0].to_bytes(4, 'big')
+read_data = list(read_data)
+print(read_data)
+for i in read_data:
+    print(hex(i))

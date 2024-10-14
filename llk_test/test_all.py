@@ -102,9 +102,10 @@ def write_stimuli_to_l1(buffer_A, loc_A, buffer_B, loc_B,format):
 # FOR NOW SUPPORT ONLY TORCH TYPES
 @pytest.mark.parametrize("format", ["Float32", "Float16", "Float16_b"]) #, "Int32"])
 #@pytest.mark.parametrize("tiles_cnt", [1])
+@pytest.mark.parametrize("testname", ["eltwise_add_test"])
 @pytest.mark.parametrize("mathop", ["elwadd", "elwsub", "elwmul"])
 
-def test_all(format,mathop):
+def test_all(format,mathop,testname):
     
     print("\n")
     print("===================")
@@ -129,18 +130,36 @@ def test_all(format,mathop):
         for byte in l:
             read_hex.append(hex(byte))
 
-    make_cmd = "make dis format="+format_args_dict[format]+ " " + "mathop=" + mathop_args_dict[mathop]
+    make_cmd = "make format="+format_args_dict[format]+ " " + "mathop=" + mathop_args_dict[mathop] + " testname="+testname
     os.system(make_cmd)
     
-    # run cores with dedicated elf files
-    # read mailboxes and assert 1
-    # compare results
+    run_elf("build/elf/"+testname+"_trisc0.elf", "18-18", risc_id = 1)
+    run_elf("build/elf/"+testname+"_trisc1.elf", "18-18", risc_id = 2)
+    run_elf("build/elf/"+testname+"_trisc2.elf", "18-18", risc_id = 3)
     
     os.system("make clean")
 
     dec_data = []
     for i in read_hex:
         dec_data.append(int(i,16))
+
+    # read mailboxes from L1 and assert their values
+    unpack_mailbox = read_words_from_device("18-18", 0xd004, word_count = 1)
+    unpack_mailbox = unpack_mailbox[0].to_bytes(4, 'big')
+    unpack_mailbox = list(unpack_mailbox)
+
+    math_mailbox = read_words_from_device("18-18", 0x12004, word_count = 1)
+    math_mailbox = math_mailbox[0].to_bytes(4, 'big')
+    math_mailbox = list(math_mailbox)
+
+    pack_mailbox = read_words_from_device("18-18", 0x16004, word_count = 1)
+    pack_mailbox = pack_mailbox[0].to_bytes(4, 'big')
+    pack_mailbox = list(pack_mailbox)
+
+    # if kerenls ran successfully all mailboxes should be 0x00000001
+    #assert unpack_mailbox == [0,0,0,1]
+    assert math_mailbox == [0,0,0,1]
+    assert pack_mailbox == [0,0,0,1]
 
     #investigate what happens with float16 and float16_b and byte count
 

@@ -13,8 +13,9 @@ OPTIONS_COMPILE=-fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-p
 OPTIONS_LINK=-fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -L../dbd/riscv-src -Wl,--trace
 INCLUDES = -I../third_party/tt-llk-wh-b0/llk_lib -I../third_party/tt-llk-wh-b0/common/inc -I../third_party/tt-llk-wh-b0/common/inc/sfpu
 INCLUDES += -I../third_party/firmware/riscv/common -I../third_party/firmware/riscv/wormhole -I../third_party/firmware/riscv/wormhole/wormhole_b0_defines -I../third_party/firmware/riscv/wormhole/noc -I../third_party/sfpi/include
+
 #$(testname) will be passed by pytest
-testname=eltwise_add_test
+#testname=eltwise_add_test
 
 MINUS_D:="-D"
 SPACE:= " "
