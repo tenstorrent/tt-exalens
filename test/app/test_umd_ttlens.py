@@ -10,6 +10,10 @@ import unittest
 import subprocess
 import re
 
+import os
+import fcntl
+import select
+
 
 class TTLensOutputVerifier:
     def __init__(self):
@@ -116,6 +120,47 @@ class TTLensTestRunner:
             return None
         print(line)
         return line
+
+    def set_nonblocking(self,fd):
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+    def read_all_non_blocking(self, timeoutSeconds: float = 1):
+        # Fast path for program that ended
+        rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], timeoutSeconds)
+        
+        if len(rlist) == 0:
+            if not self.is_running:
+                return None
+            return []
+
+        original_stdout_flags = fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_GETFL)
+        original_stderr_flags = fcntl.fcntl(self.process.stderr.fileno(), fcntl.F_GETFL)
+
+        self.set_nonblocking(self.process.stdout.fileno())
+        self.set_nonblocking(self.process.stderr.fileno())
+
+        output_lines = []
+        
+        for stream in rlist:
+            try:
+                while True:
+                    output = os.read(stream.fileno(), 4096).decode('utf-8')
+                    if not output:
+                        break
+                    
+                    lines = output.splitlines()
+                    output_lines.extend(lines)
+                    for line in lines:
+                        print(line)  
+            # Passing if os.read gets blocked
+            except BlockingIOError:
+                pass
+        
+        fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_SETFL, original_stdout_flags)
+        fcntl.fcntl(self.process.stderr.fileno(), fcntl.F_SETFL, original_stderr_flags)
+
+        return output_lines if output_lines else None
 
     def writeline(self, line):
         self.process.stdin.write(line)
