@@ -31,15 +31,19 @@ class CommandTests(unittest.TestCase):
             return True  
 
     def test_bwxy_command(self):
+        print("BWXY")
         runner = DbdTestRunner(UmdDbdOutputVerifier())
         runner.start(self)
 
         test_hex = "a5a5a5a5"
-
+        print("CI CHECK: test0")
         # Reseting memory
         runner.writeline("bwxy 18-18 0x0 16 --fill 0")
+        print("CI CHECK: test1")
         runner.read_all_non_blocking()
+        print("CI CHECK: test2")
         runner.writeline(f"bwxy 18-18 0x0 16 --fill 0x{test_hex}")
+        print("CI CHECK: test3")
         runner.read_all_non_blocking()
         
         runner.writeline("brxy 18-18 0x0 16")

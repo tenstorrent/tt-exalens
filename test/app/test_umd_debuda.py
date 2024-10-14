@@ -22,6 +22,7 @@ class DbdOutputVerifier:
     def verify_start(self, runner: "DbdTestRunner", tester: unittest.TestCase):
         lines, prompt = runner.read_until_prompt()
         self.verify_startup(lines, prompt, tester)
+        print("STARTUP")
         pass
 
     @abstractmethod
