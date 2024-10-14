@@ -147,13 +147,13 @@ class yaml_not_implemented_implementation : public debuda_implementation {
         return {};
     }
 
-    std::tuple< std::optional<int>, std::optional<uint32_t>, std::optional<uint32_t> > arc_msg(
+    std::tuple<std::optional<int>, std::optional<uint32_t>, std::optional<uint32_t>> arc_msg(
         uint8_t chip_id, uint32_t msg_code, bool wait_for_done, uint32_t arg0, uint32_t arg1, int timeout,
         bool read_reply) override {
         server->send_yaml("- type: 100\n  chip_id: " + std::to_string(chip_id) + "\n  msg_code: " +
                           std::to_string(msg_code) + "\n  wait_for_done: " + std::to_string(wait_for_done) +
-                          "\n  arg0: " + std::to_string(arg0) + "\n  arg1: " + std::to_string(arg1) + "\n  timeout: " +
-                          std::to_string(timeout) + "\n  read_reply: " + std::to_string(read_reply));
+                          "\n  arg0: " + std::to_string(arg0) + "\n  arg1: " + std::to_string(arg1) +
+                          "\n  timeout: " + std::to_string(timeout) + "\n  read_reply: " + std::to_string(read_reply));
         return {};
     }
 

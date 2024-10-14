@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 #include "dbdserver/umd_implementation.h"
+
 #include <optional>
 
 #include "dbdserver/read_tile.hpp"
@@ -168,8 +169,9 @@ std::optional<std::string> umd_implementation::get_device_arch(uint8_t chip_id) 
     }
 }
 
-std::tuple < std::optional<int>, std::optional<uint32_t>,  std::optional<uint32_t> > umd_implementation::arc_msg(uint8_t chip_id, uint32_t msg_code, bool wait_for_done, uint32_t arg0, uint32_t arg1,
-                                                          int timeout, bool read_reply) {
+std::tuple<std::optional<int>, std::optional<uint32_t>, std::optional<uint32_t>> umd_implementation::arc_msg(
+    uint8_t chip_id, uint32_t msg_code, bool wait_for_done, uint32_t arg0, uint32_t arg1, int timeout,
+    bool read_reply) {
     if (!device) {
         return {};
     }
@@ -179,13 +181,12 @@ std::tuple < std::optional<int>, std::optional<uint32_t>,  std::optional<uint32_
     uint32_t return_4 = 0;
     int return_code = 0;
     if (read_reply) {
-        return_code = d->arc_msg (chip_id, msg_code, wait_for_done, arg0, arg1, timeout, &return_3, &return_4);
-        return { return_code, return_3, return_4 };
+        return_code = d->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout, &return_3, &return_4);
+        return {return_code, return_3, return_4};
     } else {
-        return_code = d->arc_msg (chip_id, msg_code, wait_for_done, arg0, arg1, timeout, nullptr, nullptr);
-        return { return_code, std::nullopt, std::nullopt };
+        return_code = d->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout, nullptr, nullptr);
+        return {return_code, std::nullopt, std::nullopt};
     }
 }
-
 
 }  // namespace tt::dbd

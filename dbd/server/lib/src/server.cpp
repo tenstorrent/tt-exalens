@@ -137,7 +137,8 @@ void tt::dbd::server::respond(std::optional<std::vector<uint8_t>> response) {
     }
 }
 
-void tt::dbd::server::respond(std::tuple<std::optional<int>, std::optional<uint32_t>, std::optional<uint32_t>> response) {
+void tt::dbd::server::respond(
+    std::tuple<std::optional<int>, std::optional<uint32_t>, std::optional<uint32_t>> response) {
     if (!std::get<0>(response)) {
         respond_not_supported();
     } else {
