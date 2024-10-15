@@ -26,6 +26,7 @@ enum class request_type : uint8_t {
     get_device_ids,
     get_device_arch,
     get_device_soc_description,
+    arc_msg,
 
     // Runtime requests
     pci_read_tile = 100,
@@ -119,6 +120,15 @@ struct get_device_soc_description_request : request {
 struct get_file_request : request {
     uint32_t size;
     char data[0];
+} __attribute__((packed));
+
+struct arc_msg_request : request {
+    uint8_t chip_id;
+    uint32_t msg_code;
+    bool wait_for_done;
+    uint32_t arg0;
+    uint32_t arg1;
+    int timeout;
 } __attribute__((packed));
 
 }  // namespace tt::dbd

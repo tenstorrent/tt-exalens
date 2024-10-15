@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "dbdserver/umd_implementation.h"
 
+#include <tuple>
+
 #include "dbdserver/read_tile.hpp"
 #include "device/tt_device.h"
 
@@ -165,6 +167,20 @@ std::optional<std::string> umd_implementation::get_device_arch(uint8_t chip_id) 
     } catch (...) {
         return {};
     }
+}
+
+std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(uint8_t chip_id, uint32_t msg_code,
+                                                                               bool wait_for_done, uint32_t arg0,
+                                                                               uint32_t arg1, int timeout) {
+    if (!device) {
+        return {};
+    }
+    tt_device* d = static_cast<tt_device*>(device);
+
+    uint32_t return_3 = 0;
+    uint32_t return_4 = 0;
+    int return_code = d->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout, &return_3, &return_4);
+    return std::make_tuple(return_code, return_3, return_4);
 }
 
 }  // namespace tt::dbd

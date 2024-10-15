@@ -175,6 +175,7 @@ For more advanced use cases, refer to the source code of the documentation gener
 To be sure that the code passes static checks in the CI pipeline, you can run
 
 ```bash
+pip install -r ./infra/requirements-infra.txt
 python -m check_copyright --verbose --config infra/copyright-config.yaml 
 ```
 

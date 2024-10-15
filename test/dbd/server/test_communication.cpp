@@ -7,6 +7,7 @@
 #include <string>
 #include <zmq.hpp>
 
+#include "dbdserver/requests.h"
 #include "yaml_communication.h"
 
 constexpr int DEFAULT_TEST_SERVER_PORT = 6666;
@@ -167,4 +168,11 @@ TEST(debuda_communication, get_file) {
     ASSERT_TRUE(server->is_connected());
     auto response = send_message(zmq::const_buffer(request_data.data(), request_data.size())).to_string();
     ASSERT_EQ(response, expected_response);
+}
+
+TEST(debuda_communication, arc_msg) {
+    auto req = tt::dbd::arc_msg_request{tt::dbd::request_type::arc_msg, 1, 2, true, 3, 4, 5};
+
+    test_yaml_request(
+        req, "- type: 21\n  chip_id: 1\n  msg_code: 2\n  wait_for_done: 1\n  arg0: 3\n  arg1: 4\n  timeout: 5");
 }
