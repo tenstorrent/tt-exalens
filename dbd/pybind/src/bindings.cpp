@@ -167,15 +167,15 @@ std::optional<std::string> get_device_soc_description(uint8_t chip_id) {
     return {};
 }
 
-std::tuple<std::optional<int>, std::optional<uint32_t>, std::optional<uint32_t>> arc_msg(uint8_t chip_id,
-                                                                                         uint32_t msg_code,
-                                                                                         bool wait_for_done,
-                                                                                         uint32_t arg0, uint32_t arg1,
-                                                                                         int timeout, bool read_reply) {
+std::optional <std::tuple<int, uint32_t, uint32_t>> arc_msg(uint8_t chip_id,
+                                                            uint32_t msg_code,
+                                                            bool wait_for_done,
+                                                            uint32_t arg0, uint32_t arg1,
+                                                            int timeout) {
     if (debuda_implementation) {
-        return debuda_implementation->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout, read_reply);
+        return debuda_implementation->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout);
     }
-    return std::make_tuple(std::nullopt, std::nullopt, std::nullopt);
+    return {};
 }
 
 PYBIND11_MODULE(tt_dbd_pybind, m) {
@@ -211,11 +211,7 @@ PYBIND11_MODULE(tt_dbd_pybind, m) {
     // Bind arc_msg with explicit lambda to ensure type resolution
     m.def(
         "arc_msg",
-        [](uint8_t chip_id, uint32_t msg_code, bool wait_for_done, uint32_t arg0, uint32_t arg1, int timeout,
-           bool read_reply) {
-            auto result = arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout, read_reply);
-            return result;
-        },
+        &arc_msg,
         "Send ARC message", pybind11::arg("chip_id"), pybind11::arg("msg_code"), pybind11::arg("wait_for_done"),
-        pybind11::arg("arg0"), pybind11::arg("arg1"), pybind11::arg("timeout"), pybind11::arg("read_reply"));
+        pybind11::arg("arg0"), pybind11::arg("arg1"), pybind11::arg("timeout"));
 }

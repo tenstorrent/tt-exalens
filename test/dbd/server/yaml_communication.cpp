@@ -141,8 +141,7 @@ std::string yaml_communication::serialize(const tt::dbd::arc_msg_request& reques
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
            "\n  chip_id: " + std::to_string(request.chip_id) + "\n  msg_code: " + std::to_string(request.msg_code) +
            "\n  wait_for_done: " + std::to_string(request.wait_for_done) + "\n  arg0: " + std::to_string(request.arg0) +
-           "\n  arg1: " + std::to_string(request.arg1) + "\n  timeout: " + std::to_string(request.timeout) +
-           "\n  read_reply: " + std::to_string(request.read_reply);
+           "\n  arg1: " + std::to_string(request.arg1) + "\n  timeout: " + std::to_string(request.timeout);
 }
 
 std::string yaml_communication::serialize_bytes(const uint8_t* data, size_t size) {

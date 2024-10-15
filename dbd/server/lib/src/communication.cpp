@@ -109,6 +109,9 @@ void tt::dbd::communication::request_loop() {
                     case request_type::get_device_soc_description:
                         invalid_message = message.size() != sizeof(get_device_soc_description_request);
                         break;
+                    case tt::dbd::request_type::arc_msg:
+                        invalid_message = message.size() != sizeof(arc_msg_request);
+                        break;
 
                     // Dynamic sized structures
                     case request_type::pci_write:
@@ -120,9 +123,6 @@ void tt::dbd::communication::request_loop() {
                         invalid_message = (message.size() < sizeof(get_file_request)) ||
                                           (message.size() !=
                                            sizeof(get_file_request) + static_cast<const get_file_request*>(r)->size);
-                        break;
-                    case tt::dbd::request_type::arc_msg:
-                        invalid_message = message.size() != sizeof(arc_msg_request);
                         break;
                 }
 

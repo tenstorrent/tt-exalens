@@ -48,9 +48,8 @@ class debuda_implementation {
     virtual std::optional<std::string> get_device_arch(uint8_t chip_id) { return {}; }
     virtual std::optional<std::string> get_device_soc_description(uint8_t chip_id) { return {}; }
 
-    virtual std::tuple<std::optional<int>, std::optional<uint32_t>, std::optional<uint32_t>> arc_msg(
-        uint8_t chip_id, uint32_t msg_code, bool wait_for_done, uint32_t arg0, uint32_t arg1, int timeout,
-        bool read_reply) {
+    virtual std::optional <std::tuple<int, uint32_t, uint32_t>> arc_msg(
+        uint8_t chip_id, uint32_t msg_code, bool wait_for_done, uint32_t arg0, uint32_t arg1, int timeout) {
         return {};
     }
 };

@@ -254,7 +254,7 @@ class debuda_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int, read_reply=False):
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
         self._socket.send(
             struct.pack(
                 "<BBBIIIIB",
@@ -264,8 +264,7 @@ class debuda_server_communication:
                 wait_for_done,
                 arg0,
                 arg1,
-                timeout,
-                read_reply
+                timeout
             )
         )
         return self._check(self._socket.recv())
@@ -397,9 +396,9 @@ class debuda_client(DbdCommunicator):
             return run_dirpath
         return None
 
-    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int, read_reply=False):
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
         return self.parse_uint32_t(
-            self._communication.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, read_reply=read_reply)
+            self._communication.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
         )
 
 
@@ -490,8 +489,8 @@ class debuda_pybind(DbdCommunicator):
     def get_run_dirpath(self) -> str:
         return self._run_dirpath
 
-    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int, read_reply=False):
-        return self._check_result(tt_dbd_pybind.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, read_reply))
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
+        return self._check_result(tt_dbd_pybind.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout))
 
 def init_pybind(runtime_data_yaml_filename, run_dirpath=None, wanted_devices=None):
     if not wanted_devices:

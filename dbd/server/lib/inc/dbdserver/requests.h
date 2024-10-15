@@ -129,7 +129,6 @@ struct arc_msg_request : request {
     uint32_t arg0;
     uint32_t arg1;
     int timeout;
-    bool read_reply;
 } __attribute__((packed));
 
 }  // namespace tt::dbd
