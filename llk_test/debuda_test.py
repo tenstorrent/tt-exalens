@@ -26,12 +26,14 @@ for i in read_data:
     print(hex(i))
 
 print("buffer_Dest")
-dest_buffer = read_words_from_device("18-18", 0xcc38, word_count = 1)
+dest_list = []
+dest_buffer = read_words_from_device("18-18", 0x1a000, word_count = 4)
 for data in dest_buffer:
     read_data = data.to_bytes(4, 'big')
     read_data = list(read_data)
     for i in read_data:
-        print(hex(i))
+        dest_list.append(hex(i))
+print(dest_list)
 
 # Using temp mailbox before moving mailbox address in defines
 print("UNPACK mailbox")
