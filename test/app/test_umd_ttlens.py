@@ -143,15 +143,17 @@ class TTLensTestRunner:
         rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], timeoutSeconds)
         
         if len(rlist) == 0:
+            print("stdout or stderr not available")
             if not self.is_running:
                 return None
             return []
-
+        
+        print("Reading")
         original_stdout_flags = fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_GETFL)
         original_stderr_flags = fcntl.fcntl(self.process.stderr.fileno(), fcntl.F_GETFL)
 
-        self.set_nonblocking(self.process.stdout.fileno())
-        self.set_nonblocking(self.process.stderr.fileno())
+        # self.set_nonblocking(self.process.stdout.fileno())
+        # self.set_nonblocking(self.process.stderr.fileno())
 
         output_lines = []
         
@@ -163,13 +165,17 @@ class TTLensTestRunner:
                     while True:
                         line = reader.readline()
                         if not line or line == '\n':
-                            break
+                            continue;
                         
                         if line.endswith('\n'):
                             line = line[:-1]
 
                         output_lines.append(line)
                         print(line)
+
+                        if self.verifier.is_prompt_line(line):
+                            break;
+                        
             except BlockingIOError:
                 pass
         
@@ -185,13 +191,15 @@ class TTLensTestRunner:
 
     def read_until_prompt(self, readline_timeout: float = 1):
         lines = []
-        while True:
-            read_lines = self.read_all_non_blocking(readline_timeout)
-            if read_lines is None:
-                return (lines, None)
-            if self.verifier.is_prompt_line(read_lines[-1]):
-                return (lines+read_lines[:-1], read_lines[-1])
-            lines += read_lines
+        # while True:
+        #     read_lines = self.read_all_non_blocking(readline_timeout)
+        #     if read_lines is None:
+        #         return (lines, None)
+        #     if self.verifier.is_prompt_line(read_lines[-1]):
+        #         return (lines+read_lines[:-1], read_lines[-1])
+        #     lines += read_lines
+        read_lines = self.read_all_non_blocking(readline_timeout)
+        return (read_lines[:-1],read_lines[-1])
 
     def wait(self, timeoutSeconds:float = None):
         self.process.wait(timeoutSeconds)
