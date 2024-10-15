@@ -173,7 +173,6 @@ TEST(debuda_communication, get_file) {
 TEST(debuda_communication, arc_msg) {
     auto req = tt::dbd::arc_msg_request{tt::dbd::request_type::arc_msg, 1, 2, true, 3, 4, 5};
 
-    test_yaml_request(req,
-                      "- type: " + std::to_string(static_cast<int>(tt::dbd::request_type::arc_msg)) +
-                          "\n  chip_id: 1\n  msg_code: 2\n  wait_for_done: 1\n  arg0: 3\n  arg1: 4\n  timeout: 5");
+    test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::dbd::request_type::arc_msg)) +
+                               "\n  chip_id: 1\n  msg_code: 2\n  wait_for_done: 1\n  arg0: 3\n  arg1: 4\n  timeout: 5");
 }
