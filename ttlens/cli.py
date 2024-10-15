@@ -273,7 +273,7 @@ class SimplePromptSession:
     def __init__(self):
         self.history = InMemoryHistory()
     def prompt(self, message):
-        print(fragment_list_to_text(to_formatted_text(message)))
+        print(fragment_list_to_text(to_formatted_text(message)),flush=True)
         s = input()
         self.history.append_string(s)
         return s

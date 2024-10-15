@@ -12,6 +12,7 @@ import re
 
 import os
 import fcntl
+import io
 import select
 
 
@@ -156,16 +157,19 @@ class TTLensTestRunner:
         
         for stream in rlist:
             try:
-                while True:
-                    output = os.read(stream.fileno(), 4096).decode('utf-8')
-                    if not output:
-                        break
-                    
-                    lines = output.splitlines()
-                    output_lines.extend(lines)
-                    for line in lines:
-                        print(line)  
-            # Passing if os.read gets blocked
+                # There is no need to close the reader since both stdout and stderr are already opened 
+                # in self.process.stdout and self.process.stderr, we are just using this as a pointer to the fd
+                with io.TextIOWrapper(os.fdopen(stream.fileno(), 'rb',closefd=False), encoding='utf-8') as reader:
+                    while True:
+                        line = reader.readline()
+                        if not line or line == '\n':
+                            break
+                        
+                        if line.endswith('\n'):
+                            line = line[:-1]
+
+                        output_lines.append(line)
+                        print(line)
             except BlockingIOError:
                 pass
         
@@ -182,12 +186,12 @@ class TTLensTestRunner:
     def read_until_prompt(self, readline_timeout: float = 1):
         lines = []
         while True:
-            line = self.readline(readline_timeout)
-            if line is None:
+            read_lines = self.read_all_non_blocking(readline_timeout)
+            if read_lines is None:
                 return (lines, None)
-            if self.verifier.is_prompt_line(line):
-                return (lines, line)
-            lines.append(line)
+            if self.verifier.is_prompt_line(read_lines[-1]):
+                return (lines+read_lines[:-1], read_lines[-1])
+            lines += read_lines
 
     def wait(self, timeoutSeconds:float = None):
         self.process.wait(timeoutSeconds)

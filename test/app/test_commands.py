@@ -16,7 +16,7 @@ from test.app.test_umd_debuda import DbdTestRunner,UmdDbdOutputVerifier
 class CommandTests(unittest.TestCase):
     def check_written_lines(self,lines, match_hex):
         # Removing first and last lines since they do not values that we are interested in
-        lines = lines[1:-1]
+        lines = lines[1:]
 
         pattern = r"0x[0-9a-fA-F]+:\s+([0-9a-fA-F\s]+)"
         
@@ -32,28 +32,21 @@ class CommandTests(unittest.TestCase):
         return True  
 
     def test_bwxy_command(self):
-        print("BWXY")
         runner = DbdTestRunner(UmdDbdOutputVerifier())
         runner.start(self)
 
         address = "1-1"
         test_hex = "a5a5a5a5"
-        print("CI CHECK: test0")
+
         # Reseting memory
         runner.writeline(f"bwxy {address} 0x0 16 --fill 0")
-        print("CI CHECK: test1")
+        lines,prompts = runner.read_until_prompt()
 
-        time.sleep(1)
-        runner.read_all_non_blocking()
-        print("CI CHECK: test2")
         runner.writeline(f"bwxy {address} 0x0 16 --fill 0x{test_hex}")
-        print("CI CHECK: test3")
-        time.sleep(1)
-        runner.read_all_non_blocking()             
-        
+        lines,prompts = runner.read_until_prompt()
+
         runner.writeline(f"brxy {address} 0x0 16")
-        time.sleep(1)
-        read_lines = runner.read_all_non_blocking()
+        read_lines,prompts = runner.read_until_prompt()
 
         runner.writeline("x")
         runner.wait()
