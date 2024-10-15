@@ -12,6 +12,7 @@ import re
 
 import os
 import fcntl
+import io
 import select
 
 
@@ -20,10 +21,8 @@ class DbdOutputVerifier:
         pass
 
     def verify_start(self, runner: "DbdTestRunner", tester: unittest.TestCase):
-        #lines, prompt = runner.read_until_prompt()
-        runner.read_all_non_blocking()
-        #self.verify_startup(lines, prompt, tester)
-        print("STARTUP")
+        lines, prompt = runner.read_until_prompt()
+        self.verify_startup(lines, prompt, tester)
         pass
 
     @abstractmethod
@@ -107,36 +106,6 @@ class DbdTestRunner:
         self.invoke(args)
         self.verifier.verify_start(self, tester)
 
-    def readline(self, timeoutSeconds:float = 1):
-        print("CI CHECK 1---------------------------------------------------")
-        if self.process.poll() is None:
-            print("Process is running")
-        else:
-            print("Process has terminated with exit code:", self.process.poll())
-        
-        #print(self.process2.stdout.readline())
-
-        # Fast path for program that ended
-        rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], 0)
-        if len(rlist) == 0:
-            if not self.is_running:
-                return None
-            rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], timeoutSeconds)
-            if len(rlist) == 0:
-                if not self.is_running:
-                    return None
-                raise Exception(f"Hit timeout ({timeoutSeconds}s) while waiting for output from Debuda")
-        line = self.process.stdout.readline();
-        print(line)
-        return line
-        line = rlist[0].readline()
-        if line.endswith('\n'):
-            line = line[:-1]
-        elif not line:
-            return None
-        print(line)
-        return line
-
     def set_nonblocking(self,fd):
         flags = fcntl.fcntl(fd, fcntl.F_GETFL)
         fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
@@ -160,16 +129,19 @@ class DbdTestRunner:
         
         for stream in rlist:
             try:
-                while True:
-                    output = os.read(stream.fileno(), 4096).decode('utf-8')
-                    if not output:
-                        break
-                    
-                    lines = output.splitlines()
-                    output_lines.extend(lines)
-                    for line in lines:
-                        print(line)  
-            # Passing if os.read gets blocked
+                # There is no need to close the reader since both stdout and stderr are already opened 
+                # in self.process.stdout and self.process.stderr, we are just using this as a pointer to the fd
+                with io.TextIOWrapper(os.fdopen(stream.fileno(), 'rb',closefd=False), encoding='utf-8') as reader:
+                    while True:
+                        line = reader.readline()
+                        if not line or line == '\n':
+                            break
+                        
+                        if line.endswith('\n'):
+                            line = line[:-1]
+
+                        output_lines.append(line)
+                        print(line)
             except BlockingIOError:
                 pass
         
@@ -186,12 +158,12 @@ class DbdTestRunner:
     def read_until_prompt(self, readline_timeout: float = 1):
         lines = []
         while True:
-            line = self.readline(readline_timeout)
-            if line is None:
+            read_lines = self.read_all_non_blocking(readline_timeout)
+            if read_lines is None:
                 return (lines, None)
-            if self.verifier.is_prompt_line(line):
-                return (lines, line)
-            lines.append(line)
+            if self.verifier.is_prompt_line(read_lines[-1]):
+                return (lines+read_lines[:-1], read_lines[-1])
+            lines += read_lines
 
     def wait(self, timeoutSeconds:float = None):
         self.process.wait(timeoutSeconds)
