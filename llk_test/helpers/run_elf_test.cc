@@ -24,15 +24,27 @@ namespace ckernel{
 }
 
 using namespace ckernel;
+
+#ifdef LLK_TRISC_PACK
+volatile uint32_t* tmp_mailbox = (volatile uint32_t*)(0x19FFC); // pack
+#endif
+#ifdef LLK_TRISC_MATH
+volatile uint32_t* tmp_mailbox = (volatile uint32_t*)(0x19FF8); // math
+#endif
+#ifdef LLK_TRISC_UNPACK
+volatile uint32_t* tmp_mailbox = (volatile uint32_t*)(0x19FF4); // unpack
+#endif
+
+
 int main()
 {
     FWEVENT("Launching proudction env kernels");
 
-	volatile uint32_t* tmp_mailbox = (volatile uint32_t*)(0x1a100);
-
 	tensix_sync();
     run_kernel();
-    trisc_l1_mailbox_write(KERNEL_COMPLETE);
+    //trisc_l1_mailbox_write(KERNEL_COMPLETE);
+
 	*tmp_mailbox = 0x1;
+
 	for(;;){}
 }

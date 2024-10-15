@@ -29,7 +29,6 @@ volatile uint32_t tt_l1_ptr l1_buffer[16] __attribute__ ((section (".text#"))) _
 
 volatile uint32_t* buffer_A = (volatile uint32_t*)0x1b000;
 volatile uint32_t* buffer_B = (volatile uint32_t*)0x1c000;
-volatile uint32_t* test = (volatile uint32_t*)0x1a000;
 
 void run_kernel()
 {
@@ -58,7 +57,7 @@ void run_kernel()
     set_math_semaphores();
 }
 
-#endif
+#endif 
 
 #ifdef LLK_TRISC_PACK
 
@@ -67,13 +66,15 @@ void run_kernel()
 #include "../helpers/params.h"
 
  __attribute__((section(".text"))) uint32_t buffer_Dest[16 * 16 * 4];
+//volatile uint32_t* buffer_Dest = (volatile uint32_t*)0x1a000;
 
 void run_kernel()
 {
     for(int i = 0; i < 16*16*4; i++)
     {
-        buffer_Dest[i] = 0x123;
+        buffer_Dest[i] = 0xdeadbeef;
     }
+
     _llk_pack_hw_configure_(DATA_FORMAT, DATA_FORMAT, 16*16*4);
     _llk_pack_init_<false, false, DstTileFaceLayout::RowMajor, false>(DATA_FORMAT);
     _llk_pack_dest_init_<DstSync::SyncFull, DstTileFaceLayout::RowMajor, false, false>();

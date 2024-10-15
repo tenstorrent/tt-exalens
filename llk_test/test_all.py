@@ -23,6 +23,29 @@ mathop_args_dict = {"elwadd" : "ELTWISE_BINARY_ADD",
 
 binary_ops = ["elwadd", "elwsub", "elwmul"]
 
+def tensor2bytes(tens):
+    res = tens.tolist()
+    hex_res = []
+    hex_res_string = []
+    bytes_res = []
+    if(format == "Float16") or (format == "Float16_b"):
+        for i in res:
+            hex_res.append(str((half(i).hex())[0]))
+    else:  
+        for i in res:
+            hex_res.append(str((single(i).hex())[0]))
+
+    for i in hex_res:
+        hex_res_string.append(("0x"+str(i)))
+
+    for i in hex_res_string:
+        for j in range(2,len(i),2):
+            byte_str = i[j:j+2]
+            byte_nr = int(byte_str,16)
+            bytes_res.append(byte_nr)
+    
+    return bytes_res
+
 def generate_stimuli(stimuli_format):
 
     srcA = [0]    
@@ -53,6 +76,8 @@ def generate_golden(operation, operand1, operand2):
             dest =  torch.matmul(operand2,operand1)
         case _:
             print("Unsupported operation!") 
+
+    return dest
 
 def write_stimuli_to_l1(buffer_A, loc_A, buffer_B, loc_B,format):
 
@@ -108,29 +133,17 @@ def write_stimuli_to_l1(buffer_A, loc_A, buffer_B, loc_B,format):
 def test_all(format,mathop,testname):
     
     context = init_debuda()
-
-    print("\n")
-    print("===================")
-    print(format)
-    print(mathop)
-    print("===================")
-
     srcA, srcB = generate_stimuli(format)
     golden = generate_golden(mathop,srcA,srcB)
 
     bytes_A, bytes_B = write_stimuli_to_l1(srcA.tolist(),0x1c000,srcB.tolist(),0x1b000,format)
-    read_data = read_words_from_device("18-18",0x1c000,word_count = 1024)
 
-    read_bytes = []
-    read_hex = []
+    # golden is located on addres 0x1c000 in L1
+    read_golden = read_words_from_device("18-18",0x1c000,word_count = 1024)
 
-    for i in read_data:
-        read_bytes.append(i.to_bytes(4,'little'))
-    
-    for i in read_bytes:
-        l = list(i)
-        for byte in l:
-            read_hex.append(hex(byte))
+    bytes_golden = tensor2bytes(golden)
+
+    # Running make on host and generated elfs on TRISC cores
 
     make_cmd = "make format="+format_args_dict[format]+ " " + "mathop=" + mathop_args_dict[mathop] + " testname="+testname
     os.system(make_cmd)
@@ -141,28 +154,37 @@ def test_all(format,mathop,testname):
     
     os.system("make clean")
 
-    dec_data = []
-    for i in read_hex:
-        dec_data.append(int(i,16))
-
     # read mailboxes from L1 and assert their values
+    # **************************************
     # UNPACK_MAILBOX's address is temporary
-    unpack_mailbox = read_words_from_device("18-18", 0x1a100, word_count = 1)
+    unpack_mailbox = read_words_from_device("18-18", 0x19FF4, word_count = 1)
     unpack_mailbox = unpack_mailbox[0].to_bytes(4, 'big')
     unpack_mailbox = list(unpack_mailbox)
 
-    math_mailbox = read_words_from_device("18-18", 0x12004, word_count = 1)
+    math_mailbox = read_words_from_device("18-18", 0x19FF8, word_count = 1)
     math_mailbox = math_mailbox[0].to_bytes(4, 'big')
     math_mailbox = list(math_mailbox)
 
-    pack_mailbox = read_words_from_device("18-18", 0x16004, word_count = 1)
+    pack_mailbox = read_words_from_device("18-18", 0x19FFC, word_count = 1)
     pack_mailbox = pack_mailbox[0].to_bytes(4, 'big')
     pack_mailbox = list(pack_mailbox)
+    # **************************************
 
     # if kerenls ran successfully all mailboxes should be 0x00000001
     assert unpack_mailbox == [0,0,0,1]
     assert math_mailbox == [0,0,0,1]
     assert pack_mailbox == [0,0,0,1]
+
+    # compare results calculated by kernel and golden
+    # first break down read_golden to bytes
+    read_bytes = []
+    for i in read_golden:
+        golden_bytes = i.to_bytes(4,'big')
+        golden_bytes = list(golden_bytes)
+        for byte in golden_bytes:
+            read_bytes.append(int(byte))
+
+    assert bytes_golden == read_bytes
 
     #investigate what happens with float16 and float16_b and byte count
 

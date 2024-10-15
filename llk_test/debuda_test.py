@@ -25,9 +25,17 @@ read_data = list(read_data)
 for i in read_data:
     print(hex(i))
 
+print("buffer_Dest")
+dest_buffer = read_words_from_device("18-18", 0xcc38, word_count = 1)
+for data in dest_buffer:
+    read_data = data.to_bytes(4, 'big')
+    read_data = list(read_data)
+    for i in read_data:
+        print(hex(i))
+
 # Using temp mailbox before moving mailbox address in defines
 print("UNPACK mailbox")
-read_data = read_words_from_device("18-18", 0x1a100, word_count = 1)
+read_data = read_words_from_device("18-18", 0x19FF4, word_count = 1)
 read_data = read_data[0].to_bytes(4, 'big')
 read_data = list(read_data)
 print(read_data)
@@ -35,7 +43,7 @@ for i in read_data:
     print(hex(i))
 
 print("MATH mailbox")
-read_data = read_words_from_device("18-18", 0x12004, word_count = 1)
+read_data = read_words_from_device("18-18", 0x19FF8, word_count = 1)
 read_data = read_data[0].to_bytes(4, 'big')
 read_data = list(read_data)
 print(read_data)
@@ -43,7 +51,7 @@ for i in read_data:
     print(hex(i))
 
 print("PACK mailbox")
-read_data = read_words_from_device("18-18", 0x16004, word_count = 1)
+read_data = read_words_from_device("18-18", 0x19FFC, word_count = 1)
 read_data = read_data[0].to_bytes(4, 'big')
 read_data = list(read_data)
 print(read_data)
