@@ -24,13 +24,15 @@ namespace ckernel{
 }
 
 using namespace ckernel;
-
 int main()
 {
     FWEVENT("Launching proudction env kernels");
 
+	volatile uint32_t* tmp_mailbox = (volatile uint32_t*)(0x1a100);
+
+	tensix_sync();
     run_kernel();
-    tensix_sync();
     trisc_l1_mailbox_write(KERNEL_COMPLETE);
+	*tmp_mailbox = 0x1;
 	for(;;){}
 }

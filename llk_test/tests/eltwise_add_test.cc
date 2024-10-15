@@ -29,6 +29,7 @@ volatile uint32_t tt_l1_ptr l1_buffer[16] __attribute__ ((section (".text#"))) _
 
 volatile uint32_t* buffer_A = (volatile uint32_t*)0x1b000;
 volatile uint32_t* buffer_B = (volatile uint32_t*)0x1c000;
+volatile uint32_t* test = (volatile uint32_t*)0x1a000;
 
 void run_kernel()
 {
@@ -52,8 +53,6 @@ void run_kernel()
 
 void run_kernel()
 {
-    volatile int* testMe = (volatile int*)0x112344;
-    *testMe = 0x87654321;
     _llk_math_eltwise_binary_init_<ELTWISE_BINARY_OP, BroadcastType::NONE>(4, 0, 0);
     _llk_math_eltwise_binary_<ELTWISE_BINARY_OP, BroadcastType::NONE>(4, 0, true);
     set_math_semaphores();
@@ -71,8 +70,6 @@ void run_kernel()
 
 void run_kernel()
 {
-    volatile int* testMe = (volatile int*)0x112348;
-    *testMe = 0x11223344;
     for(int i = 0; i < 16*16*4; i++)
     {
         buffer_Dest[i] = 0x123;

@@ -107,6 +107,8 @@ def write_stimuli_to_l1(buffer_A, loc_A, buffer_B, loc_B,format):
 
 def test_all(format,mathop,testname):
     
+    context = init_debuda()
+
     print("\n")
     print("===================")
     print(format)
@@ -144,7 +146,8 @@ def test_all(format,mathop,testname):
         dec_data.append(int(i,16))
 
     # read mailboxes from L1 and assert their values
-    unpack_mailbox = read_words_from_device("18-18", 0xd004, word_count = 1)
+    # UNPACK_MAILBOX's address is temporary
+    unpack_mailbox = read_words_from_device("18-18", 0x1a100, word_count = 1)
     unpack_mailbox = unpack_mailbox[0].to_bytes(4, 'big')
     unpack_mailbox = list(unpack_mailbox)
 
@@ -157,7 +160,7 @@ def test_all(format,mathop,testname):
     pack_mailbox = list(pack_mailbox)
 
     # if kerenls ran successfully all mailboxes should be 0x00000001
-    #assert unpack_mailbox == [0,0,0,1]
+    assert unpack_mailbox == [0,0,0,1]
     assert math_mailbox == [0,0,0,1]
     assert pack_mailbox == [0,0,0,1]
 

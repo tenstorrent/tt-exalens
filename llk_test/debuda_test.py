@@ -12,21 +12,22 @@ run_elf("build/elf/eltwise_add_test_trisc1.elf", "18-18", risc_id = 2)
 run_elf("build/elf/eltwise_add_test_trisc2.elf", "18-18", risc_id = 3)
 
 print("buffer_A")
-read_data = read_words_from_device("18-18", 0x1b000, word_count = 8)
+read_data = read_words_from_device("18-18", 0x1b000, word_count = 1)
 read_data = read_data[0].to_bytes(4, 'big')
 read_data = list(read_data)
 for i in read_data:
     print(hex(i))
 
 print("buffer_B")
-read_data = read_words_from_device("18-18", 0x1c000, word_count = 8)
+read_data = read_words_from_device("18-18", 0x1c000, word_count = 1)
 read_data = read_data[0].to_bytes(4, 'big')
 read_data = list(read_data)
 for i in read_data:
     print(hex(i))
 
+# Using temp mailbox before moving mailbox address in defines
 print("UNPACK mailbox")
-read_data = read_words_from_device("18-18", 0xd004, word_count = 8)
+read_data = read_words_from_device("18-18", 0x1a100, word_count = 1)
 read_data = read_data[0].to_bytes(4, 'big')
 read_data = list(read_data)
 print(read_data)
@@ -34,7 +35,7 @@ for i in read_data:
     print(hex(i))
 
 print("MATH mailbox")
-read_data = read_words_from_device("18-18", 0x12004, word_count = 8)
+read_data = read_words_from_device("18-18", 0x12004, word_count = 1)
 read_data = read_data[0].to_bytes(4, 'big')
 read_data = list(read_data)
 print(read_data)
@@ -42,7 +43,7 @@ for i in read_data:
     print(hex(i))
 
 print("PACK mailbox")
-read_data = read_words_from_device("18-18", 0x16004, word_count = 8)
+read_data = read_words_from_device("18-18", 0x16004, word_count = 1)
 read_data = read_data[0].to_bytes(4, 'big')
 read_data = list(read_data)
 print(read_data)
