@@ -239,6 +239,29 @@ class OnChipCoordinate:
             pass
         return virt_str
 
+    def change_device(self, device):
+        """
+        Returns coordinates for the specified device.
+
+        Args:
+            device (Device): The device object representing the chip.
+
+        Returns:
+            OnChipCoordinate: The new coordinate object for the specified device.
+        """
+        # If the device is the same, return the same object
+        if device == self._device:
+            return self
+
+        # Try to convert to netlist coordinates. If that fails, fallback to nocTr coordinates.
+        # We cannot use noc0 coordinates because of harvesting.
+        try:
+            netlist_tuple = self.to("netlist")
+            return OnChipCoordinate(netlist_tuple[0], netlist_tuple[1], "netlist", device)
+        except CoordinateTranslationError:
+            nocTr_tuple = self.to("nocTr")
+            return OnChipCoordinate(nocTr_tuple[0], nocTr_tuple[1], "nocTr", device)
+
     # The default string representation is the netlist coordinate. That's what the user deals with.
     def __str__(self) -> str:
         return self.to_str("netlist")

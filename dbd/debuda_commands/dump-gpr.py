@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  gpr   [ <reg-list> ] [ <elf-file> ] [ -v <verbosity> ] [ -d <device> ] [ -l <loc> ] [ -r <risc> ]
+  gpr   [ <reg-list> ] [ <elf-file> ] [ -v ] [ -d <device> ] [ -l <loc> ] [ -r <risc> ]
 
 Options:
     <reg-list>                          List of registers to dump, comma-separated
@@ -23,7 +23,7 @@ command_metadata = {
 	"type": "low-level",
 	"description": __doc__,
     "context": ["limited", "buda", "metal"],
-    "common_option_names": [ "--device", "--loc", "--verbosity", "--risc" ],
+    "common_option_names": [ "--device", "--loc", "--verbose", "--risc" ],
 }
 
 import tabulate
