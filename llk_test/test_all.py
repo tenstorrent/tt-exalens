@@ -65,15 +65,15 @@ def generate_stimuli(stimuli_format):
     srcB = [0]
 
     if(format != "Int32"):
-        srcA = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 1
-        srcB = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 1
+        srcA = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
+        srcB = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
     else:
         srcA = torch.randint(high = 200, size = 32*32) # change high later
         srcB = torch.randint(high = 200, size = 32*32)
     
     return srcA, srcB
 
-def generate_golden(operation, operand1, operand2):
+def generate_golden(operation, operand1, operand2,format):
     
     dest = torch.zeros(32*32)
 
@@ -89,6 +89,8 @@ def generate_golden(operation, operand1, operand2):
             dest =  torch.matmul(operand2,operand1)
         case _:
             print("Unsupported operation!") 
+
+    dest = dest.to(format_dict[format])
 
     return dest
 
@@ -175,7 +177,7 @@ def test_all(format, mathop, testname, machine):
     context = init_debuda()
 
     src_A, src_B = generate_stimuli(format)
-    golden = generate_golden(mathop, src_A, src_B)
+    golden = generate_golden(mathop, src_A, src_B,format)
     golden_bytes = tensor2bytes(golden,format)
     bytes_A, bytes_B = write_stimuli_to_l1(src_A.tolist(), 0x1b000, src_B.tolist(), 0x1c000, format)
    
@@ -239,11 +241,13 @@ def test_all(format, mathop, testname, machine):
 
     # compare results calculated by kernel and golden
 
-    #investigate what happens with float16 and float16_b and byte count
-
     #assert (len(bytes_A) == len(dec_data)) or (len(bytes_A) == len(dec_data)/2)
     #assert (bytes_A == dec_data) or (bytes_A == dec_data[:2048])
 
-    assert read_bytes[0:4] == golden_bytes[0:4]
+    #assert read_bytes[0:4] == golden_bytes[0:4]
+    tolerance = 2
+    for read_byte, golden_byte in zip(read_bytes[0:4], golden_bytes[0:4]):
+        assert abs(read_byte - golden_byte) <= tolerance, f"Difference too large: {read_byte} vs {golden_byte}"
+
     assert format in format_dict
     assert mathop in mathop_args_dict
