@@ -81,7 +81,7 @@ def generate_golden(operation, operand1, operand2):
         case "elwadd":
             dest = operand1 + operand2
         case "elwsub":
-            dest = operand1 - operand2
+            dest = operand2 - operand1
         case "elwmul":
             for i in range(0,1023):
                 dest[i] = operand1[i] * operand2[i]
