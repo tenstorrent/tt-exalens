@@ -8,14 +8,11 @@ OBJCOPY=$(TOOL_PATH)/riscv32-unknown-elf-objcopy
 READELF=$(TOOL_PATH)/riscv32-unknown-elf-readelf
 
 # GCC options
-OPTIONS_ALL=-O3 -mwormhole -march=rv32imw -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -ffast-math -flto
+OPTIONS_ALL=-O3 -march=rv32imw -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -ffast-math -flto
 OPTIONS_COMPILE=-fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -DARCH_WORMHOLE -DTENSIX_FIRMWARE -DDEBUG_PRINT_ENABLED
 OPTIONS_LINK=-fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -L../dbd/riscv-src -Wl,--trace
 INCLUDES = -I../third_party/tt-llk-wh-b0/llk_lib -I../third_party/tt-llk-wh-b0/common/inc -I../third_party/tt-llk-wh-b0/common/inc/sfpu
 INCLUDES += -I../third_party/firmware/riscv/common -I../third_party/firmware/riscv/wormhole -I../third_party/firmware/riscv/wormhole/wormhole_b0_defines -I../third_party/firmware/riscv/wormhole/noc -I../third_party/sfpi/include
-
-#$(testname) will be passed by pytest
-#testname=eltwise_add_test
 
 MINUS_D:="-D"
 SPACE:= " "
@@ -23,6 +20,7 @@ FORMAT_ARG:=$(MINUS_D)$(format)$(SPACE)
 MATHOP_ARG:=$(MINUS_D)$(mathop)$(SPACE)
 OPTIONS_COMPILE+=$(FORMAT_ARG) $(MATHOP_ARG)
 OPTIONS_COMPILE+=$(INCLUDES)
+OPTIONS_ALL+=-m$(machine)
 
 # Define project paths
 RISCV_SOURCE=../dbd/riscv-src
@@ -37,7 +35,6 @@ dis: $(BUILD_DIR)/$(testname)_trisc0.dis $(BUILD_DIR)/$(testname)_trisc1.dis $(B
 $(BUILD_DIR)/%.dis :  $(OUTPUT_ELFS)/%.elf
 	$(OBJDUMP) -xsD $< > $@
 	$(OBJDUMP) -t $< | sort >> $@
-
 
 $(BUILD_DIR):
 	mkdir -p $@
@@ -63,11 +60,11 @@ $(BUILD_DIR)/$(testname)_pack.o: tests/$(testname).cc
 
 #compiling main for every TRISC core
 $(BUILD_DIR)/main_unpack.o : helpers/run_elf_test.cc
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_UNPACK -DMAILBOX_ADDR=53252 -c -o $@ $<
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_UNPACK -c -o $@ $<
 $(BUILD_DIR)/main_math.o : helpers/run_elf_test.cc
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_MATH -DMAILBOX_ADDR=73732 -c -o $@ $<
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_MATH -c -o $@ $<
 $(BUILD_DIR)/main_pack.o : helpers/run_elf_test.cc
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_PACK -DMAILBOX_ADDR=90116 -c -o $@ $<	
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_PACK -c -o $@ $<	
 
 $(BUILD_DIR)/tmu-crt0.o: $(RISCV_SOURCE)/tmu-crt0.S | $(BUILD_DIR)
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o $@ $<
