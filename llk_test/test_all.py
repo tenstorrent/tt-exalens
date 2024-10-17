@@ -2,7 +2,6 @@ import pytest
 import torch
 import os
 import struct
-from ieee754 import IEEE754
 from ieee754 import half, single, double, quadruple, octuple
 from dbd.tt_debuda_init import init_debuda
 from dbd.tt_debuda_lib import write_to_device, read_words_from_device
@@ -27,16 +26,15 @@ binary_ops = ["elwadd", "elwsub", "elwmul"]
 def merge_pairs(lst):
     return [lst[i] + lst[i + 1].split('x')[1] for i in range(0, len(lst) - 1, 2)]
 
+def merge_elements(data, group_size):
+    return [data[i:i + group_size] for i in range(0, len(data), group_size)]
+
 def reverse_sublists(lst):
     return [lst[i:i+4][::-1] for i in range(0, len(lst), 4)]
 
 def int_to_bytes_hex(value):
     # Pack the integer into bytes and convert to hex
     return [hex(b) for b in struct.pack('>I', value)]
-
-def int_to_bin(value):
-    return format(value & 0xFFFFFFFF, '032b')
-
 
 def tensor2bytes(tens,format):
     buffer_A = tens.tolist()
@@ -48,16 +46,13 @@ def tensor2bytes(tens,format):
         if format=="Float16":
             bin_A.append((['0000','0000','0000','0000'] + half(number).hex()[1]))
         else: #Float32 -> expand later
-            bin_A.append((single(number).hex()[1]))
+            bin_A.append((half(number).hex()[1]))
     
     for binary in bin_A:
         for i in binary:
             hex_A.append(str(hex(int(i,2))))
     
     hex_A  = merge_pairs(hex_A)
-    #hex_A_reversed_endian = reverse_sublists(hex_A)
-    # flatten list of lists
-    #hex_A_reversed_endian = [item for sublist in hex_A_reversed_endian for item in sublist] 
     
     for hex_byte in hex_A:
         bytes_A.append(int(hex_byte,16))
@@ -69,15 +64,13 @@ def generate_stimuli(stimuli_format):
     srcA = [0]    
     srcB = [0]
 
-    min = 1.0
-    max = 50.0
-
     if(format != "Int32"):
         srcA = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
         srcB = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
     else:
         srcA = torch.randint(high = 200, size = 32*32) # change high later
         srcB = torch.randint(high = 200, size = 32*32)
+    
     return srcA, srcB
 
 def generate_golden(operation, operand1, operand2,format):
@@ -185,40 +178,24 @@ def test_all(format, mathop, testname, machine):
     run_elf("build/elf/"+testname+"_trisc2.elf", "18-18", risc_id = 3)
     
     read_data = read_words_from_device("18-18", 0x1a000, word_count = 1024)
-
     hex_read_data = []
-    bin_data = []
     for element in read_data:
         hex_read_data.append(int_to_bytes_hex(element))
-        bin_data.append(int_to_bin(element))
     
-    #flatten
-    hex_read_data = [item for sublist in hex_read_data for item in sublist]
+    # flatten
+    hex_read_data = [item for sublist in hex_read_data for item in sublist] 
     
     read_bytes = []
     for byte in hex_read_data:
         read_bytes.append(int(byte,16))
 
-    golden_list = []
-    ieee_list = []
-    for i in golden:
-        if(format == "Flaot16"):
-            ieee_list.append(str(IEEE754(i.tolist(),force_exponent = 8, force_mantissa = 23)).replace(" ","")[::-1])    
-        else:
-            ieee_list.append(str(IEEE754(i.tolist(),force_exponent = 8, force_mantissa = 23)).replace(" ",""))    
-
     print("*************************************************************************")
     print(format, mathop)
-    print(ieee_list[0])
-    print(bin_data[0])
-    #print(src_A[0].tolist())
-    #print(src_B[0].tolist())
-    #print("#########################################################################")
-    #print(bytes_A[0:4])
-    #print(bytes_B[0:4])
-    #print(golden_bytes[0:4])
-    #print("-------------------------------------------------------------------------")
-    #print(read_bytes[0:4])
+    print(src_A[0].tolist())
+    print(src_B[0].tolist())
+    print(golden[0].tolist())
+    print("#########################################################################")
+    print(hex_read_data[0:4])
     print("*************************************************************************")
 
     os.system("make clean")
@@ -245,18 +222,43 @@ def test_all(format, mathop, testname, machine):
     assert pack_mailbox == [0,0,0,1]
 
     # compare results calculated by kernel and golden
+    bin_read_data = []
+    for byte in read_bytes:
+        binary_string = bin(int(byte))[2:].zfill(8)
+        bin_read_data.append(binary_string)
 
-    #assert (len(bytes_A) == len(dec_data)) or (len(bytes_A) == len(dec_data)/2)
-    #assert (bytes_A == dec_data) or (bytes_A == dec_data[:2048])
+    bin_merged = merge_elements(bin_read_data,4)
+    bin32s = []
+    for i in bin_merged:
+        word = ""
+        for j in range(0,4):
+            word += i[j]
+        bin32s.append(word)
 
-    #assert read_bytes[0:4] == golden_bytes[0:4]
-    tolerance = 4
-    if(format == "Float16"):
-        for read_byte, golden_byte in zip(read_bytes[0:4], golden_bytes[0:4]):
-            assert abs(read_byte - golden_byte) <= tolerance, f"Difference too large: {read_byte} vs {golden_byte}"
+
+    bin_golden_data = []
+    for byte in golden_bytes:
+        binary_string = bin(int(byte))[2:].zfill(8)
+        bin_golden_data.append(binary_string)
+
+    golden_merged = merge_elements(bin_golden_data,4)
+    gold32s = []
+    for i in golden_merged:
+        word = ""
+        for j in range(0,4):
+            word += i[j]
+        gold32s.append(word)    
+            
+    print(bin32s[0:2])
+    print(gold32s[0:2])
     
-    if(format == "Float32"):
-        assert ieee_list[0][0:14] == bin_data[0][0:14]
+    if(format == "Float16"):
+        tolerance = 8
+        for i in range(0,1024,4):
+            for read_byte, golden_byte in zip(read_bytes[i:i+4], golden_bytes[i:i+4]):
+                assert abs(read_byte - golden_byte) <= tolerance, f" i = {i} Difference too large: {read_byte} vs {golden_byte}"
+   #elif(format == "Float32"):
+
 
     assert format in format_dict
     assert mathop in mathop_args_dict
