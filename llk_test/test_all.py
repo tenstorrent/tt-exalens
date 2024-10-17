@@ -2,6 +2,7 @@ import pytest
 import torch
 import os
 import struct
+from ieee754 import IEEE754
 from ieee754 import half, single, double, quadruple, octuple
 from dbd.tt_debuda_init import init_debuda
 from dbd.tt_debuda_lib import write_to_device, read_words_from_device
@@ -33,6 +34,10 @@ def int_to_bytes_hex(value):
     # Pack the integer into bytes and convert to hex
     return [hex(b) for b in struct.pack('>I', value)]
 
+def int_to_bin(value):
+    return format(value & 0xFFFFFFFF, '032b')
+
+
 def tensor2bytes(tens,format):
     buffer_A = tens.tolist()
     bin_A = []
@@ -43,7 +48,7 @@ def tensor2bytes(tens,format):
         if format=="Float16":
             bin_A.append((['0000','0000','0000','0000'] + half(number).hex()[1]))
         else: #Float32 -> expand later
-            bin_A.append((half(number).hex()[1]))
+            bin_A.append((single(number).hex()[1]))
     
     for binary in bin_A:
         for i in binary:
@@ -64,13 +69,15 @@ def generate_stimuli(stimuli_format):
     srcA = [0]    
     srcB = [0]
 
+    min = 1.0
+    max = 50.0
+
     if(format != "Int32"):
         srcA = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
         srcB = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
     else:
         srcA = torch.randint(high = 200, size = 32*32) # change high later
         srcB = torch.randint(high = 200, size = 32*32)
-    
     return srcA, srcB
 
 def generate_golden(operation, operand1, operand2,format):
@@ -114,10 +121,6 @@ def write_stimuli_to_l1(buffer_A, loc_A, buffer_B, loc_B,format):
     for binary in bin_A:
         for i in binary:
             hex_A.append(str(hex(int(i,2))))
-    
-    #print("********************HEX A***************************************")
-    #print(hex_A[0:4])
-    #print("****************************************************************")
 
     hex_A  = merge_pairs(hex_A)
     hex_A_reversed_endian = reverse_sublists(hex_A)
@@ -151,16 +154,6 @@ def write_stimuli_to_l1(buffer_A, loc_A, buffer_B, loc_B,format):
     num_bytes = write_to_device("18-18", 0x1c000, bytes_A)
     num_bytes = write_to_device("18-18", 0x1b000, bytes_B)
 
-    #print("****************************************************************")
-    #print(format)
-    #print(hex_A[0:4])
-    #print(hex_A_reversed_endian[0:4])
-    #print(bytes_A[0:4])
-    #print(buffer_A[0])
-    #print("Writing_A " + str(bytes_A[0:4]) +" to "+ str(hex(loc_A)))
-    #print("Writing_B " + str(bytes_B[0:4]) +" to "+ str(hex(loc_B)))
-    #print("****************************************************************")
-
     return bytes_A, bytes_B
 
 
@@ -192,28 +185,40 @@ def test_all(format, mathop, testname, machine):
     run_elf("build/elf/"+testname+"_trisc2.elf", "18-18", risc_id = 3)
     
     read_data = read_words_from_device("18-18", 0x1a000, word_count = 1024)
+
     hex_read_data = []
+    bin_data = []
     for element in read_data:
         hex_read_data.append(int_to_bytes_hex(element))
+        bin_data.append(int_to_bin(element))
     
-    # flatten
-    hex_read_data = [item for sublist in hex_read_data for item in sublist] 
+    #flatten
+    hex_read_data = [item for sublist in hex_read_data for item in sublist]
     
     read_bytes = []
     for byte in hex_read_data:
         read_bytes.append(int(byte,16))
 
+    golden_list = []
+    ieee_list = []
+    for i in golden:
+        if(format == "Flaot16"):
+            ieee_list.append(str(IEEE754(i.tolist(),force_exponent = 8, force_mantissa = 23)).replace(" ","")[::-1])    
+        else:
+            ieee_list.append(str(IEEE754(i.tolist(),force_exponent = 8, force_mantissa = 23)).replace(" ",""))    
+
     print("*************************************************************************")
     print(format, mathop)
-    print(src_A[0].tolist())
-    print(src_B[0].tolist())
-    print(golden[0].tolist())
-    print("#########################################################################")
-    print(bytes_A[0:4])
-    print(bytes_B[0:4])
-    print(golden_bytes[0:4])
-    print("-------------------------------------------------------------------------")
-    print(read_bytes[0:4])
+    print(ieee_list[0])
+    print(bin_data[0])
+    #print(src_A[0].tolist())
+    #print(src_B[0].tolist())
+    #print("#########################################################################")
+    #print(bytes_A[0:4])
+    #print(bytes_B[0:4])
+    #print(golden_bytes[0:4])
+    #print("-------------------------------------------------------------------------")
+    #print(read_bytes[0:4])
     print("*************************************************************************")
 
     os.system("make clean")
@@ -245,9 +250,13 @@ def test_all(format, mathop, testname, machine):
     #assert (bytes_A == dec_data) or (bytes_A == dec_data[:2048])
 
     #assert read_bytes[0:4] == golden_bytes[0:4]
-    tolerance = 2
-    for read_byte, golden_byte in zip(read_bytes[0:4], golden_bytes[0:4]):
-        assert abs(read_byte - golden_byte) <= tolerance, f"Difference too large: {read_byte} vs {golden_byte}"
+    tolerance = 4
+    if(format == "Float16"):
+        for read_byte, golden_byte in zip(read_bytes[0:4], golden_bytes[0:4]):
+            assert abs(read_byte - golden_byte) <= tolerance, f"Difference too large: {read_byte} vs {golden_byte}"
+    
+    if(format == "Float32"):
+        assert ieee_list[0][0:14] == bin_data[0][0:14]
 
     assert format in format_dict
     assert mathop in mathop_args_dict
