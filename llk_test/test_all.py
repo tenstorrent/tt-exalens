@@ -29,10 +29,7 @@ def flatten(sublists):
 
 def fp32_2_datum(number, masked):
     number_unpacked = struct.unpack('!I', struct.pack('!f', number))[0]
-    # Step 3: Apply the bitwise mask (0xFFFFE000)
     res_masked = number_unpacked & 0xFFFFE000
-    # Step 4: Convert back to float
-
     res_float = struct.unpack('!f', struct.pack('!I', res_masked))[0]
 
     if(masked == True):
@@ -41,19 +38,15 @@ def fp32_2_datum(number, masked):
         return res_float
 
 def fp16_2_datum(number, masked):
-    # Step 1: Unpack the 16-bit float to its integer representation
     number_unpacked = struct.unpack('!I', struct.pack('!f', number))[0]
     
-    # Step 2: Shift the 16-bit integer representation left by 3 bits to append three zeros
     res_masked = number_unpacked << 3
     
-    # Step 3: Create a 32-bit representation
     res_32bit = res_masked & 0x7FFFFFFF  # Mask to ensure only the lower 19 bits are used
     
     if masked:
         return res_masked
     else:
-        # Step 4: Convert back to 32-bit float
         return struct.unpack('!f', struct.pack('!I', res_32bit))[0]
 
 
@@ -73,24 +66,21 @@ def hex_number_to_decimal_array(hex_string, format):
     if len(hex_string) != 8:
         print(len(hex_string))
         raise ValueError("Hex string must be exactly 8 digits long.")
-
-    # Convert hex string to bytes
-    byte_array = bytes.fromhex(hex_string)
-    
-    # Convert bytes to a list of decimal values
+   
+   byte_array = bytes.fromhex(hex_string)
     decimal_array = list(byte_array)
-    
+
     return decimal_array[::-1] # reverse endian
 
 def generate_stimuli(stimuli_format):
     
-    srcA = [1.00048828125]*1024  # Example values
-    srcB = [1.00048828125]*1024
+    #srcA = [1.00048828125]*1024  # Example values
+    #srcB = [1.00048828125]*1024
 
-    # srcA = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
-    # srcB = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
-    # srcA = srcA.tolist()
-    # srcB = srcB.tolist()
+    srcA = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
+    srcB = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
+    srcA = srcA.tolist()
+    srcB = srcB.tolist()
 
     resA = []
     resB = []
@@ -153,17 +143,8 @@ def write_stimuli_to_l1(buffer_A, loc_A, buffer_B, loc_B,format):
     decimal_A = flatten(decimal_A)
     decimal_B = flatten(decimal_B)
 
-    # print()
-    # print("-"*100)
-    # print(decimal_A[0:8])
-    # print(decimal_B[0:8])
-    # print("-"*100)
-
     num_bytes = write_to_device("18-18", 0x1c000, decimal_A)
     num_bytes = write_to_device("18-18", 0x1b000, decimal_B)
-
-    # change later
-    return 0,0
 
 
 # FOR NOW SUPPORT ONLY TORCH TYPES
@@ -180,7 +161,7 @@ def test_all(format, mathop, testname, machine):
 
     src_A, src_B = generate_stimuli(format)
     golden = generate_golden(mathop, src_A, src_B,format)
-    bytes_A, bytes_B = write_stimuli_to_l1(src_A, 0x1b000, src_B, 0x1c000, format)
+    write_stimuli_to_l1(src_A, 0x1b000, src_B, 0x1c000, format)
    
     # Running make on host and generated elfs on TRISC cores
 
@@ -204,20 +185,6 @@ def test_all(format, mathop, testname, machine):
         golden_form_L1.append(number)
         golden_bytes.append(bytess)
 
-    #print("*************************************************************************")
-    #print(format, mathop)
-    #print(src_A[0])
-    #print(src_B[0])
-    if(format == "Float16_b"):
-        print("*************************************************************************")
-        print(format,mathop)
-        print(golden[10])
-        print(golden_form_L1[10])
-        print(golden_bytes[10])
-        # print("#########################################################################")
-        # print(hex_read_data[0:4])
-        print("*************************************************************************")
-
     os.system("make clean")
 
     # read mailboxes from L1 and assert their values
@@ -235,10 +202,7 @@ def test_all(format, mathop, testname, machine):
     pack_mailbox = pack_mailbox[0].to_bytes(4, 'big')
     pack_mailbox = list(pack_mailbox)
     # **************************************
-    
     assert len(golden) == len(golden_form_L1)
-
-    # **************************************
 
     # if kerenls ran successfully all mailboxes should be 0x00000001
     assert unpack_mailbox == [0,0,0,1]
@@ -247,7 +211,7 @@ def test_all(format, mathop, testname, machine):
 
     # compare results calculated by kernel and golden
 
-    if(format == "Float32"):
+    if(format == "Float16"):
         for i in range(0,512):
             assert abs(golden[i]-golden_form_L1[i]) <= 0.5 , f" i = {i} , {golden[i], golden_form_L1[i]}"  
     if(format == "Float16_b"):
