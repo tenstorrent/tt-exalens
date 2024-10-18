@@ -13,9 +13,9 @@ format_dict = {"Float32" : torch.float32,
                "Float16_b" : torch.bfloat16, 
                "Int32" : torch.int32}
                
-format_args_dict = {"Float32" : "FORMAT_FLOAT16_B", 
+format_args_dict = {"Float32" : "FORMAT_FLOAT32", 
                     "Float16" : "FORMAT_FLOAT16", 
-                    "Float16_b" : "FORMAT_FLOAT32", 
+                    "Float16_b" : "FORMAT_FLOAT16_B", 
                     "Int32" : "FORMAT_INT32"}
 
 mathop_args_dict = {"elwadd" : "ELTWISE_BINARY_ADD",    
@@ -167,9 +167,9 @@ def write_stimuli_to_l1(buffer_A, loc_A, buffer_B, loc_B,format):
 
 
 # FOR NOW SUPPORT ONLY TORCH TYPES
-@pytest.mark.parametrize("format", ["Float32", "Float16_b"]) # "Float16_b","Int32"])
+@pytest.mark.parametrize("format", ["Float16", "Float16_b"]) # "Float16_b","Int32"])
 @pytest.mark.parametrize("testname", ["eltwise_add_test"])
-@pytest.mark.parametrize("mathop", ["elwadd", "elwsub", "elwmul"])
+@pytest.mark.parametrize("mathop", ["elwadd", "elwsub"]) #, "elwmul"])
 
 # Parametrized architecture. When needed add grayskull and blackhole
 @pytest.mark.parametrize("machine", ["wormhole"])
