@@ -41,9 +41,16 @@ $(OBJDIR)/dbd/server/lib/%.o: dbd/server/lib/%.cpp $(DEBUDA_SERVER_LIB_CONFIGURA
 # Each module has a top level target as the entrypoint which must match the subdir name
 dbd/server/lib: $(DEBUDA_SERVER_LIB) $(CREATE_ETHERNET_MAP_WORMHOLE_DBD) $(CREATE_ETHERNET_MAP_BLACKHOLE_DBD)
 
+JTAG=jtag-access-library
+JTAG_LIB=$(JTAG)/out/libjtag.so
+
 $(DEBUDA_SERVER_LIB): $(DEBUDA_SERVER_LIB_OBJS)
 	@mkdir -p $(@D)
 	ar rcs -o $@ $(DEBUDA_SERVER_LIB_OBJS)
+	@if [ -d "$(JTAG)" ]; then \
+		cp -r $(JTAG_LIB) $(LIBDIR); \
+		cp -r $(JTAG)/lib/libjlinkarm.so* $(LIBDIR); \
+	fi
 
 ifeq ("$(HOST_ARCH)", "aarch64")
 $(CREATE_ETHERNET_MAP_WORMHOLE_DBD): $(DEBUDA_HOME)/third_party/umd/device/bin/silicon/aarch64/create-ethernet-map

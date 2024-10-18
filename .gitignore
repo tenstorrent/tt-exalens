@@ -25,3 +25,5 @@ compile_commands.json
 # Various build fragments
 .coverage
 *.egg-info
+
+/jtag-access-library
