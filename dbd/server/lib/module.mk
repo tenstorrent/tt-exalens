@@ -19,7 +19,6 @@ CREATE_ETHERNET_MAP_BLACKHOLE_DBD = $(BINDIR)/debuda-create-ethernet-map-blackho
 
 # Every variable in subdir must be prefixed with subdir (emulating a namespace)
 DEBUDA_SERVER_LIB_SRCS  = $(wildcard dbd/server/lib/src/*.cpp)
-DEBUDA_SERVER_LIB_SRCS  += $(wildcard dbd/server/lib/src/jtag-core/*.cpp)
 DEBUDA_SERVER_LIB = $(LIBDIR)/libdbdserver.a
 
 DEBUDA_SERVER_LIB_OBJS = $(addprefix $(OBJDIR)/, $(DEBUDA_SERVER_LIB_SRCS:.cpp=.o))
