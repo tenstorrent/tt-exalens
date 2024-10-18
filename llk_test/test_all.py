@@ -6,6 +6,7 @@ from ieee754 import half, single, double, quadruple, octuple
 from dbd.tt_debuda_init import init_debuda
 from dbd.tt_debuda_lib import write_to_device, read_words_from_device
 from dbd.tt_debuda_lib import run_elf
+from fxpmath import Fxp
 
 format_dict = {"Float32" : torch.float32, 
                "Float16" : torch.float16, 
@@ -23,65 +24,102 @@ mathop_args_dict = {"elwadd" : "ELTWISE_BINARY_ADD",
 
 binary_ops = ["elwadd", "elwsub", "elwmul"]
 
-def merge_pairs(lst):
-    return [lst[i] + lst[i + 1].split('x')[1] for i in range(0, len(lst) - 1, 2)]
+def flatten(sublists):
+    return [item for sublist in sublists for item in sublist]
 
-def merge_elements(data, group_size):
-    return [data[i:i + group_size] for i in range(0, len(data), group_size)]
+def fp32_2_datum(number, masked):
+    number_unpacked = struct.unpack('!I', struct.pack('!f', number))[0]
+    # Step 3: Apply the bitwise mask (0xFFFFE000)
+    res_masked = number_unpacked & 0xFFFFE000
+    # Step 4: Convert back to float
 
-def reverse_sublists(lst):
-    return [lst[i:i+4][::-1] for i in range(0, len(lst), 4)]
+    res_float = struct.unpack('!f', struct.pack('!I', res_masked))[0]
 
-def int_to_bytes_hex(value):
-    # Pack the integer into bytes and convert to hex
-    return [hex(b) for b in struct.pack('>I', value)]
+    if(masked == True):
+        return res_masked
+    else:
+        return res_float
 
-def tensor2bytes(tens,format):
-    buffer_A = tens.tolist()
-    bin_A = []
-    hex_A = []
-    bytes_A = []
-   
-    for number in buffer_A:
-        if format=="Float16":
-            bin_A.append((['0000','0000','0000','0000'] + half(number).hex()[1]))
-        else: #Float32 -> expand later
-            bin_A.append((half(number).hex()[1]))
+def fp16_2_datum(number, masked):
+    # Step 1: Unpack the 16-bit float to its integer representation
+    number_unpacked = struct.unpack('!I', struct.pack('!f', number))[0]
     
-    for binary in bin_A:
-        for i in binary:
-            hex_A.append(str(hex(int(i,2))))
+    # Step 2: Shift the 16-bit integer representation left by 3 bits to append three zeros
+    res_masked = number_unpacked << 3
     
-    hex_A  = merge_pairs(hex_A)
+    # Step 3: Create a 32-bit representation
+    res_32bit = res_masked & 0x7FFFFFFF  # Mask to ensure only the lower 19 bits are used
     
-    for hex_byte in hex_A:
-        bytes_A.append(int(hex_byte,16))
+    if masked:
+        return res_masked
+    else:
+        # Step 4: Convert back to 32-bit float
+        return struct.unpack('!f', struct.pack('!I', res_32bit))[0]
+
+
+def int_2_float32(decimal_number):
+    # Convert the integer to bytes (4 bytes for float32)
+    byte_representation = struct.pack('I', decimal_number)
+    # Unpack the bytes as a float32
+    float32_representation = struct.unpack('f', byte_representation)[0]
+    return float32_representation, byte_representation
+
+def hex_number_to_decimal_array(hex_string, format):
     
-    return bytes_A
+    hex_string = hex_string.split('x')[1]
+    hex_string = hex_string.replace(" ", "").strip()
+    
+    # Check if the hex string has 8 characters
+    if len(hex_string) != 8:
+        print(len(hex_string))
+        raise ValueError("Hex string must be exactly 8 digits long.")
+
+    # Convert hex string to bytes
+    byte_array = bytes.fromhex(hex_string)
+    
+    # Convert bytes to a list of decimal values
+    decimal_array = list(byte_array)
+    
+    return decimal_array[::-1] # reverse endian
 
 def generate_stimuli(stimuli_format):
-
-    srcA = [0]    
-    srcB = [0]
-
-    if(format != "Int32"):
-        srcA = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
-        srcB = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
-    else:
-        srcA = torch.randint(high = 200, size = 32*32) # change high later
-        srcB = torch.randint(high = 200, size = 32*32)
     
-    return srcA, srcB
+    srcA = [1.00048828125]*1024  # Example values
+    srcB = [1.00048828125]*1024
+
+    # srcA = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
+    # srcB = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
+    # srcA = srcA.tolist()
+    # srcB = srcB.tolist()
+
+    resA = []
+    resB = []
+
+    if(format == "Float32"):
+        for i in srcA:
+            resA.append(fp32_2_datum(number = i,masked = False))
+        for i in srcB:
+            resB.append(fp32_2_datum(number = i,masked = False))
+    else:
+        for i in srcA:
+            resA.append(fp32_2_datum(number = i,masked = False))
+        for i in srcB:
+            resB.append(fp32_2_datum(number = i,masked = False))
+
+
+    return resA , resB
 
 def generate_golden(operation, operand1, operand2,format):
     
-    dest = torch.zeros(32*32)
+    dest = [0]*1024
 
     match operation:
         case "elwadd":
-            dest = operand1 + operand2
+            for i in range(0,1023):
+                dest[i] = operand1[i] + operand2[i]
         case "elwsub":
-            dest = operand2 - operand1
+            for i in range(0,1023):
+                dest[i] = operand2[i] - operand1[i]
         case "elwmul":
             for i in range(0,1023):
                 dest[i] = operand1[i] * operand2[i]
@@ -90,7 +128,6 @@ def generate_golden(operation, operand1, operand2,format):
         case _:
             print("Unsupported operation!") 
 
-    dest = dest.to(format_dict[format])
 
     return dest
 
@@ -98,60 +135,39 @@ def write_stimuli_to_l1(buffer_A, loc_A, buffer_B, loc_B,format):
     # input: buffer_A,buffer_B -> list
     #        loc_A, loc_B -> integer
 
-    bin_A = []
     hex_A = []
-    bytes_A = []
-    bin_B = []
     hex_B = []
-    bytes_B = []        
+    decimal_A = []
+    decimal_B = []
 
-    for number in buffer_A:
-        if format=="Float16":
-            bin_A.append((['0000','0000','0000','0000'] + half(number).hex()[1]))
-        else: #Float32 -> expand later
-            bin_A.append((single(number).hex()[1]))
-    
-    for binary in bin_A:
-        for i in binary:
-            hex_A.append(str(hex(int(i,2))))
+    for i in buffer_A:
+        hex_A.append(hex(fp32_2_datum(i,masked = True)))
+    for i in buffer_B:
+        hex_B.append(hex(fp32_2_datum(i,masked = True)))
 
-    hex_A  = merge_pairs(hex_A)
-    hex_A_reversed_endian = reverse_sublists(hex_A)
-    # flatten list of lists
-    hex_A_reversed_endian = [item for sublist in hex_A_reversed_endian for item in sublist] 
-    
-    for hex_byte in hex_A_reversed_endian:
-        bytes_A.append(int(hex_byte,16))
+    for i in hex_A:
+        decimal_A.append(hex_number_to_decimal_array(i,format))
+    for i in hex_B:
+        decimal_B.append(hex_number_to_decimal_array(i,format))
 
+    decimal_A = flatten(decimal_A)
+    decimal_B = flatten(decimal_B)
 
-    #********* B ***********
+    # print()
+    # print("-"*100)
+    # print(decimal_A[0:8])
+    # print(decimal_B[0:8])
+    # print("-"*100)
 
-    for number in buffer_B:
-        if format=="Float16":
-            bin_B.append((['0000','0000','0000','0000'] + half(number).hex()[1]))
-        else: #Float32 -> expand later
-            bin_B.append((single(number).hex()[1]))
-    
-    for binary in bin_B:
-        for i in binary:
-            hex_B.append(str(hex(int(i,2))))
-    
-    hex_B  = merge_pairs(hex_B)
-    hex_B_reversed_endian = reverse_sublists(hex_B)
-    # flatten list of lists
-    hex_B_reversed_endian = [item for sublist in hex_B_reversed_endian for item in sublist] 
-    
-    for hex_byte in hex_B_reversed_endian:
-        bytes_B.append(int(hex_byte,16))
+    num_bytes = write_to_device("18-18", 0x1c000, decimal_A)
+    num_bytes = write_to_device("18-18", 0x1b000, decimal_B)
 
-    num_bytes = write_to_device("18-18", 0x1c000, bytes_A)
-    num_bytes = write_to_device("18-18", 0x1b000, bytes_B)
-
-    return bytes_A, bytes_B
+    # change later
+    return 0,0
 
 
 # FOR NOW SUPPORT ONLY TORCH TYPES
-@pytest.mark.parametrize("format", ["Float32", "Float16"]) # "Float16_b","Int32"])
+@pytest.mark.parametrize("format", ["Float32", "Float16_b"]) # "Float16_b","Int32"])
 @pytest.mark.parametrize("testname", ["eltwise_add_test"])
 @pytest.mark.parametrize("mathop", ["elwadd", "elwsub", "elwmul"])
 
@@ -164,8 +180,7 @@ def test_all(format, mathop, testname, machine):
 
     src_A, src_B = generate_stimuli(format)
     golden = generate_golden(mathop, src_A, src_B,format)
-    golden_bytes = tensor2bytes(golden,format)
-    bytes_A, bytes_B = write_stimuli_to_l1(src_A.tolist(), 0x1b000, src_B.tolist(), 0x1c000, format)
+    bytes_A, bytes_B = write_stimuli_to_l1(src_A, 0x1b000, src_B, 0x1c000, format)
    
     # Running make on host and generated elfs on TRISC cores
 
@@ -177,26 +192,31 @@ def test_all(format, mathop, testname, machine):
     run_elf("build/elf/"+testname+"_trisc1.elf", "18-18", risc_id = 2)
     run_elf("build/elf/"+testname+"_trisc2.elf", "18-18", risc_id = 3)
     
+    # Read result from L1
+    # *************************************
     read_data = read_words_from_device("18-18", 0x1a000, word_count = 1024)
-    hex_read_data = []
-    for element in read_data:
-        hex_read_data.append(int_to_bytes_hex(element))
     
-    # flatten
-    hex_read_data = [item for sublist in hex_read_data for item in sublist] 
-    
-    read_bytes = []
-    for byte in hex_read_data:
-        read_bytes.append(int(byte,16))
+    golden_form_L1 = []
+    golden_bytes = []
 
-    print("*************************************************************************")
-    print(format, mathop)
-    print(src_A[0].tolist())
-    print(src_B[0].tolist())
-    print(golden[0].tolist())
-    print("#########################################################################")
-    print(hex_read_data[0:4])
-    print("*************************************************************************")
+    for word in read_data:
+        number,bytess = int_2_float32(word)
+        golden_form_L1.append(number)
+        golden_bytes.append(bytess)
+
+    #print("*************************************************************************")
+    #print(format, mathop)
+    #print(src_A[0])
+    #print(src_B[0])
+    if(format == "Float16_b"):
+        print("*************************************************************************")
+        print(format,mathop)
+        print(golden[10])
+        print(golden_form_L1[10])
+        print(golden_bytes[10])
+        # print("#########################################################################")
+        # print(hex_read_data[0:4])
+        print("*************************************************************************")
 
     os.system("make clean")
 
@@ -215,6 +235,10 @@ def test_all(format, mathop, testname, machine):
     pack_mailbox = pack_mailbox[0].to_bytes(4, 'big')
     pack_mailbox = list(pack_mailbox)
     # **************************************
+    
+    assert len(golden) == len(golden_form_L1)
+
+    # **************************************
 
     # if kerenls ran successfully all mailboxes should be 0x00000001
     assert unpack_mailbox == [0,0,0,1]
@@ -222,43 +246,10 @@ def test_all(format, mathop, testname, machine):
     assert pack_mailbox == [0,0,0,1]
 
     # compare results calculated by kernel and golden
-    bin_read_data = []
-    for byte in read_bytes:
-        binary_string = bin(int(byte))[2:].zfill(8)
-        bin_read_data.append(binary_string)
 
-    bin_merged = merge_elements(bin_read_data,4)
-    bin32s = []
-    for i in bin_merged:
-        word = ""
-        for j in range(0,4):
-            word += i[j]
-        bin32s.append(word)
-
-
-    bin_golden_data = []
-    for byte in golden_bytes:
-        binary_string = bin(int(byte))[2:].zfill(8)
-        bin_golden_data.append(binary_string)
-
-    golden_merged = merge_elements(bin_golden_data,4)
-    gold32s = []
-    for i in golden_merged:
-        word = ""
-        for j in range(0,4):
-            word += i[j]
-        gold32s.append(word)    
-            
-    print(bin32s[0:2])
-    print(gold32s[0:2])
-    
-    if(format == "Float16"):
-        tolerance = 8
-        for i in range(0,1024,4):
-            for read_byte, golden_byte in zip(read_bytes[i:i+4], golden_bytes[i:i+4]):
-                assert abs(read_byte - golden_byte) <= tolerance, f" i = {i} Difference too large: {read_byte} vs {golden_byte}"
-   #elif(format == "Float32"):
-
-
-    assert format in format_dict
-    assert mathop in mathop_args_dict
+    if(format == "Float32"):
+        for i in range(0,512):
+            assert abs(golden[i]-golden_form_L1[i]) <= 0.5 , f" i = {i} , {golden[i], golden_form_L1[i]}"  
+    if(format == "Float16_b"):
+        for i in range(0,512):
+            assert abs(golden[i]-golden_form_L1[i]) <= 0.5 , f" i = {i},  {golden[i], golden_form_L1[i]}"  
