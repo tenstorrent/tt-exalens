@@ -9,7 +9,7 @@ Description:
   Writes data word 'data' to address 'addr' at AXI address of the current chip using jtag.
 
 Arguments:
-  addr        Address to read from
+  addr        Address to write to
   data        Data to write
 
 Examples:
