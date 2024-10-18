@@ -2,218 +2,108 @@ import pytest
 import torch
 import os
 import struct
-from ieee754 import half, single, double, quadruple, octuple
 from dbd.tt_debuda_init import init_debuda
-from dbd.tt_debuda_lib import write_to_device, read_words_from_device
-from dbd.tt_debuda_lib import run_elf
-from fxpmath import Fxp
+from dbd.tt_debuda_lib import write_to_device, read_words_from_device, run_elf
 
-format_dict = {"Float32" : torch.float32, 
-               "Float16" : torch.float16, 
-               "Float16_b" : torch.bfloat16, 
-               "Int32" : torch.int32}
-               
-format_args_dict = {"Float32" : "FORMAT_FLOAT32", 
-                    "Float16" : "FORMAT_FLOAT16", 
-                    "Float16_b" : "FORMAT_FLOAT16_B", 
-                    "Int32" : "FORMAT_INT32"}
+format_dict = {
+    "Float32": torch.float32,
+    "Float16": torch.float16,
+    "Float16_b": torch.bfloat16,
+    "Int32": torch.int32
+}
 
-mathop_args_dict = {"elwadd" : "ELTWISE_BINARY_ADD",    
-                    "elwsub" : "ELTWISE_BINARY_SUB",
-                    "elwmul" : "ELTWISE_BINARY_MUL"}
+format_args_dict = {
+    "Float32": "FORMAT_FLOAT32",
+    "Float16": "FORMAT_FLOAT16",
+    "Float16_b": "FORMAT_FLOAT16_B",
+    "Int32": "FORMAT_INT32"
+}
 
-binary_ops = ["elwadd", "elwsub", "elwmul"]
+mathop_args_dict = {
+    "elwadd": "ELTWISE_BINARY_ADD",
+    "elwsub": "ELTWISE_BINARY_SUB",
+    "elwmul": "ELTWISE_BINARY_MUL"
+}
 
-def flatten(sublists):
-    return [item for sublist in sublists for item in sublist]
+def int_to_unsigned_32bit_hex(value):
+    if not 0 <= value < 2**32:
+        raise ValueError("Value must be an unsigned 32-bit integer.")
+    return f"{value & 0xFFFFFFFF:08X}"
 
 def fp32_2_datum(number, masked):
     number_unpacked = struct.unpack('!I', struct.pack('!f', number))[0]
     res_masked = number_unpacked & 0xFFFFE000
-    res_float = struct.unpack('!f', struct.pack('!I', res_masked))[0]
+    return res_masked if masked else struct.unpack('!f', struct.pack('!I', res_masked))[0]
 
-    if(masked == True):
-        return res_masked
-    else:
-        return res_float
-
-def fp16_2_datum(number, masked):
-    number_unpacked = struct.unpack('!I', struct.pack('!f', number))[0]
-    
-    res_masked = number_unpacked << 3
-    
-    res_32bit = res_masked & 0x7FFFFFFF  # Mask to ensure only the lower 19 bits are used
-    
-    if masked:
-        return res_masked
-    else:
-        return struct.unpack('!f', struct.pack('!I', res_32bit))[0]
-
-
-def int_2_float32(decimal_number):
-    # Convert the integer to bytes (4 bytes for float32)
-    byte_representation = struct.pack('I', decimal_number)
-    # Unpack the bytes as a float32
-    float32_representation = struct.unpack('f', byte_representation)[0]
-    return float32_representation, byte_representation
-
-def hex_number_to_decimal_array(hex_string, format):
-    
-    hex_string = hex_string.split('x')[1]
-    hex_string = hex_string.replace(" ", "").strip()
-    
-    # Check if the hex string has 8 characters
+def hex_number_to_decimal_array(hex_string):
+    hex_string = hex_string.split('x')[1].replace(" ", "").strip()
     if len(hex_string) != 8:
-        print(len(hex_string))
         raise ValueError("Hex string must be exactly 8 digits long.")
-   
-   byte_array = bytes.fromhex(hex_string)
-    decimal_array = list(byte_array)
-
-    return decimal_array[::-1] # reverse endian
+    return list(bytes.fromhex(hex_string))[::-1]  # reverse endian
 
 def generate_stimuli(stimuli_format):
-    
-    #srcA = [1.00048828125]*1024  # Example values
-    #srcB = [1.00048828125]*1024
+    srcA = torch.rand(32 * 32, dtype=format_dict[stimuli_format]) + 0.5
+    srcB = torch.rand(32 * 32, dtype=format_dict[stimuli_format]) + 0.5
+    return [fp32_2_datum(i, masked=False) for i in srcA.tolist()], [fp32_2_datum(i, masked=False) for i in srcB.tolist()]
 
-    srcA = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
-    srcB = torch.rand(32*32, dtype = format_dict[stimuli_format]) + 0.5
-    srcA = srcA.tolist()
-    srcB = srcB.tolist()
+def generate_golden(operation, operand1, operand2):
+    tensor1_float32 = torch.tensor(operand1, dtype=torch.float32)
+    tensor2_float32 = torch.tensor(operand2, dtype=torch.float32)
 
-    resA = []
-    resB = []
-
-    if(format == "Float32"):
-        for i in srcA:
-            resA.append(fp32_2_datum(number = i,masked = False))
-        for i in srcB:
-            resB.append(fp32_2_datum(number = i,masked = False))
+    if operation == "elwadd":
+        dest = tensor1_float32 + tensor2_float32
+    elif operation == "elwsub":
+        dest = tensor2_float32 - tensor1_float32
+    elif operation == "elwmul":
+        dest = tensor1_float32 * tensor2_float32
     else:
-        for i in srcA:
-            resA.append(fp32_2_datum(number = i,masked = False))
-        for i in srcB:
-            resB.append(fp32_2_datum(number = i,masked = False))
+        raise ValueError("Unsupported operation!")
 
+    return dest.tolist()
 
-    return resA , resB
-
-def generate_golden(operation, operand1, operand2,format):
+def write_stimuli_to_l1(buffer_A, buffer_B):
+    decimal_A = [hex_number_to_decimal_array(hex(fp32_2_datum(i, masked=True))) for i in buffer_A]
+    decimal_B = [hex_number_to_decimal_array(hex(fp32_2_datum(i, masked=True))) for i in buffer_B]
     
-    dest = [0]*1024
+    write_to_device("18-18", 0x1c000, [item for sublist in decimal_A for item in sublist])
+    write_to_device("18-18", 0x1b000, [item for sublist in decimal_B for item in sublist])
 
-    match operation:
-        case "elwadd":
-            for i in range(0,1023):
-                dest[i] = operand1[i] + operand2[i]
-        case "elwsub":
-            for i in range(0,1023):
-                dest[i] = operand2[i] - operand1[i]
-        case "elwmul":
-            for i in range(0,1023):
-                dest[i] = operand1[i] * operand2[i]
-        case "matmul":
-            dest =  torch.matmul(operand2,operand1)
-        case _:
-            print("Unsupported operation!") 
+def hex_to_float_32(hex_str):
+    hex_int = int(hex_str, 16) & 0xFFFF0000
+    return struct.unpack('f', struct.pack('I', hex_int))[0]
 
-
-    return dest
-
-def write_stimuli_to_l1(buffer_A, loc_A, buffer_B, loc_B,format):
-    # input: buffer_A,buffer_B -> list
-    #        loc_A, loc_B -> integer
-
-    hex_A = []
-    hex_B = []
-    decimal_A = []
-    decimal_B = []
-
-    for i in buffer_A:
-        hex_A.append(hex(fp32_2_datum(i,masked = True)))
-    for i in buffer_B:
-        hex_B.append(hex(fp32_2_datum(i,masked = True)))
-
-    for i in hex_A:
-        decimal_A.append(hex_number_to_decimal_array(i,format))
-    for i in hex_B:
-        decimal_B.append(hex_number_to_decimal_array(i,format))
-
-    decimal_A = flatten(decimal_A)
-    decimal_B = flatten(decimal_B)
-
-    num_bytes = write_to_device("18-18", 0x1c000, decimal_A)
-    num_bytes = write_to_device("18-18", 0x1b000, decimal_B)
-
-
-# FOR NOW SUPPORT ONLY TORCH TYPES
-@pytest.mark.parametrize("format", ["Float16", "Float16_b"]) # "Float16_b","Int32"])
+@pytest.mark.parametrize("format", ["Float16", "Float16_b"])
 @pytest.mark.parametrize("testname", ["eltwise_add_test"])
-@pytest.mark.parametrize("mathop", ["elwadd", "elwsub"]) #, "elwmul"])
-
-# Parametrized architecture. When needed add grayskull and blackhole
+@pytest.mark.parametrize("mathop", ["elwadd", "elwsub"])
 @pytest.mark.parametrize("machine", ["wormhole"])
-
 def test_all(format, mathop, testname, machine):
-    
     context = init_debuda()
-
     src_A, src_B = generate_stimuli(format)
-    golden = generate_golden(mathop, src_A, src_B,format)
-    write_stimuli_to_l1(src_A, 0x1b000, src_B, 0x1c000, format)
-   
-    # Running make on host and generated elfs on TRISC cores
+    golden = generate_golden(mathop, src_A, src_B)
+    write_stimuli_to_l1(src_A, src_B)
 
-    make_cmd = "make format="+format_args_dict[format]+ " " + "mathop=" + mathop_args_dict[mathop] + " testname=" + testname
-    make_cmd = make_cmd + " machine=" + machine 
+    make_cmd = f"make --silent format={format_args_dict[format]} mathop={mathop_args_dict[mathop]} testname={testname} machine={machine}"
     os.system(make_cmd)
-    
-    run_elf("build/elf/"+testname+"_trisc0.elf", "18-18", risc_id = 1)
-    run_elf("build/elf/"+testname+"_trisc1.elf", "18-18", risc_id = 2)
-    run_elf("build/elf/"+testname+"_trisc2.elf", "18-18", risc_id = 3)
-    
-    # Read result from L1
-    # *************************************
-    read_data = read_words_from_device("18-18", 0x1a000, word_count = 1024)
-    
-    golden_form_L1 = []
-    golden_bytes = []
 
-    for word in read_data:
-        number,bytess = int_2_float32(word)
-        golden_form_L1.append(number)
-        golden_bytes.append(bytess)
+    for i in range(3):
+        run_elf(f"build/elf/{testname}_trisc{i}.elf", "18-18", risc_id=i + 1)
+
+    read_data = read_words_from_device("18-18", 0x1a000, word_count=1024)
+    
+    golden_form_L1 = [hex_to_float_32(int_to_unsigned_32bit_hex(word)) for word in read_data]
 
     os.system("make clean")
 
-    # read mailboxes from L1 and assert their values
-    # **************************************
-    # UNPACK_MAILBOX's address is temporary
-    unpack_mailbox = read_words_from_device("18-18", 0x19FF4, word_count = 1)
-    unpack_mailbox = unpack_mailbox[0].to_bytes(4, 'big')
-    unpack_mailbox = list(unpack_mailbox)
+    unpack_mailbox = read_words_from_device("18-18", 0x19FF4, word_count=1)[0].to_bytes(4, 'big')
+    math_mailbox = read_words_from_device("18-18", 0x19FF8, word_count=1)[0].to_bytes(4, 'big')
+    pack_mailbox = read_words_from_device("18-18", 0x19FFC, word_count=1)[0].to_bytes(4, 'big')
 
-    math_mailbox = read_words_from_device("18-18", 0x19FF8, word_count = 1)
-    math_mailbox = math_mailbox[0].to_bytes(4, 'big')
-    math_mailbox = list(math_mailbox)
+    assert unpack_mailbox == b'\x00\x00\x00\x01'
+    assert math_mailbox == b'\x00\x00\x00\x01'
+    assert pack_mailbox == b'\x00\x00\x00\x01'
 
-    pack_mailbox = read_words_from_device("18-18", 0x19FFC, word_count = 1)
-    pack_mailbox = pack_mailbox[0].to_bytes(4, 'big')
-    pack_mailbox = list(pack_mailbox)
-    # **************************************
     assert len(golden) == len(golden_form_L1)
 
-    # if kerenls ran successfully all mailboxes should be 0x00000001
-    assert unpack_mailbox == [0,0,0,1]
-    assert math_mailbox == [0,0,0,1]
-    assert pack_mailbox == [0,0,0,1]
-
-    # compare results calculated by kernel and golden
-
-    if(format == "Float16"):
-        for i in range(0,512):
-            assert abs(golden[i]-golden_form_L1[i]) <= 0.5 , f" i = {i} , {golden[i], golden_form_L1[i]}"  
-    if(format == "Float16_b"):
-        for i in range(0,512):
-            assert abs(golden[i]-golden_form_L1[i]) <= 0.5 , f" i = {i},  {golden[i], golden_form_L1[i]}"  
+    tolerance = 0.2 if format == "Float16" else 0.01
+    for i in range(min(512, len(golden))):
+        assert abs(golden[i] - golden_form_L1[i]) <= tolerance, f"i = {i}, {golden[i]}, {golden_form_L1[i]}"
