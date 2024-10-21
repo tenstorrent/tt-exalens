@@ -123,10 +123,7 @@ jobs:
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-create-ethernet-map-blackhole
           chmod +x build/bin/debuda-server-standalone
-      
-      - name: Build wheel
-        run: |
-          make wheel
+          chmod +x build/bin/debuda_server_unit_tests
       - name: Install wheel
         run: |
           pip install build/debuda_wheel/*.whl
