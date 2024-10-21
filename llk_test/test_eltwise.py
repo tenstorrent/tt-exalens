@@ -80,7 +80,7 @@ def generate_golden(operation, operand1, operand2, data_format):
 
     return dest.tolist()
 
-def write_stimuli_to_l1(buffer_A, buffer_B,stimuli_format):
+def write_stimuli_to_l1(buffer_A, buffer_B,stimuli_format, mathop):
 
     decimal_A = []
     decimal_B = []
@@ -99,18 +99,27 @@ def write_stimuli_to_l1(buffer_A, buffer_B,stimuli_format):
     decimal_A = flatten_list(decimal_A)
     decimal_B = flatten_list(decimal_B)
 
+    print()
+    print("$"*70)
+    print(buffer_A[0])
+    print(buffer_B[0])
+    # print(buffer_A[0]*buffer_B[0])
+    print(decimal_A[0:4])
+    print(decimal_B[0:4])
+    print("$"*70)
+
     write_to_device("18-18", 0x1c000, decimal_A)
     write_to_device("18-18", 0x1b000, decimal_B)
 
 @pytest.mark.parametrize("format", ["Float16", "Float16_b"])
 @pytest.mark.parametrize("testname", ["eltwise_add_test"])
-@pytest.mark.parametrize("mathop", ["elwadd", "elwsub"])
+@pytest.mark.parametrize("mathop", ["elwadd", "elwsub", "elwmul"])
 @pytest.mark.parametrize("machine", ["wormhole"])
 def test_all(format, mathop, testname, machine):
     context = init_debuda()
     src_A, src_B = generate_stimuli(format)
     golden = generate_golden(mathop, src_A, src_B,format)
-    write_stimuli_to_l1(src_A, src_B,format)
+    write_stimuli_to_l1(src_A, src_B,format,mathop)
 
     make_cmd = f"make --silent format={format_args_dict[format]} mathop={mathop_args_dict[mathop]} testname={testname} machine={machine}"
     os.system(make_cmd)
@@ -135,6 +144,15 @@ def test_all(format, mathop, testname, machine):
         for i in byte_list:
             golden_form_L1.append(bytes_to_float16(i).item())
 
+    print()
+    print("*"*70)
+    print(golden[0])
+    print(read_data[0])
+    print(hex(read_data[0]))
+    print(byte_list[0])
+    print(golden_form_L1[0])
+    print("*"*70)
+
     os.system("make clean")
 
     unpack_mailbox = read_words_from_device("18-18", 0x19FF4, word_count=1)[0].to_bytes(4, 'big')
@@ -147,6 +165,12 @@ def test_all(format, mathop, testname, machine):
 
     assert len(golden) == len(golden_form_L1)
 
-    tolerance = 0.05
+    if(mathop == "elwadd" or mathop == "elwsub"):
+        tolerance = 0.05
+    else:
+        tolerance = 0.3
+
+    print("%"*50, format, mathop, tolerance)
+
     for i in range(512):
         assert abs(golden[i] - golden_form_L1[i]) <= tolerance, f"i = {i}, {golden[i]}, {golden_form_L1[i]}"
