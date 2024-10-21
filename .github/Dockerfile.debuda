@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
 	libboost-all-dev \
 	libhwloc-dev \
 	libzmq3-dev \
+    wget \
 	xxd 
 
 # Install test dependencies
@@ -36,8 +37,6 @@ RUN apt-get update && apt-get install -y \
 
 # Upgrade to latest pip
 RUN pip install --upgrade pip
-
-RUN apt-get clean
 
 # Copy the requirements files for pip
 COPY dbd/requirements.txt .
@@ -64,3 +63,6 @@ RUN wget https://apt.llvm.org/llvm.sh && \
 # Install clang-format
 RUN apt install -y clang-format-17 && \
     ln -s /usr/bin/clang-format-17 /usr/bin/clang-format
+
+# Clean package cache
+RUN apt-get clean
