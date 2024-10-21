@@ -96,14 +96,6 @@ def write_stimuli_to_l1(buffer_A, buffer_B,stimuli_format):
             decimal_A.append(bfloat16_to_bytes(i)[::-1])
         for i in buffer_B:
             decimal_B.append(bfloat16_to_bytes(i)[::-1])
-    
-    # print()
-    # print("*"*70)
-    # print(buffer_A[0])
-    # print(buffer_B[0])
-    # print(decimal_A[0])
-    # print(decimal_B[0])
-    # print("*"*70) 
 
     decimal_A = flatten_list(decimal_A)
     decimal_B = flatten_list(decimal_B)
@@ -143,15 +135,6 @@ def test_all(format, mathop, testname, machine):
         
         for i in byte_list:
             golden_form_L1.append(bytes_to_float16(i).item())
-
-    if(format == "Float16_b"):    
-        print("$"*50)
-        print(golden[0])
-        print(read_data[0])
-        print(hex(read_data[0]))
-        print(byte_list[0])
-        print(golden_form_L1[0])
-        print("$"*50)
 
     os.system("make clean")
 
