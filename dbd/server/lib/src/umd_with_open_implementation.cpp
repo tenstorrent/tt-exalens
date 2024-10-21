@@ -289,7 +289,7 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDe
     std::map<uint8_t, std::string> device_soc_descriptors;
 
     for (auto device_id : device_ids) {
-        auto& soc_descriptor = d->get_soc_descriptor(device_id);
+        auto &soc_descriptor = d->get_soc_descriptor(device_id);
         std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
         std::ofstream outfile(file_name);
 

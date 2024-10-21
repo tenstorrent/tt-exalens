@@ -397,8 +397,7 @@ std::optional<std::string> read_tile_implementation(uint8_t chip_id, uint8_t noc
                 device->read_from_device(mem_vector.data() + done, target, address + done, block, tlb_to_use);
                 done += block;
             }
-        }
-        else {
+        } else {
             device->read_from_device(mem_vector.data(), target, address, size, tlb_to_use);
         }
 
