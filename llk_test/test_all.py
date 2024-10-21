@@ -25,57 +25,37 @@ mathop_args_dict = {
     "elwmul": "ELTWISE_BINARY_MUL"
 }
 
-def reorg_bytes(bytes_list):
-    return [0, 0, bytes_list[0] , bytes_list[1]]
-    #return [bytes_list[1] , bytes_list[0] , 0 ,0]
-    #return [0, 0, bytes_list[1] , bytes_list[0]]
 
 def flatten_list(sublists):
     return [item for sublist in sublists for item in sublist]
 
 def int_to_bytes_list(n):
-    # Get binary representation and strip '0b' prefix
     binary_str = bin(n)[2:]
-    
-    # Pad with leading zeros to make the length a multiple of 8
-    padded_binary = binary_str.zfill(32)  # Always 32 bits for 4 bytes
-    
-    # Split into bytes (8 bits each)
+    padded_binary = binary_str.zfill(32)
     bytes_list = [int(padded_binary[i:i + 8], 2) for i in range(0, 32, 8)]
     
     return bytes_list
 
-# Function to convert a float to a list of bytes for float16
 def float16_to_bytes(value):
     float16_value = torch.tensor(value, dtype=torch.float16)
     packed_bytes = struct.pack('>e', float16_value.item())
     byte_list = list(packed_bytes)
     return byte_list + [0] * (4 - len(byte_list))
 
-# Function to convert a list of bytes back to float16
 def bytes_to_float16(byte_list):
     bytes_data = bytes(byte_list[:2])
     unpacked_value = struct.unpack('>e', bytes_data)[0]
     return torch.tensor(unpacked_value, dtype=torch.float16)
 
-# Function to convert a float to a list of bytes for bfloat16
-def bfloat16_to_bytes(value):
-    float16_value = torch.tensor(value, dtype=torch.bfloat16)
-    packed_bytes = struct.pack('>e', float16_value.item())
-    byte_list = list(packed_bytes)
-    return byte_list + [0] * (4 - len(byte_list))
-
-# Function to convert a list of bytes back to bfloat16
 def bytes_to_bfloat16(byte_list):
-    bytes_data = bytes(byte_list[:2])
-    unpacked_value = struct.unpack('>e', bytes_data)[0]
-    return torch.tensor(unpacked_value, dtype=torch.bfloat16)
+    bytes_data = bytes(byte_list)
+    unpacked_value = struct.unpack('>f', bytes_data)[0]
+    return torch.tensor(unpacked_value, dtype=torch.float32)
 
-
-def fp32_2_datum(number, masked):
+def bfloat16_to_bytes(number):
     number_unpacked = struct.unpack('!I', struct.pack('!f', number))[0]
-    res_masked = number_unpacked & 0xFFFFF000
-    return res_masked if masked else struct.unpack('!f', struct.pack('!I', res_masked))[0]
+    res_masked = number_unpacked & 0xFFFF0000
+    return int_to_bytes_list(res_masked)
 
 
 def generate_stimuli(stimuli_format):
@@ -86,16 +66,16 @@ def generate_stimuli(stimuli_format):
 
     #return [fp32_2_datum(i, masked=False) for i in srcA.tolist()], [fp32_2_datum(i, masked=False) for i in srcB.tolist()]
 
-def generate_golden(operation, operand1, operand2):
-    tensor1_float32 = torch.tensor(operand1, dtype=torch.float16)
-    tensor2_float32 = torch.tensor(operand2, dtype=torch.float16)
+def generate_golden(operation, operand1, operand2, data_format):
+    tensor1_float = torch.tensor(operand1, dtype=torch.float32)
+    tensor2_float = torch.tensor(operand2, dtype=torch.float32)
 
     if operation == "elwadd":
-        dest = tensor1_float32 + tensor2_float32
+        dest = tensor1_float + tensor2_float
     elif operation == "elwsub":
-        dest = tensor2_float32 - tensor1_float32
+        dest = tensor2_float - tensor1_float
     elif operation == "elwmul":
-        dest = tensor1_float32 * tensor2_float32
+        dest = tensor1_float * tensor2_float
     else:
         raise ValueError("Unsupported operation!")
 
@@ -117,13 +97,13 @@ def write_stimuli_to_l1(buffer_A, buffer_B,stimuli_format):
         for i in buffer_B:
             decimal_B.append(bfloat16_to_bytes(i)[::-1])
     
-    print()
-    print("*"*70)
-    print(buffer_A[0])
-    print(buffer_B[0])
-    print(decimal_A[0])
-    print(decimal_B[0])
-    print("*"*70) 
+    # print()
+    # print("*"*70)
+    # print(buffer_A[0])
+    # print(buffer_B[0])
+    # print(decimal_A[0])
+    # print(decimal_B[0])
+    # print("*"*70) 
 
     decimal_A = flatten_list(decimal_A)
     decimal_B = flatten_list(decimal_B)
@@ -138,7 +118,7 @@ def write_stimuli_to_l1(buffer_A, buffer_B,stimuli_format):
 def test_all(format, mathop, testname, machine):
     context = init_debuda()
     src_A, src_B = generate_stimuli(format)
-    golden = generate_golden(mathop, src_A, src_B)
+    golden = generate_golden(mathop, src_A, src_B,format)
     write_stimuli_to_l1(src_A, src_B,format)
 
     make_cmd = f"make --silent format={format_args_dict[format]} mathop={mathop_args_dict[mathop]} testname={testname} machine={machine}"
@@ -164,13 +144,14 @@ def test_all(format, mathop, testname, machine):
         for i in byte_list:
             golden_form_L1.append(bytes_to_float16(i).item())
 
-    print("$"*50)
-    print(golden[0])
-    print(read_data[0])
-    print(hex(read_data[0]))
-    print(byte_list[0])
-    print(golden_form_L1[0])
-    print("$"*50)
+    if(format == "Float16_b"):    
+        print("$"*50)
+        print(golden[0])
+        print(read_data[0])
+        print(hex(read_data[0]))
+        print(byte_list[0])
+        print(golden_form_L1[0])
+        print("$"*50)
 
     os.system("make clean")
 
@@ -184,6 +165,6 @@ def test_all(format, mathop, testname, machine):
 
     assert len(golden) == len(golden_form_L1)
 
-    tolerance = 0.5
+    tolerance = 0.05
     for i in range(512):
         assert abs(golden[i] - golden_form_L1[i]) <= tolerance, f"i = {i}, {golden[i]}, {golden_form_L1[i]}"
