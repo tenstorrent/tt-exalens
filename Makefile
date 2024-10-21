@@ -2,7 +2,7 @@
 build:
 	@echo "Building"
 	@if [ ! -f build/build.ninja ]; then \
-		cmake -B build -G Ninja; \
+		cmake -B build -G Ninja -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache; \
 	fi
 	@ninja -C build
 
