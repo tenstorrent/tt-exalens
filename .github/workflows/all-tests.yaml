@@ -65,7 +65,7 @@ jobs:
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-create-ethernet-map-blackhole
           chmod +x build/bin/debuda-server-standalone
-      
+          chmod +x build/bin/debuda_server_unit_tests
       - name: Run C++ tests
         run: |
           make dbd_server_unit_tests_run_only
