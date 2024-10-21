@@ -55,7 +55,7 @@ def spawn_standalone_debuda_stub(port: int, runtime_data_yaml_filename: str, run
     except:
         if os.path.islink(debuda_stub_path):
             if not os.path.exists(os.readlink(debuda_stub_path)):
-                util.FATAL(f"Missing debuda-server-standalone. Try: make dbd")
+                util.FATAL(f"Missing debuda-server-standalone. Try: make build")
         raise
 
     util.INFO("debuda-server started.")

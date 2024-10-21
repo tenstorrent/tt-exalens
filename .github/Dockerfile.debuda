@@ -47,3 +47,20 @@ COPY test/test_requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir -r test_requirements.txt
 RUN pip install wheel build setuptools
+
+# Install build tools
+RUN apt-get update && apt-get install -y \
+    cmake \
+    ninja-build
+
+# Install clang 17
+RUN wget https://apt.llvm.org/llvm.sh && \
+    chmod u+x llvm.sh && \
+    ./llvm.sh 17 && \
+    apt install -y libc++-17-dev libc++abi-17-dev && \
+    ln -s /usr/bin/clang-17 /usr/bin/clang && \
+    ln -s /usr/bin/clang++-17 /usr/bin/clang++
+
+# Install clang-format
+RUN apt install -y clang-format-17 && \
+    ln -s /usr/bin/clang-format-17 /usr/bin/clang-format

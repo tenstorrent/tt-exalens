@@ -13,6 +13,14 @@ tt_dbd_pybind_path = os.path.abspath(
     )
 sys.path.append(tt_dbd_pybind_path)
 
+if not os.path.isfile(os.path.join(tt_dbd_pybind_path, "tt_dbd_pybind.so")):
+    print(f"Error: 'tt_dbd_pybind.so' not found in {tt_dbd_pybind_path}. Try: make build")
+    sys.exit(1)
+
+if not os.path.isfile(os.path.join(tt_dbd_pybind_path, "tt_dbd_pybind_unit_tests.so")):
+    print(f"Error: 'tt_dbd_pybind_unit_tests.so' not found in {tt_dbd_pybind_path}. Try: make build")
+    sys.exit(1)
+
 import tt_dbd_pybind as pb
 from tt_dbd_pybind_unit_tests import set_debuda_test_implementation
 

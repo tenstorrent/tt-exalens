@@ -16,7 +16,6 @@ source ${BASE_TEST_DIR}/test-base.sh
 
 big_echo "BUILDING DEBUDA"
 make build
-SKIP_UNIT_TESTS_RUN=1 make dbdtests
 
 
 big_echo "RUNNING SMOKE TEST"

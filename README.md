@@ -205,17 +205,6 @@ This will automatically generate new image releases and tag them as `latest`.
 
 ## Troubleshooting
 
-### No rule to make target 'third_party/umd/device/module.mk'
-```
-> make test
-Makefile:178: third_party/umd/device/module.mk: No such file or directory
-make: *** No rule to make target 'third_party/umd/device/module.mk'.  Stop.
-```
-Fix:
-```
-git submodule update --init --recursive
-```
-
 ### fatal error: zmq.hpp: No such file or directory
 
 ```
@@ -260,5 +249,5 @@ ModuleNotFoundError: No module named 'tt_dbd_pybind_unit_tests'
 ```
 To fix, just build the neccessary test library:
 ```
-make dbd/pybind_tests
+make build
 ```

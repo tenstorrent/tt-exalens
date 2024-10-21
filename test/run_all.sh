@@ -24,10 +24,6 @@ big_echo "BUILDING DEBUDA"
 make clean
 make build
 
-big_echo "BUILDING C++ TESTS"
-make dbd/server_tests
-make dbd/pybind_tests
-
 big_echo "RUNNING C++ TESTS"
 make dbd_server_unit_tests_run_only
 

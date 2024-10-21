@@ -17,7 +17,7 @@
 // TODO: Resolve this. Dependencies:
 // (c)xy_pair
 // tt_device
-#include "device/device_api.h"
+#include "device/device_api_metal.h"
 
 namespace tt::dbd::tile {
 

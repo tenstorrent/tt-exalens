@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from enum import Enum
 import io
+import os
 import sys
 import struct
 import zmq
@@ -405,6 +406,11 @@ class debuda_client(DbdCommunicator):
 tt_dbd_pybind_path = util.application_path() + "/../build/lib"
 binary_path = util.application_path() + "/../build/bin"
 sys.path.append(tt_dbd_pybind_path)
+
+if not os.path.isfile(os.path.join(tt_dbd_pybind_path, "tt_dbd_pybind.so")):
+    print(f"Error: 'tt_dbd_pybind.so' not found in {tt_dbd_pybind_path}. Try: make build")
+    sys.exit(1)
+
 # This is a pybind module so we don't need from .
 import tt_dbd_pybind
 
