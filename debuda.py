@@ -51,7 +51,7 @@ try:
     from fastnumbers import try_int
 except ModuleNotFoundError as e:
     traceback.print_exc()
-    print(f"Try:\033[31m pip install -r dbd/requirements.txt; make dbd \033[0m")
+    print(f"Try:\033[31m pip install -r dbd/requirements.txt \033[0m")
     exit(1)
 
 

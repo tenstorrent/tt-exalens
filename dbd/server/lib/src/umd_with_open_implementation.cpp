@@ -12,11 +12,11 @@
 #include <memory>
 #include <stdexcept>
 
-#include "device/blackhole_implementation.h"
-#include "device/grayskull_implementation.h"
+#include "device/blackhole/blackhole_implementation.h"
+#include "device/grayskull/grayskull_implementation.h"
 #include "device/tt_cluster_descriptor.h"
 #include "device/tt_device.h"
-#include "device/wormhole_implementation.h"
+#include "device/wormhole/wormhole_implementation.h"
 
 // Include automatically generated files that we embed in source to avoid managing their deployment
 static const uint8_t blackhole_configuration_bytes[] = {
@@ -289,20 +289,20 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDe
     std::map<uint8_t, std::string> device_soc_descriptors;
 
     for (auto device_id : device_ids) {
-        auto soc_descriptor = d->get_soc_descriptor(device_id);
+        auto &soc_descriptor = d->get_soc_descriptor(device_id);
         std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
         std::ofstream outfile(file_name);
 
         outfile << "grid:" << std::endl;
-        outfile << "  x_size: " << soc_descriptor->grid_size.x << std::endl;
-        outfile << "  y_size: " << soc_descriptor->grid_size.y << std::endl << std::endl;
+        outfile << "  x_size: " << soc_descriptor.grid_size.x << std::endl;
+        outfile << "  y_size: " << soc_descriptor.grid_size.y << std::endl << std::endl;
 
-        if (soc_descriptor->physical_grid_size.x != soc_descriptor->grid_size.x ||
-            soc_descriptor->physical_grid_size.y != soc_descriptor->grid_size.y) {
+        if (soc_descriptor.physical_grid_size.x != soc_descriptor.grid_size.x ||
+            soc_descriptor.physical_grid_size.y != soc_descriptor.grid_size.y) {
             outfile << "physical:" << std::endl;
-            outfile << "  x_size: " << std::min(soc_descriptor->physical_grid_size.x, soc_descriptor->grid_size.x)
+            outfile << "  x_size: " << std::min(soc_descriptor.physical_grid_size.x, soc_descriptor.grid_size.x)
                     << std::endl;
-            outfile << "  y_size: " << std::min(soc_descriptor->physical_grid_size.y, soc_descriptor->grid_size.y)
+            outfile << "  y_size: " << std::min(soc_descriptor.physical_grid_size.y, soc_descriptor.grid_size.y)
                     << std::endl
                     << std::endl;
         }
@@ -310,8 +310,8 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDe
         outfile << "arc:" << std::endl;
         outfile << "  [" << std::endl;
 
-        for (const auto &arc : soc_descriptor->arc_cores) {
-            if (arc.x < soc_descriptor->grid_size.x && arc.y < soc_descriptor->grid_size.y) {
+        for (const auto &arc : soc_descriptor.arc_cores) {
+            if (arc.x < soc_descriptor.grid_size.x && arc.y < soc_descriptor.grid_size.y) {
                 outfile << arc.x << "-" << arc.y << ", ";
             }
         }
@@ -321,8 +321,8 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDe
         outfile << "pcie:" << std::endl;
         outfile << "  [" << std::endl;
 
-        for (const auto &pcie : soc_descriptor->pcie_cores) {
-            if (pcie.x < soc_descriptor->grid_size.x && pcie.y < soc_descriptor->grid_size.y) {
+        for (const auto &pcie : soc_descriptor.pcie_cores) {
+            if (pcie.x < soc_descriptor.grid_size.x && pcie.y < soc_descriptor.grid_size.y) {
                 outfile << pcie.x << "-" << pcie.y << ", ";
             }
         }
@@ -333,11 +333,11 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDe
         outfile << "dram:" << std::endl;
         outfile << "  [" << std::endl;
 
-        for (const auto &dram_cores : soc_descriptor->dram_cores) {
+        for (const auto &dram_cores : soc_descriptor.dram_cores) {
             // Insert the dram core if it's within the given grid
             std::vector<std::string> inserted = {};
             for (const auto &dram_core : dram_cores) {
-                if ((dram_core.x < soc_descriptor->grid_size.x) and (dram_core.y < soc_descriptor->grid_size.y)) {
+                if ((dram_core.x < soc_descriptor.grid_size.x) and (dram_core.y < soc_descriptor.grid_size.y)) {
                     inserted.push_back(std::to_string(dram_core.x) + "-" + std::to_string(dram_core.y));
                 }
             }
@@ -355,9 +355,9 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDe
 
         outfile << "eth:" << std::endl << "  [" << std::endl;
         bool inserted_eth = false;
-        for (const auto &ethernet_core : soc_descriptor->ethernet_cores) {
+        for (const auto &ethernet_core : soc_descriptor.ethernet_cores) {
             // Insert the eth core if it's within the given grid
-            if (ethernet_core.x < soc_descriptor->grid_size.x && ethernet_core.y < soc_descriptor->grid_size.y) {
+            if (ethernet_core.x < soc_descriptor.grid_size.x && ethernet_core.y < soc_descriptor.grid_size.y) {
                 if (inserted_eth) {
                     outfile << ", ";
                 }
@@ -370,8 +370,8 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDe
         outfile << "harvested_workers:" << std::endl;
         outfile << "  [" << std::endl;
 
-        for (const auto &worker : soc_descriptor->harvested_workers) {
-            if (worker.x < soc_descriptor->grid_size.x && worker.y < soc_descriptor->grid_size.y) {
+        for (const auto &worker : soc_descriptor.harvested_workers) {
+            if (worker.x < soc_descriptor.grid_size.x && worker.y < soc_descriptor.grid_size.y) {
                 outfile << worker.x << "-" << worker.y << ", ";
             }
         }
@@ -380,8 +380,8 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDe
 
         outfile << "functional_workers:" << std::endl;
         outfile << "  [" << std::endl;
-        for (const auto &worker : soc_descriptor->workers) {
-            if (worker.x < soc_descriptor->grid_size.x && worker.y < soc_descriptor->grid_size.y) {
+        for (const auto &worker : soc_descriptor.workers) {
+            if (worker.x < soc_descriptor.grid_size.x && worker.y < soc_descriptor.grid_size.y) {
                 outfile << worker.x << "-" << worker.y << ", ";
             }
         }
@@ -392,24 +392,24 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDe
 
         // Fill in the rest that are static to our device
         outfile << "worker_l1_size:" << std::endl;
-        outfile << "  " << soc_descriptor->worker_l1_size << std::endl << std::endl;
+        outfile << "  " << soc_descriptor.worker_l1_size << std::endl << std::endl;
         outfile << "dram_bank_size:" << std::endl;
-        outfile << "  " << soc_descriptor->dram_bank_size << std::endl << std::endl;
+        outfile << "  " << soc_descriptor.dram_bank_size << std::endl << std::endl;
         outfile << "eth_l1_size:" << std::endl;
-        outfile << "  " << soc_descriptor->eth_l1_size << std::endl << std::endl;
-        outfile << "arch_name: " << get_arch_str(soc_descriptor->arch) << std::endl << std::endl;
+        outfile << "  " << soc_descriptor.eth_l1_size << std::endl << std::endl;
+        outfile << "arch_name: " << get_arch_str(soc_descriptor.arch) << std::endl << std::endl;
         outfile << "features:" << std::endl;
         outfile << "  noc:" << std::endl;
         outfile << "    translation_id_enabled: True" << std::endl;
         outfile << "  unpacker:" << std::endl;
-        outfile << "    version: " << soc_descriptor->unpacker_version << std::endl;
+        outfile << "    version: " << soc_descriptor.unpacker_version << std::endl;
         outfile << "    inline_srca_trans_without_srca_trans_instr: False" << std::endl;
         outfile << "  math:" << std::endl;
-        outfile << "    dst_size_alignment: " << soc_descriptor->dst_size_alignment << std::endl;
+        outfile << "    dst_size_alignment: " << soc_descriptor.dst_size_alignment << std::endl;
         outfile << "  packer:" << std::endl;
-        outfile << "    version: " << soc_descriptor->packer_version << std::endl;
+        outfile << "    version: " << soc_descriptor.packer_version << std::endl;
         outfile << "  overlay:" << std::endl;
-        outfile << "    version: " << soc_descriptor->overlay_version << std::endl;
+        outfile << "    version: " << soc_descriptor.overlay_version << std::endl;
         outfile << std::endl;
 
         device_soc_descriptors[device_id] = file_name;

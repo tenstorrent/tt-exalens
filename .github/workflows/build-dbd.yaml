@@ -32,12 +32,17 @@ jobs:
           lfs: true
       - name: Git safe dir
         run: git config --global --add safe.directory /__w/tt-debuda/tt-debuda
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          create-symlink: true
+          key: debuda-${{ inputs.config }}-${{ inputs.os }}
       - name: Build DEBUDA
         run: |
-          make -j$(nproc) CONFIG=$CONFIG build
-      - name: Remove unnecessary artifacts
+          make build
+      - name: Build wheel
         run: |
-          find build/ -name *.so -or -name *.a -or -name *.o ! -path "build/riscv-src/*" ! -path "build/obj/riscv-src/*" | xargs strip -d
+          make wheel
       - name: Upload libraries as artifacts
         uses: actions/upload-artifact@v4
         with:

@@ -42,6 +42,7 @@ jobs:
             GIT_SHA=${{ github.sha }}
           tags: |
             ${{ env.BASE_IMAGE_NAME}}:${{ github.sha }}
+            ${{ env.BASE_IMAGE_NAME}}:latest
 
       - name: Build and export IRD Docker image
         uses: docker/build-push-action@v6
@@ -52,26 +53,4 @@ jobs:
             GIT_SHA=${{ github.sha }}
           tags: |
             ${{ env.IRD_IMAGE_NAME}}:${{ github.sha }}
-
-      # Tag images as latest
-
-      - name: Build and push latest Debuda Docker image
-        uses: docker/build-push-action@v6
-        with:
-          file: .github/Dockerfile.debuda
-          push: true
-          build-args: |
-            GIT_SHA=${{ github.sha }}
-          tags: |
-            ${{ env.BASE_IMAGE_NAME}}:latest
-
-      - name: Build and push latest IRD Docker image
-        uses: docker/build-push-action@v6
-        with:
-          file: .github/Dockerfile.debuda-ird
-          push: true
-          build-args: |
-            GIT_SHA=${{ github.sha }}
-            FROM_IMAGE=base
-          tags: |
             ${{ env.IRD_IMAGE_NAME}}:latest
