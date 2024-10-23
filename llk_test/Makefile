@@ -17,10 +17,18 @@ INCLUDES += -I../third_party/firmware/riscv/common -I../third_party/firmware/ris
 MINUS_D:="-D"
 SPACE:= " "
 FORMAT_ARG:=$(MINUS_D)$(format)$(SPACE)
-MATHOP_ARG:=$(MINUS_D)$(mathop)$(SPACE)
-OPTIONS_COMPILE+=$(FORMAT_ARG) $(MATHOP_ARG)
+OPTIONS_COMPILE+=$(FORMAT_ARG)
 OPTIONS_COMPILE+=$(INCLUDES)
 OPTIONS_ALL+=-m$(machine)
+
+OPTIONS_UNPACK:=$(MINUS_D)KERN_CNT=$(unpack_kern_cnt)$(SPACE)
+OPTIONS_UNPACK+=$(MINUS_D)KERNS=$(unpack_kerns)$(SPACE)
+
+OPTIONS_MATH:=$(MINUS_D)KERN_CNT=$(math_kern_cnt)$(SPACE)
+OPTIONS_MATH+=$(MINUS_D)KERNS=$(math_kerns)$(SPACE)
+
+OPTIONS_PACK:=$(MINUS_D)KERN_CNT=$(pack_kern_cnt)$(SPACE)
+OPTIONS_PACK+=$(MINUS_D)KERNS=$(pack_kerns)$(SPACE)
 
 # Define project paths
 RISCV_SOURCE=../dbd/riscv-src
@@ -43,28 +51,42 @@ $(OUTPUT_ELFS): $(BUILD_DIR)
 	mkdir -p $@
 
 # Buiding .elf files for every TRISC core
- $(OUTPUT_ELFS)/$(testname)_trisc0.elf :$(BUILD_DIR)/tmu-crt0.o $(BUILD_DIR)/main_unpack.o $(BUILD_DIR)/$(testname)_unpack.o 
+ $(OUTPUT_ELFS)/$(testname)_trisc0.elf : $(BUILD_DIR)/tmu-crt0.o $(BUILD_DIR)/unpack.o  $(BUILD_DIR)/main_unpack.o $(BUILD_DIR)/$(testname)_unpack.o 
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $^ -T$(RISCV_SOURCE)/memory.wormhole.ld -T$(RISCV_SOURCE)/trisc0.ld -T$(RISCV_SOURCE)/sections.ld -o $@
- $(OUTPUT_ELFS)/$(testname)_trisc1.elf: $(BUILD_DIR)/tmu-crt0.o $(BUILD_DIR)/main_math.o $(BUILD_DIR)/$(testname)_math.o 
+ $(OUTPUT_ELFS)/$(testname)_trisc1.elf: $(BUILD_DIR)/tmu-crt0.o $(BUILD_DIR)/math.o $(BUILD_DIR)/main_math.o $(BUILD_DIR)/$(testname)_math.o 
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $^ -T$(RISCV_SOURCE)/memory.wormhole.ld -T$(RISCV_SOURCE)/trisc1.ld -T$(RISCV_SOURCE)/sections.ld -o $@
- $(OUTPUT_ELFS)/$(testname)_trisc2.elf: $(BUILD_DIR)/tmu-crt0.o $(BUILD_DIR)/main_pack.o $(BUILD_DIR)/$(testname)_pack.o 
+ $(OUTPUT_ELFS)/$(testname)_trisc2.elf: $(BUILD_DIR)/tmu-crt0.o $(BUILD_DIR)/pack.o $(BUILD_DIR)/main_pack.o $(BUILD_DIR)/$(testname)_pack.o 
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_LINK) $^ -T$(RISCV_SOURCE)/memory.wormhole.ld -T$(RISCV_SOURCE)/trisc2.ld -T$(RISCV_SOURCE)/sections.ld -o $@
 
 #compiling _test.cc to .o
 $(BUILD_DIR)/$(testname)_unpack.o: tests/$(testname).cc
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_UNPACK -c -o $@ $<
-$(BUILD_DIR)/$(testname)_math.o: tests/$(testname).cc
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_MATH -c -o $@ $<
-$(BUILD_DIR)/$(testname)_pack.o: tests/$(testname).cc
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_PACK -c -o $@ $<
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(OPTIONS_UNPACK) -DLLK_TRISC_UNPACK -c -o $@ $<
+$(BUILD_DIR)/$(testname)_math.o: tests/$(testname).cc 
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(OPTIONS_MATH) -DLLK_TRISC_MATH -c -o $@ $<
+$(BUILD_DIR)/$(testname)_pack.o: tests/$(testname).cc 
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(OPTIONS_PACK) -DLLK_TRISC_PACK -c -o $@ $<
 
 #compiling main for every TRISC core
 $(BUILD_DIR)/main_unpack.o : helpers/run_elf_test.cc
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_UNPACK -c -o $@ $<
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(OPTIONS_UNPACK) -DLLK_TRISC_UNPACK -c -o $@ $<
 $(BUILD_DIR)/main_math.o : helpers/run_elf_test.cc
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_MATH -c -o $@ $<
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(OPTIONS_MATH) -DLLK_TRISC_MATH -c -o $@ $<
 $(BUILD_DIR)/main_pack.o : helpers/run_elf_test.cc
-	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -DLLK_TRISC_PACK -c -o $@ $<	
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(OPTIONS_PACK) -DLLK_TRISC_PACK -c -o $@ $<	
+
+#compiling .cc for all operation libraries
+$(BUILD_DIR)/unpack.o: helpers/unpack_kernels.cc
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(OPTIONS_UNPACK) -DLLK_TRISC_UNPACK -c -o $@ $<
+$(BUILD_DIR)/math.o: helpers/math_kernels.cc
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(OPTIONS_MATH) -DLLK_TRISC_MATH -c -o $@ $<
+$(BUILD_DIR)/pack.o: helpers/pack_kernels.cc
+	@echo
+	@echo NO ERRORS HERE
+	@echo
+	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(OPTIONS_PACK) -DLLK_TRISC_PACK -c -o $@ $<
+	@echo
+	@echo NO ERRORS HERE
+	@echo
 
 $(BUILD_DIR)/tmu-crt0.o: $(RISCV_SOURCE)/tmu-crt0.S | $(BUILD_DIR)
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o $@ $<

@@ -1,28 +1,16 @@
 #ifndef PACK_KERNELS_HPP
 #define PACK_KERNELS_HPP
 
-#ifdef LLK_TRISC_PACK
-    
-    #include "llk_pack.h"
-    #include "llk_pack_common.h"
-    #include "helpers.h"
+    #include <cstdint>
+    #include <cstdarg>
+    #define PROCESS_NUMBERS(n, ...) processNumbers(n, __VA_ARGS__)
 
-    volatile uint32_t* buffer_Dest = (volatile uint32_t*)0x1a000;
-    void(*kernels[KERN_CNT])(void);
-    
-    void pack_Dest_kernel(){
-
-        _llk_pack_hw_configure_(DATA_FORMAT, DATA_FORMAT, 16*16*4);
-        _llk_pack_init_<false, false, DstTileFaceLayout::RowMajor, false>(DATA_FORMAT);
-        _llk_pack_dest_init_<DstSync::SyncFull, DstTileFaceLayout::RowMajor, false, false>();
-        _llk_packer_wait_for_math_done_();
-        _llk_pack_(0, (std::uint32_t)buffer_Dest/16-1);
-    }
-
-    void nop(){}
+    void pack_Dest_kernel();
+    void nop();
+    extern void(*kernels[10])(void);
 
     /* Function for assigning elemtens of kernerls array to some of kernels */
-    void processNumbers(int n, int first, ...) {
+    inline void processNumbers(int n, int first, ...) {
 
         // Set the first kernel based on the first argument
         if(first == 1){
@@ -43,7 +31,5 @@
         }
         va_end(args);
     }
-
-#endif
 
 #endif

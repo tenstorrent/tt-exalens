@@ -1,33 +1,18 @@
-#ifndef UNPACK_KERNELS_HPP
-#define UNPACK_KERNELS_HPP
+#ifndef UNPACK_KERNELS_H
+#define UNPACK_KERNELS_H
 
-#ifdef LLK_TRISC_UNPACK
-    
-    #include <cstdarg> 
-    #include "llk_unpack_AB.h"
-    #include "llk_unpack_common.h"
-    #include "params.h"
+    #include <cstdint>
+    #include <cstdarg>
 
-    volatile uint32_t* buffer_A = (volatile uint32_t*)0x1b000;
-    volatile uint32_t* buffer_B = (volatile uint32_t*)0x1c000;
-    void(*kernels[KERN_CNT])(void);
+    #define PROCESS_NUMBERS(n, ...) processNumbers(n, __VA_ARGS__)
 
-    void unpack_A_kernel(){
-        _llk_unpack_A_hw_configure_(DATA_FORMAT,DATA_FORMAT);
-        _llk_unpack_A_init_<BroadcastType::NONE, false, EltwiseBinaryReuseDestType::NONE, true>(0, 0, FACE_R_DIM, 4, DATA_FORMAT, DATA_FORMAT);
-        _llk_unpack_A_<BroadcastType::NONE, false, EltwiseBinaryReuseDestType::NONE, true>((((uint32_t)&buffer)/16)-1, 0, DATA_FORMAT, DATA_FORMAT);
-    }
+    void unpack_A_kernel();
+    void unpack_AB_kernel();
+    void nop();
+    extern void(*kernels[10])(void);
 
-    void unpack_AB_kernel(){
-        _llk_unpack_AB_hw_configure_(DATA_FORMAT, DATA_FORMAT, DATA_FORMAT, DATA_FORMAT);
-        _llk_unpack_AB_init_<>();
-        _llk_unpack_AB_<>((std::uint32_t)buffer_A/16-1,(std::uint32_t)buffer_B/16-1);
-    }
-
-    void nop(){}
-
-        /* Function for assigning elemtens of kernerls array to some of kernels */
-    void processNumbers(int n, int first, ...) {
+    /* Function for assigning elemtens of kernerls array to some of kernels */
+    inline void processNumbers(int n, int first, ...) {
 
         // Set the first kernel based on the first argument
         if(first == 1){
@@ -52,7 +37,5 @@
         }
         va_end(args);
     }
-
-#endif
 
 #endif

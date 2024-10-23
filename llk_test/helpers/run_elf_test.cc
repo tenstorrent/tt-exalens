@@ -10,6 +10,19 @@
 #include <l1_address_map.h>
 #include <tensix.h>
 
+#ifdef LLK_TRISC_PACK
+#include "pack_kernels.h"
+volatile uint32_t* mailbox = (volatile uint32_t*)(0x19FFC);
+#endif
+#ifdef LLK_TRISC_MATH
+#include "math_kernels.h"
+volatile uint32_t* mailbox = (volatile uint32_t*)(0x19FF8);
+#endif
+#ifdef LLK_TRISC_UNPACK
+#include "unpack_kernels.h"
+volatile uint32_t* mailbox = (volatile uint32_t*)(0x19FF4);
+#endif
+
 // Necessary for every test. Don't change
 // **********************************************************************
 
@@ -35,27 +48,13 @@ using namespace ckernel;
 	Usage is still the same. If kernel completed successfully data in mailbox will be 1.
 */
 
-#define PROCESS_NUMBERS(n, ...) processNumbers(n, __VA_ARGS__)
-
-#ifdef LLK_TRISC_PACK
-#include "pack_kernels.h"
-volatile uint32_t* mailbox = (volatile uint32_t*)(0x19FFC);
-#endif
-#ifdef LLK_TRISC_MATH
-#include "math_kernels.h"
-volatile uint32_t* mailbox = (volatile uint32_t*)(0x19FF8);
-#endif
-#ifdef LLK_TRISC_UNPACK
-#include "unpack_kernels.h"
-volatile uint32_t* mailbox = (volatile uint32_t*)(0x19FF4);
-#endif
 
 int main()
 {
     FWEVENT("Launching proudction env kernels");
 
 	// needs these 2 defines when compiling
-	PROCESS_NUMBERS(KERN_CNT,KERNS);
+	PROCESS_NUMBERS(KERN_CNT, KERNS);
 
 	tensix_sync();
     run_kernel();
