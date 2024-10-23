@@ -10,7 +10,7 @@ on:
       config:
         required: false
         type: string
-        default: "ci"
+        default: "Release"
 
 run-name: BUILD DEBUDA by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
 
