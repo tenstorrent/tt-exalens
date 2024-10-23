@@ -65,7 +65,7 @@ file(GLOB DEBUDA_SERVER_LIB_SRCS "src/*.cpp")
 add_library(debuda_server_lib STATIC ${DEBUDA_SERVER_LIB_SRCS})
 add_dependencies(debuda_server_lib generate_embed_files copy_create_ethernet_map)
 target_link_libraries(debuda_server_lib 
-    PUBLIC umd_device fmt
+    PUBLIC umd_device fmt cppzmq-static
 )
 target_include_directories(debuda_server_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
