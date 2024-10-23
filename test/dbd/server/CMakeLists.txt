@@ -6,7 +6,6 @@ target_link_libraries(debuda_server_unit_tests
     gtest
     gmock
     gtest_main
-    zmq
     pthread
 )
 
