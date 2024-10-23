@@ -18,3 +18,17 @@ runs:
         echo "Installing dependencies: \n$DEPENDENCIES"
         sudo apt update
         sudo apt install -y $DEPENDENCIES
+    - name: Install clang 17
+      shell: bash
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod u+x llvm.sh
+        ./llvm.sh 17
+        apt install -y libc++-17-dev libc++abi-17-dev
+        ln -s /usr/bin/clang-17 /usr/bin/clang
+        ln -s /usr/bin/clang++-17 /usr/bin/clang++
+    - name: Install clang-format
+      shell: bash
+      run: |
+        apt install -y clang-format-17
+        ln -s /usr/bin/clang-format-17 /usr/bin/clang-format

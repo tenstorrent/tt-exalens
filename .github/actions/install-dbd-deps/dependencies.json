@@ -6,6 +6,9 @@
 		"libboost-all-dev",
 		"libhwloc-dev",
 		"libzmq3-dev",
-		"xxd"
+		"xxd",
+		"ccache",
+		"cmake",
+		"ninja-build"
 	]
 }
