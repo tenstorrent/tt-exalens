@@ -5,9 +5,7 @@
 		"libyaml-cpp-dev",
 		"libboost-all-dev",
 		"libhwloc-dev",
-		"libzmq3-dev",
 		"xxd",
-		"ccache",
 		"cmake",
 		"ninja-build"
 	]
