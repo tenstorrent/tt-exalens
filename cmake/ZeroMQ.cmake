@@ -19,6 +19,8 @@ if(NOT ZeroMQ_FOUND)
     OPTIONS
         "WITH_PERF_TOOL OFF"
         "ZMQ_BUILD_TESTS OFF"
+        "BUILD_SHARED OFF"
+        "BUILD_STATIC ON"
     )
 
     CPMAddPackage(
@@ -29,7 +31,6 @@ if(NOT ZeroMQ_FOUND)
         "CPPZMQ_BUILD_TESTS OFF"
     )
 else()
-    add_library(libzmq INTERFACE)
-    target_link_libraries(libzmq INTERFACE zmq)
-    add_library(cppzmq INTERFACE)
+    add_library(cppzmq-static INTERFACE)
+    target_link_libraries(cppzmq-static INTERFACE zmq)
 endif()
