@@ -17,13 +17,13 @@ After starting gdb server, you can stop it with `gdb` command. Run `gdb stop`.
 
 - Start gdb client (`./third_party/sfpi/compiler/bin/riscv32-unknown-elf-gdb` in debuda repository).
 - If you want to debug client/server communication execute `set debug remote 1` in GDB client
-- Connect GDB client to debuda: `target extended-remote localhost:6767`
+- Connect GDB client to debuda: `target extended-remote localhost:<gdb_port>` where `<gdb_port>` is port used in debuda when starting gdb server.
 
 After connection has been established, you can use `info os processes` to list all available processes that you can debug with GDB. Use `attach <pid>` to start debugging selested riscv core.
 
 ## Sample app debugging script:
 
-Once you started gdb server, you can use run-elf command to execute `sample.cc` application on chip. For wormhole, you can execute `re build/riscv-src/wormhole/sample.brisc.elf` to run application on brisc core.
+Once you started gdb server, you can use run-elf command to execute `dbd/riscv-src/sample.cc` application on chip. For wormhole, you can execute `re build/riscv-src/wormhole/sample.brisc.elf` to run application on brisc core.
 
 After that, you can execute this example script in gdb client to debug it:
 
