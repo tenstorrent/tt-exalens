@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  bwxy <core-loc> <addr> [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <D>...] [ --fill <N> ]
+  bwxy <core-loc> <addr> [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <D>...] [ --fill <N> ] [ --nooutput ]
 
 Arguments:
   core-loc      Either X-Y or R,C location of a core, or dram channel (e.g. ch3)
@@ -15,6 +15,7 @@ Options:
   -o <O>        Address offset. Optional and repeatable.
   -d <D>        Device ID. Optional and repeatable. Default: current device
   --fill=<N>    Write fill. Optional and repeatable. Default: 0
+  --nooutput    Does not output the result 
 
 Description:
   Writes the specified value from address 'addr' in the next 'word-count' addresses, and prints the result at core <core-loc>.
@@ -41,10 +42,25 @@ from docopt import docopt
 from debuda import UIState
 
 from dbd.tt_coordinate import OnChipCoordinate
-from dbd.tt_debuda_lib import write_words_to_device, read_from_device
+from dbd.tt_debuda_lib import write_to_device, read_from_device
 from dbd.tt_firmware import ELF
 from dbd.tt_object import DataArray
 from dbd import tt_util as util
+
+def generate_fill_with_addresses(start_address,count):
+    data = []
+    for i in range(count):
+        address = start_address + (i * 4)
+        data.append(address)
+    return data;
+
+def hex_array_to_bytes(hex_array):
+    bytes_array = []
+    for hex_value in hex_array:
+        for i in range(0, 4, 1):
+            byte = (hex_value >> (i * 8)) & 0xFF
+            bytes_array.append(byte)
+    return bytes_array
 
 def run(cmd_text, context, ui_state: UIState = None):
     args = docopt(command_metadata["description"], argv=cmd_text.split()[1:])
@@ -75,13 +91,18 @@ def run(cmd_text, context, ui_state: UIState = None):
         offset_addr, _ = context.elf.parse_addr_size(offset, mem_reader)
         addr += offset_addr
 
-    
-    fill = int(args["--fill"],0) if args["--fill"] else 0
-    if not isinstance(fill, int):
-        raise util.TTException(
-            f"Invalid fill '{fill}'. Fill should be a number"
-        )
-    write_data = [fill]*word_count
+    fill_str = args["--fill"]
+    if fill_str == "address":
+        write_data = generate_fill_with_addresses(addr,word_count)
+    else:
+        fill = int(args["--fill"],0) if args["--fill"] else 0
+        if not isinstance(fill, int):
+            raise util.TTException(
+                f"Invalid fill '{fill}'. Fill should 'address' or a number"
+            )
+        write_data = [fill]*word_count
+
+    nooutput = True if args["--nooutput"] else False
 
     devices = args["-d"]
     if devices:
@@ -97,6 +118,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                 word_count=word_count,
                 print_format=format,
                 context=context,
+                nooutput=nooutput
             )
     else:
         pci_burst_write(
@@ -108,23 +130,29 @@ def run(cmd_text, context, ui_state: UIState = None):
             word_count=word_count,
             print_format=format,
             context=context,
+            nooutput=nooutput
         )
 
 def pci_burst_write(
-    device_id, core_loc, addr, core_loc_str,write_data, word_count=1, print_format="hex32", context=None
+    device_id, core_loc, addr, core_loc_str,write_data, word_count=1, print_format="hex32", context=None,nooutput=False
 ):
-    # TODO add format of writing
+    # Write data to device requires data to be separated into bytes
+    byte_write_data = hex_array_to_bytes(write_data)
 
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
     core_loc_str =  f"{core_loc_str} (L1) :" if not core_loc_str.lower().startswith("ch") else f"{core_loc_str.lower()} (DRAM) :"
 
     da = DataArray(f"{core_loc_str} 0x{addr:08x} ({word_count * 4} bytes)", 4)
-    bytes_written = write_words_to_device(core_loc, addr, write_data,device_id, context)
-    da.data = write_data
-    if bytes_per_entry != 4:
-        da.to_bytes_per_entry(bytes_per_entry)
-    formated = f"{da._id}\n" + util.dump_memory(
-        addr, da.data, bytes_per_entry, 16, is_hex
-    )
-    print(formated)
+    bytes_written = write_to_device(core_loc, addr, byte_write_data, device_id, context)
+
+    if not nooutput:
+        da.data = write_data
+        if bytes_per_entry != 4:
+            da.to_bytes_per_entry(bytes_per_entry)
+        formated = f"{da._id}\n" + util.dump_memory(
+            addr, da.data, bytes_per_entry, 16, is_hex
+        )
+        print(formated)
+    else:
+        print("Wrote successfully")
