@@ -80,13 +80,7 @@ $(BUILD_DIR)/unpack.o: helpers/unpack_kernels.cc
 $(BUILD_DIR)/math.o: helpers/math_kernels.cc
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(OPTIONS_MATH) -DLLK_TRISC_MATH -c -o $@ $<
 $(BUILD_DIR)/pack.o: helpers/pack_kernels.cc
-	@echo
-	@echo NO ERRORS HERE
-	@echo
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) $(OPTIONS_PACK) -DLLK_TRISC_PACK -c -o $@ $<
-	@echo
-	@echo NO ERRORS HERE
-	@echo
 
 $(BUILD_DIR)/tmu-crt0.o: $(RISCV_SOURCE)/tmu-crt0.S | $(BUILD_DIR)
 	$(GXX) $(OPTIONS_ALL) $(OPTIONS_COMPILE) -c -o $@ $<

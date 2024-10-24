@@ -10,6 +10,12 @@
 #include <l1_address_map.h>
 #include <tensix.h>
 
+/*  
+	Not using existing mailbox because it's content can get overriden by some other code.
+	Pointers to some addresses outside of code sections of TRISC cores are set to be used as mailboxes.
+	Usage is still the same. If kernel completed successfully data in mailbox will be 1.
+*/
+
 #ifdef LLK_TRISC_PACK
 #include "pack_kernels.h"
 volatile uint32_t* mailbox = (volatile uint32_t*)(0x19FFC);
@@ -40,14 +46,6 @@ namespace ckernel{
 }
 
 using namespace ckernel;
-
-// **********************************************************************
-
-/*  Not using existing mailbox because it's content can get overriden by some other code.
-	Pointers to some addresses outside of code sections of TRISC cores are set to be used as mailboxes.
-	Usage is still the same. If kernel completed successfully data in mailbox will be 1.
-*/
-
 
 int main()
 {
