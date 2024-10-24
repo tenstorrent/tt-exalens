@@ -98,10 +98,7 @@ class TTLensTestRunner:
             if not type(args) == list:
                 args = [args]
 
-        path2 = self.debuda_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"print_to_ci.py")
-        program_args2 = [self.interpreter_path, '-u',path2]
         self.process = subprocess.Popen(program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
-        #self.process2 = subprocess.Popen(program_args2, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
 
     def start(self, tester: unittest.TestCase, args = None):
         self.invoke(args)
@@ -138,46 +135,49 @@ class TTLensTestRunner:
         flags = fcntl.fcntl(fd, fcntl.F_GETFL)
         fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
-    def read_all_non_blocking(self, timeoutSeconds: float = 1):
+    def read_until_prompt(self, timeoutSeconds: float = 1):
         # Fast path for program that ended
         rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], timeoutSeconds)
         
         if len(rlist) == 0:
-            print("stdout or stderr not available")
             if not self.is_running:
                 return None
             return []
         
-        print("Reading")
         original_stdout_flags = fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_GETFL)
         original_stderr_flags = fcntl.fcntl(self.process.stderr.fileno(), fcntl.F_GETFL)
 
-        # self.set_nonblocking(self.process.stdout.fileno())
-        # self.set_nonblocking(self.process.stderr.fileno())
+        self.set_nonblocking(self.process.stdout.fileno())
+        self.set_nonblocking(self.process.stderr.fileno())
 
         output_lines = []
         
+        done = False
+
         for stream in rlist:
-            try:
-                # There is no need to close the reader since both stdout and stderr are already opened 
-                # in self.process.stdout and self.process.stderr, we are just using this as a pointer to the fd
-                with io.TextIOWrapper(os.fdopen(stream.fileno(), 'rb',closefd=False), encoding='utf-8') as reader:
-                    while True:
-                        line = reader.readline()
-                        if not line or line == '\n':
-                            continue;
-                        
-                        if line.endswith('\n'):
-                            line = line[:-1]
+            # Blocking does not work on C/I and we need to loop until output is sent to stdout of the process
+            while not done:
+                try:
+                    # There is no need to close the reader since both stdout and stderr are already opened 
+                    # in self.process.stdout and self.process.stderr, we are just using this as a pointer to the fd
+                    with io.TextIOWrapper(os.fdopen(stream.fileno(), 'rb',closefd=False), encoding='utf-8') as reader:
+                        while True:
+                            line = reader.readline()
+                            if not line or line == '\n':
+                                continue;
+                            
+                            if line.endswith('\n'):
+                                line = line[:-1]
 
-                        output_lines.append(line)
-                        print(line)
+                            output_lines.append(line)
+                            print(line)
 
-                        if self.verifier.is_prompt_line(line):
-                            break;
-                        
-            except BlockingIOError:
-                pass
+                            if self.verifier.is_prompt_line(line):
+                                done = True
+                                break;
+                            
+                except BlockingIOError:
+                    pass
         
         fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_SETFL, original_stdout_flags)
         fcntl.fcntl(self.process.stderr.fileno(), fcntl.F_SETFL, original_stderr_flags)
@@ -188,18 +188,6 @@ class TTLensTestRunner:
         self.process.stdin.write(line)
         self.process.stdin.write('\n')
         self.process.stdin.flush()
-
-    def read_until_prompt(self, readline_timeout: float = 1):
-        lines = []
-        # while True:
-        #     read_lines = self.read_all_non_blocking(readline_timeout)
-        #     if read_lines is None:
-        #         return (lines, None)
-        #     if self.verifier.is_prompt_line(read_lines[-1]):
-        #         return (lines+read_lines[:-1], read_lines[-1])
-        #     lines += read_lines
-        read_lines = self.read_all_non_blocking(readline_timeout)
-        return (read_lines[:-1],read_lines[-1])
 
     def wait(self, timeoutSeconds:float = None):
         self.process.wait(timeoutSeconds)
