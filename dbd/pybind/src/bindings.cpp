@@ -43,9 +43,14 @@ bool open_device(const std::string &binary_directory, const std::string &runtime
         try {
             jtag_implementation = std::make_unique<Jtag>("./build/lib/libjtag.so");
             std::vector<uint32_t> jlink_devices = jtag_implementation->tt_enumerate_jlink();
+            if (jlink_devices.empty()) {
+                jtag_implementation.reset();
+                throw std::runtime_error("There are no devices");
+            }
             uint32_t status = jtag_implementation->tt_open_jlink_by_serial_wrapper(jlink_devices[0]);
             if (status != 0) {
                 jtag_implementation.reset();
+                throw std::runtime_error("Device 0 Error");
             }
         } catch (std::runtime_error &error) {
         }
