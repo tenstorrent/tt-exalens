@@ -65,14 +65,7 @@ jobs:
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-create-ethernet-map-blackhole
           chmod +x build/bin/debuda-server-standalone
-      
-      - name: Build server unit tests
-        run: |
-          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/server_tests
-      - name: Build pybind unit tests
-        run: |
-          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} dbd/pybind_tests
-      
+          chmod +x build/bin/debuda_server_unit_tests
       - name: Run C++ tests
         run: |
           make dbd_server_unit_tests_run_only
@@ -130,10 +123,7 @@ jobs:
           chmod +x build/bin/debuda-create-ethernet-map-wormhole
           chmod +x build/bin/debuda-create-ethernet-map-blackhole
           chmod +x build/bin/debuda-server-standalone
-      
-      - name: Build wheel
-        run: |
-          make -j$(nproc) ARCH_NAME=${{ env.ARCH_NAME }} CONFIG=${{ env.CONFIG }} wheel
+          chmod +x build/bin/debuda_server_unit_tests
       - name: Install wheel
         run: |
           pip install build/debuda_wheel/*.whl

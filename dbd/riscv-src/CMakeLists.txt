@@ -1,0 +1,98 @@
+cmake_minimum_required(VERSION 3.16)
+cmake_policy(VERSION 3.16)
+
+project(RISCVProject LANGUAGES CXX ASM)
+
+# Check if DEBUDA_HOME is set, if not set it to ../../ from the directory that contains this file
+if(NOT DEBUDA_HOME)
+    set(DEBUDA_HOME "${CMAKE_CURRENT_LIST_DIR}/../..")
+endif()
+
+# Set toolchain and tools
+set(TOOL_PATH "${DEBUDA_HOME}/third_party/sfpi/compiler/bin")
+set(GXX "${TOOL_PATH}/riscv32-unknown-elf-g++")
+set(OBJDUMP "${TOOL_PATH}/riscv32-unknown-elf-objdump")
+set(OBJCOPY "${TOOL_PATH}/riscv32-unknown-elf-objcopy")
+set(READELF "${TOOL_PATH}/riscv32-unknown-elf-readelf")
+
+# Compiler options
+set(OPTIONS_ALL -O0 -march=rv32imw -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math)
+set(OPTIONS_COMPILE -fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable)
+set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Ldbd/riscv-src)
+
+# Define project paths
+set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")
+set(RISCV_OUTPUT "${CMAKE_BINARY_DIR}/riscv-src")
+set(RISCV_OBJECT "${CMAKE_BINARY_DIR}/obj/riscv-src")
+
+# Define architectures, applications, and cores
+set(RISCV_ARCHITECTURES "grayskull" "wormhole" "blackhole")
+set(RISCV_APPS "sample" "run_elf_test")
+set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc")
+
+# Create output directories
+file(MAKE_DIRECTORY ${RISCV_OBJECT})
+file(MAKE_DIRECTORY ${RISCV_OUTPUT})
+
+# Helper function to add object files for each source
+function(add_riscv_object OBJECT_NAME SOURCE_FILE)
+    add_custom_command(
+        OUTPUT ${OBJECT_NAME}
+        COMMAND ${GXX} ${OPTIONS_ALL} ${OPTIONS_COMPILE} -c -o ${OBJECT_NAME} ${SOURCE_FILE}
+        DEPENDS ${SOURCE_FILE}
+        COMMENT "Compiling ${SOURCE_FILE} to ${OBJECT_NAME}"
+    )
+endfunction()
+
+# Add the CRT object (assembly file)
+add_riscv_object("${RISCV_OBJECT}/tmu-crt0.o" "${RISCV_SOURCE}/tmu-crt0.S")
+
+# Add C++ compile target
+foreach(app ${RISCV_APPS})
+    add_riscv_object("${RISCV_OBJECT}/${app}.o" "${RISCV_SOURCE}/${app}.cc")
+endforeach()
+
+# Define function to create targets for a specific architecture, application, and core
+function(create_riscv_target ARCH APP CORE)
+    set(OUTPUT_ELF "${RISCV_OUTPUT}/${ARCH}/${APP}.${CORE}.elf")
+    set(OUTPUT_DUMP "${RISCV_OUTPUT}/${ARCH}/${APP}.${CORE}.dump")
+    set(OUTPUT_DIS "${RISCV_OUTPUT}/${ARCH}/${APP}.${CORE}.dis")
+
+    add_custom_command(
+        OUTPUT ${OUTPUT_ELF}
+        COMMAND ${GXX} ${OPTIONS_ALL} ${OPTIONS_LINK}
+            ${RISCV_OBJECT}/tmu-crt0.o ${RISCV_OBJECT}/${APP}.o
+            -T${RISCV_SOURCE}/memory.${ARCH}.ld
+            -T${RISCV_SOURCE}/${CORE}.ld
+            -T${RISCV_SOURCE}/sections.ld
+            -o ${OUTPUT_ELF}
+        DEPENDS ${RISCV_OBJECT}/tmu-crt0.o ${RISCV_OBJECT}/${APP}.o ${RISCV_SOURCE}/memory.${ARCH}.ld ${RISCV_SOURCE}/${CORE}.ld ${RISCV_SOURCE}/sections.ld
+        COMMENT "Linking ${OUTPUT_ELF}"
+    )
+
+    add_custom_target("${ARCH}_${APP}_${CORE}_target" ALL
+        DEPENDS ${OUTPUT_ELF})
+
+    add_custom_command(
+        OUTPUT ${OUTPUT_DUMP} ${OUTPUT_DIS}
+        COMMAND ${OBJDUMP} -d -s -S ${OUTPUT_ELF} > ${OUTPUT_DUMP}
+        COMMAND ${OBJDUMP} -t ${OUTPUT_ELF} | sort >> ${OUTPUT_DUMP}
+        COMMAND ${READELF} --debug-dump ${OUTPUT_ELF} > ${OUTPUT_DIS}
+        DEPENDS ${OUTPUT_ELF}
+        COMMENT "Generating dump and disassembly for ${OUTPUT_ELF}"
+    )
+
+    add_custom_target("${ARCH}_${APP}_${CORE}_dump_dis" ALL
+        DEPENDS ${OUTPUT_DUMP} ${OUTPUT_DIS})
+
+    add_dependencies("${ARCH}_${APP}_${CORE}_target" "${ARCH}_${APP}_${CORE}_dump_dis")
+endfunction()
+
+# Create targets for all architectures, applications, and cores
+foreach(CORE ${RISCV_CORES})
+    foreach(APP ${RISCV_APPS})
+        foreach(ARCH ${RISCV_ARCHITECTURES})
+            create_riscv_target(${ARCH} ${APP} ${CORE})
+        endforeach()
+    endforeach()
+endforeach()

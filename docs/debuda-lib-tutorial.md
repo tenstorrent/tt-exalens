@@ -163,7 +163,7 @@ int main() {
 ```
 
 Ignoring all the code used for initialization and compiler compliance, this program  writes the value `0x12345678` into L1 memory at address `0x0`, and then enters an infinite loop.
-To compile the .elf file, you can simply run `make dbd/riscv` and use the output generated in `build/riscv-src/run_elf_test.brisc.elf`.
+To compile the .elf file, you can simply run `make build` and use the output generated in `build/riscv-src/wormhole/run_elf_test.brisc.elf`.
 It can then be run on a brisc core through the Debuda library.
 
 ```python
