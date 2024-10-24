@@ -65,11 +65,30 @@ def generate_stimuli(stimuli_format):
 
     return srcA.tolist() , srcB.tolist()
 
+def generate_golden(operand1, operand2, operation):
+    tensor1_float = torch.tensor(operand1, dtype=torch.float32)
+    tensor2_float = torch.tensor(operand2, dtype=torch.float32)
+
+    dest = torch.full((1024,), fill_value=0, dtype=torch.float32)
+
+    if operation == "elwadd":
+        dest = tensor1_float + tensor2_float
+    elif operation == "elwsub":
+        dest = tensor1_float - tensor2_float
+    elif operation == "elwmul":
+        dest = tensor1_float * tensor2_float
+    else:
+        raise ValueError("Unsupported operation!")
+
+    return dest.tolist()
+
 def generate_golden(operand1, operand2, format, operations):
     tensor1_float = torch.tensor(operand1, dtype=torch.float32)
     tensor2_float = torch.tensor(operand2, dtype=torch.float32)
 
     dest = torch.full((1024,), fill_value=0, dtype=torch.float32)
+
+    dest_inter = []
 
     for op in operations:
 
@@ -84,7 +103,12 @@ def generate_golden(operand1, operand2, format, operations):
         else:
             raise ValueError("Unsupported operation!")
 
-    return dest.tolist()
+        dest_inter.append(dest)
+
+    for inter in dest_inter:
+        inter = inter.tolist()
+
+    return dest.tolist(), dest_inter
     # return dest #.tolist()
 
 math_kernels = [2,1,2]
@@ -109,7 +133,7 @@ def test_multiple_kernels(format, testname, machine):
 
     src_A, src_B = generate_stimuli(format)
     write_stimuli_to_l1(src_A, src_B,format)
-    golden = generate_golden(src_A, src_B, format, math_kernels)
+    golden, golden_inter = generate_golden(src_A, src_B, format, math_kernels)
 
     make_cmd = f"make format={format_args_dict[format]} testname={testname} machine={machine}"
     make_cmd += " unpack_kern_cnt=3 unpack_kerns=2,2,2"
@@ -140,12 +164,17 @@ def test_multiple_kernels(format, testname, machine):
     print("*"*50)
     print(golden[127])
     print(golden_form_L1[127])
+    print(len(golden_inter))
+    print(len(golden_inter[0]))
     print("*"*50)
 
     tolerance = 0.05
-
+    
+    # test end results
     for i in range(128):
         assert abs(golden[i] - golden_form_L1[i]) <= tolerance, f"i = {i}, {golden[i]}, {golden_form_L1[i]}"
+
+    # TODO: test intermediate results
 
     assert unpack_mailbox == b'\x00\x00\x00\x01'
     assert math_mailbox == b'\x00\x00\x00\x01'
