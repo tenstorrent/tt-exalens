@@ -47,20 +47,6 @@ from dbd.tt_firmware import ELF
 from dbd.tt_object import DataArray
 from dbd import tt_util as util
 
-def generate_fill_with_addresses(start_address,count):
-    data = []
-    for i in range(count):
-        address = start_address + (i * 4)
-        data.append(address)
-    return data;
-
-def hex_array_to_bytes(hex_array):
-    bytes_array = []
-    for hex_value in hex_array:
-        for i in range(0, 4, 1):
-            byte = (hex_value >> (i * 8)) & 0xFF
-            bytes_array.append(byte)
-    return bytes_array
 
 def run(cmd_text, context, ui_state: UIState = None):
     args = docopt(command_metadata["description"], argv=cmd_text.split()[1:])
@@ -93,7 +79,7 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     fill_str = args["--fill"]
     if fill_str == "address":
-        write_data = generate_fill_with_addresses(addr,word_count)
+        write_data = util.generate_address_array(addr,word_count)
     else:
         fill = int(args["--fill"],0) if args["--fill"] else 0
         if not isinstance(fill, int):
@@ -137,7 +123,7 @@ def pci_burst_write(
     device_id, core_loc, addr, core_loc_str,write_data, word_count=1, print_format="hex32", context=None,nooutput=False
 ):
     # Write data to device requires data to be separated into bytes
-    byte_write_data = hex_array_to_bytes(write_data)
+    byte_write_data = util.hex_array_to_bytes(write_data)
 
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
