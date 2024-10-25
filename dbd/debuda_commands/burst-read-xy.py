@@ -113,14 +113,15 @@ def print_a_pci_read(core_loc_str, addr, val, comment=""):
 def print_a_pci_burst_read(
     device_id, core_loc, addr, core_loc_str, word_count=1, sample=1, print_format="hex32", context=None
 ):
+    number_of_bytes = word_count*4
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
     core_loc_str =  f"{core_loc_str} (L1) :" if not core_loc_str.lower().startswith("ch") else f"{core_loc_str.lower()} (DRAM) :"
 
     if sample == 0:  # No sampling, just a single read
-        da = DataArray(f"{core_loc_str} 0x{addr:08x} ({word_count * 4} bytes)", 4)
-        data = read_words_from_device(core_loc, addr, device_id, word_count, context)
-        da.data = data
+        da = DataArray(f"{core_loc_str} 0x{addr:08x} ({number_of_bytes} bytes)", 4)
+        data = read_from_device(core_loc, addr, device_id, number_of_bytes, context)
+        da.data = util.byte_string_to_list(data)
         if bytes_per_entry != 4:
             da.to_bytes_per_entry(bytes_per_entry)
         formated = f"{da._id}\n" + util.dump_memory(
