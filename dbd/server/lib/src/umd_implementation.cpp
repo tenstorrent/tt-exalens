@@ -58,7 +58,7 @@ std::optional<std::vector<uint8_t>> umd_implementation::pci_read(uint8_t chip_id
         }
         return result;
     }
-    
+
     device->read_from_device(result.data(), target, address, size, LARGE_READ_TLB_STR);
     return result;
 }

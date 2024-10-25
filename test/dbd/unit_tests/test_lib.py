@@ -231,6 +231,7 @@ class TestReadWrite(unittest.TestCase):
 	def test_large_read(self, core_loc, addr, device_id, word_count):
 		# Write addresses to addresses
 		data_write = tt_util.generate_address_array(addr,int(word_count/4))
+		data_write = tt_util.hex_array_to_bytes(data_write)
 		lib.write_to_device(core_loc,addr,data_write,device_id,self.context)
 
 		data_read = lib.read_from_device(core_loc, addr, device_id, word_count, self.context)
