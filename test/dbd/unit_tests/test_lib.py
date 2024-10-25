@@ -224,6 +224,22 @@ class TestReadWrite(unittest.TestCase):
 		with self.assertRaises((tt_util.TTException, ValueError)):
 			lib.write_to_device(core_loc, address, data, device_id)
 
+	@parameterized.expand([
+		("ch0", 0, 0, 17000000),
+		("ch0", 0x00fffff0, 0, 128),
+	])
+	def test_large_read(self, core_loc, addr, device_id, word_count):
+		# Write addresses to addresses
+		data_write = tt_util.generate_address_array(addr,int(word_count/4))
+		lib.write_to_device(core_loc,addr,data_write,device_id,self.context)
+
+		data_read = lib.read_from_device(core_loc, addr, device_id, word_count, self.context)
+		data_read = [byte for byte in data_read]
+
+		result = data_read == data_write
+
+		self.assertTrue(result)
+
 class TestRunElf(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls) -> None:
