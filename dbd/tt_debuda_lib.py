@@ -246,3 +246,221 @@ def arc_msg(device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1:
 	if timeout < 0: raise TTException("Timeout must be greater than or equal to 0.")
 
 	return context.server_ifc.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
+
+def write_field(reg_addr: int, bit_range: tuple, value: int, device_id: int, core_loc: OnChipCoordinate, context: Context = None):
+	"""
+	Write a value to a field in a register.
+	"""
+	context = check_context(context)
+	validate_device_id(device_id, context)
+
+	start_bit, end_bit = bit_range
+	if not (0 <= start_bit <= 31 and 0 <= end_bit <= 31 and start_bit <= end_bit):
+		raise TTException("Invalid bit range. Must be between 0 and 31 and start_bit must be less than or equal to end_bit.")
+
+	mask = ((1 << (end_bit - start_bit + 1)) - 1) << start_bit
+
+	value = (value<<start_bit)&mask
+	
+	if context.devices[device_id]._has_mmio:
+		context.server_ifc.pci_write32_raw(
+			device_id,  reg_addr, value
+		)
+	else:
+		context.server_ifc.pci_write32(
+			device_id, *core_loc.to("nocVirt"), reg_addr, value
+		)
+	# value_bytes = value.to_bytes(4, byteorder='little')
+
+	# write_to_device(
+	# 	core_loc, reg_addr, value_bytes,device_id, context
+	# )
+	
+
+def read_field(reg_addr: int, bit_range: tuple, device_id: int, core_loc: OnChipCoordinate, context: Context = None):
+	"""
+	Read a value from a field in a register.
+	"""
+	context = check_context(context)
+	validate_device_id(device_id, context)
+
+	start_bit, end_bit = bit_range
+	if not (0 <= start_bit <= 31 and 0 <= end_bit <= 31 and start_bit <= end_bit):
+		raise TTException("Invalid bit range. Must be between 0 and 31 and start_bit must be less than or equal to end_bit.")
+
+	mask = ((1 << (end_bit - start_bit + 1)) - 1) << start_bit
+	
+	if context.devices[device_id]._has_mmio:
+		read_val = context.server_ifc.pci_read32_raw(
+			device_id, reg_addr
+		)
+	else:
+		read_val = context.server_ifc.pci_read32(
+			device_id, *core_loc.to("nocVirt"), reg_addr
+		)
+	# read_val = read_from_device(
+	# 	core_loc, reg_addr,device_id,4, context
+	# )
+
+	# read_val = int.from_bytes(read_val, byteorder='little')
+
+	return (read_val&mask)>>start_bit
+
+def run_arc_core(mask: int, device_id: int, context: Context = None):
+	"""
+	Runs the arc core(s) specified by the mask.
+	"""
+	arc_core_loc = OnChipCoordinate.create("0-10", device=context.devices[device_id])
+	device = context.devices[device_id]
+
+	req_arc_core_run_bit_range = (0,3)
+	core_run_ack_bit_range = (0,3)
+
+	write_field(device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"), req_arc_core_run_bit_range, mask,device_id, arc_core_loc, context)
+
+	core_run_ack = 0
+	# Waiting for run to be acknowledged
+	while (core_run_ack & mask != mask):
+		core_run_ack = read_field(device.get_register_addr("ARC_RESET_ARC_MISC_STATUS"), core_run_ack_bit_range, device_id, arc_core_loc, context)
+	
+	write_field(device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"), req_arc_core_run_bit_range, 0, device_id, arc_core_loc, context)
+
+def halt_arc_core(mask: int, device_id: int, context: Context = None):
+	"""
+	Halts the ARC core(s) specified by the mask.
+	"""
+	arc_core_loc = OnChipCoordinate.create("0-10", device=context.devices[device_id])
+	device = context.devices[device_id]
+
+	req_arc_core_halt_bit_range = (4,7)
+	core_halt_ack_bit_range = (4,7)
+
+	write_field(device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"), req_arc_core_halt_bit_range, mask,device_id, arc_core_loc, context)
+
+	core_halt_ack = 0
+	# Waiting for halt to be acknowledged
+	while (core_halt_ack != mask):
+		core_halt_ack = read_field(device.get_register_addr("ARC_RESET_ARC_MISC_STATUS"), core_halt_ack_bit_range, device_id, arc_core_loc, context)
+	
+	write_field(device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"),req_arc_core_halt_bit_range,0,device_id,arc_core_loc,context)
+
+def set_udmiaxi_region(mem_type:str, device_id:int, context:Context=None):
+	arc_core_loc = OnChipCoordinate.create("0-10", device=context.devices[device_id])
+	device = context.devices[device_id]
+
+	iccm_id = re.findall('\d',mem_type)
+	if len(iccm_id) == 0:
+		iccm_id = 0
+		assert mem_type=='iccm' or mem_type=='csm'
+	else:
+		iccm_id = int(iccm_id[0])
+		assert iccm_id>=0 and iccm_id<=3
+
+	base_addr = ((0x10000000 >> 24) & 0xff) if mem_type == 'csm' else (iccm_id*0x3)
+
+	write_field(device.get_register_addr("ARC_RESET_ARC_UDMIAXI_REGION"), (0,31), base_addr,device_id, arc_core_loc, context)
+
+
+def load_arc_fw(file_name: str, device_id: int, context: Context = None):
+	"""
+	Loads the ARC firmware from the file into the device.
+	"""
+	context = check_context(context)
+	validate_device_id(device_id, context)
+
+	arc_core_loc = OnChipCoordinate.create("0-10", device=context.devices[device_id])
+	device = context.devices[device_id]
+	# if len(iccm_id) == 0:
+	# 	iccm_id = 0
+	# 	assert mem_type=='iccm' or mem_type=='csm'
+	# else:
+	# 	iccm_id = int(iccm_id[0])
+	# 	assert iccm_id>=0 and iccm_id<=3
+
+	iccm_id = 2
+	mem_type = f'iccm{iccm_id}'
+
+	halt_arc_core(1<<iccm_id, device_id, context)
+
+	set_udmiaxi_region(mem_type, device_id, context)
+
+	base_addr = device.get_register_addr("ARC_CSM_DATA")
+
+	def read_contiguous_hex_chunks(f):
+		chunk_start_address = 0
+		current_chunk = bytearray()
+
+		for line in f:
+			a = line.split ('@')
+			if len(a)==2: # Address change
+				# address change splits chunk, output current chunk if not empty
+				if len(current_chunk) > 0:
+					yield (chunk_start_address, current_chunk)
+					current_chunk = []
+
+				chunk_start_address = int (a[1], 16) * 4   # Parse hex number, hence 16
+			else:         # Data
+				data = int(a[0], 16)
+				current_chunk += data.to_bytes(4, 'big')
+
+		if len(current_chunk) > 0:
+			yield (chunk_start_address, current_chunk)
+
+	with open(file_name) as f:
+		first_chunk = True
+
+		for offset, data in read_contiguous_hex_chunks(f):
+			if first_chunk: # Load reset vector
+				write_field(device.get_register_addr("ARC_ROM_DATA"), (0,31), int.from_bytes(data[0:4], 'little'), device_id, arc_core_loc, context)
+				test1 = read_field(device.get_register_addr("ARC_ROM_DATA"), (0,31), device_id, arc_core_loc, context)
+				print(test1)
+				# context.server_ifc.pci_write32(
+				# 	device_id, *arc_core_loc.to("nocVirt"), device.get_register_addr("ARC_ROM_DATA"), int.from_bytes(data[0:4], 'little')
+				# )
+
+				# self.AXI.write32("ARC_ROM.DATA[0]", int.from_bytes(data[0:4], 'little'))
+				first_chunk = False
+
+			# if self.use_block_writes_to_load_arc_fw():
+			# 	self.pci_block_write_xy(self.ARC_LOCATIONS[0][0], self.ARC_LOCATIONS[0][1], 0, base_address + offset, data)
+			# else:
+			for i in range(len(data) // 4):
+				word = int.from_bytes(data[i*4 : i*4+4], 'little')
+				write_field(base_addr+i*4, (0,31), word, device_id, arc_core_loc, context)
+				test2 = read_field(base_addr+i*4, (0,31), device_id, arc_core_loc, context)
+				print(hex(base_addr+i*4)+" : "+ hex(test2)+" "+ hex(word))
+				# context.server_ifc.pci_write32(
+				# 	device_id, *arc_core_loc.to("nocVirt"), base_addr + i*4, word
+				# )
+
+	for i in range(4096// 4):
+		test2 = read_field(base_addr+i*4, (0,31), device_id, arc_core_loc, context)
+		print(hex(base_addr+i*4)+" : "+hex(test2))
+		# test2 = context.server_ifc.pci_read32(
+		# 	device_id, *arc_core_loc.to("nocVirt"), base_addr + i*4
+		# )
+		# print(hex(base_addr+i*4)+" : "+hex(test2))
+
+	set_udmiaxi_region("csm",device_id,context)
+
+	for i in range(4096// 4):
+		test2 = read_field(base_addr+i*4, (0,31), device_id, arc_core_loc, context)
+		print(hex(base_addr+i*4)+" : "+hex(test2))
+		# test2 = context.server_ifc.pci_read32(
+		# 	device_id, *arc_core_loc.to("nocVirt"), base_addr + i*4
+		# )
+		# print(hex(base_addr+i*4)+" : "+hex(test2))
+
+	run_arc_core(1<<iccm_id, device_id, context)
+
+	# context.server_ifc.pci_write32(
+	# 		device_id, *core_loc.to("nocVirt"), addr + i*4, word
+	# 	)
+
+	# DEADC0DE
+	scratch2 = read_field(device.get_register_addr("ARC_RESET_SCRATCH2"), (0,31), device_id, arc_core_loc, context)
+	if scratch2 != 0xbebaceca:
+		print("Failed to load fw")
+		return 1
+
+

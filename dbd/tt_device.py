@@ -102,6 +102,11 @@ class Device(TTObject):
     nocTr_y_to_noc0_y = dict()
     noc0_y_to_nocTr_y = dict()
 
+    ARC_RESET_ARC_MISC_CNTL_NOC = 0x0
+    ARC_RESET_ARC_MISC_STATUS_NOC = 0x0
+    ARC_RESET_ARC_MISC_CNTL_PCI =   0x0
+    ARC_RESET_ARC_MISC_STATUS_PCI = 0x0
+
     @cached_property
     def debuggable_cores(self):
         # Base implementation for grayskull, wormhole and blackhole
@@ -1262,6 +1267,14 @@ class Device(TTObject):
                 status_str += "-" if risc_debug.is_in_reset() else "R"
             return status_str
         return bt
+    
+    PCI_REGISTER_ADDR = {} 
+    NOC_REGISTER_ADDR = {}
+
+    def get_register_addr(self, name: str) -> str:
+        if self._has_mmio:
+            return self.PCI_REGISTER_ADDR[name]
+        return self.NOC_REGISTER_ADDR[name]
 # end of class Device
 
 # This is based on runtime_utils.cpp:get_soc_desc_path()
