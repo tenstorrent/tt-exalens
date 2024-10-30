@@ -102,11 +102,6 @@ class Device(TTObject):
     nocTr_y_to_noc0_y = dict()
     noc0_y_to_nocTr_y = dict()
 
-    ARC_RESET_ARC_MISC_CNTL_NOC = 0x0
-    ARC_RESET_ARC_MISC_STATUS_NOC = 0x0
-    ARC_RESET_ARC_MISC_CNTL_PCI =   0x0
-    ARC_RESET_ARC_MISC_STATUS_PCI = 0x0
-
     @cached_property
     def debuggable_cores(self):
         # Base implementation for grayskull, wormhole and blackhole
@@ -446,6 +441,12 @@ class Device(TTObject):
             else:
                 locs.append(OnChipCoordinate.create(loc_or_list, self, "nocVirt"))
         return locs
+    
+    def get_arc_block_location(self) -> OnChipCoordinate:
+        """
+        Returns locations of all ARC blocks
+        """
+        return self.get_block_locations(block_type="arc")[0]
 
     @cached_property
     def _block_locations(self):
