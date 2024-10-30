@@ -17,7 +17,7 @@ from dbd.tt_debuda_context import Context
 from dbd.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name
 from dbd.tt_firmware import ELF
 from dbd.tt_object import DataArray
-
+import os
 
 def invalid_argument_decorator(func):
 	@wraps(func)
@@ -448,3 +448,10 @@ class TestARC(unittest.TestCase):
 
 		# Asserting that return_3 (aiclk) is greater than 400 and less than 2000
 		self.assertTrue(return_3 > 200 and return_3 < 2000)
+
+	def test_load_arc_fw(self):
+		device_id = 0
+		fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_dbg_fw.hex")
+
+		fw_loaded = lib.load_arc_fw(fw_file_path,device_id ,context=self.context)
+		assert(fw_loaded == 1)
