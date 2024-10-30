@@ -247,10 +247,18 @@ def arc_msg(device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1:
 
 	return context.server_ifc.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
 
-def write_field(reg_addr: int, bit_range: tuple, value: int, device_id: int, core_loc: OnChipCoordinate, context: Context = None):
+def write_field(reg_addr: int, value: int, core_loc: OnChipCoordinate, bit_range: tuple = (0, 31), device_id: int = 0, context: Context = None) -> None:
+	""" Write a value to a field in a register.
+
+	Args:
+		reg_addr (int): Register address to write to.
+		value (int): Value to write to the field.
+		core_loc (OnChipCoordinate): Core location.
+		bit_range (tuple, default (0, 31)): Tuple of start and end bits of the field.
+		device_id (int, default 0): ID number of device to write to.
+		context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
 	"""
-	Write a value to a field in a register.
-	"""
+
 	context = check_context(context)
 	validate_device_id(device_id, context)
 
@@ -260,26 +268,29 @@ def write_field(reg_addr: int, bit_range: tuple, value: int, device_id: int, cor
 
 	mask = ((1 << (end_bit - start_bit + 1)) - 1) << start_bit
 
-	value = (value<<start_bit)&mask
+	value = (value << start_bit) & mask
 	
 	if context.devices[device_id]._has_mmio:
 		context.server_ifc.pci_write32_raw(
-			device_id,  reg_addr, value
+			device_id, reg_addr, value
 		)
 	else:
 		context.server_ifc.pci_write32(
 			device_id, *core_loc.to("nocVirt"), reg_addr, value
 		)
-	# value_bytes = value.to_bytes(4, byteorder='little')
 
-	# write_to_device(
-	# 	core_loc, reg_addr, value_bytes,device_id, context
-	# )
+def read_field(reg_addr: int, core_loc: OnChipCoordinate, bit_range: tuple = (0, 31), device_id: int = 0, context: Context = None) -> int:
+	""" Read a value from a field in a register.
+
+	Args:
+		reg_addr (int): Register address to read from.
+		core_loc (OnChipCoordinate): Core location.
+		bit_range (tuple, default (0, 31)): Tuple of start and end bits of the field.
+		device_id (int, default 0): ID number of device to read from.
+		context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
 	
-
-def read_field(reg_addr: int, bit_range: tuple, device_id: int, core_loc: OnChipCoordinate, context: Context = None):
-	"""
-	Read a value from a field in a register.
+	Returns:
+		int: Value read from the field.
 	"""
 	context = check_context(context)
 	validate_device_id(device_id, context)
@@ -298,55 +309,65 @@ def read_field(reg_addr: int, bit_range: tuple, device_id: int, core_loc: OnChip
 		read_val = context.server_ifc.pci_read32(
 			device_id, *core_loc.to("nocVirt"), reg_addr
 		)
-	# read_val = read_from_device(
-	# 	core_loc, reg_addr,device_id,4, context
-	# )
 
-	# read_val = int.from_bytes(read_val, byteorder='little')
+	return (read_val & mask) >> start_bit
 
-	return (read_val&mask)>>start_bit
+def run_arc_core(mask: int, device_id: int = 0, context: Context = None):
+	""" Runs the arc core specified by the mask.
 
-def run_arc_core(mask: int, device_id: int, context: Context = None):
+	Args:
+		mask : Mask specifying which ARC core to run.
+		device_id (int, default 0) : ID number of device to run ARC core on.
+		context (Context, optional) : Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
 	"""
-	Runs the arc core(s) specified by the mask.
-	"""
-	arc_core_loc = OnChipCoordinate.create("0-10", device=context.devices[device_id])
 	device = context.devices[device_id]
+	arc_core_loc = device.get_arc_block_location()
 
 	req_arc_core_run_bit_range = (0,3)
 	core_run_ack_bit_range = (0,3)
 
-	write_field(device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"), req_arc_core_run_bit_range, mask,device_id, arc_core_loc, context)
+	write_field(device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"), mask, arc_core_loc, req_arc_core_run_bit_range, device_id, context)
 
 	core_run_ack = 0
 	# Waiting for run to be acknowledged
 	while (core_run_ack & mask != mask):
-		core_run_ack = read_field(device.get_register_addr("ARC_RESET_ARC_MISC_STATUS"), core_run_ack_bit_range, device_id, arc_core_loc, context)
+		core_run_ack = read_field(device.get_register_addr("ARC_RESET_ARC_MISC_STATUS"), arc_core_loc, core_run_ack_bit_range, device_id, context)
 	
-	write_field(device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"), req_arc_core_run_bit_range, 0, device_id, arc_core_loc, context)
+	write_field(device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"), 0, arc_core_loc, req_arc_core_run_bit_range, device_id, context)
 
-def halt_arc_core(mask: int, device_id: int, context: Context = None):
+def halt_arc_core(mask: int, device_id: int = 0, context: Context = None):
+	""" Halts the ARC core specified by the mask.
+
+	Args:
+		mask : Mask specifying which ARC core to halt.
+		device_id (int, default 0) : ID number of device to halt ARC core on.
+		context (Context, optional) : Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
 	"""
-	Halts the ARC core(s) specified by the mask.
-	"""
-	arc_core_loc = OnChipCoordinate.create("0-10", device=context.devices[device_id])
 	device = context.devices[device_id]
+	arc_core_loc = device.get_arc_block_location()
 
 	req_arc_core_halt_bit_range = (4,7)
 	core_halt_ack_bit_range = (4,7)
 
-	write_field(device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"), req_arc_core_halt_bit_range, mask,device_id, arc_core_loc, context)
+	write_field(device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"), mask, arc_core_loc, req_arc_core_halt_bit_range, device_id, context)
 
 	core_halt_ack = 0
 	# Waiting for halt to be acknowledged
 	while (core_halt_ack != mask):
-		core_halt_ack = read_field(device.get_register_addr("ARC_RESET_ARC_MISC_STATUS"), core_halt_ack_bit_range, device_id, arc_core_loc, context)
+		core_halt_ack = read_field(device.get_register_addr("ARC_RESET_ARC_MISC_STATUS"), arc_core_loc, core_halt_ack_bit_range, device_id, context)
 	
-	write_field(device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"),req_arc_core_halt_bit_range,0,device_id,arc_core_loc,context)
+	write_field(device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"), 0, arc_core_loc, req_arc_core_halt_bit_range, device_id, context)
 
-def set_udmiaxi_region(mem_type:str, device_id:int, context:Context=None):
-	arc_core_loc = OnChipCoordinate.create("0-10", device=context.devices[device_id])
+def set_udmiaxi_region(mem_type: str, device_id: int = 0, context:Context=None):
+	""" Sets the UDMIAXI region to the specified memory type.
+
+	Args:
+		mem_type (str): Memory type to set the UDMIAXI region to. Can be 'iccm', 'iccm0', 'iccm1', 'iccm2', 'iccm3', or 'csm'.
+		device_id (int, default 0): ID number of device to set UDMIAXI region on.
+		context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
+	"""
 	device = context.devices[device_id]
+	arc_core_loc = device.get_arc_block_location()
 
 	iccm_id = re.findall('\d',mem_type)
 	if len(iccm_id) == 0:
@@ -358,24 +379,25 @@ def set_udmiaxi_region(mem_type:str, device_id:int, context:Context=None):
 
 	base_addr = ((0x10000000 >> 24) & 0xff) if mem_type == 'csm' else (iccm_id*0x3)
 
-	write_field(device.get_register_addr("ARC_RESET_ARC_UDMIAXI_REGION"), (0,31), base_addr,device_id, arc_core_loc, context)
+	write_field(device.get_register_addr("ARC_RESET_ARC_UDMIAXI_REGION"), base_addr, arc_core_loc, (0,31), device_id, context)
 
 
-def load_arc_fw(file_name: str, device_id: int, context: Context = None):
-	"""
-	Loads the ARC firmware from the file into the device.
+def load_arc_fw(file_name: str, device_id: int = 0, context: Context = None) -> bool:
+	""" Loads the ARC firmware from the file into the device.
+
+	Args:
+		file_name (str): Path to the file containing the ARC firmware.
+		device_id (int, default 0): ID number of device to load firmware on.
+		context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
+	
+	Returns:
+		bool: False if fw not loaded
 	"""
 	context = check_context(context)
 	validate_device_id(device_id, context)
 
-	arc_core_loc = OnChipCoordinate.create("0-10", device=context.devices[device_id])
 	device = context.devices[device_id]
-	# if len(iccm_id) == 0:
-	# 	iccm_id = 0
-	# 	assert mem_type=='iccm' or mem_type=='csm'
-	# else:
-	# 	iccm_id = int(iccm_id[0])
-	# 	assert iccm_id>=0 and iccm_id<=3
+	arc_core_loc = device.get_arc_block_location()
 
 	iccm_id = 2
 	mem_type = f'iccm{iccm_id}'
@@ -411,56 +433,19 @@ def load_arc_fw(file_name: str, device_id: int, context: Context = None):
 
 		for offset, data in read_contiguous_hex_chunks(f):
 			if first_chunk: # Load reset vector
-				write_field(device.get_register_addr("ARC_ROM_DATA"), (0,31), int.from_bytes(data[0:4], 'little'), device_id, arc_core_loc, context)
-				test1 = read_field(device.get_register_addr("ARC_ROM_DATA"), (0,31), device_id, arc_core_loc, context)
-				print(test1)
-				# context.server_ifc.pci_write32(
-				# 	device_id, *arc_core_loc.to("nocVirt"), device.get_register_addr("ARC_ROM_DATA"), int.from_bytes(data[0:4], 'little')
-				# )
-
-				# self.AXI.write32("ARC_ROM.DATA[0]", int.from_bytes(data[0:4], 'little'))
+				write_field(device.get_register_addr("ARC_ROM_DATA"), int.from_bytes(data[0:4], 'little'), arc_core_loc, (0,31), device_id, context)
 				first_chunk = False
 
-			# if self.use_block_writes_to_load_arc_fw():
-			# 	self.pci_block_write_xy(self.ARC_LOCATIONS[0][0], self.ARC_LOCATIONS[0][1], 0, base_address + offset, data)
-			# else:
 			for i in range(len(data) // 4):
 				word = int.from_bytes(data[i*4 : i*4+4], 'little')
-				write_field(base_addr+i*4, (0,31), word, device_id, arc_core_loc, context)
-				test2 = read_field(base_addr+i*4, (0,31), device_id, arc_core_loc, context)
-				print(hex(base_addr+i*4)+" : "+ hex(test2)+" "+ hex(word))
-				# context.server_ifc.pci_write32(
-				# 	device_id, *arc_core_loc.to("nocVirt"), base_addr + i*4, word
-				# )
-
-	for i in range(4096// 4):
-		test2 = read_field(base_addr+i*4, (0,31), device_id, arc_core_loc, context)
-		print(hex(base_addr+i*4)+" : "+hex(test2))
-		# test2 = context.server_ifc.pci_read32(
-		# 	device_id, *arc_core_loc.to("nocVirt"), base_addr + i*4
-		# )
-		# print(hex(base_addr+i*4)+" : "+hex(test2))
+				write_field(base_addr+i*4, word, arc_core_loc, (0,31), device_id, context)
 
 	set_udmiaxi_region("csm",device_id,context)
-
-	for i in range(4096// 4):
-		test2 = read_field(base_addr+i*4, (0,31), device_id, arc_core_loc, context)
-		print(hex(base_addr+i*4)+" : "+hex(test2))
-		# test2 = context.server_ifc.pci_read32(
-		# 	device_id, *arc_core_loc.to("nocVirt"), base_addr + i*4
-		# )
-		# print(hex(base_addr+i*4)+" : "+hex(test2))
-
 	run_arc_core(1<<iccm_id, device_id, context)
 
-	# context.server_ifc.pci_write32(
-	# 		device_id, *core_loc.to("nocVirt"), addr + i*4, word
-	# 	)
-
-	# DEADC0DE
-	scratch2 = read_field(device.get_register_addr("ARC_RESET_SCRATCH2"), (0,31), device_id, arc_core_loc, context)
+	scratch2 = read_field(device.get_register_addr("ARC_RESET_SCRATCH2"), arc_core_loc, (0,31), device_id, context)
 	if scratch2 != 0xbebaceca:
-		print("Failed to load fw")
-		return 1
-
+		return False
+	
+	return True
 
