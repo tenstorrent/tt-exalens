@@ -109,9 +109,8 @@ void tt::dbd::server::process(const tt::dbd::request& base_request) {
         case tt::dbd::request_type::jtag_read32: {
             auto& request = static_cast<const tt::dbd::jtag_read32_request&>(base_request);
             if (jtag_implementation) {
-                uint32_t res;
-                jtag_implementation->tt_read_noc_xy(request.noc_x, request.noc_y, request.address, true, 1, &res);
-                respond(res);
+                respond(
+                    jtag_implementation->read_noc_xy(request.chip_id, request.noc_x, request.noc_y, request.address));
             }
             respond_not_supported();
             break;
@@ -121,33 +120,28 @@ void tt::dbd::server::process(const tt::dbd::request& base_request) {
             auto& request = static_cast<const tt::dbd::jtag_write32_request&>(base_request);
             if (jtag_implementation) {
                 uint32_t res;
-                jtag_implementation->tt_write_noc_xy(request.noc_x, request.noc_y, request.address, request.data, true,
-                                                     1);
-                respond(res);
+                jtag_implementation->write_noc_xy(request.chip_id, request.noc_x, request.noc_y, request.address,
+                                                  request.data);
+                respond(0);
             }
             respond_not_supported();
             break;
         }
 
-        case tt::dbd::request_type::jtag_rdaxi: {
-            auto& request = static_cast<const tt::dbd::jtag_rdaxi_request&>(base_request);
+        case tt::dbd::request_type::jtag_read32_axi: {
+            auto& request = static_cast<const tt::dbd::jtag_read32_axi_request&>(base_request);
             if (jtag_implementation) {
-                uint32_t res;
-                uint32_t status;
-                jtag_implementation->tt_read_axi(request.address, &res, &status);
-                respond(res);
+                respond(jtag_implementation->read_axi(request.chip_id, request.address));
             }
             respond_not_supported();
             break;
         }
 
-        case tt::dbd::request_type::jtag_wraxi: {
-            auto& request = static_cast<const tt::dbd::jtag_wraxi_request&>(base_request);
+        case tt::dbd::request_type::jtag_write32_axi: {
+            auto& request = static_cast<const tt::dbd::jtag_write32_axi_request&>(base_request);
             if (jtag_implementation) {
-                uint32_t res;
-                uint32_t status;
-                jtag_implementation->tt_write_axi(request.address, request.data, &status);
-                respond(res);
+                jtag_implementation->write_axi(request.chip_id, request.address, request.data);
+                respond(0);
             }
             respond_not_supported();
             break;

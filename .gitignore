@@ -26,4 +26,4 @@ compile_commands.json
 .coverage
 *.egg-info
 
-/jtag-access-library
+/third_party/jtag-access-library

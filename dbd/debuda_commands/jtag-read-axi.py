@@ -43,7 +43,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     current_device_id = ui_state.current_device_id
     current_device = context.devices[current_device_id]
 
-    val = tt_device.SERVER_IFC.jtag_rdaxi(
+    val = tt_device.SERVER_IFC.jtag_read32_axi(
         ui_state.current_device_id, addr
     )
     print_a_jtag_axi_read(addr, val)

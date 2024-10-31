@@ -89,7 +89,7 @@ add_custom_command(TARGET debuda_server_lib
 )
 
 # JTAG
-set(JTAG_ACCESS_LIB_PATH "${DEBUDA_HOME}/jtag-access-library")
+set(JTAG_ACCESS_LIB_PATH "${DEBUDA_HOME}/third_party/jtag-access-library")
 set(LIBJTAG "${CMAKE_BINARY_DIR}/lib/libjtag.so")
 set(LIBJTAG_SOURCE "${JTAG_ACCESS_LIB_PATH}/out/libjtag.so")
 set(LIBJTAG_DEP "${CMAKE_BINARY_DIR}/lib/libjlinkarm.so")

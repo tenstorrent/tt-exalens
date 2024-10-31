@@ -89,11 +89,11 @@ class DbdCommunicator(ABC):
         pass
 
     @abstractmethod
-    def jtag_rdaxi(self, chip_id: int, address: int):
+    def jtag_read32_axi(self, chip_id: int, address: int):
         pass
 
     @abstractmethod
-    def jtag_wraxi(self, chip_id: int, address: int, data: int):
+    def jtag_write32_axi(self, chip_id: int, address: int, data: int):
         pass
     
     def using_cache(self) -> bool:

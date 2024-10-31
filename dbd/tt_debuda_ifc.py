@@ -35,8 +35,8 @@ class debuda_server_request_type(Enum):
 
     jtag_read32 = 50
     jtag_write32 = 51
-    jtag_rdaxi = 52
-    jtag_wraxi = 53
+    jtag_read32_axi = 52
+    jtag_write32_axi = 53
 
     # Runtime requests
     pci_read_tile = 100
@@ -302,22 +302,22 @@ class debuda_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def jtag_rdaxi(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+    def jtag_read32_axi(self, chip_id: int, noc_x: int, noc_y: int, address: int):
         self._socket.send(
             struct.pack(
                 "<BBBBQ",
-                debuda_server_request_type.jtag_rdaxi.value,
+                debuda_server_request_type.jtag_read32_axi.value,
                 chip_id,
                 address,
             )
         )
         return self._check(self._socket.recv())
 
-    def jtag_wraxi(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+    def jtag_write32_axi(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
         self._socket.send(
             struct.pack(
                 "<BBBBQ",
-                debuda_server_request_type.jtag_wraxi.value,
+                debuda_server_request_type.jtag_write32_axi.value,
                 chip_id,
                 address,
                 data,
@@ -468,14 +468,14 @@ class debuda_client(DbdCommunicator):
             self._communication.jtag_write32(chip_id, noc_x, noc_y, address)
         )
 
-    def jtag_rdaxi(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+    def jtag_read32_axi(self, chip_id: int, noc_x: int, noc_y: int, address: int):
         return self.parse_uint32_t(
-            self._communication.jtag_rdaxi(chip_id, address)
+            self._communication.jtag_read32_axi(chip_id, address)
         )
 
-    def jtag_wraxi(self, chip_id: int, address: int, data: int):
+    def jtag_write32_axi(self, chip_id: int, address: int, data: int):
         return self.parse_uint32_t(
-            self._communication.jtag_wraxi(chip_id, address, data)
+            self._communication.jtag_write32_axi(chip_id, address, data)
         )
 
 
@@ -565,11 +565,11 @@ class debuda_pybind(DbdCommunicator):
     def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
         return self._check_result(tt_dbd_pybind.jtag_write32(chip_id, noc_x, noc_y, address, data))
 
-    def jtag_rdaxi(self, chip_id: int, address: int):
-        return self._check_result(tt_dbd_pybind.jtag_rdaxi(chip_id, address))
+    def jtag_read32_axi(self, chip_id: int, address: int):
+        return self._check_result(tt_dbd_pybind.jtag_read32_axi(chip_id, address))
 
-    def jtag_wraxi(self, chip_id: int, address: int, data: int):
-        return self._check_result(tt_dbd_pybind.jtag_wraxi(chip_id, address, data))
+    def jtag_write32_axi(self, chip_id: int, address: int, data: int):
+        return self._check_result(tt_dbd_pybind.jtag_write32_axi(chip_id, address, data))
 
     def get_file(self, file_path: str) -> str:
         content = None

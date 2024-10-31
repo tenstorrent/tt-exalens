@@ -140,11 +140,11 @@ class DbdCacheThrough(DbdCache):
         return self.communicator.jtag_write32(chip_id, noc_x, noc_y, address, data)
 
     @cache_decorator
-    def jtag_rdaxi(self, chip_id: int, address: int):
-        return self.communicator.jtag_rdaxi(chip_id, address)
+    def jtag_read32_axi(self, chip_id: int, address: int):
+        return self.communicator.jtag_read32_axi(chip_id, address)
 
-    def jtag_wraxi(self, chip_id: int, address: int, data: int):
-        return self.communicator.jtag_wraxi(chip_id, address, data)
+    def jtag_write32_axi(self, chip_id: int, address: int, data: int):
+        return self.communicator.jtag_write32_axi(chip_id, address, data)
 
     def using_cache(self) -> bool:
         return True
@@ -277,11 +277,11 @@ class DbdCacheReader(DbdCache):
         return self.communicator.jtag_write32(chip_id, noc_x, noc_y, address, data)
 
     @read_decorator
-    def jtag_rdaxi(self, chip_id: int, address: int):
-        return self.communicator.jtag_rdaxi(chip_id, address)
+    def jtag_read32_axi(self, chip_id: int, address: int):
+        return self.communicator.jtag_read32_axi(chip_id, address)
 
-    def jtag_wraxi(self, chip_id: int, address: int, data: int):
-        return self.communicator.jtag_wraxi(chip_id, address, data)
+    def jtag_write32_axi(self, chip_id: int, address: int, data: int):
+        return self.communicator.jtag_write32_axi(chip_id, address, data)
 
     def using_cache(self) -> bool:
         return True

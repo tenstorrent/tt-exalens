@@ -8,6 +8,7 @@
 #include "communication.h"
 #include "debuda_implementation.h"
 #include "jtag.h"
+#include "jtag_implementation.h"
 
 namespace tt::dbd {
 
@@ -19,17 +20,8 @@ class server : public communication {
     server(std::unique_ptr<debuda_implementation> implementation, const std::string& run_dirpath = {})
         : implementation(std::move(implementation)), run_dirpath(run_dirpath) {
         try {
-            jtag_implementation = std::make_unique<Jtag>("./build/lib/libjtag.so");
-            std::vector<uint32_t> jlink_devices = jtag_implementation->tt_enumerate_jlink();
-            if (jlink_devices.empty()) {
-                jtag_implementation.reset();
-                throw std::runtime_error("There are no devices");
-            }
-            uint32_t status = jtag_implementation->tt_open_jlink_by_serial_wrapper(jlink_devices[0]);
-            if (status != 0) {
-                jtag_implementation.reset();
-                throw std::runtime_error("Device 0 Error");
-            }
+            std::unique_ptr<Jtag> jtag = std::make_unique<Jtag>((run_dirpath + "/../lib/libjtag.so").c_str());
+            jtag_implementation = std::make_unique<JtagImplementation>(std::move(jtag));
         } catch (std::runtime_error& error) {
         }
     }
@@ -49,7 +41,7 @@ class server : public communication {
     virtual std::optional<std::string> get_run_dirpath();
 
     std::unique_ptr<debuda_implementation> implementation;
-    std::unique_ptr<Jtag> jtag_implementation;
+    std::unique_ptr<JtagImplementation> jtag_implementation;
     std::string run_dirpath;
 };
 
