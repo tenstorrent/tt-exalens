@@ -15,7 +15,7 @@ static std::string LARGE_WRITE_TLB_STR = "LARGE_WRITE_TLB";
 
 namespace tt::dbd {
 
-umd_implementation::umd_implementation(tt_SiliconDevice* device) { this->device = device; }
+umd_implementation::umd_implementation(tt_device* device) { this->device = device; }
 
 std::optional<uint32_t> umd_implementation::pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                        uint64_t address) {
@@ -104,10 +104,13 @@ std::optional<uint32_t> umd_implementation::pci_read32_raw(uint8_t chip_id, uint
 
     // TODO: @ihamer, finish this
     if (is_chip_mmio_capable(chip_id)) {
-        return device->bar_read32(chip_id, address);
-    } else {
-        return {};
+        tt_SiliconDevice* silicon_device = dynamic_cast<tt_SiliconDevice*>(device);
+
+        if (silicon_device) {
+            return silicon_device->bar_read32(chip_id, address);
+        }
     }
+    return {};
 }
 
 std::optional<uint32_t> umd_implementation::pci_write32_raw(uint8_t chip_id, uint64_t address, uint32_t data) {
@@ -117,11 +120,14 @@ std::optional<uint32_t> umd_implementation::pci_write32_raw(uint8_t chip_id, uin
 
     // TODO: @ihamer, finish this
     if (is_chip_mmio_capable(chip_id)) {
-        device->bar_write32(chip_id, address, data);
-        return 4;
-    } else {
-        return {};
+        tt_SiliconDevice* silicon_device = dynamic_cast<tt_SiliconDevice*>(device);
+
+        if (silicon_device) {
+            silicon_device->bar_write32(chip_id, address, data);
+            return 4;
+        }
     }
+    return {};
 }
 
 std::optional<uint32_t> umd_implementation::dma_buffer_read32(uint8_t chip_id, uint64_t address, uint32_t channel) {
@@ -145,12 +151,14 @@ std::optional<std::string> umd_implementation::pci_read_tile(uint8_t chip_id, ui
 }
 
 std::optional<std::string> umd_implementation::get_harvester_coordinate_translation(uint8_t chip_id) {
-    if (!device) {
+    tt_SiliconDevice* silicon_device = dynamic_cast<tt_SiliconDevice*>(device);
+
+    if (!silicon_device) {
         return {};
     }
 
     std::unordered_map<tt_xy_pair, tt_xy_pair> harvested_coord_translation =
-        device->get_harvested_coord_translation_map(chip_id);
+        silicon_device->get_harvested_coord_translation_map(chip_id);
     std::string ret = "{ ";
     for (auto& kv : harvested_coord_translation) {
         ret += "(" + std::to_string(kv.first.x) + "," + std::to_string(kv.first.y) + ") : (" +

@@ -14,6 +14,7 @@
 
 #include "device/blackhole/blackhole_implementation.h"
 #include "device/grayskull/grayskull_implementation.h"
+#include "device/simulation/tt_simulation_device.h"
 #include "device/tt_cluster_descriptor.h"
 #include "device/tt_device.h"
 #include "device/wormhole/wormhole_implementation.h"
@@ -21,6 +22,9 @@
 // Include automatically generated files that we embed in source to avoid managing their deployment
 static const uint8_t blackhole_configuration_bytes[] = {
 #include "../configuration/blackhole.embed"
+};
+static const uint8_t blackhole_simulation_configuration_bytes[] = {
+#include "../configuration/blackhole_simulation.embed"
 };
 static const uint8_t grayskull_configuration_bytes[] = {
 #include "../configuration/grayskull.embed"
@@ -283,13 +287,12 @@ static std::unique_ptr<tt_SiliconDevice> create_blackhole_device(const std::stri
 // Creates SOC descriptor files by serializing tt_SocDescroptor structure to yaml.
 // TODO: Current copied from runtime/runtime_utils.cpp: print_device_description. It should be moved to UMD and reused
 // on both places.
-static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDevice *device,
+static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_device *device,
                                                                     const std::vector<uint8_t> &device_ids) {
-    tt_device *d = static_cast<tt_device *>(device);
     std::map<uint8_t, std::string> device_soc_descriptors;
 
     for (auto device_id : device_ids) {
-        auto &soc_descriptor = d->get_soc_descriptor(device_id);
+        auto &soc_descriptor = device->get_soc_descriptor(device_id);
         std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
         std::ofstream outfile(file_name);
 
@@ -419,7 +422,7 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDe
 
 namespace tt::dbd {
 
-umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt_SiliconDevice> device)
+umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt_device> device)
     : umd_implementation(device.get()), device(std::move(device)) {}
 
 std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open(
@@ -497,6 +500,34 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
     implementation->runtime_yaml_path = runtime_yaml_path;
     implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
+    implementation->device_ids = device_ids;
+    implementation->device_soc_descriptors = device_soc_descriptors;
+    return std::move(implementation);
+}
+
+std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open_simulation(
+    const std::string &runtime_yaml_path) {
+    // For now, we hard code blackhole simulation soc descriptor as there is only VCS simulator for blackhole...
+    const uint8_t *configuration_bytes = blackhole_simulation_configuration_bytes;
+    size_t configuration_length =
+        sizeof(blackhole_simulation_configuration_bytes) / sizeof(blackhole_simulation_configuration_bytes[0]);
+    std::string device_configuration_path = write_temp_file(
+        "soc_descriptor.yaml", reinterpret_cast<const char *>(configuration_bytes), configuration_length);
+
+    std::unique_ptr<tt_SimulationDevice> device = std::make_unique<tt_SimulationDevice>(device_configuration_path);
+
+    // TODO: Initialize simulation device
+    device->start_device({});
+
+    std::vector<uint8_t> device_ids{0};
+    auto device_soc_descriptors = create_device_soc_descriptors(device.get(), device_ids);
+
+    auto implementation = std::make_unique<umd_with_open_implementation>(std::move(device));
+
+    // TODO:
+    implementation->runtime_yaml_path = runtime_yaml_path;
+    implementation->device_configuration_path = device_configuration_path;
+    // implementation->cluster_descriptor_path = cluster_descriptor_path;
     implementation->device_ids = device_ids;
     implementation->device_soc_descriptors = device_soc_descriptors;
     return std::move(implementation);

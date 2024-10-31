@@ -19,6 +19,7 @@ struct server_config {
     int port;
     std::string runtime_data_yaml_path;
     std::string run_dirpath;
+    std::string vcs_binary;
     std::vector<uint8_t> wanted_devices;
 };
 
@@ -40,8 +41,14 @@ int run_debuda_server(const server_config& config) {
         std::unique_ptr<tt::dbd::umd_with_open_implementation> implementation;
         // Try to open only wanted devices
         try {
-            implementation =
-                tt::dbd::umd_with_open_implementation::open({}, config.runtime_data_yaml_path, config.wanted_devices);
+            if (config.vcs_binary.empty()) {
+                implementation = tt::dbd::umd_with_open_implementation::open({}, config.runtime_data_yaml_path,
+                                                                             config.wanted_devices);
+            } else {
+                ensure_file("VCS binary", config.vcs_binary);
+                setenv("TT_VCS_BINARY", config.vcs_binary.c_str(), 1);
+                implementation = tt::dbd::umd_with_open_implementation::open_simulation(config.runtime_data_yaml_path);
+            }
         } catch (std::runtime_error& error) {
             log_custom(tt::Logger::Level::Error, tt::LogDebuda, "Cannot open device: {}.", error.what());
             return 1;
@@ -102,6 +109,14 @@ server_config parse_args(int argc, char** argv) {
             }
             config.run_dirpath = argv[i];
             i += 1;
+        } else if (strcmp(argv[i], "-s") == 0) {
+            i += 1;
+            if (i >= argc) {
+                log_error("Expected path to VCS binary after -s");
+                return {};
+            }
+            config.vcs_binary = argv[i];
+            i += 1;
         } else if (strcmp(argv[i], "-d") == 0) {
             i++;
             if (i >= argc) {
@@ -132,7 +147,8 @@ server_config parse_args(int argc, char** argv) {
 int main(int argc, char** argv) {
     if (argc < 2) {
         log_error(
-            "Need arguments: <port> [-y path_to_yaml_file] [-r <run_dirpath>] [-d <device_id1> [<device_id2> ... "
+            "Need arguments: <port> [-y path_to_yaml_file] [-r <run_dirpath>] [-s <simulation_VCS_binary>] [-d "
+            "<device_id1> [<device_id2> ... "
             "<device_idN>]]");
         return 1;
     }

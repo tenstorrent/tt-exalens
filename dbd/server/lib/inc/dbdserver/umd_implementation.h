@@ -8,13 +8,13 @@
 #include "debuda_implementation.h"
 #include "device/tt_device.h"
 
-class tt_SiliconDevice;
+class tt_device;
 
 namespace tt::dbd {
 
 class umd_implementation : public debuda_implementation {
    public:
-    umd_implementation(tt_SiliconDevice* device);
+    umd_implementation(tt_device* device);
 
    protected:
     std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override;
@@ -41,7 +41,7 @@ class umd_implementation : public debuda_implementation {
    private:
     bool is_chip_mmio_capable(uint8_t chip_id);
 
-    tt_SiliconDevice* device = nullptr;
+    tt_device* device = nullptr;
     std::string cluster_descriptor_path;
 };
 
