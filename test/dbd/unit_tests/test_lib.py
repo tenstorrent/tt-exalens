@@ -450,8 +450,13 @@ class TestARC(unittest.TestCase):
 		self.assertTrue(return_3 > 200 and return_3 < 2000)
 
 	def test_load_arc_fw(self):
-		device_id = 0
 		fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_dbg_fw.hex")
 
-		fw_loaded = lib.load_arc_fw(fw_file_path,device_id ,context=self.context)
-		assert(fw_loaded == 1)
+		for device_id in self.context.device_ids:
+			lib.load_arc_fw(fw_file_path,device_id ,context=self.context)
+			device = self.context.devices[device_id]
+			arc_core_loc = device.get_arc_block_location()
+
+			scratch2 = lib.read_field(device.get_register_addr("ARC_RESET_SCRATCH2"), arc_core_loc, (0,31), device_id, self.context)
+
+			assert(scratch2 == 0xbebaceca)

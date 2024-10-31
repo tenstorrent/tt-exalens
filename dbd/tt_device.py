@@ -444,9 +444,13 @@ class Device(TTObject):
     
     def get_arc_block_location(self) -> OnChipCoordinate:
         """
-        Returns locations of all ARC blocks
+        Returns OnChipCoordinate of the ARC block
         """
-        return self.get_block_locations(block_type="arc")[0]
+        arc_locations = self.get_block_locations(block_type="arc")
+
+        assert(len(arc_locations) == 1)
+
+        return arc_locations[0]
 
     @cached_property
     def _block_locations(self):
@@ -1269,13 +1273,57 @@ class Device(TTObject):
             return status_str
         return bt
     
-    PCI_REGISTER_ADDR = {} 
-    NOC_REGISTER_ADDR = {}
+    PCI_ARC_RESET_BASE_ADDR = 0x0
+    PCI_ARC_CSM_DATA_BASE_ADDR = 0x0
+    PCI_ARC_ROM_DATA_BASE_ADDR = 0x0
 
-    def get_register_addr(self, name: str) -> str:
-        if self._has_mmio:
-            return self.PCI_REGISTER_ADDR[name]
-        return self.NOC_REGISTER_ADDR[name]
+    NOC_ARC_RESET_BASE_ADDR = 0x0
+    NOC_ARC_CSM_DATA_BASE_ADDR = 0x0
+    NOC_ARC_ROM_DATA_BASE_ADDR = 0x0
+
+    REGISTER_ADDRESSES = None 
+
+    def get_register_addr(self, name: str) -> int:
+        if self.REGISTER_ADDRESSES is None:
+            if self._has_mmio:
+                self.REGISTER_ADDRESSES = self.get_pci_register_addresses()
+            else:
+                self.REGISTER_ADDRESSES = self.get_noc_register_addresses()
+
+        assert(name in self.REGISTER_ADDRESSES)
+        return self.REGISTER_ADDRESSES[name]
+    
+    def get_pci_register_addresses(self):
+        temp = {
+            "ARC_RESET_ARC_MISC_CNTL": self.PCI_ARC_RESET_BASE_ADDR + 0x100,
+            "ARC_RESET_ARC_MISC_STATUS": self.PCI_ARC_RESET_BASE_ADDR + 0x104,
+            "ARC_RESET_ARC_UDMIAXI_REGION": self.PCI_ARC_RESET_BASE_ADDR + 0x10C,
+            "ARC_RESET_SCRATCH0": self.PCI_ARC_RESET_BASE_ADDR + 0x060,
+            "ARC_RESET_SCRATCH1": self.PCI_ARC_RESET_BASE_ADDR + 0x064,
+            "ARC_RESET_SCRATCH2": self.PCI_ARC_RESET_BASE_ADDR + 0x068,
+            "ARC_RESET_SCRATCH3": self.PCI_ARC_RESET_BASE_ADDR + 0x06C,
+            "ARC_RESET_SCRATCH4": self.PCI_ARC_RESET_BASE_ADDR + 0x070,
+            "ARC_RESET_SCRATCH5": self.PCI_ARC_RESET_BASE_ADDR + 0x074,
+            "ARC_CSM_DATA": self.PCI_ARC_CSM_DATA_BASE_ADDR,
+            "ARC_ROM_DATA": self.PCI_ARC_ROM_DATA_BASE_ADDR
+        }
+        return temp
+    
+    def get_noc_register_addresses(self):
+        temp = {
+            "ARC_RESET_ARC_MISC_CNTL": self.NOC_ARC_RESET_BASE_ADDR + 0x100,
+            "ARC_RESET_ARC_MISC_STATUS": self.NOC_ARC_RESET_BASE_ADDR + 0x104,
+            "ARC_RESET_ARC_UDMIAXI_REGION": self.NOC_ARC_RESET_BASE_ADDR + 0x10C,
+            "ARC_RESET_SCRATCH0": self.NOC_ARC_RESET_BASE_ADDR + 0x060,
+            "ARC_RESET_SCRATCH1": self.NOC_ARC_RESET_BASE_ADDR + 0x064,
+            "ARC_RESET_SCRATCH2": self.NOC_ARC_RESET_BASE_ADDR + 0x068,
+            "ARC_RESET_SCRATCH3": self.NOC_ARC_RESET_BASE_ADDR + 0x06C,
+            "ARC_RESET_SCRATCH4": self.NOC_ARC_RESET_BASE_ADDR + 0x070,
+            "ARC_RESET_SCRATCH5": self.NOC_ARC_RESET_BASE_ADDR + 0x074,
+            "ARC_CSM_DATA": self.NOC_ARC_CSM_DATA_BASE_ADDR,
+            "ARC_ROM_DATA": self.NOC_ARC_ROM_DATA_BASE_ADDR
+        }
+        return temp
 # end of class Device
 
 # This is based on runtime_utils.cpp:get_soc_desc_path()

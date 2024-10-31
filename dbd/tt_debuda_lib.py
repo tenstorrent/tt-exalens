@@ -382,16 +382,13 @@ def set_udmiaxi_region(mem_type: str, device_id: int = 0, context:Context=None):
 	write_field(device.get_register_addr("ARC_RESET_ARC_UDMIAXI_REGION"), base_addr, arc_core_loc, (0,31), device_id, context)
 
 
-def load_arc_fw(file_name: str, device_id: int = 0, context: Context = None) -> bool:
+def load_arc_fw(file_name: str, device_id: int = 0, context: Context = None) -> None:
 	""" Loads the ARC firmware from the file into the device.
 
 	Args:
 		file_name (str): Path to the file containing the ARC firmware.
 		device_id (int, default 0): ID number of device to load firmware on.
 		context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
-	
-	Returns:
-		bool: False if fw not loaded
 	"""
 	context = check_context(context)
 	validate_device_id(device_id, context)
@@ -443,9 +440,4 @@ def load_arc_fw(file_name: str, device_id: int = 0, context: Context = None) -> 
 	set_udmiaxi_region("csm",device_id,context)
 	run_arc_core(1<<iccm_id, device_id, context)
 
-	scratch2 = read_field(device.get_register_addr("ARC_RESET_SCRATCH2"), arc_core_loc, (0,31), device_id, context)
-	if scratch2 != 0xbebaceca:
-		return False
-	
-	return True
 

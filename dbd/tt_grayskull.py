@@ -58,20 +58,9 @@ class GrayskullDevice(tt_device.Device):
     NOC0_X_TO_NOCTR_X = {i: i for i in range(0, len(NOC_0_X_TO_DIE_X))}
     NOCTR_X_TO_NOC0_X = {v: k for k, v in NOC0_X_TO_NOCTR_X.items()}
 
-    PCI_REGISTER_ADDR = {
-        "ARC_RESET_ARC_MISC_CNTL": 0x1FF30100,
-        "ARC_RESET_ARC_MISC_STATUS": 0x1FF30104,
-        "ARC_RESET_ARC_UDMIAXI_REGION": 0x1FF3010C,
-        "ARC_RESET_SCRATCH0": 0x1FF30060,
-        "ARC_RESET_SCRATCH1": 0x1FF30064,
-        "ARC_RESET_SCRATCH2": 0x1FF30068,
-        "ARC_RESET_SCRATCH3": 0x1FF3006C,
-        "ARC_RESET_SCRATCH4": 0x1FF30070,
-        "ARC_RESET_SCRATCH5": 0x1FF30074,
-    } 
-
-    NOC_REGISTER_ADDR = {
-    }
+    PCI_ARC_RESET_BASE_ADDR = 0x1FF30000
+    PCI_ARC_CSM_DATA_BASE_ADDR = 0x1FF30000
+    PCI_ARC_ROM_DATA_BASE_ADDR = 0x1FF00000
 
     def get_harvested_noc0_y_rows(self):
         harvested_workers = self._block_locations["harvested_workers"]
