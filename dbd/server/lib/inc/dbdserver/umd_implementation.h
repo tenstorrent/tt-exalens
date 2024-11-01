@@ -7,7 +7,7 @@
 
 #include "debuda_implementation.h"
 #include "device/tt_device.h"
-#include "jtag_implementation.h"
+#include "jtag_device.h"
 
 class tt_SiliconDevice;
 
@@ -15,7 +15,7 @@ namespace tt::dbd {
 
 class umd_implementation : public debuda_implementation {
    public:
-    umd_implementation(tt_SiliconDevice* device, JtagImplementation* jtag_device);
+    umd_implementation(tt_SiliconDevice* device, JtagDevice* jtag_device);
 
    protected:
     std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override;
@@ -50,7 +50,7 @@ class umd_implementation : public debuda_implementation {
     bool is_chip_mmio_capable(uint8_t chip_id);
 
     tt_SiliconDevice* device = nullptr;
-    JtagImplementation* jtag_device = nullptr;
+    JtagDevice* jtag_device = nullptr;
     std::string cluster_descriptor_path;
 };
 

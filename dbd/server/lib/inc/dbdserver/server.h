@@ -8,7 +8,6 @@
 #include "communication.h"
 #include "debuda_implementation.h"
 #include "jtag.h"
-#include "jtag_implementation.h"
 
 namespace tt::dbd {
 

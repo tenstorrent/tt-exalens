@@ -420,7 +420,7 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDe
 namespace tt::dbd {
 
 umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt_SiliconDevice> device,
-                                                           std::unique_ptr<JtagImplementation> jtag_device)
+                                                           std::unique_ptr<JtagDevice> jtag_device)
     : umd_implementation(device.get(), jtag_device.get()),
       device(std::move(device)),
       jtag_device(std::move(jtag_device)) {}
@@ -495,11 +495,11 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
 
     auto device_soc_descriptors = create_device_soc_descriptors(device.get(), device_ids);
 
-    std::unique_ptr<JtagImplementation> jtag_implementation;
+    std::unique_ptr<JtagDevice> jtag_implementation;
     try {
         std::unique_ptr<Jtag> jtag =
             std::make_unique<Jtag>((binary_directory.string() + std::string("/../lib/libjtag.so")).c_str());
-        jtag_implementation = std::make_unique<JtagImplementation>(std::move(jtag));
+        jtag_implementation = std::make_unique<JtagDevice>(std::move(jtag));
     } catch (std::runtime_error &error) {
     }
 

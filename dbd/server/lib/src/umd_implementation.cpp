@@ -15,7 +15,7 @@ static std::string LARGE_WRITE_TLB_STR = "LARGE_WRITE_TLB";
 
 namespace tt::dbd {
 
-umd_implementation::umd_implementation(tt_SiliconDevice* device, JtagImplementation* jtag_device)
+umd_implementation::umd_implementation(tt_SiliconDevice* device, JtagDevice* jtag_device)
     : device(device), jtag_device(jtag_device) {}
 
 std::optional<uint32_t> umd_implementation::pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,

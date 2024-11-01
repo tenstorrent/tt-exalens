@@ -12,10 +12,10 @@
 
 #include "dbdserver/jtag.h"
 
-class JtagImplementation {
+class JtagDevice {
    public:
-    explicit JtagImplementation(std::unique_ptr<Jtag> jtag_device);
-    ~JtagImplementation();
+    explicit JtagDevice(std::unique_ptr<Jtag> jtag_device);
+    ~JtagDevice();
 
     std::optional<uint32_t> get_device_cnt();
     std::optional<int> open_jlink_by_serial_wrapper(uint32_t chip_id, unsigned int serial_number);
