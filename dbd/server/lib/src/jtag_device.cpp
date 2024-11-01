@@ -80,75 +80,69 @@ std::vector<uint32_t> JtagDevice::get_harvesting_from_efuse(uint32_t efuse_harve
     return std::vector<uint32_t>(harvesting_rows, harvesting_rows + ROW_LEN - 2);
 }
 
-std::optional<int> JtagDevice::open_jlink_by_serial_wrapper(uint32_t chip_id, unsigned int serial_number) {
+std::optional<int> JtagDevice::open_jlink_by_serial_wrapper(uint8_t chip_id, unsigned int serial_number) {
     return jtag->tt_open_jlink_by_serial_wrapper(serial_number);
 }
 
-std::optional<int> JtagDevice::open_jlink_wrapper(uint32_t chip_id) { return jtag->tt_open_jlink_wrapper(); }
+std::optional<int> JtagDevice::open_jlink_wrapper(uint8_t chip_id) { return jtag->tt_open_jlink_wrapper(); }
 
-std::optional<uint32_t> JtagDevice::read_tdr(uint32_t chip_id, const char* client, uint32_t reg_offset) {
+std::optional<uint32_t> JtagDevice::read_tdr(uint8_t chip_id, const char* client, uint32_t reg_offset) {
     return jtag->tt_read_tdr(client, reg_offset);
 }
 
-std::optional<uint32_t> JtagDevice::readmon_tdr(uint32_t chip_id, const char* client, uint32_t id,
-                                                uint32_t reg_offset) {
+std::optional<uint32_t> JtagDevice::readmon_tdr(uint8_t chip_id, const char* client, uint32_t id, uint32_t reg_offset) {
     return jtag->tt_readmon_tdr(client, id, reg_offset);
 }
 
-std::optional<int> JtagDevice::writemon_tdr(uint32_t chip_id, const char* client, uint32_t id, uint32_t reg_offset,
+std::optional<int> JtagDevice::writemon_tdr(uint8_t chip_id, const char* client, uint32_t id, uint32_t reg_offset,
                                             uint32_t data) {
     jtag->tt_writemon_tdr(client, id, reg_offset, data);
     return 0;
 }
 
-std::optional<int> JtagDevice::write_tdr(uint32_t chip_id, const char* client, uint32_t reg_offset, uint32_t data) {
+std::optional<int> JtagDevice::write_tdr(uint8_t chip_id, const char* client, uint32_t reg_offset, uint32_t data) {
     jtag->tt_write_tdr(client, reg_offset, data);
     return 0;
 }
 
-std::optional<int> JtagDevice::dbus_memdump(uint32_t chip_id, const char* client_name, const char* mem,
+std::optional<int> JtagDevice::dbus_memdump(uint8_t chip_id, const char* client_name, const char* mem,
                                             const char* thread_id_name, const char* start_addr, const char* end_addr) {
     jtag->tt_dbus_memdump(client_name, mem, thread_id_name, start_addr, end_addr);
     return 0;
 }
 
-std::optional<int> JtagDevice::dbus_sigdump(uint32_t chip_id, const char* client_name, uint32_t dbg_client_id,
+std::optional<int> JtagDevice::dbus_sigdump(uint8_t chip_id, const char* client_name, uint32_t dbg_client_id,
                                             uint32_t dbg_signal_sel_start, uint32_t dbg_signal_sel_end) {
     jtag->tt_dbus_sigdump(client_name, dbg_client_id, dbg_signal_sel_start, dbg_signal_sel_end);
     return 0;
 }
 
-std::optional<int> JtagDevice::write_axi(uint32_t chip_id, uint32_t reg_addr, uint32_t data) {
-    jtag->tt_write_axi(reg_addr, data);
+std::optional<int> JtagDevice::write_axi(uint8_t chip_id, uint32_t address, uint32_t data) {
+    jtag->tt_write_axi(address, data);
     return 0;
 }
 
-std::optional<int> JtagDevice::write_noc_xy(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id, uint64_t noc_addr,
-                                            uint32_t noc_data) {
-    uint32_t node_y_nocvirt = harvesting[curr_device_idx][node_y_id];
-    jtag->tt_write_noc_xy(node_x_id, node_y_nocvirt, noc_addr, noc_data);
+std::optional<int> JtagDevice::write_noc_xy(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                                            uint32_t data) {
+    uint32_t nocvirt_y = harvesting[curr_device_idx][noc_y];
+    jtag->tt_write_noc_xy(noc_x, nocvirt_y, address, data);
     return 0;
 }
 
-std::optional<uint32_t> JtagDevice::read_axi(uint32_t chip_id, uint32_t reg_addr) {
-    return jtag->tt_read_axi(reg_addr);
+std::optional<uint32_t> JtagDevice::read_axi(uint8_t chip_id, uint32_t address) { return jtag->tt_read_axi(address); }
+
+std::optional<uint32_t> JtagDevice::read_noc_xy(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
+    uint32_t nocvirt_y = harvesting[curr_device_idx][noc_y];
+    return jtag->tt_read_noc_xy(noc_x, nocvirt_y, address);
 }
 
-std::optional<uint32_t> JtagDevice::read_noc_xy(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id,
-                                                uint64_t noc_addr) {
-    uint32_t node_y_nocvirt = harvesting[curr_device_idx][node_y_id];
-    return jtag->tt_read_noc_xy(node_x_id, node_y_nocvirt, noc_addr);
-}
+std::optional<std::vector<uint32_t>> JtagDevice::enumerate_jlink(uint8_t chip_id) { return jtag->tt_enumerate_jlink(); }
 
-std::optional<std::vector<uint32_t>> JtagDevice::enumerate_jlink(uint32_t chip_id) {
-    return jtag->tt_enumerate_jlink();
-}
-
-std::optional<int> JtagDevice::close_jlink(uint32_t chip_id) {
+std::optional<int> JtagDevice::close_jlink(uint8_t chip_id) {
     jtag->tt_close_jlink();
     return 0;
 }
 
-std::optional<uint32_t> JtagDevice::read_id_raw(uint32_t chip_id) { return jtag->tt_read_id_raw(); }
+std::optional<uint32_t> JtagDevice::read_id_raw(uint8_t chip_id) { return jtag->tt_read_id_raw(); }
 
-std::optional<uint32_t> JtagDevice::read_id(uint32_t chip_id) { return jtag->tt_read_id(); }
+std::optional<uint32_t> JtagDevice::read_id(uint8_t chip_id) { return jtag->tt_read_id(); }

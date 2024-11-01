@@ -291,7 +291,7 @@ class debuda_server_communication:
     def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
         self._socket.send(
             struct.pack(
-                "<BBBBQ",
+                "<BBBBQI",
                 debuda_server_request_type.jtag_write32.value,
                 chip_id,
                 noc_x,
@@ -305,7 +305,7 @@ class debuda_server_communication:
     def jtag_read32_axi(self, chip_id: int, noc_x: int, noc_y: int, address: int):
         self._socket.send(
             struct.pack(
-                "<BBBBQ",
+                "<BBI",
                 debuda_server_request_type.jtag_read32_axi.value,
                 chip_id,
                 address,
@@ -316,7 +316,7 @@ class debuda_server_communication:
     def jtag_write32_axi(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
         self._socket.send(
             struct.pack(
-                "<BBBBQ",
+                "<BBII",
                 debuda_server_request_type.jtag_write32_axi.value,
                 chip_id,
                 address,

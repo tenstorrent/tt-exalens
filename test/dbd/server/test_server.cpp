@@ -156,13 +156,13 @@ class yaml_not_implemented_implementation : public debuda_implementation {
         return {};
     }
 
-    std::optional<uint32_t> jtag_read32(uint32_t chip_id, uint32_t noc_x, uint32_t noc_y, uint64_t address) override {
+    std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_read32)) +
                           "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
                           "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address));
         return {};
     }
-    std::optional<int> jtag_write32(uint32_t chip_id, uint32_t noc_x, uint32_t noc_y, uint64_t address,
+    std::optional<int> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                     uint32_t data) override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_write32)) +
                           "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
@@ -171,12 +171,12 @@ class yaml_not_implemented_implementation : public debuda_implementation {
         return {};
     }
 
-    std::optional<uint32_t> jtag_read32_axi(uint32_t chip_id, uint32_t address) override {
+    std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_read32_axi)) +
                           "\n  chip_id: " + std::to_string(chip_id) + "\n  address: " + std::to_string(address));
         return {};
     }
-    std::optional<int> jtag_write32_axi(uint32_t chip_id, uint32_t address, uint32_t data) override {
+    std::optional<int> jtag_write32_axi(uint8_t chip_id, uint32_t address, uint32_t data) override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_write32_axi)) +
                           "\n  chip_id: " + std::to_string(chip_id) + "\n  address: " + std::to_string(address) +
                           "\n  data: " + std::to_string(data));

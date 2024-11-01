@@ -184,31 +184,31 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(u
     return std::make_tuple(return_code, return_3, return_4);
 }
 
-std::optional<int> umd_implementation::jtag_write32_axi(uint32_t chip_id, uint32_t reg_addr, uint32_t data) {
+std::optional<int> umd_implementation::jtag_write32_axi(uint8_t chip_id, uint32_t address, uint32_t data) {
     if (!jtag_device) {
         return {};
     }
-    return jtag_device->write_axi(chip_id, reg_addr, data);
+    return jtag_device->write_axi(chip_id, address, data);
 }
-std::optional<int> umd_implementation::jtag_write32(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id,
-                                                    uint64_t noc_addr, uint32_t noc_data) {
+std::optional<int> umd_implementation::jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                                                    uint32_t data) {
     if (!jtag_device) {
         return {};
     }
-    return jtag_device->write_noc_xy(chip_id, node_x_id, node_y_id, noc_addr, noc_data);
+    return jtag_device->write_noc_xy(chip_id, noc_x, noc_y, address, data);
 }
-std::optional<uint32_t> umd_implementation::jtag_read32_axi(uint32_t chip_id, uint32_t reg_addr) {
+std::optional<uint32_t> umd_implementation::jtag_read32_axi(uint8_t chip_id, uint32_t address) {
     if (!jtag_device) {
         return {};
     }
-    return jtag_device->read_axi(chip_id, reg_addr);
+    return jtag_device->read_axi(chip_id, address);
 }
-std::optional<uint32_t> umd_implementation::jtag_read32(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id,
-                                                        uint64_t noc_addr) {
+std::optional<uint32_t> umd_implementation::jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                        uint64_t address) {
     if (!jtag_device) {
         return {};
     }
-    return jtag_device->read_noc_xy(chip_id, node_x_id, node_y_id, noc_addr);
+    return jtag_device->read_noc_xy(chip_id, noc_x, noc_y, address);
 }
 
 }  // namespace tt::dbd

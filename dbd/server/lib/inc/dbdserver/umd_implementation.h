@@ -39,12 +39,11 @@ class umd_implementation : public debuda_implementation {
                                                                        bool wait_for_done, uint32_t arg0, uint32_t arg1,
                                                                        int timeout) override;
 
-    std::optional<int> jtag_write32_axi(uint32_t chip_id, uint32_t reg_addr, uint32_t data) override;
-    std::optional<int> jtag_write32(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id, uint64_t noc_addr,
-                                    uint32_t noc_data) override;
-    std::optional<uint32_t> jtag_read32_axi(uint32_t chip_id, uint32_t reg_addr) override;
-    std::optional<uint32_t> jtag_read32(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id,
-                                        uint64_t noc_addr) override;
+    std::optional<int> jtag_write32_axi(uint8_t chip_id, uint32_t address, uint32_t data) override;
+    std::optional<int> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                                    uint32_t data) override;
+    std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) override;
+    std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override;
 
    private:
     bool is_chip_mmio_capable(uint8_t chip_id);

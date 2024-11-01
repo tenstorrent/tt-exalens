@@ -53,14 +53,13 @@ class debuda_implementation {
                                                                        int timeout) {
         return {};
     }
-    virtual std::optional<int> jtag_write32_axi(uint32_t chip_id, uint32_t reg_addr, uint32_t data) { return {}; }
-    virtual std::optional<int> jtag_write32(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id, uint64_t noc_addr,
-                                            uint32_t noc_data) {
+    virtual std::optional<int> jtag_write32_axi(uint8_t chip_id, uint32_t address, uint32_t data) { return {}; }
+    virtual std::optional<int> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                                            uint32_t data) {
         return {};
     }
-    virtual std::optional<uint32_t> jtag_read32_axi(uint32_t chip_id, uint32_t reg_addr) { return {}; }
-    virtual std::optional<uint32_t> jtag_read32(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id,
-                                                uint64_t noc_addr) {
+    virtual std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) { return {}; }
+    virtual std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
         return {};
     }
 };

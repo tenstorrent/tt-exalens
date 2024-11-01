@@ -154,12 +154,12 @@ struct jtag_write32_request : request {
 
 struct jtag_read32_axi_request : request {
     uint8_t chip_id;
-    uint64_t address;
+    uint32_t address;
 } __attribute__((packed));
 
 struct jtag_write32_axi_request : request {
     uint8_t chip_id;
-    uint64_t address;
+    uint32_t address;
     uint32_t data;
 } __attribute__((packed));
 
