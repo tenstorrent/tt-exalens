@@ -48,6 +48,7 @@ JtagDevice::JtagDevice(std::unique_ptr<Jtag> jtag_device) : jtag(std::move(jtag_
     }
 
     curr_device_idx = 0;
+    curr_device_chip_id = 0;
     jtag->tt_open_jlink_by_serial_wrapper(jlink_devices[curr_device_idx]);
 }
 
@@ -118,20 +119,62 @@ std::optional<int> JtagDevice::dbus_sigdump(uint8_t chip_id, const char* client_
 }
 
 std::optional<int> JtagDevice::write_axi(uint8_t chip_id, uint32_t address, uint32_t data) {
+    if (chip_id >= jlink_devices.size()) {
+        return {};
+    }
+    if (curr_device_chip_id != chip_id) {
+        curr_device_idx = chip_id;
+        curr_device_chip_id = chip_id;
+        jtag->tt_close_jlink();
+        jtag->tt_open_jlink_by_serial_wrapper(jlink_devices[curr_device_idx]);
+    }
+
     jtag->tt_write_axi(address, data);
     return 0;
 }
 
 std::optional<int> JtagDevice::write_noc_xy(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                             uint32_t data) {
+    if (chip_id >= jlink_devices.size()) {
+        return {};
+    }
+    if (curr_device_chip_id != chip_id) {
+        curr_device_idx = chip_id;
+        curr_device_chip_id = chip_id;
+        jtag->tt_close_jlink();
+        jtag->tt_open_jlink_by_serial_wrapper(jlink_devices[curr_device_idx]);
+    }
+
     uint32_t nocvirt_y = harvesting[curr_device_idx][noc_y];
     jtag->tt_write_noc_xy(noc_x, nocvirt_y, address, data);
     return 0;
 }
 
-std::optional<uint32_t> JtagDevice::read_axi(uint8_t chip_id, uint32_t address) { return jtag->tt_read_axi(address); }
+std::optional<uint32_t> JtagDevice::read_axi(uint8_t chip_id, uint32_t address) {
+    if (chip_id >= jlink_devices.size()) {
+        return {};
+    }
+    if (curr_device_chip_id != chip_id) {
+        curr_device_idx = chip_id;
+        curr_device_chip_id = chip_id;
+        jtag->tt_close_jlink();
+        jtag->tt_open_jlink_by_serial_wrapper(jlink_devices[curr_device_idx]);
+    }
+
+    return jtag->tt_read_axi(address);
+}
 
 std::optional<uint32_t> JtagDevice::read_noc_xy(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
+    if (chip_id >= jlink_devices.size()) {
+        return {};
+    }
+    if (curr_device_chip_id != chip_id) {
+        curr_device_idx = chip_id;
+        curr_device_chip_id = chip_id;
+        jtag->tt_close_jlink();
+        jtag->tt_open_jlink_by_serial_wrapper(jlink_devices[curr_device_idx]);
+    }
+
     uint32_t nocvirt_y = harvesting[curr_device_idx][noc_y];
     return jtag->tt_read_noc_xy(noc_x, nocvirt_y, address);
 }
