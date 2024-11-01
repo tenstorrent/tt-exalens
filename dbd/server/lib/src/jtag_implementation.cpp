@@ -53,7 +53,7 @@ JtagImplementation::JtagImplementation(std::unique_ptr<Jtag> jtag_device) : jtag
 
 JtagImplementation::~JtagImplementation() {}
 
-uint32_t JtagImplementation::get_device_cnt() { return jlink_devices.size(); }
+std::optional<uint32_t> JtagImplementation::get_device_cnt() { return jlink_devices.size(); }
 
 std::vector<uint32_t> JtagImplementation::get_harvesting_from_efuse(uint32_t efuse_harvesting) {
     uint32_t bad_mem_bits = efuse_harvesting & 0x3FF;
@@ -80,60 +80,77 @@ std::vector<uint32_t> JtagImplementation::get_harvesting_from_efuse(uint32_t efu
     return std::vector<uint32_t>(harvesting_rows, harvesting_rows + ROW_LEN - 2);
 }
 
-int JtagImplementation::open_jlink_by_serial_wrapper(uint32_t chip_id, unsigned int serial_number) {
+std::optional<int> JtagImplementation::open_jlink_by_serial_wrapper(uint32_t chip_id, unsigned int serial_number) {
     return jtag->tt_open_jlink_by_serial_wrapper(serial_number);
 }
 
-int JtagImplementation::open_jlink_wrapper(uint32_t chip_id) { return jtag->tt_open_jlink_wrapper(); }
+std::optional<int> JtagImplementation::open_jlink_wrapper(uint32_t chip_id) { return jtag->tt_open_jlink_wrapper(); }
 
-uint32_t JtagImplementation::read_tdr(uint32_t chip_id, const char* client, uint32_t reg_offset) {
+std::optional<uint32_t> JtagImplementation::read_tdr(uint32_t chip_id, const char* client, uint32_t reg_offset) {
     return jtag->tt_read_tdr(client, reg_offset);
 }
 
-uint32_t JtagImplementation::readmon_tdr(uint32_t chip_id, const char* client, uint32_t id, uint32_t reg_offset) {
+std::optional<uint32_t> JtagImplementation::readmon_tdr(uint32_t chip_id, const char* client, uint32_t id,
+                                                        uint32_t reg_offset) {
     return jtag->tt_readmon_tdr(client, id, reg_offset);
 }
 
-void JtagImplementation::writemon_tdr(uint32_t chip_id, const char* client, uint32_t id, uint32_t reg_offset,
-                                      uint32_t data) {
+std::optional<int> JtagImplementation::writemon_tdr(uint32_t chip_id, const char* client, uint32_t id,
+                                                    uint32_t reg_offset, uint32_t data) {
     jtag->tt_writemon_tdr(client, id, reg_offset, data);
+    return 0;
 }
 
-void JtagImplementation::write_tdr(uint32_t chip_id, const char* client, uint32_t reg_offset, uint32_t data) {
+std::optional<int> JtagImplementation::write_tdr(uint32_t chip_id, const char* client, uint32_t reg_offset,
+                                                 uint32_t data) {
     jtag->tt_write_tdr(client, reg_offset, data);
+    return 0;
 }
 
-void JtagImplementation::dbus_memdump(uint32_t chip_id, const char* client_name, const char* mem,
-                                      const char* thread_id_name, const char* start_addr, const char* end_addr) {
+std::optional<int> JtagImplementation::dbus_memdump(uint32_t chip_id, const char* client_name, const char* mem,
+                                                    const char* thread_id_name, const char* start_addr,
+                                                    const char* end_addr) {
     jtag->tt_dbus_memdump(client_name, mem, thread_id_name, start_addr, end_addr);
+    return 0;
 }
 
-void JtagImplementation::dbus_sigdump(uint32_t chip_id, const char* client_name, uint32_t dbg_client_id,
-                                      uint32_t dbg_signal_sel_start, uint32_t dbg_signal_sel_end) {
+std::optional<int> JtagImplementation::dbus_sigdump(uint32_t chip_id, const char* client_name, uint32_t dbg_client_id,
+                                                    uint32_t dbg_signal_sel_start, uint32_t dbg_signal_sel_end) {
     jtag->tt_dbus_sigdump(client_name, dbg_client_id, dbg_signal_sel_start, dbg_signal_sel_end);
+    return 0;
 }
 
-void JtagImplementation::write_axi(uint32_t chip_id, uint32_t reg_addr, uint32_t data) {
+std::optional<int> JtagImplementation::write_axi(uint32_t chip_id, uint32_t reg_addr, uint32_t data) {
     jtag->tt_write_axi(reg_addr, data);
+    return 0;
 }
 
-void JtagImplementation::write_noc_xy(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id, uint64_t noc_addr,
-                                      uint32_t noc_data) {
+std::optional<int> JtagImplementation::write_noc_xy(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id,
+                                                    uint64_t noc_addr, uint32_t noc_data) {
     uint32_t node_y_nocvirt = harvesting[curr_device_idx][node_y_id];
     jtag->tt_write_noc_xy(node_x_id, node_y_nocvirt, noc_addr, noc_data);
+    return 0;
 }
 
-uint32_t JtagImplementation::read_axi(uint32_t chip_id, uint32_t reg_addr) { return jtag->tt_read_axi(reg_addr); }
+std::optional<uint32_t> JtagImplementation::read_axi(uint32_t chip_id, uint32_t reg_addr) {
+    return jtag->tt_read_axi(reg_addr);
+}
 
-uint32_t JtagImplementation::read_noc_xy(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id, uint64_t noc_addr) {
+std::optional<uint32_t> JtagImplementation::read_noc_xy(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id,
+                                                        uint64_t noc_addr) {
     uint32_t node_y_nocvirt = harvesting[curr_device_idx][node_y_id];
     return jtag->tt_read_noc_xy(node_x_id, node_y_nocvirt, noc_addr);
 }
 
-std::vector<uint32_t> JtagImplementation::enumerate_jlink(uint32_t chip_id) { return jtag->tt_enumerate_jlink(); }
+std::optional<std::vector<uint32_t>> JtagImplementation::enumerate_jlink(uint32_t chip_id) {
+    return jtag->tt_enumerate_jlink();
+}
 
-void JtagImplementation::close_jlink(uint32_t chip_id) { jtag->tt_close_jlink(); }
+std::optional<int> JtagImplementation::close_jlink(uint32_t chip_id) {
+    jtag->tt_close_jlink();
+    return 0;
+}
 
-uint32_t JtagImplementation::read_id_raw(uint32_t chip_id) { return jtag->tt_read_id_raw(); }
+std::optional<uint32_t> JtagImplementation::read_id_raw(uint32_t chip_id) { return jtag->tt_read_id_raw(); }
 
-uint32_t JtagImplementation::read_id(uint32_t chip_id) { return jtag->tt_read_id(); }
+std::optional<uint32_t> JtagImplementation::read_id(uint32_t chip_id) { return jtag->tt_read_id(); }

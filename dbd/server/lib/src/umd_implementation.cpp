@@ -15,7 +15,8 @@ static std::string LARGE_WRITE_TLB_STR = "LARGE_WRITE_TLB";
 
 namespace tt::dbd {
 
-umd_implementation::umd_implementation(tt_SiliconDevice* device) { this->device = device; }
+umd_implementation::umd_implementation(tt_SiliconDevice* device, JtagImplementation* jtag_device)
+    : device(device), jtag_device(jtag_device) {}
 
 std::optional<uint32_t> umd_implementation::pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                        uint64_t address) {
@@ -181,6 +182,33 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(u
     uint32_t return_4 = 0;
     int return_code = d->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout, &return_3, &return_4);
     return std::make_tuple(return_code, return_3, return_4);
+}
+
+std::optional<int> umd_implementation::jtag_write32_axi(uint32_t chip_id, uint32_t reg_addr, uint32_t data) {
+    if (!jtag_device) {
+        return {};
+    }
+    return jtag_device->write_axi(chip_id, reg_addr, data);
+}
+std::optional<int> umd_implementation::jtag_write32(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id,
+                                                    uint64_t noc_addr, uint32_t noc_data) {
+    if (!jtag_device) {
+        return {};
+    }
+    return jtag_device->write_noc_xy(chip_id, node_x_id, node_y_id, noc_addr, noc_data);
+}
+std::optional<uint32_t> umd_implementation::jtag_read32_axi(uint32_t chip_id, uint32_t reg_addr) {
+    if (!jtag_device) {
+        return {};
+    }
+    return jtag_device->read_axi(chip_id, reg_addr);
+}
+std::optional<uint32_t> umd_implementation::jtag_read32(uint32_t chip_id, uint32_t node_x_id, uint32_t node_y_id,
+                                                        uint64_t noc_addr) {
+    if (!jtag_device) {
+        return {};
+    }
+    return jtag_device->read_noc_xy(chip_id, node_x_id, node_y_id, noc_addr);
 }
 
 }  // namespace tt::dbd

@@ -83,6 +83,25 @@ class simulation_implementation : public tt::dbd::debuda_implementation {
         return {};
     }
 
+    std::optional<uint32_t> jtag_read32(uint32_t chip_id, uint32_t noc_x, uint32_t noc_y, uint64_t address) override {
+        return 0;
+        return {};
+    }
+    std::optional<int> jtag_write32(uint32_t chip_id, uint32_t noc_x, uint32_t noc_y, uint64_t address,
+                                    uint32_t data) override {
+        return 0;
+        return {};
+    }
+
+    std::optional<uint32_t> jtag_read32_axi(uint32_t chip_id, uint32_t address) override {
+        return 0;
+        return {};
+    }
+    std::optional<int> jtag_write32_axi(uint32_t chip_id, uint32_t address, uint32_t data) override {
+        return 0;
+        return {};
+    }
+
     std::optional<std::string> pci_read_tile(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                              uint32_t size, uint8_t data_format) override {
         return "pci_read_tile(" + std::to_string(chip_id) + ", " + std::to_string(noc_x) + ", " +

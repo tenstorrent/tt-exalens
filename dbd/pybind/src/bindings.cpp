@@ -8,7 +8,6 @@
 #include "dbdserver/jtag_implementation.h"
 
 static std::unique_ptr<tt::dbd::debuda_implementation> debuda_implementation;
-static std::unique_ptr<JtagImplementation> jtag_implementation;
 
 class scoped_null_stdout {
    private:
@@ -34,13 +33,6 @@ bool open_device(const std::string &binary_directory, const std::string &runtime
     try {
         // Since tt_SiliconDevice is printing some output and we don't want to see it in python, we disable std::cout
         scoped_null_stdout null_stdout;
-
-        try {
-            std::unique_ptr<Jtag> jtag =
-                std::make_unique<Jtag>((binary_directory + std::string("/../lib/libjtag.so")).c_str());
-            jtag_implementation = std::make_unique<JtagImplementation>(std::move(jtag));
-        } catch (std::runtime_error &error) {
-        }
 
         debuda_implementation =
             tt::dbd::umd_with_open_implementation::open(binary_directory, runtime_yaml_path, wanted_devices);
@@ -137,30 +129,30 @@ std::optional<std::string> pci_read_tile(uint8_t chip_id, uint8_t noc_x, uint8_t
 }
 
 std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
-    if (jtag_implementation) {
-        return jtag_implementation->read_noc_xy(chip_id, noc_x, noc_y, address);
+    if (debuda_implementation) {
+        return debuda_implementation->jtag_read32(chip_id, noc_x, noc_y, address);
     }
     return {};
 }
 
 std::optional<uint32_t> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data) {
-    if (jtag_implementation) {
-        jtag_implementation->write_noc_xy(chip_id, noc_x, noc_y, address, data);
+    if (debuda_implementation) {
+        debuda_implementation->jtag_write32(chip_id, noc_x, noc_y, address, data);
         return 0;
     }
     return {};
 }
 
-std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint64_t address) {
-    if (jtag_implementation) {
-        return jtag_implementation->read_axi(chip_id, address);
+std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) {
+    if (debuda_implementation) {
+        return debuda_implementation->jtag_read32_axi(chip_id, address);
     }
     return {};
 }
 
 std::optional<uint32_t> jtag_write32_axi(uint8_t chip_id, uint64_t address, uint32_t data) {
-    if (jtag_implementation) {
-        jtag_implementation->write_axi(chip_id, address, data);
+    if (debuda_implementation) {
+        debuda_implementation->jtag_write32_axi(chip_id, address, data);
         return 0;
     }
     return {};

@@ -156,6 +156,33 @@ class yaml_not_implemented_implementation : public debuda_implementation {
         return {};
     }
 
+    std::optional<uint32_t> jtag_read32(uint32_t chip_id, uint32_t noc_x, uint32_t noc_y, uint64_t address) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_read32)) +
+                          "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
+                          "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address));
+        return {};
+    }
+    std::optional<int> jtag_write32(uint32_t chip_id, uint32_t noc_x, uint32_t noc_y, uint64_t address,
+                                    uint32_t data) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_write32)) +
+                          "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
+                          "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address) +
+                          "\n  data: " + std::to_string(data));
+        return {};
+    }
+
+    std::optional<uint32_t> jtag_read32_axi(uint32_t chip_id, uint32_t address) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_read32_axi)) +
+                          "\n  chip_id: " + std::to_string(chip_id) + "\n  address: " + std::to_string(address));
+        return {};
+    }
+    std::optional<int> jtag_write32_axi(uint32_t chip_id, uint32_t address, uint32_t data) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_write32_axi)) +
+                          "\n  chip_id: " + std::to_string(chip_id) + "\n  address: " + std::to_string(address) +
+                          "\n  data: " + std::to_string(data));
+        return {};
+    }
+
     static std::string serialize_bytes(const uint8_t *data, size_t size) {
         std::string bytes;
 

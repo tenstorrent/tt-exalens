@@ -18,13 +18,7 @@ namespace tt::dbd {
 class server : public communication {
    public:
     server(std::unique_ptr<debuda_implementation> implementation, const std::string& run_dirpath = {})
-        : implementation(std::move(implementation)), run_dirpath(run_dirpath) {
-        try {
-            std::unique_ptr<Jtag> jtag = std::make_unique<Jtag>((run_dirpath + "/../lib/libjtag.so").c_str());
-            jtag_implementation = std::make_unique<JtagImplementation>(std::move(jtag));
-        } catch (std::runtime_error& error) {
-        }
-    }
+        : implementation(std::move(implementation)), run_dirpath(run_dirpath) {}
 
    protected:
     void process(const request& request) override;
@@ -41,7 +35,6 @@ class server : public communication {
     virtual std::optional<std::string> get_run_dirpath();
 
     std::unique_ptr<debuda_implementation> implementation;
-    std::unique_ptr<JtagImplementation> jtag_implementation;
     std::string run_dirpath;
 };
 

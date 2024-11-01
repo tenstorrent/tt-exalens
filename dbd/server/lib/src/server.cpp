@@ -108,42 +108,26 @@ void tt::dbd::server::process(const tt::dbd::request& base_request) {
 
         case tt::dbd::request_type::jtag_read32: {
             auto& request = static_cast<const tt::dbd::jtag_read32_request&>(base_request);
-            if (jtag_implementation) {
-                respond(
-                    jtag_implementation->read_noc_xy(request.chip_id, request.noc_x, request.noc_y, request.address));
-            }
-            respond_not_supported();
+            respond(implementation->jtag_read32(request.chip_id, request.noc_x, request.noc_y, request.address));
             break;
         }
 
         case tt::dbd::request_type::jtag_write32: {
             auto& request = static_cast<const tt::dbd::jtag_write32_request&>(base_request);
-            if (jtag_implementation) {
-                uint32_t res;
-                jtag_implementation->write_noc_xy(request.chip_id, request.noc_x, request.noc_y, request.address,
-                                                  request.data);
-                respond(0);
-            }
-            respond_not_supported();
+            respond(implementation->jtag_write32(request.chip_id, request.noc_x, request.noc_y, request.address,
+                                                 request.data));
             break;
         }
 
         case tt::dbd::request_type::jtag_read32_axi: {
             auto& request = static_cast<const tt::dbd::jtag_read32_axi_request&>(base_request);
-            if (jtag_implementation) {
-                respond(jtag_implementation->read_axi(request.chip_id, request.address));
-            }
-            respond_not_supported();
+            respond(implementation->jtag_read32_axi(request.chip_id, request.address));
             break;
         }
 
         case tt::dbd::request_type::jtag_write32_axi: {
             auto& request = static_cast<const tt::dbd::jtag_write32_axi_request&>(base_request);
-            if (jtag_implementation) {
-                jtag_implementation->write_axi(request.chip_id, request.address, request.data);
-                respond(0);
-            }
-            respond_not_supported();
+            respond(implementation->jtag_write32_axi(request.chip_id, request.address, request.data));
             break;
         }
     }
