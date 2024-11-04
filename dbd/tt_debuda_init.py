@@ -20,108 +20,108 @@ GLOBAL_CONTEXT: Context = None
 
 
 def init_debuda(
-		output_dir_path: str = None,
-		netlist_path: str = None,
-		wanted_devices: list = None,
-		cache_path: str = None,
+        output_dir_path: str = None,
+        netlist_path: str = None,
+        wanted_devices: list = None,
+        cache_path: str = None,
 ) -> Context:
-	""" Initializes Debuda internals by creating the device interface and Debuda context.
-	Interfacing device is local, through pybind.
+    """ Initializes Debuda internals by creating the device interface and Debuda context.
+    Interfacing device is local, through pybind.
 
-	Args:
-		output_dir_path (str, optional): Path to the Buda run output directory. If None, Debuda will be initialized in limited mode.
-		netlist_path (str, optional): Path to the Buda netlist file.
-		wanted_devices (list, optional): List of device IDs we want to connect to. If None, connect to all available devices.
-		caching_path (str, optional): Path to the cache file to write. If None, caching is disabled.
-		
-	Returns:
-		Context: Debuda context object.
-	"""
-	runtime_data_yaml_filename = None
-	if output_dir_path:
-		runtime_data_yaml_filename = find_runtime_data_yaml_filename(output_dir_path)
-	debuda_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir_path, wanted_devices)
-	if cache_path:
-		debuda_ifc = tt_debuda_ifc_cache.init_cache_writer(cache_path)
-	
-	runtime_data_yaml, cluster_desc_yaml = get_yamls(debuda_ifc)
+    Args:
+        output_dir_path (str, optional): Path to the Buda run output directory. If None, Debuda will be initialized in limited mode.
+        netlist_path (str, optional): Path to the Buda netlist file.
+        wanted_devices (list, optional): List of device IDs we want to connect to. If None, connect to all available devices.
+        caching_path (str, optional): Path to the cache file to write. If None, caching is disabled.
+        
+    Returns:
+        Context: Debuda context object.
+    """
+    runtime_data_yaml_filename = None
+    if output_dir_path:
+        runtime_data_yaml_filename = find_runtime_data_yaml_filename(output_dir_path)
+    debuda_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir_path, wanted_devices)
+    if cache_path:
+        debuda_ifc = tt_debuda_ifc_cache.init_cache_writer(cache_path)
+    
+    runtime_data_yaml, cluster_desc_yaml = get_yamls(debuda_ifc)
 
-	return load_context(debuda_ifc, netlist_path, runtime_data_yaml, cluster_desc_yaml)
+    return load_context(debuda_ifc, netlist_path, runtime_data_yaml, cluster_desc_yaml)
 
 
 def init_debuda_remote(
-		ip_address: str = 'localhost',
-		port: int = 5555,
-		cache_path: str = None,
+        ip_address: str = 'localhost',
+        port: int = 5555,
+        cache_path: str = None,
 ) -> Context:
-	""" Initializes Debuda internals by creating the device interface and Debuda context.
-	Interfacing device is done remotely through Debuda client.
+    """ Initializes Debuda internals by creating the device interface and Debuda context.
+    Interfacing device is done remotely through Debuda client.
 
-	Args:
-		ip_address (str): IP address of the Debuda server. Default is 'localhost'.
-		port (int): Port number of the Debuda server interface. Default is 5555.
-		cache_path (str, optional): Path to the cache file to write. If None, caching is disabled.
-		
-	Returns:
-		Context: Debuda context object.
-	"""
+    Args:
+        ip_address (str): IP address of the Debuda server. Default is 'localhost'.
+        port (int): Port number of the Debuda server interface. Default is 5555.
+        cache_path (str, optional): Path to the cache file to write. If None, caching is disabled.
+        
+    Returns:
+        Context: Debuda context object.
+    """
 
-	debuda_ifc = tt_debuda_ifc.connect_to_server(ip_address, port)
-	if cache_path:
-		debuda_ifc = tt_debuda_ifc_cache.init_cache_writer(cache_path)
+    debuda_ifc = tt_debuda_ifc.connect_to_server(ip_address, port)
+    if cache_path:
+        debuda_ifc = tt_debuda_ifc_cache.init_cache_writer(cache_path)
 
-	runtime_data_yaml, cluster_desc_yaml = get_yamls(debuda_ifc)
+    runtime_data_yaml, cluster_desc_yaml = get_yamls(debuda_ifc)
 
-	return load_context(debuda_ifc, None, runtime_data_yaml, cluster_desc_yaml)
+    return load_context(debuda_ifc, None, runtime_data_yaml, cluster_desc_yaml)
 
 
 def init_debuda_cached(
-		cache_path: str,
-		netlist_path: str = None,
+        cache_path: str,
+        netlist_path: str = None,
 ):
-	"""Initializes Debuda internals by reading cached session data. There is no connection to the device.
-	Only cached commands are available.
+    """Initializes Debuda internals by reading cached session data. There is no connection to the device.
+    Only cached commands are available.
 
-	Args:
-		cache_path (str): Path to the cache file.
-		netlist_path (str, optional): Path to the netlist file.
+    Args:
+        cache_path (str): Path to the cache file.
+        netlist_path (str, optional): Path to the netlist file.
 
-	Returns:
-		Context: Debuda context object.
-	"""
-	if not os.path.exists(cache_path) or not os.path.isfile(cache_path):
-		raise util.TTFatalException(f"Error: Cache file at {cache_path} does not exist.")
-	
-	debuda_ifc = tt_debuda_ifc_cache.init_cache_reader(cache_path)
-	runtime_data_yaml, cluster_desc_yaml = get_yamls(debuda_ifc)
+    Returns:
+        Context: Debuda context object.
+    """
+    if not os.path.exists(cache_path) or not os.path.isfile(cache_path):
+        raise util.TTFatalException(f"Error: Cache file at {cache_path} does not exist.")
+    
+    debuda_ifc = tt_debuda_ifc_cache.init_cache_reader(cache_path)
+    runtime_data_yaml, cluster_desc_yaml = get_yamls(debuda_ifc)
 
-	return load_context(debuda_ifc, netlist_path, runtime_data_yaml, cluster_desc_yaml)
+    return load_context(debuda_ifc, netlist_path, runtime_data_yaml, cluster_desc_yaml)
 
 
 def get_yamls(debuda_ifc: tt_debuda_ifc.DbdCommunicator) -> "tuple[util.YamlFile, util.YamlFile]":
-	""" Get the runtime data and cluster description yamls through the Debuda interface.
-	"""
-	try:
-		runtime_data = debuda_ifc.get_runtime_data()
-		runtime_data_yaml = util.YamlFile(debuda_ifc, 'runtime_yaml', content=runtime_data)
-	except:
-		# It is OK to continue with limited functionality
-		runtime_data_yaml = None
+    """ Get the runtime data and cluster description yamls through the Debuda interface.
+    """
+    try:
+        runtime_data = debuda_ifc.get_runtime_data()
+        runtime_data_yaml = util.YamlFile(debuda_ifc, 'runtime_yaml', content=runtime_data)
+    except:
+        # It is OK to continue with limited functionality
+        runtime_data_yaml = None
 
-	try:
-		cluster_desc_path = debuda_ifc.get_cluster_description()
-		cluster_desc_yaml = util.YamlFile(debuda_ifc, cluster_desc_path)
-	except:
-		raise util.TTFatalException("Debuda does not support cluster description. Cannot connect to device.")
+    try:
+        cluster_desc_path = debuda_ifc.get_cluster_description()
+        cluster_desc_yaml = util.YamlFile(debuda_ifc, cluster_desc_path)
+    except:
+        raise util.TTFatalException("Debuda does not support cluster description. Cannot connect to device.")
 
-	return runtime_data_yaml, cluster_desc_yaml
+    return runtime_data_yaml, cluster_desc_yaml
 
 
 def load_context(
-		server_ifc: tt_debuda_ifc.DbdCommunicator, 
-		netlist_filepath: str, 
-		runtime_data_yaml: util.YamlFile, 
-		cluster_desc_yaml: util.YamlFile
+        server_ifc: tt_debuda_ifc.DbdCommunicator, 
+        netlist_filepath: str, 
+        runtime_data_yaml: util.YamlFile, 
+        cluster_desc_yaml: util.YamlFile
 ) -> Context:
     """ Load the Debuda context object with specified parameters. """
     run_dirpath = server_ifc.get_run_dirpath()
@@ -137,48 +137,48 @@ def load_context(
 
 
 def set_active_context(context: Context) -> None:
-	""" 
-	Set the active Debuda context object. 
-	
-	Args:
-		context (Context): Debuda context object.
+    """ 
+    Set the active Debuda context object. 
+    
+    Args:
+        context (Context): Debuda context object.
 
-	Notes:
-		- Every new context initialization will overwrite the currently active context.
-	"""
-	global GLOBAL_CONTEXT
-	GLOBAL_CONTEXT = context
+    Notes:
+        - Every new context initialization will overwrite the currently active context.
+    """
+    global GLOBAL_CONTEXT
+    GLOBAL_CONTEXT = context
 
 
 def find_runtime_data_yaml_filename(output_dir: str = None) -> Union[str, None]:
-	""" Find the runtime data yaml file in the output directory. If directory is not specified, try to find the most recent Buda output directory.
+    """ Find the runtime data yaml file in the output directory. If directory is not specified, try to find the most recent Buda output directory.
 
-	Args:	
-		output_dir(str, optional): Path to the output directory.
-	"""
-	if not output_dir:
-		return None
-	
-	runtime_data_yaml_filename = f"{output_dir}/runtime_data.yaml"
-	if not os.path.exists(runtime_data_yaml_filename):
-		raise util.TTFatalException(f"Error: Yaml file at {runtime_data_yaml_filename} does not exist.")
+    Args:    
+        output_dir(str, optional): Path to the output directory.
+    """
+    if not output_dir:
+        return None
+    
+    runtime_data_yaml_filename = f"{output_dir}/runtime_data.yaml"
+    if not os.path.exists(runtime_data_yaml_filename):
+        raise util.TTFatalException(f"Error: Yaml file at {runtime_data_yaml_filename} does not exist.")
 
-	return runtime_data_yaml_filename
+    return runtime_data_yaml_filename
 
 
 def locate_most_recent_build_output_dir() -> Union[str, None]:
-	""" Try to find a default output directory. """
-	most_recent_modification_time = None
-	try:
-		for tt_build_subfile in os.listdir("tt_build"):
-			subdir = f"tt_build/{tt_build_subfile}"
-			if os.path.isdir(subdir):
-				if (
-					most_recent_modification_time is None
-					or os.path.getmtime(subdir) > most_recent_modification_time
-				):
-					most_recent_modification_time = os.path.getmtime(subdir)
-					most_recent_subdir = subdir
-		return most_recent_subdir
-	except:
-		return None
+    """ Try to find a default output directory. """
+    most_recent_modification_time = None
+    try:
+        for tt_build_subfile in os.listdir("tt_build"):
+            subdir = f"tt_build/{tt_build_subfile}"
+            if os.path.isdir(subdir):
+                if (
+                    most_recent_modification_time is None
+                    or os.path.getmtime(subdir) > most_recent_modification_time
+                ):
+                    most_recent_modification_time = os.path.getmtime(subdir)
+                    most_recent_subdir = subdir
+        return most_recent_subdir
+    except:
+        return None

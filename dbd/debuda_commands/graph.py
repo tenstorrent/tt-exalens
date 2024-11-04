@@ -18,8 +18,8 @@ Examples:
 
 command_metadata = {
     "short": "g",
-	  "type": "high-level",
-	  "description": __doc__,
+      "type": "high-level",
+      "description": __doc__,
     "context": ["buda"],    
 }
 

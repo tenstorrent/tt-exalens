@@ -33,7 +33,7 @@ from dbd.tt_object import DataArray
 command_metadata = {
     "short": "ddb",
     "type": "low-level",
-	"description": __doc__,
+    "description": __doc__,
     "context": ["buda"],
 }
 

@@ -298,6 +298,7 @@ class Device(TTObject):
         )
 
         self.block_locations_cache = dict()
+        self._init_register_addresses()
 
     # Coordinate conversion functions (see tt_coordinate.py for description of coordinate systems)
     def die_to_noc(self, phys_loc, noc_id=0):
@@ -1273,57 +1274,34 @@ class Device(TTObject):
             return status_str
         return bt
     
-    PCI_ARC_RESET_BASE_ADDR = 0x0
-    PCI_ARC_CSM_DATA_BASE_ADDR = 0x0
-    PCI_ARC_ROM_DATA_BASE_ADDR = 0x0
-
-    NOC_ARC_RESET_BASE_ADDR = 0x0
-    NOC_ARC_CSM_DATA_BASE_ADDR = 0x0
-    NOC_ARC_ROM_DATA_BASE_ADDR = 0x0
-
-    REGISTER_ADDRESSES = None 
+    REGISTER_ADDRESSES = {} 
 
     def get_register_addr(self, name: str) -> int:
-        if self.REGISTER_ADDRESSES is None:
-            if self._has_mmio:
-                self.REGISTER_ADDRESSES = self.get_pci_register_addresses()
-            else:
-                self.REGISTER_ADDRESSES = self.get_noc_register_addresses()
+        try:
+            addr = self.REGISTER_ADDRESSES[name]
+        except KeyError:
+            raise ValueError(f"Unknown register name: {name}. Available registers: {self.REGISTER_ADDRESSES.keys()}")
 
-        assert(name in self.REGISTER_ADDRESSES)
-        return self.REGISTER_ADDRESSES[name]
+        return addr
     
-    def get_pci_register_addresses(self):
-        temp = {
-            "ARC_RESET_ARC_MISC_CNTL": self.PCI_ARC_RESET_BASE_ADDR + 0x100,
-            "ARC_RESET_ARC_MISC_STATUS": self.PCI_ARC_RESET_BASE_ADDR + 0x104,
-            "ARC_RESET_ARC_UDMIAXI_REGION": self.PCI_ARC_RESET_BASE_ADDR + 0x10C,
-            "ARC_RESET_SCRATCH0": self.PCI_ARC_RESET_BASE_ADDR + 0x060,
-            "ARC_RESET_SCRATCH1": self.PCI_ARC_RESET_BASE_ADDR + 0x064,
-            "ARC_RESET_SCRATCH2": self.PCI_ARC_RESET_BASE_ADDR + 0x068,
-            "ARC_RESET_SCRATCH3": self.PCI_ARC_RESET_BASE_ADDR + 0x06C,
-            "ARC_RESET_SCRATCH4": self.PCI_ARC_RESET_BASE_ADDR + 0x070,
-            "ARC_RESET_SCRATCH5": self.PCI_ARC_RESET_BASE_ADDR + 0x074,
-            "ARC_CSM_DATA": self.PCI_ARC_CSM_DATA_BASE_ADDR,
-            "ARC_ROM_DATA": self.PCI_ARC_ROM_DATA_BASE_ADDR
+    def _init_register_addresses(self):
+        base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
+        csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
+        rom_data_base_addr = self.PCI_ARC_ROM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_ROM_DATA_BASE_ADDR
+
+        self.REGISTER_ADDRESSES = {
+            "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
+            "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
+            "ARC_RESET_ARC_UDMIAXI_REGION": base_addr + 0x10C,
+            "ARC_RESET_SCRATCH0": base_addr + 0x060,
+            "ARC_RESET_SCRATCH1": base_addr + 0x064,
+            "ARC_RESET_SCRATCH2": base_addr + 0x068,
+            "ARC_RESET_SCRATCH3": base_addr + 0x06C,
+            "ARC_RESET_SCRATCH4": base_addr + 0x070,
+            "ARC_RESET_SCRATCH5": base_addr + 0x074,
+            "ARC_CSM_DATA": csm_data_base_addr,
+            "ARC_ROM_DATA": rom_data_base_addr
         }
-        return temp
-    
-    def get_noc_register_addresses(self):
-        temp = {
-            "ARC_RESET_ARC_MISC_CNTL": self.NOC_ARC_RESET_BASE_ADDR + 0x100,
-            "ARC_RESET_ARC_MISC_STATUS": self.NOC_ARC_RESET_BASE_ADDR + 0x104,
-            "ARC_RESET_ARC_UDMIAXI_REGION": self.NOC_ARC_RESET_BASE_ADDR + 0x10C,
-            "ARC_RESET_SCRATCH0": self.NOC_ARC_RESET_BASE_ADDR + 0x060,
-            "ARC_RESET_SCRATCH1": self.NOC_ARC_RESET_BASE_ADDR + 0x064,
-            "ARC_RESET_SCRATCH2": self.NOC_ARC_RESET_BASE_ADDR + 0x068,
-            "ARC_RESET_SCRATCH3": self.NOC_ARC_RESET_BASE_ADDR + 0x06C,
-            "ARC_RESET_SCRATCH4": self.NOC_ARC_RESET_BASE_ADDR + 0x070,
-            "ARC_RESET_SCRATCH5": self.NOC_ARC_RESET_BASE_ADDR + 0x074,
-            "ARC_CSM_DATA": self.NOC_ARC_CSM_DATA_BASE_ADDR,
-            "ARC_ROM_DATA": self.NOC_ARC_ROM_DATA_BASE_ADDR
-        }
-        return temp
 # end of class Device
 
 # This is based on runtime_utils.cpp:get_soc_desc_path()

@@ -22,8 +22,8 @@ from dbd.tt_netlist import Queue
 
 command_metadata = {
     "type": "low-level",
-	"short": "eq",
-	"description": __doc__,
+    "short": "eq",
+    "description": __doc__,
     "context": ["buda"],    
 }
 

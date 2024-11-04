@@ -20,6 +20,13 @@ from dbd.tt_object import DataArray
 import os
 import time
 
+from dbd.tt_arc import load_arc_fw
+from dbd.tt_arc_dbg_fw import (
+    arc_dbg_fw_check_msg_loop_running,
+    arc_dbg_fw_command,
+	NUM_LOG_CALLS_OFFSET
+)
+
 def invalid_argument_decorator(func):
 	@wraps(func)
 	def wrapper(*args, **kwargs):
@@ -454,7 +461,7 @@ class TestARC(unittest.TestCase):
 
 	def test_load_arc_fw(self):
 		for device_id in self.context.device_ids:
-			lib.load_arc_fw(self.fw_file_path,device_id ,context=self.context)
+			load_arc_fw(self.fw_file_path, device_id, context=self.context)
 			device = self.context.devices[device_id]
 			arc_core_loc = device.get_arc_block_location()
 
@@ -462,25 +469,27 @@ class TestARC(unittest.TestCase):
 
 			assert(scratch2 == 0xbebaceca)
 
-
 	def test_arc_logger(self):
 		wait_time = 0.1
 
 		TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024
 		for device_id in self.context.device_ids:
-			if not lib.check_msg_loop_running(device_id,self.context):
-				lib.load_arc_fw(self.fw_file_path,device_id ,context=self.context)
+			if not arc_dbg_fw_check_msg_loop_running(device_id, self.context):
+				load_arc_fw(self.fw_file_path, device_id, context=self.context)
 
-			start_log_calls = lib.get_number_of_arc_log_calls(device_id) 
-			lib.control_arc_logger("start",TT_METAL_ARC_DEBUG_BUFFER_SIZE,device_id,self.context)
+			def arc_dbg_fw_get_number_of_arc_log_calls(device_id):
+				return lib.read_words_from_device("ch0", device_id=device_id, addr=NUM_LOG_CALLS_OFFSET, word_count=1)[0]
+
+			start_log_calls = arc_dbg_fw_get_number_of_arc_log_calls(device_id) 
+			arc_dbg_fw_command("start", TT_METAL_ARC_DEBUG_BUFFER_SIZE, device_id, self.context)
 
 			time.sleep(wait_time)
 			
-			lib.control_arc_logger("stop",TT_METAL_ARC_DEBUG_BUFFER_SIZE,device_id,self.context)
+			arc_dbg_fw_command("stop", TT_METAL_ARC_DEBUG_BUFFER_SIZE, device_id, self.context)
 			
-			end_log_calls = lib.get_number_of_arc_log_calls(device_id)
+			end_log_calls = arc_dbg_fw_get_number_of_arc_log_calls(device_id)
 			time.sleep(wait_time)
-			after_stop_log_calls = lib.get_number_of_arc_log_calls(device_id)
+			after_stop_log_calls = arc_dbg_fw_get_number_of_arc_log_calls(device_id)
 
 			assert(end_log_calls > start_log_calls)
 			assert(after_stop_log_calls == end_log_calls)
