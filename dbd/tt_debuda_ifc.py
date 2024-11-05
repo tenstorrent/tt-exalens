@@ -302,7 +302,7 @@ class debuda_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def jtag_read32_axi(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+    def jtag_read32_axi(self, chip_id: int, address: int):
         self._socket.send(
             struct.pack(
                 "<BBI",
@@ -313,7 +313,7 @@ class debuda_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def jtag_write32_axi(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+    def jtag_write32_axi(self, chip_id: int, address: int, data: int):
         self._socket.send(
             struct.pack(
                 "<BBII",
@@ -463,12 +463,12 @@ class debuda_client(DbdCommunicator):
             self._communication.jtag_read32(chip_id, noc_x, noc_y, address)
         )
 
-    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
         return self.parse_uint32_t(
-            self._communication.jtag_write32(chip_id, noc_x, noc_y, address)
+            self._communication.jtag_write32(chip_id, noc_x, noc_y, address, data)
         )
 
-    def jtag_read32_axi(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+    def jtag_read32_axi(self, chip_id: int, address: int):
         return self.parse_uint32_t(
             self._communication.jtag_read32_axi(chip_id, address)
         )

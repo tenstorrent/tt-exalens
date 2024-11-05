@@ -10,6 +10,4 @@ if [ ! -d "$REPO_PATH" ]; then
 else
     cd "$REPO_PATH"
     git pull
-    make
-    cp out/libjtag.so ../../build/lib/libjtag.so
 fi

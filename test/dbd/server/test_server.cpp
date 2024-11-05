@@ -319,6 +319,28 @@ TEST(debuda_server, get_device_soc_description) {
         "- type: 20\n  chip_id: 1");
 }
 
+TEST(debuda_server, jtag_read32) {
+    test_not_implemented_request(tt::dbd::jtag_read32_request{tt::dbd::request_type::jtag_read32, 1, 2, 3, 123456},
+                                 "- type: 50\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
+}
+
+TEST(debuda_server, jtag_write32) {
+    test_not_implemented_request(
+        tt::dbd::jtag_write32_request{tt::dbd::request_type::jtag_write32, 1, 2, 3, 123456, 987654},
+        "- type: 51\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
+}
+
+TEST(debuda_server, jtag_read32_axi) {
+    test_not_implemented_request(tt::dbd::jtag_read32_axi_request{tt::dbd::request_type::jtag_read32_axi, 1, 123456},
+                                 "- type: 52\n  chip_id: 1\n  address: 123456");
+}
+
+TEST(debuda_server, jtag_write32_axi) {
+    test_not_implemented_request(
+        tt::dbd::jtag_write32_axi_request{tt::dbd::request_type::jtag_write32_axi, 1, 123456, 987654},
+        "- type: 53\n  chip_id: 1\n  address: 123456\n  data: 987654");
+}
+
 TEST(debuda_server, pci_write) {
     // This test is different because we are trying to send request that has dynamic structure size
     std::string expected_response =

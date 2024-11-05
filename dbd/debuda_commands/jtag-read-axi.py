@@ -3,16 +3,20 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  jraxi <addr>
-
-Description:
-  Reads data word from address 'addr' at AXI address of the current chip using jtag.
+  jraxi <addr> [-d <D>...]
 
 Arguments:
   addr        Address to read from
 
+Options:
+  -d <D>        Device ID. Optional and repeatable. Default: current device
+
+Description:
+  Reads data word from address 'addr' at AXI address of the current chip using jtag.
+
 Examples:
   jraxi 0x0
+  jraxi 0xffb20110 -d 0
 """
 
 command_metadata = {
@@ -31,8 +35,8 @@ from dbd.tt_coordinate import OnChipCoordinate
 
 
 # A helper to print the result of a single JTAG axi read
-def print_a_jtag_axi_read(addr, val, comment=""):
-    print(f"AXI 0x{addr:08x} ({addr}) = 0x{val:08x} ({val:d})")
+def print_a_jtag_axi_read(device_id, addr, val, comment=""):
+    print(f"device: {device_id} (AXI) 0x{addr:08x} ({addr}) = 0x{val:08x} ({val:d})")
 
 
 def run(cmd_text, context, ui_state: UIState = None):
@@ -41,11 +45,15 @@ def run(cmd_text, context, ui_state: UIState = None):
     addr = int(args["<addr>"], 0)
 
     current_device_id = ui_state.current_device_id
-    current_device = context.devices[current_device_id]
+    device_ids = args["-d"] if args["-d"] else [f"{current_device_id}"]
+    device_array = []
+    for device_id in device_ids:
+        device_array.append(int(device_id,0))
 
-    val = tt_device.SERVER_IFC.jtag_read32_axi(
-        ui_state.current_device_id, addr
-    )
-    print_a_jtag_axi_read(addr, val)
+    for device_id in device_array:
+      val = tt_device.SERVER_IFC.jtag_read32_axi(
+          device_id, addr
+      )
+      print_a_jtag_axi_read(device_id, addr, val)
 
     return None

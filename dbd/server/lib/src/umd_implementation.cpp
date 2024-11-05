@@ -5,6 +5,7 @@
 
 #include <tuple>
 
+#include "dbdserver/jtag_device.h"
 #include "dbdserver/read_tile.hpp"
 #include "device/tt_device.h"
 
@@ -188,27 +189,27 @@ std::optional<int> umd_implementation::jtag_write32_axi(uint8_t chip_id, uint32_
     if (!jtag_device) {
         return {};
     }
-    return jtag_device->write_axi(chip_id, address, data);
+    return jtag_device->write32_axi(chip_id, address, data);
 }
 std::optional<int> umd_implementation::jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                                     uint32_t data) {
     if (!jtag_device) {
         return {};
     }
-    return jtag_device->write_noc_xy(chip_id, noc_x, noc_y, address, data);
+    return jtag_device->write32(chip_id, noc_x, noc_y, address, data);
 }
 std::optional<uint32_t> umd_implementation::jtag_read32_axi(uint8_t chip_id, uint32_t address) {
     if (!jtag_device) {
         return {};
     }
-    return jtag_device->read_axi(chip_id, address);
+    return jtag_device->read32_axi(chip_id, address);
 }
 std::optional<uint32_t> umd_implementation::jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                         uint64_t address) {
     if (!jtag_device) {
         return {};
     }
-    return jtag_device->read_noc_xy(chip_id, noc_x, noc_y, address);
+    return jtag_device->read32(chip_id, noc_x, noc_y, address);
 }
 
 }  // namespace tt::dbd

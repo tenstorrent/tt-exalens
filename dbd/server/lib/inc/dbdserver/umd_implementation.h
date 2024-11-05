@@ -7,9 +7,9 @@
 
 #include "debuda_implementation.h"
 #include "device/tt_device.h"
-#include "jtag_device.h"
 
 class tt_SiliconDevice;
+class JtagDevice;
 
 namespace tt::dbd {
 

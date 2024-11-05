@@ -4,8 +4,6 @@
 
 #include "bindings.h"
 
-#include "dbdserver/jtag.h"
-
 static std::unique_ptr<tt::dbd::debuda_implementation> debuda_implementation;
 
 class scoped_null_stdout {

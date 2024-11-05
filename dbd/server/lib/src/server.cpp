@@ -6,7 +6,6 @@
 #include <fstream>
 
 #include "dbdserver/communication.h"
-#include "dbdserver/jtag.h"
 
 void tt::dbd::server::process(const tt::dbd::request& base_request) {
     switch (base_request.type) {
