@@ -96,14 +96,12 @@ set(LIBJTAG_DEP "${CMAKE_BINARY_DIR}/lib/libjlinkarm.so")
 set(LIBJTAG_DEP_SOURCE "${JTAG_ACCESS_LIB_PATH}/lib/libjlinkarm.so")
 
 if(EXISTS "${JTAG_ACCESS_LIB_PATH}")
+    add_custom_target(dummy_target ALL DEPENDS copy_jtag)
     add_custom_command(
-        OUTPUT "${LIBJTAG}" "${LIBJTAG_DEP}"
+        OUTPUT copy_jtag
         COMMAND make -C "${JTAG_ACCESS_LIB_PATH}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${LIBJTAG_SOURCE}" "${LIBJTAG}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${LIBJTAG_DEP_SOURCE}" "${LIBJTAG_DEP}"
-        COMMENT "Copying JTAG libraries to ${CMAKE_BINARY_DIR}/lib"
+        COMMENT "Rebuilding & copying JTAG libraries to ${CMAKE_BINARY_DIR}/lib"
     )
-
-    add_custom_target(copy_jtag ALL DEPENDS "${LIBJTAG}" "${LIBJTAG_DEP}")
-    add_dependencies(debuda_server_lib copy_jtag)
 endif()

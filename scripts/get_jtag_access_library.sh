@@ -5,8 +5,6 @@ REPO_PATH="third_party/$REPO"
 
 if [ ! -d "$REPO_PATH" ]; then
     git clone "git@yyz-gitlab.local.tenstorrent.com:tenstorrent/$REPO" "$REPO_PATH"
-    cd "$REPO_PATH"
-    make
 else
     cd "$REPO_PATH"
     git pull
