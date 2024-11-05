@@ -74,13 +74,18 @@ function(create_riscv_target ARCH APP CORE)
         DEPENDS ${OUTPUT_ELF})
 
     add_custom_command(
-        TARGET "${ARCH}_${APP}_${CORE}_target"
-        POST_BUILD
+        OUTPUT ${OUTPUT_DUMP} ${OUTPUT_DIS}
         COMMAND ${OBJDUMP} -d -s -S ${OUTPUT_ELF} > ${OUTPUT_DUMP}
         COMMAND ${OBJDUMP} -t ${OUTPUT_ELF} | sort >> ${OUTPUT_DUMP}
         COMMAND ${READELF} --debug-dump ${OUTPUT_ELF} > ${OUTPUT_DIS}
+        DEPENDS ${OUTPUT_ELF}
         COMMENT "Generating dump and disassembly for ${OUTPUT_ELF}"
     )
+
+    add_custom_target("${ARCH}_${APP}_${CORE}_dump_dis" ALL
+        DEPENDS ${OUTPUT_DUMP} ${OUTPUT_DIS})
+
+    add_dependencies("${ARCH}_${APP}_${CORE}_target" "${ARCH}_${APP}_${CORE}_dump_dis")
 endfunction()
 
 # Create targets for all architectures, applications, and cores

@@ -83,10 +83,6 @@ static std::string create_temp_configuration_file(tt::ARCH arch) {
             configuration_bytes = grayskull_configuration_bytes;
             configuration_length = sizeof(grayskull_configuration_bytes) / sizeof(grayskull_configuration_bytes[0]);
             break;
-        case tt::ARCH::WORMHOLE:
-            configuration_bytes = wormhole_configuration_bytes;
-            configuration_length = sizeof(wormhole_configuration_bytes) / sizeof(wormhole_configuration_bytes[0]);
-            break;
         case tt::ARCH::WORMHOLE_B0:
             configuration_bytes = wormhole_b0_configuration_bytes;
             configuration_length = sizeof(wormhole_b0_configuration_bytes) / sizeof(wormhole_b0_configuration_bytes[0]);
@@ -114,8 +110,7 @@ static std::filesystem::path find_binary_directory() {
 }
 
 static std::string create_temp_network_descriptor_file(tt::ARCH arch, std::filesystem::path binary_directory) {
-    if (arch == tt::ARCH::GRAYSKULL || arch == tt::ARCH::WORMHOLE || arch == tt::ARCH::WORMHOLE_B0 ||
-        arch == tt::ARCH::BLACKHOLE) {
+    if (arch == tt::ARCH::GRAYSKULL || arch == tt::ARCH::WORMHOLE_B0 || arch == tt::ARCH::BLACKHOLE) {
         // Check if create-ethernet-map exists
         if (binary_directory.empty()) {
             binary_directory = find_binary_directory();
@@ -151,11 +146,9 @@ static std::unique_ptr<tt_SiliconDevice> create_grayskull_device(const std::stri
                                                                  const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 1;
     std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
-    dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::grayskull::MEM_SMALL_READ_WRITE_TLB;
-    dynamic_tlb_config["REG_TLB"] = tt::umd::grayskull::REG_TLB;
 
     auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
-                                                     num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
+                                                     num_host_mem_ch_per_mmio_device);
     tt_driver_host_address_params host_address_params = {
         // Values copied from: third_party/umd/src/firmware/riscv/grayskull/host_mem_address_map.h
         32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
@@ -196,11 +189,9 @@ static std::unique_ptr<tt_SiliconDevice> create_wormhole_device(const std::strin
                                                                 const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
     std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
-    dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::wormhole::MEM_SMALL_READ_WRITE_TLB;
-    dynamic_tlb_config["REG_TLB"] = tt::umd::wormhole::REG_TLB;
 
     auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
-                                                     num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
+                                                     num_host_mem_ch_per_mmio_device);
     tt_driver_host_address_params host_address_params = {
         // Values copied from: third_party/umd/src/firmware/riscv/wormhole/host_mem_address_map.h
         32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
@@ -244,11 +235,9 @@ static std::unique_ptr<tt_SiliconDevice> create_blackhole_device(const std::stri
                                                                  const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
     std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
-    dynamic_tlb_config["SMALL_READ_WRITE_TLB"] = tt::umd::blackhole::MEM_SMALL_READ_WRITE_TLB;
-    dynamic_tlb_config["REG_TLB"] = tt::umd::blackhole::REG_TLB;
 
     auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
-                                                     num_host_mem_ch_per_mmio_device, dynamic_tlb_config);
+                                                     num_host_mem_ch_per_mmio_device);
     tt_driver_host_address_params host_address_params = {
         // Values copied from: third_party/umd/src/firmware/riscv/blackhole/host_mem_address_map.h
         32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
@@ -482,7 +471,6 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
         case tt::ARCH::GRAYSKULL:
             device = create_grayskull_device(device_configuration_path, std::string(), target_devices);
             break;
-        case tt::ARCH::WORMHOLE:
         case tt::ARCH::WORMHOLE_B0:
             device = create_wormhole_device(device_configuration_path, cluster_descriptor_path, target_devices);
             break;
