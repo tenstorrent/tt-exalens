@@ -176,3 +176,27 @@ TEST(debuda_communication, arc_msg) {
     test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::dbd::request_type::arc_msg)) +
                                "\n  chip_id: 1\n  msg_code: 2\n  wait_for_done: 1\n  arg0: 3\n  arg1: 4\n  timeout: 5");
 }
+
+TEST(debuda_communication, jtag_read32) {
+    auto req = tt::dbd::jtag_read32_request{tt::dbd::request_type::jtag_read32, 1, 2, 3, 123456};
+    test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::dbd::request_type::jtag_read32)) +
+                               "\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
+}
+
+TEST(debuda_communication, jtag_write32) {
+    auto req = tt::dbd::jtag_write32_request{tt::dbd::request_type::jtag_write32, 1, 2, 3, 123456, 987654};
+    test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::dbd::request_type::jtag_write32)) +
+                               "\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
+}
+
+TEST(debuda_communication, jtag_read32_axi) {
+    auto req = tt::dbd::jtag_read32_axi_request{tt::dbd::request_type::jtag_read32_axi, 1, 123456};
+    test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::dbd::request_type::jtag_read32_axi)) +
+                               "\n  chip_id: 1\n  address: 123456");
+}
+
+TEST(debuda_communication, jtag_write32_axi) {
+    auto req = tt::dbd::jtag_write32_axi_request{tt::dbd::request_type::jtag_write32_axi, 1, 123456, 987654};
+    test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::dbd::request_type::jtag_write32_axi)) +
+                               "\n  chip_id: 1\n  address: 123456\n  data: 987654");
+}

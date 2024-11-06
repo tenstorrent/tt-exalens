@@ -156,6 +156,33 @@ class yaml_not_implemented_implementation : public debuda_implementation {
         return {};
     }
 
+    std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_read32)) +
+                          "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
+                          "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address));
+        return {};
+    }
+    std::optional<int> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                                    uint32_t data) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_write32)) +
+                          "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
+                          "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address) +
+                          "\n  data: " + std::to_string(data));
+        return {};
+    }
+
+    std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_read32_axi)) +
+                          "\n  chip_id: " + std::to_string(chip_id) + "\n  address: " + std::to_string(address));
+        return {};
+    }
+    std::optional<int> jtag_write32_axi(uint8_t chip_id, uint32_t address, uint32_t data) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_write32_axi)) +
+                          "\n  chip_id: " + std::to_string(chip_id) + "\n  address: " + std::to_string(address) +
+                          "\n  data: " + std::to_string(data));
+        return {};
+    }
+
     static std::string serialize_bytes(const uint8_t *data, size_t size) {
         std::string bytes;
 
@@ -290,6 +317,28 @@ TEST(debuda_server, get_device_soc_description) {
     test_not_implemented_request(
         tt::dbd::get_device_soc_description_request{tt::dbd::request_type::get_device_soc_description, 1},
         "- type: 20\n  chip_id: 1");
+}
+
+TEST(debuda_server, jtag_read32) {
+    test_not_implemented_request(tt::dbd::jtag_read32_request{tt::dbd::request_type::jtag_read32, 1, 2, 3, 123456},
+                                 "- type: 50\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
+}
+
+TEST(debuda_server, jtag_write32) {
+    test_not_implemented_request(
+        tt::dbd::jtag_write32_request{tt::dbd::request_type::jtag_write32, 1, 2, 3, 123456, 987654},
+        "- type: 51\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
+}
+
+TEST(debuda_server, jtag_read32_axi) {
+    test_not_implemented_request(tt::dbd::jtag_read32_axi_request{tt::dbd::request_type::jtag_read32_axi, 1, 123456},
+                                 "- type: 52\n  chip_id: 1\n  address: 123456");
+}
+
+TEST(debuda_server, jtag_write32_axi) {
+    test_not_implemented_request(
+        tt::dbd::jtag_write32_axi_request{tt::dbd::request_type::jtag_write32_axi, 1, 123456, 987654},
+        "- type: 53\n  chip_id: 1\n  address: 123456\n  data: 987654");
 }
 
 TEST(debuda_server, pci_write) {

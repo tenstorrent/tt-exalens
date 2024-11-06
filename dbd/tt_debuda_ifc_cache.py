@@ -132,6 +132,20 @@ class DbdCacheThrough(DbdCache):
     def get_run_dirpath(self) -> str:
         return self.communicator.get_run_dirpath()
 
+    @cache_decorator
+    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+        return self.communicator.jtag_read32(chip_id, noc_x, noc_y, address)
+
+    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+        return self.communicator.jtag_write32(chip_id, noc_x, noc_y, address, data)
+
+    @cache_decorator
+    def jtag_read32_axi(self, chip_id: int, address: int):
+        return self.communicator.jtag_read32_axi(chip_id, address)
+
+    def jtag_write32_axi(self, chip_id: int, address: int, data: int):
+        return self.communicator.jtag_write32_axi(chip_id, address, data)
+
     def using_cache(self) -> bool:
         return True
 
@@ -254,6 +268,20 @@ class DbdCacheReader(DbdCache):
     @read_decorator
     def get_run_dirpath(self) -> str:
         pass
+
+    @read_decorator
+    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+        return self.communicator.jtag_read32(chip_id, noc_x, noc_y, address)
+
+    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+        return self.communicator.jtag_write32(chip_id, noc_x, noc_y, address, data)
+
+    @read_decorator
+    def jtag_read32_axi(self, chip_id: int, address: int):
+        return self.communicator.jtag_read32_axi(chip_id, address)
+
+    def jtag_write32_axi(self, chip_id: int, address: int, data: int):
+        return self.communicator.jtag_write32_axi(chip_id, address, data)
 
     def using_cache(self) -> bool:
         return True

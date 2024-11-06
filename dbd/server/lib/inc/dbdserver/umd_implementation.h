@@ -9,12 +9,13 @@
 #include "device/tt_device.h"
 
 class tt_SiliconDevice;
+class JtagDevice;
 
 namespace tt::dbd {
 
 class umd_implementation : public debuda_implementation {
    public:
-    umd_implementation(tt_SiliconDevice* device);
+    umd_implementation(tt_SiliconDevice* device, JtagDevice* jtag_device);
 
    protected:
     std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override;
@@ -38,10 +39,17 @@ class umd_implementation : public debuda_implementation {
                                                                        bool wait_for_done, uint32_t arg0, uint32_t arg1,
                                                                        int timeout) override;
 
+    std::optional<int> jtag_write32_axi(uint8_t chip_id, uint32_t address, uint32_t data) override;
+    std::optional<int> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                                    uint32_t data) override;
+    std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) override;
+    std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override;
+
    private:
     bool is_chip_mmio_capable(uint8_t chip_id);
 
     tt_SiliconDevice* device = nullptr;
+    JtagDevice* jtag_device = nullptr;
     std::string cluster_descriptor_path;
 };
 

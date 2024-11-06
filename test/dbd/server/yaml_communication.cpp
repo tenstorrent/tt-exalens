@@ -56,6 +56,18 @@ void yaml_communication::process(const tt::dbd::request& request) {
         case tt::dbd::request_type::arc_msg:
             respond(serialize(static_cast<const tt::dbd::arc_msg_request&>(request)));
             break;
+        case tt::dbd::request_type::jtag_read32:
+            respond(serialize(static_cast<const tt::dbd::jtag_read32_request&>(request)));
+            break;
+        case tt::dbd::request_type::jtag_write32:
+            respond(serialize(static_cast<const tt::dbd::jtag_write32_request&>(request)));
+            break;
+        case tt::dbd::request_type::jtag_read32_axi:
+            respond(serialize(static_cast<const tt::dbd::jtag_read32_axi_request&>(request)));
+            break;
+        case tt::dbd::request_type::jtag_write32_axi:
+            respond(serialize(static_cast<const tt::dbd::jtag_write32_axi_request&>(request)));
+            break;
         default:
             respond("NOT_IMPLEMENTED_YAML_SERIALIZATION for " + std::to_string(static_cast<int>(request.type)));
             break;
@@ -142,6 +154,30 @@ std::string yaml_communication::serialize(const tt::dbd::arc_msg_request& reques
            "\n  chip_id: " + std::to_string(request.chip_id) + "\n  msg_code: " + std::to_string(request.msg_code) +
            "\n  wait_for_done: " + std::to_string(request.wait_for_done) + "\n  arg0: " + std::to_string(request.arg0) +
            "\n  arg1: " + std::to_string(request.arg1) + "\n  timeout: " + std::to_string(request.timeout);
+}
+
+std::string yaml_communication::serialize(const tt::dbd::jtag_read32_request& request) {
+    return "- type: " + std::to_string(static_cast<int>(request.type)) +
+           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  noc_x: " + std::to_string(request.noc_x) +
+           "\n  noc_y: " + std::to_string(request.noc_y) + "\n  address: " + std::to_string(request.address);
+}
+
+std::string yaml_communication::serialize(const tt::dbd::jtag_write32_request& request) {
+    return "- type: " + std::to_string(static_cast<int>(request.type)) +
+           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  noc_x: " + std::to_string(request.noc_x) +
+           "\n  noc_y: " + std::to_string(request.noc_y) + "\n  address: " + std::to_string(request.address) +
+           "\n  data: " + std::to_string(request.data);
+}
+
+std::string yaml_communication::serialize(const tt::dbd::jtag_read32_axi_request& request) {
+    return "- type: " + std::to_string(static_cast<int>(request.type)) +
+           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  address: " + std::to_string(request.address);
+}
+
+std::string yaml_communication::serialize(const tt::dbd::jtag_write32_axi_request& request) {
+    return "- type: " + std::to_string(static_cast<int>(request.type)) +
+           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  address: " + std::to_string(request.address) +
+           "\n  data: " + std::to_string(request.data);
 }
 
 std::string yaml_communication::serialize_bytes(const uint8_t* data, size_t size) {

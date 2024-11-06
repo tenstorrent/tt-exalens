@@ -30,5 +30,9 @@ class yaml_communication : public tt::dbd::communication {
     std::string serialize(const tt::dbd::get_device_soc_description_request& request);
     std::string serialize(const tt::dbd::get_file_request& request);
     std::string serialize(const tt::dbd::arc_msg_request& request);
+    std::string serialize(const tt::dbd::jtag_read32_request& request);
+    std::string serialize(const tt::dbd::jtag_write32_request& request);
+    std::string serialize(const tt::dbd::jtag_read32_axi_request& request);
+    std::string serialize(const tt::dbd::jtag_write32_axi_request& request);
     std::string serialize_bytes(const uint8_t* data, size_t size);
 };

@@ -87,3 +87,21 @@ add_custom_command(TARGET debuda_server_lib
     COMMAND ${CMAKE_COMMAND} -E copy ${uv_lib_path} ${CMAKE_BINARY_DIR}/lib
     COMMENT "Copying umd dependencies to ${CMAKE_BINARY_DIR}/lib"
 )
+
+# JTAG
+set(JTAG_ACCESS_LIB_PATH "${DEBUDA_HOME}/third_party/jtag-access-library")
+set(LIBJTAG "${CMAKE_BINARY_DIR}/lib/libjtag.so")
+set(LIBJTAG_SOURCE "${JTAG_ACCESS_LIB_PATH}/out/libjtag.so")
+set(LIBJTAG_DEP "${CMAKE_BINARY_DIR}/lib/libjlinkarm.so")
+set(LIBJTAG_DEP_SOURCE "${JTAG_ACCESS_LIB_PATH}/lib/libjlinkarm.so")
+
+if(EXISTS "${JTAG_ACCESS_LIB_PATH}")
+    add_custom_target(dummy_target ALL DEPENDS copy_jtag)
+    add_custom_command(
+        OUTPUT copy_jtag
+        COMMAND make -C "${JTAG_ACCESS_LIB_PATH}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${LIBJTAG_SOURCE}" "${LIBJTAG}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${LIBJTAG_DEP_SOURCE}" "${LIBJTAG_DEP}"
+        COMMENT "Rebuilding & copying JTAG libraries to ${CMAKE_BINARY_DIR}/lib"
+    )
+endif()

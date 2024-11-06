@@ -125,6 +125,36 @@ std::optional<std::string> pci_read_tile(uint8_t chip_id, uint8_t noc_x, uint8_t
     return {};
 }
 
+std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
+    if (debuda_implementation) {
+        return debuda_implementation->jtag_read32(chip_id, noc_x, noc_y, address);
+    }
+    return {};
+}
+
+std::optional<uint32_t> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data) {
+    if (debuda_implementation) {
+        debuda_implementation->jtag_write32(chip_id, noc_x, noc_y, address, data);
+        return 0;
+    }
+    return {};
+}
+
+std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) {
+    if (debuda_implementation) {
+        return debuda_implementation->jtag_read32_axi(chip_id, address);
+    }
+    return {};
+}
+
+std::optional<uint32_t> jtag_write32_axi(uint8_t chip_id, uint64_t address, uint32_t data) {
+    if (debuda_implementation) {
+        debuda_implementation->jtag_write32_axi(chip_id, address, data);
+        return 0;
+    }
+    return {};
+}
+
 std::optional<std::string> get_runtime_data() {
     if (debuda_implementation) {
         return debuda_implementation->get_runtime_data();
@@ -204,6 +234,14 @@ PYBIND11_MODULE(tt_dbd_pybind, m) {
     m.def("get_device_arch", &get_device_arch, "Returns device architecture", pybind11::arg("chip_id"));
     m.def("get_device_soc_description", &get_device_soc_description, "Returns device SoC description",
           pybind11::arg("chip_id"));
+    m.def("jtag_read32", &jtag_read32, "Reads 4 bytes from NOC address using JTAG", pybind11::arg("chip_id"),
+          pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"));
+    m.def("jtag_write32", &jtag_write32, "Writes 4 bytes to NOC address using JTAG", pybind11::arg("chip_id"),
+          pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"), pybind11::arg("data"));
+    m.def("jtag_read32_axi", &jtag_read32_axi, "Reads 4 bytes from AXI address using JTAG", pybind11::arg("chip_id"),
+          pybind11::arg("address"));
+    m.def("jtag_write32_axi", &jtag_write32_axi, "Writes 4 bytes to AXI address using JTAG", pybind11::arg("chip_id"),
+          pybind11::arg("address"), pybind11::arg("data"));
 
     // Bind arc_msg with explicit lambda to ensure type resolution
     m.def("arc_msg", &arc_msg, "Send ARC message", pybind11::arg("chip_id"), pybind11::arg("msg_code"),

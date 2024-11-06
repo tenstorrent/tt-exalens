@@ -80,6 +80,21 @@ def empty_pci_write():
         )
     )
 
+def empty_jtag_read32():
+    global server
+    check_not_implemented_response(lambda: server.jtag_read32(1, 2, 3, 123456))
+
+def empty_jtag_write32():
+    global server
+    check_not_implemented_response(lambda: server.jtag_write32(1, 2, 3, 123456, 987654))
+
+def empty_jtag_read32_axi():
+    global server
+    check_not_implemented_response(lambda: server.jtag_read32_axi(1, 123456))
+
+def empty_jtag_write32_axi():
+    global server
+    check_not_implemented_response(lambda: server.jtag_write32_axi(1, 123456, 987654))
 
 def empty_get_file():
     global server
@@ -123,6 +138,19 @@ def pci_read_tile():
     global server
     read = server.pci_read_tile(1, 2, 3, 123456, 1024, 14)
     print("pass" if read == "pci_read_tile(1, 2, 3, 123456, 1024, 14)" else "fail")
+
+def jtag_write32_jtag_read32():
+    global server
+    server.jtag_write32(1, 2, 3, 123456, 987654)
+    read = server.jtag_read32(1, 2, 3, 123456)
+    print("pass" if read == 987654 else "fail")
+
+
+def jtag_write32_axi_jtag_read32_axi():
+    global server
+    server.jtag_write32_axi(1, 123456, 987654)
+    read = server.jtag_read32_axi(1, 123456)
+    print("pass" if read == 987654 else "fail")
 
 
 def get_runtime_data():

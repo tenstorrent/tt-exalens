@@ -33,6 +33,8 @@ class simulation_implementation : public tt::dbd::debuda_implementation {
     std::map<std::tuple<uint8_t, uint8_t, uint8_t, uint64_t>, uint32_t> read_write_4;
     std::map<std::tuple<uint8_t, uint8_t, uint8_t, uint64_t, uint32_t>, std::vector<uint8_t>> read_write;
     std::map<std::tuple<uint8_t, uint64_t>, uint32_t> read_write_4_raw;
+    std::map<std::tuple<uint8_t, uint8_t, uint8_t, uint64_t>, uint32_t> jtag_read_write_4;
+    std::map<uint32_t, uint32_t> jtag_read_write_2;
 
    protected:
     std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override {
@@ -81,6 +83,31 @@ class simulation_implementation : public tt::dbd::debuda_implementation {
             return it->second + channel;
         }
         return {};
+    }
+
+    std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override {
+        auto it = jtag_read_write_4.find(std::make_tuple(chip_id, noc_x, noc_y, address));
+        if (it != jtag_read_write_4.end()) {
+            return it->second;
+        }
+        return {};
+    }
+    std::optional<int> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                                    uint32_t data) override {
+        jtag_read_write_4[std::make_tuple(chip_id, noc_x, noc_y, address)] = data;
+        return 4;
+    }
+
+    std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) override {
+        auto it = jtag_read_write_2.find(address);
+        if (it != jtag_read_write_2.end()) {
+            return it->second;
+        }
+        return {};
+    }
+    std::optional<int> jtag_write32_axi(uint8_t chip_id, uint32_t address, uint32_t data) override {
+        jtag_read_write_2[address] = data;
+        return 4;
     }
 
     std::optional<std::string> pci_read_tile(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
@@ -168,6 +195,10 @@ TEST(debuda_python_server, get_harvester_coordinate_translation) {
     call_python_server("get_harvester_coordinate_translation");
 }
 
+TEST(debuda_python_server, jtag_write32_jtag_read32) { call_python_server("jtag_write32_jtag_read32"); }
+
+TEST(debuda_python_server, jtag_write32_axi_jtag_read32_axi) { call_python_server("jtag_write32_axi_jtag_read32_axi"); }
+
 TEST(debuda_python_server, get_device_ids) { call_python_server("get_device_ids"); }
 
 TEST(debuda_python_server, get_device_arch) { call_python_server("get_device_arch"); }
@@ -177,3 +208,11 @@ TEST(debuda_python_server, get_device_soc_description) { call_python_server("get
 TEST(debuda_python_server, get_file) { call_python_server("get_file"); }
 
 TEST(debuda_python_server, get_run_dirpath) { call_python_server("get_run_dirpath"); }
+
+TEST(debuda_python_empty_server, jtag_read32) { call_python_empty_server("empty_jtag_read32"); }
+
+TEST(debuda_python_empty_server, jtag_write32) { call_python_empty_server("empty_jtag_write32"); }
+
+TEST(debuda_python_empty_server, jtag_read32_axi) { call_python_empty_server("empty_jtag_read32_axi"); }
+
+TEST(debuda_python_empty_server, jtag_write32_axi) { call_python_empty_server("empty_jtag_write32_axi"); }

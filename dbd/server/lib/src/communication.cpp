@@ -113,6 +113,19 @@ void tt::dbd::communication::request_loop() {
                         invalid_message = message.size() != sizeof(arc_msg_request);
                         break;
 
+                    case request_type::jtag_read32:
+                        invalid_message = message.size() != sizeof(jtag_read32_request);
+                        break;
+                    case request_type::jtag_write32:
+                        invalid_message = message.size() != sizeof(jtag_write32_request);
+                        break;
+                    case request_type::jtag_read32_axi:
+                        invalid_message = message.size() != sizeof(jtag_read32_axi_request);
+                        break;
+                    case request_type::jtag_write32_axi:
+                        invalid_message = message.size() != sizeof(jtag_write32_axi_request);
+                        break;
+
                     // Dynamic sized structures
                     case request_type::pci_write:
                         invalid_message = (message.size() < sizeof(pci_write_request)) ||

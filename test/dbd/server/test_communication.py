@@ -141,6 +141,36 @@ def get_buda_run_dirpath():
         "- type: 201",
     )
 
+def jtag_read32():
+    global server_communication
+    check_response(
+        server_communication.jtag_read32(1, 2, 3, 123456),
+        "- type: 50\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456",
+    )
+
+
+def jtag_write32():
+    global server_communication
+    check_response(
+        server_communication.jtag_write32(1, 2, 3, 123456, 987654),
+        "- type: 51\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654",
+    )
+
+def jtag_read32_axi():
+    global server_communication
+    check_response(
+        server_communication.jtag_read32_axi(1, 123456),
+        "- type: 52\n  chip_id: 1\n  address: 123456",
+    )
+
+
+def jtag_write32_axi():
+    global server_communication
+    check_response(
+        server_communication.jtag_write32_axi(1, 123456, 987654),
+        "- type: 53\n  chip_id: 1\n  address: 123456\n  data: 987654",
+    )
+
 def main():
     # Check if at least two arguments are provided (script name + function name)
     if len(sys.argv) < 3:
