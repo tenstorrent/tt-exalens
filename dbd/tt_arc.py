@@ -1,11 +1,10 @@
-# This code is used to interact with the ARC cores on the device.
 from typing import Union, List
 from dbd.tt_debuda_context import Context
 from dbd.tt_util import TTException
 import re
 import os
 
-from dbd.tt_debuda_lib_utils import check_context
+from dbd.tt_debuda_lib_utils import check_context, arc_read, arc_write
 
 def run_arc_core(mask: int, device_id: int = 0, context: Context = None):
     """ Runs the arc core specified by the mask.
@@ -24,20 +23,20 @@ def run_arc_core(mask: int, device_id: int = 0, context: Context = None):
     reg_addr = device.get_register_addr("ARC_RESET_ARC_MISC_CNTL")
     
     # Read current value
-    current = context.server_ifc.pci_read32(device_id, *arc_core_loc.to("nocVirt"), reg_addr)
+    current = arc_read(context, device_id, arc_core_loc, reg_addr)
     # Clear bits 0-3 and set new value
     new_value = (current & ~0xF) | (mask & 0xF)
-    context.server_ifc.pci_write32(device_id, *arc_core_loc.to("nocVirt"), reg_addr, new_value)
+    arc_write(context, device_id, arc_core_loc, reg_addr, new_value)
 
     # Wait for acknowledgment
     core_run_ack = 0
     while (core_run_ack & mask != mask):
-        status = context.server_ifc.pci_read32(device_id, *arc_core_loc.to("nocVirt"), device.get_register_addr("ARC_RESET_ARC_MISC_STATUS"))
+        status = arc_read(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_ARC_MISC_STATUS"))
         core_run_ack = status & 0xF  # Read bits 0-3
 
     # Clear control bits
-    current = context.server_ifc.pci_read32(device_id, *arc_core_loc.to("nocVirt"), reg_addr)
-    context.server_ifc.pci_write32(device_id, *arc_core_loc.to("nocVirt"), reg_addr, current & ~0xF)
+    current = arc_read(context, device_id, arc_core_loc, reg_addr)
+    arc_write(context, device_id, arc_core_loc, reg_addr, current & ~0xF)
 
 def halt_arc_core(mask: int, device_id: int = 0, context: Context = None):
     """ Halts the ARC core specified by the mask.
@@ -55,20 +54,20 @@ def halt_arc_core(mask: int, device_id: int = 0, context: Context = None):
     reg_addr = device.get_register_addr("ARC_RESET_ARC_MISC_CNTL")
     
     # Read current value
-    current = context.server_ifc.pci_read32(device_id, *arc_core_loc.to("nocVirt"), reg_addr)
+    current = arc_read(context, device_id, arc_core_loc, reg_addr)
     # Set bits 4-7 with mask
     new_value = (current & ~0xF0) | ((mask & 0xF) << 4)
-    context.server_ifc.pci_write32(device_id, *arc_core_loc.to("nocVirt"), reg_addr, new_value)
+    arc_write(context, device_id, arc_core_loc, reg_addr, new_value)
 
     # Wait for acknowledgment
     core_halt_ack = 0
     while (core_halt_ack != mask):
-        status = context.server_ifc.pci_read32(device_id, *arc_core_loc.to("nocVirt"), device.get_register_addr("ARC_RESET_ARC_MISC_STATUS"))
+        status = arc_read(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_ARC_MISC_STATUS"))
         core_halt_ack = (status >> 4) & 0xF  # Read bits 4-7
     
     # Clear halt bits
-    current = context.server_ifc.pci_read32(device_id, *arc_core_loc.to("nocVirt"), reg_addr)
-    context.server_ifc.pci_write32(device_id, *arc_core_loc.to("nocVirt"), reg_addr, current & ~0xF0)
+    current = arc_read(context, device_id, arc_core_loc, reg_addr)
+    arc_write(context, device_id, arc_core_loc, reg_addr, current & ~0xF0)
 
 def set_udmiaxi_region(mem_type: str, device_id: int = 0, context:Context=None):
     """ Sets the UDMIAXI region to the specified memory type.
@@ -93,11 +92,9 @@ def set_udmiaxi_region(mem_type: str, device_id: int = 0, context:Context=None):
 
     base_addr = ((0x10000000 >> 24) & 0xff) if mem_type == 'csm' else (iccm_id*0x3)
 
-    context.server_ifc.pci_write32(device_id, *arc_core_loc.to("nocVirt"), 
-                                 device.get_register_addr("ARC_RESET_ARC_UDMIAXI_REGION"), 
-                                 base_addr)
+    arc_write(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_ARC_UDMIAXI_REGION"), base_addr)
 
-def load_arc_fw(file_name: str, iccm_id: int, device_id: int = 0, context: Context = None) -> None:
+def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context = None) -> None:
     """ Loads the ARC firmware from the file into the device.
 
     Args:
@@ -153,14 +150,12 @@ def load_arc_fw(file_name: str, iccm_id: int, device_id: int = 0, context: Conte
         for offset, data in read_contiguous_hex_chunks(f):
             if first_chunk: # Load reset vector
                 word = int.from_bytes(data[0:4], 'little')
-                context.server_ifc.pci_write32(device_id, *arc_core_loc.to("nocVirt"), 
-                                             device.get_register_addr("ARC_ROM_DATA"), word)
+                arc_write(context, device_id, arc_core_loc, device.get_register_addr("ARC_ROM_DATA"), word)
                 first_chunk = False
 
             for i in range(len(data) // 4):
                 word = int.from_bytes(data[i*4 : i*4+4], 'little')
-                context.server_ifc.pci_write32(device_id, *arc_core_loc.to("nocVirt"), 
-                                             base_addr+i*4, word)
+                arc_write(context, device_id, arc_core_loc, base_addr+i*4, word)
 
     set_udmiaxi_region("csm", device_id, context)
     run_arc_core(1<<iccm_id, device_id, context)

@@ -26,6 +26,7 @@ from dbd.tt_arc_dbg_fw import (
     arc_dbg_fw_command,
 	NUM_LOG_CALLS_OFFSET
 )
+from dbd.tt_debuda_lib_utils import arc_read
 
 def invalid_argument_decorator(func):
 	@wraps(func)
@@ -461,11 +462,11 @@ class TestARC(unittest.TestCase):
 
 	def test_load_arc_fw(self):
 		for device_id in self.context.device_ids:
-			load_arc_fw(self.fw_file_path, device_id, context=self.context)
+			load_arc_fw(self.fw_file_path,2, device_id, context=self.context)
 			device = self.context.devices[device_id]
 			arc_core_loc = device.get_arc_block_location()
 
-			scratch2 = lib.read_field(device.get_register_addr("ARC_RESET_SCRATCH2"), arc_core_loc, (0,31), device_id, self.context)
+			scratch2 = arc_read(self.context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH2"))
 
 			assert(scratch2 == 0xbebaceca)
 
@@ -475,7 +476,7 @@ class TestARC(unittest.TestCase):
 		TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024
 		for device_id in self.context.device_ids:
 			if not arc_dbg_fw_check_msg_loop_running(device_id, self.context):
-				load_arc_fw(self.fw_file_path, device_id, context=self.context)
+				load_arc_fw(self.fw_file_path, 2, device_id, context=self.context)
 
 			def arc_dbg_fw_get_number_of_arc_log_calls(device_id):
 				return lib.read_words_from_device("ch0", device_id=device_id, addr=NUM_LOG_CALLS_OFFSET, word_count=1)[0]

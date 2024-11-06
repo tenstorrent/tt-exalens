@@ -4,7 +4,7 @@ import time
 from typing import Union, List
 from dbd.tt_debuda_context import Context
 from dbd.tt_util import TTException
-from dbd.tt_debuda_lib_utils import check_context
+from dbd.tt_debuda_lib_utils import check_context, arc_read, arc_write
 
 def arc_dbg_fw_get_buffer_start_addr():
     return 32
@@ -34,10 +34,10 @@ def arc_dbg_fw_send_message(message, arg0: int = 0, arg1: int = 0, device_id: in
     device = context.devices[device_id]
     arc_core_loc = device.get_arc_block_location()    
 
-    context.server_ifc.pci_write32(device_id, *arc_core_loc.to("nocVirt"), device.get_register_addr("ARC_RESET_SCRATCH3"), arg0)
-    context.server_ifc.pci_write32(device_id, *arc_core_loc.to("nocVirt"), device.get_register_addr("ARC_RESET_SCRATCH4"), arg1)
+    arc_write(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH3"), arg0)
+    arc_write(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH4"), arg1)
     assert(message & 0xffffff00 == 0) # "Message must be in the lower 8 bits"
-    context.server_ifc.pci_write32(device_id, *arc_core_loc.to("nocVirt"), device.get_register_addr("ARC_RESET_SCRATCH2"), message | 0xabcdef00)
+    arc_write(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH2"), message | 0xabcdef00)
 
 def arc_dbg_fw_check_msg_loop_running(device_id: int = 0, context: Context = None):
     """
@@ -51,7 +51,7 @@ def arc_dbg_fw_check_msg_loop_running(device_id: int = 0, context: Context = Non
     arc_dbg_fw_send_message(0x88, 0, 0, device_id, context) 
     time.sleep(0.01) # Allow time for reply
     
-    reply = context.server_ifc.pci_read32(device_id, *arc_core_loc.to("nocVirt"), device.get_register_addr("ARC_RESET_SCRATCH2"))
+    reply = arc_read(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH2"))
     
     if (reply >> 16) != 0x99 or (reply & 0xff00) != 0x8800: 
         return False
