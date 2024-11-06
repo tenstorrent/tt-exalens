@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
 from typing import Union, List
 from dbd.tt_debuda_context import Context
 from dbd.tt_util import TTException
@@ -5,6 +8,7 @@ import re
 import os
 
 from dbd.tt_debuda_lib_utils import check_context, arc_read, arc_write
+from time import sleep
 
 def run_arc_core(mask: int, device_id: int = 0, context: Context = None):
     """ Runs the arc core specified by the mask.
@@ -94,6 +98,30 @@ def set_udmiaxi_region(mem_type: str, device_id: int = 0, context:Context=None):
 
     arc_write(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_ARC_UDMIAXI_REGION"), base_addr)
 
+def trigger_fw_int(device_id: int = 0, context: Context = None) -> bool:
+    """
+    Triggers a firmware interrupt on the specified device.
+
+    Args:
+        device_id (int): The ID of the device to trigger the interrupt on. Defaults to 0.
+        context (Context): The context containing device information. Defaults to None.
+    Returns:
+        bool: True if the interrupt was successfully triggered, False otherwise.
+    """
+    context = check_context(context)
+    device = context.devices[device_id]
+    arc_core_loc = device.get_arc_block_location()
+
+    misc = arc_read(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"))
+
+    if (misc & (1 << 16)):
+        return False
+
+    misc_bit16_set = misc | (1 << 16)
+    arc_write(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET.ARC_MISC_CNTL"), misc_bit16_set)
+    
+    return True
+
 def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context = None) -> None:
     """ Loads the ARC firmware from the file into the device.
 
@@ -115,10 +143,19 @@ def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context =
 
     device = context.devices[device_id]
     arc_core_loc = device.get_arc_block_location()
-
+    
     mem_type = f'iccm{iccm_id}'
 
-    halt_arc_core(1<<iccm_id, device_id, context)
+    halt_arc_core(1<<iccm_id, device_id, context)   
+
+    if iccm_id == 0:
+        # Same for womhole and grayskull
+        MSG_TYPE_ARC_GO_TO_SLEEP = 0x55
+
+        arc_write(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH5"), 0xaa00 | MSG_TYPE_ARC_GO_TO_SLEEP)
+
+        trigger_fw_int()
+        sleep (0.01) # Wait a bit for ARC to process this
 
     set_udmiaxi_region(mem_type, device_id, context)
 

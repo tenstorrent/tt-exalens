@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
 # Core utility functions used by tt_debuda_lib and other modules
 from dbd import tt_debuda_init
 from dbd.tt_debuda_context import Context
