@@ -13,9 +13,9 @@
 #include <stdexcept>
 
 #include "device/blackhole/blackhole_implementation.h"
+#include "device/cluster.h"
 #include "device/grayskull/grayskull_implementation.h"
 #include "device/tt_cluster_descriptor.h"
-#include "device/cluster.h"
 #include "device/wormhole/wormhole_implementation.h"
 
 // Include automatically generated files that we embed in source to avoid managing their deployment
