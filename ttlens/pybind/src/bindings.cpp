@@ -28,7 +28,7 @@ void set_debuda_implementation(std::unique_ptr<tt::dbd::debuda_implementation> i
 bool open_device(const std::string &binary_directory, const std::string &runtime_yaml_path,
                  const std::vector<uint8_t> &wanted_devices) {
     try {
-        // Since tt_SiliconDevice is printing some output and we don't want to see it in python, we disable std::cout
+        // Since tt::umd::Cluster is printing some output and we don't want to see it in python, we disable std::cout
         scoped_null_stdout null_stdout;
 
         debuda_implementation =
