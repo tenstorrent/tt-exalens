@@ -66,6 +66,8 @@ jobs:
           chmod +x build/bin/debuda-create-ethernet-map-blackhole
           chmod +x build/bin/debuda-server-standalone
           chmod +x build/bin/debuda_server_unit_tests
+      - name: Collect Workflow Telemetry
+        uses: catchpoint/workflow-telemetry-action@v2
       - name: Run C++ tests
         run: |
           make dbd_server_unit_tests_run_only

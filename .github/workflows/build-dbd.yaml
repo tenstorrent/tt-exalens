@@ -32,6 +32,8 @@ jobs:
           lfs: true
       - name: Git safe dir
         run: git config --global --add safe.directory /__w/tt-debuda/tt-debuda
+      - name: Collect Workflow Telemetry
+        uses: catchpoint/workflow-telemetry-action@v2
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
