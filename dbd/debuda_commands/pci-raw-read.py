@@ -17,7 +17,7 @@ Examples:
 
 from docopt import docopt
 
-from debuda import UIState
+from dbd.tt_uistate import UIState
 
 from dbd import tt_device
 
