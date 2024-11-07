@@ -11,8 +11,13 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <vector>
+#include <filesystem>
 
 Jtag::Jtag(const char* libName) {
+    if (!std::filesystem::exists(libName)) {
+        throw std::runtime_error("Library does not exist");
+    }
+
     handle = dlopen(libName, RTLD_LAZY);
     if (!handle) {
         std::cerr << dlerror() << std::endl;
