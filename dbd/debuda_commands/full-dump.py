@@ -12,7 +12,7 @@ Examples:
   fd
 """
 
-from debuda import UIState
+from dbd.tt_uistate import UIState
 
 
 command_metadata = {

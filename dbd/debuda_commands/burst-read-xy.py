@@ -38,7 +38,7 @@ command_metadata = {
 import time
 from docopt import docopt
 
-from debuda import UIState
+from dbd.tt_uistate import UIState
 
 from dbd.tt_coordinate import OnChipCoordinate
 from dbd.tt_debuda_lib import read_words_from_device, read_from_device

@@ -25,7 +25,7 @@ command_metadata = {
 
 from docopt import docopt
 
-from debuda import UIState
+from dbd.tt_uistate import UIState
 
 from dbd import tt_device
 from dbd import tt_util as util

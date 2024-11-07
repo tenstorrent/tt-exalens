@@ -39,7 +39,7 @@ from docopt import docopt
 from collections import defaultdict
 from typing import List, Dict
 
-from debuda import UIState
+from dbd.tt_uistate import UIState
 
 from dbd import tt_util as util
 from dbd.tt_coordinate import OnChipCoordinate

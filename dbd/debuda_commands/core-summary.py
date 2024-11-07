@@ -11,7 +11,7 @@ command_metadata = {
     "context": [], # TODO: Add applicable context 
 }
 
-from debuda import UIState
+from dbd.tt_uistate import UIState
 
 from dbd import tt_util as util
 

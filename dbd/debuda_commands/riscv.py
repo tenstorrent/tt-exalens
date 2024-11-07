@@ -52,7 +52,7 @@ command_metadata = {
     "common_option_names": [ "--device", "--loc", "--risc", "--verbose" ]
 }
 
-from debuda import UIState
+from dbd.tt_uistate import UIState
 
 from dbd import tt_commands
 from dbd import tt_device
