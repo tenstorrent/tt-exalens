@@ -14,7 +14,7 @@ Examples:
 
 from tabulate import tabulate
 
-from debuda import UIState
+from dbd.tt_uistate import UIState
 
 from dbd import tt_device
 from dbd import tt_util as util
