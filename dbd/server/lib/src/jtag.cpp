@@ -7,11 +7,11 @@
 #include <stdint.h>
 
 #include <algorithm>
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <unordered_map>
 #include <vector>
-#include <filesystem>
 
 Jtag::Jtag(const char* libName) {
     if (!std::filesystem::exists(libName)) {
