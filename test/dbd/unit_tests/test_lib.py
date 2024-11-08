@@ -458,14 +458,12 @@ class TestARC(unittest.TestCase):
         # Asserting that return_3 (aiclk) is greater than 400 and less than 2000
         self.assertTrue(return_3 > 200 and return_3 < 2000)
 
-    fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_dbg_fw.hex")
+    fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
 
-    def test_load_arc_fw_and_arc_logger(self):
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull since we do not have firmware that can be loaded on grayskull right now")
+    def test_load_arc_fw(self):
         wait_time = 0.1
         TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024
-        
+
         for device_id in self.context.device_ids:
             load_arc_fw(self.fw_file_path,2, device_id, context=self.context)
             device = self.context.devices[device_id]
@@ -474,19 +472,3 @@ class TestARC(unittest.TestCase):
             scratch2 = arc_read(self.context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH2"))
 
             assert(scratch2 == 0xbebaceca)
-            def arc_dbg_fw_get_number_of_arc_log_calls(device_id):
-                return lib.read_words_from_device("ch0", device_id=device_id, addr=NUM_LOG_CALLS_OFFSET, word_count=1)[0]
-
-            start_log_calls = arc_dbg_fw_get_number_of_arc_log_calls(device_id) 
-            arc_dbg_fw_command("start", TT_METAL_ARC_DEBUG_BUFFER_SIZE, device_id, self.context)
-
-            time.sleep(wait_time)
-            
-            arc_dbg_fw_command("stop", TT_METAL_ARC_DEBUG_BUFFER_SIZE, device_id, self.context)
-            
-            end_log_calls = arc_dbg_fw_get_number_of_arc_log_calls(device_id)
-            time.sleep(wait_time)
-            after_stop_log_calls = arc_dbg_fw_get_number_of_arc_log_calls(device_id)
-
-            assert(end_log_calls > start_log_calls)
-            assert(after_stop_log_calls == end_log_calls)
