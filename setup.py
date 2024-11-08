@@ -45,7 +45,7 @@ ttlens_files = {
     },
     "debuda-server-standalone": {
         "path": "build/bin" ,
-        "files": [ "debuda-server-standalone", "debuda-create-ethernet-map-wormhole", "debuda-create-ethernet-map-blackhole" ],
+        "files": [ "debuda-server-standalone" ],
         "output": "build/bin",
         "strip": True
     }
