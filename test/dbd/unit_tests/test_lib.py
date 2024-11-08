@@ -26,7 +26,7 @@ from dbd.tt_arc_dbg_fw import (
     arc_dbg_fw_command,
     NUM_LOG_CALLS_OFFSET
 )
-from dbd.tt_debuda_lib_utils import arc_read, arc_write
+from dbd.tt_debuda_lib_utils import arc_read
 
 def invalid_argument_decorator(func):
     @wraps(func)
@@ -461,6 +461,8 @@ class TestARC(unittest.TestCase):
     fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
 
     def test_load_arc_fw(self):
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests.")
         wait_time = 0.1
         TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024
 
@@ -469,7 +471,6 @@ class TestARC(unittest.TestCase):
             device = self.context.devices[device_id]
             arc_core_loc = device.get_arc_block_location()
 
-            arc_write(self.context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH2"), 0xbebaceca)
             scratch2 = arc_read(self.context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH2"))
 
             assert(scratch2 == 0xbebaceca)
