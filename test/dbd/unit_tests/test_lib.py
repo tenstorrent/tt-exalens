@@ -26,7 +26,7 @@ from dbd.tt_arc_dbg_fw import (
     arc_dbg_fw_command,
     NUM_LOG_CALLS_OFFSET
 )
-from dbd.tt_debuda_lib_utils import arc_read
+from dbd.tt_debuda_lib_utils import arc_read, arc_write
 
 def invalid_argument_decorator(func):
     @wraps(func)
@@ -469,7 +469,7 @@ class TestARC(unittest.TestCase):
             device = self.context.devices[device_id]
             arc_core_loc = device.get_arc_block_location()
 
-            arc_read(self.context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH2"), 0xbebaceca)
+            arc_write(self.context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH2"), 0xbebaceca)
             scratch2 = arc_read(self.context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH2"))
 
             assert(scratch2 == 0xbebaceca)
