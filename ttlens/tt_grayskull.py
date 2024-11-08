@@ -87,7 +87,7 @@ class GrayskullDevice(tt_device.Device):
         return noc0_x, noc0_y
 
     def _handle_harvesting_for_nocTr_noc0_map(self, num_harvested_rows):
-        assert num_harvested_rows == 0, "Harvesting not supported for Grayskull"
+        self.nocTr_x_to_noc0_x = {i: i for i in range(0, self.row_count())}
 
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(id, arch, cluster_desc, {"functional_workers": GrayskullL1AddressMap(), "dram": GrayskullDRAMEpochCommandAddressMap()}, device_desc_path, context)
