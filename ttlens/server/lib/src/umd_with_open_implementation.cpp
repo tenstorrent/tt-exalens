@@ -408,7 +408,7 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
         return {};
     }
     auto cluster_descriptor_path = tt_ClusterDescriptor::get_cluster_descriptor_file_path();
-        auto cluster_descriptor = tt_ClusterDescriptor::create_from_yaml(cluster_descriptor_path);
+    auto cluster_descriptor = tt_ClusterDescriptor::create_from_yaml(cluster_descriptor_path);
     std::vector<uint8_t> device_ids;
     std::unique_ptr<tt_SiliconDevice> device;
 
