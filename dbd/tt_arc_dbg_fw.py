@@ -14,6 +14,11 @@ def arc_dbg_fw_get_buffer_start_addr():
 
 NUM_LOG_CALLS_OFFSET = arc_dbg_fw_get_buffer_start_addr() + 7*4
 
+DFW_MSG_CLEAR_DRAM         = 0x1  # Calls dfw_clear_dram(start_addr, size)
+DFW_MSG_CHECK_DRAM_CLEARED = 0x2  # Calls dfw_check_dram_cleared(start_addr, size)
+DFW_MSG_SETUP_LOGGING      = 0x3  # Calls dfw_setup_log_buffer(start_addr, size)
+DFW_MSG_SETUP_PMON         = 0x4  # Calls dfw_setup_pmon(pmon_id, ro_id)
+
 def arc_dbg_fw_send_message(message, arg0: int = 0, arg1: int = 0, device_id: int = 0, context: Context=None) -> None:
     """ Send a message to the ARC debug firmware.
     
@@ -75,13 +80,14 @@ def arc_dbg_fw_command(command: str, tt_metal_arc_debug_buffer_size: int = 1024,
     else:
         DRAM_REGION_SIZE = int(DRAM_REGION_SIZE)
 
-    DFW_MSG_CLEAR_DRAM         = 0x1  # Calls dfw_clear_dram(start_addr, size)
-    DFW_MSG_CHECK_DRAM_CLEARED = 0x2  # Calls dfw_check_dram_cleared(start_addr, size)
-    DFW_MSG_SETUP_LOGGING      = 0x3  # Calls dfw_setup_log_buffer(start_addr, size)
-
     if command == "start":
         arc_dbg_fw_send_message(DFW_MSG_SETUP_LOGGING, DRAM_REGION_START_ADDR, DRAM_REGION_SIZE, device_id, context)
     elif command == "stop":
         arc_dbg_fw_send_message(DFW_MSG_SETUP_LOGGING, 0xffffffff, 0xffffffff, device_id, context)
     elif command == "clear":
         arc_dbg_fw_send_message(DFW_MSG_SETUP_LOGGING, DFW_MSG_CLEAR_DRAM, DRAM_REGION_SIZE, device_id, context)
+
+def setup_pmon(pmon_id, ro_id, wait_for_l1_trigger, stop_on_flatline, device_id: int = 0, context: Context = None):
+    arg0 = pmon_id & 0xff | (ro_id & 0xff) << 8 | (wait_for_l1_trigger & 0xff) << 16 | (stop_on_flatline & 0xff) << 24
+    print (f"Setting up PMON {pmon_id}, RO {ro_id}, wait_for_l1_trigger: {wait_for_l1_trigger}, stop_on_flatline: {stop_on_flatline} => {arg0:08x}")
+    arc_dbg_fw_send_message(DFW_MSG_SETUP_PMON, arg0, 0, device_id, context)
