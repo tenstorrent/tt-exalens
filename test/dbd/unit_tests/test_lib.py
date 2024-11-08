@@ -461,6 +461,8 @@ class TestARC(unittest.TestCase):
     fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_dbg_fw.hex")
 
     def test_load_arc_fw_and_arc_logger(self):
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull since we do not have firmware that can be loaded on grayskull right now")
         wait_time = 0.1
         TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024
         
