@@ -4,11 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  debuda.py [--netlist=<file>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [<output_dir>]
-  debuda.py --server [--port=<port>] [--devices=<devices>] [--test] [<output_dir>]
-  debuda.py --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
-  debuda.py --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test] [<output_dir>]
-  debuda.py -h | --help
+  tt-lens [--netlist=<file>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [<output_dir>]
+  tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [<output_dir>]
+  tt-lens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
+  tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test] [<output_dir>]
+  tt-lens -h | --help
 
 Options:
   -h --help                       Show this help message and exit.
@@ -30,7 +30,7 @@ Description:
   Debuda parses the build output files and reads the device state to provide a debugging interface for the user.
 
   There are three modes of operation:
-    1. Local mode: The user can run debuda.py with a specific output directory. This will load the runtime data from the output directory. If the output directory is not specified, the most recent subdirectory of tt_build/ will be used.
+    1. Local mode: The user can run tt-lens with a specific output directory. This will load the runtime data from the output directory. If the output directory is not specified, the most recent subdirectory of tt_build/ will be used.
     2. Remote mode: The user can connect to a Debuda server running on a remote machine. The server will provide the runtime data.
     3. Cached mode: The user can use a cache file from previous Debuda run. This is useful for debugging without a connection to the device. Writing is disabled in this mode.
   
