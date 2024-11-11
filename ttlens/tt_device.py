@@ -240,6 +240,7 @@ class Device(TTObject):
         self._id = id
         self._arch = arch
         self._has_mmio = False
+        self._has_jtag = False
         self._address_maps = address_maps
         self._device_desc_path = device_desc_path
         self._context = context
@@ -247,6 +248,11 @@ class Device(TTObject):
             if id in chip:
                 self._has_mmio = True
                 break
+        if "chips_with_jtag" in cluster_desc:
+            for chip in cluster_desc["chips_with_jtag"]:
+                if id in chip:
+                    self._has_jtag = True
+                    break
 
         # Check if harvesting_desc is an array and has id+1 entries at the least
         harvesting_desc = cluster_desc["harvesting"]

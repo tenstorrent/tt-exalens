@@ -28,6 +28,8 @@ class umd_with_open_implementation : public umd_implementation {
     static std::unique_ptr<umd_with_open_implementation> open(const std::filesystem::path& binary_directory = {},
                                                               const std::vector<uint8_t>& wanted_devices = {},
                                                               bool init_jtag = false);
+    static std::unique_ptr<umd_with_open_implementation> open_jtag(const std::filesystem::path& binary_directory,
+                                                                   const std::vector<uint8_t>& wanted_devices);
 
     std::optional<std::string> get_cluster_description() override;
     std::optional<std::vector<uint8_t>> get_device_ids() override;

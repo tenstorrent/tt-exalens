@@ -325,6 +325,8 @@ def main_loop(args, context):
                     #     gdb_status += "(connected)"
                 my_prompt = f"gdb:{gdb_status} "
                 my_prompt += f"device:{util.CLR_PROMPT}{ui_state.current_device_id}{util.CLR_PROMPT_END} "
+                if ui_state.current_device._has_jtag:
+                    my_prompt += f"(JTAG) "
                 my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
                 my_prompt += f"{ui_state.current_prompt}> "
                 cmd_raw = context.prompt_session.prompt(HTML(my_prompt)) 

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "ttlensserver/umd_implementation.h"
 
+#include <cstdint>
 #include <tuple>
 
 #include "device/cluster.h"
@@ -147,6 +148,14 @@ std::optional<std::string> umd_implementation::pci_read_tile(uint8_t chip_id, ui
 }
 
 std::optional<std::string> umd_implementation::get_harvester_coordinate_translation(uint8_t chip_id) {
+    if (jtag_device) {
+        auto x = jtag_device->get_jtag_harvester_coordinate_translation(chip_id);
+        if (x) {
+            return *x;
+        }
+        return {};
+    }
+
     if (!device) {
         return {};
     }
@@ -162,6 +171,14 @@ std::optional<std::string> umd_implementation::get_harvester_coordinate_translat
 }
 
 std::optional<std::string> umd_implementation::get_device_arch(uint8_t chip_id) {
+    if (jtag_device) {
+        auto x = jtag_device->get_jtag_arch(chip_id);
+        if (x) {
+            return get_arch_str(*x);
+        }
+        return {};
+    }
+
     tt_device* d = static_cast<tt_device*>(device);
 
     try {
