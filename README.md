@@ -62,10 +62,10 @@ sudo apt install python3.10-venv
 
 depending on Python version available on your system.
 
-Additional Python dependencies are listed in `dbd/requirements.txt` file, and can be installed via `pip`:
+Additional Python dependencies are listed in `tt_lens/requirements.txt` file, and can be installed via `pip`:
 
 ```bash
-pip install -r dbd/requirements.txt
+pip install -r tt_lens/requirements.txt
 ```
 
 ### Building the library and the application
@@ -121,8 +121,8 @@ For more information about how to use the Debuda application, refer to [the tuto
 
 ## Using Debuda library
 
-Debuda's functionalities can also be used through dbd library to create Python scripts that interact with Tenstorrent's hardware.
-For a quick start with dbd library, check out [the tutorial](docs/debuda-lib-tutorial.md).
+Debuda's functionalities can also be used through tt_lens library to create Python scripts that interact with Tenstorrent's hardware.
+For a quick start with tt_lens library, check out [the tutorial](docs/debuda-lib-tutorial.md).
 Full documentation is also available [here](docs/debuda-lib-docs.md).
 
 ## Development
@@ -208,9 +208,9 @@ This will automatically generate new image releases and tag them as `latest`.
 ### fatal error: zmq.hpp: No such file or directory
 
 ```
-In file included from dbd/server/lib/inc/dbdserver/server.h:8,
-                 from dbd/server/app/debuda-server-standalone.cpp:11:
-dbd/server/lib/inc/dbdserver/communication.h:9:10: fatal error: zmq.hpp: No such file or directory
+In file included from tt_lens/server/lib/inc/dbdserver/server.h:8,
+                 from tt_lens/server/app/debuda-server-standalone.cpp:11:
+tt_lens/server/lib/inc/dbdserver/communication.h:9:10: fatal error: zmq.hpp: No such file or directory
     9 | #include <zmq.hpp>
 ```
 
@@ -237,13 +237,13 @@ alias python=python3
 
 This error might occur when trying to run unit tests:
 ```
-ailed to import test module: test.dbd.pybind.test_bindings
+Failed to import test module: test.tt_lens.pybind.test_bindings
 Traceback (most recent call last):
   File "/usr/lib/python3.10/unittest/loader.py", line 436, in _find_test_path
     module = self._get_module_from_name(name)
   File "/usr/lib/python3.10/unittest/loader.py", line 377, in _get_module_from_name
     __import__(name)
-  File "/home/dcvijetic/work/tt-debuda/test/dbd/pybind/test_bindings.py", line 17, in <module>
+  File "/home/dcvijetic/work/tt-debuda/test/tt_lens/pybind/test_bindings.py", line 17, in <module>
     from tt_dbd_pybind_unit_tests import set_debuda_test_implementation
 ModuleNotFoundError: No module named 'tt_dbd_pybind_unit_tests'
 ```

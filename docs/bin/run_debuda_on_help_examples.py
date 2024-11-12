@@ -11,7 +11,7 @@ MAX_CHARACTERS_PER_LINE = 130  # Max number of characters to show for each line
 
 def run_command(cmd_array, exit_on_failure=True):
     if os.environ.get("COV", "0") == "1":
-        cmd_array = ["coverage", "run", "--append", "--include=dbd/**"] + cmd_array
+        cmd_array = ["coverage", "run", "--append", "--include=tt_lens/**"] + cmd_array
 
     process = subprocess.Popen(
         cmd_array, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True

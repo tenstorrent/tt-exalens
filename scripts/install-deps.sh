@@ -6,8 +6,8 @@ TEST_INSTALL=${TEST_INSTALL:-}
 WHEEL_INSTALL=${WHEEL_INSTALL:-}
 
 if [ -n "$DBD_INSTALL" ]; then
-    echo "Installing dbd dependencies..."
-    pip install -r dbd/requirements.txt
+    echo "Installing tt_lens dependencies..."
+    pip install -r tt_lens/requirements.txt
 fi
 
 if [ -n "$TEST_INSTALL" ]; then

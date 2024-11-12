@@ -38,7 +38,7 @@ import sys, re, os, importlib.util
 from docopt import docopt
 
 # We need to import common options as they are sometimes injected into the docstrings
-from dbd.tt_commands import tt_docopt
+from tt_lens.tt_commands import tt_docopt
 OPTIONS = tt_docopt.OPTIONS
 for opt in OPTIONS.keys():
 	OPTIONS[opt]['arg'] = OPTIONS[opt].get('arg', '').replace("<", "\<").replace(">", "\>")

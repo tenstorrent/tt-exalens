@@ -282,12 +282,12 @@ gdb:None Current epoch:None(None) device:0 loc:18-18 >
 Since we are running from cache, we can't write to device:
 ```
 gdb:None Current epoch:None(None) device:0 loc:18-18 > wxy 18-18 0x100 0x1234
---------------------------------------  -----------  --------------------------------------------------------------------------
-debuda.py:428                           main_loop    new_navigation_suggestions = found_command["module"].run(
-dbd/debuda_commands/pci-write-xy.py:52  run            tt_device.SERVER_IFC.pci_write32(
-dbd/tt_debuda_ifc_cache.py:198          pci_write32      raise util.TTException("Device not available, cannot write to cache.")
-dbd/tt_debuda_ifc_cache.py:198          pci_write32  TTException: Device not available, cannot write to cache.
---------------------------------------  -----------  --------------------------------------------------------------------------
+------------------------------------------  -----------  --------------------------------------------------------------------------
+tt-lens:428                                 main_loop    new_navigation_suggestions = found_command["module"].run(
+tt_lens/debuda_commands/pci-write-xy.py:52  run            tt_device.SERVER_IFC.pci_write32(
+tt_lens/tt_debuda_ifc_cache.py:198          pci_write32      raise util.TTException("Device not available, cannot write to cache.")
+tt_lens/tt_debuda_ifc_cache.py:198          pci_write32  TTException: Device not available, cannot write to cache.
+------------------------------------------  -----------  --------------------------------------------------------------------------
 ```
 but we can repeat our read command and get the same results:
 ```
@@ -305,17 +305,17 @@ If we try to execute a command that wasn't cached, however, we get a cache miss 
 ```
 gdb:None Current epoch:None(None) device:0 loc:18-18 > brxy 18-18 0x200
 Cache miss for pci_read32.
-----------------------------------------  ----------------------  ---------------------------------------------------------------------------------
-debuda.py:428                             main_loop               new_navigation_suggestions = found_command["module"].run(
-dbd/debuda_commands/burst-read-xy.py:97   run                       print_a_pci_burst_read(
-dbd/debuda_commands/burst-read-xy.py:123  print_a_pci_burst_read      data = read_words_from_device(core_loc, addr, device_id, word_count, context)
-dbd/tt_debuda_lib.py:50                   read_words_from_device        word = context.server_ifc.pci_read32(
-dbd/tt_debuda_ifc_cache.py:174            wrapper                         raise util.TTException(f"Cache miss for {func.__name__}.")
-dbd/tt_debuda_ifc_cache.py:174            wrapper                 TTException: Cache miss for pci_read32.
-----------------------------------------  ----------------------  ---------------------------------------------------------------------------------
+--------------------------------------------  ----------------------  ---------------------------------------------------------------------------------
+cli.py:428                                    main_loop               new_navigation_suggestions = found_command["module"].run(
+tt_lens/debuda_commands/burst-read-xy.py:97   run                       print_a_pci_burst_read(
+tt_lens/debuda_commands/burst-read-xy.py:123  print_a_pci_burst_read      data = read_words_from_device(core_loc, addr, device_id, word_count, context)
+tt_lens/tt_debuda_lib.py:50                   read_words_from_device        word = context.server_ifc.pci_read32(
+tt_lens/tt_debuda_ifc_cache.py:174            wrapper                         raise util.TTException(f"Cache miss for {func.__name__}.")
+tt_lens/tt_debuda_ifc_cache.py:174            wrapper                 TTException: Cache miss for pci_read32.
+--------------------------------------------  ----------------------  ---------------------------------------------------------------------------------
 ```
 
-For more details of inner workings of Debuda refer to [the `dbd` library tutorial](./debuda-lib-tutorial.md#debuda-internal-structure-and-initialization).
+For more details of inner workings of Debuda refer to [the `tt_lens` library tutorial](./debuda-lib-tutorial.md#debuda-internal-structure-and-initialization).
 
 
 ## Scripting and Development
@@ -324,12 +324,12 @@ For more details of inner workings of Debuda refer to [the `dbd` library tutoria
 
 When starting Debuda, you can specify a list of commands to run. For example:
 ```
-dbd/debuda.py --commands "go -l 20-20; gpr; x"
+tt-lens --commands "go -l 20-20; gpr; x"
 ```
 The above command will run `go -l 20-20`, changing active location to 20-20, followed by `gpr` and then exit. The output can then be redirected to a file for further processing.
 
 
-### Developing new commands (`dbd/debuda_commands/` folder)
+### Developing new commands (`tt_lens/debuda_commands/` folder)
 
 This folder contains python files that define Debuda commands. 
 To create a new command, create a new file in this folder.

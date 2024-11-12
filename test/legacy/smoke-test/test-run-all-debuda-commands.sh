@@ -18,7 +18,7 @@ fi
 #   - Point the extension to the generated lcov file (in VS code settings)
 #   - Run "Show code coverage" command
 if [ "$COV" = "1" ]; then
-    COVERAGE_CMD="coverage run --append --include=dbd/**"
+    COVERAGE_CMD="coverage run --append --include=tt_lens/**"
 else
     COVERAGE_CMD=""
 fi
@@ -99,8 +99,8 @@ run_debuda "$JOINED_COMMANDS"
 
 # run_debuda "gpr"
 # gpr needs a core to be hung. To reproduce:
-#   git apply dbd/test/inject-errors/sfpu_reciprocal-infinite-spin-wormhole_b0.patch
-#   ./build/test/verif/op_tests/test_op --netlist dbd/test/netlists/netlist_multi_matmul_perf.yaml --seed 0 --silicon --timeout 60
+#   git apply tt_lens/test/inject-errors/sfpu_reciprocal-infinite-spin-wormhole_b0.patch
+#   ./build/test/verif/op_tests/test_op --netlist tt_lens/test/netlists/netlist_multi_matmul_perf.yaml --seed 0 --silicon --timeout 60
 #   ctrl-C
 # Then find a valid core (using op-map) and run gpr on it.
 
