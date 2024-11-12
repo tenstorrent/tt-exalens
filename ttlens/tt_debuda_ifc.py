@@ -492,9 +492,9 @@ import tt_dbd_pybind
 
 
 class debuda_pybind(DbdCommunicator):
-    def __init__(self, runtime_data_yaml_filename: str = "", run_dirpath: str = None, wanted_devices: list = []):
+    def __init__(self, runtime_data_yaml_filename: str = "", run_dirpath: str = None, wanted_devices: list = [], init_jtag = False):
         super().__init__()
-        if not tt_dbd_pybind.open_device(binary_path, runtime_data_yaml_filename, wanted_devices):
+        if not tt_dbd_pybind.open_device(binary_path, runtime_data_yaml_filename, wanted_devices, init_jtag):
             raise Exception("Failed to open device using pybind library")
         self._runtime_yaml_path = runtime_data_yaml_filename # Don't go through C++ for opening files
         self._run_dirpath = run_dirpath
@@ -586,11 +586,11 @@ class debuda_pybind(DbdCommunicator):
     def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
         return self._check_result(tt_dbd_pybind.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout))
 
-def init_pybind(runtime_data_yaml_filename, run_dirpath=None, wanted_devices=None):
+def init_pybind(runtime_data_yaml_filename, run_dirpath=None, wanted_devices=None, init_jtag=False):
     if not wanted_devices:
         wanted_devices = []
 
-    tt_device.SERVER_IFC = debuda_pybind(runtime_data_yaml_filename, run_dirpath, wanted_devices)
+    tt_device.SERVER_IFC = debuda_pybind(runtime_data_yaml_filename, run_dirpath, wanted_devices, init_jtag)
     util.VERBOSE("Device opened successfully.")
     return tt_device.SERVER_IFC
 

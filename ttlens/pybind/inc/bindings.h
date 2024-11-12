@@ -19,7 +19,7 @@
 #include "device/tt_device.h"
 
 bool open_device(const std::string &binary_directory, const std::string &runtime_yaml_path,
-                 const std::vector<uint8_t> &wanted_devices = {});
+                 const std::vector<uint8_t> &wanted_devices = {}, bool init_jtag = false);
 void set_debuda_implementation(std::unique_ptr<tt::dbd::debuda_implementation> imp);
 
 std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address);

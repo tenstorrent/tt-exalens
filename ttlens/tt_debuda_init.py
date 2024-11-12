@@ -24,6 +24,7 @@ def init_debuda(
 		netlist_path: str = None,
 		wanted_devices: list = None,
 		cache_path: str = None,
+		init_jtag: bool = False,
 ) -> Context:
 	""" Initializes Debuda internals by creating the device interface and Debuda context.
 	Interfacing device is local, through pybind.
@@ -40,7 +41,7 @@ def init_debuda(
 	runtime_data_yaml_filename = None
 	if output_dir_path:
 		runtime_data_yaml_filename = find_runtime_data_yaml_filename(output_dir_path)
-	debuda_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir_path, wanted_devices)
+	debuda_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir_path, wanted_devices, init_jtag)
 	if cache_path:
 		debuda_ifc = tt_debuda_ifc_cache.init_cache_writer(cache_path)
 	

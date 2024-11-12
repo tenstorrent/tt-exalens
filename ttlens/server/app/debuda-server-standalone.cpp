@@ -20,6 +20,7 @@ struct server_config {
     std::string runtime_data_yaml_path;
     std::string run_dirpath;
     std::vector<uint8_t> wanted_devices;
+    bool init_jtag;
 };
 
 // Make sure that the file exists, and that it is a regular file
@@ -40,8 +41,8 @@ int run_debuda_server(const server_config& config) {
         std::unique_ptr<tt::dbd::umd_with_open_implementation> implementation;
         // Try to open only wanted devices
         try {
-            implementation =
-                tt::dbd::umd_with_open_implementation::open({}, config.runtime_data_yaml_path, config.wanted_devices);
+            implementation = tt::dbd::umd_with_open_implementation::open({}, config.runtime_data_yaml_path,
+                                                                         config.wanted_devices, config.init_jtag);
         } catch (std::runtime_error& error) {
             log_custom(tt::Logger::Level::Error, tt::LogDebuda, "Cannot open device: {}.", error.what());
             return 1;
@@ -120,6 +121,9 @@ server_config parse_args(int argc, char** argv) {
                     i++;
                 }
             }
+        } else if (strcmp(argv[i], "--jtag") == 0) {
+            config.init_jtag = true;
+            i++;
         } else {
             log_error("Unknown argument: {}", argv[i]);
             return {};
@@ -133,7 +137,7 @@ int main(int argc, char** argv) {
     if (argc < 2) {
         log_error(
             "Need arguments: <port> [-y path_to_yaml_file] [-r <run_dirpath>] [-d <device_id1> [<device_id2> ... "
-            "<device_idN>]]");
+            "<device_idN>]] [--jtag]");
         return 1;
     }
 

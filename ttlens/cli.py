@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-lens [--netlist=<file>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [<output_dir>]
-  tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [<output_dir>]
-  tt-lens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
-  tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test] [<output_dir>]
+  tt-lens [--netlist=<file>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [--jtag] [<output_dir>]
+  tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [<output_dir>]
+  tt-lens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test] [--jtag]
+  tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test] [--jtag] [<output_dir>]
   tt-lens -h | --help
 
 Options:
@@ -25,6 +25,7 @@ Options:
   --devices=<devices>             Comma-separated list of devices to load. If not supplied, all devices will be loaded.
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
+  --jtag                          Initialize JTAG interface.
 
 Description:
   Debuda parses the build output files and reads the device state to provide a debugging interface for the user.
@@ -453,7 +454,8 @@ def main():
             args["--port"],
             runtime_data_yaml_filename,
             output_dir,
-            wanted_devices
+            wanted_devices,
+            init_jtag=args["--jtag"],
         )
         if args["--test"]:
             while True: pass
@@ -471,7 +473,7 @@ def main():
         util.INFO(f"Connecting to Debuda server at {server_ip}:{server_port}")
         context = tt_debuda_init.init_debuda_remote(server_ip, int(server_port), cache_path)
     else:
-        context = tt_debuda_init.init_debuda(output_dir, args["--netlist"], wanted_devices, cache_path)
+        context = tt_debuda_init.init_debuda(output_dir, args["--netlist"], wanted_devices, cache_path, args["--jtag"])
 
     # context.args = args  # Used by 'export' command
     # context.debuda_path = __file__  # Used by 'export' command

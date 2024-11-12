@@ -28,7 +28,8 @@ class umd_with_open_implementation : public umd_implementation {
 
     static std::unique_ptr<umd_with_open_implementation> open(const std::filesystem::path& binary_directory = {},
                                                               const std::string& runtime_yaml_path = "",
-                                                              const std::vector<uint8_t>& wanted_devices = {});
+                                                              const std::vector<uint8_t>& wanted_devices = {},
+                                                              bool init_jtag = false);
 
     std::optional<std::string> get_runtime_data() override;
     std::optional<std::string> get_cluster_description() override;
