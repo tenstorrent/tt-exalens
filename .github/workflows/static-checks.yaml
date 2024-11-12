@@ -41,6 +41,6 @@ jobs:
   #     - uses: psf/black@stable
   #       with:
   #         options: "--check"
-  #         src: "./tt_lens"
+  #         src: "./ttlens"
   
   

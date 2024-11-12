@@ -9,4 +9,4 @@ source ${THIS_SCRIPT_DIR}/../test-base.sh
 echo -e "${YELLOW}Running unit tests coverage ...${NC}"
 
 # Run unit tests coverage
-coverage run --branch --include=tt_lens/** -m pytest tt_lens/ --junitxml=${DEBUDA_HOME}/debuda_test/debuda_tests_grayskull.xml
+coverage run --branch --include=ttlens/** -m pytest ttlens/ --junitxml=${DEBUDA_HOME}/debuda_test/debuda_tests_grayskull.xml

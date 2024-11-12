@@ -27,8 +27,8 @@ make build
 big_echo "RUNNING C++ TESTS"
 make dbd_server_unit_tests_run_only
 
-big_echo "RUNNING PYTHON TT_LENS TESTS"
-python3 -m unittest discover -v -t . -s test/tt_lens -p *test*.py
+big_echo "RUNNING PYTHON TTLENS TESTS"
+python3 -m unittest discover -v -t . -s test/ttlens -p *test*.py
 
 big_echo "RUNNING PYTHON APP TESTS"
 python3 -m unittest discover -v -t . -s test/app -p *test*.py

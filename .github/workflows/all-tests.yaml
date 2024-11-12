@@ -69,9 +69,9 @@ jobs:
       - name: Run C++ tests
         run: |
           make dbd_server_unit_tests_run_only
-      - name: Run Python tests for tt_lens library
+      - name: Run Python tests for ttlens library
         run: |
-          python3 -m unittest discover -v -t . -s test/tt_lens -p *test*.py
+          python3 -m unittest discover -v -t . -s test/ttlens -p *test*.py
       - name: Run Python tests for Debuda app 
         run: |
           python3 -m unittest discover -v -t . -s test/app -p *test*.py

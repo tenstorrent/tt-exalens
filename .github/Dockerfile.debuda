@@ -39,7 +39,7 @@ RUN apt-get update && apt-get install -y \
 RUN pip install --upgrade pip
 
 # Copy the requirements files for pip
-COPY tt_lens/requirements.txt .
+COPY ttlens/requirements.txt .
 COPY test/test_requirements.txt .
 
 # Install Python dependencies

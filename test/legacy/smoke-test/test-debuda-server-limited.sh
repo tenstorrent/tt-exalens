@@ -11,7 +11,7 @@ TEST_NAME="$1"
 #   - Point the extension to the generated lcov file (in VS code settings)
 #   - Run "Show code coverage" command
 if [ "$COV" = "1" ]; then
-    COVERAGE_CMD="coverage run --append --include=tt_lens/**"
+    COVERAGE_CMD="coverage run --append --include=ttlens/**"
 else
     COVERAGE_CMD=""
 fi

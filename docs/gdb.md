@@ -23,7 +23,7 @@ After connection has been established, you can use `info os processes` to list a
 
 ## Sample app debugging script:
 
-Once you started gdb server, you can use run-elf command to execute `tt_lens/riscv-src/sample.cc` application on chip. For wormhole, you can execute `re build/riscv-src/wormhole/sample.brisc.elf` to run application on brisc core.
+Once you started gdb server, you can use run-elf command to execute `ttlens/riscv-src/sample.cc` application on chip. For wormhole, you can execute `re build/riscv-src/wormhole/sample.brisc.elf` to run application on brisc core.
 
 After that, you can execute this example script in gdb client to debug it:
 

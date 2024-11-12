@@ -9,4 +9,4 @@ source ${THIS_SCRIPT_DIR}/../test-base.sh
 echo -e "${YELLOW}Running base unit tests ...${NC}"
 
 # Run base unit tests
-python3 -m unittest discover -s ./tt_lens -p *test*.py
+python3 -m unittest discover -s ./ttlens -p *test*.py
