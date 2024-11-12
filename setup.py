@@ -108,7 +108,6 @@ setup(
     name='tt-lens',
     version=version,
 
-    #py_modules=['debuda'],
     packages=['dbd'],
     package_dir={'dbd': 'dbd'}, 
 
@@ -117,8 +116,7 @@ setup(
     author_email='info@tenstorrent.com',
     description='Debugger for Tenstorrent devices',
     python_requires='>=3.8',
-    #long_description=long_description,
-    #long_description_content_type="text/markdown",
+
     ext_modules=[debuda_fake_extension],
     cmdclass=dict(build_ext=MyBuild),
     zip_safe=False,
