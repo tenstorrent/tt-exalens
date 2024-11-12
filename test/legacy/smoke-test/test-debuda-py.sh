@@ -13,8 +13,8 @@ if [ -z "$TEST_RUN_TIMEOUT" ]; then TEST_RUN_TIMEOUT=500; fi
 echo -e "${YELLOW}TEST_RUN_TIMEOUT=$TEST_RUN_TIMEOUT${NC}"
 
 mkdir -p build/test
-touch build/test/dbd-out.tmp
-TMP_OUT_FILE=$(realpath build/test/dbd-out.tmp)
+touch build/test/ttlens-out.tmp
+TMP_OUT_FILE=$(realpath build/test/ttlens-out.tmp)
 echo -e "${YELLOW}TMP_OUT_FILE=$TMP_OUT_FILE${NC}"
 
 if [ "$1" = "skip-build" ]; then
@@ -43,7 +43,7 @@ else
 fi
 
 echo -e "${YELLOW}Installing Python dependencies ...${NC}"
-pip install -r dbd/requirements.txt
+pip install -r ttlens/requirements.txt
 mkdir -p debuda_test
 
 TEST_EXPORT_PATH="debuda_test/tmp"

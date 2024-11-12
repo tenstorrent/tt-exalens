@@ -11,11 +11,11 @@ from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 
 # Debuda files to be copied to build directory
-dbd_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dbd')
-debuda_home = os.path.dirname(dbd_folder_path)
+ttlens_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ttlens')
+debuda_home = os.path.dirname(ttlens_folder_path)
 
 
-def get_debuda_py_files(file_dir: os.PathLike = f"{debuda_home}/dbd", ignorelist: list = []) -> list:
+def get_debuda_py_files(file_dir: os.PathLike = f"{debuda_home}/ttlens", ignorelist: list = []) -> list:
     """A function to get the list of files in the debuda lib directory.
     Ignore the files in the ignorelist."""
 
@@ -26,16 +26,16 @@ def get_debuda_py_files(file_dir: os.PathLike = f"{debuda_home}/dbd", ignorelist
     return files
 
 
-debuda_files = {
-    "debuda_lib": {
-        "path": "dbd",
+ttlens_files = {
+    "ttlens_lib": {
+        "path": "ttlens",
         "files": get_debuda_py_files(),
-        "output": "dbd"
+        "output": "ttlens"
     },
     "debuda_commands": {
-        "path": "dbd/debuda_commands",
-        "files": get_debuda_py_files(f"{debuda_home}/dbd/debuda_commands"),
-        "output": "dbd/debuda_commands"
+        "path": "ttlens/debuda_commands",
+        "files": get_debuda_py_files(f"{debuda_home}/ttlens/debuda_commands"),
+        "output": "ttlens/debuda_commands"
     },
     "libs": {
         "path": "build/lib",
@@ -75,7 +75,7 @@ class MyBuild(build_ext):
 
     def _copy_files(self, target_path):
         strip_symbols = os.environ.get("STRIP_SYMBOLS", "0") == "1"
-        for _, d in debuda_files.items():
+        for _, d in ttlens_files.items():
             path = target_path + "/" + d["output"]
             os.makedirs(path, exist_ok=True)
 
@@ -96,7 +96,7 @@ with open("README.md", "r") as f:
     long_description = f.read()
 
 # Add specific requirements for Debuda
-with open(f"{dbd_folder_path}/requirements.txt", "r") as f:
+with open(f"{ttlens_folder_path}/requirements.txt", "r") as f:
     requirements = [r for r in f.read().splitlines() if not r.startswith("-r")]
 
 short_hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
@@ -105,11 +105,11 @@ date = datetime.today().strftime('%y%m%d')
 version = "0.1." + date + "+dev." + short_hash
 
 setup(
-    name='tt-lens',
+    name='ttlens',
     version=version,
 
-    packages=['dbd'],
-    package_dir={'dbd': 'dbd'}, 
+    packages=['ttlens'],
+    package_dir={'ttlens': 'ttlens'}, 
 
     author='Tenstorrent',
     url="http://www.tenstorrent.com",
@@ -125,7 +125,7 @@ setup(
     keywords="debugging tenstorrent",
     entry_points={
         'console_scripts': [
-            'tt-lens = dbd.cli:main'
+            'tt-lens = ttlens.cli:main'
         ]
     },
 )

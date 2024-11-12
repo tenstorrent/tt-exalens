@@ -57,7 +57,7 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/umd)
 include(${PROJECT_SOURCE_DIR}/cmake/ZeroMQ.cmake)
 
 # Add subdirectories
-add_subdirectory(${PROJECT_SOURCE_DIR}/dbd)
+add_subdirectory(${PROJECT_SOURCE_DIR}/ttlens)
 add_subdirectory(${PROJECT_SOURCE_DIR}/utils)
-add_subdirectory(${PROJECT_SOURCE_DIR}/test/dbd/pybind)
-add_subdirectory(${PROJECT_SOURCE_DIR}/test/dbd/server)
+add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttlens/pybind)
+add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttlens/server)
