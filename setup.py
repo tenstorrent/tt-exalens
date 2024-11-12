@@ -27,11 +27,6 @@ def get_debuda_py_files(file_dir: os.PathLike = f"{debuda_home}/dbd", ignorelist
 
 
 debuda_files = {
-    "debuda": {
-        "path": "",
-        "files": ["debuda.py"],
-        "output": ""
-    },
     "debuda_lib": {
         "path": "dbd",
         "files": get_debuda_py_files(),
@@ -110,19 +105,18 @@ date = datetime.today().strftime('%y%m%d')
 version = "0.1." + date + "+dev." + short_hash
 
 setup(
-    name='debuda',
+    name='tt-lens',
     version=version,
 
-    py_modules=['debuda'],
-    package_dir={"debuda": "."},
+    packages=['dbd'],
+    package_dir={'dbd': 'dbd'}, 
 
     author='Tenstorrent',
     url="http://www.tenstorrent.com",
     author_email='info@tenstorrent.com',
     description='Debugger for Tenstorrent devices',
     python_requires='>=3.8',
-    #long_description=long_description,
-    #long_description_content_type="text/markdown",
+
     ext_modules=[debuda_fake_extension],
     cmdclass=dict(build_ext=MyBuild),
     zip_safe=False,
@@ -131,7 +125,7 @@ setup(
     keywords="debugging tenstorrent",
     entry_points={
         'console_scripts': [
-            'debuda = debuda:main'
+            'tt-lens = dbd.cli:main'
         ]
     },
 )
