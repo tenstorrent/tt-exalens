@@ -8,10 +8,6 @@
 #include "debuda_implementation.h"
 #include "device/cluster.h"
 
-namespace tt::umd {
-class Cluster;
-}
-
 class JtagDevice;
 
 namespace tt::dbd {
