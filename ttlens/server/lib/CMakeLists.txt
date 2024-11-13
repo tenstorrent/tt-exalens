@@ -5,7 +5,6 @@ set(DEVICE_FILEPATH "${CMAKE_CURRENT_SOURCE_DIR}/../device")
 set(DEBUDA_SERVER_LIB_CONFIGURATION_FILES
 	"${CONFIG_FILEPATH}/blackhole.embed" "${DEVICE_FILEPATH}/blackhole_10x14.yaml"
 	"${CONFIG_FILEPATH}/grayskull.embed" "${DEVICE_FILEPATH}/grayskull_10x12.yaml"
-	"${CONFIG_FILEPATH}/wormhole.embed" "${DEVICE_FILEPATH}/wormhole_8x10.yaml"
 	"${CONFIG_FILEPATH}/wormhole_b0.embed" "${DEVICE_FILEPATH}/wormhole_b0_8x10.yaml"
 )
 
@@ -34,36 +33,10 @@ add_custom_target(generate_embed_files ALL
     DEPENDS ${DEBUDA_SERVER_LIB_EMBED_FILES}
 )
 
-# Copy create-ethernet-map to output directory
-set(CREATE_ETHERNET_MAP_WORMHOLE_DBD "${CMAKE_BUILD_BIN_DIR}/debuda-create-ethernet-map-wormhole")
-set(CREATE_ETHERNET_MAP_WORMHOLE_DBD_SOURCE "${UMD_HOME}/device/bin/silicon/x86/create-ethernet-map")
-set(CREATE_ETHERNET_MAP_BLACKHOLE_DBD "${CMAKE_BUILD_BIN_DIR}/debuda-create-ethernet-map-blackhole")
-set(CREATE_ETHERNET_MAP_BLACKHOLE_DBD_SOURCE "${DEBUDA_HOME}/ttlens/server/bin/create-ethernet-map-blackhole")
-
-add_custom_command(
-    OUTPUT ${CREATE_ETHERNET_MAP_WORMHOLE_DBD}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BUILD_BIN_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CREATE_ETHERNET_MAP_WORMHOLE_DBD_SOURCE} ${CREATE_ETHERNET_MAP_WORMHOLE_DBD}
-    COMMAND chmod +x ${CREATE_ETHERNET_MAP_WORMHOLE_DBD}
-    DEPENDS ${CREATE_ETHERNET_MAP_WORMHOLE_DBD_SOURCE}  # Ensure the command runs when source files change
-    COMMENT "Copying create-ethernet-map and setting executable permission"
-)
-
-add_custom_command(
-    OUTPUT ${CREATE_ETHERNET_MAP_BLACKHOLE_DBD}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BUILD_BIN_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CREATE_ETHERNET_MAP_BLACKHOLE_DBD_SOURCE} ${CREATE_ETHERNET_MAP_BLACKHOLE_DBD}
-    COMMAND chmod +x ${CREATE_ETHERNET_MAP_BLACKHOLE_DBD}
-    DEPENDS ${CREATE_ETHERNET_MAP_BLACKHOLE_DBD_SOURCE}  # Ensure the command runs when source files change
-    COMMENT "Copying create-ethernet-map for blackhole and setting executable permission"
-)
-
-add_custom_target(copy_create_ethernet_map ALL DEPENDS ${CREATE_ETHERNET_MAP_WORMHOLE_DBD} ${CREATE_ETHERNET_MAP_BLACKHOLE_DBD})
-
 # Library project
 file(GLOB DEBUDA_SERVER_LIB_SRCS "src/*.cpp")
 add_library(debuda_server_lib STATIC ${DEBUDA_SERVER_LIB_SRCS})
-add_dependencies(debuda_server_lib generate_embed_files copy_create_ethernet_map)
+add_dependencies(debuda_server_lib generate_embed_files)
 target_link_libraries(debuda_server_lib 
     PUBLIC umd_device fmt cppzmq-static
 )

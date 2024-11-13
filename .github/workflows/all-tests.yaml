@@ -62,8 +62,6 @@ jobs:
           path: build
       - name: Update permissions for downloaded binaries
         run: |
-          chmod +x build/bin/debuda-create-ethernet-map-wormhole
-          chmod +x build/bin/debuda-create-ethernet-map-blackhole
           chmod +x build/bin/debuda-server-standalone
           chmod +x build/bin/debuda_server_unit_tests
       - name: Run C++ tests
@@ -120,8 +118,6 @@ jobs:
           path: build
       - name: Update permissions for downloaded binaries
         run: |
-          chmod +x build/bin/debuda-create-ethernet-map-wormhole
-          chmod +x build/bin/debuda-create-ethernet-map-blackhole
           chmod +x build/bin/debuda-server-standalone
           chmod +x build/bin/debuda_server_unit_tests
       - name: Install wheel

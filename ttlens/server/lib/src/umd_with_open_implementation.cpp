@@ -25,9 +25,6 @@ static const uint8_t blackhole_configuration_bytes[] = {
 static const uint8_t grayskull_configuration_bytes[] = {
 #include "../configuration/grayskull.embed"
 };
-static const uint8_t wormhole_configuration_bytes[] = {
-#include "../configuration/wormhole.embed"
-};
 static const uint8_t wormhole_b0_configuration_bytes[] = {
 #include "../configuration/wormhole_b0.embed"
 };
@@ -102,38 +99,6 @@ static std::filesystem::path find_binary_directory() {
         std::string::size_type pos = path.find_last_of("/");
         return path.substr(0, pos);
     }
-    return {};
-}
-
-static std::string create_temp_network_descriptor_file(tt::ARCH arch, std::filesystem::path binary_directory) {
-    if (arch == tt::ARCH::GRAYSKULL || arch == tt::ARCH::WORMHOLE_B0 || arch == tt::ARCH::BLACKHOLE) {
-        // Check if create-ethernet-map exists
-        if (binary_directory.empty()) {
-            binary_directory = find_binary_directory();
-        }
-        std::string create_ethernet_map = binary_directory / "debuda-create-ethernet-map-wormhole";
-        if (arch == tt::ARCH::BLACKHOLE) {
-            create_ethernet_map = binary_directory / "debuda-create-ethernet-map-blackhole";
-        }
-
-        if (std::filesystem::exists(create_ethernet_map)) {
-            std::string cluster_descriptor_path = temp_working_directory / "cluster_desc.yaml";
-            std::string create_ethernet_map_log = temp_working_directory / "create_ethernet_map.log";
-
-            // Try calling create-ethernet-map
-            if (!std::system(
-                    (create_ethernet_map + " " + cluster_descriptor_path + " >" + create_ethernet_map_log + " 2>&1")
-                        .c_str())) {
-                return cluster_descriptor_path;
-            }
-
-            // create-ethernet-map failed, fallback to yaml generation
-            throw std::runtime_error("Call to create-ethernet-map failed.\n\nError:\n" +
-                                     read_string_from_file(create_ethernet_map_log).value_or(""));
-        } else
-            throw std::runtime_error("Couldn't find create-ethernet-map at " + create_ethernet_map + ".");
-    }
-    throw std::runtime_error("Unsupported architecture " + get_arch_str(arch) + ".");
     return {};
 }
 
@@ -439,24 +404,16 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
     if (device_configuration_path.empty()) {
         return {};
     }
-    auto cluster_descriptor_path = create_temp_network_descriptor_file(arch, binary_directory);
+    auto cluster_descriptor_path = tt_ClusterDescriptor::get_cluster_descriptor_file_path();
+    auto cluster_descriptor = tt_ClusterDescriptor::create_from_yaml(cluster_descriptor_path);
     std::vector<uint8_t> device_ids;
     std::unique_ptr<tt_SiliconDevice> device;
 
     // Try to read cluster descriptor
     std::set<chip_id_t> target_devices;
 
-    if (!cluster_descriptor_path.empty() && arch != tt::ARCH::GRAYSKULL) {
-        auto cluster_descriptor = tt_ClusterDescriptor::create_from_yaml(cluster_descriptor_path);
-
-        for (chip_id_t i : cluster_descriptor->get_all_chips()) {
-            device_ids.push_back(i);
-        }
-    } else {
-        // Fallback to use only local devices
-        for (chip_id_t i = 0; i < devices.size(); i++) {
-            device_ids.push_back(i);
-        }
+    for (chip_id_t i : cluster_descriptor->get_all_chips()) {
+        device_ids.push_back(i);
     }
 
     // If we specified which devices we want, check that they are available and then extract their ids
