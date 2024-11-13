@@ -39,14 +39,14 @@ std::unique_ptr<yaml_communication> start_yaml_server(int port = DEFAULT_TEST_SE
     return server;
 }
 
-TEST(debuda_communication, fail_second_server_starts) {
+TEST(ttlens_communication, fail_second_server_starts) {
     auto server1 = start_yaml_server();
     ASSERT_TRUE(server1->is_connected());
     std::unique_ptr<yaml_communication> server2;
     ASSERT_THROW(server2 = start_yaml_server(), zmq::error_t);
 }
 
-TEST(debuda_communication, safe_deinitialize) {
+TEST(ttlens_communication, safe_deinitialize) {
     {
         auto server1 = start_yaml_server();
         ASSERT_TRUE(server1->is_connected());
@@ -65,74 +65,74 @@ void test_yaml_request(const T& request, const std::string& expected_response) {
     ASSERT_EQ(response, expected_response);
 }
 
-TEST(debuda_communication, ping) { test_yaml_request(tt::dbd::request{tt::dbd::request_type::ping}, "- type: 1"); }
+TEST(ttlens_communication, ping) { test_yaml_request(tt::dbd::request{tt::dbd::request_type::ping}, "- type: 1"); }
 
-TEST(debuda_communication, get_runtime_data) {
+TEST(ttlens_communication, get_runtime_data) {
     test_yaml_request(tt::dbd::request{tt::dbd::request_type::get_runtime_data}, "- type: 101");
 }
 
-TEST(debuda_communication, get_cluster_description) {
+TEST(ttlens_communication, get_cluster_description) {
     test_yaml_request(tt::dbd::request{tt::dbd::request_type::get_cluster_description}, "- type: 102");
 }
 
-TEST(debuda_communication, get_device_ids) {
+TEST(ttlens_communication, get_device_ids) {
     test_yaml_request(tt::dbd::request{tt::dbd::request_type::get_device_ids}, "- type: 18");
 }
 
-TEST(debuda_communication, pci_read32) {
+TEST(ttlens_communication, pci_read32) {
     test_yaml_request(tt::dbd::pci_read32_request{tt::dbd::request_type::pci_read32, 1, 2, 3, 123456},
                       "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
 }
 
-TEST(debuda_communication, pci_write32) {
+TEST(ttlens_communication, pci_write32) {
     test_yaml_request(tt::dbd::pci_write32_request{tt::dbd::request_type::pci_write32, 1, 2, 3, 123456, 987654},
                       "- type: 11\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
 }
 
-TEST(debuda_communication, pci_read) {
+TEST(ttlens_communication, pci_read) {
     test_yaml_request(tt::dbd::pci_read_request{tt::dbd::request_type::pci_read, 1, 2, 3, 123456, 1024},
                       "- type: 12\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024");
 }
 
-TEST(debuda_communication, pci_read32_raw) {
+TEST(ttlens_communication, pci_read32_raw) {
     test_yaml_request(tt::dbd::pci_read32_raw_request{tt::dbd::request_type::pci_read32_raw, 1, 123456},
                       "- type: 14\n  chip_id: 1\n  address: 123456");
 }
 
-TEST(debuda_communication, pci_write32_raw) {
+TEST(ttlens_communication, pci_write32_raw) {
     test_yaml_request(tt::dbd::pci_write32_raw_request{tt::dbd::request_type::pci_write32_raw, 1, 123456, 987654},
                       "- type: 15\n  chip_id: 1\n  address: 123456\n  data: 987654");
 }
 
-TEST(debuda_communication, dma_buffer_read32) {
+TEST(ttlens_communication, dma_buffer_read32) {
     test_yaml_request(tt::dbd::dma_buffer_read32_request{tt::dbd::request_type::dma_buffer_read32, 1, 123456, 456},
                       "- type: 16\n  chip_id: 1\n  address: 123456\n  channel: 456");
 }
 
-TEST(debuda_communication, pci_read_tile) {
+TEST(ttlens_communication, pci_read_tile) {
     test_yaml_request(
         tt::dbd::pci_read_tile_request{tt::dbd::request_type::pci_read_tile, 1, 2, 3, 123456, 1024, 14},
         "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14");
 }
 
-TEST(debuda_communication, get_harvester_coordinate_translation) {
+TEST(ttlens_communication, get_harvester_coordinate_translation) {
     test_yaml_request(
         tt::dbd::get_harvester_coordinate_translation_request{
             tt::dbd::request_type::get_harvester_coordinate_translation, 1},
         "- type: 17\n  chip_id: 1");
 }
 
-TEST(debuda_communication, get_device_arch) {
+TEST(ttlens_communication, get_device_arch) {
     test_yaml_request(tt::dbd::get_device_arch_request{tt::dbd::request_type::get_device_arch, 1},
                       "- type: 19\n  chip_id: 1");
 }
 
-TEST(debuda_communication, get_device_soc_description) {
+TEST(ttlens_communication, get_device_soc_description) {
     test_yaml_request(tt::dbd::get_device_soc_description_request{tt::dbd::request_type::get_device_soc_description, 1},
                       "- type: 20\n  chip_id: 1");
 }
 
-TEST(debuda_communication, pci_write) {
+TEST(ttlens_communication, pci_write) {
     // This test is different because we are trying to send request that has dynamic structure size
     std::string expected_response =
         "- type: 13\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, 12, 13, 14, "
@@ -154,7 +154,7 @@ TEST(debuda_communication, pci_write) {
     ASSERT_EQ(response, expected_response);
 }
 
-TEST(debuda_communication, get_file) {
+TEST(ttlens_communication, get_file) {
     constexpr std::string_view filename = "test_file";
     std::string expected_response =
         "- type: 200\n  size: " + std::to_string(filename.size()) + "\n  path: " + filename.data();
@@ -170,32 +170,32 @@ TEST(debuda_communication, get_file) {
     ASSERT_EQ(response, expected_response);
 }
 
-TEST(debuda_communication, arc_msg) {
+TEST(ttlens_communication, arc_msg) {
     auto req = tt::dbd::arc_msg_request{tt::dbd::request_type::arc_msg, 1, 2, true, 3, 4, 5};
 
     test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::dbd::request_type::arc_msg)) +
                                "\n  chip_id: 1\n  msg_code: 2\n  wait_for_done: 1\n  arg0: 3\n  arg1: 4\n  timeout: 5");
 }
 
-TEST(debuda_communication, jtag_read32) {
+TEST(ttlens_communication, jtag_read32) {
     auto req = tt::dbd::jtag_read32_request{tt::dbd::request_type::jtag_read32, 1, 2, 3, 123456};
     test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::dbd::request_type::jtag_read32)) +
                                "\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
 }
 
-TEST(debuda_communication, jtag_write32) {
+TEST(ttlens_communication, jtag_write32) {
     auto req = tt::dbd::jtag_write32_request{tt::dbd::request_type::jtag_write32, 1, 2, 3, 123456, 987654};
     test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::dbd::request_type::jtag_write32)) +
                                "\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
 }
 
-TEST(debuda_communication, jtag_read32_axi) {
+TEST(ttlens_communication, jtag_read32_axi) {
     auto req = tt::dbd::jtag_read32_axi_request{tt::dbd::request_type::jtag_read32_axi, 1, 123456};
     test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::dbd::request_type::jtag_read32_axi)) +
                                "\n  chip_id: 1\n  address: 123456");
 }
 
-TEST(debuda_communication, jtag_write32_axi) {
+TEST(ttlens_communication, jtag_write32_axi) {
     auto req = tt::dbd::jtag_write32_axi_request{tt::dbd::request_type::jtag_write32_axi, 1, 123456, 987654};
     test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::dbd::request_type::jtag_write32_axi)) +
                                "\n  chip_id: 1\n  address: 123456\n  data: 987654");
