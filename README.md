@@ -80,13 +80,13 @@ in TTLens home directory.
 To be sure that the build was succesful, try running
 
 ```bash
-python debuda.py
+python tt-lens.py
 ```
 
 or
 
 ```bash
-./debuda.py
+./tt-lens.py
 ```
 
 in the root directory.
@@ -103,7 +103,7 @@ To build TTLens wheel from source, simply run `make wheel` in the root directory
 
 ## Running TTLens
 
-TTLens can be run through `debuda.py` script or by invoking `debuda` command after wheel installation.
+TTLens can be run through `tt-lens.py` script or by invoking `debuda` command after wheel installation.
 There are two basic modes of operation: Limited mode and Buda mode.
 Limited mode is entered when no output directory is specified, and it enables basic communication with the device, like writing to and reading from registers or device memory and running .elf files on RISC cores.
 Buda mode is invoked by specifying an output directory of PyBuda run.

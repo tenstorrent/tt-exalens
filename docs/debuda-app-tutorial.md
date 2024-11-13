@@ -3,7 +3,7 @@
 This tutorial shows houw to use the TTLens application.
 It gives examples of basic commands, as well as how to run TTLens on remote machine and from cache.
 
-To follow this tutorial, you should either [build TTLens from source](./../README.md#building-debuda) and run it through the python script with `./debuda.py`, or [install from wheel](./../README.md#building-and-installing-wheel) and run with `debuda.py`.
+To follow this tutorial, you should either [build TTLens from source](./../README.md#building-debuda) and run it through the python script with `./tt-lens.py`, or [install from wheel](./../README.md#building-and-installing-wheel) and run with `tt-lens.py`.
 
 ## Basic Usage
 
@@ -211,23 +211,23 @@ TTLens can be started in client-server mode, which allows debugging on the remot
 The server can be started from within Buda runtime, or can be run as standalone program.
 To start Debdua server, simply call
 ```
-./debuda.py --server
+./tt-lens.py --server
 ```
 You can optionally set the port to be used by specifying `--port=<port>`, but the default value of 5555 is fine for the purpose of this tutorial.
 The server can be exited by simply pressing enter key in the terminal.
 
 To attach to the server, you can spin up a TTLens client with
 ```
-./debuda.py --remote --remote-address=<ip:port>
+./tt-lens.py --remote --remote-address=<ip:port>
 ```
 where you can specify the ip address and port, or write just
 ```
-./debuda.py --remote --remote-address=<:port>
+./tt-lens.py --remote --remote-address=<:port>
 ```
 to connect to the port on the localhost.
 Running
 ```
-./debuda.py --remote
+./tt-lens.py --remote
 ```
 will try to connect to server on port 5555 running on localhost.
 From there on, you can use TTLens the same way you would use it in local mode.
@@ -242,7 +242,7 @@ The cache is saved as a pickle file and can be read by running TTLens in cached 
 Let's say that you need to save the results of some commands to take another look at them on another machine which does not have TT hardware.
 You can run TTLens with cache writing turned on:
 ```
-./debuda.py --write-cache --cache-path=tutorial_cache.pkl
+./tt-lens.py --write-cache --cache-path=tutorial_cache.pkl
 ```
 By default, cache path is set to `debuda_cache.pkl`, but we have changed that here.
 Let's write something to memory:
@@ -265,7 +265,7 @@ Saving server cache to file tutorial_cache.pkl
 
 We can now open this cache in TTLens by calling
 ```
-./debuda.py --cached --cache-path=tutorial_cache.pkl
+./tt-lens.py --cached --cache-path=tutorial_cache.pkl
 ```
 which gives
 ```
