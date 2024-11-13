@@ -25,9 +25,6 @@ static const uint8_t blackhole_configuration_bytes[] = {
 static const uint8_t grayskull_configuration_bytes[] = {
 #include "../configuration/grayskull.embed"
 };
-static const uint8_t wormhole_configuration_bytes[] = {
-#include "../configuration/wormhole.embed"
-};
 static const uint8_t wormhole_b0_configuration_bytes[] = {
 #include "../configuration/wormhole_b0.embed"
 };
