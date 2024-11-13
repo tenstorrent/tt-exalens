@@ -5,7 +5,6 @@ set(DEVICE_FILEPATH "${CMAKE_CURRENT_SOURCE_DIR}/../device")
 set(DEBUDA_SERVER_LIB_CONFIGURATION_FILES
 	"${CONFIG_FILEPATH}/blackhole.embed" "${DEVICE_FILEPATH}/blackhole_10x14.yaml"
 	"${CONFIG_FILEPATH}/grayskull.embed" "${DEVICE_FILEPATH}/grayskull_10x12.yaml"
-	"${CONFIG_FILEPATH}/wormhole.embed" "${DEVICE_FILEPATH}/wormhole_8x10.yaml"
 	"${CONFIG_FILEPATH}/wormhole_b0.embed" "${DEVICE_FILEPATH}/wormhole_b0_8x10.yaml"
 )
 
