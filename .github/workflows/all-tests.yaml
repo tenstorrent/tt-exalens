@@ -62,16 +62,14 @@ jobs:
           path: build
       - name: Update permissions for downloaded binaries
         run: |
-          chmod +x build/bin/debuda-create-ethernet-map-wormhole
-          chmod +x build/bin/debuda-create-ethernet-map-blackhole
           chmod +x build/bin/debuda-server-standalone
           chmod +x build/bin/debuda_server_unit_tests
       - name: Run C++ tests
         run: |
           make dbd_server_unit_tests_run_only
-      - name: Run Python tests for dbd library
+      - name: Run Python tests for ttlens library
         run: |
-          python3 -m unittest discover -v -t . -s test/dbd -p *test*.py
+          python3 -m unittest discover -v -t . -s test/ttlens -p *test*.py
       - name: Run Python tests for Debuda app 
         run: |
           python3 -m unittest discover -v -t . -s test/app -p *test*.py
@@ -120,8 +118,6 @@ jobs:
           path: build
       - name: Update permissions for downloaded binaries
         run: |
-          chmod +x build/bin/debuda-create-ethernet-map-wormhole
-          chmod +x build/bin/debuda-create-ethernet-map-blackhole
           chmod +x build/bin/debuda-server-standalone
           chmod +x build/bin/debuda_server_unit_tests
       - name: Install wheel

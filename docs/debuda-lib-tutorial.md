@@ -1,7 +1,7 @@
 # Using Debuda library in Python scripts
 
 It is possible to use functions from Debuda library in custom scripts in order to access low-level device functionality (e.g. read from L1 registers, or run .elf files on RISC cores).
-These functions are exposed through two modules in dbd package: tt_debuda_init and tt_debuda_lib.
+These functions are exposed through two modules in ttlens package: tt_debuda_init and tt_debuda_lib.
 In this tutorial, we will demonstrate how to use Debuda library through a few simple examples.
 
 
@@ -49,8 +49,8 @@ In the case of using cached ifc, it is only possible to rerun cached function ca
 This section demonstrates how to make a simple script using Debuda library. For a more complete oevrview of Debdua's abilities, check out [the full documentation](library-docs.md).
 
 ```python
-from dbd.tt_debuda_init import init_debuda
-from dbd.tt_debuda_lib import write_to_device, read_words_from_device
+from ttlens.tt_debuda_init import init_debuda
+from ttlens.tt_debuda_lib import write_to_device, read_words_from_device
 
 context = init_debuda()
 data = [1, 128, 18, 64]
@@ -66,7 +66,7 @@ print(read_data)
 
 The code snippet above performs a simple task of writing a list given by `data` variable to adress `0x100` on core `0-0`.
 
-Debuda library package is called `dbd`. 
+Debuda library package is called `ttlens`. 
 It contains multiple modules, three of which are interesting to external user:
 - _tt_debuda_init_: A module containing various functions for device and context initialization.
 - _tt_debuda_lib_: A module containing useful functions for device interactions.
@@ -167,7 +167,7 @@ To compile the .elf file, you can simply run `make build` and use the output gen
 It can then be run on a brisc core through the Debuda library.
 
 ```python
-from dbd.tt_debuda_lib import run_elf, read_words_from_device
+from ttlens.tt_debuda_lib import run_elf, read_words_from_device
 
 run_elf("build/riscv-src/wormhole/run_elf_test.brisc.elf", "1-1")
 
