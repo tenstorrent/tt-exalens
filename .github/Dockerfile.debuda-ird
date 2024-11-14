@@ -13,6 +13,7 @@ RUN mkdir -p ${TT_LENS_INFRA_DIR}
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
+    build-essential \
 	docker \
     ssh \
     vim
