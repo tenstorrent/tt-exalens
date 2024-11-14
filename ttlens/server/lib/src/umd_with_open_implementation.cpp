@@ -13,9 +13,9 @@
 #include <stdexcept>
 
 #include "device/blackhole/blackhole_implementation.h"
+#include "device/cluster.h"
 #include "device/grayskull/grayskull_implementation.h"
 #include "device/tt_cluster_descriptor.h"
-#include "device/tt_device.h"
 #include "device/wormhole/wormhole_implementation.h"
 
 // Include automatically generated files that we embed in source to avoid managing their deployment
@@ -102,13 +102,13 @@ static std::filesystem::path find_binary_directory() {
     return {};
 }
 
-static std::unique_ptr<tt_SiliconDevice> create_grayskull_device(const std::string &device_configuration_path,
+static std::unique_ptr<tt::umd::Cluster> create_grayskull_device(const std::string &device_configuration_path,
                                                                  const std::string &cluster_descriptor_path,
                                                                  const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 1;
     std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
 
-    auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
+    auto device = std::make_unique<tt::umd::Cluster>(device_configuration_path, cluster_descriptor_path, target_devices,
                                                      num_host_mem_ch_per_mmio_device);
     tt_driver_host_address_params host_address_params = {
         // Values copied from: third_party/umd/src/firmware/riscv/grayskull/host_mem_address_map.h
@@ -119,13 +119,13 @@ static std::unique_ptr<tt_SiliconDevice> create_grayskull_device(const std::stri
     return device;
 }
 
-static std::unique_ptr<tt_SiliconDevice> create_wormhole_device(const std::string &device_configuration_path,
+static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::string &device_configuration_path,
                                                                 const std::string &cluster_descriptor_path,
                                                                 const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
     std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
 
-    auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
+    auto device = std::make_unique<tt::umd::Cluster>(device_configuration_path, cluster_descriptor_path, target_devices,
                                                      num_host_mem_ch_per_mmio_device);
     tt_driver_host_address_params host_address_params = {
         // Values copied from: third_party/umd/src/firmware/riscv/wormhole/host_mem_address_map.h
@@ -139,13 +139,13 @@ static std::unique_ptr<tt_SiliconDevice> create_wormhole_device(const std::strin
     return device;
 }
 
-static std::unique_ptr<tt_SiliconDevice> create_blackhole_device(const std::string &device_configuration_path,
+static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::string &device_configuration_path,
                                                                  const std::string &cluster_descriptor_path,
                                                                  const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
     std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
 
-    auto device = std::make_unique<tt_SiliconDevice>(device_configuration_path, cluster_descriptor_path, target_devices,
+    auto device = std::make_unique<tt::umd::Cluster>(device_configuration_path, cluster_descriptor_path, target_devices,
                                                      num_host_mem_ch_per_mmio_device);
     tt_driver_host_address_params host_address_params = {
         // Values copied from: third_party/umd/src/firmware/riscv/blackhole/host_mem_address_map.h
@@ -159,7 +159,7 @@ static std::unique_ptr<tt_SiliconDevice> create_blackhole_device(const std::stri
 // Creates SOC descriptor files by serializing tt_SocDescroptor structure to yaml.
 // TODO: Current copied from runtime/runtime_utils.cpp: print_device_description. It should be moved to UMD and reused
 // on both places.
-static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDevice *device,
+static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Cluster *device,
                                                                     const std::vector<uint8_t> &device_ids) {
     tt_device *d = static_cast<tt_device *>(device);
     std::map<uint8_t, std::string> device_soc_descriptors;
@@ -295,7 +295,7 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_SiliconDe
 
 namespace tt::dbd {
 
-umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt_SiliconDevice> device,
+umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt::umd::Cluster> device,
                                                            std::unique_ptr<JtagDevice> jtag_device)
     : umd_implementation(device.get(), jtag_device.get()),
       device(std::move(device)),
@@ -304,7 +304,7 @@ umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt_Si
 std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open(
     const std::filesystem::path &binary_directory, const std::string &runtime_yaml_path,
     const std::vector<uint8_t> &wanted_devices) {
-    auto devices = tt_SiliconDevice::detect_available_device_ids();
+    auto devices = tt::umd::Cluster::detect_available_device_ids();
 
     if (devices.size() == 0) {
         throw std::runtime_error("No Tenstorrent devices were detected on this system.");
@@ -329,7 +329,7 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
     auto cluster_descriptor_path = tt_ClusterDescriptor::get_cluster_descriptor_file_path();
     auto cluster_descriptor = tt_ClusterDescriptor::create_from_yaml(cluster_descriptor_path);
     std::vector<uint8_t> device_ids;
-    std::unique_ptr<tt_SiliconDevice> device;
+    std::unique_ptr<tt::umd::Cluster> device;
 
     // Try to read cluster descriptor
     std::set<chip_id_t> target_devices;

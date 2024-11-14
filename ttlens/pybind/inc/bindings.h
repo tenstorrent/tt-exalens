@@ -16,7 +16,7 @@
 #include <iostream>
 #include <memory>
 
-#include "device/tt_device.h"
+#include "device/cluster.h"
 
 bool open_device(const std::string &binary_directory, const std::string &runtime_yaml_path,
                  const std::vector<uint8_t> &wanted_devices = {});

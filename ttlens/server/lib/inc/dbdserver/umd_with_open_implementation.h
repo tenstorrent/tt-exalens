@@ -14,7 +14,7 @@ namespace tt::dbd {
 
 class umd_with_open_implementation : public umd_implementation {
    private:
-    std::unique_ptr<tt_SiliconDevice> device;
+    std::unique_ptr<tt::umd::Cluster> device;
     std::unique_ptr<JtagDevice> jtag_device;
     std::vector<uint8_t> device_ids;
     std::map<uint8_t, std::string> device_soc_descriptors;
@@ -24,7 +24,7 @@ class umd_with_open_implementation : public umd_implementation {
     std::string runtime_yaml_path;
 
    public:
-    umd_with_open_implementation(std::unique_ptr<tt_SiliconDevice> device, std::unique_ptr<JtagDevice> jtag_device);
+    umd_with_open_implementation(std::unique_ptr<tt::umd::Cluster> device, std::unique_ptr<JtagDevice> jtag_device);
 
     static std::unique_ptr<umd_with_open_implementation> open(const std::filesystem::path& binary_directory = {},
                                                               const std::string& runtime_yaml_path = "",
