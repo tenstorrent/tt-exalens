@@ -1,33 +1,33 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-#include "dbdserver/communication.h"
+#include "ttlensserver/communication.h"
 
 #include <memory>
 #include <zmq.hpp>
 
-#include "dbdserver/requests.h"
+#include "ttlensserver/requests.h"
 
-namespace tt::dbd {
+namespace tt::ttlens {
 
 // Simple function that forwards background thread to member function
-int communication_loop(tt::dbd::communication* communication) {
+int communication_loop(tt::ttlens::communication* communication) {
     communication->request_loop();
     return 0;
 }
 
-}  // namespace tt::dbd
+}  // namespace tt::ttlens
 
-tt::dbd::communication::communication() : port(-1) {}
+tt::ttlens::communication::communication() : port(-1) {}
 
-tt::dbd::communication::~communication() {
+tt::ttlens::communication::~communication() {
     try {
         stop();
     } catch (...) {
     }
 }
 
-void tt::dbd::communication::stop() {
+void tt::ttlens::communication::stop() {
     port = -1;
     should_stop = true;
     zmq_context.shutdown();
@@ -39,7 +39,7 @@ void tt::dbd::communication::stop() {
     zmq_context.close();
 }
 
-void tt::dbd::communication::start(int port) {
+void tt::ttlens::communication::start(int port) {
     stop();
     zmq_context = zmq::context_t();
     zmq_socket = zmq::socket_t(zmq_context, zmq::socket_type::rep);
@@ -49,7 +49,7 @@ void tt::dbd::communication::start(int port) {
     this->port = port;
 }
 
-void tt::dbd::communication::request_loop() {
+void tt::ttlens::communication::request_loop() {
     while (!should_stop) {
         try {
             // Receive message
@@ -109,7 +109,7 @@ void tt::dbd::communication::request_loop() {
                     case request_type::get_device_soc_description:
                         invalid_message = message.size() != sizeof(get_device_soc_description_request);
                         break;
-                    case tt::dbd::request_type::arc_msg:
+                    case tt::ttlens::request_type::arc_msg:
                         invalid_message = message.size() != sizeof(arc_msg_request);
                         break;
 
@@ -159,8 +159,8 @@ void tt::dbd::communication::request_loop() {
     }
 }
 
-void tt::dbd::communication::respond(const std::string& message) { respond(message.c_str(), message.size()); }
+void tt::ttlens::communication::respond(const std::string& message) { respond(message.c_str(), message.size()); }
 
-void tt::dbd::communication::respond(const void* data, size_t size) { zmq_socket.send(zmq::const_buffer(data, size)); }
+void tt::ttlens::communication::respond(const void* data, size_t size) { zmq_socket.send(zmq::const_buffer(data, size)); }
 
-bool tt::dbd::communication::is_connected() const { return port != -1; }
+bool tt::ttlens::communication::is_connected() const { return port != -1; }

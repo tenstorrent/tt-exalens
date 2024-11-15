@@ -11,11 +11,11 @@ import subprocess
 import re
 
 
-class DbdOutputVerifier:
+class TTLensOutputVerifier:
     def __init__(self):
         pass
 
-    def verify_start(self, runner: "DbdTestRunner", tester: unittest.TestCase):
+    def verify_start(self, runner: "TTLensTestRunner", tester: unittest.TestCase):
         lines, prompt = runner.read_until_prompt()
         self.verify_startup(lines, prompt, tester)
         pass
@@ -28,7 +28,7 @@ class DbdOutputVerifier:
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
         pass
 
-class UmdDbdOutputVerifier(DbdOutputVerifier):
+class UmdTTLensOutputVerifier(TTLensOutputVerifier):
     prompt_regex = r"^gdb:[^ ]+ device:\d+ loc:\d+-\d+ \(\d+, \d+\) > $"
 
     def __init__(self):
@@ -69,8 +69,8 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
         
         return True
 
-class DbdTestRunner:
-    def __init__(self, verifier: DbdOutputVerifier):
+class TTLensTestRunner:
+    def __init__(self, verifier: TTLensOutputVerifier):
         self.interpreter_path = sys.executable
         self.ttlens_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "tt-lens.py")
         self.process: subprocess.Popen = None
@@ -154,7 +154,7 @@ class DbdTestRunner:
 class TestUmdTTLens(unittest.TestCase):
     @unittest.skip("Disabling this test for the moment. Something not working in CI, investigation needed.")
     def test_startup_and_exit_just_return_code(self):
-        runner = DbdTestRunner(UmdDbdOutputVerifier())
+        runner = TTLensTestRunner(UmdTTLensOutputVerifier())
         runner.start(self)
         runner.writeline("x")
         runner.wait()

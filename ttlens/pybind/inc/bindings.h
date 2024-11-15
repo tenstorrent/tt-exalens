@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <dbdserver/ttlens_implementation.h>
-#include <dbdserver/umd_with_open_implementation.h>
+#include <ttlensserver/ttlens_implementation.h>
+#include <ttlensserver/umd_with_open_implementation.h>
 #include <pybind11/complex.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -20,7 +20,7 @@
 
 bool open_device(const std::string &binary_directory, const std::string &runtime_yaml_path,
                  const std::vector<uint8_t> &wanted_devices = {});
-void set_ttlens_implementation(std::unique_ptr<tt::dbd::ttlens_implementation> imp);
+void set_ttlens_implementation(std::unique_ptr<tt::ttlens::ttlens_implementation> imp);
 
 std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address);
 std::optional<uint32_t> pci_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data);

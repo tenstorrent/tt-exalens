@@ -1,7 +1,7 @@
 file(GLOB_RECURSE TTLENS_PYBIND_SRCS "src/*.cpp")
 add_library(ttlens_pybind SHARED ${TTLENS_PYBIND_SRCS})
 set_target_properties(ttlens_pybind PROPERTIES
-    OUTPUT_NAME "tt_dbd_pybind"
+    OUTPUT_NAME "ttlens_pybind"
     PREFIX ""
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
 )

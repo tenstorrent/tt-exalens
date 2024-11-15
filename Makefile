@@ -30,8 +30,8 @@ wheel_develop:
 wheel:
 	STRIP_SYMBOLS=1 CONFIG=Release python3 setup.py bdist_wheel -d build/ttlens_wheel
 
-.PHONY: dbd_server_unit_tests_run_only
-dbd_server_unit_tests_run_only:
+.PHONY: ttlens_server_unit_tests_run_only
+ttlens_server_unit_tests_run_only:
 	@echo "Running: build/bin/ttlens_server_unit_tests"
 	@build/bin/ttlens_server_unit_tests
 

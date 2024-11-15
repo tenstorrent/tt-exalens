@@ -208,9 +208,9 @@ This will automatically generate new image releases and tag them as `latest`.
 ### fatal error: zmq.hpp: No such file or directory
 
 ```
-In file included from ttlens/server/lib/inc/dbdserver/server.h:8,
+In file included from ttlens/server/lib/inc/ttlensserver/server.h:8,
                  from ttlens/server/app/ttlens-server-standalone.cpp:11:
-ttlens/server/lib/inc/dbdserver/communication.h:9:10: fatal error: zmq.hpp: No such file or directory
+ttlens/server/lib/inc/ttlensserver/communication.h:9:10: fatal error: zmq.hpp: No such file or directory
     9 | #include <zmq.hpp>
 ```
 
@@ -233,7 +233,7 @@ alias python=python3
 
 
 
-### ModuleNotFoundError: No module named 'tt_dbd_pybind_unit_tests'
+### ModuleNotFoundError: No module named 'ttlens_pybind_unit_tests'
 
 This error might occur when trying to run unit tests:
 ```
@@ -244,8 +244,8 @@ Traceback (most recent call last):
   File "/usr/lib/python3.10/unittest/loader.py", line 377, in _get_module_from_name
     __import__(name)
   File "/home/dcvijetic/work/tt-debuda/test/ttlens/pybind/test_bindings.py", line 17, in <module>
-    from tt_dbd_pybind_unit_tests import set_ttlens_test_implementation
-ModuleNotFoundError: No module named 'tt_dbd_pybind_unit_tests'
+    from ttlens_pybind_unit_tests import set_ttlens_test_implementation
+ModuleNotFoundError: No module named 'ttlens_pybind_unit_tests'
 ```
 To fix, just build the neccessary test library:
 ```

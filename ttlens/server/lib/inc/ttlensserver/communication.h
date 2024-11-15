@@ -10,11 +10,11 @@
 
 #include "requests.h"
 
-namespace tt::dbd {
+namespace tt::ttlens {
 
-// Communication class that implements 0MQ server and parses messages into tt::dbd::request.
+// Communication class that implements 0MQ server and parses messages into tt::ttlens::request.
 // Needs to have implemented function void process(const request&) for processing requests.
-// Current production implementation of it is tt::dbd::server.
+// Current production implementation of it is tt::ttlens::server.
 class communication {
    public:
     communication();
@@ -44,9 +44,9 @@ class communication {
 
     communication(const communication&) = delete;
 
-    friend int communication_loop(tt::dbd::communication* communication);
+    friend int communication_loop(tt::ttlens::communication* communication);
     friend class yaml_not_implemented_server;
     void request_loop();
 };
 
-}  // namespace tt::dbd
+}  // namespace tt::ttlens

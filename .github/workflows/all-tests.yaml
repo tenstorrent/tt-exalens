@@ -15,7 +15,7 @@ jobs:
   static-checks:
     uses: ./.github/workflows/static-checks.yaml
   build:
-    uses: ./.github/workflows/build-dbd.yaml
+    uses: ./.github/workflows/build-ttlens.yaml
   
   
   build-and-run-unit-tests:
@@ -58,7 +58,7 @@ jobs:
           lfs: true
       - uses: actions/download-artifact@v4
         with:
-          name: dbd-build
+          name: ttlens-build
           path: build
       - name: Update permissions for downloaded binaries
         run: |
@@ -66,7 +66,7 @@ jobs:
           chmod +x build/bin/ttlens_server_unit_tests
       - name: Run C++ tests
         run: |
-          make dbd_server_unit_tests_run_only
+          make ttlens_server_unit_tests_run_only
       - name: Run Python tests for ttlens library
         run: |
           python3 -m unittest discover -v -t . -s test/ttlens -p *test*.py
@@ -114,7 +114,7 @@ jobs:
           lfs: true
       - uses: actions/download-artifact@v4
         with:
-          name: dbd-build
+          name: ttlens-build
           path: build
       - name: Update permissions for downloaded binaries
         run: |

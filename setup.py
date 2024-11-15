@@ -39,7 +39,7 @@ ttlens_files = {
     },
     "libs": {
         "path": "build/lib",
-        "files": [ "libdevice.so", "tt_dbd_pybind.so", "libnng.so.1", "libuv.so.1" ],
+        "files": [ "libdevice.so", "ttlens_pybind.so", "libnng.so.1", "libuv.so.1" ],
         "output": "build/lib",
         "strip": True
     },

@@ -8,21 +8,21 @@ import os
 
 from typing import Union
 
-tt_dbd_pybind_path = os.path.abspath(
+ttlens_pybind_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "../../../build/lib")
     )
-sys.path.append(tt_dbd_pybind_path)
+sys.path.append(ttlens_pybind_path)
 
-if not os.path.isfile(os.path.join(tt_dbd_pybind_path, "tt_dbd_pybind.so")):
-    print(f"Error: 'tt_dbd_pybind.so' not found in {tt_dbd_pybind_path}. Try: make build")
+if not os.path.isfile(os.path.join(ttlens_pybind_path, "ttlens_pybind.so")):
+    print(f"Error: 'ttlens_pybind.so' not found in {ttlens_pybind_path}. Try: make build")
     sys.exit(1)
 
-if not os.path.isfile(os.path.join(tt_dbd_pybind_path, "tt_dbd_pybind_unit_tests.so")):
-    print(f"Error: 'tt_dbd_pybind_unit_tests.so' not found in {tt_dbd_pybind_path}. Try: make build")
+if not os.path.isfile(os.path.join(ttlens_pybind_path, "ttlens_pybind_unit_tests.so")):
+    print(f"Error: 'ttlens_pybind_unit_tests.so' not found in {ttlens_pybind_path}. Try: make build")
     sys.exit(1)
 
-import tt_dbd_pybind as pb
-from tt_dbd_pybind_unit_tests import set_ttlens_test_implementation
+import ttlens_pybind as pb
+from ttlens_pybind_unit_tests import set_ttlens_test_implementation
 
 class TestBindings(unittest.TestCase):
     def __init__(self, methodName: str = "runTest") -> None:

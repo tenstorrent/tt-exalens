@@ -3,7 +3,7 @@ file(GLOB_RECURSE TTLENS_PYBIND_UNIT_TESTS_SRCS "*.cpp")
 add_library(ttlens_pybind_unit_tests SHARED ${TTLENS_PYBIND_UNIT_TESTS_SRCS})
 
 set_target_properties(ttlens_pybind_unit_tests PROPERTIES
-    OUTPUT_NAME "tt_dbd_pybind_unit_tests"
+    OUTPUT_NAME "ttlens_pybind_unit_tests"
     PREFIX ""
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
 )

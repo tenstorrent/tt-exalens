@@ -22,7 +22,7 @@ jobs:
         with:
           submodules: recursive
           lfs: true
-      - uses: ./.github/actions/install-dbd-deps
+      - uses: ./.github/actions/install-ttlens-deps
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.build-info.py-version }}

@@ -4,7 +4,7 @@
 
 #include "bindings.h"
 
-static std::unique_ptr<tt::dbd::ttlens_implementation> ttlens_implementation;
+static std::unique_ptr<tt::ttlens::ttlens_implementation> ttlens_implementation;
 
 class scoped_null_stdout {
    private:
@@ -21,7 +21,7 @@ class scoped_null_stdout {
     ~scoped_null_stdout() { std::cout.rdbuf(original_stdout); }
 };
 
-void set_ttlens_implementation(std::unique_ptr<tt::dbd::ttlens_implementation> imp) {
+void set_ttlens_implementation(std::unique_ptr<tt::ttlens::ttlens_implementation> imp) {
     ttlens_implementation = std::move(imp);
 }
 
@@ -32,7 +32,7 @@ bool open_device(const std::string &binary_directory, const std::string &runtime
         scoped_null_stdout null_stdout;
 
         ttlens_implementation =
-            tt::dbd::umd_with_open_implementation::open(binary_directory, runtime_yaml_path, wanted_devices);
+            tt::ttlens::umd_with_open_implementation::open(binary_directory, runtime_yaml_path, wanted_devices);
         if (!ttlens_implementation) {
             return false;
         }
@@ -205,7 +205,7 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> arc_msg(uint8_t chip_id, uint
     return {};
 }
 
-PYBIND11_MODULE(tt_dbd_pybind, m) {
+PYBIND11_MODULE(ttlens_pybind, m) {
     m.def("open_device", &open_device, "Opens tt device. Prints error message if failed.",
           pybind11::arg("binary_directory"), pybind11::arg("runtime_yaml_path"),
           pybind11::arg_v("wanted_devices", std::vector<uint8_t>(), "[]"));

@@ -9,7 +9,7 @@
 #include <tuple>
 #include <vector>
 
-namespace tt::dbd {
+namespace tt::ttlens {
 
 // Interface that should be implemented for TTLens server to process requests.
 class ttlens_implementation {
@@ -64,4 +64,4 @@ class ttlens_implementation {
     }
 };
 
-}  // namespace tt::dbd
+}  // namespace tt::ttlens

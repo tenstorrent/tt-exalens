@@ -44,7 +44,7 @@ target_include_directories(ttlens_server_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
 )
 set_target_properties(ttlens_server_lib PROPERTIES 
-    OUTPUT_NAME libdbdserver
+    OUTPUT_NAME libttlensserver
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
     POSITION_INDEPENDENT_CODE ON
 )

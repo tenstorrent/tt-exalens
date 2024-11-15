@@ -7,7 +7,7 @@
 #include <memory>
 #include <optional>
 
-#include "dbdserver/jtag.h"
+#include "ttlensserver/jtag.h"
 
 class JtagDevice {
    public:

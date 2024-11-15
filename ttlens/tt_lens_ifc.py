@@ -10,7 +10,7 @@ import zmq
 
 from ttlens import tt_util as util
 from ttlens import tt_lens_ifc_cache as tt_lens_ifc_cache
-from ttlens.tt_lens_ifc_base import DbdCommunicator
+from ttlens.tt_lens_ifc_base import TTLensCommunicator
 from ttlens import tt_device
 
 
@@ -326,7 +326,7 @@ class ttlens_server_communication:
         return self._check(self._socket.recv())
 
 
-class ttlens_client(DbdCommunicator):
+class ttlens_client(TTLensCommunicator):
     def __init__(self, address: str, port: int):
         super().__init__()
         self._communication = ttlens_server_communication(address, port)
@@ -479,22 +479,22 @@ class ttlens_client(DbdCommunicator):
         )
 
 
-tt_dbd_pybind_path = util.application_path() + "/../build/lib"
+ttlens_pybind_path = util.application_path() + "/../build/lib"
 binary_path = util.application_path() + "/../build/bin"
-sys.path.append(tt_dbd_pybind_path)
+sys.path.append(ttlens_pybind_path)
 
-if not os.path.isfile(os.path.join(tt_dbd_pybind_path, "tt_dbd_pybind.so")):
-    print(f"Error: 'tt_dbd_pybind.so' not found in {tt_dbd_pybind_path}. Try: make build")
+if not os.path.isfile(os.path.join(ttlens_pybind_path, "ttlens_pybind.so")):
+    print(f"Error: 'ttlens_pybind.so' not found in {ttlens_pybind_path}. Try: make build")
     sys.exit(1)
 
 # This is a pybind module so we don't need from .
-import tt_dbd_pybind
+import ttlens_pybind
 
 
-class ttlens_pybind(DbdCommunicator):
+class TTLensPybind(TTLensCommunicator):
     def __init__(self, runtime_data_yaml_filename: str = "", run_dirpath: str = None, wanted_devices: list = []):
         super().__init__()
-        if not tt_dbd_pybind.open_device(binary_path, runtime_data_yaml_filename, wanted_devices):
+        if not ttlens_pybind.open_device(binary_path, runtime_data_yaml_filename, wanted_devices):
             raise Exception("Failed to open device using pybind library")
         self._runtime_yaml_path = runtime_data_yaml_filename # Don't go through C++ for opening files
         self._run_dirpath = run_dirpath
@@ -505,27 +505,27 @@ class ttlens_pybind(DbdCommunicator):
         return result
 
     def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self._check_result(tt_dbd_pybind.pci_read32(chip_id, noc_x, noc_y, address))
+        return self._check_result(ttlens_pybind.pci_read32(chip_id, noc_x, noc_y, address))
 
     def pci_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        return self._check_result(tt_dbd_pybind.pci_write32(chip_id, noc_x, noc_y, address, data))
+        return self._check_result(ttlens_pybind.pci_write32(chip_id, noc_x, noc_y, address, data))
 
     def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
-        return self._check_result(tt_dbd_pybind.pci_read(chip_id, noc_x, noc_y, address, size))
+        return self._check_result(ttlens_pybind.pci_read(chip_id, noc_x, noc_y, address, size))
 
     def pci_write(
         self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes
     ):
-        return self._check_result(tt_dbd_pybind.pci_write(chip_id, noc_x, noc_y, address, data, len(data)))
+        return self._check_result(ttlens_pybind.pci_write(chip_id, noc_x, noc_y, address, data, len(data)))
 
     def pci_read32_raw(self, chip_id: int, address: int):
-        return self._check_result(tt_dbd_pybind.pci_read32_raw(chip_id, address))
+        return self._check_result(ttlens_pybind.pci_read32_raw(chip_id, address))
 
     def pci_write32_raw(self, chip_id: int, address: int, data: int):
-        return self._check_result(tt_dbd_pybind.pci_write32_raw(chip_id, address, data))
+        return self._check_result(ttlens_pybind.pci_write32_raw(chip_id, address, data))
 
     def dma_buffer_read32(self, chip_id: int, address: int, channel: int):
-        return self._check_result(tt_dbd_pybind.dma_buffer_read32(chip_id, address, channel))
+        return self._check_result(ttlens_pybind.dma_buffer_read32(chip_id, address, channel))
 
     def pci_read_tile(
         self,
@@ -536,7 +536,7 @@ class ttlens_pybind(DbdCommunicator):
         size: int,
         data_format: int,
     ):
-        return self._check_result(tt_dbd_pybind.pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format))
+        return self._check_result(ttlens_pybind.pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format))
 
     def get_runtime_data(self) -> str:
         if self._runtime_yaml_path:
@@ -545,31 +545,31 @@ class ttlens_pybind(DbdCommunicator):
         else: raise ttlens_server_not_supported()
 
     def get_cluster_description(self):
-        return self._check_result(tt_dbd_pybind.get_cluster_description())
+        return self._check_result(ttlens_pybind.get_cluster_description())
 
     def get_harvester_coordinate_translation(self, chip_id: int):
-        return self._check_result(tt_dbd_pybind.get_harvester_coordinate_translation(chip_id))
+        return self._check_result(ttlens_pybind.get_harvester_coordinate_translation(chip_id))
 
     def get_device_ids(self):
-        return self._check_result(tt_dbd_pybind.get_device_ids())
+        return self._check_result(ttlens_pybind.get_device_ids())
 
     def get_device_arch(self, chip_id: int):
-        return self._check_result(tt_dbd_pybind.get_device_arch(chip_id))
+        return self._check_result(ttlens_pybind.get_device_arch(chip_id))
 
     def get_device_soc_description(self, chip_id: int):
-        return self._check_result(tt_dbd_pybind.get_device_soc_description(chip_id))
+        return self._check_result(ttlens_pybind.get_device_soc_description(chip_id))
 
     def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self._check_result(tt_dbd_pybind.jtag_read32(chip_id, noc_x, noc_y, address))
+        return self._check_result(ttlens_pybind.jtag_read32(chip_id, noc_x, noc_y, address))
 
     def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        return self._check_result(tt_dbd_pybind.jtag_write32(chip_id, noc_x, noc_y, address, data))
+        return self._check_result(ttlens_pybind.jtag_write32(chip_id, noc_x, noc_y, address, data))
 
     def jtag_read32_axi(self, chip_id: int, address: int):
-        return self._check_result(tt_dbd_pybind.jtag_read32_axi(chip_id, address))
+        return self._check_result(ttlens_pybind.jtag_read32_axi(chip_id, address))
 
     def jtag_write32_axi(self, chip_id: int, address: int, data: int):
-        return self._check_result(tt_dbd_pybind.jtag_write32_axi(chip_id, address, data))
+        return self._check_result(ttlens_pybind.jtag_write32_axi(chip_id, address, data))
 
     def get_file(self, file_path: str) -> str:
         content = None
@@ -584,13 +584,13 @@ class ttlens_pybind(DbdCommunicator):
         return self._run_dirpath
 
     def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
-        return self._check_result(tt_dbd_pybind.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout))
+        return self._check_result(ttlens_pybind.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout))
 
 def init_pybind(runtime_data_yaml_filename, run_dirpath=None, wanted_devices=None):
     if not wanted_devices:
         wanted_devices = []
 
-    tt_device.SERVER_IFC = ttlens_pybind(runtime_data_yaml_filename, run_dirpath, wanted_devices)
+    tt_device.SERVER_IFC = TTLensPybind(runtime_data_yaml_filename, run_dirpath, wanted_devices)
     util.VERBOSE("Device opened successfully.")
     return tt_device.SERVER_IFC
 

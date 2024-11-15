@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 import io
 
 
-class DbdCommunicator(ABC):
+class TTLensCommunicator(ABC):
     """
     Base class for the TTLens interfaces. It defines the high-level methods that must be implemented for TTLens to
     communicate with the target device. They are later derived to communicate with server, use pybind or read from cache.

@@ -98,7 +98,7 @@ def init_ttlens_cached(
 	return load_context(lens_ifc, netlist_path, runtime_data_yaml, cluster_desc_yaml)
 
 
-def get_yamls(lens_ifc: tt_lens_ifc.DbdCommunicator) -> "tuple[util.YamlFile, util.YamlFile]":
+def get_yamls(lens_ifc: tt_lens_ifc.TTLensCommunicator) -> "tuple[util.YamlFile, util.YamlFile]":
 	""" Get the runtime data and cluster description yamls through the TTLens interface.
 	"""
 	try:
@@ -118,7 +118,7 @@ def get_yamls(lens_ifc: tt_lens_ifc.DbdCommunicator) -> "tuple[util.YamlFile, ut
 
 
 def load_context(
-		server_ifc: tt_lens_ifc.DbdCommunicator, 
+		server_ifc: tt_lens_ifc.TTLensCommunicator, 
 		netlist_filepath: str, 
 		runtime_data_yaml: util.YamlFile, 
 		cluster_desc_yaml: util.YamlFile

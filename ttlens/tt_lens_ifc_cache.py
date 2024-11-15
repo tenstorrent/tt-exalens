@@ -6,7 +6,7 @@ import io
 import os
 import pickle
 
-from ttlens.tt_lens_ifc_base import DbdCommunicator
+from ttlens.tt_lens_ifc_base import TTLensCommunicator
 from ttlens import tt_device
 from ttlens import tt_util as util
 
@@ -17,7 +17,7 @@ or load state from the previous run. This is useful when the device is not avail
 """
 
 
-class DbdCache(DbdCommunicator):
+class TTLensCache(TTLensCommunicator):
     """
     Base caching class that provides cache dictionary and a function to save the cache to a file.
     """
@@ -33,12 +33,12 @@ class DbdCache(DbdCommunicator):
             util.INFO(f"  Saved {len(self.cache)} entries")
 
 
-class DbdCacheThrough(DbdCache):
+class TTLensCacheThrough(TTLensCache):
     """
     A class for caching the return values or device calls. Caching is implemented using a decorator.
 
     Args:
-        communicator (DbdCommunicator): The interface that contacts the device.
+        communicator (TTLensCommunicator): The interface that contacts the device.
         filepath (str): The path to save the cache file. Default is "ttlens_cache.pkl".
     """
 
@@ -150,7 +150,7 @@ class DbdCacheThrough(DbdCache):
         return True
 
 
-class DbdCacheReader(DbdCache):
+class TTLensCacheReader(TTLensCache):
     """
     A class for reading the cache file. It imitates the high-level interface used to communicate with the device.
     Reading is implemented using a decorator.
@@ -288,11 +288,11 @@ class DbdCacheReader(DbdCache):
 
 
 def init_cache_writer(filepath="ttlens_cache.pkl"):
-    tt_device.SERVER_IFC = DbdCacheThrough(tt_device.SERVER_IFC, filepath)
+    tt_device.SERVER_IFC = TTLensCacheThrough(tt_device.SERVER_IFC, filepath)
     atexit.register(tt_device.SERVER_IFC.save)
     return tt_device.SERVER_IFC
 
 
 def init_cache_reader(filepath="ttlens_cache.pkl"):
-    tt_device.SERVER_IFC = DbdCacheReader(filepath)
+    tt_device.SERVER_IFC = TTLensCacheReader(filepath)
     return tt_device.SERVER_IFC
