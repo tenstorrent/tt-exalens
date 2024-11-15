@@ -21,7 +21,7 @@ from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 #
 
 # TODO: Remove this global
-SERVER_IFC = None  # The Debuda ifc object
+SERVER_IFC = None  # The TTLens ifc object
 
 # Attempt to unpack the data using the given format. If it fails, it assumes that the data
 # is a string contining an error message from the server.

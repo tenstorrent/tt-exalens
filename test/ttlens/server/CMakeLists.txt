@@ -1,5 +1,5 @@
-file(GLOB_RECURSE DEBUDA_SERVER_UNIT_TESTS_SRCS "*.cpp")
-add_executable(debuda_server_unit_tests ${DEBUDA_SERVER_UNIT_TESTS_SRCS})
+file(GLOB_RECURSE TTLENS_SERVER_UNIT_TESTS_SRCS "*.cpp")
+add_executable(debuda_server_unit_tests ${TTLENS_SERVER_UNIT_TESTS_SRCS})
 target_link_libraries(debuda_server_unit_tests
     debuda_server_lib
     debuda_utils

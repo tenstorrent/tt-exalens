@@ -12,11 +12,11 @@ Usage:
 
 Options:
   -h --help                       Show this help message and exit.
-  --server                        Start a Debuda server. If not specified, the port will be set to 5555.
-  --remote                        Attach to the remote Debuda server. If not specified, IP defaults to localhost and port to 5555.
-  --cached                        Use the cache from previous Debuda run to simulate device communication.
-  --port=<port>                   Port of the Debuda server. If not specified, defaults to 5555.  [default: 5555]
-  --remote-address=<ip:port>      Address of the remote Debuda server, in the form of ip:port, or just :port, if ip is localhost. If not specified, defaults to localhost:5555. [default: localhost:5555]
+  --server                        Start a TTLens server. If not specified, the port will be set to 5555.
+  --remote                        Attach to the remote TTLens server. If not specified, IP defaults to localhost and port to 5555.
+  --cached                        Use the cache from previous TTLens run to simulate device communication.
+  --port=<port>                   Port of the TTLens server. If not specified, defaults to 5555.  [default: 5555]
+  --remote-address=<ip:port>      Address of the remote TTLens server, in the form of ip:port, or just :port, if ip is localhost. If not specified, defaults to localhost:5555. [default: localhost:5555]
   --netlist=<file>                Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used.
   --commands=<cmds>               Execute a list of semicolon-separated commands.
   --start-gdb=<gdb_port>          Start a gdb server on the specified port.
@@ -27,14 +27,14 @@ Options:
   --test                          Exits with non-zero exit code on any exception.
 
 Description:
-  Debuda parses the build output files and reads the device state to provide a debugging interface for the user.
+  TTLens parses the build output files and reads the device state to provide a debugging interface for the user.
 
   There are three modes of operation:
     1. Local mode: The user can run tt-lens with a specific output directory. This will load the runtime data from the output directory. If the output directory is not specified, the most recent subdirectory of tt_build/ will be used.
-    2. Remote mode: The user can connect to a Debuda server running on a remote machine. The server will provide the runtime data.
-    3. Cached mode: The user can use a cache file from previous Debuda run. This is useful for debugging without a connection to the device. Writing is disabled in this mode.
+    2. Remote mode: The user can connect to a TTLens server running on a remote machine. The server will provide the runtime data.
+    3. Cached mode: The user can use a cache file from previous TTLens run. This is useful for debugging without a connection to the device. Writing is disabled in this mode.
   
-  Passing the --server flag will start a Debuda server. The server will listen on the specified port (default 5555) for incoming connections.
+  Passing the --server flag will start a TTLens server. The server will listen on the specified port (default 5555) for incoming connections.
 
 Arguments:
   output_dir                     Output directory of a Buda run. If left blank, the most recent subdirectory of tt_build/ will be used.
@@ -447,7 +447,7 @@ def main():
 
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
-        print(f"Starting Debuda server at {args['--port']}")
+        print(f"Starting TTLens server at {args['--port']}")
         runtime_data_yaml_filename = tt_debuda_init.find_runtime_data_yaml_filename(output_dir) if output_dir else None
         debuda_server = tt_debuda_server.start_server(
             args["--port"],
@@ -462,13 +462,13 @@ def main():
         sys.exit(0)
     
     if args["--cached"]:
-        util.INFO(f"Starting Debuda from cache.")
+        util.INFO(f"Starting TTLens from cache.")
         context = tt_debuda_init.init_debuda_cached(args["--cache-path"])
     elif args["--remote"]:
         address = args["--remote-address"].split(":")
         server_ip = address[0] if address[0]!='' else "localhost"
         server_port = address[-1] 
-        util.INFO(f"Connecting to Debuda server at {server_ip}:{server_port}")
+        util.INFO(f"Connecting to TTLens server at {server_ip}:{server_port}")
         context = tt_debuda_init.init_debuda_remote(server_ip, int(server_port), cache_path)
     else:
         context = tt_debuda_init.init_debuda(output_dir, args["--netlist"], wanted_devices, cache_path)

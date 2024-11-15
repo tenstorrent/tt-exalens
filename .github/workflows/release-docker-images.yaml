@@ -33,7 +33,7 @@ jobs:
 
       # Build images
 
-      - name: Build and export Debuda Docker image
+      - name: Build and export TTLens Docker image
         uses: docker/build-push-action@v6
         with:
           file: .github/Dockerfile.debuda

@@ -242,7 +242,7 @@ void test_not_implemented_request(const T &request, const std::string &expected_
     ASSERT_EQ(response.second.to_string(), std::string("NOT_SUPPORTED"));
 }
 
-TEST(debuda_server, ping) {
+TEST(ttlens_server, ping) {
     tt::dbd::request request{tt::dbd::request_type::ping};
     auto server = start_server(false);
     ASSERT_TRUE(server->is_connected());
@@ -250,98 +250,98 @@ TEST(debuda_server, ping) {
     ASSERT_EQ(response, std::string("PONG"));
 }
 
-TEST(debuda_server, get_runtime_data) {
+TEST(ttlens_server, get_runtime_data) {
     test_not_implemented_request(tt::dbd::request{tt::dbd::request_type::get_runtime_data}, "- type: 101");
 }
 
-TEST(debuda_server, get_cluster_description) {
+TEST(ttlens_server, get_cluster_description) {
     test_not_implemented_request(tt::dbd::request{tt::dbd::request_type::get_cluster_description}, "- type: 102");
 }
 
-TEST(debuda_server, get_device_ids) {
+TEST(ttlens_server, get_device_ids) {
     test_not_implemented_request(tt::dbd::request{tt::dbd::request_type::get_device_ids}, "- type: 18");
 }
 
-TEST(debuda_server, pci_read32) {
+TEST(ttlens_server, pci_read32) {
     test_not_implemented_request(tt::dbd::pci_read32_request{tt::dbd::request_type::pci_read32, 1, 2, 3, 123456},
                                  "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
 }
 
-TEST(debuda_server, pci_write32) {
+TEST(ttlens_server, pci_write32) {
     test_not_implemented_request(
         tt::dbd::pci_write32_request{tt::dbd::request_type::pci_write32, 1, 2, 3, 123456, 987654},
         "- type: 11\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
 }
 
-TEST(debuda_server, pci_read) {
+TEST(ttlens_server, pci_read) {
     test_not_implemented_request(tt::dbd::pci_read_request{tt::dbd::request_type::pci_read, 1, 2, 3, 123456, 1024},
                                  "- type: 12\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024");
 }
 
-TEST(debuda_server, pci_read32_raw) {
+TEST(ttlens_server, pci_read32_raw) {
     test_not_implemented_request(tt::dbd::pci_read32_raw_request{tt::dbd::request_type::pci_read32_raw, 1, 123456},
                                  "- type: 14\n  chip_id: 1\n  address: 123456");
 }
 
-TEST(debuda_server, pci_write32_raw) {
+TEST(ttlens_server, pci_write32_raw) {
     test_not_implemented_request(
         tt::dbd::pci_write32_raw_request{tt::dbd::request_type::pci_write32_raw, 1, 123456, 987654},
         "- type: 15\n  chip_id: 1\n  address: 123456\n  data: 987654");
 }
 
-TEST(debuda_server, dma_buffer_read32) {
+TEST(ttlens_server, dma_buffer_read32) {
     test_not_implemented_request(
         tt::dbd::dma_buffer_read32_request{tt::dbd::request_type::dma_buffer_read32, 1, 123456, 456},
         "- type: 16\n  chip_id: 1\n  address: 123456\n  channel: 456");
 }
 
-TEST(debuda_server, pci_read_tile) {
+TEST(ttlens_server, pci_read_tile) {
     test_not_implemented_request(
         tt::dbd::pci_read_tile_request{tt::dbd::request_type::pci_read_tile, 1, 2, 3, 123456, 1024, 14},
         "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14");
 }
 
-TEST(debuda_server, get_harvester_coordinate_translation) {
+TEST(ttlens_server, get_harvester_coordinate_translation) {
     test_not_implemented_request(
         tt::dbd::get_harvester_coordinate_translation_request{
             tt::dbd::request_type::get_harvester_coordinate_translation, 1},
         "- type: 17\n  chip_id: 1");
 }
 
-TEST(debuda_server, get_device_arch) {
+TEST(ttlens_server, get_device_arch) {
     test_not_implemented_request(tt::dbd::get_device_arch_request{tt::dbd::request_type::get_device_arch, 1},
                                  "- type: 19\n  chip_id: 1");
 }
 
-TEST(debuda_server, get_device_soc_description) {
+TEST(ttlens_server, get_device_soc_description) {
     test_not_implemented_request(
         tt::dbd::get_device_soc_description_request{tt::dbd::request_type::get_device_soc_description, 1},
         "- type: 20\n  chip_id: 1");
 }
 
-TEST(debuda_server, jtag_read32) {
+TEST(ttlens_server, jtag_read32) {
     test_not_implemented_request(tt::dbd::jtag_read32_request{tt::dbd::request_type::jtag_read32, 1, 2, 3, 123456},
                                  "- type: 50\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
 }
 
-TEST(debuda_server, jtag_write32) {
+TEST(ttlens_server, jtag_write32) {
     test_not_implemented_request(
         tt::dbd::jtag_write32_request{tt::dbd::request_type::jtag_write32, 1, 2, 3, 123456, 987654},
         "- type: 51\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
 }
 
-TEST(debuda_server, jtag_read32_axi) {
+TEST(ttlens_server, jtag_read32_axi) {
     test_not_implemented_request(tt::dbd::jtag_read32_axi_request{tt::dbd::request_type::jtag_read32_axi, 1, 123456},
                                  "- type: 52\n  chip_id: 1\n  address: 123456");
 }
 
-TEST(debuda_server, jtag_write32_axi) {
+TEST(ttlens_server, jtag_write32_axi) {
     test_not_implemented_request(
         tt::dbd::jtag_write32_axi_request{tt::dbd::request_type::jtag_write32_axi, 1, 123456, 987654},
         "- type: 53\n  chip_id: 1\n  address: 123456\n  data: 987654");
 }
 
-TEST(debuda_server, pci_write) {
+TEST(ttlens_server, pci_write) {
     // This test is different because we are trying to send request that has dynamic structure size
     std::string expected_response =
         "- type: 13\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, 12, 13, 14, "
@@ -360,7 +360,7 @@ TEST(debuda_server, pci_write) {
     test_not_implemented_request(*request, expected_response, request_data.size());
 }
 
-TEST(debuda_server, get_file) {
+TEST(ttlens_server, get_file) {
     constexpr std::string_view filename = "test_file";
     std::string expected_response =
         "- type: 200\n  size: " + std::to_string(filename.size()) + "\n  data: " + filename.data();
@@ -372,6 +372,6 @@ TEST(debuda_server, get_file) {
     test_not_implemented_request(*request, expected_response, request_data.size());
 }
 
-TEST(debuda_server, get_buda_run_dirpath) {
+TEST(ttlens_server, get_buda_run_dirpath) {
     test_not_implemented_request(tt::dbd::request{tt::dbd::request_type::get_buda_run_dirpath}, "- type: 201");
 }

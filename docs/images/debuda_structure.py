@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This script generates a diagram of the communication flow in Debuda.
+This script generates a diagram of the communication flow in TTLens.
 To run it, you need to install the `diagrams` package:
 pip install diagrams
 """
@@ -26,8 +26,8 @@ node_attr = {
 	"width": "2",
     }
 
-with Diagram(name="Debuda's communication flow", filename="debuda-structure", show=False, graph_attr=graph_attr):
-	contexts_holder = Cluster("0", graph_attr={"label":"Debuda Contexts"})
+with Diagram(name="TTLens's communication flow", filename="debuda-structure", show=False, graph_attr=graph_attr):
+	contexts_holder = Cluster("0", graph_attr={"label":"TTLens Contexts"})
 	with contexts_holder:	
 		contexts = [
 			Node("Limited", **node_attr),

@@ -14,7 +14,7 @@ BASE_TEST_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )
 
 source ${BASE_TEST_DIR}/test-base.sh
 
-big_echo "BUILDING DEBUDA"
+big_echo "BUILDING TTLENS"
 make build
 
 

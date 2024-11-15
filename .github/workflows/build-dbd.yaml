@@ -1,4 +1,4 @@
-name: "BUILD DEBUDA"
+name: "BUILD TTLENS"
 
 on:
   workflow_call:
@@ -12,7 +12,7 @@ on:
         type: string
         default: "Release"
 
-run-name: BUILD DEBUDA by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
+run-name: BUILD TTLENS by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
 
 jobs:
   build_libs:
@@ -37,7 +37,7 @@ jobs:
         with:
           create-symlink: true
           key: debuda-${{ inputs.config }}-${{ inputs.os }}
-      - name: Build DEBUDA
+      - name: Build TTLENS
         run: |
           make build
       - name: Build wheel

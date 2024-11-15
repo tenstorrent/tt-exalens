@@ -2,23 +2,23 @@
 set(CONFIG_FILEPATH "${CMAKE_CURRENT_SOURCE_DIR}/configuration")
 set(DEVICE_FILEPATH "${CMAKE_CURRENT_SOURCE_DIR}/../device")
 
-set(DEBUDA_SERVER_LIB_CONFIGURATION_FILES
+set(TTLENS_SERVER_LIB_CONFIGURATION_FILES
 	"${CONFIG_FILEPATH}/blackhole.embed" "${DEVICE_FILEPATH}/blackhole_10x14.yaml"
 	"${CONFIG_FILEPATH}/grayskull.embed" "${DEVICE_FILEPATH}/grayskull_10x12.yaml"
 	"${CONFIG_FILEPATH}/wormhole_b0.embed" "${DEVICE_FILEPATH}/wormhole_b0_8x10.yaml"
 )
 
-set(DEBUDA_SERVER_LIB_EMBED_FILES "")
+set(TTLENS_SERVER_LIB_EMBED_FILES "")
 
-list(LENGTH DEBUDA_SERVER_LIB_CONFIGURATION_FILES DEBUDA_SERVER_LIB_EMBED_FILES_COUNT)
-math(EXPR last_index "${DEBUDA_SERVER_LIB_EMBED_FILES_COUNT} - 2")
+list(LENGTH TTLENS_SERVER_LIB_CONFIGURATION_FILES TTLENS_SERVER_LIB_EMBED_FILES_COUNT)
+math(EXPR last_index "${TTLENS_SERVER_LIB_EMBED_FILES_COUNT} - 2")
 
 foreach(i RANGE 0 ${last_index} 2)
-    list(GET DEBUDA_SERVER_LIB_CONFIGURATION_FILES ${i} embed_file)
+    list(GET TTLENS_SERVER_LIB_CONFIGURATION_FILES ${i} embed_file)
     math(EXPR yaml_index "${i} + 1")
-    list(GET DEBUDA_SERVER_LIB_CONFIGURATION_FILES ${yaml_index} yaml_file)
+    list(GET TTLENS_SERVER_LIB_CONFIGURATION_FILES ${yaml_index} yaml_file)
 
-    list(APPEND DEBUDA_SERVER_LIB_EMBED_FILES ${embed_file})
+    list(APPEND TTLENS_SERVER_LIB_EMBED_FILES ${embed_file})
 
     add_custom_command(
         OUTPUT ${embed_file}
@@ -30,12 +30,12 @@ foreach(i RANGE 0 ${last_index} 2)
 endforeach()
 
 add_custom_target(generate_embed_files ALL
-    DEPENDS ${DEBUDA_SERVER_LIB_EMBED_FILES}
+    DEPENDS ${TTLENS_SERVER_LIB_EMBED_FILES}
 )
 
 # Library project
-file(GLOB DEBUDA_SERVER_LIB_SRCS "src/*.cpp")
-add_library(debuda_server_lib STATIC ${DEBUDA_SERVER_LIB_SRCS})
+file(GLOB TTLENS_SERVER_LIB_SRCS "src/*.cpp")
+add_library(debuda_server_lib STATIC ${TTLENS_SERVER_LIB_SRCS})
 add_dependencies(debuda_server_lib generate_embed_files)
 target_link_libraries(debuda_server_lib 
     PUBLIC umd_device fmt cppzmq-static
@@ -62,7 +62,7 @@ add_custom_command(TARGET debuda_server_lib
 )
 
 # JTAG
-set(JTAG_ACCESS_LIB_PATH "${DEBUDA_HOME}/third_party/jtag-access-library")
+set(JTAG_ACCESS_LIB_PATH "${TTLENS_HOME}/third_party/jtag-access-library")
 set(LIBJTAG "${CMAKE_BINARY_DIR}/lib/libjtag.so")
 set(LIBJTAG_SOURCE "${JTAG_ACCESS_LIB_PATH}/out/libjtag.so")
 set(LIBJTAG_DEP "${CMAKE_BINARY_DIR}/lib/libjlinkarm.so")

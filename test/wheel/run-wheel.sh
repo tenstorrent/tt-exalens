@@ -10,9 +10,9 @@ source ${THIS_SCRIPT_DIR}/../test-base.sh
 ############################################################################################
 # Running tests
 
-DEBUDA_COMMANDS='h;wxy 0,0 0 0x123;brxy 0,0 0 64;cdr;gpr;d 0 netlist nocVirt;x'
+TTLENS_COMMANDS='h;wxy 0,0 0 0x123;brxy 0,0 0 64;cdr;gpr;d 0 netlist nocVirt;x'
 
-echo -e "${YELLOW}INFO: ${NC}Running simple Debuda commands ..."
-tt-lens --test --commands="$DEBUDA_COMMANDS"
+echo -e "${YELLOW}INFO: ${NC}Running simple TTLens commands ..."
+tt-lens --test --commands="$TTLENS_COMMANDS"
 
 echo -e "${GREEN}Wheel tests passed.${NC}"

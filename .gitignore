@@ -12,7 +12,7 @@ core
 __pycache__
 .venv
 
-# Debuda related files
+# TTLens related files
 debuda_test
 debuda-export*.zip
 debuda-export

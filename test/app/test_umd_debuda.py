@@ -72,7 +72,7 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
 class DbdTestRunner:
     def __init__(self, verifier: DbdOutputVerifier):
         self.interpreter_path = sys.executable
-        self.debuda_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "debuda.py")
+        self.debuda_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "tt-lens.py")
         self.process: subprocess.Popen = None
         self.verifier = verifier
 
@@ -108,7 +108,7 @@ class DbdTestRunner:
             if len(rlist) == 0:
                 if not self.is_running:
                     return None
-                raise Exception(f"Hit timeout ({timeoutSeconds}s) while waiting for output from Debuda")
+                raise Exception(f"Hit timeout ({timeoutSeconds}s) while waiting for output from TTLens")
         line = rlist[0].readline()
         if line.endswith('\n'):
             line = line[:-1]

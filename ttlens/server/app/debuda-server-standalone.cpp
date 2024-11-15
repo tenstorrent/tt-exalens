@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-// The main purpose of this file is to create a debuda-server (see loader/debuda_server.cpp) so that Debuda can connect
+// The main purpose of this file is to create a debuda-server (see loader/debuda_server.cpp) so that TTLens can connect
 // to it.
 #include <ctime>
 #include <experimental/filesystem>
@@ -43,32 +43,32 @@ int run_debuda_server(const server_config& config) {
             implementation =
                 tt::dbd::umd_with_open_implementation::open({}, config.runtime_data_yaml_path, config.wanted_devices);
         } catch (std::runtime_error& error) {
-            log_custom(tt::Logger::Level::Error, tt::LogDebuda, "Cannot open device: {}.", error.what());
+            log_custom(tt::Logger::Level::Error, tt::LogTTLens, "Cannot open device: {}.", error.what());
             return 1;
         }
 
         auto connection_address = std::string("tcp://*:") + std::to_string(config.port);
-        log_info(tt::LogDebuda, "Debug server starting on {}...", connection_address);
+        log_info(tt::LogTTLens, "Debug server starting on {}...", connection_address);
 
         // Spawn server
         std::unique_ptr<tt::dbd::server> server;
         try {
             server = std::make_unique<tt::dbd::server>(std::move(implementation), config.run_dirpath);
             server->start(config.port);
-            log_info(tt::LogDebuda, "Debug server started on {}.", connection_address);
+            log_info(tt::LogTTLens, "Debug server started on {}.", connection_address);
         } catch (...) {
-            log_custom(tt::Logger::Level::Error, tt::LogDebuda,
+            log_custom(tt::Logger::Level::Error, tt::LogTTLens,
                        "Debug server cannot start on {}. An instance of debug server might already be running.",
                        connection_address);
             return 1;
         }
 
         // Wait terminal input to stop the server
-        log_info(tt::LogDebuda, "The debug server is running. Press ENTER to stop execution...");
+        log_info(tt::LogTTLens, "The debug server is running. Press ENTER to stop execution...");
         std::cin.get();
 
         // Stop server in destructor
-        log_info(tt::LogDebuda, "Debug server ended on {}", connection_address);
+        log_info(tt::LogTTLens, "Debug server ended on {}", connection_address);
         return 0;
     } else {
         log_error("port should be between 1024 and 65535 (inclusive)");
@@ -143,8 +143,8 @@ int main(int argc, char** argv) {
     for (int i = 2; i < argc; i++) {
         log_starting += " " + std::string(argv[i]);
     }
-    log_info(tt::LogDebuda, log_starting.c_str());
-    log_info(tt::LogDebuda, "Use environment variable TT_PCI_LOG_LEVEL to set the logging level (1 or 2)");
+    log_info(tt::LogTTLens, log_starting.c_str());
+    log_info(tt::LogTTLens, "Use environment variable TT_PCI_LOG_LEVEL to set the logging level (1 or 2)");
 
     if (argc == 2) {
         return run_debuda_server(config);

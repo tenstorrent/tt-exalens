@@ -12,7 +12,7 @@ from ttlens import tt_util as util
 
 
 """
-This module provides a cache for the Debuda interface. It can be used to store the results of device communications,
+This module provides a cache for the TTLens interface. It can be used to store the results of device communications,
 or load state from the previous run. This is useful when the device is not available.
 """
 

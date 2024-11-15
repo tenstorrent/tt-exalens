@@ -149,70 +149,70 @@ static void call_python_server(const std::string& python_args, int port = DEFAUL
     call_python(python_tests_path, simulation_server.get_port(), python_args, "pass\n");
 }
 
-TEST(debuda_python_empty_server, get_runtime_data) { call_python_empty_server("empty_get_runtime_data"); }
+TEST(ttlens_python_empty_server, get_runtime_data) { call_python_empty_server("empty_get_runtime_data"); }
 
-TEST(debuda_python_empty_server, get_cluster_description) { call_python_empty_server("empty_get_cluster_description"); }
+TEST(ttlens_python_empty_server, get_cluster_description) { call_python_empty_server("empty_get_cluster_description"); }
 
-TEST(debuda_python_empty_server, pci_read32) { call_python_empty_server("empty_pci_read32"); }
+TEST(ttlens_python_empty_server, pci_read32) { call_python_empty_server("empty_pci_read32"); }
 
-TEST(debuda_python_empty_server, pci_write32) { call_python_empty_server("empty_pci_write32"); }
+TEST(ttlens_python_empty_server, pci_write32) { call_python_empty_server("empty_pci_write32"); }
 
-TEST(debuda_python_empty_server, pci_read) { call_python_empty_server("empty_pci_read"); }
+TEST(ttlens_python_empty_server, pci_read) { call_python_empty_server("empty_pci_read"); }
 
-TEST(debuda_python_empty_server, pci_read32_raw) { call_python_empty_server("empty_pci_read32_raw"); }
+TEST(ttlens_python_empty_server, pci_read32_raw) { call_python_empty_server("empty_pci_read32_raw"); }
 
-TEST(debuda_python_empty_server, pci_write32_raw) { call_python_empty_server("empty_pci_write32_raw"); }
+TEST(ttlens_python_empty_server, pci_write32_raw) { call_python_empty_server("empty_pci_write32_raw"); }
 
-TEST(debuda_python_empty_server, dma_buffer_read32) { call_python_empty_server("empty_dma_buffer_read32"); }
+TEST(ttlens_python_empty_server, dma_buffer_read32) { call_python_empty_server("empty_dma_buffer_read32"); }
 
-TEST(debuda_python_empty_server, pci_read_tile) { call_python_empty_server("empty_pci_read_tile"); }
+TEST(ttlens_python_empty_server, pci_read_tile) { call_python_empty_server("empty_pci_read_tile"); }
 
-TEST(debuda_python_empty_server, get_harvester_coordinate_translation) {
+TEST(ttlens_python_empty_server, get_harvester_coordinate_translation) {
     call_python_empty_server("empty_get_harvester_coordinate_translation");
 }
 
-TEST(debuda_python_empty_server, pci_write) { call_python_empty_server("empty_pci_write"); }
+TEST(ttlens_python_empty_server, pci_write) { call_python_empty_server("empty_pci_write"); }
 
-TEST(debuda_python_empty_server, get_file) { call_python_empty_server("empty_get_file"); }
+TEST(ttlens_python_empty_server, get_file) { call_python_empty_server("empty_get_file"); }
 
-TEST(debuda_python_empty_server, get_run_dirpath) { call_python_empty_server("empty_get_run_dirpath"); }
+TEST(ttlens_python_empty_server, get_run_dirpath) { call_python_empty_server("empty_get_run_dirpath"); }
 
-TEST(debuda_python_server, pci_write32_pci_read32) { call_python_server("pci_write32_pci_read32"); }
+TEST(ttlens_python_server, pci_write32_pci_read32) { call_python_server("pci_write32_pci_read32"); }
 
-TEST(debuda_python_server, pci_write_pci_read) { call_python_server("pci_write_pci_read"); }
+TEST(ttlens_python_server, pci_write_pci_read) { call_python_server("pci_write_pci_read"); }
 
-TEST(debuda_python_server, pci_write32_raw_pci_read32_raw) { call_python_server("pci_write32_raw_pci_read32_raw"); }
+TEST(ttlens_python_server, pci_write32_raw_pci_read32_raw) { call_python_server("pci_write32_raw_pci_read32_raw"); }
 
-TEST(debuda_python_server, dma_buffer_read32) { call_python_server("dma_buffer_read32"); }
+TEST(ttlens_python_server, dma_buffer_read32) { call_python_server("dma_buffer_read32"); }
 
-TEST(debuda_python_server, pci_read_tile) { call_python_server("pci_read_tile"); }
+TEST(ttlens_python_server, pci_read_tile) { call_python_server("pci_read_tile"); }
 
-TEST(debuda_python_server, get_runtime_data) { call_python_server("get_runtime_data"); }
+TEST(ttlens_python_server, get_runtime_data) { call_python_server("get_runtime_data"); }
 
-TEST(debuda_python_server, get_cluster_description) { call_python_server("get_cluster_description"); }
+TEST(ttlens_python_server, get_cluster_description) { call_python_server("get_cluster_description"); }
 
-TEST(debuda_python_server, get_harvester_coordinate_translation) {
+TEST(ttlens_python_server, get_harvester_coordinate_translation) {
     call_python_server("get_harvester_coordinate_translation");
 }
 
-TEST(debuda_python_server, jtag_write32_jtag_read32) { call_python_server("jtag_write32_jtag_read32"); }
+TEST(ttlens_python_server, jtag_write32_jtag_read32) { call_python_server("jtag_write32_jtag_read32"); }
 
-TEST(debuda_python_server, jtag_write32_axi_jtag_read32_axi) { call_python_server("jtag_write32_axi_jtag_read32_axi"); }
+TEST(ttlens_python_server, jtag_write32_axi_jtag_read32_axi) { call_python_server("jtag_write32_axi_jtag_read32_axi"); }
 
-TEST(debuda_python_server, get_device_ids) { call_python_server("get_device_ids"); }
+TEST(ttlens_python_server, get_device_ids) { call_python_server("get_device_ids"); }
 
-TEST(debuda_python_server, get_device_arch) { call_python_server("get_device_arch"); }
+TEST(ttlens_python_server, get_device_arch) { call_python_server("get_device_arch"); }
 
-TEST(debuda_python_server, get_device_soc_description) { call_python_server("get_device_soc_description"); }
+TEST(ttlens_python_server, get_device_soc_description) { call_python_server("get_device_soc_description"); }
 
-TEST(debuda_python_server, get_file) { call_python_server("get_file"); }
+TEST(ttlens_python_server, get_file) { call_python_server("get_file"); }
 
-TEST(debuda_python_server, get_run_dirpath) { call_python_server("get_run_dirpath"); }
+TEST(ttlens_python_server, get_run_dirpath) { call_python_server("get_run_dirpath"); }
 
-TEST(debuda_python_empty_server, jtag_read32) { call_python_empty_server("empty_jtag_read32"); }
+TEST(ttlens_python_empty_server, jtag_read32) { call_python_empty_server("empty_jtag_read32"); }
 
-TEST(debuda_python_empty_server, jtag_write32) { call_python_empty_server("empty_jtag_write32"); }
+TEST(ttlens_python_empty_server, jtag_write32) { call_python_empty_server("empty_jtag_write32"); }
 
-TEST(debuda_python_empty_server, jtag_read32_axi) { call_python_empty_server("empty_jtag_read32_axi"); }
+TEST(ttlens_python_empty_server, jtag_read32_axi) { call_python_empty_server("empty_jtag_read32_axi"); }
 
-TEST(debuda_python_empty_server, jtag_write32_axi) { call_python_empty_server("empty_jtag_write32_axi"); }
+TEST(ttlens_python_empty_server, jtag_write32_axi) { call_python_empty_server("empty_jtag_write32_axi"); }

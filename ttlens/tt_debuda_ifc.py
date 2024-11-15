@@ -58,7 +58,7 @@ class debuda_server_not_supported(Exception):
 
 class debuda_server_communication:
     """
-    This class handles the communication with the Debuda server using ZMQ. It is responsible for sending requests and
+    This class handles the communication with the TTLens server using ZMQ. It is responsible for sending requests and
     parsing and checking the responses.
     """
     _BAD_REQUEST = b"BAD_REQUEST"
@@ -331,7 +331,7 @@ class debuda_client(DbdCommunicator):
         super().__init__()
         self._communication = debuda_server_communication(address, port)
 
-        # Check ping/pong to verify it is Debuda server on the other end
+        # Check ping/pong to verify it is TTLens server on the other end
         pong = self._communication.ping()
         if pong != b"PONG":
             raise ConnectionError()
@@ -604,6 +604,6 @@ def connect_to_server(ip="localhost", port=5555):
         tt_device.SERVER_IFC = debuda_client(ip, port)
         util.VERBOSE("Connected to debuda-server.")
     except:
-        raise util.TTFatalException("Failed to connect to Debuda server.")
+        raise util.TTFatalException("Failed to connect to TTLens server.")
 
     return tt_device.SERVER_IFC

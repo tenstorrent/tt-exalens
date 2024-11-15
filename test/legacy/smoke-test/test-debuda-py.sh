@@ -22,15 +22,15 @@ if [ "$1" = "skip-build" ]; then
 elif [ -z "${BUDA_HOME}" ]; then
     echo -e "${RED}Error:${NC} BUDA_HOME is not set. Please set BUDA_HOME to the root of the budabackend repository"
     exit 1
-elif [ -z "${DEBUDA_HOME}" ]; then
-    echo -e "${RED}Error:${NC} DEBUDA_HOME is not set. Please set DEBUDA_HOME to the root of the budabackend repository"
+elif [ -z "${TTLENS_HOME}" ]; then
+    echo -e "${RED}Error:${NC} TTLENS_HOME is not set. Please set TTLENS_HOME to the root of the budabackend repository"
     exit 1
 else
     echo -e "${YELLOW}Setting BUDA_BUILD_DIR ...${NC}"
     BUDA_BUILD_DIR="${BUDA_HOME}/build"
 
     echo -e "${YELLOW}Setting OUTPUT_DIR ...${NC}"
-    OUTPUT_DIR=${DEBUDA_HOME}/debuda_test
+    OUTPUT_DIR=${TTLENS_HOME}/debuda_test
 
     echo -e "${YELLOW}Building 'make build_hw'...${NC}"
     cd "${BUDA_HOME}" && make build_hw >> $TMP_OUT_FILE 2>&1
@@ -39,7 +39,7 @@ else
     cd "${BUDA_HOME}" && make verif/op_tests >> $TMP_OUT_FILE 2>&1
 
     echo -e "${YELLOW}Building debuda-server-standalone ...${NC}"
-    cd "${DEBUDA_HOME}" && make build
+    cd "${TTLENS_HOME}" && make build
 fi
 
 echo -e "${YELLOW}Installing Python dependencies ...${NC}"

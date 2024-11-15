@@ -1,6 +1,6 @@
-file(GLOB_RECURSE DEBUDA_PYBIND_UNIT_TESTS_SRCS "*.cpp")
+file(GLOB_RECURSE TTLENS_PYBIND_UNIT_TESTS_SRCS "*.cpp")
 
-add_library(debuda_pybind_unit_tests SHARED ${DEBUDA_PYBIND_UNIT_TESTS_SRCS})
+add_library(debuda_pybind_unit_tests SHARED ${TTLENS_PYBIND_UNIT_TESTS_SRCS})
 
 set_target_properties(debuda_pybind_unit_tests PROPERTIES
     OUTPUT_NAME "tt_dbd_pybind_unit_tests"
