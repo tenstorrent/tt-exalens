@@ -38,7 +38,7 @@ from docopt import docopt
 
 from ttlens import tt_util as util
 from ttlens.tt_coordinate import VALID_COORDINATE_TYPES
-from ttlens.tt_debuda_context import LimitedContext
+from ttlens.tt_lens_context import LimitedContext
 
 def run(cmd_text, context, ui_state=None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])

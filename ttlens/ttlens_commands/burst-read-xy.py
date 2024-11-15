@@ -41,7 +41,7 @@ from docopt import docopt
 from ttlens.tt_uistate import UIState
 
 from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_debuda_lib import read_words_from_device, read_from_device
+from ttlens.tt_lens_lib import read_words_from_device, read_from_device
 from ttlens.tt_firmware import ELF
 from ttlens.tt_object import DataArray
 from ttlens import tt_util as util

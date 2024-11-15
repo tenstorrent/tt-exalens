@@ -4,7 +4,7 @@
 import sys
 from typing import Any, Callable
 
-from ttlens.tt_debuda_ifc import debuda_client, debuda_server_not_supported
+from ttlens.tt_lens_ifc import debuda_client, debuda_server_not_supported
 
 server_port = 0
 server = None

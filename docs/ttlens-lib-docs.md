@@ -1,4 +1,4 @@
-# tt_debuda_init
+# tt_lens_init
 
 ## GLOBAL_CONTEXT
 
@@ -179,7 +179,7 @@ Try to find a default output directory.
 
 
 
-# tt_debuda_lib
+# tt_lens_lib
 
 ## read_words_from_device
 

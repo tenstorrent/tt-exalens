@@ -47,7 +47,7 @@ for opt in OPTIONS.keys():
 MAX_OUTPUT_LINES = 20  # Max number of lines to show for each example
 MAX_CHARACTERS_PER_LINE = 130  # Max number of characters to show for each line
 
-from .run_debuda_on_help_examples import execute_debuda_command
+from .run_ttlens_on_help_examples import execute_debuda_command
 from .doc_utils import SectionPPrinter, INFO, WARNING, ERROR
 
 

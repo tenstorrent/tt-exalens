@@ -5,8 +5,8 @@ from enum import Enum
 from typing import Union
 
 __all__ = [
-    "tt_debuda_init",
-    "tt_debuda_lib",
+    "tt_lens_init",
+    "tt_lens_lib",
     "tt_coordinate",
 ]
 

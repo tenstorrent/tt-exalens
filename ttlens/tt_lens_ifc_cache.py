@@ -6,7 +6,7 @@ import io
 import os
 import pickle
 
-from ttlens.tt_debuda_ifc_base import DbdCommunicator
+from ttlens.tt_lens_ifc_base import DbdCommunicator
 from ttlens import tt_device
 from ttlens import tt_util as util
 

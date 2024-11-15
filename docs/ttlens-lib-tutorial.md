@@ -1,7 +1,7 @@
 # Using TTLens library in Python scripts
 
 It is possible to use functions from TTLens library in custom scripts in order to access low-level device functionality (e.g. read from L1 registers, or run .elf files on RISC cores).
-These functions are exposed through two modules in ttlens package: tt_debuda_init and tt_debuda_lib.
+These functions are exposed through two modules in ttlens package: tt_lens_init and tt_lens_lib.
 In this tutorial, we will demonstrate how to use TTLens library through a few simple examples.
 
 
@@ -16,7 +16,7 @@ It is also possible to [build wheel from source](../../README.md#building-and-in
 ## TTLens internal structure and initialization
 
 Once you have an environment with TTLens installed, you can start using it in your scripts.
-There are two main modules intended to be used as access point to TTLens functionalities: `tt_debuda_lib` and `tt_debuda_init`.
+There are two main modules intended to be used as access point to TTLens functionalities: `tt_lens_lib` and `tt_lens_init`.
 The former exposes functionalities like reading from and writing to device memory, or running .elf files and the latter is used to initialize TTLens and set up connection to the device.
 
 The structure of the debugger is layered, allowing TTLens to acces the device in multiple manners with various ways to provide it context about what is happening on the chip.
@@ -49,8 +49,8 @@ In the case of using cached ifc, it is only possible to rerun cached function ca
 This section demonstrates how to make a simple script using TTLens library. For a more complete oevrview of Debdua's abilities, check out [the full documentation](library-docs.md).
 
 ```python
-from ttlens.tt_debuda_init import init_debuda
-from ttlens.tt_debuda_lib import write_to_device, read_words_from_device
+from ttlens.tt_lens_init import init_debuda
+from ttlens.tt_lens_lib import write_to_device, read_words_from_device
 
 context = init_debuda()
 data = [1, 128, 18, 64]
@@ -68,7 +68,7 @@ The code snippet above performs a simple task of writing a list given by `data` 
 
 TTLens library package is called `ttlens`. 
 It contains multiple modules, three of which are interesting to external user:
-- _tt_debuda_init_: A module containing various functions for device and context initialization.
+- _tt_lens_init_: A module containing various functions for device and context initialization.
 - _tt_debuda_lib_: A module containing useful functions for device interactions.
 - _tt_coordinate_: A module useful for advanced specification of device core coordinates.
 
@@ -167,7 +167,7 @@ To compile the .elf file, you can simply run `make build` and use the output gen
 It can then be run on a brisc core through the TTLens library.
 
 ```python
-from ttlens.tt_debuda_lib import run_elf, read_words_from_device
+from ttlens.tt_lens_lib import run_elf, read_words_from_device
 
 run_elf("build/riscv-src/wormhole/run_elf_test.brisc.elf", "1-1")
 

@@ -117,13 +117,13 @@ It is also possible to write all the results from TTLens session to cache, and u
 
 GDB server can be started from TTLens, allowing features like stepping through code and breakpoints to be used through GDB client.
 
-For more information about how to use the TTLens application, refer to [the tutorial](./docs/debuda-app-tutorial.md), or [the documentation](./docs/debuda-command-docs.md).
+For more information about how to use the TTLens application, refer to [the tutorial](./docs/ttlens-app-tutorial.md), or [the documentation](./docs/debuda-command-docs.md).
 
 ## Using TTLens library
 
 TTLens's functionalities can also be used through ttlens library to create Python scripts that interact with Tenstorrent's hardware.
-For a quick start with ttlens library, check out [the tutorial](docs/debuda-lib-tutorial.md).
-Full documentation is also available [here](docs/debuda-lib-docs.md).
+For a quick start with ttlens library, check out [the tutorial](docs/ttlens-lib-tutorial.md).
+Full documentation is also available [here](docs/ttlens-lib-docs.md).
 
 ## Development
 

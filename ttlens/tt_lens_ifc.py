@@ -9,8 +9,8 @@ import struct
 import zmq
 
 from ttlens import tt_util as util
-from ttlens import tt_debuda_ifc_cache as tt_debuda_ifc_cache
-from ttlens.tt_debuda_ifc_base import DbdCommunicator
+from ttlens import tt_lens_ifc_cache as tt_lens_ifc_cache
+from ttlens.tt_lens_ifc_base import DbdCommunicator
 from ttlens import tt_device
 
 

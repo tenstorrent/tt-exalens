@@ -32,10 +32,10 @@ ttlens_files = {
         "files": get_debuda_py_files(),
         "output": "ttlens"
     },
-    "debuda_commands": {
-        "path": "ttlens/debuda_commands",
-        "files": get_debuda_py_files(f"{ttlens_home}/ttlens/debuda_commands"),
-        "output": "ttlens/debuda_commands"
+    "ttlens_commands": {
+        "path": "ttlens/ttlens_commands",
+        "files": get_debuda_py_files(f"{ttlens_home}/ttlens/ttlens_commands"),
+        "output": "ttlens/ttlens_commands"
     },
     "libs": {
         "path": "build/lib",

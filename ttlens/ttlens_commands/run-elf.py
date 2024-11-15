@@ -17,7 +17,7 @@ Examples:
 
 from ttlens import tt_util as util
 from ttlens import tt_commands
-from ttlens.tt_debuda_lib import run_elf
+from ttlens.tt_lens_lib import run_elf
 
 command_metadata = {
     "short": "re",

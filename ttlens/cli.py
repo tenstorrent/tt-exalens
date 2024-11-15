@@ -55,14 +55,14 @@ except ModuleNotFoundError as e:
     exit(1)
 
 
-from ttlens import tt_debuda_init
-from ttlens import tt_debuda_server
+from ttlens import tt_lens_init
+from ttlens import tt_lens_server
 from ttlens import tt_util as util
 from ttlens.tt_uistate import UIState
 from ttlens.tt_commands import find_command
 from ttlens.tt_gdb_server import GdbServer, ServerSocket
 from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_debuda_context import Context
+from ttlens.tt_lens_context import Context
 
 from ttlens import Verbosity
 
@@ -189,8 +189,8 @@ def print_navigation_suggestions(navigation_suggestions):
         print(tabulate(rows, headers=["#", "Description", "Command"], disable_numparse=True))
 
 
-# Imports 'plugin' commands from debuda_commands/ directory
-# With 'reload' argument set to True, the debuda_commands can be live-reloaded (using importlib.reload)
+# Imports 'plugin' commands from ttlens_commands/ directory
+# With 'reload' argument set to True, the ttlens_commands can be live-reloaded (using importlib.reload)
 def import_commands(reload=False):
     # Built-in commands
     commands = [
@@ -214,7 +214,7 @@ def import_commands(reload=False):
             "long": "reload",
             "short": "rl",
             "type": "housekeeping",
-            "description": "Description:\n  Reloads files in debuda_commands directory. Useful for development of commands.",
+            "description": "Description:\n  Reloads files in ttlens_commands directory. Useful for development of commands.",
             "context": "util",
         },
         {
@@ -228,12 +228,12 @@ def import_commands(reload=False):
 
     cmd_files = []
     for root, dirnames, filenames in os.walk(
-        util.application_path() + "/debuda_commands"
+        util.application_path() + "/ttlens_commands"
     ):
         for filename in fnmatch.filter(filenames, "*.py"):
             cmd_files.append(os.path.join(root, filename))
 
-    sys.path.append(util.application_path() + "/debuda_commands")
+    sys.path.append(util.application_path() + "/ttlens_commands")
 
     cmd_files.sort()
     for cmdfile in cmd_files:
@@ -426,7 +426,7 @@ def main():
 
     output_dir = args["<output_dir>"]
     if not output_dir and not args["--remote"] and not args["--cached"]:
-        output_dir = tt_debuda_init.locate_most_recent_build_output_dir()
+        output_dir = tt_lens_init.locate_most_recent_build_output_dir()
         if output_dir:
             util.INFO(
                 f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{output_dir}"
@@ -448,8 +448,8 @@ def main():
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
         print(f"Starting TTLens server at {args['--port']}")
-        runtime_data_yaml_filename = tt_debuda_init.find_runtime_data_yaml_filename(output_dir) if output_dir else None
-        debuda_server = tt_debuda_server.start_server(
+        runtime_data_yaml_filename = tt_lens_init.find_runtime_data_yaml_filename(output_dir) if output_dir else None
+        debuda_server = tt_lens_server.start_server(
             args["--port"],
             runtime_data_yaml_filename,
             output_dir,
@@ -458,20 +458,20 @@ def main():
         if args["--test"]:
             while True: pass
         input("Press Enter to exit server...")
-        tt_debuda_server.stop_server(debuda_server)
+        tt_lens_server.stop_server(debuda_server)
         sys.exit(0)
     
     if args["--cached"]:
         util.INFO(f"Starting TTLens from cache.")
-        context = tt_debuda_init.init_debuda_cached(args["--cache-path"])
+        context = tt_lens_init.init_debuda_cached(args["--cache-path"])
     elif args["--remote"]:
         address = args["--remote-address"].split(":")
         server_ip = address[0] if address[0]!='' else "localhost"
         server_port = address[-1] 
         util.INFO(f"Connecting to TTLens server at {server_ip}:{server_port}")
-        context = tt_debuda_init.init_debuda_remote(server_ip, int(server_port), cache_path)
+        context = tt_lens_init.init_debuda_remote(server_ip, int(server_port), cache_path)
     else:
-        context = tt_debuda_init.init_debuda(output_dir, args["--netlist"], wanted_devices, cache_path)
+        context = tt_lens_init.init_debuda(output_dir, args["--netlist"], wanted_devices, cache_path)
 
     # context.args = args  # Used by 'export' command
     # context.debuda_path = __file__  # Used by 'export' command

@@ -6,7 +6,7 @@ import os, struct, ast
 from typing import List, Sequence
 from socket import timeout
 from tabulate import tabulate
-from ttlens.tt_debuda_context import Context
+from ttlens.tt_lens_context import Context
 from ttlens.tt_object import TTObject
 from ttlens import tt_util as util
 from ttlens.tt_coordinate import OnChipCoordinate, CoordinateTranslationError

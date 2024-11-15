@@ -21,7 +21,7 @@ from docopt import docopt
 from ttlens.tt_uistate import UIState
 
 from ttlens import tt_util as util
-from ttlens.tt_debuda_ifc import debuda_server_not_supported
+from ttlens.tt_lens_ifc import debuda_server_not_supported
 
 command_metadata = {
     "short": "t", 

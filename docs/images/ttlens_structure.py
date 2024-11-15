@@ -26,12 +26,11 @@ node_attr = {
 	"width": "2",
     }
 
-with Diagram(name="TTLens's communication flow", filename="debuda-structure", show=False, graph_attr=graph_attr):
+with Diagram(name="TTLens's communication flow", filename="ttlens-structure", show=False, graph_attr=graph_attr):
 	contexts_holder = Cluster("0", graph_attr={"label":"TTLens Contexts"})
-	with contexts_holder:	
+	with contexts_holder:
 		contexts = [
 			Node("Limited", **node_attr),
-			Node("Buda", **node_attr),
 			Node("Metal", **node_attr),
 		]
 
