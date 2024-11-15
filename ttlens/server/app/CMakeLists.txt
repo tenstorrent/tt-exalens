@@ -1,7 +1,7 @@
 add_executable(debuda-server-standalone)
 
-file(GLOB_RECURSE DEBUDA_SERVER_SRCS "*.cpp")
-target_sources(debuda-server-standalone PRIVATE ${DEBUDA_SERVER_SRCS})
+file(GLOB_RECURSE TTLENS_SERVER_SRCS "*.cpp")
+target_sources(debuda-server-standalone PRIVATE ${TTLENS_SERVER_SRCS})
 
 target_link_libraries(debuda-server-standalone
     PRIVATE debuda_server_lib debuda_utils yaml-cpp stdc++fs pthread

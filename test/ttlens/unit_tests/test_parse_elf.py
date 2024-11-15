@@ -55,9 +55,9 @@ def mem_reader(addr, size_bytes):
 class TestParseElf(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        if os.environ.get("DEBUDA_PATH"):
+        if os.environ.get("TTLENS_PATH"):
             cls.output_dir = os.path.join(
-                os.environ["DEBUDA_PATH"], "build", "test", "assets"
+                os.environ["TTLENS_PATH"], "build", "test", "assets"
             )
         else:
             cls.output_dir = os.path.join(

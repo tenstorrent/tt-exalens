@@ -1,6 +1,6 @@
 name: "LINTING"
 
-run-name:  Lint DEBUDA by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
+run-name:  Lint TTLENS by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
 
 on:
   workflow_dispatch:

@@ -35,6 +35,6 @@ dbd_server_unit_tests_run_only:
 	@echo "Running: build/bin/debuda_server_unit_tests"
 	@build/bin/debuda_server_unit_tests
 
-DEBUDA_HOME ?= $(shell git rev-parse --show-toplevel)
+TTLENS_HOME ?= $(shell git rev-parse --show-toplevel)
 
 include docs/module.mk

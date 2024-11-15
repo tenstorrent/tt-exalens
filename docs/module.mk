@@ -1,6 +1,6 @@
 include infra/common.mk
 
-DOC_DIR?=$(DEBUDA_HOME)/docs
+DOC_DIR?=$(TTLENS_HOME)/docs
 
 .PHONY: docs
 docs: build
@@ -8,11 +8,11 @@ docs: build
 	@echo "${YELLOW}Using the output directory $(DOC_DIR)${NC}"	
 	
 	echo "Generating library documentation..."
-	python -m docs.bin.generate-lib-docs $(DEBUDA_HOME)/ttlens $(DOC_DIR)/debuda-lib-docs.md
+	python -m docs.bin.generate-lib-docs $(TTLENS_HOME)/ttlens $(DOC_DIR)/debuda-lib-docs.md
 	$(PRINT_OK)
 
 	echo "Generating application documentation..."
-	python -m docs.bin.generate-command-docs $(DEBUDA_HOME)/ttlens/debuda_commands $(DOC_DIR)/debuda-app-docs.md
+	python -m docs.bin.generate-command-docs $(TTLENS_HOME)/ttlens/debuda_commands $(DOC_DIR)/debuda-app-docs.md
 	$(PRINT_OK)
 
 .PHONY: clean-docs

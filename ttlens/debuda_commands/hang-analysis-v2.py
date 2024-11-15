@@ -65,7 +65,7 @@ command_metadata = {
 
 ## Corresponds to UNIQUE_ID_ALIGN in net2pipe.
 ## TODO: Figure out where to put this constant for
-## reuse in other Debuda commands
+## reuse in other TTLens commands
 UNIQUE_ID_ALIGN: int = 1000000000
 
 

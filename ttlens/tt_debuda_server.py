@@ -15,7 +15,7 @@ def start_server(port: int, runtime_data_yaml_filename: str, run_dirpath: str = 
             raise util.TTFatalException("Could not start debuda-server.")
         return debuda_server
     
-    raise util.TTFatalException(f"Port {port} not available. A Debuda server might alreasdy be running.")
+    raise util.TTFatalException(f"Port {port} not available. A TTLens server might alreasdy be running.")
 
 # The server needs the runtime_data.yaml to get the netlist path, arch, and device
 def spawn_standalone_debuda_stub(port: int, runtime_data_yaml_filename: str, run_dirpath: str,  wanted_devices: "List[int]" = None) -> subprocess.Popen:

@@ -24,7 +24,7 @@ from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_in
 class TestDebugging(unittest.TestCase):
 	risc_name: str = None  # Risc name
 	risc_id: int = None  # Risc ID - being parametrized
-	context: Context = None  # Debuda context
+	context: Context = None  # TTLens context
 	core_desc: str = None  # Core description ETH0, FW0, FW1 - being parametrized
 	core_loc: str = None  # Core location
 	rdbg: RiscDebug = None  # RiscDebug object

@@ -1,52 +1,52 @@
-# Using Debuda library in Python scripts
+# Using TTLens library in Python scripts
 
-It is possible to use functions from Debuda library in custom scripts in order to access low-level device functionality (e.g. read from L1 registers, or run .elf files on RISC cores).
+It is possible to use functions from TTLens library in custom scripts in order to access low-level device functionality (e.g. read from L1 registers, or run .elf files on RISC cores).
 These functions are exposed through two modules in ttlens package: tt_debuda_init and tt_debuda_lib.
-In this tutorial, we will demonstrate how to use Debuda library through a few simple examples.
+In this tutorial, we will demonstrate how to use TTLens library through a few simple examples.
 
 
-## Setting up Debuda
+## Setting up TTLens
 
-To follow this tutorial, you need a virtual environment with installed Debuda wheel.
-Debuda wheel can be installed from [this link](https://github.com/tenstorrent/tt-debuda/releases).
+To follow this tutorial, you need a virtual environment with installed TTLens wheel.
+TTLens wheel can be installed from [this link](https://github.com/tenstorrent/tt-debuda/releases).
 Publishing the wheel to PyPI is in the works.
 It is also possible to [build wheel from source](../../README.md#building-and-installing-wheel).
 
 
-## Debuda internal structure and initialization
+## TTLens internal structure and initialization
 
-Once you have an environment with Debuda installed, you can start using it in your scripts.
-There are two main modules intended to be used as access point to Debuda functionalities: `tt_debuda_lib` and `tt_debuda_init`.
-The former exposes functionalities like reading from and writing to device memory, or running .elf files and the latter is used to initialize Debuda and set up connection to the device.
+Once you have an environment with TTLens installed, you can start using it in your scripts.
+There are two main modules intended to be used as access point to TTLens functionalities: `tt_debuda_lib` and `tt_debuda_init`.
+The former exposes functionalities like reading from and writing to device memory, or running .elf files and the latter is used to initialize TTLens and set up connection to the device.
 
-The structure of the debugger is layered, allowing Debuda to acces the device in multiple manners with various ways to provide it context about what is happening on the chip.
-The are three layers a typical API call passes through when Debuda command is invoked: context, device interface and caching mechanism.
+The structure of the debugger is layered, allowing TTLens to acces the device in multiple manners with various ways to provide it context about what is happening on the chip.
+The are three layers a typical API call passes through when TTLens command is invoked: context, device interface and caching mechanism.
 
 <div align="center">
 <img src="images/debuda-structure.png" alt="ttnn logo" width="80%"/>
 </div>
 
-**Debuda context** is the highest-level class when connecting to the device through Debuda. It provides Debuda with additional information about what's happening on the device. 
-For example, when debuggind a Buda model, context can provide Debuda with model graph and netlists, which in turn allow for better semantics in hardware acces, like reading tiles instead of just memory addresses.
-There are three contexts Debuda can work in.
-If no output directory is specified, Debuda is run in limited context, allowing for basic operations on device memory and running .elf files.
-If an output directory is specified when initializing Debuda, it can run in Metal or Buda contexts, with acces to higher-level information that allows for more structured interactions with the device beyond just reading and writing in memory addresses, as various structures can be deduced based on additional info.
+**TTLens context** is the highest-level class when connecting to the device through TTLens. It provides TTLens with additional information about what's happening on the device. 
+For example, when debuggind a Buda model, context can provide TTLens with model graph and netlists, which in turn allow for better semantics in hardware acces, like reading tiles instead of just memory addresses.
+There are three contexts TTLens can work in.
+If no output directory is specified, TTLens is run in limited context, allowing for basic operations on device memory and running .elf files.
+If an output directory is specified when initializing TTLens, it can run in Metal or Buda contexts, with acces to higher-level information that allows for more structured interactions with the device beyond just reading and writing in memory addresses, as various structures can be deduced based on additional info.
 Currently, **only Limited and Buda contexts** can be used, and Metal support is in the works.
 
 **Device interfaces** allow for different ways of communication with Tenstorrent hardware.
-You can initialize Debuda locally, in which case device interactions are done through Python bindings of C++ wrapper for [tt-UMD library](https://github.com/tenstorrent/tt-umd).
-If you need to debug a remote device, you can spin a Debuda server, either through standalone Debuda app or Buda runtime.
-It is then possible to connect to the server and use Debuda in remote mode.
+You can initialize TTLens locally, in which case device interactions are done through Python bindings of C++ wrapper for [tt-UMD library](https://github.com/tenstorrent/tt-umd).
+If you need to debug a remote device, you can spin a TTLens server, either through standalone TTLens app or Buda runtime.
+It is then possible to connect to the server and use TTLens in remote mode.
 
-**Caching mechanism and cached interface** allow Debuda to save results of invoked commands and use them to rerun a session when device is not accessible.
-If caching is turned on in local or remote interface mode, every return value of Debuda's functions is saved in output pickle file.
-Should it be needed to inspect output of these function calls again on a host that does not have access to Tenstorrent hardware, Debuda can be started with cached interface, in which case it can use return values saved in the cache pickle file.
+**Caching mechanism and cached interface** allow TTLens to save results of invoked commands and use them to rerun a session when device is not accessible.
+If caching is turned on in local or remote interface mode, every return value of TTLens's functions is saved in output pickle file.
+Should it be needed to inspect output of these function calls again on a host that does not have access to Tenstorrent hardware, TTLens can be started with cached interface, in which case it can use return values saved in the cache pickle file.
 In the case of using cached ifc, it is only possible to rerun cached function calls.
 
 
-## A simple Debuda program
+## A simple TTLens program
 
-This section demonstrates how to make a simple script using Debuda library. For a more complete oevrview of Debdua's abilities, check out [the full documentation](library-docs.md).
+This section demonstrates how to make a simple script using TTLens library. For a more complete oevrview of Debdua's abilities, check out [the full documentation](library-docs.md).
 
 ```python
 from ttlens.tt_debuda_init import init_debuda
@@ -66,14 +66,14 @@ print(read_data)
 
 The code snippet above performs a simple task of writing a list given by `data` variable to adress `0x100` on core `0-0`.
 
-Debuda library package is called `ttlens`. 
+TTLens library package is called `ttlens`. 
 It contains multiple modules, three of which are interesting to external user:
 - _tt_debuda_init_: A module containing various functions for device and context initialization.
 - _tt_debuda_lib_: A module containing useful functions for device interactions.
 - _tt_coordinate_: A module useful for advanced specification of device core coordinates.
 
-The command `context = init_debuda()` initializes a new default Debuda context and establishes a connection to the device.
-Had we passed `<output-dir>` of a Buda run to this function, Debuda would have used that additional info to initialize a Buda context.
+The command `context = init_debuda()` initializes a new default TTLens context and establishes a connection to the device.
+Had we passed `<output-dir>` of a Buda run to this function, TTLens would have used that additional info to initialize a Buda context.
 
 The initialization step is done implicitly on the first call to a function that interacts with the device.
 The implicit initialization is always done with Limited local context.
@@ -128,7 +128,7 @@ It is worth noting that the device uses little-endian byte order.
 
 ## Running .elf files
 
-Debuda library can be used to run .elf programs on RISC cores.
+TTLens library can be used to run .elf programs on RISC cores.
 Let's take a look at this simple program:
 
 ```cpp
@@ -164,7 +164,7 @@ int main() {
 
 Ignoring all the code used for initialization and compiler compliance, this program  writes the value `0x12345678` into L1 memory at address `0x0`, and then enters an infinite loop.
 To compile the .elf file, you can simply run `make build` and use the output generated in `build/riscv-src/wormhole/run_elf_test.brisc.elf`.
-It can then be run on a brisc core through the Debuda library.
+It can then be run on a brisc core through the TTLens library.
 
 ```python
 from ttlens.tt_debuda_lib import run_elf, read_words_from_device
@@ -187,4 +187,4 @@ To see more options when running elf files, refer to [the documentation](library
 
 ## Further reading
 
-For more information about the Debuda library, check out [the documentation](library-docs.md#tt_coordinate).
+For more information about the TTLens library, check out [the documentation](library-docs.md#tt_coordinate).

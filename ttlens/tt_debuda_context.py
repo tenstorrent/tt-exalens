@@ -8,7 +8,7 @@ from ttlens.tt_coordinate import OnChipCoordinate
 from ttlens import tt_util as util, tt_netlist
 from ttlens.tt_firmware import ELF, BUDA_FW_VARS
 
-# All-encompassing structure representing a Debuda context
+# All-encompassing structure representing a TTLens context
 class Context:
     def __init__(self, server_ifc, cluster_desc, short_name):
         self.server_ifc = server_ifc

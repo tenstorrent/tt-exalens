@@ -3,13 +3,13 @@ cmake_policy(VERSION 3.16)
 
 project(RISCVProject LANGUAGES CXX ASM)
 
-# Check if DEBUDA_HOME is set, if not set it to ../../ from the directory that contains this file
-if(NOT DEBUDA_HOME)
-    set(DEBUDA_HOME "${CMAKE_CURRENT_LIST_DIR}/../..")
+# Check if TTLENS_HOME is set, if not set it to ../../ from the directory that contains this file
+if(NOT TTLENS_HOME)
+    set(TTLENS_HOME "${CMAKE_CURRENT_LIST_DIR}/../..")
 endif()
 
 # Set toolchain and tools
-set(TOOL_PATH "${DEBUDA_HOME}/third_party/sfpi/compiler/bin")
+set(TOOL_PATH "${TTLENS_HOME}/third_party/sfpi/compiler/bin")
 set(GXX "${TOOL_PATH}/riscv32-unknown-elf-g++")
 set(OBJDUMP "${TOOL_PATH}/riscv32-unknown-elf-objdump")
 set(OBJCOPY "${TOOL_PATH}/riscv32-unknown-elf-objcopy")

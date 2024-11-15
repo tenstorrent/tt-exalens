@@ -6,9 +6,9 @@
 
 ### Description
 
-GLOBAL_CONTEXT is a convenience variable to store fallback Debuda context object.
+GLOBAL_CONTEXT is a convenience variable to store fallback TTLens context object.
 If a library function needs context parameter but it isn't provided, it will use
-whatever is in GLOBAL_CONTEXT variable. This does not mean that Debuda context is
+whatever is in GLOBAL_CONTEXT variable. This does not mean that TTLens context is
 a singleton, as it can be explicitly provided to library functions.
 
 
@@ -23,13 +23,13 @@ init_debuda(output_dir_path=None, netlist_path=None, wanted_devices=None, cache_
 
 ### Description
 
-Initializes Debuda internals by creating the device interface and Debuda context.
+Initializes TTLens internals by creating the device interface and TTLens context.
 Interfacing device is local, through pybind.
 
 
 ### Args
 
-- `output_dir_path` *(str, optional)*: Path to the Buda run output directory. If None, Debuda will be initialized in limited mode.
+- `output_dir_path` *(str, optional)*: Path to the Buda run output directory. If None, TTLens will be initialized in limited mode.
 - `netlist_path` *(str, optional)*: Path to the Buda netlist file.
 - `wanted_devices` *(list, optional)*: List of device IDs we want to connect to. If None, connect to all available devices.
 - `caching_path` *(str, optional)*: Path to the cache file to write. If None, caching is disabled.
@@ -37,7 +37,7 @@ Interfacing device is local, through pybind.
 
 ### Returns
 
- *(Context)*: Debuda context object.
+ *(Context)*: TTLens context object.
 
 
 
@@ -50,20 +50,20 @@ init_debuda_remote(ip_address=localhost, port=5555, cache_path=None) -> Context
 
 ### Description
 
-Initializes Debuda internals by creating the device interface and Debuda context.
-Interfacing device is done remotely through Debuda client.
+Initializes TTLens internals by creating the device interface and TTLens context.
+Interfacing device is done remotely through TTLens client.
 
 
 ### Args
 
-- `ip_address` *(str)*: IP address of the Debuda server. Default is 'localhost'.
-- `port` *(int)*: Port number of the Debuda server interface. Default is 5555.
+- `ip_address` *(str)*: IP address of the TTLens server. Default is 'localhost'.
+- `port` *(int)*: Port number of the TTLens server interface. Default is 5555.
 - `cache_path` *(str, optional)*: Path to the cache file to write. If None, caching is disabled.
 
 
 ### Returns
 
- *(Context)*: Debuda context object.
+ *(Context)*: TTLens context object.
 
 
 
@@ -76,7 +76,7 @@ init_debuda_cached(cache_path, netlist_path=None) -> None
 
 ### Description
 
-Initializes Debuda internals by reading cached session data. There is no connection to the device.
+Initializes TTLens internals by reading cached session data. There is no connection to the device.
 Only cached commands are available.
 
 
@@ -88,7 +88,7 @@ Only cached commands are available.
 
 ### Returns
 
- *(Context)*: Debuda context object.
+ *(Context)*: TTLens context object.
 
 
 
@@ -101,7 +101,7 @@ get_yamls(debuda_ifc) -> tuple[util.YamlFile, util.YamlFile]
 
 ### Description
 
-Get the runtime data and cluster description yamls through the Debuda interface.
+Get the runtime data and cluster description yamls through the TTLens interface.
 
 
 
@@ -115,7 +115,7 @@ load_context(server_ifc, netlist_filepath, runtime_data_yaml, cluster_desc_yaml)
 
 ### Description
 
-Load the Debuda context object with specified parameters.
+Load the TTLens context object with specified parameters.
 
 
 
@@ -129,12 +129,12 @@ set_active_context(context) -> None
 
 ### Description
 
-Set the active Debuda context object.
+Set the active TTLens context object.
 
 
 ### Args
 
-- `context` *(Context)*: Debuda context object.
+- `context` *(Context)*: TTLens context object.
 
 
 ### Notes
@@ -199,7 +199,7 @@ Reads word_count four-byte words of data, starting from address 'addr' at core <
 - `addr` *(int)*: Memory address to read from.
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `word_count` *(int, default 1)*: Number of 4-byte words to read.
-- `context` *(Context, optional)*: Debuda context object used for interaction with device. If None, global context is used and potentailly initialized.
+- `context` *(Context, optional)*: TTLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 
 
 ### Returns
@@ -226,7 +226,7 @@ Reads num_bytes of data starting from address 'addr' at core <x-y>.
 - `addr` *(int)*: Memory address to read from.
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `num_bytes` *(int, default 4)*: Number of bytes to read.
-- `context` *(Context, optional)*: Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
+- `context` *(Context, optional)*: TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
 
 
 ### Returns
@@ -253,7 +253,7 @@ Writes data word to address 'addr' at noc0 location x-y of the current chip.
 - `addr` *(int)*: Memory address to write to. If multiple words are to be written, the address is the starting address.
 - `data` *(int | List[int])*: 4-byte integer word to be written, or a list of them.
 - `device_id` *(int, default 0)*: ID number of device to write to.
-- `context` *(Context, optional)*: Debuda context object used for interaction with device. If None, global context is used and potentailly initialized.
+- `context` *(Context, optional)*: TTLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 
 
 ### Returns
@@ -280,7 +280,7 @@ Writes data to address 'addr' at noc0 location x-y of the current chip.
 - `addr` *(int)*: Memory address to write to.
 - `data` *(List[int] | bytes)*: Data to be written. Lists are converted to bytes before writing, each element a byte. Elements must be between 0 and 255.
 - `device_id` *(int, default 0)*: ID number of device to write to.
-- `context` *(Context, optional)*: Debuda context object used for interaction with device. If None, global context is used and potentailly initialized.
+- `context` *(Context, optional)*: TTLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 
 
 ### Returns
@@ -311,7 +311,7 @@ Loads the given ELF file into the specified RISC core and executes it.
 4. an OnChipCoordinate object.
 - `risc_id` *(int, default 0)*: RiscV ID (0: brisc, 1-3 triscs).
 - `device_id` *(int, default 0)*: ID number of device to run ELF on.
-- `context` *(Context, optional)*: Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
+- `context` *(Context, optional)*: TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
 
 
 
@@ -326,7 +326,7 @@ check_context(context=None) -> Context
 ### Description
 
 Function to initialize context if not provided. By default, it starts a local
-Debuda session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
+TTLens session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
 that the context can be reused in calls to other functions.
 
 

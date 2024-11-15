@@ -10,12 +10,12 @@ __requires__ = ['pip >= 24.0']
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 
-# Debuda files to be copied to build directory
+# TTLens files to be copied to build directory
 ttlens_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ttlens')
-debuda_home = os.path.dirname(ttlens_folder_path)
+ttlens_home = os.path.dirname(ttlens_folder_path)
 
 
-def get_debuda_py_files(file_dir: os.PathLike = f"{debuda_home}/ttlens", ignorelist: list = []) -> list:
+def get_debuda_py_files(file_dir: os.PathLike = f"{ttlens_home}/ttlens", ignorelist: list = []) -> list:
     """A function to get the list of files in the debuda lib directory.
     Ignore the files in the ignorelist."""
 
@@ -34,7 +34,7 @@ ttlens_files = {
     },
     "debuda_commands": {
         "path": "ttlens/debuda_commands",
-        "files": get_debuda_py_files(f"{debuda_home}/ttlens/debuda_commands"),
+        "files": get_debuda_py_files(f"{ttlens_home}/ttlens/debuda_commands"),
         "output": "ttlens/debuda_commands"
     },
     "libs": {
@@ -71,7 +71,7 @@ class MyBuild(build_ext):
         env = os.environ.copy()
         nproc = os.cpu_count()
         print(f"make")
-        subprocess.check_call([f"cd {debuda_home} && make"], env=env, shell=True)
+        subprocess.check_call([f"cd {ttlens_home} && make"], env=env, shell=True)
 
     def _copy_files(self, target_path):
         strip_symbols = os.environ.get("STRIP_SYMBOLS", "0") == "1"
@@ -79,7 +79,7 @@ class MyBuild(build_ext):
             path = target_path + "/" + d["output"]
             os.makedirs(path, exist_ok=True)
 
-            src_path = debuda_home + "/" + d["path"]
+            src_path = ttlens_home + "/" + d["path"]
             if d["files"] == "*":
                 self.copy_tree(src_path, path)
             else:
@@ -89,13 +89,13 @@ class MyBuild(build_ext):
                         print(f"Stripping symbols from {path}/{f}")
                         subprocess.check_call(["strip", path + "/" + f])
 
-# Fake Debuda extension
+# Fake TTLens extension
 debuda_fake_extension = TTExtension("debuda.fake_extension")
 
 with open("README.md", "r") as f:
     long_description = f.read()
 
-# Add specific requirements for Debuda
+# Add specific requirements for TTLens
 with open(f"{ttlens_folder_path}/requirements.txt", "r") as f:
     requirements = [r for r in f.read().splitlines() if not r.startswith("-r")]
 

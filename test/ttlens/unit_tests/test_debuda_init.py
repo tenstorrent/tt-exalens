@@ -19,24 +19,24 @@ def tearDownModule():
 
 class TestLocalDebudaInit(unittest.TestCase):
 	def test_local_init(self):
-		"""Test local Debuda initialization."""
+		"""Test local TTLens initialization."""
 		context = tt_debuda_init.init_debuda()
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
 
 	def test_local_with_cache(self):
-		"""Test local Debuda initialization with cache."""
+		"""Test local TTLens initialization with cache."""
 		context = tt_debuda_init.init_debuda(cache_path=CACHE_PATH)
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
 
 	def test_local_wanted_devices(self):
-		"""Test local Debuda initialization with specification of wanted devices."""
+		"""Test local TTLens initialization with specification of wanted devices."""
 		context = tt_debuda_init.init_debuda(wanted_devices=[0,])
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
 
-	# TODO: See how to go about testing Debuda with output dir & netlist path (see issue #11)
+	# TODO: See how to go about testing TTLens with output dir & netlist path (see issue #11)
 
 class TestRemoteDebuda(unittest.TestCase):
 	@classmethod
@@ -48,13 +48,13 @@ class TestRemoteDebuda(unittest.TestCase):
 		stop_server(cls.server)
 
 	def test_remote_init(self):
-		"""Test remote Debuda initialization."""
+		"""Test remote TTLens initialization."""
 		context = tt_debuda_init.init_debuda_remote()
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
 
 	def test_remote_with_cache(self):
-		"""Test remote Debuda initialization with cache."""
+		"""Test remote TTLens initialization with cache."""
 		context = tt_debuda_init.init_debuda_remote(cache_path=CACHE_PATH)
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
@@ -70,7 +70,7 @@ class TestCachedDebuda(unittest.TestCase):
 		del context
 
 	def test_cached_init(self):
-		"""Test Debuda initialization with cache."""
+		"""Test TTLens initialization with cache."""
 		context = tt_debuda_init.init_debuda_cached(cache_path=CACHE_PATH)
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)

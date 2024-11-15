@@ -1,5 +1,5 @@
-name: "Install Debuda Test Dependencies"
-description: "Install Debuda test dependencies & set up the environment on github runners."
+name: "Install TTLens Test Dependencies"
+description: "Install TTLens test dependencies & set up the environment on github runners."
 
 runs:
   using: "composite"
@@ -11,7 +11,7 @@ runs:
           echo "Runner error, os not supported."
           echo $(lsb_release -d)
         fi
-    - name: Install Debuda dependencies
+    - name: Install TTLens dependencies
       shell: bash
       run: |
         DEPENDENCIES=$(jq -r --arg os "all" '.[$os] | .[]' $GITHUB_ACTION_PATH/dependencies.json)

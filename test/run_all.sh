@@ -20,7 +20,7 @@ echo -e "${RED}This script is intended for running all tests in the project loca
 echo ""
 echo ""
 
-big_echo "BUILDING DEBUDA" 
+big_echo "BUILDING TTLENS" 
 make clean
 make build
 

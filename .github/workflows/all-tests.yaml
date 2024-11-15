@@ -70,7 +70,7 @@ jobs:
       - name: Run Python tests for ttlens library
         run: |
           python3 -m unittest discover -v -t . -s test/ttlens -p *test*.py
-      - name: Run Python tests for Debuda app 
+      - name: Run Python tests for TTLens app 
         run: |
           python3 -m unittest discover -v -t . -s test/app -p *test*.py
   
