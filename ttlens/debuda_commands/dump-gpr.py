@@ -20,8 +20,8 @@ Examples:
 """
 command_metadata = {
     "short": "gpr",
-	"type": "low-level",
-	"description": __doc__,
+    "type": "low-level",
+    "description": __doc__,
     "context": ["limited", "buda", "metal"],
     "common_option_names": [ "--device", "--loc", "--verbose", "--risc" ],
 }

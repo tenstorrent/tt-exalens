@@ -5,9 +5,9 @@ from enum import Enum
 from typing import Union
 
 __all__ = [
-	"tt_debuda_init",
-	"tt_debuda_lib",
-	"tt_coordinate",
+    "tt_debuda_init",
+    "tt_debuda_lib",
+    "tt_coordinate",
 ]
 
 # Setting the verbosity of messages shown
