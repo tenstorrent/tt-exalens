@@ -62,8 +62,8 @@ jobs:
           path: build
       - name: Update permissions for downloaded binaries
         run: |
-          chmod +x build/bin/debuda-server-standalone
-          chmod +x build/bin/debuda_server_unit_tests
+          chmod +x build/bin/ttlens-server-standalone
+          chmod +x build/bin/ttlens_server_unit_tests
       - name: Run C++ tests
         run: |
           make dbd_server_unit_tests_run_only
@@ -118,11 +118,11 @@ jobs:
           path: build
       - name: Update permissions for downloaded binaries
         run: |
-          chmod +x build/bin/debuda-server-standalone
-          chmod +x build/bin/debuda_server_unit_tests
+          chmod +x build/bin/ttlens-server-standalone
+          chmod +x build/bin/ttlens_server_unit_tests
       - name: Install wheel
         run: |
-          pip install build/debuda_wheel/*.whl
+          pip install build/ttlens_wheel/*.whl
       - name: Run tests
         run: |
           # Change to the wheel tests directory so that we are certain we don't import dev files

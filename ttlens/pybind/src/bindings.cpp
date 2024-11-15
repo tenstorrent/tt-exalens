@@ -4,7 +4,7 @@
 
 #include "bindings.h"
 
-static std::unique_ptr<tt::dbd::debuda_implementation> debuda_implementation;
+static std::unique_ptr<tt::dbd::ttlens_implementation> ttlens_implementation;
 
 class scoped_null_stdout {
    private:
@@ -21,8 +21,8 @@ class scoped_null_stdout {
     ~scoped_null_stdout() { std::cout.rdbuf(original_stdout); }
 };
 
-void set_debuda_implementation(std::unique_ptr<tt::dbd::debuda_implementation> imp) {
-    debuda_implementation = std::move(imp);
+void set_ttlens_implementation(std::unique_ptr<tt::dbd::ttlens_implementation> imp) {
+    ttlens_implementation = std::move(imp);
 }
 
 bool open_device(const std::string &binary_directory, const std::string &runtime_yaml_path,
@@ -31,9 +31,9 @@ bool open_device(const std::string &binary_directory, const std::string &runtime
         // Since tt::umd::Cluster is printing some output and we don't want to see it in python, we disable std::cout
         scoped_null_stdout null_stdout;
 
-        debuda_implementation =
+        ttlens_implementation =
             tt::dbd::umd_with_open_implementation::open(binary_directory, runtime_yaml_path, wanted_devices);
-        if (!debuda_implementation) {
+        if (!ttlens_implementation) {
             return false;
         }
     } catch (std::runtime_error &error) {
@@ -44,23 +44,23 @@ bool open_device(const std::string &binary_directory, const std::string &runtime
 }
 
 std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
-    if (debuda_implementation) {
-        return debuda_implementation->pci_read32(chip_id, noc_x, noc_y, address);
+    if (ttlens_implementation) {
+        return ttlens_implementation->pci_read32(chip_id, noc_x, noc_y, address);
     }
     return {};
 }
 
 std::optional<uint32_t> pci_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data) {
-    if (debuda_implementation) {
-        return debuda_implementation->pci_write32(chip_id, noc_x, noc_y, address, data);
+    if (ttlens_implementation) {
+        return ttlens_implementation->pci_write32(chip_id, noc_x, noc_y, address, data);
     }
     return {};
 }
 
 std::optional<pybind11::object> pci_read(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                          uint32_t size) {
-    if (debuda_implementation) {
-        auto data = debuda_implementation->pci_read(chip_id, noc_x, noc_y, address, size);
+    if (ttlens_implementation) {
+        auto data = ttlens_implementation->pci_read(chip_id, noc_x, noc_y, address, size);
 
         if (data) {
             // This is a hacky way to create a bytes object for Python so that we avoid multiple
@@ -87,120 +87,120 @@ std::optional<pybind11::object> pci_read(uint8_t chip_id, uint8_t noc_x, uint8_t
 
 std::optional<uint32_t> pci_write(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                   pybind11::buffer data, uint32_t size) {
-    if (debuda_implementation) {
+    if (ttlens_implementation) {
         pybind11::buffer_info info = data.request();
         uint8_t *data_ptr = static_cast<uint8_t *>(info.ptr);
 
-        return debuda_implementation->pci_write(chip_id, noc_x, noc_y, address, data_ptr, size);
+        return ttlens_implementation->pci_write(chip_id, noc_x, noc_y, address, data_ptr, size);
     }
     return {};
 }
 
 std::optional<uint32_t> pci_read32_raw(uint8_t chip_id, uint64_t address) {
-    if (debuda_implementation) {
-        return debuda_implementation->pci_read32_raw(chip_id, address);
+    if (ttlens_implementation) {
+        return ttlens_implementation->pci_read32_raw(chip_id, address);
     }
     return {};
 }
 
 std::optional<uint32_t> pci_write32_raw(uint8_t chip_id, uint64_t address, uint32_t data) {
-    if (debuda_implementation) {
-        return debuda_implementation->pci_write32_raw(chip_id, address, data);
+    if (ttlens_implementation) {
+        return ttlens_implementation->pci_write32_raw(chip_id, address, data);
     }
     return {};
 }
 
 std::optional<uint32_t> dma_buffer_read32(uint8_t chip_id, uint64_t address, uint32_t channel) {
-    if (debuda_implementation) {
-        return debuda_implementation->dma_buffer_read32(chip_id, address, channel);
+    if (ttlens_implementation) {
+        return ttlens_implementation->dma_buffer_read32(chip_id, address, channel);
     }
     return {};
 }
 
 std::optional<std::string> pci_read_tile(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t size,
                                          uint8_t data_format) {
-    if (debuda_implementation) {
-        return debuda_implementation->pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format);
+    if (ttlens_implementation) {
+        return ttlens_implementation->pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format);
     }
     return {};
 }
 
 std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
-    if (debuda_implementation) {
-        return debuda_implementation->jtag_read32(chip_id, noc_x, noc_y, address);
+    if (ttlens_implementation) {
+        return ttlens_implementation->jtag_read32(chip_id, noc_x, noc_y, address);
     }
     return {};
 }
 
 std::optional<uint32_t> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data) {
-    if (debuda_implementation) {
-        debuda_implementation->jtag_write32(chip_id, noc_x, noc_y, address, data);
+    if (ttlens_implementation) {
+        ttlens_implementation->jtag_write32(chip_id, noc_x, noc_y, address, data);
         return 0;
     }
     return {};
 }
 
 std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) {
-    if (debuda_implementation) {
-        return debuda_implementation->jtag_read32_axi(chip_id, address);
+    if (ttlens_implementation) {
+        return ttlens_implementation->jtag_read32_axi(chip_id, address);
     }
     return {};
 }
 
 std::optional<uint32_t> jtag_write32_axi(uint8_t chip_id, uint64_t address, uint32_t data) {
-    if (debuda_implementation) {
-        debuda_implementation->jtag_write32_axi(chip_id, address, data);
+    if (ttlens_implementation) {
+        ttlens_implementation->jtag_write32_axi(chip_id, address, data);
         return 0;
     }
     return {};
 }
 
 std::optional<std::string> get_runtime_data() {
-    if (debuda_implementation) {
-        return debuda_implementation->get_runtime_data();
+    if (ttlens_implementation) {
+        return ttlens_implementation->get_runtime_data();
     }
     return {};
 }
 
 std::optional<std::string> get_cluster_description() {
-    if (debuda_implementation) {
-        return debuda_implementation->get_cluster_description();
+    if (ttlens_implementation) {
+        return ttlens_implementation->get_cluster_description();
     }
     return {};
 }
 
 std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) {
-    if (debuda_implementation) {
-        return debuda_implementation->get_harvester_coordinate_translation(chip_id);
+    if (ttlens_implementation) {
+        return ttlens_implementation->get_harvester_coordinate_translation(chip_id);
     }
     return {};
 }
 
 std::optional<std::vector<uint8_t>> get_device_ids() {
-    if (debuda_implementation) {
-        return debuda_implementation->get_device_ids();
+    if (ttlens_implementation) {
+        return ttlens_implementation->get_device_ids();
     }
     return {};
 }
 
 std::optional<std::string> get_device_arch(uint8_t chip_id) {
-    if (debuda_implementation) {
-        return debuda_implementation->get_device_arch(chip_id);
+    if (ttlens_implementation) {
+        return ttlens_implementation->get_device_arch(chip_id);
     }
     return {};
 }
 
 std::optional<std::string> get_device_soc_description(uint8_t chip_id) {
-    if (debuda_implementation) {
-        return debuda_implementation->get_device_soc_description(chip_id);
+    if (ttlens_implementation) {
+        return ttlens_implementation->get_device_soc_description(chip_id);
     }
     return {};
 }
 
 std::optional<std::tuple<int, uint32_t, uint32_t>> arc_msg(uint8_t chip_id, uint32_t msg_code, bool wait_for_done,
                                                            uint32_t arg0, uint32_t arg1, int timeout) {
-    if (debuda_implementation) {
-        return debuda_implementation->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout);
+    if (ttlens_implementation) {
+        return ttlens_implementation->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout);
     }
     return {};
 }

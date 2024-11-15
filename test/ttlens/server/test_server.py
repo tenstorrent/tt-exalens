@@ -4,7 +4,7 @@
 import sys
 from typing import Any, Callable
 
-from ttlens.tt_lens_ifc import debuda_client, debuda_server_not_supported
+from ttlens.tt_lens_ifc import ttlens_client, ttlens_server_not_supported
 
 server_port = 0
 server = None
@@ -14,7 +14,7 @@ def check_not_implemented_response(server_command: Callable[[], Any]):
     try:
         server_command()
         print("fail")
-    except debuda_server_not_supported:
+    except ttlens_server_not_supported:
         print("pass")
 
 
@@ -221,7 +221,7 @@ def main():
     try:
         global server
         # connect_to_server won't work here because it prints to stdout
-        server = debuda_client("localhost", port)
+        server = ttlens_client("localhost", port)
     except:
         print(f"Couldn't connect to TTLens server on port '{port}'")
         sys.exit(1)

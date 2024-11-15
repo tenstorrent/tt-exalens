@@ -14,10 +14,10 @@ a singleton, as it can be explicitly provided to library functions.
 
 
 
-## init_debuda
+## init_ttlens
 
 ```
-init_debuda(output_dir_path=None, netlist_path=None, wanted_devices=None, cache_path=None) -> Context
+init_ttlens(output_dir_path=None, netlist_path=None, wanted_devices=None, cache_path=None) -> Context
 ```
 
 
@@ -41,10 +41,10 @@ Interfacing device is local, through pybind.
 
 
 
-## init_debuda_remote
+## init_ttlens_remote
 
 ```
-init_debuda_remote(ip_address=localhost, port=5555, cache_path=None) -> Context
+init_ttlens_remote(ip_address=localhost, port=5555, cache_path=None) -> Context
 ```
 
 
@@ -67,10 +67,10 @@ Interfacing device is done remotely through TTLens client.
 
 
 
-## init_debuda_cached
+## init_ttlens_cached
 
 ```
-init_debuda_cached(cache_path, netlist_path=None) -> None
+init_ttlens_cached(cache_path, netlist_path=None) -> None
 ```
 
 
@@ -95,7 +95,7 @@ Only cached commands are available.
 ## get_yamls
 
 ```
-get_yamls(debuda_ifc) -> tuple[util.YamlFile, util.YamlFile]
+get_yamls(lens_ifc) -> tuple[util.YamlFile, util.YamlFile]
 ```
 
 
@@ -329,6 +329,35 @@ Function to initialize context if not provided. By default, it starts a local
 TTLens session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
 that the context can be reused in calls to other functions.
 
+
+
+
+## arc_msg
+
+```
+arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, context=None) -> List[int]
+```
+
+
+### Description
+
+Sends an ARC message to the device.
+
+
+### Args
+
+- `device_id` *(int)*: ID number of device to send message to.
+- `msg_code` *(int)*: Message code to send.
+- `wait_for_done` *(bool)*: If True, waits for the message to be processed.
+- `arg0` *(int)*: First argument to the message.
+- `arg1` *(int)*: Second argument to the message.
+- `timeout` *(int)*: Timeout in milliseconds.
+- `context` *(Context, optional)*: TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
+
+
+### Returns
+
+ *(List[int])*: return code, reply0, reply1.
 
 
 

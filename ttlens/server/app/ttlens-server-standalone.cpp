@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-// The main purpose of this file is to create a debuda-server (see loader/debuda_server.cpp) so that TTLens can connect
+// The main purpose of this file is to create a ttlens-server (see loader/ttlens_server.cpp) so that TTLens can connect
 // to it.
 #include <ctime>
 #include <experimental/filesystem>
@@ -34,7 +34,7 @@ void ensure_file(const std::string& filetype, const std::string& filename) {
     }
 }
 
-int run_debuda_server(const server_config& config) {
+int run_ttlens_server(const server_config& config) {
     if (config.port > 1024 && config.port < 65536) {
         // Open wanted devices
         std::unique_ptr<tt::dbd::umd_with_open_implementation> implementation;
@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
 
     server_config config = parse_args(argc, argv);
 
-    std::string log_starting = "Starting debuda-server: " + std::string(argv[0]) + " " + std::string(argv[1]);
+    std::string log_starting = "Starting ttlens-server: " + std::string(argv[0]) + " " + std::string(argv[1]);
     for (int i = 2; i < argc; i++) {
         log_starting += " " + std::string(argv[i]);
     }
@@ -147,7 +147,7 @@ int main(int argc, char** argv) {
     log_info(tt::LogTTLens, "Use environment variable TT_PCI_LOG_LEVEL to set the logging level (1 or 2)");
 
     if (argc == 2) {
-        return run_debuda_server(config);
+        return run_ttlens_server(config);
     }
 
     // Check if argv[2] is a valid filename for the runtime_data.yaml
@@ -162,5 +162,5 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    return run_debuda_server(config);
+    return run_ttlens_server(config);
 }

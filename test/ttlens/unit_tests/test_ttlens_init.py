@@ -17,28 +17,28 @@ def tearDownModule():
 		# TODO: WHY IS THIS NOT WORKING!?
 		os.remove(CACHE_PATH)
 
-class TestLocalDebudaInit(unittest.TestCase):
+class TestLocalTTLensInit(unittest.TestCase):
 	def test_local_init(self):
 		"""Test local TTLens initialization."""
-		context = tt_lens_init.init_debuda()
+		context = tt_lens_init.init_ttlens()
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
 
 	def test_local_with_cache(self):
 		"""Test local TTLens initialization with cache."""
-		context = tt_lens_init.init_debuda(cache_path=CACHE_PATH)
+		context = tt_lens_init.init_ttlens(cache_path=CACHE_PATH)
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
 
 	def test_local_wanted_devices(self):
 		"""Test local TTLens initialization with specification of wanted devices."""
-		context = tt_lens_init.init_debuda(wanted_devices=[0,])
+		context = tt_lens_init.init_ttlens(wanted_devices=[0,])
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
 
 	# TODO: See how to go about testing TTLens with output dir & netlist path (see issue #11)
 
-class TestRemoteDebuda(unittest.TestCase):
+class TestRemoteTTLens(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls) -> None:
 		cls.server = start_server(5555, "")
@@ -49,21 +49,21 @@ class TestRemoteDebuda(unittest.TestCase):
 
 	def test_remote_init(self):
 		"""Test remote TTLens initialization."""
-		context = tt_lens_init.init_debuda_remote()
+		context = tt_lens_init.init_ttlens_remote()
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
 
 	def test_remote_with_cache(self):
 		"""Test remote TTLens initialization with cache."""
-		context = tt_lens_init.init_debuda_remote(cache_path=CACHE_PATH)
+		context = tt_lens_init.init_ttlens_remote(cache_path=CACHE_PATH)
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
 
 
-class TestCachedDebuda(unittest.TestCase):
+class TestCachedTTLens(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls) -> None:
-		context = tt_lens_init.init_debuda(cache_path=CACHE_PATH)
+		context = tt_lens_init.init_ttlens(cache_path=CACHE_PATH)
 		# Execute a sample command to populate the cache
 		context.server_ifc.get_run_dirpath()
 		context.server_ifc.save()
@@ -71,7 +71,7 @@ class TestCachedDebuda(unittest.TestCase):
 
 	def test_cached_init(self):
 		"""Test TTLens initialization with cache."""
-		context = tt_lens_init.init_debuda_cached(cache_path=CACHE_PATH)
+		context = tt_lens_init.init_ttlens_cached(cache_path=CACHE_PATH)
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
 		context.server_ifc.get_run_dirpath()

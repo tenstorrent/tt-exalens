@@ -3,19 +3,14 @@
 This tutorial shows houw to use the TTLens application.
 It gives examples of basic commands, as well as how to run TTLens on remote machine and from cache.
 
-To follow this tutorial, you should either [build TTLens from source](./../README.md#building-debuda) and run it through the python script with `./tt-lens.py`, or [install from wheel](./../README.md#building-and-installing-wheel) and run with `tt-lens.py`.
+To follow this tutorial, you should either [build TTLens from source](./../README.md#building-ttlens) and run it through the python script with `./tt-lens.py`, or [install from wheel](./../README.md#building-and-installing-wheel) and run with `tt-lens.py`.
 
 ## Basic Usage
 
 Running TTLens application should give the following output:
 
 ```bash
-Verbosity level: 4
-Output directory (output_dir) was not supplied and cannot be determined automatically. Continuing with limited functionality...
-Device opened successfully.
-Loading yaml file: '/tmp/debuda_server_WD5H5q/cluster_desc.yaml' (493 bytes loaded in 0.00s)
-Opened device: id=0, arch=wormhole_b0, has_mmio=True, harvesting={'noc_translation': 'true', 'harvest_mask': 1}
-gdb:None Current epoch:None(None) device:0 loc:18-18 >
+gdb:None device:0 loc:18-18 (0, 0) >
 ```
 
 The last line is the command prompt.
@@ -45,7 +40,7 @@ run-elf          re       Loads an elf file into a brisc and runs it.
 Use '-v' for more details.
 ```
 
-More details about commands are available in [the documentation](./debuda-command-docs.md).
+More details about commands are available in [the documentation](./ttlens-app-docs.md).
 
  
 ### Reading memory (`brxy`)
@@ -102,7 +97,7 @@ to be read as
 core/dram loc : addres hex (address dec) => val hex (val dec) - # of occurences
 ```
 
-For more advanced usecases of this command, refer to [the docummentation](./debuda-command-docs.md#brxy).
+For more advanced usecases of this command, refer to [the docummentation](./ttlens-app-docs.md#brxy).
 
 
 ### Writing to memory (`wxy`)
@@ -140,7 +135,7 @@ and we can affirm that the desired value has indeed been written.
 
 Note that `wxy` can only write one word (4 bytes) at a time.
 
-To see more details about this command, refer to [the documentation](./debuda-command-docs.md#wxy).
+To see more details about this command, refer to [the documentation](./ttlens-app-docs.md#wxy).
 
 
 ### Runing .elf files (`re`)
@@ -148,7 +143,7 @@ To see more details about this command, refer to [the documentation](./debuda-co
 It is possible to run .elf files on Tenstorrent hardware through TTLens using `re` command.
 
 We can try and run the sample program that is used in testing TTLens. 
-First, be sure that you have [cloned TTLens repository and built TTLens](../README.md#building-debuda).
+First, be sure that you have [cloned TTLens repository and built TTLens](../README.md#building-ttlens).
 If everything worked as expected, there should be a file in `build/riscv-src/wormhole` directory named `run_elf_test.brisc.elf`.
 That simple program writes value 0x12345678 to the address 0x0 in L1 memory of the selected core.
 Currently, running `brxy 18-18 0x0` returns
@@ -170,7 +165,7 @@ gdb:None Current epoch:None(None) device:0 loc:18-18 > brxy 18-18 0x0
 ```
 The pogram has executed and changed the value at 0x0.
 
-To see more details about this command, see [documentation](./debuda-command-docs.md#re).
+To see more details about this command, see [documentation](./ttlens-app-docs.md#re).
 
 
 ### Selecting active location and device (`go`)
@@ -181,7 +176,7 @@ go -d 0
 ```
 sets the devcie 0 to be active.
 
-The `gpr` command is used to print RISC-V registers on the current core (for details, refer to [the docummentation](./debuda-command-docs.md#gpr)).
+The `gpr` command is used to print RISC-V registers on the current core (for details, refer to [the docummentation](./ttlens-app-docs.md#gpr)).
 If we run it now, we will get:
 ```
 gdb:None Current epoch:None(None) device:0 loc:18-18 > gpr
@@ -244,7 +239,7 @@ You can run TTLens with cache writing turned on:
 ```
 ./tt-lens.py --write-cache --cache-path=tutorial_cache.pkl
 ```
-By default, cache path is set to `debuda_cache.pkl`, but we have changed that here.
+By default, cache path is set to `ttlens_cache.pkl`, but we have changed that here.
 Let's write something to memory:
 ```
 gdb:None Current epoch:None(None) device:0 loc:18-18 > wxy 18-18 0x100 0x1234
@@ -269,14 +264,11 @@ We can now open this cache in TTLens by calling
 ```
 which gives
 ```
-Verbosity level: 4
 Starting TTLens from cache.
 Loading server cache from file tutorial_cache.pkl
-  Loaded 11 entries
+  Loaded 7 entries
 Cache miss for get_runtime_data.
-Loading yaml file: '/tmp/debuda_server_dQYfTS/cluster_desc.yaml' (493 bytes loaded in 0.00s)
-Opened device: id=0, arch=wormhole_b0, has_mmio=True, harvesting={'noc_translation': 'true', 'harvest_mask': 1}
-gdb:None Current epoch:None(None) device:0 loc:18-18 >
+gdb:None device:0 loc:18-18 (0, 0) >
 ```
 
 Since we are running from cache, we can't write to device:
@@ -315,7 +307,7 @@ ttlens/tt_lens_ifc_cache.py:174               wrapper                 TTExceptio
 --------------------------------------------  ----------------------  ---------------------------------------------------------------------------------
 ```
 
-For more details of inner workings of TTLens refer to [the `ttlens` library tutorial](./ttlens-lib-tutorial.md#debuda-internal-structure-and-initialization).
+For more details of inner workings of TTLens refer to [the `ttlens` library tutorial](./ttlens-lib-tutorial.md#ttlens-internal-structure-and-initialization).
 
 
 ## Scripting and Development

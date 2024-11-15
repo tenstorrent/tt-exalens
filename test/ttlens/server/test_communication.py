@@ -5,7 +5,7 @@ import os, sys
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
 
-from ttlens.tt_lens_ifc import debuda_server_communication
+from ttlens.tt_lens_ifc import ttlens_server_communication
 
 server_port = 0
 server_communication = None
@@ -192,7 +192,7 @@ def main():
     # Try to connect to server
     try:
         global server_communication
-        server_communication = debuda_server_communication("localhost", port)
+        server_communication = ttlens_server_communication("localhost", port)
     except:
         print(f"Couldn't connect to TTLens server on port '{port}'")
         sys.exit(1)

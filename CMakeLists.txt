@@ -25,7 +25,7 @@ else()
     FIND_AND_SET_CLANG17()
 endif()
 
-project(debuda)
+project(ttlens)
 
 CHECK_COMPILERS()
 

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-#include <dbdserver/debuda_implementation.h>
+#include <dbdserver/ttlens_implementation.h>
 #include <dbdserver/server.h>
 #include <gtest/gtest.h>
 
@@ -55,7 +55,7 @@ class yaml_not_implemented_server : public server {
     bool is_yaml_enabled() const { return enable_yaml; }
 };
 
-class yaml_not_implemented_implementation : public debuda_implementation {
+class yaml_not_implemented_implementation : public ttlens_implementation {
    private:
     yaml_not_implemented_server *server;
 

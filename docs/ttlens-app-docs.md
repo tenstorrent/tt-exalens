@@ -29,24 +29,146 @@ Output:
 === Debug registers for core 18-18 ===
 T0               T1               T2               FW
 -------  ------  -------  ------  -------  ------  -------  ------
-DBG[0]   0xbada  DBG[0]   0xbada  DBG[0]   0xbada  DBG[0]   0xbada
-DBG[1]   0xda02  DBG[1]   0xda02  DBG[1]   0xda02  DBG[1]   0xda02
-DBG[2]   0x0000  DBG[2]   0x0000  DBG[2]   0x0000  DBG[2]   0x0000
+DBG[0]   0x0013  DBG[0]   0x0013  DBG[0]   0x0013  DBG[0]   0x0013
+DBG[1]   0x0000  DBG[1]   0x0000  DBG[1]   0x0000  DBG[1]   0x0000
+DBG[2]   0x0013  DBG[2]   0x0013  DBG[2]   0x0013  DBG[2]   0x0013
 DBG[3]   0x0000  DBG[3]   0x0000  DBG[3]   0x0000  DBG[3]   0x0000
-DBG[4]   0x0000  DBG[4]   0x0000  DBG[4]   0x0000  DBG[4]   0x0000
+DBG[4]   0x0013  DBG[4]   0x0013  DBG[4]   0x0013  DBG[4]   0x0013
 DBG[5]   0x0000  DBG[5]   0x0000  DBG[5]   0x0000  DBG[5]   0x0000
-DBG[6]   0xbada  DBG[6]   0xbada  DBG[6]   0xbada  DBG[6]   0xbada
-DBG[7]   0xbada  DBG[7]   0xbada  DBG[7]   0xbada  DBG[7]   0xbada
-DBG[8]   0xbada  DBG[8]   0xbada  DBG[8]   0xbada  DBG[8]   0xbada
-DBG[9]   0xbada  DBG[9]   0xbada  DBG[9]   0xbada  DBG[9]   0xbada
-DBG[10]  0xbada  DBG[10]  0xbada  DBG[10]  0xbada  DBG[10]  0xbada
-DBG[11]  0xbada  DBG[11]  0xbada  DBG[11]  0xbada  DBG[11]  0xbada
-DBG[12]  0xbada  DBG[12]  0xbada  DBG[12]  0xbada  DBG[12]  0xbada
+DBG[6]   0x0013  DBG[6]   0x0013  DBG[6]   0x0013  DBG[6]   0x0013
+DBG[7]   0x0000  DBG[7]   0x0000  DBG[7]   0x0000  DBG[7]   0x0000
+DBG[8]   0x0013  DBG[8]   0x0013  DBG[8]   0x0013  DBG[8]   0x0013
+DBG[9]   0x0000  DBG[9]   0x0000  DBG[9]   0x0000  DBG[9]   0x0000
+DBG[10]  0x0013  DBG[10]  0x0013  DBG[10]  0x0013  DBG[10]  0x0013
+DBG[11]  0x0000  DBG[11]  0x0000  DBG[11]  0x0000  DBG[11]  0x0000
+DBG[12]  0x0013  DBG[12]  0x0013  DBG[12]  0x0013  DBG[12]  0x0013
 DBG[13]  0x0000  DBG[13]  0x0000  DBG[13]  0x0000  DBG[13]  0x0000
-DBG[14]  0x0000  DBG[14]  0x0000  DBG[14]  0x0000  DBG[14]  0x0000
+DBG[14]  0x0013  DBG[14]  0x0013  DBG[14]  0x0013  DBG[14]  0x0013
 DBG[15]  0x0000  DBG[15]  0x0000  DBG[15]  0x0000  DBG[15]  0x0000
-DBG[16]  0x0000  DBG[16]  0x0000  DBG[16]  0x0000  DBG[16]  0x0000
+DBG[16]  0x0013  DBG[16]  0x0013  DBG[16]  0x0013  DBG[16]  0x0013
 ...
+```
+
+
+
+
+
+
+## jraxi
+
+### Usage
+
+```
+jraxi <addr> [-d <D>...]
+```
+
+
+### Description
+
+Reads data word from address 'addr' at AXI address of the current chip using jtag.
+
+
+### Arguments
+
+- `addr`: Address to read from
+
+
+### Options
+
+- `-d` = **\<D\>**: Device ID. Optional and repeatable. Default: current device
+
+
+### Examples
+
+Command:
+```
+jraxi 0x0
+```
+Command:
+```
+jraxi 0xffb20110 -d 0
+```
+
+
+
+
+
+
+## jrxy
+
+### Usage
+
+```
+jrxy <core-loc> <addr> [-d <D>...]
+```
+
+
+### Description
+
+Reads data word from address 'addr' at noc0 location x-y of the current chip using jtag.
+
+
+### Arguments
+
+- `core-loc`: Either X-Y or R,C location of a core, or dram channel (e.g. ch3)
+- `addr`: Address to read from
+
+
+### Options
+
+- `-d` = **\<D\>**: Device ID. Optional and repeatable. Default: current device
+
+
+### Examples
+
+Command:
+```
+jrxy 18-18 0x0
+```
+Command:
+```
+jrxy 18-18 0x0 -d1
+```
+
+
+
+
+
+
+## jwaxi
+
+### Usage
+
+```
+jwaxi <addr> <data> [-d <D>...]
+```
+
+
+### Description
+
+Writes data word 'data' to address 'addr' at AXI address of the current chip using jtag.
+
+
+### Arguments
+
+- `addr`: Address to write to
+- `data`: Data to write
+
+
+### Options
+
+- `-d` = **\<D\>**: Device ID. Optional and repeatable. Default: current device
+
+
+### Examples
+
+Command:
+```
+jwaxi 0x0 0 -d1
+```
+Output:
+```
+device 1 (AXI) 0x00000000 (0) <= 0x00000000 (0)
 ```
 
 
@@ -204,7 +326,7 @@ Output:
 ```
 ==== Device 0
     00    01    02    03    04    05    06    07
-00  ----  ----  ----  ----  ----  ----  ----  ----
+00  ----  R---  ----  ----  ----  ----  ----  ----
 01  ----  ----  ----  ----  ----  ----  ----  ----
 02  ----  ----  ----  ----  ----  ----  ----  ----
 03  ----  ----  ----  ----  ----  ----  ----  ----
@@ -212,16 +334,7 @@ Output:
 05  ----  ----  ----  ----  ----  ----  ----  ----
 06  ----  ----  ----  ----  ----  ----  ----  ----
 07  ----  ----  ----  ----  ----  ----  ----  ----
-==== Device 1
-    00    01    02    03    04    05    06    07
-00  ----  ----  ----  ----  ----  ----  ----  ----
-01  ----  ----  ----  ----  ----  ----  ----  ----
-02  ----  ----  ----  ----  ----  ----  ----  ----
-03  ----  ----  ----  ----  ----  ----  ----  ----
-04  ----  ----  ----  ----  ----  ----  ----  ----
-05  ----  ----  ----  ----  ----  ----  ----  ----
-06  ----  ----  ----  ----  ----  ----  ----  ----
-07  ----  ----  ----  ----  ----  ----  ----  ----
+08  ----  ----  ----  ----  ----  ----  ----  ----
 ```
 Shows noc0 to nocTr mapping for device 0
 ```
@@ -230,17 +343,17 @@ device 0 noc0
 Output:
 ```
 ==== Device 0
-11  dram  harvested_workers  harvested_workers  harvested_workers  harvested_workers  dram  harvested_workers  harvested_workers  ...
+11  dram  ----               ----               ----               ----               dram  ----               ----               ...
 10  arc   ----               ----               ----               ----               dram  ----               ----               ...
 09        ----               ----               ----               ----               dram  ----               ----               ...
 08        ----               ----               ----               ----               dram  ----               ----               ...
 07  dram  ----               ----               ----               ----               dram  ----               ----               ...
 06  dram  eth                eth                eth                eth                dram  eth                eth                ...
-05  dram  harvested_workers  harvested_workers  harvested_workers  harvested_workers  dram  harvested_workers  harvested_workers  ...
+05  dram  ----               ----               ----               ----               dram  ----               ----               ...
 04        ----               ----               ----               ----               dram  ----               ----               ...
-03  pcie  ----               ----               ----               ----               dram  ----               ----               ...
+03  pcie  harvested_workers  harvested_workers  harvested_workers  harvested_workers  dram  harvested_workers  harvested_workers  ...
 02        ----               ----               ----               ----               dram  ----               ----               ...
-01  dram  ----               ----               ----               ----               dram  ----               ----               ...
+01  dram  ----               R---               ----               ----               dram  ----               ----               ...
 00  dram  eth                eth                eth                eth                dram  eth                eth                ...
     00    01                 02                 03                 04                 05    06                 07                 ...
 ```
@@ -360,6 +473,13 @@ Print status
 ```
 riscv status                    
 ```
+Output:
+```
+  IN RESET - BRISC 0,0 [0]
+  IN RESET - TRISC0 0,0 [0]
+  IN RESET - TRISC1 0,0 [0]
+  IN RESET - TRISC2 0,0 [0]
+```
 Step
 ```
 riscv step                      
@@ -408,6 +528,52 @@ riscv wchpt setw 0 0xc
 - `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
 - `--risc, -r` = **\<risc-id\>**: RiscV ID (0: brisc, 1-3 triscs, all). [default: all]
 - `--verbose, -v`: Execute command with verbose output. [default: False]
+
+
+
+
+
+
+## jwxy
+
+### Usage
+
+```
+jwxy <core-loc> <addr> <data> [-d <D>...]
+```
+
+
+### Description
+
+Writes data word 'data' to address 'addr' at noc0 location x-y of the current chip using jtag.
+
+
+### Arguments
+
+- `core-loc`: Either X-Y or R,C location of a core, or dram channel (e.g. ch3)
+- `addr`: Address to write to
+- `data`: Data to write
+
+
+### Options
+
+- `-d` = **\<D\>**: Device ID. Optional and repeatable. Default: current device
+
+
+### Examples
+
+Command:
+```
+jwxy 18-18 0x0 0
+```
+Output:
+```
+device: 0 loc: 18-18 (L1) : 0x00000000 (0) <= 0x00000000 (0)
+```
+Command:
+```
+jwxy 18-18 0x0 0 -d1
+```
 
 
 
@@ -499,10 +665,10 @@ brxy 18-18 0x0 16
 Output:
 ```
 18-18 (L1) : 0x00000000 (64 bytes)
-0x00000000:  00001234  827098af  cf8efc72  000000bb
-0x00000010:  ffc00300  ffb00f9c  00000000  00000001
-0x00000020:  00050004  004b0000  91800000  8e600001
-0x00000030:  60000001  00000000  00000000  00000000
+0x00000000:  00001234  0000006f  00000013  00000013
+0x00000010:  00000013  00010537  876545b7  00b52023
+0x00000020:  0000006f  00052603  00030537  876545b7
+0x00000030:  00b52023  00040537  00052603  0000006f
 ```
 Prints 32 bytes in i8 format
 ```
@@ -511,14 +677,14 @@ brxy 18-18 0x0 32 --format i8
 Output:
 ```
 18-18 (L1) : 0x00000000 (128 bytes)
-0x00000000:  52  18  0    0    175  152  112  130  114  252  142  207  187  0  0   0
-0x00000010:  0   3   192  255  156  15   176  255  0    0    0    0    1    0  0   0
-0x00000020:  4   0   5    0    0    0    75   0    0    0    128  145  1    0  96  142
-0x00000030:  1   0   0    96   0    0    0    0    0    0    0    0    0    0  0   0
-0x00000040:  0   0   0    0    0    0    0    0    0    0    0    0    18   0  0   0
-0x00000050:  0   0   0    0    0    0    54   0    0    0    0    0    0    0  0   0
-0x00000060:  0   0   0    0    0    0    0    0    0    0    0    0    0    0  0   0
-0x00000070:  0   0   0    0    0    0    0    0    0    0    0    0    0    0  0   0
+0x00000000:  52   18  0    0  111  0   0  0  19   0   0    0    19   0   0    0
+0x00000010:  19   0   0    0  55   5   1  0  183  69  101  135  35   32  181  0
+0x00000020:  111  0   0    0  3    38  5  0  55   5   3    0    183  69  101  135
+0x00000030:  35   32  181  0  55   5   4  0  3    38  5    0    111  0   0    0
+0x00000040:  19   0   0    0  19   0   0  0  19   0   0    0    19   0   0    0
+0x00000050:  19   0   0    0  19   0   0  0  19   0   0    0    19   0   0    0
+0x00000060:  19   0   0    0  19   0   0  0  19   0   0    0    19   0   0    0
+0x00000070:  19   0   0    0  19   0   0  0  19   0   0    0    19   0   0    0
 ```
 Sample for 5 seconds
 ```
@@ -527,25 +693,25 @@ brxy 18-18 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000000 (0) => 0x00001234 (4660) - 30087 times
+18-18 (L1) : 0x00000000 (0) => 0x00001234 (4660) - 28240 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000004 (4) => 0x00001234 (4660) - 30234 times
+18-18 (L1) : 0x00000004 (4) => 0x00001234 (4660) - 28420 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000008 (8) => 0x00001234 (4660) - 30210 times
+18-18 (L1) : 0x00000008 (8) => 0x00001234 (4660) - 28486 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x0000000c (12) => 0x00001234 (4660) - 30232 times
+18-18 (L1) : 0x0000000c (12) => 0x00001234 (4660) - 28510 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000010 (16) => 0x00001234 (4660) - 30175 times
+18-18 (L1) : 0x00000010 (16) => 0x00001234 (4660) - 28493 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000014 (20) => 0x00001234 (4660) - 30229 times
+18-18 (L1) : 0x00000014 (20) => 0x00001234 (4660) - 28627 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000018 (24) => 0x00001234 (4660) - 30247 times
+18-18 (L1) : 0x00000018 (24) => 0x00001234 (4660) - 28574 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x0000001c (28) => 0x00001234 (4660) - 30231 times
+18-18 (L1) : 0x0000001c (28) => 0x00001234 (4660) - 28667 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000020 (32) => 0x00001234 (4660) - 30209 times
+18-18 (L1) : 0x00000020 (32) => 0x00001234 (4660) - 28581 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000024 (36) => 0x00001234 (4660) - 30254 times
+18-18 (L1) : 0x00000024 (36) => 0x00001234 (4660) - 28632 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -557,8 +723,8 @@ Output:
 ch0 (DRAM) : 0x00000000 (64 bytes)
 0x00000000:  000000bb  55555555  55555555  55555555
 0x00000010:  55555555  55555555  55555555  55555555
-0x00000020:  c0193e34  be83bf68  3e70bdd6  3f883f8f
-0x00000030:  3e04bebe  becbbfa7  3e2d3cb6  bebf3f72
+0x00000020:  00000000  00000000  00000000  00000000
+0x00000030:  00000000  00000000  00000000  00000000
 ```
 
 

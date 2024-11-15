@@ -16,7 +16,7 @@ from typing import Dict
 from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 
 #
-# Communication with Buda (or debuda-server) over sockets (ZMQ).
+# Communication with Buda (or ttlens-server) over sockets (ZMQ).
 # See struct BUDA_READ_REQ for protocol details
 #
 
@@ -31,7 +31,7 @@ def try_unpack(fmt, data):
         return u
     except:
         # Here we might have gotten an error string from the server. Unpack as string and print error
-        util.ERROR(f"debuda-server sent an invalid reply: {data}")
+        util.ERROR(f"ttlens-server sent an invalid reply: {data}")
         return None
 
 

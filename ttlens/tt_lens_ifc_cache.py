@@ -39,10 +39,10 @@ class DbdCacheThrough(DbdCache):
 
     Args:
         communicator (DbdCommunicator): The interface that contacts the device.
-        filepath (str): The path to save the cache file. Default is "debuda_cache.pkl".
+        filepath (str): The path to save the cache file. Default is "ttlens_cache.pkl".
     """
 
-    def __init__(self, communicator, filepath="debuda_cache.pkl"):
+    def __init__(self, communicator, filepath="ttlens_cache.pkl"):
         super().__init__()
         self.communicator = communicator
         self.filepath = filepath
@@ -156,7 +156,7 @@ class DbdCacheReader(DbdCache):
     Reading is implemented using a decorator.
     """
 
-    def __init__(self, filepath="debuda_cache.pkl"):
+    def __init__(self, filepath="ttlens_cache.pkl"):
         super().__init__()
         self.filepath = filepath
 
@@ -287,12 +287,12 @@ class DbdCacheReader(DbdCache):
         return True
 
 
-def init_cache_writer(filepath="debuda_cache.pkl"):
+def init_cache_writer(filepath="ttlens_cache.pkl"):
     tt_device.SERVER_IFC = DbdCacheThrough(tt_device.SERVER_IFC, filepath)
     atexit.register(tt_device.SERVER_IFC.save)
     return tt_device.SERVER_IFC
 
 
-def init_cache_reader(filepath="debuda_cache.pkl"):
+def init_cache_reader(filepath="ttlens_cache.pkl"):
     tt_device.SERVER_IFC = DbdCacheReader(filepath)
     return tt_device.SERVER_IFC

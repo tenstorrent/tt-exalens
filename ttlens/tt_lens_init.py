@@ -19,7 +19,7 @@ a singleton, as it can be explicitly provided to library functions.
 GLOBAL_CONTEXT: Context = None
 
 
-def init_debuda(
+def init_ttlens(
 		output_dir_path: str = None,
 		netlist_path: str = None,
 		wanted_devices: list = None,
@@ -49,7 +49,7 @@ def init_debuda(
 	return load_context(lens_ifc, netlist_path, runtime_data_yaml, cluster_desc_yaml)
 
 
-def init_debuda_remote(
+def init_ttlens_remote(
 		ip_address: str = 'localhost',
 		port: int = 5555,
 		cache_path: str = None,
@@ -75,7 +75,7 @@ def init_debuda_remote(
 	return load_context(lens_ifc, None, runtime_data_yaml, cluster_desc_yaml)
 
 
-def init_debuda_cached(
+def init_ttlens_cached(
 		cache_path: str,
 		netlist_path: str = None,
 ):

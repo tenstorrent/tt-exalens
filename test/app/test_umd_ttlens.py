@@ -72,7 +72,7 @@ class UmdDbdOutputVerifier(DbdOutputVerifier):
 class DbdTestRunner:
     def __init__(self, verifier: DbdOutputVerifier):
         self.interpreter_path = sys.executable
-        self.debuda_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "tt-lens.py")
+        self.ttlens_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "tt-lens.py")
         self.process: subprocess.Popen = None
         self.verifier = verifier
 
@@ -87,7 +87,7 @@ class DbdTestRunner:
         return self.process.returncode
 
     def invoke(self, args = None):
-        program_args = [self.interpreter_path, '-u', self.debuda_py_path]
+        program_args = [self.interpreter_path, '-u', self.ttlens_py_path]
         if not args is None:
             if not type(args) == list:
                 args = [args]
@@ -151,7 +151,7 @@ class DbdTestRunner:
             self.kill()
             raise e
 
-class TestUmdDebuda(unittest.TestCase):
+class TestUmdTTLens(unittest.TestCase):
     @unittest.skip("Disabling this test for the moment. Something not working in CI, investigation needed.")
     def test_startup_and_exit_just_return_code(self):
         runner = DbdTestRunner(UmdDbdOutputVerifier())

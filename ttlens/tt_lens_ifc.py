@@ -14,7 +14,7 @@ from ttlens.tt_lens_ifc_base import DbdCommunicator
 from ttlens import tt_device
 
 
-class debuda_server_request_type(Enum):
+class ttlens_server_request_type(Enum):
     # Basic requests
     invalid = 0
     ping = 1
@@ -48,15 +48,15 @@ class debuda_server_request_type(Enum):
     get_buda_run_dirpath = 201
 
 
-class debuda_server_bad_request(Exception):
+class ttlens_server_bad_request(Exception):
     pass
 
 
-class debuda_server_not_supported(Exception):
+class ttlens_server_not_supported(Exception):
     pass
 
 
-class debuda_server_communication:
+class ttlens_server_communication:
     """
     This class handles the communication with the TTLens server using ZMQ. It is responsible for sending requests and
     parsing and checking the responses.
@@ -72,21 +72,21 @@ class debuda_server_communication:
         self._socket.connect(f"tcp://{self.address}:{self.port}")
 
     def _check(self, response: bytes):
-        if response == debuda_server_communication._BAD_REQUEST:
-            raise debuda_server_bad_request()
-        if response == debuda_server_communication._NOT_SUPPORTED:
-            raise debuda_server_not_supported()
+        if response == ttlens_server_communication._BAD_REQUEST:
+            raise ttlens_server_bad_request()
+        if response == ttlens_server_communication._NOT_SUPPORTED:
+            raise ttlens_server_not_supported()
         return response
 
     def ping(self):
-        self._socket.send(bytes([debuda_server_request_type.ping.value]))
+        self._socket.send(bytes([ttlens_server_request_type.ping.value]))
         return self._check(self._socket.recv())
 
     def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
         self._socket.send(
             struct.pack(
                 "<BBBBQ",
-                debuda_server_request_type.pci_read32.value,
+                ttlens_server_request_type.pci_read32.value,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -99,7 +99,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 "<BBBBQI",
-                debuda_server_request_type.pci_write32.value,
+                ttlens_server_request_type.pci_write32.value,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -113,7 +113,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 "<BBBBQI",
-                debuda_server_request_type.pci_read.value,
+                ttlens_server_request_type.pci_read.value,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -129,7 +129,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 f"<BBBBQI{len(data)}s",
-                debuda_server_request_type.pci_write.value,
+                ttlens_server_request_type.pci_write.value,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -143,7 +143,7 @@ class debuda_server_communication:
     def pci_read32_raw(self, chip_id: int, address: int):
         self._socket.send(
             struct.pack(
-                "<BBI", debuda_server_request_type.pci_read32_raw.value, chip_id, address
+                "<BBI", ttlens_server_request_type.pci_read32_raw.value, chip_id, address
             )
         )
         return self._check(self._socket.recv())
@@ -152,7 +152,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 "<BBII",
-                debuda_server_request_type.pci_write32_raw.value,
+                ttlens_server_request_type.pci_write32_raw.value,
                 chip_id,
                 address,
                 data,
@@ -164,7 +164,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 "<BBQH",
-                debuda_server_request_type.dma_buffer_read32.value,
+                ttlens_server_request_type.dma_buffer_read32.value,
                 chip_id,
                 address,
                 channel,
@@ -184,7 +184,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 "<BBBBQIB",
-                debuda_server_request_type.pci_read_tile.value,
+                ttlens_server_request_type.pci_read_tile.value,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -197,12 +197,12 @@ class debuda_server_communication:
 
     def get_runtime_data(self):
         self._socket.send(
-            bytes([debuda_server_request_type.get_runtime_data.value]))
+            bytes([ttlens_server_request_type.get_runtime_data.value]))
         return self._check(self._socket.recv())
 
     def get_cluster_description(self):
         self._socket.send(
-            bytes([debuda_server_request_type.get_cluster_description.value])
+            bytes([ttlens_server_request_type.get_cluster_description.value])
         )
         return self._check(self._socket.recv())
 
@@ -210,7 +210,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 "<BB",
-                debuda_server_request_type.get_harvester_coordinate_translation.value,
+                ttlens_server_request_type.get_harvester_coordinate_translation.value,
                 chip_id,
             )
         )
@@ -218,7 +218,7 @@ class debuda_server_communication:
 
     def get_device_ids(self):
         self._socket.send(
-            bytes([debuda_server_request_type.get_device_ids.value])
+            bytes([ttlens_server_request_type.get_device_ids.value])
         )
         return self._check(self._socket.recv())
 
@@ -226,7 +226,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 "<BB",
-                debuda_server_request_type.get_device_arch.value,
+                ttlens_server_request_type.get_device_arch.value,
                 chip_id,
             )
         )
@@ -236,7 +236,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 "<BB",
-                debuda_server_request_type.get_device_soc_description.value,
+                ttlens_server_request_type.get_device_soc_description.value,
                 chip_id,
             )
         )
@@ -247,7 +247,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 f"<BI{len(encoded_path)}s",
-                debuda_server_request_type.get_file.value,
+                ttlens_server_request_type.get_file.value,
                 len(encoded_path),
                 encoded_path,
             )
@@ -256,7 +256,7 @@ class debuda_server_communication:
 
     def get_run_dirpath(self):
         self._socket.send(
-            bytes([debuda_server_request_type.get_buda_run_dirpath.value])
+            bytes([ttlens_server_request_type.get_buda_run_dirpath.value])
         )
         return self._check(self._socket.recv())
 
@@ -264,7 +264,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 "<BBBIIIIB",
-                debuda_server_request_type.arc_msg.value,
+                ttlens_server_request_type.arc_msg.value,
                 device_id,
                 msg_code,
                 wait_for_done,
@@ -279,7 +279,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 "<BBBBQ",
-                debuda_server_request_type.jtag_read32.value,
+                ttlens_server_request_type.jtag_read32.value,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -292,7 +292,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 "<BBBBQI",
-                debuda_server_request_type.jtag_write32.value,
+                ttlens_server_request_type.jtag_write32.value,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -306,7 +306,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 "<BBI",
-                debuda_server_request_type.jtag_read32_axi.value,
+                ttlens_server_request_type.jtag_read32_axi.value,
                 chip_id,
                 address,
             )
@@ -317,7 +317,7 @@ class debuda_server_communication:
         self._socket.send(
             struct.pack(
                 "<BBII",
-                debuda_server_request_type.jtag_write32_axi.value,
+                ttlens_server_request_type.jtag_write32_axi.value,
                 chip_id,
                 address,
                 data,
@@ -326,10 +326,10 @@ class debuda_server_communication:
         return self._check(self._socket.recv())
 
 
-class debuda_client(DbdCommunicator):
+class ttlens_client(DbdCommunicator):
     def __init__(self, address: str, port: int):
         super().__init__()
-        self._communication = debuda_server_communication(address, port)
+        self._communication = ttlens_server_communication(address, port)
 
         # Check ping/pong to verify it is TTLens server on the other end
         pong = self._communication.ping()
@@ -491,7 +491,7 @@ if not os.path.isfile(os.path.join(tt_dbd_pybind_path, "tt_dbd_pybind.so")):
 import tt_dbd_pybind
 
 
-class debuda_pybind(DbdCommunicator):
+class ttlens_pybind(DbdCommunicator):
     def __init__(self, runtime_data_yaml_filename: str = "", run_dirpath: str = None, wanted_devices: list = []):
         super().__init__()
         if not tt_dbd_pybind.open_device(binary_path, runtime_data_yaml_filename, wanted_devices):
@@ -501,7 +501,7 @@ class debuda_pybind(DbdCommunicator):
 
     def _check_result(self, result):
         if result is None:
-            raise debuda_server_not_supported()
+            raise ttlens_server_not_supported()
         return result
 
     def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
@@ -542,7 +542,7 @@ class debuda_pybind(DbdCommunicator):
         if self._runtime_yaml_path:
             with open(self._runtime_yaml_path, 'r') as f:
                 return f.read()
-        else: raise debuda_server_not_supported()
+        else: raise ttlens_server_not_supported()
 
     def get_cluster_description(self):
         return self._check_result(tt_dbd_pybind.get_cluster_description())
@@ -590,19 +590,19 @@ def init_pybind(runtime_data_yaml_filename, run_dirpath=None, wanted_devices=Non
     if not wanted_devices:
         wanted_devices = []
 
-    tt_device.SERVER_IFC = debuda_pybind(runtime_data_yaml_filename, run_dirpath, wanted_devices)
+    tt_device.SERVER_IFC = ttlens_pybind(runtime_data_yaml_filename, run_dirpath, wanted_devices)
     util.VERBOSE("Device opened successfully.")
     return tt_device.SERVER_IFC
 
 
-# Spawns debuda-server and initializes the communication
+# Spawns ttlens-server and initializes the communication
 def connect_to_server(ip="localhost", port=5555):
-    debuda_stub_address = f"tcp://{ip}:{port}"
-    util.VERBOSE(f"Connecting to debuda-server at {debuda_stub_address}...")
+    ttlens_stub_address = f"tcp://{ip}:{port}"
+    util.VERBOSE(f"Connecting to ttlens-server at {ttlens_stub_address}...")
 
     try:
-        tt_device.SERVER_IFC = debuda_client(ip, port)
-        util.VERBOSE("Connected to debuda-server.")
+        tt_device.SERVER_IFC = ttlens_client(ip, port)
+        util.VERBOSE("Connected to ttlens-server.")
     except:
         raise util.TTFatalException("Failed to connect to TTLens server.")
 

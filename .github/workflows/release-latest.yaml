@@ -5,7 +5,7 @@ on:
     branches:
       - "main"
 
-run-name: "Release latest debuda wheel, activated by updating main."
+run-name: "Release latest ttlens wheel, activated by updating main."
   
 jobs:
   pre-release:
@@ -39,7 +39,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: "wheel-latest-${{ matrix.build-info.py-version }}"
-          path: build/debuda_wheel/*.whl
+          path: build/ttlens_wheel/*.whl
 
   make-release:
     needs: pre-release

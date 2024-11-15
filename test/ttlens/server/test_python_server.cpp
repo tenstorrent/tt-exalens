@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-#include <dbdserver/debuda_implementation.h>
+#include <dbdserver/ttlens_implementation.h>
 #include <dbdserver/server.h>
 #include <gtest/gtest.h>
 
@@ -15,7 +15,7 @@ constexpr int DEFAULT_TEST_SERVER_PORT = 6669;
 // Simple implementation of tt::dbd::server that simulates real server.
 class simulation_server : public tt::dbd::server {
    public:
-    simulation_server(std::unique_ptr<tt::dbd::debuda_implementation> implementation)
+    simulation_server(std::unique_ptr<tt::dbd::ttlens_implementation> implementation)
         : tt::dbd::server(std::move(implementation)) {}
 
     std::optional<std::vector<uint8_t>> get_file(const std::string& path) override {
@@ -26,9 +26,9 @@ class simulation_server : public tt::dbd::server {
     std::optional<std::string> get_run_dirpath() override { return "get_run_dirpath"; }
 };
 
-// Simple implementation of tt::dbd::debuda_implementation that simulates real implementation.
+// Simple implementation of tt::dbd::ttlens_implementation that simulates real implementation.
 // For every write combination, read of the same communication will return that result.
-class simulation_implementation : public tt::dbd::debuda_implementation {
+class simulation_implementation : public tt::dbd::ttlens_implementation {
    private:
     std::map<std::tuple<uint8_t, uint8_t, uint8_t, uint64_t>, uint32_t> read_write_4;
     std::map<std::tuple<uint8_t, uint8_t, uint8_t, uint64_t, uint32_t>, std::vector<uint8_t>> read_write;

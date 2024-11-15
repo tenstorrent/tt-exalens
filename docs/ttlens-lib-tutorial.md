@@ -23,7 +23,7 @@ The structure of the debugger is layered, allowing TTLens to acces the device in
 The are three layers a typical API call passes through when TTLens command is invoked: context, device interface and caching mechanism.
 
 <div align="center">
-<img src="images/debuda-structure.png" alt="ttnn logo" width="80%"/>
+<img src="images/ttlens-structure.png" alt="ttnn logo" width="80%"/>
 </div>
 
 **TTLens context** is the highest-level class when connecting to the device through TTLens. It provides TTLens with additional information about what's happening on the device. 
@@ -49,10 +49,10 @@ In the case of using cached ifc, it is only possible to rerun cached function ca
 This section demonstrates how to make a simple script using TTLens library. For a more complete oevrview of Debdua's abilities, check out [the full documentation](library-docs.md).
 
 ```python
-from ttlens.tt_lens_init import init_debuda
+from ttlens.tt_lens_init import init_ttlens
 from ttlens.tt_lens_lib import write_to_device, read_words_from_device
 
-context = init_debuda()
+context = init_ttlens()
 data = [1, 128, 18, 64]
 
 num_bytes = write_to_device("0-0", 0x100, data, context=context)
@@ -69,10 +69,10 @@ The code snippet above performs a simple task of writing a list given by `data` 
 TTLens library package is called `ttlens`. 
 It contains multiple modules, three of which are interesting to external user:
 - _tt_lens_init_: A module containing various functions for device and context initialization.
-- _tt_debuda_lib_: A module containing useful functions for device interactions.
+- _tt_lens_lib_: A module containing useful functions for device interactions.
 - _tt_coordinate_: A module useful for advanced specification of device core coordinates.
 
-The command `context = init_debuda()` initializes a new default TTLens context and establishes a connection to the device.
+The command `context = init_ttlens()` initializes a new default TTLens context and establishes a connection to the device.
 Had we passed `<output-dir>` of a Buda run to this function, TTLens would have used that additional info to initialize a Buda context.
 
 The initialization step is done implicitly on the first call to a function that interacts with the device.

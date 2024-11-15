@@ -33,7 +33,7 @@ class TestDebugging(unittest.TestCase):
 
 	@classmethod
 	def setUpClass(cls):
-		cls.context = tt_lens_init.init_debuda()
+		cls.context = tt_lens_init.init_ttlens()
 		cls.pc_register_index = get_register_index("pc")
 
 	def setUp(self):

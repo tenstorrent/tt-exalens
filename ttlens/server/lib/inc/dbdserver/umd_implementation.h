@@ -5,14 +5,14 @@
 
 #include <optional>
 
-#include "debuda_implementation.h"
+#include "ttlens_implementation.h"
 #include "device/cluster.h"
 
 class JtagDevice;
 
 namespace tt::dbd {
 
-class umd_implementation : public debuda_implementation {
+class umd_implementation : public ttlens_implementation {
    public:
     umd_implementation(tt::umd::Cluster* device, JtagDevice* jtag_device);
 

@@ -12,9 +12,9 @@
 namespace tt::dbd {
 
 // Interface that should be implemented for TTLens server to process requests.
-class debuda_implementation {
+class ttlens_implementation {
    public:
-    virtual ~debuda_implementation() = default;
+    virtual ~ttlens_implementation() = default;
 
     virtual std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
         return {};

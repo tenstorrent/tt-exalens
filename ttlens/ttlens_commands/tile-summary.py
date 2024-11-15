@@ -21,7 +21,7 @@ from docopt import docopt
 from ttlens.tt_uistate import UIState
 
 from ttlens import tt_util as util
-from ttlens.tt_lens_ifc import debuda_server_not_supported
+from ttlens.tt_lens_ifc import ttlens_server_not_supported
 
 command_metadata = {
     "short": "t", 
@@ -122,7 +122,7 @@ def dump_message_xy(context, ui_state: UIState, tile_id, raw):
                 # 3. Dump the tile
                 try:
                     current_device.dump_tile(loc, msg_addr, msg_size, data_format)
-                except debuda_server_not_supported as e:
+                except ttlens_server_not_supported as e:
                     util.ERROR("Error while trying to dump tile.")
                     raise e
             else:

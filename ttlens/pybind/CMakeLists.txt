@@ -1,24 +1,24 @@
 file(GLOB_RECURSE TTLENS_PYBIND_SRCS "src/*.cpp")
-add_library(debuda_pybind SHARED ${TTLENS_PYBIND_SRCS})
-set_target_properties(debuda_pybind PROPERTIES
+add_library(ttlens_pybind SHARED ${TTLENS_PYBIND_SRCS})
+set_target_properties(ttlens_pybind PROPERTIES
     OUTPUT_NAME "tt_dbd_pybind"
     PREFIX ""
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
 )
-target_link_libraries(debuda_pybind
-    debuda_server_lib
+target_link_libraries(ttlens_pybind
+    ttlens_server_lib
     umd_device
     yaml-cpp
     pthread
 )
-target_include_directories(debuda_pybind
+target_include_directories(ttlens_pybind
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/inc
     PRIVATE
         ${pybind11_INCLUDE_DIR}
         ${Python3_INCLUDE_DIRS}
 )
-set_target_properties(debuda_pybind PROPERTIES
+set_target_properties(ttlens_pybind PROPERTIES
     BUILD_WITH_INSTALL_RPATH true
     INSTALL_RPATH "$ORIGIN:$ORIGIN/../lib"
 )

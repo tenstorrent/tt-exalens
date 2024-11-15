@@ -317,11 +317,5 @@ class TestParseElf(unittest.TestCase):
         else:
             return None
 
-    @unittest.skip("TODO: This should be run in Buda repo (issue #11).")
-    def test_brisc(self):
-        name_dict = read_elf(file_ifc, "./debuda_test/brisc/brisc.elf")
-        epoch_id_addr = self.get_var_addr(name_dict, "EPOCH_INFO_PTR->epoch_id")
-
-
 if __name__ == "__main__":
     unittest.main()

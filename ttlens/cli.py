@@ -21,7 +21,7 @@ Options:
   --commands=<cmds>               Execute a list of semicolon-separated commands.
   --start-gdb=<gdb_port>          Start a gdb server on the specified port.
   --write-cache                   Write the cache to disk.
-  --cache-path=<path>             If running in --cached mode, this is the path to the cache file. If writing cache, this is the path for output. [default: debuda_cache.pkl]
+  --cache-path=<path>             If running in --cached mode, this is the path to the cache file. If writing cache, this is the path for output. [default: ttlens_cache.pkl]
   --devices=<devices>             Comma-separated list of devices to load. If not supplied, all devices will be loaded.
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
@@ -66,7 +66,7 @@ from ttlens.tt_lens_context import Context
 
 from ttlens import Verbosity
 
-class DebudaCompleter(Completer):
+class TTLensCompleter(Completer):
     def __init__(self, commands, context):
         self.commands = [cmd["long"] for cmd in commands] + [
             cmd["short"] for cmd in commands
@@ -288,7 +288,7 @@ def main_loop(args, context):
     context.filter_commands(import_commands()) # Set the commands in the context so we can call commands from other commands
 
     # Create prompt object.
-    context.prompt_session = PromptSession(completer=DebudaCompleter(context.commands, context)) if sys.stdin.isatty() else SimplePromptSession()
+    context.prompt_session = PromptSession(completer=TTLensCompleter(context.commands, context)) if sys.stdin.isatty() else SimplePromptSession()
 
     # Initialize current UI state
     ui_state = UIState(context)
@@ -449,7 +449,7 @@ def main():
     if args["--server"]:
         print(f"Starting TTLens server at {args['--port']}")
         runtime_data_yaml_filename = tt_lens_init.find_runtime_data_yaml_filename(output_dir) if output_dir else None
-        debuda_server = tt_lens_server.start_server(
+        ttlens_server = tt_lens_server.start_server(
             args["--port"],
             runtime_data_yaml_filename,
             output_dir,
@@ -458,23 +458,20 @@ def main():
         if args["--test"]:
             while True: pass
         input("Press Enter to exit server...")
-        tt_lens_server.stop_server(debuda_server)
+        tt_lens_server.stop_server(ttlens_server)
         sys.exit(0)
     
     if args["--cached"]:
         util.INFO(f"Starting TTLens from cache.")
-        context = tt_lens_init.init_debuda_cached(args["--cache-path"])
+        context = tt_lens_init.init_ttlens_cached(args["--cache-path"])
     elif args["--remote"]:
         address = args["--remote-address"].split(":")
         server_ip = address[0] if address[0]!='' else "localhost"
         server_port = address[-1] 
         util.INFO(f"Connecting to TTLens server at {server_ip}:{server_port}")
-        context = tt_lens_init.init_debuda_remote(server_ip, int(server_port), cache_path)
+        context = tt_lens_init.init_ttlens_remote(server_ip, int(server_port), cache_path)
     else:
-        context = tt_lens_init.init_debuda(output_dir, args["--netlist"], wanted_devices, cache_path)
-
-    # context.args = args  # Used by 'export' command
-    # context.debuda_path = __file__  # Used by 'export' command
+        context = tt_lens_init.init_ttlens(output_dir, args["--netlist"], wanted_devices, cache_path)
 
     # Main function
     exit_code = main_loop(args, context)

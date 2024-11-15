@@ -15,8 +15,8 @@ ttlens_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 't
 ttlens_home = os.path.dirname(ttlens_folder_path)
 
 
-def get_debuda_py_files(file_dir: os.PathLike = f"{ttlens_home}/ttlens", ignorelist: list = []) -> list:
-    """A function to get the list of files in the debuda lib directory.
+def get_ttlens_py_files(file_dir: os.PathLike = f"{ttlens_home}/ttlens", ignorelist: list = []) -> list:
+    """A function to get the list of files in the ttlens lib directory.
     Ignore the files in the ignorelist."""
 
     files = os.listdir(file_dir)
@@ -29,12 +29,12 @@ def get_debuda_py_files(file_dir: os.PathLike = f"{ttlens_home}/ttlens", ignorel
 ttlens_files = {
     "ttlens_lib": {
         "path": "ttlens",
-        "files": get_debuda_py_files(),
+        "files": get_ttlens_py_files(),
         "output": "ttlens"
     },
     "ttlens_commands": {
         "path": "ttlens/ttlens_commands",
-        "files": get_debuda_py_files(f"{ttlens_home}/ttlens/ttlens_commands"),
+        "files": get_ttlens_py_files(f"{ttlens_home}/ttlens/ttlens_commands"),
         "output": "ttlens/ttlens_commands"
     },
     "libs": {
@@ -43,9 +43,9 @@ ttlens_files = {
         "output": "build/lib",
         "strip": True
     },
-    "debuda-server-standalone": {
+    "ttlens-server-standalone": {
         "path": "build/bin" ,
-        "files": [ "debuda-server-standalone" ],
+        "files": [ "ttlens-server-standalone" ],
         "output": "build/bin",
         "strip": True
     }
@@ -90,7 +90,7 @@ class MyBuild(build_ext):
                         subprocess.check_call(["strip", path + "/" + f])
 
 # Fake TTLens extension
-debuda_fake_extension = TTExtension("debuda.fake_extension")
+ttlens_fake_extension = TTExtension("ttlens.fake_extension")
 
 with open("README.md", "r") as f:
     long_description = f.read()
@@ -117,7 +117,7 @@ setup(
     description='Debugger for Tenstorrent devices',
     python_requires='>=3.8',
 
-    ext_modules=[debuda_fake_extension],
+    ext_modules=[ttlens_fake_extension],
     cmdclass=dict(build_ext=MyBuild),
     zip_safe=False,
     install_requires=requirements,

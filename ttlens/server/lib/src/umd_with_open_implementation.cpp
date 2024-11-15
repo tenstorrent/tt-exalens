@@ -31,7 +31,7 @@ static const uint8_t wormhole_b0_configuration_bytes[] = {
 
 static std::filesystem::path get_temp_working_directory() {
     std::filesystem::path temp_path = std::filesystem::temp_directory_path();
-    std::string temp_name = temp_path / "debuda_server_XXXXXX";
+    std::string temp_name = temp_path / "ttlens_server_XXXXXX";
 
     return mkdtemp(temp_name.data());
 }

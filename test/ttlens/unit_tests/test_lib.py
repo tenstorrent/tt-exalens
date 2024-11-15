@@ -46,7 +46,7 @@ class TestAutoContext(unittest.TestCase):
     def test_set_global_context(self):
         """Test setting global context."""
         tt_lens_init.GLOBAL_CONTEXT = None
-        context = tt_lens_init.init_debuda()
+        context = tt_lens_init.init_ttlens()
         self.assertIsNotNone(tt_lens_init.GLOBAL_CONTEXT)
         self.assertIs(tt_lens_init.GLOBAL_CONTEXT, context)
 
@@ -55,7 +55,7 @@ class TestAutoContext(unittest.TestCase):
         tt_lens_init.GLOBAL_CONTEXT = None
         
         # Create new global context
-        context1 = tt_lens_init.init_debuda()
+        context1 = tt_lens_init.init_ttlens()
         self.assertIsNotNone(tt_lens_init.GLOBAL_CONTEXT)
         self.assertIs(tt_lens_init.GLOBAL_CONTEXT, context1)
 
@@ -68,7 +68,7 @@ class TestAutoContext(unittest.TestCase):
 
 class TestReadWrite(unittest.TestCase):
     def setUp(self):
-        self.context = tt_lens_init.init_debuda()
+        self.context = tt_lens_init.init_ttlens()
         self.assertIsNotNone(self.context)
         self.assertIsInstance(self.context, Context)
 
@@ -235,7 +235,7 @@ class TestReadWrite(unittest.TestCase):
 class TestRunElf(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.context = tt_lens_init.init_debuda()
+        cls.context = tt_lens_init.init_ttlens()
 
     def is_blackhole(self):
         """Check if the device is blackhole."""
@@ -437,7 +437,7 @@ class TestRunElf(unittest.TestCase):
 class TestARC(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.context = tt_lens_init.init_debuda()
+        cls.context = tt_lens_init.init_ttlens()
 
     def test_arc_msg(self):
         """Test getting AICLK from ARC."""

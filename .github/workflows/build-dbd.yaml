@@ -36,7 +36,7 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           create-symlink: true
-          key: debuda-${{ inputs.config }}-${{ inputs.os }}
+          key: ttlens-${{ inputs.config }}-${{ inputs.os }}
       - name: Build TTLENS
         run: |
           make build

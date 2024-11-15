@@ -4,7 +4,7 @@
 
 #include "bindings.h"
 
-class bindings_implementation : public tt::dbd::debuda_implementation {
+class bindings_implementation : public tt::dbd::ttlens_implementation {
    private:
     std::map<std::tuple<uint8_t, uint8_t, uint8_t, uint64_t>, uint32_t> read_write_4;
     std::map<std::tuple<uint8_t, uint8_t, uint8_t, uint64_t, uint32_t>, std::vector<uint8_t>> read_write;
@@ -85,10 +85,10 @@ class bindings_implementation : public tt::dbd::debuda_implementation {
     }
 };
 
-void set_debuda_test_implementation() {
-    set_debuda_implementation(std::move(std::make_unique<bindings_implementation>()));
+void set_ttlens_test_implementation() {
+    set_ttlens_implementation(std::move(std::make_unique<bindings_implementation>()));
 }
 
 PYBIND11_MODULE(tt_dbd_pybind_unit_tests, n) {
-    n.def("set_debuda_test_implementation", &set_debuda_test_implementation);
+    n.def("set_ttlens_test_implementation", &set_ttlens_test_implementation);
 }

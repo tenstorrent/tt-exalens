@@ -215,7 +215,7 @@ def check_context(context: Context = None) -> Context:
 		return context
 	
 	if not tt_lens_init.GLOBAL_CONTEXT:
-		tt_lens_init.GLOBAL_CONTEXT = tt_lens_init.init_debuda()
+		tt_lens_init.GLOBAL_CONTEXT = tt_lens_init.init_ttlens()
 	return tt_lens_init.GLOBAL_CONTEXT
 
 

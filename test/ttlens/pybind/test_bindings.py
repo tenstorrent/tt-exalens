@@ -22,11 +22,11 @@ if not os.path.isfile(os.path.join(tt_dbd_pybind_path, "tt_dbd_pybind_unit_tests
     sys.exit(1)
 
 import tt_dbd_pybind as pb
-from tt_dbd_pybind_unit_tests import set_debuda_test_implementation
+from tt_dbd_pybind_unit_tests import set_ttlens_test_implementation
 
 class TestBindings(unittest.TestCase):
     def __init__(self, methodName: str = "runTest") -> None:
-        set_debuda_test_implementation()
+        set_ttlens_test_implementation()
         super().__init__(methodName)
 
     def test_pci_read_write32(self, data: int=2,):      
