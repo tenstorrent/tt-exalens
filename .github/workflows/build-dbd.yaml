@@ -24,7 +24,7 @@ jobs:
     runs-on: ${{ inputs.os }}
     container:
       image: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04:latest
-    name: "Build TTLENS."
+    name: "Build DEBUDA."
     steps:
       - uses: actions/checkout@v4
         with:
