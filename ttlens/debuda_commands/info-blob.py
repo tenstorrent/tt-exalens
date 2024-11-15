@@ -27,38 +27,36 @@ from docopt import docopt
 
 from ttlens.tt_uistate import UIState
 
-from ttlens import tt_device
 from ttlens import tt_util as util
 from ttlens.tt_firmware import ELF
 from ttlens.tt_coordinate import OnChipCoordinate
+from ttlens.tt_debuda_lib import read_words_from_device
 
 
-def pretty_print_overlay_blob_register_settings(elf, device_id, core_loc, blob_address):
+def pretty_print_overlay_blob_register_settings(context, device_id, core_loc, blob_address):
     """
     Given a blob address, print the register settings in a nice way.
     """
-    blob = tt_device.SERVER_IFC.pci_read32(
-        device_id, *core_loc.to("nocVirt"), 0, blob_address
-    )
+    blob = read_words_from_device(core_loc, blob_address, device_id, 1, context)[0]
     print(
         f"  Blob read from address 0x{blob_address:08x}: 0x{blob:08x}: ... <to be implemented> ..."
     )
 
 
-def print_info_blob(elf, device_id, core_loc):
+def print_info_blob(context, device_id, core_loc):
     """
     Get the blob address from the epoch info struct and print the register settings in a nice way.
     """
-    mem_reader = ELF.get_mem_reader(device_id=device_id, core_loc=core_loc)
-    num_input_streams = elf.read_path("brisc.EPOCH_INFO_PTR.num_inputs", mem_reader)[0]
+    mem_reader = ELF.get_mem_reader(context, device_id=device_id, core_loc=core_loc)
+    num_input_streams = context.elf.read_path("brisc.EPOCH_INFO_PTR.num_inputs", mem_reader)[0]
     print(f"Number of input streams: {num_input_streams}")
     for s in range(num_input_streams):
-        blob_address = elf.read_path(
+        blob_address = context.elf.read_path(
             f"brisc.EPOCH_INFO_PTR.inputs[{s}]->blob_start_addr", mem_reader
         )
         # print (f"  Input stream {s} blob address: 0x{blob_address[0]:08x}")
         pretty_print_overlay_blob_register_settings(
-            elf, device_id, core_loc, blob_address[0]
+            context, device_id, core_loc, blob_address[0]
         )  ## another user written plugin to dump these in a nice way
 
 
@@ -84,4 +82,4 @@ def run(cmd_text, context, ui_state: UIState = None):
     for device in device_array:
         for core_loc in core_array:
             util.PRINT(f"Reading from device {device.id()}, core {core_loc.to_str()}")
-            print_info_blob(context.elf, device.id(), core_loc)
+            print_info_blob(context, device.id(), core_loc)

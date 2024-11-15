@@ -7,7 +7,6 @@ import os
 import pickle
 
 from ttlens.tt_debuda_ifc_base import DbdCommunicator
-from ttlens import tt_device
 from ttlens import tt_util as util
 
 
@@ -287,12 +286,12 @@ class DbdCacheReader(DbdCache):
         return True
 
 
-def init_cache_writer(filepath="debuda_cache.pkl"):
-    tt_device.SERVER_IFC = DbdCacheThrough(tt_device.SERVER_IFC, filepath)
-    atexit.register(tt_device.SERVER_IFC.save)
-    return tt_device.SERVER_IFC
+def init_cache_writer(original_communicator, filepath="debuda_cache.pkl"):
+    communicator = DbdCacheThrough(original_communicator, filepath)
+    atexit.register(communicator.save)
+    return communicator
 
 
 def init_cache_reader(filepath="debuda_cache.pkl"):
-    tt_device.SERVER_IFC = DbdCacheReader(filepath)
-    return tt_device.SERVER_IFC
+    communicator = DbdCacheReader(filepath)
+    return communicator

@@ -55,12 +55,11 @@ command_metadata = {
 from ttlens.tt_uistate import UIState
 
 from ttlens import tt_commands
-from ttlens import tt_device
 from ttlens import tt_util as util
 from ttlens.tt_debug_risc import RiscDebug, RiscLoc, get_risc_name
 
 
-def run_riscv_command(device, loc, risc_id, args):
+def run_riscv_command(context, device, loc, risc_id, args):
     """
     Given a command trough args, run the corresponding RISC-V command
     """
@@ -68,7 +67,7 @@ def run_riscv_command(device, loc, risc_id, args):
     where = f"{get_risc_name(risc_id)} {loc.to_str('netlist')} [{device._id}]"
 
     noc_id = 0
-    risc = RiscDebug(RiscLoc(loc, noc_id, risc_id), tt_device.SERVER_IFC, verbose=verbose)
+    risc = RiscDebug(RiscLoc(loc, noc_id, risc_id), context.server_ifc, verbose=verbose)
 
     if args["halt"]:
         risc.enable_debug()
@@ -184,5 +183,5 @@ def run(cmd_text, context, ui_state: UIState = None):
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             for risc_id in dopt.for_each("--risc", context, ui_state):
-                run_riscv_command(device, loc, risc_id, dopt.args)
+                run_riscv_command(context, device, loc, risc_id, dopt.args)
     return None

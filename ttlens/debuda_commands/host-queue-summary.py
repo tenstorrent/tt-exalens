@@ -15,7 +15,6 @@ Examples:
 from tabulate import tabulate
 
 from ttlens import tt_util as util
-from ttlens import tt_device
 from ttlens.tt_netlist import Queue
 
 command_metadata = {
@@ -42,10 +41,10 @@ def run(cmd_txt, context, ui_state):
                 )  # Clear upper 2 bits, that carries host channel already.
                 dram_chan = buffer_data["dram_chan"]
                 chip_id = buffer_data["chip_id"][0]
-                rdptr = tt_device.SERVER_IFC.dma_buffer_read32(
+                rdptr = context.server_ifc.dma_buffer_read32(
                     chip_id, dram_addr, dram_chan
                 )
-                wrptr = tt_device.SERVER_IFC.dma_buffer_read32(
+                wrptr = context.server_ifc.dma_buffer_read32(
                     chip_id, dram_addr + 4, dram_chan
                 )
                 slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]

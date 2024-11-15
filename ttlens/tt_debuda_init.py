@@ -42,7 +42,7 @@ def init_debuda(
 		runtime_data_yaml_filename = find_runtime_data_yaml_filename(output_dir_path)
 	debuda_ifc = tt_debuda_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir_path, wanted_devices)
 	if cache_path:
-		debuda_ifc = tt_debuda_ifc_cache.init_cache_writer(cache_path)
+		debuda_ifc = tt_debuda_ifc_cache.init_cache_writer(debuda_ifc, cache_path)
 	
 	runtime_data_yaml, cluster_desc_yaml = get_yamls(debuda_ifc)
 
@@ -68,7 +68,7 @@ def init_debuda_remote(
 
 	debuda_ifc = tt_debuda_ifc.connect_to_server(ip_address, port)
 	if cache_path:
-		debuda_ifc = tt_debuda_ifc_cache.init_cache_writer(cache_path)
+		debuda_ifc = tt_debuda_ifc_cache.init_cache_writer(debuda_ifc, cache_path)
 
 	runtime_data_yaml, cluster_desc_yaml = get_yamls(debuda_ifc)
 

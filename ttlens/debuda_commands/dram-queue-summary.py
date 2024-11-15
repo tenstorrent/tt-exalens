@@ -14,9 +14,10 @@ Examples:
 
 from tabulate import tabulate
 
-from ttlens import tt_device
 from ttlens import tt_util as util
 from ttlens.tt_netlist import Queue
+from ttlens.tt_debuda_lib import read_words_from_device
+from ttlens.tt_coordinate import OnChipCoordinate
 
 command_metadata = {
     "long": "dram-queue",
@@ -47,12 +48,8 @@ def run(cmd_text, context, ui_state=None):
                 dram_chan = buffer_data["dram_chan"]
                 dram_addr = buffer_data["dram_addr"]
                 dram_loc = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
-                rdptr = tt_device.SERVER_IFC.pci_read32(
-                    device_id, dram_loc[0], dram_loc[1], dram_addr
-                )
-                wrptr = tt_device.SERVER_IFC.pci_read32(
-                    device_id, dram_loc[0], dram_loc[1], dram_addr + 4
-                )
+                rdptr = read_words_from_device(OnChipCoordinate(dram_loc[0], dram_loc[1]), dram_addr, device_id, 1, context)[0]
+                wrptr = read_words_from_device(OnChipCoordinate(dram_loc[0], dram_loc[1]), dram_addr + 4, device_id, 1, context)[0]
                 slot_size_bytes = buffer_data["size_tiles"] * buffer_data["tile_size"]
                 queue_size_bytes = slot_size_bytes * buffer_data["q_slots"]
                 occupancy = Queue.occupancy(buffer_data["q_slots"], wrptr, rdptr)
