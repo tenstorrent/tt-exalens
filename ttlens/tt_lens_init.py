@@ -21,7 +21,6 @@ GLOBAL_CONTEXT: Context = None
 
 def init_ttlens(
 		output_dir_path: str = None,
-		netlist_path: str = None,
 		wanted_devices: list = None,
 		cache_path: str = None,
 ) -> Context:
@@ -30,23 +29,18 @@ def init_ttlens(
 
 	Args:
 		output_dir_path (str, optional): Path to the Buda run output directory. If None, TTLens will be initialized in limited mode.
-		netlist_path (str, optional): Path to the Buda netlist file.
 		wanted_devices (list, optional): List of device IDs we want to connect to. If None, connect to all available devices.
 		caching_path (str, optional): Path to the cache file to write. If None, caching is disabled.
-		
+
 	Returns:
 		Context: TTLens context object.
 	"""
-	runtime_data_yaml_filename = None
-	if output_dir_path:
-		runtime_data_yaml_filename = find_runtime_data_yaml_filename(output_dir_path)
-	lens_ifc = tt_lens_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir_path, wanted_devices)
-	if cache_path:
-		lens_ifc = tt_lens_ifc_cache.init_cache_writer(lens_ifc, cache_path)
-	
-	runtime_data_yaml, cluster_desc_yaml = get_yamls(lens_ifc)
 
-	return load_context(lens_ifc, netlist_path, runtime_data_yaml, cluster_desc_yaml)
+	lens_ifc = tt_lens_ifc.init_pybind(output_dir_path, wanted_devices)
+	if cache_path:
+		lens_ifc = tt_lens_ifc_cache.init_cache_writer(cache_path)
+
+	return load_context(lens_ifc)
 
 
 def init_ttlens_remote(
@@ -70,21 +64,17 @@ def init_ttlens_remote(
 	if cache_path:
 		lens_ifc = tt_lens_ifc_cache.init_cache_writer(lens_ifc, cache_path)
 
-	runtime_data_yaml, cluster_desc_yaml = get_yamls(lens_ifc)
-
-	return load_context(lens_ifc, None, runtime_data_yaml, cluster_desc_yaml)
+	return load_context(lens_ifc)
 
 
 def init_ttlens_cached(
 		cache_path: str,
-		netlist_path: str = None,
 ):
 	"""Initializes TTLens internals by reading cached session data. There is no connection to the device.
 	Only cached commands are available.
 
 	Args:
 		cache_path (str): Path to the cache file.
-		netlist_path (str, optional): Path to the netlist file.
 
 	Returns:
 		Context: TTLens context object.
@@ -93,20 +83,13 @@ def init_ttlens_cached(
 		raise util.TTFatalException(f"Error: Cache file at {cache_path} does not exist.")
 	
 	lens_ifc = tt_lens_ifc_cache.init_cache_reader(cache_path)
-	runtime_data_yaml, cluster_desc_yaml = get_yamls(lens_ifc)
 
-	return load_context(lens_ifc, netlist_path, runtime_data_yaml, cluster_desc_yaml)
+	return load_context(lens_ifc)
 
 
-def get_yamls(lens_ifc: tt_lens_ifc.TTLensCommunicator) -> "tuple[util.YamlFile, util.YamlFile]":
+def get_cluster_desc_yaml(lens_ifc: tt_lens_ifc.TTLensCommunicator) -> "tuple[util.YamlFile, util.YamlFile]":
 	""" Get the runtime data and cluster description yamls through the TTLens interface.
 	"""
-	try:
-		runtime_data = lens_ifc.get_runtime_data()
-		runtime_data_yaml = util.YamlFile(lens_ifc, 'runtime_yaml', content=runtime_data)
-	except:
-		# It is OK to continue with limited functionality
-		runtime_data_yaml = None
 
 	try:
 		cluster_desc_path = lens_ifc.get_cluster_description()
@@ -114,17 +97,14 @@ def get_yamls(lens_ifc: tt_lens_ifc.TTLensCommunicator) -> "tuple[util.YamlFile,
 	except:
 		raise util.TTFatalException("TTLens does not support cluster description. Cannot connect to device.")
 
-	return runtime_data_yaml, cluster_desc_yaml
+	return cluster_desc_yaml
 
 
 def load_context(
-		server_ifc: tt_lens_ifc.TTLensCommunicator, 
-		netlist_filepath: str, 
-		runtime_data_yaml: util.YamlFile, 
-		cluster_desc_yaml: util.YamlFile
+		server_ifc: tt_lens_ifc.TTLensCommunicator
 ) -> Context:
     """ Load the TTLens context object with specified parameters. """
-    context = LimitedContext(server_ifc, cluster_desc_yaml)
+    context = LimitedContext(server_ifc, get_cluster_desc_yaml(server_ifc))
 
     global GLOBAL_CONTEXT
     GLOBAL_CONTEXT = context
@@ -144,23 +124,6 @@ def set_active_context(context: Context) -> None:
 	"""
 	global GLOBAL_CONTEXT
 	GLOBAL_CONTEXT = context
-
-
-def find_runtime_data_yaml_filename(output_dir: str = None) -> Union[str, None]:
-	""" Find the runtime data yaml file in the output directory. If directory is not specified, try to find the most recent Buda output directory.
-
-	Args:	
-		output_dir(str, optional): Path to the output directory.
-	"""
-	if not output_dir:
-		return None
-	
-	runtime_data_yaml_filename = f"{output_dir}/runtime_data.yaml"
-	if not os.path.exists(runtime_data_yaml_filename):
-		raise util.TTFatalException(f"Error: Yaml file at {runtime_data_yaml_filename} does not exist.")
-
-	return runtime_data_yaml_filename
-
 
 def locate_most_recent_build_output_dir() -> Union[str, None]:
 	""" Try to find a default output directory. """

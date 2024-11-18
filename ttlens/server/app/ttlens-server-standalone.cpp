@@ -17,7 +17,6 @@ namespace fs = std::experimental::filesystem;
 struct server_config {
    public:
     int port;
-    std::string runtime_data_yaml_path;
     std::string run_dirpath;
     std::vector<uint8_t> wanted_devices;
 };
@@ -41,7 +40,7 @@ int run_ttlens_server(const server_config& config) {
         // Try to open only wanted devices
         try {
             implementation =
-                tt::lens::umd_with_open_implementation::open({}, config.runtime_data_yaml_path, config.wanted_devices);
+                tt::lens::umd_with_open_implementation::open({}, config.wanted_devices);
         } catch (std::runtime_error& error) {
             log_custom(tt::Logger::Level::Error, tt::LogTTLens, "Cannot open device: {}.", error.what());
             return 1;
@@ -86,15 +85,7 @@ server_config parse_args(int argc, char** argv) {
 
     int i = 2;
     while (i < argc) {
-        if (strcmp(argv[i], "-y") == 0) {
-            i += 1;
-            if (i >= argc) {
-                log_error("Expected path to yaml file after -y");
-                return {};
-            }
-            config.runtime_data_yaml_path = argv[i];
-            i += 1;
-        } else if (strcmp(argv[i], "-r") == 0) {
+        if (strcmp(argv[i], "-r") == 0) {
             i += 1;
             if (i >= argc) {
                 log_error("Expected path to run directory after -r");
@@ -148,18 +139,6 @@ int main(int argc, char** argv) {
 
     if (argc == 2) {
         return run_ttlens_server(config);
-    }
-
-    // Check if argv[2] is a valid filename for the runtime_data.yaml
-    std::ifstream f(config.runtime_data_yaml_path);
-    if (!f.good() && !config.runtime_data_yaml_path.empty()) {
-        // f must be a file, not a directory
-        if (fs::is_directory(argv[2])) {
-            log_error("File {} is a directory. Exiting.", argv[2]);
-            return 1;
-        }
-        log_error("File {} does not exist. Exiting.", argv[2]);
-        return 1;
     }
 
     return run_ttlens_server(config);

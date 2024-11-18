@@ -53,8 +53,6 @@ static void call_python(const std::string& python_args, const std::string& expec
 
 TEST(ttlens_python_communication, ping) { call_python("ping", "- type: 1\n"); }
 
-TEST(ttlens_python_communication, get_runtime_data) { call_python("get_runtime_data", "- type: 101\n"); }
-
 TEST(ttlens_python_communication, get_cluster_description) { call_python("get_cluster_description", "- type: 102\n"); }
 
 TEST(ttlens_python_communication, get_device_ids) { call_python("get_device_ids", "- type: 18\n"); }

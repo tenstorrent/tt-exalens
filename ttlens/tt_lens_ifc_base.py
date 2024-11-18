@@ -45,10 +45,6 @@ class TTLensCommunicator(ABC):
         pass
 
     @abstractmethod
-    def get_runtime_data(self):
-        pass
-
-    @abstractmethod
     def get_cluster_description(self):
         pass
 

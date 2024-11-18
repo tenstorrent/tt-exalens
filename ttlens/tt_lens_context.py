@@ -5,8 +5,8 @@ from abc import abstractmethod
 from functools import cached_property
 from typing import Dict, Optional, Set
 from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens import tt_util as util, tt_netlist
-from ttlens.tt_firmware import ELF, BUDA_FW_VARS
+from ttlens import tt_util as util
+from ttlens.tt_firmware import ELF
 
 # All-encompassing structure representing a TTLens context
 class Context:
@@ -52,10 +52,6 @@ class Context:
         return self._cluster_desc
 
     @cached_property
-    def is_buda(self):
-        return False
-
-    @cached_property
     def device_ids(self) -> Set[int]:
         try:
             device_ids = self.server_ifc.get_device_ids()
@@ -73,16 +69,6 @@ class Context:
     @property
     @abstractmethod
     def elf(self):
-        raise util.TTException(f"We are running with limited functionality, elf files are not available.")
-
-    @property
-    @abstractmethod
-    def epoch_id_address(self):
-        raise util.TTException(f"We are running with limited functionality, elf files are not available.")
-
-    @property
-    @abstractmethod
-    def eth_epoch_id_address(self):
         raise util.TTException(f"We are running with limited functionality, elf files are not available.")
 
     @abstractmethod

@@ -17,12 +17,6 @@ def check_not_implemented_response(server_command: Callable[[], Any]):
     except ttlens_server_not_supported:
         print("pass")
 
-
-def empty_get_runtime_data():
-    global server
-    check_not_implemented_response(lambda: server.get_runtime_data())
-
-
 def empty_get_cluster_description():
     global server
     check_not_implemented_response(lambda: server.get_cluster_description())
@@ -151,13 +145,6 @@ def jtag_write32_axi_jtag_read32_axi():
     server.jtag_write32_axi(1, 123456, 987654)
     read = server.jtag_read32_axi(1, 123456)
     print("pass" if read == 987654 else "fail")
-
-
-def get_runtime_data():
-    global server
-    read = server.get_runtime_data()
-    print("pass" if read == "get_runtime_data()" else "fail")
-
 
 def get_cluster_description():
     global server

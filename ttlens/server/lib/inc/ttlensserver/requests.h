@@ -36,8 +36,7 @@ enum class request_type : uint8_t {
 
     // Runtime requests
     pci_read_tile = 100,
-    get_runtime_data,
-    get_cluster_description,
+    get_cluster_description = 102,
 
     // File server requests
     get_file = 200,

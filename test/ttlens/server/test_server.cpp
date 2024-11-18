@@ -118,10 +118,7 @@ class yaml_not_implemented_implementation : public ttlens_implementation {
                           "\n  size: " + std::to_string(size) + "\n  data_format: " + std::to_string(data_format));
         return {};
     }
-    std::optional<std::string> get_runtime_data() override {
-        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::get_runtime_data)));
-        return {};
-    }
+
     std::optional<std::string> get_cluster_description() override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::get_cluster_description)));
         return {};
@@ -248,10 +245,6 @@ TEST(ttlens_server, ping) {
     ASSERT_TRUE(server->is_connected());
     auto response = send_message(zmq::const_buffer(&request, sizeof(request))).to_string();
     ASSERT_EQ(response, std::string("PONG"));
-}
-
-TEST(ttlens_server, get_runtime_data) {
-    test_not_implemented_request(tt::lens::request{tt::lens::request_type::get_runtime_data}, "- type: 101");
 }
 
 TEST(ttlens_server, get_cluster_description) {

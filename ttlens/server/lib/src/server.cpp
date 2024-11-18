@@ -61,9 +61,6 @@ void tt::lens::server::process(const tt::lens::request& base_request) {
                                                   request.size, request.data_format));
             break;
         }
-        case tt::lens::request_type::get_runtime_data:
-            respond(implementation->get_runtime_data());
-            break;
         case tt::lens::request_type::get_cluster_description:
             respond(implementation->get_cluster_description());
             break;

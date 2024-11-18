@@ -23,11 +23,6 @@ def ping():
     check_response(server_communication.ping(), "- type: 1")
 
 
-def get_runtime_data():
-    global server_communication
-    check_response(server_communication.get_runtime_data(), "- type: 101")
-
-
 def get_cluster_description():
     global server_communication
     check_response(server_communication.get_cluster_description(), "- type: 102")
