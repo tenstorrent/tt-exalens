@@ -8,7 +8,7 @@ from ttlens import tt_lens_ifc
 from ttlens import tt_lens_ifc_cache
 from ttlens import tt_util as util
 
-from ttlens.tt_lens_context import Context, BudaContext, LimitedContext
+from ttlens.tt_lens_context import Context, LimitedContext
 
 """
 GLOBAL_CONTEXT is a convenience variable to store fallback TTLens context object.
@@ -124,12 +124,8 @@ def load_context(
 		cluster_desc_yaml: util.YamlFile
 ) -> Context:
     """ Load the TTLens context object with specified parameters. """
-    run_dirpath = server_ifc.get_run_dirpath()
-    if run_dirpath is None or runtime_data_yaml is None:
-        context = LimitedContext(server_ifc, cluster_desc_yaml)
-    else:
-        context = BudaContext(server_ifc, netlist_filepath, run_dirpath, runtime_data_yaml, cluster_desc_yaml)   
-    
+    context = LimitedContext(server_ifc, cluster_desc_yaml)
+
     global GLOBAL_CONTEXT
     GLOBAL_CONTEXT = context
 
