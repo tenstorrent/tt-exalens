@@ -14,7 +14,7 @@ from collections import namedtuple
 from abc import ABC, abstractmethod
 from typing import Dict
 from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
-from ttlens.tt_debuda_lib import read_words_from_device, write_words_to_device
+from ttlens.tt_debuda_lib import read_word_from_device, write_words_to_device
 
 #
 # Communication with Buda (or debuda-server) over sockets (ZMQ).
@@ -39,7 +39,7 @@ def dump_memory(context, device_id, loc, addr, size):
         row = []
         for j in range(0, 16):
             if addr + k * 64 + j * 4 < addr + size:
-                val = read_words_from_device(loc, addr + k * 64 + j * 4, device_id, 1, context)[0]
+                val = read_word_from_device(loc, addr + k * 64 + j * 4, device_id, context)
                 row.append(f"0x{val:08x}")
         s = " ".join(row)
         print(f"{loc.to_str()} 0x{(addr + k*64):08x} => {s}")
@@ -614,7 +614,7 @@ class Device(TTObject):
                     + thread_idx * DEBUG_MAILBOX_BUF_SIZE
                     + reg_idx * 4
                 )
-                val = read_words_from_device(loc, reg_addr, self.id(), 1, self._context)[0]
+                val = read_word_from_device(loc, reg_addr, self.id(), self._context)
                 debug_tables[thread_idx].append(
                     {"lo_val": val & 0xFFFF, "hi_val": (val >> 16) & 0xFFFF}
                 )
@@ -753,16 +753,16 @@ class Device(TTObject):
         sig_sel = 0xFF
         rd_sel = 0
         write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
-        test_val1 = read_words_from_device(loc, 0xFFB1205C, self.id(), 1, self._context)[0]
+        test_val1 = read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
         rd_sel = 1
         write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
-        test_val2 = read_words_from_device(loc, 0xFFB1205C, self.id(), 1, self._context)[0]
+        test_val2 = read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
 
         rd_sel = 0
         sig_sel = 2 * self.SIG_SEL_CONST
         write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
         brisc_pc = (
-            read_words_from_device(loc, 0xFFB1205C, self.id(), 1, self._context)[0]
+            read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
             & pc_mask
         )
 
@@ -776,7 +776,7 @@ class Device(TTObject):
         sig_sel = 2 * 10
         write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
         trisc0_pc = (
-            read_words_from_device(loc, 0xFFB1205C, self.id(), 1, self._context)[0]
+            read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
             & pc_mask
         )
 
@@ -784,7 +784,7 @@ class Device(TTObject):
         sig_sel = 2 * 11
         write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
         trisc1_pc = (
-            read_words_from_device(loc, 0xFFB1205C, self.id(), 1, self._context)[0]
+            read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
             & pc_mask
         )
 
@@ -792,7 +792,7 @@ class Device(TTObject):
         sig_sel = 2 * 12
         write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
         trisc2_pc = (
-            read_words_from_device(loc, 0xFFB1205C, self.id(), 1, self._context)[0]
+            read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
             & pc_mask
         )
 
@@ -813,7 +813,7 @@ class Device(TTObject):
     def read_print_noc_reg(self, loc, noc_id, reg_name, reg_index):
         assert type(loc) == OnChipCoordinate
         reg_addr = 0xFFB20000 + (noc_id * 0x10000) + 0x200 + (reg_index * 4)
-        val = read_words_from_device(loc, reg_addr, self.id(), 1, self._context)[0]
+        val = read_word_from_device(loc, reg_addr, self.id(), self._context)
         print(
             f"Tensix {loc.to_str()} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})"
         )
@@ -823,7 +823,7 @@ class Device(TTObject):
     def get_stream_reg_field(self, loc, stream_id, reg_index, start_bit, num_bits):
         assert type(loc) == OnChipCoordinate
         reg_addr = 0xFFB40000 + (stream_id * 0x1000) + (reg_index * 4)
-        val = read_words_from_device(loc, reg_addr, self.id(), 1, self._context)[0]
+        val = read_word_from_device(loc, reg_addr, self.id(), self._context)
         mask = (1 << num_bits) - 1
         val = (val >> start_bit) & mask
         return val
@@ -837,7 +837,7 @@ class Device(TTObject):
         assert type(loc) == OnChipCoordinate
         if loc in self.get_block_locations("functional_workers"):
             epoch = (
-                read_words_from_device(loc, self.EPOCH_ID_ADDR, self.id(), 1, self._context)[0]
+                read_word_from_device(loc, self.EPOCH_ID_ADDR, self.id(), self._context)
                 & 0xFF
             )
         else:
@@ -847,7 +847,7 @@ class Device(TTObject):
             # = 2030c
             # epoch = SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), 0x2030c) & 0xFF
             epoch = (
-                read_words_from_device(loc, self.EPOCH_ID_ADDR, self.id(), 1, self._context)[0]
+                read_word_from_device(loc, self.EPOCH_ID_ADDR, self.id(), self._context)
                 & 0xFF
             )
 
@@ -915,14 +915,14 @@ class Device(TTObject):
     def is_gsync_hung(self, loc):
         assert type(loc) == OnChipCoordinate
         return (
-            read_words_from_device(loc, 0xFFB2010C, self.id(), 1, self._context)[0]
+            read_word_from_device(loc, 0xFFB2010C, self.id(), self._context)
             == 0xB0010000
         )
 
     def is_ncrisc_done(self, loc):
         assert type(loc) == OnChipCoordinate
         return (
-            read_words_from_device(loc, 0xFFB2010C, self.id(), 1, self._context)[0]
+            read_word_from_device(loc, 0xFFB2010C, self.id(), self._context)
             == 0x1FFFFFF1
         )
 
@@ -1130,7 +1130,7 @@ class Device(TTObject):
         status_descs = {}
         for loc in coords:
             status_descs[loc] = self.get_status_register_desc(
-                addr, read_words_from_device(loc, addr, self.id(), 1, self._context)[0]
+                addr, read_word_from_device(loc, addr, self.id(), self._context)
             )
 
         # Print register status
@@ -1148,10 +1148,10 @@ class Device(TTObject):
         return status_descs_rows
 
     def pci_read32(self, x, y, noc_id, reg_addr):
-        return read_words_from_device(OnChipCoordinate(x, y), reg_addr, self.id(), 1, self._context)[0]
+        return read_word_from_device(OnChipCoordinate(x, y, "noc0", self), reg_addr, self.id(), self._context)
 
     def pci_write32(self, x, y, noc_id, reg_addr, data):
-        return write_words_to_device(OnChipCoordinate(x, y), reg_addr, data, self.id(), self._context)
+        return write_words_to_device(OnChipCoordinate(x, y, "noc0", self), reg_addr, data, self.id(), self._context)
 
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         return self._context.server_ifc.pci_read_tile(
@@ -1173,7 +1173,7 @@ class Device(TTObject):
             write_words_to_device(loc, RISC_SOFT_RESET_0_ADDR, ALL_SOFT_RESET, self.id(), self._context)
 
             # Check what we wrote
-            rst_reg = read_words_from_device(loc, RISC_SOFT_RESET_0_ADDR, self.id(), 1, self._context)[0]
+            rst_reg = read_word_from_device(loc, RISC_SOFT_RESET_0_ADDR, self.id(), self._context)
             if rst_reg != ALL_SOFT_RESET:
                 util.ERROR (f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 

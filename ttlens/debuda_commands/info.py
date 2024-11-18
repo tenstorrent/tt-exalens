@@ -41,7 +41,7 @@ from ttlens import tt_util as util
 from ttlens.tt_firmware import ELF
 from ttlens.tt_object import DataArray
 from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_debuda_lib import read_words_from_device
+from ttlens.tt_debuda_lib import read_word_from_device
 
 
 def print_access_path(context, device, core_loc, elf, path, print_sorted, print_as_tree, print_operator):
@@ -93,7 +93,7 @@ def print_access_path(context, device, core_loc, elf, path, print_sorted, print_
                 da = DataArray(f"L1-0x{addr:08x}-{size}", 4)
                 num_words = (size + 3) // 4
                 for i in range(num_words):
-                    data = read_words_from_device(core_loc, addr + 4 * i, device.id(), 1, context)[0]
+                    data = read_word_from_device(core_loc, addr + 4 * i, device.id(), context)
                     da.data.append(data)
 
                 if member_short_name == "active_streams":

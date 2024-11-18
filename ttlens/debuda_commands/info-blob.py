@@ -30,14 +30,14 @@ from ttlens.tt_uistate import UIState
 from ttlens import tt_util as util
 from ttlens.tt_firmware import ELF
 from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_debuda_lib import read_words_from_device
+from ttlens.tt_debuda_lib import read_word_from_device
 
 
 def pretty_print_overlay_blob_register_settings(context, device_id, core_loc, blob_address):
     """
     Given a blob address, print the register settings in a nice way.
     """
-    blob = read_words_from_device(core_loc, blob_address, device_id, 1, context)[0]
+    blob = read_word_from_device(core_loc, blob_address, device_id, context)
     print(
         f"  Blob read from address 0x{blob_address:08x}: 0x{blob:08x}: ... <to be implemented> ..."
     )
