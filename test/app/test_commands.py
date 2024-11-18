@@ -14,7 +14,7 @@ import subprocess
 import re
 import time
 
-from test.app.test_umd_debuda import DbdTestRunner,UmdDbdOutputVerifier
+from test.app.test_umd_ttlens import TTLensTestRunner, UmdTTLensOutputVerifier
 
 class CommandTests(unittest.TestCase):
     def check_written_lines(self,lines, match_hex):
@@ -35,7 +35,7 @@ class CommandTests(unittest.TestCase):
         return True  
 
     def test_bwxy_command(self):
-        runner = DbdTestRunner(UmdDbdOutputVerifier())
+        runner = TTLensTestRunner(UmdTTLensOutputVerifier())
         runner.start(self)
 
         address = "1-1"
