@@ -5,9 +5,9 @@
 import os
 import time
 from typing import Union, List
-from ttlens.tt_debuda_context import Context
+from ttlens.tt_lens_context import Context
 from ttlens.tt_util import TTException
-from ttlens.tt_debuda_lib_utils import check_context, arc_read, arc_write
+from ttlens.tt_lens_lib_utils import check_context, arc_read, arc_write
 
 def arc_dbg_fw_get_buffer_start_addr():
     return 32
@@ -27,7 +27,7 @@ def arc_dbg_fw_send_message(message, arg0: int = 0, arg1: int = 0, device_id: in
         arg0 (int, default 0): First argument to the message.
         arg1 (int, default 0): Second argument to the message.
         device_id (int, default 0): ID number of device to send message to.
-        context (Context, optional): Debuda context object used for interaction with device. If None, global context is used and potentially initialized.
+        context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
     # // Message format in scratch_2:
     # // +-----------+-----------+-----------+-----------+

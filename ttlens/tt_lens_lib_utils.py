@@ -1,22 +1,22 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-# Core utility functions used by tt_debuda_lib and other modules
-from ttlens import tt_debuda_init
-from ttlens.tt_debuda_context import Context
+# Core utility functions used by tt_lens_lib and other modules
+from ttlens import tt_lens_init
+from ttlens.tt_lens_context import Context
 from ttlens.tt_util import TTException
 
 def check_context(context: Context = None) -> Context:
     """ Function to initialize context if not provided. By default, it starts a local
-    Debuda session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
+    TTLens session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
     that the context can be reused in calls to other functions.
     """
     if context is not None:
         return context
     
-    if not tt_debuda_init.GLOBAL_CONTEXT:
-        tt_debuda_init.GLOBAL_CONTEXT = tt_debuda_init.init_debuda()
-    return tt_debuda_init.GLOBAL_CONTEXT
+    if not tt_lens_init.GLOBAL_CONTEXT:
+        tt_lens_init.GLOBAL_CONTEXT = tt_lens_init.init_ttlens()
+    return tt_lens_init.GLOBAL_CONTEXT
 
 def validate_addr(addr: int) -> None:    
     if addr < 0: raise TTException("addr must be greater than or equal to 0.")

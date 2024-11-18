@@ -25,7 +25,7 @@ from ttlens.tt_arc_dbg_fw import (
     arc_dbg_fw_command,
     NUM_LOG_CALLS_OFFSET
 )
-from ttlens.tt_debuda_lib_utils import arc_read
+from ttlens.tt_lens_lib_utils import arc_read
 
 def invalid_argument_decorator(func):
     @wraps(func)
