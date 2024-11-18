@@ -124,10 +124,6 @@ class TTLensCacheThrough(TTLensCache):
         return self.communicator.get_binary(binary_path)
 
     @cache_decorator
-    def get_run_dirpath(self) -> str:
-        return self.communicator.get_run_dirpath()
-
-    @cache_decorator
     def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
         return self.communicator.jtag_read32(chip_id, noc_x, noc_y, address)
 
@@ -254,10 +250,6 @@ class TTLensCacheReader(TTLensCache):
 
     @read_cached_binary_decorator
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
-        pass
-
-    @read_decorator
-    def get_run_dirpath(self) -> str:
         pass
 
     @read_decorator

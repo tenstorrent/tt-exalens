@@ -73,10 +73,6 @@ class TTLensCommunicator(ABC):
         pass
 
     @abstractmethod
-    def get_run_dirpath(self) -> str:
-        pass
-
-    @abstractmethod
     def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
         pass
 

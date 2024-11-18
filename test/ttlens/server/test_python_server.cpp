@@ -22,8 +22,6 @@ class simulation_server : public tt::lens::server {
         std::string response = "get_file(" + path + ")";
         return std::vector<uint8_t>(response.begin(), response.end());
     }
-
-    std::optional<std::string> get_run_dirpath() override { return "get_run_dirpath"; }
 };
 
 // Simple implementation of tt::lens::ttlens_implementation that simulates real implementation.
@@ -173,8 +171,6 @@ TEST(ttlens_python_empty_server, pci_write) { call_python_empty_server("empty_pc
 
 TEST(ttlens_python_empty_server, get_file) { call_python_empty_server("empty_get_file"); }
 
-TEST(ttlens_python_empty_server, get_run_dirpath) { call_python_empty_server("empty_get_run_dirpath"); }
-
 TEST(ttlens_python_server, pci_write32_pci_read32) { call_python_server("pci_write32_pci_read32"); }
 
 TEST(ttlens_python_server, pci_write_pci_read) { call_python_server("pci_write_pci_read"); }
@@ -202,8 +198,6 @@ TEST(ttlens_python_server, get_device_arch) { call_python_server("get_device_arc
 TEST(ttlens_python_server, get_device_soc_description) { call_python_server("get_device_soc_description"); }
 
 TEST(ttlens_python_server, get_file) { call_python_server("get_file"); }
-
-TEST(ttlens_python_server, get_run_dirpath) { call_python_server("get_run_dirpath"); }
 
 TEST(ttlens_python_empty_server, jtag_read32) { call_python_empty_server("empty_jtag_read32"); }
 

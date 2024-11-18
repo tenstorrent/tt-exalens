@@ -17,7 +17,6 @@ namespace fs = std::experimental::filesystem;
 struct server_config {
    public:
     int port;
-    std::string run_dirpath;
     std::vector<uint8_t> wanted_devices;
 };
 
@@ -52,7 +51,7 @@ int run_ttlens_server(const server_config& config) {
         // Spawn server
         std::unique_ptr<tt::lens::server> server;
         try {
-            server = std::make_unique<tt::lens::server>(std::move(implementation), config.run_dirpath);
+            server = std::make_unique<tt::lens::server>(std::move(implementation));
             server->start(config.port);
             log_info(tt::LogTTLens, "Debug server started on {}.", connection_address);
         } catch (...) {
@@ -85,15 +84,7 @@ server_config parse_args(int argc, char** argv) {
 
     int i = 2;
     while (i < argc) {
-        if (strcmp(argv[i], "-r") == 0) {
-            i += 1;
-            if (i >= argc) {
-                log_error("Expected path to run directory after -r");
-                return {};
-            }
-            config.run_dirpath = argv[i];
-            i += 1;
-        } else if (strcmp(argv[i], "-d") == 0) {
+        if (strcmp(argv[i], "-d") == 0) {
             i++;
             if (i >= argc) {
                 log_error("Expected space-delimited list of integer ids after -d");
@@ -123,7 +114,7 @@ server_config parse_args(int argc, char** argv) {
 int main(int argc, char** argv) {
     if (argc < 2) {
         log_error(
-            "Need arguments: <port> [-y path_to_yaml_file] [-r <run_dirpath>] [-d <device_id1> [<device_id2> ... "
+            "Need arguments: <port> [-y path_to_yaml_file] [-d <device_id1> [<device_id2> ... "
             "<device_idN>]]");
         return 1;
     }

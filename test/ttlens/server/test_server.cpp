@@ -44,14 +44,6 @@ class yaml_not_implemented_server : public server {
         }
     }
 
-    std::optional<std::string> get_run_dirpath() override {
-        if (enable_yaml) {
-            send_yaml("- type: 201");
-            return {};
-        } else
-            return {};
-    }
-
     bool is_yaml_enabled() const { return enable_yaml; }
 };
 
@@ -194,7 +186,7 @@ class yaml_not_implemented_implementation : public ttlens_implementation {
 };
 
 yaml_not_implemented_server::yaml_not_implemented_server(bool enable_yaml)
-    : server(std::make_unique<yaml_not_implemented_implementation>(this), "run_dirpath"), enable_yaml(enable_yaml) {}
+    : server(std::make_unique<yaml_not_implemented_implementation>(this)), enable_yaml(enable_yaml) {}
 
 }  // namespace tt::lens
 
@@ -363,8 +355,4 @@ TEST(ttlens_server, get_file) {
     request->size = filename.size();
     for (size_t i = 0; i < filename.size(); i++) request->data[i] = filename[i];
     test_not_implemented_request(*request, expected_response, request_data.size());
-}
-
-TEST(ttlens_server, get_buda_run_dirpath) {
-    test_not_implemented_request(tt::lens::request{tt::lens::request_type::get_buda_run_dirpath}, "- type: 201");
 }

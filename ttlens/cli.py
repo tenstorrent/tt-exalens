@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-lens [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [<output_dir>]
-  tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [<output_dir>]
+  tt-lens [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test]
+  tt-lens --server [--port=<port>] [--devices=<devices>] [--test]
   tt-lens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
-  tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test] [<output_dir>]
+  tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test]
   tt-lens -h | --help
 
 Options:
@@ -34,9 +34,6 @@ Description:
     3. Cached mode: The user can use a cache file from previous TTLens run. This is useful for debugging without a connection to the device. Writing is disabled in this mode.
   
   Passing the --server flag will start a TTLens server. The server will listen on the specified port (default 5555) for incoming connections.
-
-Arguments:
-  output_dir                     Output directory of a Buda run. If left blank, the most recent subdirectory of tt_build/ will be used.
 """
 
 try:
@@ -403,18 +400,6 @@ def main():
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
     util.VERBOSE(f"Verbosity level: {Verbosity.get().name} ({Verbosity.get().value})")
 
-    output_dir = args["<output_dir>"]
-    if not output_dir and not args["--remote"] and not args["--cached"]:
-        output_dir = tt_lens_init.locate_most_recent_build_output_dir()
-        if output_dir:
-            util.INFO(
-                f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{output_dir}"
-            )
-        else:
-            util.VERBOSE(
-                f"Output directory (output_dir) was not supplied and cannot be determined automatically. Continuing with limited functionality..."
-            )
-
     wanted_devices = None
     if args["--devices"]:
         wanted_devices = args["--devices"].split(",")
@@ -429,7 +414,6 @@ def main():
         print(f"Starting TTLens server at {args['--port']}")
         ttlens_server = tt_lens_server.start_server(
             args["--port"],
-            output_dir,
             wanted_devices
         )
         if args["--test"]:
@@ -448,7 +432,7 @@ def main():
         util.INFO(f"Connecting to TTLens server at {server_ip}:{server_port}")
         context = tt_lens_init.init_ttlens_remote(server_ip, int(server_port), cache_path)
     else:
-        context = tt_lens_init.init_ttlens(output_dir, wanted_devices, cache_path)
+        context = tt_lens_init.init_ttlens(wanted_devices, cache_path)
 
     # Main function
     exit_code = main_loop(args, context)

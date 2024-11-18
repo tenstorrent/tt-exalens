@@ -97,10 +97,6 @@ void tt::lens::server::process(const tt::lens::request& base_request) {
                                             request.arg1, request.timeout));
             break;
         }
-        case tt::lens::request_type::get_buda_run_dirpath: {
-            respond(get_run_dirpath());
-            break;
-        }
 
         case tt::lens::request_type::jtag_read32: {
             auto& request = static_cast<const tt::lens::jtag_read32_request&>(base_request);
@@ -178,5 +174,3 @@ std::optional<std::vector<uint8_t>> tt::lens::server::get_file(const std::string
     }
     return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), {});
 }
-
-std::optional<std::string> tt::lens::server::get_run_dirpath() { return run_dirpath; }

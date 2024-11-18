@@ -20,7 +20,6 @@ GLOBAL_CONTEXT: Context = None
 
 
 def init_ttlens(
-		output_dir_path: str = None,
 		wanted_devices: list = None,
 		cache_path: str = None,
 ) -> Context:
@@ -28,7 +27,6 @@ def init_ttlens(
 	Interfacing device is local, through pybind.
 
 	Args:
-		output_dir_path (str, optional): Path to the Buda run output directory. If None, TTLens will be initialized in limited mode.
 		wanted_devices (list, optional): List of device IDs we want to connect to. If None, connect to all available devices.
 		caching_path (str, optional): Path to the cache file to write. If None, caching is disabled.
 
@@ -36,7 +34,7 @@ def init_ttlens(
 		Context: TTLens context object.
 	"""
 
-	lens_ifc = tt_lens_ifc.init_pybind(output_dir_path, wanted_devices)
+	lens_ifc = tt_lens_ifc.init_pybind(wanted_devices)
 	if cache_path:
 		lens_ifc = tt_lens_ifc_cache.init_cache_writer(cache_path)
 

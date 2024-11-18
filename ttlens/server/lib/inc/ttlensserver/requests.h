@@ -40,7 +40,6 @@ enum class request_type : uint8_t {
 
     // File server requests
     get_file = 200,
-    get_buda_run_dirpath,
 };
 
 // Structures for receiving requests

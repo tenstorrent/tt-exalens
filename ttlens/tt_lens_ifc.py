@@ -43,7 +43,6 @@ class ttlens_server_request_type(Enum):
 
     # File requests
     get_file = 200
-    get_buda_run_dirpath = 201
 
 
 class ttlens_server_bad_request(Exception):
@@ -247,12 +246,6 @@ class ttlens_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def get_run_dirpath(self):
-        self._socket.send(
-            bytes([ttlens_server_request_type.get_buda_run_dirpath.value])
-        )
-        return self._check(self._socket.recv())
-
     def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
         self._socket.send(
             struct.pack(
@@ -435,14 +428,6 @@ class ttlens_client(TTLensCommunicator):
         binary_content = self._communication.get_file(binary_path)
         return io.BytesIO(binary_content)
 
-    def get_run_dirpath(self) -> str:
-        run_dirpath = self.parse_string(
-            self._communication.get_run_dirpath()
-        )
-        if run_dirpath != "":
-            return run_dirpath
-        return None
-
     def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
         return self.parse_uint32_t(
             self._communication.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
@@ -482,11 +467,10 @@ import ttlens_pybind
 
 
 class TTLensPybind(TTLensCommunicator):
-    def __init__(self, run_dirpath: str = None, wanted_devices: list = []):
+    def __init__(self, wanted_devices: list = []):
         super().__init__()
         if not ttlens_pybind.open_device(binary_path, wanted_devices):
             raise Exception("Failed to open device using pybind library")
-        self._run_dirpath = run_dirpath
 
     def _check_result(self, result):
         if result is None:
@@ -563,17 +547,14 @@ class TTLensPybind(TTLensCommunicator):
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         return open(binary_path, 'rb')
 
-    def get_run_dirpath(self) -> str:
-        return self._run_dirpath
-
     def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
         return self._check_result(ttlens_pybind.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout))
 
-def init_pybind(run_dirpath=None, wanted_devices=None):
+def init_pybind(wanted_devices=None):
     if not wanted_devices:
         wanted_devices = []
 
-    communicator = TTLensPybind(run_dirpath, wanted_devices)
+    communicator = TTLensPybind(wanted_devices)
     util.VERBOSE("Device opened successfully.")
     return communicator
 

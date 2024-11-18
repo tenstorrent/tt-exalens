@@ -106,8 +106,6 @@ TEST(ttlens_python_communication, pci_write) {
 
 TEST(ttlens_python_communication, get_file) { call_python("get_file", "- type: 200\n  size: 9\n  path: test_file\n"); }
 
-TEST(ttlens_python_communication, get_buda_run_dirpath) { call_python("get_buda_run_dirpath", "- type: 201\n"); }
-
 TEST(ttlens_python_communication, jtag_read32) {
     call_python("jtag_read32", "- type: 50\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n");
 }

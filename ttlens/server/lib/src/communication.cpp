@@ -73,7 +73,6 @@ void tt::lens::communication::request_loop() {
                     case request_type::ping:
                     case request_type::get_cluster_description:
                     case request_type::get_device_ids:
-                    case request_type::get_buda_run_dirpath:
                         invalid_message = message.size() != sizeof(request);
                         break;
 

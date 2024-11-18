@@ -129,13 +129,6 @@ def get_file():
         "- type: 200\n  size: 9\n  path: test_file",
     )
 
-def get_buda_run_dirpath():
-    global server_communication
-    check_response(
-        server_communication.get_run_dirpath(),
-        "- type: 201",
-    )
-
 def jtag_read32():
     global server_communication
     check_response(

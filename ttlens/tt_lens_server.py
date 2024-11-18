@@ -8,16 +8,16 @@ import signal
 import subprocess
 import time
 
-def start_server(port: int, run_dirpath: str = None, wanted_devices: "List[int]" = None) -> subprocess.Popen:
+def start_server(port: int, wanted_devices: "List[int]" = None) -> subprocess.Popen:
     if util.is_port_available(int(port)):
-        ttlens_server = spawn_standalone_ttlens_stub(port, run_dirpath, wanted_devices)
+        ttlens_server = spawn_standalone_ttlens_stub(port, wanted_devices)
         if ttlens_server is None:
             raise util.TTFatalException("Could not start ttlens-server.")
         return ttlens_server
     
     raise util.TTFatalException(f"Port {port} not available. A TTLens server might alreasdy be running.")
 
-def spawn_standalone_ttlens_stub(port: int, run_dirpath: str,  wanted_devices: "List[int]" = None) -> subprocess.Popen:
+def spawn_standalone_ttlens_stub(port: int, wanted_devices: "List[int]" = None) -> subprocess.Popen:
     print("Spawning ttlens-server...")
 
     ttlens_server_standalone = "/ttlens-server-standalone"
@@ -37,8 +37,6 @@ def spawn_standalone_ttlens_stub(port: int, run_dirpath: str,  wanted_devices: "
     try:
         ttlens_stub_args = [f"{port}"]
 
-        if run_dirpath:
-            ttlens_stub_args += ["-r", run_dirpath]
         if wanted_devices:
             ttlens_stub_args += ["-d"] + [str(d) for d in wanted_devices]
 

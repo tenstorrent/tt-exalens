@@ -36,7 +36,7 @@ class Context:
             try:
                 device_desc_path = self.server_ifc.get_device_soc_description(device_id)
             except:
-                device_desc_path = tt_device.get_soc_desc_path(device_id, self._run_dirpath)
+                device_desc_path = tt_device.get_soc_desc_path(device_id)
             # util.INFO(f"Loading device {device_id} from {device_desc_path}")
             devices[device_id] = tt_device.Device.create(
                 self.arch,
