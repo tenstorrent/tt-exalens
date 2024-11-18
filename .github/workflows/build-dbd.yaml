@@ -24,6 +24,11 @@ jobs:
     runs-on: ${{ inputs.os }}
     container:
       image: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04:latest
+      options: --user root --privileged
+      volumes:
+        - /sys/:/sys/
+      ports:
+        - 7777:7777
     name: "Build DEBUDA."
     steps:
       - uses: actions/checkout@v4
