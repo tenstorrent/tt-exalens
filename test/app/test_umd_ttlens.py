@@ -21,9 +21,8 @@ class TTLensOutputVerifier:
         pass
 
     def verify_start(self, runner: "TTLensTestRunner", tester: unittest.TestCase):
-        lines, prompt = runner.read_until_prompt()
-        self.verify_startup(lines, prompt, tester)
-        print("STARTUP")
+        lines = runner.read_until_prompt()
+        self.verify_startup([], lines[0], tester)
         pass
 
     @abstractmethod
@@ -98,7 +97,7 @@ class TTLensTestRunner:
             if not type(args) == list:
                 args = [args]
 
-        self.process = subprocess.Popen(program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+        self.process = subprocess.Popen(program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     def start(self, tester: unittest.TestCase, args = None):
         self.invoke(args)
@@ -137,12 +136,12 @@ class TTLensTestRunner:
 
     def read_until_prompt(self, timeoutSeconds: float = 1):
         # Fast path for program that ended
-        rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], timeoutSeconds)
+        rlist = []
         
-        if len(rlist) == 0:
+        while len(rlist) == 0:
             if not self.is_running:
                 return None
-            return []
+            rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], timeoutSeconds)
         
         original_stdout_flags = fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_GETFL)
         original_stderr_flags = fcntl.fcntl(self.process.stderr.fileno(), fcntl.F_GETFL)

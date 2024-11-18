@@ -1,6 +1,9 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+"""
+This file contains tests debuda commands by running them directly on debuda process.
+"""
 import os
 import sys
 
@@ -15,7 +18,7 @@ from test.app.test_umd_debuda import DbdTestRunner,UmdDbdOutputVerifier
 
 class CommandTests(unittest.TestCase):
     def check_written_lines(self,lines, match_hex):
-        # Removing first and last lines since they do not values that we are interested in
+        # Removing first and last lines since they do not carry information that we are interested in
         lines = lines[1:-1]
 
         pattern = r"0x[0-9a-fA-F]+:\s+([0-9a-fA-F\s]+)"

@@ -817,26 +817,13 @@ def clr_by_index(idx):
     return f"\033[{31 + idx % 7}m"
 
 def generate_address_array(start_address,count):
+    """ Generates an array of addresses starting from start_address and incrementing by 4 for count number of elements """
     data = []
     for i in range(count):
         address = start_address + (i * 4)
         data.append(address)
-    return data;
+    return data
 
-def hex_array_to_bytes(hex_array):
-    bytes_array = []
-    for hex_value in hex_array:
-        for i in range(0, 4, 1):
-            byte = (hex_value >> (i * 8)) & 0xFF
-            bytes_array.append(byte)
-    return bytes_array
-
-def byte_string_to_list(byte_string):
-    byte_list = [byte for byte in byte_string]
-    
-    merged_bytes = [
-        (byte_list[i+3] << 24) | (byte_list[i+2] << 16) | (byte_list[i+1] << 8) | byte_list[i]
-        for i in range(0, len(byte_list), 4)
-    ]
-    
-    return merged_bytes
+def convert_int_array_to_byte_array(int_array):
+    import struct
+    return b''.join(struct.pack('<I', i) for i in int_array)

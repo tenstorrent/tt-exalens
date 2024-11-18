@@ -108,7 +108,7 @@ def run(cmd_text, context, ui_state: UIState = None):
             )
     else:
         pci_burst_write(
-            ui_state.current_device_id,
+            current_device_id,
             core_loc,
             addr,
             core_loc_str,
@@ -123,14 +123,22 @@ def pci_burst_write(
     device_id, core_loc, addr, core_loc_str,write_data, word_count=1, print_format="hex32", context=None,nooutput=False
 ):
     # Write data to device requires data to be separated into bytes
-    byte_write_data = util.hex_array_to_bytes(write_data)
+    byte_write_data = util.convert_int_array_to_byte_array(write_data)
 
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
     core_loc_str =  f"{core_loc_str} (L1) :" if not core_loc_str.lower().startswith("ch") else f"{core_loc_str.lower()} (DRAM) :"
 
     da = DataArray(f"{core_loc_str} 0x{addr:08x} ({word_count * 4} bytes)", 4)
-    bytes_written = write_to_device(core_loc, addr, byte_write_data, device_id, context)
+    try:
+        bytes_written = write_to_device(core_loc, addr, byte_write_data, device_id, context)
+    except Exception as e:
+        util.ERROR(f"Failed to write to device {device_id}: {e}")
+        return
+
+    if bytes_written != len(byte_write_data):
+        util.ERROR(f"Failed to write to device {device_id}")
+        return
 
     if not nooutput:
         da.data = write_data
