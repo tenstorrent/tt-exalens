@@ -43,6 +43,7 @@ jobs:
         - /dev/hugepages-1G:/dev/hugepages-1G
         - /etc/udev/rules.d:/etc/udev/rules.d
         - /lib/modules:/lib/modules
+        - /sys/:/sys/
     name: Build and run unit test on ${{ matrix.runner-info.arch }}
     steps:
         # This is a workaround for git's ownership problems
