@@ -234,15 +234,13 @@ class ELF:
         return data
 
     @staticmethod
-    def get_mem_reader(device_id, core_loc):
+    def get_mem_reader(context, device_id, core_loc):
         """
         Returns a simple memory reader function that reads from a given device and a given core.
         """
 
-        def mem_reader(addr, size_bytes):
-            import tt_device
-
-            data = tt_device.SERVER_IFC.pci_read32(
+        def mem_reader(context, addr, size_bytes):
+            data = context.server_ifc.pci_read32(
                 device_id, *core_loc.to("nocVirt"), addr
             )
             return [data]

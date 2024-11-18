@@ -15,6 +15,35 @@ from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc
 from ttlens.tt_util import TTException
 
 
+def read_word_from_device(
+		core_loc: Union[str, OnChipCoordinate],
+		addr: int,
+		device_id: int = 0,
+		context: Context = None
+) -> "int":
+	""" Reads one word of data, from address 'addr' at core <x-y>.
+
+	Args:
+		core_loc (str | OnChipCoordinate): Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+		addr (int): Memory address to read from.
+		device_id (int, default 0):	ID number of device to read from.
+		context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+
+	Returns:
+		int: Data read from the device.
+	"""
+	context = check_context(context)
+
+	validate_addr(addr)
+	validate_device_id(device_id, context)
+
+	if not isinstance(core_loc, OnChipCoordinate):
+		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
+	word = context.server_ifc.pci_read32(
+		device_id, *core_loc.to("nocVirt"), addr
+	)
+	return word
+
 
 def read_words_from_device(
 		core_loc: Union[str, OnChipCoordinate], 

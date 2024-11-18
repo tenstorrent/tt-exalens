@@ -37,21 +37,21 @@ from docopt import docopt
 
 from ttlens.tt_uistate import UIState
 
-from ttlens import tt_device
 from ttlens import tt_util as util
 from ttlens.tt_firmware import ELF
 from ttlens.tt_object import DataArray
 from ttlens.tt_coordinate import OnChipCoordinate
+from ttlens.tt_lens_lib import read_word_from_device
 
 
-def print_access_path(device, core_loc, elf, path, print_sorted, print_as_tree, print_operator):
+def print_access_path(context, device, core_loc, elf, path, print_sorted, print_as_tree, print_operator):
     """
     Given a C access access path 'path', print all members and their current value.
     The format_descriptor is a way to customize the output. See util.FORMAT_DESCRIPTOR_DEFAULTS in tt_util.py.
     Returns: number of members found and printed.
     """
     elf_name, path = path.split(".", 1)
-    mem_reader = ELF.get_mem_reader(device.id(), core_loc)
+    mem_reader = ELF.get_mem_reader(context, device.id(), core_loc)
     members = elf.get_member_paths(elf_name, path, mem_reader)
 
     # Iterate over members, read data from device and print
@@ -93,9 +93,7 @@ def print_access_path(device, core_loc, elf, path, print_sorted, print_as_tree, 
                 da = DataArray(f"L1-0x{addr:08x}-{size}", 4)
                 num_words = (size + 3) // 4
                 for i in range(num_words):
-                    data = tt_device.SERVER_IFC.pci_read32(
-                        device.id(), *core_loc.to("nocVirt"), 0, addr + 4 * i
-                    )
+                    data = read_word_from_device(core_loc, addr + 4 * i, device.id(), context)
                     da.data.append(data)
 
                 if member_short_name == "active_streams":
@@ -140,6 +138,6 @@ def run(cmd_text, context, ui_state: UIState = None):
     for device in device_array:
         for core_loc in core_array:
             util.PRINT(f"Reading from device {device.id()}, core {core_loc.to_str()}")
-            num_printed = print_access_path(device, core_loc, context.elf, access_path, args["--sort"], not args["--no-tree"], args["--print-operator"])
+            num_printed = print_access_path(context, device, core_loc, context.elf, access_path, args["--sort"], not args["--no-tree"], args["--print-operator"])
             if num_printed == 0:
                 util.WARN(f"Could not find access-path '{access_path}'")

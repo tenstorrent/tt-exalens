@@ -7,7 +7,6 @@ import os
 import pickle
 
 from ttlens.tt_lens_ifc_base import TTLensCommunicator
-from ttlens import tt_device
 from ttlens import tt_util as util
 
 
@@ -287,12 +286,12 @@ class TTLensCacheReader(TTLensCache):
         return True
 
 
-def init_cache_writer(filepath="ttlens_cache.pkl"):
-    tt_device.SERVER_IFC = TTLensCacheThrough(tt_device.SERVER_IFC, filepath)
-    atexit.register(tt_device.SERVER_IFC.save)
-    return tt_device.SERVER_IFC
+def init_cache_writer(original_communicator, filepath="ttlens_cache.pkl"):
+    communicator = TTLensCacheThrough(original_communicator, filepath)
+    atexit.register(communicator.save)
+    return communicator
 
 
 def init_cache_reader(filepath="ttlens_cache.pkl"):
-    tt_device.SERVER_IFC = TTLensCacheReader(filepath)
-    return tt_device.SERVER_IFC
+    communicator = TTLensCacheReader(filepath)
+    return communicator

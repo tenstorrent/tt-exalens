@@ -11,7 +11,6 @@ import zmq
 from ttlens import tt_util as util
 from ttlens import tt_lens_ifc_cache as tt_lens_ifc_cache
 from ttlens.tt_lens_ifc_base import TTLensCommunicator
-from ttlens import tt_device
 
 
 class ttlens_server_request_type(Enum):
@@ -590,9 +589,9 @@ def init_pybind(runtime_data_yaml_filename, run_dirpath=None, wanted_devices=Non
     if not wanted_devices:
         wanted_devices = []
 
-    tt_device.SERVER_IFC = TTLensPybind(runtime_data_yaml_filename, run_dirpath, wanted_devices)
+    communicator = TTLensPybind(runtime_data_yaml_filename, run_dirpath, wanted_devices)
     util.VERBOSE("Device opened successfully.")
-    return tt_device.SERVER_IFC
+    return communicator
 
 
 # Spawns ttlens-server and initializes the communication
@@ -601,9 +600,9 @@ def connect_to_server(ip="localhost", port=5555):
     util.VERBOSE(f"Connecting to ttlens-server at {ttlens_stub_address}...")
 
     try:
-        tt_device.SERVER_IFC = ttlens_client(ip, port)
+        communicator = ttlens_client(ip, port)
         util.VERBOSE("Connected to ttlens-server.")
     except:
         raise util.TTFatalException("Failed to connect to TTLens server.")
 
-    return tt_device.SERVER_IFC
+    return communicator

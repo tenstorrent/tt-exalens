@@ -32,7 +32,6 @@ from docopt import docopt
 
 from ttlens.tt_uistate import UIState
 
-from ttlens import tt_device
 from ttlens.tt_coordinate import OnChipCoordinate
 
 
@@ -58,7 +57,7 @@ def run(cmd_text, context, ui_state: UIState = None):
       current_device = context.devices[device_id]
       core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
 
-      val = tt_device.SERVER_IFC.jtag_write32(
+      val = context.server_ifc.jtag_write32(
           device_id, *core_loc.to("nocVirt"), addr, data
       )
       core_loc_str_print = f"{core_loc_str} (L1) :" if not core_loc_str.startswith("ch") else f"{core_loc_str} (DRAM): "

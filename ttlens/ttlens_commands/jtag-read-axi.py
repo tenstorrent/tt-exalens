@@ -30,7 +30,6 @@ from docopt import docopt
 
 from ttlens.tt_uistate import UIState
 
-from ttlens import tt_device
 from ttlens.tt_coordinate import OnChipCoordinate
 
 
@@ -51,7 +50,7 @@ def run(cmd_text, context, ui_state: UIState = None):
         device_array.append(int(device_id,0))
 
     for device_id in device_array:
-      val = tt_device.SERVER_IFC.jtag_read32_axi(
+      val = context.server_ifc.jtag_read32_axi(
           device_id, addr
       )
       print_a_jtag_axi_read(device_id, addr, val)

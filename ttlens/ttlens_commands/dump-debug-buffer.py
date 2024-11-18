@@ -24,11 +24,11 @@ from docopt import docopt
 
 from ttlens.tt_uistate import UIState
 
-from ttlens import tt_device
 from ttlens import tt_util as util
 
 from ttlens.tt_coordinate import OnChipCoordinate
 from ttlens.tt_object import DataArray
+from ttlens.tt_lens_lib import read_word_from_device
 
 command_metadata = {
     "short": "ddb",
@@ -61,9 +61,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     addr = TRISC_DEBUG_BASE[trisc_id]
     da = DataArray(f"L1-0x{addr:08x}-{num_words * 4}", 4)
     for i in range(num_words):
-        data = tt_device.SERVER_IFC.pci_read32(
-            device_id, *loc.to("nocVirt"), addr + 4 * i
-        )
+        data = read_word_from_device(loc, addr + 4 * i, device_id, context)
         da.data.append(data)
 
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]

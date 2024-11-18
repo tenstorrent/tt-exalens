@@ -28,8 +28,8 @@ from docopt import docopt
 
 from ttlens.tt_uistate import UIState
 
-from ttlens import tt_device
 from ttlens.tt_coordinate import OnChipCoordinate
+from ttlens.tt_lens_lib import write_words_to_device
 
 
 # A helper to print the result of a single PCI read
@@ -48,9 +48,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     current_device = context.devices[current_device_id]
     core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
 
-    tt_device.SERVER_IFC.pci_write32(
-        ui_state.current_device_id, *core_loc.to("nocVirt"), addr, data=data
-    )
+    write_words_to_device(core_loc, addr, data, ui_state.current_device_id, context)
 
     core_loc_str = f"{core_loc_str} (L1) :" if not core_loc_str.startswith("ch") else f"{core_loc_str} (DRAM): "
     print_a_pci_write(core_loc_str, addr, data)

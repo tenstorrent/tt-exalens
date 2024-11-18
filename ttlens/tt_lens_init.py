@@ -42,7 +42,7 @@ def init_ttlens(
 		runtime_data_yaml_filename = find_runtime_data_yaml_filename(output_dir_path)
 	lens_ifc = tt_lens_ifc.init_pybind(str(runtime_data_yaml_filename or ""), output_dir_path, wanted_devices)
 	if cache_path:
-		lens_ifc = tt_lens_ifc_cache.init_cache_writer(cache_path)
+		lens_ifc = tt_lens_ifc_cache.init_cache_writer(lens_ifc, cache_path)
 	
 	runtime_data_yaml, cluster_desc_yaml = get_yamls(lens_ifc)
 
@@ -68,7 +68,7 @@ def init_ttlens_remote(
 
 	lens_ifc = tt_lens_ifc.connect_to_server(ip_address, port)
 	if cache_path:
-		lens_ifc = tt_lens_ifc_cache.init_cache_writer(cache_path)
+		lens_ifc = tt_lens_ifc_cache.init_cache_writer(lens_ifc, cache_path)
 
 	runtime_data_yaml, cluster_desc_yaml = get_yamls(lens_ifc)
 

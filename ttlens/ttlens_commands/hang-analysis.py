@@ -19,7 +19,6 @@ Examples:
 import sys
 from docopt import docopt
 
-from ttlens import tt_device
 from ttlens import tt_util as util
 from ttlens.tt_object import TTObjectIDDict
 from ttlens.tt_graph import Queue
@@ -58,10 +57,10 @@ def queue_has_data(context, device_id, q: Queue):
             write_ptr = device.pci_read32(x, y, 0, dram_addr + 4)
         if q.is_host():
             host_chan, host_addr = mem_addr[0], mem_addr[1]
-            read_ptr = tt_device.SERVER_IFC.dma_buffer_read32(
+            read_ptr = context.server_ifc.dma_buffer_read32(
                 device_id, host_addr, host_chan
             )
-            write_ptr = tt_device.SERVER_IFC.dma_buffer_read32(
+            write_ptr = context.server_ifc.dma_buffer_read32(
                 device_id, host_addr + 4, host_chan
             )
 

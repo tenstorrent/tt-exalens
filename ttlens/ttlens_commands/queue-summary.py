@@ -29,7 +29,6 @@ command_metadata = {
 from docopt import docopt
 from typing import Sequence
 
-from ttlens import tt_device
 from ttlens import tt_util as util
 from ttlens.tt_object import TTObjectIDDict, DataArray
 from ttlens.tt_graph import Queue
@@ -57,11 +56,11 @@ def get_queue_data(context, queue):
                 assert False, f"Unexpected Host queue addr format. Current format: {type(dram_place)}, expected Sequence or int"
 
             rdptr = (
-                tt_device.SERVER_IFC.dma_buffer_read32(target_device, host_addr, host_chan)
+                context.server_ifc.dma_buffer_read32(target_device, host_addr, host_chan)
                 & 0xFFFF
             )  # ptrs are 16-bit
             wrptr = (
-                tt_device.SERVER_IFC.dma_buffer_read32(
+                context.server_ifc.dma_buffer_read32(
                     target_device, host_addr + 4, host_chan
                 )
                 & 0xFFFF
@@ -115,7 +114,7 @@ def read_queue_contents(context, queue, start_addr, num_bytes):
 
             da = DataArray(f"host-0x{host_addr:08x}-ch{host_chan}-{num_words * 4}")
             for i in range(num_words):
-                data = tt_device.SERVER_IFC.dma_buffer_read32(
+                data = context.server_ifc.dma_buffer_read32(
                     device_id, host_addr + start_addr + i * 4, host_chan
                 )
                 da.data.append(data)

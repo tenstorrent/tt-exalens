@@ -16,9 +16,10 @@ from tabulate import tabulate
 
 from ttlens.tt_uistate import UIState
 
-from ttlens import tt_device
 from ttlens import tt_util as util
 from ttlens.tt_netlist import Queue
+from ttlens.tt_lens_lib import read_word_from_device
+from ttlens.tt_coordinate import OnChipCoordinate
 
 command_metadata = {
     "type": "low-level",
@@ -94,11 +95,10 @@ def run(args, context, ui_state: UIState = None):
 
             # dloc = OnChipCoordinate(dx, dy, "noc0", epoch_device)
             rdptr = (
-                tt_device.SERVER_IFC.pci_read32(device_id, dx, dy, addr) & 0xFFFF
+                read_word_from_device(OnChipCoordinate(dx, dy, "noc0", epoch_device), addr, device_id, context) & 0xFFFF
             )
             wrptr = (
-                tt_device.SERVER_IFC.pci_read32(device_id, dx, dy, addr + 4)
-                & 0xFFFF
+                read_word_from_device(OnChipCoordinate(dx, dy, "noc0", epoch_device), addr + 4, device_id, context) & 0xFFFF
             )
             occupancy = int(Queue.occupancy(EPOCH_Q_NUM_SLOTS, wrptr, rdptr))
 
@@ -112,9 +112,7 @@ def run(args, context, ui_state: UIState = None):
                     + (EPOCH_Q_SLOT_SIZE * (rdptr % EPOCH_Q_NUM_SLOTS))
                 )
                 cmd_rd_word = (
-                    tt_device.SERVER_IFC.pci_read32(
-                        device_id, dx, dy, addr_at_rdptr + 4
-                    )
+                    read_word_from_device(OnChipCoordinate(dx, dy, "noc0", epoch_device), addr_at_rdptr + 4, device_id, context)
                     & 0xFFFFFFFF
                 )
                 cmd_at_rdptr = (cmd_rd_word >> 28) & 0xFFFF
