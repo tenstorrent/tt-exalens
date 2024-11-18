@@ -39,7 +39,7 @@ command_metadata = {
 import time
 from docopt import docopt
 
-from tt_uistate import UIState
+from ttlens.tt_uistate import UIState
 
 from ttlens.tt_coordinate import OnChipCoordinate
 from ttlens.tt_lens_lib import write_to_device
