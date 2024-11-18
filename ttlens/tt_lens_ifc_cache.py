@@ -286,8 +286,8 @@ class TTLensCacheReader(TTLensCache):
         return True
 
 
-def init_cache_writer(originial_communicator, filepath="ttlens_cache.pkl"):
-    communicator = TTLensCacheThrough(originial_communicator, filepath)
+def init_cache_writer(original_communicator, filepath="ttlens_cache.pkl"):
+    communicator = TTLensCacheThrough(original_communicator, filepath)
     atexit.register(communicator.save)
     return communicator
 
