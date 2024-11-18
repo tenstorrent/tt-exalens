@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 """
-This file contains tests debuda commands by running them directly on debuda process.
+This file contains tests for testing the ttlens commands. They are tested by running ttlens proccess and than checking the output of the process.
 """
 import os
 import sys
