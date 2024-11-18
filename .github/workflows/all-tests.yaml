@@ -45,7 +45,7 @@ jobs:
         - /lib/modules:/lib/modules
         - /sys/:/sys/
       ports:
-        - 7777
+        - 7777:7777
     name: Build and run unit test on ${{ matrix.runner-info.arch }}
     steps:
         # This is a workaround for git's ownership problems
