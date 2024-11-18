@@ -17,7 +17,7 @@ command_metadata = {
     "short": "go",
     "type": "high-level",
     "description": __doc__,
-    "context": ["limited", "buda", "metal"],
+    "context": ["limited", "metal"],
     "common_option_names": [ "--device", "--loc" ],
 }
 

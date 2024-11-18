@@ -358,7 +358,7 @@ command_metadata = {
     "short": "examplecmd",
     "type": "low-level", 
     "description": "This is a description of the command.",
-    "context": ["limited", "buda", "metal"],
+    "context": ["limited", "metal"],
     "common_option_names": [ "--device", "--loc", "--verbose", "--risc" ],
     }
 ```

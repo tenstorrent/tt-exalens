@@ -22,7 +22,7 @@ command_metadata = {
     "short": "gpr",
     "type": "low-level",
     "description": __doc__,
-    "context": ["limited", "buda", "metal"],
+    "context": ["limited", "metal"],
     "common_option_names": [ "--device", "--loc", "--verbose", "--risc" ],
 }
 
