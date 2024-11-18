@@ -6,7 +6,7 @@ import os, struct, ast
 from typing import List, Sequence
 from socket import timeout
 from tabulate import tabulate
-from ttlens.tt_debuda_context import Context
+from ttlens.tt_lens_context import Context
 from ttlens.tt_object import TTObject
 from ttlens import tt_util as util
 from ttlens.tt_coordinate import OnChipCoordinate, CoordinateTranslationError
@@ -16,7 +16,7 @@ from typing import Dict
 from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 
 #
-# Communication with Buda (or debuda-server) over sockets (ZMQ).
+# Communication with Buda (or ttlens-server) over sockets (ZMQ).
 # See struct BUDA_READ_REQ for protocol details
 #
 
@@ -31,7 +31,7 @@ def try_unpack(fmt, data):
         return u
     except:
         # Here we might have gotten an error string from the server. Unpack as string and print error
-        util.ERROR(f"debuda-server sent an invalid reply: {data}")
+        util.ERROR(f"ttlens-server sent an invalid reply: {data}")
         return None
 
 

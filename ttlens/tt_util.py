@@ -474,7 +474,7 @@ class YamlFile:
         return object.__getattribute__(self, name)
 
 
-DEFAULT_EXPORT_FILENAME = "debuda-export.zip"
+DEFAULT_EXPORT_FILENAME = "ttlens-export.zip"
 
 
 # Removes a prefix from a string

@@ -45,7 +45,7 @@ from docopt import docopt
 from .doc_utils import INFO, WARNING, ERROR
 from .doc_utils import SectionPPrinter
 
-with open("ttlens/tt_debuda_init.py") as f:
+with open("ttlens/tt_lens_init.py") as f:
 	tree = ast.parse(f.read())
 
 

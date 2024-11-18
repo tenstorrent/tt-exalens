@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-#include "dbdserver/jtag.h"
+#include "ttlensserver/jtag.h"
 
 #include <dlfcn.h>
 #include <stdint.h>

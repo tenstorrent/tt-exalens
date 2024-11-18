@@ -1,4 +1,4 @@
-# ELF loader in debuda
+# ELF loader in TT-Lens
 
 ## Goal and problems
 Goal of the ELF loader is to load provided ELF file to specified RISC-V core.

@@ -9,7 +9,7 @@ from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 from ttlens.tt_gdb_communication import GDB_ASCII_COLON, GDB_ASCII_COMMA, GDB_ASCII_SEMICOLON, ClientSocket, GdbInputStream, GdbMessageParser, GdbMessageWriter, ServerSocket
 from ttlens.tt_gdb_data import GdbProcess, GdbThreadId
 from ttlens.tt_gdb_file_server import GdbFileServer
-from ttlens.tt_debuda_context import Context
+from ttlens.tt_lens_context import Context
 from ttlens.tt_debug_risc import RiscLoc, get_risc_name
 from ttlens import tt_util as util
 

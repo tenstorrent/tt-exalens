@@ -8,12 +8,12 @@ from functools import wraps
 
 from parameterized import parameterized
 
-from ttlens import tt_debuda_init
-from ttlens import tt_debuda_lib as lib
+from ttlens import tt_lens_init
+from ttlens import tt_lens_lib as lib
 from ttlens import tt_util
 
 from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_debuda_context import Context
+from ttlens.tt_lens_context import Context
 from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name
 from ttlens.tt_firmware import ELF
 from ttlens.tt_object import DataArray
@@ -25,7 +25,7 @@ from ttlens.tt_arc_dbg_fw import (
     arc_dbg_fw_command,
     NUM_LOG_CALLS_OFFSET
 )
-from ttlens.tt_debuda_lib_utils import arc_read
+from ttlens.tt_lens_lib_utils import arc_read
 
 def invalid_argument_decorator(func):
     @wraps(func)
@@ -38,37 +38,37 @@ def invalid_argument_decorator(func):
 class TestAutoContext(unittest.TestCase):
     def test_auto_context(self):
         """Test auto context creation."""
-        tt_debuda_init.GLOBAL_CONTEXT = None
+        tt_lens_init.GLOBAL_CONTEXT = None
         context = lib.check_context()
         self.assertIsNotNone(context)
         self.assertIsInstance(context, Context)
 
     def test_set_global_context(self):
         """Test setting global context."""
-        tt_debuda_init.GLOBAL_CONTEXT = None
-        context = tt_debuda_init.init_debuda()
-        self.assertIsNotNone(tt_debuda_init.GLOBAL_CONTEXT)
-        self.assertIs(tt_debuda_init.GLOBAL_CONTEXT, context)
+        tt_lens_init.GLOBAL_CONTEXT = None
+        context = tt_lens_init.init_ttlens()
+        self.assertIsNotNone(tt_lens_init.GLOBAL_CONTEXT)
+        self.assertIs(tt_lens_init.GLOBAL_CONTEXT, context)
 
     def test_existing_context(self):
         """Test recognition of existing context."""
-        tt_debuda_init.GLOBAL_CONTEXT = None
+        tt_lens_init.GLOBAL_CONTEXT = None
         
         # Create new global context
-        context1 = tt_debuda_init.init_debuda()
-        self.assertIsNotNone(tt_debuda_init.GLOBAL_CONTEXT)
-        self.assertIs(tt_debuda_init.GLOBAL_CONTEXT, context1)
+        context1 = tt_lens_init.init_ttlens()
+        self.assertIsNotNone(tt_lens_init.GLOBAL_CONTEXT)
+        self.assertIs(tt_lens_init.GLOBAL_CONTEXT, context1)
 
         # Check for existing context
         context = lib.check_context()
         self.assertIsNotNone(context)
-        self.assertIs(tt_debuda_init.GLOBAL_CONTEXT, context)
+        self.assertIs(tt_lens_init.GLOBAL_CONTEXT, context)
         self.assertIs(context, context1)
     
 
 class TestReadWrite(unittest.TestCase):
     def setUp(self):
-        self.context = tt_debuda_init.init_debuda()
+        self.context = tt_lens_init.init_ttlens()
         self.assertIsNotNone(self.context)
         self.assertIsInstance(self.context, Context)
 
@@ -235,7 +235,7 @@ class TestReadWrite(unittest.TestCase):
 class TestRunElf(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.context = tt_debuda_init.init_debuda()
+        cls.context = tt_lens_init.init_ttlens()
 
     def is_blackhole(self):
         """Check if the device is blackhole."""
@@ -437,7 +437,7 @@ class TestRunElf(unittest.TestCase):
 class TestARC(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.context = tt_debuda_init.init_debuda()
+        cls.context = tt_lens_init.init_ttlens()
 
     def test_arc_msg(self):
         """Test getting AICLK from ARC."""

@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-#include "dbdserver/jtag_device.h"
+#include "ttlensserver/jtag_device.h"
 
 #include <iostream>
 
-#include "dbdserver/jtag.h"
+#include "ttlensserver/jtag.h"
 
 #define ROW_LEN 12
 #define WORMHOLE_ID 0x138a5

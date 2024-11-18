@@ -5,4 +5,4 @@ make build
 make wheel
 
 pip uninstall tt-lens
-pip install build/debuda_wheel/*.whl
+pip install build/ttlens_wheel/*.whl

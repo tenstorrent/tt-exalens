@@ -35,16 +35,16 @@ add_custom_target(generate_embed_files ALL
 
 # Library project
 file(GLOB TTLENS_SERVER_LIB_SRCS "src/*.cpp")
-add_library(debuda_server_lib STATIC ${TTLENS_SERVER_LIB_SRCS})
-add_dependencies(debuda_server_lib generate_embed_files)
-target_link_libraries(debuda_server_lib 
+add_library(ttlens_server_lib STATIC ${TTLENS_SERVER_LIB_SRCS})
+add_dependencies(ttlens_server_lib generate_embed_files)
+target_link_libraries(ttlens_server_lib 
     PUBLIC umd_device fmt cppzmq-static
 )
-target_include_directories(debuda_server_lib PUBLIC
+target_include_directories(ttlens_server_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
 )
-set_target_properties(debuda_server_lib PROPERTIES 
-    OUTPUT_NAME libdbdserver
+set_target_properties(ttlens_server_lib PROPERTIES 
+    OUTPUT_NAME libttlensserver
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
     POSITION_INDEPENDENT_CODE ON
 )
@@ -54,7 +54,7 @@ set_target_properties(debuda_server_lib PROPERTIES
 set(nng_lib_path "${CMAKE_BINARY_DIR}/_deps/nanomsg-build/libnng.so.1")
 set(uv_lib_path "${CMAKE_BINARY_DIR}/_deps/libuv-build/libuv.so.1")
 
-add_custom_command(TARGET debuda_server_lib
+add_custom_command(TARGET ttlens_server_lib
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${nng_lib_path} ${CMAKE_BINARY_DIR}/lib
     COMMAND ${CMAKE_COMMAND} -E copy ${uv_lib_path} ${CMAKE_BINARY_DIR}/lib
