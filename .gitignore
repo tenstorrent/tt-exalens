@@ -13,10 +13,9 @@ __pycache__
 .venv
 
 # TTLens related files
-debuda_test
-debuda-export*.zip
-debuda-export
-debuda-server.pkl
+ttlens-export*.zip
+ttlens-export
+ttlens-server.pkl
 ttlens/server/lib/configuration/*.embed
 
 # ClangD

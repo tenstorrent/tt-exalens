@@ -36,7 +36,7 @@ jobs:
       - name: Build and export TTLens Docker image
         uses: docker/build-push-action@v6
         with:
-          file: .github/Dockerfile.debuda
+          file: .github/Dockerfile.ttlens
           push: true
           build-args: |
             GIT_SHA=${{ github.sha }}
@@ -47,7 +47,7 @@ jobs:
       - name: Build and export IRD Docker image
         uses: docker/build-push-action@v6
         with:
-          file: .github/Dockerfile.debuda-ird
+          file: .github/Dockerfile.ttlens-ird
           push: true
           build-args: |
             GIT_SHA=${{ github.sha }}

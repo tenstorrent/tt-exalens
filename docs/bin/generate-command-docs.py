@@ -47,7 +47,7 @@ for opt in OPTIONS.keys():
 MAX_OUTPUT_LINES = 20  # Max number of lines to show for each example
 MAX_CHARACTERS_PER_LINE = 130  # Max number of characters to show for each line
 
-from .run_debuda_on_help_examples import execute_debuda_command
+from .run_ttlens_on_help_examples import execute_ttlens_command
 from .doc_utils import SectionPPrinter, INFO, WARNING, ERROR
 
 
@@ -198,7 +198,7 @@ class CmdParser:
 
 			command_dict = {}
 			# Get the command result
-			command_dict['result'] = execute_debuda_command(parts[0].strip())
+			command_dict['result'] = execute_ttlens_command(parts[0].strip())
 
 			# Use the description if provided, otherwise use "Command:"
 			if len(parts) > 1:

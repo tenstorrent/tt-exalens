@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from dataclasses import dataclass
 from typing import Union
-from ttlens.tt_debuda_context import Context
+from ttlens.tt_lens_context import Context
 from ttlens.tt_coordinate import OnChipCoordinate
 from ttlens import tt_util as util
 import os

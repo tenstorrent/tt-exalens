@@ -1,0 +1,50 @@
+name: "BUILD TTLENS"
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: false
+        type: string
+        default: "ubuntu-22.04"
+      config:
+        required: false
+        type: string
+        default: "Release"
+
+run-name: BUILD TTLENS by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
+
+jobs:
+  build_libs:
+    env:
+      CONFIG: ${{ inputs.config }}
+      # So we can get all the makefile output we want
+      VERBOSE: 1
+    # TODO: This will need to change when we get cloud runners
+    runs-on: ${{ inputs.os }}
+    container:
+      image: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04:latest
+    name: "Build DEBUDA."
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          lfs: true
+      - name: Git safe dir
+        run: git config --global --add safe.directory /__w/tt-debuda/tt-debuda
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          create-symlink: true
+          key: ttlens-${{ inputs.config }}-${{ inputs.os }}
+      - name: Build TTLENS
+        run: |
+          make build
+      - name: Build wheel
+        run: |
+          make wheel
+      - name: Upload libraries as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ttlens-build
+          path: build

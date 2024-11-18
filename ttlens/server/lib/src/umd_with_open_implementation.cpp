@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-#include "dbdserver/umd_with_open_implementation.h"
+#include "ttlensserver/umd_with_open_implementation.h"
 
 #include <limits.h>
 #include <unistd.h>
@@ -31,7 +31,7 @@ static const uint8_t wormhole_b0_configuration_bytes[] = {
 
 static std::filesystem::path get_temp_working_directory() {
     std::filesystem::path temp_path = std::filesystem::temp_directory_path();
-    std::string temp_name = temp_path / "debuda_server_XXXXXX";
+    std::string temp_name = temp_path / "ttlens_server_XXXXXX";
 
     return mkdtemp(temp_name.data());
 }
@@ -293,7 +293,7 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Clu
     return device_soc_descriptors;
 }
 
-namespace tt::dbd {
+namespace tt::lens {
 
 umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt::umd::Cluster> device,
                                                            std::unique_ptr<JtagDevice> jtag_device)
@@ -397,4 +397,4 @@ std::optional<std::string> umd_with_open_implementation::get_device_soc_descript
     }
 }
 
-}  // namespace tt::dbd
+}  // namespace tt::lens

@@ -1,11 +1,11 @@
 #! /bin/bash
 set -eo pipefail
 
-DBD_INSTALL=${DBD_INSTALL:-}
+TTLENS_INSTALL=${TTLENS_INSTALL:-}
 TEST_INSTALL=${TEST_INSTALL:-}
 WHEEL_INSTALL=${WHEEL_INSTALL:-}
 
-if [ -n "$DBD_INSTALL" ]; then
+if [ -n "$TTLENS_INSTALL" ]; then
     echo "Installing ttlens dependencies..."
     pip install -r ttlens/requirements.txt
 fi

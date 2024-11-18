@@ -110,6 +110,14 @@ class WormholeDevice(tt_device.Device):
     # the NOC0 Y location is 11. If harvesting mask bit 1 is set, then the NOC0 Y location is 1, etc...
     HARVESTING_NOC_LOCATIONS = [11, 1, 10, 2, 9, 3, 8, 4, 7, 5]
 
+    PCI_ARC_RESET_BASE_ADDR = 0x1FF30000
+    PCI_ARC_CSM_DATA_BASE_ADDR = 0x1FE80000
+    PCI_ARC_ROM_DATA_BASE_ADDR = 0x1FF00000
+
+    NOC_ARC_RESET_BASE_ADDR = 0x880030000
+    NOC_ARC_CSM_DATA_BASE_ADDR = 0x810000000
+    NOC_ARC_ROM_DATA_BASE_ADDR = 0x880000000  
+
     def get_harvested_noc0_y_rows(self):
         harvested_noc0_y_rows = []
         if self._harvesting:

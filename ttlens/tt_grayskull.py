@@ -58,6 +58,10 @@ class GrayskullDevice(tt_device.Device):
     NOC0_X_TO_NOCTR_X = {i: i for i in range(0, len(NOC_0_X_TO_DIE_X))}
     NOCTR_X_TO_NOC0_X = {v: k for k, v in NOC0_X_TO_NOCTR_X.items()}
 
+    PCI_ARC_RESET_BASE_ADDR = 0x1FF30000
+    PCI_ARC_CSM_DATA_BASE_ADDR = 0x1FE80000
+    PCI_ARC_ROM_DATA_BASE_ADDR = 0x1FF00000
+
     def get_harvested_noc0_y_rows(self):
         harvested_workers = self._block_locations["harvested_workers"]
         return list({y for x, y in harvested_workers})
@@ -83,7 +87,7 @@ class GrayskullDevice(tt_device.Device):
         return noc0_x, noc0_y
 
     def _handle_harvesting_for_nocTr_noc0_map(self, num_harvested_rows):
-        assert num_harvested_rows == 0, "Harvesting not supported for Grayskull"
+        self.nocTr_x_to_noc0_x = {i: i for i in range(0, self.row_count())}
 
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(id, arch, cluster_desc, {"functional_workers": GrayskullL1AddressMap(), "dram": GrayskullDRAMEpochCommandAddressMap()}, device_desc_path, context)

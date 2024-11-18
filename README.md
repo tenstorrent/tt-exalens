@@ -99,11 +99,11 @@ Wheel can be installed either from the [GitHub release](https://github.com/tenst
 pip install git+https://github.com/tenstorrent/tt-debuda.git
 ```
 
-To build TTLens wheel from source, simply run `make wheel` in the root directory. The installation is then done by running `pip install build/debuda_wheel/<debuda_wheel>.whl`, where `<debuda_wheel>` is an automatically generated name unique for each build.
+To build TTLens wheel from source, simply run `make wheel` in the root directory. The installation is then done by running `pip install build/ttlens_wheel/<ttlens_wheel>.whl`, where `<ttlens_wheel>` is an automatically generated name unique for each build.
 
 ## Running TTLens
 
-TTLens can be run through `tt-lens.py` script or by invoking `debuda` command after wheel installation.
+TTLens can be run through `tt-lens.py` script or by invoking `ttlens` command after wheel installation.
 There are two basic modes of operation: Limited mode and Buda mode.
 Limited mode is entered when no output directory is specified, and it enables basic communication with the device, like writing to and reading from registers or device memory and running .elf files on RISC cores.
 Buda mode is invoked by specifying an output directory of PyBuda run.
@@ -117,13 +117,13 @@ It is also possible to write all the results from TTLens session to cache, and u
 
 GDB server can be started from TTLens, allowing features like stepping through code and breakpoints to be used through GDB client.
 
-For more information about how to use the TTLens application, refer to [the tutorial](./docs/debuda-app-tutorial.md), or [the documentation](./docs/debuda-command-docs.md).
+For more information about how to use the TTLens application, refer to [the tutorial](./docs/ttlens-app-tutorial.md), or [the documentation](./docs/ttlens-app-docs.md).
 
 ## Using TTLens library
 
 TTLens's functionalities can also be used through ttlens library to create Python scripts that interact with Tenstorrent's hardware.
-For a quick start with ttlens library, check out [the tutorial](docs/debuda-lib-tutorial.md).
-Full documentation is also available [here](docs/debuda-lib-docs.md).
+For a quick start with ttlens library, check out [the tutorial](docs/ttlens-lib-tutorial.md).
+Full documentation is also available [here](docs/ttlens-lib-docs.md).
 
 ## Development
 
@@ -208,9 +208,9 @@ This will automatically generate new image releases and tag them as `latest`.
 ### fatal error: zmq.hpp: No such file or directory
 
 ```
-In file included from ttlens/server/lib/inc/dbdserver/server.h:8,
-                 from ttlens/server/app/debuda-server-standalone.cpp:11:
-ttlens/server/lib/inc/dbdserver/communication.h:9:10: fatal error: zmq.hpp: No such file or directory
+In file included from ttlens/server/lib/inc/ttlensserver/server.h:8,
+                 from ttlens/server/app/ttlens-server-standalone.cpp:11:
+ttlens/server/lib/inc/ttlensserver/communication.h:9:10: fatal error: zmq.hpp: No such file or directory
     9 | #include <zmq.hpp>
 ```
 
@@ -233,7 +233,7 @@ alias python=python3
 
 
 
-### ModuleNotFoundError: No module named 'tt_dbd_pybind_unit_tests'
+### ModuleNotFoundError: No module named 'ttlens_pybind_unit_tests'
 
 This error might occur when trying to run unit tests:
 ```
@@ -244,8 +244,8 @@ Traceback (most recent call last):
   File "/usr/lib/python3.10/unittest/loader.py", line 377, in _get_module_from_name
     __import__(name)
   File "/home/dcvijetic/work/tt-debuda/test/ttlens/pybind/test_bindings.py", line 17, in <module>
-    from tt_dbd_pybind_unit_tests import set_debuda_test_implementation
-ModuleNotFoundError: No module named 'tt_dbd_pybind_unit_tests'
+    from ttlens_pybind_unit_tests import set_ttlens_test_implementation
+ModuleNotFoundError: No module named 'ttlens_pybind_unit_tests'
 ```
 To fix, just build the neccessary test library:
 ```

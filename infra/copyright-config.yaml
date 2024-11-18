@@ -34,6 +34,5 @@ ignore:  # You can also select ignoring files here
     - third_party/
     - __pycache__/
     - build/
-    - debuda_test/
     - "*.ld"
     - "*.S"
