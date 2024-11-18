@@ -8,26 +8,26 @@
 
 #include "ttlensserver/requests.h"
 
-namespace tt::ttlens {
+namespace tt::lens {
 
 // Simple function that forwards background thread to member function
-int communication_loop(tt::ttlens::communication* communication) {
+int communication_loop(tt::lens::communication* communication) {
     communication->request_loop();
     return 0;
 }
 
-}  // namespace tt::ttlens
+}  // namespace tt::lens
 
-tt::ttlens::communication::communication() : port(-1) {}
+tt::lens::communication::communication() : port(-1) {}
 
-tt::ttlens::communication::~communication() {
+tt::lens::communication::~communication() {
     try {
         stop();
     } catch (...) {
     }
 }
 
-void tt::ttlens::communication::stop() {
+void tt::lens::communication::stop() {
     port = -1;
     should_stop = true;
     zmq_context.shutdown();
@@ -39,7 +39,7 @@ void tt::ttlens::communication::stop() {
     zmq_context.close();
 }
 
-void tt::ttlens::communication::start(int port) {
+void tt::lens::communication::start(int port) {
     stop();
     zmq_context = zmq::context_t();
     zmq_socket = zmq::socket_t(zmq_context, zmq::socket_type::rep);
@@ -49,7 +49,7 @@ void tt::ttlens::communication::start(int port) {
     this->port = port;
 }
 
-void tt::ttlens::communication::request_loop() {
+void tt::lens::communication::request_loop() {
     while (!should_stop) {
         try {
             // Receive message
@@ -109,7 +109,7 @@ void tt::ttlens::communication::request_loop() {
                     case request_type::get_device_soc_description:
                         invalid_message = message.size() != sizeof(get_device_soc_description_request);
                         break;
-                    case tt::ttlens::request_type::arc_msg:
+                    case tt::lens::request_type::arc_msg:
                         invalid_message = message.size() != sizeof(arc_msg_request);
                         break;
 
@@ -159,8 +159,8 @@ void tt::ttlens::communication::request_loop() {
     }
 }
 
-void tt::ttlens::communication::respond(const std::string& message) { respond(message.c_str(), message.size()); }
+void tt::lens::communication::respond(const std::string& message) { respond(message.c_str(), message.size()); }
 
-void tt::ttlens::communication::respond(const void* data, size_t size) { zmq_socket.send(zmq::const_buffer(data, size)); }
+void tt::lens::communication::respond(const void* data, size_t size) { zmq_socket.send(zmq::const_buffer(data, size)); }
 
-bool tt::ttlens::communication::is_connected() const { return port != -1; }
+bool tt::lens::communication::is_connected() const { return port != -1; }

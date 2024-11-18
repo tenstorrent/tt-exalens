@@ -14,7 +14,7 @@ static std::string SMALL_READ_WRITE_TLB_STR = "SMALL_READ_WRITE_TLB";
 static std::string LARGE_READ_TLB_STR = "LARGE_READ_TLB";
 static std::string LARGE_WRITE_TLB_STR = "LARGE_WRITE_TLB";
 
-namespace tt::ttlens {
+namespace tt::lens {
 
 umd_implementation::umd_implementation(tt::umd::Cluster* device, JtagDevice* jtag_device)
     : device(device), jtag_device(jtag_device) {}
@@ -143,7 +143,7 @@ std::optional<std::string> umd_implementation::pci_read_tile(uint8_t chip_id, ui
         return {};
     }
 
-    return ttlens::tile::read_tile_implementation(chip_id, noc_x, noc_y, address, size, data_format, device);
+    return tt::lens::tile::read_tile_implementation(chip_id, noc_x, noc_y, address, size, data_format, device);
 }
 
 std::optional<std::string> umd_implementation::get_harvester_coordinate_translation(uint8_t chip_id) {
@@ -212,4 +212,4 @@ std::optional<uint32_t> umd_implementation::jtag_read32(uint8_t chip_id, uint8_t
     return jtag_device->read32(chip_id, noc_x, noc_y, address);
 }
 
-}  // namespace tt::ttlens
+}  // namespace tt::lens

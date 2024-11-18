@@ -6,7 +6,7 @@
 
 #include "ttlensserver/read_tile.hpp"
 
-namespace tt::ttlens::tile {
+namespace tt::lens::tile {
 
 constexpr uint32_t TILE_HEIGHT = 32;
 constexpr uint32_t TILE_WIDTH = 32;
@@ -407,4 +407,4 @@ std::optional<std::string> read_tile_implementation(uint8_t chip_id, uint8_t noc
     }
 }
 
-}  // namespace tt::ttlens::tile
+}  // namespace tt::lens::tile

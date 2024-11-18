@@ -293,7 +293,7 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Clu
     return device_soc_descriptors;
 }
 
-namespace tt::ttlens {
+namespace tt::lens {
 
 umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt::umd::Cluster> device,
                                                            std::unique_ptr<JtagDevice> jtag_device)
@@ -397,4 +397,4 @@ std::optional<std::string> umd_with_open_implementation::get_device_soc_descript
     }
 }
 
-}  // namespace tt::ttlens
+}  // namespace tt::lens

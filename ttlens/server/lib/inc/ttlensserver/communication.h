@@ -10,11 +10,11 @@
 
 #include "requests.h"
 
-namespace tt::ttlens {
+namespace tt::lens {
 
-// Communication class that implements 0MQ server and parses messages into tt::ttlens::request.
+// Communication class that implements 0MQ server and parses messages into tt::lens::request.
 // Needs to have implemented function void process(const request&) for processing requests.
-// Current production implementation of it is tt::ttlens::server.
+// Current production implementation of it is tt::lens::server.
 class communication {
    public:
     communication();
@@ -44,9 +44,9 @@ class communication {
 
     communication(const communication&) = delete;
 
-    friend int communication_loop(tt::ttlens::communication* communication);
+    friend int communication_loop(tt::lens::communication* communication);
     friend class yaml_not_implemented_server;
     void request_loop();
 };
 
-}  // namespace tt::ttlens
+}  // namespace tt::lens

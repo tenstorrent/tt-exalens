@@ -10,7 +10,7 @@
 #include "jtag_device.h"
 #include "umd_implementation.h"
 
-namespace tt::ttlens {
+namespace tt::lens {
 
 class umd_with_open_implementation : public umd_implementation {
    private:
@@ -36,4 +36,4 @@ class umd_with_open_implementation : public umd_implementation {
     std::optional<std::string> get_device_soc_description(uint8_t chip_id) override;
 };
 
-}  // namespace tt::ttlens
+}  // namespace tt::lens

@@ -12,11 +12,11 @@
 
 constexpr int DEFAULT_TEST_SERVER_PORT = 6669;
 
-// Simple implementation of tt::ttlens::server that simulates real server.
-class simulation_server : public tt::ttlens::server {
+// Simple implementation of tt::lens::server that simulates real server.
+class simulation_server : public tt::lens::server {
    public:
-    simulation_server(std::unique_ptr<tt::ttlens::ttlens_implementation> implementation)
-        : tt::ttlens::server(std::move(implementation)) {}
+    simulation_server(std::unique_ptr<tt::lens::ttlens_implementation> implementation)
+        : tt::lens::server(std::move(implementation)) {}
 
     std::optional<std::vector<uint8_t>> get_file(const std::string& path) override {
         std::string response = "get_file(" + path + ")";
@@ -26,9 +26,9 @@ class simulation_server : public tt::ttlens::server {
     std::optional<std::string> get_run_dirpath() override { return "get_run_dirpath"; }
 };
 
-// Simple implementation of tt::ttlens::ttlens_implementation that simulates real implementation.
+// Simple implementation of tt::lens::ttlens_implementation that simulates real implementation.
 // For every write combination, read of the same communication will return that result.
-class simulation_implementation : public tt::ttlens::ttlens_implementation {
+class simulation_implementation : public tt::lens::ttlens_implementation {
    private:
     std::map<std::tuple<uint8_t, uint8_t, uint8_t, uint64_t>, uint32_t> read_write_4;
     std::map<std::tuple<uint8_t, uint8_t, uint8_t, uint64_t, uint32_t>, std::vector<uint8_t>> read_write;
@@ -132,7 +132,7 @@ class simulation_implementation : public tt::ttlens::ttlens_implementation {
 
 void call_python(const std::string& python_script, int server_port, const std::string& python_args,
                  const std::string& expected_output);
-std::unique_ptr<tt::ttlens::server> start_server(bool enable_yaml, int port = DEFAULT_TEST_SERVER_PORT);
+std::unique_ptr<tt::lens::server> start_server(bool enable_yaml, int port = DEFAULT_TEST_SERVER_PORT);
 
 static void call_python_empty_server(const std::string& python_args, int port = DEFAULT_TEST_SERVER_PORT) {
     auto server = start_server(false, port);

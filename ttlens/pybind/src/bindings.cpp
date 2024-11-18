@@ -4,7 +4,7 @@
 
 #include "bindings.h"
 
-static std::unique_ptr<tt::ttlens::ttlens_implementation> ttlens_implementation;
+static std::unique_ptr<tt::lens::ttlens_implementation> ttlens_implementation;
 
 class scoped_null_stdout {
    private:
@@ -21,7 +21,7 @@ class scoped_null_stdout {
     ~scoped_null_stdout() { std::cout.rdbuf(original_stdout); }
 };
 
-void set_ttlens_implementation(std::unique_ptr<tt::ttlens::ttlens_implementation> imp) {
+void set_ttlens_implementation(std::unique_ptr<tt::lens::ttlens_implementation> imp) {
     ttlens_implementation = std::move(imp);
 }
 
@@ -32,7 +32,7 @@ bool open_device(const std::string &binary_directory, const std::string &runtime
         scoped_null_stdout null_stdout;
 
         ttlens_implementation =
-            tt::ttlens::umd_with_open_implementation::open(binary_directory, runtime_yaml_path, wanted_devices);
+            tt::lens::umd_with_open_implementation::open(binary_directory, runtime_yaml_path, wanted_devices);
         if (!ttlens_implementation) {
             return false;
         }

@@ -10,7 +10,7 @@
 
 class JtagDevice;
 
-namespace tt::ttlens {
+namespace tt::lens {
 
 class umd_implementation : public ttlens_implementation {
    public:
@@ -52,4 +52,4 @@ class umd_implementation : public ttlens_implementation {
     std::string cluster_descriptor_path;
 };
 
-}  // namespace tt::ttlens
+}  // namespace tt::lens
