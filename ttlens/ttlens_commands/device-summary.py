@@ -16,12 +16,12 @@ Arguments:
                          netlist, noc0, noc1, nocTr, nocVirt, die, tensix - show coordinate
 
 Description:
-  Shows a device summary. When no argument is supplied, it iterates through all devices used by the
-  currently loaded netlist.
+  Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
 
 Examples:
-  device             # Shows mapping for all devices
-  device 0 noc0      # Shows noc0 to nocTr mapping for device 0
+  device                 # Shows the status of the RISC-V for all devices
+  device 0 noc0          # Shows noc0 to nocTr mapping for device 0
+  device 0 noc0 netlist  # Shows netlist coordinates in noc0 coordinages for device 0
 """  # Note: Limit the above comment to 100 characters in width
 
 command_metadata = {

@@ -114,7 +114,7 @@ server_config parse_args(int argc, char** argv) {
 int main(int argc, char** argv) {
     if (argc < 2) {
         log_error(
-            "Need arguments: <port> [-y path_to_yaml_file] [-d <device_id1> [<device_id2> ... "
+            "Need arguments: <port> [-d <device_id1> [<device_id2> ... "
             "<device_idN>]]");
         return 1;
     }
