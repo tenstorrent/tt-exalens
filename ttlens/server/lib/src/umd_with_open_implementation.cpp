@@ -302,8 +302,7 @@ umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt::u
       jtag_device(std::move(jtag_device)) {}
 
 std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open(
-    const std::filesystem::path &binary_directory,
-    const std::vector<uint8_t> &wanted_devices) {
+    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices) {
     auto devices = tt::umd::Cluster::detect_available_device_ids();
 
     if (devices.size() == 0) {
