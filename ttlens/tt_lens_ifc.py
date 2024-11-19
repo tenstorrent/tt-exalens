@@ -39,12 +39,10 @@ class ttlens_server_request_type(Enum):
 
     # Runtime requests
     pci_read_tile = 100
-    get_runtime_data = 101
     get_cluster_description = 102
 
     # File requests
     get_file = 200
-    get_buda_run_dirpath = 201
 
 
 class ttlens_server_bad_request(Exception):
@@ -194,11 +192,6 @@ class ttlens_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def get_runtime_data(self):
-        self._socket.send(
-            bytes([ttlens_server_request_type.get_runtime_data.value]))
-        return self._check(self._socket.recv())
-
     def get_cluster_description(self):
         self._socket.send(
             bytes([ttlens_server_request_type.get_cluster_description.value])
@@ -250,12 +243,6 @@ class ttlens_server_communication:
                 len(encoded_path),
                 encoded_path,
             )
-        )
-        return self._check(self._socket.recv())
-
-    def get_run_dirpath(self):
-        self._socket.send(
-            bytes([ttlens_server_request_type.get_buda_run_dirpath.value])
         )
         return self._check(self._socket.recv())
 
@@ -411,9 +398,6 @@ class ttlens_client(TTLensCommunicator):
             )
         )
 
-    def get_runtime_data(self):
-        return self.parse_string(self._communication.get_runtime_data())
-
     def get_cluster_description(self):
         return self.parse_string(self._communication.get_cluster_description())
 
@@ -443,14 +427,6 @@ class ttlens_client(TTLensCommunicator):
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         binary_content = self._communication.get_file(binary_path)
         return io.BytesIO(binary_content)
-
-    def get_run_dirpath(self) -> str:
-        run_dirpath = self.parse_string(
-            self._communication.get_run_dirpath()
-        )
-        if run_dirpath != "":
-            return run_dirpath
-        return None
 
     def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
         return self.parse_uint32_t(
@@ -491,12 +467,10 @@ import ttlens_pybind
 
 
 class TTLensPybind(TTLensCommunicator):
-    def __init__(self, runtime_data_yaml_filename: str = "", run_dirpath: str = None, wanted_devices: list = []):
+    def __init__(self, wanted_devices: list = []):
         super().__init__()
-        if not ttlens_pybind.open_device(binary_path, runtime_data_yaml_filename, wanted_devices):
+        if not ttlens_pybind.open_device(binary_path, wanted_devices):
             raise Exception("Failed to open device using pybind library")
-        self._runtime_yaml_path = runtime_data_yaml_filename # Don't go through C++ for opening files
-        self._run_dirpath = run_dirpath
 
     def _check_result(self, result):
         if result is None:
@@ -537,12 +511,6 @@ class TTLensPybind(TTLensCommunicator):
     ):
         return self._check_result(ttlens_pybind.pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format))
 
-    def get_runtime_data(self) -> str:
-        if self._runtime_yaml_path:
-            with open(self._runtime_yaml_path, 'r') as f:
-                return f.read()
-        else: raise ttlens_server_not_supported()
-
     def get_cluster_description(self):
         return self._check_result(ttlens_pybind.get_cluster_description())
 
@@ -579,17 +547,14 @@ class TTLensPybind(TTLensCommunicator):
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         return open(binary_path, 'rb')
 
-    def get_run_dirpath(self) -> str:
-        return self._run_dirpath
-
     def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
         return self._check_result(ttlens_pybind.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout))
 
-def init_pybind(runtime_data_yaml_filename, run_dirpath=None, wanted_devices=None):
+def init_pybind(wanted_devices=None):
     if not wanted_devices:
         wanted_devices = []
 
-    communicator = TTLensPybind(runtime_data_yaml_filename, run_dirpath, wanted_devices)
+    communicator = TTLensPybind(wanted_devices)
     util.VERBOSE("Device opened successfully.")
     return communicator
 

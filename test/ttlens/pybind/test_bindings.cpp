@@ -71,7 +71,6 @@ class bindings_implementation : public tt::lens::ttlens_implementation {
                std::to_string(noc_y) + ", " + std::to_string(address) + ", " + std::to_string(size) + ", " +
                std::to_string(data_format) + ")";
     }
-    std::optional<std::string> get_runtime_data() override { return "get_runtime_data()"; }
     std::optional<std::string> get_cluster_description() override { return "get_cluster_description()"; }
     std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) override {
         return "get_harvester_coordinate_translation(" + std::to_string(chip_id) + ")";

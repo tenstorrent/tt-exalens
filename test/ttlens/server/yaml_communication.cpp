@@ -10,10 +10,8 @@
 void yaml_communication::process(const tt::lens::request& request) {
     switch (request.type) {
         case tt::lens::request_type::ping:
-        case tt::lens::request_type::get_runtime_data:
         case tt::lens::request_type::get_cluster_description:
         case tt::lens::request_type::get_device_ids:
-        case tt::lens::request_type::get_buda_run_dirpath:
             respond(serialize(request));
             break;
 

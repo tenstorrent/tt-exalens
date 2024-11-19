@@ -62,9 +62,6 @@ class TestBindings(unittest.TestCase):
     def test_pci_read_tile(self):
         assert pb.pci_read_tile(1, 2, 3, 4, 5, 6) == "pci_read_tile(1, 2, 3, 4, 5, 6)", "Error: pci_read_tile(1, 2, 3, 4, 5, 6) should return 'pci_read_tile(1, 2, 3, 4, 5, 6)'."
 
-    def test_get_runtime_data(self):
-        assert pb.get_runtime_data() == "get_runtime_data()", "Error: get_runtime_data() should return 'get_runtime_data()'."
-
     def test_get_cluster_description(self):
         assert pb.get_cluster_description() == "get_cluster_description()", "Error: get_cluster_description() should return 'get_cluster_description()'."
 

@@ -45,10 +45,6 @@ class TTLensCommunicator(ABC):
         pass
 
     @abstractmethod
-    def get_runtime_data(self):
-        pass
-
-    @abstractmethod
     def get_cluster_description(self):
         pass
 
@@ -74,10 +70,6 @@ class TTLensCommunicator(ABC):
 
     @abstractmethod
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
-        pass
-
-    @abstractmethod
-    def get_run_dirpath(self) -> str:
         pass
 
     @abstractmethod

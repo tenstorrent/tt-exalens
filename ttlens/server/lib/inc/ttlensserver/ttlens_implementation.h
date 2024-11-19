@@ -41,7 +41,6 @@ class ttlens_implementation {
                                                      uint32_t size, uint8_t data_format) {
         return {};
     }
-    virtual std::optional<std::string> get_runtime_data() { return {}; }
     virtual std::optional<std::string> get_cluster_description() { return {}; }
     virtual std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) { return {}; }
     virtual std::optional<std::vector<uint8_t>> get_device_ids() { return {}; }

@@ -67,10 +67,6 @@ void test_yaml_request(const T& request, const std::string& expected_response) {
 
 TEST(ttlens_communication, ping) { test_yaml_request(tt::lens::request{tt::lens::request_type::ping}, "- type: 1"); }
 
-TEST(ttlens_communication, get_runtime_data) {
-    test_yaml_request(tt::lens::request{tt::lens::request_type::get_runtime_data}, "- type: 101");
-}
-
 TEST(ttlens_communication, get_cluster_description) {
     test_yaml_request(tt::lens::request{tt::lens::request_type::get_cluster_description}, "- type: 102");
 }

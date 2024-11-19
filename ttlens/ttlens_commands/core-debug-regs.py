@@ -27,7 +27,7 @@ command_metadata = {
     "short": "cdr",
     "type": "low-level",
     "description": __doc__,
-    "context": ["limited", "buda", "metal"],
+    "context": ["limited", "metal"],
 }
 
 

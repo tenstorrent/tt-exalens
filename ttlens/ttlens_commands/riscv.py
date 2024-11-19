@@ -48,7 +48,7 @@ command_metadata = {
     "short": "rv", 
     "type": "low-level", 
     "description": __doc__,
-    "context": ["limited", "buda", "metal"],
+    "context": ["limited", "metal"],
     "common_option_names": [ "--device", "--loc", "--risc", "--verbose" ]
 }
 
