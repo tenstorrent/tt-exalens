@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-lens [--netlist=<file>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [--jtag] [<output_dir>]
-  tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [<output_dir>]
+  tt-lens [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [--jtag]
+  tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag]
   tt-lens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
-  tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test] [<output_dir>]
+  tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test]
   tt-lens -h | --help
 
 Options:
@@ -17,7 +17,6 @@ Options:
   --cached                        Use the cache from previous TTLens run to simulate device communication.
   --port=<port>                   Port of the TTLens server. If not specified, defaults to 5555.  [default: 5555]
   --remote-address=<ip:port>      Address of the remote TTLens server, in the form of ip:port, or just :port, if ip is localhost. If not specified, defaults to localhost:5555. [default: localhost:5555]
-  --netlist=<file>                Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used.
   --commands=<cmds>               Execute a list of semicolon-separated commands.
   --start-gdb=<gdb_port>          Start a gdb server on the specified port.
   --write-cache                   Write the cache to disk.
@@ -36,9 +35,6 @@ Description:
     3. Cached mode: The user can use a cache file from previous TTLens run. This is useful for debugging without a connection to the device. Writing is disabled in this mode.
   
   Passing the --server flag will start a TTLens server. The server will listen on the specified port (default 5555) for incoming connections.
-
-Arguments:
-  output_dir                     Output directory of a Buda run. If left blank, the most recent subdirectory of tt_build/ will be used.
 """
 
 try:
@@ -312,24 +308,7 @@ def main_loop(args, context):
         have_non_interactive_commands = len(non_interactive_commands) > 0
         current_loc = ui_state.current_location
 
-        if (
-            ui_state.current_location is not None
-            and ui_state.current_graph_name is not None
-            and ui_state.current_device is not None
-        ):
-            ui_state.current_prompt = (
-                f"NocTr:{util.CLR_PROMPT}{current_loc.to_str()}{util.CLR_PROMPT_END} "
-            )
-            ui_state.current_prompt += f"netlist:{util.CLR_PROMPT}{current_loc.to_str('netlist')}{util.CLR_PROMPT_END} "
-            ui_state.current_prompt += f"stream:{util.CLR_PROMPT}{ui_state.current_stream_id}{util.CLR_PROMPT_END} "
-            graph = context.netlist.graph(ui_state.current_graph_name)
-            op_name = graph.location_to_op_name(current_loc)
-            ui_state.current_prompt += f"op:{util.CLR_PROMPT}{op_name}{util.CLR_PROMPT_END} "
-
         try:
-            if not ui_state.current_graph_name is None:
-                ui_state.current_device_id = context.netlist.graph_name_to_device_id(ui_state.current_graph_name)
-
             print_navigation_suggestions(navigation_suggestions)
 
             if have_non_interactive_commands:
@@ -348,9 +327,6 @@ def main_loop(args, context):
                     # if ui_state.gdb_server.is_connected:
                     #     gdb_status += "(connected)"
                 my_prompt = f"gdb:{gdb_status} "
-                if context.is_buda:
-                    epoch_id = context.netlist.graph_name_to_epoch_id(ui_state.current_graph_name)
-                    my_prompt += f"Current epoch:{util.CLR_PROMPT}{epoch_id}{util.CLR_PROMPT_END}({ui_state.current_graph_name}) "
                 my_prompt += f"device:{util.CLR_PROMPT}{ui_state.current_device_id}{util.CLR_PROMPT_END} "
                 my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
                 my_prompt += f"{ui_state.current_prompt}> "
@@ -425,18 +401,6 @@ def main():
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
     util.VERBOSE(f"Verbosity level: {Verbosity.get().name} ({Verbosity.get().value})")
 
-    output_dir = args["<output_dir>"]
-    if not output_dir and not args["--remote"] and not args["--cached"]:
-        output_dir = tt_lens_init.locate_most_recent_build_output_dir()
-        if output_dir:
-            util.INFO(
-                f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{output_dir}"
-            )
-        else:
-            util.VERBOSE(
-                f"Output directory (output_dir) was not supplied and cannot be determined automatically. Continuing with limited functionality..."
-            )
-
     wanted_devices = None
     if args["--devices"]:
         wanted_devices = args["--devices"].split(",")
@@ -449,13 +413,10 @@ def main():
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
         print(f"Starting TTLens server at {args['--port']}")
-        runtime_data_yaml_filename = tt_lens_init.find_runtime_data_yaml_filename(output_dir) if output_dir else None
         ttlens_server = tt_lens_server.start_server(
             args["--port"],
-            runtime_data_yaml_filename,
-            output_dir,
             wanted_devices,
-            init_jtag=args["--jtag"],
+            init_jtag=args["--jtag"]
         )
         if args["--test"]:
             while True: pass
@@ -473,7 +434,7 @@ def main():
         util.INFO(f"Connecting to TTLens server at {server_ip}:{server_port}")
         context = tt_lens_init.init_ttlens_remote(server_ip, int(server_port), cache_path)
     else:
-        context = tt_lens_init.init_ttlens(output_dir, args["--netlist"], wanted_devices, cache_path, args["--jtag"])
+        context = tt_lens_init.init_ttlens(wanted_devices, cache_path, args["--jtag"])
 
     # Main function
     exit_code = main_loop(args, context)

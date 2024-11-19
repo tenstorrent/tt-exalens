@@ -61,9 +61,6 @@ void tt::lens::server::process(const tt::lens::request& base_request) {
                                                   request.size, request.data_format));
             break;
         }
-        case tt::lens::request_type::get_runtime_data:
-            respond(implementation->get_runtime_data());
-            break;
         case tt::lens::request_type::get_cluster_description:
             respond(implementation->get_cluster_description());
             break;
@@ -98,10 +95,6 @@ void tt::lens::server::process(const tt::lens::request& base_request) {
             auto& request = static_cast<const tt::lens::arc_msg_request&>(base_request);
             respond(implementation->arc_msg(request.chip_id, request.msg_code, request.wait_for_done, request.arg0,
                                             request.arg1, request.timeout));
-            break;
-        }
-        case tt::lens::request_type::get_buda_run_dirpath: {
-            respond(get_run_dirpath());
             break;
         }
 
@@ -181,5 +174,3 @@ std::optional<std::vector<uint8_t>> tt::lens::server::get_file(const std::string
     }
     return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), {});
 }
-
-std::optional<std::string> tt::lens::server::get_run_dirpath() { return run_dirpath; }

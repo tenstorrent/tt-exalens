@@ -71,10 +71,8 @@ void tt::lens::communication::request_loop() {
 
                     // Requests with no structure - no input except request type
                     case request_type::ping:
-                    case request_type::get_runtime_data:
                     case request_type::get_cluster_description:
                     case request_type::get_device_ids:
-                    case request_type::get_buda_run_dirpath:
                         invalid_message = message.size() != sizeof(request);
                         break;
 

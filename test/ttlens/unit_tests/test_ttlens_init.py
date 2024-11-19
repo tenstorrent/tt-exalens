@@ -41,7 +41,7 @@ class TestLocalTTLensInit(unittest.TestCase):
 class TestRemoteTTLens(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls) -> None:
-		cls.server = start_server(5555, "")
+		cls.server = start_server(5555)
 
 	@classmethod
 	def tearDownClass(cls) -> None:
@@ -65,7 +65,7 @@ class TestCachedTTLens(unittest.TestCase):
 	def setUpClass(cls) -> None:
 		context = tt_lens_init.init_ttlens(cache_path=CACHE_PATH)
 		# Execute a sample command to populate the cache
-		context.server_ifc.get_run_dirpath()
+		context.server_ifc.get_cluster_description()
 		context.server_ifc.save()
 		del context
 
@@ -74,7 +74,7 @@ class TestCachedTTLens(unittest.TestCase):
 		context = tt_lens_init.init_ttlens_cached(cache_path=CACHE_PATH)
 		self.assertIsNotNone(context)
 		self.assertIsInstance(context, Context)
-		context.server_ifc.get_run_dirpath()
+		context.server_ifc.get_cluster_description()
 
 
 if __name__ == "__main__":

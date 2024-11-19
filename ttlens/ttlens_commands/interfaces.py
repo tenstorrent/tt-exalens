@@ -25,8 +25,8 @@ from docopt import docopt
 
 from ttlens import tt_util as util
 from ttlens  import tt_device
-from ttlens.tt_debuda_context import LimitedContext
-from ttlens.tt_debuda_lib import read_words_from_device, read_from_device
+from ttlens.tt_lens_context import LimitedContext
+from ttlens.tt_lens_lib import read_words_from_device, read_from_device
 from ttlens.tt_coordinate import OnChipCoordinate
 
 TEST_ID_SIZE = 48

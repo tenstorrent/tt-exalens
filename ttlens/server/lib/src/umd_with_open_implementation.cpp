@@ -302,7 +302,7 @@ umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt::u
       jtag_device(std::move(jtag_device)) {}
 
 std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open(
-    const std::filesystem::path &binary_directory, const std::string &runtime_yaml_path,
+    const std::filesystem::path &binary_directory,
     const std::vector<uint8_t> &wanted_devices, bool init_jtag) {
     auto devices = tt::umd::Cluster::detect_available_device_ids();
 
@@ -376,16 +376,11 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
     auto implementation =
         std::make_unique<umd_with_open_implementation>(std::move(device), std::move(jtag_implementation));
 
-    implementation->runtime_yaml_path = runtime_yaml_path;
     implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
     implementation->device_ids = device_ids;
     implementation->device_soc_descriptors = device_soc_descriptors;
     return std::move(implementation);
-}
-
-std::optional<std::string> umd_with_open_implementation::get_runtime_data() {
-    return read_string_from_file(runtime_yaml_path);
 }
 
 std::optional<std::string> umd_with_open_implementation::get_cluster_description() { return cluster_descriptor_path; }

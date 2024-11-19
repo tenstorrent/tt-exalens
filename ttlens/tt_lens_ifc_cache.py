@@ -96,10 +96,6 @@ class TTLensCacheThrough(TTLensCache):
         return self.communicator.pci_write32_raw(chip_id, reg_addr, data)
 
     @cache_decorator
-    def get_runtime_data(self) -> str:
-        return self.communicator.get_runtime_data()
-
-    @cache_decorator
     def get_cluster_description(self):
         return self.communicator.get_cluster_description()
 
@@ -126,10 +122,6 @@ class TTLensCacheThrough(TTLensCache):
     @cache_binary_decorator
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         return self.communicator.get_binary(binary_path)
-
-    @cache_decorator
-    def get_run_dirpath(self) -> str:
-        return self.communicator.get_run_dirpath()
 
     @cache_decorator
     def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
@@ -233,10 +225,6 @@ class TTLensCacheReader(TTLensCache):
         raise util.TTException("Device not available, cannot write to cache.")
 
     @read_decorator
-    def get_runtime_data(self) -> str:
-        pass
-
-    @read_decorator
     def get_cluster_description(self):
         pass
 
@@ -262,10 +250,6 @@ class TTLensCacheReader(TTLensCache):
 
     @read_cached_binary_decorator
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
-        pass
-
-    @read_decorator
-    def get_run_dirpath(self) -> str:
         pass
 
     @read_decorator

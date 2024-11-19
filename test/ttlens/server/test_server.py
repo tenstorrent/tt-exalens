@@ -17,12 +17,6 @@ def check_not_implemented_response(server_command: Callable[[], Any]):
     except ttlens_server_not_supported:
         print("pass")
 
-
-def empty_get_runtime_data():
-    global server
-    check_not_implemented_response(lambda: server.get_runtime_data())
-
-
 def empty_get_cluster_description():
     global server
     check_not_implemented_response(lambda: server.get_cluster_description())
@@ -100,12 +94,6 @@ def empty_get_file():
     global server
     check_not_implemented_response(lambda: server.get_file("file_name"))
 
-
-def empty_get_run_dirpath():
-    global server
-    check_not_implemented_response(lambda: server.get_run_dirpath())
-
-
 def pci_write32_pci_read32():
     global server
     server.pci_write32(1, 2, 3, 123456, 987654)
@@ -152,13 +140,6 @@ def jtag_write32_axi_jtag_read32_axi():
     read = server.jtag_read32_axi(1, 123456)
     print("pass" if read == 987654 else "fail")
 
-
-def get_runtime_data():
-    global server
-    read = server.get_runtime_data()
-    print("pass" if read == "get_runtime_data()" else "fail")
-
-
 def get_cluster_description():
     global server
     read = server.get_cluster_description()
@@ -193,13 +174,6 @@ def get_file():
     global server
     read = server.get_file("file_name")
     print("pass" if read == "get_file(file_name)" else "fail")
-
-
-def get_run_dirpath():
-    global server
-    read = server.get_run_dirpath()
-    print("pass" if read == "get_run_dirpath" else "fail")
-
 
 def main():
     # Check if at least two arguments are provided (script name + function name)

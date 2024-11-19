@@ -22,8 +22,6 @@ class simulation_server : public tt::lens::server {
         std::string response = "get_file(" + path + ")";
         return std::vector<uint8_t>(response.begin(), response.end());
     }
-
-    std::optional<std::string> get_run_dirpath() override { return "get_run_dirpath"; }
 };
 
 // Simple implementation of tt::lens::ttlens_implementation that simulates real implementation.
@@ -116,7 +114,6 @@ class simulation_implementation : public tt::lens::ttlens_implementation {
                std::to_string(noc_y) + ", " + std::to_string(address) + ", " + std::to_string(size) + ", " +
                std::to_string(data_format) + ")";
     }
-    std::optional<std::string> get_runtime_data() override { return "get_runtime_data()"; }
     std::optional<std::string> get_cluster_description() override { return "get_cluster_description()"; }
     std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) override {
         return "get_harvester_coordinate_translation(" + std::to_string(chip_id) + ")";
@@ -149,7 +146,6 @@ static void call_python_server(const std::string& python_args, int port = DEFAUL
     call_python(python_tests_path, simulation_server.get_port(), python_args, "pass\n");
 }
 
-TEST(ttlens_python_empty_server, get_runtime_data) { call_python_empty_server("empty_get_runtime_data"); }
 
 TEST(ttlens_python_empty_server, get_cluster_description) { call_python_empty_server("empty_get_cluster_description"); }
 
@@ -175,8 +171,6 @@ TEST(ttlens_python_empty_server, pci_write) { call_python_empty_server("empty_pc
 
 TEST(ttlens_python_empty_server, get_file) { call_python_empty_server("empty_get_file"); }
 
-TEST(ttlens_python_empty_server, get_run_dirpath) { call_python_empty_server("empty_get_run_dirpath"); }
-
 TEST(ttlens_python_server, pci_write32_pci_read32) { call_python_server("pci_write32_pci_read32"); }
 
 TEST(ttlens_python_server, pci_write_pci_read) { call_python_server("pci_write_pci_read"); }
@@ -186,8 +180,6 @@ TEST(ttlens_python_server, pci_write32_raw_pci_read32_raw) { call_python_server(
 TEST(ttlens_python_server, dma_buffer_read32) { call_python_server("dma_buffer_read32"); }
 
 TEST(ttlens_python_server, pci_read_tile) { call_python_server("pci_read_tile"); }
-
-TEST(ttlens_python_server, get_runtime_data) { call_python_server("get_runtime_data"); }
 
 TEST(ttlens_python_server, get_cluster_description) { call_python_server("get_cluster_description"); }
 
@@ -206,8 +198,6 @@ TEST(ttlens_python_server, get_device_arch) { call_python_server("get_device_arc
 TEST(ttlens_python_server, get_device_soc_description) { call_python_server("get_device_soc_description"); }
 
 TEST(ttlens_python_server, get_file) { call_python_server("get_file"); }
-
-TEST(ttlens_python_server, get_run_dirpath) { call_python_server("get_run_dirpath"); }
 
 TEST(ttlens_python_empty_server, jtag_read32) { call_python_empty_server("empty_jtag_read32"); }
 

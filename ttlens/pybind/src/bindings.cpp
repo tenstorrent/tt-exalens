@@ -25,14 +25,13 @@ void set_ttlens_implementation(std::unique_ptr<tt::lens::ttlens_implementation> 
     ttlens_implementation = std::move(imp);
 }
 
-bool open_device(const std::string &binary_directory, const std::string &runtime_yaml_path,
-                 const std::vector<uint8_t> &wanted_devices, bool init_jtag) {
+bool open_device(const std::string &binary_directory, const std::vector<uint8_t> &wanted_devices, bool init_jtag) {
     try {
         // Since tt::umd::Cluster is printing some output and we don't want to see it in python, we disable std::cout
         scoped_null_stdout null_stdout;
 
         ttlens_implementation =
-            tt::lens::umd_with_open_implementation::open(binary_directory, runtime_yaml_path, wanted_devices, init_jtag);
+            tt::lens::umd_with_open_implementation::open(binary_directory, wanted_devices, init_jtag);
         if (!ttlens_implementation) {
             return false;
         }
@@ -155,13 +154,6 @@ std::optional<uint32_t> jtag_write32_axi(uint8_t chip_id, uint64_t address, uint
     return {};
 }
 
-std::optional<std::string> get_runtime_data() {
-    if (ttlens_implementation) {
-        return ttlens_implementation->get_runtime_data();
-    }
-    return {};
-}
-
 std::optional<std::string> get_cluster_description() {
     if (ttlens_implementation) {
         return ttlens_implementation->get_cluster_description();
@@ -207,7 +199,7 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> arc_msg(uint8_t chip_id, uint
 
 PYBIND11_MODULE(ttlens_pybind, m) {
     m.def("open_device", &open_device, "Opens tt device. Prints error message if failed.",
-          pybind11::arg("binary_directory"), pybind11::arg("runtime_yaml_path"),
+          pybind11::arg("binary_directory"),
           pybind11::arg_v("wanted_devices", std::vector<uint8_t>(), "[]"), pybind11::arg("init_jtag"));
     m.def("pci_read32", &pci_read32, "Reads 4 bytes from PCI address", pybind11::arg("chip_id"), pybind11::arg("noc_x"),
           pybind11::arg("noc_y"), pybind11::arg("address"));
@@ -226,7 +218,6 @@ PYBIND11_MODULE(ttlens_pybind, m) {
     m.def("pci_read_tile", &pci_read_tile, "Reads tile from PCI address", pybind11::arg("chip_id"),
           pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"), pybind11::arg("size"),
           pybind11::arg("data_format"));
-    m.def("get_runtime_data", &get_runtime_data, "Returns runtime data");
     m.def("get_cluster_description", &get_cluster_description, "Returns cluster description");
     m.def("get_harvester_coordinate_translation", &get_harvester_coordinate_translation,
           "Returns harvester coordinate translation", pybind11::arg("chip_id"));

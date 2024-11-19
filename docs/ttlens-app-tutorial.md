@@ -267,7 +267,6 @@ which gives
 Starting TTLens from cache.
 Loading server cache from file tutorial_cache.pkl
   Loaded 7 entries
-Cache miss for get_runtime_data.
 gdb:None device:0 loc:18-18 (0, 0) >
 ```
 
@@ -338,7 +337,6 @@ The fields of this dictionary are as follwos:
 - `description` (*str*): command description, usually `__doc__` variable used to utilize module docstring
 - `context` (*list[str]*): which context has access to this command:
   - limited: needs no output, works with raw data from device, 
-  - buda: needs output of a Buda run to interpret data from device,
   - metal: needs output of a Metal run to interpret data from device
 - `common_option_names` (*list[str]*, optional): list of names of common options that command uses:
   - --verbose, -v: Execute command with verbose output, default: false
@@ -358,7 +356,7 @@ command_metadata = {
     "short": "examplecmd",
     "type": "low-level", 
     "description": "This is a description of the command.",
-    "context": ["limited", "buda", "metal"],
+    "context": ["limited", "metal"],
     "common_option_names": [ "--device", "--loc", "--verbose", "--risc" ],
     }
 ```
