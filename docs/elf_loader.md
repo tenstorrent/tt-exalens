@@ -20,7 +20,7 @@ We experimented with this approach, but hit many problems along the way:
 - NCRISC doesn't have debug interface, so we cannot make loader this way for it
 
 ### Approach 2: double memory copy
-This is known approach used in both tt-budabackend and tt-metal. Here we have implemented a bit different version as application
+This is known approach used in tt-metal. Here we have implemented a bit different version as application
 writer doen't need to be aware of this in `.cc` file. Everything is done in loader and CRT.
 
 ## Final solution

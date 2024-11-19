@@ -10,7 +10,6 @@
 # -n1 limits the number of items to pass to clang-format to 1. This is also just for easier debugging,
 # since clang-format can also accept multiple files.
 #
-# Note that pybuda docker image has default clang-format at /usr/local/bin, so using explicit location.
 echo "Running clang-format version $(clang-format --version) on all files in the repository."
 find . \( -name '*.cpp' -or -name '*.h' \) \
     -not -path "./third_party/*" \

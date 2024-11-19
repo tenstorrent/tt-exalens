@@ -29,7 +29,6 @@ Interfacing device is local, through pybind.
 
 ### Args
 
-- `output_dir_path` *(str, optional)*: Path to the Buda run output directory. If None, TTLens will be initialized in limited mode.
 - `wanted_devices` *(list, optional)*: List of device IDs we want to connect to. If None, connect to all available devices.
 - `caching_path` *(str, optional)*: Path to the cache file to write. If None, caching is disabled.
 
@@ -138,19 +137,6 @@ Set the active TTLens context object.
 ### Notes
 
 - Every new context initialization will overwrite the currently active context.
-
-
-
-### Description
-
-Find the runtime data yaml file in the output directory. If directory is not specified, try to find the most recent Buda output directory.
-
-
-### Args
-
-- `output_dir` *(str, optional)*: Path to the output directory.
-
-
 
 
 ## locate_most_recent_build_output_dir

@@ -56,9 +56,6 @@ from ttlens import tt_lens_server
 from ttlens import tt_util as util
 from ttlens.tt_uistate import UIState
 from ttlens.tt_commands import find_command
-from ttlens.tt_gdb_server import GdbServer, ServerSocket
-from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_lens_context import Context
 
 from ttlens import Verbosity
 

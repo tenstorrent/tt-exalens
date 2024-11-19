@@ -21,11 +21,6 @@ class Context:
             if self.short_name in cmd["context"] or cmd["context"] == "util":
                 self.commands.append(cmd)
 
-    @property
-    @abstractmethod
-    def netlist(self):
-        pass
-
     @cached_property
     def devices(self):
         from ttlens import tt_device
@@ -57,14 +52,14 @@ class Context:
             device_ids = self.server_ifc.get_device_ids()
             return util.set(d for d in device_ids)
         except:
-            return self.netlist.get_device_ids()
+            return None
 
     @cached_property
     def arch(self):
         try:
             return self.server_ifc.get_device_arch(min(self.device_ids))
         except:
-            return self.netlist.get_arch()
+            return None
 
     @property
     @abstractmethod
@@ -85,10 +80,6 @@ class LimitedContext(Context):
     def __init__(self, server_ifc, cluster_desc_yaml):
         super().__init__(server_ifc, cluster_desc_yaml, "limited")
         self.loaded_elfs = {} # (OnChipCoordinate, risc_id) => elf_path
-
-    @cached_property
-    def netlist(self):
-        raise util.TTException(f"We are running with limited functionality, elf files are not available.")
 
     def get_risc_elf_path(self, location: OnChipCoordinate, risc_id: int) -> Optional[str]:
         return self.loaded_elfs.get((location, risc_id))

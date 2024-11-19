@@ -32,7 +32,6 @@ Notes:
   - Arguments and options should be separated from their descriptions by multiple spaces.
   - Option arguments should be separated from option name by a space or an equal sign.
   - Examples should be in the format: command # description [ # context ], where context part is in the form of "Needs <context> context".
-    If the command needs Buda context, it is not run, as Buda output folder is needed for it.
 """
 import sys, re, os, importlib.util
 from docopt import docopt
@@ -191,9 +190,6 @@ class CmdParser:
 			# Each example has format: command # description [ # context ]
 			parts = line.split("#")
 			if not parts[0]:
-				continue
-			if len(parts) > 2 and "needs buda" in parts[2].lower():
-				# This example needs Buda, so we skip it for now
 				continue
 
 			command_dict = {}

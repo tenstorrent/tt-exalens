@@ -9,7 +9,7 @@ A low level hardware debugger
 <br/>
 
 TTLens is a low level debugging tool for Tenstorrent's hardware.
-It can be used to access and communicate with the device, or explore bugs and hangs in PyBuda models.
+It can be used to access and communicate with the device.
 At the moment, Grayskull and Wormhole devices are supported, while the support for Blackhole cards, as well as support for the Metal runtime are under development.
 
 ---
@@ -104,14 +104,12 @@ To build TTLens wheel from source, simply run `make wheel` in the root directory
 ## Running TTLens
 
 TTLens can be run through `tt-lens.py` script or by invoking `ttlens` command after wheel installation.
-There are two basic modes of operation: Limited mode and Buda mode.
-Limited mode is entered when no output directory is specified, and it enables basic communication with the device, like writing to and reading from registers or device memory and running .elf files on RISC cores.
-Buda mode is invoked by specifying an output directory of PyBuda run.
-It enables TTLens access to runtime information, and opens up possibility of using more advanced commands to explore models run on device.
+TTLens currently operates in Limited mode, with plans to extend functionality to include other modes in the future..
+Limited mode is entered by default, and it enables basic communication with the device, like writing to and reading from registers or device memory and running .elf files on RISC cores.
 
 TTLens can run locally or remotely.
 For remote runs, a TTLens server is needed.
-It can be started either through TTLens application, or from PyBuda runtime.
+It can be started either through TTLens application.
 
 It is also possible to write all the results from TTLens session to cache, and use them to run TTLens commands again on a system that does not have Tenstorrent hardware.
 
@@ -147,10 +145,6 @@ which can be installed by running
 ```bash
 pip install -r test/test_requirements.txt
 ```
-
-Some tests require using output of a Buda run.
-To be able to run those, you need to have a clone of [Budabackend](https://github.com/tenstorrent/tt-budabackend/tree/main), and an environment variable `BUDA_HOME` set to point to the cloned repository.
-Tests will build Budabackend in the background and run Buda code on the device so that the output of the run can be used.
 
 #### Running tests
 
