@@ -62,7 +62,7 @@ class TestDebugging(unittest.TestCase):
 		loc = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
 		self.risc_id = get_risc_id(self.risc_name)
 		rloc = RiscLoc(loc, 0, self.risc_id)
-		self.rdbg = RiscDebug(rloc, self.context.server_ifc)
+		self.rdbg = RiscDebug(rloc, self.context)
 		loader = RiscLoader(self.rdbg, self.context)
 		self.program_base_address = loader.get_risc_start_address()
 

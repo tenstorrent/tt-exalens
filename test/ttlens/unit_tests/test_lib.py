@@ -313,7 +313,7 @@ class TestRunElf(unittest.TestCase):
         TESTBYTEACCESS_ADDR, _, _, _ = elf.parse_addr_size_value_type("fw.g_TESTBYTEACCESS")
 
         loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
-        rdbg = RiscDebug(RiscLoc(loc, 0, 0), self.context.server_ifc, False)
+        rdbg = RiscDebug(RiscLoc(loc, 0, 0), self.context, False)
         rloader = RiscLoader(rdbg, self.context, False)
         loc = rloader.risc_debug.location.loc
         device = loc._device

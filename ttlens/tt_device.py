@@ -100,7 +100,7 @@ class Device(TTObject):
         for coord in self.get_block_locations("functional_workers"):
             for risc_id in range(4): # 4 because we have a hardware bug for debugging ncrisc
                 risc_location = RiscLoc(coord, 0, risc_id)
-                risc_debug = RiscDebug(risc_location, self._context.server_ifc)
+                risc_debug = RiscDebug(risc_location, self._context)
                 cores.append(risc_debug)
 
         # TODO: Can we debug eth cores?
@@ -1169,7 +1169,7 @@ class Device(TTObject):
         if bt == "functional_workers":
             for risc_id in range(4):
                 risc_location = RiscLoc(loc, 0, risc_id)
-                risc_debug = RiscDebug(risc_location, self._context.server_ifc)
+                risc_debug = RiscDebug(risc_location, self._context)
                 status_str += "-" if risc_debug.is_in_reset() else "R"
             return status_str
         return bt
