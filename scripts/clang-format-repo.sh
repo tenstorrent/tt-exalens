@@ -14,5 +14,6 @@
 echo "Running clang-format version $(clang-format --version) on all files in the repository."
 find . \( -name '*.cpp' -or -name '*.h' \) \
     -not -path "./third_party/*" \
+    -print0 | \
     sort -z | \
     xargs -0 -t -n1 clang-format -i -style=file

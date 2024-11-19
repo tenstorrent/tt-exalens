@@ -199,8 +199,8 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> arc_msg(uint8_t chip_id, uint
 
 PYBIND11_MODULE(ttlens_pybind, m) {
     m.def("open_device", &open_device, "Opens tt device. Prints error message if failed.",
-          pybind11::arg("binary_directory"),
-          pybind11::arg_v("wanted_devices", std::vector<uint8_t>(), "[]"), pybind11::arg("init_jtag"));
+          pybind11::arg("binary_directory"), pybind11::arg_v("wanted_devices", std::vector<uint8_t>(), "[]"),
+          pybind11::arg("init_jtag"));
     m.def("pci_read32", &pci_read32, "Reads 4 bytes from PCI address", pybind11::arg("chip_id"), pybind11::arg("noc_x"),
           pybind11::arg("noc_y"), pybind11::arg("address"));
     m.def("pci_write32", &pci_write32, "Writes 4 bytes to PCI address", pybind11::arg("chip_id"),

@@ -124,8 +124,9 @@ TEST(ttlens_communication, get_device_arch) {
 }
 
 TEST(ttlens_communication, get_device_soc_description) {
-    test_yaml_request(tt::lens::get_device_soc_description_request{tt::lens::request_type::get_device_soc_description, 1},
-                      "- type: 20\n  chip_id: 1");
+    test_yaml_request(
+        tt::lens::get_device_soc_description_request{tt::lens::request_type::get_device_soc_description, 1},
+        "- type: 20\n  chip_id: 1");
 }
 
 TEST(ttlens_communication, pci_write) {

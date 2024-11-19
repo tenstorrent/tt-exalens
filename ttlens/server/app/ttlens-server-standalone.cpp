@@ -39,8 +39,7 @@ int run_ttlens_server(const server_config& config) {
         std::unique_ptr<tt::lens::umd_with_open_implementation> implementation;
         // Try to open only wanted devices
         try {
-            implementation =
-                tt::lens::umd_with_open_implementation::open({}, config.wanted_devices, config.init_jtag);
+            implementation = tt::lens::umd_with_open_implementation::open({}, config.wanted_devices, config.init_jtag);
         } catch (std::runtime_error& error) {
             log_custom(tt::Logger::Level::Error, tt::LogTTLens, "Cannot open device: {}.", error.what());
             return 1;
