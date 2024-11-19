@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-#include <ttlensserver/ttlens_implementation.h>
-#include <ttlensserver/server.h>
 #include <gtest/gtest.h>
+#include <ttlensserver/server.h>
+#include <ttlensserver/ttlens_implementation.h>
 
 #include <map>
 #include <tuple>
@@ -145,7 +145,6 @@ static void call_python_server(const std::string& python_args, int port = DEFAUL
     std::string python_tests_path = "test.ttlens.server.test_server";
     call_python(python_tests_path, simulation_server.get_port(), python_args, "pass\n");
 }
-
 
 TEST(ttlens_python_empty_server, get_cluster_description) { call_python_empty_server("empty_get_cluster_description"); }
 
