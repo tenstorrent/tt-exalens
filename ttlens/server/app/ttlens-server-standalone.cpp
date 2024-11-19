@@ -82,6 +82,7 @@ extern std::string cluster_desc_path;
 server_config parse_args(int argc, char** argv) {
     server_config config = server_config();
     config.port = atoi(argv[1]);
+    config.init_jtag = false;
 
     int i = 2;
     while (i < argc) {
