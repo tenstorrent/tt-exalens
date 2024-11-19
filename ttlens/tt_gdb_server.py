@@ -9,7 +9,7 @@ from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 from ttlens.tt_gdb_communication import GDB_ASCII_COLON, GDB_ASCII_COMMA, GDB_ASCII_SEMICOLON, ClientSocket, GdbInputStream, GdbMessageParser, GdbMessageWriter, ServerSocket
 from ttlens.tt_gdb_data import GdbProcess, GdbThreadId
 from ttlens.tt_gdb_file_server import GdbFileServer
-from ttlens.tt_debuda_context import Context
+from ttlens.tt_lens_context import Context
 from ttlens.tt_debug_risc import RiscLoc, get_risc_name
 from ttlens import tt_util as util
 
@@ -44,7 +44,7 @@ class GdbThreadListPaged:
 class GdbServer(threading.Thread):
     def __init__(self, context: Context, server: ServerSocket):
         super().__init__(daemon=True) # Spawn as deamon, so we don't block exit
-        self.context = context # Debuda context
+        self.context = context # TTLens context
         self.server = server # server socket used for listening to incoming connections
         self.is_connected = False # flag that indicates if gdb client is connected
         self.is_non_stop = False # flag that indicates if we are in non-stop mode

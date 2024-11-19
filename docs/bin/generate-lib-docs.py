@@ -19,7 +19,7 @@ Options:
   -i, --interactive  Run in interactive mode. Pause after parsing each file.
 
 Description:
-  This is a script for automatically generating markdown documentation for Debuda library files
+  This is a script for automatically generating markdown documentation for TTLens library files
   using docstrings of their functions and variables. The script can be run on a single command file or a directory.
 
 Notes:
@@ -45,7 +45,7 @@ from docopt import docopt
 from .doc_utils import INFO, WARNING, ERROR
 from .doc_utils import SectionPPrinter
 
-with open("ttlens/tt_debuda_init.py") as f:
+with open("ttlens/tt_lens_init.py") as f:
 	tree = ast.parse(f.read())
 
 

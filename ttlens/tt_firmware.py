@@ -47,8 +47,8 @@ class ELF:
     def __init__(self, file_ifc, filemap, extra_vars=None) -> None:
         """
         Given a filemap "prefix" -> "filename", load all the ELF files and store them in
-        self.names. For example, if filemap is { "brisc" : "./debuda_test/brisc/brisc.elf" },
-        the parsed content of "./debuda_test/brisc/brisc.elf" will be stored in self.names["brisc"].
+        self.names. For example, if filemap is { "brisc" : "./build/riscv-src/wormhole/sample.brisc.elf" },
+        the parsed content of "./build/riscv-src/wormhole/sample.brisc.elf" will be stored in self.names["brisc"].
         """
         self.names = dict()
         self.filemap = filemap
@@ -234,15 +234,13 @@ class ELF:
         return data
 
     @staticmethod
-    def get_mem_reader(device_id, core_loc):
+    def get_mem_reader(context, device_id, core_loc):
         """
         Returns a simple memory reader function that reads from a given device and a given core.
         """
 
-        def mem_reader(addr, size_bytes):
-            import tt_device
-
-            data = tt_device.SERVER_IFC.pci_read32(
+        def mem_reader(context, addr, size_bytes):
+            data = context.server_ifc.pci_read32(
                 device_id, *core_loc.to("nocVirt"), addr
             )
             return [data]

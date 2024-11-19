@@ -1,4 +1,4 @@
-TOOL_PATH?=$(DEBUDA_HOME)/third_party/sfpi/compiler/bin
+TOOL_PATH?=$(TTLENS_HOME)/third_party/sfpi/compiler/bin
 
 # Tool paths
 GXX=$(TOOL_PATH)/riscv32-unknown-elf-g++
@@ -9,7 +9,7 @@ READELF=$(TOOL_PATH)/riscv32-unknown-elf-readelf
 # GCC options
 OPTIONS_ALL=-O0 -march=rv32imw -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math
 OPTIONS_COMPILE=-fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable
-OPTIONS_LINK=-fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Ldbd/riscv-src
+OPTIONS_LINK=-fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttlens/riscv-src
 
 # Define project paths
 RISCV_SOURCE=ttlens/riscv-src

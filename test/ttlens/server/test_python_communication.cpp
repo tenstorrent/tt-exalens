@@ -51,78 +51,78 @@ static void call_python(const std::string& python_args, const std::string& expec
     call_python(python_tests_path, server->get_port(), python_args, expected_output);
 }
 
-TEST(debuda_python_communication, ping) { call_python("ping", "- type: 1\n"); }
+TEST(ttlens_python_communication, ping) { call_python("ping", "- type: 1\n"); }
 
-TEST(debuda_python_communication, get_runtime_data) { call_python("get_runtime_data", "- type: 101\n"); }
+TEST(ttlens_python_communication, get_runtime_data) { call_python("get_runtime_data", "- type: 101\n"); }
 
-TEST(debuda_python_communication, get_cluster_description) { call_python("get_cluster_description", "- type: 102\n"); }
+TEST(ttlens_python_communication, get_cluster_description) { call_python("get_cluster_description", "- type: 102\n"); }
 
-TEST(debuda_python_communication, get_device_ids) { call_python("get_device_ids", "- type: 18\n"); }
+TEST(ttlens_python_communication, get_device_ids) { call_python("get_device_ids", "- type: 18\n"); }
 
-TEST(debuda_python_communication, pci_read32) {
+TEST(ttlens_python_communication, pci_read32) {
     call_python("pci_read32", "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n");
 }
 
-TEST(debuda_python_communication, pci_write32) {
+TEST(ttlens_python_communication, pci_write32) {
     call_python("pci_write32", "- type: 11\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654\n");
 }
 
-TEST(debuda_python_communication, pci_read) {
+TEST(ttlens_python_communication, pci_read) {
     call_python("pci_read", "- type: 12\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n");
 }
 
-TEST(debuda_python_communication, pci_read32_raw) {
+TEST(ttlens_python_communication, pci_read32_raw) {
     call_python("pci_read32_raw", "- type: 14\n  chip_id: 1\n  address: 123456\n");
 }
 
-TEST(debuda_python_communication, pci_write32_raw) {
+TEST(ttlens_python_communication, pci_write32_raw) {
     call_python("pci_write32_raw", "- type: 15\n  chip_id: 1\n  address: 123456\n  data: 987654\n");
 }
 
-TEST(debuda_python_communication, dma_buffer_read32) {
+TEST(ttlens_python_communication, dma_buffer_read32) {
     call_python("dma_buffer_read32", "- type: 16\n  chip_id: 1\n  address: 123456\n  channel: 456\n");
 }
 
-TEST(debuda_python_communication, pci_read_tile) {
+TEST(ttlens_python_communication, pci_read_tile) {
     call_python(
         "pci_read_tile",
         "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14\n");
 }
 
-TEST(debuda_python_communication, get_harvester_coordinate_translation) {
+TEST(ttlens_python_communication, get_harvester_coordinate_translation) {
     call_python("get_harvester_coordinate_translation", "- type: 17\n  chip_id: 1\n");
 }
 
-TEST(debuda_python_communication, get_device_arch) { call_python("get_device_arch", "- type: 19\n  chip_id: 1\n"); }
+TEST(ttlens_python_communication, get_device_arch) { call_python("get_device_arch", "- type: 19\n  chip_id: 1\n"); }
 
-TEST(debuda_python_communication, get_device_soc_description) {
+TEST(ttlens_python_communication, get_device_soc_description) {
     call_python("get_device_soc_description", "- type: 20\n  chip_id: 1\n");
 }
 
-TEST(debuda_python_communication, pci_write) {
+TEST(ttlens_python_communication, pci_write) {
     call_python(
         "pci_write",
         "- type: 13\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, 12, 13, 14, "
         "15, 16, 17]\n");
 }
 
-TEST(debuda_python_communication, get_file) { call_python("get_file", "- type: 200\n  size: 9\n  path: test_file\n"); }
+TEST(ttlens_python_communication, get_file) { call_python("get_file", "- type: 200\n  size: 9\n  path: test_file\n"); }
 
-TEST(debuda_python_communication, get_buda_run_dirpath) { call_python("get_buda_run_dirpath", "- type: 201\n"); }
+TEST(ttlens_python_communication, get_buda_run_dirpath) { call_python("get_buda_run_dirpath", "- type: 201\n"); }
 
-TEST(debuda_python_communication, jtag_read32) {
+TEST(ttlens_python_communication, jtag_read32) {
     call_python("jtag_read32", "- type: 50\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n");
 }
 
-TEST(debuda_python_communication, jtag_write32) {
+TEST(ttlens_python_communication, jtag_write32) {
     call_python("jtag_write32",
                 "- type: 51\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654\n");
 }
 
-TEST(debuda_python_communication, jtag_read32_axi) {
+TEST(ttlens_python_communication, jtag_read32_axi) {
     call_python("jtag_read32_axi", "- type: 52\n  chip_id: 1\n  address: 123456\n");
 }
 
-TEST(debuda_python_communication, jtag_write32_axi) {
+TEST(ttlens_python_communication, jtag_write32_axi) {
     call_python("jtag_write32_axi", "- type: 53\n  chip_id: 1\n  address: 123456\n  data: 987654\n");
 }

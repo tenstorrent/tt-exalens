@@ -20,7 +20,7 @@ pip3 install --upgrade build
 pip3 install --upgrade setuptools
 pip3 install wheel
 
-echo -e "Building Debuda ..."
+echo -e "Building TTLens ..."
 make clean
 make build
 
@@ -28,7 +28,7 @@ echo -e "Building wheel ..."
 make wheel
 
 echo -e "Installing wheel ..."
-pip install build/debuda_wheel/*.whl
+pip install build/ttlens_wheel/*.whl
 
 echo -e " --- Running wheel test ---"
 source ${THIS_SCRIPT_DIR}/run-wheel.sh

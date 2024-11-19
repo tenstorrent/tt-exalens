@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 import unittest
 from parameterized import parameterized_class
-from ttlens import tt_debuda_init
-from ttlens import tt_debuda_lib as lib
+from ttlens import tt_lens_init
+from ttlens import tt_lens_lib as lib
 
 from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_debuda_context import Context
+from ttlens.tt_lens_context import Context
 from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index, get_risc_id
 
 @parameterized_class([
@@ -24,7 +24,7 @@ from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_in
 class TestDebugging(unittest.TestCase):
 	risc_name: str = None  # Risc name
 	risc_id: int = None  # Risc ID - being parametrized
-	context: Context = None  # Debuda context
+	context: Context = None  # TTLens context
 	core_desc: str = None  # Core description ETH0, FW0, FW1 - being parametrized
 	core_loc: str = None  # Core location
 	rdbg: RiscDebug = None  # RiscDebug object
@@ -33,7 +33,7 @@ class TestDebugging(unittest.TestCase):
 
 	@classmethod
 	def setUpClass(cls):
-		cls.context = tt_debuda_init.init_debuda()
+		cls.context = tt_lens_init.init_ttlens()
 		cls.pc_register_index = get_register_index("pc")
 
 	def setUp(self):

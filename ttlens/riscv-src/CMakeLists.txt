@@ -3,13 +3,13 @@ cmake_policy(VERSION 3.16)
 
 project(RISCVProject LANGUAGES CXX ASM)
 
-# Check if DEBUDA_HOME is set, if not set it to ../../ from the directory that contains this file
-if(NOT DEBUDA_HOME)
-    set(DEBUDA_HOME "${CMAKE_CURRENT_LIST_DIR}/../..")
+# Check if TTLENS_HOME is set, if not set it to ../../ from the directory that contains this file
+if(NOT TTLENS_HOME)
+    set(TTLENS_HOME "${CMAKE_CURRENT_LIST_DIR}/../..")
 endif()
 
 # Set toolchain and tools
-set(TOOL_PATH "${DEBUDA_HOME}/third_party/sfpi/compiler/bin")
+set(TOOL_PATH "${TTLENS_HOME}/third_party/sfpi/compiler/bin")
 set(GXX "${TOOL_PATH}/riscv32-unknown-elf-g++")
 set(OBJDUMP "${TOOL_PATH}/riscv32-unknown-elf-objdump")
 set(OBJCOPY "${TOOL_PATH}/riscv32-unknown-elf-objcopy")
@@ -18,7 +18,7 @@ set(READELF "${TOOL_PATH}/riscv32-unknown-elf-readelf")
 # Compiler options
 set(OPTIONS_ALL -O0 -march=rv32imw -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math)
 set(OPTIONS_COMPILE -fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable)
-set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Ldbd/riscv-src)
+set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttlens/riscv-src)
 
 # Define project paths
 set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")

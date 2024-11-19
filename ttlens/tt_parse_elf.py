@@ -32,8 +32,7 @@ Arguments:
   access-path            Access path to a variable in the ELF file
 
 Examples:
-  tt_parse_elf.py ./debuda_test/brisc/brisc.elf
-  tt_parse_elf.py ./debuda_test/brisc/brisc.elf EPOCH_ID_PTR->epoch_id
+  tt_parse_elf.py ./build/riscv-src/wormhole/sample.brisc.elf
 
   Options:
   -h --help      Show this screen.
@@ -789,7 +788,7 @@ if __name__ == "__main__":
 
 
 # TODO:
-# 2. Integration into Debuda:
+# 2. Integration into TTLens:
 #   - Fuzzy search for autocomplete
 #   - Real memory reader function
 #   - Test

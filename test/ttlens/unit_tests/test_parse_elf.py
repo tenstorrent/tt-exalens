@@ -55,9 +55,9 @@ def mem_reader(addr, size_bytes):
 class TestParseElf(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        if os.environ.get("DEBUDA_PATH"):
+        if os.environ.get("TTLENS_PATH"):
             cls.output_dir = os.path.join(
-                os.environ["DEBUDA_PATH"], "build", "test", "assets"
+                os.environ["TTLENS_PATH"], "build", "test", "assets"
             )
         else:
             cls.output_dir = os.path.join(
@@ -316,12 +316,6 @@ class TestParseElf(unittest.TestCase):
             return name_dict[name]["offset"]
         else:
             return None
-
-    @unittest.skip("TODO: This should be run in Buda repo (issue #11).")
-    def test_brisc(self):
-        name_dict = read_elf(file_ifc, "./debuda_test/brisc/brisc.elf")
-        epoch_id_addr = self.get_var_addr(name_dict, "EPOCH_INFO_PTR->epoch_id")
-
 
 if __name__ == "__main__":
     unittest.main()

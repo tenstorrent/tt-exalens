@@ -1,8 +1,8 @@
-# Debuda tests
+# TTLens tests
 
-Debuda tests run on silicon.
+TTLens tests run on silicon.
 
-To run Debuda tests locally, run:
+To run TTLens tests locally, run:
 ```
 make test
 ```

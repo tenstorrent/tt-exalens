@@ -1,10 +1,10 @@
 ## Documentation files
 
-- [*debuda-lib-tutorial.md*](debuda-lib-tutorial.md): How to use debuda library
-- [*debuda-lib-docs.md*](debuda-lib-docs.md): Debuda library documentation API (automatically generated)
-- [*debuda-app-tutorial.md*](debuda-app-tutorial.md): How to use debuda application
-- [*debuda-app-docs.md*](debuda-app-docs.md): Debuda application documentation, all commands with examples (automatically generated)
-- [*elf_loader.md*](elf_loader.md): Explains how elf loader works in debuda
+- [*ttlens-lib-tutorial.md*](ttlens-lib-tutorial.md): How to use TTLens library
+- [*ttlens-lib-docs.md*](ttlens-lib-docs.md): TTLens library documentation API (automatically generated)
+- [*ttlens-app-tutorial.md*](ttlens-app-tutorial.md): How to use TTLens application
+- [*ttlens-app-docs.md*](ttlens-app-docs.md): TTLens application documentation, all commands with examples (automatically generated)
+- [*elf_loader.md*](elf_loader.md): Explains how elf loader works in TTLens
 - [*gdb.md*](gdb.md): Explains how to use gdb to debug riscv cores
 
 Non `.md` files are used to generate automatic documentation files.
