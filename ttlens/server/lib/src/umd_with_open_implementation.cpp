@@ -369,7 +369,7 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
             bin_dir = find_binary_directory();
         }
         std::unique_ptr<Jtag> jtag =
-            std::make_unique<Jtag>((bin_dir.string() + std::string("/../lib/libjtag.so")).c_str());
+            std::make_unique<Jtag>((bin_dir / std::string("../lib/libjtag.so")).c_str());
         jtag_implementation = std::make_unique<JtagDevice>(std::move(jtag));
     }
 

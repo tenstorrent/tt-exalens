@@ -6,8 +6,8 @@
 Usage:
   tt-lens [--netlist=<file>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [--jtag] [<output_dir>]
   tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [<output_dir>]
-  tt-lens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test] [--jtag]
-  tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test] [--jtag] [<output_dir>]
+  tt-lens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
+  tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test] [<output_dir>]
   tt-lens -h | --help
 
 Options:
