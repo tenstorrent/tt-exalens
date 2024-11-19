@@ -234,7 +234,7 @@ class Device(TTObject):
 
     @cached_property
     def yaml_file(self):
-        return util.YamlFile(SERVER_IFC, self._device_desc_path)
+        return util.YamlFile(self._context.server_ifc, self._device_desc_path)
 
     def __init__(self, id, arch, cluster_desc, address_maps: Dict[str, AddressMap], device_desc_path: str, context: Context):
         """

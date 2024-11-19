@@ -36,7 +36,7 @@ def init_ttlens(
 
 	lens_ifc = tt_lens_ifc.init_pybind(wanted_devices)
 	if cache_path:
-		lens_ifc = tt_lens_ifc_cache.init_cache_writer(cache_path)
+		lens_ifc = tt_lens_ifc_cache.init_cache_writer(lens_ifc, cache_path)
 
 	return load_context(lens_ifc)
 
