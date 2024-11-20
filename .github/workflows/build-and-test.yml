@@ -15,10 +15,11 @@ jobs:
         shell: bash
         run: sudo chown ubuntu:ubuntu -R $(pwd)
 
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
         with:
-            submodules: recursive
-            fetch-depth: 0 # Fetch all history and tags
+          submodules: recursive
+          lfs: true
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -87,6 +88,7 @@ jobs:
         run: |
           chmod +x build/bin/ttlens-server-standalone
           chmod +x build/bin/ttlens_server_unit_tests
+          ls -la build/lib # Debug reomve
       - name: Run C++ tests
         run: |
           make ttlens_server_unit_tests_run_only
