@@ -17,10 +17,10 @@ RUN apt-get update && apt-get install -y \
 	libboost-all-dev \
 	libhwloc-dev \
 	libzmq3-dev \
+    libnsl2 \
     sudo \
     wget \
-	xxd \
-    libnsl
+	xxd
 
 # Install test dependencies
 RUN apt-get update && apt-get install -y \
