@@ -71,9 +71,6 @@ jobs:
         - /lib/modules:/lib/modules
     name: Build and run unit test on ${{ matrix.runner-info.arch }}
     steps:
-        # This is a workaround for git's ownership problems
-      - name: Change ownership of /github/home
-        run: chmod -R 777 /github/home
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
       
@@ -127,9 +124,6 @@ jobs:
         - /lib/modules:/lib/modules
     name: Build, install wheel and test it on ${{ matrix.runner-info.arch }}
     steps:
-        # This is a workaround for git's ownership problems
-      - name: Change ownership of /github/home
-        run: chmod -R 777 /github/home
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
 
