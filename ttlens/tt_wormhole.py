@@ -118,6 +118,10 @@ class WormholeDevice(tt_device.Device):
     NOC_ARC_CSM_DATA_BASE_ADDR = 0x810000000
     NOC_ARC_ROM_DATA_BASE_ADDR = 0x880000000  
 
+    EFUSE_PCI = 0x1FF42200
+    EFUSE_JTAG_AXI = 0x80042200
+    EFUSE_NOC = 0x880042200
+
     def get_harvested_noc0_y_rows(self):
         harvested_noc0_y_rows = []
         if self._harvesting:

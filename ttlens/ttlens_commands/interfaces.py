@@ -18,7 +18,7 @@ command_metadata = {
     "long": "interfaces",
     "type": "high-level",
     "description": __doc__,
-    "context": ["limited", "buda", "metal"],
+    "context": ["limited", "metal"],
 }
 
 from docopt import docopt
@@ -28,6 +28,8 @@ from ttlens  import tt_device
 from ttlens.tt_lens_context import LimitedContext
 from ttlens.tt_lens_lib import read_words_from_device, read_from_device
 from ttlens.tt_coordinate import OnChipCoordinate
+from ttlens.tt_grayskull import GrayskullDevice
+from ttlens.tt_wormhole import WormholeDevice
 
 TEST_ID_SIZE = 48
 def decode_test_id(test_id_data):
@@ -45,12 +47,6 @@ def decode_test_id(test_id_data):
 
 # There are 3 ways to read the test id from the device
 # raw pci read, jtag axi read, and arc noc read
-GS_EFUSE_PCI = 0x1FF40200
-GS_EFUSE_JTAG_AXI = 0x80040200
-GS_EFUSE_NOC = 0x80040200
-WH_EFUSE_PCI = 0x1FF42200
-WH_EFUSE_JTAG_AXI = 0x80042200
-WH_EFUSE_NOC = 0x880042200
 
 def read_axi_size(context, device_id, address, size):
     data = b""
@@ -77,13 +73,13 @@ def run(cmd_text, context, ui_state=None):
     arch = context.devices[0]._arch
 
     if arch == "wormhole_b0":
-      efuse_pci = WH_EFUSE_PCI
-      efuse_noc = WH_EFUSE_NOC
-      efuse_jtag_axi = WH_EFUSE_JTAG_AXI
+      efuse_pci = WormholeDevice.EFUSE_PCI
+      efuse_noc = WormholeDevice.EFUSE_NOC
+      efuse_jtag_axi = WormholeDevice.EFUSE_JTAG_AXI
     elif arch == "grayskull":
-      efuse_pci = GS_EFUSE_PCI
-      efuse_noc = GS_EFUSE_NOC
-      efuse_jtag_axi = GS_EFUSE_JTAG_AXI
+      efuse_pci = GrayskullDevice.EFUSE_PCI
+      efuse_noc = GrayskullDevice.EFUSE_NOC
+      efuse_jtag_axi = GrayskullDevice.EFUSE_JTAG_AXI
     else:
       raise Exception(f"Unsupported arch {arch}")
 

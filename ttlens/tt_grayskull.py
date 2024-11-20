@@ -62,6 +62,10 @@ class GrayskullDevice(tt_device.Device):
     PCI_ARC_CSM_DATA_BASE_ADDR = 0x1FE80000
     PCI_ARC_ROM_DATA_BASE_ADDR = 0x1FF00000
 
+    EFUSE_PCI = 0x1FF40200
+    EFUSE_JTAG_AXI = 0x80040200
+    EFUSE_NOC = 0x80040200
+
     def get_harvested_noc0_y_rows(self):
         harvested_workers = self._block_locations["harvested_workers"]
         return list({y for x, y in harvested_workers})
