@@ -23,14 +23,6 @@ command_metadata = {
 
 from docopt import docopt
 
-from ttlens import tt_util as util
-from ttlens  import tt_device
-from ttlens.tt_lens_context import LimitedContext
-from ttlens.tt_lens_lib import read_words_from_device, read_from_device
-from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_grayskull import GrayskullDevice
-from ttlens.tt_wormhole import WormholeDevice
-
 TEST_ID_SIZE = 48
 def decode_test_id(test_id_data):
     data = test_id_data.decode("UTF-8")
@@ -70,18 +62,14 @@ def read_noc_size(context, device_id, nocx, nocy, address, size):
 
 def run(cmd_text, context, ui_state=None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
-    arch = context.devices[0]._arch
+    device = context.devices[0]
 
-    if arch == "wormhole_b0":
-      efuse_pci = WormholeDevice.EFUSE_PCI
-      efuse_noc = WormholeDevice.EFUSE_NOC
-      efuse_jtag_axi = WormholeDevice.EFUSE_JTAG_AXI
-    elif arch == "grayskull":
-      efuse_pci = GrayskullDevice.EFUSE_PCI
-      efuse_noc = GrayskullDevice.EFUSE_NOC
-      efuse_jtag_axi = GrayskullDevice.EFUSE_JTAG_AXI
-    else:
-      raise Exception(f"Unsupported arch {arch}")
+    try:
+      efuse_pci = device.EFUSE_PCI
+      efuse_noc = device.EFUSE_NOC
+      efuse_jtag_axi = device.EFUSE_JTAG_AXI
+    except:
+      raise Exception(f"Unsupported arch {device._arch}")
 
     devices_list = list(context.devices.keys())
     for device_id in devices_list:
