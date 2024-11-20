@@ -8,7 +8,7 @@ In this tutorial, we will demonstrate how to use TTLens library through a few si
 ## Setting up TTLens
 
 To follow this tutorial, you need a virtual environment with installed TTLens wheel.
-TTLens wheel can be installed from [this link](https://github.com/tenstorrent/tt-debuda/releases).
+TTLens wheel can be installed from [this link](https://github.com/tenstorrent/tt-lens/releases).
 Publishing the wheel to PyPI is in the works.
 It is also possible to [build wheel from source](../../README.md#building-and-installing-wheel).
 

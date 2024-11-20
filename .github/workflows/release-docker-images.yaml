@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      BASE_IMAGE_NAME: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04
-      IRD_IMAGE_NAME: ghcr.io/${{ github.repository }}/tt-debuda-ird-ubuntu-22-04
+      BASE_IMAGE_NAME: ghcr.io/${{ github.repository }}/tt-lens-ubuntu-22-04
+      IRD_IMAGE_NAME: ghcr.io/${{ github.repository }}/tt-lens-ird-ubuntu-22-04
 
     steps:
 
