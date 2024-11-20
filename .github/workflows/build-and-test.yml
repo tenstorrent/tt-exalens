@@ -39,7 +39,7 @@ jobs:
           echo "docker-image=$DOCKER_CI_IMAGE" >> "$GITHUB_OUTPUT"
 
   build:
-    uses: ./.github/workflows/build-ttlens.yaml
+    uses: ./.github/workflows/build-ttlens.yml
     with:
       docker-image: ${{ needs.build-image.outputs.docker-image }}
 
