@@ -1,7 +1,7 @@
 ARG GIT_SHA
 ARG FROM_TAG=${GIT_SHA:-latest}
 
-FROM ghcr.io/tenstorrent/tt-lens/tt-lens-ubuntu-22-04:${FROM_TAG}
+FROM ghcr.io/tenstorrent/tt-lens/tt-lens-ubuntu-ci-22-04:${FROM_TAG}
 SHELL ["/bin/bash", "-c"]
 
 # Set environment variables
