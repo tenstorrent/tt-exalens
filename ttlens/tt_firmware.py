@@ -12,18 +12,6 @@ import re
 from fuzzywuzzy import process, fuzz
 from sys import getsizeof
 
-# This is a list of firmware variables that do not make it to the ELF file (e.g. they
-# are hard-coded through #define). We need to 'inject' them into the symbol table with
-# the correct type to have the lookup work.
-BUDA_FW_VARS = {
-    "EPOCH_INFO_PTR": {
-        "offset": "EPOCH_INFO_ADDR",  # The address of the variable. If string, it is looked up in the ELF
-        # If int, it is used as is
-        "type": "epoch_t",  # The type of the variable.
-    },
-    "ETH_EPOCH_INFO_PTR": {"offset": "ETH_EPOCH_INFO_ADDR", "type": "epoch_t"},
-}
-
 class FAKE_DIE(object):
     """
     Some pointers are hard-coded in the source with #defines. These names do not make

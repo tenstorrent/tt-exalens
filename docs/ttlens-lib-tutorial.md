@@ -27,15 +27,13 @@ The are three layers a typical API call passes through when TTLens command is in
 </div>
 
 **TTLens context** is the highest-level class when connecting to the device through TTLens. It provides TTLens with additional information about what's happening on the device. 
-For example, when debuggind a Buda model, context can provide TTLens with model graph and netlists, which in turn allow for better semantics in hardware acces, like reading tiles instead of just memory addresses.
-There are three contexts TTLens can work in.
-If no output directory is specified, TTLens is run in limited context, allowing for basic operations on device memory and running .elf files.
-If an output directory is specified when initializing TTLens, it can run in Metal or Buda contexts, with acces to higher-level information that allows for more structured interactions with the device beyond just reading and writing in memory addresses, as various structures can be deduced based on additional info.
-Currently, **only Limited and Buda contexts** can be used, and Metal support is in the works.
+TTLens runs in limited context, allowing for basic operations on device memory and running .elf files.
+It is planned to run in other contexts, like Metal, with acces to higher-level information that allows for more structured interactions with the device beyond just reading and writing in memory addresses, as various structures can be deduced based on additional info.
+Currently, **only Limited contexts** can be used, and Metal support is in the works.
 
 **Device interfaces** allow for different ways of communication with Tenstorrent hardware.
 You can initialize TTLens locally, in which case device interactions are done through Python bindings of C++ wrapper for [tt-UMD library](https://github.com/tenstorrent/tt-umd).
-If you need to debug a remote device, you can spin a TTLens server, either through standalone TTLens app or Buda runtime.
+If you need to debug a remote device, you can spin a TTLens server, through standalone TTLens app.
 It is then possible to connect to the server and use TTLens in remote mode.
 
 **Caching mechanism and cached interface** allow TTLens to save results of invoked commands and use them to rerun a session when device is not accessible.
@@ -73,7 +71,6 @@ It contains multiple modules, three of which are interesting to external user:
 - _tt_coordinate_: A module useful for advanced specification of device core coordinates.
 
 The command `context = init_ttlens()` initializes a new default TTLens context and establishes a connection to the device.
-Had we passed `<output-dir>` of a Buda run to this function, TTLens would have used that additional info to initialize a Buda context.
 
 The initialization step is done implicitly on the first call to a function that interacts with the device.
 The implicit initialization is always done with Limited local context.

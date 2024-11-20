@@ -203,8 +203,8 @@ We can see that the core that `gpr` acts on has cganged.
 ## Using TTLens Server
 
 TTLens can be started in client-server mode, which allows debugging on the remote machine.
-The server can be started from within Buda runtime, or can be run as standalone program.
-To start Debdua server, simply call
+The server can be started as standalone program.
+To start TTLens server, simply call
 ```
 ./tt-lens.py --server
 ```

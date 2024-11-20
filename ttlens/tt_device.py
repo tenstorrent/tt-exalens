@@ -16,11 +16,6 @@ from typing import Dict
 from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device
 
-#
-# Communication with Buda (or ttlens-server) over sockets (ZMQ).
-# See struct BUDA_READ_REQ for protocol details
-#
-
 # Attempt to unpack the data using the given format. If it fails, it assumes that the data
 # is a string contining an error message from the server.
 def try_unpack(fmt, data):
