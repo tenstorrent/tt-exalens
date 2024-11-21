@@ -16,7 +16,7 @@
 #include <iostream>
 #include <memory>
 
-#include "device/cluster.h"
+#include "umd/device/cluster.h"
 
 bool open_device(const std::string &binary_directory, const std::vector<uint8_t> &wanted_devices = {},
                  bool init_jtag = false);

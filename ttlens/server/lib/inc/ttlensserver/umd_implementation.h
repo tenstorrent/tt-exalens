@@ -5,8 +5,8 @@
 
 #include <optional>
 
-#include "device/cluster.h"
 #include "ttlens_implementation.h"
+#include "umd/device/cluster.h"
 
 class JtagDevice;
 
