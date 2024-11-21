@@ -120,7 +120,7 @@ std::optional<std::string> JtagDevice::get_jtag_harvester_coordinate_translation
     }
 
     std::unordered_map<tt_xy_pair, tt_xy_pair> harvested_coord_translation =
-        tt::umd::Cluster::create_harvested_coord_translation(*get_jtag_arch(chip_id), true);
+        tt::umd::Cluster::create_harvested_coord_translation(*get_jtag_arch(chip_id), false);
     std::string ret = "{ ";
     for (auto& kv : harvested_coord_translation) {
         ret += "(" + std::to_string(kv.first.x) + "," + std::to_string(kv.first.y) + ") : (" +
