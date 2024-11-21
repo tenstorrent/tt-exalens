@@ -94,9 +94,9 @@ in the root directory.
 
 ## Building and Installing Wheel
 
-Wheel can be installed either from the [GitHub release](https://github.com/tenstorrent/tt-debuda/releases), built from source, or installed directly from GitHub with
+Wheel can be installed either from the [GitHub release](https://github.com/tenstorrent/tt-lens/releases), built from source, or installed directly from GitHub with
 ```
-pip install git+https://github.com/tenstorrent/tt-debuda.git
+pip install git+https://github.com/tenstorrent/tt-lens.git
 ```
 
 To build TTLens wheel from source, simply run `make wheel` in the root directory. The installation is then done by running `pip install build/ttlens_wheel/<ttlens_wheel>.whl`, where `<ttlens_wheel>` is an automatically generated name unique for each build.
@@ -237,7 +237,7 @@ Traceback (most recent call last):
     module = self._get_module_from_name(name)
   File "/usr/lib/python3.10/unittest/loader.py", line 377, in _get_module_from_name
     __import__(name)
-  File "/home/dcvijetic/work/tt-debuda/test/ttlens/pybind/test_bindings.py", line 17, in <module>
+  File "/home/dcvijetic/work/tt-lens/test/ttlens/pybind/test_bindings.py", line 17, in <module>
     from ttlens_pybind_unit_tests import set_ttlens_test_implementation
 ModuleNotFoundError: No module named 'ttlens_pybind_unit_tests'
 ```

@@ -11,6 +11,10 @@ on:
         required: false
         type: string
         default: "Release"
+      docker-image:
+        required: false
+        type: string
+        default: "ghcr.io/${{ github.repository }}/tt-lens-ubuntu-22-04:latest"
 
 run-name: BUILD TTLENS by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
 
@@ -23,7 +27,7 @@ jobs:
     # TODO: This will need to change when we get cloud runners
     runs-on: ${{ inputs.os }}
     container:
-      image: ghcr.io/${{ github.repository }}/tt-debuda-ubuntu-22-04:latest
+      image: ${{ inputs.docker-image }}
     name: "Build TT-LENS."
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +35,7 @@ jobs:
           submodules: recursive
           lfs: true
       - name: Git safe dir
-        run: git config --global --add safe.directory /__w/tt-debuda/tt-debuda
+        run: git config --global --add safe.directory $(pwd)
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
