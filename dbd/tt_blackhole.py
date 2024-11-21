@@ -139,9 +139,6 @@ class BlackholeDevice(tt_device.Device):
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(id, arch, cluster_desc, {"functional_workers": BlackholeL1AddressMap(), "eth": BlackholeEthL1AddressMap(), "dram": BlackholeDRAMEpochCommandAddressMap()}, device_desc_path, context)
 
-    def row_count(self):
-        return len(BlackholeDevice.DIE_Y_TO_NOC_0_Y)
-
     def no_tensix_row_count(self):
         return 2
 
