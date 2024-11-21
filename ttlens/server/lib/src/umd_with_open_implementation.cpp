@@ -302,7 +302,7 @@ umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt::u
       jtag_device(std::move(jtag_device)) {}
 
 std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open(
-    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices) {
+    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices, bool init_jtag) {
     auto devices = tt::umd::Cluster::detect_available_device_ids();
 
     if (devices.size() == 0) {
@@ -362,11 +362,13 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
     auto device_soc_descriptors = create_device_soc_descriptors(device.get(), device_ids);
 
     std::unique_ptr<JtagDevice> jtag_implementation;
-    try {
-        std::unique_ptr<Jtag> jtag =
-            std::make_unique<Jtag>((binary_directory.string() + std::string("/../lib/libjtag.so")).c_str());
+    if (init_jtag) {
+        std::filesystem::path bin_dir = binary_directory;
+        if (bin_dir.empty()) {
+            bin_dir = find_binary_directory();
+        }
+        std::unique_ptr<Jtag> jtag = std::make_unique<Jtag>((bin_dir / std::string("../lib/libjtag.so")).c_str());
         jtag_implementation = std::make_unique<JtagDevice>(std::move(jtag));
-    } catch (std::runtime_error &error) {
     }
 
     auto implementation =

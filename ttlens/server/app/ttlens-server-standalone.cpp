@@ -18,6 +18,7 @@ struct server_config {
    public:
     int port;
     std::vector<uint8_t> wanted_devices;
+    bool init_jtag;
 };
 
 // Make sure that the file exists, and that it is a regular file
@@ -38,7 +39,7 @@ int run_ttlens_server(const server_config& config) {
         std::unique_ptr<tt::lens::umd_with_open_implementation> implementation;
         // Try to open only wanted devices
         try {
-            implementation = tt::lens::umd_with_open_implementation::open({}, config.wanted_devices);
+            implementation = tt::lens::umd_with_open_implementation::open({}, config.wanted_devices, config.init_jtag);
         } catch (std::runtime_error& error) {
             log_custom(tt::Logger::Level::Error, tt::LogTTLens, "Cannot open device: {}.", error.what());
             return 1;
@@ -80,6 +81,7 @@ extern std::string cluster_desc_path;
 server_config parse_args(int argc, char** argv) {
     server_config config = server_config();
     config.port = atoi(argv[1]);
+    config.init_jtag = false;
 
     int i = 2;
     while (i < argc) {
@@ -101,6 +103,9 @@ server_config parse_args(int argc, char** argv) {
                     i++;
                 }
             }
+        } else if (strcmp(argv[i], "--jtag") == 0) {
+            config.init_jtag = true;
+            i++;
         } else {
             log_error("Unknown argument: {}", argv[i]);
             return {};
@@ -114,7 +119,7 @@ int main(int argc, char** argv) {
     if (argc < 2) {
         log_error(
             "Need arguments: <port> [-d <device_id1> [<device_id2> ... "
-            "<device_idN>]]");
+            "<device_idN>]] [--jtag]");
         return 1;
     }
 

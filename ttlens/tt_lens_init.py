@@ -22,6 +22,7 @@ GLOBAL_CONTEXT: Context = None
 def init_ttlens(
 		wanted_devices: list = None,
 		cache_path: str = None,
+		init_jtag: bool = False,
 ) -> Context:
 	""" Initializes TTLens internals by creating the device interface and TTLens context.
 	Interfacing device is local, through pybind.
@@ -34,7 +35,7 @@ def init_ttlens(
 		Context: TTLens context object.
 	"""
 
-	lens_ifc = tt_lens_ifc.init_pybind(wanted_devices)
+	lens_ifc = tt_lens_ifc.init_pybind(wanted_devices, init_jtag)
 	if cache_path:
 		lens_ifc = tt_lens_ifc_cache.init_cache_writer(lens_ifc, cache_path)
 

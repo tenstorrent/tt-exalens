@@ -18,7 +18,8 @@
 
 #include "device/cluster.h"
 
-bool open_device(const std::string &binary_directory, const std::vector<uint8_t> &wanted_devices = {});
+bool open_device(const std::string &binary_directory, const std::vector<uint8_t> &wanted_devices = {},
+                 bool init_jtag = false);
 void set_ttlens_implementation(std::unique_ptr<tt::lens::ttlens_implementation> imp);
 
 std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address);

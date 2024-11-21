@@ -4,8 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-lens [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test]
-  tt-lens --server [--port=<port>] [--devices=<devices>] [--test]
+  tt-lens [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [--jtag]
+  tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag]
   tt-lens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
   tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test]
   tt-lens -h | --help
@@ -24,6 +24,7 @@ Options:
   --devices=<devices>             Comma-separated list of devices to load. If not supplied, all devices will be loaded.
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
+  --jtag                          Initialize JTAG interface.
 
 Description:
   TTLens parses the build output files and reads the device state to provide a debugging interface for the user.
@@ -411,7 +412,8 @@ def main():
         print(f"Starting TTLens server at {args['--port']}")
         ttlens_server = tt_lens_server.start_server(
             args["--port"],
-            wanted_devices
+            wanted_devices,
+            init_jtag=args["--jtag"]
         )
         if args["--test"]:
             while True: pass
@@ -429,7 +431,7 @@ def main():
         util.INFO(f"Connecting to TTLens server at {server_ip}:{server_port}")
         context = tt_lens_init.init_ttlens_remote(server_ip, int(server_port), cache_path)
     else:
-        context = tt_lens_init.init_ttlens(wanted_devices, cache_path)
+        context = tt_lens_init.init_ttlens(wanted_devices, cache_path, args["--jtag"])
 
     # Main function
     exit_code = main_loop(args, context)
