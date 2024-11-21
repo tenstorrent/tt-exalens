@@ -17,6 +17,7 @@ namespace fs = std::experimental::filesystem;
 struct server_config {
    public:
     int port;
+    bool run_in_background;
     std::string runtime_data_yaml_path;
     std::string run_dirpath;
     std::string vcs_binary;
@@ -46,7 +47,7 @@ int run_debuda_server(const server_config& config) {
                                                                              config.wanted_devices);
             } else {
                 ensure_file("VCS binary", config.vcs_binary);
-                setenv("TT_VCS_BINARY", config.vcs_binary.c_str(), 1);
+                setenv("TT_REMOTE_EXE", config.vcs_binary.c_str(), 1);
                 implementation = tt::dbd::umd_with_open_implementation::open_simulation(config.runtime_data_yaml_path);
             }
         } catch (std::runtime_error& error) {
@@ -71,8 +72,17 @@ int run_debuda_server(const server_config& config) {
         }
 
         // Wait terminal input to stop the server
-        log_info(tt::LogDebuda, "The debug server is running. Press ENTER to stop execution...");
-        std::cin.get();
+        if (!config.run_in_background) {
+            log_info(tt::LogDebuda, "The debug server is running. Press ENTER to stop execution...");
+            std::cin.get();
+        } else {
+            log_info(tt::LogDebuda, "The debug server is running in the background.");
+            log_info(tt::LogDebuda, "To stop the server, use the command: touch exit.server");
+            std::filesystem::remove("exit.server");
+            while (!std::filesystem::exists("exit.server")) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+        }
 
         // Stop server in destructor
         log_info(tt::LogDebuda, "Debug server ended on {}", connection_address);
@@ -90,6 +100,7 @@ extern std::string cluster_desc_path;
 server_config parse_args(int argc, char** argv) {
     server_config config = server_config();
     config.port = atoi(argv[1]);
+    config.run_in_background = false;
 
     int i = 2;
     while (i < argc) {
@@ -135,6 +146,9 @@ server_config parse_args(int argc, char** argv) {
                     i++;
                 }
             }
+        } else if (strcmp(argv[i], "--background") == 0) {
+            config.run_in_background = true;
+            i++;
         } else {
             log_error("Unknown argument: {}", argv[i]);
             return {};
