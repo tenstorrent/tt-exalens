@@ -126,7 +126,7 @@ jobs:
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports-${{ matrix.build.arch }}-${{ matrix.build.runs-on }}
+          name: test-reports-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.runs-on[1] }}
           path: ${{ steps.strings.outputs.test_report_path }}
 
       - name: Run Python tests for TTLens app 
