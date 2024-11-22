@@ -94,13 +94,18 @@ jobs:
           job-name: "Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.runs-on[1] }}"  
         run: |  
           # Github job context unfortunately doesn't contain job_id, this is the workaround how to fetch it using GH API
+
+          curl -s -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/jobs" | \
+            jq -r '.jobs[] | .name'
+
           echo "Expected job name: ${{ env.job-name }}"
           JOB_ID=$(curl -s -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/jobs" | \
             jq -r '.jobs[] | select(.name | contains("${{ env.job-name }}")) | .id ')
           echo "Current job id: $JOB_ID"
           echo "job-id=$JOB_ID" >> "$GITHUB_OUTPUT"
-          echo "test_report_path=reports/report_$JOB_ID.xml" >> "$GITHUB_OUTPUT"
+          echo "test_report_path=report_$JOB_ID.xml" >> "$GITHUB_OUTPUT"
     
       - name: Update permissions for downloaded binaries
         shell: bash
