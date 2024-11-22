@@ -473,3 +473,19 @@ class TestARC(unittest.TestCase):
             scratch2 = arc_read(self.context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH2"))
 
             assert(scratch2 == 0xbebaceca)
+    
+    def test_arc_fw_flashed(self):
+        device_id = 0
+        MSG_TYPE_ARC_DBG_FW_DRAM_BUFFER_ADDR = 0xaa91
+        buffer_addr  = 0xabab
+
+        response = lib.arc_msg(device_id,MSG_TYPE_ARC_DBG_FW_DRAM_BUFFER_ADDR,1,buffer_addr,buffer_addr,10,self.context)
+        print(response)
+
+        device = self.context.devices[device_id]
+        arc_core_loc = device.get_arc_block_location()
+
+        csm_data_address = device.get_register_addr("ARC_CSM_DATA") + 0x78EEC
+
+        buffer_addr = arc_read(self.context, device_id, arc_core_loc, csm_data_address)
+        print(buffer_addr)
