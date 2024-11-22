@@ -81,21 +81,47 @@ jobs:
         with:
           submodules: recursive
           lfs: true
+
       - uses: actions/download-artifact@v4
         with:
           name: ttlens-build
           path: build
+
+      - name: Set reusable strings
+        id: strings
+        shell: bash
+        run: |  
+          # Github job context unfortunately doesn't contain job_id, this is the workaround how to fetch it using GH API
+          echo "Expected job name: ${{ env.job-name }}"
+          JOB_ID=$(curl -s -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/jobs" | \
+            jq -r '.jobs[] | select(.name | contains("${{ env.job-name }}")) | .id ')
+          echo "Current job id: $JOB_ID"
+          echo "job-id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          echo "test_report_path=reports/report_$JOB_ID.xml" >> "$GITHUB_OUTPUT"
+    
       - name: Update permissions for downloaded binaries
+        shell: bash
         run: |
           chmod +x build/bin/ttlens-server-standalone
           chmod +x build/bin/ttlens_server_unit_tests
           ls -la build/lib # Debug reomve
+
       - name: Run C++ tests
         run: |
           make ttlens_server_unit_tests_run_only
+
       - name: Run Python tests for ttlens library
         run: |
-          python3 -m unittest discover -v -t . -s test/ttlens -p *test*.py
+          python3 -m xmlrunner discover -v -t . -s test/ttlens -p '*test*.py' \
+          --output-file ${{ steps.strings.outputs.test_report_path }}
+      
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ matrix.build.arch }}-${{ matrix.build.runs-on }}
+          path: ${{ steps.strings.outputs.test_report_path }}
+
       - name: Run Python tests for TTLens app 
         run: |
           python3 -m unittest discover -v -t . -s test/app -p *test*.py
