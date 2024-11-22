@@ -121,8 +121,8 @@ def read_from_device(
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 
 	if context.devices[device_id]._has_jtag:
-		int_array = read_words_from_device(core_loc, addr, device_id, num_bytes // 4 + (num_bytes % 4 > 0), context)[:num_bytes]
-		return struct.pack(f'{len(int_array)}I', *int_array)
+		int_array = read_words_from_device(core_loc, addr, device_id, num_bytes // 4 + (num_bytes % 4 > 0), context)
+		return struct.pack(f'{len(int_array)}I', *int_array)[:num_bytes]
 
 	return context.server_ifc.pci_read(
 		device_id, *core_loc.to("nocVirt"), addr, num_bytes
@@ -205,6 +205,7 @@ def write_to_device(
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 
 	if context.devices[device_id]._has_jtag:
+		assert len(data) % 4 == 0, "Data length must be a multiple of 4 bytes as JTAG currently does not support unaligned access."
 		for i in range(0, len(data), 4):
 			write_words_to_device(core_loc, addr + i, struct.unpack("<I", data[i:i+4])[0], device_id, context)
 		return len(data)

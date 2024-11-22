@@ -133,8 +133,7 @@ std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_
 
 std::optional<uint32_t> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data) {
     if (ttlens_implementation) {
-        ttlens_implementation->jtag_write32(chip_id, noc_x, noc_y, address, data);
-        return 0;
+        return ttlens_implementation->jtag_write32(chip_id, noc_x, noc_y, address, data);
     }
     return {};
 }
@@ -148,8 +147,7 @@ std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) {
 
 std::optional<uint32_t> jtag_write32_axi(uint8_t chip_id, uint64_t address, uint32_t data) {
     if (ttlens_implementation) {
-        ttlens_implementation->jtag_write32_axi(chip_id, address, data);
-        return 0;
+        return ttlens_implementation->jtag_write32_axi(chip_id, address, data);
     }
     return {};
 }

@@ -1096,12 +1096,6 @@ class Device(TTObject):
                 )
         return status_descs_rows
 
-    def pci_read32(self, x, y, noc_id, reg_addr):
-        return read_word_from_device(OnChipCoordinate(x, y, "noc0", self), reg_addr, self.id(), self._context)
-
-    def pci_write32(self, x, y, noc_id, reg_addr, data):
-        return write_words_to_device(OnChipCoordinate(x, y, "noc0", self), reg_addr, data, self.id(), self._context)
-
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         return self._context.server_ifc.pci_read_tile(
             self.id(), x, y, reg_addr, msg_size, data_format

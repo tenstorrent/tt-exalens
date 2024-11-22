@@ -51,9 +51,9 @@ def run(cmd_text, context, ui_state: UIState = None):
         device_array.append(int(device_id,0))
 
     for device_id in device_array:
-      val = context.server_ifc.jtag_write32_axi(
+      context.server_ifc.jtag_write32_axi(
           device_id, addr, data
       )
-      print_a_jtag_axi_write(device_id, addr, val)
+      print_a_jtag_axi_write(device_id, addr, data)
 
     return None
