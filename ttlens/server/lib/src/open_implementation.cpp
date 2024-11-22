@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-#include "ttlensserver/umd_with_open_implementation.h"
+#include "ttlensserver/open_implementation.h"
 
 #include <limits.h>
 #include <unistd.h>
@@ -19,7 +19,6 @@
 #include "tt_arch_types.h"
 #include "ttlensserver/jtag.h"
 #include "ttlensserver/jtag_device.h"
-#include "ttlensserver/umd_implementation.h"
 
 // Include automatically generated files that we embed in source to avoid managing their deployment
 static const uint8_t blackhole_configuration_bytes[] = {
@@ -350,13 +349,12 @@ static std::string jtag_create_device_soc_descriptor(tt::ARCH arch, uint32_t dev
 
 namespace tt::lens {
 
-umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt::umd::Cluster> device,
-                                                           std::unique_ptr<JtagDevice> jtag_device)
-    : umd_implementation(device.get(), jtag_device.get()),
-      device(std::move(device)),
-      jtag_device(std::move(jtag_device)) {}
+template <typename BaseClass>
+open_implementation<BaseClass>::open_implementation(std::unique_ptr<open_implementation<BaseClass>::DeviceType> device)
+    : BaseClass(device.get()), device(std::move(device)) {}
 
-std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open_jtag(
+template <>
+std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jtag_implementation>::open(
     const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices) {
     std::vector<uint8_t> device_ids;
     std::unique_ptr<tt::umd::Cluster> device;
@@ -388,7 +386,7 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
         device_ids.push_back(device_id);
     }
 
-    auto implementation = std::make_unique<umd_with_open_implementation>(std::move(nullptr), std::move(jtag_device));
+    auto implementation = std::make_unique<open_implementation<jtag_implementation>>(std::move(jtag_device));
 
     implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
@@ -397,12 +395,9 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
     return std::move(implementation);
 }
 
-std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open(
-    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices, bool init_jtag) {
-    if (init_jtag) {
-        return open_jtag(binary_directory, wanted_devices);
-    }
-
+template <>
+std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open(
+    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices) {
     auto devices = tt::umd::Cluster::detect_available_device_ids();
 
     if (devices.size() == 0) {
@@ -461,7 +456,7 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
 
     auto device_soc_descriptors = create_device_soc_descriptors(device.get(), device_ids);
 
-    auto implementation = std::make_unique<umd_with_open_implementation>(std::move(device), std::move(nullptr));
+    auto implementation = std::make_unique<open_implementation<umd_implementation>>(std::move(device));
 
     implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
@@ -470,11 +465,18 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
     return std::move(implementation);
 }
 
-std::optional<std::string> umd_with_open_implementation::get_cluster_description() { return cluster_descriptor_path; }
+template <typename BaseClass>
+std::optional<std::string> open_implementation<BaseClass>::get_cluster_description() {
+    return cluster_descriptor_path;
+}
 
-std::optional<std::vector<uint8_t>> umd_with_open_implementation::get_device_ids() { return device_ids; }
+template <typename BaseClass>
+std::optional<std::vector<uint8_t>> open_implementation<BaseClass>::get_device_ids() {
+    return device_ids;
+}
 
-std::optional<std::string> umd_with_open_implementation::get_device_soc_description(uint8_t chip_id) {
+template <typename BaseClass>
+std::optional<std::string> open_implementation<BaseClass>::get_device_soc_description(uint8_t chip_id) {
     try {
         return device_soc_descriptors[chip_id];
     } catch (...) {

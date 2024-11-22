@@ -8,13 +8,11 @@
 #include "device/cluster.h"
 #include "ttlens_implementation.h"
 
-class JtagDevice;
-
 namespace tt::lens {
 
 class umd_implementation : public ttlens_implementation {
    public:
-    umd_implementation(tt::umd::Cluster* device, JtagDevice* jtag_device);
+    umd_implementation(tt::umd::Cluster* device);
 
    protected:
     std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override;
@@ -38,17 +36,10 @@ class umd_implementation : public ttlens_implementation {
                                                                        bool wait_for_done, uint32_t arg0, uint32_t arg1,
                                                                        int timeout) override;
 
-    std::optional<int> jtag_write32_axi(uint8_t chip_id, uint32_t address, uint32_t data) override;
-    std::optional<int> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                    uint32_t data) override;
-    std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) override;
-    std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override;
-
    private:
     bool is_chip_mmio_capable(uint8_t chip_id);
 
     tt::umd::Cluster* device = nullptr;
-    JtagDevice* jtag_device = nullptr;
     std::string cluster_descriptor_path;
 };
 

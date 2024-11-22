@@ -30,8 +30,13 @@ bool open_device(const std::string &binary_directory, const std::vector<uint8_t>
         // Since tt::umd::Cluster is printing some output and we don't want to see it in python, we disable std::cout
         scoped_null_stdout null_stdout;
 
-        ttlens_implementation =
-            tt::lens::umd_with_open_implementation::open(binary_directory, wanted_devices, init_jtag);
+        if (init_jtag) {
+            ttlens_implementation =
+                tt::lens::open_implementation<tt::lens::jtag_implementation>::open(binary_directory, wanted_devices);
+        } else {
+            ttlens_implementation =
+                tt::lens::open_implementation<tt::lens::umd_implementation>::open(binary_directory, wanted_devices);
+        }
         if (!ttlens_implementation) {
             return false;
         }
