@@ -91,7 +91,7 @@ jobs:
         id: strings
         shell: bash
         env:
-          job-name: "${{ github.job }}"  
+          job-name: "Build and run unit test on ${{ matrix.runner-info.arch }}"  
         run: |  
           # Github job context unfortunately doesn't contain job_id, this is the workaround how to fetch it using GH API
           echo "Expected job name: ${{ env.job-name }}"
