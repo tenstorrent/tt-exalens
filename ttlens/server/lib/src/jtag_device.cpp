@@ -37,9 +37,17 @@ JtagDevice::JtagDevice(std::unique_ptr<Jtag> jtag_device) : jtag(std::move(jtag_
 
         jlink_devices.push_back(jlink_id);
         uint32_t efuse = jtag->read_axi(WORMHOLE_ARC_EFUSE_HARVESTING);
+
         uint32_t bad_mem_bits = efuse & 0x3FF;
         uint32_t bad_logic_bits = (efuse >> 10) & 0x3FF;
+
+        /* each set bit inidicates a bad row */
         uint32_t bad_row_bits = (bad_mem_bits | bad_logic_bits);
+
+        /* efuse_harvesting is the raw harvesting value from the efuse, it is
+         * used for creating device soc descriptor, as UMD expects value in this
+         * format */
+        efuse_harvesting.push_back(bad_row_bits);
 
         uint32_t mapping_idx[ROW_LEN] = {0, 2, 4, 6, 8, 10, 11, 9, 7, 5, 3, 1};
         uint32_t x = 0;
@@ -48,7 +56,10 @@ JtagDevice::JtagDevice(std::unique_ptr<Jtag> jtag_device) : jtag(std::move(jtag_
                 x |= (1 << i);
             }
         }
-        efuse_harvesting.push_back(bad_row_bits);
+
+        /* device_harvesting is the remapped harvesting value, where the bits are
+         * remapped to the sequential order of rows, and it is used for
+         * harvesting info passed as CEM output */
         device_harvesting.push_back(x);
 
         jtag->close_jlink();
