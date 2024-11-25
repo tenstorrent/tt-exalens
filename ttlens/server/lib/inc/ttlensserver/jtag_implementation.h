@@ -13,6 +13,7 @@ namespace tt::lens {
 
 class jtag_implementation : public ttlens_implementation {
    public:
+    typedef JtagDevice DeviceType;
     jtag_implementation(JtagDevice* device);
 
    protected:

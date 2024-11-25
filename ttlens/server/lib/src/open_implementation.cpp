@@ -350,7 +350,7 @@ static std::string jtag_create_device_soc_descriptor(tt::ARCH arch, uint32_t dev
 namespace tt::lens {
 
 template <typename BaseClass>
-open_implementation<BaseClass>::open_implementation(std::unique_ptr<open_implementation<BaseClass>::DeviceType> device)
+open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> device)
     : BaseClass(device.get()), device(std::move(device)) {}
 
 template <>

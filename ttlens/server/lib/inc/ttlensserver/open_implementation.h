@@ -15,25 +15,10 @@
 
 namespace tt::lens {
 
-template <typename BaseType>
-struct DeviceTypeMap {
-    using type = void;
-};
-
-template <>
-struct DeviceTypeMap<umd_implementation> {
-    using type = tt::umd::Cluster;
-};
-
-template <>
-struct DeviceTypeMap<jtag_implementation> {
-    using type = JtagDevice;
-};
-
 template <typename BaseClass>
 class open_implementation : public BaseClass {
    public:
-    using DeviceType = typename DeviceTypeMap<BaseClass>::type;
+    typedef typename BaseClass::DeviceType DeviceType;
 
    private:
     std::unique_ptr<DeviceType> device;

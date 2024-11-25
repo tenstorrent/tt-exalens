@@ -12,6 +12,7 @@ namespace tt::lens {
 
 class umd_implementation : public ttlens_implementation {
    public:
+    typedef tt::umd::Cluster DeviceType;
     umd_implementation(tt::umd::Cluster* device);
 
    protected:
