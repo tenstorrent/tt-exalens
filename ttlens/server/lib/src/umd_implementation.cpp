@@ -16,7 +16,7 @@ static std::string LARGE_WRITE_TLB_STR = "LARGE_WRITE_TLB";
 
 namespace tt::lens {
 
-umd_implementation::umd_implementation(tt::umd::Cluster* device, JtagDevice* jtag_device)
+umd_implementation::umd_implementation(tt_device* device, JtagDevice* jtag_device)
     : device(device), jtag_device(jtag_device) {}
 
 std::optional<uint32_t> umd_implementation::pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
@@ -106,7 +106,11 @@ std::optional<uint32_t> umd_implementation::pci_read32_raw(uint8_t chip_id, uint
 
     // TODO: @ihamer, finish this
     if (is_chip_mmio_capable(chip_id)) {
-        return device->bar_read32(chip_id, address);
+        tt::umd::Cluster* silicon_device = dynamic_cast<tt::umd::Cluster*>(device);
+
+        if (silicon_device) {
+            return silicon_device->bar_read32(chip_id, address);
+        }
     } else {
         return {};
     }
@@ -119,8 +123,12 @@ std::optional<uint32_t> umd_implementation::pci_write32_raw(uint8_t chip_id, uin
 
     // TODO: @ihamer, finish this
     if (is_chip_mmio_capable(chip_id)) {
-        device->bar_write32(chip_id, address, data);
-        return 4;
+        tt::umd::Cluster* silicon_device = dynamic_cast<tt::umd::Cluster*>(device);
+
+        if (silicon_device) {
+            silicon_device->bar_write32(chip_id, address, data);
+            return 4;
+        }
     } else {
         return {};
     }
@@ -147,12 +155,14 @@ std::optional<std::string> umd_implementation::pci_read_tile(uint8_t chip_id, ui
 }
 
 std::optional<std::string> umd_implementation::get_harvester_coordinate_translation(uint8_t chip_id) {
-    if (!device) {
+    tt::umd::Cluster* silicon_device = dynamic_cast<tt::umd::Cluster*>(device);
+
+    if (!silicon_device) {
         return {};
     }
 
     std::unordered_map<tt_xy_pair, tt_xy_pair> harvested_coord_translation =
-        device->get_harvested_coord_translation_map(chip_id);
+        silicon_device->get_harvested_coord_translation_map(chip_id);
     std::string ret = "{ ";
     for (auto& kv : harvested_coord_translation) {
         ret += "(" + std::to_string(kv.first.x) + "," + std::to_string(kv.first.y) + ") : (" +

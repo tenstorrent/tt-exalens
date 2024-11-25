@@ -15,12 +15,16 @@
 #include "device/blackhole/blackhole_implementation.h"
 #include "device/cluster.h"
 #include "device/grayskull/grayskull_implementation.h"
+#include "device/simulation/tt_simulation_device.h"
 #include "device/tt_cluster_descriptor.h"
 #include "device/wormhole/wormhole_implementation.h"
 
 // Include automatically generated files that we embed in source to avoid managing their deployment
 static const uint8_t blackhole_configuration_bytes[] = {
 #include "../configuration/blackhole.embed"
+};
+static const uint8_t blackhole_simulation_configuration_bytes[] = {
+#include "../configuration/blackhole_simulation.embed"
 };
 static const uint8_t grayskull_configuration_bytes[] = {
 #include "../configuration/grayskull.embed"
@@ -102,6 +106,40 @@ static std::filesystem::path find_binary_directory() {
     return {};
 }
 
+static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
+    std::string cluster_descriptor_path = temp_working_directory / "cluster_desc.yaml";
+    std::ofstream cluster_descriptor(cluster_descriptor_path);
+
+    if (!cluster_descriptor.is_open()) {
+        throw std::runtime_error("Failed to open file for writing: " + cluster_descriptor_path);
+    }
+
+    if (arch == tt::ARCH::BLACKHOLE) {
+        cluster_descriptor << "arch: {" << std::endl;
+        cluster_descriptor << "   0: Blackhole," << std::endl;
+        cluster_descriptor << "}" << std::endl << std::endl;
+        cluster_descriptor << "chips: {" << std::endl;
+        cluster_descriptor << "   0: [0,0,0,0]," << std::endl;
+        cluster_descriptor << "}" << std::endl << std::endl;
+        cluster_descriptor << "ethernet_connections: [" << std::endl;
+        cluster_descriptor << "]" << std::endl << std::endl;
+        cluster_descriptor << "chips_with_mmio: [" << std::endl;
+        cluster_descriptor << "   0: 0," << std::endl;
+        cluster_descriptor << "]" << std::endl << std::endl;
+        cluster_descriptor << "# harvest_mask is the bit indicating which tensix row is harvested. So bit 0 = first tensix row; bit 1 = second tensix row etc..." << std::endl;
+        cluster_descriptor << "harvesting: {" << std::endl;
+        cluster_descriptor << "   0: {noc_translation: false, harvest_mask: 0}," << std::endl;
+        cluster_descriptor << "}" << std::endl << std::endl;
+        cluster_descriptor << "# This value will be null if the boardtype is unknown, should never happen in practice but to be defensive it would be useful to throw an error on this case." << std::endl;
+        cluster_descriptor << "boardtype: {" << std::endl;
+        cluster_descriptor << "   0: n150," << std::endl;
+        cluster_descriptor << "}" << std::endl;
+    } else
+        throw std::runtime_error("Unsupported architecture " + get_arch_str(arch) + ".");
+
+    return cluster_descriptor_path;
+}
+
 static std::unique_ptr<tt::umd::Cluster> create_grayskull_device(const std::string &device_configuration_path,
                                                                  const std::string &cluster_descriptor_path,
                                                                  const std::set<chip_id_t> &target_devices) {
@@ -159,9 +197,8 @@ static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::stri
 // Creates SOC descriptor files by serializing tt_SocDescroptor structure to yaml.
 // TODO: Current copied from runtime/runtime_utils.cpp: print_device_description. It should be moved to UMD and reused
 // on both places.
-static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Cluster *device,
+static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_device *d,
                                                                     const std::vector<uint8_t> &device_ids) {
-    tt_device *d = static_cast<tt_device *>(device);
     std::map<uint8_t, std::string> device_soc_descriptors;
 
     for (auto device_id : device_ids) {
@@ -295,7 +332,7 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Clu
 
 namespace tt::lens {
 
-umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt::umd::Cluster> device,
+umd_with_open_implementation::umd_with_open_implementation(std::unique_ptr<tt_device> device,
                                                            std::unique_ptr<JtagDevice> jtag_device)
     : umd_implementation(device.get(), jtag_device.get()),
       device(std::move(device)),
@@ -376,6 +413,34 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
 
     implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
+    implementation->device_ids = device_ids;
+    implementation->device_soc_descriptors = device_soc_descriptors;
+    return std::move(implementation);
+}
+
+std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open_simulation() {
+    // For now, we hard code blackhole simulation soc descriptor as there is only VCS simulator for blackhole...
+    const uint8_t *configuration_bytes = blackhole_simulation_configuration_bytes;
+    tt::ARCH arch = tt::ARCH::BLACKHOLE;
+    size_t configuration_length =
+        sizeof(blackhole_simulation_configuration_bytes) / sizeof(blackhole_simulation_configuration_bytes[0]);
+    std::string device_configuration_path = write_temp_file(
+        "soc_descriptor.yaml", reinterpret_cast<const char *>(configuration_bytes), configuration_length);
+
+    std::unique_ptr<tt_SimulationDevice> device = std::make_unique<tt_SimulationDevice>(device_configuration_path);
+
+    // Initialize simulation device
+    device->start_device({});
+    device->deassert_risc_reset();
+
+    std::vector<uint8_t> device_ids{0};
+    auto device_soc_descriptors = create_device_soc_descriptors(device.get(), device_ids);
+
+    std::unique_ptr<JtagDevice> jtag_implementation;
+    auto implementation = std::make_unique<umd_with_open_implementation>(std::move(device), std::move(jtag_implementation));
+
+    implementation->device_configuration_path = device_configuration_path;
+    implementation->cluster_descriptor_path = create_simulation_cluster_descriptor_file(arch);
     implementation->device_ids = device_ids;
     implementation->device_soc_descriptors = device_soc_descriptors;
     return std::move(implementation);

@@ -4,7 +4,8 @@ set(DEVICE_FILEPATH "${CMAKE_CURRENT_SOURCE_DIR}/../device")
 
 set(TTLENS_SERVER_LIB_CONFIGURATION_FILES
 	"${CONFIG_FILEPATH}/blackhole.embed" "${DEVICE_FILEPATH}/blackhole_10x14.yaml"
-	"${CONFIG_FILEPATH}/grayskull.embed" "${DEVICE_FILEPATH}/grayskull_10x12.yaml"
+	"${CONFIG_FILEPATH}/blackhole_simulation.embed" "${DEVICE_FILEPATH}/blackhole_simulation_1x2.yaml"
+    "${CONFIG_FILEPATH}/grayskull.embed" "${DEVICE_FILEPATH}/grayskull_10x12.yaml"
 	"${CONFIG_FILEPATH}/wormhole_b0.embed" "${DEVICE_FILEPATH}/wormhole_b0_8x10.yaml"
 )
 

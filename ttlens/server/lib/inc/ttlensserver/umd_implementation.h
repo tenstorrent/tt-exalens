@@ -14,7 +14,7 @@ namespace tt::lens {
 
 class umd_implementation : public ttlens_implementation {
    public:
-    umd_implementation(tt::umd::Cluster* device, JtagDevice* jtag_device);
+    umd_implementation(tt_device* device, JtagDevice* jtag_device);
 
    protected:
     std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override;
@@ -47,7 +47,7 @@ class umd_implementation : public ttlens_implementation {
    private:
     bool is_chip_mmio_capable(uint8_t chip_id);
 
-    tt::umd::Cluster* device = nullptr;
+    tt_device* device = nullptr;
     JtagDevice* jtag_device = nullptr;
     std::string cluster_descriptor_path;
 };

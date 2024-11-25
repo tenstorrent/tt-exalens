@@ -17,6 +17,8 @@ namespace fs = std::experimental::filesystem;
 struct server_config {
    public:
     int port;
+    bool run_in_background;
+    std::string vcs_binary;
     std::vector<uint8_t> wanted_devices;
     bool init_jtag;
 };
@@ -39,7 +41,13 @@ int run_ttlens_server(const server_config& config) {
         std::unique_ptr<tt::lens::umd_with_open_implementation> implementation;
         // Try to open only wanted devices
         try {
-            implementation = tt::lens::umd_with_open_implementation::open({}, config.wanted_devices, config.init_jtag);
+            if (config.vcs_binary.empty()) {
+                implementation = tt::lens::umd_with_open_implementation::open({}, config.wanted_devices, config.init_jtag);
+            } else {
+                ensure_file("VCS binary", config.vcs_binary);
+                setenv("TT_REMOTE_EXE", config.vcs_binary.c_str(), 1);
+                implementation = tt::lens::umd_with_open_implementation::open_simulation();
+            }
         } catch (std::runtime_error& error) {
             log_custom(tt::Logger::Level::Error, tt::LogTTLens, "Cannot open device: {}.", error.what());
             return 1;
@@ -61,9 +69,18 @@ int run_ttlens_server(const server_config& config) {
             return 1;
         }
 
-        // Wait terminal input to stop the server
-        log_info(tt::LogTTLens, "The debug server is running. Press ENTER to stop execution...");
-        std::cin.get();
+        if (!config.run_in_background) {
+            // Wait terminal input to stop the server
+            log_info(tt::LogTTLens, "The debug server is running. Press ENTER to stop execution...");
+            std::cin.get();
+        } else {
+            log_info(tt::LogTTLens, "The debug server is running in the background.");
+            log_info(tt::LogTTLens, "To stop the server, use the command: touch exit.server");
+            std::filesystem::remove("exit.server");
+            while (!std::filesystem::exists("exit.server")) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+        }
 
         // Stop server in destructor
         log_info(tt::LogTTLens, "Debug server ended on {}", connection_address);
@@ -103,6 +120,17 @@ server_config parse_args(int argc, char** argv) {
                     i++;
                 }
             }
+        } else if (strcmp(argv[i], "-s") == 0) {
+            i += 1;
+            if (i >= argc) {
+                log_error("Expected path to VCS binary after -s");
+                return {};
+            }
+            config.vcs_binary = argv[i];
+            i += 1;
+        } else if (strcmp(argv[i], "--background") == 0) {
+            config.run_in_background = true;
+            i++;
         } else if (strcmp(argv[i], "--jtag") == 0) {
             config.init_jtag = true;
             i++;
@@ -118,8 +146,8 @@ server_config parse_args(int argc, char** argv) {
 int main(int argc, char** argv) {
     if (argc < 2) {
         log_error(
-            "Need arguments: <port> [-d <device_id1> [<device_id2> ... "
-            "<device_idN>]] [--jtag]");
+            "Need arguments: <port> [-s <simulation_VCS_binary>] [-d <device_id1> [<device_id2> ... "
+            "<device_idN>]] [--jtag] [--background]");
         return 1;
     }
 
