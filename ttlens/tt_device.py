@@ -168,24 +168,21 @@ class Device(TTObject):
     def get_harvested_noc0_y_rows(self):
         pass
 
+    def row_count(self):
+        return int(self.yaml_file.root["grid"]["y_size"])
+
     def _create_tensix_netlist_harvesting_map(self):
-        tensix_row = 0
-        netlist_row = 0
         self.tensix_row_to_netlist_row = dict()  # Clear any existing map
         self.netlist_row_to_tensix_row = dict()
-        harvested_noc0_y_rows = self.get_harvested_noc0_y_rows()
 
-        for noc0_y in range(0, self.row_count()):
-            if noc0_y == 0 or noc0_y == 6:
-                pass  # Skip Ethernet rows
-            else:
-                if noc0_y in harvested_noc0_y_rows:
-                    pass  # Skip harvested rows
-                else:
-                    self.netlist_row_to_tensix_row[netlist_row] = tensix_row
-                    self.tensix_row_to_netlist_row[tensix_row] = netlist_row
-                    netlist_row += 1
-                tensix_row += 1
+        functional_workers = self.get_block_locations("functional_workers")
+        worker_rows = sorted({worker.to("noc0")[1] for worker in functional_workers})
+
+        netlist_row = 0
+        for noc0_y in worker_rows:
+            self.netlist_row_to_tensix_row[netlist_row] = noc0_y
+            self.tensix_row_to_netlist_row[noc0_y] = netlist_row
+            netlist_row += 1
 
     def _create_nocTr_noc0_harvesting_map(self):
         bitmask = self._harvesting["harvest_mask"] if self._harvesting else 0
@@ -213,10 +210,22 @@ class Device(TTObject):
         self._create_nocTr_noc0_harvesting_map()
 
     def _create_nocVirt_to_nocTr_map(self):
-        harvested_coord_translation_str = self._context.server_ifc.get_harvester_coordinate_translation(self._id)
-        self.nocVirt_to_nocTr_map = ast.literal_eval(
-            harvested_coord_translation_str
-        )  # Eval string to dict
+        from ttlens.tt_lens_ifc import ttlens_server_not_supported
+
+        try:
+            harvested_coord_translation_str = self._context.server_ifc.get_harvester_coordinate_translation(self._id)
+            self.nocVirt_to_nocTr_map = ast.literal_eval(
+                harvested_coord_translation_str
+            )  # Eval string to dict
+        except ttlens_server_not_supported:
+            # If get_harvester_coordinate_translation is not supported, fall back to identity mapping
+            dev = self.yaml_file.root
+            grid_x = int(dev["grid"]["x_size"])
+            grid_y = int(dev["grid"]["y_size"])
+            self.nocVirt_to_nocTr_map = dict()
+            for nocTr_x in range(0, grid_x):
+                for nocTr_y in range(0, grid_y):
+                    self.nocVirt_to_nocTr_map[self.noc0_to_nocVirt((nocTr_x, nocTr_y))] = (nocTr_x, nocTr_y)
         self.nocTr_to_nocVirt_map = {
             v: k for k, v in self.nocVirt_to_nocTr_map.items()
         }  # Create inverse map as well
@@ -266,8 +275,8 @@ class Device(TTObject):
                 f"Cluster description is not valid. 'harvesting_desc' reads: {harvesting_desc}"
             )
 
-        self._create_harvesting_maps()
         self._create_nocVirt_to_nocTr_map()
+        self._create_harvesting_maps() # TODO: Check if this can be returned to original position
         util.DEBUG(
             "Opened device: id=%d, arch=%s, has_mmio=%s, harvesting=%s"
             % (id, arch, self._has_mmio, self._harvesting)
@@ -318,22 +327,31 @@ class Device(TTObject):
         return (nocTr_x, nocTr_y)
 
     def nocVirt_to_noc0(self, nocVirt_loc):
-        nocTr_loc = self.nocVirt_to_nocTr(nocVirt_loc)
-        return self.nocTr_to_noc0(nocTr_loc)
+        # Implementing this as identity as default implementation
+        return nocVirt_loc
 
     def noc0_to_nocVirt(self, noc0_loc):
-        nocTr_loc = self.noc0_to_nocTr(noc0_loc)
-        try:
-            nocVirt = self.nocTr_to_nocVirt(nocTr_loc)
-        except KeyError:
-            # DRAM locations are not in nocTr_to_nocVirt map. Use noc0 coordinates directly.
-            nocVirt = noc0_loc
-        return nocVirt
+        # Implementing this as identity as default implementation
+        return noc0_loc
+
+    @cached_property
+    def noc0_to_netlist_map(self):
+        workers_noc0 = [loc._noc0_coord for loc in self.get_block_locations("functional_workers")]
+        noc0y = sorted(list(set(y for _, y in workers_noc0)))
+        noc0x = sorted(list(set(x for x, _ in workers_noc0)))
+        noc0_to_netlist_map = dict()
+        for x in range(len(noc0x)):
+            for y in range(len(noc0y)):
+                noc0_to_netlist_map[(noc0x[x], noc0y[y])] = (x, y)
+        return noc0_to_netlist_map
+
+    @cached_property
+    def netlist_to_noc0_map(self):
+        return {v: k for k, v in self.noc0_to_netlist_map.items()}
 
     def noc0_to_netlist(self, noc0_loc):
         try:
-            c = self.tensix_to_netlist(self.noc0_to_tensix(noc0_loc))
-            return (c[0], c[1])
+            return self.noc0_to_netlist_map[noc0_loc]
         except KeyError:
             raise CoordinateTranslationError(
                 f"noc0_to_netlist: noc0_loc {noc0_loc} does not translate to a valid netlist location"
@@ -341,8 +359,7 @@ class Device(TTObject):
 
     def netlist_to_noc0(self, netlist_loc):
         try:
-            c = self.tensix_to_noc0(self.netlist_to_tensix(netlist_loc))
-            return (c[0], c[1])
+            return self.netlist_to_noc0_map[netlist_loc]
         except KeyError:
             raise CoordinateTranslationError(
                 f"netlist_to_noc0: netlist_loc {netlist_loc} does not translate to a valid noc0 location"
@@ -382,6 +399,9 @@ class Device(TTObject):
         return streams
 
     def get_block_locations(self, block_type="functional_workers"):
+        return self.get_block_locations_internal(block_type, "nocVirt")
+
+    def get_block_locations_internal(self, block_type, coord_type):
         """
         Returns locations of all blocks of a given type
         """
@@ -391,9 +411,9 @@ class Device(TTObject):
         for loc_or_list in dev[block_type]:
             if type(loc_or_list) != str and isinstance(loc_or_list, Sequence):
                 for loc in loc_or_list:
-                    locs.append(OnChipCoordinate.create(loc, self, "nocVirt"))
+                    locs.append(OnChipCoordinate.create(loc, self, coord_type))
             else:
-                locs.append(OnChipCoordinate.create(loc_or_list, self, "nocVirt"))
+                locs.append(OnChipCoordinate.create(loc_or_list, self, coord_type))
         return locs
     
     def get_arc_block_location(self) -> OnChipCoordinate:
@@ -1179,23 +1199,24 @@ class Device(TTObject):
         return addr
     
     def _init_register_addresses(self):
-        base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
-        csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
-        rom_data_base_addr = self.PCI_ARC_ROM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_ROM_DATA_BASE_ADDR
+        # base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
+        # csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
+        # rom_data_base_addr = self.PCI_ARC_ROM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_ROM_DATA_BASE_ADDR
 
-        self.REGISTER_ADDRESSES = {
-            "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
-            "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
-            "ARC_RESET_ARC_UDMIAXI_REGION": base_addr + 0x10C,
-            "ARC_RESET_SCRATCH0": base_addr + 0x060,
-            "ARC_RESET_SCRATCH1": base_addr + 0x064,
-            "ARC_RESET_SCRATCH2": base_addr + 0x068,
-            "ARC_RESET_SCRATCH3": base_addr + 0x06C,
-            "ARC_RESET_SCRATCH4": base_addr + 0x070,
-            "ARC_RESET_SCRATCH5": base_addr + 0x074,
-            "ARC_CSM_DATA": csm_data_base_addr,
-            "ARC_ROM_DATA": rom_data_base_addr
-        }
+        # self.REGISTER_ADDRESSES = {
+        #     "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
+        #     "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
+        #     "ARC_RESET_ARC_UDMIAXI_REGION": base_addr + 0x10C,
+        #     "ARC_RESET_SCRATCH0": base_addr + 0x060,
+        #     "ARC_RESET_SCRATCH1": base_addr + 0x064,
+        #     "ARC_RESET_SCRATCH2": base_addr + 0x068,
+        #     "ARC_RESET_SCRATCH3": base_addr + 0x06C,
+        #     "ARC_RESET_SCRATCH4": base_addr + 0x070,
+        #     "ARC_RESET_SCRATCH5": base_addr + 0x074,
+        #     "ARC_CSM_DATA": csm_data_base_addr,
+        #     "ARC_ROM_DATA": rom_data_base_addr
+        # }
+        pass
 # end of class Device
 
 # This is based on runtime_utils.cpp:get_soc_desc_path()

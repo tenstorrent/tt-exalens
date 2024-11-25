@@ -96,9 +96,6 @@ class GrayskullDevice(tt_device.Device):
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(id, arch, cluster_desc, {"functional_workers": GrayskullL1AddressMap(), "dram": GrayskullDRAMEpochCommandAddressMap()}, device_desc_path, context)
 
-    def row_count(self):
-        return len(GrayskullDevice.DIE_Y_TO_NOC_0_Y)
-
     def no_tensix_row_count(self):
         return 2
 

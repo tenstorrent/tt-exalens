@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from functools import cached_property
 from ttlens import tt_util as util
 from ttlens import tt_device
 from ttlens.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
@@ -188,14 +189,44 @@ class WormholeDevice(tt_device.Device):
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(id, arch, cluster_desc, {"functional_workers": WormholeL1AddressMap(), "eth": WormholeEthL1AddressMap(), "dram": WormholeDRAMEpochCommandAddressMap()}, device_desc_path, context)
 
-    def row_count(self):
-        return len(WormholeDevice.DIE_Y_TO_NOC_0_Y)
-
     def no_tensix_row_count(self):
         return 2
 
     def no_tensix_col_count(self):
         return 2
+
+    @cached_property
+    def noc0_to_nocVirt_map(self):
+        harvested_noc0_rows = self.get_harvested_noc0_y_rows()
+        workers_nocVirt = [loc._noc0_coord for loc in self.get_block_locations_internal("functional_workers", "noc0")]
+        worker_rows = sorted(list(set(y for _, y in workers_nocVirt)))
+        harvested_nocVirt = [loc._noc0_coord for loc in self.get_block_locations_internal("harvested_workers", "noc0")]
+        harvested_rows = sorted(list(set(y for _, y in harvested_nocVirt)))
+        assert len(harvested_rows) == len(harvested_noc0_rows)
+        all_workers_nocVirt = workers_nocVirt + harvested_nocVirt
+        all_rows = sorted(list(set(y for _, y in all_workers_nocVirt)))
+        translated_rows = { y : all_rows[worker_rows.index(y) + sum(1 for h in harvested_noc0_rows if h <= y)] for y in worker_rows }
+        for i in range(len(harvested_noc0_rows)):
+            translated_rows[harvested_rows[i]] = harvested_noc0_rows[i]
+        nocVirt_to_noc0_map = {
+            (x, translated_rows[y]): (x, y)
+            for (x, y) in all_workers_nocVirt
+        }
+        return nocVirt_to_noc0_map
+
+    @cached_property
+    def nocVirt_to_noc0_map(self):
+        return {v: k for k, v in self.noc0_to_nocVirt_map.items()}
+
+    def nocVirt_to_noc0(self, nocVirt_loc):
+        if nocVirt_loc in self.nocVirt_to_noc0_map:
+            return self.nocVirt_to_noc0_map[nocVirt_loc]
+        return nocVirt_loc
+
+    def noc0_to_nocVirt(self, noc0_loc):
+        if noc0_loc in self.noc0_to_nocVirt_map:
+            return self.noc0_to_nocVirt_map[noc0_loc]
+        return noc0_loc
 
     def get_num_msgs_received(self, loc, stream_id):
         return int(self.get_stream_reg_field(loc, stream_id, 224 + 5, 0, 24))
