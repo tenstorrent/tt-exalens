@@ -77,10 +77,11 @@ def empty_pci_write():
 def empty_jtag_read32():
     global server
     check_not_implemented_response(lambda: server.jtag_read32(1, 2, 3, 123456))
+    raise Exception("You shall not pass")
 
 def empty_jtag_write32():
     global server
-    check_not_implemented_response(lambda: server.jtag_write32(1, 2, 3, 123456, 987654))
+    check_not_implemented_response(lambda: server.jtag_write32(0, 2, 0, 0, 987654))
 
 def empty_jtag_read32_axi():
     global server

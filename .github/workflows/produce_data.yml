@@ -3,6 +3,7 @@ name: "[internal] Collect workflow data"
 on:
   workflow_run:
     workflows: # List workflow that we want to collect data for
+      - "On PR"
       - "Run all tests"
     types:
       - completed
