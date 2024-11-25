@@ -49,7 +49,6 @@ class TestAutoContext(unittest.TestCase):
         context = tt_lens_init.init_ttlens()
         self.assertIsNotNone(tt_lens_init.GLOBAL_CONTEXT)
         self.assertIs(tt_lens_init.GLOBAL_CONTEXT, context)
-        raise Exception("This one must fail!")
 
     def test_existing_context(self):
         """Test recognition of existing context."""
@@ -58,7 +57,7 @@ class TestAutoContext(unittest.TestCase):
         # Create new global context
         context1 = tt_lens_init.init_ttlens()
         self.assertIsNotNone(tt_lens_init.GLOBAL_CONTEXT)
-        self.assertIs(tt_lens_init.GLOBAL_CONTEXT, None)
+        self.assertIs(tt_lens_init.GLOBAL_CONTEXT, context1)
 
         # Check for existing context
         context = lib.check_context()
