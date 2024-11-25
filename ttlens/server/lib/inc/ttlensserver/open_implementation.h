@@ -28,10 +28,11 @@ class open_implementation : public BaseClass {
     std::string cluster_descriptor_path;
     std::string device_configuration_path;
 
+    open_implementation(std::unique_ptr<DeviceType> device);
+
    public:
     static std::unique_ptr<open_implementation<BaseClass>> open(const std::filesystem::path& binary_directory = {},
                                                                 const std::vector<uint8_t>& wanted_devices = {});
-    open_implementation(std::unique_ptr<DeviceType> device);
 
     std::optional<std::string> get_cluster_description() override;
     std::optional<std::vector<uint8_t>> get_device_ids() override;

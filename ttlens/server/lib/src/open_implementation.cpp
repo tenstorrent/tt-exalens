@@ -386,7 +386,8 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
         device_ids.push_back(device_id);
     }
 
-    auto implementation = std::make_unique<open_implementation<jtag_implementation>>(std::move(jtag_device));
+    auto implementation = std::unique_ptr<open_implementation<jtag_implementation>>(
+        new open_implementation<jtag_implementation>(std::move(jtag_device)));
 
     implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
@@ -456,7 +457,8 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 
     auto device_soc_descriptors = create_device_soc_descriptors(device.get(), device_ids);
 
-    auto implementation = std::make_unique<open_implementation<umd_implementation>>(std::move(device));
+    auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
+        new open_implementation<umd_implementation>(std::move(device)));
 
     implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
