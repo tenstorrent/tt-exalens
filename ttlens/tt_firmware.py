@@ -226,9 +226,9 @@ class ELF:
         """
         Returns a simple memory reader function that reads from a given device and a given core.
         """
-        from ttlens.tt_lens_lib import read_from_device
+        from ttlens.tt_lens_lib import read_word_from_device
 
         def mem_reader(context, addr, size_bytes):
-            return read_from_device(core_loc, addr, device_id, size_bytes, context)
+            return [read_word_from_device(core_loc, addr, device_id, context)]
 
         return mem_reader
