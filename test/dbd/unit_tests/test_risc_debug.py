@@ -9,6 +9,7 @@ from dbd import tt_debuda_lib as lib
 from dbd.tt_coordinate import OnChipCoordinate
 from dbd.tt_debuda_context import Context
 from dbd.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index, get_risc_id
+from test.dbd.unit_tests.test_base import init_default_test_context
 
 @parameterized_class([
     # { "core_desc": "ETH0", "risc_name": "BRISC" },
@@ -33,7 +34,7 @@ class TestDebugging(unittest.TestCase):
 
 	@classmethod
 	def setUpClass(cls):
-		cls.context = tt_debuda_init.init_debuda()
+		cls.context = init_default_test_context()
 		cls.pc_register_index = get_register_index("pc")
 
 	def setUp(self):
