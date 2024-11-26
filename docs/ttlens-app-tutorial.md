@@ -1,6 +1,6 @@
 # TTLens Application Tutorial
 
-This tutorial shows houw to use the TTLens application.
+This tutorial shows how to use the TTLens application.
 It gives examples of basic commands, as well as how to run TTLens on remote machine and from cache.
 
 To follow this tutorial, you should either [build TTLens from source](./../README.md#building-ttlens) and run it through the python script with `./tt-lens.py`, or [install from wheel](./../README.md#building-and-installing-wheel) and run with `tt-lens.py`.
@@ -31,7 +31,7 @@ burst-read-xy    brxy     Reads and prints a block of data from address 'addr' a
 dump-gpr         gpr      Prints all RISC-V registers for BRISC, TRISC0, TRISC1, and TRISC2 on the current core.
 write-xy         wxy      Writes data word to address 'addr' at noc0 location x-y of the current chip.
 riscv            rv       Commands for RISC-V debugging:
-device           d        Shows a device summary. When no argument is supplied, it iterates through all devices used by the
+device           d        Shows a device summary. When no argument is supplied, it iterates through all devices
 gdb              gdb      Starts or stops gdb server.
 go               go       Sets the current device/location.
 run-elf          re       Loads an elf file into a brisc and runs it.
