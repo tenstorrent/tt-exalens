@@ -14,9 +14,9 @@ gdb:None device:0 loc:18-18 (0, 0) >
 ```
 
 The last line is the command prompt.
-It shows the basic information, such as status of the gdb server, epoch of the running model, currently selected device id and targeted core location.
-Some commands, such as `re`, use the currently-selected device and location to show information.
-For example, running `re 18-18` will load elf on core 18-18 of the current devcie.
+It shows the basic information, such as status of the gdb server, currently selected device id and targeted core location.
+Some commands, such as `re`, use the currently-selected device and location if parameters are not provided.
+For example, running `re build/riscv-src/wormhole/run_elf_test.brisc.elf` will load elf on core 18-18 of device 0.
 
 Typing `h` or `help` into the prompt lists the available commands and gives a short explanation for each of them.
 It is also possible to type `help <command-name>` to get more detailed help for each of available commands.
