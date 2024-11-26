@@ -3,8 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "ttlensserver/jtag_device.h"
 
+#include <cstdint>
 #include <iostream>
 
+#include "device/cluster.h"
+#include "tt_xy_pair.h"
 #include "ttlensserver/jtag.h"
 
 #define ROW_LEN 12
@@ -34,7 +37,30 @@ JtagDevice::JtagDevice(std::unique_ptr<Jtag> jtag_device) : jtag(std::move(jtag_
 
         jlink_devices.push_back(jlink_id);
         uint32_t efuse = jtag->read_axi(WORMHOLE_ARC_EFUSE_HARVESTING);
-        harvesting.push_back(get_harvesting_from_efuse(efuse));
+
+        uint32_t bad_mem_bits = efuse & 0x3FF;
+        uint32_t bad_logic_bits = (efuse >> 10) & 0x3FF;
+
+        /* each set bit inidicates a bad row */
+        uint32_t bad_row_bits = (bad_mem_bits | bad_logic_bits);
+
+        /* efuse_harvesting is the raw harvesting value from the efuse, it is
+         * used for creating device soc descriptor, as UMD expects value in this
+         * format */
+        efuse_harvesting.push_back(bad_row_bits);
+
+        uint32_t mapping_idx[ROW_LEN] = {0, 2, 4, 6, 8, 10, 11, 9, 7, 5, 3, 1};
+        uint32_t x = 0;
+        for (int i = 0; i < ROW_LEN; i++) {
+            if ((bad_row_bits << 1) & (1 << mapping_idx[i])) {
+                x |= (1 << i);
+            }
+        }
+
+        /* device_harvesting is the remapped harvesting value, where the bits are
+         * remapped to the sequential order of rows, and it is used for
+         * harvesting info passed as CEM output */
+        device_harvesting.push_back(x);
 
         jtag->close_jlink();
     }
@@ -42,23 +68,39 @@ JtagDevice::JtagDevice(std::unique_ptr<Jtag> jtag_device) : jtag(std::move(jtag_
         throw std::runtime_error("There are no supported devices");
     }
 
-    curr_device_idx = 0;
-    jtag->open_jlink_by_serial_wrapper(jlink_devices[curr_device_idx]);
+    curr_device_idx = 0xff;
 }
 
 JtagDevice::~JtagDevice() {
-    if (curr_device_idx != -1) {
+    if (curr_device_idx != 0xff) {
         jtag->close_jlink();
-        curr_device_idx = -1;
+        curr_device_idx = 0xff;
     }
 }
 
 std::optional<uint32_t> JtagDevice::get_device_cnt() const { return jlink_devices.size(); }
 
+std::optional<uint32_t> JtagDevice::get_efuse_harvesting(uint8_t chip_id) const {
+    if (chip_id >= get_device_cnt()) {
+        return {};
+    }
+
+    return efuse_harvesting[chip_id];
+}
+
+std::optional<uint32_t> JtagDevice::get_device_harvesting(uint8_t chip_id) const {
+    if (chip_id >= get_device_cnt()) {
+        return {};
+    }
+
+    return device_harvesting[chip_id];
+}
+
 bool JtagDevice::select_device(uint8_t chip_id) {
-    if (chip_id >= jlink_devices.size()) {
+    if (chip_id >= get_device_cnt()) {
         return false;
     }
+
     if (curr_device_idx != chip_id) {
         curr_device_idx = chip_id;
         jtag->close_jlink();
@@ -67,64 +109,89 @@ bool JtagDevice::select_device(uint8_t chip_id) {
     return true;
 }
 
-std::vector<uint32_t> JtagDevice::get_harvesting_from_efuse(uint32_t efuse_harvesting) {
-    uint32_t bad_mem_bits = efuse_harvesting & 0x3FF;
-    uint32_t bad_logic_bits = (efuse_harvesting >> 10) & 0x3FF;
-    uint32_t bad_row_bits = (bad_mem_bits | bad_logic_bits) << 1;
+std::optional<tt::ARCH> JtagDevice::get_jtag_arch(uint8_t chip_id) {
+    auto id_opt = read_id(chip_id);
 
-    uint32_t mapping_idx[ROW_LEN] = {0, 2, 4, 6, 8, 10, 11, 9, 7, 5, 3, 1};
-    uint32_t harvesting_rows[ROW_LEN - 2] = {0};
-    bad_row_bits |= 1 << mapping_idx[6];
-    int cnt = 1;
-
-    for (int i = 1; i < ROW_LEN; i++) {
-        if (i == 6) {
-            harvesting_rows[i] = i;
-            continue;
-        }
-
-        while ((1 << mapping_idx[cnt]) & bad_row_bits) {
-            cnt++;
-        }
-        harvesting_rows[i] = cnt++;
+    if (!id_opt) {
+        return {};
     }
 
-    return std::vector<uint32_t>(harvesting_rows, harvesting_rows + ROW_LEN - 2);
+    uint32_t id = *id_opt;
+    switch (id) {
+        case WORMHOLE_ID:
+            return tt::ARCH::WORMHOLE_B0;
+        default:
+            return tt::ARCH::Invalid;
+    }
+}
+
+std::optional<std::string> JtagDevice::get_jtag_harvester_coordinate_translation(uint8_t chip_id) {
+    if (!jtag) {
+        return {};
+    }
+
+    std::unordered_map<tt_xy_pair, tt_xy_pair> harvested_coord_translation =
+        tt::umd::Cluster::create_harvested_coord_translation(*get_jtag_arch(chip_id), false);
+    std::string ret = "{ ";
+    for (auto& kv : harvested_coord_translation) {
+        ret += "(" + std::to_string(kv.first.x) + "," + std::to_string(kv.first.y) + ") : (" +
+               std::to_string(kv.second.x) + "," + std::to_string(kv.second.y) + "), ";
+    }
+    return ret + " }";
 }
 
 std::optional<int> JtagDevice::open_jlink_by_serial_wrapper(uint8_t chip_id, unsigned int serial_number) {
+    jtag->close_jlink();
     return jtag->open_jlink_by_serial_wrapper(serial_number);
 }
 
 std::optional<int> JtagDevice::open_jlink_wrapper(uint8_t chip_id) { return jtag->open_jlink_wrapper(); }
 
 std::optional<uint32_t> JtagDevice::read_tdr(uint8_t chip_id, const char* client, uint32_t reg_offset) {
+    if (!select_device(chip_id)) {
+        return {};
+    }
     return jtag->read_tdr(client, reg_offset);
 }
 
 std::optional<uint32_t> JtagDevice::readmon_tdr(uint8_t chip_id, const char* client, uint32_t id, uint32_t reg_offset) {
+    if (!select_device(chip_id)) {
+        return {};
+    }
     return jtag->readmon_tdr(client, id, reg_offset);
 }
 
 std::optional<int> JtagDevice::writemon_tdr(uint8_t chip_id, const char* client, uint32_t id, uint32_t reg_offset,
                                             uint32_t data) {
+    if (!select_device(chip_id)) {
+        return {};
+    }
     jtag->writemon_tdr(client, id, reg_offset, data);
     return 0;
 }
 
 std::optional<int> JtagDevice::write_tdr(uint8_t chip_id, const char* client, uint32_t reg_offset, uint32_t data) {
+    if (!select_device(chip_id)) {
+        return {};
+    }
     jtag->write_tdr(client, reg_offset, data);
     return 0;
 }
 
 std::optional<int> JtagDevice::dbus_memdump(uint8_t chip_id, const char* client_name, const char* mem,
                                             const char* thread_id_name, const char* start_addr, const char* end_addr) {
+    if (!select_device(chip_id)) {
+        return {};
+    }
     jtag->dbus_memdump(client_name, mem, thread_id_name, start_addr, end_addr);
     return 0;
 }
 
 std::optional<int> JtagDevice::dbus_sigdump(uint8_t chip_id, const char* client_name, uint32_t dbg_client_id,
                                             uint32_t dbg_signal_sel_start, uint32_t dbg_signal_sel_end) {
+    if (!select_device(chip_id)) {
+        return {};
+    }
     jtag->dbus_sigdump(client_name, dbg_client_id, dbg_signal_sel_start, dbg_signal_sel_end);
     return 0;
 }
@@ -143,8 +210,7 @@ std::optional<int> JtagDevice::write32(uint8_t chip_id, uint8_t noc_x, uint8_t n
         return {};
     }
 
-    uint32_t nocvirt_y = harvesting[curr_device_idx][noc_y];
-    jtag->write_noc_xy(noc_x, nocvirt_y, address, data);
+    jtag->write_noc_xy(noc_x, noc_y, address, data);
     return 4;
 }
 
@@ -161,17 +227,32 @@ std::optional<uint32_t> JtagDevice::read32(uint8_t chip_id, uint8_t noc_x, uint8
         return {};
     }
 
-    uint32_t nocvirt_y = harvesting[curr_device_idx][noc_y];
-    return jtag->read_noc_xy(noc_x, nocvirt_y, address);
+    return jtag->read_noc_xy(noc_x, noc_y, address);
 }
 
 std::optional<std::vector<uint32_t>> JtagDevice::enumerate_jlink(uint8_t chip_id) { return jtag->enumerate_jlink(); }
 
 std::optional<int> JtagDevice::close_jlink(uint8_t chip_id) {
+    if (!select_device(chip_id)) {
+        return {};
+    }
+
     jtag->close_jlink();
     return 0;
 }
 
-std::optional<uint32_t> JtagDevice::read_id_raw(uint8_t chip_id) { return jtag->read_id_raw(); }
+std::optional<uint32_t> JtagDevice::read_id_raw(uint8_t chip_id) {
+    if (!select_device(chip_id)) {
+        return {};
+    }
 
-std::optional<uint32_t> JtagDevice::read_id(uint8_t chip_id) { return jtag->read_id(); }
+    return jtag->read_id_raw();
+}
+
+std::optional<uint32_t> JtagDevice::read_id(uint8_t chip_id) {
+    if (!select_device(chip_id)) {
+        return {};
+    }
+
+    return jtag->read_id();
+}

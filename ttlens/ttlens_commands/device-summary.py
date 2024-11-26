@@ -69,7 +69,8 @@ def run(cmd_text, context, ui_state=None):
 
     for device_id in devices_list:
         device = context.devices[device_id]
-        util.INFO(f"==== Device {device.id()}")
+        jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
+        util.INFO(f"==== Device {jtag_prompt}{device.id()}")
 
         # What to render in each cell
         cell_contents_array = [s.strip() for s in cell_contents.split(",")]
