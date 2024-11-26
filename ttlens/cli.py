@@ -214,7 +214,7 @@ def import_commands(reload=False):
         {
             "long": "eval",
             "short": "ev",
-            "type": "housekeeping",
+            "type": "dev",
             "description": "Description:\n  Evaluates a Python expression.\n\nExamples:\n  eval 3+5\n  eval hex(@brisc.EPOCH_INFO_PTR.epoch_id)",
             "context": "util",
         },

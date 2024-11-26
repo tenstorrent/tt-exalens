@@ -21,7 +21,7 @@ Examples:
 
 command_metadata = {
     "short": "jwaxi",
-    "type": "low-level",
+    "type": "dev",
     "description": __doc__,
     "context": ["limited", "metal"],
 }
