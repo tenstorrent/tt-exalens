@@ -118,11 +118,9 @@ def get_register_data(device, context, loc, args):
     # Print the table
     if len(table) > 0:
         headers = ["Register"]
-        for risc_id in range (0, 4):
+        for risc_id in riscs_to_include:
             headers.append(get_risc_name(risc_id))
-        return tabulate.tabulate(
-                table, headers=headers, disable_numparse=True
-            )
+        return tabulate.tabulate(table, headers=headers, disable_numparse=True)
     return None
 
 def run(cmd_text, context, ui_state: UIState = None):
