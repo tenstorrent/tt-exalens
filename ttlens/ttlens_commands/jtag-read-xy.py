@@ -22,7 +22,7 @@ Examples:
 
 command_metadata = {
     "short": "jrxy",
-    "type": "low-level",
+    "type": "dev",
     "description": __doc__,
     "context": ["limited", "metal"],
 }

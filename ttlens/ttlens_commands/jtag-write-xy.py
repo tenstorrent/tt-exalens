@@ -23,7 +23,7 @@ Examples:
 
 command_metadata = {
     "short": "jwxy",
-    "type": "low-level",
+    "type": "dev",
     "description": __doc__,
     "context": ["limited", "metal"],
 }

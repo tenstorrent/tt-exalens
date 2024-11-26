@@ -16,7 +16,7 @@ Examples:
 command_metadata = {
     "short": "if",
     "long": "interfaces",
-    "type": "high-level",
+    "type": "dev",
     "description": __doc__,
     "context": ["limited", "metal"],
 }
