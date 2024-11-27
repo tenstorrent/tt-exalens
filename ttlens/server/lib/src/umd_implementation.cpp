@@ -90,11 +90,13 @@ std::optional<uint32_t> umd_implementation::pci_write(uint8_t chip_id, uint8_t n
 }
 
 bool umd_implementation::is_chip_mmio_capable(uint8_t chip_id) {
-    if (!device) {
+    tt::umd::Cluster* silicon_device = dynamic_cast<tt::umd::Cluster*>(device);
+
+    if (!silicon_device) {
         return false;
     }
 
-    auto mmio_targets = device->get_target_mmio_device_ids();
+    auto mmio_targets = silicon_device->get_target_mmio_device_ids();
 
     return mmio_targets.find(chip_id) != mmio_targets.end();
 }
