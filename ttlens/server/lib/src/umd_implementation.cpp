@@ -6,9 +6,9 @@
 #include <cstdint>
 #include <tuple>
 
-#include "device/cluster.h"
 #include "ttlensserver/jtag_device.h"
 #include "ttlensserver/read_tile.hpp"
+#include "umd/device/cluster.h"
 
 static std::string REG_TLB_STR = "REG_TLB";
 static std::string SMALL_READ_WRITE_TLB_STR = "SMALL_READ_WRITE_TLB";

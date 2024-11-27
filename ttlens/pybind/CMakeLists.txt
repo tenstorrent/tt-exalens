@@ -7,7 +7,7 @@ set_target_properties(ttlens_pybind PROPERTIES
 )
 target_link_libraries(ttlens_pybind
     ttlens_server_lib
-    umd_device
+    umd::device
     yaml-cpp
     pthread
 )

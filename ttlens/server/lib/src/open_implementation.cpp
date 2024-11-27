@@ -11,14 +11,14 @@
 #include <stdexcept>
 #include <string>
 
-#include "device/blackhole/blackhole_implementation.h"
-#include "device/cluster.h"
-#include "device/grayskull/grayskull_implementation.h"
-#include "device/tt_cluster_descriptor.h"
-#include "device/wormhole/wormhole_implementation.h"
-#include "tt_arch_types.h"
 #include "ttlensserver/jtag.h"
 #include "ttlensserver/jtag_device.h"
+#include "umd/device/blackhole_implementation.h"
+#include "umd/device/cluster.h"
+#include "umd/device/grayskull_implementation.h"
+#include "umd/device/tt_arch_types.h"
+#include "umd/device/tt_cluster_descriptor.h"
+#include "umd/device/wormhole_implementation.h"
 
 // Include automatically generated files that we embed in source to avoid managing their deployment
 static const uint8_t blackhole_configuration_bytes[] = {

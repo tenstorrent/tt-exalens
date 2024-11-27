@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "ttlensserver/jtag_implementation.h"
 
-#include "device/tt_soc_descriptor.h"
-#include "tt_arch_types.h"
 #include "ttlensserver/jtag_device.h"
+#include "umd/device/tt_arch_types.h"
+#include "umd/device/tt_soc_descriptor.h"
 
 namespace tt::lens {
 

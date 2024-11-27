@@ -8,8 +8,8 @@
 #include <memory>
 #include <optional>
 
-#include "tt_arch_types.h"
 #include "ttlensserver/jtag.h"
+#include "umd/device/tt_arch_types.h"
 
 class JtagDevice {
    public:

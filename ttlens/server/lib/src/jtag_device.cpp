@@ -6,9 +6,9 @@
 #include <cstdint>
 #include <iostream>
 
-#include "device/cluster.h"
-#include "tt_xy_pair.h"
 #include "ttlensserver/jtag.h"
+#include "umd/device/cluster.h"
+#include "umd/device/tt_xy_pair.h"
 
 #define ROW_LEN 12
 #define WORMHOLE_ID 0x138a5
