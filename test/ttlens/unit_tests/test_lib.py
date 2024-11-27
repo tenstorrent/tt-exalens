@@ -88,7 +88,7 @@ class TestReadWrite(unittest.TestCase):
 
     def test_write_read_bytes(self):
         """Test write bytes -- read bytes."""
-        core_loc = "1,1"
+        core_loc = "1,0"
         address = 0x100
         
         data = b"abcd"
@@ -100,14 +100,14 @@ class TestReadWrite(unittest.TestCase):
         self.assertEqual(ret, data)
 
     @parameterized.expand([
-        ("1,1", 1024, 0x100, 0), # 1KB from device 0 at location 1,1
-        ("1,1", 2048, 0x104, 0), # 2KB from device 0 at location 1,1
-        ("1,1", 4096, 0x108, 0), # 4KB from device 0 at location 1,1
-        ("1,1", 8192, 0x10c, 0), # 8KB from device 0 at location 1,1
-        ("1,1", 1024, 0x100, 1), # 1KB from device 1 at location 1,1
-        ("1,1", 2048, 0x104, 1), # 2KB from device 1 at location 1,1
-        ("1,1", 4096, 0x108, 1), # 4KB from device 1 at location 1,1
-        ("1,1", 8192, 0x10c, 1), # 8KB from device 1 at location 1,1
+        ("1,0", 1024, 0x100, 0), # 1KB from device 0 at location 1,0
+        ("1,0", 2048, 0x104, 0), # 2KB from device 0 at location 1,0
+        ("1,0", 4096, 0x108, 0), # 4KB from device 0 at location 1,0
+        ("1,0", 8192, 0x10c, 0), # 8KB from device 0 at location 1,0
+        ("1,0", 1024, 0x100, 1), # 1KB from device 1 at location 1,0
+        ("1,0", 2048, 0x104, 1), # 2KB from device 1 at location 1,0
+        ("1,0", 4096, 0x108, 1), # 4KB from device 1 at location 1,0
+        ("1,0", 8192, 0x10c, 1), # 8KB from device 1 at location 1,0
         ("ch0", 1024, 0x100, 0), # 1KB from device 0 at location DRAM channel 0
         ("ch0", 2048, 0x104, 0), # 2KB from device 0 at location DRAM channel 0
         ("ch0", 4096, 0x108, 0), # 4KB from device 0 at location DRAM channel 0
@@ -144,7 +144,7 @@ class TestReadWrite(unittest.TestCase):
 
     def test_write_read_words(self):
         """Test write words -- read words."""
-        core_loc = "1,1"
+        core_loc = "1,0"
         
         address = [0x100, 0x104, 0x108]
         data =       [156, 2, 212, 9]    
@@ -177,7 +177,7 @@ class TestReadWrite(unittest.TestCase):
 
     def test_write_bytes_read_words(self):
         """Test write bytes -- read words."""
-        core_loc = "1,1"
+        core_loc = "1,0"
         address = 0x100
         data = [0, 1, 2, 3]
         
