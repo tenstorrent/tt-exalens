@@ -20,7 +20,9 @@ RUN apt-get update && apt-get install -y \
     libnsl2 \
     sudo \
     wget \
-	xxd
+	xxd \
+    curl \
+    jq
 
 # Install test dependencies
 RUN apt-get update && apt-get install -y \

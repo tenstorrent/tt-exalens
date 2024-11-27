@@ -226,11 +226,9 @@ class ELF:
         """
         Returns a simple memory reader function that reads from a given device and a given core.
         """
+        from ttlens.tt_lens_lib import read_word_from_device
 
         def mem_reader(context, addr, size_bytes):
-            data = context.server_ifc.pci_read32(
-                device_id, *core_loc.to("nocVirt"), addr
-            )
-            return [data]
+            return [read_word_from_device(core_loc, addr, device_id, context)]
 
         return mem_reader

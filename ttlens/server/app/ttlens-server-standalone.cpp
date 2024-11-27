@@ -8,8 +8,8 @@
 #include <fstream>
 #include <iostream>
 
+#include "ttlensserver/open_implementation.h"
 #include "ttlensserver/server.h"
-#include "ttlensserver/umd_with_open_implementation.h"
 #include "utils/logger.hpp"
 
 namespace fs = std::experimental::filesystem;
@@ -36,10 +36,17 @@ void ensure_file(const std::string& filetype, const std::string& filename) {
 int run_ttlens_server(const server_config& config) {
     if (config.port > 1024 && config.port < 65536) {
         // Open wanted devices
-        std::unique_ptr<tt::lens::umd_with_open_implementation> implementation;
+        std::unique_ptr<tt::lens::open_implementation<tt::lens::umd_implementation>> implementation_umd;
+        std::unique_ptr<tt::lens::open_implementation<tt::lens::jtag_implementation>> implementation_jtag;
         // Try to open only wanted devices
         try {
-            implementation = tt::lens::umd_with_open_implementation::open({}, config.wanted_devices, config.init_jtag);
+            if (config.init_jtag) {
+                implementation_jtag =
+                    tt::lens::open_implementation<tt::lens::jtag_implementation>::open({}, config.wanted_devices);
+            } else {
+                implementation_umd =
+                    tt::lens::open_implementation<tt::lens::umd_implementation>::open({}, config.wanted_devices);
+            }
         } catch (std::runtime_error& error) {
             log_custom(tt::Logger::Level::Error, tt::LogTTLens, "Cannot open device: {}.", error.what());
             return 1;
@@ -51,7 +58,11 @@ int run_ttlens_server(const server_config& config) {
         // Spawn server
         std::unique_ptr<tt::lens::server> server;
         try {
-            server = std::make_unique<tt::lens::server>(std::move(implementation));
+            if (config.init_jtag) {
+                server = std::make_unique<tt::lens::server>(std::move(implementation_jtag));
+            } else {
+                server = std::make_unique<tt::lens::server>(std::move(implementation_umd));
+            }
             server->start(config.port);
             log_info(tt::LogTTLens, "Debug server started on {}.", connection_address);
         } catch (...) {

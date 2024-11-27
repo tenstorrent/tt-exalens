@@ -100,7 +100,7 @@ class Device(TTObject):
         for coord in self.get_block_locations("functional_workers"):
             for risc_id in range(4): # 4 because we have a hardware bug for debugging ncrisc
                 risc_location = RiscLoc(coord, 0, risc_id)
-                risc_debug = RiscDebug(risc_location, self._context.server_ifc)
+                risc_debug = RiscDebug(risc_location, self._context)
                 cores.append(risc_debug)
 
         # TODO: Can we debug eth cores?
@@ -240,6 +240,7 @@ class Device(TTObject):
         self._id = id
         self._arch = arch
         self._has_mmio = False
+        self._has_jtag = False
         self._address_maps = address_maps
         self._device_desc_path = device_desc_path
         self._context = context
@@ -247,6 +248,11 @@ class Device(TTObject):
             if id in chip:
                 self._has_mmio = True
                 break
+        if "chips_with_jtag" in cluster_desc:
+            for chip in cluster_desc["chips_with_jtag"]:
+                if id in chip:
+                    self._has_jtag = True
+                    break
 
         # Check if harvesting_desc is an array and has id+1 entries at the least
         harvesting_desc = cluster_desc["harvesting"]
@@ -1090,12 +1096,6 @@ class Device(TTObject):
                 )
         return status_descs_rows
 
-    def pci_read32(self, x, y, noc_id, reg_addr):
-        return read_word_from_device(OnChipCoordinate(x, y, "noc0", self), reg_addr, self.id(), self._context)
-
-    def pci_write32(self, x, y, noc_id, reg_addr, data):
-        return write_words_to_device(OnChipCoordinate(x, y, "noc0", self), reg_addr, data, self.id(), self._context)
-
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         return self._context.server_ifc.pci_read_tile(
             self.id(), x, y, reg_addr, msg_size, data_format
@@ -1163,7 +1163,7 @@ class Device(TTObject):
         if bt == "functional_workers":
             for risc_id in range(4):
                 risc_location = RiscLoc(loc, 0, risc_id)
-                risc_debug = RiscDebug(risc_location, self._context.server_ifc)
+                risc_debug = RiscDebug(risc_location, self._context)
                 status_str += "-" if risc_debug.is_in_reset() else "R"
             return status_str
         return bt

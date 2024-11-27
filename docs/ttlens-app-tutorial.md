@@ -1,6 +1,6 @@
 # TTLens Application Tutorial
 
-This tutorial shows houw to use the TTLens application.
+This tutorial shows how to use the TTLens application.
 It gives examples of basic commands, as well as how to run TTLens on remote machine and from cache.
 
 To follow this tutorial, you should either [build TTLens from source](./../README.md#building-ttlens) and run it through the python script with `./tt-lens.py`, or [install from wheel](./../README.md#building-and-installing-wheel) and run with `tt-lens.py`.
@@ -14,9 +14,9 @@ gdb:None device:0 loc:18-18 (0, 0) >
 ```
 
 The last line is the command prompt.
-It shows the basic information, such as status of the gdb server, epoch of the running model, currently selected device id and targeted core location.
-Some commands, such as `cdr`, use the currently-selected device and location to show information.
-For example, running `cdr 18-18` will print a summary of the debug registers on core 18-18 of the current devcie.
+It shows the basic information, such as status of the gdb server, currently selected device id and targeted core location.
+Some commands, such as `re`, use the currently-selected device and location if parameters are not provided.
+For example, running `re build/riscv-src/wormhole/run_elf_test.brisc.elf` will load elf on core 18-18 of device 0.
 
 Typing `h` or `help` into the prompt lists the available commands and gives a short explanation for each of them.
 It is also possible to type `help <command-name>` to get more detailed help for each of available commands.
@@ -27,13 +27,11 @@ Full Name        Short    Description
 exit             x        Exits the program. The optional argument represents the exit code. Defaults to 0.
 help             h        Prints documentation summary. Use -v for details. If a command name is specified, it prints documentation for that command only.
 reload           rl       Reloads files in ttlens_commands directory. Useful for development of commands.
-eval             ev       Evaluates a Python expression.
 burst-read-xy    brxy     Reads and prints a block of data from address 'addr' at core <core-loc>.
-core-debug-regs  cdr      Prints the state of the debug registers for core 'x-y'.
 dump-gpr         gpr      Prints all RISC-V registers for BRISC, TRISC0, TRISC1, and TRISC2 on the current core.
-pci-write-xy     wxy      Writes data word to address 'addr' at noc0 location x-y of the current chip.
+write-xy         wxy      Writes data word to address 'addr' at noc0 location x-y of the current chip.
 riscv            rv       Commands for RISC-V debugging:
-device           d        Shows a device summary. When no argument is supplied, it iterates through all devices used by the
+device           d        Shows a device summary. When no argument is supplied, it iterates through all devices
 gdb              gdb      Starts or stops gdb server.
 go               go       Sets the current device/location.
 run-elf          re       Loads an elf file into a brisc and runs it.

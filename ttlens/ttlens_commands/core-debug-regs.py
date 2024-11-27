@@ -25,7 +25,7 @@ from ttlens.tt_coordinate import OnChipCoordinate
 
 command_metadata = {
     "short": "cdr",
-    "type": "low-level",
+    "type": "dev",
     "description": __doc__,
     "context": ["limited", "metal"],
 }

@@ -16,7 +16,7 @@ Examples:
 command_metadata = {
     "short": "if",
     "long": "interfaces",
-    "type": "high-level",
+    "type": "dev",
     "description": __doc__,
     "context": ["limited", "metal"],
 }
@@ -73,8 +73,8 @@ def run(cmd_text, context, ui_state=None):
 
     devices_list = list(context.devices.keys())
     for device_id in devices_list:
-      # all chips
-      print(f"NOC Device {device_id}: " + str(decode_test_id(read_noc_size(context, device_id, *context.devices[device_id]._block_locations["arc"][0], efuse_noc, TEST_ID_SIZE))))
+      if not context.devices[device_id]._has_jtag:
+        print(f"NOC Device {device_id}: " + str(decode_test_id(read_noc_size(context, device_id, *context.devices[device_id]._block_locations["arc"][0], efuse_noc, TEST_ID_SIZE))))
 
     for device_id in devices_list:
       # mmio chips
@@ -83,10 +83,8 @@ def run(cmd_text, context, ui_state=None):
 
     for device_id in devices_list:
       # jtag chips
-      try:
+      if context.devices[device_id]._has_jtag:
         print(f"JTAG Device {device_id}: " + str(decode_test_id(read_axi_size(context, device_id, efuse_jtag_axi, TEST_ID_SIZE))))
-      except Exception as e:
-        pass
 
     navigation_suggestions = []
     return navigation_suggestions

@@ -7,8 +7,8 @@
 #include <pybind11/complex.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <ttlensserver/open_implementation.h>
 #include <ttlensserver/ttlens_implementation.h>
-#include <ttlensserver/umd_with_open_implementation.h>
 
 #include <filesystem>
 #include <fstream>

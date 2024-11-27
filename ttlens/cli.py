@@ -214,7 +214,7 @@ def import_commands(reload=False):
         {
             "long": "eval",
             "short": "ev",
-            "type": "housekeeping",
+            "type": "dev",
             "description": "Description:\n  Evaluates a Python expression.\n\nExamples:\n  eval 3+5\n  eval hex(@brisc.EPOCH_INFO_PTR.epoch_id)",
             "context": "util",
         },
@@ -324,7 +324,8 @@ def main_loop(args, context):
                     # if ui_state.gdb_server.is_connected:
                     #     gdb_status += "(connected)"
                 my_prompt = f"gdb:{gdb_status} "
-                my_prompt += f"device:{util.CLR_PROMPT}{ui_state.current_device_id}{util.CLR_PROMPT_END} "
+                jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
+                my_prompt += f"device:{util.CLR_PROMPT}{jtag_prompt}{ui_state.current_device_id}{util.CLR_PROMPT_END} "
                 my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
                 my_prompt += f"{ui_state.current_prompt}> "
                 cmd_raw = context.prompt_session.prompt(HTML(my_prompt)) 

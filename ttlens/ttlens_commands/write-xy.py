@@ -10,7 +10,7 @@ Description:
 
 Arguments:
   core-loc    Either X-Y or R,C location of a core, or dram channel (e.g. ch3)
-  addr        Address to read from
+  addr        Address to write to
   data        Data to write
 
 Examples:
