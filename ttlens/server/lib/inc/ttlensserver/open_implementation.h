@@ -7,10 +7,10 @@
 #include <map>
 #include <memory>
 
-#include "umd/device/cluster.h"
 #include "jtag_device.h"
 #include "jtag_implementation.h"
 #include "ttlens_implementation.h"
+#include "umd/device/cluster.h"
 #include "umd_implementation.h"
 
 namespace tt::lens {
