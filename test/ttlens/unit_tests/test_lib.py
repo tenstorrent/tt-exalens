@@ -8,6 +8,7 @@ from functools import wraps
 
 from parameterized import parameterized
 
+from test.ttlens.unit_tests.test_base import init_default_test_context
 from ttlens import tt_lens_init
 from ttlens import tt_lens_lib as lib
 from ttlens import tt_util
@@ -68,7 +69,7 @@ class TestAutoContext(unittest.TestCase):
 
 class TestReadWrite(unittest.TestCase):
     def setUp(self):
-        self.context = tt_lens_init.init_ttlens()
+        self.context = init_default_test_context()
         self.assertIsNotNone(self.context)
         self.assertIsInstance(self.context, Context)
 
@@ -235,7 +236,7 @@ class TestReadWrite(unittest.TestCase):
 class TestRunElf(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.context = tt_lens_init.init_ttlens()
+        cls.context = init_default_test_context()
 
     def is_blackhole(self):
         """Check if the device is blackhole."""
