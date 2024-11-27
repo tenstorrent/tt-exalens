@@ -398,10 +398,10 @@ class Device(TTObject):
             streams[stream_id] = regs
         return streams
 
-    def get_block_locations(self, block_type="functional_workers"):
-        return self.get_block_locations_internal(block_type, "nocVirt")
+    def get_block_locations(self, block_type="functional_workers", expand_lists = True):
+        return self.get_block_locations_internal(block_type, "nocVirt", expand_lists)
 
-    def get_block_locations_internal(self, block_type, coord_type):
+    def get_block_locations_internal(self, block_type, coord_type, expand_lists):
         """
         Returns locations of all blocks of a given type
         """
@@ -410,12 +410,18 @@ class Device(TTObject):
 
         for loc_or_list in dev[block_type]:
             if type(loc_or_list) != str and isinstance(loc_or_list, Sequence):
-                for loc in loc_or_list:
-                    locs.append(OnChipCoordinate.create(loc, self, coord_type))
+                if expand_lists:
+                    for loc in loc_or_list:
+                        locs.append(OnChipCoordinate.create(loc, self, coord_type))
+                else:
+                    ll = []
+                    for loc in loc_or_list:
+                        ll.append(OnChipCoordinate.create(loc, self, coord_type))
+                    locs.append(ll)
             else:
                 locs.append(OnChipCoordinate.create(loc_or_list, self, coord_type))
         return locs
-    
+
     def get_arc_block_location(self) -> OnChipCoordinate:
         """
         Returns OnChipCoordinate of the ARC block
@@ -425,6 +431,13 @@ class Device(TTObject):
         assert(len(arc_locations) == 1)
 
         return arc_locations[0]
+
+    def get_dram_channel(self, channel: int) -> OnChipCoordinate:
+        """
+        Returns OnChipCoordinate of the DRAM channel
+        """
+        dram_locations = self.get_block_locations(block_type="dram", expand_lists=False)
+        return dram_locations[channel][0]
 
     @cached_property
     def _block_locations(self):

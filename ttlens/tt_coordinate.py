@@ -334,8 +334,7 @@ class OnChipCoordinate:
         elif coord_str[0:2].upper() == "CH": # This is a DRAM channel
             # Parse the digits after "CH"
             dram_chan = int(coord_str[2:])
-            (x, y) = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
-            coord_type = 'noc0'
+            return device.get_dram_channel(dram_chan)
         else:
             raise TTException(
                 "Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C"

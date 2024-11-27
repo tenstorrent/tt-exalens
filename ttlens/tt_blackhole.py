@@ -82,8 +82,6 @@ class BlackholeEthL1AddressMap(tt_device.L1AddressMap):
 #
 class BlackholeDevice(tt_device.Device):
     SIG_SEL_CONST = 5 # TODO (#75): Unknown constant!!!!
-    # IMPROVE: some of this can be read from architecture yaml file
-    DRAM_CHANNEL_TO_NOC0_LOC = [(0, 11), (0, 2), (0, 8), (0, 5), (9, 11), (9, 2), (9, 8), (9, 5)]
 
     # Physical location mapping. Physical coordinates are the geografical coordinates on a chip's die.
     DIE_X_TO_NOC_0_X = [0, 1, 16, 2, 15, 3, 14, 4, 13, 5, 12, 6, 11, 7, 10, 8, 9]
