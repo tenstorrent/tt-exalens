@@ -59,8 +59,7 @@ static std::filesystem::path find_binary_directory() {
 static std::unique_ptr<tt::umd::Cluster> create_grayskull_device(const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 1;
 
-    auto device = std::make_unique<tt::umd::Cluster>(target_devices,
-                                                     num_host_mem_ch_per_mmio_device);
+    auto device = std::make_unique<tt::umd::Cluster>(target_devices, num_host_mem_ch_per_mmio_device);
     tt_driver_host_address_params host_address_params = {
         // Values copied from: third_party/umd/src/firmware/riscv/grayskull/host_mem_address_map.h
         32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
@@ -73,8 +72,7 @@ static std::unique_ptr<tt::umd::Cluster> create_grayskull_device(const std::set<
 static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
 
-    auto device = std::make_unique<tt::umd::Cluster>(target_devices,
-                                                     num_host_mem_ch_per_mmio_device);
+    auto device = std::make_unique<tt::umd::Cluster>(target_devices, num_host_mem_ch_per_mmio_device);
     tt_driver_host_address_params host_address_params = {
         // Values copied from: third_party/umd/src/firmware/riscv/wormhole_b0/host_mem_address_map.h
         32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
@@ -90,8 +88,7 @@ static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::set<c
 static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
 
-    auto device = std::make_unique<tt::umd::Cluster>(target_devices,
-                                                     num_host_mem_ch_per_mmio_device);
+    auto device = std::make_unique<tt::umd::Cluster>(target_devices, num_host_mem_ch_per_mmio_device);
     tt_driver_host_address_params host_address_params = {
         // Values copied from: third_party/umd/src/firmware/riscv/blackhole/host_mem_address_map.h
         32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
