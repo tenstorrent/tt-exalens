@@ -20,17 +20,6 @@
 #include "umd/device/tt_cluster_descriptor.h"
 #include "umd/device/wormhole_implementation.h"
 
-// Include automatically generated files that we embed in source to avoid managing their deployment
-static const uint8_t blackhole_configuration_bytes[] = {
-#include "../configuration/blackhole.embed"
-};
-static const uint8_t grayskull_configuration_bytes[] = {
-#include "../configuration/grayskull.embed"
-};
-static const uint8_t wormhole_b0_configuration_bytes[] = {
-#include "../configuration/wormhole_b0.embed"
-};
-
 static std::filesystem::path get_temp_working_directory() {
     std::filesystem::path temp_path = std::filesystem::temp_directory_path();
     std::string temp_name = temp_path / "ttlens_server_XXXXXX";
@@ -53,43 +42,6 @@ static std::optional<std::string> read_string_from_file(const std::string &file_
 
 static std::filesystem::path temp_working_directory = get_temp_working_directory();
 
-static std::string write_temp_file(const std::string &file_name, const char *bytes, size_t length) {
-    std::string temp_file_name = temp_working_directory / file_name;
-    std::ofstream conf_file(temp_file_name, std::ios::out | std::ios::binary);
-
-    if (!conf_file.is_open()) {
-        throw std::runtime_error("Couldn't write configuration to temp file " + temp_file_name + ".");
-    }
-    conf_file.write(bytes, length);
-    conf_file.close();
-    return temp_file_name;
-}
-
-static std::string create_temp_configuration_file(tt::ARCH arch) {
-    const uint8_t *configuration_bytes = nullptr;
-    size_t configuration_length = 0;
-
-    switch (arch) {
-        case tt::ARCH::BLACKHOLE:
-            configuration_bytes = blackhole_configuration_bytes;
-            configuration_length = sizeof(blackhole_configuration_bytes) / sizeof(blackhole_configuration_bytes[0]);
-            break;
-        case tt::ARCH::GRAYSKULL:
-            configuration_bytes = grayskull_configuration_bytes;
-            configuration_length = sizeof(grayskull_configuration_bytes) / sizeof(grayskull_configuration_bytes[0]);
-            break;
-        case tt::ARCH::WORMHOLE_B0:
-            configuration_bytes = wormhole_b0_configuration_bytes;
-            configuration_length = sizeof(wormhole_b0_configuration_bytes) / sizeof(wormhole_b0_configuration_bytes[0]);
-            break;
-        default:
-            throw std::runtime_error("Unsupported architecture " + get_arch_str(arch) + ".");
-    }
-
-    return write_temp_file("soc_descriptor.yaml", reinterpret_cast<const char *>(configuration_bytes),
-                           configuration_length);
-}
-
 // Identifies and returns the directory path of the currently running executable in a Linux environment.
 static std::filesystem::path find_binary_directory() {
     char buffer[PATH_MAX + 1];
@@ -104,13 +56,10 @@ static std::filesystem::path find_binary_directory() {
     return {};
 }
 
-static std::unique_ptr<tt::umd::Cluster> create_grayskull_device(const std::string &device_configuration_path,
-                                                                 const std::string &cluster_descriptor_path,
-                                                                 const std::set<chip_id_t> &target_devices) {
+static std::unique_ptr<tt::umd::Cluster> create_grayskull_device(const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 1;
-    std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
 
-    auto device = std::make_unique<tt::umd::Cluster>(device_configuration_path, cluster_descriptor_path, target_devices,
+    auto device = std::make_unique<tt::umd::Cluster>(target_devices,
                                                      num_host_mem_ch_per_mmio_device);
     tt_driver_host_address_params host_address_params = {
         // Values copied from: third_party/umd/src/firmware/riscv/grayskull/host_mem_address_map.h
@@ -121,16 +70,13 @@ static std::unique_ptr<tt::umd::Cluster> create_grayskull_device(const std::stri
     return device;
 }
 
-static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::string &device_configuration_path,
-                                                                const std::string &cluster_descriptor_path,
-                                                                const std::set<chip_id_t> &target_devices) {
+static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
-    std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
 
-    auto device = std::make_unique<tt::umd::Cluster>(device_configuration_path, cluster_descriptor_path, target_devices,
+    auto device = std::make_unique<tt::umd::Cluster>(target_devices,
                                                      num_host_mem_ch_per_mmio_device);
     tt_driver_host_address_params host_address_params = {
-        // Values copied from: third_party/umd/src/firmware/riscv/wormhole/host_mem_address_map.h
+        // Values copied from: third_party/umd/src/firmware/riscv/wormhole_b0/host_mem_address_map.h
         32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
         0x38000000,  // host_mem::address_map::ETH_ROUTING_BUFFERS_START
     };
@@ -141,13 +87,10 @@ static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::strin
     return device;
 }
 
-static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::string &device_configuration_path,
-                                                                 const std::string &cluster_descriptor_path,
-                                                                 const std::set<chip_id_t> &target_devices) {
+static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
-    std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
 
-    auto device = std::make_unique<tt::umd::Cluster>(device_configuration_path, cluster_descriptor_path, target_devices,
+    auto device = std::make_unique<tt::umd::Cluster>(target_devices,
                                                      num_host_mem_ch_per_mmio_device);
     tt_driver_host_address_params host_address_params = {
         // Values copied from: third_party/umd/src/firmware/riscv/blackhole/host_mem_address_map.h
@@ -417,10 +360,6 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     }
 
     // Create device
-    auto device_configuration_path = create_temp_configuration_file(arch);
-    if (device_configuration_path.empty()) {
-        return {};
-    }
     auto cluster_descriptor_path = tt_ClusterDescriptor::get_cluster_descriptor_file_path();
     auto cluster_descriptor = tt_ClusterDescriptor::create_from_yaml(cluster_descriptor_path);
     std::vector<uint8_t> device_ids;
@@ -443,13 +382,13 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 
     switch (arch) {
         case tt::ARCH::GRAYSKULL:
-            device = create_grayskull_device(device_configuration_path, std::string(), target_devices);
+            device = create_grayskull_device(target_devices);
             break;
         case tt::ARCH::WORMHOLE_B0:
-            device = create_wormhole_device(device_configuration_path, cluster_descriptor_path, target_devices);
+            device = create_wormhole_device(target_devices);
             break;
         case tt::ARCH::BLACKHOLE:
-            device = create_blackhole_device(device_configuration_path, cluster_descriptor_path, target_devices);
+            device = create_blackhole_device(target_devices);
             break;
         default:
             throw std::runtime_error("Unsupported architecture " + get_arch_str(arch) + ".");
@@ -460,7 +399,6 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(device)));
 
-    implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
     implementation->device_ids = device_ids;
     implementation->device_soc_descriptors = device_soc_descriptors;

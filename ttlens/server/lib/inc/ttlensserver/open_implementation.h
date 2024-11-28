@@ -26,7 +26,6 @@ class open_implementation : public BaseClass {
     std::map<uint8_t, std::string> device_soc_descriptors;
 
     std::string cluster_descriptor_path;
-    std::string device_configuration_path;
 
     open_implementation(std::unique_ptr<DeviceType> device);
 
