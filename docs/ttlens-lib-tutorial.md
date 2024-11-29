@@ -10,7 +10,7 @@ In this tutorial, we will demonstrate how to use TTLens library through a few si
 To follow this tutorial, you need a virtual environment with installed TTLens wheel.
 TTLens wheel can be installed from [this link](https://github.com/tenstorrent/tt-lens/releases).
 Publishing the wheel to PyPI is in the works.
-It is also possible to [build wheel from source](../../README.md#building-and-installing-wheel).
+It is also possible to [build wheel from source](./../README.md#building-and-installing-wheel).
 
 
 ## TTLens internal structure and initialization
@@ -86,7 +86,7 @@ If you pass a string, it can be in the form of
 - "X-Y", where it is interpreted as nocTr coordinate, or
 - "X,Y", where it is interpreted as a netlist coordinate.
 
-It is also possible to create an `OnChipCoordinate` object for more advanced use cases. For more details on this approach, please refer to [the documentation](library-docs.md#tt_coordinate).
+It is also possible to create an `OnChipCoordinate` object for more advanced use cases. For more details on this approach, please refer to [the documentation](ttlens-lib-docs.md#tt_coordinate).
 One notable thing about `OnChipCoordinate` objects is that they need to have a device specified on construction for coordinate transforms to be possible (due to device specifics, like different architectures and harvesting within one architecture).
 Not specifying a device results in an error.
 It is possible to access available devices through the `Context` object, so an example object construction could look like this:
@@ -179,9 +179,9 @@ In the example above, we run the .elf file and then read the value that should b
 It is also possible to run programs on both brisc and trisc cores, by specifying the `risc_id` parameter.
 ID 0 targets a brisc core, while IDs 1-3 target trisc cores.
 
-To see more options when running elf files, refer to [the documentation](library-docs.md#run_elf).
+To see more options when running elf files, refer to [the documentation](ttlens-lib-docs.md#run_elf).
 
 
 ## Further reading
 
-For more information about the TTLens library, check out [the documentation](library-docs.md#tt_coordinate).
+For more information about the TTLens library, check out [the documentation](ttlens-lib-docs.md#tt_coordinate).
