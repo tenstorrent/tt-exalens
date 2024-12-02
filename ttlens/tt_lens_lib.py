@@ -11,7 +11,6 @@ from ttlens import tt_lens_init
 
 from ttlens.tt_coordinate import OnChipCoordinate
 from ttlens.tt_lens_context import Context
-from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc
 from ttlens.tt_util import TTException
 
 
@@ -39,10 +38,16 @@ def read_word_from_device(
 
 	if not isinstance(core_loc, OnChipCoordinate):
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
-	word = context.server_ifc.pci_read32(
-		device_id, *core_loc.to("nocVirt"), addr
-	)
+	if context.devices[device_id]._has_jtag:
+		word = context.server_ifc.jtag_read32(
+			device_id, *core_loc.to("noc0"), addr
+		)
+	else:
+		word = context.server_ifc.pci_read32(
+			device_id, *core_loc.to("nocVirt"), addr
+		)
 	return word
+
 
 
 def read_words_from_device(
@@ -65,7 +70,7 @@ def read_words_from_device(
 		List[int]: Data read from the device.
 	"""
 	context = check_context(context)
-	
+
 	validate_addr(addr)
 	validate_device_id(device_id, context)
 	if word_count <= 0: raise TTException("word_count must be greater than 0.")
@@ -75,9 +80,14 @@ def read_words_from_device(
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 	data = []
 	for i in range(word_count):
-		word = context.server_ifc.pci_read32(
-			device_id, *core_loc.to("nocVirt"), addr + 4 * i
-		)
+		if context.devices[device_id]._has_jtag:
+			word = context.server_ifc.jtag_read32(
+				device_id, *core_loc.to("noc0"), addr + 4 * i
+			)
+		else:
+			word = context.server_ifc.pci_read32(
+				device_id, *core_loc.to("nocVirt"), addr + 4 * i
+			)
 		data.append(word)
 	return data
 
@@ -106,9 +116,14 @@ def read_from_device(
 	validate_addr(addr)
 	validate_device_id(device_id, context)
 	if num_bytes <= 0: raise TTException("num_bytes must be greater than 0.")
-	
+
 	if not isinstance(core_loc, OnChipCoordinate):
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
+
+	if context.devices[device_id]._has_jtag:
+		int_array = read_words_from_device(core_loc, addr, device_id, num_bytes // 4 + (num_bytes % 4 > 0), context)
+		return struct.pack(f'{len(int_array)}I', *int_array)[:num_bytes]
+
 	return context.server_ifc.pci_read(
 		device_id, *core_loc.to("nocVirt"), addr, num_bytes
 	)
@@ -137,18 +152,23 @@ def write_words_to_device(
 
 	validate_addr(addr)
 	validate_device_id(device_id, context)
-	
+
 	if not isinstance(core_loc, OnChipCoordinate):
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 
 	if isinstance(data, int):
 		data = [data]
-	
+
 	bytes_written = 0
 	for i, word in enumerate(data):
-		bytes_written += context.server_ifc.pci_write32(
-			device_id, *core_loc.to("nocVirt"), addr + i*4, word
-		)
+		if context.devices[device_id]._has_jtag:
+			bytes_written += context.server_ifc.jtag_write32(
+				device_id, *core_loc.to("noc0"), addr + i*4, word
+			)
+		else:
+			bytes_written += context.server_ifc.pci_write32(
+				device_id, *core_loc.to("nocVirt"), addr + i*4, word
+			)
 	return bytes_written
 
 
@@ -178,11 +198,18 @@ def write_to_device(
 
 	if isinstance(data, list):
 		data = bytes(data)
-	
+
 	if len(data) == 0: raise TTException("Data to write must not be empty.")
 
 	if not isinstance(core_loc, OnChipCoordinate):
 		core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
+
+	if context.devices[device_id]._has_jtag:
+		assert len(data) % 4 == 0, "Data length must be a multiple of 4 bytes as JTAG currently does not support unaligned access."
+		for i in range(0, len(data), 4):
+			write_words_to_device(core_loc, addr + i, struct.unpack("<I", data[i:i+4])[0], device_id, context)
+		return len(data)
+
 	return context.server_ifc.pci_write(
 		device_id, *core_loc.to("nocVirt"), addr, data
 	)
@@ -202,6 +229,7 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, List[U
 		device_id (int, default 0):	ID number of device to run ELF on.
 		context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
 	"""
+	from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc
 	context = check_context(context)
 
 	validate_device_id(device_id, context)
@@ -230,7 +258,7 @@ def run_elf(elf_file: os.PathLike, core_loc: Union[str, OnChipCoordinate, List[U
 
 	assert locs, "No valid core locations provided."
 	for loc in locs:
-		rdbg = RiscDebug(RiscLoc(loc, 0, risc_id), context.server_ifc, False)
+		rdbg = RiscDebug(RiscLoc(loc, 0, risc_id), context, False)
 		rloader = RiscLoader(rdbg, context, False)
 		rloader.run_elf(elf_file)
 
@@ -242,7 +270,7 @@ def check_context(context: Context = None) -> Context:
 	"""
 	if context is not None:
 		return context
-	
+
 	if not tt_lens_init.GLOBAL_CONTEXT:
 		tt_lens_init.GLOBAL_CONTEXT = tt_lens_init.init_ttlens()
 	return tt_lens_init.GLOBAL_CONTEXT

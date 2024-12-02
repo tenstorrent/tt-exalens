@@ -19,7 +19,7 @@ command_metadata = {
     "short": "fd", 
     "type": "dev", 
     "description": __doc__,
-    "context": ["limited", "buda", "metal"],
+    "context": ["limited", "metal"],
 }
 
 

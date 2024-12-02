@@ -1,7 +1,7 @@
 ARG GIT_SHA
 ARG FROM_TAG=${GIT_SHA:-latest}
 
-FROM ghcr.io/tenstorrent/tt-debuda/tt-debuda-ubuntu-22-04:${FROM_TAG}
+FROM ghcr.io/tenstorrent/tt-lens/tt-lens-ci-ubuntu-22-04:${FROM_TAG}
 SHELL ["/bin/bash", "-c"]
 
 # Set environment variables
@@ -14,8 +14,10 @@ RUN mkdir -p ${TT_LENS_INFRA_DIR}
 # Install dependencies
 RUN apt-get update && apt-get install -y \
 	docker \
+    gh \
     libgmp-dev \
     libmpfr-dev \
+    rsync \
     ssh \
     vim
 

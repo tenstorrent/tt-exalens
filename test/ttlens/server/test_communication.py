@@ -23,11 +23,6 @@ def ping():
     check_response(server_communication.ping(), "- type: 1")
 
 
-def get_runtime_data():
-    global server_communication
-    check_response(server_communication.get_runtime_data(), "- type: 101")
-
-
 def get_cluster_description():
     global server_communication
     check_response(server_communication.get_cluster_description(), "- type: 102")
@@ -132,13 +127,6 @@ def get_file():
     check_response(
         server_communication.get_file("test_file"),
         "- type: 200\n  size: 9\n  path: test_file",
-    )
-
-def get_buda_run_dirpath():
-    global server_communication
-    check_response(
-        server_communication.get_run_dirpath(),
-        "- type: 201",
     )
 
 def jtag_read32():

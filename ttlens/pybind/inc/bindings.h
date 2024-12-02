@@ -4,11 +4,11 @@
 
 #pragma once
 
-#include <ttlensserver/ttlens_implementation.h>
-#include <ttlensserver/umd_with_open_implementation.h>
 #include <pybind11/complex.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <ttlensserver/open_implementation.h>
+#include <ttlensserver/ttlens_implementation.h>
 
 #include <filesystem>
 #include <fstream>
@@ -16,10 +16,10 @@
 #include <iostream>
 #include <memory>
 
-#include "device/cluster.h"
+#include "umd/device/cluster.h"
 
-bool open_device(const std::string &binary_directory, const std::string &runtime_yaml_path,
-                 const std::vector<uint8_t> &wanted_devices = {});
+bool open_device(const std::string &binary_directory, const std::vector<uint8_t> &wanted_devices = {},
+                 bool init_jtag = false);
 void set_ttlens_implementation(std::unique_ptr<tt::lens::ttlens_implementation> imp);
 
 std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address);
@@ -37,7 +37,6 @@ std::optional<uint32_t> dma_buffer_read32(uint8_t chip_id, uint64_t address, uin
 std::optional<std::string> pci_read_tile(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t size,
                                          uint8_t data_format);
 
-std::optional<std::string> get_runtime_data();
 std::optional<std::string> get_cluster_description();
 std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id);
 std::optional<std::vector<uint8_t>> get_device_ids();

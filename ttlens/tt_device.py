@@ -16,11 +16,6 @@ from typing import Dict
 from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device
 
-#
-# Communication with Buda (or ttlens-server) over sockets (ZMQ).
-# See struct BUDA_READ_REQ for protocol details
-#
-
 # Attempt to unpack the data using the given format. If it fails, it assumes that the data
 # is a string contining an error message from the server.
 def try_unpack(fmt, data):
@@ -105,7 +100,7 @@ class Device(TTObject):
         for coord in self.get_block_locations("functional_workers"):
             for risc_id in range(4): # 4 because we have a hardware bug for debugging ncrisc
                 risc_location = RiscLoc(coord, 0, risc_id)
-                risc_debug = RiscDebug(risc_location, self._context.server_ifc)
+                risc_debug = RiscDebug(risc_location, self._context)
                 cores.append(risc_debug)
 
         # TODO: Can we debug eth cores?
@@ -129,13 +124,6 @@ class Device(TTObject):
         offset = address_map.binaries[binary_type].offset_bytes
         assert offset >= 0
         return offset
-        
-    def get_dram_binary_offset_in_epoch_command_queue(self, core_loc: OnChipCoordinate, binary_type: str) -> int:
-        address_map = self.get_address_map("dram")
-        offset = address_map.binaries[binary_type].offset_bytes
-        assert offset >= 0
-        return offset
-    
 
     # Class method to create a Device object given device architecture
     def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
@@ -243,14 +231,6 @@ class Device(TTObject):
     def yaml_file(self):
         return util.YamlFile(self._context.server_ifc, self._device_desc_path)
 
-    @cached_property
-    def EPOCH_ID_ADDR(self):
-        return self._context.epoch_id_address
-
-    @cached_property
-    def ETH_EPOCH_ID_ADDR(self):
-        return self._context.eth_epoch_id_address
-
     def __init__(self, id, arch, cluster_desc, address_maps: Dict[str, AddressMap], device_desc_path: str, context: Context):
         """
 
@@ -260,6 +240,7 @@ class Device(TTObject):
         self._id = id
         self._arch = arch
         self._has_mmio = False
+        self._has_jtag = False
         self._address_maps = address_maps
         self._device_desc_path = device_desc_path
         self._context = context
@@ -267,6 +248,11 @@ class Device(TTObject):
             if id in chip:
                 self._has_mmio = True
                 break
+        if "chips_with_jtag" in cluster_desc:
+            for chip in cluster_desc["chips_with_jtag"]:
+                if id in chip:
+                    self._has_jtag = True
+                    break
 
         # Check if harvesting_desc is an array and has id+1 entries at the least
         harvesting_desc = cluster_desc["harvesting"]
@@ -392,21 +378,6 @@ class Device(TTObject):
                 ] = regs
         return streams
 
-    def read_core_to_epoch_mapping(self, block_type=None):
-        """
-        Reading current epoch for each functional worker
-        :return: { loc : epoch_id }
-        """
-        epochs = {}
-        if block_type == None or block_type == "functional_workers":
-            for loc in self.get_block_locations(block_type="functional_workers"):
-                epochs[loc] = self.get_epoch_id(loc)
-        if block_type == None or block_type == "eth":
-            for loc in self.get_block_locations(block_type="eth"):
-                epochs[loc] = self.get_epoch_id(loc)
-
-        return epochs
-
     # For a given core, read all 64 streams and populate the 'streams' dict. streams[stream_id] will
     # contain a dictionary of all register values as strings formatted to show in UI
     def read_core_stream_registers(self, loc):
@@ -415,14 +386,6 @@ class Device(TTObject):
             regs = self.read_stream_regs(loc, stream_id)
             streams[stream_id] = regs
         return streams
-
-    # Returns core locations of cores that have programmed stream registers
-    def get_configured_stream_locations(self, all_stream_regs):
-        core_locations = []
-        for loc, stream_regs in all_stream_regs.items():
-            if self.is_stream_configured(stream_regs):
-                core_locations.append(loc)
-        return core_locations
 
     def get_block_locations(self, block_type="functional_workers"):
         """
@@ -839,31 +802,6 @@ class Device(TTObject):
         val = (val >> start_bit) & mask
         return val
 
-    def get_stream_phase(self, loc, stream_id):
-        assert type(loc) == OnChipCoordinate
-        return self.get_stream_reg_field(loc, stream_id, 11, 0, 20) & 0x7FFF
-
-    # This comes from src/firmware/riscv/common/epoch.h
-    def get_epoch_id(self, loc):
-        assert type(loc) == OnChipCoordinate
-        if loc in self.get_block_locations("functional_workers"):
-            epoch = (
-                read_word_from_device(loc, self.EPOCH_ID_ADDR, self.id(), self._context)
-                & 0xFF
-            )
-        else:
-            # old 0x1b00/0
-            # 0x20080
-            # + 0x28c
-            # = 2030c
-            # epoch = SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), 0x2030c) & 0xFF
-            epoch = (
-                read_word_from_device(loc, self.EPOCH_ID_ADDR, self.id(), self._context)
-                & 0xFF
-            )
-
-        return epoch
-
     # Returns whether the stream is configured
     def is_stream_configured(self, stream_data):
         return int(stream_data["CURR_PHASE"]) > 0
@@ -1158,12 +1096,6 @@ class Device(TTObject):
                 )
         return status_descs_rows
 
-    def pci_read32(self, x, y, noc_id, reg_addr):
-        return read_word_from_device(OnChipCoordinate(x, y, "noc0", self), reg_addr, self.id(), self._context)
-
-    def pci_write32(self, x, y, noc_id, reg_addr, data):
-        return write_words_to_device(OnChipCoordinate(x, y, "noc0", self), reg_addr, data, self.id(), self._context)
-
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         return self._context.server_ifc.pci_read_tile(
             self.id(), x, y, reg_addr, msg_size, data_format
@@ -1231,7 +1163,7 @@ class Device(TTObject):
         if bt == "functional_workers":
             for risc_id in range(4):
                 risc_location = RiscLoc(loc, 0, risc_id)
-                risc_debug = RiscDebug(risc_location, self._context.server_ifc)
+                risc_debug = RiscDebug(risc_location, self._context)
                 status_str += "-" if risc_debug.is_in_reset() else "R"
             return status_str
         return bt

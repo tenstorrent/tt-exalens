@@ -12,18 +12,6 @@ import re
 from fuzzywuzzy import process, fuzz
 from sys import getsizeof
 
-# This is a list of firmware variables that do not make it to the ELF file (e.g. they
-# are hard-coded through #define). We need to 'inject' them into the symbol table with
-# the correct type to have the lookup work.
-BUDA_FW_VARS = {
-    "EPOCH_INFO_PTR": {
-        "offset": "EPOCH_INFO_ADDR",  # The address of the variable. If string, it is looked up in the ELF
-        # If int, it is used as is
-        "type": "epoch_t",  # The type of the variable.
-    },
-    "ETH_EPOCH_INFO_PTR": {"offset": "ETH_EPOCH_INFO_ADDR", "type": "epoch_t"},
-}
-
 class FAKE_DIE(object):
     """
     Some pointers are hard-coded in the source with #defines. These names do not make
@@ -238,11 +226,9 @@ class ELF:
         """
         Returns a simple memory reader function that reads from a given device and a given core.
         """
+        from ttlens.tt_lens_lib import read_word_from_device
 
         def mem_reader(context, addr, size_bytes):
-            data = context.server_ifc.pci_read32(
-                device_id, *core_loc.to("nocVirt"), addr
-            )
-            return [data]
+            return [read_word_from_device(core_loc, addr, device_id, context)]
 
         return mem_reader

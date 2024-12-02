@@ -21,9 +21,9 @@ Examples:
 
 command_metadata = {
     "short": "jraxi",
-    "type": "low-level",
+    "type": "dev",
     "description": __doc__,
-    "context": ["limited", "buda", "metal"],
+    "context": ["limited", "metal"],
 }
 
 from docopt import docopt

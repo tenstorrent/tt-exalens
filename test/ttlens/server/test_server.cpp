@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-#include <ttlensserver/ttlens_implementation.h>
-#include <ttlensserver/server.h>
 #include <gtest/gtest.h>
+#include <ttlensserver/server.h>
+#include <ttlensserver/ttlens_implementation.h>
 
 #include <memory>
 #include <string>
@@ -42,14 +42,6 @@ class yaml_not_implemented_server : public server {
         } else {
             return {};
         }
-    }
-
-    std::optional<std::string> get_run_dirpath() override {
-        if (enable_yaml) {
-            send_yaml("- type: 201");
-            return {};
-        } else
-            return {};
     }
 
     bool is_yaml_enabled() const { return enable_yaml; }
@@ -118,10 +110,7 @@ class yaml_not_implemented_implementation : public ttlens_implementation {
                           "\n  size: " + std::to_string(size) + "\n  data_format: " + std::to_string(data_format));
         return {};
     }
-    std::optional<std::string> get_runtime_data() override {
-        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::get_runtime_data)));
-        return {};
-    }
+
     std::optional<std::string> get_cluster_description() override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::get_cluster_description)));
         return {};
@@ -197,7 +186,7 @@ class yaml_not_implemented_implementation : public ttlens_implementation {
 };
 
 yaml_not_implemented_server::yaml_not_implemented_server(bool enable_yaml)
-    : server(std::make_unique<yaml_not_implemented_implementation>(this), "run_dirpath"), enable_yaml(enable_yaml) {}
+    : server(std::make_unique<yaml_not_implemented_implementation>(this)), enable_yaml(enable_yaml) {}
 
 }  // namespace tt::lens
 
@@ -248,10 +237,6 @@ TEST(ttlens_server, ping) {
     ASSERT_TRUE(server->is_connected());
     auto response = send_message(zmq::const_buffer(&request, sizeof(request))).to_string();
     ASSERT_EQ(response, std::string("PONG"));
-}
-
-TEST(ttlens_server, get_runtime_data) {
-    test_not_implemented_request(tt::lens::request{tt::lens::request_type::get_runtime_data}, "- type: 101");
 }
 
 TEST(ttlens_server, get_cluster_description) {
@@ -370,8 +355,4 @@ TEST(ttlens_server, get_file) {
     request->size = filename.size();
     for (size_t i = 0; i < filename.size(); i++) request->data[i] = filename[i];
     test_not_implemented_request(*request, expected_response, request_data.size());
-}
-
-TEST(ttlens_server, get_buda_run_dirpath) {
-    test_not_implemented_request(tt::lens::request{tt::lens::request_type::get_buda_run_dirpath}, "- type: 201");
 }

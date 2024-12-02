@@ -8,8 +8,8 @@
 #include <fstream>
 #include <iostream>
 
+#include "ttlensserver/open_implementation.h"
 #include "ttlensserver/server.h"
-#include "ttlensserver/umd_with_open_implementation.h"
 #include "utils/logger.hpp"
 
 namespace fs = std::experimental::filesystem;
@@ -17,9 +17,8 @@ namespace fs = std::experimental::filesystem;
 struct server_config {
    public:
     int port;
-    std::string runtime_data_yaml_path;
-    std::string run_dirpath;
     std::vector<uint8_t> wanted_devices;
+    bool init_jtag;
 };
 
 // Make sure that the file exists, and that it is a regular file
@@ -37,11 +36,17 @@ void ensure_file(const std::string& filetype, const std::string& filename) {
 int run_ttlens_server(const server_config& config) {
     if (config.port > 1024 && config.port < 65536) {
         // Open wanted devices
-        std::unique_ptr<tt::lens::umd_with_open_implementation> implementation;
+        std::unique_ptr<tt::lens::open_implementation<tt::lens::umd_implementation>> implementation_umd;
+        std::unique_ptr<tt::lens::open_implementation<tt::lens::jtag_implementation>> implementation_jtag;
         // Try to open only wanted devices
         try {
-            implementation =
-                tt::lens::umd_with_open_implementation::open({}, config.runtime_data_yaml_path, config.wanted_devices);
+            if (config.init_jtag) {
+                implementation_jtag =
+                    tt::lens::open_implementation<tt::lens::jtag_implementation>::open({}, config.wanted_devices);
+            } else {
+                implementation_umd =
+                    tt::lens::open_implementation<tt::lens::umd_implementation>::open({}, config.wanted_devices);
+            }
         } catch (std::runtime_error& error) {
             log_custom(tt::Logger::Level::Error, tt::LogTTLens, "Cannot open device: {}.", error.what());
             return 1;
@@ -53,7 +58,11 @@ int run_ttlens_server(const server_config& config) {
         // Spawn server
         std::unique_ptr<tt::lens::server> server;
         try {
-            server = std::make_unique<tt::lens::server>(std::move(implementation), config.run_dirpath);
+            if (config.init_jtag) {
+                server = std::make_unique<tt::lens::server>(std::move(implementation_jtag));
+            } else {
+                server = std::make_unique<tt::lens::server>(std::move(implementation_umd));
+            }
             server->start(config.port);
             log_info(tt::LogTTLens, "Debug server started on {}.", connection_address);
         } catch (...) {
@@ -83,26 +92,11 @@ extern std::string cluster_desc_path;
 server_config parse_args(int argc, char** argv) {
     server_config config = server_config();
     config.port = atoi(argv[1]);
+    config.init_jtag = false;
 
     int i = 2;
     while (i < argc) {
-        if (strcmp(argv[i], "-y") == 0) {
-            i += 1;
-            if (i >= argc) {
-                log_error("Expected path to yaml file after -y");
-                return {};
-            }
-            config.runtime_data_yaml_path = argv[i];
-            i += 1;
-        } else if (strcmp(argv[i], "-r") == 0) {
-            i += 1;
-            if (i >= argc) {
-                log_error("Expected path to run directory after -r");
-                return {};
-            }
-            config.run_dirpath = argv[i];
-            i += 1;
-        } else if (strcmp(argv[i], "-d") == 0) {
+        if (strcmp(argv[i], "-d") == 0) {
             i++;
             if (i >= argc) {
                 log_error("Expected space-delimited list of integer ids after -d");
@@ -120,6 +114,9 @@ server_config parse_args(int argc, char** argv) {
                     i++;
                 }
             }
+        } else if (strcmp(argv[i], "--jtag") == 0) {
+            config.init_jtag = true;
+            i++;
         } else {
             log_error("Unknown argument: {}", argv[i]);
             return {};
@@ -132,8 +129,8 @@ server_config parse_args(int argc, char** argv) {
 int main(int argc, char** argv) {
     if (argc < 2) {
         log_error(
-            "Need arguments: <port> [-y path_to_yaml_file] [-r <run_dirpath>] [-d <device_id1> [<device_id2> ... "
-            "<device_idN>]]");
+            "Need arguments: <port> [-d <device_id1> [<device_id2> ... "
+            "<device_idN>]] [--jtag]");
         return 1;
     }
 
@@ -148,18 +145,6 @@ int main(int argc, char** argv) {
 
     if (argc == 2) {
         return run_ttlens_server(config);
-    }
-
-    // Check if argv[2] is a valid filename for the runtime_data.yaml
-    std::ifstream f(config.runtime_data_yaml_path);
-    if (!f.good() && !config.runtime_data_yaml_path.empty()) {
-        // f must be a file, not a directory
-        if (fs::is_directory(argv[2])) {
-            log_error("File {} is a directory. Exiting.", argv[2]);
-            return 1;
-        }
-        log_error("File {} does not exist. Exiting.", argv[2]);
-        return 1;
     }
 
     return run_ttlens_server(config);

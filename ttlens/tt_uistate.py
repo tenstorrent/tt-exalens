@@ -13,10 +13,6 @@ class UIState:
         self.current_location = OnChipCoordinate(0, 0, "netlist", self.current_device)  # Currently selected core
         self.current_stream_id = 8  # Currently selected stream_id
         self.current_prompt = ""  # Based on the current x,y,stream_id tuple
-        try:
-            self.current_graph_name = context.netlist.graphs.first().id()  # Currently selected graph name
-        except:
-            self.current_graph_name = None
         self.gdb_server: GdbServer = None
 
     @property

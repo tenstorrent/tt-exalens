@@ -38,7 +38,7 @@ file(GLOB TTLENS_SERVER_LIB_SRCS "src/*.cpp")
 add_library(ttlens_server_lib STATIC ${TTLENS_SERVER_LIB_SRCS})
 add_dependencies(ttlens_server_lib generate_embed_files)
 target_link_libraries(ttlens_server_lib 
-    PUBLIC umd_device fmt cppzmq-static
+    PUBLIC umd::device fmt cppzmq-static
 )
 target_include_directories(ttlens_server_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/inc

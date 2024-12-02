@@ -17,7 +17,7 @@ a singleton, as it can be explicitly provided to library functions.
 ## init_ttlens
 
 ```
-init_ttlens(output_dir_path=None, netlist_path=None, wanted_devices=None, cache_path=None) -> Context
+init_ttlens(output_dir_path=None, wanted_devices=None, cache_path=None) -> Context
 ```
 
 
@@ -29,8 +29,6 @@ Interfacing device is local, through pybind.
 
 ### Args
 
-- `output_dir_path` *(str, optional)*: Path to the Buda run output directory. If None, TTLens will be initialized in limited mode.
-- `netlist_path` *(str, optional)*: Path to the Buda netlist file.
 - `wanted_devices` *(list, optional)*: List of device IDs we want to connect to. If None, connect to all available devices.
 - `caching_path` *(str, optional)*: Path to the cache file to write. If None, caching is disabled.
 
@@ -70,7 +68,7 @@ Interfacing device is done remotely through TTLens client.
 ## init_ttlens_cached
 
 ```
-init_ttlens_cached(cache_path, netlist_path=None) -> None
+init_ttlens_cached(cache_path) -> None
 ```
 
 
@@ -83,7 +81,6 @@ Only cached commands are available.
 ### Args
 
 - `cache_path` *(str)*: Path to the cache file.
-- `netlist_path` *(str, optional)*: Path to the netlist file.
 
 
 ### Returns
@@ -109,7 +106,7 @@ Get the runtime data and cluster description yamls through the TTLens interface.
 ## load_context
 
 ```
-load_context(server_ifc, netlist_filepath, runtime_data_yaml, cluster_desc_yaml) -> Context
+load_context(server_ifc) -> Context
 ```
 
 
@@ -140,27 +137,6 @@ Set the active TTLens context object.
 ### Notes
 
 - Every new context initialization will overwrite the currently active context.
-
-
-
-
-## find_runtime_data_yaml_filename
-
-```
-find_runtime_data_yaml_filename(output_dir=None) -> str | None
-```
-
-
-### Description
-
-Find the runtime data yaml file in the output directory. If directory is not specified, try to find the most recent Buda output directory.
-
-
-### Args
-
-- `output_dir` *(str, optional)*: Path to the output directory.
-
-
 
 
 ## locate_most_recent_build_output_dir

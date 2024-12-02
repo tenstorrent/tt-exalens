@@ -8,6 +8,7 @@ from ttlens.tt_coordinate import OnChipCoordinate
 from ttlens import tt_util as util
 import os
 from contextlib import contextmanager
+from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device, read_from_device, write_to_device
 
 # Register address
 REG_STATUS = 0
@@ -220,13 +221,13 @@ class RiscDebugWatchpointState:
         )
 
 class RiscDebug:
-    def __init__(self, location: RiscLoc, ifc, verbose=False):
+    def __init__(self, location: RiscLoc, context, verbose=False):
         assert 0 <= location.risc_id <= 4, f"Invalid risc id({location.risc_id})"
         self.location = location
         self.CONTROL0_WRITE = 0x80010000 + (self.location.risc_id << 17)
         self.CONTROL0_READ  = 0x80000000 + (self.location.risc_id << 17)
         self.verbose = verbose
-        self.ifc = ifc
+        self.context = context
         self.max_watchpoints = 8
         device = location.loc._device
         self.RISC_DBG_CNTL0   = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_CNTL_0")
@@ -255,20 +256,11 @@ class RiscDebug:
         self.assert_not_in_reset()
         if self.verbose:
             util.DEBUG(f"{self.get_reg_name_for_address(addr)} <- WR   0x{data:08x}")
-        self.ifc.pci_write32(
-            self.location.loc._device._id,
-            *self.location.loc.to("nocVirt"),
-            addr,
-            data,
-        )
+        write_words_to_device(self.location.loc, addr, data, self.location.loc._device._id, self.context)
 
     def __read(self, addr):
         self.assert_not_in_reset()
-        data = self.ifc.pci_read32(
-            self.location.loc._device._id,
-            *self.location.loc.to("nocVirt"),
-            addr,
-        )
+        data = read_word_from_device(self.location.loc, addr, self.location.loc._device._id, self.context)
         if self.verbose:
             util.DEBUG(f"{self.get_reg_name_for_address(addr)} -> RD == 0x{data:08x}")
         return data
@@ -377,7 +369,7 @@ class RiscDebug:
         return self.read_status().is_pc_watchpoint_hit
 
     def is_in_reset(self):
-        reset_reg = self.ifc.pci_read32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), self.RISC_DBG_SOFT_RESET0)
+        reset_reg = read_word_from_device(self.location.loc, self.RISC_DBG_SOFT_RESET0, self.location.loc._device.id(), self.context)
         shift = get_risc_reset_shift(self.location.risc_id)
         return (reset_reg >> shift) & 1
 
@@ -387,10 +379,10 @@ class RiscDebug:
         """
         assert value in [0, 1]
         shift = get_risc_reset_shift(self.location.risc_id)
-        reset_reg = self.ifc.pci_read32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), self.RISC_DBG_SOFT_RESET0)
+        reset_reg = read_word_from_device(self.location.loc, self.RISC_DBG_SOFT_RESET0, self.location.loc._device.id(), self.context)
         reset_reg = (reset_reg & ~(1 << shift)) | (value << shift)
-        self.ifc.pci_write32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), self.RISC_DBG_SOFT_RESET0, reset_reg)
-        new_reset_reg = self.ifc.pci_read32(self.location.loc._device.id(), *self.location.loc.to("nocVirt"), self.RISC_DBG_SOFT_RESET0)
+        write_words_to_device(self.location.loc, self.RISC_DBG_SOFT_RESET0, reset_reg, self.location.loc._device.id(), self.context)
+        new_reset_reg = read_word_from_device(self.location.loc, self.RISC_DBG_SOFT_RESET0, self.location.loc._device.id(), self.context)
         if new_reset_reg != reset_reg:
             util.ERROR(f"Error writing reset signal. Expected 0x{reset_reg:08x}, got 0x{new_reset_reg:08x}")
 
@@ -542,7 +534,7 @@ class RiscLoader:
         else:
             # Since we cannot access configuration registers except through debug interface, we need to have a core that is started.
             # Use BRISC since we know that its start address is always 0.
-            brisc_debug = RiscDebug(RiscLoc(self.risc_debug.location.loc, 0, 0), self.context.server_ifc, self.verbose)
+            brisc_debug = RiscDebug(RiscLoc(self.risc_debug.location.loc, 0, 0), self.context, self.verbose)
             brisc_loader = RiscLoader(brisc_debug, self.context, self.verbose)
             brisc_debug = brisc_loader.risc_debug
             if not brisc_debug.is_in_reset():
@@ -668,7 +660,7 @@ class RiscLoader:
 
         # Generate infinite loop instruction (JAL 0)
         jal_instruction = RiscLoader.get_jump_to_offset_instruction(0) # Since JAL uses offset and we need to return to current address, we specify 0
-        self.context.server_ifc.pci_write32(self.risc_debug.location.loc._device.id(), *self.risc_debug.location.loc.to("nocVirt"), address, jal_instruction)
+        write_words_to_device(self.risc_debug.location.loc, address, jal_instruction, self.risc_debug.location.loc._device.id(), self.context)
 
         # Take risc out of reset
         self.risc_debug.set_reset_signal(0)
@@ -745,7 +737,7 @@ class RiscLoader:
             # Use debug interface
             self.write_block_through_debug(address, data)
         else:
-            self.risc_debug.ifc.pci_write(self.risc_debug.location.loc._device.id(),*self.risc_debug.location.loc.to("nocVirt"),address,data)
+            write_to_device(self.risc_debug.location.loc, address, data, self.risc_debug.location.loc._device.id(), self.context)
 
     def read_block(self, address, byte_count):
         """
@@ -756,7 +748,7 @@ class RiscLoader:
             # Use debug interface
             return self.read_block_through_debug(address, byte_count)
         else:
-            return self.risc_debug.ifc.pci_read(self.risc_debug.location.loc._device.id(),*self.risc_debug.location.loc.to("nocVirt"),address,byte_count)
+            return read_from_device(self.risc_debug.location.loc, address, self.risc_debug.location.loc._device.id(), byte_count, self.context)
 
     def remap_address(self, address: int, loader_data: int, loader_code: int):
         if address & self.PRIVATE_MEMORY_BASE == self.PRIVATE_MEMORY_BASE:
@@ -852,7 +844,7 @@ class RiscLoader:
         if risc_name == "BRISC":
             if init_section_address != 0:
                 jump_instruction = RiscLoader.get_jump_to_offset_instruction(init_section_address)
-                self.context.server_ifc.pci_write32(self.risc_debug.location.loc._device.id(), *self.risc_debug.location.loc.to("nocVirt"), 0, jump_instruction)
+                write_words_to_device(self.risc_debug.location.loc, 0, jump_instruction, self.risc_debug.location.loc._device.id(), self.context)
         else:
             # Change core start address
             self.set_risc_start_address(init_section_address)

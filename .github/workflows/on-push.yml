@@ -1,0 +1,11 @@
+name: On push
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    uses: ./.github/workflows/build-and-test.yml
+    secrets: inherit

@@ -15,8 +15,7 @@ namespace tt::lens {
 // which means that command is not supported by the server.
 class server : public communication {
    public:
-    server(std::unique_ptr<ttlens_implementation> implementation, const std::string& run_dirpath = {})
-        : implementation(std::move(implementation)), run_dirpath(run_dirpath) {}
+    server(std::unique_ptr<ttlens_implementation> implementation) : implementation(std::move(implementation)) {}
 
    protected:
     void process(const request& request) override;
@@ -30,10 +29,8 @@ class server : public communication {
     void respond_not_supported();
 
     virtual std::optional<std::vector<uint8_t>> get_file(const std::string& path);
-    virtual std::optional<std::string> get_run_dirpath();
 
     std::unique_ptr<ttlens_implementation> implementation;
-    std::string run_dirpath;
 };
 
 }  // namespace tt::lens

@@ -48,7 +48,7 @@ command_metadata = {
     "short": "rv", 
     "type": "low-level", 
     "description": __doc__,
-    "context": ["limited", "buda", "metal"],
+    "context": ["limited", "metal"],
     "common_option_names": [ "--device", "--loc", "--risc", "--verbose" ]
 }
 
@@ -67,7 +67,7 @@ def run_riscv_command(context, device, loc, risc_id, args):
     where = f"{get_risc_name(risc_id)} {loc.to_str('netlist')} [{device._id}]"
 
     noc_id = 0
-    risc = RiscDebug(RiscLoc(loc, noc_id, risc_id), context.server_ifc, verbose=verbose)
+    risc = RiscDebug(RiscLoc(loc, noc_id, risc_id), context, verbose=verbose)
 
     if args["halt"]:
         risc.enable_debug()
