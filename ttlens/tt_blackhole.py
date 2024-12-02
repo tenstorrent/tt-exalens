@@ -95,6 +95,14 @@ class BlackholeDevice(tt_device.Device):
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
     NOC_1_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_1_X)
     NOC_1_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_1_Y)
+    
+    PCI_ARC_RESET_BASE_ADDR = 0x1FF30000
+    PCI_ARC_CSM_DATA_BASE_ADDR = 0x1FE80000
+    PCI_ARC_ROM_DATA_BASE_ADDR = 0x1FF00000 
+
+    NOC_ARC_RESET_BASE_ADDR = 0x80030000
+    NOC_ARC_CSM_DATA_BASE_ADDR = 0x10000000
+    NOC_ARC_ROM_DATA_BASE_ADDR = 0x80000000 
 
     # TODO (#89): Translated coordinates are not correct in blackhole. We need to understand what is happening to them since there are three columns now that are not tensix compared to two in wormhole. For now just an identity mapping
     NOC0_X_TO_NOCTR_X = {i: i for i in range(0, len(NOC_0_X_TO_DIE_X))}

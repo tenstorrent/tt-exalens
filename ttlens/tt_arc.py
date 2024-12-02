@@ -95,6 +95,10 @@ def set_udmiaxi_region(mem_type: str, device_id: int = 0, context:Context=None):
         assert iccm_id>=0 and iccm_id<=3
 
     base_addr = ((0x10000000 >> 24) & 0xff) if mem_type == 'csm' else (iccm_id*0x3)
+    
+    # Additional bit needs to be set for blackhole, indicating that the udmiaxi region is going to be changed
+    if context.devices[device_id]._arch == "blackhole":
+        base_addr |= 0x100
 
     arc_write(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_ARC_UDMIAXI_REGION"), base_addr)
 
