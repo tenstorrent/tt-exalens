@@ -396,17 +396,18 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
 template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open(
     const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices) {
-    auto devices = tt::umd::Cluster::detect_available_device_ids();
+    auto cluster_descriptor_path = tt_ClusterDescriptor::get_cluster_descriptor_file_path();
+    auto cluster_descriptor = tt_ClusterDescriptor::create_from_yaml(cluster_descriptor_path);
 
     if (devices.size() == 0) {
         throw std::runtime_error("No Tenstorrent devices were detected on this system.");
     }
 
     // Check that all chips are of the same type
-    tt::ARCH arch = detect_arch(devices[0]);
+    tt::ARCH arch = cluster_descriptor->get_arch(0);
 
-    for (size_t i = 1; i < devices.size(); i++) {
-        auto newArch = detect_arch(devices[i]);
+    for (auto chip_id : cluster_descriptor->get_all_chips()) {
+        auto newArch = cluster_descriptor->get_arch(chip_id);
 
         if (arch != newArch) {
             throw std::runtime_error("Not all devices have the same architecture.");
@@ -418,8 +419,6 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     if (device_configuration_path.empty()) {
         return {};
     }
-    auto cluster_descriptor_path = tt_ClusterDescriptor::get_cluster_descriptor_file_path();
-    auto cluster_descriptor = tt_ClusterDescriptor::create_from_yaml(cluster_descriptor_path);
     std::vector<uint8_t> device_ids;
     std::unique_ptr<tt::umd::Cluster> device;
 
