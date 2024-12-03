@@ -399,7 +399,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     auto cluster_descriptor_path = tt_ClusterDescriptor::get_cluster_descriptor_file_path();
     auto cluster_descriptor = tt_ClusterDescriptor::create_from_yaml(cluster_descriptor_path);
 
-    if (devices.size() == 0) {
+    if (cluster_descriptor->get_number_of_chips() == 0) {
         throw std::runtime_error("No Tenstorrent devices were detected on this system.");
     }
 
