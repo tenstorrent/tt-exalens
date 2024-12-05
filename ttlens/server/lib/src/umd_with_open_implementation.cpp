@@ -29,6 +29,9 @@ static const uint8_t blackhole_simulation_configuration_bytes[] = {
 static const uint8_t grayskull_configuration_bytes[] = {
 #include "../configuration/grayskull.embed"
 };
+static const uint8_t quasar_simulation_configuration_bytes[] = {
+#include "../configuration/quasar_simulation.embed"
+};
 static const uint8_t wormhole_b0_configuration_bytes[] = {
 #include "../configuration/wormhole_b0.embed"
 };
@@ -420,10 +423,16 @@ std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open
 
 std::unique_ptr<umd_with_open_implementation> umd_with_open_implementation::open_simulation() {
     // For now, we hard code blackhole simulation soc descriptor as there is only VCS simulator for blackhole...
-    const uint8_t *configuration_bytes = blackhole_simulation_configuration_bytes;
+    // const uint8_t *configuration_bytes = blackhole_simulation_configuration_bytes;
+    // tt::ARCH arch = tt::ARCH::BLACKHOLE;
+    // size_t configuration_length =
+    //     sizeof(blackhole_simulation_configuration_bytes) / sizeof(blackhole_simulation_configuration_bytes[0]);
+
+    const uint8_t *configuration_bytes = quasar_simulation_configuration_bytes;
     tt::ARCH arch = tt::ARCH::BLACKHOLE;
     size_t configuration_length =
-        sizeof(blackhole_simulation_configuration_bytes) / sizeof(blackhole_simulation_configuration_bytes[0]);
+        sizeof(quasar_simulation_configuration_bytes) / sizeof(quasar_simulation_configuration_bytes[0]);
+
     std::string device_configuration_path = write_temp_file(
         "soc_descriptor.yaml", reinterpret_cast<const char *>(configuration_bytes), configuration_length);
 

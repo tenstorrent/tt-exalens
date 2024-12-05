@@ -159,6 +159,17 @@ class Device(TTObject):
                 context=context
             )
 
+        if "quasar" in arch.lower():
+            from ttlens import tt_quasar
+
+            dev = tt_quasar.QuasarDevice(
+                id=device_id,
+                arch=arch,
+                cluster_desc=cluster_desc,
+                device_desc_path=device_desc_path,
+                context=context
+            )
+
         if dev is None:
             raise RuntimeError(f"Architecture {arch} is not supported")
 

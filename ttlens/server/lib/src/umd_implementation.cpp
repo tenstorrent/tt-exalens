@@ -113,9 +113,8 @@ std::optional<uint32_t> umd_implementation::pci_read32_raw(uint8_t chip_id, uint
         if (silicon_device) {
             return silicon_device->bar_read32(chip_id, address);
         }
-    } else {
-        return {};
     }
+    return {};
 }
 
 std::optional<uint32_t> umd_implementation::pci_write32_raw(uint8_t chip_id, uint64_t address, uint32_t data) {
@@ -131,9 +130,8 @@ std::optional<uint32_t> umd_implementation::pci_write32_raw(uint8_t chip_id, uin
             silicon_device->bar_write32(chip_id, address, data);
             return 4;
         }
-    } else {
-        return {};
     }
+    return {};
 }
 
 std::optional<uint32_t> umd_implementation::dma_buffer_read32(uint8_t chip_id, uint64_t address, uint32_t channel) {
