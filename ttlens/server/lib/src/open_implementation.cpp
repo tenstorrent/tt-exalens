@@ -16,8 +16,8 @@
 #include "umd/device/blackhole_implementation.h"
 #include "umd/device/cluster.h"
 #include "umd/device/grayskull_implementation.h"
-#include "umd/device/tt_arch_types.h"
 #include "umd/device/tt_cluster_descriptor.h"
+#include "umd/device/types/arch.h"
 #include "umd/device/wormhole_implementation.h"
 
 // Include automatically generated files that we embed in source to avoid managing their deployment
@@ -83,7 +83,7 @@ static std::string create_temp_configuration_file(tt::ARCH arch) {
             configuration_length = sizeof(wormhole_b0_configuration_bytes) / sizeof(wormhole_b0_configuration_bytes[0]);
             break;
         default:
-            throw std::runtime_error("Unsupported architecture " + get_arch_str(arch) + ".");
+            throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");
     }
 
     return write_temp_file("soc_descriptor.yaml", reinterpret_cast<const char *>(configuration_bytes),
@@ -265,7 +265,7 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << "  " << soc_descriptor.dram_bank_size << std::endl << std::endl;
     outfile << "eth_l1_size:" << std::endl;
     outfile << "  " << soc_descriptor.eth_l1_size << std::endl << std::endl;
-    outfile << "arch_name: " << get_arch_str(soc_descriptor.arch) << std::endl << std::endl;
+    outfile << "arch_name: " << tt::arch_to_str(soc_descriptor.arch) << std::endl << std::endl;
     outfile << "features:" << std::endl;
     outfile << "  noc:" << std::endl;
     outfile << "    translation_id_enabled: True" << std::endl;
@@ -448,7 +448,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
             device = create_blackhole_device(device_configuration_path, target_devices);
             break;
         default:
-            throw std::runtime_error("Unsupported architecture " + get_arch_str(arch) + ".");
+            throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");
     }
 
     auto device_soc_descriptors = create_device_soc_descriptors(device.get(), device_ids);

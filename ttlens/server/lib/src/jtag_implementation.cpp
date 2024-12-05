@@ -4,8 +4,8 @@
 #include "ttlensserver/jtag_implementation.h"
 
 #include "ttlensserver/jtag_device.h"
-#include "umd/device/tt_arch_types.h"
 #include "umd/device/tt_soc_descriptor.h"
+#include "umd/device/types/arch.h"
 
 namespace tt::lens {
 
@@ -18,7 +18,7 @@ std::optional<std::string> jtag_implementation::get_harvester_coordinate_transla
 std::optional<std::string> jtag_implementation::get_device_arch(uint8_t chip_id) {
     auto x = jtag_device->get_jtag_arch(chip_id);
     if (x) {
-        return get_arch_str(*x);
+        return tt::arch_to_str(*x);
     }
     return {};
 }

@@ -125,7 +125,7 @@ std::optional<std::string> umd_implementation::get_device_arch(uint8_t chip_id) 
     tt_device* d = static_cast<tt_device*>(device);
 
     try {
-        return get_arch_str(d->get_soc_descriptor(chip_id).arch);
+        return tt::arch_to_str(d->get_soc_descriptor(chip_id).arch);
     } catch (...) {
         return {};
     }
