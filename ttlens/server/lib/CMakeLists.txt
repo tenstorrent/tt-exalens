@@ -49,18 +49,6 @@ set_target_properties(ttlens_server_lib PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
-# TODO: This should be removed from this repository and should be fixed correctly in umd repository
-# Copy UMD dependencies to build/lib directory
-set(nng_lib_path "${CMAKE_BINARY_DIR}/_deps/nanomsg-build/libnng.so.1")
-set(uv_lib_path "${CMAKE_BINARY_DIR}/_deps/libuv-build/libuv.so.1")
-
-add_custom_command(TARGET ttlens_server_lib
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${nng_lib_path} ${CMAKE_BINARY_DIR}/lib
-    COMMAND ${CMAKE_COMMAND} -E copy ${uv_lib_path} ${CMAKE_BINARY_DIR}/lib
-    COMMENT "Copying umd dependencies to ${CMAKE_BINARY_DIR}/lib"
-)
-
 # JTAG
 set(JTAG_ACCESS_LIB_PATH "${TTLENS_HOME}/third_party/jtag-access-library")
 set(LIBJTAG "${CMAKE_BINARY_DIR}/lib/libjtag.so")
