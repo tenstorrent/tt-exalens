@@ -9,7 +9,7 @@
 #include <optional>
 
 #include "ttlensserver/jtag.h"
-#include "umd/device/tt_arch_types.h"
+#include "umd/device/types/arch.h"
 
 class JtagDevice {
    public:
