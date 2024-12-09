@@ -4,10 +4,12 @@
 #ifndef JTAG_IMPLEMENTATION_H
 #define JTAG_IMPLEMENTATION_H
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 
 #include "ttlensserver/jtag.h"
+#include "umd/device/types/arch.h"
 
 class JtagDevice {
    public:
@@ -15,7 +17,11 @@ class JtagDevice {
     ~JtagDevice();
 
     std::optional<uint32_t> get_device_cnt() const;
-    bool select_device(uint8_t chip_id);
+    std::optional<uint32_t> get_efuse_harvesting(uint8_t chip_id) const;
+    std::optional<uint32_t> get_device_harvesting(uint8_t chip_id) const;
+
+    std::optional<tt::ARCH> get_jtag_arch(uint8_t chip_id);
+    std::optional<std::string> get_jtag_harvester_coordinate_translation(uint8_t chip_id);
 
     std::optional<int> open_jlink_by_serial_wrapper(uint8_t chip_id, unsigned int serial_number);
     std::optional<int> open_jlink_wrapper(uint8_t chip_id);
@@ -38,12 +44,12 @@ class JtagDevice {
     std::optional<uint32_t> read_id(uint8_t chip_id);
 
    private:
+    bool select_device(uint8_t chip_id);
     std::unique_ptr<Jtag> jtag;
     std::vector<uint32_t> jlink_devices;
-    std::vector<std::vector<uint32_t>> harvesting;
+    std::vector<uint32_t> efuse_harvesting;
+    std::vector<uint32_t> device_harvesting;
     uint8_t curr_device_idx = -1;
-
-    std::vector<uint32_t> get_harvesting_from_efuse(uint32_t efuse_harvesting);
 };
 
 #endif

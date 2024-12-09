@@ -7,8 +7,8 @@
 #include <pybind11/complex.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <ttlensserver/open_implementation.h>
 #include <ttlensserver/ttlens_implementation.h>
-#include <ttlensserver/umd_with_open_implementation.h>
 
 #include <filesystem>
 #include <fstream>
@@ -16,7 +16,7 @@
 #include <iostream>
 #include <memory>
 
-#include "device/cluster.h"
+#include "umd/device/cluster.h"
 
 bool open_device(const std::string &binary_directory, const std::vector<uint8_t> &wanted_devices = {},
                  bool init_jtag = false);

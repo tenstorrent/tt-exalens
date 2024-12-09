@@ -40,7 +40,7 @@ file(GLOB TTLENS_SERVER_LIB_SRCS "src/*.cpp")
 add_library(ttlens_server_lib STATIC ${TTLENS_SERVER_LIB_SRCS})
 add_dependencies(ttlens_server_lib generate_embed_files)
 target_link_libraries(ttlens_server_lib 
-    PUBLIC umd_device fmt cppzmq-static
+    PUBLIC umd::device fmt cppzmq-static dl
 )
 target_include_directories(ttlens_server_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
@@ -49,18 +49,6 @@ set_target_properties(ttlens_server_lib PROPERTIES
     OUTPUT_NAME libttlensserver
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
     POSITION_INDEPENDENT_CODE ON
-)
-
-# TODO: This should be removed from this repository and should be fixed correctly in umd repository
-# Copy UMD dependencies to build/lib directory
-set(nng_lib_path "${CMAKE_BINARY_DIR}/_deps/nanomsg-build/libnng.so.1")
-set(uv_lib_path "${CMAKE_BINARY_DIR}/_deps/libuv-build/libuv.so.1")
-
-add_custom_command(TARGET ttlens_server_lib
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${nng_lib_path} ${CMAKE_BINARY_DIR}/lib
-    COMMAND ${CMAKE_COMMAND} -E copy ${uv_lib_path} ${CMAKE_BINARY_DIR}/lib
-    COMMENT "Copying umd dependencies to ${CMAKE_BINARY_DIR}/lib"
 )
 
 # JTAG

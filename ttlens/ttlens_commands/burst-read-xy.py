@@ -29,7 +29,7 @@ Examples:
 
 command_metadata = {
     "short": "brxy",
-    "type": "low-level", 
+    "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],
 }

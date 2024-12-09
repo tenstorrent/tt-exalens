@@ -7,6 +7,7 @@
 from ttlens import tt_util as util
 from ttlens import tt_device
 from ttlens.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
+from ttlens.tt_lens_lib import read_word_from_device
 
 phase_state_map = {
     0: "PHASE_START",
@@ -92,6 +93,14 @@ class BlackholeDevice(tt_device.Device):
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
     NOC_1_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_1_X)
     NOC_1_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_1_Y)
+    
+    PCI_ARC_RESET_BASE_ADDR = 0x1FF30000
+    PCI_ARC_CSM_DATA_BASE_ADDR = 0x1FE80000
+    PCI_ARC_ROM_DATA_BASE_ADDR = 0x1FF00000 
+
+    NOC_ARC_RESET_BASE_ADDR = 0x80030000
+    NOC_ARC_CSM_DATA_BASE_ADDR = 0x10000000
+    NOC_ARC_ROM_DATA_BASE_ADDR = 0x80000000 
 
     # TODO (#89): Translated coordinates are not correct in blackhole. We need to understand what is happening to them since there are three columns now that are not tensix compared to two in wormhole. For now just an identity mapping
     NOC0_X_TO_NOCTR_X = {i: i for i in range(0, len(NOC_0_X_TO_DIE_X))}
@@ -368,17 +377,17 @@ class BlackholeDevice(tt_device.Device):
         endpoint_type = self.get_endpoint_type(x, y)
         if endpoint_type in ["Ethernet", "Tensix"]:
             reg_addr = 0xFFB20000 + (noc_id * 0x10000) + status_offset + (reg_index * 4)
-            val = self.pci_read32(x, y, 0, reg_addr)
+            val = read_word_from_device(OnChipCoordinate(x, y, "nocVirt", 0), reg_addr, 0, self._context)
         elif endpoint_type in ["GDDR", "PCIE", "ARC"]:
             reg_addr = 0xFFFB20000 + status_offset + (reg_index * 4)
             xr = x if noc_id == 0 else 9 - x
             yr = y if noc_id == 0 else 11 - y
-            val = self.pci_read32(xr, yr, noc_id, reg_addr)
+            val = read_word_from_device(OnChipCoordinate(xr, yr, "nocVirt", noc_id), reg_addr, noc_id, self._context)
         elif endpoint_type in ["Padding"]:
             reg_addr = 0xFFB20000 + status_offset + (reg_index * 4)
             xr = x if noc_id == 0 else 9 - x
             yr = y if noc_id == 0 else 11 - y
-            val = self.pci_read32(xr, yr, noc_id, reg_addr)
+            val = read_word_from_device(OnChipCoordinate(xr, yr, "nocVirt", noc_id), reg_addr, noc_id, self._context)
         else:
             util.ERROR(f"Unknown endpoint type {endpoint_type}")
         print(

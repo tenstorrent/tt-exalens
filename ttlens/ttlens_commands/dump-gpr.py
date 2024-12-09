@@ -40,13 +40,13 @@ def reg_included(reg_index, regs_to_include):
         return reg_index in regs_to_include
     return True
 
-def get_register_data(device, server_ifc, loc, args):
+def get_register_data(device, context, loc, args):
     regs_to_include = args["<reg-list>"].split(",") if args["<reg-list>"] else []
     regs_to_include = [ get_register_index(reg) for reg in regs_to_include ]
     riscs_to_include = args["-r"].split(",") if args["-r"] else range(0,4)
     riscs_to_include = range(0,4) if "all" in args["-r"] else [ int(risc) for risc in riscs_to_include ]
     elf_file = args["<elf-file>"] if args["<elf-file>"] else None
-    elf = ELF(server_ifc, { "elf" : elf_file }) if elf_file else None
+    elf = ELF(context.server_ifc, { "elf" : elf_file }) if elf_file else None
     pc_map = elf.names["elf"]["file-line"] if elf else None
 
     reg_value = {}
@@ -57,7 +57,7 @@ def get_register_data(device, server_ifc, loc, args):
 
     # Read the registers
     for risc_id in riscs_to_include:
-        risc = RiscDebug(RiscLoc(loc, noc_id, risc_id), ifc=server_ifc, verbose=args["-v"])
+        risc = RiscDebug(RiscLoc(loc, noc_id, risc_id), context=context, verbose=args["-v"])
         reset_state[risc_id] = risc.is_in_reset()
         if reset_state[risc_id]:
             continue # We cannot read registers from a core in reset
@@ -118,11 +118,9 @@ def get_register_data(device, server_ifc, loc, args):
     # Print the table
     if len(table) > 0:
         headers = ["Register"]
-        for risc_id in range (0, 4):
+        for risc_id in riscs_to_include:
             headers.append(get_risc_name(risc_id))
-        return tabulate.tabulate(
-                table, headers=headers, disable_numparse=True
-            )
+        return tabulate.tabulate(table, headers=headers, disable_numparse=True)
     return None
 
 def run(cmd_text, context, ui_state: UIState = None):
@@ -131,7 +129,7 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            table = get_register_data(device, context.server_ifc, loc, dopt.args)
+            table = get_register_data(device, context, loc, dopt.args)
             if table:
                 util.INFO (f"RISC-V registers for location {loc} on device {device.id()}")
                 print(table)

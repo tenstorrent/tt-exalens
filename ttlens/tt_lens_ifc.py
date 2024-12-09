@@ -527,15 +527,23 @@ class TTLensPybind(TTLensCommunicator):
         return self._check_result(ttlens_pybind.get_device_soc_description(chip_id))
 
     def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+        if address % 4 != 0:
+            raise Exception("Unaligned access in jtag_read32")
         return self._check_result(ttlens_pybind.jtag_read32(chip_id, noc_x, noc_y, address))
 
     def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+        if address % 4 != 0:
+            raise Exception("Unaligned access in jtag_write32")
         return self._check_result(ttlens_pybind.jtag_write32(chip_id, noc_x, noc_y, address, data))
 
     def jtag_read32_axi(self, chip_id: int, address: int):
+        if address % 4 != 0:
+            raise Exception("Unaligned access in jtag_read32_axi")
         return self._check_result(ttlens_pybind.jtag_read32_axi(chip_id, address))
 
     def jtag_write32_axi(self, chip_id: int, address: int, data: int):
+        if address % 4 != 0:
+            raise Exception("Unaligned access in jtag_write32_axi")
         return self._check_result(ttlens_pybind.jtag_write32_axi(chip_id, address, data))
 
     def get_file(self, file_path: str) -> str:
