@@ -38,22 +38,21 @@ void ensure_file(const std::string& filetype, const std::string& filename) {
 int run_ttlens_server(const server_config& config) {
     if (config.port > 1024 && config.port < 65536) {
         // Open wanted devices
-        std::unique_ptr<tt::lens::open_implementation<tt::lens::umd_implementation>> implementation_umd;
-        std::unique_ptr<tt::lens::open_implementation<tt::lens::jtag_implementation>> implementation_jtag;
+        std::unique_ptr<tt::lens::ttlens_implementation> implementation;
         // Try to open only wanted devices
         try {
             if (config.vcs_binary.empty()) {
                 if (config.init_jtag) {
-                    implementation_jtag =
+                    implementation =
                         tt::lens::open_implementation<tt::lens::jtag_implementation>::open({}, config.wanted_devices);
                 } else {
-                    implementation_umd =
+                    implementation =
                         tt::lens::open_implementation<tt::lens::umd_implementation>::open({}, config.wanted_devices);
                 }
             } else {
                 ensure_file("VCS binary", config.vcs_binary);
                 setenv("TT_REMOTE_EXE", config.vcs_binary.c_str(), 1);
-                implementation_umd = tt::lens::open_implementation<tt::lens::umd_implementation>::open_simulation();
+                implementation = tt::lens::open_implementation<tt::lens::umd_implementation>::open_simulation();
             }
         } catch (std::runtime_error& error) {
             log_custom(tt::Logger::Level::Error, tt::LogTTLens, "Cannot open device: {}.", error.what());
@@ -66,11 +65,7 @@ int run_ttlens_server(const server_config& config) {
         // Spawn server
         std::unique_ptr<tt::lens::server> server;
         try {
-            if (config.init_jtag) {
-                server = std::make_unique<tt::lens::server>(std::move(implementation_jtag));
-            } else {
-                server = std::make_unique<tt::lens::server>(std::move(implementation_umd));
-            }
+            server = std::make_unique<tt::lens::server>(std::move(implementation));
             server->start(config.port);
             log_info(tt::LogTTLens, "Debug server started on {}.", connection_address);
         } catch (...) {
