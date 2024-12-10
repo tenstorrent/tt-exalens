@@ -6,6 +6,8 @@ if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/umd/CMakeLists.txt")
     message(FATAL_ERROR "Missing submodules.  Run: git submodule update --init --recursive")
 endif()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 include(third_party/umd/cmake/compilers.cmake)
 
 set(CMAKE_CXX_STANDARD 17)
