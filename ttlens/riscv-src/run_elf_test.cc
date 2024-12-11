@@ -2,14 +2,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include <cstdint>
 #include <stdint.h>
 
-#define RISCV_L1_REG_START_ADDR             0x00000000
+#include <cstdint>
+
+#define RISCV_L1_REG_START_ADDR 0x00000000
 
 int main() {
-    volatile uint32_t *MAILBOX = reinterpret_cast<volatile uint32_t *> (RISCV_L1_REG_START_ADDR);
-	*MAILBOX = 0x12345678;
+    volatile uint32_t *MAILBOX = reinterpret_cast<volatile uint32_t *>(RISCV_L1_REG_START_ADDR);
+    *MAILBOX = 0x12345678;
 
-	for (;;);	
+    for (;;);
 }

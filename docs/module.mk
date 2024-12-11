@@ -5,8 +5,8 @@ DOC_DIR?=$(TTLENS_HOME)/docs
 .PHONY: docs
 docs: build
 	@echo "${YELLOW}Generating documentation${NC}"
-	@echo "${YELLOW}Using the output directory $(DOC_DIR)${NC}"	
-	
+	@echo "${YELLOW}Using the output directory $(DOC_DIR)${NC}"
+
 	echo "Generating library documentation..."
 	python -m docs.bin.generate-lib-docs $(TTLENS_HOME)/ttlens $(DOC_DIR)/ttlens-lib-docs.md
 	$(PRINT_OK)

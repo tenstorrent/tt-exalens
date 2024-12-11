@@ -74,6 +74,7 @@ class CoordinateTranslationError(Exception):
     """
     This exception is thrown when a coordinate translation fails.
     """
+
     pass
 
 
@@ -148,9 +149,7 @@ class OnChipCoordinate:
         """
 
         # Split the stream designator into its components
-        chip_id_str, core_y_str, core_x_str, stream_id_str = stream_designator.split(
-            "__"
-        )
+        chip_id_str, core_y_str, core_x_str, stream_id_str = stream_designator.split("__")
 
         # Extract the coordinates from the stream designator
         chip_id = int(chip_id_str.split("_")[1])
@@ -220,9 +219,7 @@ class OnChipCoordinate:
 
         if "noc" in output_type:
             return f"{output_tuple[0]}-{output_tuple[1]}"
-        elif (
-            output_type == "die" or output_type == "tensix" or output_type == "netlist"
-        ):
+        elif output_type == "die" or output_type == "tensix" or output_type == "netlist":
             return f"{output_tuple[0]},{output_tuple[1]}"
         else:
             raise Exception("Unknown output coordinate system: " + output_type)
@@ -283,8 +280,7 @@ class OnChipCoordinate:
     def __eq__(self, other):
         # util.DEBUG("Comparing coordinates: " + str(self) + " ?= " + str(other))
         return (self._noc0_coord == other._noc0_coord) and (
-            (self._device == other._device)
-            or (self._device._arch == other._device._arch)
+            (self._device == other._device) or (self._device._arch == other._device._arch)
         )
 
     def __lt__(self, other):
@@ -296,25 +292,25 @@ class OnChipCoordinate:
     def create(coord_str, device, coord_type=None):
         """
         Creates a coordinate object from a string. The string can be in any of the supported coordinate systems.
-        
+
         Parameters:
             coord_str (str): The string representation of the coordinate.
             device (Device): The device object representing the chip.
-            coord_type (str, optional): The type of coordinate system used in the string. 
+            coord_type (str, optional): The type of coordinate system used in the string.
                 If not specified, it will be determined based on the separators used in the string.
-        
+
         Returns:
             OnChipCoordinate: The created coordinate object.
-        
+
         Raises:
             Exception: If the coordinate format is unknown or invalid.
-        
+
         Supported coordinate formats:
             - X-Y format: The coordinates are separated by a hyphen ("-"). Example: "10-20"
             - R,C format: The coordinates are separated by a comma (","). Example: "10,20"
-            - DRAM channel format: The coordinate starts with "CH" followed by the channel number. 
+            - DRAM channel format: The coordinate starts with "CH" followed by the channel number.
               Example: "CH1"
-        
+
         Note:
             - If the coordinate format is X-Y or R,C, the coordinates will be converted to integers.
             - If the coordinate format is DRAM channel, the corresponding NOC0 coordinates will be used.
@@ -331,14 +327,12 @@ class OnChipCoordinate:
             x, y = coord_str.split(",")
             x = int(x.strip())
             y = int(y.strip())
-        elif coord_str[0:2].upper() == "CH": # This is a DRAM channel
+        elif coord_str[0:2].upper() == "CH":  # This is a DRAM channel
             # Parse the digits after "CH"
             dram_chan = int(coord_str[2:])
             (x, y) = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
-            coord_type = 'noc0'
+            coord_type = "noc0"
         else:
-            raise TTException(
-                "Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C"
-            )
+            raise TTException("Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C")
 
         return OnChipCoordinate(x, y, coord_type, device)

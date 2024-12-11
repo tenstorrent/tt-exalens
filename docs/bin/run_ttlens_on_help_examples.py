@@ -13,9 +13,7 @@ def run_command(cmd_array, exit_on_failure=True):
     if os.environ.get("COV", "0") == "1":
         cmd_array = ["coverage", "run", "--append", "--include=ttlens/**"] + cmd_array
 
-    process = subprocess.Popen(
-        cmd_array, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-    )
+    process = subprocess.Popen(cmd_array, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     # Capture all output
     stdout_output, stderr_output = process.communicate()
@@ -70,9 +68,7 @@ def execute_ttlens_command(command):
             if "Warning: " in line:
                 skip_line = True
             if capture and not skip_line:
-                filtered_output.append(
-                    trim_line_and_append_elipsis(line, MAX_CHARACTERS_PER_LINE)
-                )
+                filtered_output.append(trim_line_and_append_elipsis(line, MAX_CHARACTERS_PER_LINE))
             if f"Executing command: {interesting_command}" in line:
                 capture = True
         except Exception as e:
@@ -87,5 +83,3 @@ def execute_ttlens_command(command):
         filtered_output = "\n".join(filtered_output)
 
     return filtered_output
-
-

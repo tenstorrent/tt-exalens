@@ -5,13 +5,13 @@ import os
 import subprocess
 from datetime import datetime
 
-__requires__ = ['pip >= 24.0']
+__requires__ = ["pip >= 24.0"]
 
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 
 # TTLens files to be copied to build directory
-ttlens_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ttlens')
+ttlens_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ttlens")
 ttlens_home = os.path.dirname(ttlens_folder_path)
 
 
@@ -27,33 +27,26 @@ def get_ttlens_py_files(file_dir: os.PathLike = f"{ttlens_home}/ttlens", ignorel
 
 
 ttlens_files = {
-    "ttlens_lib": {
-        "path": "ttlens",
-        "files": get_ttlens_py_files(),
-        "output": "ttlens"
-    },
+    "ttlens_lib": {"path": "ttlens", "files": get_ttlens_py_files(), "output": "ttlens"},
     "ttlens_commands": {
         "path": "ttlens/ttlens_commands",
         "files": get_ttlens_py_files(f"{ttlens_home}/ttlens/ttlens_commands"),
-        "output": "ttlens/ttlens_commands"
+        "output": "ttlens/ttlens_commands",
     },
-    "libs": {
-        "path": "build/lib",
-        "files": [ "libdevice.so", "ttlens_pybind.so" ],
-        "output": "build/lib",
-        "strip": True
-    },
+    "libs": {"path": "build/lib", "files": ["libdevice.so", "ttlens_pybind.so"], "output": "build/lib", "strip": True},
     "ttlens-server-standalone": {
-        "path": "build/bin" ,
-        "files": [ "ttlens-server-standalone" ],
+        "path": "build/bin",
+        "files": ["ttlens-server-standalone"],
         "output": "build/bin",
-        "strip": True
-    }
+        "strip": True,
+    },
 }
+
 
 class TTExtension(Extension):
     def __init__(self, name):
         Extension.__init__(self, name, sources=[])
+
 
 class MyBuild(build_ext):
     def run(self):
@@ -89,6 +82,7 @@ class MyBuild(build_ext):
                         print(f"Stripping symbols from {path}/{f}")
                         subprocess.check_call(["strip", path + "/" + f])
 
+
 # Fake TTLens extension
 ttlens_fake_extension = TTExtension("ttlens.fake_extension")
 
@@ -99,33 +93,26 @@ with open("README.md", "r") as f:
 with open(f"{ttlens_folder_path}/requirements.txt", "r") as f:
     requirements = [r for r in f.read().splitlines() if not r.startswith("-r")]
 
-short_hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
-date = datetime.today().strftime('%y%m%d')
+short_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
+date = datetime.today().strftime("%y%m%d")
 
 version = "0.1." + date + "+dev." + short_hash
 
 setup(
-    name='ttlens',
+    name="ttlens",
     version=version,
-
-    packages=['ttlens'],
-    package_dir={'ttlens': 'ttlens'}, 
-
-    author='Tenstorrent',
+    packages=["ttlens"],
+    package_dir={"ttlens": "ttlens"},
+    author="Tenstorrent",
     url="http://www.tenstorrent.com",
-    author_email='info@tenstorrent.com',
-    description='Debugger for Tenstorrent devices',
-    python_requires='>=3.8',
-
+    author_email="info@tenstorrent.com",
+    description="Debugger for Tenstorrent devices",
+    python_requires=">=3.8",
     ext_modules=[ttlens_fake_extension],
     cmdclass=dict(build_ext=MyBuild),
     zip_safe=False,
     install_requires=requirements,
     license="TBD",
     keywords="debugging tenstorrent",
-    entry_points={
-        'console_scripts': [
-            'tt-lens = ttlens.cli:main'
-        ]
-    },
+    entry_points={"console_scripts": ["tt-lens = ttlens.cli:main"]},
 )

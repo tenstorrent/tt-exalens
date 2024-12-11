@@ -6,6 +6,7 @@ import os
 
 from typing import Union
 
+
 class GdbFileServer:
     def __init__(self, context):
         self.opened_files: dict[int, io.BytesIO] = dict()

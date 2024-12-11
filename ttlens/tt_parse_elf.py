@@ -131,6 +131,7 @@ class MY_CU:
                         return MY_DIE(dwarf_cu, DIE)
         return None
 
+
 # We only care about the stuff we can use for probing the memory
 IGNORE_TAGS = set(
     [
@@ -139,6 +140,7 @@ IGNORE_TAGS = set(
         "DW_TAG_unspecified_parameters",
     ]
 )
+
 
 class MY_DIE:
     """
@@ -158,10 +160,7 @@ class MY_DIE:
         child = self.children_by_name.get(child_name)
         if child == None:
             for die in self.iter_children():
-                assert (
-                    die.name not in self.children_by_name
-                    or self.children_by_name[die.name] == die
-                )
+                assert die.name not in self.children_by_name or self.children_by_name[die.name] == die
                 self.children_by_name[die.name] = die
                 if die.name == child_name:
                     return die
@@ -431,6 +430,7 @@ def recurse_DIE(DIE: MY_DIE, recurse_dict, r_depth=0):
         if recurse_down:
             recurse_DIE(child, recurse_dict, r_depth + 1)
 
+
 def decode_file_line(dwarfinfo):
     PC_to_fileline_map = {}
     for CU in dwarfinfo.iter_CUs():
@@ -440,24 +440,26 @@ def decode_file_line(dwarfinfo):
         for entry in lineprog.get_entries():
             if entry.state is None:
                 continue
-            filename = lineprog['file_entry'][entry.state.file - delta].name
+            filename = lineprog["file_entry"][entry.state.file - delta].name
             line = entry.state.line
             PC_to_fileline_map[entry.state.address] = (filename, line)
     return PC_to_fileline_map
 
+
 def decode_symbols(elf_file):
     functions = {}
     for section in elf_file.iter_sections():
-            # Check if it's a symbol table section
-            if section.name == '.symtab':
-                # Iterate through symbols
-                for symbol in section.iter_symbols():
-                    # Check if it's a label symbol
-                    if symbol['st_info']['type'] == 'STT_NOTYPE' and symbol.name:
-                        functions[symbol.name] = symbol['st_value']
-                    if symbol['st_info']['type'] == 'STT_FUNC':
-                        functions[symbol.name] = symbol['st_value']
+        # Check if it's a symbol table section
+        if section.name == ".symtab":
+            # Iterate through symbols
+            for symbol in section.iter_symbols():
+                # Check if it's a label symbol
+                if symbol["st_info"]["type"] == "STT_NOTYPE" and symbol.name:
+                    functions[symbol.name] = symbol["st_value"]
+                if symbol["st_info"]["type"] == "STT_FUNC":
+                    functions[symbol.name] = symbol["st_value"]
     return functions
+
 
 def parse_dwarf(dwarf):
     """
@@ -504,9 +506,7 @@ def read_elf(file_ifc, elf_file_path):
     elf = ELFFile(f)
 
     if not elf.has_dwarf_info():
-        print(
-            f"ERROR: {elf_file_path} does not have DWARF info. Source file must be compiled with -g"
-        )
+        print(f"ERROR: {elf_file_path} does not have DWARF info. Source file must be compiled with -g")
         return
     dwarf = elf.get_dwarf_info()
 
@@ -514,6 +514,7 @@ def read_elf(file_ifc, elf_file_path):
 
     recurse_dict["symbols"] = decode_symbols(elf)
     return recurse_dict
+
 
 #
 # Access path parsing / processing
@@ -604,16 +605,12 @@ def mem_access(name_dict, access_path, mem_access_function):
             while ptr_dereference_count > 0:
                 ptr_dereference_count -= 1
                 type_die = type_die.dereference_type
-                current_address = mem_access_function(current_address, 4)[
-                    0
-                ]  # Assuming 4 byte pointers
+                current_address = mem_access_function(current_address, 4)[0]  # Assuming 4 byte pointers
 
             # Check if it is a reference
             if type_die.tag_is("reference_type"):
                 type_die = type_die.dereference_type
-                current_address = mem_access_function(current_address, 4)[
-                    0
-                ]  # Dereference the reference
+                current_address = mem_access_function(current_address, 4)[0]  # Dereference the reference
 
             bytes_to_read = type_die.size * num_members_to_read
             return (
@@ -650,18 +647,14 @@ def mem_access(name_dict, access_path, mem_access_function):
                 member_path = type_die.path + "::" + member_name
                 raise Exception(f"ERROR: Cannot find {member_path}")
             type_die = die.resolved_type
-            current_address = (
-                mem_access_function(current_address, 4)[0] + die.address
-            )  # Assuming 4 byte pointers
+            current_address = mem_access_function(current_address, 4)[0] + die.address  # Assuming 4 byte pointers
 
         elif path_divider == "[":
             if num_members_to_read > 1:
-                raise Exception(
-                    f"INTERNAL ERROR: An array of arrays should be processed in a single call"
-                )
+                raise Exception(f"INTERNAL ERROR: An array of arrays should be processed in a single call")
             array_indices, rest_of_path = get_array_indices("[" + rest_of_path)
-            element_type_die, array_member_offset, num_members_to_read = (
-                get_array_member_offset(type_die, array_indices)
+            element_type_die, array_member_offset, num_members_to_read = get_array_member_offset(
+                type_die, array_indices
             )
             element_size = element_type_die.size
             current_address += element_size * array_member_offset
@@ -714,9 +707,7 @@ def get_array_member_offset(array_type, array_indices):
         offset = 0
         for i in range(len(array_indices)):
             if array_indices[i] >= array_dimensions[i]:
-                raise Exception(
-                    f"ERROR: Array index {array_indices[i]} is out of bounds"
-                )
+                raise Exception(f"ERROR: Array index {array_indices[i]} is out of bounds")
             else:
                 offset += array_indices[i] * subarray_sizes[i]
         num_elements_to_read = subarray_sizes[len(array_indices) - 1]
@@ -762,13 +753,9 @@ if __name__ == "__main__":
         for cat, cat_dict in name_dict.items():
             for key, die in cat_dict.items():
                 if key != die.path:
-                    print(
-                        f"{CLR_RED}ERROR: key {key} != die.get_path() {die.path}{CLR_END}"
-                    )
+                    print(f"{CLR_RED}ERROR: key {key} != die.get_path() {die.path}{CLR_END}")
                 resolved_type_path = die.resolved_type.path
-                if (
-                    resolved_type_path
-                ):  # Some DIEs are just refences to other DIEs. We skip them.
+                if resolved_type_path:  # Some DIEs are just refences to other DIEs. We skip them.
                     row = [
                         cat,
                         die.path,

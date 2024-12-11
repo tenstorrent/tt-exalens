@@ -16,8 +16,8 @@ from ttlens.tt_uistate import UIState
 
 
 command_metadata = {
-    "short": "fd", 
-    "type": "dev", 
+    "short": "fd",
+    "type": "dev",
     "description": __doc__,
     "context": ["limited", "metal"],
 }

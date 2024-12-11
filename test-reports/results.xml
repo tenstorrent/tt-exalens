@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+	<testsuite name="test.ttlens.pybind.test_bindings.TestBindings-20241122124049" tests="10" file="test/ttlens/pybind/test_bindings.py" time="0.005" timestamp="2024-11-22T12:40:49" failures="0" errors="0" skipped="0">
+		<testcase classname="test.ttlens.pybind.test_bindings.TestBindings" name="test_dma_buffer_read32" time="0.003" timestamp="2024-11-22T12:40:49" file="test/ttlens/pybind/test_bindings.py" line="57"/>
+		<testcase classname="test.ttlens.pybind.test_bindings.TestBindings" name="test_get_cluster_description" time="0.000" timestamp="2024-11-22T12:40:49" file="test/ttlens/pybind/test_bindings.py" line="65"/>
+		<testcase classname="test.ttlens.pybind.test_bindings.TestBindings" name="test_get_device_arch" time="0.000" timestamp="2024-11-22T12:40:49" file="test/ttlens/pybind/test_bindings.py" line="75"/>
+		<testcase classname="test.ttlens.pybind.test_bindings.TestBindings" name="test_get_device_ids" time="0.000" timestamp="2024-11-22T12:40:49" file="test/ttlens/pybind/test_bindings.py" line="72"/>
+		<testcase classname="test.ttlens.pybind.test_bindings.TestBindings" name="test_get_device_soc_description" time="0.000" timestamp="2024-11-22T12:40:49" file="test/ttlens/pybind/test_bindings.py" line="78"/>
+		<testcase classname="test.ttlens.pybind.test_bindings.TestBindings" name="test_get_harvester_coordinate_translation" time="0.000" timestamp="2024-11-22T12:40:49" file="test/ttlens/pybind/test_bindings.py" line="68"/>
+		<testcase classname="test.ttlens.pybind.test_bindings.TestBindings" name="test_pci_read_tile" time="0.000" timestamp="2024-11-22T12:40:49" file="test/ttlens/pybind/test_bindings.py" line="62"/>
+		<testcase classname="test.ttlens.pybind.test_bindings.TestBindings" name="test_pci_read_write" time="0.001" timestamp="2024-11-22T12:40:49" file="test/ttlens/pybind/test_bindings.py" line="42"/>
+		<testcase classname="test.ttlens.pybind.test_bindings.TestBindings" name="test_pci_read_write32" time="0.000" timestamp="2024-11-22T12:40:49" file="test/ttlens/pybind/test_bindings.py" line="32"/>
+		<testcase classname="test.ttlens.pybind.test_bindings.TestBindings" name="test_pci_read_write32_raw" time="0.000" timestamp="2024-11-22T12:40:49" file="test/ttlens/pybind/test_bindings.py" line="37"/>
+	</testsuite>
+	<testsuite name="test.ttlens.unit_tests.test_parse_elf.TestParseElf-20241122124049" tests="4" file="test/ttlens/unit_tests/test_parse_elf.py" time="0.191" timestamp="2024-11-22T12:40:49" failures="0" errors="0" skipped="0">
+		<testcase classname="test.ttlens.unit_tests.test_parse_elf.TestParseElf" name="test_array" time="0.059" timestamp="2024-11-22T12:40:49" file="test/ttlens/unit_tests/test_parse_elf.py" line="184">
+			<system-out><![CDATA[
+Compiling array...
+
+Compiling /home/vmilosevic/tt-lens/build/test/assets/array...
+]]></system-out>
+		</testcase>
+		<testcase classname="test.ttlens.unit_tests.test_parse_elf.TestParseElf" name="test_double_array" time="0.046" timestamp="2024-11-22T12:40:49" file="test/ttlens/unit_tests/test_parse_elf.py" line="243">
+			<system-out><![CDATA[
+Compiling /home/vmilosevic/tt-lens/build/test/assets/double_array...
+
+Compiling double_array...
+]]></system-out>
+		</testcase>
+		<testcase classname="test.ttlens.unit_tests.test_parse_elf.TestParseElf" name="test_simple" time="0.061" timestamp="2024-11-22T12:40:49" file="test/ttlens/unit_tests/test_parse_elf.py" line="71">
+			<system-out><![CDATA[
+Compiling simple...
+
+Compiling /home/vmilosevic/tt-lens/build/test/assets/simple...
+]]></system-out>
+		</testcase>
+		<testcase classname="test.ttlens.unit_tests.test_parse_elf.TestParseElf" name="test_union" time="0.024" timestamp="2024-11-22T12:40:49" file="test/ttlens/unit_tests/test_parse_elf.py" line="280">
+			<system-out><![CDATA[
+Compiling /home/vmilosevic/tt-lens/build/test/assets/union...
+]]></system-out>
+		</testcase>
+	</testsuite>
+	<testsuite name="unittest.loader._FailedTest-20241122124049" tests="2" file="unittest/loader.py" time="0.000" timestamp="2024-11-22T12:40:49" failures="0" errors="2" skipped="0">
+		<testcase classname="unittest.loader._FailedTest.test.ttlens.unit_tests" name="test_lib" time="0.000" timestamp="2024-11-22T12:40:49" file="/usr/lib/python3.10/unittest/loader.py" line="33">
+			<error type="ImportError" message="Failed to import test module: test.ttlens.unit_tests.test_lib
+Traceback (most recent call last):
+  File &quot;/usr/lib/python3.10/unittest/loader.py&quot;, line 436, in _find_test_path
+    module = self._get_module_from_name(name)
+  File &quot;/usr/lib/python3.10/unittest/loader.py&quot;, line 377, in _get_module_from_name
+    __import__(name)
+  File &quot;/home/vmilosevic/tt-lens/test/ttlens/unit_tests/test_lib.py&quot;, line 9, in &lt;module&gt;
+    from parameterized import parameterized
+ModuleNotFoundError: No module named 'parameterized'
+"><![CDATA[ImportError: Failed to import test module: test.ttlens.unit_tests.test_lib
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/unittest/loader.py", line 436, in _find_test_path
+    module = self._get_module_from_name(name)
+  File "/usr/lib/python3.10/unittest/loader.py", line 377, in _get_module_from_name
+    __import__(name)
+  File "/home/vmilosevic/tt-lens/test/ttlens/unit_tests/test_lib.py", line 9, in <module>
+    from parameterized import parameterized
+ModuleNotFoundError: No module named 'parameterized'
+
+]]></error>
+		</testcase>
+		<testcase classname="unittest.loader._FailedTest.test.ttlens.unit_tests" name="test_risc_debug" time="0.000" timestamp="2024-11-22T12:40:49" file="/usr/lib/python3.10/unittest/loader.py" line="33">
+			<error type="ImportError" message="Failed to import test module: test.ttlens.unit_tests.test_risc_debug
+Traceback (most recent call last):
+  File &quot;/usr/lib/python3.10/unittest/loader.py&quot;, line 436, in _find_test_path
+    module = self._get_module_from_name(name)
+  File &quot;/usr/lib/python3.10/unittest/loader.py&quot;, line 377, in _get_module_from_name
+    __import__(name)
+  File &quot;/home/vmilosevic/tt-lens/test/ttlens/unit_tests/test_risc_debug.py&quot;, line 5, in &lt;module&gt;
+    from parameterized import parameterized_class
+ModuleNotFoundError: No module named 'parameterized'
+"><![CDATA[ImportError: Failed to import test module: test.ttlens.unit_tests.test_risc_debug
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/unittest/loader.py", line 436, in _find_test_path
+    module = self._get_module_from_name(name)
+  File "/usr/lib/python3.10/unittest/loader.py", line 377, in _get_module_from_name
+    __import__(name)
+  File "/home/vmilosevic/tt-lens/test/ttlens/unit_tests/test_risc_debug.py", line 5, in <module>
+    from parameterized import parameterized_class
+ModuleNotFoundError: No module named 'parameterized'
+
+]]></error>
+		</testcase>
+	</testsuite>
+	<testsuite name="unittest.suite._ErrorHolder-20241122124049" tests="1" file="unittest/suite.py" time="0.000" timestamp="0001-01-01T00:00:00" failures="0" errors="1" skipped="0">
+		<testcase classname="" name="setUpClass (test.ttlens.unit_tests.test_ttlens_init.TestCachedTTLens)" time="0.000" timestamp="0001-01-01T00:00:00" file="/usr/lib/python3.10/unittest/loader.py" line="33">
+			<error type="Exception" message="Failed to open device using pybind library"><![CDATA[Traceback (most recent call last):
+  File "/home/vmilosevic/tt-lens/test/ttlens/unit_tests/test_ttlens_init.py", line 66, in setUpClass
+    context = tt_lens_init.init_ttlens(cache_path=CACHE_PATH)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_init.py", line 38, in init_ttlens
+    lens_ifc = tt_lens_ifc.init_pybind(wanted_devices, init_jtag)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 557, in init_pybind
+    communicator = TTLensPybind(wanted_devices, init_jtag)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 473, in __init__
+    raise Exception("Failed to open device using pybind library")
+Exception: Failed to open device using pybind library
+]]></error>
+		</testcase>
+	</testsuite>
+	<testsuite name="test.ttlens.unit_tests.test_ttlens_init.TestLocalTTLensInit-20241122124049" tests="3" file="test/ttlens/unit_tests/test_ttlens_init.py" time="0.001" timestamp="2024-11-22T12:40:49" failures="0" errors="3" skipped="0">
+		<testcase classname="test.ttlens.unit_tests.test_ttlens_init.TestLocalTTLensInit" name="test_local_init" time="0.000" timestamp="2024-11-22T12:40:49" file="test/ttlens/unit_tests/test_ttlens_init.py" line="21">
+			<!--Test local TTLens initialization.-->
+			<error type="Exception" message="Failed to open device using pybind library"><![CDATA[Traceback (most recent call last):
+  File "/home/vmilosevic/tt-lens/test/ttlens/unit_tests/test_ttlens_init.py", line 23, in test_local_init
+    context = tt_lens_init.init_ttlens()
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_init.py", line 38, in init_ttlens
+    lens_ifc = tt_lens_ifc.init_pybind(wanted_devices, init_jtag)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 557, in init_pybind
+    communicator = TTLensPybind(wanted_devices, init_jtag)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 473, in __init__
+    raise Exception("Failed to open device using pybind library")
+Exception: Failed to open device using pybind library
+]]></error>
+		</testcase>
+		<testcase classname="test.ttlens.unit_tests.test_ttlens_init.TestLocalTTLensInit" name="test_local_wanted_devices" time="0.000" timestamp="2024-11-22T12:40:49" file="test/ttlens/unit_tests/test_ttlens_init.py" line="33">
+			<!--Test local TTLens initialization with specification of wanted devices.-->
+			<error type="Exception" message="Failed to open device using pybind library"><![CDATA[Traceback (most recent call last):
+  File "/home/vmilosevic/tt-lens/test/ttlens/unit_tests/test_ttlens_init.py", line 35, in test_local_wanted_devices
+    context = tt_lens_init.init_ttlens(wanted_devices=[0,])
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_init.py", line 38, in init_ttlens
+    lens_ifc = tt_lens_ifc.init_pybind(wanted_devices, init_jtag)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 557, in init_pybind
+    communicator = TTLensPybind(wanted_devices, init_jtag)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 473, in __init__
+    raise Exception("Failed to open device using pybind library")
+Exception: Failed to open device using pybind library
+]]></error>
+		</testcase>
+		<testcase classname="test.ttlens.unit_tests.test_ttlens_init.TestLocalTTLensInit" name="test_local_with_cache" time="0.000" timestamp="2024-11-22T12:40:49" file="test/ttlens/unit_tests/test_ttlens_init.py" line="27">
+			<!--Test local TTLens initialization with cache.-->
+			<error type="Exception" message="Failed to open device using pybind library"><![CDATA[Traceback (most recent call last):
+  File "/home/vmilosevic/tt-lens/test/ttlens/unit_tests/test_ttlens_init.py", line 29, in test_local_with_cache
+    context = tt_lens_init.init_ttlens(cache_path=CACHE_PATH)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_init.py", line 38, in init_ttlens
+    lens_ifc = tt_lens_ifc.init_pybind(wanted_devices, init_jtag)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 557, in init_pybind
+    communicator = TTLensPybind(wanted_devices, init_jtag)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 473, in __init__
+    raise Exception("Failed to open device using pybind library")
+Exception: Failed to open device using pybind library
+]]></error>
+		</testcase>
+	</testsuite>
+	<testsuite name="test.ttlens.unit_tests.test_ttlens_init.TestRemoteTTLens-20241122124049" tests="2" file="test/ttlens/unit_tests/test_ttlens_init.py" time="11.899" timestamp="2024-11-22T12:41:01" failures="0" errors="2" skipped="0">
+		<testcase classname="test.ttlens.unit_tests.test_ttlens_init.TestRemoteTTLens" name="test_remote_init" time="6.774" timestamp="2024-11-22T12:40:56" file="test/ttlens/unit_tests/test_ttlens_init.py" line="50">
+			<!--Test remote TTLens initialization.-->
+			<error type="TTFatalException" message="Failed to connect to TTLens server."><![CDATA[Traceback (most recent call last):
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 568, in connect_to_server
+    communicator = ttlens_client(ip, port)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 321, in __init__
+    pong = self._communication.ping()
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 80, in ping
+    return self._check(self._socket.recv())
+  File "_zmq.py", line 1137, in zmq.backend.cython._zmq.Socket.recv
+  File "_zmq.py", line 1172, in zmq.backend.cython._zmq.Socket.recv
+  File "_zmq.py", line 1259, in zmq.backend.cython._zmq._recv_copy
+  File "_zmq.py", line 141, in zmq.backend.cython._zmq._check_rc
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/vmilosevic/tt-lens/test/ttlens/unit_tests/test_ttlens_init.py", line 52, in test_remote_init
+    context = tt_lens_init.init_ttlens_remote()
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_init.py", line 62, in init_ttlens_remote
+    lens_ifc = tt_lens_ifc.connect_to_server(ip_address, port)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 571, in connect_to_server
+    raise util.TTFatalException("Failed to connect to TTLens server.")
+ttlens.tt_util.TTFatalException: Failed to connect to TTLens server.
+]]></error>
+		</testcase>
+		<testcase classname="test.ttlens.unit_tests.test_ttlens_init.TestRemoteTTLens" name="test_remote_with_cache" time="5.125" timestamp="2024-11-22T12:41:01" file="test/ttlens/unit_tests/test_ttlens_init.py" line="56">
+			<!--Test remote TTLens initialization with cache.-->
+			<error type="TTFatalException" message="Failed to connect to TTLens server."><![CDATA[Traceback (most recent call last):
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 568, in connect_to_server
+    communicator = ttlens_client(ip, port)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 321, in __init__
+    pong = self._communication.ping()
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 80, in ping
+    return self._check(self._socket.recv())
+  File "_zmq.py", line 1137, in zmq.backend.cython._zmq.Socket.recv
+  File "_zmq.py", line 1172, in zmq.backend.cython._zmq.Socket.recv
+  File "_zmq.py", line 1259, in zmq.backend.cython._zmq._recv_copy
+  File "_zmq.py", line 141, in zmq.backend.cython._zmq._check_rc
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/vmilosevic/tt-lens/test/ttlens/unit_tests/test_ttlens_init.py", line 58, in test_remote_with_cache
+    context = tt_lens_init.init_ttlens_remote(cache_path=CACHE_PATH)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_init.py", line 62, in init_ttlens_remote
+    lens_ifc = tt_lens_ifc.connect_to_server(ip_address, port)
+  File "/home/vmilosevic/tt-lens/ttlens/tt_lens_ifc.py", line 571, in connect_to_server
+    raise util.TTFatalException("Failed to connect to TTLens server.")
+ttlens.tt_util.TTFatalException: Failed to connect to TTLens server.
+]]></error>
+		</testcase>
+	</testsuite>
+</testsuites>

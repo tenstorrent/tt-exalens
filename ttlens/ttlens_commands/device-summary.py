@@ -38,15 +38,14 @@ from ttlens import tt_util as util
 from ttlens.tt_coordinate import VALID_COORDINATE_TYPES
 from ttlens.tt_lens_context import LimitedContext
 
+
 def run(cmd_text, context, ui_state=None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
 
     if args["<device-id>"]:
         device_id = int(args["<device-id>"])
         if device_id not in context.devices:
-            util.ERROR(
-                f"Invalid device ID ({device_id}). Valid devices IDs: {list(context.devices)}"
-            )
+            util.ERROR(f"Invalid device ID ({device_id}). Valid devices IDs: {list(context.devices)}")
             return []
         devices_list = [device_id]
     else:
@@ -54,9 +53,7 @@ def run(cmd_text, context, ui_state=None):
 
     axis_coordinate = args["<axis-coordinate>"] or "netlist"
     if axis_coordinate not in VALID_COORDINATE_TYPES:
-        util.ERROR(
-            f"Invalid axis coordinate type: {axis_coordinate}. Valid types: {VALID_COORDINATE_TYPES}"
-        )
+        util.ERROR(f"Invalid axis coordinate type: {axis_coordinate}. Valid types: {VALID_COORDINATE_TYPES}")
         return []
 
     cell_contents = ""

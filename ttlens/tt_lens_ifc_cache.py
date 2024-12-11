@@ -49,6 +49,7 @@ class TTLensCacheThrough(TTLensCache):
     """
     This class uses a decorator wrapped around the regular interface functions to perform caching.
     """
+
     def cache_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
@@ -155,40 +156,35 @@ class TTLensCacheReader(TTLensCache):
 
     def load(self):
         if os.path.exists(self.filepath):
-            util.INFO(
-                f"Loading server cache from file {self.filepath}"
-            )
+            util.INFO(f"Loading server cache from file {self.filepath}")
             with open(self.filepath, "rb") as f:
                 self.cache = pickle.load(f)
-                util.INFO(
-                    f"  Loaded {len(self.cache)} entries"
-                )
+                util.INFO(f"  Loaded {len(self.cache)} entries")
         else:
             util.ERROR(f"Cache file {self.filepath} does not exist")
 
     """
     The decorator performs all the work of reading from the cache. The functions just provide the correct interface.
     """
+
     def read_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
 
             if key not in self.cache:
-                util.ERROR(
-                    f"Cache miss for {func.__name__}.")
+                util.ERROR(f"Cache miss for {func.__name__}.")
                 raise util.TTException(f"Cache miss for {func.__name__}.")
 
             return self.cache[key]
 
         return wrapper
-    
+
     def read_cached_binary_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
 
             if key not in self.cache:
-                util.ERROR(
-                    f"Cache miss for {func.__name__}.")
+                util.ERROR(f"Cache miss for {func.__name__}.")
                 raise util.TTException(f"Cache miss for {func.__name__}.")
 
             return io.BytesIO(self.cache[key])

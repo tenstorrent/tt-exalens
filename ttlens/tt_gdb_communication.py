@@ -44,6 +44,7 @@ class ClientSocket:
     def write(self, data: bytes):
         self.socket.send(data)
 
+
 # Simple class that wraps listening and accepting connections
 class ServerSocket:
     def __init__(self, port: int):
@@ -58,7 +59,7 @@ class ServerSocket:
         if self.server is None:
             self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.server.bind(('localhost', self.port))
+            self.server.bind(("localhost", self.port))
             self.server.listen(1)
 
     def accept(self, timeout: float = None):
@@ -68,23 +69,23 @@ class ServerSocket:
             return ClientSocket(self.connection)
         except:
             return None
-    
 
     def close(self):
         if self.server is not None:
             self.server.close()
             self.server = None
 
+
 # Constants for ASCII characters
-GDB_ASCII_PLUS = ord('+')
-GDB_ASCII_MINUS = ord('-')
-GDB_ASCII_DOLLAR = ord('$')
-GDB_ASCII_HASH = ord('#')
-GDB_ASCII_ESCAPE_CHAR = ord('}')
-GDB_ASCII_STAR = ord('*')
-GDB_ASCII_SEMICOLON = ord(';')
-GDB_ASCII_COLON = ord(':')
-GDB_ASCII_COMMA = ord(',')
+GDB_ASCII_PLUS = ord("+")
+GDB_ASCII_MINUS = ord("-")
+GDB_ASCII_DOLLAR = ord("$")
+GDB_ASCII_HASH = ord("#")
+GDB_ASCII_ESCAPE_CHAR = ord("}")
+GDB_ASCII_STAR = ord("*")
+GDB_ASCII_SEMICOLON = ord(";")
+GDB_ASCII_COLON = ord(":")
+GDB_ASCII_COMMA = ord(",")
 
 # This class is used to read messages from GDB
 class GdbInputStream:
@@ -110,18 +111,20 @@ class GdbInputStream:
         # Check if it is ack ok
         if self.input_buffer[0] == GDB_ASCII_PLUS:
             self.input_buffer = self.input_buffer[1:]
-            return GdbMessageParser(b'+')
+            return GdbMessageParser(b"+")
 
         # Check if it is ack error
         if self.input_buffer[0] == GDB_ASCII_MINUS:
             self.input_buffer = self.input_buffer[1:]
-            return GdbMessageParser(b'-')
+            return GdbMessageParser(b"-")
 
         # Check if it is message start
         if self.input_buffer[0] != GDB_ASCII_DOLLAR:
             # Respond with ack error, discard input buffer and try to read next message
-            util.ERROR(f"GDB message parsing error: Unexpected character at start of message '{self.input_buffer[0:1].decode()}'")
-            socket.write(b'-')
+            util.ERROR(
+                f"GDB message parsing error: Unexpected character at start of message '{self.input_buffer[0:1].decode()}'"
+            )
+            socket.write(b"-")
             self.input_buffer = bytes()
             return self.read()
 
@@ -145,7 +148,7 @@ class GdbInputStream:
             elif next_char == GDB_ASCII_ESCAPE_CHAR:
                 should_escape = True
             elif next_char == GDB_ASCII_STAR:
-                raise Exception('GDB message parsing error: RLE is not supported')
+                raise Exception("GDB message parsing error: RLE is not supported")
             elif next_char == GDB_ASCII_HASH:
                 position += 1
                 break
@@ -175,9 +178,10 @@ class GdbInputStream:
         # Was checksum correct
         if not correct_checksum:
             util.ERROR(f"GDB message parsing error: Unexpected checksum. expected: '{checksum1:X}{checksum2:X}'")
-            socket.write(b'-')
+            socket.write(b"-")
             return self.read()
         return GdbMessageParser(bytes(self.next_message))
+
 
 class GdbMessageParser:
     def __init__(self, data: bytes):
@@ -186,11 +190,11 @@ class GdbMessageParser:
 
     @property
     def is_ack_ok(self):
-        return self.data == b'+'
+        return self.data == b"+"
 
     @property
     def is_ack_error(self):
-        return self.data == b'-'
+        return self.data == b"-"
 
     # Verifies next characters in the message and advances position if they match
     def parse(self, value: bytes):
@@ -250,9 +254,9 @@ class GdbMessageParser:
         # include a process ID, rather than a thread-id.
 
         # Check if it includes process id
-        if self.parse(b'p'):
+        if self.parse(b"p"):
             process_id = self.parse_hex()
-            if self.parse(b'.'):
+            if self.parse(b"."):
                 return GdbThreadId(process_id, self.parse_hex())
             else:
                 return GdbThreadId(process_id, -1)
@@ -273,7 +277,7 @@ class GdbMessageParser:
         start = self.position
         while self.position < len(self.data):
             if self.data[self.position] == char:
-                read = self.data[start:self.position]
+                read = self.data[start : self.position]
                 self.position += 1
                 return read
             self.position += 1
@@ -289,6 +293,7 @@ class GdbMessageParser:
     @staticmethod
     def is_hex_digit(char: int):
         return (char >= 48 and char <= 57) or (char >= 65 and char <= 70) or (char >= 97 and char <= 102)
+
 
 class GdbMessageWriter:
     def __init__(self, socket: ClientSocket):
@@ -311,7 +316,12 @@ class GdbMessageWriter:
 
     def append_char(self, char: int):
         # Append escaped char
-        if char == GDB_ASCII_DOLLAR or char == GDB_ASCII_HASH or char == GDB_ASCII_STAR or char == GDB_ASCII_ESCAPE_CHAR:
+        if (
+            char == GDB_ASCII_DOLLAR
+            or char == GDB_ASCII_HASH
+            or char == GDB_ASCII_STAR
+            or char == GDB_ASCII_ESCAPE_CHAR
+        ):
             char = char ^ 0x20
             self.data.append(GDB_ASCII_ESCAPE_CHAR)
             self.data.append(char)
@@ -344,9 +354,9 @@ class GdbMessageWriter:
 
     def append_hex_digit(self, digit: int):
         if digit < 10:
-            char = 48 + digit # 48 = ord('0')
+            char = 48 + digit  # 48 = ord('0')
         else:
-            char = 55 + digit # 55 = ord('A') - 10
+            char = 55 + digit  # 55 = ord('A') - 10
         self.data.append(char)
         self.checksum += char
 
@@ -354,9 +364,9 @@ class GdbMessageWriter:
         self.append(value.encode())
 
     def append_thread_id(self, thread_id: GdbThreadId):
-        self.append(b'p')
+        self.append(b"p")
         self.append_hex(thread_id.process_id)
-        self.append(b'.')
+        self.append(b".")
         self.append_hex(thread_id.thread_id)
 
     def send(self):
