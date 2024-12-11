@@ -1,0 +1,89 @@
+
+# MCORE_BASE = 0x10078000
+# SCRATCH_BASE = 0x80030000
+# LOGGER_ADDRESSES = {
+#     "HEARTBEAT": MCORE_BASE + 0x6c4,
+#     "POWER": MCORE_BASE + 0x18,
+#     "CURRENT": MCORE_BASE + 0x14,
+#     "CURR_AICLK": MCORE_BASE + 0x270,
+#     "TOTAL_TIMER_IRQS": MCORE_BASE + 0x6c8,
+#     "TS_AVG": MCORE_BASE + 0x388,
+#     "VOLTAGE_AT_FMAX": MCORE_BASE + 0x330,
+#     "VOLTAGE": MCORE_BASE + 0x10,
+#     "SCRATCH2": SCRATCH_BASE + 0x68,
+#     "SCRATCH3": SCRATCH_BASE + 0x6C,
+#     "SCRATCH4": SCRATCH_BASE + 0x70,
+#     "SCRATCH5": SCRATCH_BASE + 0x74
+# }
+base_addresses:
+  MCORE_BASE: 0x10078000
+  SCRATCH_BASE: 0x80030000
+
+record_configurations:
+  heartbeat:
+    address: MCORE_BASE + 0x6c4
+    size: 1
+    output: int
+  power:
+    address: MCORE_BASE + 0x18
+    size: 1
+    output: float
+  current:
+    address: MCORE_BASE + 0x14
+    size: 1
+    output: float
+  curr_aiclk:
+    address: MCORE_BASE + 0x270
+    size: 1
+    output: int
+  total_timer_irqs:
+    address: MCORE_BASE + 0x6c8
+    size: 1
+    output: int
+  ts_avg:
+    address: MCORE_BASE + 0x388
+    size: 1
+    output: float_div_16
+  voltage_at_fmax:
+    address: MCORE_BASE + 0x330
+    size: 1
+    output: float
+  voltage:
+    address: MCORE_BASE + 0x10
+    size: 1
+    output: float
+  scratch1:
+    address: SCRATCH_BASE + 0x64
+    size: 1
+    output: int
+  scratch2:
+    address: SCRATCH_BASE + 0x68
+    size: 1
+    output: int
+  scratch3:
+    address: SCRATCH_BASE + 0x6c
+    size: 1
+    output: int
+  scratch4:
+    address: SCRATCH_BASE + 0x70
+    size: 1
+    output: int
+  scratch5:
+    address: SCRATCH_BASE + 0x74
+    size: 1
+    output: int
+
+logger_configuration:
+  records: # These will be logged into the circular buffer
+    # - scratch1
+    # - scratch2
+    # - scratch3
+    # - scratch4
+    # - scratch5
+    # - heartbeat
+    - power
+    - current
+    - curr_aiclk
+    - ts_avg
+    - voltage_at_fmax
+    - voltage

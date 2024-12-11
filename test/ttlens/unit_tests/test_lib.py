@@ -26,7 +26,6 @@ from ttlens.arc_dfw.logger_with_pmon.tt_arc_logger_with_pmon_fw import ArcDebugL
 from ttlens.tt_lens_lib_utils import split_32bit_to_16bit
 from ttlens.arc_dfw.tt_arc_dbg_fw_log_context import ArcDfwLogContextFromList, ArcDfwLogContextFromYaml
 
-
 def invalid_argument_decorator(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
