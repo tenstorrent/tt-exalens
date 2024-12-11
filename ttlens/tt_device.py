@@ -440,6 +440,8 @@ class Device(TTObject):
         csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
         rom_data_base_addr = self.PCI_ARC_ROM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_ROM_DATA_BASE_ADDR
 
+        ARC_MCORE_ARC_DBG_FW_DATA_BASE_ADDR = 0x78EEC
+
         self.REGISTER_ADDRESSES = {
             "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
             "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
@@ -452,6 +454,8 @@ class Device(TTObject):
             "ARC_RESET_SCRATCH5": base_addr + 0x074,
             "ARC_CSM_DATA": csm_data_base_addr,
             "ARC_ROM_DATA": rom_data_base_addr,
+            "ARC_MCORE_DBG_BUFFER_ADDR": csm_data_base_addr + ARC_MCORE_ARC_DBG_FW_DATA_BASE_ADDR,
+            "ARC_MCORE_DBG_BUFFER_SIZE": csm_data_base_addr + ARC_MCORE_ARC_DBG_FW_DATA_BASE_ADDR + 4,
         }
 
 

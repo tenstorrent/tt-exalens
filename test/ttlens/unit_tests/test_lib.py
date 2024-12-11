@@ -17,12 +17,19 @@ from ttlens.tt_lens_context import Context
 from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name
 from ttlens.tt_firmware import ELF
 from ttlens.tt_object import DataArray
-import os
+import os,time
 
-from ttlens.tt_arc import load_arc_fw
-from ttlens.tt_arc_dbg_fw import arc_dbg_fw_check_msg_loop_running, arc_dbg_fw_command, NUM_LOG_CALLS_OFFSET
-from ttlens.tt_lens_lib_utils import arc_read
-
+from ttlens.tt_arc import set_udmiaxi_region
+from ttlens.tt_arc_dbg_fw import (
+    arc_dbg_fw_check_msg_loop_running,
+    arc_dbg_fw_command, read_dfw_buffer_header,
+    arc_dbg_fw_get_buffer_start_addr,
+    load_default_arc_dbg_fw,
+    load_arc_dbg_fw
+)
+from ttlens.tt_lens_lib_utils import arc_read, split_32bit_to_16bit
+from ttlens.tt_arc_log_yaml_parser import LogInfo, parse_log_yaml
+from ttlens.tt_arc_dbg_fw_graph import read_arc_dfw_buffer, arc_dbg_fw_graph
 
 def invalid_argument_decorator(func):
     @wraps(func)
@@ -502,13 +509,192 @@ class TestARC(unittest.TestCase):
                 "Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests."
             )
         wait_time = 0.1
-        TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024
+        
+        TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024
+
+        os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
+
 
         for device_id in self.context.device_ids:
-            load_arc_fw(self.fw_file_path, 2, device_id, context=self.context)
-            device = self.context.devices[device_id]
-            arc_core_loc = device.get_arc_block_location()
+            load_arc_dbg_fw(device_id, self.context)
 
-            scratch2 = arc_read(self.context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH2"))
+            reply = read_dfw_buffer_header("msg", device_id, self.context)
 
-            assert scratch2 == 0xBEBACECA
+            assert(reply == 0xbebaceca)
+
+            print("\n---------------------------")
+            buffer_start_addr = arc_dbg_fw_get_buffer_start_addr(device_id, self.context)
+            for i in range(0,23):
+                print(f"{i}: {hex(lib.read_words_from_device('ch0', device_id=device_id, addr=buffer_start_addr+ i*4, word_count=1)[0])}")
+
+            print("---------------------------")
+
+            def arc_dbg_fw_get_number_of_arc_log_calls(device_id):
+                buffer_start_addr = arc_dbg_fw_get_buffer_start_addr(device_id, self.context)
+                return lib.read_words_from_device("ch0", device_id=device_id, addr=buffer_start_addr+ 7*4, word_count=1)[0]
+
+            # start_log_calls = arc_dbg_fw_get_number_of_arc_log_calls(device_id) 
+            # arc_dbg_fw_command("start", device_id, self.context)
+
+            # time.sleep(wait_time)
+            
+            # arc_dbg_fw_command("stop", device_id, self.context)
+            
+            # end_log_calls = arc_dbg_fw_get_number_of_arc_log_calls(device_id)
+            # time.sleep(wait_time)
+            # after_stop_log_calls = arc_dbg_fw_get_number_of_arc_log_calls(device_id)
+
+            # assert(end_log_calls > start_log_calls)
+            # assert(after_stop_log_calls == end_log_calls)
+
+    def test_arc_fw_flashed(self):
+        device_id = 0
+        MSG_TYPE_ARC_DBG_FW_DRAM_BUFFER_ADDR = 0xaa92
+        buffer_addr, buffer_addr2  = split_32bit_to_16bit(0xacacabab)
+        
+        device = self.context.devices[device_id]
+        arc_core_loc = device.get_arc_block_location()
+
+        csm_data_address = device.get_register_addr("ARC_CSM_DATA") + 0x78EEC
+        
+        buffer_addr_pre = arc_read(self.context, device_id, arc_core_loc, csm_data_address)
+        print(buffer_addr_pre)
+
+        response = lib.arc_msg(device_id,MSG_TYPE_ARC_DBG_FW_DRAM_BUFFER_ADDR,1,buffer_addr,buffer_addr2,10,self.context)
+        print(response)
+
+        buffer_addr = arc_read(self.context, device_id, arc_core_loc, csm_data_address)
+        print(hex(buffer_addr))
+
+    def read(self,core_loc,addr,device_id,word_count,file,context):
+        da = DataArray(f"print", 4)
+        data = []
+        for i in range(0,word_count):
+            data.append(arc_read(context, device_id, core_loc, addr + i*4))
+        da.data = data
+        formated = f"{da._id}\n" + tt_util.dump_memory(
+            addr, da.data, 4, 16, True
+        )
+
+        with open(file, 'w') as f:
+            f.write(formated)
+
+
+    def test_udmiaxi_csm(self):
+        device_id = 0
+        device = self.context.devices[device_id]
+        arc_core_loc = device.get_arc_block_location()
+
+        csm_location = device.get_register_addr("ARC_CSM_DATA")
+        word_count = 64 * 1024
+        
+        self.read(arc_core_loc, csm_location, device_id, word_count, "/home/lgojic/tt-debuda/firstread.txt", self.context)
+        
+        set_udmiaxi_region("iccm0", device_id, self.context)
+
+        self.read(arc_core_loc, csm_location, device_id, word_count, "/home/lgojic/tt-debuda/secondread.txt", self.context)
+
+        set_udmiaxi_region("csm", device_id, self.context)
+
+    def test_split_32bit_to_16bit(self):
+        arg0, arg1 = split_32bit_to_16bit(0x12345678)
+        assert arg0 == 0x5678
+        assert arg1 == 0x1234
+
+    fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_communication.hex")
+        
+    def test_load_arc_fw_new_comm(self):
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests.")
+        wait_time = 0.1
+        TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024
+
+        os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
+
+        for device_id in self.context.device_ids:
+            #load_arc_fw(self.fw_file_path,2, device_id, context=self.context)
+            load_arc_dbg_fw(device_id, self.context)
+
+            reply = read_dfw_buffer_header("msg", device_id, self.context)
+
+            assert(reply == 0xbebaceca)
+
+    def read_arc_dfw_buffer(self,buffer_size,device_id):
+        print("\n---------------------------")
+        buffer_start_addr = arc_dbg_fw_get_buffer_start_addr(device_id, self.context)
+        for i in range(0,buffer_size//4):
+            print(f"{i}: {hex(lib.read_words_from_device('ch0', device_id=device_id, addr=buffer_start_addr+ i*4, word_count=1)[0])}")
+
+        print("---------------------------")
+
+    def test_instruction_modification(self):
+        TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024
+
+        os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
+
+        for device_id in self.context.device_ids:
+            load_arc_dbg_fw(device_id, self.context)
+
+            reply = read_dfw_buffer_header("msg", device_id, self.context)
+
+            assert(reply == 0xbebaceca)
+
+            # start logging
+            arc_dbg_fw_command("start", device_id, self.context)
+
+            time.sleep(0.02)
+            self.read_arc_dfw_buffer(TT_METAL_ARC_DEBUG_BUFFER_SIZE,device_id)
+
+    def test_fw_reset(self):
+        device_id =0
+        TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024
+
+        load_arc_dbg_fw("fw/arc/arc_test_edited1.hex",4,device_id, self.context)
+
+        reply = read_dfw_buffer_header("msg", device_id, self.context)
+        assert(reply == 0xbebaceca)
+
+        arc_dbg_fw_command("start", device_id, self.context)
+        time.sleep(0.02)
+        arc_dbg_fw_command("stop", device_id, self.context)
+
+        self.read_arc_dfw_buffer(TT_METAL_ARC_DEBUG_BUFFER_SIZE,device_id)
+
+        arc_dbg_fw_command("reset", device_id, self.context)
+        time.sleep(0.01)
+        reset_reply = read_dfw_buffer_header("msg", device_id, self.context) >> 16
+        #assert reply>>16 == 0x1
+
+        running1 = arc_dbg_fw_check_msg_loop_running(device_id, self.context)
+        load_arc_dbg_fw("fw/arc/arc_test_edited2.hex",2,device_id, self.context)
+        #running2 = arc_dbg_fw_check_msg_loop_running(device_id, self.context)
+        reply = read_dfw_buffer_header("msg", device_id, self.context)
+        assert(reply == 0xbebaceca)
+
+        arc_dbg_fw_command("start", device_id, self.context)
+        time.sleep(0.02)
+        arc_dbg_fw_command("stop", device_id, self.context)
+
+        self.read_arc_dfw_buffer(TT_METAL_ARC_DEBUG_BUFFER_SIZE,device_id)
+
+        #reply = read_dfw_buffer_header("msg", device_id, self.context)
+    def test_2(self):
+        device_id =0
+        TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024*64*4
+        
+        os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
+
+        log_yaml_location  = "fw/arc/log/default.yaml"
+        parsed_yaml_data = parse_log_yaml(log_yaml_location)
+
+        load_arc_dbg_fw("fw/arc/arc_dbg_fw.hex" ,parsed_yaml_data ,device_id, self.context)
+        reply = read_dfw_buffer_header("msg", device_id, self.context)
+        #assert(reply == 0xbebaceca)
+        
+        arc_dbg_fw_graph(parsed_yaml_data,device_id, self.context)
+
+        #arc_dbg_fw_command("start", device_id, self.context)
+        #time.sleep(0.02)
+        #arc_dbg_fw_command("stop", device_id, self.context)
+
+        #self.read_arc_dfw_buffer(TT_METAL_ARC_DEBUG_BUFFER_SIZE,device_id)
