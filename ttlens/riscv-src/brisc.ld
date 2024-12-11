@@ -1,6 +1,8 @@
-// SPDX-FileCopyrightText: (c) 2024 Tenstorrent AI ULC
-//
-// SPDX-License-Identifier: Apache-2.0
+/*
+ * SPDX-FileCopyrightText: (c) 2024 Tenstorrent AI ULC
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 REGION_ALIAS("REGION_CODE", BRISC_CODE)
 REGION_ALIAS("REGION_DATA", BRISC_LOCAL_DATA_MEM)
 REGION_ALIAS("REGION_STACK", BRISC_STACK_MEM)
