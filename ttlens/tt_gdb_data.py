@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from ttlens.tt_debug_risc import RiscDebug
 
+
 @dataclass
 class GdbThreadId:
     process_id: int
@@ -12,6 +13,7 @@ class GdbThreadId:
 
     def to_gdb_string(self):
         return f"p{self.process_id}.{self.thread_id}"
+
 
 @dataclass
 class GdbProcess:

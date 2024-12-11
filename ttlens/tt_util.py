@@ -39,7 +39,8 @@ def notify_exception(exc_type, exc_value, tb):
             f"{CLR_RED}{fn}:{line_number}{CLR_END}",
             f"{CLR_RED}{func_name}{CLR_END}",
             f"{CLR_RED}{exc_type.__name__}: {exc_value}{CLR_END}",
-        ])
+        ]
+    )
 
     # Exceptions thrown from importlib set these
     if hasattr(exc_value, "filename") and hasattr(exc_value, "lineno"):
@@ -425,7 +426,7 @@ class YamlFile:
         self.filepath = filepath
         self.content = content
         self.file_ifc = file_ifc
-        
+
         # Some files (such as pipegen.yaml) contain multiple documents (separated by ---). We post-process them
         self.post_process_yaml = post_process_yaml
         YamlFile.file_cache[self.filepath] = None
@@ -448,11 +449,9 @@ class YamlFile:
                 for i in ryml_load_all(self.content):
                     self.root = {**self.root, **i}
             YamlFile.file_cache[self.filepath] = self.root
-            VERBOSE(
-                f" ({len(self.content)} bytes loaded in {time.time() - current_time:.2f}s)"
-            )
+            VERBOSE(f" ({len(self.content)} bytes loaded in {time.time() - current_time:.2f}s)")
 
-            # Remove unneeded reference 
+            # Remove unneeded reference
             if self.content:
                 del self.content
 
@@ -580,13 +579,7 @@ class CELLFMT:
 
     def hex(bytes_per_entry, prefix="0x", postfix=""):
         def hex_formatter(r, c, i, val):
-            return (
-                prefix
-                + "{vrednost:{fmt}}".format(
-                    fmt="0" + str(bytes_per_entry * 2) + "x", vrednost=val
-                )
-                + postfix
-            )
+            return prefix + "{vrednost:{fmt}}".format(fmt="0" + str(bytes_per_entry * 2) + "x", vrednost=val) + postfix
 
         return hex_formatter
 
@@ -651,18 +644,12 @@ def array_to_str(
     header = list(range(num_cols))
     rows = []
     for r in range(start_row, end_row):
-        if skip_border_rows and (
-            r >= skip_border_rows and r < end_row - skip_border_rows
-        ):
+        if skip_border_rows and (r >= skip_border_rows and r < end_row - skip_border_rows):
             if not skip_rows_rendered:
                 rows.append(["..."] * num_cols)
                 skip_rows_rendered = True
         else:
-            row = (
-                []
-                if not show_row_index
-                else [row_index_formatter(r, r * num_cols, r * num_cols, r)]
-            )
+            row = [] if not show_row_index else [row_index_formatter(r, r * num_cols, r * num_cols, r)]
             for c in range(num_cols):
                 i = r * num_cols + c
                 if i < lena:
@@ -773,9 +760,7 @@ def trace(func):
 
         # Print with indentation
         if doc:
-            TRACER_FUNCTION(
-                f"{' ' * TRACE_NESTING_LEVEL}{func.__name__}({arguments}): {doc.strip().splitlines()[0]}"
-            )
+            TRACER_FUNCTION(f"{' ' * TRACE_NESTING_LEVEL}{func.__name__}({arguments}): {doc.strip().splitlines()[0]}")
             # Increase nesting level for nested calls
             TRACE_NESTING_LEVEL += 2
 

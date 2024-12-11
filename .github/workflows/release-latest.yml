@@ -6,7 +6,7 @@ on:
       - "main"
 
 run-name: "Release latest ttlens wheel, activated by updating main."
-  
+
 jobs:
   pre-release:
     strategy:
@@ -60,4 +60,3 @@ jobs:
           title: "Development Build"
           files: |
             *.whl
-          

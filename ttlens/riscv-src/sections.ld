@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: (c) 2024 Tenstorrent AI ULC
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 __firmware_stack_size = LENGTH(REGION_STACK);
 __firmware_start = DEFINED(__fw_export_end_text) ? __fw_export_end_text : ORIGIN(REGION_CODE);
 __ldm_start = DEFINED(__fw_export_ldm_end) ? __fw_export_ldm_end : ORIGIN(REGION_DATA);

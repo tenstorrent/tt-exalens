@@ -1,6 +1,6 @@
 <div align="center">
 <h1> TTLens </h1>
-  
+
 A low level hardware debugger
 
 <img src="./docs/images/tt_logo_stacked_color.png" alt="ttnn logo" height="100"/>
@@ -166,20 +166,32 @@ For more advanced use cases, refer to the source code of the documentation gener
 
 ### Static checks
 
-To be sure that the code passes static checks in the CI pipeline, you can run
+#### Pre-commit
 
-```bash
-pip install -r ./infra/requirements-infra.txt
-python -m check_copyright --verbose --config infra/copyright-config.yaml 
+We have defined various pre-commit hooks that check the code for formatting, licensing issues, etc.
+
+To install pre-commit, run the following command:
+
+```sh
+source env/activate
+pip install pre-commit
 ```
 
-which will add license headers and newlines at file ands where neccessary, and
+After installing pre-commit, you can install the hooks by running:
 
-```bash
-./scripts/clang-format-repo.sh
+```sh
+pre-commit install
 ```
 
-which will format C++ files.
+Now, each time you run `git commit` the pre-commit hooks (checks) will be executed.
+
+If you have already committed before installing the pre-commit hooks, you can run on all files to "catch up":
+
+```sh
+pre-commit run --all-files
+```
+
+For more information visit [pre-commit](https://pre-commit.com/)
 
 ### Updating docker images
 

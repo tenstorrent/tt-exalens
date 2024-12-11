@@ -320,7 +320,7 @@ currently loaded netlist.
 
 Shows op mapping for all devices
 ```
-device             
+device
 ```
 Output:
 ```
@@ -338,7 +338,7 @@ Output:
 ```
 Shows noc0 to nocTr mapping for device 0
 ```
-device 0 noc0      
+device 0 noc0
 ```
 Output:
 ```
@@ -467,11 +467,11 @@ Commands for RISC-V debugging:
 
 Halt brisc
 ```
-riscv halt                      
+riscv halt
 ```
 Print status
 ```
-riscv status                    
+riscv status
 ```
 Output:
 ```
@@ -482,43 +482,43 @@ Output:
 ```
 Step
 ```
-riscv step                      
+riscv step
 ```
 Continue
 ```
-riscv cont                      
+riscv cont
 ```
 Write a word to address 0
 ```
-riscv wr 0x0 0x2010006f         
+riscv wr 0x0 0x2010006f
 ```
 Read a word from address 0
 ```
-riscv rd 0x0                    
+riscv rd 0x0
 ```
 Write a word to register 1
 ```
-riscv wreg 1 0xabcd             
+riscv wreg 1 0xabcd
 ```
 Read a word from register 1
 ```
-riscv rreg 1                    
+riscv rreg 1
 ```
 Set breakpoint
 ```
-riscv bkpt set 0 0x1244         
+riscv bkpt set 0 0x1244
 ```
 Delete breakpoint
 ```
-riscv bkpt del 0                
+riscv bkpt del 0
 ```
 Set a read watchpoint
 ```
-riscv wchpt setr 0 0xc          
+riscv wchpt setr 0 0xc
 ```
 Set a write watchpoint
 ```
-riscv wchpt setw 0 0xc          
+riscv wchpt setw 0 0xc
 ```
 
 
@@ -651,7 +651,7 @@ Reads and prints a block of data from address 'addr' at core <core-loc>.
 
 Read 1 word from address 0
 ```
-brxy 18-18 0x0 1                          
+brxy 18-18 0x0 1
 ```
 Output:
 ```
@@ -660,7 +660,7 @@ Output:
 ```
 Read 16 words from address 0
 ```
-brxy 18-18 0x0 16                         
+brxy 18-18 0x0 16
 ```
 Output:
 ```
@@ -672,7 +672,7 @@ Output:
 ```
 Prints 32 bytes in i8 format
 ```
-brxy 18-18 0x0 32 --format i8             
+brxy 18-18 0x0 32 --format i8
 ```
 Output:
 ```
@@ -688,7 +688,7 @@ Output:
 ```
 Sample for 5 seconds
 ```
-brxy 18-18 0x0 32 --format i8 --sample 5  
+brxy 18-18 0x0 32 --format i8 --sample 5
 ```
 Output:
 ```
@@ -716,7 +716,7 @@ Sampling for 0.15625 seconds...
 ```
 Read 16 words from dram channel 0
 ```
-brxy ch0 0x0 16                           
+brxy ch0 0x0 16
 ```
 Output:
 ```
@@ -726,9 +726,3 @@ ch0 (DRAM) : 0x00000000 (64 bytes)
 0x00000020:  00000000  00000000  00000000  00000000
 0x00000030:  00000000  00000000  00000000  00000000
 ```
-
-
-
-
-
-

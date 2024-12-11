@@ -37,13 +37,9 @@ def run(cmd_text, context, ui_state: UIState = None):
     current_device = context.devices[current_device_id]
 
     if args["<core-loc>"]:
-        core_locations = [
-            OnChipCoordinate.create(args["<core-loc>"], device=current_device)
-        ]
+        core_locations = [OnChipCoordinate.create(args["<core-loc>"], device=current_device)]
     else:
-        core_locations = current_device.get_block_locations(
-            block_type="functional_workers"
-        )
+        core_locations = current_device.get_block_locations(block_type="functional_workers")
 
     for core_loc in core_locations:
         print(f"=== Debug registers for core {core_loc.to_str()} ===")
@@ -55,12 +51,8 @@ def run(cmd_text, context, ui_state: UIState = None):
         render_tables = [dict()] * len(THREADS)
         for thread_idx in range(len(THREADS)):
             for reg_id, reg_vals in enumerate(debug_tables[thread_idx]):
-                render_tables[thread_idx][f"DBG[{2 * reg_id}]"] = (
-                    "0x%04x" % reg_vals["lo_val"]
-                )
-                render_tables[thread_idx][f"DBG[{2 * reg_id + 1}]"] = (
-                    "0x%04x" % reg_vals["hi_val"]
-                )
+                render_tables[thread_idx][f"DBG[{2 * reg_id}]"] = "0x%04x" % reg_vals["lo_val"]
+                render_tables[thread_idx][f"DBG[{2 * reg_id + 1}]"] = "0x%04x" % reg_vals["hi_val"]
 
         # Finally, print the table:
         util.print_columnar_dicts(render_tables, [*THREADS])

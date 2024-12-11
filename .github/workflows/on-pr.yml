@@ -6,8 +6,8 @@ on:
     branches: [ "main" ]
 
 jobs:
-  static-checks:
-    uses: ./.github/workflows/static-checks.yml
+  pre-commit:
+    uses: ./.github/workflows/pre-commit.yml
     secrets: inherit
   build-and-test:
     uses: ./.github/workflows/build-and-test.yml

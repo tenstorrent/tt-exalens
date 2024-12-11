@@ -54,35 +54,46 @@ class BlackholeL1AddressMap(tt_device.L1AddressMap):
 
         ## Taken from l1_address_map.h. Ideally make this auto-generated
         self._l1_address_map = dict()
-        self._l1_address_map["trisc0"] = tt_device.BinarySlot(offset_bytes = 0 + 20 * 1024 + 32 * 1024, size_bytes = 20 * 1024)
-        self._l1_address_map["trisc1"] = tt_device.BinarySlot(offset_bytes = self._l1_address_map["trisc0"].offset_bytes + self._l1_address_map["trisc0"].size_bytes, size_bytes = 16 * 1024)
-        self._l1_address_map["trisc2"] = tt_device.BinarySlot(offset_bytes = self._l1_address_map["trisc1"].offset_bytes + self._l1_address_map["trisc1"].size_bytes, size_bytes = 20 * 1024)
+        self._l1_address_map["trisc0"] = tt_device.BinarySlot(
+            offset_bytes=0 + 20 * 1024 + 32 * 1024, size_bytes=20 * 1024
+        )
+        self._l1_address_map["trisc1"] = tt_device.BinarySlot(
+            offset_bytes=self._l1_address_map["trisc0"].offset_bytes + self._l1_address_map["trisc0"].size_bytes,
+            size_bytes=16 * 1024,
+        )
+        self._l1_address_map["trisc2"] = tt_device.BinarySlot(
+            offset_bytes=self._l1_address_map["trisc1"].offset_bytes + self._l1_address_map["trisc1"].size_bytes,
+            size_bytes=20 * 1024,
+        )
         # Brisc, ncrisc, to be added
+
 
 class BlackholeDRAMEpochCommandAddressMap(tt_device.L1AddressMap):
     def __init__(self):
         super().__init__()
-        
+
         ## Taken from dram_address_map.h. Ideally make this auto-generated
         self._l1_address_map = dict()
-        self._l1_address_map["trisc0"] = tt_device.BinarySlot(offset_bytes = -1, size_bytes = 20 * 1024)
-        self._l1_address_map["trisc1"] = tt_device.BinarySlot(offset_bytes = -1, size_bytes = 16 * 1024)
-        self._l1_address_map["trisc2"] = tt_device.BinarySlot(offset_bytes = -1, size_bytes = 20 * 1024)
+        self._l1_address_map["trisc0"] = tt_device.BinarySlot(offset_bytes=-1, size_bytes=20 * 1024)
+        self._l1_address_map["trisc1"] = tt_device.BinarySlot(offset_bytes=-1, size_bytes=16 * 1024)
+        self._l1_address_map["trisc2"] = tt_device.BinarySlot(offset_bytes=-1, size_bytes=20 * 1024)
         # Brisc, ncrisc, to be added
+
 
 class BlackholeEthL1AddressMap(tt_device.L1AddressMap):
     def __init__(self):
         super().__init__()
-        
+
         ## Taken from l1_address_map.h. Ideally make this auto-generated
         self._l1_address_map = dict()
         # erisc, erisc-app to be added
+
 
 #
 # Device
 #
 class BlackholeDevice(tt_device.Device):
-    SIG_SEL_CONST = 5 # TODO (#75): Unknown constant!!!!
+    SIG_SEL_CONST = 5  # TODO (#75): Unknown constant!!!!
     # IMPROVE: some of this can be read from architecture yaml file
     DRAM_CHANNEL_TO_NOC0_LOC = [(0, 11), (0, 2), (0, 8), (0, 5), (9, 11), (9, 2), (9, 8), (9, 5)]
 
@@ -95,14 +106,14 @@ class BlackholeDevice(tt_device.Device):
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
     NOC_1_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_1_X)
     NOC_1_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_1_Y)
-    
+
     PCI_ARC_RESET_BASE_ADDR = 0x1FF30000
     PCI_ARC_CSM_DATA_BASE_ADDR = 0x1FE80000
-    PCI_ARC_ROM_DATA_BASE_ADDR = 0x1FF00000 
+    PCI_ARC_ROM_DATA_BASE_ADDR = 0x1FF00000
 
     NOC_ARC_RESET_BASE_ADDR = 0x80030000
     NOC_ARC_CSM_DATA_BASE_ADDR = 0x10000000
-    NOC_ARC_ROM_DATA_BASE_ADDR = 0x80000000 
+    NOC_ARC_ROM_DATA_BASE_ADDR = 0x80000000
 
     # TODO (#89): Translated coordinates are not correct in blackhole. We need to understand what is happening to them since there are three columns now that are not tensix compared to two in wormhole. For now just an identity mapping
     NOC0_X_TO_NOCTR_X = {i: i for i in range(0, len(NOC_0_X_TO_DIE_X))}
@@ -120,13 +131,9 @@ class BlackholeDevice(tt_device.Device):
         else:
             noc0_x, noc0_y = loc
         if noc0_x == 0 or noc0_x == 8 or noc0_x == 9:
-            raise CoordinateTranslationError(
-                "NOC0 x=0 and x=8 and x=9 do not have an RC coordinate"
-            )
+            raise CoordinateTranslationError("NOC0 x=0 and x=8 and x=9 do not have an RC coordinate")
         if noc0_y == 0 or noc0_y == 1:
-            raise CoordinateTranslationError(
-                "NOC0 y=0 and y=1 do not have an RC coordinate"
-            )
+            raise CoordinateTranslationError("NOC0 y=0 and y=1 do not have an RC coordinate")
         row = noc0_y - 2
         col = noc0_x - 1
         if noc0_x > 9:
@@ -146,7 +153,18 @@ class BlackholeDevice(tt_device.Device):
         self.nocTr_x_to_noc0_x = {i: i for i in range(0, self.row_count())}
 
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
-        super().__init__(id, arch, cluster_desc, {"functional_workers": BlackholeL1AddressMap(), "eth": BlackholeEthL1AddressMap(), "dram": BlackholeDRAMEpochCommandAddressMap()}, device_desc_path, context)
+        super().__init__(
+            id,
+            arch,
+            cluster_desc,
+            {
+                "functional_workers": BlackholeL1AddressMap(),
+                "eth": BlackholeEthL1AddressMap(),
+                "dram": BlackholeDRAMEpochCommandAddressMap(),
+            },
+            device_desc_path,
+            context,
+        )
 
     def row_count(self):
         return len(BlackholeDevice.DIE_Y_TO_NOC_0_Y)
@@ -173,17 +191,11 @@ class BlackholeDevice(tt_device.Device):
     def read_stream_regs_direct(self, loc, stream_id):
         reg = {}
         reg["STREAM_ID"] = self.get_stream_reg_field(loc, stream_id, 224 + 5, 24, 6)
-        reg["PHASE_AUTO_CFG_PTR (word addr)"] = self.get_stream_reg_field(
-            loc, stream_id, 12, 0, 24
-        )
+        reg["PHASE_AUTO_CFG_PTR (word addr)"] = self.get_stream_reg_field(loc, stream_id, 12, 0, 24)
         reg["CURR_PHASE"] = self.get_stream_reg_field(loc, stream_id, 11, 0, 20)
 
-        reg["CURR_PHASE_NUM_MSGS_REMAINING"] = self.get_stream_reg_field(
-            loc, stream_id, 36, 12, 12
-        )
-        reg["NUM_MSGS_RECEIVED"] = self.get_stream_reg_field(
-            loc, stream_id, 224 + 5, 0, 24
-        )
+        reg["CURR_PHASE_NUM_MSGS_REMAINING"] = self.get_stream_reg_field(loc, stream_id, 36, 12, 12)
+        reg["NUM_MSGS_RECEIVED"] = self.get_stream_reg_field(loc, stream_id, 224 + 5, 0, 24)
         reg["NEXT_MSG_ADDR"] = self.get_stream_reg_field(loc, stream_id, 224 + 6, 0, 32)
         reg["NEXT_MSG_SIZE"] = self.get_stream_reg_field(loc, stream_id, 224 + 7, 0, 32)
         reg["OUTGOING_DATA_NOC"] = self.get_stream_reg_field(loc, stream_id, 10, 1, 1)
@@ -196,123 +208,63 @@ class BlackholeDevice(tt_device.Device):
         reg["LOCAL_RECEIVER"] = self.get_stream_reg_field(loc, stream_id, 10, 7, 1)
         remote_receiver = self.get_stream_reg_field(loc, stream_id, 10, 8, 1)
         reg["REMOTE_RECEIVER"] = remote_receiver
-        reg["NEXT_PHASE_SRC_CHANGE"] = self.get_stream_reg_field(
-            loc, stream_id, 10, 12, 1
-        )
-        reg["NEXT_PHASE_DST_CHANGE"] = self.get_stream_reg_field(
-            loc, stream_id, 10, 13, 1
-        )
+        reg["NEXT_PHASE_SRC_CHANGE"] = self.get_stream_reg_field(loc, stream_id, 10, 12, 1)
+        reg["NEXT_PHASE_DST_CHANGE"] = self.get_stream_reg_field(loc, stream_id, 10, 13, 1)
 
         if remote_source == 1:
-            reg["INCOMING_DATA_NOC"] = self.get_stream_reg_field(
-                loc, stream_id, 10, 0, 1
-            )
+            reg["INCOMING_DATA_NOC"] = self.get_stream_reg_field(loc, stream_id, 10, 0, 1)
             reg["REMOTE_SRC_X"] = self.get_stream_reg_field(loc, stream_id, 0, 0, 6)
             reg["REMOTE_SRC_Y"] = self.get_stream_reg_field(loc, stream_id, 0, 6, 6)
-            reg["REMOTE_SRC_STREAM_ID"] = self.get_stream_reg_field(
-                loc, stream_id, 0, 12, 6
-            )
-            reg["REMOTE_SRC_UPDATE_NOC"] = self.get_stream_reg_field(
-                loc, stream_id, 10, 2, 1
-            )
-            reg["REMOTE_SRC_PHASE"] = self.get_stream_reg_field(
-                loc, stream_id, 1, 0, 20
-            )
-            reg["REMOTE_SRC_DEST_INDEX"] = self.get_stream_reg_field(
-                loc, stream_id, 0, 18, 6
-            )
-            reg["REMOTE_SRC_IS_MCAST"] = self.get_stream_reg_field(
-                loc, stream_id, 10, 16, 1
-            )
+            reg["REMOTE_SRC_STREAM_ID"] = self.get_stream_reg_field(loc, stream_id, 0, 12, 6)
+            reg["REMOTE_SRC_UPDATE_NOC"] = self.get_stream_reg_field(loc, stream_id, 10, 2, 1)
+            reg["REMOTE_SRC_PHASE"] = self.get_stream_reg_field(loc, stream_id, 1, 0, 20)
+            reg["REMOTE_SRC_DEST_INDEX"] = self.get_stream_reg_field(loc, stream_id, 0, 18, 6)
+            reg["REMOTE_SRC_IS_MCAST"] = self.get_stream_reg_field(loc, stream_id, 10, 16, 1)
 
         if remote_receiver == 1:
-            reg["OUTGOING_DATA_NOC"] = self.get_stream_reg_field(
-                loc, stream_id, 10, 1, 1
-            )
-            reg["REMOTE_DEST_STREAM_ID"] = self.get_stream_reg_field(
-                loc, stream_id, 2, 12, 6
-            )
+            reg["OUTGOING_DATA_NOC"] = self.get_stream_reg_field(loc, stream_id, 10, 1, 1)
+            reg["REMOTE_DEST_STREAM_ID"] = self.get_stream_reg_field(loc, stream_id, 2, 12, 6)
             reg["REMOTE_DEST_X"] = self.get_stream_reg_field(loc, stream_id, 2, 0, 6)
             reg["REMOTE_DEST_Y"] = self.get_stream_reg_field(loc, stream_id, 2, 6, 6)
-            reg["REMOTE_DEST_BUF_START"] = self.get_stream_reg_field(
-                loc, stream_id, 3, 0, 16
-            )
-            reg["REMOTE_DEST_BUF_SIZE"] = self.get_stream_reg_field(
-                loc, stream_id, 4, 0, 16
-            )
-            reg["REMOTE_DEST_BUF_WR_PTR"] = self.get_stream_reg_field(
-                loc, stream_id, 5, 0, 16
-            )
-            reg["REMOTE_DEST_MSG_INFO_WR_PTR"] = self.get_stream_reg_field(
-                loc, stream_id, 9, 0, 16
-            )
-            reg["DEST_DATA_BUF_NO_FLOW_CTRL"] = self.get_stream_reg_field(
-                loc, stream_id, 10, 15, 1
-            )
+            reg["REMOTE_DEST_BUF_START"] = self.get_stream_reg_field(loc, stream_id, 3, 0, 16)
+            reg["REMOTE_DEST_BUF_SIZE"] = self.get_stream_reg_field(loc, stream_id, 4, 0, 16)
+            reg["REMOTE_DEST_BUF_WR_PTR"] = self.get_stream_reg_field(loc, stream_id, 5, 0, 16)
+            reg["REMOTE_DEST_MSG_INFO_WR_PTR"] = self.get_stream_reg_field(loc, stream_id, 9, 0, 16)
+            reg["DEST_DATA_BUF_NO_FLOW_CTRL"] = self.get_stream_reg_field(loc, stream_id, 10, 15, 1)
             mcast_en = self.get_stream_reg_field(loc, stream_id, 13, 12, 1)
             reg["MCAST_EN"] = mcast_en
             if mcast_en == 1:
                 reg["MCAST_END_X"] = self.get_stream_reg_field(loc, stream_id, 13, 0, 6)
                 reg["MCAST_END_Y"] = self.get_stream_reg_field(loc, stream_id, 13, 6, 6)
-                reg["MCAST_LINKED"] = self.get_stream_reg_field(
-                    loc, stream_id, 13, 13, 1
-                )
+                reg["MCAST_LINKED"] = self.get_stream_reg_field(loc, stream_id, 13, 13, 1)
                 reg["MCAST_VC"] = self.get_stream_reg_field(loc, stream_id, 13, 14, 1)
-                reg["MCAST_DEST_NUM"] = self.get_stream_reg_field(
-                    loc, stream_id, 14, 0, 16
-                )
+                reg["MCAST_DEST_NUM"] = self.get_stream_reg_field(loc, stream_id, 14, 0, 16)
                 for i in range(0, 31):
-                    reg["DEST_BUF_SPACE_AVAILABLE[{i:d}]"] = self.get_stream_reg_field(
-                        loc, stream_id, 64 + i, 0, 32
-                    )
+                    reg["DEST_BUF_SPACE_AVAILABLE[{i:d}]"] = self.get_stream_reg_field(loc, stream_id, 64 + i, 0, 32)
             else:
-                reg["DEST_BUF_SPACE_AVAILABLE[0]"] = self.get_stream_reg_field(
-                    loc, stream_id, 64, 0, 32
-                )
+                reg["DEST_BUF_SPACE_AVAILABLE[0]"] = self.get_stream_reg_field(loc, stream_id, 64, 0, 32)
 
         if local_sources_connected == 1:
             local_src_mask_lo = self.get_stream_reg_field(loc, stream_id, 48, 0, 32)
             local_src_mask_hi = self.get_stream_reg_field(loc, stream_id, 49, 0, 32)
             local_src_mask = (local_src_mask_hi << 32) | local_src_mask_lo
             reg["LOCAL_SRC_MASK"] = local_src_mask
-            reg["MSG_ARB_GROUP_SIZE"] = self.get_stream_reg_field(
-                loc, stream_id, 15, 0, 3
-            )
-            reg["MSG_SRC_IN_ORDER_FWD"] = self.get_stream_reg_field(
-                loc, stream_id, 15, 3, 1
-            )
-            reg["STREAM_MSG_SRC_IN_ORDER_FWD_NUM_MSREG_INDEX"] = (
-                self.get_stream_reg_field(loc, stream_id, 16, 0, 24)
-            )
+            reg["MSG_ARB_GROUP_SIZE"] = self.get_stream_reg_field(loc, stream_id, 15, 0, 3)
+            reg["MSG_SRC_IN_ORDER_FWD"] = self.get_stream_reg_field(loc, stream_id, 15, 3, 1)
+            reg["STREAM_MSG_SRC_IN_ORDER_FWD_NUM_MSREG_INDEX"] = self.get_stream_reg_field(loc, stream_id, 16, 0, 24)
         else:
-            reg["BUF_START (word addr)"] = self.get_stream_reg_field(
-                loc, stream_id, 6, 0, 16
+            reg["BUF_START (word addr)"] = self.get_stream_reg_field(loc, stream_id, 6, 0, 16)
+            reg["BUF_SIZE (words)"] = self.get_stream_reg_field(loc, stream_id, 7, 0, 16)
+            reg["BUF_RD_PTR (word addr)"] = self.get_stream_reg_field(loc, stream_id, 24, 0, 16)
+            reg["BUF_WR_PTR (word addr)"] = self.get_stream_reg_field(loc, stream_id, 25, 0, 16)
+            reg["MSG_INFO_PTR (word addr)"] = self.get_stream_reg_field(loc, stream_id, 8, 0, 16)
+            reg["MSG_INFO_WR_PTR (word addr)"] = self.get_stream_reg_field(loc, stream_id, 26, 0, 16)
+            reg["STREAM_BUF_SPACE_AVAILABLE_REG_INDEX (word addr)"] = self.get_stream_reg_field(
+                loc, stream_id, 28, 0, 16
             )
-            reg["BUF_SIZE (words)"] = self.get_stream_reg_field(
-                loc, stream_id, 7, 0, 16
-            )
-            reg["BUF_RD_PTR (word addr)"] = self.get_stream_reg_field(
-                loc, stream_id, 24, 0, 16
-            )
-            reg["BUF_WR_PTR (word addr)"] = self.get_stream_reg_field(
-                loc, stream_id, 25, 0, 16
-            )
-            reg["MSG_INFO_PTR (word addr)"] = self.get_stream_reg_field(
-                loc, stream_id, 8, 0, 16
-            )
-            reg["MSG_INFO_WR_PTR (word addr)"] = self.get_stream_reg_field(
-                loc, stream_id, 26, 0, 16
-            )
-            reg["STREAM_BUF_SPACE_AVAILABLE_REG_INDEX (word addr)"] = (
-                self.get_stream_reg_field(loc, stream_id, 28, 0, 16)
-            )
-            reg["DATA_BUF_NO_FLOW_CTRL"] = self.get_stream_reg_field(
-                loc, stream_id, 10, 14, 1
-            )
+            reg["DATA_BUF_NO_FLOW_CTRL"] = self.get_stream_reg_field(loc, stream_id, 10, 14, 1)
             reg["UNICAST_VC_REG"] = self.get_stream_reg_field(loc, stream_id, 10, 18, 3)
-            reg["REG_UPDATE_VC_REG"] = self.get_stream_reg_field(
-                loc, stream_id, 10, 21, 3
-            )
+            reg["REG_UPDATE_VC_REG"] = self.get_stream_reg_field(loc, stream_id, 10, 21, 3)
 
         reg["SCRATCH_REG0"] = self.get_stream_reg_field(loc, stream_id, 248, 0, 32)
         reg["SCRATCH_REG1"] = self.get_stream_reg_field(loc, stream_id, 249, 0, 32)
@@ -321,23 +273,13 @@ class BlackholeDevice(tt_device.Device):
         reg["SCRATCH_REG4"] = self.get_stream_reg_field(loc, stream_id, 252, 0, 32)
         reg["SCRATCH_REG5"] = self.get_stream_reg_field(loc, stream_id, 253, 0, 32)
         for i in range(0, 10):
-            reg[f"DEBUG_STATUS[{i:d}]"] = self.get_stream_reg_field(
-                loc, stream_id, 224 + i, 0, 32
-            )
+            reg[f"DEBUG_STATUS[{i:d}]"] = self.get_stream_reg_field(loc, stream_id, 224 + i, 0, 32)
             if i == 8:
                 phase_state = self.get_stream_reg_field(loc, stream_id, 224 + i, 0, 4)
-                src_ready_state = self.get_stream_reg_field(
-                    loc, stream_id, 224 + i, 4, 3
-                )
-                dest_ready_state = self.get_stream_reg_field(
-                    loc, stream_id, 224 + i, 7, 3
-                )
-                src_side_phase_complete = self.get_stream_reg_field(
-                    loc, stream_id, 224 + i, 10, 1
-                )
-                dest_side_phase_complete = self.get_stream_reg_field(
-                    loc, stream_id, 224 + i, 11, 1
-                )
+                src_ready_state = self.get_stream_reg_field(loc, stream_id, 224 + i, 4, 3)
+                dest_ready_state = self.get_stream_reg_field(loc, stream_id, 224 + i, 7, 3)
+                src_side_phase_complete = self.get_stream_reg_field(loc, stream_id, 224 + i, 10, 1)
+                dest_side_phase_complete = self.get_stream_reg_field(loc, stream_id, 224 + i, 11, 1)
                 src_state = self.get_stream_reg_field(loc, stream_id, 224 + i, 16, 4)
                 dest_state = self.get_stream_reg_field(loc, stream_id, 224 + i, 20, 3)
                 # IMPROVE: add back the interpretation in get_as_str
@@ -369,9 +311,7 @@ class BlackholeDevice(tt_device.Device):
         else:
             return "Tensix"
 
-    def read_print_noc_reg(
-        self, loc, noc_id, reg_name, reg_index, reg_type=tt_device.Device.RegType.Status
-    ):
+    def read_print_noc_reg(self, loc, noc_id, reg_name, reg_index, reg_type=tt_device.Device.RegType.Status):
         if reg_type == tt_device.Device.RegType.Cmd:
             status_offset = 0
         elif reg_type == tt_device.Device.RegType.Config:
@@ -404,10 +344,10 @@ class BlackholeDevice(tt_device.Device):
         return 0xFFEF0000
 
     __configuration_register_map = {
-        'DISABLE_RISC_BP_Disable_main': tt_device.TensixRegisterDescription(address=2 * 4, mask=0x400000, shift=22),
-        'DISABLE_RISC_BP_Disable_trisc': tt_device.TensixRegisterDescription(address=2 * 4, mask=0x3800000, shift=23),
-        'DISABLE_RISC_BP_Disable_ncrisc': tt_device.TensixRegisterDescription(address=2 * 4, mask=0x4000000, shift=26),
-        'RISCV_IC_INVALIDATE_InvalidateAll': tt_device.TensixRegisterDescription(address=185 * 4, mask=0x1f, shift=0),
+        "DISABLE_RISC_BP_Disable_main": tt_device.TensixRegisterDescription(address=2 * 4, mask=0x400000, shift=22),
+        "DISABLE_RISC_BP_Disable_trisc": tt_device.TensixRegisterDescription(address=2 * 4, mask=0x3800000, shift=23),
+        "DISABLE_RISC_BP_Disable_ncrisc": tt_device.TensixRegisterDescription(address=2 * 4, mask=0x4000000, shift=26),
+        "RISCV_IC_INVALIDATE_InvalidateAll": tt_device.TensixRegisterDescription(address=185 * 4, mask=0x1F, shift=0),
     }
 
     def get_configuration_register_description(self, register_name: str) -> tt_device.TensixRegisterDescription:
@@ -419,23 +359,51 @@ class BlackholeDevice(tt_device.Device):
         return 0xFFB12000
 
     __debug_register_map = {
-        'RISCV_DEBUG_REG_RISC_DBG_CNTL_0': tt_device.TensixRegisterDescription(address=0x80, mask=0xffffffff, shift=0),
-        'RISCV_DEBUG_REG_RISC_DBG_CNTL_1': tt_device.TensixRegisterDescription(address=0x84, mask=0xffffffff, shift=0),
-        'RISCV_DEBUG_REG_RISC_DBG_STATUS_0': tt_device.TensixRegisterDescription(address=0x88, mask=0xffffffff, shift=0),
-        'RISCV_DEBUG_REG_RISC_DBG_STATUS_1': tt_device.TensixRegisterDescription(address=0x8c, mask=0xffffffff, shift=0),
-        'RISCV_DEBUG_REG_SOFT_RESET_0': tt_device.TensixRegisterDescription(address=0x1b0, mask=0xffffffff, shift=0),
-        'TRISC_RESET_PC_SEC0_PC': tt_device.TensixRegisterDescription(address=0x228, mask=0xffffffff, shift=0), # Old name from configuration register
-        'RISCV_DEBUG_REG_TRISC0_RESET_PC': tt_device.TensixRegisterDescription(address=0x228, mask=0xffffffff, shift=0), # New name
-        'TRISC_RESET_PC_SEC1_PC': tt_device.TensixRegisterDescription(address=0x22c, mask=0xffffffff, shift=0), # Old name from configuration register
-        'RISCV_DEBUG_REG_TRISC1_RESET_PC': tt_device.TensixRegisterDescription(address=0x22c, mask=0xffffffff, shift=0), # New name
-        'TRISC_RESET_PC_SEC2_PC': tt_device.TensixRegisterDescription(address=0x230, mask=0xffffffff, shift=0), # Old name from configuration register
-        'RISCV_DEBUG_REG_TRISC2_RESET_PC': tt_device.TensixRegisterDescription(address=0x230, mask=0xffffffff, shift=0), # New name
-        'TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': tt_device.TensixRegisterDescription(address=0x234, mask=0x7, shift=0), # Old name from configuration register
-        'RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE': tt_device.TensixRegisterDescription(address=0x234, mask=0x7, shift=0), # New name
-        'NCRISC_RESET_PC_PC': tt_device.TensixRegisterDescription(address=0x238, mask=0xffffffff, shift=0), # Old name from configuration register
-        'RISCV_DEBUG_REG_NCRISC_RESET_PC': tt_device.TensixRegisterDescription(address=0x238, mask=0xffffffff, shift=0), # New name
-        'NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': tt_device.TensixRegisterDescription(address=0x23c, mask=0x1, shift=0), # Old name from configuration register
-        'RISCV_DEBUG_REG_NCRISC_RESET_PC_OVERRIDE': tt_device.TensixRegisterDescription(address=0x23c, mask=0x1, shift=0), # New name
+        "RISCV_DEBUG_REG_RISC_DBG_CNTL_0": tt_device.TensixRegisterDescription(address=0x80, mask=0xFFFFFFFF, shift=0),
+        "RISCV_DEBUG_REG_RISC_DBG_CNTL_1": tt_device.TensixRegisterDescription(address=0x84, mask=0xFFFFFFFF, shift=0),
+        "RISCV_DEBUG_REG_RISC_DBG_STATUS_0": tt_device.TensixRegisterDescription(
+            address=0x88, mask=0xFFFFFFFF, shift=0
+        ),
+        "RISCV_DEBUG_REG_RISC_DBG_STATUS_1": tt_device.TensixRegisterDescription(
+            address=0x8C, mask=0xFFFFFFFF, shift=0
+        ),
+        "RISCV_DEBUG_REG_SOFT_RESET_0": tt_device.TensixRegisterDescription(address=0x1B0, mask=0xFFFFFFFF, shift=0),
+        "TRISC_RESET_PC_SEC0_PC": tt_device.TensixRegisterDescription(
+            address=0x228, mask=0xFFFFFFFF, shift=0
+        ),  # Old name from configuration register
+        "RISCV_DEBUG_REG_TRISC0_RESET_PC": tt_device.TensixRegisterDescription(
+            address=0x228, mask=0xFFFFFFFF, shift=0
+        ),  # New name
+        "TRISC_RESET_PC_SEC1_PC": tt_device.TensixRegisterDescription(
+            address=0x22C, mask=0xFFFFFFFF, shift=0
+        ),  # Old name from configuration register
+        "RISCV_DEBUG_REG_TRISC1_RESET_PC": tt_device.TensixRegisterDescription(
+            address=0x22C, mask=0xFFFFFFFF, shift=0
+        ),  # New name
+        "TRISC_RESET_PC_SEC2_PC": tt_device.TensixRegisterDescription(
+            address=0x230, mask=0xFFFFFFFF, shift=0
+        ),  # Old name from configuration register
+        "RISCV_DEBUG_REG_TRISC2_RESET_PC": tt_device.TensixRegisterDescription(
+            address=0x230, mask=0xFFFFFFFF, shift=0
+        ),  # New name
+        "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": tt_device.TensixRegisterDescription(
+            address=0x234, mask=0x7, shift=0
+        ),  # Old name from configuration register
+        "RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE": tt_device.TensixRegisterDescription(
+            address=0x234, mask=0x7, shift=0
+        ),  # New name
+        "NCRISC_RESET_PC_PC": tt_device.TensixRegisterDescription(
+            address=0x238, mask=0xFFFFFFFF, shift=0
+        ),  # Old name from configuration register
+        "RISCV_DEBUG_REG_NCRISC_RESET_PC": tt_device.TensixRegisterDescription(
+            address=0x238, mask=0xFFFFFFFF, shift=0
+        ),  # New name
+        "NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": tt_device.TensixRegisterDescription(
+            address=0x23C, mask=0x1, shift=0
+        ),  # Old name from configuration register
+        "RISCV_DEBUG_REG_NCRISC_RESET_PC_OVERRIDE": tt_device.TensixRegisterDescription(
+            address=0x23C, mask=0x1, shift=0
+        ),  # New name
     }
 
     def get_debug_register_description(self, register_name: str) -> tt_device.TensixRegisterDescription:

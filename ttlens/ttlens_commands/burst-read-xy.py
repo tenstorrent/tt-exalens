@@ -67,9 +67,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     word_count = int(args["<word-count>"]) if args["<word-count>"] else size_words
     format = args["--format"] if args["--format"] else "hex32"
     if format not in util.PRINT_FORMATS:
-        raise util.TTException(
-            f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}"
-        )
+        raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
 
     offsets = args["-o"]
     for offset in offsets:
@@ -114,7 +112,9 @@ def print_a_pci_burst_read(
 ):
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
-    core_loc_str =  f"{core_loc_str} (L1) :" if not core_loc_str.lower().startswith("ch") else f"{core_loc_str.lower()} (DRAM) :"
+    core_loc_str = (
+        f"{core_loc_str} (L1) :" if not core_loc_str.lower().startswith("ch") else f"{core_loc_str.lower()} (DRAM) :"
+    )
 
     if sample == 0:  # No sampling, just a single read
         da = DataArray(f"{core_loc_str} 0x{addr:08x} ({word_count * 4} bytes)", 4)
@@ -122,22 +122,16 @@ def print_a_pci_burst_read(
         da.data = data
         if bytes_per_entry != 4:
             da.to_bytes_per_entry(bytes_per_entry)
-        formated = f"{da._id}\n" + util.dump_memory(
-            addr, da.data, bytes_per_entry, 16, is_hex
-        )
+        formated = f"{da._id}\n" + util.dump_memory(addr, da.data, bytes_per_entry, 16, is_hex)
         print(formated)
     else:
         for i in range(word_count):
             values = {}
-            print(
-                f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}..."
-            )
+            print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
             t_end = time.time() + sample / word_count
             while time.time() < t_end:
-                val = read_from_device(
-                    core_loc, addr, device_id, context=context
-                )
-                val = int.from_bytes(val, byteorder="little") 
+                val = read_from_device(core_loc, addr, device_id, context=context)
+                val = int.from_bytes(val, byteorder="little")
                 if val not in values:
                     values[val] = 0
                 values[val] += 1

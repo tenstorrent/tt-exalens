@@ -18,8 +18,8 @@ Examples:
 """
 
 command_metadata = {
-    "short": "wxy", 
-    "type": "low-level", 
+    "short": "wxy",
+    "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],
 }
