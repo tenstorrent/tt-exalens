@@ -28,4 +28,6 @@ RUN cd $TT_LENS_INFRA_DIR \
     && cd gdb-14.2 \
     && ./configure \
     && make -j$(nproc) \
-    && make install
+    && make install \
+    && cd / \
+    && rm -rf $TT_LENS_INFRA_DIR
