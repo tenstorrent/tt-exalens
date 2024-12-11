@@ -335,32 +335,29 @@ def inject_instruction(
     validate_instruction(instruction, context)
     validate_trisc_id(trisc_id, context)
     validate_device_id(device_id, context)
+    device = context.devices[device_id]
 
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
 
-    DBG_INSTRN_BUF_CTRL0 = 0xFFB120A0
-    DBG_INSTRN_BUF_CTRL1 = 0xFFB120A4
-    DBG_INSTRN_BUF_STATUS = 0xFFB120A8
-
     # 1. Wait for buffer ready signal (poll bit 0 of DBG_INSTRN_BUF_STATUS until it’s 1)
-    while (read_word_from_device(core_loc, DBG_INSTRN_BUF_STATUS, device_id, context) & 1) == 0:
+    while (read_word_from_device(core_loc, device.DBG_INSTRN_BUF_STATUS, device_id, context) & 1) == 0:
         pass
 
-    write_to_device(core_loc, DBG_INSTRN_BUF_CTRL0, [0x07], device_id, context)
+    write_to_device(core_loc, device.DBG_INSTRN_BUF_CTRL0, [0x07], device_id, context)
 
     # 2. Assemble 32-bit instruction and write it to DBG_INSTRN_BUF_CTRL1
-    write_to_device(core_loc, DBG_INSTRN_BUF_CTRL1, instruction, device_id, context)
+    write_to_device(core_loc, device.DBG_INSTRN_BUF_CTRL1, instruction, device_id, context)
 
     # 3. Set bit 0(trigger) and bit 4 (override en) to 1 in DBG_INSTRN_BUF_CTRL0 to inject instruction.
-    write_to_device(core_loc, DBG_INSTRN_BUF_CTRL0, [0x7 | (0x10 << trisc_id)], device_id, context)
+    write_to_device(core_loc, device.DBG_INSTRN_BUF_CTRL0, [0x7 | (0x10 << trisc_id)], device_id, context)
 
     # 4. Clear DBG_INSTRN_BUF_CTRL0 register
-    write_to_device(core_loc, DBG_INSTRN_BUF_CTRL0, [0x07], device_id, context)
-    write_to_device(core_loc, DBG_INSTRN_BUF_CTRL0, [0x00], device_id, context)
+    write_to_device(core_loc, device.DBG_INSTRN_BUF_CTRL0, [0x07], device_id, context)
+    write_to_device(core_loc, device.DBG_INSTRN_BUF_CTRL0, [0x00], device_id, context)
 
     # 5. Wait for buffer empty signal to make sure instruction completed (poll bit 4 of DBG_INSTRN_BUF_STATUS until it’s 1)
-    while (read_word_from_device(core_loc, DBG_INSTRN_BUF_STATUS, device_id, context) & 0x10) == 0:
+    while (read_word_from_device(core_loc, device.DBG_INSTRN_BUF_STATUS, device_id, context) & 0x10) == 0:
         pass
 
 
@@ -384,17 +381,16 @@ def read_regfile(
     context = check_context(context)
     validate_regfile_id(regfile_id, context)
     validate_device_id(device_id, context)
+    device = context.devices[device_id]
+    if device._arch != "wormhole_b0":
+        raise TTException("This functinality is only supported on wormhole.")
 
     from ttlens.tt_wormhole_ops import TT_OP_MOVDBGA2D, TT_OP_SETRWC
 
-    RISCV_DEBUG_REG_DBG_ARRAY_RD_EN = 0xFFB12060
-    RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD = 0xFFB12064
-    RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA = 0xFFB1206C
-
     if regfile_id == REGFILE_SRCB:
-        raise "Not implemented"
+        raise TTException("SRCB register file is not supported.")
 
-    write_to_device(core_loc, RISCV_DEBUG_REG_DBG_ARRAY_RD_EN, [0x1], device_id, context)
+    write_to_device(core_loc, device.RISCV_DEBUG_REG_DBG_ARRAY_RD_EN, [0x1], device_id, context)
     data = []
     if regfile_id == REGFILE_SRCA:
         inject_instruction(
@@ -413,14 +409,16 @@ def read_regfile(
             dbg_array_rd_cmd = row + (i << 12) + (2 << 16)
             write_to_device(
                 core_loc,
-                RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD,
+                device.RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD,
                 dbg_array_rd_cmd.to_bytes(4, byteorder="little"),
                 device_id,
                 context,
             )
-            rd_data = read_word_from_device(core_loc, RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA, device_id, context=context)
+            rd_data = read_word_from_device(
+                core_loc, device.RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA, device_id, context=context
+            )
             data += list(int.to_bytes(rd_data, 4, byteorder="big"))
 
-    write_to_device(core_loc, RISCV_DEBUG_REG_DBG_ARRAY_RD_EN, [0x0], device_id, context)
-    write_to_device(core_loc, RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD, [0x0], device_id, context)
+    write_to_device(core_loc, device.RISCV_DEBUG_REG_DBG_ARRAY_RD_EN, [0x0], device_id, context)
+    write_to_device(core_loc, device.RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD, [0x0], device_id, context)
     return data
