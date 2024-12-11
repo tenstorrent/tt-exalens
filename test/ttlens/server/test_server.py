@@ -36,7 +36,6 @@ def empty_pci_write32():
 def empty_pci_read():
     global server
     check_not_implemented_response(lambda: server.pci_read(1, 2, 3, 123456, 1024))
-    raise Exception("This should not be reached")
 
 
 def empty_pci_read32_raw():
