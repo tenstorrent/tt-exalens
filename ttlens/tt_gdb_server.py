@@ -6,7 +6,16 @@ import threading
 from typing import Dict, List, Set
 from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 
-from ttlens.tt_gdb_communication import GDB_ASCII_COLON, GDB_ASCII_COMMA, GDB_ASCII_SEMICOLON, ClientSocket, GdbInputStream, GdbMessageParser, GdbMessageWriter, ServerSocket
+from ttlens.tt_gdb_communication import (
+    GDB_ASCII_COLON,
+    GDB_ASCII_COMMA,
+    GDB_ASCII_SEMICOLON,
+    ClientSocket,
+    GdbInputStream,
+    GdbMessageParser,
+    GdbMessageWriter,
+    ServerSocket,
+)
 from ttlens.tt_gdb_data import GdbProcess, GdbThreadId
 from ttlens.tt_gdb_file_server import GdbFileServer
 from ttlens.tt_lens_context import Context
@@ -15,7 +24,7 @@ from ttlens import tt_util as util
 
 # Helper class returns currently debugging list of threads to gdb client in paged manner
 class GdbThreadListPaged:
-    def __init__(self, threads: Dict[int,GdbThreadId]):
+    def __init__(self, threads: Dict[int, GdbThreadId]):
         self.threads = [thread for thread in threads.values() if isinstance(thread, GdbThreadId)]
         self.returned = 0
 
@@ -39,33 +48,48 @@ class GdbThreadListPaged:
         writer.append_string(message)
         self.returned = index
 
+
 # Class that serves gdb client requests
 # Gdb remote protocol documentation: https://sourceware.org/gdb/current/onlinedocs/gdb.html/Remote-Protocol.html
 class GdbServer(threading.Thread):
     def __init__(self, context: Context, server: ServerSocket):
-        super().__init__(daemon=True) # Spawn as deamon, so we don't block exit
-        self.context = context # TTLens context
-        self.server = server # server socket used for listening to incoming connections
-        self.is_connected = False # flag that indicates if gdb client is connected
-        self.is_non_stop = False # flag that indicates if we are in non-stop mode
-        self.should_ack = True # flag that indicates if we should send ack after each message
-        self.stop_event = threading.Event() # event that indicates that server should stop
+        super().__init__(daemon=True)  # Spawn as deamon, so we don't block exit
+        self.context = context  # TTLens context
+        self.server = server  # server socket used for listening to incoming connections
+        self.is_connected = False  # flag that indicates if gdb client is connected
+        self.is_non_stop = False  # flag that indicates if we are in non-stop mode
+        self.should_ack = True  # flag that indicates if we should send ack after each message
+        self.stop_event = threading.Event()  # event that indicates that server should stop
 
-        self.prepared_responses_for_paging: Dict[str,str] = {} # prepared responses for paged messages
-        self.client_features: Dict[str,object] = {} # dictionary of supported gdb client features (key: feature, value: mostly True/False, but can be anything)
-        self.paged_thread_list: GdbThreadListPaged = None # helper class that returns list of threads in paged manner
-        self.file_server: GdbFileServer = GdbFileServer(context) # File server that serves gdb client file operations
-        self.vCont_pending_statuses: List[str] = [] # List of status reports that should be returned to gdb client (it is stored in reversed order, so we can pop it from the end of the list)
+        self.prepared_responses_for_paging: Dict[str, str] = {}  # prepared responses for paged messages
+        self.client_features: Dict[
+            str, object
+        ] = (
+            {}
+        )  # dictionary of supported gdb client features (key: feature, value: mostly True/False, but can be anything)
+        self.paged_thread_list: GdbThreadListPaged = None  # helper class that returns list of threads in paged manner
+        self.file_server: GdbFileServer = GdbFileServer(context)  # File server that serves gdb client file operations
+        self.vCont_pending_statuses: List[
+            str
+        ] = (
+            []
+        )  # List of status reports that should be returned to gdb client (it is stored in reversed order, so we can pop it from the end of the list)
 
-        self.current_process: GdbProcess = None # currently debugging process (core/thread - all in one)
-        self.debugging_threads: Dict[int,GdbThreadId] = {} # Dictionary of threads that are currently being debugged (key: pid)
+        self.current_process: GdbProcess = None  # currently debugging process (core/thread - all in one)
+        self.debugging_threads: Dict[
+            int, GdbThreadId
+        ] = {}  # Dictionary of threads that are currently being debugged (key: pid)
         self.next_pid = 1
-        self._last_available_processes: Dict[RiscLoc,GdbProcess] = {} # Dictionary of last executed available processes that can be debugged (key: pid)
+        self._last_available_processes: Dict[
+            RiscLoc, GdbProcess
+        ] = {}  # Dictionary of last executed available processes that can be debugged (key: pid)
 
     @property
     def available_processes(self):
-        available_processes: Dict[int,GdbProcess] = {} # Dictionary of available processes that can be debugged (key: pid)
-        last_available_processes: Dict[RiscLoc,GdbProcess] = {}
+        available_processes: Dict[
+            int, GdbProcess
+        ] = {}  # Dictionary of available processes that can be debugged (key: pid)
+        last_available_processes: Dict[RiscLoc, GdbProcess] = {}
         for device in self.context.devices.values():
             for risc_debug in device.debuggable_cores:
                 if not risc_debug.is_in_reset():
@@ -79,10 +103,12 @@ class GdbServer(threading.Thread):
                     # TODO: In ideal world, we would have "start time" for a core (time when core was taken out of reset) and use that as a key for reusing process id; for now, we can just check if elf path is the same
                     last_process = self._last_available_processes.get(risc_debug.location)
                     if last_process is None or last_process.elf_path != elf_path:
-                        core_type = "worker" # TODO: once we add support for ETH cores, we should update this
+                        core_type = "worker"  # TODO: once we add support for ETH cores, we should update this
                         pid = self.next_pid
                         self.next_pid += 1
-                        virtual_core = pid # TODO: Maybe we should actually have some mapping from RiscLoc to virtual core
+                        virtual_core = (
+                            pid  # TODO: Maybe we should actually have some mapping from RiscLoc to virtual core
+                        )
                         process = GdbProcess(pid, elf_path, risc_debug, virtual_core, core_type)
                     else:
                         process = last_process
@@ -129,10 +155,10 @@ class GdbServer(threading.Thread):
                 should_ack = self.should_ack
                 if self.process_message(parser, writer):
                     if should_ack:
-                        client.write(b'+')
+                        client.write(b"+")
                     writer.send()
             except Exception as e:
-                client.write(b'-')
+                client.write(b"-")
                 util.ERROR(f"GDB exception: {e}")
         util.VERBOSE("GDB client closed")
 
@@ -152,9 +178,11 @@ class GdbServer(threading.Thread):
             # We ignore error if we cannot decode message
             pass
 
-        if parser.parse(b"!"): # Enable extended mode.
+        if parser.parse(b"!"):  # Enable extended mode.
             writer.append(b"OK")
-        elif parser.parse(b"?"): # This is sent when connection is first established to query the reason the target halted.
+        elif parser.parse(
+            b"?"
+        ):  # This is sent when connection is first established to query the reason the target halted.
             # Check if we are debugging some thread
             if self.current_process is None:
                 # Respond that process exited with exit status 0.
@@ -169,18 +197,26 @@ class GdbServer(threading.Thread):
         elif parser.parse(b"A"):
             # We don't support initialization of argv
             writer.append(b"E01")
-        elif parser.parse(b"c"): # Continue at addr, which is the address to resume. If addr is omitted, resume at current address.
+        elif parser.parse(
+            b"c"
+        ):  # Continue at addr, which is the address to resume. If addr is omitted, resume at current address.
             # ‘c [addr]’
             address = parser.parse_hex()
             if address is not None:
-                util.WARN(f"GDB: client want to continue at address: {address}, but we don't support that. We will continue at current address.")
-            util.ERROR(f"GDB: client uses single threaded continue instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message")
+                util.WARN(
+                    f"GDB: client want to continue at address: {address}, but we don't support that. We will continue at current address."
+                )
+            util.ERROR(
+                f"GDB: client uses single threaded continue instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message"
+            )
             writer.append(b"E01")
-        elif parser.parse(b"C"): # Continue with signal sig (hex signal number). If ‘;addr’ is omitted, resume at same address.
+        elif parser.parse(
+            b"C"
+        ):  # Continue with signal sig (hex signal number). If ‘;addr’ is omitted, resume at same address.
             # ‘C sig[;addr]’
             # We don't support signaling
             writer.append(b"E01")
-        elif parser.parse(b"D"): # Detach GDB from the remote system, or detach only a specific process.
+        elif parser.parse(b"D"):  # Detach GDB from the remote system, or detach only a specific process.
             # ‘D’
             # ‘D;pid’
             if parser.parse(b";"):
@@ -213,14 +249,14 @@ class GdbServer(threading.Thread):
                             process.risc_debug.cont()
                 self.debugging_threads.clear()
                 writer.append(b"OK")
-        elif parser.parse(b"g"): # Read general registers.
+        elif parser.parse(b"g"):  # Read general registers.
             # ‘g’
             # Register definitions: https://github.com/riscvarchive/riscv-binutils-gdb/blob/5da071ef0965b8054310d8dde9975037b0467311/gdb/features/riscv/32bit-cpu.c
             # TODO: Use arc to read registers faster
             for j in range(0, GdbServer.REGISTER_COUNT):
                 value = self.current_process.risc_debug.read_gpr(j)
                 writer.append_register_hex(value)
-        elif parser.parse(b"G"): # Write general registers.
+        elif parser.parse(b"G"):  # Write general registers.
             # ‘G XX...’
             # TODO: There are two optimizations: 1. Use arc to write registers faster 2. If read was done during halt, we know some registers and we can skip writing them if they didn't change
             for j in range(0, GdbServer.REGISTER_COUNT):
@@ -234,7 +270,7 @@ class GdbServer(threading.Thread):
                         return True
                     self.current_process.risc_debug.write_gpr(j, value)
             writer.append(b"OK")
-        elif parser.parse(b"H"): # Set thread for subsequent operations (‘m’, ‘M’, ‘g’, ‘G’, et.al.).
+        elif parser.parse(b"H"):  # Set thread for subsequent operations (‘m’, ‘M’, ‘g’, ‘G’, et.al.).
             # ‘H op thread-id’
             op = parser.read_char()
             thread_id = parser.parse_thread_id()
@@ -266,22 +302,22 @@ class GdbServer(threading.Thread):
                 else:
                     self.current_process = process
                     writer.append(b"OK")
-        elif parser.parse(b"i"): # Step the remote target by a single clock cycle.
+        elif parser.parse(b"i"):  # Step the remote target by a single clock cycle.
             # ‘i [addr[,nnn]]’
             # We don't support step by single clock cycle
             writer.append(b"E01")
-        elif parser.parse(b"I"): # Signal, then cycle step.
+        elif parser.parse(b"I"):  # Signal, then cycle step.
             # ‘I’
             # We don't support step by single clock cycle
             writer.append(b"E01")
-        elif parser.parse(b"k"): # Kill request.
+        elif parser.parse(b"k"):  # Kill request.
             # TODO: ‘k’
             # TODO: We should raise exception and close client connection. Also, we should detach from all processes and let device continue working as it was before we connected.
             pass
-        elif parser.parse(b"m"): # Read length addressable memory units starting at address addr.
+        elif parser.parse(b"m"):  # Read length addressable memory units starting at address addr.
             # ‘m addr,length’
             address = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             length = parser.parse_hex()
 
             if self.current_process is None:
@@ -294,9 +330,12 @@ class GdbServer(threading.Thread):
                 first_offset = address % 4
                 if first_offset != 0:
                     value = self.current_process.risc_debug.read_memory(address - first_offset)
-                    buffer = value.to_bytes(4, byteorder='little')
+                    buffer = value.to_bytes(4, byteorder="little")
                     used_bytes = min(4 - first_offset, length)
-                    writer.append_hex(int.from_bytes(buffer[first_offset:first_offset + used_bytes], byteorder='little'), 2 * used_bytes)
+                    writer.append_hex(
+                        int.from_bytes(buffer[first_offset : first_offset + used_bytes], byteorder="little"),
+                        2 * used_bytes,
+                    )
                     length -= used_bytes
                     address += used_bytes
 
@@ -310,14 +349,14 @@ class GdbServer(threading.Thread):
                 # Read last 4 bytes of unaligned data
                 if length > 0:
                     value = self.current_process.risc_debug.read_memory(address)
-                    buffer = value.to_bytes(4, byteorder='little')
-                    writer.append_hex(int.from_bytes(buffer[:length], byteorder='little'), 2 * length)
-        elif parser.parse(b"M"): # Write length addressable memory units starting at address addr.
+                    buffer = value.to_bytes(4, byteorder="little")
+                    writer.append_hex(int.from_bytes(buffer[:length], byteorder="little"), 2 * length)
+        elif parser.parse(b"M"):  # Write length addressable memory units starting at address addr.
             # ‘M addr,length:XX…’
             address = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             length = parser.parse_hex()
-            parser.parse(b':')
+            parser.parse(b":")
             data = parser.read_rest()
             if len(data) != 2 * length or length <= 0:
                 # Return error if we didn't get all data
@@ -336,7 +375,7 @@ class GdbServer(threading.Thread):
                     # Update number
                     new_value = value
                     for i in range(first_offset, first_offset + used_bytes):
-                        mask = 0xFF << (8*i)
+                        mask = 0xFF << (8 * i)
                         new_value = (new_value & mask) + parser.read_hex(2)
 
                     # Write bytes
@@ -359,13 +398,13 @@ class GdbServer(threading.Thread):
                     # Update number
                     new_value = value
                     for i in range(0, length):
-                        mask = 0xFF << (8*i)
+                        mask = 0xFF << (8 * i)
                         new_value = (new_value & mask) + parser.read_hex(2)
 
                     # Write bytes
                     self.current_process.risc_debug.write_memory(address, new_value)
                 writer.append(b"OK")
-        elif parser.parse(b"p"): # Read the value of register n; n is in hex.
+        elif parser.parse(b"p"):  # Read the value of register n; n is in hex.
             # ‘p n’
             register = parser.parse_hex()
             if register < 0 or register > GdbServer.REGISTER_COUNT:
@@ -373,17 +412,19 @@ class GdbServer(threading.Thread):
             else:
                 value = self.current_process.risc_debug.read_gpr(register)
                 writer.append_hex(value, 8)
-        elif parser.parse(b"P"): # Write register n… with value r….
+        elif parser.parse(b"P"):  # Write register n… with value r….
             # ‘P n…=r…’
             register = parser.parse_hex()
-            parser.parse(b'=')
+            parser.parse(b"=")
             value = parser.read_hex(8)
             if register < 0 or register > GdbServer.REGISTER_COUNT:
                 writer.append(b"E01")
             else:
                 self.current_process.risc_debug.write_gpr(register, value)
                 writer.append(b"OK")
-        elif parser.parse(b"qSupported"): # Tell the remote stub about features supported by GDB, and query the stub for features it supports.
+        elif parser.parse(
+            b"qSupported"
+        ):  # Tell the remote stub about features supported by GDB, and query the stub for features it supports.
             # Read supported gdb client features
             if parser.parse(b":"):
                 util.VERBOSE("GDB: client features:")
@@ -398,27 +439,29 @@ class GdbServer(threading.Thread):
                         self.client_features[feature] = value
                         util.VERBOSE(f"     - {feature} = {value}")
                     else:
-                        feature,value = feature.split('=')
+                        feature, value = feature.split("=")
                         self.client_features[feature] = value
                         util.VERBOSE(f"     - {feature} = {value}")
 
             # Return supported features
             writer.append(b"PacketSize=")
             writer.append_hex(writer.socket.packet_size)
-            writer.append(b";multiprocess+;swbreak+;QStartNoAckMode+;qXfer:osdata:read+;qXfer:exec-file:read+;qXfer:features:read+")
-        elif parser.parse(b"qTStatus"): # Ask the stub if there is a trace experiment running right now.
+            writer.append(
+                b";multiprocess+;swbreak+;QStartNoAckMode+;qXfer:osdata:read+;qXfer:exec-file:read+;qXfer:features:read+"
+            )
+        elif parser.parse(b"qTStatus"):  # Ask the stub if there is a trace experiment running right now.
             # Since we don't support trace experiments, we should return empty packet
             pass
-        elif parser.parse(b"qfThreadInfo"): # Obtain a list of all active thread IDs from the target (OS).
+        elif parser.parse(b"qfThreadInfo"):  # Obtain a list of all active thread IDs from the target (OS).
             self.paged_thread_list = GdbThreadListPaged(self.debugging_threads)
             self.paged_thread_list.next(writer, writer.socket.packet_size - 4)
-        elif parser.parse(b"qsThreadInfo"): # Obtain a list of all active thread IDs from the target (OS).
+        elif parser.parse(b"qsThreadInfo"):  # Obtain a list of all active thread IDs from the target (OS).
             if self.paged_thread_list is None:
                 # If we didn't initialize thread list, we should return empty list
                 # To avoid implementing this feature on multiple places, we will initialize it with empty dictionary
                 self.paged_thread_list = GdbThreadListPaged({})
             self.paged_thread_list.next(writer, writer.socket.packet_size - 4)
-        elif parser.parse(b"qC"): # Return the current thread ID.
+        elif parser.parse(b"qC"):  # Return the current thread ID.
             # Return the current thread ID.
             if self.current_process is not None:
                 writer.append(b"QC")
@@ -426,16 +469,20 @@ class GdbServer(threading.Thread):
             else:
                 # We are not debugging anything at the moment...
                 writer.append(b"E01")
-        elif parser.parse(b"qAttached"): # Return an indication of whether the remote server attached to an existing process or created a new process.
+        elif parser.parse(
+            b"qAttached"
+        ):  # Return an indication of whether the remote server attached to an existing process or created a new process.
             # ‘qAttached:pid’
             # Since we are not starting process, but only attaching to device that is already running some code, we return `1`
             writer.append(b"1")
-        elif parser.parse(b"qXfer:"): # Read uninterpreted bytes from the target’s special data area identified by the keyword object.
+        elif parser.parse(
+            b"qXfer:"
+        ):  # Read uninterpreted bytes from the target’s special data area identified by the keyword object.
             object = parser.read_until(GDB_ASCII_COLON).decode()
             operation = parser.read_until(GDB_ASCII_COLON)
             annex = parser.read_until(GDB_ASCII_COLON).decode()
             offset = parser.parse_hex()
-            if not parser.parse(b','):
+            if not parser.parse(b","):
                 util.ERROR(f"GDB: Something wrong with offset and length: {parser.data}")
                 writer.append(b"E01")
                 return True
@@ -469,38 +516,50 @@ class GdbServer(threading.Thread):
                 # We don't support this message
                 util.ERROR(f"GDB: unsupported message: {parser.data}")
                 pass
-        elif parser.parse(b"qSymbol"): # Notify the target that GDB is prepared to serve symbol lookup requests.
+        elif parser.parse(b"qSymbol"):  # Notify the target that GDB is prepared to serve symbol lookup requests.
             # We don't need symbol lookup (for now)
             pass
-        elif parser.parse(b"qOffsets"): # Get section offsets that the target used when relocating the downloaded image. 
+        elif parser.parse(
+            b"qOffsets"
+        ):  # Get section offsets that the target used when relocating the downloaded image.
             # Addresses are exactly the same as they are written in elf file, so we don't need to implement this message
             pass
-        elif parser.parse(b"QStartNoAckMode"): # Request that the remote stub disable the normal ‘+’/‘-’ protocol acknowledgments
+        elif parser.parse(
+            b"QStartNoAckMode"
+        ):  # Request that the remote stub disable the normal ‘+’/‘-’ protocol acknowledgments
             # Enter start-no-ack mode.
             self.should_ack = False
             writer.append(b"OK")
-        elif parser.parse(b"s"): # Single step, resuming at addr. If addr is omitted, resume at same address. 
+        elif parser.parse(b"s"):  # Single step, resuming at addr. If addr is omitted, resume at same address.
             # ‘s [addr]’
             address = parser.parse_hex()
             if address is not None:
-                util.WARN(f"GDB: client want to single step at address: {address}, but we don't support that. We will single step at current address.")
-            util.ERROR(f"GDB: client uses single threaded single step instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message")
+                util.WARN(
+                    f"GDB: client want to single step at address: {address}, but we don't support that. We will single step at current address."
+                )
+            util.ERROR(
+                f"GDB: client uses single threaded single step instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message"
+            )
             writer.append(b"E01")
-        elif parser.parse(b"S"): # Step with signal.
+        elif parser.parse(b"S"):  # Step with signal.
             # ‘S sig[;addr]’
             # We don't support this message
             writer.append(b"E01")
-        elif parser.parse(b"T"): # Find out if the thread thread-id is alive.
+        elif parser.parse(b"T"):  # Find out if the thread thread-id is alive.
             # ‘T thread-id’
             thread_id = parser.parse_thread_id()
             if thread_id.process_id in self.available_processes:
                 writer.append(b"OK")
             else:
                 writer.append(b"E01")
-        elif parser.parse(b"vMustReplyEmpty"): # The correct reply to an unknown ‘v’ packet is to return the empty string, however, some older versions of gdbserver would incorrectly return ‘OK’ for unknown ‘v’ packets.
+        elif parser.parse(
+            b"vMustReplyEmpty"
+        ):  # The correct reply to an unknown ‘v’ packet is to return the empty string, however, some older versions of gdbserver would incorrectly return ‘OK’ for unknown ‘v’ packets.
             # We should reply with empty message
             pass
-        elif parser.parse(b"vAttach"): # Attach to a new process with the specified process ID pid. The process ID is a hexadecimal integer identifying the process.
+        elif parser.parse(
+            b"vAttach"
+        ):  # Attach to a new process with the specified process ID pid. The process ID is a hexadecimal integer identifying the process.
             # ‘vAttach;pid’
             if parser.parse(b";"):
                 pid = parser.parse_hex()
@@ -536,10 +595,10 @@ class GdbServer(threading.Thread):
                     util.ERROR(f"++ exception while halting: {e}")
                     writer.clear()
                     writer.append(b"E01")
-        elif parser.parse(b"vCont?"): # Request a list of actions supported by the ‘vCont’ packet. 
+        elif parser.parse(b"vCont?"):  # Request a list of actions supported by the ‘vCont’ packet.
             # We support continue, step and stop
             writer.append(b"vCont;c;C;s;S;t")
-        elif parser.parse(b"vCont"): # Resume the inferior, specifying different actions for each thread.
+        elif parser.parse(b"vCont"):  # Resume the inferior, specifying different actions for each thread.
             # ‘vCont[;action[:thread-id]]…’
 
             # Create dictionary per thread that will contain actions that should be executed on that thread
@@ -554,27 +613,27 @@ class GdbServer(threading.Thread):
                 return True
 
             # Parse input actions
-            while parser.parse(b';'):
+            while parser.parse(b";"):
                 # Parse action
                 action = parser.read_char()
 
                 # Check if action is supported
-                if action == 99: # 'c' - continue
-                    thread_action = 'c'
-                elif action == 67: # 'C' - continue with signal
-                    thread_action = 'c'
-                    signal = parser.parse_hex() # ignore signal
-                elif action == 115: # 's' - step
-                    thread_action = 's'
-                elif action == 82: # 'S' - step with signal
-                    thread_action = 's'
-                    signal = parser.parse_hex() # ignore signal
-                elif action == 116: # 't' - stop
+                if action == 99:  # 'c' - continue
+                    thread_action = "c"
+                elif action == 67:  # 'C' - continue with signal
+                    thread_action = "c"
+                    signal = parser.parse_hex()  # ignore signal
+                elif action == 115:  # 's' - step
+                    thread_action = "s"
+                elif action == 82:  # 'S' - step with signal
+                    thread_action = "s"
+                    signal = parser.parse_hex()  # ignore signal
+                elif action == 116:  # 't' - stop
                     if not self.is_non_stop:
                         util.WARN(f"GDB: client wanted to stop thread, but we are not in non-stop mode")
                         writer.append(b"E01")
                         return True
-                    thread_action = 't'
+                    thread_action = "t"
                 else:
                     # Unsupported action
                     util.WARN(f"GDB: unsupported continue action: {chr(action)}")
@@ -582,7 +641,7 @@ class GdbServer(threading.Thread):
                     return True
 
                 # Parse thread id
-                if parser.parse(b':'):
+                if parser.parse(b":"):
                     # Execute action on selected thread
                     thread_id = parser.parse_thread_id()
                     if thread_id is not None:
@@ -627,22 +686,22 @@ class GdbServer(threading.Thread):
                 # NOTE: The server must ignore ‘c’, ‘C’, ‘s’, ‘S’, and ‘r’ actions for threads that are already running. Conversely, the server must ignore ‘t’ actions for threads that are already stopped.
                 process = available_processes.get(pid)
                 action = thread_actions[pid]
-                if action == 'c': # Continue
+                if action == "c":  # Continue
                     # Continue only if we are not already running.
                     if process.risc_debug.is_halted():
                         process.risc_debug.cont(verify=False)
                         processes_to_watch.add(process)
-                elif action == 's': # Step
+                elif action == "s":  # Step
                     # Step only if we are not already running.
                     if process.risc_debug.is_halted():
                         process.risc_debug.step()
                         processes_to_watch.add(process)
-                elif action == 't': # Stop
+                elif action == "t":  # Stop
                     # Stop only if we are already running
                     if not process.risc_debug.is_halted() and not process.risc_debug.is_in_reset():
                         process.risc_debug.halt()
                         # TODO: Write something to response?!? This is only in non-stop mode...
-                elif not process.risc_debug.is_halted(): # Unchanged, but still running
+                elif not process.risc_debug.is_halted():  # Unchanged, but still running
                     # Process state should not be changed (action = unchanged), but it is already running, so it should be watched
                     processes_to_watch.add(process)
 
@@ -658,7 +717,7 @@ class GdbServer(threading.Thread):
                     # Check if client sent break to stop all processes
                     if client_socket.input_ready():
                         peek = client_socket.peek(1)
-                        if peek == b'\x03':
+                        if peek == b"\x03":
                             # Client sent break
                             client_socket.read(1)
                             stop_watching = True
@@ -692,15 +751,19 @@ class GdbServer(threading.Thread):
                                                 detected_signal = "rwatch:"
                                             else:
                                                 detected_signal = "awatch:"
-                                            detected_signal = f"{detected_signal}{process.risc_debug.read_watchpoint_address(i):x};"
+                                            detected_signal = (
+                                                f"{detected_signal}{process.risc_debug.read_watchpoint_address(i):x};"
+                                            )
                                             break
                             elif risc_debug_status.is_pc_watchpoint_hit:
-                                detected_signal = "swbreak:;" # This is also software breakpoint and not hardware breakpoint in gdb eyes
+                                detected_signal = "swbreak:;"  # This is also software breakpoint and not hardware breakpoint in gdb eyes
                             elif risc_debug_status.is_ebreak_hit:
                                 detected_signal = "swbreak:;"
                             else:
                                 detected_signal = ""
-                            self.vCont_pending_statuses.append(f"T05{detected_signal}thread:p{process.thread_id.process_id:x}.{process.thread_id.thread_id:x};core:{process.virtual_core_id:x};")
+                            self.vCont_pending_statuses.append(
+                                f"T05{detected_signal}thread:p{process.thread_id.process_id:x}.{process.thread_id.thread_id:x};core:{process.virtual_core_id:x};"
+                            )
                             stop_watching = True
                 if len(self.vCont_pending_statuses) > 0:
                     self.vCont_pending_statuses.append("T05")
@@ -715,7 +778,9 @@ class GdbServer(threading.Thread):
                         process.risc_debug.halt()
             else:
                 writer.append(b"OK")
-        elif parser.parse(b"vFile:setfs:"): # Select the filesystem on which vFile operations with filename arguments will operate.
+        elif parser.parse(
+            b"vFile:setfs:"
+        ):  # Select the filesystem on which vFile operations with filename arguments will operate.
             # ‘vFile:setfs: pid’
             # Select the filesystem on which vFile operations with filename arguments will operate.
             # If pid is nonzero, select the filesystem as seen by process pid. If pid is zero, select the filesystem as seen by the remote stub.
@@ -726,12 +791,14 @@ class GdbServer(threading.Thread):
             else:
                 # We don't have different file system per process, so we just respond with OK
                 writer.append(b"F0")
-        elif parser.parse(b"vFile:open:"): # Open a file at filename and return a file descriptor for it, or return -1 if an error occurs.
+        elif parser.parse(
+            b"vFile:open:"
+        ):  # Open a file at filename and return a file descriptor for it, or return -1 if an error occurs.
             # ‘vFile:open: filename, flags, mode’
             filename = parser.read_until(GDB_ASCII_COMMA).decode()
             filename = bytes.fromhex(filename).decode()
             flags = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             mode = parser.parse_hex()
             result = self.file_server.open(filename, flags, mode)
             writer.append(b"F")
@@ -739,19 +806,21 @@ class GdbServer(threading.Thread):
                 writer.append_string(result)
             else:
                 writer.append_hex(result)
-        elif parser.parse(b"vFile:close:"): # Close the open file corresponding to fd and return 0, or -1 if an error occurs. 
+        elif parser.parse(
+            b"vFile:close:"
+        ):  # Close the open file corresponding to fd and return 0, or -1 if an error occurs.
             # ‘vFile:close: fd’
             fd = parser.parse_hex()
             if self.file_server.close(fd):
                 writer.append(b"F0")
             else:
                 writer.append(b"F-1")
-        elif parser.parse(b"vFile:pread:"): # Read data from the open file corresponding to fd.
+        elif parser.parse(b"vFile:pread:"):  # Read data from the open file corresponding to fd.
             # ‘vFile:pread: fd, count, offset’
             fd = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             count = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             offset = parser.parse_hex()
             result = self.file_server.pread(fd, count, offset)
             if type(result) is str:
@@ -763,12 +832,12 @@ class GdbServer(threading.Thread):
                 writer.append_hex(len(result))
                 writer.append(b";")
                 writer.append(result)
-        elif parser.parse(b"vFile:pwrite:"): # Write data (a binary buffer) to the open file corresponding to fd.
+        elif parser.parse(b"vFile:pwrite:"):  # Write data (a binary buffer) to the open file corresponding to fd.
             # ‘vFile:pwrite: fd, offset, data’
             fd = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             offset = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             data = parser.read_rest()
             writer.append(b"F-1")
             if type(result) is str:
@@ -778,13 +847,13 @@ class GdbServer(threading.Thread):
                 # We expect result to be int, number of bytes written
                 writer.append(b"F")
                 writer.append_hex(result)
-        elif parser.parse(b"X"): # Write data to memory, where the data is transmitted in binary.
+        elif parser.parse(b"X"):  # Write data to memory, where the data is transmitted in binary.
             # ‘X addr,length:XX…’
             try:
                 address = parser.parse_hex()
-                parser.parse(b',')
+                parser.parse(b",")
                 length = parser.parse_hex()
-                parser.parse(b':')
+                parser.parse(b":")
                 data = parser.read_rest()
 
                 # Check if we are debugging something
@@ -806,7 +875,7 @@ class GdbServer(threading.Thread):
                         # Update number
                         new_value = value
                         for i in range(first_offset, first_offset + used_bytes):
-                            mask = 0xFF << (8*i)
+                            mask = 0xFF << (8 * i)
                             new_value = (new_value & mask) + data[data_index]
                             data_index += 1
 
@@ -817,7 +886,7 @@ class GdbServer(threading.Thread):
 
                     # Write aligned data
                     while length >= 4:
-                        value = int.from_bytes(data[data_index:data_index+4], byteorder='little')
+                        value = int.from_bytes(data[data_index : data_index + 4], byteorder="little")
                         data_index += 4
                         self.current_process.risc_debug.write_memory(address, value)
                         length -= 4
@@ -831,7 +900,7 @@ class GdbServer(threading.Thread):
                         # Update number
                         new_value = value
                         for i in range(0, length):
-                            mask = 0xFF << (8*i)
+                            mask = 0xFF << (8 * i)
                             new_value = (new_value & mask) + data[data_index]
                             data_index += 1
 
@@ -840,11 +909,11 @@ class GdbServer(threading.Thread):
                     writer.append(b"OK")
             except:
                 writer.append(b"E03")
-        elif parser.parse(b"z0,"): # Remove a software breakpoint at address of type kind.
+        elif parser.parse(b"z0,"):  # Remove a software breakpoint at address of type kind.
             # ‘z0,addr,kind’
             addr = parser.parse_hex()
-            parser.parse(b',')
-            kind = parser.parse_hex() # We ignore kind for now
+            parser.parse(b",")
+            kind = parser.parse_hex()  # We ignore kind for now
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
             for i in range(0, self.current_process.risc_debug.max_watchpoints):
                 if watchpoints[i].is_enabled and not watchpoints[i].is_memory:
@@ -853,16 +922,16 @@ class GdbServer(threading.Thread):
                         self.current_process.risc_debug.disable_watchpoint(i)
                         writer.append(b"OK")
                         return True
-        elif parser.parse(b"z1,"): # Remove a hardware breakpoint at address.
+        elif parser.parse(b"z1,"):  # Remove a hardware breakpoint at address.
             # ‘z1,addr,kind’
             addr = parser.parse_hex()
-            parser.parse(b',')
-            kind = parser.parse_hex() # We ignore kind for now
+            parser.parse(b",")
+            kind = parser.parse_hex()  # We ignore kind for now
             # TODO: We don't support hardware breakpoints
-        elif parser.parse(b"z2,"): # Remove a write watchpoint at address.
+        elif parser.parse(b"z2,"):  # Remove a write watchpoint at address.
             # ‘z2,addr,kind’
             addr = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             kind = parser.parse_hex()
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
             for i in range(0, self.current_process.risc_debug.max_watchpoints):
@@ -872,10 +941,10 @@ class GdbServer(threading.Thread):
                         self.current_process.risc_debug.disable_watchpoint(i)
                         writer.append(b"OK")
                         return True
-        elif parser.parse(b"z3,"): # Remove a read watchpoint at address.
+        elif parser.parse(b"z3,"):  # Remove a read watchpoint at address.
             # ‘z3,addr,kind’
             addr = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             kind = parser.parse_hex()
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
             for i in range(0, self.current_process.risc_debug.max_watchpoints):
@@ -885,10 +954,10 @@ class GdbServer(threading.Thread):
                         self.current_process.risc_debug.disable_watchpoint(i)
                         writer.append(b"OK")
                         return True
-        elif parser.parse(b"z4,"): # Remove an access watchpoint at address.
+        elif parser.parse(b"z4,"):  # Remove an access watchpoint at address.
             # ‘z4,addr,kind’
             addr = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             kind = parser.parse_hex()
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
             for i in range(0, self.current_process.risc_debug.max_watchpoints):
@@ -898,10 +967,10 @@ class GdbServer(threading.Thread):
                         self.current_process.risc_debug.disable_watchpoint(i)
                         writer.append(b"OK")
                         return True
-        elif parser.parse(b"Z0,"): # Insert a software breakpoint at address of type kind.
+        elif parser.parse(b"Z0,"):  # Insert a software breakpoint at address of type kind.
             # ‘Z0,addr,kind[;cond_list…][;cmds:persist,cmd_list…]’
             addr = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             kind = parser.parse_hex()
             # TODO: Add support for conditional break point
             # TODO: Add support for optional command list that should be executed when breakpoint is hit
@@ -925,16 +994,18 @@ class GdbServer(threading.Thread):
             # No more free slots for setting breakpoint
             util.WARN(f"GDB: No more free slots for setting breakpoint...")
             writer.append(b"E01")
-        elif parser.parse(b"Z1,"): # Insert a hardware breakpoint at address of type kind.
+        elif parser.parse(b"Z1,"):  # Insert a hardware breakpoint at address of type kind.
             # ‘Z1,addr,kind[;cond_list…][;cmds:persist,cmd_list…]’
             addr = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             kind = parser.parse_hex()
             # TODO: We don't support hardware breakpoints
-        elif parser.parse(b"Z2,"): # Insert a write watchpoint at address. The number of bytes to watch is specified by kind.
+        elif parser.parse(
+            b"Z2,"
+        ):  # Insert a write watchpoint at address. The number of bytes to watch is specified by kind.
             # ‘Z2,addr,kind’
             addr = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             kind = parser.parse_hex()
 
             # TODO: we are not using range for memory watchpoints, but we should at least inform user about that
@@ -958,10 +1029,12 @@ class GdbServer(threading.Thread):
             # No more free slots for setting breakpoint
             util.WARN(f"GDB: No more free slots for setting breakpoint...")
             writer.append(b"E01")
-        elif parser.parse(b"Z3,"): # Insert a read watchpoint at address. The number of bytes to watch is specified by kind.
+        elif parser.parse(
+            b"Z3,"
+        ):  # Insert a read watchpoint at address. The number of bytes to watch is specified by kind.
             # ‘Z3,addr,kind’
             addr = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             kind = parser.parse_hex()
 
             # TODO: we are not using range for memory watchpoints, but we should at least inform user about that
@@ -985,10 +1058,12 @@ class GdbServer(threading.Thread):
             # No more free slots for setting breakpoint
             util.WARN(f"GDB: No more free slots for setting breakpoint...")
             writer.append(b"E01")
-        elif parser.parse(b"Z4,"): # Insert an access watchpoint at address. The number of bytes to watch is specified by kind.
+        elif parser.parse(
+            b"Z4,"
+        ):  # Insert an access watchpoint at address. The number of bytes to watch is specified by kind.
             # ‘Z4,addr,kind’
             addr = parser.parse_hex()
-            parser.parse(b',')
+            parser.parse(b",")
             kind = parser.parse_hex()
 
             # TODO: we are not using range for memory watchpoints, but we should at least inform user about that
@@ -1026,41 +1101,45 @@ class GdbServer(threading.Thread):
             writer.append_string(message[offset:])
         else:
             writer.append(b"m")
-            writer.append_string(message[offset:offset+length])
+            writer.append_string(message[offset : offset + length])
 
     def create_osdata_types_response(self):
         # Currently we only support processes
-        return GdbServer.serialize_to_xml("osdata", "types", [
-            {'Type': 'processes', 'Description': 'Listing of all processes'}
-        ])
+        return GdbServer.serialize_to_xml(
+            "osdata", "types", [{"Type": "processes", "Description": "Listing of all processes"}]
+        )
 
     def create_osdata_processes_response(self):
 
         processes = []
         for pid, process in self.available_processes.items():
-            processes.append({
-                'pid': pid,
-                'user': self.context.short_name,
-                'cores': process.virtual_core_id,
-                'device': process.risc_debug.location.loc._device._id,
-                'core_type': process.core_type,
-                'core_location': process.risc_debug.location.loc.to_user_str(),
-                'risc': get_risc_name(process.risc_debug.location.risc_id), # TODO: Once we add support for ETH cores, we should update this -> method should be part of device class and it also needs coordinate as well
-                'command': process.elf_path,
-            })
+            processes.append(
+                {
+                    "pid": pid,
+                    "user": self.context.short_name,
+                    "cores": process.virtual_core_id,
+                    "device": process.risc_debug.location.loc._device._id,
+                    "core_type": process.core_type,
+                    "core_location": process.risc_debug.location.loc.to_user_str(),
+                    "risc": get_risc_name(
+                        process.risc_debug.location.risc_id
+                    ),  # TODO: Once we add support for ETH cores, we should update this -> method should be part of device class and it also needs coordinate as well
+                    "command": process.elf_path,
+                }
+            )
 
         return GdbServer.serialize_to_xml("osdata", "processes", processes)
 
     @staticmethod
-    def serialize_to_xml(name: str, type: str, data: List[Dict[str,str]]):
+    def serialize_to_xml(name: str, type: str, data: List[Dict[str, str]]):
         sb = StringIO()
         sb.write(f'<{name} type="{xml_escape(type)}">')
         for item in data:
-            sb.write('<item>')
+            sb.write("<item>")
             for key, value in item.items():
                 sb.write(f'<column name="{xml_escape(key)}">{xml_escape(str(value))}</column>')
-            sb.write('</item>')
-        sb.write(f'</{name}>')
+            sb.write("</item>")
+        sb.write(f"</{name}>")
         return sb.getvalue()
 
     # Number of registers is defined in create_features_target_response

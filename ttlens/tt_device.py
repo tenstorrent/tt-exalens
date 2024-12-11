@@ -52,7 +52,6 @@ def dump_tile(context, chip, loc, addr, size, data_format):
     print(tabulate(rows, tablefmt="plain", showindex=False, disable_numparse=True))
 
 
-
 BinarySlot = namedtuple("BinarySlot", ["offset_bytes", "size_bytes"])
 
 
@@ -60,9 +59,11 @@ class AddressMap(ABC):
     def __init__(self):
         self.binaries: Dict[str, BinarySlot]
 
+
 class L1AddressMap(AddressMap):
     def __init__(self):
         super().__init__()
+
 
 TensixRegisterDescription = namedtuple("TensixRegisterDescription", ["address", "mask", "shift"])
 
@@ -98,7 +99,7 @@ class Device(TTObject):
         # Base implementation for grayskull, wormhole and blackhole
         cores: List[RiscDebug] = []
         for coord in self.get_block_locations("functional_workers"):
-            for risc_id in range(4): # 4 because we have a hardware bug for debugging ncrisc
+            for risc_id in range(4):  # 4 because we have a hardware bug for debugging ncrisc
                 risc_location = RiscLoc(coord, 0, risc_id)
                 risc_debug = RiscDebug(risc_location, self._context)
                 cores.append(risc_debug)
@@ -110,14 +111,14 @@ class Device(TTObject):
         if core_type not in self._address_maps:
             raise RuntimeError(f"Core type {core_type} not found in address maps")
         return self._address_maps[core_type]
-    
+
     def get_binary_size(self, core_loc, binary_type) -> int:
         core_type = self.get_block_type(core_loc)
         address_map = self.get_address_map(core_type)
         binary_size = address_map.binaries[binary_type].size_bytes
         assert binary_size >= 0
         return binary_size
-    
+
     def get_binary_l1_offset(self, core_loc: OnChipCoordinate, binary_type: str) -> int:
         core_type = self.get_block_type(core_loc)
         address_map = self.get_address_map(core_type)
@@ -132,31 +133,19 @@ class Device(TTObject):
             from ttlens import tt_grayskull
 
             dev = tt_grayskull.GrayskullDevice(
-                id=device_id,
-                arch=arch,
-                cluster_desc=cluster_desc,
-                device_desc_path=device_desc_path,
-                context=context
+                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
         if "wormhole" in arch.lower():
             from ttlens import tt_wormhole
 
             dev = tt_wormhole.WormholeDevice(
-                id=device_id,
-                arch=arch,
-                cluster_desc=cluster_desc,
-                device_desc_path=device_desc_path,
-                context=context
+                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
         if "blackhole" in arch.lower():
             from ttlens import tt_blackhole
 
             dev = tt_blackhole.BlackholeDevice(
-                id=device_id,
-                arch=arch,
-                cluster_desc=cluster_desc,
-                device_desc_path=device_desc_path,
-                context=context
+                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
 
         if dev is None:
@@ -214,12 +203,8 @@ class Device(TTObject):
 
     def _create_nocVirt_to_nocTr_map(self):
         harvested_coord_translation_str = self._context.server_ifc.get_harvester_coordinate_translation(self._id)
-        self.nocVirt_to_nocTr_map = ast.literal_eval(
-            harvested_coord_translation_str
-        )  # Eval string to dict
-        self.nocTr_to_nocVirt_map = {
-            v: k for k, v in self.nocVirt_to_nocTr_map.items()
-        }  # Create inverse map as well
+        self.nocVirt_to_nocTr_map = ast.literal_eval(harvested_coord_translation_str)  # Eval string to dict
+        self.nocTr_to_nocVirt_map = {v: k for k, v in self.nocVirt_to_nocTr_map.items()}  # Create inverse map as well
 
     def tensix_to_netlist(self, tensix_loc):
         return (self.tensix_row_to_netlist_row[tensix_loc[0]], tensix_loc[1])
@@ -231,7 +216,9 @@ class Device(TTObject):
     def yaml_file(self):
         return util.YamlFile(self._context.server_ifc, self._device_desc_path)
 
-    def __init__(self, id, arch, cluster_desc, address_maps: Dict[str, AddressMap], device_desc_path: str, context: Context):
+    def __init__(
+        self, id, arch, cluster_desc, address_maps: Dict[str, AddressMap], device_desc_path: str, context: Context
+    ):
         """
 
         Args:
@@ -268,15 +255,12 @@ class Device(TTObject):
         elif arch.lower() == "grayskull":
             self._harvesting = None
         else:
-            raise util.TTFatalException(
-                f"Cluster description is not valid. 'harvesting_desc' reads: {harvesting_desc}"
-            )
+            raise util.TTFatalException(f"Cluster description is not valid. 'harvesting_desc' reads: {harvesting_desc}")
 
         self._create_harvesting_maps()
         self._create_nocVirt_to_nocTr_map()
         util.DEBUG(
-            "Opened device: id=%d, arch=%s, has_mmio=%s, harvesting=%s"
-            % (id, arch, self._has_mmio, self._harvesting)
+            "Opened device: id=%d, arch=%s, has_mmio=%s, harvesting=%s" % (id, arch, self._has_mmio, self._harvesting)
         )
 
         self.block_locations_cache = dict()
@@ -313,9 +297,7 @@ class Device(TTObject):
 
     def nocTr_to_noc0(self, nocTr_loc):
         noc0_y = self.nocTr_y_to_noc0_y[nocTr_loc[1]]
-        noc0_x = (
-            self.NOCTR_X_TO_NOC0_X[nocTr_loc[0]] if nocTr_loc[0] >= 16 else nocTr_loc[0]
-        )
+        noc0_x = self.NOCTR_X_TO_NOC0_X[nocTr_loc[0]] if nocTr_loc[0] >= 16 else nocTr_loc[0]
         return (noc0_x, noc0_y)
 
     def noc0_to_nocTr(self, noc0_loc):
@@ -401,14 +383,14 @@ class Device(TTObject):
             else:
                 locs.append(OnChipCoordinate.create(loc_or_list, self, "nocVirt"))
         return locs
-    
+
     def get_arc_block_location(self) -> OnChipCoordinate:
         """
         Returns OnChipCoordinate of the ARC block
         """
         arc_locations = self.get_block_locations(block_type="arc")
 
-        assert(len(arc_locations) == 1)
+        assert len(arc_locations) == 1
 
         return arc_locations[0]
 
@@ -583,15 +565,9 @@ class Device(TTObject):
         debug_tables = [[] for i in range(THREAD_COUNT)]
         for thread_idx in range(THREAD_COUNT):
             for reg_idx in range(DEBUG_MAILBOX_BUF_SIZE // THREAD_COUNT):
-                reg_addr = (
-                    DEBUG_MAILBOX_BUF_BASE
-                    + thread_idx * DEBUG_MAILBOX_BUF_SIZE
-                    + reg_idx * 4
-                )
+                reg_addr = DEBUG_MAILBOX_BUF_BASE + thread_idx * DEBUG_MAILBOX_BUF_SIZE + reg_idx * 4
                 val = read_word_from_device(loc, reg_addr, self.id(), self._context)
-                debug_tables[thread_idx].append(
-                    {"lo_val": val & 0xFFFF, "hi_val": (val >> 16) & 0xFFFF}
-                )
+                debug_tables[thread_idx].append({"lo_val": val & 0xFFFF, "hi_val": (val >> 16) & 0xFFFF})
         return debug_tables
 
     # Returns a stream type based on KERNEL_OPERAND_MAPPING_SCHEME
@@ -662,9 +638,7 @@ class Device(TTObject):
             print()
             stream = self.read_stream_regs(loc, stream_id)
             for reg, value in stream.items():
-                print(
-                    f"Tensix x={loc.to_str()} => stream {stream_id:02d} {reg} = {value}"
-                )
+                print(f"Tensix x={loc.to_str()} => stream {stream_id:02d} {reg} = {value}")
 
         for noc_id in range(0, 2):
             print()
@@ -686,15 +660,9 @@ class Device(TTObject):
             self.read_print_noc_reg(loc, noc_id, "read words sent", 0x13)
             self.read_print_noc_reg(loc, noc_id, "read resps sent", 0x12)
             print()
-            self.read_print_noc_reg(
-                loc, noc_id, "router port x out vc full credit out vc stall", 0x24
-            )
-            self.read_print_noc_reg(
-                loc, noc_id, "router port y out vc full credit out vc stall", 0x22
-            )
-            self.read_print_noc_reg(
-                loc, noc_id, "router port niu out vc full credit out vc stall", 0x20
-            )
+            self.read_print_noc_reg(loc, noc_id, "router port x out vc full credit out vc stall", 0x24)
+            self.read_print_noc_reg(loc, noc_id, "router port y out vc full credit out vc stall", 0x22)
+            self.read_print_noc_reg(loc, noc_id, "router port niu out vc full credit out vc stall", 0x20)
             print()
             self.read_print_noc_reg(loc, noc_id, "router port x VC14 & VC15 dbg", 0x3D)
             self.read_print_noc_reg(loc, noc_id, "router port x VC12 & VC13 dbg", 0x3C)
@@ -726,19 +694,34 @@ class Device(TTObject):
 
         sig_sel = 0xFF
         rd_sel = 0
-        write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
+        write_words_to_device(
+            loc,
+            0xFFB12054,
+            ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)),
+            self.id(),
+            self._context,
+        )
         test_val1 = read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
         rd_sel = 1
-        write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
+        write_words_to_device(
+            loc,
+            0xFFB12054,
+            ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)),
+            self.id(),
+            self._context,
+        )
         test_val2 = read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
 
         rd_sel = 0
         sig_sel = 2 * self.SIG_SEL_CONST
-        write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
-        brisc_pc = (
-            read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
-            & pc_mask
+        write_words_to_device(
+            loc,
+            0xFFB12054,
+            ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)),
+            self.id(),
+            self._context,
         )
+        brisc_pc = read_word_from_device(loc, 0xFFB1205C, self.id(), self._context) & pc_mask
 
         # Doesn't work - looks like a bug for selecting inputs > 31 in daisy stop
         # rd_sel = 0
@@ -748,27 +731,36 @@ class Device(TTObject):
 
         rd_sel = 0
         sig_sel = 2 * 10
-        write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
-        trisc0_pc = (
-            read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
-            & pc_mask
+        write_words_to_device(
+            loc,
+            0xFFB12054,
+            ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)),
+            self.id(),
+            self._context,
         )
+        trisc0_pc = read_word_from_device(loc, 0xFFB1205C, self.id(), self._context) & pc_mask
 
         rd_sel = 0
         sig_sel = 2 * 11
-        write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
-        trisc1_pc = (
-            read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
-            & pc_mask
+        write_words_to_device(
+            loc,
+            0xFFB12054,
+            ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)),
+            self.id(),
+            self._context,
         )
+        trisc1_pc = read_word_from_device(loc, 0xFFB1205C, self.id(), self._context) & pc_mask
 
         rd_sel = 0
         sig_sel = 2 * 12
-        write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
-        trisc2_pc = (
-            read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
-            & pc_mask
+        write_words_to_device(
+            loc,
+            0xFFB12054,
+            ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)),
+            self.id(),
+            self._context,
         )
+        trisc2_pc = read_word_from_device(loc, 0xFFB1205C, self.id(), self._context) & pc_mask
 
         print()
         print(
@@ -779,18 +771,14 @@ class Device(TTObject):
         )
 
         write_words_to_device(loc, 0xFFB12054, 0, self.id(), self._context)
-        util.WARN(
-            "full_dump_xy not fully tested (functionality might be device dependent)"
-        )
+        util.WARN("full_dump_xy not fully tested (functionality might be device dependent)")
 
     # Reads and immediately prints a value of a given NOC register
     def read_print_noc_reg(self, loc, noc_id, reg_name, reg_index):
         assert type(loc) == OnChipCoordinate
         reg_addr = 0xFFB20000 + (noc_id * 0x10000) + 0x200 + (reg_index * 4)
         val = read_word_from_device(loc, reg_addr, self.id(), self._context)
-        print(
-            f"Tensix {loc.to_str()} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})"
-        )
+        print(f"Tensix {loc.to_str()} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})")
         return val
 
     # Extracts and returns a single field of a stream register
@@ -816,16 +804,8 @@ class Device(TTObject):
         return int(stream_data["CURR_PHASE"]) != 0 and (
             int(stream_data["NUM_MSGS_RECEIVED"]) > 0
             or (
-                int(
-                    stream_data["MSG_INFO_WR_PTR (word addr)"]
-                    if "MSG_INFO_WR_PTR (word addr)" in stream_data
-                    else 0
-                )
-                - int(
-                    stream_data["MSG_INFO_PTR (word addr)"]
-                    if "MSG_INFO_PTR (word addr)" in stream_data
-                    else 0
-                )
+                int(stream_data["MSG_INFO_WR_PTR (word addr)"] if "MSG_INFO_WR_PTR (word addr)" in stream_data else 0)
+                - int(stream_data["MSG_INFO_PTR (word addr)"] if "MSG_INFO_PTR (word addr)" in stream_data else 0)
                 > 0
             )
         )
@@ -834,24 +814,14 @@ class Device(TTObject):
         return int(stream_data["CURR_PHASE"]) != 0 and (
             int(stream_data["NUM_MSGS_RECEIVED"]) > 0
             or (
-                int(
-                    stream_data["MSG_INFO_WR_PTR (word addr)"]
-                    if "MSG_INFO_WR_PTR (word addr)" in stream_data
-                    else 0
-                )
-                - int(
-                    stream_data["MSG_INFO_PTR (word addr)"]
-                    if "MSG_INFO_PTR (word addr)" in stream_data
-                    else 0
-                )
+                int(stream_data["MSG_INFO_WR_PTR (word addr)"] if "MSG_INFO_WR_PTR (word addr)" in stream_data else 0)
+                - int(stream_data["MSG_INFO_PTR (word addr)"] if "MSG_INFO_PTR (word addr)" in stream_data else 0)
                 > 0
             )
         )
 
     def is_stream_done(self, stream_data):
-        return int(stream_data["NUM_MSGS_RECEIVED"]) == int(
-            stream_data["CURR_PHASE_NUM_MSGS_REMAINING"]
-        )
+        return int(stream_data["NUM_MSGS_RECEIVED"]) == int(stream_data["CURR_PHASE_NUM_MSGS_REMAINING"])
 
     def is_bad_stream(self, stream_data):
         # Only certain bits indicate a problem for debug status registers
@@ -863,17 +833,11 @@ class Device(TTObject):
 
     def is_gsync_hung(self, loc):
         assert type(loc) == OnChipCoordinate
-        return (
-            read_word_from_device(loc, 0xFFB2010C, self.id(), self._context)
-            == 0xB0010000
-        )
+        return read_word_from_device(loc, 0xFFB2010C, self.id(), self._context) == 0xB0010000
 
     def is_ncrisc_done(self, loc):
         assert type(loc) == OnChipCoordinate
-        return (
-            read_word_from_device(loc, 0xFFB2010C, self.id(), self._context)
-            == 0x1FFFFFF1
-        )
+        return read_word_from_device(loc, 0xFFB2010C, self.id(), self._context) == 0x1FFFFFF1
 
     NCRISC_STATUS_REG_ADDR = 0xFFB2010C
     BRISC_STATUS_REG_ADDR = 0xFFB3010C
@@ -1097,9 +1061,7 @@ class Device(TTObject):
         return status_descs_rows
 
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
-        return self._context.server_ifc.pci_read_tile(
-            self.id(), x, y, reg_addr, msg_size, data_format
-        )
+        return self._context.server_ifc.pci_read_tile(self.id(), x, y, reg_addr, msg_size, data_format)
 
     def all_riscs_assert_soft_reset(self) -> None:
         """
@@ -1118,7 +1080,7 @@ class Device(TTObject):
             # Check what we wrote
             rst_reg = read_word_from_device(loc, RISC_SOFT_RESET_0_ADDR, self.id(), self._context)
             if rst_reg != ALL_SOFT_RESET:
-                util.ERROR (f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
+                util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 
     @abstractmethod
     def get_tensix_configuration_register_base(self) -> int:
@@ -1150,7 +1112,7 @@ class Device(TTObject):
 
     def get_tensix_register_address(self, register_name: str) -> int:
         description = self.get_tensix_register_description(register_name)
-        assert(description.mask == 0xFFFFFFFF and description.shift == 0)
+        assert description.mask == 0xFFFFFFFF and description.shift == 0
         return description.address
 
     def get_riscv_run_status(self, loc: OnChipCoordinate) -> str:
@@ -1167,8 +1129,8 @@ class Device(TTObject):
                 status_str += "-" if risc_debug.is_in_reset() else "R"
             return status_str
         return bt
-    
-    REGISTER_ADDRESSES = {} 
+
+    REGISTER_ADDRESSES = {}
 
     def get_register_addr(self, name: str) -> int:
         try:
@@ -1177,7 +1139,7 @@ class Device(TTObject):
             raise ValueError(f"Unknown register name: {name}. Available registers: {self.REGISTER_ADDRESSES.keys()}")
 
         return addr
-    
+
     def _init_register_addresses(self):
         base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
         csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
@@ -1194,8 +1156,10 @@ class Device(TTObject):
             "ARC_RESET_SCRATCH4": base_addr + 0x070,
             "ARC_RESET_SCRATCH5": base_addr + 0x074,
             "ARC_CSM_DATA": csm_data_base_addr,
-            "ARC_ROM_DATA": rom_data_base_addr
+            "ARC_ROM_DATA": rom_data_base_addr,
         }
+
+
 # end of class Device
 
 # This is based on runtime_utils.cpp:get_soc_desc_path()

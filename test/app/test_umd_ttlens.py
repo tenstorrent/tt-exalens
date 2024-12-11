@@ -28,6 +28,7 @@ class TTLensOutputVerifier:
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
         pass
 
+
 class UmdTTLensOutputVerifier(TTLensOutputVerifier):
     prompt_regex = r"^gdb:[^ ]+ device:\d+ loc:\d+-\d+ \(\d+, \d+\) > $"
 
@@ -39,12 +40,13 @@ class UmdTTLensOutputVerifier(TTLensOutputVerifier):
 
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
         test_regex = []
-        skip_regex = [r"Verbosity level: \d+",
-                      r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.",
-                      r"Device opened successfully.",
-                      r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=",
-                      r".*ttSiliconDevice::init_hugepage:.*",
-                      r"Loading yaml file: '([^']*\.yaml)'"
+        skip_regex = [
+            r"Verbosity level: \d+",
+            r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.",
+            r"Device opened successfully.",
+            r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=",
+            r".*ttSiliconDevice::init_hugepage:.*",
+            r"Loading yaml file: '([^']*\.yaml)'",
         ]
         tester.assertGreaterEqual(len(lines), len(test_regex))
 
@@ -59,15 +61,16 @@ class UmdTTLensOutputVerifier(TTLensOutputVerifier):
                 if id < num_test_regex - 1:
                     id += 1
                 continue
-            
+
             # Check if the line matches any of the skip regex patterns
             if any(re.search(regex, line) for regex in skip_regex):
                 continue
-            
+
             # Report an unexpected line
             tester.fail(f"Unexpected line: {line}, expected {test_regex[id]}")
-        
+
         return True
+
 
 class TTLensTestRunner:
     def __init__(self, verifier: TTLensOutputVerifier):
@@ -81,24 +84,26 @@ class TTLensTestRunner:
         if self.process is None or not self.process.returncode is None:
             return False
         return self.process.poll() is None
-    
+
     @property
     def returncode(self):
         return self.process.returncode
 
-    def invoke(self, args = None):
-        program_args = [self.interpreter_path, '-u', self.ttlens_py_path]
+    def invoke(self, args=None):
+        program_args = [self.interpreter_path, "-u", self.ttlens_py_path]
         if not args is None:
             if not type(args) == list:
                 args = [args]
-        self.process = subprocess.Popen(program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.process = subprocess.Popen(
+            program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
         return self.process
 
-    def start(self, tester: unittest.TestCase, args = None):
+    def start(self, tester: unittest.TestCase, args=None):
         self.invoke(args)
         self.verifier.verify_start(self, tester)
 
-    def readline(self, timeoutSeconds:float = 1):
+    def readline(self, timeoutSeconds: float = 1):
         # Fast path for program that ended
         rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], 0)
         if len(rlist) == 0:
@@ -110,7 +115,7 @@ class TTLensTestRunner:
                     return None
                 raise Exception(f"Hit timeout ({timeoutSeconds}s) while waiting for output from TTLens")
         line = rlist[0].readline()
-        if line.endswith('\n'):
+        if line.endswith("\n"):
             line = line[:-1]
         elif not line:
             return None
@@ -119,7 +124,7 @@ class TTLensTestRunner:
 
     def writeline(self, line):
         self.process.stdin.write(line)
-        self.process.stdin.write('\n')
+        self.process.stdin.write("\n")
         self.process.stdin.flush()
 
     def read_until_prompt(self, readline_timeout: float = 1):
@@ -132,7 +137,7 @@ class TTLensTestRunner:
                 return (lines, line)
             lines.append(line)
 
-    def wait(self, timeoutSeconds:float = None):
+    def wait(self, timeoutSeconds: float = None):
         self.process.wait(timeoutSeconds)
 
     def kill(self):
@@ -142,7 +147,7 @@ class TTLensTestRunner:
         except:
             pass
 
-    def execute(self, args = None, input = None, timeout = None):
+    def execute(self, args=None, input=None, timeout=None):
         try:
             self.invoke(args)
             stdout, stderr = self.process.communicate(input, timeout)
@@ -150,6 +155,7 @@ class TTLensTestRunner:
         except Exception as e:
             self.kill()
             raise e
+
 
 class TestUmdTTLens(unittest.TestCase):
     @unittest.skip("Disabling this test for the moment. Something not working in CI, investigation needed.")
@@ -159,6 +165,7 @@ class TestUmdTTLens(unittest.TestCase):
         runner.writeline("x")
         runner.wait()
         self.assertEqual(runner.returncode, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

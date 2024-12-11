@@ -26,7 +26,7 @@ class Context:
         from ttlens import tt_device
 
         device_ids = self.device_ids
-        devices: Dict[int,tt_device.Device] = dict()
+        devices: Dict[int, tt_device.Device] = dict()
         for device_id in device_ids:
             try:
                 device_desc_path = self.server_ifc.get_device_soc_description(device_id)
@@ -38,7 +38,7 @@ class Context:
                 device_id=device_id,
                 cluster_desc=self.cluster_desc.root,
                 device_desc_path=device_desc_path,
-                context=self
+                context=self,
             )
         return devices
 
@@ -76,10 +76,11 @@ class Context:
     def __repr__(self):
         return f"context"
 
+
 class LimitedContext(Context):
     def __init__(self, server_ifc, cluster_desc_yaml):
         super().__init__(server_ifc, cluster_desc_yaml, "limited")
-        self.loaded_elfs = {} # (OnChipCoordinate, risc_id) => elf_path
+        self.loaded_elfs = {}  # (OnChipCoordinate, risc_id) => elf_path
 
     def get_risc_elf_path(self, location: OnChipCoordinate, risc_id: int) -> Optional[str]:
         return self.loaded_elfs.get((location, risc_id))
@@ -93,6 +94,7 @@ class LimitedContext(Context):
 
     def __repr__(self):
         return f"LimitedContext"
+
 
 # TODO: We should implement support for Metal
 class MetalContext(Context):

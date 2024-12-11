@@ -8,12 +8,13 @@ from ttlens.tt_parse_elf import read_elf, mem_access
 from ttlens import tt_util as util
 
 
-
 class TestFileIfc:
     def get_binary(self, filename):
         return open(filename, "rb")
 
+
 file_ifc = TestFileIfc()
+
 
 def compile_test_cpp_program(program_path, program_text):
     """
@@ -29,14 +30,13 @@ def compile_test_cpp_program(program_path, program_text):
     with open(f"{src_file_name}", "w") as f:
         f.write(program_text)
     # Compile the program
-    os.system(
-        f"./third_party/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g {src_file_name} -o {program_path}.elf"
-    )
+    os.system(f"./third_party/sfpi/compiler/bin/riscv32-unknown-elf-g++ -g {src_file_name} -o {program_path}.elf")
     if not os.path.exists(elf_file_name):
         util.ERROR(f"ERROR: Failed to compile {src_file_name}")
         exit(1)
 
-    return [ elf_file_name, src_file_name ]
+    return [elf_file_name, src_file_name]
+
 
 def mem_reader(addr, size_bytes):
     """
@@ -56,18 +56,14 @@ class TestParseElf(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if os.environ.get("TTLENS_PATH"):
-            cls.output_dir = os.path.join(
-                os.environ["TTLENS_PATH"], "build", "test", "assets"
-            )
+            cls.output_dir = os.path.join(os.environ["TTLENS_PATH"], "build", "test", "assets")
         else:
-            cls.output_dir = os.path.join(
-                "build", "test", "assets"
-            )
+            cls.output_dir = os.path.join("build", "test", "assets")
         cls.output_dir = os.path.abspath(cls.output_dir)
 
         if not os.path.exists(cls.output_dir):
             os.makedirs(cls.output_dir)
-    
+
     def test_simple(self):
         program_name, program_definition = "simple", {
             "program_text": """
@@ -119,13 +115,9 @@ class TestParseElf(unittest.TestCase):
         assert mem_access(name_dict, "GLOBAL_INT_PTR", mem_reader)[0] == [724960]
         assert mem_access(name_dict, "GLOBAL_INT_PTR_PTR", mem_reader)[0] == [725000]
         assert mem_access(name_dict, "*GLOBAL_INT_PTR_PTR", mem_reader)[0] == [7250000]
-        assert mem_access(name_dict, "**GLOBAL_INT_PTR_PTR", mem_reader)[0] == [
-            72500000
-        ]
+        assert mem_access(name_dict, "**GLOBAL_INT_PTR_PTR", mem_reader)[0] == [72500000]
         with self.assertRaises(Exception):
-            assert mem_access(name_dict, "***GLOBAL_INT_PTR_PTR", mem_reader)[
-                0
-            ]  # This fails
+            assert mem_access(name_dict, "***GLOBAL_INT_PTR_PTR", mem_reader)[0]  # This fails
         assert mem_access(name_dict, "*s_ptr", mem_reader)[0] == [
             7252000,
             7252040,
@@ -150,12 +142,8 @@ class TestParseElf(unittest.TestCase):
             725680,
             725720,
         ]
-        assert mem_access(name_dict, "global_s.nested_s.nested_int", mem_reader)[0] == [
-            725680
-        ]
-        assert mem_access(name_dict, "global_s.nested_s.nested_int2", mem_reader)[
-            0
-        ] == [725720]
+        assert mem_access(name_dict, "global_s.nested_s.nested_int", mem_reader)[0] == [725680]
+        assert mem_access(name_dict, "global_s.nested_s.nested_int2", mem_reader)[0] == [725720]
 
         # Pointer
         assert mem_access(name_dict, "s_ptr", mem_reader)[0] == [725200]
@@ -217,9 +205,7 @@ class TestParseElf(unittest.TestCase):
             711200,
             711240,
         ]
-        assert mem_access(name_dict, "my_s.local_int_array[2]", mem_reader)[0] == [
-            711200
-        ]
+        assert mem_access(name_dict, "my_s.local_int_array[2]", mem_reader)[0] == [711200]
         assert mem_access(name_dict, "my_s.local_point_array", mem_reader)[0] == [
             711280,
             711320,
@@ -230,12 +216,8 @@ class TestParseElf(unittest.TestCase):
             711520,
             711560,
         ]
-        assert mem_access(name_dict, "my_s.local_point_array[1].x", mem_reader)[0] == [
-            711360
-        ]
-        assert mem_access(name_dict, "my_s.local_point_array[2].y", mem_reader)[0] == [
-            711480
-        ]
+        assert mem_access(name_dict, "my_s.local_point_array[1].x", mem_reader)[0] == [711360]
+        assert mem_access(name_dict, "my_s.local_point_array[2].y", mem_reader)[0] == [711480]
         for generated_file in generated_files:
             os.system(f"rm -f {generated_file}")
 
@@ -255,20 +237,14 @@ class TestParseElf(unittest.TestCase):
         generated_files = compile_test_cpp_program(program_name, program_definition["program_text"])
         name_dict = read_elf(file_ifc, f"{program_name}.elf")
 
-        assert mem_access(name_dict, "double_int_array[0][2]", mem_reader)[0] == [
-            10 * ((71096) + 2 * 4)
-        ]
-        assert mem_access(name_dict, "double_int_array[1][2]", mem_reader)[0] == [
-            10 * ((71096) + 5 * 4)
-        ]
+        assert mem_access(name_dict, "double_int_array[0][2]", mem_reader)[0] == [10 * ((71096) + 2 * 4)]
+        assert mem_access(name_dict, "double_int_array[1][2]", mem_reader)[0] == [10 * ((71096) + 5 * 4)]
         assert mem_access(name_dict, "double_int_array[1]", mem_reader)[0] == [
             10 * ((71096) + 3 * 4),
             10 * ((71096) + 4 * 4),
             10 * ((71096) + 5 * 4),
         ]
-        assert mem_access(name_dict, "double_int_array", mem_reader)[0] == [
-            10 * ((71096) + i * 4) for i in range(6)
-        ]
+        assert mem_access(name_dict, "double_int_array", mem_reader)[0] == [10 * ((71096) + i * 4) for i in range(6)]
 
         # These are expected to throw exceptions
         with self.assertRaises(Exception):
@@ -316,6 +292,7 @@ class TestParseElf(unittest.TestCase):
             return name_dict[name]["offset"]
         else:
             return None
+
 
 if __name__ == "__main__":
     unittest.main()

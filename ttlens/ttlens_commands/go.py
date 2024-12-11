@@ -18,13 +18,16 @@ command_metadata = {
     "type": "high-level",
     "description": __doc__,
     "context": ["limited", "metal"],
-    "common_option_names": [ "--device", "--loc" ],
+    "common_option_names": ["--device", "--loc"],
 }
 
+
 def run(cmd_text, context, ui_state=None):
-    dopt = tt_commands.tt_docopt(command_metadata["description"], argv=cmd_text.split()[1:],
-                                common_option_names=command_metadata["common_option_names"]
-                                )
+    dopt = tt_commands.tt_docopt(
+        command_metadata["description"],
+        argv=cmd_text.split()[1:],
+        common_option_names=command_metadata["common_option_names"],
+    )
 
     for device in dopt.for_each("--device", context, ui_state):
         ui_state.current_device_id = device.id()

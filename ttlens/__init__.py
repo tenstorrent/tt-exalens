@@ -14,52 +14,53 @@ __all__ = [
 class Verbosity(Enum):
     NONE = 0
     ERROR = 1
-    WARN = 2 
+    WARN = 2
     INFO = 3
     VERBOSE = 4
     DEBUG = 5
 
     @staticmethod
-    def set(verbosity: Union[int,"Verbosity"]) -> None:
-        '''Set the verbosity level of messages shown.
-        
+    def set(verbosity: Union[int, "Verbosity"]) -> None:
+        """Set the verbosity level of messages shown.
+
         Args:
-            verbosity (int): Verbosity level. 
+            verbosity (int): Verbosity level.
                 1: ERROR
                 2: WARN
                 3: INFO
                 4: VERBOSE
                 5: DEBUG
-        '''
+        """
         global VERBOSITY_VALUE
 
         VERBOSITY_VALUE = Verbosity(verbosity)
 
     @staticmethod
     def get() -> "Verbosity":
-        '''Get the verbosity level of messages shown.
-        
+        """Get the verbosity level of messages shown.
+
         Returns:
-            int: Verbosity level. 
+            int: Verbosity level.
                 1: ERROR
                 2: WARN
                 3: INFO
                 4: VERBOSE
                 5: DEBUG
-        '''
+        """
         global VERBOSITY_VALUE
 
         return VERBOSITY_VALUE
 
     @staticmethod
     def supports(verbosity: "Verbosity") -> bool:
-        '''Check if the verbosity level is supported and should be printed.
-        
+        """Check if the verbosity level is supported and should be printed.
+
         Returns:
             bool: True if supported, False otherwise.
-        '''
+        """
         global VERBOSITY_VALUE
 
         return VERBOSITY_VALUE.value >= verbosity.value
+
 
 VERBOSITY_VALUE: Verbosity = Verbosity.INFO

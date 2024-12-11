@@ -68,9 +68,7 @@ class TTObjectIDDict(dict):
 # Just an array of numbers that knows how to print itself
 class DataArray(TTObject):
     def __str__(self):
-        return f"{self._id}\n" + util.array_to_str(
-            self.data, cell_formatter=self.cell_formatter
-        )
+        return f"{self._id}\n" + util.array_to_str(self.data, cell_formatter=self.cell_formatter)
 
     def __repr__(self):
         return f"{self._id} len:{len(self.data)} ({len(self.data)*self.bytes_per_entry} bytes)"
@@ -90,24 +88,20 @@ class DataArray(TTObject):
             dest += int.to_bytes(v, length=self.bytes_per_entry, byteorder="little")
         self.data = []
         for i in range(0, len(dest), bytes_per_entry):
-            self.data.append(
-                int.from_bytes(dest[i : i + bytes_per_entry], byteorder="little")
-            )
+            self.data.append(int.from_bytes(dest[i : i + bytes_per_entry], byteorder="little"))
         self.bytes_per_entry = bytes_per_entry
         self.cell_formatter = util.CELLFMT.hex(self.bytes_per_entry)
 
-    def from_bytes (self, bytes):
+    def from_bytes(self, bytes):
         """
         Initiliaze the data array from a byte array
         """
         self.data = []
         for i in range(0, len(bytes), self.bytes_per_entry):
-            self.data.append(
-                int.from_bytes(bytes[i : i + self.bytes_per_entry], byteorder="little")
-            )
+            self.data.append(int.from_bytes(bytes[i : i + self.bytes_per_entry], byteorder="little"))
         return self
 
-    def bytes (self):
+    def bytes(self):
         """
         Return the data array as a byte array
         """
