@@ -5,7 +5,7 @@ from ttlens import tt_util as util
 from sortedcontainers import SortedSet
 
 
-# Parent class for all objects (ops, queues, buffers, streams...)
+# Parent class for all objects
 class TTObject:
     def __str__(self):
         return f"{self.id()}:{type(self).__name__}"
