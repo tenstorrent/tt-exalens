@@ -1161,13 +1161,3 @@ class Device(TTObject):
 
 
 # end of class Device
-
-# This is based on runtime_utils.cpp:get_soc_desc_path()
-def get_soc_desc_path(chip, output_dir):
-    if os.path.exists(os.path.join(output_dir, "device_desc_runtime", f"{chip}.yaml")):
-        file_to_use = os.path.join(output_dir, "device_desc_runtime", f"{chip}.yaml")
-    elif os.path.exists(os.path.join(output_dir, "device_descs")):
-        file_to_use = os.path.join(output_dir, "device_descs", f"{chip}.yaml")
-    else:
-        file_to_use = os.path.join(output_dir, "device_desc.yaml")
-    return file_to_use
