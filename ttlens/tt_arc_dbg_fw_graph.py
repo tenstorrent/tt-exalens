@@ -4,7 +4,7 @@ import time
 from typing import Union, List
 from ttlens.tt_lens_context import Context
 from ttlens.tt_util import TTException
-from ttlens.tt_arc_log_yaml_parser import parse_log_yaml, LogInfo
+from ttlens.tt_arc_dbg_fw_log_context import  LogInfo, ArcDfwLogContext, ArcDfwLogContextFromYaml
 import struct
 from ttlens.tt_arc_dbg_fw import arc_dbg_fw_command, arc_dbg_fw_get_buffer_start_addr, arc_dbg_fw_get_buffer_size, DFW_BUFFER_HEADER_OFFSETS
 from ttlens.tt_lens_lib import read_words_from_device
@@ -14,7 +14,7 @@ def read_arc_dfw_buffer(device_id: int = 0, context: Context = None) -> List[int
     buffer_size = arc_dbg_fw_get_buffer_size() - len(DFW_BUFFER_HEADER_OFFSETS) * 4
     return read_words_from_device('ch0', device_id=device_id, addr=buffer_start_addr, word_count=buffer_size//4)
 
-def arc_dbg_fw_graph(log_info_list: List[LogInfo] ,device_id: int = 0, context: Context = None) -> None:
+def arc_dbg_fw_graph(log_context: ArcDfwLogContext = ArcDfwLogContextFromYaml("default"), device_id: int = 0, context: Context = None) -> None:
     """
     Graph the ARC debug firmware.
     """
@@ -25,7 +25,7 @@ def arc_dbg_fw_graph(log_info_list: List[LogInfo] ,device_id: int = 0, context: 
 
     import matplotlib.pyplot as plt
 
-    def parse_and_plot_buffer(buffer: List[int], log_info_list: List[LogInfo], save_location: str) -> None:
+    def parse_and_plot_buffer(buffer: List[int], log_context: ArcDfwLogContext, save_location: str) -> None:
         """
         Parses the buffer and plots each log name onto a different graph.
 
@@ -46,14 +46,14 @@ def arc_dbg_fw_graph(log_info_list: List[LogInfo] ,device_id: int = 0, context: 
             else:
                 return value
 
-        log_data = {log_info.log_name: [] for log_info in log_info_list}
-        num_logs = len(log_info_list)
+        log_data = {log_info.log_name: [] for log_info in log_context.log_list}
+        num_logs = len(log_context.log_list)
 
         for i, value in enumerate(buffer):
             if i >= len(buffer)- len(buffer) % num_logs:
                 break;
-            log_name = log_info_list[i % num_logs].log_name
-            log_data[log_name].append(format_output(value, log_info_list[i % num_logs].output))
+            log_name = log_context.log_list[i % num_logs].log_name
+            log_data[log_name].append(format_output(value, log_context.log_list[i % num_logs].output))
 
         # Sort the log data according to "heartbeat"
         if "heartbeat" in log_data:
@@ -74,4 +74,4 @@ def arc_dbg_fw_graph(log_info_list: List[LogInfo] ,device_id: int = 0, context: 
     # Example usage:
     save_location = "fw/arc/graph"
     save_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../", save_location)
-    parse_and_plot_buffer(buffer, log_info_list, save_path)
+    parse_and_plot_buffer(buffer, log_context, save_path)
