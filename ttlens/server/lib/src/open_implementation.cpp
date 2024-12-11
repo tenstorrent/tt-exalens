@@ -111,12 +111,7 @@ static std::unique_ptr<tt::umd::Cluster> create_grayskull_device(const std::stri
 
     auto device =
         std::make_unique<tt::umd::Cluster>(device_configuration_path, target_devices, num_host_mem_ch_per_mmio_device);
-    tt_driver_host_address_params host_address_params = {
-        // Values copied from: third_party/umd/src/firmware/riscv/grayskull/host_mem_address_map.h
-        32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
-        0x38000000,  // host_mem::address_map::ETH_ROUTING_BUFFERS_START
-    };
-    device->set_driver_host_address_params(host_address_params);
+
     return device;
 }
 
@@ -127,15 +122,10 @@ static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::strin
 
     auto device =
         std::make_unique<tt::umd::Cluster>(device_configuration_path, target_devices, num_host_mem_ch_per_mmio_device);
-    tt_driver_host_address_params host_address_params = {
-        // Values copied from: third_party/umd/src/firmware/riscv/wormhole/host_mem_address_map.h
-        32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
-        0x38000000,  // host_mem::address_map::ETH_ROUTING_BUFFERS_START
-    };
     for (auto chip_id : device->get_target_mmio_device_ids()) {
         device->configure_active_ethernet_cores_for_mmio_device(chip_id, {});
     }
-    device->set_driver_host_address_params(host_address_params);
+
     return device;
 }
 
@@ -146,12 +136,7 @@ static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::stri
 
     auto device =
         std::make_unique<tt::umd::Cluster>(device_configuration_path, target_devices, num_host_mem_ch_per_mmio_device);
-    tt_driver_host_address_params host_address_params = {
-        // Values copied from: third_party/umd/src/firmware/riscv/blackhole/host_mem_address_map.h
-        32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
-        0x38000000,  // host_mem::address_map::ETH_ROUTING_BUFFERS_START
-    };
-    device->set_driver_host_address_params(host_address_params);
+
     return device;
 }
 
