@@ -84,14 +84,14 @@ void Jtag::write_tdr(const char* client, uint32_t reg_offset, uint32_t data) {
     GET_FUNCTION_POINTER(write_tdr)(client, reg_offset, data);
 }
 
-void Jtag::dbus_memdump(const char* client_name, const char* mem, const char* thread_id_name, const char* start_addr,
-                        const char* end_addr) {
-    GET_FUNCTION_POINTER(dbus_memdump)(client_name, mem, thread_id_name, start_addr, end_addr);
+std::vector<uint32_t> Jtag::dbus_memdump(const char* client_name, const char* mem, const char* thread_id_name,
+                                         const char* start_addr, const char* end_addr) {
+    return GET_FUNCTION_POINTER(dbus_memdump)(client_name, mem, thread_id_name, start_addr, end_addr);
 }
 
-void Jtag::dbus_sigdump(const char* client_name, uint32_t dbg_client_id, uint32_t dbg_signal_sel_start,
-                        uint32_t dbg_signal_sel_end) {
-    GET_FUNCTION_POINTER(dbus_sigdump)(client_name, dbg_client_id, dbg_signal_sel_start, dbg_signal_sel_end);
+std::vector<uint32_t> Jtag::dbus_sigdump(const char* client_name, uint32_t dbg_client_id, uint32_t dbg_signal_sel_start,
+                                         uint32_t dbg_signal_sel_end) {
+    return GET_FUNCTION_POINTER(dbus_sigdump)(client_name, dbg_client_id, dbg_signal_sel_start, dbg_signal_sel_end);
 }
 
 void Jtag::write_axi(uint32_t reg_addr, uint32_t data) { GET_FUNCTION_POINTER(write_axi)(reg_addr, data); }

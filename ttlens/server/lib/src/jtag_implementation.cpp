@@ -34,4 +34,16 @@ std::optional<uint32_t> jtag_implementation::jtag_read32(uint8_t chip_id, uint8_
     return jtag_device->read32(chip_id, noc_x, noc_y, address);
 }
 
+std::optional<std::vector<uint32_t>> jtag_implementation::dbus_memdump(uint8_t chip_id, const char* client_name,
+                                                                       const char* mem, const char* thread_id_name,
+                                                                       const char* start_addr, const char* end_addr) {
+    return jtag_device->dbus_memdump(chip_id, client_name, mem, thread_id_name, start_addr, end_addr);
+}
+std::optional<std::vector<uint32_t>> jtag_implementation::dbus_sigdump(uint8_t chip_id, const char* client_name,
+                                                                       uint32_t dbg_client_id,
+                                                                       uint32_t dbg_signal_sel_start,
+                                                                       uint32_t dbg_signal_sel_end) {
+    return jtag_device->dbus_sigdump(chip_id, client_name, dbg_client_id, dbg_signal_sel_start, dbg_signal_sel_end);
+}
+
 }  // namespace tt::lens

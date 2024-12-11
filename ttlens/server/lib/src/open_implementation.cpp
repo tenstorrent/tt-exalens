@@ -4,8 +4,10 @@
 #include "ttlensserver/open_implementation.h"
 
 #include <limits.h>
+#include <sys/types.h>
 #include <unistd.h>
 
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
@@ -15,6 +17,8 @@
 #include "ttlensserver/jtag_device.h"
 #include "ttlensserver/jtag_implementation.h"
 #include "ttlensserver/umd_implementation.h"
+#include "ttlensserver/read_tile.hpp"
+#include "umd/device/blackhole_implementation.h"
 #include "umd/device/cluster.h"
 #include "umd/device/tt_cluster_descriptor.h"
 #include "umd/device/tt_core_coordinates.h"
@@ -335,6 +339,22 @@ static std::string jtag_create_device_soc_descriptor(const tt_SocDescriptor &soc
     return file_name;
 }
 
+uint32_t flip_fp16_bits(uint32_t value) {
+    uint32_t sign = (value & 0x8000) >> 15;
+    uint32_t mantisa = (value & 0x7FE0) >> 5;
+    uint32_t exponent = value & 0x1F;
+    uint32_t result = (sign << 15) | (exponent << 10) | mantisa;
+    return result;
+}
+
+uint32_t flip_bfp16_bits(uint32_t value) {
+    uint32_t sign = (value & 0x8000) >> 15;
+    uint32_t mantisa = (value & 0x7F00) >> 8;
+    uint32_t exponent = value & 0xFF;
+    uint32_t result = (sign << 15) | (exponent << 7) | mantisa;
+    return result;
+}
+
 namespace tt::lens {
 
 template <typename BaseClass>
@@ -379,6 +399,20 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
 
     auto implementation = std::unique_ptr<open_implementation<jtag_implementation>>(
         new open_implementation<jtag_implementation>(std::move(jtag_device)));
+
+    /*
+    std::vector<uint32_t> mem_vector;
+    mem_vector = *implementation->dbus_memdump(0, "t11", "srca", "0", "0", "32");
+    mem_vector = *implementation->dbus_memdump(0, "t11", "dstacc", "0", "0", "64");
+
+    for (int i = 0; i < mem_vector.size(); i++) {
+        //mem_vector[i] = flip_bfp16_bits(mem_vector[i] >> 16) | flip_bfp16_bits(mem_vector[i] & 0xffff) << 16;
+        mem_vector[i] = flip_fp16_bits(mem_vector[i] >> 16) | flip_fp16_bits(mem_vector[i] & 0xffff) << 16;
+    }
+
+    //std::cerr << *dump_tile(mem_vector, tile::TileDataFormat::Float16_b) << std::endl;
+    std::cerr << *dump_tile(mem_vector, tile::TileDataFormat::Float16) << std::endl;
+    */
 
     implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
@@ -451,6 +485,10 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     for (auto device_id : device_ids) {
         soc_descriptors[device_id] = device->get_soc_descriptor(device_id);
     }
+
+    // std::cerr << *tile::read_tile_implementation(0, 1, 1, 0x1a000, 1024, (uint8_t)tile::TileDataFormat::Float16,
+    // device.get()) << std::endl; std::cerr << *tile::read_tile_implementation(0, 1, 1, 0x1a000, 1024,
+    // (uint8_t)tile::TileDataFormat::Float16_b, device.get()) << std::endl;
 
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(device)));

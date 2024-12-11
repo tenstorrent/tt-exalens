@@ -28,10 +28,11 @@ class JtagDevice {
     std::optional<int> writemon_tdr(uint8_t chip_id, const char* client, uint32_t id, uint32_t reg_offset,
                                     uint32_t data);
     std::optional<int> write_tdr(uint8_t chip_id, const char* client, uint32_t reg_offset, uint32_t data);
-    std::optional<int> dbus_memdump(uint8_t chip_id, const char* client_name, const char* mem,
-                                    const char* thread_id_name, const char* start_addr, const char* end_addr);
-    std::optional<int> dbus_sigdump(uint8_t chip_id, const char* client_name, uint32_t dbg_client_id,
-                                    uint32_t dbg_signal_sel_start, uint32_t dbg_signal_sel_end);
+    std::optional<std::vector<uint32_t>> dbus_memdump(uint8_t chip_id, const char* client_name, const char* mem,
+                                                      const char* thread_id_name, const char* start_addr,
+                                                      const char* end_addr);
+    std::optional<std::vector<uint32_t>> dbus_sigdump(uint8_t chip_id, const char* client_name, uint32_t dbg_client_id,
+                                                      uint32_t dbg_signal_sel_start, uint32_t dbg_signal_sel_end);
     std::optional<int> write32_axi(uint8_t chip_id, uint32_t address, uint32_t data);
     std::optional<int> write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data);
     std::optional<uint32_t> read32_axi(uint8_t chip_id, uint32_t address);

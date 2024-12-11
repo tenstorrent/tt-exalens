@@ -30,6 +30,7 @@ JtagDevice::JtagDevice(std::unique_ptr<Jtag> jtag_device) : jtag(std::move(jtag_
         }
         uint32_t id = jtag->read_id();
         if (id != WORMHOLE_ID) {
+            std::cerr << std::hex << id << std::dec << std::endl;
             std::cerr << "Only supporting WORMHOLE for now" << std::endl;
             jtag->close_jlink();
             continue;
@@ -142,22 +143,22 @@ std::optional<int> JtagDevice::write_tdr(uint8_t chip_id, const char* client, ui
     return 0;
 }
 
-std::optional<int> JtagDevice::dbus_memdump(uint8_t chip_id, const char* client_name, const char* mem,
-                                            const char* thread_id_name, const char* start_addr, const char* end_addr) {
+std::optional<std::vector<uint32_t>> JtagDevice::dbus_memdump(uint8_t chip_id, const char* client_name, const char* mem,
+                                                              const char* thread_id_name, const char* start_addr,
+                                                              const char* end_addr) {
     if (!select_device(chip_id)) {
         return {};
     }
-    jtag->dbus_memdump(client_name, mem, thread_id_name, start_addr, end_addr);
-    return 0;
+    return jtag->dbus_memdump(client_name, mem, thread_id_name, start_addr, end_addr);
 }
 
-std::optional<int> JtagDevice::dbus_sigdump(uint8_t chip_id, const char* client_name, uint32_t dbg_client_id,
-                                            uint32_t dbg_signal_sel_start, uint32_t dbg_signal_sel_end) {
+std::optional<std::vector<uint32_t>> JtagDevice::dbus_sigdump(uint8_t chip_id, const char* client_name,
+                                                              uint32_t dbg_client_id, uint32_t dbg_signal_sel_start,
+                                                              uint32_t dbg_signal_sel_end) {
     if (!select_device(chip_id)) {
         return {};
     }
-    jtag->dbus_sigdump(client_name, dbg_client_id, dbg_signal_sel_start, dbg_signal_sel_end);
-    return 0;
+    return jtag->dbus_sigdump(client_name, dbg_client_id, dbg_signal_sel_start, dbg_signal_sel_end);
 }
 
 std::optional<int> JtagDevice::write32_axi(uint8_t chip_id, uint32_t address, uint32_t data) {

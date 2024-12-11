@@ -76,6 +76,7 @@ uint32_t get_indexed_num(uint32_t data_index, const std::vector<uint32_t>& packe
 
     uint32_t out_num = 0;
 
+    uint32_t tile_header_size = 0;
     if (is_shared_exp_format(data_format)) {
         // We alway use 32x32 tiles, with 2x2 faces
         uint32_t num_faces_x = 2;
@@ -83,8 +84,7 @@ uint32_t get_indexed_num(uint32_t data_index, const std::vector<uint32_t>& packe
         // bool partial_face = tile_height<16; // Tiles 1,2,4,8x32
         uint32_t exp_section_size =
             num_faces_x * num_faces_y * 4;  // partial_face ? 1 * num_faces_y * 4 : num_faces_x * num_faces_y * 4;
-        uint32_t tile_header_size = 4;
-        exp_word = packed_data.at(4 + (data_index >> 6));
+        exp_word = packed_data.at(tile_header_size + (data_index >> 6));
         sub_word_index = (data_index >> 4) & 0x3;
         exp = get_byte(exp_word, sub_word_index);
 
@@ -198,7 +198,7 @@ uint32_t get_indexed_num(uint32_t data_index, const std::vector<uint32_t>& packe
         }
     } else if ((data_format == TileDataFormat::Float16_b) || (data_format == TileDataFormat::Float16))  // 16a/b
     {
-        num_word = packed_data.at(4 + (data_index >> 1));
+        num_word = packed_data.at(tile_header_size + (data_index >> 1));
         sub_word_index = data_index & 0x1;
         num = get_half(num_word, sub_word_index);
         if (data_format == TileDataFormat::Float16_b) {
@@ -222,15 +222,15 @@ uint32_t get_indexed_num(uint32_t data_index, const std::vector<uint32_t>& packe
             out_num = (sign << 31) | (exp << 23) | (man << 13);
         }
     } else if (data_format == TileDataFormat::RawUInt16) {
-        num_word = packed_data.at(4 + (data_index >> 1));
+        num_word = packed_data.at(tile_header_size + (data_index >> 1));
         sub_word_index = data_index & 0x1;
         out_num = get_half(num_word, sub_word_index);
     } else if (data_format == TileDataFormat::RawUInt8) {
-        num_word = packed_data.at(4 + (data_index >> 2));
+        num_word = packed_data.at(tile_header_size + (data_index >> 2));
         sub_word_index = data_index & 0x3;
         out_num = get_byte(num_word, sub_word_index);
     } else if (data_format == TileDataFormat::Int8) {
-        num_word = packed_data.at(4 + (data_index >> 2));
+        num_word = packed_data.at(tile_header_size + (data_index >> 2));
         sub_word_index = data_index & 0x3;
 
         uint32_t raw_byte = get_byte(num_word, sub_word_index);
@@ -242,12 +242,12 @@ uint32_t get_indexed_num(uint32_t data_index, const std::vector<uint32_t>& packe
             out_num = magnitude;
         }
     } else if (data_format == TileDataFormat::UInt8) {
-        num_word = packed_data.at(4 + (data_index >> 2));
+        num_word = packed_data.at(tile_header_size + (data_index >> 2));
         sub_word_index = data_index & 0x3;
 
         out_num = get_byte(num_word, sub_word_index);
     } else if (data_format == TileDataFormat::Int32) {
-        num_word = packed_data.at(4 + data_index);
+        num_word = packed_data.at(tile_header_size + data_index);
 
         // Convert back from device int32 representation to 2's complement host representation
         uint32_t magnitude = num_word & 0x7fffffff;
@@ -257,11 +257,11 @@ uint32_t get_indexed_num(uint32_t data_index, const std::vector<uint32_t>& packe
             out_num = magnitude;
         }
     } else if (data_format == TileDataFormat::UInt16) {
-        num_word = packed_data.at(4 + (data_index >> 1));
+        num_word = packed_data.at(tile_header_size + (data_index >> 1));
         sub_word_index = data_index & 0x1;
         out_num = get_half(num_word, sub_word_index);
     } else if (data_format == TileDataFormat::Lf8) {
-        num_word = packed_data.at(4 + (data_index >> 2));
+        num_word = packed_data.at(tile_header_size + (data_index >> 2));
         sub_word_index = data_index & 0x3;
         num = get_byte(num_word, sub_word_index);
 
@@ -282,7 +282,7 @@ uint32_t get_indexed_num(uint32_t data_index, const std::vector<uint32_t>& packe
         // re-assemble number
         out_num = (sign << 31) | (exp << 23) | (man << 21);
     } else if (data_format == TileDataFormat::Fp8_e4m3) {
-        num_word = packed_data.at(4 + (data_index >> 2));
+        num_word = packed_data.at(tile_header_size + (data_index >> 2));
         sub_word_index = data_index & 0x3;
         num = get_byte(num_word, sub_word_index);
 
@@ -303,7 +303,7 @@ uint32_t get_indexed_num(uint32_t data_index, const std::vector<uint32_t>& packe
         // re-assemble number
         out_num = (sign << 31) | (exp << 23) | (man << 20);
     } else {  // 32 bit data
-        num_word = packed_data.at(4 + (data_index));
+        num_word = packed_data.at(tile_header_size + (data_index));
         out_num = num_word;
     }
     return out_num;
@@ -376,9 +376,9 @@ std::optional<std::string> dump_tile(const std::vector<uint32_t>& mem_vector, Ti
 }
 
 std::optional<std::string> read_tile_implementation(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                                    uint32_t size, uint8_t data_format, tt_device* device) {
+                                                    uint32_t size, uint8_t data_format, tt::umd::Cluster* device) {
     TileDataFormat df = to_data_format(data_format);
-    std::vector<std::uint32_t> mem_vector;
+    std::vector<std::uint32_t> mem_vector(size);
 
     if (df != TileDataFormat::Invalid) {
         tt_cxy_pair target(chip_id, noc_x, noc_y);
