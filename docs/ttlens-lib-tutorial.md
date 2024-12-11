@@ -26,7 +26,7 @@ The are three layers a typical API call passes through when TTLens command is in
 <img src="images/ttlens-structure.png" alt="ttnn logo" width="80%"/>
 </div>
 
-**TTLens context** is the highest-level class when connecting to the device through TTLens. It provides TTLens with additional information about what's happening on the device. 
+**TTLens context** is the highest-level class when connecting to the device through TTLens. It provides TTLens with additional information about what's happening on the device.
 TTLens runs in limited context, allowing for basic operations on device memory and running .elf files.
 It is planned to run in other contexts, like Metal, with acces to higher-level information that allows for more structured interactions with the device beyond just reading and writing in memory addresses, as various structures can be deduced based on additional info.
 Currently, **only Limited contexts** can be used, and Metal support is in the works.
@@ -64,7 +64,7 @@ print(read_data)
 
 The code snippet above performs a simple task of writing a list given by `data` variable to adress `0x100` on core `0-0`.
 
-TTLens library package is called `ttlens`. 
+TTLens library package is called `ttlens`.
 It contains multiple modules, three of which are interesting to external user:
 - _tt_lens_init_: A module containing various functions for device and context initialization.
 - _tt_lens_lib_: A module containing useful functions for device interactions.
@@ -82,7 +82,7 @@ Beware that every new initialization overwrites currently active context.
 Both `write_to_device` and `read_words_from_device` take as first two parameters a core coordinate and a memory address.
 There are a few ways to pass a core coordinate to a function.
 If you pass a string, it can be in the form of
-	
+
 - "X-Y", where it is interpreted as nocTr coordinate, or
 - "X,Y", where it is interpreted as a netlist coordinate.
 
@@ -118,7 +118,7 @@ Functon `read_words_from_device` is intended for reading for reading 4 bytes (on
 In our case, since we have written 4 bytes to the device at address `0x100`, we want to read only one word.
 
 The return value of `read_words_from_device` is `list[int]`, where each integer is 32-bit.
-To check more easily if our program did, in fact, read the original data we had written, we want to convert the original 32-bit integer into a list of 8-bit ones. 
+To check more easily if our program did, in fact, read the original data we had written, we want to convert the original 32-bit integer into a list of 8-bit ones.
 The last three lines first convert the integer to a 4-byte long `bytes` object, and then convert the resulting `bytes` object to a list of 8-bit integers.
 It is worth noting that the device uses little-endian byte order.
 
@@ -155,7 +155,7 @@ int main() {
     volatile uint32_t *MAILBOX = reinterpret_cast<volatile uint32_t *> (RISCV_L1_REG_START_ADDR);
 	*MAILBOX = 0x12345678;
 
-	for (;;);	
+	for (;;);
 }
 ```
 

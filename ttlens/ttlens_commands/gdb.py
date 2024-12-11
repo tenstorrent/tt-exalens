@@ -26,6 +26,7 @@ command_metadata = {
     "context": ["limited", "metal"],
 }
 
+
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = docopt(command_metadata["description"], argv=cmd_text.split()[1:])
 

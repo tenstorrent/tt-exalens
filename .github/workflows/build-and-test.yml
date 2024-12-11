@@ -3,7 +3,7 @@ name: "Run all tests"
 on:
   workflow_dispatch:
   workflow_call:
-    
+
 jobs:
 
   build-image:
@@ -75,7 +75,7 @@ jobs:
     steps:
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
-      
+
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -91,8 +91,8 @@ jobs:
         id: strings
         shell: bash
         env:
-          job-name: "Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.runs-on[1] }}"  
-        run: |  
+          job-name: "Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.runs-on[1] }}"
+        run: |
           # Github job context unfortunately doesn't contain job_id, this is the workaround how to fetch it using GH API
 
           curl -s -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
@@ -106,7 +106,7 @@ jobs:
           echo "Current job id: $JOB_ID"
           echo "job-id=$JOB_ID" >> "$GITHUB_OUTPUT"
           echo "test_report_path=report_$JOB_ID.xml" >> "$GITHUB_OUTPUT"
-    
+
       - name: Update permissions for downloaded binaries
         shell: bash
         run: |
@@ -122,17 +122,17 @@ jobs:
         run: |
           python3 -m xmlrunner discover -v -t . -s test/ttlens -p '*test*.py' \
           --output-file ${{ steps.strings.outputs.test_report_path }}
-      
+
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
         with:
           name: test-reports-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.runs-on[1] }}
           path: ${{ steps.strings.outputs.test_report_path }}
 
-      - name: Run Python tests for TTLens app 
+      - name: Run Python tests for TTLens app
         run: |
           python3 -m unittest discover -v -t . -s test/app -p *test*.py
-  
+
 
   wheel-test:
     needs:

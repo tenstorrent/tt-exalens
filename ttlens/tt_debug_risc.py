@@ -96,16 +96,19 @@ RISCV_REGS = {
     32: "pc",
 }
 
+
 def get_register_index(reg_index_or_name):
     if reg_index_or_name in RISCV_REGS:
         return reg_index_or_name
-    else: # try to find register by name
+    else:  # try to find register by name
         for i, name in RISCV_REGS.items():
             if reg_index_or_name.lower() in name:
                 return i
     raise ValueError(f"Unknown register {reg_index_or_name}")
 
-RISC_NAMES = [ "BRISC", "TRISC0", "TRISC1", "TRISC2", "NCRISC" ]
+
+RISC_NAMES = ["BRISC", "TRISC0", "TRISC1", "TRISC2", "NCRISC"]
+
 
 def get_risc_name(id):
     if 0 <= id < len(RISC_NAMES):
@@ -113,11 +116,13 @@ def get_risc_name(id):
     else:
         return f"Unknown RISC id {id}"
 
+
 def get_risc_id(name):
     for i, n in enumerate(RISC_NAMES):
         if name.lower() in n.lower():
             return i
     raise ValueError(f"Unknown RISC name {name}")
+
 
 def get_risc_reset_shift(id):
     """
@@ -136,6 +141,7 @@ def get_risc_reset_shift(id):
     else:
         return f"Unknown RISC id {id}"
 
+
 @dataclass
 class RiscLoc:
     loc: OnChipCoordinate
@@ -149,6 +155,7 @@ class RiscLoc:
         if not isinstance(other, RiscLoc):
             return False
         return self.loc == other.loc and self.noc_id == other.noc_id and self.risc_id == other.risc_id
+
 
 @dataclass
 class RiscDebugStatus:
@@ -192,7 +199,9 @@ class RiscDebugStatus:
             value & STATUS_WATCHPOINT_4_HIT != 0,
             value & STATUS_WATCHPOINT_5_HIT != 0,
             value & STATUS_WATCHPOINT_6_HIT != 0,
-            value & STATUS_WATCHPOINT_7_HIT != 0)
+            value & STATUS_WATCHPOINT_7_HIT != 0,
+        )
+
 
 @dataclass
 class RiscDebugWatchpointState:
@@ -217,21 +226,22 @@ class RiscDebugWatchpointState:
             value & HW_WATCHPOINT_ENABLED != 0,
             value & HW_WATCHPOINT_ACCESS != 0,
             value & HW_WATCHPOINT_READ != 0,
-            value & HW_WATCHPOINT_WRITE != 0
+            value & HW_WATCHPOINT_WRITE != 0,
         )
+
 
 class RiscDebug:
     def __init__(self, location: RiscLoc, context, verbose=False):
         assert 0 <= location.risc_id <= 4, f"Invalid risc id({location.risc_id})"
         self.location = location
         self.CONTROL0_WRITE = 0x80010000 + (self.location.risc_id << 17)
-        self.CONTROL0_READ  = 0x80000000 + (self.location.risc_id << 17)
+        self.CONTROL0_READ = 0x80000000 + (self.location.risc_id << 17)
         self.verbose = verbose
         self.context = context
         self.max_watchpoints = 8
         device = location.loc._device
-        self.RISC_DBG_CNTL0   = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_CNTL_0")
-        self.RISC_DBG_CNTL1   = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_CNTL_1")
+        self.RISC_DBG_CNTL0 = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_CNTL_0")
+        self.RISC_DBG_CNTL1 = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_CNTL_1")
         self.RISC_DBG_STATUS0 = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_0")
         self.RISC_DBG_STATUS1 = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_1")
         self.RISC_DBG_SOFT_RESET0 = device.get_tensix_register_address("RISCV_DEBUG_REG_SOFT_RESET_0")
@@ -274,7 +284,7 @@ class RiscDebug:
     def __trigger_read(self, reg_addr):
         if self.verbose:
             util.INFO(f"      __trigger_read({reg_addr})")
-        self.__write(self.RISC_DBG_CNTL0, self.CONTROL0_READ  + reg_addr)
+        self.__write(self.RISC_DBG_CNTL0, self.CONTROL0_READ + reg_addr)
         self.__write(self.RISC_DBG_CNTL0, 0)
 
     def __riscv_write(self, reg_addr, value):
@@ -295,8 +305,10 @@ class RiscDebug:
             util.INFO(f"  __riscv_read({reg_addr})")
         self.__trigger_read(reg_addr)
 
-        if (not self.__is_read_valid()):
-            util.WARN (f"Reading from RiscV debug registers failed (debug read valid bit is set to 0). Run `srs 0` to check if core is active.")
+        if not self.__is_read_valid():
+            util.WARN(
+                f"Reading from RiscV debug registers failed (debug read valid bit is set to 0). Run `srs 0` to check if core is active."
+            )
         return self.__read(self.RISC_DBG_STATUS1)
 
     def enable_debug(self):
@@ -306,7 +318,7 @@ class RiscDebug:
 
     def halt(self):
         if self.is_halted():
-            util.WARN (f"Halt: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is already halted")
+            util.WARN(f"Halt: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is already halted")
             return
         if self.verbose:
             util.INFO("  halt()")
@@ -337,16 +349,18 @@ class RiscDebug:
 
     def cont(self, verify=True):
         if not self.is_halted():
-            util.WARN (f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is alredy running")
+            util.WARN(f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is alredy running")
             return
         if self.verbose:
             util.INFO("  cont()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_CONTINUE)
-        assert not verify or not self.is_halted(), f"Failed to continue {get_risc_name(self.location.risc_id)} core at {self.location.loc}"
+        assert (
+            not verify or not self.is_halted()
+        ), f"Failed to continue {get_risc_name(self.location.risc_id)} core at {self.location.loc}"
 
     def continue_without_debug(self):
         if not self.is_halted():
-            util.WARN (f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is alredy running")
+            util.WARN(f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is alredy running")
             return
         if self.verbose:
             util.INFO("  cont()")
@@ -369,7 +383,9 @@ class RiscDebug:
         return self.read_status().is_pc_watchpoint_hit
 
     def is_in_reset(self):
-        reset_reg = read_word_from_device(self.location.loc, self.RISC_DBG_SOFT_RESET0, self.location.loc._device.id(), self.context)
+        reset_reg = read_word_from_device(
+            self.location.loc, self.RISC_DBG_SOFT_RESET0, self.location.loc._device.id(), self.context
+        )
         shift = get_risc_reset_shift(self.location.risc_id)
         return (reset_reg >> shift) & 1
 
@@ -379,10 +395,16 @@ class RiscDebug:
         """
         assert value in [0, 1]
         shift = get_risc_reset_shift(self.location.risc_id)
-        reset_reg = read_word_from_device(self.location.loc, self.RISC_DBG_SOFT_RESET0, self.location.loc._device.id(), self.context)
+        reset_reg = read_word_from_device(
+            self.location.loc, self.RISC_DBG_SOFT_RESET0, self.location.loc._device.id(), self.context
+        )
         reset_reg = (reset_reg & ~(1 << shift)) | (value << shift)
-        write_words_to_device(self.location.loc, self.RISC_DBG_SOFT_RESET0, reset_reg, self.location.loc._device.id(), self.context)
-        new_reset_reg = read_word_from_device(self.location.loc, self.RISC_DBG_SOFT_RESET0, self.location.loc._device.id(), self.context)
+        write_words_to_device(
+            self.location.loc, self.RISC_DBG_SOFT_RESET0, reset_reg, self.location.loc._device.id(), self.context
+        )
+        new_reset_reg = read_word_from_device(
+            self.location.loc, self.RISC_DBG_SOFT_RESET0, self.location.loc._device.id(), self.context
+        )
         if new_reset_reg != reset_reg:
             util.ERROR(f"Error writing reset signal. Expected 0x{reset_reg:08x}, got 0x{new_reset_reg:08x}")
 
@@ -498,19 +520,22 @@ class RiscDebug:
         register = self.location.loc._device.get_tensix_register_description(register_name)
 
         # Speed optimization: if register mask is 0xffffffff, we can write directly to memory
-        if register.mask == 0xffffffff:
+        if register.mask == 0xFFFFFFFF:
             self.write_memory(register.address, value)
         else:
             old_value = self.read_memory(register.address)
             new_value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
             self.write_memory(register.address, new_value)
 
+
 from elftools.elf.elffile import ELFFile
+
 
 class RiscLoader:
     """
     This class is used to load elf file to a RISC-V core.
     """
+
     def __init__(self, risc_debug: RiscDebug, context: Context, verbose=False):
         self.verbose = verbose
         self.risc_debug = risc_debug
@@ -550,7 +575,9 @@ class RiscLoader:
                 finally:
                     # Return BRISC in reset
                     self.risc_debug.set_reset_signal(1)
-                    assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
+                    assert (
+                        self.risc_debug.is_in_reset()
+                    ), f"RISC at location {self.risc_debug.location} is not in reset."
 
     def set_branch_prediction(self, value: bool):
         """
@@ -600,15 +627,23 @@ class RiscLoader:
 
         from collections import namedtuple
 
-        RegisterConfiguration = namedtuple("RegisterConfiguration", ["address_register", "enable_register", "enable_bit"])
+        RegisterConfiguration = namedtuple(
+            "RegisterConfiguration", ["address_register", "enable_register", "enable_bit"]
+        )
 
         # For other cores, there is configuration register that specifies the start address
         if risc_name == "TRISC0":
-            return RegisterConfiguration("TRISC_RESET_PC_SEC0_PC", "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en", 0b001)
+            return RegisterConfiguration(
+                "TRISC_RESET_PC_SEC0_PC", "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en", 0b001
+            )
         elif risc_name == "TRISC1":
-            return RegisterConfiguration("TRISC_RESET_PC_SEC1_PC", "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en", 0b010)
+            return RegisterConfiguration(
+                "TRISC_RESET_PC_SEC1_PC", "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en", 0b010
+            )
         elif risc_name == "TRISC2":
-            return RegisterConfiguration("TRISC_RESET_PC_SEC2_PC", "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en", 0b100)
+            return RegisterConfiguration(
+                "TRISC_RESET_PC_SEC2_PC", "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en", 0b100
+            )
         elif risc_name == "NCRISC":
             return RegisterConfiguration("NCRISC_RESET_PC_PC", "NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en", 0b1)
         else:
@@ -647,7 +682,9 @@ class RiscLoader:
             enabled_register_value = rdbg.read_configuration_register(register_configuration.enable_register)
 
             # Update enable register to enable this core
-            rdbg.write_configuration_register(register_configuration.enable_register, enabled_register_value | register_configuration.enable_bit)
+            rdbg.write_configuration_register(
+                register_configuration.enable_register, enabled_register_value | register_configuration.enable_bit
+            )
 
             # Update start address register
             rdbg.write_configuration_register(register_configuration.address_register, address)
@@ -659,8 +696,16 @@ class RiscLoader:
         assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
 
         # Generate infinite loop instruction (JAL 0)
-        jal_instruction = RiscLoader.get_jump_to_offset_instruction(0) # Since JAL uses offset and we need to return to current address, we specify 0
-        write_words_to_device(self.risc_debug.location.loc, address, jal_instruction, self.risc_debug.location.loc._device.id(), self.context)
+        jal_instruction = RiscLoader.get_jump_to_offset_instruction(
+            0
+        )  # Since JAL uses offset and we need to return to current address, we specify 0
+        write_words_to_device(
+            self.risc_debug.location.loc,
+            address,
+            jal_instruction,
+            self.risc_debug.location.loc._device.id(),
+            self.context,
+        )
 
         # Take risc out of reset
         self.risc_debug.set_reset_signal(0)
@@ -679,7 +724,7 @@ class RiscLoader:
         if rd < 0 or rd > 31:
             raise ValueError("Invalid register number. rd must be between 0 and 31.")
 
-        if offset < -2**20 or offset >= 2**20:
+        if offset < -(2**20) or offset >= 2**20:
             raise ValueError("Offset out of range. Must be between -2^20 and 2^20-1.")
 
         # Make sure the offset is within the range for a 20-bit signed integer
@@ -692,7 +737,12 @@ class RiscLoader:
         jal_offset_bits_19_to_12 = (offset >> 12) & 0xFF
 
         # Reconstruct the 20-bit immediate in the JAL instruction format
-        jal_offset = (jal_offset_bit_20 << 31) | (jal_offset_bits_19_to_12 << 12) | (jal_offset_bit_11 << 20) | (jal_offset_bits_10_to_1 << 21)
+        jal_offset = (
+            (jal_offset_bit_20 << 31)
+            | (jal_offset_bits_19_to_12 << 12)
+            | (jal_offset_bit_11 << 20)
+            | (jal_offset_bits_10_to_1 << 21)
+        )
 
         # Construct the instruction
         return jal_offset | (rd << 7) | 0x6F
@@ -705,9 +755,9 @@ class RiscLoader:
         rd.enable_debug()
         with rd.ensure_halted():
             for i in range(0, len(data), 4):
-                word = data[i:i + 4]
-                word = word.ljust(4, b'\x00')
-                word = int.from_bytes(word, byteorder='little')
+                word = data[i : i + 4]
+                word = word.ljust(4, b"\x00")
+                word = int.from_bytes(word, byteorder="little")
                 rd.write_memory(address + i, word)
                 # ww = rd.read_memory(address + i)
                 # if ww != word:
@@ -723,8 +773,7 @@ class RiscLoader:
             data = bytearray()
             for i in range(0, byte_count, 4):
                 word = rd.read_memory(address + i)
-                data.extend(word.to_bytes(4, byteorder='little'))
-
+                data.extend(word.to_bytes(4, byteorder="little"))
 
         return data
 
@@ -733,22 +782,36 @@ class RiscLoader:
         Writes a block of bytes to a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
         the debug interface to write them.
         """
-        if address & self.PRIVATE_MEMORY_BASE == self.PRIVATE_MEMORY_BASE or address & self.PRIVATE_CODE_BASE == self.PRIVATE_CODE_BASE:
+        if (
+            address & self.PRIVATE_MEMORY_BASE == self.PRIVATE_MEMORY_BASE
+            or address & self.PRIVATE_CODE_BASE == self.PRIVATE_CODE_BASE
+        ):
             # Use debug interface
             self.write_block_through_debug(address, data)
         else:
-            write_to_device(self.risc_debug.location.loc, address, data, self.risc_debug.location.loc._device.id(), self.context)
+            write_to_device(
+                self.risc_debug.location.loc, address, data, self.risc_debug.location.loc._device.id(), self.context
+            )
 
     def read_block(self, address, byte_count):
         """
         Reads a block of bytes from a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
         the debug interface to read them.
         """
-        if address & self.PRIVATE_MEMORY_BASE == self.PRIVATE_MEMORY_BASE or address & self.PRIVATE_CODE_BASE == self.PRIVATE_CODE_BASE:
+        if (
+            address & self.PRIVATE_MEMORY_BASE == self.PRIVATE_MEMORY_BASE
+            or address & self.PRIVATE_CODE_BASE == self.PRIVATE_CODE_BASE
+        ):
             # Use debug interface
             return self.read_block_through_debug(address, byte_count)
         else:
-            return read_from_device(self.risc_debug.location.loc, address, self.risc_debug.location.loc._device.id(), byte_count, self.context)
+            return read_from_device(
+                self.risc_debug.location.loc,
+                address,
+                self.risc_debug.location.loc._device.id(),
+                byte_count,
+                self.context,
+            )
 
     def remap_address(self, address: int, loader_data: int, loader_code: int):
         if address & self.PRIVATE_MEMORY_BASE == self.PRIVATE_MEMORY_BASE:
@@ -761,10 +824,10 @@ class RiscLoader:
             return address
         return address
 
-    def load_elf(self, elf_path, loader_data: Union[str,int], loader_code: Union[str,int]):
+    def load_elf(self, elf_path, loader_data: Union[str, int], loader_code: Union[str, int]):
         """
         Given an ELF file, this function loads the sections specified in SECTIONS_TO_LOAD to the
-        memory of the RISC-V core. It also loads (into location 0) the jump instruction to the 
+        memory of the RISC-V core. It also loads (into location 0) the jump instruction to the
         address of the .init section.
         """
         if not os.path.exists(elf_path):
@@ -779,7 +842,7 @@ class RiscLoader:
 
             # Try to find address mapping for loader_data and loader_code
             for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, 'sh_addr'):
+                if section.data() and hasattr(section.header, "sh_addr"):
                     name = section.name
                     address = section.header.sh_addr
                     if name == loader_data:
@@ -789,7 +852,7 @@ class RiscLoader:
 
             # Load section into memory
             for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, 'sh_addr'):
+                if section.data() and hasattr(section.header, "sh_addr"):
                     name = section.name
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
@@ -802,12 +865,12 @@ class RiscLoader:
                         if name == ".init":
                             init_section_address = address
 
-                        util.VERBOSE (f"Writing section {name} to address 0x{address:08x}. Size: {len(data)} bytes")
+                        util.VERBOSE(f"Writing section {name} to address 0x{address:08x}. Size: {len(data)} bytes")
                         self.write_block(address, data)
 
             # Check that what we have written is correct
             for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, 'sh_addr'):
+                if section.data() and hasattr(section.header, "sh_addr"):
                     name = section.name
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
@@ -818,14 +881,15 @@ class RiscLoader:
                             util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
                             continue
                         else:
-                            util.VERBOSE(f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes")
+                            util.VERBOSE(
+                                f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes"
+                            )
         except Exception as e:
             util.ERROR(e)
             raise util.TTException(f"Error loading elf file {elf_path}")
-        
+
         self.context.elf_loaded(self.risc_debug.location.loc, self.risc_debug.location.risc_id, elf_path)
         return init_section_address
-
 
     def run_elf(self, elf_path: str):
         # Make sure risc is in reset
@@ -844,7 +908,13 @@ class RiscLoader:
         if risc_name == "BRISC":
             if init_section_address != 0:
                 jump_instruction = RiscLoader.get_jump_to_offset_instruction(init_section_address)
-                write_words_to_device(self.risc_debug.location.loc, 0, jump_instruction, self.risc_debug.location.loc._device.id(), self.context)
+                write_words_to_device(
+                    self.risc_debug.location.loc,
+                    0,
+                    jump_instruction,
+                    self.risc_debug.location.loc._device.id(),
+                    self.context,
+                )
         else:
             # Change core start address
             self.set_risc_start_address(init_section_address)

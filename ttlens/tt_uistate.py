@@ -6,6 +6,7 @@ from ttlens.tt_lens_context import Context
 from ttlens.tt_gdb_server import GdbServer, ServerSocket
 from ttlens.tt_coordinate import OnChipCoordinate
 
+
 class UIState:
     def __init__(self, context: Context) -> None:
         self.context = context

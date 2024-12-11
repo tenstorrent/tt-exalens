@@ -10,6 +10,7 @@ class TTLensCommunicator(ABC):
     Base class for the TTLens interfaces. It defines the high-level methods that must be implemented for TTLens to
     communicate with the target device. They are later derived to communicate with server, use pybind or read from cache.
     """
+
     @abstractmethod
     def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
         pass
@@ -23,9 +24,7 @@ class TTLensCommunicator(ABC):
         pass
 
     @abstractmethod
-    def pci_write(
-        self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes
-    ):
+    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
         pass
 
     @abstractmethod
@@ -87,6 +86,6 @@ class TTLensCommunicator(ABC):
     @abstractmethod
     def jtag_write32_axi(self, chip_id: int, address: int, data: int):
         pass
-    
+
     def using_cache(self) -> bool:
         return False

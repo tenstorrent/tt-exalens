@@ -40,7 +40,7 @@ Use '-v' for more details.
 
 More details about commands are available in [the documentation](./ttlens-app-docs.md).
 
- 
+
 ### Reading memory (`brxy`)
 
 The `brxy` command can be used to read memory.
@@ -140,7 +140,7 @@ To see more details about this command, refer to [the documentation](./ttlens-ap
 
 It is possible to run .elf files on Tenstorrent hardware through TTLens using `re` command.
 
-We can try and run the sample program that is used in testing TTLens. 
+We can try and run the sample program that is used in testing TTLens.
 First, be sure that you have [cloned TTLens repository and built TTLens](../README.md#building-ttlens).
 If everything worked as expected, there should be a file in `build/riscv-src/wormhole` directory named `run_elf_test.brisc.elf`.
 That simple program writes value 0x12345678 to the address 0x0 in L1 memory of the selected core.
@@ -320,21 +320,21 @@ The above command will run `go -l 20-20`, changing active location to 20-20, fol
 
 ### Developing new commands (`ttlens/ttlens_commands/` folder)
 
-This folder contains python files that define TTLens commands. 
+This folder contains python files that define TTLens commands.
 To create a new command, create a new file in this folder.
-The file name will be the command name. For example, `op-map.py` defines the `op-map` command. 
-The file must contain a function called `run()` which represents the main entry point for the command. 
-The command_metadata dictionary must also be defined. 
+The file name will be the command name. For example, `op-map.py` defines the `op-map` command.
+The file must contain a function called `run()` which represents the main entry point for the command.
+The command_metadata dictionary must also be defined.
 The fields of this dictionary are as follwos:
 - `short` (*str*, optional): short name of the command
 - `long` (*str*, optional): long name of the command
 - `type` (*str*): type of the command:
-  - dev (*under development*), 
-  - high-level, 
+  - dev (*under development*),
+  - high-level,
   - low-level
 - `description` (*str*): command description, usually `__doc__` variable used to utilize module docstring
 - `context` (*list[str]*): which context has access to this command:
-  - limited: needs no output, works with raw data from device, 
+  - limited: needs no output, works with raw data from device,
   - metal: needs output of a Metal run to interpret data from device
 - `common_option_names` (*list[str]*, optional): list of names of common options that command uses:
   - --verbose, -v: Execute command with verbose output, default: false
@@ -352,7 +352,7 @@ For example:
 ```
 command_metadata = {
     "short": "examplecmd",
-    "type": "low-level", 
+    "type": "low-level",
     "description": "This is a description of the command.",
     "context": ["limited", "metal"],
     "common_option_names": [ "--device", "--loc", "--verbose", "--risc" ],

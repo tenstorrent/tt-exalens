@@ -12,6 +12,7 @@ import re
 from fuzzywuzzy import process, fuzz
 from sys import getsizeof
 
+
 class FAKE_DIE(object):
     """
     Some pointers are hard-coded in the source with #defines. These names do not make
@@ -49,9 +50,7 @@ class ELF:
             util.INFO(f"Loading ELF file: '{filename}'", end="")
             start_time = time.time()
             self.names[prefix] = tt_parse_elf.read_elf(self._file_ifc, filename)
-            util.INFO(
-                f" ({getsizeof(self.names[prefix])} bytes loaded in {time.time() - start_time:.2f}s)"
-            )
+            util.INFO(f" ({getsizeof(self.names[prefix])} bytes loaded in {time.time() - start_time:.2f}s)")
 
             # Inject the variables that are not in the ELF
             if extra_vars:
@@ -67,15 +66,11 @@ class ELF:
                 continue
             offset_var = var["offset"]
             if offset_var not in self.names[prefix]["variable"]:
-                raise util.TTException(
-                    f"Variable '{offset_var}' not found in ELF. Cannot add '{var_name}'"
-                )
+                raise util.TTException(f"Variable '{offset_var}' not found in ELF. Cannot add '{var_name}'")
             ov = self.names[prefix]["variable"][offset_var]
             addr = addr = ov.value if ov.value else ov.address
             resolved_type = self.names[prefix]["type"][var["type"]].resolved_type
-            self.names[prefix]["variable"][var_name] = FAKE_DIE(
-                var_name, addr=addr, resolved_type=resolved_type
-            )
+            self.names[prefix]["variable"][var_name] = FAKE_DIE(var_name, addr=addr, resolved_type=resolved_type)
 
     def _get_prefix_and_suffix(self, path_str):
         dot_pos = path_str.find(".")
@@ -106,10 +101,7 @@ class ELF:
         sorted_matches = sorted(matches, key=lambda x: x[1], reverse=True)
 
         if elf:
-            filtered_matches = [
-                f"{'@' if at_prefix else ''}{elf_name}.{match}"
-                for match, score in sorted_matches
-            ]
+            filtered_matches = [f"{'@' if at_prefix else ''}{elf_name}.{match}" for match, score in sorted_matches]
         else:
             filtered_matches = [match for match, score in sorted_matches]
         return filtered_matches
@@ -216,9 +208,7 @@ class ELF:
         if path_str.startswith("@"):
             path_str = path_str[1:]
         elf_name, var_name = self._get_prefix_and_suffix(path_str)
-        data, ret_addr, ret_size_bytes, type_die = tt_parse_elf.mem_access(
-            self.names[elf_name], var_name, mem_reader
-        )
+        data, ret_addr, ret_size_bytes, type_die = tt_parse_elf.mem_access(self.names[elf_name], var_name, mem_reader)
         return data
 
     @staticmethod
