@@ -22,7 +22,15 @@ Or load from csv
 graph current --from-csv=log.csv
 ```
 
-You can also specify the size
+You can also specify the size 
 
 ```
-graph 
+graph current --size 40000
+```
+
+You can graph everything with
+```
+graph all
+```
+
+When you run the grpah command, a localhost server will be hosted and you can just click on the link from the terminal to see the graph

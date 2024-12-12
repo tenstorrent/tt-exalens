@@ -102,7 +102,7 @@ def graph(log_names: List[str], size: int, port: int, save_csv: str, from_csv: s
         nonlocal httpd
         os.chdir(".")  # Set the directory for the HTTP server
         httpd = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
-        print(f"Graph address http://localhost:{port}/{combined_html} if port forwarding is set up.")
+        print(f"Graph shown at http://localhost:{port}/{combined_html}")
         httpd.serve_forever()
 
     
