@@ -9,47 +9,6 @@ from ttlens import tt_device
 from ttlens.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
 from ttlens.tt_lens_lib import read_word_from_device
 
-class BlackholeL1AddressMap(tt_device.L1AddressMap):
-    def __init__(self):
-        super().__init__()
-
-        ## Taken from l1_address_map.h. Ideally make this auto-generated
-        self._l1_address_map = dict()
-        self._l1_address_map["trisc0"] = tt_device.BinarySlot(
-            offset_bytes=0 + 20 * 1024 + 32 * 1024, size_bytes=20 * 1024
-        )
-        self._l1_address_map["trisc1"] = tt_device.BinarySlot(
-            offset_bytes=self._l1_address_map["trisc0"].offset_bytes + self._l1_address_map["trisc0"].size_bytes,
-            size_bytes=16 * 1024,
-        )
-        self._l1_address_map["trisc2"] = tt_device.BinarySlot(
-            offset_bytes=self._l1_address_map["trisc1"].offset_bytes + self._l1_address_map["trisc1"].size_bytes,
-            size_bytes=20 * 1024,
-        )
-        # Brisc, ncrisc, to be added
-
-
-class BlackholeDRAMEpochCommandAddressMap(tt_device.L1AddressMap):
-    def __init__(self):
-        super().__init__()
-
-        ## Taken from dram_address_map.h. Ideally make this auto-generated
-        self._l1_address_map = dict()
-        self._l1_address_map["trisc0"] = tt_device.BinarySlot(offset_bytes=-1, size_bytes=20 * 1024)
-        self._l1_address_map["trisc1"] = tt_device.BinarySlot(offset_bytes=-1, size_bytes=16 * 1024)
-        self._l1_address_map["trisc2"] = tt_device.BinarySlot(offset_bytes=-1, size_bytes=20 * 1024)
-        # Brisc, ncrisc, to be added
-
-
-class BlackholeEthL1AddressMap(tt_device.L1AddressMap):
-    def __init__(self):
-        super().__init__()
-
-        ## Taken from l1_address_map.h. Ideally make this auto-generated
-        self._l1_address_map = dict()
-        # erisc, erisc-app to be added
-
-
 #
 # Device
 #
@@ -118,11 +77,6 @@ class BlackholeDevice(tt_device.Device):
             id,
             arch,
             cluster_desc,
-            {
-                "functional_workers": BlackholeL1AddressMap(),
-                "eth": BlackholeEthL1AddressMap(),
-                "dram": BlackholeDRAMEpochCommandAddressMap(),
-            },
             device_desc_path,
             context,
         )

@@ -16,16 +16,6 @@ from typing import Dict
 from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device
 
-BinarySlot = namedtuple("BinarySlot", ["offset_bytes", "size_bytes"])
-
-class AddressMap(ABC):
-    def __init__(self):
-        self.binaries: Dict[str, BinarySlot]
-
-class L1AddressMap(AddressMap):
-    def __init__(self):
-        super().__init__()
-
 TensixRegisterDescription = namedtuple("TensixRegisterDescription", ["address", "mask", "shift"])
 
 #
@@ -67,25 +57,6 @@ class Device(TTObject):
 
         # TODO: Can we debug eth cores?
         return cores
-
-    def get_address_map(self, core_type: str) -> AddressMap:
-        if core_type not in self._address_maps:
-            raise RuntimeError(f"Core type {core_type} not found in address maps")
-        return self._address_maps[core_type]
-
-    def get_binary_size(self, core_loc, binary_type) -> int:
-        core_type = self.get_block_type(core_loc)
-        address_map = self.get_address_map(core_type)
-        binary_size = address_map.binaries[binary_type].size_bytes
-        assert binary_size >= 0
-        return binary_size
-
-    def get_binary_l1_offset(self, core_loc: OnChipCoordinate, binary_type: str) -> int:
-        core_type = self.get_block_type(core_loc)
-        address_map = self.get_address_map(core_type)
-        offset = address_map.binaries[binary_type].offset_bytes
-        assert offset >= 0
-        return offset
 
     # Class method to create a Device object given device architecture
     def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
@@ -177,19 +148,11 @@ class Device(TTObject):
     def yaml_file(self):
         return util.YamlFile(self._context.server_ifc, self._device_desc_path)
 
-    def __init__(
-        self, id, arch, cluster_desc, address_maps: Dict[str, AddressMap], device_desc_path: str, context: Context
-    ):
-        """
-
-        Args:
-            address_maps (Dict[str, AddressMap]): map of core_type(str) -> AddressMap
-        """
+    def __init__(self, id, arch, cluster_desc, device_desc_path: str, context: Context):
         self._id = id
         self._arch = arch
         self._has_mmio = False
         self._has_jtag = False
-        self._address_maps = address_maps
         self._device_desc_path = device_desc_path
         self._context = context
         for chip in cluster_desc["chips_with_mmio"]:
@@ -445,20 +408,6 @@ class Device(TTObject):
     # Detailed string representation of the device
     def __repr__(self):
         return f"ID: {self.id()}, Arch: {self._arch}"
-
-    # Reads and returns the Risc debug registers
-    def get_debug_regs(self, loc):
-        DEBUG_MAILBOX_BUF_BASE = 112
-        DEBUG_MAILBOX_BUF_SIZE = 64
-        THREAD_COUNT = 4
-
-        debug_tables = [[] for i in range(THREAD_COUNT)]
-        for thread_idx in range(THREAD_COUNT):
-            for reg_idx in range(DEBUG_MAILBOX_BUF_SIZE // THREAD_COUNT):
-                reg_addr = DEBUG_MAILBOX_BUF_BASE + thread_idx * DEBUG_MAILBOX_BUF_SIZE + reg_idx * 4
-                val = read_word_from_device(loc, reg_addr, self.id(), self._context)
-                debug_tables[thread_idx].append({"lo_val": val & 0xFFFF, "hi_val": (val >> 16) & 0xFFFF})
-        return debug_tables
 
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         return self._context.server_ifc.pci_read_tile(self.id(), x, y, reg_addr, msg_size, data_format)
