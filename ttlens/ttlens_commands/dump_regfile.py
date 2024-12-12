@@ -13,11 +13,15 @@ Options:
   -d <D>       Device ID. Optional and repeatable. Default: current device
 
 Description:
-  Prints specified regfile (SRCA, SRCB or DSTACC) at core-loc location of the current chip.
+  Prints specified regfile (SRCA/DSTACC) at core-loc location of the current chip.
+
+  Note:
+  Due to the architecture of SRCA, you can see only see last two faces written.
+  SRCB is currently not supported.
 
 Examples:
-  dr 18-18 0
-  dr 18-18 2 -d 0
+  dr 0,0 0
+  dr 0,0 2 -d 0
 """
 
 command_metadata = {
@@ -31,9 +35,8 @@ from docopt import docopt
 
 from ttlens.tt_uistate import UIState
 from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_lens_lib import read_regfile
+from ttlens.tt_debug_tensix import TensixDebug
 from ttlens.tt_unpack_regfile import unpack_data
-from ttlens.tt_cfg_reg import cfg_get_data_format
 
 
 def run(cmd_text, context, ui_state: UIState = None):
@@ -52,8 +55,9 @@ def run(cmd_text, context, ui_state: UIState = None):
         current_device = context.devices[device_id]
         core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
 
-        data = read_regfile(regfile_id, core_loc, device_id, context)
-        df = cfg_get_data_format(core_loc, device_id, context)
+        debug_tensix = TensixDebug(core_loc, device_id, context)
+        data = debug_tensix.read_regfile(regfile_id)
+        df = debug_tensix.read_cfg_reg("ALU_FORMAT_SPEC_REG2_Dstacc")
         unpacked_data = unpack_data(data, df)
 
         for i in range(len(unpacked_data)):

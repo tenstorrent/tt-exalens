@@ -89,6 +89,18 @@ class BlackholeEthL1AddressMap(tt_device.L1AddressMap):
         # erisc, erisc-app to be added
 
 
+class BlackholeInstructions(tt_device.TensixInstructions):
+    def __init__(self):
+        super().__init__()
+        import ttlens.tt_blackhole_ops as ops
+
+        for func_name in dir(ops):
+            func = getattr(ops, func_name)
+            if callable(func):
+                static_method = staticmethod(func)
+                setattr(self.__class__, func_name, static_method)
+
+
 #
 # Device
 #
@@ -344,6 +356,8 @@ class BlackholeDevice(tt_device.Device):
         return 0xFFEF0000
 
     __configuration_register_map = {
+        "ALU_FORMAT_SPEC_REG2_Dstacc": tt_device.TensixRegisterDescription(address=1 * 4, mask=0x1E000000, shift=25),
+        "ALU_ACC_CTRL_Fp32_enabled": tt_device.TensixRegisterDescription(address=1 * 4, mask=0x20000000, shift=29),
         "DISABLE_RISC_BP_Disable_main": tt_device.TensixRegisterDescription(address=2 * 4, mask=0x400000, shift=22),
         "DISABLE_RISC_BP_Disable_trisc": tt_device.TensixRegisterDescription(address=2 * 4, mask=0x3800000, shift=23),
         "DISABLE_RISC_BP_Disable_ncrisc": tt_device.TensixRegisterDescription(address=2 * 4, mask=0x4000000, shift=26),
@@ -359,6 +373,14 @@ class BlackholeDevice(tt_device.Device):
         return 0xFFB12000
 
     __debug_register_map = {
+        "RISCV_DEBUG_REG_CFGREG_RD_CNTL": tt_device.TensixRegisterDescription(address=0x58, mask=0xFFFFFFFF, shift=0),
+        "RISCV_DEBUG_REG_DBG_RD_DATA": tt_device.TensixRegisterDescription(address=0x5C, mask=0xFFFFFFFF, shift=0),
+        "RISCV_DEBUG_REG_CFGREG_RDDATA": tt_device.TensixRegisterDescription(address=0x78, mask=0xFFFFFFFF, shift=0),
+        "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN": tt_device.TensixRegisterDescription(address=0x60, mask=0xFFFFFFFF, shift=0),
+        "RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD": tt_device.TensixRegisterDescription(address=0x64, mask=0xFFFFFFFF, shift=0),
+        "RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA": tt_device.TensixRegisterDescription(
+            address=0x6C, mask=0xFFFFFFFF, shift=0
+        ),
         "RISCV_DEBUG_REG_RISC_DBG_CNTL_0": tt_device.TensixRegisterDescription(address=0x80, mask=0xFFFFFFFF, shift=0),
         "RISCV_DEBUG_REG_RISC_DBG_CNTL_1": tt_device.TensixRegisterDescription(address=0x84, mask=0xFFFFFFFF, shift=0),
         "RISCV_DEBUG_REG_RISC_DBG_STATUS_0": tt_device.TensixRegisterDescription(
@@ -366,6 +388,15 @@ class BlackholeDevice(tt_device.Device):
         ),
         "RISCV_DEBUG_REG_RISC_DBG_STATUS_1": tt_device.TensixRegisterDescription(
             address=0x8C, mask=0xFFFFFFFF, shift=0
+        ),
+        "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0": tt_device.TensixRegisterDescription(
+            address=0xA0, mask=0xFFFFFFFF, shift=0
+        ),
+        "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1": tt_device.TensixRegisterDescription(
+            address=0xA4, mask=0xFFFFFFFF, shift=0
+        ),
+        "RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS": tt_device.TensixRegisterDescription(
+            address=0xA8, mask=0xFFFFFFFF, shift=0
         ),
         "RISCV_DEBUG_REG_SOFT_RESET_0": tt_device.TensixRegisterDescription(address=0x1B0, mask=0xFFFFFFFF, shift=0),
         "TRISC_RESET_PC_SEC0_PC": tt_device.TensixRegisterDescription(

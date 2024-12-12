@@ -9,7 +9,7 @@ grep -A1 "#define TT_OP" ~/tt-llk-gs/common/inc/ckernel_ops.h \
 
 
 def TT_OP(opcode, params):
-    return (opcode << 24) + params
+    return int.to_bytes((opcode << 24) + params, 4, byteorder="little")
 
 
 def TT_OP_ADDDMAREG(OpBisConst, ResultRegIndex, OpBRegIndex, OpARegIndex):

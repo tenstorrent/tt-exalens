@@ -37,6 +37,18 @@ class GrayskullDRAMEpochCommandAddressMap(tt_device.L1AddressMap):
         # Brisc, ncrisc, to be added
 
 
+class GrayskullInstructions(tt_device.TensixInstructions):
+    def __init__(self):
+        super().__init__()
+        import ttlens.tt_grayskull_ops as ops
+
+        for func_name in dir(ops):
+            func = getattr(ops, func_name)
+            if callable(func):
+                static_method = staticmethod(func)
+                setattr(self.__class__, func_name, static_method)
+
+
 #
 # Device
 #
@@ -255,6 +267,15 @@ class GrayskullDevice(tt_device.Device):
         ),
         "RISCV_DEBUG_REG_RISC_DBG_STATUS_1": tt_device.TensixRegisterDescription(
             address=0x8C, mask=0xFFFFFFFF, shift=0
+        ),
+        "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0": tt_device.TensixRegisterDescription(
+            address=0xA0, mask=0xFFFFFFFF, shift=0
+        ),
+        "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1": tt_device.TensixRegisterDescription(
+            address=0xA4, mask=0xFFFFFFFF, shift=0
+        ),
+        "RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS": tt_device.TensixRegisterDescription(
+            address=0xA8, mask=0xFFFFFFFF, shift=0
         ),
         "RISCV_DEBUG_REG_SOFT_RESET_0": tt_device.TensixRegisterDescription(address=0x1B0, mask=0xFFFFFFFF, shift=0),
     }

@@ -65,6 +65,11 @@ class L1AddressMap(AddressMap):
         super().__init__()
 
 
+class TensixInstructions(ABC):
+    def __init__(self):
+        pass
+
+
 TensixRegisterDescription = namedtuple("TensixRegisterDescription", ["address", "mask", "shift"])
 
 #
@@ -93,6 +98,8 @@ class Device(TTObject):
     # Maps to store translation table from noc0 to nocTr and vice versa
     nocTr_y_to_noc0_y = dict()
     noc0_y_to_nocTr_y = dict()
+
+    instructions = TensixInstructions()
 
     @cached_property
     def debuggable_cores(self):
@@ -135,18 +142,21 @@ class Device(TTObject):
             dev = tt_grayskull.GrayskullDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
+            dev.instructions = tt_grayskull.GrayskullInstructions()
         if "wormhole" in arch.lower():
             from ttlens import tt_wormhole
 
             dev = tt_wormhole.WormholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
+            dev.instructions = tt_wormhole.WormholeInstructions()
         if "blackhole" in arch.lower():
             from ttlens import tt_blackhole
 
             dev = tt_blackhole.BlackholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
+            dev.instructions = tt_blackhole.BlackholeInstructions()
 
         if dev is None:
             raise RuntimeError(f"Architecture {arch} is not supported")
