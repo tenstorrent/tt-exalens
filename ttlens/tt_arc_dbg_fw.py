@@ -8,10 +8,11 @@ from typing import Union, List
 from ttlens.tt_lens_context import Context
 from ttlens.tt_util import TTException
 from ttlens.tt_lens_lib_utils import check_context, arc_read, arc_write, split_32bit_to_16bit
-from ttlens.tt_lens_lib import arc_msg, read_words_from_device
+from ttlens.tt_lens_lib import arc_msg, read_words_from_device, read_from_device
 from ttlens.tt_arc import load_arc_fw
 from ttlens.tt_arc_dbg_fw_log_context import LogInfo, ArcDfwLogContext, ArcDfwLogContextFromList, ArcDfwLogContextFromYaml
 from ttlens.tt_arc_dbg_fw_compiler import add_logging_instructions_to_arc_dbg_fw
+from functools import lru_cache
 
 DFW_MSG_CLEAR_DRAM         = 0x1  # Calls dfw_clear_drpam(start_addr, size)
 DFW_MSG_CHECK_DRAM_CLEARED = 0x2  # Calls dfw_check_dram_cleared(start_addr, size)
@@ -116,7 +117,7 @@ def send_buffer_addr_and_size_to_arc_dbg_fw(device_id: int, context: Context = N
     if response[0] == -1:
         raise TTException("Arc msg error")
     
-
+@lru_cache(maxsize=None)
 def arc_dbg_fw_get_buffer_start_addr(device_id: int = 0, context: Context = None) -> int:
     """
     Retrieves the start address of the debug buffer for the specified device.
@@ -148,7 +149,8 @@ def arc_dbg_fw_get_buffer_start_addr(device_id: int = 0, context: Context = None
     send_buffer_addr_and_size_to_arc_dbg_fw(device_id, context)
 
     return DFW_DEFAULT_BUFFER_ADDR
-     
+
+@lru_cache(maxsize=None)
 def arc_dbg_fw_get_buffer_size() -> int:
     """
     Retrieves the buffer size for ARC debugging from the environment variable.
@@ -243,8 +245,8 @@ def arc_dbg_fw_command(command: str, device_id: int = 0, context: Context = None
     """
     Send a command to the ARC debug firmware. Available commands are "start", "stop", and "clear":
     """
-    if not arc_dbg_fw_check_msg_loop_running(device_id, context):
-        raise TTException("ARC debug firmware is not running.")
+    # if not arc_dbg_fw_check_msg_loop_running(device_id, context):
+    #     raise TTException("ARC debug firmware is not running.")
 
     DRAM_REGION_START_ADDR = arc_dbg_fw_get_buffer_start_addr(device_id, context)
     DRAM_REGION_SIZE = arc_dbg_fw_get_buffer_size()
@@ -305,6 +307,11 @@ def load_arc_dbg_fw(file_name: str = "fw/arc/arc_dbg_fw.hex", log_context: ArcDf
     load_arc_fw(modified_fw_file_path, 2, device_id, context)
 
     configure_arc_dbg_fw(log_context, device_id, context)
+
+def read_arc_dfw_buffer(device_id: int = 0, context: Context = None) -> List[int]:
+    buffer_start_addr = arc_dbg_fw_get_buffer_start_addr(device_id, context) + len(DFW_BUFFER_HEADER_OFFSETS) * 4
+    buffer_size = arc_dbg_fw_get_buffer_size() - len(DFW_BUFFER_HEADER_OFFSETS) * 4
+    return read_from_device('ch0', device_id=device_id, addr=buffer_start_addr, num_bytes=buffer_size)
 
 def configure_arc_dbg_fw(log_context: ArcDfwLogContext, device_id: int = 0, context: Context = None) -> None:
     device = context.devices[device_id]

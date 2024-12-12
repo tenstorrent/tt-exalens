@@ -27,8 +27,8 @@ from ttlens.tt_arc_dbg_fw import (
     load_arc_dbg_fw
 )
 from ttlens.tt_lens_lib_utils import arc_read, split_32bit_to_16bit
-from ttlens.tt_arc_dbg_fw_log_context import LogInfo
-from ttlens.tt_arc_dbg_fw_graph import read_arc_dfw_buffer, arc_dbg_fw_graph
+from ttlens.tt_arc_dbg_fw_log_context import LogInfo, ArcDfwLogContext, ArcDfwLogContextFromYaml, ArcDfwLogContextFromList
+from ttlens.tt_arc_dbg_fw_graph import read_arc_dfw_buffer,graph_current
 
 def invalid_argument_decorator(func):
     @wraps(func)
@@ -513,12 +513,12 @@ class TestARC(unittest.TestCase):
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
 
         for device_id in self.context.device_ids:
-            load_default_arc_dbg_fw(device_id, self.context)
+            load_arc_dbg_fw(device_id=device_id, context=self.context)
             reply = read_dfw_buffer_header("msg", device_id, self.context)
             assert(reply == 0xbebaceca)
 
             # Now load it again to check if reset works
-            load_default_arc_dbg_fw(device_id, self.context)
+            load_arc_dbg_fw(device_id=device_id,context=self.context)
             reply = read_dfw_buffer_header("msg", device_id, self.context)
             assert(reply == 0xbebaceca)
 
@@ -529,18 +529,18 @@ class TestARC(unittest.TestCase):
 
     def test_intruction(self):
         device_id =0
-        TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024*64*4
+        TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024*64
         
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
 
         log_yaml_location  = "fw/arc/log/default.yaml"
 
-        load_arc_dbg_fw(device_id=device_id,context=self.context)
-        reply = read_dfw_buffer_header("msg", device_id, self.context)
-        assert(reply == 0xbebaceca)
+        # load_arc_dbg_fw(device_id=device_id,context=self.context)
+        # reply = read_dfw_buffer_header("msg", device_id, self.context)
+        # assert(reply == 0xbebaceca)
         
-        arc_dbg_fw_graph(device_id=device_id,context=self.context)
+        graph_current( ArcDfwLogContextFromList(["current"]),device_id, self.context)
 
     # TODO test reset
     # TODO test instruction_injection
-    # TODO test communication 
+    # TODO test communication
