@@ -150,7 +150,7 @@ def arc_dbg_fw_get_buffer_start_addr(device_id: int = 0, context: Context = None
 
     return DFW_DEFAULT_BUFFER_ADDR
 
-@lru_cache(maxsize=None)
+#@lru_cache(maxsize=None)
 def arc_dbg_fw_get_buffer_size() -> int:
     """
     Retrieves the buffer size for ARC debugging from the environment variable.
@@ -209,11 +209,6 @@ def arc_dbg_fw_send_message(message, arg0: int = 0, arg1: int = 0, device_id: in
     assert(message & 0xffffff00 == 0) # "Message must be in the lower 8 bits"
     modify_dfw_buffer_header("msg", message | 0xabcdef00, device_id, context)
 
-def read_arc_dfw_buffer2(device_id: int = 0, context: Context = None) -> List[int]:
-    buffer_start_addr = arc_dbg_fw_get_buffer_start_addr(device_id, context) 
-    buffer_size = len(DFW_BUFFER_HEADER_OFFSETS) * 4
-    return read_words_from_device('ch0', device_id=device_id, addr=buffer_start_addr, word_count=buffer_size//4)
-
 def arc_dbg_fw_check_msg_loop_running(device_id: int = 0, context: Context = None):
     """
     Send PING, check for PONG
@@ -226,8 +221,6 @@ def arc_dbg_fw_check_msg_loop_running(device_id: int = 0, context: Context = Non
     time.sleep(0.01) # Allow time for reply
     
     reply = read_dfw_buffer_header("msg", device_id, context)
-
-    print(read_arc_dfw_buffer2(device_id,context))
     
     if (reply >> 16) != 0x99 or (reply & 0xff00) != 0x8800: 
         return False
