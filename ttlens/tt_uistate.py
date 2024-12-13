@@ -11,7 +11,7 @@ class UIState:
     def __init__(self, context: Context) -> None:
         self.context = context
         self.current_device_id = context.device_ids[0]  # Currently selected device id
-        self.current_location = OnChipCoordinate(0, 0, "netlist", self.current_device)  # Currently selected core
+        self.current_location = OnChipCoordinate.create("0,0", self.current_device)  # Currently selected core
         self.current_prompt = ""  # Based on the current x,y
         self.gdb_server: GdbServer = None
 

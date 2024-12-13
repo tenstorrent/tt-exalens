@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
@@ -22,12 +21,6 @@ The following coordinate systems are available to represent a grid location on t
                     2 NOC coordinate systems: noc0 and noc1.
   - noc1:           NOC routing coordinate for NOC 1. Notation: X-Y
                     Same as noc0, but using the second NOC (which goes in the opposite direction).
-  - tensix:         represents a full grid of Tensix cores (including the disabled rows due to harvesting).
-                    A distance of 1 in this coordinate system shows the 4 closest cores in terms of the
-                    NOC routing. Note that, due to presence of non-Tensix blocks, a distance of 1 in the
-                    tensix grid does not necessarily equal to one hop on the NOC. Tensix location 0,0 is
-                    anchored to noc0 coordinate of 1-1. Location 1,0 is noc0 1-2 (note that X in noc0
-                    corresponds to C in tensix, and Y corresponds to R). Notation: R,C
 
   The above three do not depend on harvesting. They only depend on the chip architecture. Also, they share
   the extents in both X (column) and Y (row). The following coordinates depend on the harvesting mask on WH
@@ -56,7 +49,13 @@ The following coordinate systems are available to represent a grid location on t
 
 """
 
-from typing import Any
+# TODO: Rename coordinate systems!!!
+# TODO: Make nicer explanation of exception when coordinate translation fails. Current example: CoordinateTranslationError: CoordinateTranslationError: to_noc0(coord_tuple=(6, 0), coord_system=logical, core_type=dram)
+# TODO: device command (d) cannot use netlist as first argument. It can use logical tensix, logical eth, logical dram...
+# TODO: Add legend to device command
+# TODO: Add colors to device command
+# TODO: Fix comments in coordinate system documentation strings
+
 from ttlens.tt_util import TTException
 
 VALID_COORDINATE_TYPES = [
@@ -65,7 +64,6 @@ VALID_COORDINATE_TYPES = [
     "nocVirt",
     "nocTr",
     "die",
-    "tensix",
     "netlist",
 ]
 
@@ -75,7 +73,12 @@ class CoordinateTranslationError(Exception):
     This exception is thrown when a coordinate translation fails.
     """
 
-    pass
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message
+
+    def __str__(self):
+        return f"CoordinateTranslationError: {self.message}"
 
 
 class OnChipCoordinate:
@@ -87,7 +90,7 @@ class OnChipCoordinate:
     _noc0_coord = (None, None)  # This uses noc0 coordinates: (X,Y)
     _device = None  # Used for conversions
 
-    def __init__(self, x: int, y: int, input_type: str, device):
+    def __init__(self, x: int, y: int, input_type: str, device, core_type="any"):
         """
         Constructor for the Coordinate class.
 
@@ -99,10 +102,10 @@ class OnChipCoordinate:
                 - nocVirt: Virtual NOC coordinate. Similar to noc0, but with the harvested rows removed, and the locations of functioning rows shifted down to fill in the gap. (X-Y)
                 - noc1: NOC routing coordinate for NOC 1. (X-Y)
                 - die: Die coordinate, a location on the die grid. (X,Y)
-                - tensix: Tensix coordinate, represents a full grid of Tensix cores (including the disabled rows due to harvesting). (R,C)
                 - netlist: Netlist coordinate, is similar to the 'tensix', but does not include the disabled rows due to harvesting. (R,C)
                 - nocTr: Translated NOC coordinate. Similar to noc0Virt, but offset by 16. (X-Y)
             device: The device object used for coordinate conversion.
+            core_type (str, optional): The core_type used for coordinate conversion. Some coordinate systems require core_type as third dimension. Defaults to "any".
 
         Raises:
             Exception: If the input coordinate system is unknown.
@@ -115,17 +118,17 @@ class OnChipCoordinate:
         if input_type == "noc0":
             self._noc0_coord = (x, y)
         elif input_type == "nocVirt":
-            self._noc0_coord = self._device.nocVirt_to_noc0((x, y))
+            self._noc0_coord = self._device.to_noc0((x, y), "virtual", core_type)
         elif input_type == "noc1":
-            self._noc0_coord = self._device.noc1_to_noc0((x, y))
+            self._noc0_coord = self._device.to_noc0((x, y), "noc1", core_type)
         elif input_type == "die":
-            self._noc0_coord = self._device.die_to_noc((x, y), noc_id=0)
+            self._noc0_coord = self._device.to_noc0((x, y), "die", core_type)
         elif input_type == "tensix":
-            self._noc0_coord = self._device.tensix_to_noc0((x, y))
+            self._noc0_coord = self._device.to_noc0((x, y), "tensix", core_type)
         elif input_type == "netlist":
-            self._noc0_coord = self._device.netlist_to_noc0((x, y))
+            self._noc0_coord = self._device.to_noc0((x, y), "logical", core_type)
         elif input_type == "nocTr":
-            self._noc0_coord = self._device.nocTr_to_noc0((x, y))
+            self._noc0_coord = self._device.to_noc0((x, y), "translated", core_type)
         else:
             raise Exception("Unknown input coordinate system: " + input_type)
 
@@ -147,17 +150,17 @@ class OnChipCoordinate:
         if output_type == "noc0":
             return self._noc0_coord
         elif output_type == "nocVirt":
-            return self._device.noc0_to_nocVirt(self._noc0_coord)
+            return self._device.from_noc0(self._noc0_coord, "virtual")[0]
         elif output_type == "noc1":
-            return self._device.noc0_to_noc1(self._noc0_coord)
+            return self._device.from_noc0(self._noc0_coord, "noc1")[0]
         elif output_type == "die":
-            return self._device.noc_to_die(self._noc0_coord, noc_id=0)
+            return self._device.from_noc0(self._noc0_coord, "die")[0]
         elif output_type == "tensix":
-            return self._device.noc0_to_tensix(self._noc0_coord)
+            return self._device.from_noc0(self._noc0_coord, "tensix")[0]
         elif output_type == "netlist":
-            return self._device.noc0_to_netlist(self._noc0_coord)
+            return self._device.from_noc0(self._noc0_coord, "logical")
         elif output_type == "nocTr":
-            return self._device.noc0_to_nocTr(self._noc0_coord)
+            return self._device.from_noc0(self._noc0_coord, "translated")[0]
         else:
             raise Exception("Unknown output coordinate system: " + output_type)
 
@@ -178,7 +181,7 @@ class OnChipCoordinate:
         else:
             return False
 
-    def to_str(self, output_type="nocTr"):
+    def to_str(self, output_type="noc0"):
         """
         Returns a tuple with the coordinates in the specified coordinate system.
         """
@@ -187,24 +190,25 @@ class OnChipCoordinate:
         except CoordinateTranslationError as e:
             return "N/A"
 
-        if "noc" in output_type:
-            return f"{output_tuple[0]}-{output_tuple[1]}"
-        elif output_type == "die" or output_type == "tensix" or output_type == "netlist":
+        if output_type == "netlist":
+            core_type = output_tuple[1]
+            output_tuple = output_tuple[0]
+            if core_type == "tensix":
+                return f"{output_tuple[0]},{output_tuple[1]}"
+            else:
+                return f"{core_type[0]}{output_tuple[0]},{output_tuple[1]}"
+
+        if output_type == "die":
             return f"{output_tuple[0]},{output_tuple[1]}"
-        else:
-            raise Exception("Unknown output coordinate system: " + output_type)
+        return f"{output_tuple[0]}-{output_tuple[1]}"
 
     def to_user_str(self):
         """
         Returns a string representation of the coordinate that is suitable for the user.
         """
-        virt_str = self.to_str("nocTr")
-        try:
-            netlist_tuple = self.to("netlist")
-            return f"{virt_str} ({netlist_tuple[0]}, {netlist_tuple[1]})"
-        except CoordinateTranslationError:
-            pass
-        return virt_str
+        noc0 = self.to_str("noc0")
+        netlist = self.to_str("netlist")
+        return f"{noc0} ({netlist})"
 
     def change_device(self, device):
         """
@@ -223,8 +227,9 @@ class OnChipCoordinate:
         # Try to convert to netlist coordinates. If that fails, fallback to nocTr coordinates.
         # We cannot use noc0 coordinates because of harvesting.
         try:
-            netlist_tuple = self.to("netlist")
-            return OnChipCoordinate(netlist_tuple[0], netlist_tuple[1], "netlist", device)
+            netlist = self.to("netlist")
+            netlist_tuple = netlist[0]
+            return OnChipCoordinate(netlist_tuple[0], netlist_tuple[1], "netlist", device, netlist[1])
         except CoordinateTranslationError:
             nocTr_tuple = self.to("nocTr")
             return OnChipCoordinate(nocTr_tuple[0], nocTr_tuple[1], "nocTr", device)
@@ -238,10 +243,10 @@ class OnChipCoordinate:
 
     # The debug string representation also has the translated coordinate.
     def __repr__(self) -> str:
-        return f"{self.to_str('netlist')} ({self.to_str('nocTr')})"
+        return self.to_user_str()
 
     def full_str(self) -> str:
-        return f"noc0: {self.to_str('noc0')}, noc1: {self.to_str('noc1')}, die: {self.to_str('die')}, tensix: {self.to_str('tensix')}, netlist: {self.to_str('netlist')}, nocTr: {self.to_str('nocTr')}, nocVirt: {self.to_str('nocVirt')}"
+        return f"noc0: {self.to_str('noc0')}, noc1: {self.to_str('noc1')}, die: {self.to_str('die')}, netlist: {self.to_str('netlist')}, nocTr: {self.to_str('nocTr')}, nocVirt: {self.to_str('nocVirt')}"
 
     def is_nocTr(x) -> bool:
         return x >= 16
@@ -249,9 +254,7 @@ class OnChipCoordinate:
     # == operator
     def __eq__(self, other):
         # util.DEBUG("Comparing coordinates: " + str(self) + " ?= " + str(other))
-        return (self._noc0_coord == other._noc0_coord) and (
-            (self._device == other._device) or (self._device._arch == other._device._arch)
-        )
+        return (self._noc0_coord == other._noc0_coord) and (self._device == other._device)
 
     def __lt__(self, other):
         if self._device.id() == other._device.id():
@@ -285,6 +288,16 @@ class OnChipCoordinate:
             - If the coordinate format is X-Y or R,C, the coordinates will be converted to integers.
             - If the coordinate format is DRAM channel, the corresponding NOC0 coordinates will be used.
         """
+
+        # Try to get core type from coord_str
+        core_type = "any"
+        core_types = device.core_types
+        for ct in core_types:
+            if coord_str[0:1].lower() == ct[0:1]:
+                core_type = ct
+                coord_str = coord_str[1:]
+                break
+
         if "-" in coord_str:
             if coord_type is None:
                 coord_type = "nocTr"
@@ -294,15 +307,19 @@ class OnChipCoordinate:
         elif "," in coord_str:
             if coord_type is None:
                 coord_type = "netlist"
+                # If letter that explains core type is not present, we will default to tensix
+                if core_type == "any":
+                    core_type = "tensix"
             x, y = coord_str.split(",")
             x = int(x.strip())
             y = int(y.strip())
         elif coord_str[0:2].upper() == "CH":  # This is a DRAM channel
             # Parse the digits after "CH"
-            dram_chan = int(coord_str[2:])
-            (x, y) = device.DRAM_CHANNEL_TO_NOC0_LOC[dram_chan]
-            coord_type = "noc0"
+            x = int(coord_str[2:])
+            y = 0
+            core_type = "dram"
+            coord_type = "netlist"
         else:
             raise TTException("Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C")
 
-        return OnChipCoordinate(x, y, coord_type, device)
+        return OnChipCoordinate(x, y, coord_type, device, core_type)

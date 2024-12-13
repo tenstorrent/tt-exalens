@@ -2,17 +2,14 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from functools import cached_property
-import os, struct, ast
 from typing import List, Sequence
-from socket import timeout
 from tabulate import tabulate
 from ttlens.tt_lens_context import Context
 from ttlens.tt_object import TTObject
 from ttlens import tt_util as util
-from ttlens.tt_coordinate import OnChipCoordinate, CoordinateTranslationError
+from ttlens.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
 from collections import namedtuple
-from abc import ABC, abstractmethod
-from typing import Dict
+from abc import abstractmethod
 from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device
 
@@ -29,21 +26,6 @@ class Device(TTObject):
         Cmd = 0
         Config = 1
         Status = 2
-
-    # Class variable denoting the number of devices created
-    num_devices = 0
-
-    # See tt_coordinate.py for description of coordinate systems
-    tensix_row_to_netlist_row = dict()
-    netlist_row_to_tensix_row = dict()
-
-    # Maps to store translation table from nocVirt to nocTr and vice versa
-    nocVirt_to_nocTr_map = dict()
-    nocTr_to_nocVirt_map = dict()
-
-    # Maps to store translation table from noc0 to nocTr and vice versa
-    nocTr_y_to_noc0_y = dict()
-    noc0_y_to_nocTr_y = dict()
 
     @cached_property
     def debuggable_cores(self):
@@ -85,65 +67,6 @@ class Device(TTObject):
 
         return dev
 
-    @abstractmethod
-    def get_harvested_noc0_y_rows(self):
-        pass
-
-    def _create_tensix_netlist_harvesting_map(self):
-        tensix_row = 0
-        netlist_row = 0
-        self.tensix_row_to_netlist_row = dict()  # Clear any existing map
-        self.netlist_row_to_tensix_row = dict()
-        harvested_noc0_y_rows = self.get_harvested_noc0_y_rows()
-
-        for noc0_y in range(0, self.row_count()):
-            if noc0_y == 0 or noc0_y == 6:
-                pass  # Skip Ethernet rows
-            else:
-                if noc0_y in harvested_noc0_y_rows:
-                    pass  # Skip harvested rows
-                else:
-                    self.netlist_row_to_tensix_row[netlist_row] = tensix_row
-                    self.tensix_row_to_netlist_row[tensix_row] = netlist_row
-                    netlist_row += 1
-                tensix_row += 1
-
-    def _create_nocTr_noc0_harvesting_map(self):
-        bitmask = self._harvesting["harvest_mask"] if self._harvesting else 0
-
-        self.nocTr_y_to_noc0_y = dict()  # Clear any existing map
-        self.noc0_y_to_nocTr_y = dict()
-        for nocTr_y in range(0, self.row_count()):
-            self.nocTr_y_to_noc0_y[nocTr_y] = nocTr_y  # Identity mapping for rows < 16
-
-        num_harvested_rows = bin(bitmask).count("1")
-        self._handle_harvesting_for_nocTr_noc0_map(num_harvested_rows)
-
-        # 4. Create reverse map
-        for nocTr_y in self.nocTr_y_to_noc0_y:
-            self.noc0_y_to_nocTr_y[self.nocTr_y_to_noc0_y[nocTr_y]] = nocTr_y
-
-        # 4. Print
-        # for tr_row in reversed (range (16, 16 + self.row_count())):
-        #     print(f"nocTr row {tr_row} => noc0 row {self.nocTr_y_to_noc0_y[tr_row]}")
-
-        # print (f"Created nocTr to noc0 harvesting map for bitmask: {bitmask}")
-
-    def _create_harvesting_maps(self):
-        self._create_tensix_netlist_harvesting_map()
-        self._create_nocTr_noc0_harvesting_map()
-
-    def _create_nocVirt_to_nocTr_map(self):
-        harvested_coord_translation_str = self._context.server_ifc.get_harvester_coordinate_translation(self._id)
-        self.nocVirt_to_nocTr_map = ast.literal_eval(harvested_coord_translation_str)  # Eval string to dict
-        self.nocTr_to_nocVirt_map = {v: k for k, v in self.nocVirt_to_nocTr_map.items()}  # Create inverse map as well
-
-    def tensix_to_netlist(self, tensix_loc):
-        return (self.tensix_row_to_netlist_row[tensix_loc[0]], tensix_loc[1])
-
-    def netlist_to_tensix(self, netlist_loc):
-        return (self.netlist_row_to_tensix_row[netlist_loc[0]], netlist_loc[1])
-
     @cached_property
     def yaml_file(self):
         return util.YamlFile(self._context.server_ifc, self._device_desc_path)
@@ -180,100 +103,88 @@ class Device(TTObject):
             self._harvesting = None
         else:
             raise util.TTFatalException(f"Cluster description is not valid. 'harvesting_desc' reads: {harvesting_desc}")
-
-        self._create_harvesting_maps()
-        self._create_nocVirt_to_nocTr_map()
         util.DEBUG(
             "Opened device: id=%d, arch=%s, has_mmio=%s, harvesting=%s" % (id, arch, self._has_mmio, self._harvesting)
         )
 
-        self.block_locations_cache = dict()
+        self._init_coordinate_systems()
         self._init_register_addresses()
 
     # Coordinate conversion functions (see tt_coordinate.py for description of coordinate systems)
-    def die_to_noc(self, phys_loc, noc_id=0):
-        die_x, die_y = phys_loc
+    def __die_to_noc(self, die_loc, noc_id=0):
+        die_x, die_y = die_loc
         if noc_id == 0:
             return (self.DIE_X_TO_NOC_0_X[die_x], self.DIE_Y_TO_NOC_0_Y[die_y])
         else:
             return (self.DIE_X_TO_NOC_1_X[die_x], self.DIE_Y_TO_NOC_1_Y[die_y])
 
-    def noc_to_die(self, noc_loc, noc_id=0):
+    def __noc_to_die(self, noc_loc, noc_id=0):
         noc_x, noc_y = noc_loc
         if noc_id == 0:
             return (self.NOC_0_X_TO_DIE_X[noc_x], self.NOC_0_Y_TO_DIE_Y[noc_y])
         else:
             return (self.NOC_1_X_TO_DIE_X[noc_x], self.NOC_1_Y_TO_DIE_Y[noc_y])
 
-    def noc0_to_noc1(self, noc0_loc):
-        phys_loc = self.noc_to_die(noc0_loc, noc_id=0)
-        return self.die_to_noc(phys_loc, noc_id=1)
+    def __noc0_to_noc1(self, noc0_loc):
+        phys_loc = self.__noc_to_die(noc0_loc, noc_id=0)
+        return self.__die_to_noc(phys_loc, noc_id=1)
 
-    def noc1_to_noc0(self, noc1_loc):
-        phys_loc = self.noc_to_die(noc1_loc, noc_id=1)
-        return self.die_to_noc(phys_loc, noc_id=0)
+    def _init_coordinate_systems(self):
+        # Fill in coordinates for each block type
+        self._noc0_to_block_type = {}
+        for block_type, locations in self._block_locations.items():
+            for loc in locations:
+                self._noc0_to_block_type[loc._noc0_coord] = block_type
 
-    def nocVirt_to_nocTr(self, noc0_loc):
-        return self.nocVirt_to_nocTr_map[noc0_loc]
+        # Fill in coordinate maps from UMD coordinate manager
+        self._from_noc0 = {}
+        self._to_noc0 = {}
+        umd_supported_coordinates = ["logical", "virtual", "translated"]
+        unique_coordinates = ["virtual", "translated"]
+        for noc0_location, block_type in self._noc0_to_block_type.items():
+            core_type = self.block_types[block_type]["core_type"]
+            for coord_system in umd_supported_coordinates:
+                converted_location = self._context.server_ifc.convert_from_noc0(
+                    self._id, noc0_location[0], noc0_location[1], core_type, coord_system
+                )
+                self._from_noc0[(noc0_location, coord_system)] = (converted_location, core_type)
+                self._to_noc0[(converted_location, coord_system, core_type)] = noc0_location
+                if coord_system in unique_coordinates:
+                    self._to_noc0[(converted_location, coord_system, "any")] = noc0_location
 
-    def nocTr_to_nocVirt(self, nocTr_loc):
-        return self.nocTr_to_nocVirt_map[nocTr_loc]
+            # Add coordinate systems that UMD does not support
 
-    def nocTr_to_noc0(self, nocTr_loc):
-        noc0_y = self.nocTr_y_to_noc0_y[nocTr_loc[1]]
-        noc0_x = self.NOCTR_X_TO_NOC0_X[nocTr_loc[0]] if nocTr_loc[0] >= 16 else nocTr_loc[0]
-        return (noc0_x, noc0_y)
+            # Add noc1
+            noc1_location = self.__noc0_to_noc1(noc0_location)
+            self._from_noc0[(noc0_location, "noc1")] = (noc1_location, core_type)
+            self._to_noc0[(noc1_location, "noc1", core_type)] = noc0_location
+            self._to_noc0[(noc1_location, "noc1", "any")] = noc0_location
 
-    def noc0_to_nocTr(self, noc0_loc):
-        nocTr_y = self.noc0_y_to_nocTr_y[noc0_loc[1]]
-        nocTr_x = self.NOC0_X_TO_NOCTR_X[noc0_loc[0]]
-        return (nocTr_x, nocTr_y)
+            # Add die
+            die_location = self.__noc_to_die(noc0_location)
+            self._from_noc0[(noc0_location, "die")] = (die_location, core_type)
+            self._to_noc0[(die_location, "die", core_type)] = noc0_location
+            self._to_noc0[(die_location, "die", "any")] = noc0_location
 
-    def nocVirt_to_noc0(self, nocVirt_loc):
-        nocTr_loc = self.nocVirt_to_nocTr(nocVirt_loc)
-        return self.nocTr_to_noc0(nocTr_loc)
-
-    def noc0_to_nocVirt(self, noc0_loc):
-        nocTr_loc = self.noc0_to_nocTr(noc0_loc)
+    def to_noc0(self, coord_tuple: tuple[int, int], coord_system: str, core_type: str = "any") -> tuple[int, int]:
         try:
-            nocVirt = self.nocTr_to_nocVirt(nocTr_loc)
-        except KeyError:
-            # DRAM locations are not in nocTr_to_nocVirt map. Use noc0 coordinates directly.
-            nocVirt = noc0_loc
-        return nocVirt
-
-    def noc0_to_netlist(self, noc0_loc):
-        try:
-            c = self.tensix_to_netlist(self.noc0_to_tensix(noc0_loc))
-            return (c[0], c[1])
-        except KeyError:
+            return self._to_noc0[(coord_tuple, coord_system, core_type)]
+        except:
             raise CoordinateTranslationError(
-                f"noc0_to_netlist: noc0_loc {noc0_loc} does not translate to a valid netlist location"
+                f"to_noc0(coord_tuple={coord_tuple}, coord_system={coord_system}, core_type={core_type})"
             )
 
-    def netlist_to_noc0(self, netlist_loc):
+    def from_noc0(self, noc0_tuple: tuple[int, int], coord_system: str) -> tuple[tuple[int, int], str]:
         try:
-            c = self.tensix_to_noc0(self.netlist_to_tensix(netlist_loc))
-            return (c[0], c[1])
-        except KeyError:
-            raise CoordinateTranslationError(
-                f"netlist_to_noc0: netlist_loc {netlist_loc} does not translate to a valid noc0 location"
-            )
+            return self._from_noc0[(noc0_tuple, coord_system)]
+        except:
+            raise CoordinateTranslationError(f"from_noc0(noc0_tuple={noc0_tuple}, coord_system={coord_system})")
 
     def get_block_locations(self, block_type="functional_workers"):
         """
         Returns locations of all blocks of a given type
         """
-        locs = []
-        dev = self.yaml_file.root
-
-        for loc_or_list in dev[block_type]:
-            if type(loc_or_list) != str and isinstance(loc_or_list, Sequence):
-                for loc in loc_or_list:
-                    locs.append(OnChipCoordinate.create(loc, self, "nocVirt"))
-            else:
-                locs.append(OnChipCoordinate.create(loc_or_list, self, "nocVirt"))
-        return locs
+        return self._block_locations[block_type]
 
     def get_arc_block_location(self) -> OnChipCoordinate:
         """
@@ -298,32 +209,29 @@ class Device(TTObject):
             for loc_or_list in dev[block_type]:
                 if type(loc_or_list) != str and isinstance(loc_or_list, Sequence):
                     for loc in loc_or_list:
-                        locs.append(OnChipCoordinate.create(loc, self, "noc0")._noc0_coord)
+                        locs.append(OnChipCoordinate.create(loc, self, "noc0"))
                 else:
-                    locs.append(OnChipCoordinate.create(loc_or_list, self, "noc0")._noc0_coord)
+                    locs.append(OnChipCoordinate.create(loc_or_list, self, "noc0"))
             result[block_type] = locs
         return result
 
     block_types = {
-        "functional_workers": {"symbol": ".", "desc": "Functional worker"},
-        "eth": {"symbol": "E", "desc": "Ethernet"},
-        "arc": {"symbol": "A", "desc": "ARC"},
-        "dram": {"symbol": "D", "desc": "DRAM"},
-        "pcie": {"symbol": "P", "desc": "PCIE"},
-        "router_only": {"symbol": " ", "desc": "Router only"},
-        "harvested_workers": {"symbol": "-", "desc": "Harvested"},
+        "functional_workers": {"symbol": ".", "desc": "Functional worker", "core_type": "tensix"},
+        "eth": {"symbol": "E", "desc": "Ethernet", "core_type": "eth"},
+        "arc": {"symbol": "A", "desc": "ARC", "core_type": "arc"},
+        "dram": {"symbol": "D", "desc": "DRAM", "core_type": "dram"},
+        "pcie": {"symbol": "P", "desc": "PCIE", "core_type": "pcie"},
+        "router_only": {"symbol": " ", "desc": "Router only", "core_type": "router_only"},
+        "harvested_workers": {"symbol": "-", "desc": "Harvested", "core_type": "tensix"},
     }
 
-    def get_block_type(self, loc):
+    core_types = {v["core_type"] for v in block_types.values()}
+
+    def get_block_type(self, loc: OnChipCoordinate):
         """
         Returns the type of block at the given location
         """
-        dev = self.yaml_file.root
-        for block_type in self.block_types:
-            block_locations = self.get_block_locations(block_type=block_type)
-            if loc in block_locations:
-                return block_type
-        return None
+        return self._noc0_to_block_type.get(loc._noc0_coord)
 
     # Returns a string representation of the device. When printed, the string will
     # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list

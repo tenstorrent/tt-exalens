@@ -92,7 +92,7 @@ Not specifying a device results in an error.
 It is possible to access available devices through the `Context` object, so an example object construction could look like this:
 
 ```python
-coordinate = OnChipCoordinate(1, 1, 'noc0', context.devices[0])
+coordinate = OnChipCoordinate.create("1,1", context.devices[0], 'noc0')
 ```
 
 Other functions that can take a list of coordinates as a parameter (such as `run_elf` function) also support all the ways of specifying coordinates listed above.

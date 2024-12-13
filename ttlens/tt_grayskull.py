@@ -8,19 +8,6 @@ from ttlens import tt_device
 # Device
 #
 class GrayskullDevice(tt_device.Device):
-    SIG_SEL_CONST = 9
-    # Some of this can be read from architecture yaml file
-    DRAM_CHANNEL_TO_NOC0_LOC = [
-        (1, 0),
-        (1, 6),
-        (4, 0),
-        (4, 6),
-        (7, 0),
-        (7, 6),
-        (10, 0),
-        (10, 6),
-    ]
-
     # Physical location mapping
     DIE_X_TO_NOC_0_X = [0, 12, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6]
     DIE_Y_TO_NOC_0_Y = [0, 11, 1, 10, 2, 9, 3, 8, 4, 7, 5, 6]
@@ -31,10 +18,6 @@ class GrayskullDevice(tt_device.Device):
     NOC_1_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_1_X)
     NOC_1_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_1_Y)
 
-    # Just an identity mapping
-    NOC0_X_TO_NOCTR_X = {i: i for i in range(0, len(NOC_0_X_TO_DIE_X))}
-    NOCTR_X_TO_NOC0_X = {v: k for k, v in NOC0_X_TO_NOCTR_X.items()}
-
     PCI_ARC_RESET_BASE_ADDR = 0x1FF30000
     PCI_ARC_CSM_DATA_BASE_ADDR = 0x1FE80000
     PCI_ARC_ROM_DATA_BASE_ADDR = 0x1FF00000
@@ -42,33 +25,6 @@ class GrayskullDevice(tt_device.Device):
     EFUSE_PCI = 0x1FF40200
     EFUSE_JTAG_AXI = 0x80040200
     EFUSE_NOC = 0x80040200
-
-    def get_harvested_noc0_y_rows(self):
-        harvested_workers = self._block_locations["harvested_workers"]
-        return list({y for x, y in harvested_workers})
-
-    def noc0_to_tensix(self, noc0_loc):
-        noc0_x, noc0_y = noc0_loc
-        if noc0_y == 0 or noc0_y == 6:
-            assert False, "NOC0 y=0 and y=6 do not have an RC coordinate"
-        if noc0_x == 0:
-            assert False, "NOC0 x=0 does not have an RC coordinate"
-        row = noc0_y - 1
-        col = noc0_x - 1
-        if noc0_y > 6:
-            row -= 1
-        return row, col
-
-    def tensix_to_noc0(self, netlist_loc):
-        row, col = netlist_loc
-        noc0_y = row + 1
-        noc0_x = col + 1
-        if noc0_y > 5:
-            noc0_y += 1  # DRAM at noc0 Y coord of 6 is a hole in RC coordinates
-        return noc0_x, noc0_y
-
-    def _handle_harvesting_for_nocTr_noc0_map(self, num_harvested_rows):
-        self.nocTr_x_to_noc0_x = {i: i for i in range(0, self.row_count())}
 
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(
