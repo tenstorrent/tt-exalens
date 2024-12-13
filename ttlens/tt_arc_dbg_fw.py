@@ -11,8 +11,9 @@ from ttlens.tt_lens_lib_utils import check_context, arc_read, arc_write, split_3
 from ttlens.tt_lens_lib import arc_msg, read_words_from_device, read_from_device
 from ttlens.tt_arc import load_arc_fw
 from ttlens.tt_arc_dbg_fw_log_context import LogInfo, ArcDfwLogContext, ArcDfwLogContextFromList, ArcDfwLogContextFromYaml
-from ttlens.tt_arc_dbg_fw_compiler import add_logging_instructions_to_arc_dbg_fw
 from functools import lru_cache
+from ttlens.tt_arc_dbg_fw_compiler import ArcDfwLoggerCompiler
+from abc import abstractmethod, ABC
 
 DFW_MSG_CLEAR_DRAM         = 0x1  # Calls dfw_clear_drpam(start_addr, size)
 DFW_MSG_CHECK_DRAM_CLEARED = 0x2  # Calls dfw_check_dram_cleared(start_addr, size)
@@ -117,7 +118,7 @@ def send_buffer_addr_and_size_to_arc_dbg_fw(device_id: int, context: Context = N
     if response[0] == -1:
         raise TTException("Arc msg error")
     
-@lru_cache(maxsize=None)
+#@lru_cache(maxsize=None)
 def arc_dbg_fw_get_buffer_start_addr(device_id: int = 0, context: Context = None) -> int:
     """
     Retrieves the start address of the debug buffer for the specified device.
@@ -171,18 +172,6 @@ def arc_dbg_fw_get_buffer_size() -> int:
         raise TTException("TT_METAL_ARC_DEBUG_BUFFER_SIZE is not set")
 
     return int(buffer_size)
-
-def prepare_arc_dbg_fw(device_id: int = 0, context: Context = None) -> None:
-
-    device = context.devices[device_id]
-    
-    # If tt-metal is running, it will alocate a buffer in the dram and give us the address where the buffer is stored
-    mcore_buffer_addr = arc_read(context, device_id, device.get_arc_block_location(), device.get_register_addr("ARC_MCORE_DBG_BUFFER_ADDR"))
-    
-    if mcore_buffer_addr == 0:
-        # if mccore_buffer_addr is 0, then tt-metal is not running, so we will neet to send the message to the debug buffer
-        # with the default address and size, so it can know where to send the messages
-        send_buffer_addr_and_size_to_arc_dbg_fw(device_id, context)
 
 def arc_dbg_fw_send_message(message, arg0: int = 0, arg1: int = 0, device_id: int = 0, context: Context=None) -> None:
     """ Send a message to the ARC debug firmware, using the buffer in the DRAM.
@@ -261,6 +250,21 @@ def setup_pmon(pmon_id, ro_id, wait_for_l1_trigger, stop_on_flatline, device_id:
     )
     arc_dbg_fw_send_message(DFW_MSG_SETUP_PMON, arg0, 0, device_id, context)
 
+def read_arc_dfw_log_buffer(device_id: int = 0, context: Context = None) -> List[int]:
+    """
+    Read the log buffer from the ARC debug firmware.
+
+    Args:
+        device_id (int): The ID of the device to read the log buffer from.
+        context (Context): The context in which the device operates. Defaults to None.
+    
+    Returns:
+        List[int]: The log buffer.
+    """
+    buffer_start_addr = arc_dbg_fw_get_buffer_start_addr(device_id, context) + len(DFW_BUFFER_HEADER_OFFSETS) * 4
+    buffer_size = arc_dbg_fw_get_buffer_size() - len(DFW_BUFFER_HEADER_OFFSETS) * 4
+    return read_from_device('ch0', device_id=device_id, addr=buffer_start_addr, num_bytes=buffer_size)
+
 def load_arc_dbg_fw(file_name: str = "fw/arc/arc_dbg_fw.hex", log_context: ArcDfwLogContext = ArcDfwLogContextFromYaml("default"), device_id: int = 0, context: Context = None) -> None:
     """
     Loads the ARC debug firmware onto the specified device.
@@ -301,17 +305,82 @@ def load_arc_dbg_fw(file_name: str = "fw/arc/arc_dbg_fw.hex", log_context: ArcDf
 
     configure_arc_dbg_fw(log_context, device_id, context)
 
-def read_arc_dfw_buffer(device_id: int = 0, context: Context = None) -> List[int]:
-    buffer_start_addr = arc_dbg_fw_get_buffer_start_addr(device_id, context) + len(DFW_BUFFER_HEADER_OFFSETS) * 4
-    buffer_size = arc_dbg_fw_get_buffer_size() - len(DFW_BUFFER_HEADER_OFFSETS) * 4
-    return read_from_device('ch0', device_id=device_id, addr=buffer_start_addr, num_bytes=buffer_size)
+class ArcDebugFw(ABC):
+    def __init__(self,base_fw_file_path: str, base_fw_symbols_file_path: str, modified_fw_file_path: str, device_id: int = 0, context: Context = None):
+        self.base_fw_file_path = base_fw_file_path
+        self.base_fw_symbols_file_path = base_fw_symbols_file_path
+        self.modified_fw_file_path = modified_fw_file_path
+        self.device_id = device_id
+        self.context = context
+        self.compiler = None
+        
+    @abstractmethod
+    def _configure_arc_dbg_fw(self) -> None:
+        pass
 
-def configure_arc_dbg_fw(log_context: ArcDfwLogContext, device_id: int = 0, context: Context = None) -> None:
-    device = context.devices[device_id]
+    def __prepare_arc_dbg_fw(self) -> None:
+        """
+        Prepares the ARC debug firmware for logging by sending it a message of the default buffer address and size.
 
-    arc_write(context, device_id, device.get_arc_block_location(), device.get_register_addr("ARC_RESET_SCRATCH2"), 0xbebaceca)
-    arc_write(context, device_id, device.get_arc_block_location(), device.get_register_addr("ARC_RESET_SCRATCH3"), 0xacafaca)
-    arc_write(context, device_id, device.get_arc_block_location(), device.get_register_addr("ARC_RESET_SCRATCH4"), 0xcecafaca)
-    arc_write(context, device_id, device.get_arc_block_location(), device.get_register_addr("ARC_RESET_SCRATCH5"), 0xdeadbeef)
+        Args:
+            device_id (int): The ID of the device to prepare. Defaults to 0.
+            context (Context): The context in which the device operates. Defaults to None.
+        
+        Raises:
+            TTException: If the ARC debug firmware is not running.
+        """
+        device = self.context.devices[self.device_id]
+        
+        # If tt-metal is running, it will alocate a buffer in the dram and give us the address where the buffer is stored
+        mcore_buffer_addr = arc_read(self.context, self.device_id, device.get_arc_block_location(), device.get_register_addr("ARC_MCORE_DBG_BUFFER_ADDR"))
+        
+        if mcore_buffer_addr == 0:
+            # if mccore_buffer_addr is 0, then tt-metal is not running, so we will neet to send the message to the debug buffer
+            # with the default address and size, so it can know where to send the messages
+            send_buffer_addr_and_size_to_arc_dbg_fw(self.device_id, self.context)
 
-    modify_dfw_buffer_header("record_size_bytes", 4 * len(log_context.log_list), device_id, context)
+        
+    def __reset_if_fw_already_running(self):
+        """
+        Reset the ARC debug firmware if it is already running.
+
+        Raises:
+            TTException: If the ARC debug firmware fails to reset.
+        """
+        if arc_dbg_fw_check_msg_loop_running(self.device_id, self.context):
+            arc_dbg_fw_command("reset", self.device_id, self.context)
+            reset_reply = arc_dbg_fw_read_reply(self.device_id, self.context)
+            time.sleep(0.01)
+            if reset_reply != 1:
+                raise TTException("ARC debug firmware failed to reset.")
+
+    def load(self):
+        file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../", self.base_fw_file_path)
+
+        if not os.path.exists(file_path):
+            raise TTException(f"ARC firmwapre file {file_path} does not exist.")
+        
+        self.__reset_if_fw_already_running()
+
+        self.compiler.compile()
+
+        self.__prepare_arc_dbg_fw()
+
+        load_arc_fw(self.modified_fw_file_path, 2, self.device_id, self.context)
+
+        self._configure_arc_dbg_fw()
+
+class ArcDebugLoggerFw(ArcDebugFw):
+    def __init__(self, 
+                 log_context: ArcDfwLogContext, 
+                 base_fw_file_path: str  = "fw/arc/arc_dbg_fw.hex", 
+                 base_fw_symbols_file_path: str = "fw/arc/arc_dbg_fw.syms",
+                 modified_fw_file_path: str = "fw/arc/arc_modified.hex",
+                 device_id = 0,
+                 context = None):
+        super().__init__(base_fw_file_path, base_fw_symbols_file_path, modified_fw_file_path, device_id, context)
+        self.log_context = log_context
+        self.compiler = ArcDfwLoggerCompiler(base_fw_file_path, base_fw_symbols_file_path, modified_fw_file_path, log_context)
+
+    def _configure_arc_dbg_fw(self):
+        modify_dfw_buffer_header("record_size_bytes", 4 * len(self.log_context.log_list), self.device_id, self.context)

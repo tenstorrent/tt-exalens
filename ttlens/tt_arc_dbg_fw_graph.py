@@ -11,8 +11,9 @@ from ttlens.tt_arc_dbg_fw import (
     arc_dbg_fw_get_buffer_size, 
     load_arc_dbg_fw,
     DFW_BUFFER_HEADER_OFFSETS,
-    read_arc_dfw_buffer,
-    read_dfw_buffer_header
+    read_arc_dfw_log_buffer,
+    read_dfw_buffer_header,
+    ArcDebugLoggerFw
 )
 from ttlens.tt_lens_lib import read_from_device
 import csv
@@ -81,7 +82,9 @@ def arc_dfw_get_logs( log_context: ArcDfwLogContext = ArcDfwLogContextFromYaml("
     """
     Graph the ARC debug firmware.
     """
-    load_arc_dbg_fw(log_context=log_context, device_id=device_id, context=context)
+    #load_arc_dbg_fw(log_context=log_context, device_id=device_id, context=context)
+    arc_dfw = ArcDebugLoggerFw(log_context, device_id=device_id, context=context) 
+    arc_dfw.load()
 
     arc_dbg_fw_command("start", device_id, context)
 
@@ -96,7 +99,7 @@ def arc_dfw_get_logs( log_context: ArcDfwLogContext = ArcDfwLogContextFromYaml("
     arc_dbg_fw_command("stop", device_id, context)
 
     start_time = time.time()
-    buffer = read_arc_dfw_buffer(device_id, context)
+    buffer = read_arc_dfw_log_buffer(device_id, context)
     end_time = time.time() 
     print(f"Time taken to fill buffer: {end_time - start_time} seconds")
 
