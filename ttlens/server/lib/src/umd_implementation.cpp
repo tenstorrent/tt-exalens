@@ -131,6 +131,62 @@ std::optional<std::string> umd_implementation::get_device_arch(uint8_t chip_id) 
     }
 }
 
+std::optional<std::tuple<uint8_t, uint8_t>> umd_implementation::convert_from_noc0(uint8_t chip_id, uint8_t noc_x,
+                                                                                  uint8_t noc_y,
+                                                                                  const std::string& core_type,
+                                                                                  const std::string& coord_system) {
+    tt_device* d = static_cast<tt_device*>(device);
+    CoreType core_type_enum;
+
+    if (core_type == "arc") {
+        core_type_enum = CoreType::ARC;
+    } else if (core_type == "dram") {
+        core_type_enum = CoreType::DRAM;
+    } else if (core_type == "active_eth") {
+        core_type_enum = CoreType::ACTIVE_ETH;
+    } else if (core_type == "idle_eth") {
+        core_type_enum = CoreType::IDLE_ETH;
+    } else if (core_type == "pcie") {
+        core_type_enum = CoreType::PCIE;
+    } else if (core_type == "tensix") {
+        core_type_enum = CoreType::TENSIX;
+    } else if (core_type == "router_only") {
+        core_type_enum = CoreType::ROUTER_ONLY;
+    } else if (core_type == "harvested") {
+        core_type_enum = CoreType::HARVESTED;
+    } else if (core_type == "eth") {
+        core_type_enum = CoreType::ETH;
+    } else if (core_type == "worker") {
+        core_type_enum = CoreType::WORKER;
+    } else {
+        return {};
+    }
+
+    CoordSystem coord_system_enum;
+
+    if (coord_system == "logical") {
+        coord_system_enum = CoordSystem::LOGICAL;
+    } else if (coord_system == "physical") {
+        coord_system_enum = CoordSystem::PHYSICAL;
+    } else if (coord_system == "virtual") {
+        coord_system_enum = CoordSystem::VIRTUAL;
+    } else if (coord_system == "translated") {
+        coord_system_enum = CoordSystem::TRANSLATED;
+    } else {
+        return {};
+    }
+
+    try {
+        auto& soc_descriptor = d->get_soc_descriptor(chip_id);
+        tt::umd::CoreCoord core_coord{noc_x, noc_y, core_type_enum, CoordSystem::PHYSICAL};
+        auto output = soc_descriptor.to(core_coord, coord_system_enum);
+
+        return std::make_tuple(static_cast<uint8_t>(output.x), static_cast<uint8_t>(output.y));
+    } catch (...) {
+        return {};
+    }
+}
+
 std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(uint8_t chip_id, uint32_t msg_code,
                                                                                bool wait_for_done, uint32_t arg0,
                                                                                uint32_t arg1, int timeout) {

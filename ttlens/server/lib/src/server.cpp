@@ -64,6 +64,13 @@ void tt::lens::server::process(const tt::lens::request& base_request) {
         case tt::lens::request_type::get_cluster_description:
             respond(implementation->get_cluster_description());
             break;
+        case tt::lens::request_type::convert_from_noc0: {
+            auto& request = static_cast<const tt::lens::convert_from_noc0_request&>(base_request);
+            respond(implementation->convert_from_noc0(
+                request.chip_id, request.noc_x, request.noc_y, std::string(request.data, request.core_type_size),
+                std::string(request.data + request.core_type_size, request.coord_system_size)));
+            break;
+        }
         case tt::lens::request_type::get_harvester_coordinate_translation: {
             auto& request = static_cast<const tt::lens::get_harvester_coordinate_translation_request&>(base_request);
             respond(implementation->get_harvester_coordinate_translation(request.chip_id));
@@ -152,6 +159,17 @@ void tt::lens::server::respond(std::optional<std::vector<uint8_t>> response) {
         respond_not_supported();
     } else {
         communication::respond(response.value().data(), response.value().size());
+    }
+}
+
+void tt::lens::server::respond(std::optional<std::tuple<uint8_t, uint8_t>> response) {
+    if (!response) {
+        respond_not_supported();
+    } else {
+        std::vector<uint8_t> data;
+        data.push_back(std::get<0>(response.value()));
+        data.push_back(std::get<1>(response.value()));
+        communication::respond(data.data(), data.size());
     }
 }
 

@@ -23,6 +23,11 @@ def empty_get_cluster_description():
     check_not_implemented_response(lambda: server.get_cluster_description())
 
 
+def empty_convert_from_noc0():
+    global server
+    check_not_implemented_response(lambda: server.convert_from_noc0(1, 2, 3, "core_type", "coord_type"))
+
+
 def empty_pci_read32():
     global server
     check_not_implemented_response(lambda: server.pci_read32(1, 2, 3, 123456))
@@ -145,6 +150,12 @@ def get_cluster_description():
     global server
     read = server.get_cluster_description()
     print("pass" if read == "get_cluster_description()" else "fail")
+
+
+def convert_from_noc0():
+    global server
+    read = server.convert_from_noc0(1, 2, 3, "core_type", "coord_type")
+    print("pass" if read == (3, 4) else "fail")
 
 
 def get_harvester_coordinate_translation():

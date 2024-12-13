@@ -125,6 +125,11 @@ class simulation_implementation : public tt::lens::ttlens_implementation {
     std::optional<std::string> get_device_soc_description(uint8_t chip_id) override {
         return "get_device_soc_description(" + std::to_string(chip_id) + ")";
     }
+    std::optional<std::tuple<uint8_t, uint8_t>> convert_from_noc0(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                                  const std::string& core_type,
+                                                                  const std::string& coord_system) override {
+        return std::make_tuple(noc_x + chip_id, noc_y + chip_id);
+    }
 };
 
 void call_python(const std::string& python_script, int server_port, const std::string& python_args,
@@ -162,6 +167,8 @@ TEST(ttlens_python_empty_server, dma_buffer_read32) { call_python_empty_server("
 
 TEST(ttlens_python_empty_server, pci_read_tile) { call_python_empty_server("empty_pci_read_tile"); }
 
+TEST(ttlens_python_empty_server, convert_from_noc0) { call_python_empty_server("empty_convert_from_noc0"); }
+
 TEST(ttlens_python_empty_server, get_harvester_coordinate_translation) {
     call_python_empty_server("empty_get_harvester_coordinate_translation");
 }
@@ -181,6 +188,8 @@ TEST(ttlens_python_server, dma_buffer_read32) { call_python_server("dma_buffer_r
 TEST(ttlens_python_server, pci_read_tile) { call_python_server("pci_read_tile"); }
 
 TEST(ttlens_python_server, get_cluster_description) { call_python_server("get_cluster_description"); }
+
+TEST(ttlens_python_server, convert_from_noc0) { call_python_server("convert_from_noc0"); }
 
 TEST(ttlens_python_server, get_harvester_coordinate_translation) {
     call_python_server("get_harvester_coordinate_translation");

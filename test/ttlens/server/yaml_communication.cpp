@@ -48,6 +48,9 @@ void yaml_communication::process(const tt::lens::request& request) {
         case tt::lens::request_type::get_device_soc_description:
             respond(serialize(static_cast<const tt::lens::get_device_soc_description_request&>(request)));
             break;
+        case tt::lens::request_type::convert_from_noc0:
+            respond(serialize(static_cast<const tt::lens::convert_from_noc0_request&>(request)));
+            break;
         case tt::lens::request_type::get_file:
             respond(serialize(static_cast<const tt::lens::get_file_request&>(request)));
             break;
@@ -125,6 +128,15 @@ std::string yaml_communication::serialize(const tt::lens::pci_read_tile_request&
            "\n  chip_id: " + std::to_string(request.chip_id) + "\n  noc_x: " + std::to_string(request.noc_x) +
            "\n  noc_y: " + std::to_string(request.noc_y) + "\n  address: " + std::to_string(request.address) +
            "\n  size: " + std::to_string(request.size) + "\n  data_format: " + std::to_string(request.data_format);
+}
+
+std::string yaml_communication::serialize(const tt::lens::convert_from_noc0_request& request) {
+    return "- type: " + std::to_string(static_cast<int>(request.type)) +
+           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  noc_x: " + std::to_string(request.noc_x) +
+           "\n  noc_y: " + std::to_string(request.noc_y) +
+           "\n  core_type_size: " + std::to_string(request.core_type_size) +
+           "\n  coord_system_size: " + std::to_string(request.coord_system_size) +
+           "\n  data: " + std::string(request.data, request.core_type_size + request.coord_system_size);
 }
 
 std::string yaml_communication::serialize(const tt::lens::get_harvester_coordinate_translation_request& request) {

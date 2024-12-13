@@ -82,6 +82,11 @@ class bindings_implementation : public tt::lens::ttlens_implementation {
     std::optional<std::string> get_device_soc_description(uint8_t chip_id) override {
         return "get_device_soc_description(" + std::to_string(chip_id) + ")";
     }
+    std::optional<std::tuple<uint8_t, uint8_t>> convert_from_noc0(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                                  const std::string &core_type,
+                                                                  const std::string &coord_system) override {
+        return std::make_tuple(noc_x + chip_id, noc_y + chip_id);
+    }
 };
 
 void set_ttlens_test_implementation() {

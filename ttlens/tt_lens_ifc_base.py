@@ -48,6 +48,10 @@ class TTLensCommunicator(ABC):
         pass
 
     @abstractmethod
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
+        pass
+
+    @abstractmethod
     def get_harvester_coordinate_translation(self, chip_id: int):
         pass
 

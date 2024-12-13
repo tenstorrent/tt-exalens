@@ -114,6 +114,14 @@ def get_device_soc_description():
     )
 
 
+def convert_from_noc0():
+    global server_communication
+    check_response(
+        server_communication.convert_from_noc0(1, 2, 3, "core_type", "coord_system"),
+        "- type: 103\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  core_type_size: 9\n  coord_system_size: 12\n  data: core_typecoord_system",
+    )
+
+
 def pci_write():
     global server_communication
     check_response(

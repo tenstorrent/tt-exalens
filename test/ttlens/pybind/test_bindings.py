@@ -100,6 +100,12 @@ class TestBindings(unittest.TestCase):
             "Error: get_device_soc_description() should return 'get_device_soc_description(" + str(id) + ")'."
         )
 
+    def test_convert_from_noc0(self):
+        assert pb.convert_from_noc0(1, 2, 3, "core_type", "coord_system") == (
+            3,
+            4,
+        ), "Error: convert_from_noc0() should return (3, 4)."
+
 
 if __name__ == "__main__":
     unittest.main()

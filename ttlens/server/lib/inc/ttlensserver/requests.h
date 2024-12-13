@@ -37,6 +37,7 @@ enum class request_type : uint8_t {
     // Runtime requests
     pci_read_tile = 100,
     get_cluster_description = 102,
+    convert_from_noc0 = 103,
 
     // File server requests
     get_file = 200,
@@ -123,6 +124,15 @@ struct get_device_soc_description_request : request {
 
 struct get_file_request : request {
     uint32_t size;
+    char data[0];
+} __attribute__((packed));
+
+struct convert_from_noc0_request : request {
+    uint8_t chip_id;
+    uint8_t noc_x;
+    uint8_t noc_y;
+    uint32_t core_type_size;
+    uint32_t coord_system_size;
     char data[0];
 } __attribute__((packed));
 

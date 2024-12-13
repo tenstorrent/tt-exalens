@@ -135,6 +135,13 @@ void tt::lens::communication::request_loop() {
                                           (message.size() !=
                                            sizeof(get_file_request) + static_cast<const get_file_request*>(r)->size);
                         break;
+                    case request_type::convert_from_noc0:
+                        invalid_message =
+                            (message.size() < sizeof(convert_from_noc0_request)) ||
+                            (message.size() != sizeof(convert_from_noc0_request) +
+                                                   static_cast<const convert_from_noc0_request*>(r)->core_type_size +
+                                                   static_cast<const convert_from_noc0_request*>(r)->coord_system_size);
+                        break;
                 }
 
                 // Currenly no additional parsing is needed, so we just call process with current request that can be

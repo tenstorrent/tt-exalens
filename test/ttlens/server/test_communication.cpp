@@ -167,6 +167,30 @@ TEST(ttlens_communication, get_file) {
     ASSERT_EQ(response, expected_response);
 }
 
+TEST(ttlens_communication, convert_from_noc0) {
+    constexpr std::string_view core_type = "core_type";
+    constexpr std::string_view coord_system = "coord_system";
+    std::string expected_response =
+        "- type: 103\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  core_type_size: 9\n  coord_system_size: 12\n  data: "
+        "core_typecoord_system";
+    std::array<uint8_t, core_type.size() + coord_system.size() + sizeof(tt::lens::convert_from_noc0_request)>
+        request_data = {0};
+    auto request = reinterpret_cast<tt::lens::convert_from_noc0_request*>(&request_data[0]);
+    request->type = tt::lens::request_type::convert_from_noc0;
+    request->chip_id = 1;
+    request->noc_x = 2;
+    request->noc_y = 3;
+    request->core_type_size = core_type.size();
+    request->coord_system_size = coord_system.size();
+    memcpy(request->data, core_type.data(), request->core_type_size);
+    memcpy(request->data + request->core_type_size, coord_system.data(), request->coord_system_size);
+
+    auto server = start_yaml_server();
+    ASSERT_TRUE(server->is_connected());
+    auto response = send_message(zmq::const_buffer(request_data.data(), request_data.size())).to_string();
+    ASSERT_EQ(response, expected_response);
+}
+
 TEST(ttlens_communication, arc_msg) {
     auto req = tt::lens::arc_msg_request{tt::lens::request_type::arc_msg, 1, 2, true, 3, 4, 5};
 

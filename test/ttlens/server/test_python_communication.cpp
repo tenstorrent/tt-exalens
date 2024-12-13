@@ -97,6 +97,12 @@ TEST(ttlens_python_communication, get_device_soc_description) {
     call_python("get_device_soc_description", "- type: 20\n  chip_id: 1\n");
 }
 
+TEST(ttlens_python_communication, convert_from_noc0) {
+    call_python("convert_from_noc0",
+                "- type: 103\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  core_type_size: 9\n  coord_system_size: 12\n  "
+                "data: core_typecoord_system\n");
+}
+
 TEST(ttlens_python_communication, pci_write) {
     call_python(
         "pci_write",
