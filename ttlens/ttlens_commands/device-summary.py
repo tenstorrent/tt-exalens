@@ -35,8 +35,14 @@ command_metadata = {
 from docopt import docopt
 
 from ttlens import tt_util as util
+from ttlens.tt_device import Device
 from ttlens.tt_coordinate import VALID_COORDINATE_TYPES
 from ttlens.tt_lens_context import LimitedContext
+
+
+def color_block(text: str, block_type: str):
+    color = Device.block_types[block_type]["color"]
+    return f"{color}{text}{util.CLR_END}"
 
 
 def run(cmd_text, context, ui_state=None):
@@ -77,18 +83,18 @@ def run(cmd_text, context, ui_state=None):
             cell_contents_str = []
 
             for ct in cell_contents_array:
+                block_type = device.get_block_type(loc)
                 if ct == "block":
-                    block_type = device.get_block_type(loc)
-                    cell_contents_str.append(block_type)
+                    cell_contents_str.append(color_block(block_type, block_type))
                 elif ct == "riscv":
-                    block_type = device.get_riscv_run_status(loc)
-                    cell_contents_str.append(block_type)
+                    text = device.get_riscv_run_status(loc)
+                    cell_contents_str.append(color_block(text, block_type))
                 elif ct in VALID_COORDINATE_TYPES:
                     try:
                         coord_str = loc.to_str(ct)
                     except Exception as e:
                         coord_str = "N/A"
-                    cell_contents_str.append(coord_str)
+                    cell_contents_str.append(color_block(coord_str, block_type))
                 else:
                     raise util.TTException(f"Invalid cell contents requested: '{ct}'")
             return ", ".join(cell_contents_str)

@@ -216,13 +216,18 @@ class Device(TTObject):
         return result
 
     block_types = {
-        "functional_workers": {"symbol": ".", "desc": "Functional worker", "core_type": "tensix"},
-        "eth": {"symbol": "E", "desc": "Ethernet", "core_type": "eth"},
-        "arc": {"symbol": "A", "desc": "ARC", "core_type": "arc"},
-        "dram": {"symbol": "D", "desc": "DRAM", "core_type": "dram"},
-        "pcie": {"symbol": "P", "desc": "PCIE", "core_type": "pcie"},
-        "router_only": {"symbol": " ", "desc": "Router only", "core_type": "router_only"},
-        "harvested_workers": {"symbol": "-", "desc": "Harvested", "core_type": "tensix"},
+        "functional_workers": {
+            "symbol": ".",
+            "desc": "Functional worker",
+            "core_type": "tensix",
+            "color": util.CLR_GREEN,
+        },
+        "eth": {"symbol": "E", "desc": "Ethernet", "core_type": "eth", "color": util.CLR_YELLOW},
+        "arc": {"symbol": "A", "desc": "ARC", "core_type": "arc", "color": util.CLR_GREY},
+        "dram": {"symbol": "D", "desc": "DRAM", "core_type": "dram", "color": util.CLR_TEAL},
+        "pcie": {"symbol": "P", "desc": "PCIE", "core_type": "pcie", "color": util.CLR_GREY},
+        "router_only": {"symbol": " ", "desc": "Router only", "core_type": "router_only", "color": util.CLR_GREY},
+        "harvested_workers": {"symbol": "-", "desc": "Harvested", "core_type": "tensix", "color": util.CLR_RED},
     }
 
     core_types = {v["core_type"] for v in block_types.values()}
