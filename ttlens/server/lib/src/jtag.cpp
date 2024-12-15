@@ -15,7 +15,11 @@
 
 Jtag::Jtag(const char* libName) {
     if (!std::filesystem::exists(libName)) {
-        throw std::runtime_error("Library does not exist");
+        throw std::runtime_error(
+            "You do not have JTAG library. Get it using './scripts/get_jtag_access_library.sh'.\n"
+            "If you are using JTAG from a python wheel package, you will additionaly need to run "
+            "'./scripts/add_libjtag_to_wheel.sh'.\n"
+            "Read docs/ttlens-jtag-tutorial.md for more information.");
     }
 
     handle = dlopen(libName, RTLD_LAZY);
