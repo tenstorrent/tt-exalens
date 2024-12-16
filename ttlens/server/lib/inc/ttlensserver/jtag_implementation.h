@@ -5,9 +5,8 @@
 
 #include <optional>
 
-#include "ttlens_implementation.h"
-
-class JtagDevice;
+#include "ttlensserver/jtag_device.h"
+#include "ttlensserver/ttlens_implementation.h"
 
 namespace tt::lens {
 

@@ -13,9 +13,12 @@
 
 #include "ttlensserver/jtag.h"
 #include "ttlensserver/jtag_device.h"
+#include "ttlensserver/jtag_implementation.h"
+#include "ttlensserver/umd_implementation.h"
 #include "umd/device/cluster.h"
 #include "umd/device/tt_cluster_descriptor.h"
 #include "umd/device/tt_core_coordinates.h"
+#include "umd/device/tt_soc_descriptor.h"
 #include "umd/device/tt_xy_pair.h"
 #include "umd/device/types/arch.h"
 
@@ -272,16 +275,16 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
 static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Cluster *device,
                                                                     const std::vector<uint8_t> &device_ids) {
     tt_device *d = static_cast<tt_device *>(device);
-    std::map<uint8_t, std::string> device_soc_descriptors;
+    std::map<uint8_t, std::string> device_soc_descriptors_yamls;
 
     for (auto device_id : device_ids) {
         auto &soc_descriptor = d->get_soc_descriptor(device_id);
         std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
         write_soc_descriptor(file_name, soc_descriptor);
 
-        device_soc_descriptors[device_id] = file_name;
+        device_soc_descriptors_yamls[device_id] = file_name;
     }
-    return device_soc_descriptors;
+    return device_soc_descriptors_yamls;
 }
 
 std::unique_ptr<JtagDevice> init_jtag(std::filesystem::path binary_directory) {
@@ -321,14 +324,9 @@ static std::string jtag_create_temp_network_descriptor_file(JtagDevice *jtag_dev
     return cluster_descriptor_path;
 }
 
-static std::string jtag_create_device_soc_descriptor(tt::ARCH arch, uint32_t device_id, uint32_t harvesting) {
-    const auto default_sdesc = tt_SocDescriptor(temp_working_directory / "soc_descriptor.yaml", true);
-
-    auto temp_sdesc = default_sdesc;
-    tt::umd::Cluster::harvest_rows_in_soc_descriptor(arch, temp_sdesc, harvesting);
-
+static std::string jtag_create_device_soc_descriptor(const tt_SocDescriptor &soc_descriptor, uint32_t device_id) {
     std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
-    write_soc_descriptor(file_name, temp_sdesc);
+    write_soc_descriptor(file_name, soc_descriptor);
     return file_name;
 }
 
@@ -362,12 +360,15 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
         return {};
     }
 
-    std::map<uint8_t, std::string> device_soc_descriptors;
+    std::map<uint8_t, std::string> device_soc_descriptors_yamls;
+    std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
 
     for (size_t device_id = 0; device_id < jtag_device->get_device_cnt(); device_id++) {
         tt::ARCH arch = *jtag_device->get_jtag_arch(device_id);
         uint32_t harvesting = *jtag_device->get_device_harvesting(device_id);
-        device_soc_descriptors[device_id] = jtag_create_device_soc_descriptor(arch, device_id, harvesting);
+        soc_descriptors[device_id] = tt_SocDescriptor(device_configuration_path, harvesting);
+        device_soc_descriptors_yamls[device_id] =
+            jtag_create_device_soc_descriptor(soc_descriptors[device_id], device_id);
         device_ids.push_back(device_id);
     }
 
@@ -377,7 +378,8 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
     implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
     implementation->device_ids = device_ids;
-    implementation->device_soc_descriptors = device_soc_descriptors;
+    implementation->soc_descriptors = std::move(soc_descriptors);
+    implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
     return std::move(implementation);
 }
 
@@ -439,7 +441,11 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
             throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");
     }
 
-    auto device_soc_descriptors = create_device_soc_descriptors(device.get(), device_ids);
+    auto device_soc_descriptors_yamls = create_device_soc_descriptors(device.get(), device_ids);
+    std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
+    for (auto device_id : device_ids) {
+        soc_descriptors[device_id] = device->get_soc_descriptor(device_id);
+    }
 
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(device)));
@@ -447,7 +453,8 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
     implementation->device_ids = device_ids;
-    implementation->device_soc_descriptors = device_soc_descriptors;
+    implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
+    implementation->soc_descriptors = std::move(soc_descriptors);
     return std::move(implementation);
 }
 
@@ -464,7 +471,61 @@ std::optional<std::vector<uint8_t>> open_implementation<BaseClass>::get_device_i
 template <typename BaseClass>
 std::optional<std::string> open_implementation<BaseClass>::get_device_soc_description(uint8_t chip_id) {
     try {
-        return device_soc_descriptors[chip_id];
+        return device_soc_descriptors_yamls[chip_id];
+    } catch (...) {
+        return {};
+    }
+}
+
+template <typename BaseClass>
+std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::convert_from_noc0(
+    uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, const std::string &core_type, const std::string &coord_system) {
+    CoreType core_type_enum;
+
+    if (core_type == "arc") {
+        core_type_enum = CoreType::ARC;
+    } else if (core_type == "dram") {
+        core_type_enum = CoreType::DRAM;
+    } else if (core_type == "active_eth") {
+        core_type_enum = CoreType::ACTIVE_ETH;
+    } else if (core_type == "idle_eth") {
+        core_type_enum = CoreType::IDLE_ETH;
+    } else if (core_type == "pcie") {
+        core_type_enum = CoreType::PCIE;
+    } else if (core_type == "tensix") {
+        core_type_enum = CoreType::TENSIX;
+    } else if (core_type == "router_only") {
+        core_type_enum = CoreType::ROUTER_ONLY;
+    } else if (core_type == "harvested") {
+        core_type_enum = CoreType::HARVESTED;
+    } else if (core_type == "eth") {
+        core_type_enum = CoreType::ETH;
+    } else if (core_type == "worker") {
+        core_type_enum = CoreType::WORKER;
+    } else {
+        return {};
+    }
+
+    CoordSystem coord_system_enum;
+
+    if (coord_system == "logical") {
+        coord_system_enum = CoordSystem::LOGICAL;
+    } else if (coord_system == "physical") {
+        coord_system_enum = CoordSystem::PHYSICAL;
+    } else if (coord_system == "virtual") {
+        coord_system_enum = CoordSystem::VIRTUAL;
+    } else if (coord_system == "translated") {
+        coord_system_enum = CoordSystem::TRANSLATED;
+    } else {
+        return {};
+    }
+
+    try {
+        auto &soc_descriptor = soc_descriptors.at(chip_id);
+        tt::umd::CoreCoord core_coord{noc_x, noc_y, core_type_enum, CoordSystem::PHYSICAL};
+        auto output = soc_descriptor.to(core_coord, coord_system_enum);
+
+        return std::make_tuple(static_cast<uint8_t>(output.x), static_cast<uint8_t>(output.y));
     } catch (...) {
         return {};
     }

@@ -4,6 +4,10 @@
 
 #include "bindings.h"
 
+#include <ttlensserver/jtag_implementation.h>
+#include <ttlensserver/open_implementation.h>
+#include <ttlensserver/umd_implementation.h>
+
 #include <fstream>
 #include <optional>
 
