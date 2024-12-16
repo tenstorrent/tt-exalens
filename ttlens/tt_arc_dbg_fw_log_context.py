@@ -67,7 +67,7 @@ class ArcDfwLogContext(ABC):
             dict: The data from the yaml file 
         """
         yaml_data = {}
-        file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../", log_yaml_file)
+        file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), log_yaml_file)
         with open(file_path, 'r') as f:
             yaml_data = yaml.safe_load(f)
 

@@ -38,7 +38,6 @@ from ttlens.tt_uistate import UIState
 
 from ttlens.tt_lens_context import Context
 from typing import List
-from ttlens.tt_arc_dbg_fw_graph import arc_dfw_get_logs, save_to_csv, read_logs_from_csv
 
 import plotly.express as px
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -46,13 +45,13 @@ from ttlens.tt_arc_dbg_fw_log_context import  LogInfo, ArcDfwLogContext, ArcDfwL
 import threading
 import os
 import socket
-from ttlens.tt_arc_dbg_fw import read_arc_dfw_log_buffer 
+from ttlens.tt_arc_dbg_fw import ArcDebugLoggerFw
 
 def run(cmd_text, context, ui_state: UIState = None):
     args = docopt(command_metadata["description"], argv=cmd_text.split()[1:])
 
     log_names = args["<log_names>"]
-    size = int(args["--size"]) if args["--size"] else 4000000
+    size = int(args["--size"]) if args["--size"] else 40000
     port = int(args["--port"]) if args["--port"] else 8001
     save_csv = args["--save-csv"] if args["--save-csv"] else None
     from_csv = args["--from-csv"] if args["--from-csv"] else None
@@ -67,52 +66,22 @@ def run(cmd_text, context, ui_state: UIState = None):
 def graph(log_names: List[str], size: int, port: int, save_csv: str, from_csv: str, device_id: int, context: Context):
     TT_METAL_ARC_DEBUG_BUFFER_SIZE=size
     os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
-
-    buffer_data = {}
+    
+    log_data = {}
     if from_csv:
-        buffer_data = read_logs_from_csv(from_csv)
+        log_data = ArcDebugLoggerFw.read_log_data_from_csv(from_csv)
     else:
         if log_names[0] == "all":
             log_context = ArcDfwLogContextFromYaml("default")
         else:
             log_context = ArcDfwLogContextFromList(log_names)
-        buffer_data = arc_dfw_get_logs(log_context, device_id, context)
+
+        arc_fw = ArcDebugLoggerFw(log_context, device_id= device_id, context=context)
+        arc_fw.load()
+        log_data = arc_fw.log_until_full_buffer_and_parse_logs()
 
     if save_csv:
-        save_to_csv(buffer_data, save_csv)
+        ArcDebugLoggerFw.save_log_data_to_csv(log_data, save_csv)
 
-    figures = {}
-    for key, data in buffer_data.items():
-        if key== "heartbeat" and "heartbeat" not in log_names:
-            continue
-            
-        figures[key] = px.line(x=range(len(data)), y=data, title=key.capitalize())
-
-    combined_html = "combined_plots.html"
-    with open(combined_html, "w") as f:
-        f.write("<html><head><title>Combined Plots</title></head><body>\n")
-        for key, fig in figures.items():
-            f.write(f"<h1>{key.capitalize()}</h1>\n")
-            f.write(fig.to_html(full_html=False, include_plotlyjs='cdn' if key == list(figures.keys())[0] else False))
-        f.write("</body></html>")
-    
-    httpd = None
-    
-    def serve_html():
-        nonlocal httpd
-        os.chdir(".")  # Set the directory for the HTTP server
-        httpd = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
-        print(f"Graph shown at http://localhost:{port}/{combined_html}")
-        httpd.serve_forever()
-
-    
-    thread = threading.Thread(target=serve_html, daemon=True)
-    thread.start()
-
-    print("Press Enter to stop the server.")
-    input()
-    print("Server stopped.")
-    if httpd:
-        httpd.shutdown()
-    thread.join()
-
+    ArcDebugLoggerFw.open_graph_in_a_browser(log_data, log_names, port)
+    arc_fw.save_graph_as_picture(log_data,"sefe.png")

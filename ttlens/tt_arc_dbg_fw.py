@@ -14,6 +14,8 @@ from ttlens.tt_arc_dbg_fw_log_context import LogInfo, ArcDfwLogContext, ArcDfwLo
 from functools import lru_cache
 from ttlens.tt_arc_dbg_fw_compiler import ArcDfwLoggerCompiler
 from abc import abstractmethod, ABC
+import struct
+import csv
 
 DFW_MSG_CLEAR_DRAM         = 0x1  # Calls dfw_clear_drpam(start_addr, size)
 DFW_MSG_CHECK_DRAM_CLEARED = 0x2  # Calls dfw_check_dram_cleared(start_addr, size)
@@ -265,54 +267,20 @@ def read_arc_dfw_log_buffer(device_id: int = 0, context: Context = None) -> List
     buffer_size = arc_dbg_fw_get_buffer_size() - len(DFW_BUFFER_HEADER_OFFSETS) * 4
     return read_from_device('ch0', device_id=device_id, addr=buffer_start_addr, num_bytes=buffer_size)
 
-def load_arc_dbg_fw(file_name: str = "fw/arc/arc_dbg_fw.hex", log_context: ArcDfwLogContext = ArcDfwLogContextFromYaml("default"), device_id: int = 0, context: Context = None) -> None:
-    """
-    Loads the ARC debug firmware onto the specified device.
-    This function constructs the path to the ARC debug firmware file, checks if it exists,
-    prepares the device for firmware loading, and then loads the firmware onto the device.
-
-    Args:
-        file_name (str): The name of the ARC firmware file.
-        log_yaml_location (str): The location of the log YAML file.
-        device_id (int): The ID of the device to load the firmware onto.
-        context (Context, optional): The context in which to load the firmware. Defaults to None.
-    
-    Raises:
-        TTException: If the ARC firmware file does not exist.
-    """
-    file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../", file_name)
-
-    if not os.path.exists(file_path):
-        raise TTException(f"ARC firmware file {file_path} does not exist.")
-
-    if arc_dbg_fw_check_msg_loop_running(device_id, context):
-        arc_dbg_fw_command("reset", device_id, context)
-        reset_reply = arc_dbg_fw_read_reply(device_id, context)
-        time.sleep(0.01)
-        if reset_reply != 1:
-            raise TTException("ARC debug firmware failed to reset.")
-
-    name_of_modified_fw = "fw/arc/arc_modified.hex"
-    add_logging_instructions_to_arc_dbg_fw(file_name, name_of_modified_fw, log_context)
-
-    modified_fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../", name_of_modified_fw)
-    if not os.path.exists(modified_fw_file_path):
-        raise TTException(f"ARC firmware file {modified_fw_file_path} does not exist.")
-  
-    prepare_arc_dbg_fw(device_id, context)
-
-    load_arc_fw(modified_fw_file_path, 2, device_id, context)
-
-    configure_arc_dbg_fw(log_context, device_id, context)
-
 class ArcDebugFw(ABC):
     def __init__(self,base_fw_file_path: str, base_fw_symbols_file_path: str, modified_fw_file_path: str, device_id: int = 0, context: Context = None):
         self.base_fw_file_path = base_fw_file_path
         self.base_fw_symbols_file_path = base_fw_symbols_file_path
         self.modified_fw_file_path = modified_fw_file_path
         self.device_id = device_id
-        self.context = context
         self.compiler = None
+
+        self.context = check_context(context)
+
+        file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.base_fw_file_path)
+
+        if not os.path.exists(file_path):
+            raise TTException(f"ARC firmwapre file {file_path} does not exist.")
         
     @abstractmethod
     def _configure_arc_dbg_fw(self) -> None:
@@ -354,19 +322,19 @@ class ArcDebugFw(ABC):
             if reset_reply != 1:
                 raise TTException("ARC debug firmware failed to reset.")
 
-    def load(self):
-        file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../", self.base_fw_file_path)
-
-        if not os.path.exists(file_path):
-            raise TTException(f"ARC firmwapre file {file_path} does not exist.")
-        
+    def load(self):        
         self.__reset_if_fw_already_running()
 
         self.compiler.compile()
 
         self.__prepare_arc_dbg_fw()
 
-        load_arc_fw(self.modified_fw_file_path, 2, self.device_id, self.context)
+        modified_fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.modified_fw_file_path)
+        load_arc_fw(modified_fw_file_path, 2, self.device_id, self.context)
+
+        reply = read_dfw_buffer_header("msg", self.device_id, self.context)
+        if reply != 0xbebaceca:
+            raise TTException("ARC debug firmware failed to load, try reseting the card and try again")
 
         self._configure_arc_dbg_fw()
 
@@ -380,7 +348,167 @@ class ArcDebugLoggerFw(ArcDebugFw):
                  context = None):
         super().__init__(base_fw_file_path, base_fw_symbols_file_path, modified_fw_file_path, device_id, context)
         self.log_context = log_context
+        
         self.compiler = ArcDfwLoggerCompiler(base_fw_file_path, base_fw_symbols_file_path, modified_fw_file_path, log_context)
 
     def _configure_arc_dbg_fw(self):
         modify_dfw_buffer_header("record_size_bytes", 4 * len(self.log_context.log_list), self.device_id, self.context)
+    
+    def start_logging(self) -> None:
+        """
+        Start logging the ARC debug firmware.
+        """
+        arc_dbg_fw_command("start", self.device_id, self.context)
+    
+    def stop_logging(self) -> None:
+        """
+        Stop logging the ARC debug firmware.
+        """
+        arc_dbg_fw_command("stop", self.device_id, self.context)
+
+    def get_log_buffer(self) -> List[int]:
+        """
+        Read the log buffer from the ARC debug firmware.
+
+        Args:
+            device_id (int): The ID of the device to read the log buffer from.
+            context (Context): The context in which the device operates. Defaults to None.
+        
+        Returns:
+            List[int]: The log buffer.
+        """
+        buffer_start_addr = arc_dbg_fw_get_buffer_start_addr(self.device_id, self.context) + len(DFW_BUFFER_HEADER_OFFSETS) * 4
+        buffer_size = arc_dbg_fw_get_buffer_size() - len(DFW_BUFFER_HEADER_OFFSETS) * 4
+        return read_from_device('ch0', device_id=self.device_id, addr=buffer_start_addr, num_bytes=buffer_size)
+
+    def log_until_full_buffer(self):
+        """
+        Log until the buffer is full.
+        """
+        self.start_logging()
+
+        buffer_size = arc_dbg_fw_get_buffer_size() - len(DFW_BUFFER_HEADER_OFFSETS) * 4
+        while (t := read_dfw_buffer_header("num_log_calls", self.device_id, self.context)*len(self.log_context.log_list)*4) <= buffer_size:
+            continue
+
+        self.stop_logging()
+    
+    def get_log_data(self) -> dict:
+        buffer = self.get_log_buffer()
+        return self.parse_log_buffer(buffer)
+    
+    def log_until_full_buffer_and_parse_logs(self) -> dict:
+        self.log_until_full_buffer()
+
+        buffer = self.get_log_buffer()
+
+        return self.parse_log_buffer(buffer)
+    
+    def parse_log_buffer(self, buffer: bytes) -> dict:
+        def format_output(value, output_type):
+            if output_type == 'int':
+                return int(value)
+            elif output_type == 'float':
+                return struct.unpack('<f', struct.pack('<I', value))[0]
+            elif output_type == 'float_div_16': # special case for temperature data
+                return struct.unpack('<f', struct.pack('<I', value))[0] / 16
+            elif output_type == 'hex':
+                return value
+            else:
+                return value
+        log_data = {log_info.log_name: [] for log_info in self.log_context.log_list}
+        num_logs = len(self.log_context.log_list)
+
+        for i in range(0, len(buffer), 4):
+            if i//4 >= (len(buffer)//4)- (len(buffer)//4) % num_logs:
+                break;
+            value = struct.unpack('<I', buffer[i:i+4])[0]
+            log_name = self.log_context.log_list[(i // 4) % num_logs].log_name
+            log_data[log_name].append(format_output(value, self.log_context.log_list[(i // 4) % num_logs].output))
+
+        # Sort the log data according to "heartbeat"
+        if "heartbeat" in log_data:
+            sorted_indices = sorted(range(len(log_data["heartbeat"])), key=lambda i: log_data["heartbeat"][i])
+            for log_name in log_data:
+                log_data[log_name] = [log_data[log_name][i] for i in sorted_indices]
+
+        return log_data
+    
+    @staticmethod
+    def save_log_data_to_csv(log_data: dict, save_location: str) -> None:
+        with open(save_location, mode='w', newline='') as csv_file:
+            writer = csv.writer(csv_file)
+            headers = ["Sample"] + list(log_data.keys())
+            writer.writerow(headers)
+            for i in range(len(next(iter(log_data.values())))):
+                row = [i] + [log_data[log_name][i] for log_name in log_data]
+                writer.writerow(row)
+
+    @staticmethod
+    def read_log_data_from_csv(csv_file_path: str) -> None:
+        import pandas as pd
+        df = pd.read_csv(csv_file_path)
+        log_data = {}
+        for column in df.columns[1:]:
+            log_data[column] = df[column].tolist()
+        return log_data
+
+    def save_graph_as_picture(self, log_data: dict, save_location: str):
+        import matplotlib.pyplot as plt
+        import numpy as np
+        
+        num_logs = len(log_data)
+        fig, axes = plt.subplots(num_logs, 1, figsize=(24, 6 * num_logs))
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+        for i, (log_name, values) in enumerate(log_data.items()):
+            color = colors[i % len(colors)]
+            ax = axes[i]
+            ax.plot(values, color=color)
+            ax.set_title(log_name)
+            ax.set_xlabel("Plots")
+            ax.set_ylabel("Value")
+
+        plt.tight_layout()
+        plt.savefig(save_location)
+        plt.close()
+    
+    @staticmethod
+    def open_graph_in_a_browser(log_data: dict,log_names: List[str], port: int):
+        import plotly.express as px
+        from http.server import HTTPServer, SimpleHTTPRequestHandler
+        import threading
+    
+        figures = {}
+        for key, data in log_data.items():
+            if key== "heartbeat" and "heartbeat" not in log_names:
+                continue
+                
+            figures[key] = px.line(x=range(len(data)), y=data, title=key.capitalize())
+
+        combined_html = "combined_plots.html"
+        with open(combined_html, "w") as f:
+            f.write("<html><head><title>Combined Plots</title></head><body>\n")
+            for key, fig in figures.items():
+                f.write(f"<h1>{key.capitalize()}</h1>\n")
+                f.write(fig.to_html(full_html=False, include_plotlyjs='cdn' if key == list(figures.keys())[0] else False))
+            f.write("</body></html>")
+        
+        httpd = None
+        
+        def serve_html():
+            nonlocal httpd
+            os.chdir(".")
+            httpd = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
+            print(f"Graph shown at http://localhost:{port}/{combined_html}")
+            httpd.serve_forever()
+        
+        thread = threading.Thread(target=serve_html, daemon=True)
+        thread.start()
+
+        print("Press Enter to stop the server.")
+        input()
+        print("Server stopped.")
+        if httpd:
+            httpd.shutdown()
+        thread.join()
