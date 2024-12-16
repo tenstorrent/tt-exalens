@@ -48,6 +48,23 @@ which can be installed by running
 sudo apt install software-properties-common build-essential libyaml-cpp-dev libboost-all-dev libhwloc-dev libzmq3-dev libgtest-dev libgmock-dev xxd
 ```
 
+Also, you need to install ninja for Cmake by running
+
+```bash
+sudo apt-get install ninja-build
+```
+
+Some machines may not have lfs installed. Install it by running
+
+```bash
+git lfs install
+```
+and
+
+```bash
+git submodule foreach 'git lfs fetch --all && git lfs pull'
+```
+
 Both python 3.8 and 3.10 are actively supported, so you can use either
 
 ```bash
