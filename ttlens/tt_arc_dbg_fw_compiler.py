@@ -22,7 +22,7 @@ class ArcDfwCompiler(ABC):
         Returns:
             dict: Dictionary of symbol names and their addresses.
         """
-        file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../", self.symbols_file_path)
+        file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.symbols_file_path)
         symbol_table = {}
 
         with open(file_name, "r") as f:
@@ -197,14 +197,15 @@ class ArcDfwCompiler(ABC):
             log_context (ArcDfwLogContext): Log context containing log information.
         """
         LOG_FUNCITON_EDITABLE = int(self.symbol_locations["log_function"], 16)  # + 0x24
-        base_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../", self.base_fw_file_path)
+        base_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.base_fw_file_path)
         hex_lines = self._load_hex_file(base_file_name)
 
         instruction_bytes = self._get_modified_instruction_bytes(self.log_context)
 
         self._write_to_hex_lines(hex_lines, LOG_FUNCITON_EDITABLE, instruction_bytes)
 
-        save_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../", self.output_fw_file_path)
+        save_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.output_fw_file_path)
+        print(save_file_name)
         self._save_hex_file(save_file_name, hex_lines)
 
     @abstractmethod
