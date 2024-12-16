@@ -1,7 +1,7 @@
 To setup the graphing install run the following command
 
 ```
-pip install plotly.express pandas
+pip install plotly.express pandas matplotlib
 ```
 
 After that you can just run ttlens reguarly and use the graph command like this
