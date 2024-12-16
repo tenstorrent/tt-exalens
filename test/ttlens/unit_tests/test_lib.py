@@ -24,12 +24,10 @@ from ttlens.tt_arc_dbg_fw import (
     arc_dbg_fw_check_msg_loop_running,
     arc_dbg_fw_command, read_dfw_buffer_header,
     arc_dbg_fw_get_buffer_start_addr,
-    load_arc_dbg_fw,
     ArcDebugLoggerFw
 )
 from ttlens.tt_lens_lib_utils import arc_read, split_32bit_to_16bit
 from ttlens.tt_arc_dbg_fw_log_context import LogInfo, ArcDfwLogContext, ArcDfwLogContextFromYaml, ArcDfwLogContextFromList
-from ttlens.tt_arc_dbg_fw_graph import read_arc_dfw_log_buffer, arc_get_logs_from_list
 
 def invalid_argument_decorator(func):
     @wraps(func)
@@ -536,12 +534,14 @@ class TestARC(unittest.TestCase):
 
         log_yaml_location  = "fw/arc/log/default.yaml"
 
+        arc_fw =  ArcDebugLoggerFw(ArcDfwLogContextFromYaml("default") , device_id=device_id , context=self.context)
+        arc_fw.load()
+
         # load_arc_dbg_fw(device_id=device_id,context=self.context)
-        # reply = read_dfw_buffer_header("msg", device_id, self.context)
-        # assert(reply == 0xbebaceca)
+        reply = read_dfw_buffer_header("msg", device_id, self.context)
+        assert(reply == 0xbebaceca)
         
 
-        arc_get_logs_from_list(["current"], device_id, self.context)
     # TODO test reset
     # TODO test instruction_injection
     # TODO test communication

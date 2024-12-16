@@ -42,11 +42,16 @@ ttlens_files = {
         "files": get_ttlens_py_files(f"{ttlens_home}/ttlens/ttlens_commands"),
         "output": "ttlens/ttlens_commands",
     },
+    "ttlens_fw": {
+        "path": "ttlens/fw",
+        "files": "*",  # Include all files in the ttlens/fw directory
+        "output": "ttlens/fw"
+    },
     "libs": {
         "path": "build/lib",
-        "files": ["libdevice.so", "ttlens_pybind.so"] + get_libjtag(),
+        "files": [ "libdevice.so", "ttlens_pybind.so", "libnng.so.1", "libuv.so.1" ],
         "output": "build/lib",
-        "strip": True,
+        "strip": True
     },
     "ttlens-server-standalone": {
         "path": "build/bin",
