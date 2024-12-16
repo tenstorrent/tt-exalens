@@ -53,7 +53,6 @@ The following coordinate systems are available to represent a grid location on t
 # TODO: Make nicer explanation of exception when coordinate translation fails. Current example: CoordinateTranslationError: CoordinateTranslationError: to_noc0(coord_tuple=(6, 0), coord_system=logical, core_type=dram)
 # TODO: device command (d) cannot use netlist as first argument. It can use logical tensix, logical eth, logical dram...
 # TODO: Add legend to device command
-# TODO: Add colors to device command
 # TODO: Fix comments in coordinate system documentation strings
 
 from ttlens.tt_util import TTException
@@ -65,6 +64,9 @@ VALID_COORDINATE_TYPES = [
     "nocTr",
     "die",
     "netlist",
+    "logical-tensix",
+    "logical-eth",
+    "logical-dram",
 ]
 
 
@@ -161,25 +163,28 @@ class OnChipCoordinate:
             return self._device.from_noc0(self._noc0_coord, "logical")
         elif output_type == "nocTr":
             return self._device.from_noc0(self._noc0_coord, "translated")[0]
+        elif output_type.startswith("logical-"):
+            core_type = output_type.split("-")[1]
+            coord = self._device.from_noc0(self._noc0_coord, "logical")
+            if coord[1] == core_type:
+                return coord[0]
+            else:
+                raise Exception(
+                    f"Coordinate (noc0 {self._noc0_coord[0]}-{self._noc0_coord[1]}: {coord[1]}) is not supported in coordinate sub-system {output_type}"
+                )
         else:
             raise Exception("Unknown output coordinate system: " + output_type)
 
     # Which axis is used to advance in the horizontal direction when rendering the chip
     # For X-Y coordinates, this is the X, for R,C coordinates, this is the C.
     def horizontal_axis(coord_type):
-        if "noc" in coord_type or "die" in coord_type:
-            return 0
-        else:
-            return 1
+        return 0
 
     def vertical_axis(coord_type):
         return 1 - OnChipCoordinate.horizontal_axis(coord_type)
 
     def vertical_axis_increasing_up(coord_type):
-        if "noc" in coord_type or "die" in coord_type:
-            return True
-        else:
-            return False
+        return False
 
     def to_str(self, output_type="noc0"):
         """
