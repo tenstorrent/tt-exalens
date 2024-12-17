@@ -173,13 +173,29 @@ from the project root directory.
 
 ### Updating documentation
 
+In order to update documentation virtual environment has to be created first by running following command:
+
+```bash
+./scripts/create-venv.sh
+```
+
+To activate created environment use
+
+```bash
+.venv/bin/activate
+```
+
+If environment is activated correctly (.venv) should appear.
+
 Library documentation is automatically generated from source code docstrings.
-To update the library docs, you need to run:
+To update the library docs, you need to run (while in created environment):
 
 `make docs`
 
 in the project root.
 For more advanced use cases, refer to the source code of the documentation generation scripts, located in `docs/bin`.
+
+To leave the environment simply use `deactivate`.
 
 ### Static checks
 
