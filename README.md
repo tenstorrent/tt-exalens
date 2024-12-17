@@ -173,7 +173,7 @@ from the project root directory.
 
 ### Updating documentation
 
-In order to update documentation virtual environment has to be created first by running following command:
+In order to update documentation virtual environment has to be created first by running the following command:
 
 ```bash
 ./scripts/create-venv.sh
@@ -203,10 +203,9 @@ To leave the environment simply use `deactivate`.
 
 We have defined various pre-commit hooks that check the code for formatting, licensing issues, etc.
 
-To install pre-commit, run the following command:
+To install pre-commit , run the following command while environment is activated:
 
 ```sh
-source env/activate
 pip install pre-commit
 ```
 
