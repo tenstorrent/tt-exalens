@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from functools import cached_property
-from typing import List, Sequence
+from typing import List, Sequence, Tuple
 from tabulate import tabulate
 from ttlens.tt_lens_context import Context
 from ttlens.tt_object import TTObject
@@ -166,7 +166,7 @@ class Device(TTObject):
             self._to_noc0[(die_location, "die", core_type)] = noc0_location
             self._to_noc0[(die_location, "die", "any")] = noc0_location
 
-    def to_noc0(self, coord_tuple: tuple[int, int], coord_system: str, core_type: str = "any") -> tuple[int, int]:
+    def to_noc0(self, coord_tuple: Tuple[int, int], coord_system: str, core_type: str = "any") -> Tuple[int, int]:
         try:
             return self._to_noc0[(coord_tuple, coord_system, core_type)]
         except:
@@ -174,7 +174,7 @@ class Device(TTObject):
                 f"to_noc0(coord_tuple={coord_tuple}, coord_system={coord_system}, core_type={core_type})"
             )
 
-    def from_noc0(self, noc0_tuple: tuple[int, int], coord_system: str) -> tuple[tuple[int, int], str]:
+    def from_noc0(self, noc0_tuple: Tuple[int, int], coord_system: str) -> Tuple[Tuple[int, int], str]:
         try:
             return self._from_noc0[(noc0_tuple, coord_system)]
         except:
