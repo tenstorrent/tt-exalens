@@ -39,10 +39,6 @@ DFW_BUFFER_HEADER_OFFSETS = {
     "msg_arg1": 40
 }
 
-class ArcDfwHeader():
-
-    pass;
-
 
 def modify_dfw_buffer_header(field: str,value: int, device_id: int, context: Context = None) -> None:
     """
@@ -397,10 +393,16 @@ class ArcDebugLoggerFw(ArcDebugFw):
         self.stop_logging()
     
     def get_log_data(self) -> dict:
+        """
+        Get log data
+        """
         buffer = self.get_log_buffer()
         return self.parse_log_buffer(buffer)
     
     def log_until_full_buffer_and_parse_logs(self) -> dict:
+        """
+        Logs until the buffer is full and returns parsed logs.
+        """
         self.log_until_full_buffer()
 
         buffer = self.get_log_buffer()
@@ -408,7 +410,11 @@ class ArcDebugLoggerFw(ArcDebugFw):
         return self.parse_log_buffer(buffer)
     
     def parse_log_buffer(self, buffer: bytes) -> dict:
-        def format_output(value, output_type):
+
+        def format_log_by_type(value, output_type):
+            """
+            Formats log by its type defined in LogInfo.
+            """
             if output_type == 'int':
                 return int(value)
             elif output_type == 'float':
@@ -419,6 +425,7 @@ class ArcDebugLoggerFw(ArcDebugFw):
                 return value
             else:
                 return value
+        
         log_data = {log_info.log_name: [] for log_info in self.log_context.log_list}
         num_logs = len(self.log_context.log_list)
 
@@ -427,7 +434,7 @@ class ArcDebugLoggerFw(ArcDebugFw):
                 break;
             value = struct.unpack('<I', buffer[i:i+4])[0]
             log_name = self.log_context.log_list[(i // 4) % num_logs].log_name
-            log_data[log_name].append(format_output(value, self.log_context.log_list[(i // 4) % num_logs].output))
+            log_data[log_name].append(format_log_by_type(value, self.log_context.log_list[(i // 4) % num_logs].output))
 
         # Sort the log data according to "heartbeat"
         if "heartbeat" in log_data:
