@@ -4,6 +4,7 @@ from ttlens.tt_arc_dbg_fw_log_context import LogInfo, ArcDfwLogContext, ArcDfwLo
 from math import floor
 import struct
 from abc import abstractmethod, ABC
+from ttlens.tt_util import TTException
 
 class ArcDfwCompiler(ABC):
     def __init__(self, base_fw_file_path: str, symbols_file_path: str, output_fw_file_path: str):
@@ -175,7 +176,18 @@ class ArcDfwCompiler(ABC):
         instruction = opcode | r_addr_bits | reg_data_bits | offset_bits
         return [(instruction >> 8) & 0xFF, instruction & 0xFF]
 
-    def _write_to_hex_lines(self, hex_lines: List[int], from_address: int, instruction_bytes: List[int]) -> None:
+    def _add_instructions_to_hex_lines(self, hex_lines: List[int], from_address: int, instruction_bytes: List[int]) -> None:
+        """
+        Adding instructions to hex lines that are read from a hex file.
+
+        Args:
+            hex_lines (List[int]): List of hex lines.
+            from_address (int): Address to add the instructions.
+            instruction_bytes (List[int]): Instructions to add.
+        
+        Raises:
+            TTException: If too many bytes are written to the new hex.
+        """
         bytes_written = 0
         # Write new instructions to the hex file, because of the endianess
         for i in range(0, len(instruction_bytes), 2):
@@ -184,7 +196,7 @@ class ArcDfwCompiler(ABC):
             bytes_written += 2
 
         if bytes_written > self.MAX_WRITE_BYTES:
-            raise Exception(f"Too many bytes written to the new hex, reduce the number of logs: {bytes_written} > {self.MAX_WRITE_BYTES}")
+            raise TTException(f"Too many bytes written to the new hex, reduce the number of logs: {bytes_written} > {self.MAX_WRITE_BYTES}")
         pass;
 
     def compile(self):
@@ -202,14 +214,20 @@ class ArcDfwCompiler(ABC):
 
         instruction_bytes = self._get_modified_instruction_bytes(self.log_context)
 
-        self._write_to_hex_lines(hex_lines, LOG_FUNCITON_EDITABLE, instruction_bytes)
+        self._add_instructions_to_hex_lines(hex_lines, LOG_FUNCITON_EDITABLE, instruction_bytes)
 
         save_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.output_fw_file_path)
         print(save_file_name)
         self._save_hex_file(save_file_name, hex_lines)
 
     @abstractmethod
-    def _get_modified_instruction_bytes(self, log_info: LogInfo) -> List[int]:
+    def _get_modified_instruction_bytes(self) -> List[int]:
+        """
+        Gets the modified instruction bytes for the ARC debug firmware.
+
+        Returns:
+            List[int]: Modified instructions
+        """
         pass
 
 class ArcDfwLoggerCompiler(ArcDfwCompiler):
@@ -217,7 +235,7 @@ class ArcDfwLoggerCompiler(ArcDfwCompiler):
         super().__init__(base_fw_file_path, symbols_file_path, output_fw_file_path)
         self.log_context = log_context
     
-    def _get_modified_instruction_bytes(self, log_info: LogInfo) -> List[int]:
+    def _get_modified_instruction_bytes(self) -> List[int]:
         instruction_bytes = []
         for i, log_info in enumerate(self.log_context.log_list):
             instruction_bytes += self._create_load_instruction(1, log_info.address)

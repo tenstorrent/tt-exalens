@@ -33,18 +33,11 @@ command_metadata = {
 }
 
 from docopt import docopt
-
 from ttlens.tt_uistate import UIState
-
 from ttlens.tt_lens_context import Context
 from typing import List
-
-import plotly.express as px
-from http.server import HTTPServer, SimpleHTTPRequestHandler
-from ttlens.tt_arc_dbg_fw_log_context import  LogInfo, ArcDfwLogContext, ArcDfwLogContextFromYaml,ArcDfwLogContextFromList
-import threading
+from ttlens.tt_arc_dbg_fw_log_context import   ArcDfwLogContextFromYaml,ArcDfwLogContextFromList
 import os
-import socket
 from ttlens.tt_arc_dbg_fw import ArcDebugLoggerFw
 
 def run(cmd_text, context, ui_state: UIState = None):

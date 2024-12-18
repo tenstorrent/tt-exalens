@@ -39,6 +39,11 @@ DFW_BUFFER_HEADER_OFFSETS = {
     "msg_arg1": 40
 }
 
+class ArcDfwHeader():
+
+    pass;
+
+
 def modify_dfw_buffer_header(field: str,value: int, device_id: int, context: Context = None) -> None:
     """
     Modifies the specified field in the DFW buffer header.
@@ -120,7 +125,6 @@ def send_buffer_addr_and_size_to_arc_dbg_fw(device_id: int, context: Context = N
     if response[0] == -1:
         raise TTException("Arc msg error")
     
-#@lru_cache(maxsize=None)
 def arc_dbg_fw_get_buffer_start_addr(device_id: int = 0, context: Context = None) -> int:
     """
     Retrieves the start address of the debug buffer for the specified device.
@@ -153,7 +157,6 @@ def arc_dbg_fw_get_buffer_start_addr(device_id: int = 0, context: Context = None
 
     return DFW_DEFAULT_BUFFER_ADDR
 
-#@lru_cache(maxsize=None)
 def arc_dbg_fw_get_buffer_size() -> int:
     """
     Retrieves the buffer size for ARC debugging from the environment variable.
@@ -436,6 +439,13 @@ class ArcDebugLoggerFw(ArcDebugFw):
     
     @staticmethod
     def save_log_data_to_csv(log_data: dict, save_location: str) -> None:
+        """
+        Save log data to a CSV file.
+
+        Args:
+            log_data (dict): Dictionary containing log data.
+            save_location (str): Location to save the log data.
+        """
         with open(save_location, mode='w', newline='') as csv_file:
             writer = csv.writer(csv_file)
             headers = ["Sample"] + list(log_data.keys())
@@ -446,6 +456,12 @@ class ArcDebugLoggerFw(ArcDebugFw):
 
     @staticmethod
     def read_log_data_from_csv(csv_file_path: str) -> None:
+        """
+        Read log data from a CSV file.
+        
+        Args:
+            csv_file_path (str): Path to the CSV file.
+        """
         import pandas as pd
         df = pd.read_csv(csv_file_path)
         log_data = {}
@@ -454,6 +470,16 @@ class ArcDebugLoggerFw(ArcDebugFw):
         return log_data
 
     def save_graph_as_picture(self, log_data: dict, save_location: str):
+        """
+        Save the graph as a picture.
+
+        Args:
+            log_data (dict): Dictionary containing log data.
+            save_location (str): Location to save the graph.
+        
+        Raises:
+            ImportError: If matplotlib is not installed.
+        """
         import matplotlib.pyplot as plt
         import numpy as np
         
@@ -475,13 +501,25 @@ class ArcDebugLoggerFw(ArcDebugFw):
     
     @staticmethod
     def open_graph_in_a_browser(log_data: dict,log_names: List[str], port: int):
+        """
+        Opens graph in browser using plotly express.
+
+        Args:
+            log_data (dict): Dictionary containing log data.
+            log_names (List[str]): List of log names to be displayed, None to display all logs.
+            port (int): Port number to display the graph.
+        
+        Raises:
+            ImportError: If plotly is not installed.
+        """
+
         import plotly.express as px
         from http.server import HTTPServer, SimpleHTTPRequestHandler
         import threading
     
         figures = {}
         for key, data in log_data.items():
-            if key== "heartbeat" and "heartbeat" not in log_names:
+            if log_names != None and key == "heartbeat" and "heartbeat" not in log_names:
                 continue
                 
             figures[key] = px.line(x=range(len(data)), y=data, title=key.capitalize())
