@@ -5,7 +5,7 @@ from typing import Union
 
 from ttlens.tt_coordinate import OnChipCoordinate
 from ttlens.tt_lens_context import Context
-from ttlens.tt_lens_lib import check_context, validate_device_id, read_word_from_device, write_to_device
+from ttlens.tt_lens_lib import check_context, validate_device_id, read_word_from_device, write_words_to_device
 from ttlens.tt_util import TTException
 from ttlens.tt_device import Device
 
@@ -74,54 +74,54 @@ class TensixDebug:
                 device_id (int): ID number of device to send message to.
                 context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
         """
-        validate_instruction(instruction, self.context)
         validate_trisc_id(trisc_id, self.context)
 
         if isinstance(instruction, int):
             instruction = instruction.to_bytes(4, byteorder="little")
+        validate_instruction(instruction, self.context)
 
         # 1. Wait for buffer ready signal (poll bit 0 of DBG_INSTRN_BUF_STATUS until it’s 1)
         while (self.dbg_buff_status() & 1) == 0:
             pass
 
-        write_to_device(
+        write_words_to_device(
             self.core_loc,
             self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
-            [0x07],
+            0x07,
             self.device_id,
             self.context,
         )
 
         # 2. Assemble 32-bit instruction and write it to DBG_INSTRN_BUF_CTRL1
-        write_to_device(
+        write_words_to_device(
             self.core_loc,
             self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1"),
-            instruction,
+            int.from_bytes(instruction, byteorder="little"),
             self.device_id,
             self.context,
         )
 
         # 3. Set bit 0(trigger) and bit 4 (override en) to 1 in DBG_INSTRN_BUF_CTRL0 to inject instruction.
-        write_to_device(
+        write_words_to_device(
             self.core_loc,
             self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
-            [0x7 | (0x10 << trisc_id)],
+            0x7 | (0x10 << trisc_id),
             self.device_id,
             self.context,
         )
 
         # 4. Clear DBG_INSTRN_BUF_CTRL0 register
-        write_to_device(
+        write_words_to_device(
             self.core_loc,
             self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
-            [0x07],
+            0x07,
             self.device_id,
             self.context,
         )
-        write_to_device(
+        write_words_to_device(
             self.core_loc,
             self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
-            [0x00],
+            0x00,
             self.device_id,
             self.context,
         )
@@ -134,10 +134,10 @@ class TensixDebug:
         device = self.context.devices[self.device_id]
         register = device.get_tensix_register_description(name)
 
-        write_to_device(
+        write_words_to_device(
             self.core_loc,
             device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RD_CNTL"),
-            [(register.address - device.get_tensix_configuration_register_base()) // 4],
+            (register.address - device.get_tensix_configuration_register_base()) // 4,
             self.device_id,
             self.context,
         )
@@ -153,7 +153,9 @@ class TensixDebug:
         self,
         regfile_id: int,
     ) -> bytearray:
-        """Dumps SRCA/SRCB/DSTACC register file from the specified core.
+        """Dumps SRCA/DSTACC register file from the specified core.
+            Due to the architecture of SRCA, you can see only see last two faces written.
+            SRCB is currently not supported.
 
         Args:
                 regfile_id (int): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
@@ -173,10 +175,10 @@ class TensixDebug:
         if self.device._arch != "wormhole_b0" and self.device._arch != "blackhole":
             raise TTException("Not supported for this architecture: ")
 
-        write_to_device(
+        write_words_to_device(
             self.core_loc,
             self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
-            [0x1],
+            0x1,
             self.device_id,
             self.context,
         )
@@ -207,10 +209,10 @@ class TensixDebug:
 
             for i in range(8):
                 dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile << 16)
-                write_to_device(
+                write_words_to_device(
                     self.core_loc,
                     self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
-                    dbg_array_rd_cmd.to_bytes(4, byteorder="little"),
+                    dbg_array_rd_cmd,
                     self.device_id,
                     self.context,
                 )
@@ -229,17 +231,17 @@ class TensixDebug:
                 if row % 16 == 15:
                     self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), trisc_id)
 
-        write_to_device(
+        write_words_to_device(
             self.core_loc,
             self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
-            [0x0],
+            0x0,
             self.device_id,
             self.context,
         )
-        write_to_device(
+        write_words_to_device(
             self.core_loc,
             self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
-            [0x0],
+            0x0,
             self.device_id,
             self.context,
         )
