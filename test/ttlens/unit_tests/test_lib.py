@@ -532,12 +532,9 @@ class TestARC(unittest.TestCase):
         
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
 
-        log_yaml_location  = "fw/arc/log/default.yaml"
-
         arc_fw =  ArcDebugLoggerFw(ArcDfwLogContextFromYaml("default") , device_id=device_id , context=self.context)
         arc_fw.load()
 
-        # load_arc_dbg_fw(device_id=device_id,context=self.context)
         reply = read_dfw_buffer_header("msg", device_id, self.context)
         assert(reply == 0xbebaceca)
         
