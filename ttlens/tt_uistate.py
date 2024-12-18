@@ -12,8 +12,7 @@ class UIState:
         self.context = context
         self.current_device_id = context.device_ids[0]  # Currently selected device id
         self.current_location = OnChipCoordinate(0, 0, "netlist", self.current_device)  # Currently selected core
-        self.current_stream_id = 8  # Currently selected stream_id
-        self.current_prompt = ""  # Based on the current x,y,stream_id tuple
+        self.current_prompt = ""  # Based on the current x,y
         self.gdb_server: GdbServer = None
 
     @property
