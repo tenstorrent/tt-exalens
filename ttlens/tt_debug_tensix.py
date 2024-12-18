@@ -133,7 +133,6 @@ class TensixDebug:
     def read_cfg_reg(self, name):
         device = self.context.devices[self.device_id]
         register = device.get_tensix_register_description(name)
-        print(register)
 
         write_to_device(
             self.core_loc,
