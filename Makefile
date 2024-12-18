@@ -18,6 +18,9 @@ clean:
 
 .PHONY: test
 test:
+	@echo "Installing dependencies"
+	TTLENS_INSTALL=true TEST_INSTALL=true $(TTLENS_HOME)/scripts/install-deps.sh
+
 	@echo "Running tests"
 	./test/run_all.sh
 
