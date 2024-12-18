@@ -22,6 +22,8 @@ After cloning the TTLens repository, be sure to run
 
 ```bash
 git submodule update --init --recursive
+git lfs install
+git submodule foreach 'git lfs fetch --all && git lfs pull'
 ```
 
 so that all the submodules are properly loaded.
@@ -41,28 +43,12 @@ To build TTLens, you need the following dependencies:
 - libhwloc-dev,
 - libzmq3-dev,
 - xxd,
+- ninja-build
 
 which can be installed by running
 
 ```bash
-sudo apt install software-properties-common build-essential libyaml-cpp-dev libboost-all-dev libhwloc-dev libzmq3-dev libgtest-dev libgmock-dev xxd
-```
-
-Also, you need to install ninja for Cmake by running
-
-```bash
-sudo apt-get install ninja-build
-```
-
-Some machines may not have lfs installed. Install it by running
-
-```bash
-git lfs install
-```
-and
-
-```bash
-git submodule foreach 'git lfs fetch --all && git lfs pull'
+sudo apt install software-properties-common build-essential libyaml-cpp-dev libboost-all-dev libhwloc-dev libzmq3-dev libgtest-dev libgmock-dev xxd ninja-build
 ```
 
 Both python 3.8 and 3.10 are actively supported, so you can use either
@@ -185,8 +171,6 @@ To activate created environment use
 .venv/bin/activate
 ```
 
-If environment is activated correctly (.venv) should appear.
-
 Library documentation is automatically generated from source code docstrings.
 To update the library docs, you need to run (while in created environment):
 
@@ -195,15 +179,13 @@ To update the library docs, you need to run (while in created environment):
 in the project root.
 For more advanced use cases, refer to the source code of the documentation generation scripts, located in `docs/bin`.
 
-To leave the environment simply use `deactivate`.
-
 ### Static checks
 
 #### Pre-commit
 
 We have defined various pre-commit hooks that check the code for formatting, licensing issues, etc.
 
-To install pre-commit , run the following command while environment is activated:
+To install pre-commit , run the following command:
 
 ```sh
 pip install pre-commit
