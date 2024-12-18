@@ -3,7 +3,13 @@ include infra/common.mk
 DOC_DIR?=$(TTLENS_HOME)/docs
 
 .PHONY: docs
-docs: build
+docs:
+	make clean
+	make build
+
+	@echo "Installing dependencies"
+	TTLENS_INSTALL=true $(TTLENS_HOME)/scripts/install-deps.sh
+
 	@echo "${YELLOW}Generating documentation${NC}"
 	@echo "${YELLOW}Using the output directory $(DOC_DIR)${NC}"
 
