@@ -18,7 +18,7 @@ class ArcDfwCompiler(ABC):
 
     def _parse_elf_symbols(self) -> dict:
         """
-        Parses the ELF symbols from the symbol table file.
+        Parses the symbols from the symbol table file.
 
         Returns:
             dict: Dictionary of symbol names and their addresses.
@@ -31,19 +31,11 @@ class ArcDfwCompiler(ABC):
 
         for line in lines:
             line = line.strip()
-            if not line or "SYMBOL TABLE" in line or line.startswith("arc_dbg_fw"):
+            if not line:
                 continue
 
-            parts = line.split()
-            if len(parts) < 6:
-                continue
-
-            address, flags, _type, section, size, name = parts[:6]
-
-            if name == None or name == "":
-                continue
-
-            symbol_table[name] = address
+            name, address = line.split(":")
+            symbol_table[name.strip()] = address.strip()
 
         return symbol_table
 
@@ -212,7 +204,7 @@ class ArcDfwCompiler(ABC):
         base_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.base_fw_file_path)
         hex_lines = self._load_hex_file(base_file_name)
 
-        instruction_bytes = self._get_modified_instruction_bytes(self.log_context)
+        instruction_bytes = self._get_modified_instruction_bytes()
 
         self._add_instructions_to_hex_lines(hex_lines, LOG_FUNCITON_EDITABLE, instruction_bytes)
 

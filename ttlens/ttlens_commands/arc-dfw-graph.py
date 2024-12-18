@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  graph [ --size=4000000] [ --save-csv==filename ] [ --from-csv=filename ] [ --port=8001 ]  [-d <D>...] <log_names>...
+  graph [ --size=40000] [ --save-csv==filename ] [ --from-csv=filename ] [ --port=8001 ]  [-d <D>...] <log_names>...
 
 Arguments:
   <log_names>        Address to read from
 
 Options:
   -d <D>        Device ID. Optional and repeatable. Default: current device
-  --size=<size>  Size of the buffer to read [default: 4000000]
+  --size=<size>  Size of the buffer to read [default: 40000]
   --port=<port>  Port to serve the graph [default: 8001]
   --save-csv=<filename>  Save the log data to a CSV file
   --from-csv=<filename>  Read the log data from a CSV file
