@@ -36,13 +36,13 @@ ttlens_files = {
     "ttlens_fw": {
         "path": "ttlens/fw",
         "files": "*",  # Include all files in the ttlens/fw directory
-        "output": "ttlens/fw"
+        "output": "ttlens/fw",
     },
     "libs": {
         "path": "build/lib",
-        "files": [ "libdevice.so", "ttlens_pybind.so", "libnng.so.1", "libuv.so.1" ],
+        "files": ["libdevice.so", "ttlens_pybind.so", "libnng.so.1", "libuv.so.1"],
         "output": "build/lib",
-        "strip": True
+        "strip": True,
     },
     "ttlens-server-standalone": {
         "path": "build/bin",
