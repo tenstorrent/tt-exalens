@@ -1,20 +1,30 @@
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
+# This code is used to interact with the ARC debug firmware on the device.
 import os
 from typing import Union, List
-from ttlens.tt_arc_dbg_fw_log_context import LogInfo, ArcDfwLogContext, ArcDfwLogContextFromList, ArcDfwLogContextFromYaml
+from ttlens.tt_arc_dbg_fw_log_context import (
+    LogInfo,
+    ArcDfwLogContext,
+    ArcDfwLogContextFromList,
+    ArcDfwLogContextFromYaml,
+)
 from math import floor
 import struct
 from abc import abstractmethod, ABC
 from ttlens.tt_util import TTException
+
 
 class ArcDfwCompiler(ABC):
     def __init__(self, base_fw_file_path: str, symbols_file_path: str, output_fw_file_path: str):
         self.base_fw_file_path = base_fw_file_path
         self.output_fw_file_path = output_fw_file_path
         self.symbols_file_path = symbols_file_path
-        
+
         self.symbol_locations = self._parse_elf_symbols()
 
-        self.MAX_WRITE_BYTES = 256*4
+        self.MAX_WRITE_BYTES = 256 * 4
 
     def _parse_elf_symbols(self) -> dict:
         """
@@ -54,10 +64,10 @@ class ArcDfwCompiler(ABC):
         line_index = address // 4
         byte_index = address % 4
         line = hex_lines[line_index]
-        line = int.from_bytes(line.to_bytes(4, byteorder='big'), byteorder='little')
+        line = int.from_bytes(line.to_bytes(4, byteorder="big"), byteorder="little")
         mask = 0xFF << (byte_index * 8)
         new_line = (line & ~mask) | (new_byte << (byte_index * 8))
-        new_line = int.from_bytes(new_line.to_bytes(4, byteorder='little'), byteorder='big')
+        new_line = int.from_bytes(new_line.to_bytes(4, byteorder="little"), byteorder="big")
         hex_lines[line_index] = new_line
         return hex_lines
 
@@ -76,10 +86,10 @@ class ArcDfwCompiler(ABC):
         line_index = address // 4
         byte_index = address % 4
         line = hex_lines[line_index]
-        line = int.from_bytes(line.to_bytes(4, byteorder='big'), byteorder='little')
+        line = int.from_bytes(line.to_bytes(4, byteorder="big"), byteorder="little")
         mask = 0xFFFF << (byte_index * 8)
         new_line = (line & ~mask) | (new_bytes << (byte_index * 8))
-        new_line = int.from_bytes(new_line.to_bytes(4, byteorder='little'), byteorder='big')
+        new_line = int.from_bytes(new_line.to_bytes(4, byteorder="little"), byteorder="big")
         hex_lines[line_index] = new_line
         return hex_lines
 
@@ -96,7 +106,7 @@ class ArcDfwCompiler(ABC):
             List[int]: Updated list of hex lines.
         """
         line_index = address // 4
-        new_bytes = int.from_bytes(new_bytes.to_bytes(4, byteorder='big'), byteorder='little')
+        new_bytes = int.from_bytes(new_bytes.to_bytes(4, byteorder="big"), byteorder="little")
         hex_lines[line_index] = new_bytes
         return hex_lines
 
@@ -110,7 +120,7 @@ class ArcDfwCompiler(ABC):
         Returns:
             List[int]: List of hex lines.
         """
-        with open(file_path, 'r') as file:
+        with open(file_path, "r") as file:
             hex_lines = [int(line, 16) for line in file.read().splitlines()]
         return hex_lines
 
@@ -122,8 +132,8 @@ class ArcDfwCompiler(ABC):
             file_path (str): Path to the hex file.
             hex_lines (List[int]): List of hex lines to save.
         """
-        with open(file_path, 'w') as file:
-            file.write('\n'.join(f'{line:08x}' for line in hex_lines))
+        with open(file_path, "w") as file:
+            file.write("\n".join(f"{line:08x}" for line in hex_lines))
 
     def _create_load_instruction(self, register: int, address: int) -> List[int]:
         """
@@ -145,7 +155,7 @@ class ArcDfwCompiler(ABC):
             (address >> 24) & 0xFF,
             (address >> 16) & 0xFF,
             (address >> 8) & 0xFF,
-            address & 0xFF
+            address & 0xFF,
         ]
 
     def _create_store_instruction(self, r_addr: int, r_data: int, offset: int) -> List[int]:
@@ -164,11 +174,13 @@ class ArcDfwCompiler(ABC):
         r_addr_bits = (r_addr & 0b111) << 8
         reg_data_bits = (r_data & 0b111) << 5
         # offset is 5 bits but is shifted left by 2
-        offset_bits = (offset & 0x1F)
+        offset_bits = offset & 0x1F
         instruction = opcode | r_addr_bits | reg_data_bits | offset_bits
         return [(instruction >> 8) & 0xFF, instruction & 0xFF]
 
-    def _add_instructions_to_hex_lines(self, hex_lines: List[int], from_address: int, instruction_bytes: List[int]) -> None:
+    def _add_instructions_to_hex_lines(
+        self, hex_lines: List[int], from_address: int, instruction_bytes: List[int]
+    ) -> None:
         """
         Adding instructions to hex lines that are read from a hex file.
 
@@ -176,20 +188,24 @@ class ArcDfwCompiler(ABC):
             hex_lines (List[int]): List of hex lines.
             from_address (int): Address to add the instructions.
             instruction_bytes (List[int]): Instructions to add.
-        
+
         Raises:
             TTException: If too many bytes are written to the new hex.
         """
         bytes_written = 0
         # Write new instructions to the hex file, because of the endianess
         for i in range(0, len(instruction_bytes), 2):
-            byte_pair = (instruction_bytes[i] << 8) | (instruction_bytes[i + 1] if i + 1 < len(instruction_bytes) else 0)
+            byte_pair = (instruction_bytes[i] << 8) | (
+                instruction_bytes[i + 1] if i + 1 < len(instruction_bytes) else 0
+            )
             self._change_two_bytes_at_address(hex_lines, from_address + i, byte_pair)
             bytes_written += 2
 
         if bytes_written > self.MAX_WRITE_BYTES:
-            raise TTException(f"Too many bytes written to the new hex, reduce the number of logs: {bytes_written} > {self.MAX_WRITE_BYTES}")
-        pass;
+            raise TTException(
+                f"Too many bytes written to the new hex, reduce the number of logs: {bytes_written} > {self.MAX_WRITE_BYTES}"
+            )
+        pass
 
     def compile(self):
         """
@@ -222,11 +238,14 @@ class ArcDfwCompiler(ABC):
         """
         pass
 
+
 class ArcDfwLoggerCompiler(ArcDfwCompiler):
-    def __init__(self, base_fw_file_path: str, symbols_file_path: str, output_fw_file_path: str, log_context: ArcDfwLogContext):
+    def __init__(
+        self, base_fw_file_path: str, symbols_file_path: str, output_fw_file_path: str, log_context: ArcDfwLogContext
+    ):
         super().__init__(base_fw_file_path, symbols_file_path, output_fw_file_path)
         self.log_context = log_context
-    
+
     def _get_modified_instruction_bytes(self) -> List[int]:
         instruction_bytes = []
         for i, log_info in enumerate(self.log_context.log_list):
@@ -240,7 +259,6 @@ class ArcDfwLoggerCompiler(ArcDfwCompiler):
         # end_address + 0x2: 7104                	add_s	r0,r0,1
         # end_address + 0x4: a107                	st_s	r0,[r1,0x1c]
         # end_address + 0x6: 7ee0                	j_s	[blink]
-        instruction_bytes += [0x44, 0x3c, 0x71, 0x04, 0xa1, 0x07, 0x7e, 0xe0]
-        
+        instruction_bytes += [0x44, 0x3C, 0x71, 0x04, 0xA1, 0x07, 0x7E, 0xE0]
+
         return instruction_bytes
-        

@@ -27,7 +27,7 @@ Examples:
 
 command_metadata = {
     "short": "graph",
-    "type": "low-level", 
+    "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],
 }
@@ -36,9 +36,10 @@ from docopt import docopt
 from ttlens.tt_uistate import UIState
 from ttlens.tt_lens_context import Context
 from typing import List
-from ttlens.tt_arc_dbg_fw_log_context import   ArcDfwLogContextFromYaml,ArcDfwLogContextFromList
+from ttlens.tt_arc_dbg_fw_log_context import ArcDfwLogContextFromYaml, ArcDfwLogContextFromList
 import os
 from ttlens.tt_arc_dbg_fw import ArcDebugLoggerFw
+
 
 def run(cmd_text, context, ui_state: UIState = None):
     args = docopt(command_metadata["description"], argv=cmd_text.split()[1:])
@@ -56,10 +57,11 @@ def run(cmd_text, context, ui_state: UIState = None):
     else:
         graph(log_names, size, port, save_csv, from_csv, ui_state.current_device_id, context)
 
+
 def graph(log_names: List[str], size: int, port: int, save_csv: str, from_csv: str, device_id: int, context: Context):
-    TT_METAL_ARC_DEBUG_BUFFER_SIZE=size
+    TT_METAL_ARC_DEBUG_BUFFER_SIZE = size
     os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
-    
+
     log_data = {}
     if from_csv:
         log_data = ArcDebugLoggerFw.read_log_data_from_csv(from_csv)
@@ -69,7 +71,7 @@ def graph(log_names: List[str], size: int, port: int, save_csv: str, from_csv: s
         else:
             log_context = ArcDfwLogContextFromList(log_names)
 
-        arc_fw = ArcDebugLoggerFw(log_context, device_id= device_id, context=context)
+        arc_fw = ArcDebugLoggerFw(log_context, device_id=device_id, context=context)
         arc_fw.load()
         log_data = arc_fw.log_until_full_buffer_and_parse_logs()
 
@@ -77,4 +79,4 @@ def graph(log_names: List[str], size: int, port: int, save_csv: str, from_csv: s
         ArcDebugLoggerFw.save_log_data_to_csv(log_data, save_csv)
 
     ArcDebugLoggerFw.open_graph_in_a_browser(log_data, log_names, port)
-    arc_fw.save_graph_as_picture(log_data,"sefe.png")
+    arc_fw.save_graph_as_picture(log_data, "sefe.png")
