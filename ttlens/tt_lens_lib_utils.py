@@ -7,6 +7,7 @@ from ttlens.tt_lens_context import Context
 from ttlens.tt_util import TTException
 from typing import Union, List
 
+
 def check_context(context: Context = None) -> Context:
     """Function to initialize context if not provided. By default, it starts a local
     TTLens session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
@@ -48,9 +49,8 @@ def arc_write(context: Context, device_id: int, core_loc: tuple, reg_addr: int, 
     if context.devices[device_id]._has_mmio:
         context.server_ifc.pci_write32_raw(device_id, reg_addr, value)
     else:
-        context.server_ifc.pci_write32(
-            device_id, *core_loc.to("nocVirt"), reg_addr, value
-        )
+        context.server_ifc.pci_write32(device_id, *core_loc.to("nocVirt"), reg_addr, value)
+
 
 def split_32bit_to_16bit(value: int) -> List[int]:
     """
@@ -61,4 +61,4 @@ def split_32bit_to_16bit(value: int) -> List[int]:
 
     Returns: A list of two 16-bit values that represent the 32-bit value.
     """
-    return [value & 0xffff, (value >> 16) & 0xffff]
+    return [value & 0xFFFF, (value >> 16) & 0xFFFF]

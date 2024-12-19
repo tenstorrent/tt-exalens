@@ -23,7 +23,7 @@ Do note that right now you can only have the most recent logs when you stop beca
 Log contexts are passed to ArcDebugLoggerFw so that it can know what to log
 
 There are two types of LogContext
- - Yaml log context 
+ - Yaml log context
  - List log context
 
 
@@ -46,7 +46,7 @@ logger_configuration:
     - current
 ```
 
-Now you can just initialize yamllogcontext with the name of the configuration 
+Now you can just initialize yamllogcontext with the name of the configuration
 ```python
 ArcDfwLogContextFromYaml("power")
 ```
