@@ -10,9 +10,7 @@ from ttlens.tt_util import TTException
 from ttlens.tt_lens_lib_utils import check_context, arc_read, arc_write, split_32bit_to_16bit
 from ttlens.tt_lens_lib import arc_msg, read_words_from_device, read_from_device
 from ttlens.tt_arc import load_arc_fw
-from ttlens.tt_arc_dbg_fw_log_context import (
-    ArcDfwLogContext
-)
+from ttlens.tt_arc_dbg_fw_log_context import ArcDfwLogContext
 from functools import lru_cache
 from ttlens.tt_arc_dbg_fw_compiler import ArcDfwLoggerCompiler
 from abc import abstractmethod, ABC
