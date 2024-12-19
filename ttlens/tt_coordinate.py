@@ -51,8 +51,6 @@ The following coordinate systems are available to represent a grid location on t
 
 # TODO: Rename coordinate systems!!!
 # TODO: Make nicer explanation of exception when coordinate translation fails. Current example: CoordinateTranslationError: CoordinateTranslationError: to_noc0(coord_tuple=(6, 0), coord_system=logical, core_type=dram)
-# TODO: device command (d) cannot use netlist as first argument. It can use logical tensix, logical eth, logical dram...
-# TODO: Add legend to device command
 # TODO: Fix comments in coordinate system documentation strings
 
 from ttlens.tt_util import TTException

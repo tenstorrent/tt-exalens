@@ -393,6 +393,8 @@ class Device(TTObject):
                 risc_debug = RiscDebug(risc_location, self._context)
                 status_str += "-" if risc_debug.is_in_reset() else "R"
             return status_str
+        if bt == "harvested_workers":
+            return "----"
         return bt
 
     REGISTER_ADDRESSES = {}

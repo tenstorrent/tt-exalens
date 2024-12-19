@@ -3,26 +3,29 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  device [<device-id> [<axis-coordinate> [<cell-contents>]]]
+  device [<device-id> [<axis-coordinate> [<cell-contents>]]] [--no-legend]
 
 Arguments:
   device-id            ID of the device [default: 0]
-  axis-coordinate      Coordinate system for the axis [default: netlist]
-                       Supported: netlist, noc0, noc1, nocTr, nocVirt, die, tensix
-  cell-contents        A comma separated list of the cell contents [default: nocTr]
+  axis-coordinate      Coordinate system for the axis [default: logical-tensix]
+                       Supported: noc0, noc1, nocTr, nocVirt, die, logical-tensix, logical-eth, logical-dram
+  cell-contents        A comma separated list of the cell contents [default: block]
                        Supported:
                          riscv - show the status of the RISC-V ('R': running, '-': in reset)
                          block - show the type of the block at that coordinate
-                         netlist, noc0, noc1, nocTr, nocVirt, die, tensix - show coordinate
+                         netlist, noc0, noc1, nocTr, nocVirt, die - show coordinate
 
 Description:
   Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
 
 Examples:
-  device                 # Shows the status of the RISC-V for all devices
-  device 0 noc0          # Shows noc0 to nocTr mapping for device 0
-  device 0 noc0 netlist  # Shows netlist coordinates in noc0 coordinages for device 0
+  device                           # Shows the status of the RISC-V for all devices
+  device 0 noc0                    # Shows noc0 to nocTr mapping for device 0
+  device 0 noc0 netlist            # Shows netlist coordinates in noc0 coordinages for device 0
+  device 0 noc0 block --no-legend  # Shows the block type in noc0 coordinates for device 0 without the legend
 """  # Note: Limit the above comment to 100 characters in width
+
+# TODO: Update docstring to reflect the actual command usage
 
 command_metadata = {
     "short": "d",
@@ -47,6 +50,7 @@ def color_block(text: str, block_type: str):
 
 def run(cmd_text, context, ui_state=None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
+    dont_print_legend = args["--no-legend"]
 
     if args["<device-id>"]:
         device_id = int(args["<device-id>"])
@@ -57,8 +61,8 @@ def run(cmd_text, context, ui_state=None):
     else:
         devices_list = list(context.devices.keys())
 
-    axis_coordinate = args["<axis-coordinate>"] or "netlist"
-    if axis_coordinate not in VALID_COORDINATE_TYPES:
+    axis_coordinate = args["<axis-coordinate>"] or "logical-tensix"
+    if axis_coordinate not in VALID_COORDINATE_TYPES or axis_coordinate == "netlist":
         util.ERROR(f"Invalid axis coordinate type: {axis_coordinate}. Valid types: {VALID_COORDINATE_TYPES}")
         return []
 
@@ -69,6 +73,32 @@ def run(cmd_text, context, ui_state=None):
         cell_contents = "riscv"
     else:
         raise util.TTException(f"Invalid cell contents")
+
+    # Create a legend
+    if not dont_print_legend:
+
+        def print_legend(line):
+            print(util.CLR_INFO + line + util.CLR_END)
+
+        print_legend("")
+        print_legend(f"Legend:")
+        print_legend(f"  Axis coordinates: {axis_coordinate}")
+        print_legend(f"  Cell contents: {cell_contents}")
+        if "riscv" in cell_contents:
+            print_legend(f"    riscv - show the status of the RISC-V ('R': running, '-': in reset)")
+        if "block" in cell_contents:
+            print_legend(f"    block - show the type of the block at that coordinate")
+        print_legend(f"  Colors:")
+        if axis_coordinate == "logical-tensix":
+            print_legend(f"    {color_block('functional_workers', 'functional_workers')}")
+        elif axis_coordinate == "logical-eth":
+            print_legend(f"    {color_block('eth', 'eth')}")
+        elif axis_coordinate == "logical-dram":
+            print_legend(f"    {color_block('dram', 'dram')}")
+        else:
+            for block_type in Device.block_types:
+                print_legend(f"    {color_block(block_type, block_type)}")
+        print_legend("")
 
     for device_id in devices_list:
         device = context.devices[device_id]
@@ -101,7 +131,7 @@ def run(cmd_text, context, ui_state=None):
 
         print(
             device.render(
-                legend=[],
+                legend=None,
                 axis_coordinate=axis_coordinate,
                 cell_renderer=cell_render_function,
             )
