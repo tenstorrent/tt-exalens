@@ -17,17 +17,15 @@ from ttlens.tt_lens_context import Context
 from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name
 from ttlens.tt_firmware import ELF
 from ttlens.tt_object import DataArray
-import os,time
+import os
 
-from ttlens.tt_arc import set_udmiaxi_region
+from ttlens.tt_lens_lib_utils import arc_write;
+
 from ttlens.tt_arc_dbg_fw import (
-    arc_dbg_fw_check_msg_loop_running,
-    arc_dbg_fw_command, read_dfw_buffer_header,
-    arc_dbg_fw_get_buffer_start_addr,
     ArcDebugLoggerFw
 )
-from ttlens.tt_lens_lib_utils import arc_read, split_32bit_to_16bit
-from ttlens.tt_arc_dbg_fw_log_context import LogInfo, ArcDfwLogContext, ArcDfwLogContextFromYaml, ArcDfwLogContextFromList
+from ttlens.tt_lens_lib_utils import split_32bit_to_16bit
+from ttlens.tt_arc_dbg_fw_log_context import ArcDfwLogContextFromYaml, ArcDfwLogContextFromList
 
 def invalid_argument_decorator(func):
     @wraps(func)
@@ -512,31 +510,49 @@ class TestARC(unittest.TestCase):
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
 
         for device_id in self.context.device_ids:
-            load_arc_dbg_fw(device_id=device_id, context=self.context)
-            reply = read_dfw_buffer_header("msg", device_id, self.context)
+            arc_fw =  ArcDebugLoggerFw(ArcDfwLogContextFromYaml("default") , device_id=device_id , context=self.context)
+            arc_fw.load()
+
+            reply = arc_fw.buffer_header.read_from_field("msg", device_id, self.context)
             assert(reply == 0xbebaceca)
 
             # Now load it again to check if reset works
-            load_arc_dbg_fw(device_id=device_id,context=self.context)
-            reply = read_dfw_buffer_header("msg", device_id, self.context)
+            arc_fw =  ArcDebugLoggerFw(ArcDfwLogContextFromYaml("default") , device_id=device_id , context=self.context)
+            arc_fw.load()
+
+            reply = arc_fw.buffer_header.read_from_field("msg", device_id, self.context)
             assert(reply == 0xbebaceca)
 
-    def test_split_32bit_to_16bit(self):
-        arg0, arg1 = split_32bit_to_16bit(0x12345678)
-        assert arg0 == 0x5678
-        assert arg1 == 0x1234
-
-    def test_intruction(self):
-        device_id =0
-        TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024*64
+    def test_arc_dfw_logging(self):
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests.")
+        wait_time = 0.1
         
+        TT_METAL_ARC_DEBUG_BUFFER_SIZE=1024
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
 
-        arc_fw =  ArcDebugLoggerFw(ArcDfwLogContextFromYaml("default") , device_id=device_id , context=self.context)
-        arc_fw.load()
+        for device_id in self.context.device_ids:
+            arc_fw =  ArcDebugLoggerFw(ArcDfwLogContextFromList(["scratch2","scratch3"]) , device_id=device_id , context=self.context)
+            arc_fw.load()
 
-        reply = read_dfw_buffer_header("msg", device_id, self.context)
-        assert(reply == 0xbebaceca)
+            reply = arc_fw.buffer_header.read_from_field("msg", device_id, self.context)
+            assert(reply == 0xbebaceca)
+            
+            device = self.context.devices[device_id]
+
+            scrattch2_val = 0xbcbcbcbc
+            scrattch3_val = 0xdeadbeef
+
+            arc_write(self.context, device_id, device.get_arc_block_location(), device.get_register_addr("ARC_RESET_SCRATCH2"), scrattch2_val)
+            arc_write(self.context, device_id, device.get_arc_block_location(), device.get_register_addr("ARC_RESET_SCRATCH3"), scrattch3_val)
+            
+            log_data = arc_fw.log_until_full_buffer_and_parse_logs()
+
+            for data in log_data["scratch2"]:
+                assert data == scrattch2_val
+            
+            for data in log_data["scratch3"]:
+                assert data == scrattch3_val
         
 
     # TODO test reset

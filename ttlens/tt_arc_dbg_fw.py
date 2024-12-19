@@ -31,7 +31,7 @@ class ArcDfwHeader():
         "num_log_calls": 28,
         "msg": 32,
         "msg_arg0": 36,
-        "msg_arg1": 40
+        "msg_arg1": 40,
     }
 
     DFW_DEFAULT_BUFFER_ADDR = 32
@@ -143,7 +143,13 @@ class ArcDfwHeader():
 
         # if mccore_buffer_addr is 0, then tt-metal is not running, so we will use the default address, and send the message to the debug buffer
         # with the default address and size
-        self.send_buffer_addr_and_size_to_arc_dbg_fw(device_id, context)
+        try:
+            self.send_buffer_addr_and_size_to_arc_dbg_fw(device_id, context)
+        except TTException as e:
+            # This is the mitagation where the device does not have the required firmware to support the feature
+            print(e.message + " Using default buffer address and size.")
+            arc_write(context, device_id, device.get_arc_block_location(), device.get_register_addr("ARC_MCORE_DBG_BUFFER_ADDR"),self.DFW_DEFAULT_BUFFER_ADDR)
+            arc_write(context, device_id, device.get_arc_block_location(), device.get_register_addr("ARC_MCORE_DBG_BUFFER_SIZE"),self.get_buffer_size())
 
         return self.DFW_DEFAULT_BUFFER_ADDR
 
@@ -237,7 +243,10 @@ class ArcDebugFw(ABC):
             if reset_reply != 1:
                 raise TTException("ARC debug firmware failed to reset.")
 
-    def load(self):        
+    def load(self):
+        """
+        Loads the arc debug firmware onto the chip.
+        """      
         self.__reset_if_fw_already_running()
 
         self.compiler.compile()
@@ -347,6 +356,9 @@ class ArcDebugLoggerFw(ArcDebugFw):
         self.compiler = ArcDfwLoggerCompiler(base_fw_file_path, base_fw_symbols_file_path, modified_fw_file_path, log_context)
 
     def _configure_arc_dbg_fw(self):
+        """
+        Configures the firmware for logging.
+        """
         self.buffer_header.write_to_field("record_size_bytes", 4 * len(self.log_context.log_list), self.device_id, self.context)
     
     def start_logging(self) -> None:
@@ -407,12 +419,22 @@ class ArcDebugLoggerFw(ArcDebugFw):
     
     def parse_log_buffer(self, buffer: bytes) -> dict:
         """
+        Parses the log buffer and returns the log data.
+
+        Args:
+            buffer (bytes): The buffer to parse.
         
+        Returns:
+            dict: The log data.
         """
         
-        def format_log_by_type(value, output_type):
+        def format_log_by_type(value: int, output_type: str):
             """
             Formats log by its type defined in LogInfo.
+            
+            Args:
+                value (int): The value to format.
+                output_type (str): The type of the log.
             """
             if output_type == 'int':
                 return int(value)
