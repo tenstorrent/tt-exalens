@@ -32,6 +32,8 @@ class ArcDfwLogContext(ABC):
 
         self.parse(yaml_data, log_configuration)
 
+        if len(self.log_list) == 0:
+            raise TTException(f"No logs found for configuration {log_configuration}")
     
     def _parse_address(self, yaml_data: dict, log_name) -> int:
         """
