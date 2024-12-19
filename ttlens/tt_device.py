@@ -144,13 +144,16 @@ class Device(TTObject):
         for noc0_location, block_type in self._noc0_to_block_type.items():
             core_type = self.block_types[block_type]["core_type"]
             for coord_system in umd_supported_coordinates:
-                converted_location = self._context.server_ifc.convert_from_noc0(
-                    self._id, noc0_location[0], noc0_location[1], core_type, coord_system
-                )
-                self._from_noc0[(noc0_location, coord_system)] = (converted_location, core_type)
-                self._to_noc0[(converted_location, coord_system, core_type)] = noc0_location
-                if coord_system in unique_coordinates:
-                    self._to_noc0[(converted_location, coord_system, "any")] = noc0_location
+                try:
+                    converted_location = self._context.server_ifc.convert_from_noc0(
+                        self._id, noc0_location[0], noc0_location[1], core_type, coord_system
+                    )
+                    self._from_noc0[(noc0_location, coord_system)] = (converted_location, core_type)
+                    self._to_noc0[(converted_location, coord_system, core_type)] = noc0_location
+                    if coord_system in unique_coordinates:
+                        self._to_noc0[(converted_location, coord_system, "any")] = noc0_location
+                except:
+                    pass
 
             # Add coordinate systems that UMD does not support
 

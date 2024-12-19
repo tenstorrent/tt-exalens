@@ -142,10 +142,15 @@ static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::stri
     return device;
 }
 
+static void write_coord(std::ostream &out, const tt::umd::CoreCoord &input, CoreType core_type,
+                        const tt_SocDescriptor &soc_descriptor) {
+    auto output = soc_descriptor.to(input, CoordSystem::PHYSICAL);
+    out << output.x << "-" << output.y << ", ";
+}
+
 static void write_coord(std::ostream &out, const tt_xy_pair &xy, CoreType core_type,
                         const tt_SocDescriptor &soc_descriptor) {
-    auto coord = soc_descriptor.to({xy.x, xy.y, core_type, CoordSystem::VIRTUAL}, CoordSystem::PHYSICAL);
-    out << coord.x << "-" << coord.y << ", ";
+    write_coord(out, tt::umd::CoreCoord{xy.x, xy.y, core_type, CoordSystem::VIRTUAL}, core_type, soc_descriptor);
 }
 
 // Creates SOC descriptor files by serializing tt_SocDescroptor structure to yaml.
@@ -171,7 +176,7 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << "arc:" << std::endl;
     outfile << "  [" << std::endl;
 
-    for (const auto &arc : soc_descriptor.arc_cores) {
+    for (const auto &arc : soc_descriptor.get_cores(CoreType::ARC)) {
         if (arc.x < soc_descriptor.grid_size.x && arc.y < soc_descriptor.grid_size.y) {
             write_coord(outfile, arc, CoreType::ARC, soc_descriptor);
         }
@@ -182,7 +187,7 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << "pcie:" << std::endl;
     outfile << "  [" << std::endl;
 
-    for (const auto &pcie : soc_descriptor.pcie_cores) {
+    for (const auto &pcie : soc_descriptor.get_cores(CoreType::PCIE)) {
         if (pcie.x < soc_descriptor.grid_size.x && pcie.y < soc_descriptor.grid_size.y) {
             write_coord(outfile, pcie, CoreType::PCIE, soc_descriptor);
         }
@@ -218,7 +223,7 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << std::endl << "]" << std::endl << std::endl;
 
     outfile << "eth:" << std::endl << "  [" << std::endl;
-    for (const auto &ethernet_core : soc_descriptor.ethernet_cores) {
+    for (const auto &ethernet_core : soc_descriptor.get_cores(CoreType::ETH)) {
         // Insert the eth core if it's within the given grid
         if (ethernet_core.x < soc_descriptor.grid_size.x && ethernet_core.y < soc_descriptor.grid_size.y) {
             write_coord(outfile, ethernet_core, CoreType::ETH, soc_descriptor);
@@ -229,7 +234,7 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << "harvested_workers:" << std::endl;
     outfile << "  [" << std::endl;
 
-    for (const auto &worker : soc_descriptor.harvested_workers) {
+    for (const auto &worker : soc_descriptor.get_harvested_cores(CoreType::TENSIX)) {
         if (worker.x < soc_descriptor.grid_size.x && worker.y < soc_descriptor.grid_size.y) {
             write_coord(outfile, worker, CoreType::TENSIX, soc_descriptor);
         }
@@ -239,7 +244,7 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
 
     outfile << "functional_workers:" << std::endl;
     outfile << "  [" << std::endl;
-    for (const auto &worker : soc_descriptor.workers) {
+    for (const auto &worker : soc_descriptor.get_cores(CoreType::TENSIX)) {
         if (worker.x < soc_descriptor.grid_size.x && worker.y < soc_descriptor.grid_size.y) {
             write_coord(outfile, worker, CoreType::TENSIX, soc_descriptor);
         }
