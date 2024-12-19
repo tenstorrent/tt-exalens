@@ -75,21 +75,18 @@ class Device(TTObject):
             dev = tt_grayskull.GrayskullDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
-            dev.instructions = tt_grayskull.GrayskullInstructions()
         if "wormhole" in arch.lower():
             from ttlens import tt_wormhole
 
             dev = tt_wormhole.WormholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
-            dev.instructions = tt_wormhole.WormholeInstructions()
         if "blackhole" in arch.lower():
             from ttlens import tt_blackhole
 
             dev = tt_blackhole.BlackholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
-            dev.instructions = tt_blackhole.BlackholeInstructions()
 
         if dev is None:
             raise RuntimeError(f"Architecture {arch} is not supported")

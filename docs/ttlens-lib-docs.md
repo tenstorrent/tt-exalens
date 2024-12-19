@@ -17,7 +17,7 @@ a singleton, as it can be explicitly provided to library functions.
 ## init_ttlens
 
 ```
-init_ttlens(output_dir_path=None, wanted_devices=None, cache_path=None) -> Context
+init_ttlens(wanted_devices=None, cache_path=None, init_jtag=False) -> Context
 ```
 
 
@@ -89,10 +89,10 @@ Only cached commands are available.
 
 
 
-## get_yamls
+## get_cluster_desc_yaml
 
 ```
-get_yamls(lens_ifc) -> tuple[util.YamlFile, util.YamlFile]
+get_cluster_desc_yaml(lens_ifc) -> tuple[util.YamlFile, util.YamlFile]
 ```
 
 
@@ -139,6 +139,8 @@ Set the active TTLens context object.
 - Every new context initialization will overwrite the currently active context.
 
 
+
+
 ## locate_most_recent_build_output_dir
 
 ```
@@ -156,6 +158,32 @@ Try to find a default output directory.
 
 
 # tt_lens_lib
+
+## read_word_from_device
+
+```
+read_word_from_device(core_loc, addr, device_id=0, context=None) -> int
+```
+
+
+### Description
+
+Reads one word of data, from address 'addr' at core <x-y>.
+
+
+### Args
+
+- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+- `addr` *(int)*: Memory address to read from.
+- `device_id` *(int, default 0)*: ID number of device to read from.
+- `context` *(Context, optional)*: TTLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+
+
+### Returns
+
+ *(int)*: Data read from the device.
+
+
 
 ## read_words_from_device
 

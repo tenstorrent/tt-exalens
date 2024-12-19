@@ -134,6 +134,7 @@ class WormholeDevice(tt_device.Device):
             device_desc_path,
             context,
         )
+        self.instructions = WormholeInstructions()
 
     def row_count(self):
         return len(WormholeDevice.DIE_Y_TO_NOC_0_Y)

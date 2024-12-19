@@ -3,6 +3,31 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import struct
+from enum import Enum
+from typing import Union
+
+
+class tensix_data_format(Enum):
+    Float32 = 0
+    Float16 = 1
+    Bfp8 = 2
+    Bfp4 = 3
+    Bfp2 = 11
+    Float16_b = 5
+    Bfp8_b = 6
+    Bfp4_b = 7
+    Bfp2_b = 15
+    Lf8 = 10
+    Fp8_e4m3 = 0x1A
+    UInt16 = 9
+    Int8 = 14
+    UInt8 = 30
+    Tf32 = 4
+    Int32 = 8
+    RawUInt8 = 0xF0
+    RawUInt16 = 0xF1
+    RawUInt32 = 0xF2
+    Invalid = 0xFF
 
 
 def flip_bfp16_bits(value):
@@ -86,12 +111,15 @@ def unpack_bfp8_b(data):
     return bfloat16_values
 
 
-def unpack_data(data, df):
-    if df == 1:  # Float16
+def unpack_data(data, df: Union[int, tensix_data_format]):
+    if isinstance(df, int):
+        df = tensix_data_format(df)
+
+    if df == tensix_data_format.Float16:
         return unpack_fp16(data)
-    elif df == 5:  # Float16_b
+    elif df == tensix_data_format.Float16_b:
         return unpack_bfp16(data)
-    elif df == 6:  # Bfp8_b
+    elif df == tensix_data_format.Bfp8_b:
         return unpack_bfp8_b(data)
     else:
-        raise ValueError(f"Unknown data format {df}")
+        raise ValueError(f"Unknown or unsupported data format {df}")

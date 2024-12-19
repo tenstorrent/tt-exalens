@@ -1,13 +1,15 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from typing import Union
+from typing import Union, List
+from enum import Enum
 
 from ttlens.tt_coordinate import OnChipCoordinate
 from ttlens.tt_lens_context import Context
 from ttlens.tt_lens_lib import check_context, validate_device_id, read_word_from_device, write_words_to_device
 from ttlens.tt_util import TTException
 from ttlens.tt_device import Device
+from ttlens.tt_unpack_regfile import unpack_data
 
 
 def validate_trisc_id(trisc_id: int, context: Context) -> None:
@@ -20,14 +22,25 @@ def validate_instruction(instruction: bytearray, context: Context) -> None:
         raise TTException("Instruction must be 4 bytes long.")
 
 
-REGFILE_SRCA = 0
-REGFILE_SRCB = 1
-REGFILE_DSTACC = 2
+class REGFILE(Enum):
+    SRCA = 0
+    SRCB = 1
+    DSTACC = 2
 
 
-def validate_regfile_id(regfile_id: int, context: Context) -> None:
-    if regfile_id not in [REGFILE_SRCA, REGFILE_SRCB, REGFILE_DSTACC]:
-        raise TTException(f"Invalid regfile_id {regfile_id}.")
+def convert_regfile(regfile: Union[int, str, REGFILE]) -> REGFILE:
+    if isinstance(regfile, REGFILE):
+        return regfile
+
+    try:
+        return REGFILE(int(regfile))
+    except ValueError:
+        pass
+
+    try:
+        return REGFILE[regfile.upper()]
+    except:
+        raise TTException(f"Invalid regfile {regfile}.")
 
 
 class TensixDebug:
@@ -43,14 +56,14 @@ class TensixDebug:
         device_id: int,
         context: Context = None,
     ) -> None:
-        if not isinstance(core_loc, OnChipCoordinate):
-            self.core_loc = OnChipCoordinate.create(core_loc, device=context.devices[self.device_id])
-        else:
-            self.core_loc = core_loc
         self.context = check_context(context)
         validate_device_id(device_id, self.context)
         self.device_id = device_id
         self.device = self.context.devices[self.device_id]
+        if not isinstance(core_loc, OnChipCoordinate):
+            self.core_loc = OnChipCoordinate.create(core_loc, device=self.device)
+        else:
+            self.core_loc = core_loc
 
     def dbg_buff_status(self):
         return read_word_from_device(
@@ -70,9 +83,6 @@ class TensixDebug:
         Args:
                 instruction (bytearray): 32-bit instruction to inject.
                 trisc_id (int): TRISC ID (0-2).
-                core_loc (str | OnChipCoordinate): Either X-Y (nocTr) or R,C (netlist) location of a core in string format or OnChipCoordinate object.
-                device_id (int): ID number of device to send message to.
-                context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
         """
         validate_trisc_id(trisc_id, self.context)
 
@@ -130,14 +140,24 @@ class TensixDebug:
         while (self.dbg_buff_status() & 0x10) == 0:
             pass
 
-    def read_cfg_reg(self, name):
+    def read_cfg_reg(self, name) -> int:
+        """Reads the value of a configuration register from the tensix core.
+
+        Args:
+                name (str): Name of the configuration register to read.
+
+        Returns:
+                int: Value of the configuration register.
+        """
         device = self.context.devices[self.device_id]
-        register = device.get_tensix_register_description(name)
+        register = device.get_configuration_register_description(name)
+        if register is None:
+            print(f"Unknown configuration register {name}")
 
         write_words_to_device(
             self.core_loc,
             device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RD_CNTL"),
-            (register.address - device.get_tensix_configuration_register_base()) // 4,
+            register.address // 4,
             self.device_id,
             self.context,
         )
@@ -149,26 +169,24 @@ class TensixDebug:
         )
         return (a & register.mask) >> register.shift
 
-    def read_regfile(
+    def read_regfile_data(
         self,
-        regfile_id: int,
+        regfile: Union[int, str, REGFILE],
     ) -> bytearray:
         """Dumps SRCA/DSTACC register file from the specified core.
             Due to the architecture of SRCA, you can see only see last two faces written.
             SRCB is currently not supported.
 
         Args:
-                regfile_id (int): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
-                core_loc (str | OnChipCoordinate): Either X-Y (nocTr) or R,C (netlist) location of a core in string format or OnChipCoordinate object.
-                device_id (int): ID number of device to send message to.
-                context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
+                regfile (Union[int, str, REGFILE]): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
 
         Returns:
                 bytearray: 64x32 bytes of register file data (64 rows, 32 bytes per row).
         """
         trisc_id = 2
-        validate_regfile_id(regfile_id, self.context)
-        if regfile_id == REGFILE_SRCB:
+        regfile = convert_regfile(regfile)
+
+        if regfile == REGFILE.SRCB:
             raise TTException("SRCB is currently not supported.")
 
         ops = self.device.instructions
@@ -185,19 +203,17 @@ class TensixDebug:
         data = []
 
         for row in range(64):
-            row_addr = row if regfile_id != REGFILE_SRCA else 0
-            regfile = 2 if regfile_id == REGFILE_SRCA else regfile_id
+            row_addr = row if regfile != REGFILE.SRCA else 0
+            regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
 
-            if regfile_id == REGFILE_SRCA:
-                # self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xf), trisc_id)
+            if regfile == REGFILE.SRCA:
                 self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), trisc_id)
                 self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), trisc_id)
 
                 self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), trisc_id)
 
-                # self.inject_instruction(ops.TT_OP_CLEARDVALID(0b01, 0), trisc_id)
                 self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), trisc_id)
-            elif regfile_id == REGFILE_SRCB:
+            elif regfile == REGFILE.SRCB:
                 self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), trisc_id)
 
                 self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
@@ -208,7 +224,7 @@ class TensixDebug:
                 self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
 
             for i in range(8):
-                dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile << 16)
+                dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
                 write_words_to_device(
                     self.core_loc,
                     self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
@@ -224,10 +240,9 @@ class TensixDebug:
                 )
                 data += list(int.to_bytes(rd_data, 4, byteorder="big"))
 
-            if regfile_id == REGFILE_SRCA:
+            if regfile == REGFILE.SRCA:
                 self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), trisc_id)
                 self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), trisc_id)
-                # self.inject_instruction(ops.TT_OP_CLEARDVALID(0b01, 0), trisc_id)
                 if row % 16 == 15:
                     self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), trisc_id)
 
@@ -246,3 +261,18 @@ class TensixDebug:
             self.context,
         )
         return data
+
+    def read_regfile(self, regfile: Union[int, str, REGFILE]) -> List[Union[float, int]]:
+        """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
+
+        Args:
+                regfile (Union[int, str, REGFILE]): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
+
+        Returns:
+                List[Union[float, int]]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
+        """
+        regfile = convert_regfile(regfile)
+        data = self.read_regfile_data(regfile)
+        df = self.read_cfg_reg("ALU_FORMAT_SPEC_REG2_Dstacc")
+        unpacked_data = unpack_data(data, df)
+        return unpacked_data

@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump_regfile <core-loc> <regfile_id> [-d <D>...]
+  dump_regfile <core-loc> <regfile> [-d <D>...]
 
 Arguments:
   core-loc     Either X-Y or R,C location of a core
-  regfile_id   Register file to read from (0: SRCA, 1: SRCB, 2: DSTACC)
+  regfile      Register file to read from (0: SRCA, 1: SRCB, 2: DSTACC)
 
 Options:
   -d <D>       Device ID. Optional and repeatable. Default: current device
@@ -21,7 +21,9 @@ Description:
 
 Examples:
   dr 0,0 0
-  dr 0,0 2 -d 0
+  dr 0,0 SRCA
+  dr 0,0 2 -d 1
+  dr 0,0 dstacc -d 1
 """
 
 command_metadata = {
@@ -36,14 +38,21 @@ from docopt import docopt
 from ttlens.tt_uistate import UIState
 from ttlens.tt_coordinate import OnChipCoordinate
 from ttlens.tt_debug_tensix import TensixDebug
-from ttlens.tt_unpack_regfile import unpack_data
+from typing import List, Union
+
+
+def print_regfile(data: List[Union[int, float]]):
+    for i in range(len(data)):
+        print(data[i], end="\t")
+        if i % 32 == 31:
+            print()
 
 
 def run(cmd_text, context, ui_state: UIState = None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
 
     core_loc_str = args["<core-loc>"]
-    regfile_id = int(args["<regfile_id>"])
+    regfile = args["<regfile>"]
 
     current_device_id = ui_state.current_device_id
     device_ids = args["-d"] if args["-d"] else [f"{current_device_id}"]
@@ -56,13 +65,7 @@ def run(cmd_text, context, ui_state: UIState = None):
         core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
 
         debug_tensix = TensixDebug(core_loc, device_id, context)
-        data = debug_tensix.read_regfile(regfile_id)
-        df = debug_tensix.read_cfg_reg("ALU_FORMAT_SPEC_REG2_Dstacc")
-        unpacked_data = unpack_data(data, df)
-
-        for i in range(len(unpacked_data)):
-            print(unpacked_data[i], end="\t")
-            if i % 32 == 31:
-                print()
+        data = debug_tensix.read_regfile(regfile)
+        print_regfile(data)
 
     return None

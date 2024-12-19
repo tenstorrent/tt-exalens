@@ -91,6 +91,7 @@ class GrayskullDevice(tt_device.Device):
             device_desc_path,
             context,
         )
+        self.instructions = GrayskullInstructions()
 
     def row_count(self):
         return len(GrayskullDevice.DIE_Y_TO_NOC_0_Y)

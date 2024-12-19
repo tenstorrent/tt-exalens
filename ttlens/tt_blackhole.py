@@ -93,6 +93,7 @@ class BlackholeDevice(tt_device.Device):
             device_desc_path,
             context,
         )
+        self.instructions = BlackholeInstructions()
 
     def row_count(self):
         return len(BlackholeDevice.DIE_Y_TO_NOC_0_Y)
