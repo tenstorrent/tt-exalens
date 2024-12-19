@@ -11,10 +11,7 @@ from ttlens.tt_lens_lib_utils import check_context, arc_read, arc_write, split_3
 from ttlens.tt_lens_lib import arc_msg, read_words_from_device, read_from_device
 from ttlens.tt_arc import load_arc_fw
 from ttlens.tt_arc_dbg_fw_log_context import (
-    LogInfo,
-    ArcDfwLogContext,
-    ArcDfwLogContextFromList,
-    ArcDfwLogContextFromYaml,
+    ArcDfwLogContext
 )
 from functools import lru_cache
 from ttlens.tt_arc_dbg_fw_compiler import ArcDfwLoggerCompiler
@@ -154,7 +151,7 @@ class ArcDfwHeader:
             self.send_buffer_addr_and_size_to_arc_dbg_fw(device_id, context)
         except TTException as e:
             # This is the mitagation where the device does not have the required firmware to support the feature
-            print(e.message + " Using default buffer address and size.")
+            print(str(e) + " Using default buffer address and size.")
             arc_write(
                 context,
                 device_id,
