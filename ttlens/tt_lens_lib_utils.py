@@ -52,13 +52,13 @@ def arc_write(context: Context, device_id: int, core_loc: tuple, reg_addr: int, 
         context.server_ifc.pci_write32(device_id, *core_loc.to("nocVirt"), reg_addr, value)
 
 
-def split_32bit_to_16bit(value: int) -> List[int]:
+def split_32bit_to_16bit(value: int) -> tuple:
     """
     Splits a 32-bit integer into two 16-bit integers.
 
     Args:
         value: The 32-bit value to split.
 
-    Returns: A list of two 16-bit values that represent the 32-bit value.
+    Returns: A tuple of two 16-bit values that represent the 32-bit value.
     """
-    return [value & 0xFFFF, (value >> 16) & 0xFFFF]
+    return (value & 0xFFFF, (value >> 16) & 0xFFFF)
