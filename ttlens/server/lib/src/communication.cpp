@@ -98,9 +98,6 @@ void tt::lens::communication::request_loop() {
                     case request_type::pci_read_tile:
                         invalid_message = message.size() != sizeof(pci_read_tile_request);
                         break;
-                    case request_type::get_harvester_coordinate_translation:
-                        invalid_message = message.size() != sizeof(get_harvester_coordinate_translation_request);
-                        break;
                     case request_type::get_device_arch:
                         invalid_message = message.size() != sizeof(get_device_arch_request);
                         break;
@@ -134,6 +131,13 @@ void tt::lens::communication::request_loop() {
                         invalid_message = (message.size() < sizeof(get_file_request)) ||
                                           (message.size() !=
                                            sizeof(get_file_request) + static_cast<const get_file_request*>(r)->size);
+                        break;
+                    case request_type::convert_from_noc0:
+                        invalid_message =
+                            (message.size() < sizeof(convert_from_noc0_request)) ||
+                            (message.size() != sizeof(convert_from_noc0_request) +
+                                                   static_cast<const convert_from_noc0_request*>(r)->core_type_size +
+                                                   static_cast<const convert_from_noc0_request*>(r)->coord_system_size);
                         break;
                 }
 

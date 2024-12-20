@@ -7,18 +7,11 @@
 #include <pybind11/complex.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <ttlensserver/open_implementation.h>
 #include <ttlensserver/ttlens_implementation.h>
 
-#include <filesystem>
-#include <fstream>
-#include <initializer_list>
-#include <iostream>
 #include <memory>
 
-#include "umd/device/cluster.h"
-
-bool open_device(const std::string &binary_directory, const std::vector<uint8_t> &wanted_devices = {},
+bool open_device(const std::string& binary_directory, const std::vector<uint8_t>& wanted_devices = {},
                  bool init_jtag = false);
 void set_ttlens_implementation(std::unique_ptr<tt::lens::ttlens_implementation> imp);
 
@@ -38,7 +31,9 @@ std::optional<std::string> pci_read_tile(uint8_t chip_id, uint8_t noc_x, uint8_t
                                          uint8_t data_format);
 
 std::optional<std::string> get_cluster_description();
-std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id);
+std::optional<std::tuple<uint8_t, uint8_t>> convert_from_noc0(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                              const std::string& core_type,
+                                                              const std::string& coord_system);
 std::optional<std::vector<uint8_t>> get_device_ids();
 std::optional<std::string> get_device_arch(uint8_t chip_id);
 std::optional<std::string> get_device_soc_description(uint8_t chip_id);

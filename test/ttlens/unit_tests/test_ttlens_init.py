@@ -41,8 +41,6 @@ class TestLocalTTLensInit(unittest.TestCase):
         self.assertIsNotNone(context)
         self.assertIsInstance(context, Context)
 
-    # TODO: See how to go about testing TTLens with output dir & netlist path (see issue #11)
-
 
 class TestRemoteTTLens(unittest.TestCase):
     @classmethod

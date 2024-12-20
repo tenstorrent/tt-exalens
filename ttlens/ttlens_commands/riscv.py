@@ -64,7 +64,7 @@ def run_riscv_command(context, device, loc, risc_id, args):
     Given a command trough args, run the corresponding RISC-V command
     """
     verbose = args["-v"]
-    where = f"{get_risc_name(risc_id)} {loc.to_str('netlist')} [{device._id}]"
+    where = f"{get_risc_name(risc_id)} {loc.to_str('logical')} [{device._id}]"
 
     noc_id = 0
     risc = RiscDebug(RiscLoc(loc, noc_id, risc_id), context, verbose=verbose)

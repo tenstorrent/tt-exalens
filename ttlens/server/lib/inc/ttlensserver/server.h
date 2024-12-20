@@ -25,6 +25,7 @@ class server : public communication {
     void respond(std::optional<std::string> response);
     void respond(std::optional<uint32_t> response);
     void respond(std::optional<std::vector<uint8_t>> response);
+    void respond(std::optional<std::tuple<uint8_t, uint8_t>> response);
     void respond(std::optional<std::tuple<int, uint32_t, uint32_t>> response);
     void respond_not_supported();
 

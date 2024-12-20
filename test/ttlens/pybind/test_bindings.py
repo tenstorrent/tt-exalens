@@ -80,13 +80,6 @@ class TestBindings(unittest.TestCase):
             pb.get_cluster_description() == "get_cluster_description()"
         ), "Error: get_cluster_description() should return 'get_cluster_description()'."
 
-    def test_get_harvester_coordinate_translation(self, id: int = 4):
-        assert pb.get_harvester_coordinate_translation(id) == "get_harvester_coordinate_translation(" + str(id) + ")", (
-            "Error: get_harvester_coordinate_translation() should return 'get_harvester_coordinate_translation("
-            + str(id)
-            + ")'."
-        )
-
     def test_get_device_ids(self):
         assert pb.get_device_ids() == [0, 1], "Error: get_device_ids() should return [0, 1]."
 
@@ -99,6 +92,12 @@ class TestBindings(unittest.TestCase):
         assert pb.get_device_soc_description(id) == "get_device_soc_description(" + str(id) + ")", (
             "Error: get_device_soc_description() should return 'get_device_soc_description(" + str(id) + ")'."
         )
+
+    def test_convert_from_noc0(self):
+        assert pb.convert_from_noc0(1, 2, 3, "core_type", "coord_system") == (
+            3,
+            4,
+        ), "Error: convert_from_noc0() should return (3, 4)."
 
 
 if __name__ == "__main__":

@@ -17,8 +17,8 @@ Description:
   Writes data word 'data' to address 'addr' at noc0 location x-y of the current chip using jtag.
 
 Examples:
-  jwxy 18-18 0x0 0
-  jwxy 18-18 0x0 0 -d1
+  jwxy 0,0 0x0 0
+  jwxy 0,0 0x0 0 -d1
 """
 
 command_metadata = {

@@ -101,8 +101,8 @@ class TTLensCacheThrough(TTLensCache):
         return self.communicator.get_cluster_description()
 
     @cache_decorator
-    def get_harvester_coordinate_translation(self, chip_id):
-        return self.communicator.get_harvester_coordinate_translation(chip_id)
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
+        return self.communicator.convert_from_noc0(chip_id, noc_x, noc_y, core_type, coord_system)
 
     @cache_decorator
     def get_device_ids(self):
@@ -225,7 +225,7 @@ class TTLensCacheReader(TTLensCache):
         pass
 
     @read_decorator
-    def get_harvester_coordinate_translation(self, chip_id):
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
         pass
 
     @read_decorator
