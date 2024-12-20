@@ -16,8 +16,8 @@ Description:
   Reads data word from address 'addr' at noc0 location x-y of the current chip using jtag.
 
 Examples:
-  jrxy 18-18 0x0
-  jrxy 18-18 0x0 -d1
+  jrxy 0,0 0x0
+  jrxy 0,0 0x0 -d1
 """
 
 command_metadata = {

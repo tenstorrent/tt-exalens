@@ -23,11 +23,11 @@ Writes data word to address 'addr' at noc0 location x-y of the current chip.
 
 Command:
 ```
-wxy 18-18 0x0 0x1234
+wxy 0,0 0x0 0x1234
 ```
 Output:
 ```
-18-18 (L1) : 0x00000000 (0) <= 0x00001234 (4660)
+0,0 (L1) : 0x00000000 (0) <= 0x00001234 (4660)
 ```
 
 
@@ -560,20 +560,20 @@ Reads and prints a block of data from address 'addr' at core <core-loc>.
 
 Read 1 word from address 0
 ```
-brxy 18-18 0x0 1
+brxy 0,0 0x0 1
 ```
 Output:
 ```
-18-18 (L1) : 0x00000000 (4 bytes)
+0,0 (L1) : 0x00000000 (4 bytes)
 0x00000000:  00001234
 ```
 Read 16 words from address 0
 ```
-brxy 18-18 0x0 16
+brxy 0,0 0x0 16
 ```
 Output:
 ```
-18-18 (L1) : 0x00000000 (64 bytes)
+0,0 (L1) : 0x00000000 (64 bytes)
 0x00000000:  00001234  135a5719  560db495  2bbed9d7
 0x00000010:  b2d386c9  18ea74c7  d08084aa  c800a290
 0x00000020:  51528ef9  d8250037  c661fec2  ed5134e9
@@ -581,11 +581,11 @@ Output:
 ```
 Prints 32 bytes in i8 format
 ```
-brxy 18-18 0x0 32 --format i8
+brxy 0,0 0x0 32 --format i8
 ```
 Output:
 ```
-18-18 (L1) : 0x00000000 (128 bytes)
+0,0 (L1) : 0x00000000 (128 bytes)
 0x00000000:  52   18   0    0    25   87   90   19   149  180  13   86   215  217  190  43
 0x00000010:  201  134  211  178  199  116  234  24   170  132  128  208  144  162  0    200
 0x00000020:  249  142  82   81   55   0    37   216  194  254  97   198  233  52   81   237
@@ -597,30 +597,30 @@ Output:
 ```
 Sample for 5 seconds
 ```
-brxy 18-18 0x0 32 --format i8 --sample 5
+brxy 0,0 0x0 32 --format i8 --sample 5
 ```
 Output:
 ```
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000000 (0) => 0x00001234 (4660) - 28998 times
+0,0 (L1) : 0x00000000 (0) => 0x00001234 (4660) - 28815 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000004 (4) => 0x00001234 (4660) - 28956 times
+0,0 (L1) : 0x00000004 (4) => 0x00001234 (4660) - 28996 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000008 (8) => 0x00001234 (4660) - 29020 times
+0,0 (L1) : 0x00000008 (8) => 0x00001234 (4660) - 28989 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x0000000c (12) => 0x00001234 (4660) - 29053 times
+0,0 (L1) : 0x0000000c (12) => 0x00001234 (4660) - 28905 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000010 (16) => 0x00001234 (4660) - 29146 times
+0,0 (L1) : 0x00000010 (16) => 0x00001234 (4660) - 28988 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000014 (20) => 0x00001234 (4660) - 29193 times
+0,0 (L1) : 0x00000014 (20) => 0x00001234 (4660) - 29003 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000018 (24) => 0x00001234 (4660) - 29155 times
+0,0 (L1) : 0x00000018 (24) => 0x00001234 (4660) - 28983 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x0000001c (28) => 0x00001234 (4660) - 29170 times
+0,0 (L1) : 0x0000001c (28) => 0x00001234 (4660) - 28977 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000020 (32) => 0x00001234 (4660) - 29128 times
+0,0 (L1) : 0x00000020 (32) => 0x00001234 (4660) - 28961 times
 Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000024 (36) => 0x00001234 (4660) - 29081 times
+0,0 (L1) : 0x00000024 (36) => 0x00001234 (4660) - 28871 times
 ...
 ```
 Read 16 words from dram channel 0

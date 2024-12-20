@@ -20,11 +20,11 @@ Description:
   Reads and prints a block of data from address 'addr' at core <core-loc>.
 
 Examples:
-  brxy 18-18 0x0 1                          # Read 1 word from address 0
-  brxy 18-18 0x0 16                         # Read 16 words from address 0
-  brxy 18-18 0x0 32 --format i8             # Prints 32 bytes in i8 format
-  brxy 18-18 0x0 32 --format i8 --sample 5  # Sample for 5 seconds
-  brxy ch0 0x0 16                           # Read 16 words from dram channel 0
+  brxy 0,0 0x0 1                          # Read 1 word from address 0
+  brxy 0,0 0x0 16                         # Read 16 words from address 0
+  brxy 0,0 0x0 32 --format i8             # Prints 32 bytes in i8 format
+  brxy 0,0 0x0 32 --format i8 --sample 5  # Sample for 5 seconds
+  brxy ch0 0x0 16                         # Read 16 words from dram channel 0
 """
 
 command_metadata = {

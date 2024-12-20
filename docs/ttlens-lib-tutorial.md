@@ -44,7 +44,7 @@ In the case of using cached ifc, it is only possible to rerun cached function ca
 
 ## A simple TTLens program
 
-This section demonstrates how to make a simple script using TTLens library. For a more complete oevrview of Debdua's abilities, check out [the full documentation](library-docs.md).
+This section demonstrates how to make a simple script using TTLens library. For a more complete overview of TTLens's abilities, check out [the full documentation](ttlens-lib-docs.md).
 
 ```python
 from ttlens.tt_lens_init import init_ttlens
@@ -53,16 +53,16 @@ from ttlens.tt_lens_lib import write_to_device, read_words_from_device
 context = init_ttlens()
 data = [1, 128, 18, 64]
 
-num_bytes = write_to_device("0-0", 0x100, data, context=context)
+num_bytes = write_to_device("0,0", 0x100, data, context=context)
 
-read_data = read_words_from_device("0-0", 0x100, word_count = 1)
+read_data = read_words_from_device("0,0", 0x100, word_count = 1)
 
 read_data = read_data[0].to_bytes(4, 'little')
 read_data = list(read_data)
 print(read_data)
 ```
 
-The code snippet above performs a simple task of writing a list given by `data` variable to adress `0x100` on core `0-0`.
+The code snippet above performs a simple task of writing a list given by `data` variable to adress `0x100` on core `0,0`.
 
 TTLens library package is called `ttlens`.
 It contains multiple modules, three of which are interesting to external user:
@@ -171,13 +171,13 @@ It can then be run on a brisc core through the TTLens library.
 ```python
 from ttlens.tt_lens_lib import run_elf, read_words_from_device
 
-run_elf("build/riscv-src/wormhole/run_elf_test.brisc.elf", "1-1")
+run_elf("build/riscv-src/wormhole/run_elf_test.brisc.elf", "0,0")
 
-ret = read_words_from_device("1-1", 0x0)
+ret = read_words_from_device("0,0", 0x0)
 print(hex(ret[0]))
 ```
 
-In the example above, we run the .elf file and then read the value that should be written to address `0x0` at core `1-1`.
+In the example above, we run the .elf file and then read the value that should be written to address `0x0` at core `0,0`.
 
 `core_loc` parameter of `run_elf` function can either be a string specifying a single core, `OnChipCoordinate` object, `all` keyword (in which case the program is run on all available cores) or a list consisting of the first two options for specifying multiple cores.
 
@@ -189,4 +189,4 @@ To see more options when running elf files, refer to [the documentation](ttlens-
 
 ## Further reading
 
-For more information about the TTLens library, check out [the documentation](ttlens-lib-docs.md#tt_coordinate).
+For more information about the TTLens library, check out [the documentation](ttlens-lib-docs.md).
