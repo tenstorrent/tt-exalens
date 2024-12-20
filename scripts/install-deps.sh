@@ -15,7 +15,7 @@ if [ -n "$TEST_INSTALL" ]; then
     pip install -r test/test_requirements.txt
 fi
 
-if [ -n "$WHEEL_INSTALL" ] then
+if [ -n "$WHEEL_INSTALL" ]; then
     echo "Installing wheel dependencies..."
     pip install -r wheel build setuptools
 fi
