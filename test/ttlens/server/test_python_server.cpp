@@ -115,9 +115,6 @@ class simulation_implementation : public tt::lens::ttlens_implementation {
                std::to_string(data_format) + ")";
     }
     std::optional<std::string> get_cluster_description() override { return "get_cluster_description()"; }
-    std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) override {
-        return "get_harvester_coordinate_translation(" + std::to_string(chip_id) + ")";
-    }
     std::optional<std::vector<uint8_t>> get_device_ids() override { return std::vector<uint8_t>{0, 1}; }
     std::optional<std::string> get_device_arch(uint8_t chip_id) override {
         return "get_device_arch(" + std::to_string(chip_id) + ")";
@@ -169,10 +166,6 @@ TEST(ttlens_python_empty_server, pci_read_tile) { call_python_empty_server("empt
 
 TEST(ttlens_python_empty_server, convert_from_noc0) { call_python_empty_server("empty_convert_from_noc0"); }
 
-TEST(ttlens_python_empty_server, get_harvester_coordinate_translation) {
-    call_python_empty_server("empty_get_harvester_coordinate_translation");
-}
-
 TEST(ttlens_python_empty_server, pci_write) { call_python_empty_server("empty_pci_write"); }
 
 TEST(ttlens_python_empty_server, get_file) { call_python_empty_server("empty_get_file"); }
@@ -190,10 +183,6 @@ TEST(ttlens_python_server, pci_read_tile) { call_python_server("pci_read_tile");
 TEST(ttlens_python_server, get_cluster_description) { call_python_server("get_cluster_description"); }
 
 TEST(ttlens_python_server, convert_from_noc0) { call_python_server("convert_from_noc0"); }
-
-TEST(ttlens_python_server, get_harvester_coordinate_translation) {
-    call_python_server("get_harvester_coordinate_translation");
-}
 
 TEST(ttlens_python_server, jtag_write32_jtag_read32) { call_python_server("jtag_write32_jtag_read32"); }
 

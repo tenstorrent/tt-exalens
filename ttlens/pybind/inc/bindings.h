@@ -34,7 +34,6 @@ std::optional<std::string> get_cluster_description();
 std::optional<std::tuple<uint8_t, uint8_t>> convert_from_noc0(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                               const std::string& core_type,
                                                               const std::string& coord_system);
-std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id);
 std::optional<std::vector<uint8_t>> get_device_ids();
 std::optional<std::string> get_device_arch(uint8_t chip_id);
 std::optional<std::string> get_device_soc_description(uint8_t chip_id);

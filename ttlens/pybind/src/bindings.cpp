@@ -180,13 +180,6 @@ std::optional<std::tuple<uint8_t, uint8_t>> convert_from_noc0(uint8_t chip_id, u
     return {};
 }
 
-std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) {
-    if (ttlens_implementation) {
-        return ttlens_implementation->get_harvester_coordinate_translation(chip_id);
-    }
-    return {};
-}
-
 std::optional<std::vector<uint8_t>> get_device_ids() {
     if (ttlens_implementation) {
         return ttlens_implementation->get_device_ids();
@@ -241,8 +234,6 @@ PYBIND11_MODULE(ttlens_pybind, m) {
     m.def("convert_from_noc0", &convert_from_noc0, "Convert noc0 coordinate into specified coordinate system",
           pybind11::arg("chip_id"), pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("core_type"),
           pybind11::arg("coord_system"));
-    m.def("get_harvester_coordinate_translation", &get_harvester_coordinate_translation,
-          "Returns harvester coordinate translation", pybind11::arg("chip_id"));
     m.def("get_device_ids", &get_device_ids, "Returns device ids");
     m.def("get_device_arch", &get_device_arch, "Returns device architecture", pybind11::arg("chip_id"));
     m.def("get_device_soc_description", &get_device_soc_description, "Returns device SoC description",

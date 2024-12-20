@@ -111,13 +111,6 @@ TEST(ttlens_communication, pci_read_tile) {
         "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14");
 }
 
-TEST(ttlens_communication, get_harvester_coordinate_translation) {
-    test_yaml_request(
-        tt::lens::get_harvester_coordinate_translation_request{
-            tt::lens::request_type::get_harvester_coordinate_translation, 1},
-        "- type: 17\n  chip_id: 1");
-}
-
 TEST(ttlens_communication, get_device_arch) {
     test_yaml_request(tt::lens::get_device_arch_request{tt::lens::request_type::get_device_arch, 1},
                       "- type: 19\n  chip_id: 1");

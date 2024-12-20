@@ -87,10 +87,6 @@ TEST(ttlens_python_communication, pci_read_tile) {
         "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14\n");
 }
 
-TEST(ttlens_python_communication, get_harvester_coordinate_translation) {
-    call_python("get_harvester_coordinate_translation", "- type: 17\n  chip_id: 1\n");
-}
-
 TEST(ttlens_python_communication, get_device_arch) { call_python("get_device_arch", "- type: 19\n  chip_id: 1\n"); }
 
 TEST(ttlens_python_communication, get_device_soc_description) {

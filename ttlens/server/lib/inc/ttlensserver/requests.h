@@ -22,8 +22,8 @@ enum class request_type : uint8_t {
     pci_read32_raw,
     pci_write32_raw,
     dma_buffer_read32,
-    get_harvester_coordinate_translation,
-    get_device_ids,
+    // Removed: get_harvester_coordinate_translation = 17,
+    get_device_ids = 18,
     get_device_arch,
     get_device_soc_description,
     arc_msg,
@@ -108,10 +108,6 @@ struct pci_read_tile_request : request {
     uint64_t address;
     uint32_t size;
     uint8_t data_format;
-} __attribute__((packed));
-
-struct get_harvester_coordinate_translation_request : request {
-    uint8_t chip_id;
 } __attribute__((packed));
 
 struct get_device_arch_request : request {

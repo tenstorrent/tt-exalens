@@ -52,10 +52,6 @@ class TTLensCommunicator(ABC):
         pass
 
     @abstractmethod
-    def get_harvester_coordinate_translation(self, chip_id: int):
-        pass
-
-    @abstractmethod
     def get_device_ids(self):
         pass
 

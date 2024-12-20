@@ -125,21 +125,6 @@ std::optional<tt::ARCH> JtagDevice::get_jtag_arch(uint8_t chip_id) {
     }
 }
 
-std::optional<std::string> JtagDevice::get_jtag_harvester_coordinate_translation(uint8_t chip_id) {
-    if (!jtag) {
-        return {};
-    }
-
-    std::unordered_map<tt_xy_pair, tt_xy_pair> harvested_coord_translation =
-        tt::umd::Cluster::create_harvested_coord_translation(*get_jtag_arch(chip_id), false);
-    std::string ret = "{ ";
-    for (auto& kv : harvested_coord_translation) {
-        ret += "(" + std::to_string(kv.first.x) + "," + std::to_string(kv.first.y) + ") : (" +
-               std::to_string(kv.second.x) + "," + std::to_string(kv.second.y) + "), ";
-    }
-    return ret + " }";
-}
-
 std::optional<int> JtagDevice::open_jlink_by_serial_wrapper(uint8_t chip_id, unsigned int serial_number) {
     jtag->close_jlink();
     return jtag->open_jlink_by_serial_wrapper(serial_number);

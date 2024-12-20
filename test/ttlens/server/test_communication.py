@@ -90,14 +90,6 @@ def pci_read_tile():
     )
 
 
-def get_harvester_coordinate_translation():
-    global server_communication
-    check_response(
-        server_communication.get_harvester_coordinate_translation(1),
-        "- type: 17\n  chip_id: 1",
-    )
-
-
 def get_device_arch():
     global server_communication
     check_response(

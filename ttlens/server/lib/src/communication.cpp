@@ -98,9 +98,6 @@ void tt::lens::communication::request_loop() {
                     case request_type::pci_read_tile:
                         invalid_message = message.size() != sizeof(pci_read_tile_request);
                         break;
-                    case request_type::get_harvester_coordinate_translation:
-                        invalid_message = message.size() != sizeof(get_harvester_coordinate_translation_request);
-                        break;
                     case request_type::get_device_arch:
                         invalid_message = message.size() != sizeof(get_device_arch_request);
                         break;

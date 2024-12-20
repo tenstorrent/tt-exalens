@@ -63,11 +63,6 @@ def empty_pci_read_tile():
     check_not_implemented_response(lambda: server.pci_read_tile(1, 2, 3, 123456, 1024, 14))
 
 
-def empty_get_harvester_coordinate_translation():
-    global server
-    check_not_implemented_response(lambda: server.get_harvester_coordinate_translation(1))
-
-
 def empty_pci_write():
     global server
     check_not_implemented_response(lambda: server.pci_write(1, 2, 3, 123456, bytes([10, 11, 12, 13, 14, 15, 16, 17])))
@@ -156,12 +151,6 @@ def convert_from_noc0():
     global server
     read = server.convert_from_noc0(1, 2, 3, "core_type", "coord_type")
     print("pass" if read == (3, 4) else "fail")
-
-
-def get_harvester_coordinate_translation():
-    global server
-    read = server.get_harvester_coordinate_translation(1)
-    print("pass" if read == "get_harvester_coordinate_translation(1)" else "fail")
 
 
 def get_device_ids():

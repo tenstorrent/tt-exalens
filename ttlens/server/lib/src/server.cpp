@@ -71,11 +71,6 @@ void tt::lens::server::process(const tt::lens::request& base_request) {
                 std::string(request.data + request.core_type_size, request.coord_system_size)));
             break;
         }
-        case tt::lens::request_type::get_harvester_coordinate_translation: {
-            auto& request = static_cast<const tt::lens::get_harvester_coordinate_translation_request&>(base_request);
-            respond(implementation->get_harvester_coordinate_translation(request.chip_id));
-            break;
-        }
         case tt::lens::request_type::get_device_ids:
             respond(implementation->get_device_ids());
             break;

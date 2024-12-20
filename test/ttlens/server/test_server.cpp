@@ -125,12 +125,6 @@ class yaml_not_implemented_implementation : public ttlens_implementation {
             "\n  coord_system_size: " + std::to_string(coord_system.size()) + "\n  data: " + core_type + coord_system);
         return {};
     }
-    std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) override {
-        server->send_yaml(
-            "- type: " + std::to_string(static_cast<int>(request_type::get_harvester_coordinate_translation)) +
-            "\n  chip_id: " + std::to_string(chip_id));
-        return {};
-    }
     std::optional<std::vector<uint8_t>> get_device_ids() override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::get_device_ids)));
         return {};
@@ -294,13 +288,6 @@ TEST(ttlens_server, pci_read_tile) {
     test_not_implemented_request(
         tt::lens::pci_read_tile_request{tt::lens::request_type::pci_read_tile, 1, 2, 3, 123456, 1024, 14},
         "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14");
-}
-
-TEST(ttlens_server, get_harvester_coordinate_translation) {
-    test_not_implemented_request(
-        tt::lens::get_harvester_coordinate_translation_request{
-            tt::lens::request_type::get_harvester_coordinate_translation, 1},
-        "- type: 17\n  chip_id: 1");
 }
 
 TEST(ttlens_server, get_device_arch) {
