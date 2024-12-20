@@ -144,7 +144,7 @@ static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::stri
 
 static void write_coord(std::ostream &out, const tt::umd::CoreCoord &input, CoreType core_type,
                         const tt_SocDescriptor &soc_descriptor) {
-    auto output = soc_descriptor.to(input, CoordSystem::PHYSICAL);
+    auto output = soc_descriptor.translate_coord_to(input, CoordSystem::PHYSICAL);
     out << output.x << "-" << output.y << ", ";
 }
 
@@ -528,7 +528,7 @@ std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::conv
     try {
         auto &soc_descriptor = soc_descriptors.at(chip_id);
         tt::umd::CoreCoord core_coord{noc_x, noc_y, core_type_enum, CoordSystem::PHYSICAL};
-        auto output = soc_descriptor.to(core_coord, coord_system_enum);
+        auto output = soc_descriptor.translate_coord_to(core_coord, coord_system_enum);
 
         return std::make_tuple(static_cast<uint8_t>(output.x), static_cast<uint8_t>(output.y));
     } catch (...) {
