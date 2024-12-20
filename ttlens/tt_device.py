@@ -444,23 +444,26 @@ class Device(TTObject):
         return addr
 
     def _init_register_addresses(self):
-        # base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
-        # csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
-        # rom_data_base_addr = self.PCI_ARC_ROM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_ROM_DATA_BASE_ADDR
+        try:
+            base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
+            csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
+            rom_data_base_addr = self.PCI_ARC_ROM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_ROM_DATA_BASE_ADDR
 
-        self.REGISTER_ADDRESSES = {
-            "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
-            "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
-            "ARC_RESET_ARC_UDMIAXI_REGION": base_addr + 0x10C,
-            "ARC_RESET_SCRATCH0": base_addr + 0x060,
-            "ARC_RESET_SCRATCH1": base_addr + 0x064,
-            "ARC_RESET_SCRATCH2": base_addr + 0x068,
-            "ARC_RESET_SCRATCH3": base_addr + 0x06C,
-            "ARC_RESET_SCRATCH4": base_addr + 0x070,
-            "ARC_RESET_SCRATCH5": base_addr + 0x074,
-            "ARC_CSM_DATA": csm_data_base_addr,
-            "ARC_ROM_DATA": rom_data_base_addr,
-        }
+            self.REGISTER_ADDRESSES = {
+                "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
+                "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
+                "ARC_RESET_ARC_UDMIAXI_REGION": base_addr + 0x10C,
+                "ARC_RESET_SCRATCH0": base_addr + 0x060,
+                "ARC_RESET_SCRATCH1": base_addr + 0x064,
+                "ARC_RESET_SCRATCH2": base_addr + 0x068,
+                "ARC_RESET_SCRATCH3": base_addr + 0x06C,
+                "ARC_RESET_SCRATCH4": base_addr + 0x070,
+                "ARC_RESET_SCRATCH5": base_addr + 0x074,
+                "ARC_CSM_DATA": csm_data_base_addr,
+                "ARC_ROM_DATA": rom_data_base_addr,
+            }
+        except:
+            pass
 
 
 # end of class Device
