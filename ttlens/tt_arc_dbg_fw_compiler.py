@@ -5,13 +5,8 @@
 import os
 from typing import Union, List
 from ttlens.tt_arc_dbg_fw_log_context import (
-    LogInfo,
     ArcDfwLogContext,
-    ArcDfwLogContextFromList,
-    ArcDfwLogContextFromYaml,
 )
-from math import floor
-import struct
 from abc import abstractmethod, ABC
 from ttlens.tt_util import TTException
 
@@ -45,7 +40,7 @@ class ArcDfwCompiler(ABC):
                 continue
 
             name, address = line.split(":")
-            symbol_table[name.strip()] = address.strip()
+            symbol_table[name.strip()] = int(address.strip(),16)
 
         return symbol_table
 
@@ -216,7 +211,7 @@ class ArcDfwCompiler(ABC):
             output_fw_file_path (str): Path to the modified firmware file.
             log_context (ArcDfwLogContext): Log context containing log information.
         """
-        LOG_FUNCITON_EDITABLE = int(self.symbol_locations["log_function"], 16)  # + 0x24
+        LOG_FUNCITON_EDITABLE = self.symbol_locations["log_function"]
         base_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.base_fw_file_path)
         hex_lines = self._load_hex_file(base_file_name)
 
@@ -253,7 +248,40 @@ class ArcDfwLoggerCompiler(ArcDfwCompiler):
             instruction_bytes += self._create_store_instruction(0, 1, i)
 
         # Loading dfw_buffer_header address so it can be incremented
-        instruction_bytes += self._create_load_instruction(1, int(self.symbol_locations["dfw_buffer_header"], 16))
+        instruction_bytes += self._create_load_instruction(1, self.symbol_locations["dfw_buffer_header"])
+        # Incrementing the number of log calls and returning to the main loop
+        # end_address:	     443c                	ld_s	r0,[r1,0x1c]
+        # end_address + 0x2: 7104                	add_s	r0,r0,1
+        # end_address + 0x4: a107                	st_s	r0,[r1,0x1c]
+        # end_address + 0x6: 7ee0                	j_s	[blink]
+        instruction_bytes += [0x44, 0x3C, 0x71, 0x04, 0xA1, 0x07, 0x7E, 0xE0]
+
+        return instruction_bytes
+
+
+class ArcDfwLoggerWithPmonCompiler(ArcDfwLoggerCompiler):
+    def _get_modified_instruction_bytes(self) -> bytes:
+        instruction_bytes = []
+       
+        
+        for i, log_info in enumerate(self.log_context.log_list):
+            instruction_bytes += self._create_load_instruction(1, log_info.address)
+            instruction_bytes += self._create_store_instruction(0, 1, i)
+
+        instruction_bytes += [0xC0, 0xF1] # push_s blink
+
+        instruction_bytes += [0x20, 0x22, 0x0F, 0x80]
+        pmon_log_address = self.symbol_locations["dfw_pmon_log"]
+        instruction_bytes += [
+            (pmon_log_address >> 24) & 0xFF,
+            (pmon_log_address >> 16) & 0xFF,
+            (pmon_log_address >> 8) & 0xFF,
+            pmon_log_address & 0xFF,
+        ]
+        instruction_bytes += [0xC0, 0xD1] # pop_s blink
+        
+       # Loading dfw_buffer_header address so it can be incremented
+        instruction_bytes += self._create_load_instruction(1, self.symbol_locations["dfw_buffer_header"])
         # Incrementing the number of log calls and returning to the main loop
         # end_address:	     443c                	ld_s	r0,[r1,0x1c]
         # end_address + 0x2: 7104                	add_s	r0,r0,1

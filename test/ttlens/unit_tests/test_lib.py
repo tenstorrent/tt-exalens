@@ -21,7 +21,7 @@ import os
 
 from ttlens.tt_lens_lib_utils import arc_write
 
-from ttlens.tt_arc_dbg_fw import ArcDebugLoggerFw
+from ttlens.tt_arc_dbg_fw import ArcDebugLoggerFw, ArcDebugLoggerWithPmonFw
 from ttlens.tt_lens_lib_utils import split_32bit_to_16bit
 from ttlens.tt_arc_dbg_fw_log_context import ArcDfwLogContextFromYaml, ArcDfwLogContextFromList
 
@@ -503,7 +503,6 @@ class TestARC(unittest.TestCase):
             self.skipTest(
                 "Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests."
             )
-        wait_time = 0.1
 
         TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
@@ -527,7 +526,6 @@ class TestARC(unittest.TestCase):
             self.skipTest(
                 "Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests."
             )
-        wait_time = 0.1
 
         TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
@@ -569,6 +567,57 @@ class TestARC(unittest.TestCase):
             for data in log_data["scratch3"]:
                 assert data == scrattch3_val
 
-    # TODO test reset
-    # TODO test instruction_injection
-    # TODO test communication
+    def test_pmon(self):
+        if self.context.arch == "grayskull":
+            self.skipTest(
+                "Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests."
+            )
+
+        TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024*16
+        os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
+
+        for device_id in self.context.device_ids:
+            arc_fw =ArcDebugLoggerWithPmonFw(
+                ArcDfwLogContextFromList(["scratch2", "scratch3"]),64, device_id=device_id, context=self.context
+            )
+            
+            import time
+            print(arc_fw.buffer_header.read_from_field("num_log_calls", device_id, self.context))
+            time.sleep(1)
+            print(arc_fw.buffer_header.read_from_field("num_log_calls", device_id, self.context))
+            arc_fw.load()
+            
+            reply = arc_fw.buffer_header.read_from_field("msg", device_id, self.context)
+            assert reply == 0xBEBACECA
+
+            device = self.context.devices[device_id]
+
+            scrattch2_val = 0xafafafaf
+            scrattch3_val = 0xfcfcfcfc
+
+            arc_write(
+                self.context,
+                device_id,
+                device.get_arc_block_location(),
+                device.get_register_addr("ARC_RESET_SCRATCH2"),
+                scrattch2_val,
+            )
+            arc_write(
+                self.context,
+                device_id,
+                device.get_arc_block_location(),
+                device.get_register_addr("ARC_RESET_SCRATCH3"),
+                scrattch3_val,
+            )
+
+            log_data = arc_fw.log_until_full_buffer_and_parse_logs()
+
+            print(arc_fw.buffer_header.read_from_field("num_log_calls", device_id, self.context))
+            time.sleep(1)
+            print(arc_fw.buffer_header.read_from_field("num_log_calls", device_id, self.context))
+
+            for data in log_data["scratch2"]:
+                assert data == scrattch2_val
+
+            for data in log_data["scratch3"]:
+                assert data == scrattch3_val
