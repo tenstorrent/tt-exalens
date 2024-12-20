@@ -17,9 +17,15 @@ def check_not_implemented_response(server_command: Callable[[], Any]):
     except ttlens_server_not_supported:
         print("pass")
 
+
 def empty_get_cluster_description():
     global server
     check_not_implemented_response(lambda: server.get_cluster_description())
+
+
+def empty_convert_from_noc0():
+    global server
+    check_not_implemented_response(lambda: server.convert_from_noc0(1, 2, 3, "core_type", "coord_type"))
 
 
 def empty_pci_read32():
@@ -39,7 +45,7 @@ def empty_pci_read():
 
 def empty_pci_read32_raw():
     global server
-    check_not_implemented_response(lambda: server.pci_read32_raw(1, 123456))
+    check_not_implemented_response(lambda: server.pci_read32_raw(111, 123456))
 
 
 def empty_pci_write32_raw():
@@ -54,45 +60,38 @@ def empty_dma_buffer_read32():
 
 def empty_pci_read_tile():
     global server
-    check_not_implemented_response(
-        lambda: server.pci_read_tile(1, 2, 3, 123456, 1024, 14)
-    )
-
-
-def empty_get_harvester_coordinate_translation():
-    global server
-    check_not_implemented_response(
-        lambda: server.get_harvester_coordinate_translation(1)
-    )
+    check_not_implemented_response(lambda: server.pci_read_tile(1, 2, 3, 123456, 1024, 14))
 
 
 def empty_pci_write():
     global server
-    check_not_implemented_response(
-        lambda: server.pci_write(
-            1, 2, 3, 123456, bytes([10, 11, 12, 13, 14, 15, 16, 17])
-        )
-    )
+    check_not_implemented_response(lambda: server.pci_write(1, 2, 3, 123456, bytes([10, 11, 12, 13, 14, 15, 16, 17])))
+
 
 def empty_jtag_read32():
     global server
     check_not_implemented_response(lambda: server.jtag_read32(1, 2, 3, 123456))
 
+
 def empty_jtag_write32():
     global server
     check_not_implemented_response(lambda: server.jtag_write32(1, 2, 3, 123456, 987654))
+
 
 def empty_jtag_read32_axi():
     global server
     check_not_implemented_response(lambda: server.jtag_read32_axi(1, 123456))
 
+
 def empty_jtag_write32_axi():
     global server
     check_not_implemented_response(lambda: server.jtag_write32_axi(1, 123456, 987654))
 
+
 def empty_get_file():
     global server
     check_not_implemented_response(lambda: server.get_file("file_name"))
+
 
 def pci_write32_pci_read32():
     global server
@@ -127,6 +126,7 @@ def pci_read_tile():
     read = server.pci_read_tile(1, 2, 3, 123456, 1024, 14)
     print("pass" if read == "pci_read_tile(1, 2, 3, 123456, 1024, 14)" else "fail")
 
+
 def jtag_write32_jtag_read32():
     global server
     server.jtag_write32(1, 2, 3, 123456, 987654)
@@ -140,22 +140,23 @@ def jtag_write32_axi_jtag_read32_axi():
     read = server.jtag_read32_axi(1, 123456)
     print("pass" if read == 987654 else "fail")
 
+
 def get_cluster_description():
     global server
     read = server.get_cluster_description()
     print("pass" if read == "get_cluster_description()" else "fail")
 
 
-def get_harvester_coordinate_translation():
+def convert_from_noc0():
     global server
-    read = server.get_harvester_coordinate_translation(1)
-    print("pass" if read == "get_harvester_coordinate_translation(1)" else "fail")
+    read = server.convert_from_noc0(1, 2, 3, "core_type", "coord_type")
+    print("pass" if read == (3, 4) else "fail")
 
 
 def get_device_ids():
     global server
     read = server.get_device_ids()
-    print("pass" if read == b'\x00\x01' else "fail")
+    print("pass" if read == b"\x00\x01" else "fail")
 
 
 def get_device_arch():
@@ -174,6 +175,7 @@ def get_file():
     global server
     read = server.get_file("file_name")
     print("pass" if read == "get_file(file_name)" else "fail")
+
 
 def main():
     # Check if at least two arguments are provided (script name + function name)

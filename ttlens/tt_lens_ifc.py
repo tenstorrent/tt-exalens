@@ -26,7 +26,6 @@ class ttlens_server_request_type(Enum):
     pci_read32_raw = 14
     pci_write32_raw = 15
     dma_buffer_read32 = 16
-    get_harvester_coordinate_translation = 17
     get_device_ids = 18
     get_device_arch = 19
     get_device_soc_description = 20
@@ -40,6 +39,7 @@ class ttlens_server_request_type(Enum):
     # Runtime requests
     pci_read_tile = 100
     get_cluster_description = 102
+    convert_from_noc0 = 103
 
     # File requests
     get_file = 200
@@ -58,6 +58,7 @@ class ttlens_server_communication:
     This class handles the communication with the TTLens server using ZMQ. It is responsible for sending requests and
     parsing and checking the responses.
     """
+
     _BAD_REQUEST = b"BAD_REQUEST"
     _NOT_SUPPORTED = b"NOT_SUPPORTED"
 
@@ -120,9 +121,7 @@ class ttlens_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def pci_write(
-        self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes
-    ):
+    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
         self._socket.send(
             struct.pack(
                 f"<BBBBQI{len(data)}s",
@@ -138,11 +137,7 @@ class ttlens_server_communication:
         return self._check(self._socket.recv())
 
     def pci_read32_raw(self, chip_id: int, address: int):
-        self._socket.send(
-            struct.pack(
-                "<BBI", ttlens_server_request_type.pci_read32_raw.value, chip_id, address
-            )
-        )
+        self._socket.send(struct.pack("<BBI", ttlens_server_request_type.pci_read32_raw.value, chip_id, address))
         return self._check(self._socket.recv())
 
     def pci_write32_raw(self, chip_id: int, address: int, data: int):
@@ -193,25 +188,32 @@ class ttlens_server_communication:
         return self._check(self._socket.recv())
 
     def get_cluster_description(self):
-        self._socket.send(
-            bytes([ttlens_server_request_type.get_cluster_description.value])
-        )
+        self._socket.send(bytes([ttlens_server_request_type.get_cluster_description.value]))
         return self._check(self._socket.recv())
 
-    def get_harvester_coordinate_translation(self, chip_id: int):
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
+        core_type = core_type.encode()
+        coord_system = coord_system.encode()
+        data = core_type + coord_system
         self._socket.send(
             struct.pack(
-                "<BB",
-                ttlens_server_request_type.get_harvester_coordinate_translation.value,
+                f"<BBBBII{len(data)}s",
+                ttlens_server_request_type.convert_from_noc0.value,
                 chip_id,
+                noc_x,
+                noc_y,
+                len(core_type),
+                len(coord_system),
+                data,
             )
         )
-        return self._check(self._socket.recv())
+        bytes = self._check(self._socket.recv())
+        if len(bytes) == 2:
+            return (bytes[0], bytes[1])
+        return bytes
 
     def get_device_ids(self):
-        self._socket.send(
-            bytes([ttlens_server_request_type.get_device_ids.value])
-        )
+        self._socket.send(bytes([ttlens_server_request_type.get_device_ids.value]))
         return self._check(self._socket.recv())
 
     def get_device_arch(self, chip_id: int):
@@ -256,7 +258,7 @@ class ttlens_server_communication:
                 wait_for_done,
                 arg0,
                 arg1,
-                timeout
+                timeout,
             )
         )
         return self._check(self._socket.recv())
@@ -331,57 +333,38 @@ class ttlens_client(TTLensCommunicator):
         return buffer.decode()
 
     def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self.parse_uint32_t(
-            self._communication.pci_read32(chip_id, noc_x, noc_y, address)
-        )
+        return self.parse_uint32_t(self._communication.pci_read32(chip_id, noc_x, noc_y, address))
 
     def pci_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        buffer = self._communication.pci_write32(
-            chip_id, noc_x, noc_y, address, data)
+        buffer = self._communication.pci_write32(chip_id, noc_x, noc_y, address, data)
         bytes_written = self.parse_uint32_t(buffer)
         if bytes_written != 4:
-            raise ValueError(
-                f"Expected 4 bytes written, but {bytes_written} were written"
-            )
+            raise ValueError(f"Expected 4 bytes written, but {bytes_written} were written")
         return bytes_written
 
     def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
-        buffer = self._communication.pci_read(
-            chip_id, noc_x, noc_y, address, size)
+        buffer = self._communication.pci_read(chip_id, noc_x, noc_y, address, size)
         if len(buffer) != size:
-            raise ValueError(
-                f"Expected {size} bytes read, but {len(buffer)} were read")
+            raise ValueError(f"Expected {size} bytes read, but {len(buffer)} were read")
         return buffer
 
-    def pci_write(
-        self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes
-    ):
-        bytes_written = self.parse_uint32_t(
-            self._communication.pci_write(chip_id, noc_x, noc_y, address, data)
-        )
+    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
+        bytes_written = self.parse_uint32_t(self._communication.pci_write(chip_id, noc_x, noc_y, address, data))
         if bytes_written != len(data):
-            raise ValueError(
-                f"Expected {len(data)} bytes written, but {bytes_written} were written"
-            )
+            raise ValueError(f"Expected {len(data)} bytes written, but {bytes_written} were written")
         return bytes_written
 
     def pci_read32_raw(self, chip_id: int, address: int):
         return self.parse_uint32_t(self._communication.pci_read32_raw(chip_id, address))
 
     def pci_write32_raw(self, chip_id: int, address: int, data: int):
-        bytes_written = self.parse_uint32_t(
-            self._communication.pci_write32_raw(chip_id, address, data)
-        )
+        bytes_written = self.parse_uint32_t(self._communication.pci_write32_raw(chip_id, address, data))
         if bytes_written != 4:
-            raise ValueError(
-                f"Expected 4 bytes written, but {bytes_written} were written"
-            )
+            raise ValueError(f"Expected 4 bytes written, but {bytes_written} were written")
         return bytes_written
 
     def dma_buffer_read32(self, chip_id: int, address: int, channel: int):
-        return self.parse_uint32_t(
-            self._communication.dma_buffer_read32(chip_id, address, channel)
-        )
+        return self.parse_uint32_t(self._communication.dma_buffer_read32(chip_id, address, channel))
 
     def pci_read_tile(
         self,
@@ -392,66 +375,44 @@ class ttlens_client(TTLensCommunicator):
         size: int,
         data_format: int,
     ):
-        return self.parse_string(
-            self._communication.pci_read_tile(
-                chip_id, noc_x, noc_y, address, size, data_format
-            )
-        )
+        return self.parse_string(self._communication.pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format))
 
     def get_cluster_description(self):
         return self.parse_string(self._communication.get_cluster_description())
 
-    def get_harvester_coordinate_translation(self, chip_id: int):
-        return self.parse_string(
-            self._communication.get_harvester_coordinate_translation(chip_id)
-        )
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
+        return self._communication.convert_from_noc0(chip_id, noc_x, noc_y, core_type, coord_system)
 
     def get_device_ids(self):
         return self._communication.get_device_ids()
 
     def get_device_arch(self, chip_id: int):
-        return self.parse_string(
-            self._communication.get_device_arch(chip_id)
-        )
+        return self.parse_string(self._communication.get_device_arch(chip_id))
 
     def get_device_soc_description(self, chip_id: int):
-        return self.parse_string(
-            self._communication.get_device_soc_description(chip_id)
-        )
+        return self.parse_string(self._communication.get_device_soc_description(chip_id))
 
     def get_file(self, file_path: str) -> str:
-        return self.parse_string(
-            self._communication.get_file(file_path)
-        )
+        return self.parse_string(self._communication.get_file(file_path))
 
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         binary_content = self._communication.get_file(binary_path)
         return io.BytesIO(binary_content)
 
     def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
-        return self.parse_uint32_t(
-            self._communication.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
-        )
+        return self.parse_uint32_t(self._communication.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout))
 
     def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self.parse_uint32_t(
-            self._communication.jtag_read32(chip_id, noc_x, noc_y, address)
-        )
+        return self.parse_uint32_t(self._communication.jtag_read32(chip_id, noc_x, noc_y, address))
 
     def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        return self.parse_uint32_t(
-            self._communication.jtag_write32(chip_id, noc_x, noc_y, address, data)
-        )
+        return self.parse_uint32_t(self._communication.jtag_write32(chip_id, noc_x, noc_y, address, data))
 
     def jtag_read32_axi(self, chip_id: int, address: int):
-        return self.parse_uint32_t(
-            self._communication.jtag_read32_axi(chip_id, address)
-        )
+        return self.parse_uint32_t(self._communication.jtag_read32_axi(chip_id, address))
 
     def jtag_write32_axi(self, chip_id: int, address: int, data: int):
-        return self.parse_uint32_t(
-            self._communication.jtag_write32_axi(chip_id, address, data)
-        )
+        return self.parse_uint32_t(self._communication.jtag_write32_axi(chip_id, address, data))
 
 
 ttlens_pybind_path = util.application_path() + "/../build/lib"
@@ -467,7 +428,7 @@ import ttlens_pybind
 
 
 class TTLensPybind(TTLensCommunicator):
-    def __init__(self, wanted_devices: list = [], init_jtag = False):
+    def __init__(self, wanted_devices: list = [], init_jtag=False):
         super().__init__()
         if not ttlens_pybind.open_device(binary_path, wanted_devices, init_jtag):
             raise Exception("Failed to open device using pybind library")
@@ -486,9 +447,7 @@ class TTLensPybind(TTLensCommunicator):
     def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
         return self._check_result(ttlens_pybind.pci_read(chip_id, noc_x, noc_y, address, size))
 
-    def pci_write(
-        self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes
-    ):
+    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
         return self._check_result(ttlens_pybind.pci_write(chip_id, noc_x, noc_y, address, data, len(data)))
 
     def pci_read32_raw(self, chip_id: int, address: int):
@@ -514,8 +473,8 @@ class TTLensPybind(TTLensCommunicator):
     def get_cluster_description(self):
         return self._check_result(ttlens_pybind.get_cluster_description())
 
-    def get_harvester_coordinate_translation(self, chip_id: int):
-        return self._check_result(ttlens_pybind.get_harvester_coordinate_translation(chip_id))
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
+        return self._check_result(ttlens_pybind.convert_from_noc0(chip_id, noc_x, noc_y, core_type, coord_system))
 
     def get_device_ids(self):
         return self._check_result(ttlens_pybind.get_device_ids())
@@ -548,15 +507,16 @@ class TTLensPybind(TTLensCommunicator):
 
     def get_file(self, file_path: str) -> str:
         content = None
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             content = f.read()
         return self._check_result(content)
 
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
-        return open(binary_path, 'rb')
+        return open(binary_path, "rb")
 
     def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
         return self._check_result(ttlens_pybind.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout))
+
 
 def init_pybind(wanted_devices=None, init_jtag=False):
     if not wanted_devices:

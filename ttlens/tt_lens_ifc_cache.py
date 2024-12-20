@@ -49,6 +49,7 @@ class TTLensCacheThrough(TTLensCache):
     """
     This class uses a decorator wrapped around the regular interface functions to perform caching.
     """
+
     def cache_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
@@ -100,8 +101,8 @@ class TTLensCacheThrough(TTLensCache):
         return self.communicator.get_cluster_description()
 
     @cache_decorator
-    def get_harvester_coordinate_translation(self, chip_id):
-        return self.communicator.get_harvester_coordinate_translation(chip_id)
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
+        return self.communicator.convert_from_noc0(chip_id, noc_x, noc_y, core_type, coord_system)
 
     @cache_decorator
     def get_device_ids(self):
@@ -155,40 +156,35 @@ class TTLensCacheReader(TTLensCache):
 
     def load(self):
         if os.path.exists(self.filepath):
-            util.INFO(
-                f"Loading server cache from file {self.filepath}"
-            )
+            util.INFO(f"Loading server cache from file {self.filepath}")
             with open(self.filepath, "rb") as f:
                 self.cache = pickle.load(f)
-                util.INFO(
-                    f"  Loaded {len(self.cache)} entries"
-                )
+                util.INFO(f"  Loaded {len(self.cache)} entries")
         else:
             util.ERROR(f"Cache file {self.filepath} does not exist")
 
     """
     The decorator performs all the work of reading from the cache. The functions just provide the correct interface.
     """
+
     def read_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
 
             if key not in self.cache:
-                util.ERROR(
-                    f"Cache miss for {func.__name__}.")
+                util.ERROR(f"Cache miss for {func.__name__}.")
                 raise util.TTException(f"Cache miss for {func.__name__}.")
 
             return self.cache[key]
 
         return wrapper
-    
+
     def read_cached_binary_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
 
             if key not in self.cache:
-                util.ERROR(
-                    f"Cache miss for {func.__name__}.")
+                util.ERROR(f"Cache miss for {func.__name__}.")
                 raise util.TTException(f"Cache miss for {func.__name__}.")
 
             return io.BytesIO(self.cache[key])
@@ -229,7 +225,7 @@ class TTLensCacheReader(TTLensCache):
         pass
 
     @read_decorator
-    def get_harvester_coordinate_translation(self, chip_id):
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
         pass
 
     @read_decorator

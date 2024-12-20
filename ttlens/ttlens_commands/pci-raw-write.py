@@ -22,8 +22,8 @@ from ttlens.tt_uistate import UIState
 
 
 command_metadata = {
-    "short": "pciw", 
-    "type": "dev", 
+    "short": "pciw",
+    "type": "dev",
     "description": __doc__,
     "context": ["limited", "metal"],
 }
@@ -33,8 +33,6 @@ def run(cmd_text, context, ui_state: UIState = None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
     addr = int(args["<addr>"], 0)
     data = int(args["<data>"], 0)
-    pci_write_result = context.server_ifc.pci_write32_raw(
-        ui_state.current_device_id, addr, data
-    )
+    pci_write_result = context.server_ifc.pci_write32_raw(ui_state.current_device_id, addr, data)
     print(f"PCI WR [0x{addr:x}] <- 0x{data:x}")
     return None

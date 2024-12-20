@@ -4,6 +4,13 @@
 
 #include "bindings.h"
 
+#include <ttlensserver/jtag_implementation.h>
+#include <ttlensserver/open_implementation.h>
+#include <ttlensserver/umd_implementation.h>
+
+#include <fstream>
+#include <optional>
+
 static std::unique_ptr<tt::lens::ttlens_implementation> ttlens_implementation;
 
 class scoped_null_stdout {
@@ -164,9 +171,11 @@ std::optional<std::string> get_cluster_description() {
     return {};
 }
 
-std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) {
+std::optional<std::tuple<uint8_t, uint8_t>> convert_from_noc0(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                              const std::string &core_type,
+                                                              const std::string &coord_system) {
     if (ttlens_implementation) {
-        return ttlens_implementation->get_harvester_coordinate_translation(chip_id);
+        return ttlens_implementation->convert_from_noc0(chip_id, noc_x, noc_y, core_type, coord_system);
     }
     return {};
 }
@@ -222,8 +231,9 @@ PYBIND11_MODULE(ttlens_pybind, m) {
           pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"), pybind11::arg("size"),
           pybind11::arg("data_format"));
     m.def("get_cluster_description", &get_cluster_description, "Returns cluster description");
-    m.def("get_harvester_coordinate_translation", &get_harvester_coordinate_translation,
-          "Returns harvester coordinate translation", pybind11::arg("chip_id"));
+    m.def("convert_from_noc0", &convert_from_noc0, "Convert noc0 coordinate into specified coordinate system",
+          pybind11::arg("chip_id"), pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("core_type"),
+          pybind11::arg("coord_system"));
     m.def("get_device_ids", &get_device_ids, "Returns device ids");
     m.def("get_device_arch", &get_device_arch, "Returns device architecture", pybind11::arg("chip_id"));
     m.def("get_device_soc_description", &get_device_soc_description, "Returns device SoC description",

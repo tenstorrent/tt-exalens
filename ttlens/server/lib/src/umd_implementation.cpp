@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <tuple>
 
-#include "ttlensserver/jtag_device.h"
 #include "ttlensserver/read_tile.hpp"
 #include "umd/device/cluster.h"
 
@@ -120,23 +119,6 @@ std::optional<uint32_t> umd_implementation::dma_buffer_read32(uint8_t chip_id, u
 std::optional<std::string> umd_implementation::pci_read_tile(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                              uint64_t address, uint32_t size, uint8_t data_format) {
     return tt::lens::tile::read_tile_implementation(chip_id, noc_x, noc_y, address, size, data_format, device);
-}
-
-std::optional<std::string> umd_implementation::get_harvester_coordinate_translation(uint8_t chip_id) {
-    tt::umd::Cluster* silicon_device = dynamic_cast<tt::umd::Cluster*>(device);
-
-    if (!silicon_device) {
-        return {};
-    }
-
-    std::unordered_map<tt_xy_pair, tt_xy_pair> harvested_coord_translation =
-        silicon_device->get_harvested_coord_translation_map(chip_id);
-    std::string ret = "{ ";
-    for (auto& kv : harvested_coord_translation) {
-        ret += "(" + std::to_string(kv.first.x) + "," + std::to_string(kv.first.y) + ") : (" +
-               std::to_string(kv.second.x) + "," + std::to_string(kv.second.y) + "), ";
-    }
-    return ret + " }";
 }
 
 std::optional<std::string> umd_implementation::get_device_arch(uint8_t chip_id) {

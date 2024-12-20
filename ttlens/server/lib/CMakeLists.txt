@@ -39,13 +39,13 @@ add_custom_target(generate_embed_files ALL
 file(GLOB TTLENS_SERVER_LIB_SRCS "src/*.cpp")
 add_library(ttlens_server_lib STATIC ${TTLENS_SERVER_LIB_SRCS})
 add_dependencies(ttlens_server_lib generate_embed_files)
-target_link_libraries(ttlens_server_lib 
+target_link_libraries(ttlens_server_lib
     PUBLIC umd::device fmt cppzmq-static dl
 )
 target_include_directories(ttlens_server_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
 )
-set_target_properties(ttlens_server_lib PROPERTIES 
+set_target_properties(ttlens_server_lib PROPERTIES
     OUTPUT_NAME libttlensserver
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
     POSITION_INDEPENDENT_CODE ON

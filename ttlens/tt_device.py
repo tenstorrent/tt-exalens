@@ -2,67 +2,16 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from functools import cached_property
-import os, struct, ast
-from typing import List, Sequence
-from socket import timeout
+from typing import List, Sequence, Tuple
 from tabulate import tabulate
 from ttlens.tt_lens_context import Context
 from ttlens.tt_object import TTObject
 from ttlens import tt_util as util
-from ttlens.tt_coordinate import OnChipCoordinate, CoordinateTranslationError
+from ttlens.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
 from collections import namedtuple
-from abc import ABC, abstractmethod
-from typing import Dict
+from abc import abstractmethod
 from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device
-
-# Attempt to unpack the data using the given format. If it fails, it assumes that the data
-# is a string contining an error message from the server.
-def try_unpack(fmt, data):
-    try:
-        u = struct.unpack(fmt, data)
-        return u
-    except:
-        # Here we might have gotten an error string from the server. Unpack as string and print error
-        util.ERROR(f"ttlens-server sent an invalid reply: {data}")
-        return None
-
-
-# Prints contents of core's memory
-def dump_memory(context, device_id, loc, addr, size):
-    for k in range(0, size // 4 // 16 + 1):
-        row = []
-        for j in range(0, 16):
-            if addr + k * 64 + j * 4 < addr + size:
-                val = read_word_from_device(loc, addr + k * 64 + j * 4, device_id, context)
-                row.append(f"0x{val:08x}")
-        s = " ".join(row)
-        print(f"{loc.to_str()} 0x{(addr + k*64):08x} => {s}")
-
-
-# Dumps tile in format received form tt_tile::get_string
-def dump_tile(context, chip, loc, addr, size, data_format):
-    s = context.server_ifc.pci_read_tile(chip, *loc.to("nocVirt"), addr, size, data_format)
-    if type(s) == bytes:
-        s = s.decode("utf-8")
-    lines = s.split("\n")
-    rows = []
-    for line in lines:
-        rows.append(line.split())
-    print(tabulate(rows, tablefmt="plain", showindex=False, disable_numparse=True))
-
-
-
-BinarySlot = namedtuple("BinarySlot", ["offset_bytes", "size_bytes"])
-
-
-class AddressMap(ABC):
-    def __init__(self):
-        self.binaries: Dict[str, BinarySlot]
-
-class L1AddressMap(AddressMap):
-    def __init__(self):
-        super().__init__()
 
 TensixRegisterDescription = namedtuple("TensixRegisterDescription", ["address", "mask", "shift"])
 
@@ -78,52 +27,18 @@ class Device(TTObject):
         Config = 1
         Status = 2
 
-    # Class variable denoting the number of devices created
-    num_devices = 0
-
-    # See tt_coordinate.py for description of coordinate systems
-    tensix_row_to_netlist_row = dict()
-    netlist_row_to_tensix_row = dict()
-
-    # Maps to store translation table from nocVirt to nocTr and vice versa
-    nocVirt_to_nocTr_map = dict()
-    nocTr_to_nocVirt_map = dict()
-
-    # Maps to store translation table from noc0 to nocTr and vice versa
-    nocTr_y_to_noc0_y = dict()
-    noc0_y_to_nocTr_y = dict()
-
     @cached_property
     def debuggable_cores(self):
         # Base implementation for grayskull, wormhole and blackhole
         cores: List[RiscDebug] = []
         for coord in self.get_block_locations("functional_workers"):
-            for risc_id in range(4): # 4 because we have a hardware bug for debugging ncrisc
+            for risc_id in range(4):  # 4 because we have a hardware bug for debugging ncrisc
                 risc_location = RiscLoc(coord, 0, risc_id)
                 risc_debug = RiscDebug(risc_location, self._context)
                 cores.append(risc_debug)
 
         # TODO: Can we debug eth cores?
         return cores
-
-    def get_address_map(self, core_type: str) -> AddressMap:
-        if core_type not in self._address_maps:
-            raise RuntimeError(f"Core type {core_type} not found in address maps")
-        return self._address_maps[core_type]
-    
-    def get_binary_size(self, core_loc, binary_type) -> int:
-        core_type = self.get_block_type(core_loc)
-        address_map = self.get_address_map(core_type)
-        binary_size = address_map.binaries[binary_type].size_bytes
-        assert binary_size >= 0
-        return binary_size
-    
-    def get_binary_l1_offset(self, core_loc: OnChipCoordinate, binary_type: str) -> int:
-        core_type = self.get_block_type(core_loc)
-        address_map = self.get_address_map(core_type)
-        offset = address_map.binaries[binary_type].offset_bytes
-        assert offset >= 0
-        return offset
 
     # Class method to create a Device object given device architecture
     def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
@@ -132,26 +47,25 @@ class Device(TTObject):
             from ttlens import tt_grayskull
 
             dev = tt_grayskull.GrayskullDevice(
-                id=device_id,
-                arch=arch,
-                cluster_desc=cluster_desc,
-                device_desc_path=device_desc_path,
-                context=context
+                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
         if "wormhole" in arch.lower():
             from ttlens import tt_wormhole
 
             dev = tt_wormhole.WormholeDevice(
-                id=device_id,
-                arch=arch,
-                cluster_desc=cluster_desc,
-                device_desc_path=device_desc_path,
-                context=context
+                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
         if "blackhole" in arch.lower():
             from ttlens import tt_blackhole
 
             dev = tt_blackhole.BlackholeDevice(
+                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
+            )
+
+        if "quasar" in arch.lower():
+            from ttlens import tt_quasar
+
+            dev = tt_quasar.QuasarDevice(
                 id=device_id,
                 arch=arch,
                 cluster_desc=cluster_desc,
@@ -175,93 +89,15 @@ class Device(TTObject):
 
         return dev
 
-    @abstractmethod
-    def get_harvested_noc0_y_rows(self):
-        pass
-
-    def row_count(self):
-        return int(self.yaml_file.root["grid"]["y_size"])
-
-    def _create_tensix_netlist_harvesting_map(self):
-        self.tensix_row_to_netlist_row = dict()  # Clear any existing map
-        self.netlist_row_to_tensix_row = dict()
-
-        functional_workers = self.get_block_locations("functional_workers")
-        worker_rows = sorted({worker.to("noc0")[1] for worker in functional_workers})
-
-        netlist_row = 0
-        for noc0_y in worker_rows:
-            self.netlist_row_to_tensix_row[netlist_row] = noc0_y
-            self.tensix_row_to_netlist_row[noc0_y] = netlist_row
-            netlist_row += 1
-
-    def _create_nocTr_noc0_harvesting_map(self):
-        bitmask = self._harvesting["harvest_mask"] if self._harvesting else 0
-
-        self.nocTr_y_to_noc0_y = dict()  # Clear any existing map
-        self.noc0_y_to_nocTr_y = dict()
-        for nocTr_y in range(0, self.row_count()):
-            self.nocTr_y_to_noc0_y[nocTr_y] = nocTr_y  # Identity mapping for rows < 16
-
-        num_harvested_rows = bin(bitmask).count("1")
-        self._handle_harvesting_for_nocTr_noc0_map(num_harvested_rows)
-
-        # 4. Create reverse map
-        for nocTr_y in self.nocTr_y_to_noc0_y:
-            self.noc0_y_to_nocTr_y[self.nocTr_y_to_noc0_y[nocTr_y]] = nocTr_y
-
-        # 4. Print
-        # for tr_row in reversed (range (16, 16 + self.row_count())):
-        #     print(f"nocTr row {tr_row} => noc0 row {self.nocTr_y_to_noc0_y[tr_row]}")
-
-        # print (f"Created nocTr to noc0 harvesting map for bitmask: {bitmask}")
-
-    def _create_harvesting_maps(self):
-        self._create_tensix_netlist_harvesting_map()
-        self._create_nocTr_noc0_harvesting_map()
-
-    def _create_nocVirt_to_nocTr_map(self):
-        from ttlens.tt_lens_ifc import ttlens_server_not_supported
-
-        try:
-            harvested_coord_translation_str = self._context.server_ifc.get_harvester_coordinate_translation(self._id)
-            self.nocVirt_to_nocTr_map = ast.literal_eval(
-                harvested_coord_translation_str
-            )  # Eval string to dict
-        except ttlens_server_not_supported:
-            # If get_harvester_coordinate_translation is not supported, fall back to identity mapping
-            dev = self.yaml_file.root
-            grid_x = int(dev["grid"]["x_size"])
-            grid_y = int(dev["grid"]["y_size"])
-            self.nocVirt_to_nocTr_map = dict()
-            for nocTr_x in range(0, grid_x):
-                for nocTr_y in range(0, grid_y):
-                    self.nocVirt_to_nocTr_map[self.noc0_to_nocVirt((nocTr_x, nocTr_y))] = (nocTr_x, nocTr_y)
-        self.nocTr_to_nocVirt_map = {
-            v: k for k, v in self.nocVirt_to_nocTr_map.items()
-        }  # Create inverse map as well
-
-    def tensix_to_netlist(self, tensix_loc):
-        return (self.tensix_row_to_netlist_row[tensix_loc[0]], tensix_loc[1])
-
-    def netlist_to_tensix(self, netlist_loc):
-        return (self.netlist_row_to_tensix_row[netlist_loc[0]], netlist_loc[1])
-
     @cached_property
     def yaml_file(self):
         return util.YamlFile(self._context.server_ifc, self._device_desc_path)
 
-    def __init__(self, id, arch, cluster_desc, address_maps: Dict[str, AddressMap], device_desc_path: str, context: Context):
-        """
-
-        Args:
-            address_maps (Dict[str, AddressMap]): map of core_type(str) -> AddressMap
-        """
+    def __init__(self, id, arch, cluster_desc, device_desc_path: str, context: Context):
         self._id = id
         self._arch = arch
         self._has_mmio = False
         self._has_jtag = False
-        self._address_maps = address_maps
         self._device_desc_path = device_desc_path
         self._context = context
         for chip in cluster_desc["chips_with_mmio"]:
@@ -288,132 +124,90 @@ class Device(TTObject):
         elif arch.lower() == "grayskull":
             self._harvesting = None
         else:
-            raise util.TTFatalException(
-                f"Cluster description is not valid. 'harvesting_desc' reads: {harvesting_desc}"
-            )
-
-        self._create_nocVirt_to_nocTr_map()
-        self._create_harvesting_maps() # TODO: Check if this can be returned to original position
+            raise util.TTFatalException(f"Cluster description is not valid. 'harvesting_desc' reads: {harvesting_desc}")
         util.DEBUG(
-            "Opened device: id=%d, arch=%s, has_mmio=%s, harvesting=%s"
-            % (id, arch, self._has_mmio, self._harvesting)
+            "Opened device: id=%d, arch=%s, has_mmio=%s, harvesting=%s" % (id, arch, self._has_mmio, self._harvesting)
         )
 
-        self.block_locations_cache = dict()
+        self._init_coordinate_systems()
         self._init_register_addresses()
 
     # Coordinate conversion functions (see tt_coordinate.py for description of coordinate systems)
-    def die_to_noc(self, phys_loc, noc_id=0):
-        die_x, die_y = phys_loc
+    def __die_to_noc(self, die_loc, noc_id=0):
+        die_x, die_y = die_loc
         if noc_id == 0:
             return (self.DIE_X_TO_NOC_0_X[die_x], self.DIE_Y_TO_NOC_0_Y[die_y])
         else:
             return (self.DIE_X_TO_NOC_1_X[die_x], self.DIE_Y_TO_NOC_1_Y[die_y])
 
-    def noc_to_die(self, noc_loc, noc_id=0):
+    def __noc_to_die(self, noc_loc, noc_id=0):
         noc_x, noc_y = noc_loc
         if noc_id == 0:
             return (self.NOC_0_X_TO_DIE_X[noc_x], self.NOC_0_Y_TO_DIE_Y[noc_y])
         else:
             return (self.NOC_1_X_TO_DIE_X[noc_x], self.NOC_1_Y_TO_DIE_Y[noc_y])
 
-    def noc0_to_noc1(self, noc0_loc):
-        phys_loc = self.noc_to_die(noc0_loc, noc_id=0)
-        return self.die_to_noc(phys_loc, noc_id=1)
+    def __noc0_to_noc1(self, noc0_loc):
+        phys_loc = self.__noc_to_die(noc0_loc, noc_id=0)
+        return self.__die_to_noc(phys_loc, noc_id=1)
 
-    def noc1_to_noc0(self, noc1_loc):
-        phys_loc = self.noc_to_die(noc1_loc, noc_id=1)
-        return self.die_to_noc(phys_loc, noc_id=0)
+    def _init_coordinate_systems(self):
+        # Fill in coordinates for each block type
+        self._noc0_to_block_type = {}
+        for block_type, locations in self._block_locations.items():
+            for loc in locations:
+                self._noc0_to_block_type[loc._noc0_coord] = block_type
 
-    def nocVirt_to_nocTr(self, noc0_loc):
-        return self.nocVirt_to_nocTr_map[noc0_loc]
+        # Fill in coordinate maps from UMD coordinate manager
+        self._from_noc0 = {}
+        self._to_noc0 = {}
+        umd_supported_coordinates = ["logical", "virtual", "translated"]
+        unique_coordinates = ["virtual", "translated"]
+        for noc0_location, block_type in self._noc0_to_block_type.items():
+            core_type = self.block_types[block_type]["core_type"]
+            for coord_system in umd_supported_coordinates:
+                try:
+                    converted_location = self._context.server_ifc.convert_from_noc0(
+                        self._id, noc0_location[0], noc0_location[1], core_type, coord_system
+                    )
+                    self._from_noc0[(noc0_location, coord_system)] = (converted_location, core_type)
+                    self._to_noc0[(converted_location, coord_system, core_type)] = noc0_location
+                    if coord_system in unique_coordinates:
+                        self._to_noc0[(converted_location, coord_system, "any")] = noc0_location
+                except:
+                    pass
 
-    def nocTr_to_nocVirt(self, nocTr_loc):
-        return self.nocTr_to_nocVirt_map[nocTr_loc]
+            # Add coordinate systems that UMD does not support
 
-    def nocTr_to_noc0(self, nocTr_loc):
-        noc0_y = self.nocTr_y_to_noc0_y[nocTr_loc[1]]
-        noc0_x = (
-            self.NOCTR_X_TO_NOC0_X[nocTr_loc[0]] if nocTr_loc[0] >= 16 else nocTr_loc[0]
-        )
-        return (noc0_x, noc0_y)
+            # Add noc1
+            noc1_location = self.__noc0_to_noc1(noc0_location)
+            self._from_noc0[(noc0_location, "noc1")] = (noc1_location, core_type)
+            self._to_noc0[(noc1_location, "noc1", core_type)] = noc0_location
+            self._to_noc0[(noc1_location, "noc1", "any")] = noc0_location
 
-    def noc0_to_nocTr(self, noc0_loc):
-        nocTr_y = self.noc0_y_to_nocTr_y[noc0_loc[1]]
-        nocTr_x = self.NOC0_X_TO_NOCTR_X[noc0_loc[0]]
-        return (nocTr_x, nocTr_y)
+            # Add die
+            die_location = self.__noc_to_die(noc0_location)
+            self._from_noc0[(noc0_location, "die")] = (die_location, core_type)
+            self._to_noc0[(die_location, "die", core_type)] = noc0_location
+            self._to_noc0[(die_location, "die", "any")] = noc0_location
 
-    def nocVirt_to_noc0(self, nocVirt_loc):
-        # Implementing this as identity as default implementation
-        return nocVirt_loc
-
-    def noc0_to_nocVirt(self, noc0_loc):
-        # Implementing this as identity as default implementation
-        return noc0_loc
-
-    @cached_property
-    def noc0_to_netlist_map(self):
-        workers_noc0 = [loc._noc0_coord for loc in self.get_block_locations("functional_workers")]
-        noc0y = sorted(list(set(y for _, y in workers_noc0)))
-        noc0x = sorted(list(set(x for x, _ in workers_noc0)))
-        noc0_to_netlist_map = dict()
-        for x in range(len(noc0x)):
-            for y in range(len(noc0y)):
-                noc0_to_netlist_map[(noc0x[x], noc0y[y])] = (x, y)
-        return noc0_to_netlist_map
-
-    @cached_property
-    def netlist_to_noc0_map(self):
-        return {v: k for k, v in self.noc0_to_netlist_map.items()}
-
-    def noc0_to_netlist(self, noc0_loc):
+    def to_noc0(self, coord_tuple: Tuple[int, int], coord_system: str, core_type: str = "any") -> Tuple[int, int]:
         try:
-            return self.noc0_to_netlist_map[noc0_loc]
-        except KeyError:
+            return self._to_noc0[(coord_tuple, coord_system, core_type)]
+        except:
             raise CoordinateTranslationError(
-                f"noc0_to_netlist: noc0_loc {noc0_loc} does not translate to a valid netlist location"
+                f"to_noc0(coord_tuple={coord_tuple}, coord_system={coord_system}, core_type={core_type})"
             )
 
-    def netlist_to_noc0(self, netlist_loc):
+    def from_noc0(self, noc0_tuple: Tuple[int, int], coord_system: str) -> Tuple[Tuple[int, int], str]:
         try:
-            return self.netlist_to_noc0_map[netlist_loc]
-        except KeyError:
-            raise CoordinateTranslationError(
-                f"netlist_to_noc0: netlist_loc {netlist_loc} does not translate to a valid noc0 location"
-            )
+            return self._from_noc0[(noc0_tuple, coord_system)]
+        except:
+            raise CoordinateTranslationError(f"from_noc0(noc0_tuple={noc0_tuple}, coord_system={coord_system})")
 
-    # For all cores read all 64 streams and populate the 'streams' dict. streams[x][y][stream_id] will
-    # contain a dictionary of all register values as strings formatted to show in UI
-    def read_all_stream_registers(self):
-        streams = {}
-        for loc in self.get_block_locations(block_type="functional_workers"):
-            for stream_id in range(0, 64):
-                regs = self.read_stream_regs(loc, stream_id)
-                streams[
-                    (
-                        loc,
-                        stream_id,
-                    )
-                ] = regs
-        for loc in self.get_block_locations(block_type="eth"):
-            for stream_id in range(0, 32):
-                regs = self.read_stream_regs(loc, stream_id)
-                streams[
-                    (
-                        loc,
-                        stream_id,
-                    )
-                ] = regs
-        return streams
-
-    # For a given core, read all 64 streams and populate the 'streams' dict. streams[stream_id] will
-    # contain a dictionary of all register values as strings formatted to show in UI
-    def read_core_stream_registers(self, loc):
-        streams = {}
-        for stream_id in range(0, 64):
-            regs = self.read_stream_regs(loc, stream_id)
-            streams[stream_id] = regs
-        return streams
+    def is_translated_coordinate(self, x: int, y: int) -> bool:
+        # Base class doesn't know if it is translated coordinate, but specialized classes do
+        return False
 
     def get_block_locations(self, block_type="functional_workers", expand_lists = True):
         return self.get_block_locations_internal(block_type, "nocVirt", expand_lists)
@@ -422,22 +216,7 @@ class Device(TTObject):
         """
         Returns locations of all blocks of a given type
         """
-        locs = []
-        dev = self.yaml_file.root
-
-        for loc_or_list in dev[block_type]:
-            if type(loc_or_list) != str and isinstance(loc_or_list, Sequence):
-                if expand_lists:
-                    for loc in loc_or_list:
-                        locs.append(OnChipCoordinate.create(loc, self, coord_type))
-                else:
-                    ll = []
-                    for loc in loc_or_list:
-                        ll.append(OnChipCoordinate.create(loc, self, coord_type))
-                    locs.append(ll)
-            else:
-                locs.append(OnChipCoordinate.create(loc_or_list, self, coord_type))
-        return locs
+        return self._block_locations[block_type]
 
     def get_arc_block_location(self) -> OnChipCoordinate:
         """
@@ -445,7 +224,7 @@ class Device(TTObject):
         """
         arc_locations = self.get_block_locations(block_type="arc")
 
-        assert(len(arc_locations) == 1)
+        assert len(arc_locations) == 1
 
         return arc_locations[0]
 
@@ -469,64 +248,34 @@ class Device(TTObject):
             for loc_or_list in dev[block_type]:
                 if type(loc_or_list) != str and isinstance(loc_or_list, Sequence):
                     for loc in loc_or_list:
-                        locs.append(OnChipCoordinate.create(loc, self, "noc0")._noc0_coord)
+                        locs.append(OnChipCoordinate.create(loc, self, "noc0"))
                 else:
-                    locs.append(OnChipCoordinate.create(loc_or_list, self, "noc0")._noc0_coord)
+                    locs.append(OnChipCoordinate.create(loc_or_list, self, "noc0"))
             result[block_type] = locs
         return result
 
     block_types = {
-        "functional_workers": {"symbol": ".", "desc": "Functional worker"},
-        "eth": {"symbol": "E", "desc": "Ethernet"},
-        "arc": {"symbol": "A", "desc": "ARC"},
-        "dram": {"symbol": "D", "desc": "DRAM"},
-        "pcie": {"symbol": "P", "desc": "PCIE"},
-        "router_only": {"symbol": " ", "desc": "Router only"},
-        "harvested_workers": {"symbol": "-", "desc": "Harvested"},
+        "functional_workers": {
+            "symbol": ".",
+            "desc": "Functional worker",
+            "core_type": "tensix",
+            "color": util.CLR_GREEN,
+        },
+        "eth": {"symbol": "E", "desc": "Ethernet", "core_type": "eth", "color": util.CLR_YELLOW},
+        "arc": {"symbol": "A", "desc": "ARC", "core_type": "arc", "color": util.CLR_GREY},
+        "dram": {"symbol": "D", "desc": "DRAM", "core_type": "dram", "color": util.CLR_TEAL},
+        "pcie": {"symbol": "P", "desc": "PCIE", "core_type": "pcie", "color": util.CLR_GREY},
+        "router_only": {"symbol": " ", "desc": "Router only", "core_type": "router_only", "color": util.CLR_GREY},
+        "harvested_workers": {"symbol": "-", "desc": "Harvested", "core_type": "tensix", "color": util.CLR_RED},
     }
 
-    def get_block_type(self, loc):
+    core_types = {v["core_type"] for v in block_types.values()}
+
+    def get_block_type(self, loc: OnChipCoordinate):
         """
         Returns the type of block at the given location
         """
-        dev = self.yaml_file.root
-        for block_type in self.block_types:
-            block_locations = self.get_block_locations(block_type=block_type)
-            if loc in block_locations:
-                return block_type
-        return None
-
-    # Returns locations of metadata queue associated with a given core
-    def get_t6_queue_location(self, arch_name, t6_locs):
-        # IMPROVE: this should be handled in the respective arch files/classes
-        dram_core = {"x": None, "y": None}
-        if arch_name == "WORMHOLE" or arch_name == "WORMHOLE_B0":
-            if t6_locs["y"] in [0, 11, 1, 7, 5, 6]:
-                if t6_locs["x"] >= 5:
-                    dram_core["x"] = 5
-                else:
-                    dram_core["x"] = 0
-            else:
-                dram_core["x"] = 5
-            dram_core["y"] = t6_locs["y"]
-        elif arch_name == "GRAYSKULL":
-            if t6_locs["x"] in [1, 2, 3]:
-                dram_core["x"] = 1
-            elif t6_locs["x"] in [4, 5, 6]:
-                dram_core["x"] = 4
-            elif t6_locs["x"] in [7, 8, 9]:
-                dram_core["x"] = 7
-            elif t6_locs["x"] in [10, 11, 12]:
-                dram_core["x"] = 10
-            else:
-                dram_core["x"] = -1
-            if t6_locs["y"] <= 5:
-                dram_core["y"] = 0
-            else:
-                dram_core["y"] = 6
-        else:
-            raise ValueError("Unsupported architecture")
-        return dram_core
+        return self._noc0_to_block_type.get(loc._noc0_coord)
 
     # Returns a string representation of the device. When printed, the string will
     # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list
@@ -585,7 +334,7 @@ class Device(TTObject):
                 render_str = ""
                 if (ui_hor, ui_ver) in all_block_locs:
                     if cell_renderer == None:
-                        render_str = all_block_locs[(ui_hor, ui_ver)].to_str("netlist")
+                        render_str = all_block_locs[(ui_hor, ui_ver)].to_str("logical")
                     else:
                         render_str = cell_renderer(all_block_locs[(ui_hor, ui_ver)])
                 row.append(render_str)
@@ -604,12 +353,6 @@ class Device(TTObject):
         table_str = tabulate(rows, tablefmt="plain", disable_numparse=True)
         return table_str
 
-    def dump_memory(self, noc0_loc, addr, size):
-        return dump_memory(self._context, self.id(), noc0_loc, addr, size)
-
-    def dump_tile(self, noc0_loc, addr, size, data_format):
-        return dump_tile(self._context, self.id(), noc0_loc, addr, size, data_format)
-
     # User friendly string representation of the device
     def __str__(self):
         return self.render()
@@ -618,532 +361,8 @@ class Device(TTObject):
     def __repr__(self):
         return f"ID: {self.id()}, Arch: {self._arch}"
 
-    # Reads and returns the Risc debug registers
-    def get_debug_regs(self, loc):
-        DEBUG_MAILBOX_BUF_BASE = 112
-        DEBUG_MAILBOX_BUF_SIZE = 64
-        THREAD_COUNT = 4
-
-        debug_tables = [[] for i in range(THREAD_COUNT)]
-        for thread_idx in range(THREAD_COUNT):
-            for reg_idx in range(DEBUG_MAILBOX_BUF_SIZE // THREAD_COUNT):
-                reg_addr = (
-                    DEBUG_MAILBOX_BUF_BASE
-                    + thread_idx * DEBUG_MAILBOX_BUF_SIZE
-                    + reg_idx * 4
-                )
-                val = read_word_from_device(loc, reg_addr, self.id(), self._context)
-                debug_tables[thread_idx].append(
-                    {"lo_val": val & 0xFFFF, "hi_val": (val >> 16) & 0xFFFF}
-                )
-        return debug_tables
-
-    # Returns a stream type based on KERNEL_OPERAND_MAPPING_SCHEME
-    def stream_type(self, stream_id):
-        # From src/firmware/riscv/grayskull/stream_io_map.h
-        # Kernel operand mapping scheme:
-        KERNEL_OPERAND_MAPPING_SCHEME = [
-            {
-                "id_min": 0,
-                "id_max": 7,
-                "stream_id_min": 0,
-                "short": "??",
-                "long": "????? => streams 0-7",
-            },  # FIX THIS
-            {
-                "id_min": 0,
-                "id_max": 7,
-                "stream_id_min": 8,
-                "short": "input",
-                "long": "(inputs, unpacker-only) => streams 8-15",
-            },
-            {
-                "id_min": 8,
-                "id_max": 15,
-                "stream_id_min": 16,
-                "short": "param",
-                "long": "(params, unpacker-only) => streams 16-23",
-            },
-            {
-                "id_min": 16,
-                "id_max": 23,
-                "stream_id_min": 24,
-                "short": "output",
-                "long": "(outputs, packer-only) => streams 24-31",
-            },
-            {
-                "id_min": 24,
-                "id_max": 31,
-                "stream_id_min": 32,
-                "short": "intermediate",
-                "long": "(intermediates, packer/unpacker) => streams 32-39",
-            },
-            {
-                "id_min": 32,
-                "id_max": 63,
-                "stream_id_min": 32,
-                "short": "op-relay",
-                "long": "(operand relay?) => streams 40-63",
-            },  # CHECK THIS
-        ]
-        for ko in KERNEL_OPERAND_MAPPING_SCHEME:
-            s_id_min = ko["stream_id_min"]
-            s_id_count = ko["id_max"] - ko["id_min"]
-            if stream_id >= s_id_min and stream_id < s_id_min + s_id_count:
-                return ko
-        util.WARN("no desc for stream_id=%s" % stream_id)
-        return {
-            "id_min": -1,
-            "id_max": -1,
-            "stream_id_min": -1,
-            "short": "??",
-            "long": "?????",
-        }  # FIX THIS
-
-    # Function to print a full dump of a location x-y
-    def full_dump_xy(self, loc):
-        for stream_id in range(0, 64):
-            print()
-            stream = self.read_stream_regs(loc, stream_id)
-            for reg, value in stream.items():
-                print(
-                    f"Tensix x={loc.to_str()} => stream {stream_id:02d} {reg} = {value}"
-                )
-
-        for noc_id in range(0, 2):
-            print()
-            self.read_print_noc_reg(loc, noc_id, "nonposted write reqs sent", 0xA)
-            self.read_print_noc_reg(loc, noc_id, "posted write reqs sent", 0xB)
-            self.read_print_noc_reg(loc, noc_id, "nonposted write words sent", 0x8)
-            self.read_print_noc_reg(loc, noc_id, "posted write words sent", 0x9)
-            self.read_print_noc_reg(loc, noc_id, "write acks received", 0x1)
-            self.read_print_noc_reg(loc, noc_id, "read reqs sent", 0x5)
-            self.read_print_noc_reg(loc, noc_id, "read words received", 0x3)
-            self.read_print_noc_reg(loc, noc_id, "read resps received", 0x2)
-            print()
-            self.read_print_noc_reg(loc, noc_id, "nonposted write reqs received", 0x1A)
-            self.read_print_noc_reg(loc, noc_id, "posted write reqs received", 0x1B)
-            self.read_print_noc_reg(loc, noc_id, "nonposted write words received", 0x18)
-            self.read_print_noc_reg(loc, noc_id, "posted write words received", 0x19)
-            self.read_print_noc_reg(loc, noc_id, "write acks sent", 0x10)
-            self.read_print_noc_reg(loc, noc_id, "read reqs received", 0x15)
-            self.read_print_noc_reg(loc, noc_id, "read words sent", 0x13)
-            self.read_print_noc_reg(loc, noc_id, "read resps sent", 0x12)
-            print()
-            self.read_print_noc_reg(
-                loc, noc_id, "router port x out vc full credit out vc stall", 0x24
-            )
-            self.read_print_noc_reg(
-                loc, noc_id, "router port y out vc full credit out vc stall", 0x22
-            )
-            self.read_print_noc_reg(
-                loc, noc_id, "router port niu out vc full credit out vc stall", 0x20
-            )
-            print()
-            self.read_print_noc_reg(loc, noc_id, "router port x VC14 & VC15 dbg", 0x3D)
-            self.read_print_noc_reg(loc, noc_id, "router port x VC12 & VC13 dbg", 0x3C)
-            self.read_print_noc_reg(loc, noc_id, "router port x VC10 & VC11 dbg", 0x3B)
-            self.read_print_noc_reg(loc, noc_id, "router port x VC8 & VC9 dbg", 0x3A)
-            self.read_print_noc_reg(loc, noc_id, "router port x VC6 & VC7 dbg", 0x39)
-            self.read_print_noc_reg(loc, noc_id, "router port x VC4 & VC5 dbg", 0x38)
-            self.read_print_noc_reg(loc, noc_id, "router port x VC2 & VC3 dbg", 0x37)
-            self.read_print_noc_reg(loc, noc_id, "router port x VC0 & VC1 dbg", 0x36)
-            print()
-            self.read_print_noc_reg(loc, noc_id, "router port y VC14 & VC15 dbg", 0x35)
-            self.read_print_noc_reg(loc, noc_id, "router port y VC12 & VC13 dbg", 0x34)
-            self.read_print_noc_reg(loc, noc_id, "router port y VC10 & VC11 dbg", 0x33)
-            self.read_print_noc_reg(loc, noc_id, "router port y VC8 & VC9 dbg", 0x32)
-            self.read_print_noc_reg(loc, noc_id, "router port y VC6 & VC7 dbg", 0x31)
-            self.read_print_noc_reg(loc, noc_id, "router port y VC4 & VC5 dbg", 0x30)
-            self.read_print_noc_reg(loc, noc_id, "router port y VC2 & VC3 dbg", 0x2F)
-            self.read_print_noc_reg(loc, noc_id, "router port y VC0 & VC1 dbg", 0x2E)
-            print()
-            self.read_print_noc_reg(loc, noc_id, "router port niu VC6 & VC7 dbg", 0x29)
-            self.read_print_noc_reg(loc, noc_id, "router port niu VC4 & VC5 dbg", 0x28)
-            self.read_print_noc_reg(loc, noc_id, "router port niu VC2 & VC3 dbg", 0x27)
-            self.read_print_noc_reg(loc, noc_id, "router port niu VC0 & VC1 dbg", 0x26)
-
-        en = 1
-        rd_sel = 0
-        pc_mask = 0x7FFFFFFF
-        daisy_sel = 7
-
-        sig_sel = 0xFF
-        rd_sel = 0
-        write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
-        test_val1 = read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
-        rd_sel = 1
-        write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
-        test_val2 = read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
-
-        rd_sel = 0
-        sig_sel = 2 * self.SIG_SEL_CONST
-        write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
-        brisc_pc = (
-            read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
-            & pc_mask
-        )
-
-        # Doesn't work - looks like a bug for selecting inputs > 31 in daisy stop
-        # rd_sel = 0
-        # sig_sel = 2*16
-        # SERVER_IFC.pci_write32(self.id(), *loc.to("nocVirt"), 0xffb12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)))
-        # nrisc_pc = SERVER_IFC.pci_read32(self.id(), *loc.to("nocVirt"), 0xffb1205c) & pc_mask
-
-        rd_sel = 0
-        sig_sel = 2 * 10
-        write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
-        trisc0_pc = (
-            read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
-            & pc_mask
-        )
-
-        rd_sel = 0
-        sig_sel = 2 * 11
-        write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
-        trisc1_pc = (
-            read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
-            & pc_mask
-        )
-
-        rd_sel = 0
-        sig_sel = 2 * 12
-        write_words_to_device(loc, 0xFFB12054, ((en << 29) | (rd_sel << 25) | (daisy_sel << 16) | (sig_sel << 0)), self.id(), self._context)
-        trisc2_pc = (
-            read_word_from_device(loc, 0xFFB1205C, self.id(), self._context)
-            & pc_mask
-        )
-
-        print()
-        print(
-            f"Tensix {loc.to_str()} => dbus_test_val1 (expect 7)={test_val1:x}, dbus_test_val2 (expect A5A5A5A5)={test_val2:x}"
-        )
-        print(
-            f"Tensix {loc.to_str()} => brisc_pc=0x{brisc_pc:x}, trisc0_pc=0x{trisc0_pc:x}, trisc1_pc=0x{trisc1_pc:x}, trisc2_pc=0x{trisc2_pc:x}"
-        )
-
-        write_words_to_device(loc, 0xFFB12054, 0, self.id(), self._context)
-        util.WARN(
-            "full_dump_xy not fully tested (functionality might be device dependent)"
-        )
-
-    # Reads and immediately prints a value of a given NOC register
-    def read_print_noc_reg(self, loc, noc_id, reg_name, reg_index):
-        assert type(loc) == OnChipCoordinate
-        reg_addr = 0xFFB20000 + (noc_id * 0x10000) + 0x200 + (reg_index * 4)
-        val = read_word_from_device(loc, reg_addr, self.id(), self._context)
-        print(
-            f"Tensix {loc.to_str()} => NOC{noc_id:d} {reg_name:s} = 0x{val:08x} ({val:d})"
-        )
-        return val
-
-    # Extracts and returns a single field of a stream register
-    def get_stream_reg_field(self, loc, stream_id, reg_index, start_bit, num_bits):
-        assert type(loc) == OnChipCoordinate
-        reg_addr = 0xFFB40000 + (stream_id * 0x1000) + (reg_index * 4)
-        val = read_word_from_device(loc, reg_addr, self.id(), self._context)
-        mask = (1 << num_bits) - 1
-        val = (val >> start_bit) & mask
-        return val
-
-    # Returns whether the stream is configured
-    def is_stream_configured(self, stream_data):
-        return int(stream_data["CURR_PHASE"]) > 0
-
-    def stream_has_remote_receiver(self, stream_data):
-        return int(stream_data["REMOTE_RECEIVER"]) != 0
-
-    def is_stream_idle(self, stream_data):
-        return (stream_data["DEBUG_STATUS[7]"] & 0xFFF) == 0xC00
-
-    def is_stream_holding_tiles(self, stream_data):
-        return int(stream_data["CURR_PHASE"]) != 0 and (
-            int(stream_data["NUM_MSGS_RECEIVED"]) > 0
-            or (
-                int(
-                    stream_data["MSG_INFO_WR_PTR (word addr)"]
-                    if "MSG_INFO_WR_PTR (word addr)" in stream_data
-                    else 0
-                )
-                - int(
-                    stream_data["MSG_INFO_PTR (word addr)"]
-                    if "MSG_INFO_PTR (word addr)" in stream_data
-                    else 0
-                )
-                > 0
-            )
-        )
-
-    def is_stream_active(self, stream_data):
-        return int(stream_data["CURR_PHASE"]) != 0 and (
-            int(stream_data["NUM_MSGS_RECEIVED"]) > 0
-            or (
-                int(
-                    stream_data["MSG_INFO_WR_PTR (word addr)"]
-                    if "MSG_INFO_WR_PTR (word addr)" in stream_data
-                    else 0
-                )
-                - int(
-                    stream_data["MSG_INFO_PTR (word addr)"]
-                    if "MSG_INFO_PTR (word addr)" in stream_data
-                    else 0
-                )
-                > 0
-            )
-        )
-
-    def is_stream_done(self, stream_data):
-        return int(stream_data["NUM_MSGS_RECEIVED"]) == int(
-            stream_data["CURR_PHASE_NUM_MSGS_REMAINING"]
-        )
-
-    def is_bad_stream(self, stream_data):
-        # Only certain bits indicate a problem for debug status registers
-        return (
-            ((stream_data["DEBUG_STATUS[1]"] & 0xF0000) != 0)
-            or (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x4
-            or (stream_data["DEBUG_STATUS[2]"] & 0x7) == 0x2
-        )
-
-    def is_gsync_hung(self, loc):
-        assert type(loc) == OnChipCoordinate
-        return (
-            read_word_from_device(loc, 0xFFB2010C, self.id(), self._context)
-            == 0xB0010000
-        )
-
-    def is_ncrisc_done(self, loc):
-        assert type(loc) == OnChipCoordinate
-        return (
-            read_word_from_device(loc, 0xFFB2010C, self.id(), self._context)
-            == 0x1FFFFFF1
-        )
-
-    NCRISC_STATUS_REG_ADDR = 0xFFB2010C
-    BRISC_STATUS_REG_ADDR = 0xFFB3010C
-
-    def get_status_register_desc(self, register_address, reg_value_on_chip):
-        STATUS_REG = {
-            self.NCRISC_STATUS_REG_ADDR: [  # ncrisc
-                {
-                    "reg_val": [0xA8300000, 0xA8200000, 0xA8100000],
-                    "description": "Prologue queue header load",
-                    "mask": 0xFFFFF000,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0x11111111],
-                    "description": "Main loop begin",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xC0000000],
-                    "description": "Load queue pointers",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xD0000000],
-                    "description": "Which stream id will read queue",
-                    "mask": 0xFFFFF000,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xD1000000],
-                    "description": "Queue has data to read",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xD2000000],
-                    "description": "Queue has l1 space",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xD3000000],
-                    "description": "Queue read in progress",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xE0000000],
-                    "description": "Which stream has data in l1 available to push",
-                    "mask": 0xFFFFF000,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xE1000000],
-                    "description": "Push in progress",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xF0000000],
-                    "description": "Which stream will write queue",
-                    "mask": 0xFFFFF000,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xF0300000],
-                    "description": "Waiting for stride to be ready before updating wr pointer",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xF1000000],
-                    "description": "Needs to write data to dram",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xF2000000],
-                    "description": "Ready to write data to dram",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xF3000000],
-                    "description": "Has data to write to dram",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xF4000000],
-                    "description": "Writing to dram",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0x20000000],
-                    "description": "Amount of written tiles that needs to be cleared",
-                    "mask": 0xFFFFF000,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0x22222222, 0x33333333, 0x44444444],
-                    "description": "Epilogue",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 1,
-                },
-                {
-                    "reg_val": [0x10000006, 0x10000001],
-                    "description": "Waiting for next epoch",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 1,
-                },
-                {
-                    "reg_val": [0x1FFFFFF1],
-                    "description": "Done",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 2,
-                },
-            ],
-            self.BRISC_STATUS_REG_ADDR: [  # brisc
-                {
-                    "reg_val": [0xB0000000],
-                    "description": "Stream restart check",
-                    "mask": 0xFFFFF000,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xC0000000],
-                    "description": "Check whether unpack stream has data",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xD0000000],
-                    "description": "Clear unpack stream",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xE0000000],
-                    "description": "Check and push pack stream that has data (TM ops only)",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xF0000000],
-                    "description": "Reset intermediate streams",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0xF1000000],
-                    "description": "Wait until all streams are idle",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 0,
-                },
-                {
-                    "reg_val": [0x21000000],
-                    "description": "Waiting for next epoch",
-                    "mask": 0xFFFFF000,
-                    "ver": 1,
-                },
-                {
-                    "reg_val": [0x10000001],
-                    "description": "Waiting for next epoch",
-                    "mask": 0xFFFFFFFF,
-                    "ver": 1,
-                },
-                {
-                    "reg_val": [0x22000000],
-                    "description": "Done",
-                    "mask": 0xFFFFFF00,
-                    "ver": 2,
-                },
-            ],
-        }
-
-        if register_address in STATUS_REG:
-            reg_value_desc_list = STATUS_REG[register_address]
-            for reg_value_desc in reg_value_desc_list:
-                mask = reg_value_desc["mask"]
-                for reg_val_in_desc in reg_value_desc["reg_val"]:
-                    if reg_value_on_chip & mask == reg_val_in_desc:
-                        return [
-                            reg_value_on_chip,
-                            reg_value_desc["description"],
-                            reg_value_desc["ver"],
-                        ]
-            return [reg_value_on_chip, "", 2]
-        return []
-
-    NCRISC_STATUS_REG_ADDR = NCRISC_STATUS_REG_ADDR
-    BRISC_STATUS_REG_ADDR = BRISC_STATUS_REG_ADDR
-
-    def read_stream_regs(self, loc, stream_id):
-        return self.read_stream_regs_direct(loc, stream_id)
-
-    def status_register_summary(self, addr, ver=0):
-        coords = self.get_block_locations()
-        status_descs = {}
-        for loc in coords:
-            status_descs[loc] = self.get_status_register_desc(
-                addr, read_word_from_device(loc, addr, self.id(), self._context)
-            )
-
-        # Print register status
-        status_descs_rows = []
-        for loc in coords:
-            if status_descs[loc] and status_descs[loc][2] <= ver:
-                lxy = loc.to("nocTr")
-                status_descs_rows.append(
-                    [
-                        f"{loc.to_str()}",
-                        f"{status_descs[loc][0]:08x}",
-                        f"{status_descs[loc][1]}",
-                    ]
-                )
-        return status_descs_rows
-
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
-        return self._context.server_ifc.pci_read_tile(
-            self.id(), x, y, reg_addr, msg_size, data_format
-        )
+        return self._context.server_ifc.pci_read_tile(self.id(), x, y, reg_addr, msg_size, data_format)
 
     def all_riscs_assert_soft_reset(self) -> None:
         """
@@ -1162,7 +381,7 @@ class Device(TTObject):
             # Check what we wrote
             rst_reg = read_word_from_device(loc, RISC_SOFT_RESET_0_ADDR, self.id(), self._context)
             if rst_reg != ALL_SOFT_RESET:
-                util.ERROR (f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
+                util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 
     @abstractmethod
     def get_tensix_configuration_register_base(self) -> int:
@@ -1194,7 +413,7 @@ class Device(TTObject):
 
     def get_tensix_register_address(self, register_name: str) -> int:
         description = self.get_tensix_register_description(register_name)
-        assert(description.mask == 0xFFFFFFFF and description.shift == 0)
+        assert description.mask == 0xFFFFFFFF and description.shift == 0
         return description.address
 
     def get_riscv_run_status(self, loc: OnChipCoordinate) -> str:
@@ -1210,9 +429,11 @@ class Device(TTObject):
                 risc_debug = RiscDebug(risc_location, self._context)
                 status_str += "-" if risc_debug.is_in_reset() else "R"
             return status_str
+        if bt == "harvested_workers":
+            return "----"
         return bt
-    
-    REGISTER_ADDRESSES = {} 
+
+    REGISTER_ADDRESSES = {}
 
     def get_register_addr(self, name: str) -> int:
         try:
@@ -1221,34 +442,25 @@ class Device(TTObject):
             raise ValueError(f"Unknown register name: {name}. Available registers: {self.REGISTER_ADDRESSES.keys()}")
 
         return addr
-    
+
     def _init_register_addresses(self):
         # base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
         # csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
         # rom_data_base_addr = self.PCI_ARC_ROM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_ROM_DATA_BASE_ADDR
 
-        # self.REGISTER_ADDRESSES = {
-        #     "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
-        #     "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
-        #     "ARC_RESET_ARC_UDMIAXI_REGION": base_addr + 0x10C,
-        #     "ARC_RESET_SCRATCH0": base_addr + 0x060,
-        #     "ARC_RESET_SCRATCH1": base_addr + 0x064,
-        #     "ARC_RESET_SCRATCH2": base_addr + 0x068,
-        #     "ARC_RESET_SCRATCH3": base_addr + 0x06C,
-        #     "ARC_RESET_SCRATCH4": base_addr + 0x070,
-        #     "ARC_RESET_SCRATCH5": base_addr + 0x074,
-        #     "ARC_CSM_DATA": csm_data_base_addr,
-        #     "ARC_ROM_DATA": rom_data_base_addr
-        # }
-        pass
-# end of class Device
+        self.REGISTER_ADDRESSES = {
+            "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
+            "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
+            "ARC_RESET_ARC_UDMIAXI_REGION": base_addr + 0x10C,
+            "ARC_RESET_SCRATCH0": base_addr + 0x060,
+            "ARC_RESET_SCRATCH1": base_addr + 0x064,
+            "ARC_RESET_SCRATCH2": base_addr + 0x068,
+            "ARC_RESET_SCRATCH3": base_addr + 0x06C,
+            "ARC_RESET_SCRATCH4": base_addr + 0x070,
+            "ARC_RESET_SCRATCH5": base_addr + 0x074,
+            "ARC_CSM_DATA": csm_data_base_addr,
+            "ARC_ROM_DATA": rom_data_base_addr,
+        }
 
-# This is based on runtime_utils.cpp:get_soc_desc_path()
-def get_soc_desc_path(chip, output_dir):
-    if os.path.exists(os.path.join(output_dir, "device_desc_runtime", f"{chip}.yaml")):
-        file_to_use = os.path.join(output_dir, "device_desc_runtime", f"{chip}.yaml")
-    elif os.path.exists(os.path.join(output_dir, "device_descs")):
-        file_to_use = os.path.join(output_dir, "device_descs", f"{chip}.yaml")
-    else:
-        file_to_use = os.path.join(output_dir, "device_desc.yaml")
-    return file_to_use
+
+# end of class Device

@@ -13,13 +13,15 @@
 
 #include "ttlensserver/jtag.h"
 #include "ttlensserver/jtag_device.h"
-#include "umd/device/blackhole_implementation.h"
+#include "ttlensserver/jtag_implementation.h"
+#include "ttlensserver/umd_implementation.h"
 #include "umd/device/cluster.h"
-#include "umd/device/grayskull_implementation.h"
 #include "umd/device/tt_cluster_descriptor.h"
 #include "umd/device/tt_simulation_device.h"
+#include "umd/device/tt_core_coordinates.h"
+#include "umd/device/tt_soc_descriptor.h"
+#include "umd/device/tt_xy_pair.h"
 #include "umd/device/types/arch.h"
-#include "umd/device/wormhole_implementation.h"
 
 // Include automatically generated files that we embed in source to avoid managing their deployment
 static const uint8_t blackhole_configuration_bytes[] = {
@@ -152,12 +154,7 @@ static std::unique_ptr<tt::umd::Cluster> create_grayskull_device(const std::stri
 
     auto device =
         std::make_unique<tt::umd::Cluster>(device_configuration_path, target_devices, num_host_mem_ch_per_mmio_device);
-    tt_driver_host_address_params host_address_params = {
-        // Values copied from: third_party/umd/src/firmware/riscv/grayskull/host_mem_address_map.h
-        32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
-        0x38000000,  // host_mem::address_map::ETH_ROUTING_BUFFERS_START
-    };
-    device->set_driver_host_address_params(host_address_params);
+
     return device;
 }
 
@@ -168,15 +165,10 @@ static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::strin
 
     auto device =
         std::make_unique<tt::umd::Cluster>(device_configuration_path, target_devices, num_host_mem_ch_per_mmio_device);
-    tt_driver_host_address_params host_address_params = {
-        // Values copied from: third_party/umd/src/firmware/riscv/wormhole/host_mem_address_map.h
-        32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
-        0x38000000,  // host_mem::address_map::ETH_ROUTING_BUFFERS_START
-    };
     for (auto chip_id : device->get_target_mmio_device_ids()) {
         device->configure_active_ethernet_cores_for_mmio_device(chip_id, {});
     }
-    device->set_driver_host_address_params(host_address_params);
+
     return device;
 }
 
@@ -187,13 +179,19 @@ static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::stri
 
     auto device =
         std::make_unique<tt::umd::Cluster>(device_configuration_path, target_devices, num_host_mem_ch_per_mmio_device);
-    tt_driver_host_address_params host_address_params = {
-        // Values copied from: third_party/umd/src/firmware/riscv/blackhole/host_mem_address_map.h
-        32 * 1024,   // host_mem::address_map::ETH_ROUTING_BLOCK_SIZE,
-        0x38000000,  // host_mem::address_map::ETH_ROUTING_BUFFERS_START
-    };
-    device->set_driver_host_address_params(host_address_params);
+
     return device;
+}
+
+static void write_coord(std::ostream &out, const tt::umd::CoreCoord &input, CoreType core_type,
+                        const tt_SocDescriptor &soc_descriptor) {
+    auto output = soc_descriptor.translate_coord_to(input, CoordSystem::PHYSICAL);
+    out << output.x << "-" << output.y << ", ";
+}
+
+static void write_coord(std::ostream &out, const tt_xy_pair &xy, CoreType core_type,
+                        const tt_SocDescriptor &soc_descriptor) {
+    write_coord(out, tt::umd::CoreCoord{xy.x, xy.y, core_type, CoordSystem::VIRTUAL}, core_type, soc_descriptor);
 }
 
 // Creates SOC descriptor files by serializing tt_SocDescroptor structure to yaml.
@@ -219,9 +217,9 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << "arc:" << std::endl;
     outfile << "  [" << std::endl;
 
-    for (const auto &arc : soc_descriptor.arc_cores) {
+    for (const auto &arc : soc_descriptor.get_cores(CoreType::ARC)) {
         if (arc.x < soc_descriptor.grid_size.x && arc.y < soc_descriptor.grid_size.y) {
-            outfile << arc.x << "-" << arc.y << ", ";
+            write_coord(outfile, arc, CoreType::ARC, soc_descriptor);
         }
     }
     outfile << std::endl;
@@ -230,9 +228,9 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << "pcie:" << std::endl;
     outfile << "  [" << std::endl;
 
-    for (const auto &pcie : soc_descriptor.pcie_cores) {
+    for (const auto &pcie : soc_descriptor.get_cores(CoreType::PCIE)) {
         if (pcie.x < soc_descriptor.grid_size.x && pcie.y < soc_descriptor.grid_size.y) {
-            outfile << pcie.x << "-" << pcie.y << ", ";
+            write_coord(outfile, pcie, CoreType::PCIE, soc_descriptor);
         }
     }
     outfile << std::endl;
@@ -244,17 +242,20 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
 
     for (const auto &dram_cores : soc_descriptor.dram_cores) {
         // Insert the dram core if it's within the given grid
-        std::vector<std::string> inserted = {};
+        bool has_data = false;
+
         for (const auto &dram_core : dram_cores) {
             if ((dram_core.x < soc_descriptor.grid_size.x) and (dram_core.y < soc_descriptor.grid_size.y)) {
-                inserted.push_back(std::to_string(dram_core.x) + "-" + std::to_string(dram_core.y));
+                has_data = true;
             }
         }
-        if (inserted.size()) {
+        if (has_data) {
             outfile << "[";
 
-            for (int i = 0; i < inserted.size(); i++) {
-                outfile << inserted[i] << ", ";
+            for (const auto &dram_core : dram_cores) {
+                if ((dram_core.x < soc_descriptor.grid_size.x) and (dram_core.y < soc_descriptor.grid_size.y)) {
+                    write_coord(outfile, dram_core, CoreType::DRAM, soc_descriptor);
+                }
             }
 
             outfile << "]," << std::endl;
@@ -263,15 +264,10 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << std::endl << "]" << std::endl << std::endl;
 
     outfile << "eth:" << std::endl << "  [" << std::endl;
-    bool inserted_eth = false;
-    for (const auto &ethernet_core : soc_descriptor.ethernet_cores) {
+    for (const auto &ethernet_core : soc_descriptor.get_cores(CoreType::ETH)) {
         // Insert the eth core if it's within the given grid
         if (ethernet_core.x < soc_descriptor.grid_size.x && ethernet_core.y < soc_descriptor.grid_size.y) {
-            if (inserted_eth) {
-                outfile << ", ";
-            }
-            outfile << ethernet_core.x << "-" << ethernet_core.y;
-            inserted_eth = true;
+            write_coord(outfile, ethernet_core, CoreType::ETH, soc_descriptor);
         }
     }
     outfile << std::endl << "]" << std::endl << std::endl;
@@ -279,9 +275,9 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << "harvested_workers:" << std::endl;
     outfile << "  [" << std::endl;
 
-    for (const auto &worker : soc_descriptor.harvested_workers) {
+    for (const auto &worker : soc_descriptor.get_harvested_cores(CoreType::TENSIX)) {
         if (worker.x < soc_descriptor.grid_size.x && worker.y < soc_descriptor.grid_size.y) {
-            outfile << worker.x << "-" << worker.y << ", ";
+            write_coord(outfile, worker, CoreType::TENSIX, soc_descriptor);
         }
     }
     outfile << std::endl;
@@ -289,9 +285,9 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
 
     outfile << "functional_workers:" << std::endl;
     outfile << "  [" << std::endl;
-    for (const auto &worker : soc_descriptor.workers) {
+    for (const auto &worker : soc_descriptor.get_cores(CoreType::TENSIX)) {
         if (worker.x < soc_descriptor.grid_size.x && worker.y < soc_descriptor.grid_size.y) {
-            outfile << worker.x << "-" << worker.y << ", ";
+            write_coord(outfile, worker, CoreType::TENSIX, soc_descriptor);
         }
     }
     outfile << std::endl;
@@ -324,16 +320,16 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
 
 static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_device *device,
                                                                     const std::vector<uint8_t> &device_ids) {
-    std::map<uint8_t, std::string> device_soc_descriptors;
+    std::map<uint8_t, std::string> device_soc_descriptors_yamls;
 
     for (auto device_id : device_ids) {
         auto &soc_descriptor = device->get_soc_descriptor(device_id);
         std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
         write_soc_descriptor(file_name, soc_descriptor);
 
-        device_soc_descriptors[device_id] = file_name;
+        device_soc_descriptors_yamls[device_id] = file_name;
     }
-    return device_soc_descriptors;
+    return device_soc_descriptors_yamls;
 }
 
 std::unique_ptr<JtagDevice> init_jtag(std::filesystem::path binary_directory) {
@@ -373,14 +369,9 @@ static std::string jtag_create_temp_network_descriptor_file(JtagDevice *jtag_dev
     return cluster_descriptor_path;
 }
 
-static std::string jtag_create_device_soc_descriptor(tt::ARCH arch, uint32_t device_id, uint32_t harvesting) {
-    const auto default_sdesc = tt_SocDescriptor(temp_working_directory / "soc_descriptor.yaml", true);
-
-    auto temp_sdesc = default_sdesc;
-    tt::umd::Cluster::harvest_rows_in_soc_descriptor(arch, temp_sdesc, harvesting);
-
+static std::string jtag_create_device_soc_descriptor(const tt_SocDescriptor &soc_descriptor, uint32_t device_id) {
     std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
-    write_soc_descriptor(file_name, temp_sdesc);
+    write_soc_descriptor(file_name, soc_descriptor);
     return file_name;
 }
 
@@ -414,12 +405,15 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
         return {};
     }
 
-    std::map<uint8_t, std::string> device_soc_descriptors;
+    std::map<uint8_t, std::string> device_soc_descriptors_yamls;
+    std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
 
     for (size_t device_id = 0; device_id < jtag_device->get_device_cnt(); device_id++) {
         tt::ARCH arch = *jtag_device->get_jtag_arch(device_id);
         uint32_t harvesting = *jtag_device->get_device_harvesting(device_id);
-        device_soc_descriptors[device_id] = jtag_create_device_soc_descriptor(arch, device_id, harvesting);
+        soc_descriptors[device_id] = tt_SocDescriptor(device_configuration_path, harvesting);
+        device_soc_descriptors_yamls[device_id] =
+            jtag_create_device_soc_descriptor(soc_descriptors[device_id], device_id);
         device_ids.push_back(device_id);
     }
 
@@ -429,7 +423,8 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
     implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
     implementation->device_ids = device_ids;
-    implementation->device_soc_descriptors = device_soc_descriptors;
+    implementation->soc_descriptors = std::move(soc_descriptors);
+    implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
     return std::move(implementation);
 }
 
@@ -491,7 +486,11 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
             throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");
     }
 
-    auto device_soc_descriptors = create_device_soc_descriptors(device.get(), device_ids);
+    auto device_soc_descriptors_yamls = create_device_soc_descriptors(device.get(), device_ids);
+    std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
+    for (auto device_id : device_ids) {
+        soc_descriptors[device_id] = device->get_soc_descriptor(device_id);
+    }
 
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(device)));
@@ -499,7 +498,8 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
     implementation->device_ids = device_ids;
-    implementation->device_soc_descriptors = device_soc_descriptors;
+    implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
+    implementation->soc_descriptors = std::move(soc_descriptors);
     return std::move(implementation);
 }
 
@@ -526,7 +526,11 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     device->deassert_risc_reset();
 
     std::vector<uint8_t> device_ids{0};
-    auto device_soc_descriptors = create_device_soc_descriptors(device.get(), device_ids);
+    auto device_soc_descriptors_yamls = create_device_soc_descriptors(device.get(), device_ids);
+    std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
+    for (auto device_id : device_ids) {
+        soc_descriptors[device_id] = device->get_soc_descriptor(device_id);
+    }
 
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(device)));
@@ -534,7 +538,8 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = create_simulation_cluster_descriptor_file(arch);
     implementation->device_ids = device_ids;
-    implementation->device_soc_descriptors = device_soc_descriptors;
+    implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
+    implementation->soc_descriptors = std::move(soc_descriptors);
     return std::move(implementation);
 }
 
@@ -551,7 +556,61 @@ std::optional<std::vector<uint8_t>> open_implementation<BaseClass>::get_device_i
 template <typename BaseClass>
 std::optional<std::string> open_implementation<BaseClass>::get_device_soc_description(uint8_t chip_id) {
     try {
-        return device_soc_descriptors[chip_id];
+        return device_soc_descriptors_yamls[chip_id];
+    } catch (...) {
+        return {};
+    }
+}
+
+template <typename BaseClass>
+std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::convert_from_noc0(
+    uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, const std::string &core_type, const std::string &coord_system) {
+    CoreType core_type_enum;
+
+    if (core_type == "arc") {
+        core_type_enum = CoreType::ARC;
+    } else if (core_type == "dram") {
+        core_type_enum = CoreType::DRAM;
+    } else if (core_type == "active_eth") {
+        core_type_enum = CoreType::ACTIVE_ETH;
+    } else if (core_type == "idle_eth") {
+        core_type_enum = CoreType::IDLE_ETH;
+    } else if (core_type == "pcie") {
+        core_type_enum = CoreType::PCIE;
+    } else if (core_type == "tensix") {
+        core_type_enum = CoreType::TENSIX;
+    } else if (core_type == "router_only") {
+        core_type_enum = CoreType::ROUTER_ONLY;
+    } else if (core_type == "harvested") {
+        core_type_enum = CoreType::HARVESTED;
+    } else if (core_type == "eth") {
+        core_type_enum = CoreType::ETH;
+    } else if (core_type == "worker") {
+        core_type_enum = CoreType::WORKER;
+    } else {
+        return {};
+    }
+
+    CoordSystem coord_system_enum;
+
+    if (coord_system == "logical") {
+        coord_system_enum = CoordSystem::LOGICAL;
+    } else if (coord_system == "physical") {
+        coord_system_enum = CoordSystem::PHYSICAL;
+    } else if (coord_system == "virtual") {
+        coord_system_enum = CoordSystem::VIRTUAL;
+    } else if (coord_system == "translated") {
+        coord_system_enum = CoordSystem::TRANSLATED;
+    } else {
+        return {};
+    }
+
+    try {
+        auto &soc_descriptor = soc_descriptors.at(chip_id);
+        tt::umd::CoreCoord core_coord{noc_x, noc_y, core_type_enum, CoordSystem::PHYSICAL};
+        auto output = soc_descriptor.translate_coord_to(core_coord, coord_system_enum);
+
+        return std::make_tuple(static_cast<uint8_t>(output.x), static_cast<uint8_t>(output.y));
     } catch (...) {
         return {};
     }

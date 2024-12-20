@@ -14,12 +14,12 @@ Arguments:
   data        Data to write
 
 Examples:
-  wxy 18-18 0x0 0x1234
+  wxy 0,0 0x0 0x1234
 """
 
 command_metadata = {
-    "short": "wxy", 
-    "type": "low-level", 
+    "short": "wxy",
+    "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],
 }

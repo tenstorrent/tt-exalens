@@ -1,6 +1,6 @@
 <div align="center">
 <h1> TTLens </h1>
-  
+
 A low level hardware debugger
 
 <img src="./docs/images/tt_logo_stacked_color.png" alt="ttnn logo" height="100"/>
@@ -22,6 +22,8 @@ After cloning the TTLens repository, be sure to run
 
 ```bash
 git submodule update --init --recursive
+git lfs install
+git submodule foreach 'git lfs fetch --all && git lfs pull'
 ```
 
 so that all the submodules are properly loaded.
@@ -41,11 +43,12 @@ To build TTLens, you need the following dependencies:
 - libhwloc-dev,
 - libzmq3-dev,
 - xxd,
+- ninja-build
 
 which can be installed by running
 
 ```bash
-sudo apt install software-properties-common build-essential libyaml-cpp-dev libboost-all-dev libhwloc-dev libzmq3-dev libgtest-dev libgmock-dev xxd
+sudo apt install software-properties-common build-essential libyaml-cpp-dev libboost-all-dev libhwloc-dev libzmq3-dev libgtest-dev libgmock-dev xxd ninja-build
 ```
 
 Both python 3.8 and 3.10 are actively supported, so you can use either
@@ -156,8 +159,20 @@ from the project root directory.
 
 ### Updating documentation
 
+In order to update documentation virtual environment has to be created first by running the following command:
+
+```bash
+./scripts/create-venv.sh
+```
+
+To activate created environment use
+
+```bash
+.venv/bin/activate
+```
+
 Library documentation is automatically generated from source code docstrings.
-To update the library docs, you need to run:
+To update the library docs, you need to run (while in created environment):
 
 `make docs`
 
@@ -166,20 +181,31 @@ For more advanced use cases, refer to the source code of the documentation gener
 
 ### Static checks
 
-To be sure that the code passes static checks in the CI pipeline, you can run
+#### Pre-commit
 
-```bash
-pip install -r ./infra/requirements-infra.txt
-python -m check_copyright --verbose --config infra/copyright-config.yaml 
+We have defined various pre-commit hooks that check the code for formatting, licensing issues, etc.
+
+To install pre-commit , run the following command:
+
+```sh
+pip install pre-commit
 ```
 
-which will add license headers and newlines at file ands where neccessary, and
+After installing pre-commit, you can install the hooks by running:
 
-```bash
-./scripts/clang-format-repo.sh
+```sh
+pre-commit install
 ```
 
-which will format C++ files.
+Now, each time you run `git commit` the pre-commit hooks (checks) will be executed.
+
+If you have already committed before installing the pre-commit hooks, you can run on all files to "catch up":
+
+```sh
+pre-commit run --all-files
+```
+
+For more information visit [pre-commit](https://pre-commit.com/)
 
 ### Updating docker images
 

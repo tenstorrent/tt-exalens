@@ -16,8 +16,8 @@ Description:
   Reads data word from address 'addr' at noc0 location x-y of the current chip using jtag.
 
 Examples:
-  jrxy 18-18 0x0
-  jrxy 18-18 0x0 -d1
+  jrxy 0,0 0x0
+  jrxy 0,0 0x0 -d1
 """
 
 command_metadata = {
@@ -49,16 +49,16 @@ def run(cmd_text, context, ui_state: UIState = None):
     device_ids = args["-d"] if args["-d"] else [f"{current_device_id}"]
     device_array = []
     for device_id in device_ids:
-        device_array.append(int(device_id,0))
+        device_array.append(int(device_id, 0))
 
     for device_id in device_array:
-      current_device = context.devices[device_id]
-      core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
+        current_device = context.devices[device_id]
+        core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
 
-      val = context.server_ifc.jtag_read32(
-          device_id, *core_loc.to("noc0"), addr
-      )
-      core_loc_str_print = f"{core_loc_str} (L1) :" if not core_loc_str.startswith("ch") else f"{core_loc_str} (DRAM): "
-      print_a_jtag_read(device_id, core_loc_str_print, addr, val)
+        val = context.server_ifc.jtag_read32(device_id, *core_loc.to("noc0"), addr)
+        core_loc_str_print = (
+            f"{core_loc_str} (L1) :" if not core_loc_str.startswith("ch") else f"{core_loc_str} (DRAM): "
+        )
+        print_a_jtag_read(device_id, core_loc_str_print, addr, val)
 
     return None

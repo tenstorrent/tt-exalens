@@ -11,10 +11,6 @@ namespace tt::lens {
 
 jtag_implementation::jtag_implementation(JtagDevice* device) : jtag_device(device) {}
 
-std::optional<std::string> jtag_implementation::get_harvester_coordinate_translation(uint8_t chip_id) {
-    return jtag_device->get_jtag_harvester_coordinate_translation(chip_id);
-}
-
 std::optional<std::string> jtag_implementation::get_device_arch(uint8_t chip_id) {
     auto x = jtag_device->get_jtag_arch(chip_id);
     if (x) {

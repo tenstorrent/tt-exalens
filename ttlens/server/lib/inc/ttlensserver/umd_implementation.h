@@ -30,7 +30,6 @@ class umd_implementation : public ttlens_implementation {
     std::optional<std::string> pci_read_tile(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                              uint32_t size, uint8_t data_format) override;
 
-    std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) override;
     std::optional<std::string> get_device_arch(uint8_t chip_id) override;
 
     virtual std::optional<std::tuple<int, uint32_t, uint32_t>> arc_msg(uint8_t chip_id, uint32_t msg_code,

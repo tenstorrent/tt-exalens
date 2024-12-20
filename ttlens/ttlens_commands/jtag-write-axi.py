@@ -48,12 +48,10 @@ def run(cmd_text, context, ui_state: UIState = None):
     device_ids = args["-d"] if args["-d"] else [f"{current_device_id}"]
     device_array = []
     for device_id in device_ids:
-        device_array.append(int(device_id,0))
+        device_array.append(int(device_id, 0))
 
     for device_id in device_array:
-      context.server_ifc.jtag_write32_axi(
-          device_id, addr, data
-      )
-      print_a_jtag_axi_write(device_id, addr, data)
+        context.server_ifc.jtag_write32_axi(device_id, addr, data)
+        print_a_jtag_axi_write(device_id, addr, data)
 
     return None
