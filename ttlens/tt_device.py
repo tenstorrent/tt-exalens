@@ -183,6 +183,10 @@ class Device(TTObject):
         except:
             raise CoordinateTranslationError(f"from_noc0(noc0_tuple={noc0_tuple}, coord_system={coord_system})")
 
+    def is_translated_coordinate(self, x: int, y: int) -> bool:
+        # Base class doesn't know if it is translated coordinate, but specialized classes do
+        return False
+
     def get_block_locations(self, block_type="functional_workers"):
         """
         Returns locations of all blocks of a given type
@@ -298,7 +302,7 @@ class Device(TTObject):
                 render_str = ""
                 if (ui_hor, ui_ver) in all_block_locs:
                     if cell_renderer == None:
-                        render_str = all_block_locs[(ui_hor, ui_ver)].to_str("netlist")
+                        render_str = all_block_locs[(ui_hor, ui_ver)].to_str("logical")
                     else:
                         render_str = cell_renderer(all_block_locs[(ui_hor, ui_ver)])
                 row.append(render_str)

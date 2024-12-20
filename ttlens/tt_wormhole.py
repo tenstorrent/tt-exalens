@@ -39,8 +39,8 @@ class WormholeDevice(tt_device.Device):
             context,
         )
 
-    def row_count(self):
-        return len(WormholeDevice.DIE_Y_TO_NOC_0_Y)
+    def is_translated_coordinate(self, x: int, y: int) -> bool:
+        return x >= 16 and y >= 16
 
     def get_tensix_configuration_register_base(self) -> int:
         return 0xFFEF0000

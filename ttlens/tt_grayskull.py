@@ -35,9 +35,6 @@ class GrayskullDevice(tt_device.Device):
             context,
         )
 
-    def row_count(self):
-        return len(GrayskullDevice.DIE_Y_TO_NOC_0_Y)
-
     def get_tensix_configuration_register_base(self) -> int:
         return 0xFFEF0000
 

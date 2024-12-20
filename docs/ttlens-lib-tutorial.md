@@ -83,8 +83,13 @@ Both `write_to_device` and `read_words_from_device` take as first two parameters
 There are a few ways to pass a core coordinate to a function.
 If you pass a string, it can be in the form of
 
-- "X-Y", where it is interpreted as nocTr coordinate, or
-- "X,Y", where it is interpreted as a netlist coordinate.
+- "X-Y", where it is interpreted as noc0 or translated coordinate if X,Y>=16 on wormhole, or
+- "X,Y", where it is interpreted as a logical coordinate targeting tensix cores. If you want to target different core type, you should include starting letter of core type as a prefix:
+  - "aX,Y", for a logical coordinate targeting arc coordinates.
+  - "eX,Y", for a logical coordinate targeting eth cores.
+  - "dX,Y", for a logical coordinate targeting dram cores.
+  - "pX,Y", for a logical coordinate targeting pcie coordinates.
+  - "tX,Y", for a logical coordinate targeting tensix cores.
 
 It is also possible to create an `OnChipCoordinate` object for more advanced use cases. For more details on this approach, please refer to [the documentation](ttlens-lib-docs.md#tt_coordinate).
 One notable thing about `OnChipCoordinate` objects is that they need to have a device specified on construction for coordinate transforms to be possible (due to device specifics, like different architectures and harvesting within one architecture).
