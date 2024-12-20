@@ -12,7 +12,7 @@ from ttlens.tt_lens_lib import arc_msg, read_words_from_device, read_from_device
 from ttlens.tt_arc import load_arc_fw
 from ttlens.tt_arc_dbg_fw_log_context import ArcDfwLogContext
 from functools import lru_cache
-from ttlens.tt_arc_dbg_fw_compiler import ArcDfwLoggerCompiler
+from ttlens.tt_arc_dbg_fw_compiler import ArcDfwLoggerCompiler,ArcDfwLoggerWithPmonCompiler
 from abc import abstractmethod, ABC
 import struct
 import csv
@@ -32,6 +32,7 @@ class ArcDfwHeader:
         "msg": 32,
         "msg_arg0": 36,
         "msg_arg1": 40,
+        "pmon_size": 44,
     }
 
     DFW_DEFAULT_BUFFER_ADDR = 32
@@ -463,6 +464,39 @@ class ArcDebugLoggerFw(ArcDebugFw):
 
         return self.parse_log_buffer(buffer)
 
+
+    def format_log_by_type(self, value: int, output_type: str):
+        """
+        Formats log by its type defined in LogInfo.
+
+        Args:
+            value (int): The value to format.
+            output_type (str): The type of the log.
+        """
+        if output_type == "int":
+            return int(value)
+        elif output_type == "float":
+            return struct.unpack("<f", struct.pack("<I", value))[0]
+        elif output_type == "float_div_16":  # special case for temperature data
+            return struct.unpack("<f", struct.pack("<I", value))[0] / 16
+        elif output_type == "hex":
+            return value
+        else:
+            return value
+
+    def sort_log_data(self, log_data: dict):
+        """
+        Sorts the log data according to "heartbeat".
+
+        Args:
+            log_data (dict): The log data which will be modified by this function.
+        """
+        # Sort the log data according to "heartbeat"
+        if "heartbeat" in log_data:
+            sorted_indices = sorted(range(len(log_data["heartbeat"])), key=lambda i: log_data["heartbeat"][i])
+            for log_name in log_data:
+                log_data[log_name] = [log_data[log_name][i] for i in sorted_indices]
+
     def parse_log_buffer(self, buffer: bytes) -> dict:
         """
         Parses the log buffer and returns the log data.
@@ -473,26 +507,6 @@ class ArcDebugLoggerFw(ArcDebugFw):
         Returns:
             dict: The log data.
         """
-
-        def format_log_by_type(value: int, output_type: str):
-            """
-            Formats log by its type defined in LogInfo.
-
-            Args:
-                value (int): The value to format.
-                output_type (str): The type of the log.
-            """
-            if output_type == "int":
-                return int(value)
-            elif output_type == "float":
-                return struct.unpack("<f", struct.pack("<I", value))[0]
-            elif output_type == "float_div_16":  # special case for temperature data
-                return struct.unpack("<f", struct.pack("<I", value))[0] / 16
-            elif output_type == "hex":
-                return value
-            else:
-                return value
-
         log_data = {log_info.log_name: [] for log_info in self.log_context.log_list}
         num_logs = len(self.log_context.log_list)
 
@@ -501,26 +515,11 @@ class ArcDebugLoggerFw(ArcDebugFw):
                 break
             value = struct.unpack("<I", buffer[i : i + 4])[0]
             log_name = self.log_context.log_list[(i // 4) % num_logs].log_name
-            log_data[log_name].append(format_log_by_type(value, self.log_context.log_list[(i // 4) % num_logs].output))
+            log_data[log_name].append(self.format_log_by_type(value, self.log_context.log_list[(i // 4) % num_logs].output))
 
-        # Sort the log data according to "heartbeat"
-        if "heartbeat" in log_data:
-            sorted_indices = sorted(range(len(log_data["heartbeat"])), key=lambda i: log_data["heartbeat"][i])
-            for log_name in log_data:
-                log_data[log_name] = [log_data[log_name][i] for i in sorted_indices]
+        self.sort_log_data(log_data)
 
         return log_data
-
-    def setup_pmon(
-        self, pmon_id, ro_id, wait_for_l1_trigger, stop_on_flatline, device_id: int = 0, context: Context = None
-    ):
-        arg0 = (
-            pmon_id & 0xFF | (ro_id & 0xFF) << 8 | (wait_for_l1_trigger & 0xFF) << 16 | (stop_on_flatline & 0xFF) << 24
-        )
-        print(
-            f"Setting up PMON {pmon_id}, RO {ro_id}, wait_for_l1_trigger: {wait_for_l1_trigger}, stop_on_flatline: {stop_on_flatline} => {arg0:08x}"
-        )
-        self.send_message_to_fw(self.DFW_MSG_SETUP_PMON, arg0, 0, device_id, context)
 
     @staticmethod
     def save_log_data_to_csv(log_data: dict, save_location: str) -> None:
@@ -638,3 +637,89 @@ class ArcDebugLoggerFw(ArcDebugFw):
         if httpd:
             httpd.shutdown()
         thread.join()
+
+class ArcDebugLoggerWithPmonFw(ArcDebugLoggerFw):
+    def __init__(
+        self,
+        log_context: ArcDfwLogContext,
+        pmon_size: int,
+        base_fw_file_path: str = "fw/arc/arc_dbg_fw_pmon.hex",
+        base_fw_symbols_file_path: str = "fw/arc/arc_dbg_fw_pmon.syms",
+        modified_fw_file_path: str = "fw/arc/arc_modified.hex",
+        device_id=0,
+        context=None,
+    ):
+        super().__init__(log_context,base_fw_file_path, base_fw_symbols_file_path, modified_fw_file_path, device_id, context)
+
+        if pmon_size % 8 != 0:
+            raise TTException("PMON size must be a multiple of 2")
+
+        self.pmon_size = pmon_size
+
+        self.compiler = ArcDfwLoggerWithPmonCompiler(
+            base_fw_file_path, base_fw_symbols_file_path, modified_fw_file_path, log_context
+        )
+        # self.compiler = ArcDfwLoggerCompiler(
+        #     base_fw_file_path, base_fw_symbols_file_path, modified_fw_file_path, log_context
+        # )
+    
+    def setup_pmon(
+        self, pmon_id, ro_id, wait_for_l1_trigger, stop_on_flatline, device_id: int = 0, context: Context = None
+    ):
+        arg0 = (
+            pmon_id & 0xFF | (ro_id & 0xFF) << 8 | (wait_for_l1_trigger & 0xFF) << 16 | (stop_on_flatline & 0xFF) << 24
+        )
+        print(
+            f"Setting up PMON {pmon_id}, RO {ro_id}, wait_for_l1_trigger: {wait_for_l1_trigger}, stop_on_flatline: {stop_on_flatline} => {arg0:08x}"
+        )
+        self.send_message_to_fw(self.DFW_MSG_SETUP_PMON, arg0, 0, device_id, context)
+
+    def _configure_arc_dbg_fw(self):
+        super()._configure_arc_dbg_fw()
+        self.buffer_header.write_to_field(
+            "pmon_size",self.pmon_size, self.device_id, self.context
+        )
+    
+    def parse_log_buffer(self, buffer: bytes) -> dict:
+        """
+        Parses the log buffer and returns the log data.
+
+        Args:
+            buffer (bytes): The buffer to parse.
+
+        Returns:
+            dict: The log data.
+        """
+        log_data = {log_info.log_name: [] for log_info in self.log_context.log_list}
+        num_logs = len(self.log_context.log_list)
+        num_logs_and_pmons = num_logs + self.pmon_size // 4
+        pmons = []
+
+        j = 0
+        i = 0        
+        while i<len(buffer):
+            # Skiping the pmon_data
+            if j == len(self.log_context.log_list):
+                for z in range(0, self.pmon_size//4, 4):
+                    value = struct.unpack("<I", buffer[i + z : i + z + 4])[0]
+                    pmons.append(value)
+                i+=self.pmon_size
+                j =0
+
+            if i // 4 >= (len(buffer) // 4) - (len(buffer) // 4) % num_logs_and_pmons:
+                break
+            
+            value = struct.unpack("<I", buffer[i : i + 4])[0]
+            log_name = self.log_context.log_list[(i // 4) % num_logs_and_pmons].log_name
+            log_data[log_name].append(self.format_log_by_type(value, self.log_context.log_list[(i // 4) % num_logs_and_pmons].output))
+            
+            j+=1
+            i+=4
+
+        self.sort_log_data(log_data)
+
+        for i in range(0, len(buffer), 4):
+            value = struct.unpack("<I", buffer[i : i + 4])[0]
+            print(f"Buffer[{i // 4}]: {value:08x}")
+
+        return log_data
