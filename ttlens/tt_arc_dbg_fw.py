@@ -679,7 +679,7 @@ class ArcDebugLoggerWithPmonFw(ArcDebugLoggerFw):
         self.buffer_header.write_to_field(
             "pmon_size",self.pmon_size, self.device_id, self.context
         )
-    
+
     def parse_log_buffer(self, buffer: bytes) -> dict:
         """
         Parses the log buffer and returns the log data.
@@ -695,31 +695,24 @@ class ArcDebugLoggerWithPmonFw(ArcDebugLoggerFw):
         num_logs_and_pmons = num_logs + self.pmon_size // 4
         pmons = []
 
-        j = 0
-        i = 0        
-        while i<len(buffer):
-            # Skiping the pmon_data
-            if j == len(self.log_context.log_list):
-                for z in range(0, self.pmon_size//4, 4):
-                    value = struct.unpack("<I", buffer[i + z : i + z + 4])[0]
-                    pmons.append(value)
-                i+=self.pmon_size
-                j =0
-
-            if i // 4 >= (len(buffer) // 4) - (len(buffer) // 4) % num_logs_and_pmons:
-                break
-            
-            value = struct.unpack("<I", buffer[i : i + 4])[0]
-            log_name = self.log_context.log_list[(i // 4) % num_logs_and_pmons].log_name
-            log_data[log_name].append(self.format_log_by_type(value, self.log_context.log_list[(i // 4) % num_logs_and_pmons].output))
-            
-            j+=1
-            i+=4
+        buffer_index = 0
+        while buffer_index < len(buffer) and buffer_index // 4 >= (len(buffer) // 4) - (len(buffer) // 4) % num_logs_and_pmons:
+            if (buffer_index // 4) % num_logs_and_pmons >= num_logs:
+                pmons.extend(
+                    struct.unpack("<I", buffer[buffer_index + offset: buffer_index + offset + 4])[0]
+                    for offset in range(0, self.pmon_size, 4)
+                )
+                buffer_index += self.pmon_size
+            else:
+                value = struct.unpack("<I", buffer[buffer_index: buffer_index + 4])[0]
+                log_name = self.log_context.log_list[(buffer_index // 4) % num_logs].log_name
+                log_data[log_name].append(self.format_log_by_type(value, self.log_context.log_list[(buffer_index // 4) % num_logs].output))
+                buffer_index += 4
 
         self.sort_log_data(log_data)
 
         for i in range(0, len(buffer), 4):
-            value = struct.unpack("<I", buffer[i : i + 4])[0]
+            value = struct.unpack("<I", buffer[i: i + 4])[0]
             print(f"Buffer[{i // 4}]: {value:08x}")
 
         return log_data
