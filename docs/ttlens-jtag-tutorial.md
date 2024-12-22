@@ -4,30 +4,13 @@ This tutorial shows you how to set up and use JTAG.
 ## Licensing
 The JTAG library is proprietary and subject to licensing restrictions. Access is currently limited to employees only.
 
-## Installation
+## Setup
 #### Downloading
-To get the JTAG library you will need to run:
-```
-./scripts/get_jtag_access_library.sh
-```
-This will download library from private gitlab repository and place it in ``third_party/jtag_access_library/``.
-
-#### Building
-After downloading the library for the first time, run:
-```
-make clean
-make
-```
-so that CMake knows that we have JTAG, and it will include it in all subsequent builds.
-
-#### Python wheel
-If you additionally want to use JTAG in ttlens python library, after you installed wheel package using ```pip install```, you will also need to run
-```
-./scripts/add_libjtag_to_wheel.sh
-```
+If you have access, the library should be downloaded by default from a private GitLab repository and placed in `third_party/jtag_access_library/` on the first `make` run.
+If JTAG was not setup, you need to add yor SSH key to private GitLab instance hosted on yyz-gitlab.local.tenstorrent.com.
 
 #### Permissions
-Your user will need to have permission for using SEGGER jlink adapter.
+Your user will need to have permission to use the SEGGER J-Link adapter.
 ```
 $ cat /etc/udev/rules.d/99-usb.rules
 
@@ -51,7 +34,7 @@ tt-lens --command "brxy 0,0 0" --jtag
 tt-lens --server --jtag
 ```
 
-## Organization
+## JTAG Access Overview
 When ttlens is run with JTAG support you will not be able to access cards over PCI in that instance.
 Only visible chips in ttlens are the ones that you connected JTAG to.
 

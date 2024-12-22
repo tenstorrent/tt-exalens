@@ -26,6 +26,15 @@ def get_ttlens_py_files(file_dir: os.PathLike = f"{ttlens_home}/ttlens", ignorel
     return files
 
 
+def get_libjtag() -> list:
+    """A function to get the libjtag if it exists."""
+
+    if os.path.exists(f"{ttlens_home}/build/lib/libjtag.so"):
+        return ["libjtag.so", "libjlinkarm.so"]
+
+    return []
+
+
 ttlens_files = {
     "ttlens_lib": {"path": "ttlens", "files": get_ttlens_py_files(), "output": "ttlens"},
     "ttlens_commands": {
@@ -33,7 +42,12 @@ ttlens_files = {
         "files": get_ttlens_py_files(f"{ttlens_home}/ttlens/ttlens_commands"),
         "output": "ttlens/ttlens_commands",
     },
-    "libs": {"path": "build/lib", "files": ["libdevice.so", "ttlens_pybind.so"], "output": "build/lib", "strip": True},
+    "libs": {
+        "path": "build/lib",
+        "files": ["libdevice.so", "ttlens_pybind.so"] + get_libjtag(),
+        "output": "build/lib",
+        "strip": True,
+    },
     "ttlens-server-standalone": {
         "path": "build/bin",
         "files": ["ttlens-server-standalone"],
