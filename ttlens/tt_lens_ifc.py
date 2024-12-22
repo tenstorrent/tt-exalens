@@ -26,7 +26,6 @@ class ttlens_server_request_type(Enum):
     pci_read32_raw = 14
     pci_write32_raw = 15
     dma_buffer_read32 = 16
-    get_harvester_coordinate_translation = 17
     get_device_ids = 18
     get_device_arch = 19
     get_device_soc_description = 20
@@ -40,6 +39,7 @@ class ttlens_server_request_type(Enum):
     # Runtime requests
     pci_read_tile = 100
     get_cluster_description = 102
+    convert_from_noc0 = 103
 
     # File requests
     get_file = 200
@@ -191,15 +191,26 @@ class ttlens_server_communication:
         self._socket.send(bytes([ttlens_server_request_type.get_cluster_description.value]))
         return self._check(self._socket.recv())
 
-    def get_harvester_coordinate_translation(self, chip_id: int):
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
+        core_type = core_type.encode()
+        coord_system = coord_system.encode()
+        data = core_type + coord_system
         self._socket.send(
             struct.pack(
-                "<BB",
-                ttlens_server_request_type.get_harvester_coordinate_translation.value,
+                f"<BBBBII{len(data)}s",
+                ttlens_server_request_type.convert_from_noc0.value,
                 chip_id,
+                noc_x,
+                noc_y,
+                len(core_type),
+                len(coord_system),
+                data,
             )
         )
-        return self._check(self._socket.recv())
+        bytes = self._check(self._socket.recv())
+        if len(bytes) == 2:
+            return (bytes[0], bytes[1])
+        return bytes
 
     def get_device_ids(self):
         self._socket.send(bytes([ttlens_server_request_type.get_device_ids.value]))
@@ -369,8 +380,8 @@ class ttlens_client(TTLensCommunicator):
     def get_cluster_description(self):
         return self.parse_string(self._communication.get_cluster_description())
 
-    def get_harvester_coordinate_translation(self, chip_id: int):
-        return self.parse_string(self._communication.get_harvester_coordinate_translation(chip_id))
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
+        return self._communication.convert_from_noc0(chip_id, noc_x, noc_y, core_type, coord_system)
 
     def get_device_ids(self):
         return self._communication.get_device_ids()
@@ -462,8 +473,8 @@ class TTLensPybind(TTLensCommunicator):
     def get_cluster_description(self):
         return self._check_result(ttlens_pybind.get_cluster_description())
 
-    def get_harvester_coordinate_translation(self, chip_id: int):
-        return self._check_result(ttlens_pybind.get_harvester_coordinate_translation(chip_id))
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
+        return self._check_result(ttlens_pybind.convert_from_noc0(chip_id, noc_x, noc_y, core_type, coord_system))
 
     def get_device_ids(self):
         return self._check_result(ttlens_pybind.get_device_ids())

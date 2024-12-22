@@ -37,7 +37,7 @@ def arc_read(context: Context, device_id: int, core_loc: tuple, reg_addr: int) -
     if context.devices[device_id]._has_mmio:
         read_val = context.server_ifc.pci_read32_raw(device_id, reg_addr)
     else:
-        read_val = context.server_ifc.pci_read32(device_id, *core_loc.to("nocVirt"), reg_addr)
+        read_val = context.server_ifc.pci_read32(device_id, *core_loc.to("virtual"), reg_addr)
     return read_val
 
 
@@ -48,4 +48,4 @@ def arc_write(context: Context, device_id: int, core_loc: tuple, reg_addr: int, 
     if context.devices[device_id]._has_mmio:
         context.server_ifc.pci_write32_raw(device_id, reg_addr, value)
     else:
-        context.server_ifc.pci_write32(device_id, *core_loc.to("nocVirt"), reg_addr, value)
+        context.server_ifc.pci_write32(device_id, *core_loc.to("virtual"), reg_addr, value)

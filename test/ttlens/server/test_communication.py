@@ -90,14 +90,6 @@ def pci_read_tile():
     )
 
 
-def get_harvester_coordinate_translation():
-    global server_communication
-    check_response(
-        server_communication.get_harvester_coordinate_translation(1),
-        "- type: 17\n  chip_id: 1",
-    )
-
-
 def get_device_arch():
     global server_communication
     check_response(
@@ -111,6 +103,14 @@ def get_device_soc_description():
     check_response(
         server_communication.get_device_soc_description(1),
         "- type: 20\n  chip_id: 1",
+    )
+
+
+def convert_from_noc0():
+    global server_communication
+    check_response(
+        server_communication.convert_from_noc0(1, 2, 3, "core_type", "coord_system"),
+        "- type: 103\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  core_type_size: 9\n  coord_system_size: 12\n  data: core_typecoord_system",
     )
 
 

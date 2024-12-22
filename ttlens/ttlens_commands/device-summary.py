@@ -3,26 +3,30 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  device [<device-id> [<axis-coordinate> [<cell-contents>]]]
+  device [-d <device-id>] [<axis-coordinate> [<cell-contents>]] [--no-legend]
 
 Arguments:
-  device-id            ID of the device [default: 0]
-  axis-coordinate      Coordinate system for the axis [default: netlist]
-                       Supported: netlist, noc0, noc1, nocTr, nocVirt, die, tensix
-  cell-contents        A comma separated list of the cell contents [default: nocTr]
+  device-id            ID of the device [default: all]
+  axis-coordinate      Coordinate system for the axis [default: logical-tensix]
+                       Supported: noc0, noc1, translated, virtual, die, logical-tensix, logical-eth, logical-dram
+  cell-contents        A comma separated list of the cell contents [default: block]
                        Supported:
                          riscv - show the status of the RISC-V ('R': running, '-': in reset)
                          block - show the type of the block at that coordinate
-                         netlist, noc0, noc1, nocTr, nocVirt, die, tensix - show coordinate
+                         logical, noc0, noc1, translated, virtual, die - show coordinate
 
 Description:
   Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
 
 Examples:
-  device                 # Shows the status of the RISC-V for all devices
-  device 0 noc0          # Shows noc0 to nocTr mapping for device 0
-  device 0 noc0 netlist  # Shows netlist coordinates in noc0 coordinages for device 0
-"""  # Note: Limit the above comment to 100 characters in width
+  device                              # Shows the status of the RISC-V for all devices
+  device noc0                         # Shows the status of the RISC-V on noc0 axis for all devices
+  device logical-tensix noc0          # Shows noc0 coordinates on logical tensix axis for all devices
+  device noc0 block --no-legend       # Shows the block type in noc0 axis for all devices without legend
+  device -d 0 die                     # Shows the status of the RISC-V on die axis for device 0
+  device -d 0 logical-dram noc0       # Shows noc0 coordinates on logical dram axis for device 0
+  device -d 0 noc0 block --no-legend  # Shows the block type on noc0 axis for device 0 without legend
+"""  # Note: Limit the above comment to 120 characters in width
 
 command_metadata = {
     "short": "d",
@@ -30,42 +34,70 @@ command_metadata = {
     "type": "high-level",
     "description": __doc__,
     "context": ["limited", "metal"],
+    "common_option_names": ["--device"],
 }
 
 from docopt import docopt
 
-from ttlens import tt_util as util
+from ttlens import tt_commands, tt_util as util
+from ttlens.tt_device import Device
 from ttlens.tt_coordinate import VALID_COORDINATE_TYPES
 from ttlens.tt_lens_context import LimitedContext
 
 
+def color_block(text: str, block_type: str):
+    color = Device.block_types[block_type]["color"]
+    return f"{color}{text}{util.CLR_END}"
+
+
 def run(cmd_text, context, ui_state=None):
-    args = docopt(__doc__, argv=cmd_text.split()[1:])
-
-    if args["<device-id>"]:
-        device_id = int(args["<device-id>"])
-        if device_id not in context.devices:
-            util.ERROR(f"Invalid device ID ({device_id}). Valid devices IDs: {list(context.devices)}")
-            return []
-        devices_list = [device_id]
-    else:
-        devices_list = list(context.devices.keys())
-
-    axis_coordinate = args["<axis-coordinate>"] or "netlist"
-    if axis_coordinate not in VALID_COORDINATE_TYPES:
-        util.ERROR(f"Invalid axis coordinate type: {axis_coordinate}. Valid types: {VALID_COORDINATE_TYPES}")
+    dopt = tt_commands.tt_docopt(
+        command_metadata["description"],
+        argv=cmd_text.split()[1:],
+        common_option_names=command_metadata["common_option_names"],
+    )
+    dont_print_legend = dopt.args["--no-legend"]
+    axis_coordinate = dopt.args["<axis-coordinate>"] or "logical-tensix"
+    valid_axis_types = [coord for coord in VALID_COORDINATE_TYPES if coord != "logical"]
+    if axis_coordinate not in valid_axis_types:
+        util.ERROR(f"Invalid axis coordinate type: {axis_coordinate}. Valid types: {valid_axis_types}")
         return []
 
     cell_contents = ""
-    if args["<cell-contents>"]:
-        cell_contents = args["<cell-contents>"]
+    if dopt.args["<cell-contents>"]:
+        cell_contents = dopt.args["<cell-contents>"]
     elif isinstance(context, LimitedContext):
         cell_contents = "riscv"
     else:
         raise util.TTException(f"Invalid cell contents")
 
-    for device_id in devices_list:
-        device = context.devices[device_id]
+    # Create a legend
+    if not dont_print_legend:
+
+        def print_legend(line):
+            print(util.CLR_INFO + line + util.CLR_END)
+
+        print_legend("")
+        print_legend(f"Legend:")
+        print_legend(f"  Axis coordinates: {axis_coordinate}")
+        print_legend(f"  Cell contents: {cell_contents}")
+        if "riscv" in cell_contents:
+            print_legend(f"    riscv - show the status of the RISC-V ('R': running, '-': in reset)")
+        if "block" in cell_contents:
+            print_legend(f"    block - show the type of the block at that coordinate")
+        print_legend(f"  Colors:")
+        if axis_coordinate == "logical-tensix":
+            print_legend(f"    {color_block('functional_workers', 'functional_workers')}")
+        elif axis_coordinate == "logical-eth":
+            print_legend(f"    {color_block('eth', 'eth')}")
+        elif axis_coordinate == "logical-dram":
+            print_legend(f"    {color_block('dram', 'dram')}")
+        else:
+            for block_type in Device.block_types:
+                print_legend(f"    {color_block(block_type, block_type)}")
+        print_legend("")
+
+    for device in dopt.for_each("--device", context, ui_state):
         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
         util.INFO(f"==== Device {jtag_prompt}{device.id()}")
 
@@ -77,25 +109,25 @@ def run(cmd_text, context, ui_state=None):
             cell_contents_str = []
 
             for ct in cell_contents_array:
+                block_type = device.get_block_type(loc)
                 if ct == "block":
-                    block_type = device.get_block_type(loc)
-                    cell_contents_str.append(block_type)
+                    cell_contents_str.append(color_block(block_type, block_type))
                 elif ct == "riscv":
-                    block_type = device.get_riscv_run_status(loc)
-                    cell_contents_str.append(block_type)
+                    text = device.get_riscv_run_status(loc)
+                    cell_contents_str.append(color_block(text, block_type))
                 elif ct in VALID_COORDINATE_TYPES:
                     try:
                         coord_str = loc.to_str(ct)
                     except Exception as e:
                         coord_str = "N/A"
-                    cell_contents_str.append(coord_str)
+                    cell_contents_str.append(color_block(coord_str, block_type))
                 else:
                     raise util.TTException(f"Invalid cell contents requested: '{ct}'")
             return ", ".join(cell_contents_str)
 
         print(
             device.render(
-                legend=[],
+                legend=None,
                 axis_coordinate=axis_coordinate,
                 cell_renderer=cell_render_function,
             )

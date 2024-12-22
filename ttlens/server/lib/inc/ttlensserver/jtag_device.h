@@ -21,7 +21,6 @@ class JtagDevice {
     std::optional<uint32_t> get_device_harvesting(uint8_t chip_id) const;
 
     std::optional<tt::ARCH> get_jtag_arch(uint8_t chip_id);
-    std::optional<std::string> get_jtag_harvester_coordinate_translation(uint8_t chip_id);
 
     std::optional<int> open_jlink_by_serial_wrapper(uint8_t chip_id, unsigned int serial_number);
     std::optional<int> open_jlink_wrapper(uint8_t chip_id);

@@ -40,7 +40,7 @@ class SilentEventListener : public testing::TestEventListener {
     }
 
 #ifndef GTEST_REMOVE_LEGACY_TEST_CASEAPI_
-    virtual void OnTestCaseEnd(const testing::TestCase& test_case) {
+    virtual void OnTestCaseEnd(const testing::TestCase& test_case) override {
         m_default_event_listener->OnTestCaseEnd(test_case);
     }
 #endif  // GTEST_REMOVE_LEGACY_TEST_CASEAPI_

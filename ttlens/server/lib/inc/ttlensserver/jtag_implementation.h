@@ -5,9 +5,8 @@
 
 #include <optional>
 
-#include "ttlens_implementation.h"
-
-class JtagDevice;
+#include "ttlensserver/jtag_device.h"
+#include "ttlensserver/ttlens_implementation.h"
 
 namespace tt::lens {
 
@@ -17,7 +16,6 @@ class jtag_implementation : public ttlens_implementation {
     jtag_implementation(JtagDevice* device);
 
    protected:
-    std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) override;
     std::optional<std::string> get_device_arch(uint8_t chip_id) override;
 
     std::optional<int> jtag_write32_axi(uint8_t chip_id, uint32_t address, uint32_t data) override;

@@ -25,7 +25,7 @@ class yaml_communication : public tt::lens::communication {
     std::string serialize(const tt::lens::pci_write32_raw_request& request);
     std::string serialize(const tt::lens::dma_buffer_read32_request& request);
     std::string serialize(const tt::lens::pci_read_tile_request& request);
-    std::string serialize(const tt::lens::get_harvester_coordinate_translation_request& request);
+    std::string serialize(const tt::lens::convert_from_noc0_request& request);
     std::string serialize(const tt::lens::get_device_arch_request& request);
     std::string serialize(const tt::lens::get_device_soc_description_request& request);
     std::string serialize(const tt::lens::get_file_request& request);

@@ -5,11 +5,12 @@
 // to it.
 #include <ctime>
 #include <experimental/filesystem>
-#include <fstream>
 #include <iostream>
 
+#include "ttlensserver/jtag_implementation.h"
 #include "ttlensserver/open_implementation.h"
 #include "ttlensserver/server.h"
+#include "ttlensserver/umd_implementation.h"
 #include "utils/logger.hpp"
 
 namespace fs = std::experimental::filesystem;
