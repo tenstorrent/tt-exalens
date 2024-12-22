@@ -82,7 +82,10 @@ def with_hex_if_possible(val):
 # Colors
 CLR_RED = "\033[31m"
 CLR_GREEN = "\033[32m"
+CLR_YELLOW = "\033[33m"
 CLR_BLUE = "\033[34m"
+CLR_VIOLET = "\033[35m"
+CLR_TEAL = "\033[36m"
 CLR_GREY = "\033[37m"
 CLR_ORANGE = "\033[38:2:205:106:0m"
 CLR_WHITE = "\033[38:2:255:255:255m"
@@ -800,3 +803,7 @@ class LOG_INDENT:
 # Return an ansi color code for a given index. Useful for coloring a list of items.
 def clr_by_index(idx):
     return f"\033[{31 + idx % 7}m"
+
+
+def color_text_by_index(text, color_index):
+    return f"{clr_by_index(color_index)}{text}{CLR_END}"

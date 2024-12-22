@@ -115,10 +115,14 @@ class yaml_not_implemented_implementation : public ttlens_implementation {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::get_cluster_description)));
         return {};
     }
-    std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) override {
+    std::optional<std::tuple<uint8_t, uint8_t>> convert_from_noc0(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                                  const std::string &core_type,
+                                                                  const std::string &coord_system) override {
         server->send_yaml(
-            "- type: " + std::to_string(static_cast<int>(request_type::get_harvester_coordinate_translation)) +
-            "\n  chip_id: " + std::to_string(chip_id));
+            "- type: " + std::to_string(static_cast<int>(request_type::convert_from_noc0)) +
+            "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
+            "\n  noc_y: " + std::to_string(noc_y) + "\n  core_type_size: " + std::to_string(core_type.size()) +
+            "\n  coord_system_size: " + std::to_string(coord_system.size()) + "\n  data: " + core_type + coord_system);
         return {};
     }
     std::optional<std::vector<uint8_t>> get_device_ids() override {
@@ -286,13 +290,6 @@ TEST(ttlens_server, pci_read_tile) {
         "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14");
 }
 
-TEST(ttlens_server, get_harvester_coordinate_translation) {
-    test_not_implemented_request(
-        tt::lens::get_harvester_coordinate_translation_request{
-            tt::lens::request_type::get_harvester_coordinate_translation, 1},
-        "- type: 17\n  chip_id: 1");
-}
-
 TEST(ttlens_server, get_device_arch) {
     test_not_implemented_request(tt::lens::get_device_arch_request{tt::lens::request_type::get_device_arch, 1},
                                  "- type: 19\n  chip_id: 1");
@@ -346,6 +343,7 @@ TEST(ttlens_server, pci_write) {
 }
 
 TEST(ttlens_server, get_file) {
+    // This test is different because we are trying to send request that has dynamic structure size
     constexpr std::string_view filename = "test_file";
     std::string expected_response =
         "- type: 200\n  size: " + std::to_string(filename.size()) + "\n  data: " + filename.data();
@@ -354,5 +352,27 @@ TEST(ttlens_server, get_file) {
     request->type = tt::lens::request_type::get_file;
     request->size = filename.size();
     for (size_t i = 0; i < filename.size(); i++) request->data[i] = filename[i];
+    test_not_implemented_request(*request, expected_response, request_data.size());
+}
+
+TEST(ttlens_server, convert_from_noc0) {
+    // This test is different because we are trying to send request that has dynamic structure size
+    constexpr std::string_view core_type = "core_type";
+    constexpr std::string_view coord_system = "coord_system";
+    std::string expected_response =
+        "- type: 103\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  core_type_size: 9\n  coord_system_size: 12\n  data: "
+        "core_typecoord_system";
+    std::array<uint8_t, core_type.size() + coord_system.size() + sizeof(tt::lens::convert_from_noc0_request)>
+        request_data = {0};
+    auto request = reinterpret_cast<tt::lens::convert_from_noc0_request *>(&request_data[0]);
+    request->type = tt::lens::request_type::convert_from_noc0;
+    request->chip_id = 1;
+    request->noc_x = 2;
+    request->noc_y = 3;
+    request->core_type_size = core_type.size();
+    request->coord_system_size = coord_system.size();
+    memcpy(request->data, core_type.data(), request->core_type_size);
+    memcpy(request->data + request->core_type_size, coord_system.data(), request->coord_system_size);
+
     test_not_implemented_request(*request, expected_response, request_data.size());
 }

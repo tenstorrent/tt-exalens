@@ -23,11 +23,11 @@ Writes data word to address 'addr' at noc0 location x-y of the current chip.
 
 Command:
 ```
-wxy 18-18 0x0 0x1234
+wxy 0,0 0x0 0x1234
 ```
 Output:
 ```
-18-18 (L1) : 0x00000000 (0) <= 0x00001234 (4660)
+0,0 (L1) : 0x00000000 (0) <= 0x00001234 (4660)
 ```
 
 
@@ -35,114 +35,69 @@ Output:
 
 
 
-## brxy
+## gdb
 
 ### Usage
 
 ```
-brxy <core-loc> <addr> [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <D>...]
+gdb start --port <port>
+gdb stop
 ```
 
 
 ### Description
 
-Reads and prints a block of data from address 'addr' at core <core-loc>.
-
-
-### Arguments
-
-- `core-loc`: Either X-Y or R,C location of a core, or dram channel (e.g. ch3)
-- `addr`: Address to read from
-- `word-count`: Number of words to read. Default: 1
-
-
-### Options
-
-- `--sample` = **\<N\>**: Number of seconds to sample for. [default: 0] (single read)
-- `--format` = **\<F\>**: Data format. Options: i8, i16, i32, hex8, hex16, hex32 [default: hex32]
-- `-o` = **\<O\>**: Address offset. Optional and repeatable.
-- `-d` = **\<D\>**: Device ID. Optional and repeatable. Default: current device
+Starts or stops gdb server.
 
 
 ### Examples
 
-Read 1 word from address 0
+Command:
 ```
-brxy 18-18 0x0 1
+gdb start --port 6767
 ```
-Output:
+Command:
 ```
-18-18 (L1) : 0x00000000 (4 bytes)
-0x00000000:  00001234
+gdb stop
 ```
-Read 16 words from address 0
+
+
+
+
+
+
+## re
+
+### Usage
+
 ```
-brxy 18-18 0x0 16
+run-elf <elf-file> [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
 ```
-Output:
+
+
+### Description
+
+Loads an elf file into a brisc and runs it.
+
+
+### Options
+
+- `-r` = **\<risc\>**: RiscV ID (0: brisc, 1-3 triscs). [default: 0]
+
+
+### Examples
+
+Command:
 ```
-18-18 (L1) : 0x00000000 (64 bytes)
-0x00000000:  00001234  80380d10  31c07918  b66e0000
-0x00000010:  01018020  00040000  80001000  c8000000
-0x00000020:  02080000  a9000000  10191000  00212000
-0x00000030:  080541c4  a94d0c80  fd74e115  01e0d3f4
+run-elf build/risv-src/wormhole/sample.brisc.elf
 ```
-Prints 32 bytes in i8 format
-```
-brxy 18-18 0x0 32 --format i8
-```
-Output:
-```
-18-18 (L1) : 0x00000000 (128 bytes)
-0x00000000:  52   18   0    0    16   13   56  128  24   121  192  49   0    0    110  182
-0x00000010:  32   128  1    1    0    0    4   0    0    16   0    128  0    0    0    200
-0x00000020:  0    0    8    2    0    0    0   169  0    16   25   16   0    32   33   0
-0x00000030:  196  65   5    8    128  12   77  169  21   225  116  253  244  211  224  1
-0x00000040:  212  89   61   190  214  238  85  12   20   199  4    1    2    130  133  8
-0x00000050:  213  33   132  80   2    145  0   93   14   106  193  144  197  41   101  154
-0x00000060:  0    0    0    0    96   12   2   0    128  26   32   202  0    0    0    0
-0x00000070:  112  10   0    80   90   130  45  72   187  9    108  219  24   111  98   146
-```
-Sample for 5 seconds
-```
-brxy 18-18 0x0 32 --format i8 --sample 5
-```
-Output:
-```
-Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000000 (0) => 0x00001234 (4660) - 28027 times
-Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000004 (4) => 0x00001234 (4660) - 28003 times
-Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000008 (8) => 0x00001234 (4660) - 28042 times
-Sampling for 0.15625 seconds...
-18-18 (L1) : 0x0000000c (12) => 0x00001234 (4660) - 28025 times
-Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000010 (16) => 0x00001234 (4660) - 28040 times
-Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000014 (20) => 0x00001234 (4660) - 28034 times
-Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000018 (24) => 0x00001234 (4660) - 28088 times
-Sampling for 0.15625 seconds...
-18-18 (L1) : 0x0000001c (28) => 0x00001234 (4660) - 27989 times
-Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000020 (32) => 0x00001234 (4660) - 27980 times
-Sampling for 0.15625 seconds...
-18-18 (L1) : 0x00000024 (36) => 0x00001234 (4660) - 28178 times
-...
-```
-Read 16 words from dram channel 0
-```
-brxy ch0 0x0 16
-```
-Output:
-```
-ch0 (DRAM) : 0x00000000 (64 bytes)
-0x00000000:  505410b9  55555555  55555555  55555555
-0x00000010:  55555555  55555555  55555555  55555555
-0x00000020:  f7f581e7  b75555d7  e555f575  d4155575
-0x00000030:  757555f5  555555d4  f45dee77  5575557f
-```
+
+
+### Common options
+
+- `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
+- `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
+- `--verbose, -v`: Execute command with verbose output. [default: False]
 
 
 
@@ -251,6 +206,208 @@ riscv wchpt setw 0 0xc
 - `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
 - `--risc, -r` = **\<risc-id\>**: RiscV ID (0: brisc, 1-3 triscs, all). [default: all]
 - `--verbose, -v`: Execute command with verbose output. [default: False]
+
+
+
+
+
+
+## device / d
+
+### Usage
+
+```
+device [-d <device-id>] [<axis-coordinate> [<cell-contents>]] [--no-legend]
+```
+
+
+### Description
+
+Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
+
+
+### Arguments
+
+- `device-id`: ID of the device [default: all]
+- `axis-coordinate`: Coordinate system for the axis [default: logical-tensix] Supported: noc0, noc1, translated, virtual, die, logical-tensix, logical-eth, logical-dram
+- `cell-contents`: A comma separated list of the cell contents [default: block] Supported: riscv - show the status of the RISC-V ('R': running, '-': in reset) block - show the type of the block at that coordinate logical, noc0, noc1, translated, virtual, die - show coordinate
+
+
+### Examples
+
+Shows the status of the RISC-V for all devices
+```
+device
+```
+Output:
+```
+
+Legend:
+  Axis coordinates: logical-tensix
+  Cell contents: riscv
+    riscv - show the status of the RISC-V ('R': running, '-': in reset)
+  Colors:
+    functional_workers
+
+==== Device 0
+    00    01    02    03    04    05    06    07
+00  ----  ----  ----  ----  ----  ----  ----  ----
+01  ----  ----  ----  ----  ----  ----  ----  ----
+02  ----  ----  ----  ----  ----  ----  ----  ----
+03  ----  ----  ----  ----  ----  ----  ----  ----
+04  ----  ----  ----  ----  ----  ----  ----  ----
+05  ----  ----  ----  ----  ----  ----  ----  ----
+06  ----  ----  ----  ----  ----  ----  ----  ----
+07  ----  ----  ----  ----  ----  ----  ----  ----
+08  ----  ----  ----  ----  ----  ----  ----  ----
+```
+Shows the status of the RISC-V on noc0 axis for all devices
+```
+device noc0
+```
+Output:
+```
+
+Legend:
+  Axis coordinates: noc0
+  Cell contents: riscv
+    riscv - show the status of the RISC-V ('R': running, '-': in reset)
+  Colors:
+    functional_workers
+    eth
+    arc
+    dram
+    pcie
+    router_only
+    harvested_workers
+
+==== Device 0
+    00    01    02    03    04    05    06    07    08    09
+00  dram  eth   eth   eth   eth   dram  eth   eth   eth   eth
+01  dram  ----  ----  ----  ----  dram  ----  ----  ----  ----
+02        ----  ----  ----  ----  dram  ----  ----  ----  ----
+03  pcie  ----  ----  ----  ----  dram  ----  ----  ----  ----
+...
+```
+Shows noc0 coordinates on logical tensix axis for all devices
+```
+device logical-tensix noc0
+```
+Output:
+```
+
+Legend:
+  Axis coordinates: logical-tensix
+  Cell contents: noc0
+  Colors:
+    functional_workers
+
+==== Device 0
+    00    01    02    03    04    05    06    07
+00  1-1   2-1   3-1   4-1   6-1   7-1   8-1   9-1
+01  1-2   2-2   3-2   4-2   6-2   7-2   8-2   9-2
+02  1-3   2-3   3-3   4-3   6-3   7-3   8-3   9-3
+03  1-4   2-4   3-4   4-4   6-4   7-4   8-4   9-4
+04  1-5   2-5   3-5   4-5   6-5   7-5   8-5   9-5
+05  1-7   2-7   3-7   4-7   6-7   7-7   8-7   9-7
+06  1-8   2-8   3-8   4-8   6-8   7-8   8-8   9-8
+07  1-9   2-9   3-9   4-9   6-9   7-9   8-9   9-9
+08  1-10  2-10  3-10  4-10  6-10  7-10  8-10  9-10
+```
+Shows the block type in noc0 axis for all devices without legend
+```
+device noc0 block --no-legend
+```
+Output:
+```
+==== Device 0
+    00    01                  02                  03                  04                  05    06                  07            ...
+00  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
+01  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+02        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+03  pcie  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+04        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+05  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+06  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
+07  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+08        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+09        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+10  arc   functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+11  dram  harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvested_work...
+```
+Shows the status of the RISC-V on die axis for device 0
+```
+device -d 0 die
+```
+Output:
+```
+
+Legend:
+  Axis coordinates: die
+  Cell contents: riscv
+    riscv - show the status of the RISC-V ('R': running, '-': in reset)
+  Colors:
+    functional_workers
+    eth
+    arc
+    dram
+    pcie
+    router_only
+    harvested_workers
+
+==== Device 0
+    00    01    02    03    04    05    06    07    08    09
+00  dram  eth   eth   eth   eth   eth   eth   eth   eth   dram
+01  dram  ----  ----  ----  ----  ----  ----  ----  ----  dram
+02  dram  ----  ----  ----  ----  ----  ----  ----  ----  dram
+03  arc   ----  ----  ----  ----  ----  ----  ----  ----  dram
+...
+```
+Shows noc0 coordinates on logical dram axis for device 0
+```
+device -d 0 logical-dram noc0
+```
+Output:
+```
+
+Legend:
+  Axis coordinates: logical-dram
+  Cell contents: noc0
+  Colors:
+    dram
+
+==== Device 0
+    00    01   02    03    04   05
+00  0-0   0-5  5-0   5-2   5-3  5-5
+01  0-1   0-6  5-1   5-9   5-4  5-6
+02  0-11  0-7  5-11  5-10  5-8  5-7
+```
+Shows the block type on noc0 axis for device 0 without legend
+```
+device -d 0 noc0 block --no-legend
+```
+Output:
+```
+==== Device 0
+    00    01                  02                  03                  04                  05    06                  07            ...
+00  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
+01  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+02        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+03  pcie  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+04        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+05  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+06  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
+07  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+08        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+09        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+10  arc   functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+11  dram  harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvested_work...
+```
+
+
+### Common options
+
+- `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
 
 
 
@@ -370,164 +527,111 @@ go -d 0 -l 0,0
 
 
 
-## device / d
+## brxy
 
 ### Usage
 
 ```
-device [<device-id> [<axis-coordinate> [<cell-contents>]]]
+brxy <core-loc> <addr> [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <D>...]
 ```
 
 
 ### Description
 
-Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
+Reads and prints a block of data from address 'addr' at core <core-loc>.
 
 
 ### Arguments
 
-- `device-id`: ID of the device [default: 0]
-- `axis-coordinate`: Coordinate system for the axis [default: netlist] Supported: netlist, noc0, noc1, nocTr, nocVirt, die, tensix
-- `cell-contents`: A comma separated list of the cell contents [default: nocTr] Supported: riscv - show the status of the RISC-V ('R': running, '-': in reset) block - show the type of the block at that coordinate netlist, noc0, noc1, nocTr, nocVirt, die, tensix - show coordinate
-
-
-### Examples
-
-Shows the status of the RISC-V for all devices
-```
-device
-```
-Output:
-```
-==== Device 0
-    00    01    02    03    04    05    06    07
-00  ----  ----  ----  ----  ----  ----  ----  ----
-01  ----  ----  ----  ----  ----  ----  ----  ----
-02  ----  ----  ----  ----  ----  ----  ----  ----
-03  ----  ----  ----  ----  ----  ----  ----  ----
-04  ----  ----  ----  ----  ----  ----  ----  ----
-05  ----  ----  ----  ----  ----  ----  ----  ----
-06  ----  ----  ----  ----  ----  ----  ----  ----
-07  ----  ----  ----  ----  ----  ----  ----  ----
-==== Device 1
-    00    01    02    03    04    05    06    07
-00  ----  ----  ----  ----  ----  ----  ----  ----
-01  ----  ----  ----  ----  ----  ----  ----  ----
-02  ----  ----  ----  ----  ----  ----  ----  ----
-03  ----  ----  ----  ----  ----  ----  ----  ----
-04  ----  ----  ----  ----  ----  ----  ----  ----
-05  ----  ----  ----  ----  ----  ----  ----  ----
-06  ----  ----  ----  ----  ----  ----  ----  ----
-07  ----  ----  ----  ----  ----  ----  ----  ----
-```
-Shows noc0 to nocTr mapping for device 0
-```
-device 0 noc0
-```
-Output:
-```
-==== Device 0
-11  dram  ----               ----               ----               ----               dram  ----               ----               ...
-10  arc   ----               ----               ----               ----               dram  ----               ----               ...
-09        harvested_workers  harvested_workers  harvested_workers  harvested_workers  dram  harvested_workers  harvested_workers  ...
-08        harvested_workers  harvested_workers  harvested_workers  harvested_workers  dram  harvested_workers  harvested_workers  ...
-07  dram  ----               ----               ----               ----               dram  ----               ----               ...
-06  dram  eth                eth                eth                eth                dram  eth                eth                ...
-05  dram  ----               ----               ----               ----               dram  ----               ----               ...
-04        ----               ----               ----               ----               dram  ----               ----               ...
-03  pcie  ----               ----               ----               ----               dram  ----               ----               ...
-02        ----               ----               ----               ----               dram  ----               ----               ...
-01  dram  ----               ----               ----               ----               dram  ----               ----               ...
-00  dram  eth                eth                eth                eth                dram  eth                eth                ...
-    00    01                 02                 03                 04                 05    06                 07                 ...
-```
-Shows netlist coordinates in noc0 coordinages for device 0
-```
-device 0 noc0 netlist
-```
-Output:
-```
-==== Device 0
-11  N/A  7,0  7,1  7,2  7,3  N/A  7,4  7,5  7,6  7,7
-10  N/A  6,0  6,1  6,2  6,3  N/A  6,4  6,5  6,6  6,7
-09       N/A  N/A  N/A  N/A  N/A  N/A  N/A  N/A  N/A
-08       N/A  N/A  N/A  N/A  N/A  N/A  N/A  N/A  N/A
-07  N/A  5,0  5,1  5,2  5,3  N/A  5,4  5,5  5,6  5,7
-06  N/A  N/A  N/A  N/A  N/A  N/A  N/A  N/A  N/A  N/A
-05  N/A  4,0  4,1  4,2  4,3  N/A  4,4  4,5  4,6  4,7
-04       3,0  3,1  3,2  3,3  N/A  3,4  3,5  3,6  3,7
-03  N/A  2,0  2,1  2,2  2,3  N/A  2,4  2,5  2,6  2,7
-02       1,0  1,1  1,2  1,3  N/A  1,4  1,5  1,6  1,7
-01  N/A  0,0  0,1  0,2  0,3  N/A  0,4  0,5  0,6  0,7
-00  N/A  N/A  N/A  N/A  N/A  N/A  N/A  N/A  N/A  N/A
-    00   01   02   03   04   05   06   07   08   09
-```
-
-
-
-
-
-
-## gdb
-
-### Usage
-
-```
-gdb start --port <port>
-gdb stop
-```
-
-
-### Description
-
-Starts or stops gdb server.
-
-
-### Examples
-
-Command:
-```
-gdb start --port 6767
-```
-Command:
-```
-gdb stop
-```
-
-
-
-
-
-
-## re
-
-### Usage
-
-```
-run-elf <elf-file> [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
-```
-
-
-### Description
-
-Loads an elf file into a brisc and runs it.
+- `core-loc`: Either X-Y or R,C location of a core, or dram channel (e.g. ch3)
+- `addr`: Address to read from
+- `word-count`: Number of words to read. Default: 1
 
 
 ### Options
 
-- `-r` = **\<risc\>**: RiscV ID (0: brisc, 1-3 triscs). [default: 0]
+- `--sample` = **\<N\>**: Number of seconds to sample for. [default: 0] (single read)
+- `--format` = **\<F\>**: Data format. Options: i8, i16, i32, hex8, hex16, hex32 [default: hex32]
+- `-o` = **\<O\>**: Address offset. Optional and repeatable.
+- `-d` = **\<D\>**: Device ID. Optional and repeatable. Default: current device
 
 
 ### Examples
 
-Command:
+Read 1 word from address 0
 ```
-run-elf build/riscv-src/wormhole/sample.brisc.elf
+brxy 0,0 0x0 1
 ```
-
-
-### Common options
-
-- `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
-- `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
-- `--verbose, -v`: Execute command with verbose output. [default: False]
+Output:
+```
+0,0 (L1) : 0x00000000 (4 bytes)
+0x00000000:  00001234
+```
+Read 16 words from address 0
+```
+brxy 0,0 0x0 16
+```
+Output:
+```
+0,0 (L1) : 0x00000000 (64 bytes)
+0x00000000:  00001234  135a5719  560db495  2bbed9d7
+0x00000010:  b2d386c9  18ea74c7  d08084aa  c800a290
+0x00000020:  51528ef9  d8250037  c661fec2  ed5134e9
+0x00000030:  132b0a06  a3202840  373a7ce4  4b0df440
+```
+Prints 32 bytes in i8 format
+```
+brxy 0,0 0x0 32 --format i8
+```
+Output:
+```
+0,0 (L1) : 0x00000000 (128 bytes)
+0x00000000:  52   18   0    0    25   87   90   19   149  180  13   86   215  217  190  43
+0x00000010:  201  134  211  178  199  116  234  24   170  132  128  208  144  162  0    200
+0x00000020:  249  142  82   81   55   0    37   216  194  254  97   198  233  52   81   237
+0x00000030:  6    10   43   19   64   40   32   163  228  124  58   55   64   244  13   75
+0x00000040:  140  216  157  8    76   67   174  27   74   16   174  11   165  24   152  30
+0x00000050:  32   4    193  56   5    202  68   216  68   249  8    169  131  100  46   3
+0x00000060:  205  1    10   120  81   76   106  232  194  104  3    237  120  187  3    177
+0x00000070:  44   224  17   12   65   174  132  44   28   164  228  106  207  45   219  22
+```
+Sample for 5 seconds
+```
+brxy 0,0 0x0 32 --format i8 --sample 5
+```
+Output:
+```
+Sampling for 0.15625 seconds...
+0,0 (L1) : 0x00000000 (0) => 0x00001234 (4660) - 28815 times
+Sampling for 0.15625 seconds...
+0,0 (L1) : 0x00000004 (4) => 0x00001234 (4660) - 28996 times
+Sampling for 0.15625 seconds...
+0,0 (L1) : 0x00000008 (8) => 0x00001234 (4660) - 28989 times
+Sampling for 0.15625 seconds...
+0,0 (L1) : 0x0000000c (12) => 0x00001234 (4660) - 28905 times
+Sampling for 0.15625 seconds...
+0,0 (L1) : 0x00000010 (16) => 0x00001234 (4660) - 28988 times
+Sampling for 0.15625 seconds...
+0,0 (L1) : 0x00000014 (20) => 0x00001234 (4660) - 29003 times
+Sampling for 0.15625 seconds...
+0,0 (L1) : 0x00000018 (24) => 0x00001234 (4660) - 28983 times
+Sampling for 0.15625 seconds...
+0,0 (L1) : 0x0000001c (28) => 0x00001234 (4660) - 28977 times
+Sampling for 0.15625 seconds...
+0,0 (L1) : 0x00000020 (32) => 0x00001234 (4660) - 28961 times
+Sampling for 0.15625 seconds...
+0,0 (L1) : 0x00000024 (36) => 0x00001234 (4660) - 28871 times
+...
+```
+Read 16 words from dram channel 0
+```
+brxy ch0 0x0 16
+```
+Output:
+```
+ch0 (DRAM) : 0x00000000 (64 bytes)
+0x00000000:  000000bb  55555555  55555555  55555555
+0x00000010:  55555555  55555555  55555555  55555555
+0x00000020:  00010000  50044405  00444000  fd47eee5
+0x00000030:  743d3170  00007f03  50400055  00000040
+```

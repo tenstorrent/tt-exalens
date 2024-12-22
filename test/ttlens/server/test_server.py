@@ -23,6 +23,11 @@ def empty_get_cluster_description():
     check_not_implemented_response(lambda: server.get_cluster_description())
 
 
+def empty_convert_from_noc0():
+    global server
+    check_not_implemented_response(lambda: server.convert_from_noc0(1, 2, 3, "core_type", "coord_type"))
+
+
 def empty_pci_read32():
     global server
     check_not_implemented_response(lambda: server.pci_read32(1, 2, 3, 123456))
@@ -56,11 +61,6 @@ def empty_dma_buffer_read32():
 def empty_pci_read_tile():
     global server
     check_not_implemented_response(lambda: server.pci_read_tile(1, 2, 3, 123456, 1024, 14))
-
-
-def empty_get_harvester_coordinate_translation():
-    global server
-    check_not_implemented_response(lambda: server.get_harvester_coordinate_translation(1))
 
 
 def empty_pci_write():
@@ -147,10 +147,10 @@ def get_cluster_description():
     print("pass" if read == "get_cluster_description()" else "fail")
 
 
-def get_harvester_coordinate_translation():
+def convert_from_noc0():
     global server
-    read = server.get_harvester_coordinate_translation(1)
-    print("pass" if read == "get_harvester_coordinate_translation(1)" else "fail")
+    read = server.convert_from_noc0(1, 2, 3, "core_type", "coord_type")
+    print("pass" if read == (3, 4) else "fail")
 
 
 def get_device_ids():

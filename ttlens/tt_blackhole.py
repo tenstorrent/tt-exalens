@@ -1,13 +1,8 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-
-
-# TODO (#75): This is plain copy of tt_wormhole.py. Need to update this file with Blackhole specific details
 from ttlens import tt_util as util
 from ttlens import tt_device
-from ttlens.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
-from ttlens.tt_lens_lib import read_word_from_device
 
 
 class BlackholeInstructions(tt_device.TensixInstructions):
@@ -26,10 +21,6 @@ class BlackholeInstructions(tt_device.TensixInstructions):
 # Device
 #
 class BlackholeDevice(tt_device.Device):
-    SIG_SEL_CONST = 5  # TODO (#75): Unknown constant!!!!
-    # IMPROVE: some of this can be read from architecture yaml file
-    DRAM_CHANNEL_TO_NOC0_LOC = [(0, 11), (0, 2), (0, 8), (0, 5), (9, 11), (9, 2), (9, 8), (9, 5)]
-
     # Physical location mapping. Physical coordinates are the geografical coordinates on a chip's die.
     DIE_X_TO_NOC_0_X = [0, 1, 16, 2, 15, 3, 14, 4, 13, 5, 12, 6, 11, 7, 10, 8, 9]
     DIE_Y_TO_NOC_0_Y = [0, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6]
@@ -48,43 +39,6 @@ class BlackholeDevice(tt_device.Device):
     NOC_ARC_CSM_DATA_BASE_ADDR = 0x10000000
     NOC_ARC_ROM_DATA_BASE_ADDR = 0x80000000
 
-    # TODO (#89): Translated coordinates are not correct in blackhole. We need to understand what is happening to them since there are three columns now that are not tensix compared to two in wormhole. For now just an identity mapping
-    NOC0_X_TO_NOCTR_X = {i: i for i in range(0, len(NOC_0_X_TO_DIE_X))}
-    NOCTR_X_TO_NOC0_X = {v: k for k, v in NOC0_X_TO_NOCTR_X.items()}
-
-    # TODO (#90): Harvesting is different in blackhole. Both x and y can be harvested... For now, similar as in grayskull..
-    def get_harvested_noc0_y_rows(self):
-        harvested_workers = self._block_locations["harvested_workers"]
-        return list({y for x, y in harvested_workers})
-
-    # Coordinate conversion functions (see tt_coordinate.py for description of coordinate systems)
-    def noc0_to_tensix(self, loc):
-        if isinstance(loc, OnChipCoordinate):
-            noc0_x, noc0_y = loc._noc0_coord
-        else:
-            noc0_x, noc0_y = loc
-        if noc0_x == 0 or noc0_x == 8 or noc0_x == 9:
-            raise CoordinateTranslationError("NOC0 x=0 and x=8 and x=9 do not have an RC coordinate")
-        if noc0_y == 0 or noc0_y == 1:
-            raise CoordinateTranslationError("NOC0 y=0 and y=1 do not have an RC coordinate")
-        row = noc0_y - 2
-        col = noc0_x - 1
-        if noc0_x > 9:
-            col -= 2
-        return row, col
-
-    def tensix_to_noc0(self, netlist_loc):
-        row, col = netlist_loc
-        noc0_y = row + 2
-        noc0_x = col + 1
-        if noc0_x >= 9:
-            noc0_x += 2
-        return noc0_x, noc0_y
-
-    # TODO (#90): Harvesting is different in blackhole. Both x and y can be harvested... For now, just an identity mapping
-    def _handle_harvesting_for_nocTr_noc0_map(self, num_harvested_rows):
-        self.nocTr_x_to_noc0_x = {i: i for i in range(0, self.row_count())}
-
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(
             id,
@@ -94,9 +48,6 @@ class BlackholeDevice(tt_device.Device):
             context,
         )
         self.instructions = BlackholeInstructions()
-
-    def row_count(self):
-        return len(BlackholeDevice.DIE_Y_TO_NOC_0_Y)
 
     def get_tensix_configuration_register_base(self) -> int:
         return 0xFFEF0000

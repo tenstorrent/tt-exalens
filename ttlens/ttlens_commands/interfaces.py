@@ -83,7 +83,7 @@ def run(cmd_text, context, ui_state=None):
                         read_noc_size(
                             context,
                             device_id,
-                            *context.devices[device_id]._block_locations["arc"][0],
+                            *context.devices[device_id]._block_locations["arc"][0].to("noc0"),
                             efuse_noc,
                             TEST_ID_SIZE,
                         )
