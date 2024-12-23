@@ -33,9 +33,6 @@ class ArcDfwLogContext(ABC):
         self.log_list = []
         yaml_data = self.__parse_yaml(log_yaml_file)
 
-        # Hardcoding heartbeat address because it's used as timestamp
-        self.log_list.append(LogInfo(address=self._parse_address(yaml_data, "heartbeat"), log_name="heartbeat"))
-
         self.parse(yaml_data, log_configuration)
 
         if len(self.log_list) == 0:
@@ -102,8 +99,6 @@ class ArcDfwLogContextFromYaml(ArcDfwLogContext):
             raise TTException(f"Expected a string for log configuration, got {type(log_configuration)}")
 
         for log in yaml_data["logger_configuration"][log_configuration]:
-            if log == "heartbeat":
-                continue
             size = yaml_data["record_configurations"][log]["size"]
             output = yaml_data["record_configurations"][log]["output"]
             self.log_list.append(
@@ -117,8 +112,6 @@ class ArcDfwLogContextFromList(ArcDfwLogContext):
             raise TTException(f"Expected a list of log names, got {type(log_list)}")
 
         for log in log_list:
-            if log == "heartbeat":
-                continue
             size = yaml_data["record_configurations"][log]["size"]
             output = yaml_data["record_configurations"][log]["output"]
             self.log_list.append(
