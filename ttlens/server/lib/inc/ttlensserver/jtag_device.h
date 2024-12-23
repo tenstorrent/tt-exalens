@@ -18,7 +18,6 @@ class JtagDevice {
 
     std::optional<uint32_t> get_device_cnt() const;
     std::optional<uint32_t> get_efuse_harvesting(uint8_t chip_id) const;
-    std::optional<uint32_t> get_device_harvesting(uint8_t chip_id) const;
 
     std::optional<tt::ARCH> get_jtag_arch(uint8_t chip_id);
 
@@ -47,7 +46,6 @@ class JtagDevice {
     std::unique_ptr<Jtag> jtag;
     std::vector<uint32_t> jlink_devices;
     std::vector<uint32_t> efuse_harvesting;
-    std::vector<uint32_t> device_harvesting;
     uint8_t curr_device_idx = -1;
 };
 
