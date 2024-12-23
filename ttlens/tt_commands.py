@@ -4,8 +4,10 @@
 from docopt import DocoptExit, docopt
 from ttlens.tt_coordinate import OnChipCoordinate
 
+
 class CommandParsingException(Exception):
     """Custom exception to wrap DocoptExit and SystemExit."""
+
     def __init__(self, original_exception):
         self.original_exception = original_exception
         super().__init__(str(original_exception))  # Optional: Forward the message
@@ -17,6 +19,7 @@ class CommandParsingException(Exception):
     def is_help_message(self):
         """If exception is SystemExit, h or help command is parsed. It is docopt behavior"""
         return isinstance(self.original_exception, SystemExit)
+
 
 class tt_docopt:
     """
