@@ -194,7 +194,11 @@ class ArcDfwHeader:
 
     def get_buffer_size_without_header(self) -> int:
         return self.get_buffer_size() - self.get_header_size()
-
+    
+    def get_buffer_usable_size_without_header(self, log_size :int) -> int:
+        temp = self.get_buffer_size_without_header()
+        temp -= temp % log_size
+        return temp
 
 class ArcDebugFw(ABC):
     def __init__(
@@ -380,8 +384,8 @@ class ArcDebugLoggerFw(ArcDebugFw):
     def __init__(
         self,
         log_context: ArcDfwLogContext,
-        base_fw_file_path: str = "fw/arc/arc_dbg_fw.hex",
-        base_fw_symbols_file_path: str = "fw/arc/arc_dbg_fw.syms",
+        base_fw_file_path: str = "fw/arc/arc_dbg_fw_pmon.hex",
+        base_fw_symbols_file_path: str = "fw/arc/arc_dbg_fw_pmon.syms",
         modified_fw_file_path: str = "fw/arc/arc_modified.hex",
         device_id=0,
         context=None,
@@ -440,7 +444,7 @@ class ArcDebugLoggerFw(ArcDebugFw):
         buffer_size = self.buffer_header.get_buffer_size_without_header()
         while (
             t := self.buffer_header.read_from_field("num_log_calls", self.device_id, self.context)
-            * len(self.log_context.log_list)
+            * self.get_number_of_logs()
             * 4
         ) <= buffer_size:
             continue
@@ -484,18 +488,26 @@ class ArcDebugLoggerFw(ArcDebugFw):
         else:
             return value
 
+    def get_number_of_logs(self):
+        """
+        Get the number of logs.
+        """
+        return len(self.log_context.log_list)
+
     def sort_log_data(self, log_data: dict):
         """
-        Sorts the log data according to "heartbeat".
+        Sorts the log data according to pivot point.
 
         Args:
             log_data (dict): The log data which will be modified by this function.
         """
-        # Sort the log data according to "heartbeat"
-        if "heartbeat" in log_data:
-            sorted_indices = sorted(range(len(log_data["heartbeat"])), key=lambda i: log_data["heartbeat"][i])
-            for log_name in log_data:
-                log_data[log_name] = [log_data[log_name][i] for i in sorted_indices]
+        log_size = self.get_number_of_logs() * 4
+        num_log_calls = self.buffer_header.read_from_field("num_log_calls", self.device_id, self.context) 
+        max_number_of_one_log = (self.buffer_header.get_buffer_usable_size_without_header(log_size)//(log_size)) 
+        pivot_point = (num_log_calls % max_number_of_one_log)
+
+        for log_name in log_data:
+            log_data[log_name] = log_data[log_name][pivot_point:] + log_data[log_name][:pivot_point]
 
     def parse_log_buffer(self, buffer: bytes) -> dict:
         """
@@ -573,6 +585,8 @@ class ArcDebugLoggerFw(ArcDebugFw):
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
         for i, (log_name, values) in enumerate(log_data.items()):
+            if log_name == "pmon":
+                continue
             color = colors[i % len(colors)]
             ax = axes[i]
             ax.plot(values, color=color)
@@ -604,9 +618,8 @@ class ArcDebugLoggerFw(ArcDebugFw):
 
         figures = {}
         for key, data in log_data.items():
-            if log_names != None and key == "heartbeat" and "heartbeat" not in log_names:
+            if key == "pmon":
                 continue
-
             figures[key] = px.line(x=range(len(data)), y=data, title=key.capitalize())
 
         combined_html = "combined_plots.html"
@@ -659,10 +672,13 @@ class ArcDebugLoggerWithPmonFw(ArcDebugLoggerFw):
         self.compiler = ArcDfwLoggerWithPmonCompiler(
             base_fw_file_path, base_fw_symbols_file_path, modified_fw_file_path, log_context
         )
-        # self.compiler = ArcDfwLoggerCompiler(
-        #     base_fw_file_path, base_fw_symbols_file_path, modified_fw_file_path, log_context
-        # )
     
+    def get_number_of_logs(self):
+        """
+        Get the number of logs.
+        """
+        return len(self.log_context.log_list) + self.pmon_size//4
+
     def setup_pmon(
         self, pmon_id, ro_id, wait_for_l1_trigger, stop_on_flatline, device_id: int = 0, context: Context = None
     ):
@@ -691,28 +707,30 @@ class ArcDebugLoggerWithPmonFw(ArcDebugLoggerFw):
             dict: The log data.
         """
         log_data = {log_info.log_name: [] for log_info in self.log_context.log_list}
+        log_data["pmon"] = []
         num_logs = len(self.log_context.log_list)
         num_logs_and_pmons = num_logs + self.pmon_size // 4
-        pmons = []
 
-        buffer_index = 0
-        while buffer_index < len(buffer) and buffer_index // 4 >= (len(buffer) // 4) - (len(buffer) // 4) % num_logs_and_pmons:
-            if (buffer_index // 4) % num_logs_and_pmons >= num_logs:
-                pmons.extend(
+        regular_logs_index = 0
+        buffer_index = 0        
+        while buffer_index<len(buffer) and buffer_index // 4 < (len(buffer) // 4) - (len(buffer) // 4) % num_logs_and_pmons:
+            # Skiping the pmon_data
+            if regular_logs_index == len(self.log_context.log_list):
+                pmons = [
                     struct.unpack("<I", buffer[buffer_index + offset: buffer_index + offset + 4])[0]
                     for offset in range(0, self.pmon_size, 4)
-                )
-                buffer_index += self.pmon_size
+                    ]
+                log_data["pmon"].append(pmons)
+                buffer_index+=self.pmon_size
+                regular_logs_index =0
             else:
-                value = struct.unpack("<I", buffer[buffer_index: buffer_index + 4])[0]
-                log_name = self.log_context.log_list[(buffer_index // 4) % num_logs].log_name
-                log_data[log_name].append(self.format_log_by_type(value, self.log_context.log_list[(buffer_index // 4) % num_logs].output))
-                buffer_index += 4
+                value = struct.unpack("<I", buffer[buffer_index : buffer_index + 4])[0]
+                log_name = self.log_context.log_list[(buffer_index // 4) % num_logs_and_pmons].log_name
+                log_data[log_name].append(self.format_log_by_type(value, self.log_context.log_list[(buffer_index // 4) % num_logs_and_pmons].output))
+                
+                regular_logs_index+=1
+                buffer_index+=4
 
         self.sort_log_data(log_data)
-
-        for i in range(0, len(buffer), 4):
-            value = struct.unpack("<I", buffer[i: i + 4])[0]
-            print(f"Buffer[{i // 4}]: {value:08x}")
 
         return log_data
