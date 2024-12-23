@@ -66,22 +66,14 @@ class Device(TTObject):
             from ttlens import tt_quasar
 
             dev = tt_quasar.QuasarDevice(
-                id=device_id,
-                arch=arch,
-                cluster_desc=cluster_desc,
-                device_desc_path=device_desc_path,
-                context=context
+                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
 
         if "quasar" in arch.lower():
             from ttlens import tt_quasar
 
             dev = tt_quasar.QuasarDevice(
-                id=device_id,
-                arch=arch,
-                cluster_desc=cluster_desc,
-                device_desc_path=device_desc_path,
-                context=context
+                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
 
         if dev is None:
@@ -209,7 +201,7 @@ class Device(TTObject):
         # Base class doesn't know if it is translated coordinate, but specialized classes do
         return False
 
-    def get_block_locations(self, block_type="functional_workers", expand_lists = True):
+    def get_block_locations(self, block_type="functional_workers", expand_lists=True):
         return self.get_block_locations_internal(block_type, "nocVirt", expand_lists)
 
     def get_block_locations_internal(self, block_type, coord_type, expand_lists):

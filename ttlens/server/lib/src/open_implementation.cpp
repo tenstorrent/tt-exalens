@@ -17,8 +17,8 @@
 #include "ttlensserver/umd_implementation.h"
 #include "umd/device/cluster.h"
 #include "umd/device/tt_cluster_descriptor.h"
-#include "umd/device/tt_simulation_device.h"
 #include "umd/device/tt_core_coordinates.h"
+#include "umd/device/tt_simulation_device.h"
 #include "umd/device/tt_soc_descriptor.h"
 #include "umd/device/tt_xy_pair.h"
 #include "umd/device/types/arch.h"
@@ -133,11 +133,15 @@ static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
         cluster_descriptor << "chips_with_mmio: [" << std::endl;
         cluster_descriptor << "   0: 0," << std::endl;
         cluster_descriptor << "]" << std::endl << std::endl;
-        cluster_descriptor << "# harvest_mask is the bit indicating which tensix row is harvested. So bit 0 = first tensix row; bit 1 = second tensix row etc..." << std::endl;
+        cluster_descriptor << "# harvest_mask is the bit indicating which tensix row is harvested. So bit 0 = first "
+                              "tensix row; bit 1 = second tensix row etc..."
+                           << std::endl;
         cluster_descriptor << "harvesting: {" << std::endl;
         cluster_descriptor << "   0: {noc_translation: false, harvest_mask: 0}," << std::endl;
         cluster_descriptor << "}" << std::endl << std::endl;
-        cluster_descriptor << "# This value will be null if the boardtype is unknown, should never happen in practice but to be defensive it would be useful to throw an error on this case." << std::endl;
+        cluster_descriptor << "# This value will be null if the boardtype is unknown, should never happen in practice "
+                              "but to be defensive it would be useful to throw an error on this case."
+                           << std::endl;
         cluster_descriptor << "boardtype: {" << std::endl;
         cluster_descriptor << "   0: n150," << std::endl;
         cluster_descriptor << "}" << std::endl;

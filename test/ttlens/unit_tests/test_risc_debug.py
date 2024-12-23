@@ -34,10 +34,10 @@ class TestDebugging(unittest.TestCase):
     pc_register_index: int = None  # PC register index
     program_base_address: int = None  # Base address for program code
 
-	@classmethod
-	def setUpClass(cls):
-		cls.context = init_default_test_context()
-		cls.pc_register_index = get_register_index("pc")
+    @classmethod
+    def setUpClass(cls):
+        cls.context = init_default_test_context()
+        cls.pc_register_index = get_register_index("pc")
 
     def setUp(self):
         # Convert core_desc to core_loc

@@ -44,11 +44,15 @@ class QuasarDevice(tt_device.Device):
         return 0x800000
 
     __debug_register_map = {
-        'RISCV_DEBUG_REG_RISC_DBG_CNTL_0': tt_device.TensixRegisterDescription(address=0x60, mask=0xffffffff, shift=0),
-        'RISCV_DEBUG_REG_RISC_DBG_CNTL_1': tt_device.TensixRegisterDescription(address=0x64, mask=0xffffffff, shift=0),
-        'RISCV_DEBUG_REG_RISC_DBG_STATUS_0': tt_device.TensixRegisterDescription(address=0x68, mask=0xffffffff, shift=0),
-        'RISCV_DEBUG_REG_RISC_DBG_STATUS_1': tt_device.TensixRegisterDescription(address=0x6C, mask=0xffffffff, shift=0),
-        'RISCV_DEBUG_REG_SOFT_RESET_0': tt_device.TensixRegisterDescription(address=0xC4, mask=0xffffffff, shift=0),
+        "RISCV_DEBUG_REG_RISC_DBG_CNTL_0": tt_device.TensixRegisterDescription(address=0x60, mask=0xFFFFFFFF, shift=0),
+        "RISCV_DEBUG_REG_RISC_DBG_CNTL_1": tt_device.TensixRegisterDescription(address=0x64, mask=0xFFFFFFFF, shift=0),
+        "RISCV_DEBUG_REG_RISC_DBG_STATUS_0": tt_device.TensixRegisterDescription(
+            address=0x68, mask=0xFFFFFFFF, shift=0
+        ),
+        "RISCV_DEBUG_REG_RISC_DBG_STATUS_1": tt_device.TensixRegisterDescription(
+            address=0x6C, mask=0xFFFFFFFF, shift=0
+        ),
+        "RISCV_DEBUG_REG_SOFT_RESET_0": tt_device.TensixRegisterDescription(address=0xC4, mask=0xFFFFFFFF, shift=0),
         # 'TRISC_RESET_PC_SEC0_PC': tt_device.TensixRegisterDescription(address=0x228, mask=0xffffffff, shift=0), # Old name from configuration register
         # 'RISCV_DEBUG_REG_TRISC0_RESET_PC': tt_device.TensixRegisterDescription(address=0x228, mask=0xffffffff, shift=0), # New name
         # 'TRISC_RESET_PC_SEC1_PC': tt_device.TensixRegisterDescription(address=0x22c, mask=0xffffffff, shift=0), # Old name from configuration register
