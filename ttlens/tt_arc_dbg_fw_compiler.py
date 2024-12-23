@@ -270,7 +270,7 @@ class ArcDfwLoggerWithPmonCompiler(ArcDfwLoggerCompiler):
 
         instruction_bytes += [0xC0, 0xF1] # push_s blink
 
-        instruction_bytes += [0x20, 0x22, 0x0F, 0x80]
+        instruction_bytes += [0x20, 0x22, 0x0F, 0x80] # Branch linked to dfw_pmon_log
         pmon_log_address = self.symbol_locations["dfw_pmon_log"]
         instruction_bytes += [
             (pmon_log_address >> 24) & 0xFF,
