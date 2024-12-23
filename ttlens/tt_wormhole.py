@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from functools import cached_property
 from ttlens import tt_util as util
 from ttlens import tt_device
 

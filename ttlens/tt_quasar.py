@@ -6,7 +6,6 @@
 # TODO: This is plain copy of tt_blackhole.py. Need to update this file with Quasar specific details
 from ttlens import tt_util as util
 from ttlens import tt_device
-from ttlens.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
 
 #
 # Device

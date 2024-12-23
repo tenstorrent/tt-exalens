@@ -143,7 +143,31 @@ static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
                               "but to be defensive it would be useful to throw an error on this case."
                            << std::endl;
         cluster_descriptor << "boardtype: {" << std::endl;
-        cluster_descriptor << "   0: n150," << std::endl;
+        cluster_descriptor << "   0: BlackholeSimulator," << std::endl;
+        cluster_descriptor << "}" << std::endl;
+    } else if (arch == tt::ARCH::QUASAR) {
+        cluster_descriptor << "arch: {" << std::endl;
+        cluster_descriptor << "   0: Quasar," << std::endl;
+        cluster_descriptor << "}" << std::endl << std::endl;
+        cluster_descriptor << "chips: {" << std::endl;
+        cluster_descriptor << "   0: [0,0,0,0]," << std::endl;
+        cluster_descriptor << "}" << std::endl << std::endl;
+        cluster_descriptor << "ethernet_connections: [" << std::endl;
+        cluster_descriptor << "]" << std::endl << std::endl;
+        cluster_descriptor << "chips_with_mmio: [" << std::endl;
+        cluster_descriptor << "   0: 0," << std::endl;
+        cluster_descriptor << "]" << std::endl << std::endl;
+        cluster_descriptor << "# harvest_mask is the bit indicating which tensix row is harvested. So bit 0 = first "
+                              "tensix row; bit 1 = second tensix row etc..."
+                           << std::endl;
+        cluster_descriptor << "harvesting: {" << std::endl;
+        cluster_descriptor << "   0: {noc_translation: false, harvest_mask: 0}," << std::endl;
+        cluster_descriptor << "}" << std::endl << std::endl;
+        cluster_descriptor << "# This value will be null if the boardtype is unknown, should never happen in practice "
+                              "but to be defensive it would be useful to throw an error on this case."
+                           << std::endl;
+        cluster_descriptor << "boardtype: {" << std::endl;
+        cluster_descriptor << "   0: QuasarSimulator," << std::endl;
         cluster_descriptor << "}" << std::endl;
     } else
         throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");
@@ -516,7 +540,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     //     sizeof(blackhole_simulation_configuration_bytes) / sizeof(blackhole_simulation_configuration_bytes[0]);
 
     const uint8_t *configuration_bytes = quasar_simulation_configuration_bytes;
-    tt::ARCH arch = tt::ARCH::BLACKHOLE;
+    tt::ARCH arch = tt::ARCH::QUASAR;
     size_t configuration_length =
         sizeof(quasar_simulation_configuration_bytes) / sizeof(quasar_simulation_configuration_bytes[0]);
 

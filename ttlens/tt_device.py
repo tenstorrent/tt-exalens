@@ -201,10 +201,7 @@ class Device(TTObject):
         # Base class doesn't know if it is translated coordinate, but specialized classes do
         return False
 
-    def get_block_locations(self, block_type="functional_workers", expand_lists=True):
-        return self.get_block_locations_internal(block_type, "nocVirt", expand_lists)
-
-    def get_block_locations_internal(self, block_type, coord_type, expand_lists):
+    def get_block_locations(self, block_type="functional_workers"):
         """
         Returns locations of all blocks of a given type
         """
@@ -219,13 +216,6 @@ class Device(TTObject):
         assert len(arc_locations) == 1
 
         return arc_locations[0]
-
-    def get_dram_channel(self, channel: int) -> OnChipCoordinate:
-        """
-        Returns OnChipCoordinate of the DRAM channel
-        """
-        dram_locations = self.get_block_locations(block_type="dram", expand_lists=False)
-        return dram_locations[channel][0]
 
     @cached_property
     def _block_locations(self):
@@ -436,7 +426,7 @@ class Device(TTObject):
         return addr
 
     def _init_register_addresses(self):
-        try:
+        if len(self.get_block_locations("arc")) > 0:
             base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
             csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
             rom_data_base_addr = self.PCI_ARC_ROM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_ROM_DATA_BASE_ADDR
@@ -454,8 +444,6 @@ class Device(TTObject):
                 "ARC_CSM_DATA": csm_data_base_addr,
                 "ARC_ROM_DATA": rom_data_base_addr,
             }
-        except:
-            pass
 
 
 # end of class Device
