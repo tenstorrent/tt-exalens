@@ -396,7 +396,9 @@ class Device(TTObject):
             if register_description != None:
                 base_register_address = self.get_tenxis_debug_register_base()
                 return DebugRegisterDescription(
-                    register_description.address, register_description.mask, register_description.shift
+                    base_register_address + register_description.address,
+                    register_description.mask,
+                    register_description.shift,
                 )
             else:
                 raise ValueError(f"Unknown tensix register name: {register_name}")
