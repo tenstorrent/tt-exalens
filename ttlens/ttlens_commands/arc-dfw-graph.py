@@ -79,4 +79,3 @@ def graph(log_names: List[str], size: int, port: int, save_csv: str, from_csv: s
         ArcDebugLoggerFw.save_log_data_to_csv(log_data, save_csv)
 
     ArcDebugLoggerFw.open_graph_in_a_browser(log_data, log_names, port)
-    arc_fw.save_graph_as_picture(log_data, "sefe.png")
