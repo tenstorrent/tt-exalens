@@ -33,9 +33,6 @@ class TestTensixDebug(unittest.TestCase):
         self.tdbg = TensixDebug(self.core_loc, 0, self.context)
 
     def test_read_write_cfg_register(self):
-        if self.context.devices[0]._arch == "grayskull":
-            self.skipTest("This test is not available for grayskull")
-
         cfg_reg_name = "ALU_FORMAT_SPEC_REG2_Dstacc"
         self.tdbg.write_tensix_register(cfg_reg_name, 10)
         assert self.tdbg.read_tensix_register(cfg_reg_name) == 10
@@ -45,9 +42,6 @@ class TestTensixDebug(unittest.TestCase):
         assert self.tdbg.read_tensix_register(cfg_reg_name) == 5
 
     def test_read_write_dbg_register(self):
-        if self.context.devices[0]._arch == "grayskull":
-            self.skipTest("This test is not available for grayskull")
-
         dbg_reg_name = "RISCV_DEBUG_REG_CFGREG_RD_CNTL"
         self.tdbg.write_tensix_register(dbg_reg_name, 10)
         assert self.tdbg.read_tensix_register(dbg_reg_name) == 10
