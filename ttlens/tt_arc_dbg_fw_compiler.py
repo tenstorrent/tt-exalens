@@ -220,7 +220,6 @@ class ArcDfwCompiler(ABC):
         self._add_instructions_to_hex_lines(hex_lines, LOG_FUNCITON_EDITABLE, instruction_bytes)
 
         save_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.output_fw_file_path)
-        print(save_file_name)
         self._save_hex_file(save_file_name, hex_lines)
 
     @abstractmethod
