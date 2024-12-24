@@ -40,7 +40,7 @@ class ArcDfwCompiler(ABC):
                 continue
 
             name, address = line.split(":")
-            symbol_table[name.strip()] = int(address.strip(),16)
+            symbol_table[name.strip()] = int(address.strip(), 16)
 
         return symbol_table
 
@@ -261,15 +261,14 @@ class ArcDfwLoggerCompiler(ArcDfwCompiler):
 class ArcDfwLoggerWithPmonCompiler(ArcDfwLoggerCompiler):
     def _get_modified_instruction_bytes(self) -> bytes:
         instruction_bytes = []
-       
-        
+
         for i, log_info in enumerate(self.log_context.log_list):
             instruction_bytes += self._create_load_instruction(1, log_info.address)
             instruction_bytes += self._create_store_instruction(0, 1, i)
 
-        instruction_bytes += [0xC0, 0xF1] # push_s blink
+        instruction_bytes += [0xC0, 0xF1]  # push_s blink
 
-        instruction_bytes += [0x20, 0x22, 0x0F, 0x80] # Branch linked to dfw_pmon_log
+        instruction_bytes += [0x20, 0x22, 0x0F, 0x80]  # Branch linked to dfw_pmon_log
         pmon_log_address = self.symbol_locations["dfw_pmon_log"]
         instruction_bytes += [
             (pmon_log_address >> 24) & 0xFF,
@@ -277,9 +276,9 @@ class ArcDfwLoggerWithPmonCompiler(ArcDfwLoggerCompiler):
             (pmon_log_address >> 8) & 0xFF,
             pmon_log_address & 0xFF,
         ]
-        instruction_bytes += [0xC0, 0xD1] # pop_s blink
-        
-       # Loading dfw_buffer_header address so it can be incremented
+        instruction_bytes += [0xC0, 0xD1]  # pop_s blink
+
+        # Loading dfw_buffer_header address so it can be incremented
         instruction_bytes += self._create_load_instruction(1, self.symbol_locations["dfw_buffer_header"])
         # Incrementing the number of log calls and returning to the main loop
         # end_address:	     443c                	ld_s	r0,[r1,0x1c]
