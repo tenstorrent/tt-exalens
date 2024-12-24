@@ -8,14 +8,9 @@ from ttlens.tt_device import ConfigurationRegisterDescription, DebugRegisterDesc
 
 class WormholeInstructions(tt_device.TensixInstructions):
     def __init__(self):
-        super().__init__()
         import ttlens.tt_wormhole_ops as ops
 
-        for func_name in dir(ops):
-            func = getattr(ops, func_name)
-            if callable(func):
-                static_method = staticmethod(func)
-                setattr(self.__class__, func_name, static_method)
+        super().__init__(ops)
 
 
 #
