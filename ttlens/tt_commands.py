@@ -1,8 +1,24 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from docopt import docopt
+from docopt import DocoptExit, docopt
 from ttlens.tt_coordinate import OnChipCoordinate
+
+
+class CommandParsingException(Exception):
+    """Custom exception to wrap DocoptExit and SystemExit."""
+
+    def __init__(self, original_exception):
+        self.original_exception = original_exception
+        super().__init__(str(original_exception))  # Optional: Forward the message
+
+    def is_parsing_error(self):
+        """If exception is DocoptExit, some parsing error occured"""
+        return isinstance(self.original_exception, DocoptExit)
+
+    def is_help_message(self):
+        """If exception is SystemExit, h or help command is parsed. It is docopt behavior"""
+        return isinstance(self.original_exception, SystemExit)
 
 
 class tt_docopt:
@@ -100,7 +116,10 @@ class tt_docopt:
         self.doc = doc + f"\nOptions:\n{additional_options}"
         self.argv = argv
         self.option_names = common_option_names
-        self.args = docopt(self.doc, self.argv)
+        try:
+            self.args = docopt(self.doc, self.argv)
+        except (DocoptExit, SystemExit) as e:
+            raise CommandParsingException(e)
 
     def for_each(self, option_name, context, ui_state, **kwargs):
         option_short_name = tt_docopt.OPTIONS[option_name]["short"]
