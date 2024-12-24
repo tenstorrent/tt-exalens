@@ -176,12 +176,12 @@ class TensixDebug:
             )
             return (a & register.mask) >> register.shift
 
-    def write_tensix_register(self, name, value) -> None:
+    def write_tensix_register(self, name: str, value: int) -> None:
         """Writes value to the configuration or debug register on the tensix core.
 
         Args:
                 name (str): Name of the configuration or debug register.
-                val (str): Value to write
+                val (int): Value to write
         """
         device = self.context.devices[self.device_id]
         register = device.get_tensix_register_description(name)
