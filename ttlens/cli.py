@@ -56,7 +56,7 @@ from ttlens import tt_lens_init
 from ttlens import tt_lens_server
 from ttlens import tt_util as util
 from ttlens.tt_uistate import UIState
-from ttlens.tt_commands import find_command
+from ttlens.tt_commands import find_command, CommandParsingException
 
 from ttlens import Verbosity
 
@@ -360,6 +360,16 @@ def main_loop(args, context):
                         new_navigation_suggestions = found_command["module"].run(cmd_raw, context, ui_state)
                         navigation_suggestions = new_navigation_suggestions
 
+        except CommandParsingException as e:
+            if e.is_parsing_error():
+                util.ERROR(e)
+                if args["--test"]:  # Always raise in test mode
+                    raise
+            elif e.is_help_message():
+                # help is automatically printed by command parserr
+                pass
+            else:
+                raise
         except Exception as e:
             if args["--test"]:  # Always raise in test mode
                 util.ERROR("CLI option --test is set. Raising exception to exit.")
@@ -368,10 +378,6 @@ def main_loop(args, context):
                 util.notify_exception(type(e), e, e.__traceback__)
             if have_non_interactive_commands or type(e) == util.TTFatalException:
                 # In non-interactive mode and on fatal excepions, we re-raise to exit the program
-                raise
-        except DocoptExit as e:
-            util.ERROR(e)
-            if args["--test"]:  # Always raise in test mode
                 raise
 
 

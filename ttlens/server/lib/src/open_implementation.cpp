@@ -370,7 +370,7 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
 
     for (size_t device_id = 0; device_id < jtag_device->get_device_cnt(); device_id++) {
         tt::ARCH arch = *jtag_device->get_jtag_arch(device_id);
-        uint32_t harvesting = *jtag_device->get_device_harvesting(device_id);
+        uint32_t harvesting = *jtag_device->get_efuse_harvesting(device_id);
         soc_descriptors[device_id] = tt_SocDescriptor(device_configuration_path, harvesting);
         device_soc_descriptors_yamls[device_id] =
             jtag_create_device_soc_descriptor(soc_descriptors[device_id], device_id);
