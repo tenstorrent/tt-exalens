@@ -8,8 +8,9 @@ from ttlens.tt_coordinate import OnChipCoordinate
 from ttlens.tt_lens_context import Context
 from ttlens.tt_lens_lib import check_context, validate_device_id, read_word_from_device, write_words_to_device
 from ttlens.tt_util import TTException
-from ttlens.tt_device import Device
+from ttlens.tt_device import Device, ConfigurationRegisterDescription
 from ttlens.tt_unpack_regfile import unpack_data
+from ttlens.tt_debug_risc import RiscDebug, RiscLoc, RiscLoader
 
 
 def validate_trisc_id(trisc_id: int, context: Context) -> None:
@@ -140,34 +141,63 @@ class TensixDebug:
         while (self.dbg_buff_status() & 0x10) == 0:
             pass
 
-    def read_cfg_reg(self, name) -> int:
-        """Reads the value of a configuration register from the tensix core.
+    def read_tensix_reg(self, name: str) -> int:
+        """Reads the value of a configuration or debug register from the tensix core.
 
         Args:
-                name (str): Name of the configuration register to read.
+                name (str): Name of the configuration or debug register.
 
         Returns:
-                int: Value of the configuration register.
+                int: Value of the configuration or debug register specified.
         """
         device = self.context.devices[self.device_id]
-        register = device.get_configuration_register_description(name)
-        if register is None:
-            print(f"Unknown configuration register {name}")
+        register = device.get_tensix_register_description(name)
+        if isinstance(register, ConfigurationRegisterDescription):
+            write_words_to_device(
+                self.core_loc,
+                device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RD_CNTL"),
+                register.index,
+                self.device_id,
+                self.context,
+            )
+            a = read_word_from_device(
+                self.core_loc,
+                device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RDDATA"),
+                self.device_id,
+                self.context,
+            )
+            return (a & register.mask) >> register.shift
+        else:
+            a = read_word_from_device(
+                self.core_loc,
+                register.address,
+                self.device_id,
+                self.context,
+            )
+            return (a & register.mask) >> register.shift
 
-        write_words_to_device(
-            self.core_loc,
-            device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RD_CNTL"),
-            register.address // 4,
-            self.device_id,
-            self.context,
-        )
-        a = read_word_from_device(
-            self.core_loc,
-            device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RDDATA"),
-            self.device_id,
-            self.context,
-        )
-        return (a & register.mask) >> register.shift
+    def write_tensix_reg(self, name, value) -> None:
+        """Writes value to the configuration or debug register on the tensix core.
+
+        Args:
+                name (str): Name of the configuration or debug register.
+                val (str): Value to write
+        """
+        device = self.context.devices[self.device_id]
+        register = device.get_tensix_register_description(name)
+        if isinstance(register, ConfigurationRegisterDescription):
+            rdbg = RiscDebug(RiscLoc(self.core_loc), self.context)
+            rldr = RiscLoader(rdbg, self.context)
+            with rldr.ensure_reading_configuration_register() as rdbg:
+                rdbg.write_configuration_register(name, value)
+        else:
+            write_words_to_device(
+                self.core_loc,
+                register.address,
+                value,
+                self.device_id,
+                self.context,
+            )
 
     def read_regfile_data(
         self,
@@ -273,6 +303,6 @@ class TensixDebug:
         """
         regfile = convert_regfile(regfile)
         data = self.read_regfile_data(regfile)
-        df = self.read_cfg_reg("ALU_FORMAT_SPEC_REG2_Dstacc")
+        df = self.read_tensix_reg("ALU_FORMAT_SPEC_REG2_Dstacc")
         unpacked_data = unpack_data(data, df)
         return unpacked_data
