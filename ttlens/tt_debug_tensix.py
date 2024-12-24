@@ -141,7 +141,7 @@ class TensixDebug:
         while (self.dbg_buff_status() & 0x10) == 0:
             pass
 
-    def read_tensix_reg(self, name: str) -> int:
+    def read_tensix_register(self, name: str) -> int:
         """Reads the value of a configuration or debug register from the tensix core.
 
         Args:
@@ -176,7 +176,7 @@ class TensixDebug:
             )
             return (a & register.mask) >> register.shift
 
-    def write_tensix_reg(self, name, value) -> None:
+    def write_tensix_register(self, name, value) -> None:
         """Writes value to the configuration or debug register on the tensix core.
 
         Args:
@@ -303,6 +303,6 @@ class TensixDebug:
         """
         regfile = convert_regfile(regfile)
         data = self.read_regfile_data(regfile)
-        df = self.read_tensix_reg("ALU_FORMAT_SPEC_REG2_Dstacc")
+        df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
         unpacked_data = unpack_data(data, df)
         return unpacked_data
