@@ -614,6 +614,8 @@ class TestARC(unittest.TestCase):
 
             for data in log_data["scratch3"]:
                 assert data == scrattch3_val
+
+            assert len(log_data["pmon"][0]) != 0
                 
     def test_arc_dfw_sorting(self):
         if self.context.arch == "grayskull":

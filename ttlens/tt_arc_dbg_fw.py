@@ -85,6 +85,18 @@ class ArcDfwHeader:
         dfw_buffer_addr = self.get_buffer_start_addr(device_id, context)
 
         return arc_read(context, device_id, arc_core_loc, dfw_buffer_addr + self.DFW_BUFFER_HEADER_OFFSETS[field])
+    
+    def reset_header(self,device_id: int = 0, context: Context = None):
+        """
+        Resets the DFW buffer header.
+
+        Args:
+            device_id (int): The ID of the device.
+            context (Context): The context in which the device operates. Defaults to None.
+        """
+        for key in self.DFW_BUFFER_HEADER_OFFSETS:
+            self.write_to_field(key,0,device_id,context)
+        
 
     def send_buffer_addr_and_size_to_arc_dbg_fw(self, device_id: int, context: Context = None) -> None:
         """
@@ -258,6 +270,8 @@ class ArcDebugFw(ABC):
             # if mccore_buffer_addr is 0, then tt-metal is not running, so we will neet to send the message to the debug buffer
             # with the default address and size, so it can know where to send the messages
             self.buffer_header.send_buffer_addr_and_size_to_arc_dbg_fw(self.device_id, self.context)
+
+        self.buffer_header.reset_header()
 
     def __reset_if_fw_already_running(self):
         """
@@ -582,6 +596,8 @@ class ArcDebugLoggerFw(ArcDebugFw):
 
         num_logs = len(log_data)
         fig, axes = plt.subplots(num_logs, 1, figsize=(24, 6 * num_logs))
+        if num_logs == 1:
+            axes = [axes]
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
         for i, (log_name, values) in enumerate(log_data.items()):
