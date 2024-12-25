@@ -271,7 +271,7 @@ class ArcDebugFw(ABC):
             # with the default address and size, so it can know where to send the messages
             self.buffer_header.send_buffer_addr_and_size_to_arc_dbg_fw(self.device_id, self.context)
 
-        self.buffer_header.reset_header()
+        self.buffer_header.reset_header(self.device_id, self.context)
 
     def __reset_if_fw_already_running(self):
         """
