@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  graph [ --size=40000] [ --save-csv==filename ] [ --from-csv=filename ] [ --port=8001 ]  [-d <D>...] <log_names>...
+  graph-log [ --size=40000] [ --save-csv==filename ] [ --from-csv=filename ] [ --port=8001 ]  [-d <D>...] <log_names>...
 
 Arguments:
   <log_names>        Address to read from
@@ -11,18 +11,17 @@ Arguments:
 Options:
   -d <D>        Device ID. Optional and repeatable. Default: current device
   --size=<size>  Size of the buffer to read [default: 40000]
-  --port=<port>  Port to serve the graph [default: 8001]
+  --port=<port>  Port to serve the graph in the browser [default: 8001]
   --save-csv=<filename>  Save the log data to a CSV file
   --from-csv=<filename>  Read the log data from a CSV file
 
 Description:
-  Reads and prints a block of data from address 'addr' at core <core-loc>.
-
+    Graphs the log data from the ARC debug firmware. The log data is read from the device and displayed in a browser.
 Examples:
-  graph current
-  graph -d 1 current power
-  graph current power --size 10000000
-  graph current power --save-csv log_data.csv
+  graph-log current
+  graph-log -d 1 current power
+  graph-log current power --size 10000000
+  graph-log current power --save-csv log_data.csv
 """
 
 command_metadata = {

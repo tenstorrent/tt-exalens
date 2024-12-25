@@ -16,8 +16,6 @@ arc_fw.save_log_data_to_csv(log_data, csv_path)
 arc_fw.save_graph_as_picture(log_data, f"{out_dir}/arc_fw.png")
 ```
 
-Do note that right now you can only have the most recent logs when you stop because there is no double buffering implemented yet.
-
 # Log contexts
 
 Log contexts are passed to ArcDebugLoggerFw so that it can know what to log
