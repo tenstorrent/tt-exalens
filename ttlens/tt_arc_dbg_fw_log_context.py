@@ -21,6 +21,10 @@ class LogInfo:
 
 
 class ArcDfwLogContext(ABC):
+    """
+    Log context for arc debug firmware that contains a list of addresses to log.
+    """
+
     def __init__(self, log_configuration: Union[str, List[str]], log_yaml_file: str = "fw/arc/log/default.yaml"):
         """
         Args:
@@ -94,6 +98,10 @@ class ArcDfwLogContext(ABC):
 
 
 class ArcDfwLogContextFromYaml(ArcDfwLogContext):
+    """
+    Creates a log context from a yaml file
+    """
+
     def parse(self, yaml_data: dict, log_configuration: str) -> list:
         if not isinstance(log_configuration, str):
             raise TTException(f"Expected a string for log configuration, got {type(log_configuration)}")
@@ -107,6 +115,10 @@ class ArcDfwLogContextFromYaml(ArcDfwLogContext):
 
 
 class ArcDfwLogContextFromList(ArcDfwLogContext):
+    """
+    Creates a log context from a list of log names
+    """
+
     def parse(self, yaml_data: dict, log_list: List[str]) -> list:
         if not isinstance(log_list, list):
             raise TTException(f"Expected a list of log names, got {type(log_list)}")

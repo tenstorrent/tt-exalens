@@ -527,7 +527,7 @@ class TestARC(unittest.TestCase):
                 "Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests."
             )
 
-        TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024*16
+        TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024 * 16
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
 
         for device_id in self.context.device_ids:
@@ -573,24 +573,24 @@ class TestARC(unittest.TestCase):
                 "Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests."
             )
 
-        TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024*16
+        TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024 * 16
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
 
         pmon_size = 64
 
         for device_id in self.context.device_ids:
-            arc_fw =ArcDebugLoggerWithPmonFw(
+            arc_fw = ArcDebugLoggerWithPmonFw(
                 ArcDfwLogContextFromList(["scratch2", "scratch3"]), pmon_size, device_id=device_id, context=self.context
             )
             arc_fw.load()
-            
+
             reply = arc_fw.buffer_header.read_from_field("msg", device_id, self.context)
             assert reply == 0xBEBACECA
 
             device = self.context.devices[device_id]
 
-            scrattch2_val = 0xafafafaf
-            scrattch3_val = 0xfcfcfcfc
+            scrattch2_val = 0xAFAFAFAF
+            scrattch3_val = 0xFCFCFCFC
 
             arc_write(
                 self.context,
@@ -616,28 +616,27 @@ class TestARC(unittest.TestCase):
                 assert data == scrattch3_val
 
             assert len(log_data["pmon"][0]) != 0
-                
+
     def test_arc_dfw_sorting(self):
         if self.context.arch == "grayskull":
             self.skipTest(
                 "Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests."
             )
 
-        TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024*16
+        TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024 * 16
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
 
         pmon_size = 64
 
         for device_id in self.context.device_ids:
-            arc_fw =ArcDebugLoggerWithPmonFw(
+            arc_fw = ArcDebugLoggerWithPmonFw(
                 ArcDfwLogContextFromList(["heartbeat"]), pmon_size, device_id=device_id, context=self.context
             )
             arc_fw.load()
-            
+
             reply = arc_fw.buffer_header.read_from_field("msg", device_id, self.context)
             assert reply == 0xBEBACECA
 
             log_data = arc_fw.log_until_full_buffer_and_parse_logs()
 
             assert log_data["heartbeat"][0] < log_data["heartbeat"][-1]
-                
