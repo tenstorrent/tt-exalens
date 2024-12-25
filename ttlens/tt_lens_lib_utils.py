@@ -50,7 +50,7 @@ def arc_write(context: Context, device_id: int, core_loc: tuple, reg_addr: int, 
         context.server_ifc.pci_write32_raw(device_id, reg_addr, value)
     else:
         context.server_ifc.pci_write32(device_id, *core_loc.to("virtual"), reg_addr, value)
-        
+
 
 def split_32bit_to_16bit(value: int) -> tuple:
     """
