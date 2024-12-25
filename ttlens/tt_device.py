@@ -8,10 +8,18 @@ from ttlens.tt_lens_context import Context
 from ttlens.tt_object import TTObject
 from ttlens import tt_util as util
 from ttlens.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
-from collections import namedtuple
 from abc import abstractmethod
 from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device
+
+
+class TensixInstructions:
+    def __init__(self, ops: __module__):
+        for func_name in dir(ops):
+            func = getattr(ops, func_name)
+            if callable(func):
+                static_method = staticmethod(func)
+                setattr(self.__class__, func_name, static_method)
 
 
 class TensixRegisterDescription:
