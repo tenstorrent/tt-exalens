@@ -562,6 +562,7 @@ class TestARC(unittest.TestCase):
             log_data = arc_fw.log_until_full_buffer_and_parse_logs()
 
             for data in log_data["scratch2"]:
+                print(data, scrattch2_val)
                 assert data == scrattch2_val
 
             for data in log_data["scratch3"]:
