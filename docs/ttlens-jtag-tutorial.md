@@ -7,7 +7,17 @@ The JTAG library is proprietary and subject to licensing restrictions. Access is
 ## Setup
 #### Downloading
 If you have access, the library should be downloaded by default from a private GitLab repository and placed in `third_party/jtag_access_library/` on the first `make` run.
-If JTAG was not setup, you need to add yor SSH key to private GitLab instance hosted on yyz-gitlab.local.tenstorrent.com.
+
+If you see error "JTAG support not available.", you either:
+1. Are not on company's VPN
+2. Haven't added your ssh key to GitLab (yyz-gitlab.local.tenstorrent.com)
+3. Have ssh key with password
+
+Third one can be solved easily:
+```
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_rsa
+```
 
 #### Permissions
 Your user will need to have permission to use the SEGGER J-Link adapter.
