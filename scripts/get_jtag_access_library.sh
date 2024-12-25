@@ -9,6 +9,7 @@ if [ -z "$CMAKE_BINARY_DIR" ]; then
 fi
 
 REPO=jtag-access-library
+REPO_URL=git@yyz-gitlab.local.tenstorrent.com
 REPO_PATH="$TT_HOME/third_party/$REPO"
 LIBJTAG="$CMAKE_BINARY_DIR/lib/libjtag.so"
 LIBJTAG_SOURCE="$REPO_PATH/out/libjtag.so"
@@ -16,11 +17,13 @@ LIBJTAG_DEP="$CMAKE_BINARY_DIR/lib/libjlinkarm.so"
 LIBJTAG_DEP_SOURCE="$REPO_PATH/lib/libjlinkarm.so"
 
 if [ ! -d "$REPO_PATH" ]; then
-	timeout 60 git clone "git@yyz-gitlab.local.tenstorrent.com:tenstorrent/$REPO" "$REPO_PATH" 2>/dev/null
+	ssh -o BatchMode=yes -o ConnectTimeout=1 "$REPO_URL" > /dev/null 2>&1
 	if [ ! $? -eq 0 ]; then
-		echo "JTAG support not available"
+		echo "JTAG support not available. See docs/ttlens-jtag-tutorial."
 		exit
 	fi
+
+	git clone "$REPO_URL:tenstorrent/$REPO" "$REPO_PATH" 2>/dev/null
 fi
 
 cd "$REPO_PATH"
