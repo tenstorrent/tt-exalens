@@ -11,19 +11,25 @@ from abc import abstractmethod, ABC
 from ttlens.tt_util import TTException
 
 
-class ArcDfwCompiler(ABC):
+class ArcDfwCodePatcher(ABC):
+    """
+    This is a base class that helps in patching ARC debug firmware. It reads the base firmware and modifies it
+    to add instructions dynamically.
+    """
+
     def __init__(self, base_fw_file_path: str, symbols_file_path: str, output_fw_file_path: str):
         self.base_fw_file_path = base_fw_file_path
         self.output_fw_file_path = output_fw_file_path
         self.symbols_file_path = symbols_file_path
 
-        self.symbol_locations = self._parse_elf_symbols()
+        self.symbol_locations = self._parse_symbols_from_syms_file()
 
         self.MAX_WRITE_BYTES = 256 * 4
 
-    def _parse_elf_symbols(self) -> dict:
+    def _parse_symbols_from_syms_file(self) -> dict:
         """
-        Parses the symbols from the symbol table file.
+        Parses the symbols from the symbol table file. When Arc debug firmware is compiled, it generates a symbols file, which
+        contains the addresses that are needed for patching.
 
         Returns:
             dict: Dictionary of symbol names and their addresses.
@@ -88,45 +94,12 @@ class ArcDfwCompiler(ABC):
         hex_lines[line_index] = new_line
         return hex_lines
 
-    def _change_four_bytes_at_address(self, hex_lines: List[int], address: int, new_bytes: int) -> List[int]:
-        """
-        Changes four bytes at the specified address in the hex lines.
-
-        Args:
-            hex_lines (List[int]): List of hex lines.
-            address (int): Address to change the bytes.
-            new_bytes (int): New bytes value.
-
-        Returns:
-            List[int]: Updated list of hex lines.
-        """
-        line_index = address // 4
-        new_bytes = int.from_bytes(new_bytes.to_bytes(4, byteorder="big"), byteorder="little")
-        hex_lines[line_index] = new_bytes
-        return hex_lines
-
     def _load_hex_file(self, file_path: str) -> List[int]:
-        """
-        Loads a hex file into a list of hex lines.
-
-        Args:
-            file_path (str): Path to the hex file.
-
-        Returns:
-            List[int]: List of hex lines.
-        """
         with open(file_path, "r") as file:
             hex_lines = [int(line, 16) for line in file.read().splitlines()]
         return hex_lines
 
     def _save_hex_file(self, file_path: str, hex_lines: List[int]) -> None:
-        """
-        Saves the hex lines to a file.
-
-        Args:
-            file_path (str): Path to the hex file.
-            hex_lines (List[int]): List of hex lines to save.
-        """
         with open(file_path, "w") as file:
             file.write("\n".join(f"{line:08x}" for line in hex_lines))
 
@@ -141,7 +114,8 @@ class ArcDfwCompiler(ABC):
         Returns:
             List[int]: Load instruction.
         """
-        instruction = 0x16007801 | (register & 0b111111)
+        load_instruction_code = 0x16007800
+        instruction = load_instruction_code | (register & 0b111111)
         return [
             (instruction >> 24) & 0xFF,
             (instruction >> 16) & 0xFF,
@@ -173,7 +147,7 @@ class ArcDfwCompiler(ABC):
         instruction = opcode | r_addr_bits | reg_data_bits | offset_bits
         return [(instruction >> 8) & 0xFF, instruction & 0xFF]
 
-    def _add_instructions_to_hex_lines(
+    def _modify_hex_lines_with_new_instructions(
         self, hex_lines: List[int], from_address: int, instruction_bytes: List[int]
     ) -> None:
         """
@@ -202,7 +176,7 @@ class ArcDfwCompiler(ABC):
             )
         pass
 
-    def compile(self):
+    def patch(self):
         """
         Adds logging instructions to the ARC debug firmware.
 
@@ -211,19 +185,19 @@ class ArcDfwCompiler(ABC):
             output_fw_file_path (str): Path to the modified firmware file.
             log_context (ArcDfwLogContext): Log context containing log information.
         """
-        LOG_FUNCITON_EDITABLE = self.symbol_locations["log_function"]
+        expandable_function_location = self.symbol_locations["expandable_function"]
         base_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.base_fw_file_path)
         hex_lines = self._load_hex_file(base_file_name)
 
-        instruction_bytes = self._get_modified_instruction_bytes()
+        instruction_bytes = self._get_bytes_that_modify_expandable_function()
 
-        self._add_instructions_to_hex_lines(hex_lines, LOG_FUNCITON_EDITABLE, instruction_bytes)
+        self._modify_hex_lines_with_new_instructions(hex_lines, expandable_function_location, instruction_bytes)
 
         save_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.output_fw_file_path)
         self._save_hex_file(save_file_name, hex_lines)
 
     @abstractmethod
-    def _get_modified_instruction_bytes(self) -> List[int]:
+    def _get_bytes_that_modify_expandable_function(self) -> List[int]:
         """
         Gets the modified instruction bytes for the ARC debug firmware.
 
@@ -233,14 +207,18 @@ class ArcDfwCompiler(ABC):
         pass
 
 
-class ArcDfwLoggerCompiler(ArcDfwCompiler):
+class ArcDfwLoggerCodePatcher(ArcDfwCodePatcher):
     def __init__(
         self, base_fw_file_path: str, symbols_file_path: str, output_fw_file_path: str, log_context: ArcDfwLogContext
     ):
         super().__init__(base_fw_file_path, symbols_file_path, output_fw_file_path)
         self.log_context = log_context
 
-    def _get_modified_instruction_bytes(self) -> List[int]:
+    def _get_bytes_that_modify_expandable_function(self) -> List[int]:
+        """
+        Adds instructions to log addresses. For each address in log_context it adds a load instruction followed by a store.
+        """
+        # Adding instructions to log addresses
         instruction_bytes = []
         for i, log_info in enumerate(self.log_context.log_list):
             instruction_bytes += self._create_load_instruction(1, log_info.address)
@@ -258,17 +236,22 @@ class ArcDfwLoggerCompiler(ArcDfwCompiler):
         return instruction_bytes
 
 
-class ArcDfwLoggerWithPmonCompiler(ArcDfwLoggerCompiler):
-    def _get_modified_instruction_bytes(self) -> bytes:
+class ArcDfwLoggerWithPmonCodePatcher(ArcDfwLoggerCodePatcher):
+    def _get_bytes_that_modify_expandable_function(self) -> bytes:
+        """
+        Adds instructions to log addresses. For each address in log_context it adds a load instruction followed by a store.
+        """
+        # Adding instructions to log addresses
         instruction_bytes = []
-
         for i, log_info in enumerate(self.log_context.log_list):
             instruction_bytes += self._create_load_instruction(1, log_info.address)
             instruction_bytes += self._create_store_instruction(0, 1, i)
 
+        # Pushing branch link register to the stack because we need it to return to the main loop
         instruction_bytes += [0xC0, 0xF1]  # push_s blink
 
-        instruction_bytes += [0x20, 0x22, 0x0F, 0x80]  # Branch linked to dfw_pmon_log
+        # Adding instructions to jump to function that logs pmon data
+        instruction_bytes += [0x20, 0x22, 0x0F, 0x80]  # Instruction to jump to pmon log function
         pmon_log_address = self.symbol_locations["dfw_pmon_log"]
         instruction_bytes += [
             (pmon_log_address >> 24) & 0xFF,

@@ -12,7 +12,7 @@ from ttlens.tt_lens_lib import arc_msg, read_words_from_device, read_from_device
 from ttlens.tt_arc import load_arc_fw
 from ttlens.tt_arc_dbg_fw_log_context import ArcDfwLogContext
 from functools import lru_cache
-from ttlens.tt_arc_dbg_fw_compiler import ArcDfwLoggerCompiler, ArcDfwLoggerWithPmonCompiler
+from ttlens.tt_arc_dbg_fw_compiler import ArcDfwLoggerCodePatcher, ArcDfwLoggerWithPmonCodePatcher
 from abc import abstractmethod, ABC
 import struct
 import csv
@@ -215,7 +215,7 @@ class ArcDebugFw(ABC):
         self.base_fw_symbols_file_path = base_fw_symbols_file_path
         self.modified_fw_file_path = modified_fw_file_path
         self.device_id = device_id
-        self.compiler = None
+        self.code_patcher = None
 
         self.context = check_context(context)
         self.buffer_header = ArcDfwHeader()
@@ -268,8 +268,8 @@ class ArcDebugFw(ABC):
         Raises:
             TTException: If the ARC debug firmware fails to reset.
         """
-
-        if self.buffer_header.read_from_field("magic_marker", self.device_id, self.context) == 0x12345678:
+        ARC_DFW_MAGIC_MARKER = 0x12345678
+        if self.buffer_header.read_from_field("magic_marker", self.device_id, self.context) == ARC_DFW_MAGIC_MARKER:
             # Because the main loop of the fw can be stuck on waiting log_delay cycles, we need to wait approximately
             # the time that it takes to finish the loop
             delay = self.buffer_header.read_from_field("log_delay", self.device_id, self.context)
@@ -292,7 +292,7 @@ class ArcDebugFw(ABC):
         """
         self.__reset_if_fw_already_running()
 
-        self.compiler.compile()
+        self.code_patcher.patch()
 
         self.__prepare_arc_dbg_fw()
 
@@ -406,7 +406,7 @@ class ArcDebugLoggerFw(ArcDebugFw):
         super().__init__(base_fw_file_path, base_fw_symbols_file_path, modified_fw_file_path, device_id, context)
         self.log_context = log_context
 
-        self.compiler = ArcDfwLoggerCompiler(
+        self.code_patcher = ArcDfwLoggerCodePatcher(
             base_fw_file_path, base_fw_symbols_file_path, modified_fw_file_path, log_context
         )
 
@@ -506,6 +506,17 @@ class ArcDebugLoggerFw(ArcDebugFw):
         Get the number of logs.
         """
         return len(self.log_context.log_list)
+
+    def log_for_time(self, time_in_seconds: float):
+        """
+        Log for a specified time.
+
+        Args:
+            time_in_seconds (float): The time for which to log.
+        """
+        self.start_logging()
+        time.sleep(time_in_seconds)
+        self.stop_logging()
 
     def sort_log_data(self, log_data: dict):
         """
@@ -607,7 +618,7 @@ class ArcDebugLoggerWithPmonFw(ArcDebugLoggerFw):
 
         self.pmon_size = pmon_size
 
-        self.compiler = ArcDfwLoggerWithPmonCompiler(
+        self.code_patcher = ArcDfwLoggerWithPmonCodePatcher(
             base_fw_file_path, base_fw_symbols_file_path, modified_fw_file_path, log_context
         )
 

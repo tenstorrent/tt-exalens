@@ -125,7 +125,7 @@ class Device(TTObject):
         )
 
         self._init_coordinate_systems()
-        self._init_register_addresses()
+        self._init_ARC_REGISTER_ADDRESSES()
 
     # Coordinate conversion functions (see tt_coordinate.py for description of coordinate systems)
     def __die_to_noc(self, die_loc, noc_id=0):
@@ -425,24 +425,26 @@ class Device(TTObject):
             return "----"
         return bt
 
-    REGISTER_ADDRESSES = {}
+    ARC_REGISTER_ADDRESSES = {}
 
     def get_register_addr(self, name: str) -> int:
         try:
-            addr = self.REGISTER_ADDRESSES[name]
+            addr = self.ARC_REGISTER_ADDRESSES[name]
         except KeyError:
-            raise ValueError(f"Unknown register name: {name}. Available registers: {self.REGISTER_ADDRESSES.keys()}")
+            raise ValueError(
+                f"Unknown register name: {name}. Available registers: {self.ARC_REGISTER_ADDRESSES.keys()}"
+            )
 
         return addr
 
-    def _init_register_addresses(self):
+    def _init_ARC_REGISTER_ADDRESSES(self):
         base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
         csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
         rom_data_base_addr = self.PCI_ARC_ROM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_ROM_DATA_BASE_ADDR
 
         ARC_MCORE_ARC_DBG_FW_DATA_BASE_ADDR = 0x78EEC
 
-        self.REGISTER_ADDRESSES = {
+        self.ARC_REGISTER_ADDRESSES = {
             "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
             "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
             "ARC_RESET_ARC_UDMIAXI_REGION": base_addr + 0x10C,
