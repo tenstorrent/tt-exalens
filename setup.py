@@ -28,10 +28,10 @@ def get_ttlens_py_files(file_dir: os.PathLike = f"{ttlens_home}/ttlens", ignorel
 
 ttlens_files = {
     "ttlens_lib": {"path": "ttlens", "files": get_ttlens_py_files(), "output": "ttlens"},
-    "ttlens_fw": {
-        "path": "ttlens/fw",
+    "ttlens_arc_dfw": {
+        "path": "ttlens/arc_dfw",
         "files": "*",  # Include all files in the ttlens/fw directory
-        "output": "ttlens/fw",
+        "output": "ttlens/arc_dfw",
     },
     "ttlens_commands": {
         "path": "ttlens/ttlens_commands",
