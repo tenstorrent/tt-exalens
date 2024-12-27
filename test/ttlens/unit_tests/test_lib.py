@@ -680,9 +680,7 @@ class TestARC(unittest.TestCase):
 
             import time
 
-            arc_fw.start_logging()
-            time.sleep(0.01)
-            arc_fw.stop_logging()
+            arc_fw.log_for_time(0.01)
 
             num_log_calls = arc_fw.buffer_header.read_from_field("num_log_calls", device_id, self.context)
 
