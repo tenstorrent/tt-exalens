@@ -26,7 +26,7 @@ class ArcDfwLogContext(ABC):
     """
 
     def __init__(
-        self, log_configuration: Union[str, List[str]], delay: int = 0, log_yaml_file: str = "fw/arc/log/default.yaml"
+        self, log_configuration: Union[str, List[str]], delay: int = 0, log_yaml_file: str = "logger_configuration.yaml"
     ):
         """
         Args:
