@@ -561,11 +561,6 @@ class TestARC(unittest.TestCase):
 
             log_data = arc_fw.log_until_full_buffer_and_parse_logs()
 
-            print(
-                "Num_log_calls " + str(arc_fw.buffer_header.read_from_field("num_log_calls", device_id, self.context))
-            )
-            print(log_data)
-
             for data in log_data["scratch2"]:
                 assert data == scrattch2_val
 
@@ -645,3 +640,58 @@ class TestARC(unittest.TestCase):
             log_data = arc_fw.log_until_full_buffer_and_parse_logs()
 
             assert log_data["heartbeat"][0] < log_data["heartbeat"][-1]
+
+    def test_arc_dfw_log_with_delay(self):
+        TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024 * 16
+        os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
+
+        delay = 100000
+
+        for device_id in self.context.device_ids:
+            arc_fw = ArcDebugLoggerFw(
+                ArcDfwLogContextFromList(["scratch2", "scratch3"], delay=delay),
+                device_id=device_id,
+                context=self.context,
+            )
+            arc_fw.load()
+
+            reply = arc_fw.buffer_header.read_from_field("msg", device_id, self.context)
+            assert reply == 0xBEBACECA
+
+            device = self.context.devices[device_id]
+
+            scrattch2_val = 0xABABABAB
+            scrattch3_val = 0xFCFCFCFC
+
+            arc_write(
+                self.context,
+                device_id,
+                device.get_arc_block_location(),
+                device.get_register_addr("ARC_RESET_SCRATCH2"),
+                scrattch2_val,
+            )
+            arc_write(
+                self.context,
+                device_id,
+                device.get_arc_block_location(),
+                device.get_register_addr("ARC_RESET_SCRATCH3"),
+                scrattch3_val,
+            )
+
+            import time
+
+            arc_fw.start_logging()
+            time.sleep(0.01)
+            arc_fw.stop_logging()
+
+            num_log_calls = arc_fw.buffer_header.read_from_field("num_log_calls", device_id, self.context)
+
+            log_data = arc_fw.get_log_data()
+
+            for data in log_data["scratch2"]:
+                assert data == scrattch2_val
+
+            for data in log_data["scratch3"]:
+                assert data == scrattch3_val
+
+            assert num_log_calls <= 100

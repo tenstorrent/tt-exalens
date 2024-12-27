@@ -25,7 +25,9 @@ class ArcDfwLogContext(ABC):
     Log context for arc debug firmware that contains a list of addresses to log.
     """
 
-    def __init__(self, log_configuration: Union[str, List[str]], log_yaml_file: str = "fw/arc/log/default.yaml"):
+    def __init__(
+        self, log_configuration: Union[str, List[str]], delay: int = 0, log_yaml_file: str = "fw/arc/log/default.yaml"
+    ):
         """
         Args:
             log_configuration: Either a string representing the name of the log configuration to use, or a list of log names
@@ -35,6 +37,8 @@ class ArcDfwLogContext(ABC):
             TTException: If the log_configuration is not a string or list
         """
         self.log_list = []
+        self.delay = delay
+
         yaml_data = self.__parse_yaml(log_yaml_file)
 
         self.parse(yaml_data, log_configuration)
@@ -106,12 +110,15 @@ class ArcDfwLogContextFromYaml(ArcDfwLogContext):
         if not isinstance(log_configuration, str):
             raise TTException(f"Expected a string for log configuration, got {type(log_configuration)}")
 
-        for log in yaml_data["logger_configuration"][log_configuration]:
+        for log in yaml_data["logger_configuration"][log_configuration]["logs"]:
             size = yaml_data["record_configurations"][log]["size"]
             output = yaml_data["record_configurations"][log]["output"]
             self.log_list.append(
                 LogInfo(address=self._parse_address(yaml_data, log), log_name=log, size=size, output=output)
             )
+
+        if "delay" in yaml_data["logger_configuration"][log_configuration]:
+            self.delay = yaml_data["logger_configuration"][log_configuration]["delay"]
 
 
 class ArcDfwLogContextFromList(ArcDfwLogContext):

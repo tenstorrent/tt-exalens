@@ -33,6 +33,7 @@ class ArcDfwHeader:
         "msg_arg0": 36,
         "msg_arg1": 40,
         "pmon_size": 44,
+        "log_delay": 48,
     }
 
     DFW_DEFAULT_BUFFER_ADDR = 32
@@ -85,17 +86,6 @@ class ArcDfwHeader:
         dfw_buffer_addr = self.get_buffer_start_addr(device_id, context)
 
         return arc_read(context, device_id, arc_core_loc, dfw_buffer_addr + self.DFW_BUFFER_HEADER_OFFSETS[field])
-
-    def reset_header(self, device_id: int = 0, context: Context = None):
-        """
-        Resets the DFW buffer header.
-
-        Args:
-            device_id (int): The ID of the device.
-            context (Context): The context in which the device operates. Defaults to None.
-        """
-        for key in self.DFW_BUFFER_HEADER_OFFSETS:
-            self.write_to_field(key, 0, device_id, context)
 
     def send_buffer_addr_and_size_to_arc_dbg_fw(self, device_id: int, context: Context = None) -> None:
         """
@@ -271,8 +261,6 @@ class ArcDebugFw(ABC):
             # with the default address and size, so it can know where to send the messages
             self.buffer_header.send_buffer_addr_and_size_to_arc_dbg_fw(self.device_id, self.context)
 
-        self.buffer_header.reset_header(self.device_id, self.context)
-
     def __reset_if_fw_already_running(self):
         """
         Reset the ARC debug firmware if it is already running.
@@ -280,10 +268,21 @@ class ArcDebugFw(ABC):
         Raises:
             TTException: If the ARC debug firmware fails to reset.
         """
-        if self.check_msg_loop_running(self.device_id, self.context):
+
+        if self.buffer_header.read_from_field("magic_marker", self.device_id, self.context) == 0x12345678:
+            # Because the main loop of the fw can be stuck on waiting log_delay cycles, we need to wait approximately
+            # the time that it takes to finish the loop
+            delay = self.buffer_header.read_from_field("log_delay", self.device_id, self.context)
+            wait_time = (delay / 500000) * 0.01 if delay > 500000 else 0.01
+        else:
+            wait_time = 0.01
+
+        if self.check_msg_loop_running(wait_time, self.device_id, self.context):
             self.send_command_to_fw("reset", self.device_id, self.context)
+
+            time.sleep(wait_time)
+
             reset_reply = self.read_reply_from_fw(self.device_id, self.context)
-            time.sleep(0.01)
             if reset_reply != 1:
                 raise TTException("ARC debug firmware failed to reset.")
 
@@ -333,14 +332,14 @@ class ArcDebugFw(ABC):
         assert message & 0xFFFFFF00 == 0  # "Message must be in the lower 8 bits"
         self.buffer_header.write_to_field("msg", message | 0xABCDEF00, device_id, context)
 
-    def check_msg_loop_running(self, device_id: int = 0, context: Context = None):
+    def check_msg_loop_running(self, wait_time: float = 0.01, device_id: int = 0, context: Context = None):
         """
         Send PING, check for PONG
         """
         context = check_context(context)
 
         self.send_message_to_fw(0x88, 0, 0, device_id, context)
-        time.sleep(0.01)  # Allow time for reply
+        time.sleep(wait_time)  # Allow time for reply
 
         reply = self.buffer_header.read_from_field("msg", device_id, context)
 
@@ -418,6 +417,7 @@ class ArcDebugLoggerFw(ArcDebugFw):
         self.buffer_header.write_to_field(
             "record_size_bytes", 4 * len(self.log_context.log_list), self.device_id, self.context
         )
+        self.buffer_header.write_to_field("log_delay", self.log_context.delay, self.device_id, self.context)
 
     def start_logging(self) -> None:
         """
@@ -535,8 +535,13 @@ class ArcDebugLoggerFw(ArcDebugFw):
         log_data = {log_info.log_name: [] for log_info in self.log_context.log_list}
         num_logs = len(self.log_context.log_list)
 
+        bytees_filled = self.buffer_header.read_from_field("num_log_calls", self.device_id, self.context) * num_logs * 4
+        max_nuumber_of_bytes_filled = ((len(buffer) // 4) - (len(buffer) // 4) % num_logs) * 4
+        if bytees_filled <= max_nuumber_of_bytes_filled:
+            max_nuumber_of_bytes_filled = bytees_filled
+
         for i in range(0, len(buffer), 4):
-            if i // 4 >= (len(buffer) // 4) - (len(buffer) // 4) % num_logs:
+            if i >= max_nuumber_of_bytes_filled:
                 break
             value = struct.unpack("<I", buffer[i : i + 4])[0]
             log_name = self.log_context.log_list[(i // 4) % num_logs].log_name
@@ -642,12 +647,16 @@ class ArcDebugLoggerWithPmonFw(ArcDebugLoggerFw):
         num_logs = len(self.log_context.log_list)
         num_logs_and_pmons = num_logs + self.pmon_size // 4
 
+        bytees_filled = (
+            self.buffer_header.read_from_field("num_log_calls", self.device_id, self.context) * num_logs_and_pmons * 4
+        )
+        max_nuumber_of_bytes_filled = ((len(buffer) // 4) - (len(buffer) // 4) % num_logs_and_pmons) * 4
+        if bytees_filled <= max_nuumber_of_bytes_filled:
+            max_nuumber_of_bytes_filled = bytees_filled
+
         regular_logs_index = 0
         buffer_index = 0
-        while (
-            buffer_index < len(buffer)
-            and buffer_index // 4 < (len(buffer) // 4) - (len(buffer) // 4) % num_logs_and_pmons
-        ):
+        while buffer_index < len(buffer) and buffer_index < max_nuumber_of_bytes_filled:
             # Skiping the pmon_data
             if regular_logs_index == len(self.log_context.log_list):
                 pmons = [

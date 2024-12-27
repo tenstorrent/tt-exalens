@@ -58,12 +58,14 @@ record_configurations:
 
 logger_configuration:
   default:
-    - power
-    - current
-    - curr_aiclk
-    - ts_avg
-    - voltage_at_fmax
-    - voltage
+    logs:
+      - power
+      - current
+      - curr_aiclk
+      - ts_avg
+      - voltage_at_fmax
+      - voltage
+    delay: 100000
   power:
     - power
   current:
