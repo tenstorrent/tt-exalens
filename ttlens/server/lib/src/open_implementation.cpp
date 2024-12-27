@@ -27,14 +27,8 @@
 static const uint8_t blackhole_configuration_bytes[] = {
 #include "../configuration/blackhole.embed"
 };
-static const uint8_t blackhole_simulation_configuration_bytes[] = {
-#include "../configuration/blackhole_simulation.embed"
-};
 static const uint8_t grayskull_configuration_bytes[] = {
 #include "../configuration/grayskull.embed"
-};
-static const uint8_t quasar_simulation_configuration_bytes[] = {
-#include "../configuration/quasar_simulation.embed"
 };
 static const uint8_t wormhole_b0_configuration_bytes[] = {
 #include "../configuration/wormhole_b0.embed"
