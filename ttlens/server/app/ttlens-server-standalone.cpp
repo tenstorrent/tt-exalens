@@ -4,7 +4,7 @@
 // The main purpose of this file is to create a ttlens-server (see loader/ttlens_server.cpp) so that TTLens can connect
 // to it.
 #include <ctime>
-#include <experimental/filesystem>
+#include <filesystem>
 #include <iostream>
 
 #include "ttlensserver/jtag_implementation.h"
@@ -13,25 +13,23 @@
 #include "ttlensserver/umd_implementation.h"
 #include "utils/logger.hpp"
 
-namespace fs = std::experimental::filesystem;
-
 struct server_config {
    public:
     int port;
     bool run_in_background;
-    std::string vcs_binary;
+    std::filesystem::path simulation_directory;
     std::vector<uint8_t> wanted_devices;
     bool init_jtag;
 };
 
-// Make sure that the file exists, and that it is a regular file
-void ensure_file(const std::string& filetype, const std::string& filename) {
-    if (!fs::exists(filename)) {
-        log_error("{} file '{}' does not exist. Exiting.", filetype, filename);
+// Make sure that the directory exists
+void ensure_directory(const std::string& name, const std::filesystem::path& directory) {
+    if (!std::filesystem::exists(directory)) {
+        log_error("{} file '{}' does not exist. Exiting.", name, directory.string());
         exit(1);
     }
-    if (!fs::is_regular_file(filename)) {
-        log_error("{} file '{}' is not a regular file. Exiting.", filetype, filename);
+    if (!std::filesystem::is_directory(directory)) {
+        log_error("{} file '{}' is not a directory. Exiting.", name, directory.string());
         exit(1);
     }
 }
@@ -42,7 +40,7 @@ int run_ttlens_server(const server_config& config) {
         std::unique_ptr<tt::lens::ttlens_implementation> implementation;
         // Try to open only wanted devices
         try {
-            if (config.vcs_binary.empty()) {
+            if (config.simulation_directory.empty()) {
                 if (config.init_jtag) {
                     implementation =
                         tt::lens::open_implementation<tt::lens::jtag_implementation>::open({}, config.wanted_devices);
@@ -51,9 +49,9 @@ int run_ttlens_server(const server_config& config) {
                         tt::lens::open_implementation<tt::lens::umd_implementation>::open({}, config.wanted_devices);
                 }
             } else {
-                ensure_file("VCS binary", config.vcs_binary);
-                setenv("TT_REMOTE_EXE", config.vcs_binary.c_str(), 1);
-                implementation = tt::lens::open_implementation<tt::lens::umd_implementation>::open_simulation();
+                ensure_directory("VCS binary", config.simulation_directory);
+                implementation = tt::lens::open_implementation<tt::lens::umd_implementation>::open_simulation(
+                    config.simulation_directory);
             }
         } catch (std::runtime_error& error) {
             log_custom(tt::Logger::Level::Error, tt::LogTTLens, "Cannot open device: {}.", error.what());
@@ -130,10 +128,10 @@ server_config parse_args(int argc, char** argv) {
         } else if (strcmp(argv[i], "-s") == 0) {
             i += 1;
             if (i >= argc) {
-                log_error("Expected path to VCS binary after -s");
+                log_error("Expected path to simulation directory after -s");
                 return {};
             }
-            config.vcs_binary = argv[i];
+            config.simulation_directory = argv[i];
             i += 1;
         } else if (strcmp(argv[i], "--background") == 0) {
             config.run_in_background = true;
@@ -153,7 +151,7 @@ server_config parse_args(int argc, char** argv) {
 int main(int argc, char** argv) {
     if (argc < 2) {
         log_error(
-            "Need arguments: <port> [-s <simulation_VCS_binary>] [-d <device_id1> [<device_id2> ... "
+            "Need arguments: <port> [-s <simulation_directory>] [-d <device_id1> [<device_id2> ... "
             "<device_idN>]] [--jtag] [--background]");
         return 1;
     }

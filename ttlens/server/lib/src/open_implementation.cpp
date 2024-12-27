@@ -121,56 +121,31 @@ static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
         throw std::runtime_error("Failed to open file for writing: " + cluster_descriptor_path);
     }
 
-    if (arch == tt::ARCH::BLACKHOLE) {
-        cluster_descriptor << "arch: {" << std::endl;
-        cluster_descriptor << "   0: Blackhole," << std::endl;
-        cluster_descriptor << "}" << std::endl << std::endl;
-        cluster_descriptor << "chips: {" << std::endl;
-        cluster_descriptor << "   0: [0,0,0,0]," << std::endl;
-        cluster_descriptor << "}" << std::endl << std::endl;
-        cluster_descriptor << "ethernet_connections: [" << std::endl;
-        cluster_descriptor << "]" << std::endl << std::endl;
-        cluster_descriptor << "chips_with_mmio: [" << std::endl;
-        cluster_descriptor << "   0: 0," << std::endl;
-        cluster_descriptor << "]" << std::endl << std::endl;
-        cluster_descriptor << "# harvest_mask is the bit indicating which tensix row is harvested. So bit 0 = first "
-                              "tensix row; bit 1 = second tensix row etc..."
-                           << std::endl;
-        cluster_descriptor << "harvesting: {" << std::endl;
-        cluster_descriptor << "   0: {noc_translation: false, harvest_mask: 0}," << std::endl;
-        cluster_descriptor << "}" << std::endl << std::endl;
-        cluster_descriptor << "# This value will be null if the boardtype is unknown, should never happen in practice "
-                              "but to be defensive it would be useful to throw an error on this case."
-                           << std::endl;
-        cluster_descriptor << "boardtype: {" << std::endl;
-        cluster_descriptor << "   0: BlackholeSimulator," << std::endl;
-        cluster_descriptor << "}" << std::endl;
-    } else if (arch == tt::ARCH::QUASAR) {
-        cluster_descriptor << "arch: {" << std::endl;
-        cluster_descriptor << "   0: Quasar," << std::endl;
-        cluster_descriptor << "}" << std::endl << std::endl;
-        cluster_descriptor << "chips: {" << std::endl;
-        cluster_descriptor << "   0: [0,0,0,0]," << std::endl;
-        cluster_descriptor << "}" << std::endl << std::endl;
-        cluster_descriptor << "ethernet_connections: [" << std::endl;
-        cluster_descriptor << "]" << std::endl << std::endl;
-        cluster_descriptor << "chips_with_mmio: [" << std::endl;
-        cluster_descriptor << "   0: 0," << std::endl;
-        cluster_descriptor << "]" << std::endl << std::endl;
-        cluster_descriptor << "# harvest_mask is the bit indicating which tensix row is harvested. So bit 0 = first "
-                              "tensix row; bit 1 = second tensix row etc..."
-                           << std::endl;
-        cluster_descriptor << "harvesting: {" << std::endl;
-        cluster_descriptor << "   0: {noc_translation: false, harvest_mask: 0}," << std::endl;
-        cluster_descriptor << "}" << std::endl << std::endl;
-        cluster_descriptor << "# This value will be null if the boardtype is unknown, should never happen in practice "
-                              "but to be defensive it would be useful to throw an error on this case."
-                           << std::endl;
-        cluster_descriptor << "boardtype: {" << std::endl;
-        cluster_descriptor << "   0: QuasarSimulator," << std::endl;
-        cluster_descriptor << "}" << std::endl;
-    } else
-        throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");
+    std::string arch_str = tt::arch_to_str(arch);
+
+    cluster_descriptor << "arch: {" << std::endl;
+    cluster_descriptor << "   0: " << arch_str << "," << std::endl;
+    cluster_descriptor << "}" << std::endl << std::endl;
+    cluster_descriptor << "chips: {" << std::endl;
+    cluster_descriptor << "   0: [0,0,0,0]," << std::endl;
+    cluster_descriptor << "}" << std::endl << std::endl;
+    cluster_descriptor << "ethernet_connections: [" << std::endl;
+    cluster_descriptor << "]" << std::endl << std::endl;
+    cluster_descriptor << "chips_with_mmio: [" << std::endl;
+    cluster_descriptor << "   0: 0," << std::endl;
+    cluster_descriptor << "]" << std::endl << std::endl;
+    cluster_descriptor << "# harvest_mask is the bit indicating which tensix row is harvested. So bit 0 = first "
+                          "tensix row; bit 1 = second tensix row etc..."
+                       << std::endl;
+    cluster_descriptor << "harvesting: {" << std::endl;
+    cluster_descriptor << "   0: {noc_translation: false, harvest_mask: 0}," << std::endl;
+    cluster_descriptor << "}" << std::endl << std::endl;
+    cluster_descriptor << "# This value will be null if the boardtype is unknown, should never happen in practice "
+                          "but to be defensive it would be useful to throw an error on this case."
+                       << std::endl;
+    cluster_descriptor << "boardtype: {" << std::endl;
+    cluster_descriptor << "   0: " << arch_str << "Simulator," << std::endl;
+    cluster_descriptor << "}" << std::endl;
 
     return cluster_descriptor_path;
 }
@@ -448,7 +423,6 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
     auto implementation = std::unique_ptr<open_implementation<jtag_implementation>>(
         new open_implementation<jtag_implementation>(std::move(jtag_device)));
 
-    implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
     implementation->device_ids = device_ids;
     implementation->soc_descriptors = std::move(soc_descriptors);
@@ -523,7 +497,6 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(device)));
 
-    implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
     implementation->device_ids = device_ids;
     implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
@@ -532,25 +505,25 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 }
 
 template <>
-std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open_simulation() {
-    // For now, we hard code blackhole simulation soc descriptor as there is only VCS simulator for blackhole...
-    // const uint8_t *configuration_bytes = blackhole_simulation_configuration_bytes;
-    // tt::ARCH arch = tt::ARCH::BLACKHOLE;
-    // size_t configuration_length =
-    //     sizeof(blackhole_simulation_configuration_bytes) / sizeof(blackhole_simulation_configuration_bytes[0]);
-
-    const uint8_t *configuration_bytes = quasar_simulation_configuration_bytes;
-    tt::ARCH arch = tt::ARCH::QUASAR;
-    size_t configuration_length =
-        sizeof(quasar_simulation_configuration_bytes) / sizeof(quasar_simulation_configuration_bytes[0]);
-
-    std::string device_configuration_path = write_temp_file(
-        "soc_descriptor.yaml", reinterpret_cast<const char *>(configuration_bytes), configuration_length);
-
-    std::unique_ptr<tt_SimulationDevice> device = std::make_unique<tt_SimulationDevice>(device_configuration_path);
+std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open_simulation(
+    const std::filesystem::path &simulation_directory) {
+    std::unique_ptr<tt_SimulationDevice> device = std::make_unique<tt_SimulationDevice>(simulation_directory);
 
     // Initialize simulation device
     device->start_device({});
+
+    // Default behavior is to start brisc on all functional workers.
+    // Since it is easier to put brisc in endless loop then to put it in reset, we will do that.
+    // Write 0x6f (JAL x0, 0) to address 0 in L1 of all tensix cores.
+    auto &soc_descriptor = device->get_soc_descriptor(0);
+
+    for (const auto &worker : soc_descriptor.get_cores(CoreType::TENSIX)) {
+        uint32_t data = 0x6f;  // while (true);
+        tt::umd::cxy_pair cxy(0, worker.x, worker.y);
+
+        device->write_to_device(&data, sizeof(data), cxy, 0, {});
+    }
+
     device->deassert_risc_reset();
 
     std::vector<uint8_t> device_ids{0};
@@ -563,8 +536,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(device)));
 
-    implementation->device_configuration_path = device_configuration_path;
-    implementation->cluster_descriptor_path = create_simulation_cluster_descriptor_file(arch);
+    implementation->cluster_descriptor_path = create_simulation_cluster_descriptor_file(soc_descriptor.arch);
     implementation->device_ids = device_ids;
     implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
     implementation->soc_descriptors = std::move(soc_descriptors);
