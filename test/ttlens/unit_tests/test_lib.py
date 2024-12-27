@@ -496,14 +496,20 @@ class TestARC(unittest.TestCase):
         # Asserting that return_3 (aiclk) is greater than 400 and less than 2000
         self.assertTrue(return_3 > 200 and return_3 < 2000)
 
-    fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
+    def skip_if_grayskull(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            context = args[0].context
+            if context.arch == "grayskull":
+                args[0].skipTest(
+                    "Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests."
+                )
+            return func(*args, **kwargs)
 
+        return wrapper
+
+    @skip_if_grayskull
     def test_load_arc_fw(self):
-        if self.context.arch == "grayskull":
-            self.skipTest(
-                "Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests."
-            )
-
         TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
 
@@ -521,12 +527,8 @@ class TestARC(unittest.TestCase):
             reply = arc_fw.buffer_header.read_from_field("msg", device_id, self.context)
             assert reply == 0xBEBACECA
 
+    @skip_if_grayskull
     def test_arc_dfw_logging(self):
-        if self.context.arch == "grayskull":
-            self.skipTest(
-                "Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests."
-            )
-
         TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024 * 16
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
 
@@ -567,12 +569,8 @@ class TestARC(unittest.TestCase):
             for data in log_data["scratch3"]:
                 assert data == scrattch3_val
 
+    @skip_if_grayskull
     def test_pmon(self):
-        if self.context.arch == "grayskull":
-            self.skipTest(
-                "Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests."
-            )
-
         TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024 * 16
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
 
@@ -617,12 +615,8 @@ class TestARC(unittest.TestCase):
 
             assert len(log_data["pmon"][0]) != 0
 
+    @skip_if_grayskull
     def test_arc_dfw_sorting(self):
-        if self.context.arch == "grayskull":
-            self.skipTest(
-                "Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests."
-            )
-
         TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024 * 16
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
 
@@ -641,6 +635,7 @@ class TestARC(unittest.TestCase):
 
             assert log_data["heartbeat"][0] < log_data["heartbeat"][-1]
 
+    @skip_if_grayskull
     def test_arc_dfw_log_with_delay(self):
         TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024 * 16
         os.environ["TT_METAL_ARC_DEBUG_BUFFER_SIZE"] = str(TT_METAL_ARC_DEBUG_BUFFER_SIZE)
