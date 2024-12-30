@@ -37,17 +37,17 @@ def get_libjtag() -> list:
 
 ttlens_files = {
     "ttlens_lib": {"path": "ttlens", "files": get_ttlens_py_files(), "output": "ttlens"},
+    "ttlens_arc_dfw": {
+        "path": "ttlens/arc_dfw",
+        "files": "*",  # Include all files in the ttlens/fw directory
+        "output": "ttlens/arc_dfw",
+    },
     "ttlens_commands": {
         "path": "ttlens/ttlens_commands",
         "files": get_ttlens_py_files(f"{ttlens_home}/ttlens/ttlens_commands"),
         "output": "ttlens/ttlens_commands",
     },
-    "libs": {
-        "path": "build/lib",
-        "files": ["libdevice.so", "ttlens_pybind.so"] + get_libjtag(),
-        "output": "build/lib",
-        "strip": True,
-    },
+    "libs": {"path": "build/lib", "files": ["libdevice.so", "ttlens_pybind.so"], "output": "build/lib", "strip": True},
     "ttlens-server-standalone": {
         "path": "build/bin",
         "files": ["ttlens-server-standalone"],

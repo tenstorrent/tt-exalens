@@ -1,0 +1,204 @@
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
+# This code is used to interact with the ARC debug firmware on the device.
+import os
+from typing import List
+from abc import abstractmethod, ABC
+from ttlens.tt_util import TTException
+
+
+class ArcDfwCodePatcher(ABC):
+    """
+    This is a base class that helps in patching ARC debug firmware. It reads the base firmware and modifies it
+    to add instructions dynamically.
+    """
+
+    def __init__(self, base_fw_file_path: str, symbols_file_path: str, output_fw_file_path: str):
+        self.base_fw_file_path = base_fw_file_path
+        self.output_fw_file_path = output_fw_file_path
+        self.symbols_file_path = symbols_file_path
+
+        self.symbol_locations = self._parse_symbols_from_syms_file()
+
+        self.MAX_WRITE_BYTES = 256 * 4
+
+    def _parse_symbols_from_syms_file(self) -> dict:
+        """
+        Parses the symbols from the symbol table file. When Arc debug firmware is compiled, it generates a symbols file, which
+        contains the addresses that are needed for patching.
+
+        Returns:
+            dict: Dictionary of symbol names and their addresses.
+        """
+        file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.symbols_file_path)
+        symbol_table = {}
+
+        with open(file_name, "r") as f:
+            lines = f.readlines()
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            name, address = line.split(":")
+            symbol_table[name.strip()] = int(address.strip(), 16)
+
+        return symbol_table
+
+    def _change_byte_at_address(self, hex_lines: List[int], address: int, new_byte: int) -> List[int]:
+        """
+        Changes a single byte at the specified address in the hex lines.
+
+        Args:
+            hex_lines (List[int]): List of hex lines.
+            address (int): Address to change the byte.
+            new_byte (int): New byte value.
+
+        Returns:
+            List[int]: Updated list of hex lines.
+        """
+        line_index = address // 4
+        byte_index = address % 4
+        line = hex_lines[line_index]
+        line = int.from_bytes(line.to_bytes(4, byteorder="big"), byteorder="little")
+        mask = 0xFF << (byte_index * 8)
+        new_line = (line & ~mask) | (new_byte << (byte_index * 8))
+        new_line = int.from_bytes(new_line.to_bytes(4, byteorder="little"), byteorder="big")
+        hex_lines[line_index] = new_line
+        return hex_lines
+
+    def _change_two_bytes_at_address(self, hex_lines: List[int], address: int, new_bytes: int) -> List[int]:
+        """
+        Changes two bytes at the specified address in the hex lines.
+
+        Args:
+            hex_lines (List[int]): List of hex lines.
+            address (int): Address to change the bytes.
+            new_bytes (int): New bytes value.
+
+        Returns:
+            List[int]: Updated list of hex lines.
+        """
+        line_index = address // 4
+        byte_index = address % 4
+        line = hex_lines[line_index]
+        line = int.from_bytes(line.to_bytes(4, byteorder="big"), byteorder="little")
+        mask = 0xFFFF << (byte_index * 8)
+        new_line = (line & ~mask) | (new_bytes << (byte_index * 8))
+        new_line = int.from_bytes(new_line.to_bytes(4, byteorder="little"), byteorder="big")
+        hex_lines[line_index] = new_line
+        return hex_lines
+
+    def _load_hex_file(self, file_path: str) -> List[int]:
+        with open(file_path, "r") as file:
+            hex_lines = [int(line, 16) for line in file.read().splitlines()]
+        return hex_lines
+
+    def _save_hex_file(self, file_path: str, hex_lines: List[int]) -> None:
+        with open(file_path, "w") as file:
+            file.write("\n".join(f"{line:08x}" for line in hex_lines))
+
+    def _create_load_instruction(self, register: int, address: int) -> List[int]:
+        """
+        Creates an 8 byte load instruction for the specified register and address.
+
+        Args:
+            register (int): Register to load.
+            address: Address to load from.
+
+        Returns:
+            List[int]: Load instruction.
+        """
+        load_instruction_code = 0x16007800
+        instruction = load_instruction_code | (register & 0b111111)
+        return [
+            (instruction >> 24) & 0xFF,
+            (instruction >> 16) & 0xFF,
+            (instruction >> 8) & 0xFF,
+            instruction & 0xFF,
+            (address >> 24) & 0xFF,
+            (address >> 16) & 0xFF,
+            (address >> 8) & 0xFF,
+            address & 0xFF,
+        ]
+
+    def _create_store_instruction(self, r_addr: int, r_data: int, offset: int) -> List[int]:
+        """
+        Creates a 2 byte store instruction for the specified register and offset.
+
+        Args:
+            register (int): Register to store.
+            offset (int): Offset to store to.
+
+        Returns:
+            List[int]: Store instruction.
+        """
+        # ST_S b,[SP,u7] 11000bbb010uuuuu
+        opcode = 0b10100 << 11
+        r_addr_bits = (r_addr & 0b111) << 8
+        reg_data_bits = (r_data & 0b111) << 5
+        # offset is 5 bits but is shifted left by 2
+        offset_bits = offset & 0x1F
+        instruction = opcode | r_addr_bits | reg_data_bits | offset_bits
+        return [(instruction >> 8) & 0xFF, instruction & 0xFF]
+
+    def _modify_hex_lines_with_new_instructions(
+        self, hex_lines: List[int], from_address: int, instruction_bytes: List[int]
+    ) -> None:
+        """
+        Adding instructions to hex lines that are read from a hex file.
+
+        Args:
+            hex_lines (List[int]): List of hex lines.
+            from_address (int): Address to add the instructions.
+            instruction_bytes (List[int]): Instructions to add.
+
+        Raises:
+            TTException: If too many bytes are written to the new hex.
+        """
+        bytes_written = 0
+        # Write new instructions to the hex file, because of the endianess
+        for i in range(0, len(instruction_bytes), 2):
+            byte_pair = (instruction_bytes[i] << 8) | (
+                instruction_bytes[i + 1] if i + 1 < len(instruction_bytes) else 0
+            )
+            self._change_two_bytes_at_address(hex_lines, from_address + i, byte_pair)
+            bytes_written += 2
+
+        if bytes_written > self.MAX_WRITE_BYTES:
+            raise TTException(
+                f"Too many bytes written to the new hex, reduce the number of logs: {bytes_written} > {self.MAX_WRITE_BYTES}"
+            )
+        pass
+
+    def patch(self):
+        """
+        Adds logging instructions to the ARC debug firmware.
+
+        Args:
+            base_fw_file_path (str): Path to the base firmware file.
+            output_fw_file_path (str): Path to the modified firmware file.
+            log_context (ArcDfwLogContext): Log context containing log information.
+        """
+        expandable_function_location = self.symbol_locations["expandable_function"]
+        base_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.base_fw_file_path)
+        hex_lines = self._load_hex_file(base_file_name)
+
+        instruction_bytes = self._get_bytes_that_modify_expandable_function()
+
+        self._modify_hex_lines_with_new_instructions(hex_lines, expandable_function_location, instruction_bytes)
+
+        save_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.output_fw_file_path)
+        self._save_hex_file(save_file_name, hex_lines)
+
+    @abstractmethod
+    def _get_bytes_that_modify_expandable_function(self) -> List[int]:
+        """
+        Gets the modified instruction bytes for the ARC debug firmware.
+
+        Returns:
+            List[int]: Modified instructions
+        """
+        pass
