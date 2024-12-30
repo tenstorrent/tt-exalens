@@ -103,3 +103,16 @@ class ArcDebugLoggerWithPmonFw(ArcDebugLoggerFw):
         self.sort_log_data(log_data)
 
         return log_data
+
+    def save_pmons_to_csv(self, log_data: dict, file_path: str):
+        """
+        Save the PMON data to a CSV file.
+
+        Args:
+            log_data (dict): The log data.
+            file_path (str): The path to the CSV file.
+        """
+        with open(file_path, "w") as file:
+            file.write("pmon\n")
+            for pmon in log_data["pmon"]:
+                file.write(",".join([str(pmon_value) for pmon_value in pmon]) + "\n")

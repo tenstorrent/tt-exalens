@@ -117,7 +117,7 @@ class ArcDfwLogContextFromYaml(ArcDfwLogContext):
                 LogInfo(address=self._parse_address(yaml_data, log), log_name=log, size=size, output=output)
             )
 
-        if "delay" in yaml_data["logger_configuration"][log_configuration]:
+        if "delay" in yaml_data["logger_configuration"][log_configuration] and self.delay == 0:
             self.delay = yaml_data["logger_configuration"][log_configuration]["delay"]
 
 
