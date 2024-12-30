@@ -50,6 +50,8 @@ class TensixDebug:
     device_id: int
     context: Context
     device: Device
+    rdbg = RiscDebug
+    rldr = RiscLoader
 
     def __init__(
         self,
@@ -65,6 +67,8 @@ class TensixDebug:
             self.core_loc = OnChipCoordinate.create(core_loc, device=self.device)
         else:
             self.core_loc = core_loc
+        self.rdbg = RiscDebug(RiscLoc(self.core_loc, 0, 1), self.context)
+        self.rldr = RiscLoader(self.rdbg, self.context)
 
     def dbg_buff_status(self):
         return read_word_from_device(
@@ -186,9 +190,7 @@ class TensixDebug:
         device = self.context.devices[self.device_id]
         register = device.get_tensix_register_description(name)
         if isinstance(register, ConfigurationRegisterDescription):
-            rdbg = RiscDebug(RiscLoc(self.core_loc), self.context)
-            rldr = RiscLoader(rdbg, self.context)
-            with rldr.ensure_reading_configuration_register() as rdbg:
+            with self.rldr.ensure_reading_configuration_register() as rdbg:
                 rdbg.write_configuration_register(name, value)
         else:
             write_words_to_device(
@@ -198,6 +200,66 @@ class TensixDebug:
                 self.device_id,
                 self.context,
             )
+
+    PC_BUF_BASE = 0xFFE80000
+    PC_BUF_SEMAPHORE_BASE = 8
+    REGFILE_BASE = 0xFFE00000
+    TENSIX_CFG_BASE = 0xFFEF0000
+
+    def riscv_read(self, address: int) -> int:
+        with self.rldr.ensure_reading_register() as rdbg:
+            return rdbg.read_memory(address)
+
+    def riscv_write(self, address: int, value: int) -> int:
+        with self.rldr.ensure_reading_register() as rdbg:
+            rdbg.write_memory(address, value)
+
+    def cfg_reg_rmw_tensix(self, CfgAddr32, Shamt, Mask, val):
+        wrdata = val << Shamt
+        mask_b0 = Mask & 0xFF
+
+        if mask_b0 != 0:
+            data_b0 = wrdata & 0xFF
+            self.inject_instruction(self.device.instructions.TT_OP_RMWCIB0(mask_b0, data_b0, CfgAddr32), 0)
+
+        wrdata >>= 8
+        mask_b1 = (Mask >> 8) & 0xFF
+
+        if mask_b1 != 0:
+            data_b1 = (wrdata) & 0xFF
+            self.inject_instruction(self.device.instructions.TT_OP_RMWCIB1(mask_b1, data_b1, CfgAddr32), 0)
+
+        wrdata >>= 8
+        mask_b2 = (Mask >> 16) & 0xFF
+
+        if mask_b2 != 0:
+            data_b2 = (wrdata) & 0xFF
+            self.inject_instruction(self.device.instructions.TT_OP_RMWCIB2(mask_b2, data_b2, CfgAddr32), 0)
+
+        wrdata >>= 8
+        mask_b3 = (Mask >> 24) & 0xFF
+
+        if mask_b3 != 0:
+            data_b3 = (wrdata) & 0xFF
+            self.inject_instruction(self.device.instructions.TT_OP_RMWCIB3(mask_b3, data_b3, CfgAddr32), 0)
+
+    def sync_regfile_write(self, index):
+        self.riscv_read(self.REGFILE_BASE + 4 * index)
+
+    def semaphore_read(self, index):
+        return self.riscv_read(self.PC_BUF_BASE + 4 * (self.PC_BUF_SEMAPHORE_BASE + index))
+
+    def semaphore_post(self, index):
+        self.riscv_write(self.PC_BUF_BASE + 4 * (self.PC_BUF_SEMAPHORE_BASE + index), 0)
+
+    def t6_semaphore_get(self, index):
+        self.inject_instruction(self.device.instructions.TT_OP_SEMGET(1 << index), 0)
+
+    def t6_mutex_acquire(self, index):
+        self.inject_instruction(self.device.instructions.TT_OP_ATGETM(index), 0)
+
+    def t6_mutex_release(self, index):
+        self.inject_instruction(self.device.instructions.TT_OP_ATRELM(index), 0)
 
     def read_regfile_data(
         self,
@@ -213,7 +275,7 @@ class TensixDebug:
         Returns:
                 bytearray: 64x32 bytes of register file data (64 rows, 32 bytes per row).
         """
-        trisc_id = 2
+        trisc_id = 1
         regfile = convert_regfile(regfile)
 
         if regfile == REGFILE.SRCB:
