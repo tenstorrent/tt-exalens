@@ -190,7 +190,7 @@ class TensixDebug:
         device = self.context.devices[self.device_id]
         register = device.get_tensix_register_description(name)
         if isinstance(register, ConfigurationRegisterDescription):
-            with self.rldr.ensure_reading_configuration_register() as rdbg:
+            with self.rldr.ensure_reading_register() as rdbg:
                 rdbg.write_configuration_register(name, value)
         else:
             write_words_to_device(
@@ -200,11 +200,6 @@ class TensixDebug:
                 self.device_id,
                 self.context,
             )
-
-    PC_BUF_BASE = 0xFFE80000
-    PC_BUF_SEMAPHORE_BASE = 8
-    REGFILE_BASE = 0xFFE00000
-    TENSIX_CFG_BASE = 0xFFEF0000
 
     def riscv_read(self, address: int) -> int:
         with self.rldr.ensure_reading_register() as rdbg:
@@ -244,13 +239,17 @@ class TensixDebug:
             self.inject_instruction(self.device.instructions.TT_OP_RMWCIB3(mask_b3, data_b3, CfgAddr32), 0)
 
     def sync_regfile_write(self, index):
-        self.riscv_read(self.REGFILE_BASE + 4 * index)
+        self.riscv_read(self.device.get_tensix_regfile_base() + 4 * index)
 
     def semaphore_read(self, index):
-        return self.riscv_read(self.PC_BUF_BASE + 4 * (self.PC_BUF_SEMAPHORE_BASE + index))
+        return self.riscv_read(
+            self.device.get_tensix_pc_buffer_base() + 4 * (self.device.get_tensix_buf_semaphore_base() + index)
+        )
 
     def semaphore_post(self, index):
-        self.riscv_write(self.PC_BUF_BASE + 4 * (self.PC_BUF_SEMAPHORE_BASE + index), 0)
+        self.riscv_write(
+            self.device.get_tensix_pc_buffer_base() + 4 * (self.device.get_tensix_buf_semaphore_base() + index), 0
+        )
 
     def t6_semaphore_get(self, index):
         self.inject_instruction(self.device.instructions.TT_OP_SEMGET(1 << index), 0)
