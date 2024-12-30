@@ -207,8 +207,8 @@ class TestTensixDebug(unittest.TestCase):
         assert self.tdbg.read_tensix_register(dbg_reg_name) == 5
 
     def test_dump_srca(self):
-        if self.tdbg.device._arch != "wormhole_b0":
-            self.skipTest("Test is only for wormhole")
+        if self.tdbg.device._arch not in ["wormhole_b0", "blackhole"]:
+            self.skipTest("Test is only for wormhole and blackhole")
 
         srcA = [i * -1 for i in range(1024)]
         srcB = [i * -2 for i in range(1024)]
