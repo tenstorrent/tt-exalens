@@ -15,7 +15,7 @@ Options:
   -o <O>        Address offset. Optional and repeatable.
   -d <D>        Device ID. Optional and repeatable. Default: current device
   --fill=<N>    Write fill. Optional and repeatable. Default: 0
-  --nooutput    Does not output the result 
+  --nooutput    Does not output the result
 
 Description:
   Writes the specified value from address 'addr' in the next 'word-count' addresses, and prints the result at core <core-loc>.
@@ -31,7 +31,7 @@ Examples:
 
 command_metadata = {
     "short": "bwxy",
-    "type": "low-level", 
+    "type": "low-level",
     "description": __doc__,
     "context": ["limited", "buda", "metal"],
 }
@@ -68,9 +68,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     word_count = int(args["<word-count>"]) if args["<word-count>"] else size_words
     format = args["--format"] if args["--format"] else "hex32"
     if format not in util.PRINT_FORMATS:
-        raise util.TTException(
-            f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}"
-        )
+        raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
 
     offsets = args["-o"]
     for offset in offsets:
@@ -79,14 +77,12 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     fill_str = args["--fill"]
     if fill_str == "address":
-        write_data = util.generate_address_array(addr,word_count)
+        write_data = util.generate_address_array(addr, word_count)
     else:
-        fill = int(args["--fill"],0) if args["--fill"] else 0
+        fill = int(args["--fill"], 0) if args["--fill"] else 0
         if not isinstance(fill, int):
-            raise util.TTException(
-                f"Invalid fill '{fill}'. Fill should 'address' or a number"
-            )
-        write_data = [fill]*word_count
+            raise util.TTException(f"Invalid fill '{fill}'. Fill should 'address' or a number")
+        write_data = [fill] * word_count
 
     nooutput = True if args["--nooutput"] else False
 
@@ -104,7 +100,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                 word_count=word_count,
                 print_format=format,
                 context=context,
-                nooutput=nooutput
+                nooutput=nooutput,
             )
     else:
         pci_burst_write(
@@ -116,18 +112,29 @@ def run(cmd_text, context, ui_state: UIState = None):
             word_count=word_count,
             print_format=format,
             context=context,
-            nooutput=nooutput
+            nooutput=nooutput,
         )
 
+
 def pci_burst_write(
-    device_id, core_loc, addr, core_loc_str,write_data, word_count=1, print_format="hex32", context=None,nooutput=False
+    device_id,
+    core_loc,
+    addr,
+    core_loc_str,
+    write_data,
+    word_count=1,
+    print_format="hex32",
+    context=None,
+    nooutput=False,
 ):
     # Write data to device requires data to be separated into bytes
     byte_write_data = util.convert_int_array_to_byte_array(write_data)
 
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
-    core_loc_str =  f"{core_loc_str} (L1) :" if not core_loc_str.lower().startswith("ch") else f"{core_loc_str.lower()} (DRAM) :"
+    core_loc_str = (
+        f"{core_loc_str} (L1) :" if not core_loc_str.lower().startswith("ch") else f"{core_loc_str.lower()} (DRAM) :"
+    )
 
     da = DataArray(f"{core_loc_str} 0x{addr:08x} ({word_count * 4} bytes)", 4)
     try:
@@ -144,9 +151,7 @@ def pci_burst_write(
         da.data = write_data
         if bytes_per_entry != 4:
             da.to_bytes_per_entry(bytes_per_entry)
-        formated = f"{da._id}\n" + util.dump_memory(
-            addr, da.data, bytes_per_entry, 16, is_hex
-        )
+        formated = f"{da._id}\n" + util.dump_memory(addr, da.data, bytes_per_entry, 16, is_hex)
         print(formated)
     else:
         print("Wrote successfully")

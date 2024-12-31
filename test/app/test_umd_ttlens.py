@@ -10,19 +10,14 @@ import unittest
 import subprocess
 import re
 
-import os
-import fcntl
-import io
-import select
-
 
 class TTLensOutputVerifier:
     def __init__(self):
         pass
 
     def verify_start(self, runner: "TTLensTestRunner", tester: unittest.TestCase):
-        lines = runner.read_until_prompt()
-        self.verify_startup([], lines[0], tester)
+        lines, prompt = runner.read_until_prompt()
+        self.verify_startup(lines, prompt, tester)
         pass
 
     @abstractmethod
@@ -99,24 +94,16 @@ class TTLensTestRunner:
         if not args is None:
             if not type(args) == list:
                 args = [args]
-
         self.process = subprocess.Popen(
             program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
+        return self.process
 
     def start(self, tester: unittest.TestCase, args=None):
         self.invoke(args)
         self.verifier.verify_start(self, tester)
 
     def readline(self, timeoutSeconds: float = 1):
-        print("CI CHECK 1---------------------------------------------------")
-        if self.process.poll() is None:
-            print("Process is running")
-        else:
-            print("Process has terminated with exit code:", self.process.poll())
-
-        # print(self.process2.stdout.readline())
-
         # Fast path for program that ended
         rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], 0)
         if len(rlist) == 0:
@@ -135,63 +122,20 @@ class TTLensTestRunner:
         print(line)
         return line
 
-    def set_nonblocking(self, fd):
-        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
-
-    def read_until_prompt(self, timeoutSeconds: float = 1):
-        # Fast path for program that ended
-        rlist = []
-
-        while len(rlist) == 0:
-            if not self.is_running:
-                return None
-            rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], timeoutSeconds)
-
-        original_stdout_flags = fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_GETFL)
-        original_stderr_flags = fcntl.fcntl(self.process.stderr.fileno(), fcntl.F_GETFL)
-
-        self.set_nonblocking(self.process.stdout.fileno())
-        self.set_nonblocking(self.process.stderr.fileno())
-
-        output_lines = []
-
-        done = False
-
-        for stream in rlist:
-            # Blocking does not work on C/I and we need to loop until output is sent to stdout of the process
-            while not done:
-                try:
-                    # There is no need to close the reader since both stdout and stderr are already opened
-                    # in self.process.stdout and self.process.stderr, we are just using this as a pointer to the fd
-                    with io.TextIOWrapper(os.fdopen(stream.fileno(), "rb", closefd=False), encoding="utf-8") as reader:
-                        while True:
-                            line = reader.readline()
-                            if not line or line == "\n":
-                                continue
-
-                            if line.endswith("\n"):
-                                line = line[:-1]
-
-                            output_lines.append(line)
-                            print(line)
-
-                            if self.verifier.is_prompt_line(line):
-                                done = True
-                                break
-
-                except BlockingIOError:
-                    pass
-
-        fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_SETFL, original_stdout_flags)
-        fcntl.fcntl(self.process.stderr.fileno(), fcntl.F_SETFL, original_stderr_flags)
-
-        return output_lines if output_lines else None
-
     def writeline(self, line):
         self.process.stdin.write(line)
         self.process.stdin.write("\n")
         self.process.stdin.flush()
+
+    def read_until_prompt(self, readline_timeout: float = 1):
+        lines = []
+        while True:
+            line = self.readline(readline_timeout)
+            if line is None:
+                return (lines, None)
+            if self.verifier.is_prompt_line(line):
+                return (lines, line)
+            lines.append(line)
 
     def wait(self, timeoutSeconds: float = None):
         self.process.wait(timeoutSeconds)
