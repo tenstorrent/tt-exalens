@@ -71,17 +71,18 @@ class bindings_implementation : public tt::lens::ttlens_implementation {
                std::to_string(noc_y) + ", " + std::to_string(address) + ", " + std::to_string(size) + ", " +
                std::to_string(data_format) + ")";
     }
-    std::optional<std::string> get_runtime_data() override { return "get_runtime_data()"; }
     std::optional<std::string> get_cluster_description() override { return "get_cluster_description()"; }
-    std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) override {
-        return "get_harvester_coordinate_translation(" + std::to_string(chip_id) + ")";
-    }
     std::optional<std::vector<uint8_t>> get_device_ids() override { return std::vector<uint8_t>{0, 1}; }
     std::optional<std::string> get_device_arch(uint8_t chip_id) override {
         return "get_device_arch(" + std::to_string(chip_id) + ")";
     }
     std::optional<std::string> get_device_soc_description(uint8_t chip_id) override {
         return "get_device_soc_description(" + std::to_string(chip_id) + ")";
+    }
+    std::optional<std::tuple<uint8_t, uint8_t>> convert_from_noc0(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                                  const std::string &core_type,
+                                                                  const std::string &coord_system) override {
+        return std::make_tuple(noc_x + chip_id, noc_y + chip_id);
     }
 };
 

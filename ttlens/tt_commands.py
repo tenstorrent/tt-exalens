@@ -1,8 +1,25 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from docopt import docopt
+from docopt import DocoptExit, docopt
 from ttlens.tt_coordinate import OnChipCoordinate
+
+
+class CommandParsingException(Exception):
+    """Custom exception to wrap DocoptExit and SystemExit."""
+
+    def __init__(self, original_exception):
+        self.original_exception = original_exception
+        super().__init__(str(original_exception))  # Optional: Forward the message
+
+    def is_parsing_error(self):
+        """If exception is DocoptExit, some parsing error occured"""
+        return isinstance(self.original_exception, DocoptExit)
+
+    def is_help_message(self):
+        """If exception is SystemExit, h or help command is parsed. It is docopt behavior"""
+        return isinstance(self.original_exception, SystemExit)
+
 
 class tt_docopt:
     """
@@ -10,6 +27,7 @@ class tt_docopt:
     - The common options to be used in multiple commands
     - Iterating over the values of the common options (for_each)
     """
+
     def device_id_for_each(device_id, context, ui_state):
         if not device_id:
             device_id = ui_state.current_device_id
@@ -19,7 +37,7 @@ class tt_docopt:
             for device in context.devices.values():
                 yield device
         else:
-            yield context.devices[int(device_id,0)]
+            yield context.devices[int(device_id, 0)]
 
     def loc_for_each(loc_str, context, ui_state, device):
         if not loc_str:
@@ -38,7 +56,7 @@ class tt_docopt:
             for risc_id in range(4):
                 yield risc_id
         else:
-            yield int (risc_id, 0)
+            yield int(risc_id, 0)
 
     # We define command options that apply to more than one command here
     OPTIONS = {
@@ -68,7 +86,7 @@ class tt_docopt:
             "arg": "<risc-id>",
             "description": "RiscV ID (0: brisc, 1-3 triscs, all). [default: all]",
             "for_each": risc_id_for_each,
-        }
+        },
     }
 
     def create_docopt_options_string(option_names):
@@ -93,19 +111,22 @@ class tt_docopt:
             options_string += f"  {combined_option: <20}   {opt_info['description']}\n"
         return options_string
 
-
     def __init__(self, doc, argv=None, common_option_names=[]):
         additional_options = tt_docopt.create_docopt_options_string(common_option_names)
         self.doc = doc + f"\nOptions:\n{additional_options}"
         self.argv = argv
         self.option_names = common_option_names
-        self.args = docopt(self.doc, self.argv)
+        try:
+            self.args = docopt(self.doc, self.argv)
+        except (DocoptExit, SystemExit) as e:
+            raise CommandParsingException(e)
 
     def for_each(self, option_name, context, ui_state, **kwargs):
         option_short_name = tt_docopt.OPTIONS[option_name]["short"]
         opt_value = self.args[option_short_name]
         func = tt_docopt.OPTIONS[option_name]["for_each"]
         yield from func(opt_value, context, ui_state, **kwargs)
+
 
 def find_command(commands, name):
     for c in commands:

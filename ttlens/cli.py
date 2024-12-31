@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-lens [--netlist=<file>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [<output_dir>]
-  tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [<output_dir>]
+  tt-lens [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [--jtag]
+  tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag]
   tt-lens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
-  tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test] [<output_dir>]
+  tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test]
   tt-lens -h | --help
 
 Options:
@@ -17,7 +17,6 @@ Options:
   --cached                        Use the cache from previous TTLens run to simulate device communication.
   --port=<port>                   Port of the TTLens server. If not specified, defaults to 5555.  [default: 5555]
   --remote-address=<ip:port>      Address of the remote TTLens server, in the form of ip:port, or just :port, if ip is localhost. If not specified, defaults to localhost:5555. [default: localhost:5555]
-  --netlist=<file>                Netlist file to import. If not supplied, the most recent subdirectory of tt_build/ will be used.
   --commands=<cmds>               Execute a list of semicolon-separated commands.
   --start-gdb=<gdb_port>          Start a gdb server on the specified port.
   --write-cache                   Write the cache to disk.
@@ -25,6 +24,7 @@ Options:
   --devices=<devices>             Comma-separated list of devices to load. If not supplied, all devices will be loaded.
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
+  --jtag                          Initialize JTAG interface.
 
 Description:
   TTLens parses the build output files and reads the device state to provide a debugging interface for the user.
@@ -33,11 +33,8 @@ Description:
     1. Local mode: The user can run tt-lens with a specific output directory. This will load the runtime data from the output directory. If the output directory is not specified, the most recent subdirectory of tt_build/ will be used.
     2. Remote mode: The user can connect to a TTLens server running on a remote machine. The server will provide the runtime data.
     3. Cached mode: The user can use a cache file from previous TTLens run. This is useful for debugging without a connection to the device. Writing is disabled in this mode.
-  
-  Passing the --server flag will start a TTLens server. The server will listen on the specified port (default 5555) for incoming connections.
 
-Arguments:
-  output_dir                     Output directory of a Buda run. If left blank, the most recent subdirectory of tt_build/ will be used.
+  Passing the --server flag will start a TTLens server. The server will listen on the specified port (default 5555) for incoming connections.
 """
 
 try:
@@ -59,18 +56,14 @@ from ttlens import tt_lens_init
 from ttlens import tt_lens_server
 from ttlens import tt_util as util
 from ttlens.tt_uistate import UIState
-from ttlens.tt_commands import find_command
-from ttlens.tt_gdb_server import GdbServer, ServerSocket
-from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_lens_context import Context
+from ttlens.tt_commands import find_command, CommandParsingException
 
 from ttlens import Verbosity
 
+
 class TTLensCompleter(Completer):
     def __init__(self, commands, context):
-        self.commands = [cmd["long"] for cmd in commands] + [
-            cmd["short"] for cmd in commands
-        ]
+        self.commands = [cmd["long"] for cmd in commands] + [cmd["short"] for cmd in commands]
         self.context = context
 
     # Given a piece of a command, find all possible completions
@@ -87,9 +80,7 @@ class TTLensCompleter(Completer):
 
     def get_completions(self, document, complete_event):
         if complete_event.completion_requested:
-            prompt_current_word = document.get_word_before_cursor(
-                pattern=self.context.elf.name_word_pattern
-            )
+            prompt_current_word = document.get_word_before_cursor(pattern=self.context.elf.name_word_pattern)
             prompt_text = document.text_before_cursor
             # 1. If it is the first word, complete with the list of commands (lookup_commands)
             if " " not in prompt_text:
@@ -99,20 +90,14 @@ class TTLensCompleter(Completer):
             elif prompt_current_word.startswith("@"):
                 addr_part = prompt_current_word[1:]
                 for address in self.fuzzy_lookup_addresses(addr_part):
-                    yield Completion(
-                        f"@{address}", start_position=-len(prompt_current_word)
-                    )
+                    yield Completion(f"@{address}", start_position=-len(prompt_current_word))
 
 
 # Creates rows for tabulate for all commands of a given type
 def format_commands(commands, type, specific_cmd=None, verbose=False):
     rows = []
     for c in commands:
-        if c["type"] == type and (
-            specific_cmd is None
-            or c["long"] == specific_cmd
-            or c["short"] == specific_cmd
-        ):
+        if c["type"] == type and (specific_cmd is None or c["long"] == specific_cmd or c["short"] == specific_cmd):
             description = c["description"]
             if verbose:
                 row = [f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{c['short']}", ""]
@@ -141,6 +126,7 @@ def format_commands(commands, type, specific_cmd=None, verbose=False):
                 ]
                 rows.append(row)
     return rows
+
 
 # Print all commands (help)
 def print_help(commands, cmd):
@@ -220,16 +206,14 @@ def import_commands(reload=False):
         {
             "long": "eval",
             "short": "ev",
-            "type": "housekeeping",
+            "type": "dev",
             "description": "Description:\n  Evaluates a Python expression.\n\nExamples:\n  eval 3+5\n  eval hex(@brisc.EPOCH_INFO_PTR.epoch_id)",
             "context": "util",
         },
     ]
 
     cmd_files = []
-    for root, dirnames, filenames in os.walk(
-        util.application_path() + "/ttlens_commands"
-    ):
+    for root, dirnames, filenames in os.walk(util.application_path() + "/ttlens_commands"):
         for filename in fnmatch.filter(filenames, "*.py"):
             cmd_files.append(os.path.join(root, filename))
 
@@ -238,7 +222,8 @@ def import_commands(reload=False):
     cmd_files.sort()
     for cmdfile in cmd_files:
         module_path = os.path.splitext(os.path.basename(cmdfile))[0]
-        if module_path == "__init__": continue
+        if module_path == "__init__":
+            continue
         try:
             cmd_module = importlib.import_module(module_path)
         except Exception as e:
@@ -251,9 +236,7 @@ def import_commands(reload=False):
         # Make the module name the default 'long' invocation string
         if "long" not in command_metadata:
             command_metadata["long"] = cmd_module.__name__
-        util.VERBOSE(
-            f"Importing command {command_metadata['long']} from '{cmd_module.__name__}'"
-        )
+        util.VERBOSE(f"Importing command {command_metadata['long']} from '{cmd_module.__name__}'")
 
         if reload:
             importlib.reload(cmd_module)
@@ -269,11 +252,13 @@ def import_commands(reload=False):
         commands.append(command_metadata)
     return commands
 
+
 class SimplePromptSession:
     def __init__(self):
         self.history = InMemoryHistory()
+
     def prompt(self, message):
-        print(fragment_list_to_text(to_formatted_text(message)),flush=True)
+        print(fragment_list_to_text(to_formatted_text(message)), flush=True)
         s = input()
         self.history.append_string(s)
         return s
@@ -285,10 +270,16 @@ def main_loop(args, context):
     """
     cmd_raw = ""
 
-    context.filter_commands(import_commands()) # Set the commands in the context so we can call commands from other commands
+    context.filter_commands(
+        import_commands()
+    )  # Set the commands in the context so we can call commands from other commands
 
     # Create prompt object.
-    context.prompt_session = PromptSession(completer=TTLensCompleter(context.commands, context)) if sys.stdin.isatty() else SimplePromptSession()
+    context.prompt_session = (
+        PromptSession(completer=TTLensCompleter(context.commands, context))
+        if sys.stdin.isatty()
+        else SimplePromptSession()
+    )
 
     # Initialize current UI state
     ui_state = UIState(context)
@@ -302,42 +293,21 @@ def main_loop(args, context):
         ui_state.start_gdb(port)
 
     # These commands will be executed right away (before allowing user input)
-    non_interactive_commands = (
-        args["--commands"].split(";") if args["--commands"] else []
-    )
+    non_interactive_commands = args["--commands"].split(";") if args["--commands"] else []
 
     # Main command loop
     while True:
         have_non_interactive_commands = len(non_interactive_commands) > 0
         current_loc = ui_state.current_location
 
-        if (
-            ui_state.current_location is not None
-            and ui_state.current_graph_name is not None
-            and ui_state.current_device is not None
-        ):
-            ui_state.current_prompt = (
-                f"NocTr:{util.CLR_PROMPT}{current_loc.to_str()}{util.CLR_PROMPT_END} "
-            )
-            ui_state.current_prompt += f"netlist:{util.CLR_PROMPT}{current_loc.to_str('netlist')}{util.CLR_PROMPT_END} "
-            ui_state.current_prompt += f"stream:{util.CLR_PROMPT}{ui_state.current_stream_id}{util.CLR_PROMPT_END} "
-            graph = context.netlist.graph(ui_state.current_graph_name)
-            op_name = graph.location_to_op_name(current_loc)
-            ui_state.current_prompt += f"op:{util.CLR_PROMPT}{op_name}{util.CLR_PROMPT_END} "
-
         try:
-            if not ui_state.current_graph_name is None:
-                ui_state.current_device_id = context.netlist.graph_name_to_device_id(ui_state.current_graph_name)
-
             print_navigation_suggestions(navigation_suggestions)
 
             if have_non_interactive_commands:
                 cmd_raw = non_interactive_commands[0].strip()
                 non_interactive_commands = non_interactive_commands[1:]
                 if len(cmd_raw) > 0:
-                    print(
-                        f"{util.CLR_INFO}Executing command: %s{util.CLR_END}" % cmd_raw
-                    )
+                    print(f"{util.CLR_INFO}Executing command: %s{util.CLR_END}" % cmd_raw)
             else:
                 if ui_state.gdb_server is None:
                     gdb_status = f"{util.CLR_PROMPT_BAD_VALUE}None{util.CLR_PROMPT_BAD_VALUE_END}"
@@ -347,21 +317,15 @@ def main_loop(args, context):
                     # if ui_state.gdb_server.is_connected:
                     #     gdb_status += "(connected)"
                 my_prompt = f"gdb:{gdb_status} "
-                if context.is_buda:
-                    epoch_id = context.netlist.graph_name_to_epoch_id(ui_state.current_graph_name)
-                    my_prompt += f"Current epoch:{util.CLR_PROMPT}{epoch_id}{util.CLR_PROMPT_END}({ui_state.current_graph_name}) "
-                my_prompt += f"device:{util.CLR_PROMPT}{ui_state.current_device_id}{util.CLR_PROMPT_END} "
+                jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
+                my_prompt += f"device:{util.CLR_PROMPT}{jtag_prompt}{ui_state.current_device_id}{util.CLR_PROMPT_END} "
                 my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
                 my_prompt += f"{ui_state.current_prompt}> "
-                cmd_raw = context.prompt_session.prompt(HTML(my_prompt)) 
+                cmd_raw = context.prompt_session.prompt(HTML(my_prompt))
 
             cmd_int = try_int(cmd_raw)
             if type(cmd_int) == int:
-                if (
-                    navigation_suggestions
-                    and cmd_int >= 0
-                    and cmd_int < len(navigation_suggestions)
-                ):
+                if navigation_suggestions and cmd_int >= 0 and cmd_int < len(navigation_suggestions):
                     cmd_raw = navigation_suggestions[cmd_int]["cmd"]
                 else:
                     raise util.TTException(f"Invalid speed dial number: {cmd_int}")
@@ -393,11 +357,19 @@ def main_loop(args, context):
                         eval_str = context.elf.substitute_names_with_values(eval_str)
                         print(f"{eval_str} = {eval(eval_str)}")
                     else:
-                        new_navigation_suggestions = found_command["module"].run(
-                            cmd_raw, context, ui_state
-                        )
+                        new_navigation_suggestions = found_command["module"].run(cmd_raw, context, ui_state)
                         navigation_suggestions = new_navigation_suggestions
 
+        except CommandParsingException as e:
+            if e.is_parsing_error():
+                util.ERROR(e)
+                if args["--test"]:  # Always raise in test mode
+                    raise
+            elif e.is_help_message():
+                # help is automatically printed by command parserr
+                pass
+            else:
+                raise
         except Exception as e:
             if args["--test"]:  # Always raise in test mode
                 util.ERROR("CLI option --test is set. Raising exception to exit.")
@@ -406,10 +378,6 @@ def main_loop(args, context):
                 util.notify_exception(type(e), e, e.__traceback__)
             if have_non_interactive_commands or type(e) == util.TTFatalException:
                 # In non-interactive mode and on fatal excepions, we re-raise to exit the program
-                raise
-        except DocoptExit as e:
-            util.ERROR(e)
-            if args["--test"]:  # Always raise in test mode
                 raise
 
 
@@ -424,18 +392,6 @@ def main():
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
     util.VERBOSE(f"Verbosity level: {Verbosity.get().name} ({Verbosity.get().value})")
 
-    output_dir = args["<output_dir>"]
-    if not output_dir and not args["--remote"] and not args["--cached"]:
-        output_dir = tt_lens_init.locate_most_recent_build_output_dir()
-        if output_dir:
-            util.INFO(
-                f"Output directory not specified. Using most recently changed subdirectory of tt_build: {os.getcwd()}/{output_dir}"
-            )
-        else:
-            util.VERBOSE(
-                f"Output directory (output_dir) was not supplied and cannot be determined automatically. Continuing with limited functionality..."
-            )
-
     wanted_devices = None
     if args["--devices"]:
         wanted_devices = args["--devices"].split(",")
@@ -443,35 +399,30 @@ def main():
 
     cache_path = None
     if args["--write-cache"]:
-        cache_path = args["--cache-path"] 
+        cache_path = args["--cache-path"]
 
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
         print(f"Starting TTLens server at {args['--port']}")
-        runtime_data_yaml_filename = tt_lens_init.find_runtime_data_yaml_filename(output_dir) if output_dir else None
-        ttlens_server = tt_lens_server.start_server(
-            args["--port"],
-            runtime_data_yaml_filename,
-            output_dir,
-            wanted_devices
-        )
+        ttlens_server = tt_lens_server.start_server(args["--port"], wanted_devices, init_jtag=args["--jtag"])
         if args["--test"]:
-            while True: pass
+            while True:
+                pass
         input("Press Enter to exit server...")
         tt_lens_server.stop_server(ttlens_server)
         sys.exit(0)
-    
+
     if args["--cached"]:
         util.INFO(f"Starting TTLens from cache.")
         context = tt_lens_init.init_ttlens_cached(args["--cache-path"])
     elif args["--remote"]:
         address = args["--remote-address"].split(":")
-        server_ip = address[0] if address[0]!='' else "localhost"
-        server_port = address[-1] 
+        server_ip = address[0] if address[0] != "" else "localhost"
+        server_port = address[-1]
         util.INFO(f"Connecting to TTLens server at {server_ip}:{server_port}")
         context = tt_lens_init.init_ttlens_remote(server_ip, int(server_port), cache_path)
     else:
-        context = tt_lens_init.init_ttlens(output_dir, args["--netlist"], wanted_devices, cache_path)
+        context = tt_lens_init.init_ttlens(wanted_devices, cache_path, args["--jtag"])
 
     # Main function
     exit_code = main_loop(args, context)

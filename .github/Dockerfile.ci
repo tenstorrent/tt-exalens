@@ -1,0 +1,73 @@
+FROM ubuntu:22.04
+SHELL ["/bin/bash", "-c"]
+
+RUN mkdir /home/workdir
+WORKDIR /home/workdir
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install run dependencies
+RUN apt-get update && apt-get install -y \
+	software-properties-common \
+	build-essential \
+    git \
+    git-lfs \
+	libyaml-cpp-dev \
+	libboost-all-dev \
+	libhwloc-dev \
+	libzmq3-dev \
+    libnsl2 \
+    sudo \
+    wget \
+	xxd \
+    curl \
+    jq
+
+# Install test dependencies
+RUN apt-get update && apt-get install -y \
+	libgtest-dev \
+	libgmock-dev
+
+# Install minimal dependencies for Python environment, pip, and wheel builds
+RUN apt-get update && apt-get install -y \
+    libssl-dev \
+    python3 \
+    python3-venv \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    python3-wheel
+
+# Upgrade to latest pip
+RUN pip install --upgrade pip
+
+# Copy the requirements files for pip
+COPY ttlens/requirements.txt .
+COPY test/test_requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r test_requirements.txt
+RUN pip install wheel build setuptools
+
+# Install build tools
+RUN apt-get update && apt-get install -y \
+    ccache \
+    cmake \
+    ninja-build
+
+# Install clang 17
+RUN wget https://apt.llvm.org/llvm.sh && \
+    chmod u+x llvm.sh && \
+    ./llvm.sh 17 && \
+    apt install -y libc++-17-dev libc++abi-17-dev && \
+    ln -s /usr/bin/clang-17 /usr/bin/clang && \
+    ln -s /usr/bin/clang++-17 /usr/bin/clang++
+
+# Install clang-format
+RUN apt install -y clang-format-17 && \
+    ln -s /usr/bin/clang-format-17 /usr/bin/clang-format
+
+# Clean package cache
+RUN apt-get clean

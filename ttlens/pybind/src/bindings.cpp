@@ -4,6 +4,13 @@
 
 #include "bindings.h"
 
+#include <ttlensserver/jtag_implementation.h>
+#include <ttlensserver/open_implementation.h>
+#include <ttlensserver/umd_implementation.h>
+
+#include <fstream>
+#include <optional>
+
 static std::unique_ptr<tt::lens::ttlens_implementation> ttlens_implementation;
 
 class scoped_null_stdout {
@@ -25,14 +32,18 @@ void set_ttlens_implementation(std::unique_ptr<tt::lens::ttlens_implementation> 
     ttlens_implementation = std::move(imp);
 }
 
-bool open_device(const std::string &binary_directory, const std::string &runtime_yaml_path,
-                 const std::vector<uint8_t> &wanted_devices) {
+bool open_device(const std::string &binary_directory, const std::vector<uint8_t> &wanted_devices, bool init_jtag) {
     try {
         // Since tt::umd::Cluster is printing some output and we don't want to see it in python, we disable std::cout
         scoped_null_stdout null_stdout;
 
-        ttlens_implementation =
-            tt::lens::umd_with_open_implementation::open(binary_directory, runtime_yaml_path, wanted_devices);
+        if (init_jtag) {
+            ttlens_implementation =
+                tt::lens::open_implementation<tt::lens::jtag_implementation>::open(binary_directory, wanted_devices);
+        } else {
+            ttlens_implementation =
+                tt::lens::open_implementation<tt::lens::umd_implementation>::open(binary_directory, wanted_devices);
+        }
         if (!ttlens_implementation) {
             return false;
         }
@@ -134,8 +145,7 @@ std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_
 
 std::optional<uint32_t> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data) {
     if (ttlens_implementation) {
-        ttlens_implementation->jtag_write32(chip_id, noc_x, noc_y, address, data);
-        return 0;
+        return ttlens_implementation->jtag_write32(chip_id, noc_x, noc_y, address, data);
     }
     return {};
 }
@@ -149,15 +159,7 @@ std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) {
 
 std::optional<uint32_t> jtag_write32_axi(uint8_t chip_id, uint64_t address, uint32_t data) {
     if (ttlens_implementation) {
-        ttlens_implementation->jtag_write32_axi(chip_id, address, data);
-        return 0;
-    }
-    return {};
-}
-
-std::optional<std::string> get_runtime_data() {
-    if (ttlens_implementation) {
-        return ttlens_implementation->get_runtime_data();
+        return ttlens_implementation->jtag_write32_axi(chip_id, address, data);
     }
     return {};
 }
@@ -169,9 +171,11 @@ std::optional<std::string> get_cluster_description() {
     return {};
 }
 
-std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) {
+std::optional<std::tuple<uint8_t, uint8_t>> convert_from_noc0(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                              const std::string &core_type,
+                                                              const std::string &coord_system) {
     if (ttlens_implementation) {
-        return ttlens_implementation->get_harvester_coordinate_translation(chip_id);
+        return ttlens_implementation->convert_from_noc0(chip_id, noc_x, noc_y, core_type, coord_system);
     }
     return {};
 }
@@ -207,8 +211,8 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> arc_msg(uint8_t chip_id, uint
 
 PYBIND11_MODULE(ttlens_pybind, m) {
     m.def("open_device", &open_device, "Opens tt device. Prints error message if failed.",
-          pybind11::arg("binary_directory"), pybind11::arg("runtime_yaml_path"),
-          pybind11::arg_v("wanted_devices", std::vector<uint8_t>(), "[]"));
+          pybind11::arg("binary_directory"), pybind11::arg_v("wanted_devices", std::vector<uint8_t>(), "[]"),
+          pybind11::arg("init_jtag"));
     m.def("pci_read32", &pci_read32, "Reads 4 bytes from PCI address", pybind11::arg("chip_id"), pybind11::arg("noc_x"),
           pybind11::arg("noc_y"), pybind11::arg("address"));
     m.def("pci_write32", &pci_write32, "Writes 4 bytes to PCI address", pybind11::arg("chip_id"),
@@ -226,10 +230,10 @@ PYBIND11_MODULE(ttlens_pybind, m) {
     m.def("pci_read_tile", &pci_read_tile, "Reads tile from PCI address", pybind11::arg("chip_id"),
           pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"), pybind11::arg("size"),
           pybind11::arg("data_format"));
-    m.def("get_runtime_data", &get_runtime_data, "Returns runtime data");
     m.def("get_cluster_description", &get_cluster_description, "Returns cluster description");
-    m.def("get_harvester_coordinate_translation", &get_harvester_coordinate_translation,
-          "Returns harvester coordinate translation", pybind11::arg("chip_id"));
+    m.def("convert_from_noc0", &convert_from_noc0, "Convert noc0 coordinate into specified coordinate system",
+          pybind11::arg("chip_id"), pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("core_type"),
+          pybind11::arg("coord_system"));
     m.def("get_device_ids", &get_device_ids, "Returns device ids");
     m.def("get_device_arch", &get_device_arch, "Returns device architecture", pybind11::arg("chip_id"));
     m.def("get_device_soc_description", &get_device_soc_description, "Returns device SoC description",

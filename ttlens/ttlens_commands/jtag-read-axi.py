@@ -21,16 +21,15 @@ Examples:
 
 command_metadata = {
     "short": "jraxi",
-    "type": "low-level",
+    "type": "dev",
     "description": __doc__,
-    "context": ["limited", "buda", "metal"],
+    "context": ["limited", "metal"],
 }
 
 from docopt import docopt
 
 from ttlens.tt_uistate import UIState
 
-from ttlens import tt_device
 from ttlens.tt_coordinate import OnChipCoordinate
 
 
@@ -48,12 +47,10 @@ def run(cmd_text, context, ui_state: UIState = None):
     device_ids = args["-d"] if args["-d"] else [f"{current_device_id}"]
     device_array = []
     for device_id in device_ids:
-        device_array.append(int(device_id,0))
+        device_array.append(int(device_id, 0))
 
     for device_id in device_array:
-      val = tt_device.SERVER_IFC.jtag_read32_axi(
-          device_id, addr
-      )
-      print_a_jtag_axi_read(device_id, addr, val)
+        val = context.server_ifc.jtag_read32_axi(device_id, addr)
+        print_a_jtag_axi_read(device_id, addr, val)
 
     return None

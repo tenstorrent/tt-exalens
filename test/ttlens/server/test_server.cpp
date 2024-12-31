@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-#include <ttlensserver/ttlens_implementation.h>
-#include <ttlensserver/server.h>
 #include <gtest/gtest.h>
+#include <ttlensserver/server.h>
+#include <ttlensserver/ttlens_implementation.h>
 
 #include <memory>
 #include <string>
@@ -42,14 +42,6 @@ class yaml_not_implemented_server : public server {
         } else {
             return {};
         }
-    }
-
-    std::optional<std::string> get_run_dirpath() override {
-        if (enable_yaml) {
-            send_yaml("- type: 201");
-            return {};
-        } else
-            return {};
     }
 
     bool is_yaml_enabled() const { return enable_yaml; }
@@ -118,18 +110,19 @@ class yaml_not_implemented_implementation : public ttlens_implementation {
                           "\n  size: " + std::to_string(size) + "\n  data_format: " + std::to_string(data_format));
         return {};
     }
-    std::optional<std::string> get_runtime_data() override {
-        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::get_runtime_data)));
-        return {};
-    }
+
     std::optional<std::string> get_cluster_description() override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::get_cluster_description)));
         return {};
     }
-    std::optional<std::string> get_harvester_coordinate_translation(uint8_t chip_id) override {
+    std::optional<std::tuple<uint8_t, uint8_t>> convert_from_noc0(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                                  const std::string &core_type,
+                                                                  const std::string &coord_system) override {
         server->send_yaml(
-            "- type: " + std::to_string(static_cast<int>(request_type::get_harvester_coordinate_translation)) +
-            "\n  chip_id: " + std::to_string(chip_id));
+            "- type: " + std::to_string(static_cast<int>(request_type::convert_from_noc0)) +
+            "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
+            "\n  noc_y: " + std::to_string(noc_y) + "\n  core_type_size: " + std::to_string(core_type.size()) +
+            "\n  coord_system_size: " + std::to_string(coord_system.size()) + "\n  data: " + core_type + coord_system);
         return {};
     }
     std::optional<std::vector<uint8_t>> get_device_ids() override {
@@ -197,7 +190,7 @@ class yaml_not_implemented_implementation : public ttlens_implementation {
 };
 
 yaml_not_implemented_server::yaml_not_implemented_server(bool enable_yaml)
-    : server(std::make_unique<yaml_not_implemented_implementation>(this), "run_dirpath"), enable_yaml(enable_yaml) {}
+    : server(std::make_unique<yaml_not_implemented_implementation>(this)), enable_yaml(enable_yaml) {}
 
 }  // namespace tt::lens
 
@@ -250,10 +243,6 @@ TEST(ttlens_server, ping) {
     ASSERT_EQ(response, std::string("PONG"));
 }
 
-TEST(ttlens_server, get_runtime_data) {
-    test_not_implemented_request(tt::lens::request{tt::lens::request_type::get_runtime_data}, "- type: 101");
-}
-
 TEST(ttlens_server, get_cluster_description) {
     test_not_implemented_request(tt::lens::request{tt::lens::request_type::get_cluster_description}, "- type: 102");
 }
@@ -299,13 +288,6 @@ TEST(ttlens_server, pci_read_tile) {
     test_not_implemented_request(
         tt::lens::pci_read_tile_request{tt::lens::request_type::pci_read_tile, 1, 2, 3, 123456, 1024, 14},
         "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14");
-}
-
-TEST(ttlens_server, get_harvester_coordinate_translation) {
-    test_not_implemented_request(
-        tt::lens::get_harvester_coordinate_translation_request{
-            tt::lens::request_type::get_harvester_coordinate_translation, 1},
-        "- type: 17\n  chip_id: 1");
 }
 
 TEST(ttlens_server, get_device_arch) {
@@ -361,6 +343,7 @@ TEST(ttlens_server, pci_write) {
 }
 
 TEST(ttlens_server, get_file) {
+    // This test is different because we are trying to send request that has dynamic structure size
     constexpr std::string_view filename = "test_file";
     std::string expected_response =
         "- type: 200\n  size: " + std::to_string(filename.size()) + "\n  data: " + filename.data();
@@ -372,6 +355,24 @@ TEST(ttlens_server, get_file) {
     test_not_implemented_request(*request, expected_response, request_data.size());
 }
 
-TEST(ttlens_server, get_buda_run_dirpath) {
-    test_not_implemented_request(tt::lens::request{tt::lens::request_type::get_buda_run_dirpath}, "- type: 201");
+TEST(ttlens_server, convert_from_noc0) {
+    // This test is different because we are trying to send request that has dynamic structure size
+    constexpr std::string_view core_type = "core_type";
+    constexpr std::string_view coord_system = "coord_system";
+    std::string expected_response =
+        "- type: 103\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  core_type_size: 9\n  coord_system_size: 12\n  data: "
+        "core_typecoord_system";
+    std::array<uint8_t, core_type.size() + coord_system.size() + sizeof(tt::lens::convert_from_noc0_request)>
+        request_data = {0};
+    auto request = reinterpret_cast<tt::lens::convert_from_noc0_request *>(&request_data[0]);
+    request->type = tt::lens::request_type::convert_from_noc0;
+    request->chip_id = 1;
+    request->noc_x = 2;
+    request->noc_y = 3;
+    request->core_type_size = core_type.size();
+    request->coord_system_size = coord_system.size();
+    memcpy(request->data, core_type.data(), request->core_type_size);
+    memcpy(request->data + request->core_type_size, coord_system.data(), request->coord_system_size);
+
+    test_not_implemented_request(*request, expected_response, request_data.size());
 }

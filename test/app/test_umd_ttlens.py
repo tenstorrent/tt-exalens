@@ -33,6 +33,7 @@ class TTLensOutputVerifier:
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
         pass
 
+
 class UmdTTLensOutputVerifier(TTLensOutputVerifier):
     prompt_regex = r"^gdb:[^ ]+ device:\d+ loc:\d+-\d+ \(\d+, \d+\) > $"
 
@@ -44,12 +45,13 @@ class UmdTTLensOutputVerifier(TTLensOutputVerifier):
 
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
         test_regex = []
-        skip_regex = [r"Verbosity level: \d+",
-                      r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.",
-                      r"Device opened successfully.",
-                      r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=",
-                      r".*ttSiliconDevice::init_hugepage:.*",
-                      r"Loading yaml file: '([^']*\.yaml)'"
+        skip_regex = [
+            r"Verbosity level: \d+",
+            r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.",
+            r"Device opened successfully.",
+            r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=",
+            r".*ttSiliconDevice::init_hugepage:.*",
+            r"Loading yaml file: '([^']*\.yaml)'",
         ]
         tester.assertGreaterEqual(len(lines), len(test_regex))
 
@@ -64,15 +66,16 @@ class UmdTTLensOutputVerifier(TTLensOutputVerifier):
                 if id < num_test_regex - 1:
                     id += 1
                 continue
-            
+
             # Check if the line matches any of the skip regex patterns
             if any(re.search(regex, line) for regex in skip_regex):
                 continue
-            
+
             # Report an unexpected line
             tester.fail(f"Unexpected line: {line}, expected {test_regex[id]}")
-        
+
         return True
+
 
 class TTLensTestRunner:
     def __init__(self, verifier: TTLensOutputVerifier):
@@ -86,31 +89,33 @@ class TTLensTestRunner:
         if self.process is None or not self.process.returncode is None:
             return False
         return self.process.poll() is None
-    
+
     @property
     def returncode(self):
         return self.process.returncode
 
-    def invoke(self, args = None):
-        program_args = [self.interpreter_path, '-u', self.ttlens_py_path]
+    def invoke(self, args=None):
+        program_args = [self.interpreter_path, "-u", self.ttlens_py_path]
         if not args is None:
             if not type(args) == list:
                 args = [args]
 
-        self.process = subprocess.Popen(program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.process = subprocess.Popen(
+            program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
 
-    def start(self, tester: unittest.TestCase, args = None):
+    def start(self, tester: unittest.TestCase, args=None):
         self.invoke(args)
         self.verifier.verify_start(self, tester)
 
-    def readline(self, timeoutSeconds:float = 1):
+    def readline(self, timeoutSeconds: float = 1):
         print("CI CHECK 1---------------------------------------------------")
         if self.process.poll() is None:
             print("Process is running")
         else:
             print("Process has terminated with exit code:", self.process.poll())
-        
-        #print(self.process2.stdout.readline())
+
+        # print(self.process2.stdout.readline())
 
         # Fast path for program that ended
         rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], 0)
@@ -123,26 +128,26 @@ class TTLensTestRunner:
                     return None
                 raise Exception(f"Hit timeout ({timeoutSeconds}s) while waiting for output from TTLens")
         line = rlist[0].readline()
-        if line.endswith('\n'):
+        if line.endswith("\n"):
             line = line[:-1]
         elif not line:
             return None
         print(line)
         return line
 
-    def set_nonblocking(self,fd):
+    def set_nonblocking(self, fd):
         flags = fcntl.fcntl(fd, fcntl.F_GETFL)
         fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
     def read_until_prompt(self, timeoutSeconds: float = 1):
         # Fast path for program that ended
         rlist = []
-        
+
         while len(rlist) == 0:
             if not self.is_running:
                 return None
             rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], timeoutSeconds)
-        
+
         original_stdout_flags = fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_GETFL)
         original_stderr_flags = fcntl.fcntl(self.process.stderr.fileno(), fcntl.F_GETFL)
 
@@ -150,22 +155,22 @@ class TTLensTestRunner:
         self.set_nonblocking(self.process.stderr.fileno())
 
         output_lines = []
-        
+
         done = False
 
         for stream in rlist:
             # Blocking does not work on C/I and we need to loop until output is sent to stdout of the process
             while not done:
                 try:
-                    # There is no need to close the reader since both stdout and stderr are already opened 
+                    # There is no need to close the reader since both stdout and stderr are already opened
                     # in self.process.stdout and self.process.stderr, we are just using this as a pointer to the fd
-                    with io.TextIOWrapper(os.fdopen(stream.fileno(), 'rb',closefd=False), encoding='utf-8') as reader:
+                    with io.TextIOWrapper(os.fdopen(stream.fileno(), "rb", closefd=False), encoding="utf-8") as reader:
                         while True:
                             line = reader.readline()
-                            if not line or line == '\n':
-                                continue;
-                            
-                            if line.endswith('\n'):
+                            if not line or line == "\n":
+                                continue
+
+                            if line.endswith("\n"):
                                 line = line[:-1]
 
                             output_lines.append(line)
@@ -173,11 +178,11 @@ class TTLensTestRunner:
 
                             if self.verifier.is_prompt_line(line):
                                 done = True
-                                break;
-                            
+                                break
+
                 except BlockingIOError:
                     pass
-        
+
         fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_SETFL, original_stdout_flags)
         fcntl.fcntl(self.process.stderr.fileno(), fcntl.F_SETFL, original_stderr_flags)
 
@@ -185,10 +190,10 @@ class TTLensTestRunner:
 
     def writeline(self, line):
         self.process.stdin.write(line)
-        self.process.stdin.write('\n')
+        self.process.stdin.write("\n")
         self.process.stdin.flush()
 
-    def wait(self, timeoutSeconds:float = None):
+    def wait(self, timeoutSeconds: float = None):
         self.process.wait(timeoutSeconds)
 
     def kill(self):
@@ -198,7 +203,7 @@ class TTLensTestRunner:
         except:
             pass
 
-    def execute(self, args = None, input = None, timeout = None):
+    def execute(self, args=None, input=None, timeout=None):
         try:
             self.invoke(args)
             stdout, stderr = self.process.communicate(input, timeout)
@@ -206,6 +211,7 @@ class TTLensTestRunner:
         except Exception as e:
             self.kill()
             raise e
+
 
 class TestUmdTTLens(unittest.TestCase):
     @unittest.skip("Disabling this test for the moment. Something not working in CI, investigation needed.")
@@ -215,6 +221,7 @@ class TestUmdTTLens(unittest.TestCase):
         runner.writeline("x")
         runner.wait()
         self.assertEqual(runner.returncode, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

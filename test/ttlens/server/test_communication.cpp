@@ -67,10 +67,6 @@ void test_yaml_request(const T& request, const std::string& expected_response) {
 
 TEST(ttlens_communication, ping) { test_yaml_request(tt::lens::request{tt::lens::request_type::ping}, "- type: 1"); }
 
-TEST(ttlens_communication, get_runtime_data) {
-    test_yaml_request(tt::lens::request{tt::lens::request_type::get_runtime_data}, "- type: 101");
-}
-
 TEST(ttlens_communication, get_cluster_description) {
     test_yaml_request(tt::lens::request{tt::lens::request_type::get_cluster_description}, "- type: 102");
 }
@@ -115,21 +111,15 @@ TEST(ttlens_communication, pci_read_tile) {
         "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14");
 }
 
-TEST(ttlens_communication, get_harvester_coordinate_translation) {
-    test_yaml_request(
-        tt::lens::get_harvester_coordinate_translation_request{
-            tt::lens::request_type::get_harvester_coordinate_translation, 1},
-        "- type: 17\n  chip_id: 1");
-}
-
 TEST(ttlens_communication, get_device_arch) {
     test_yaml_request(tt::lens::get_device_arch_request{tt::lens::request_type::get_device_arch, 1},
                       "- type: 19\n  chip_id: 1");
 }
 
 TEST(ttlens_communication, get_device_soc_description) {
-    test_yaml_request(tt::lens::get_device_soc_description_request{tt::lens::request_type::get_device_soc_description, 1},
-                      "- type: 20\n  chip_id: 1");
+    test_yaml_request(
+        tt::lens::get_device_soc_description_request{tt::lens::request_type::get_device_soc_description, 1},
+        "- type: 20\n  chip_id: 1");
 }
 
 TEST(ttlens_communication, pci_write) {
@@ -163,6 +153,30 @@ TEST(ttlens_communication, get_file) {
     request->type = tt::lens::request_type::get_file;
     request->size = filename.size();
     for (size_t i = 0; i < filename.size(); i++) request->data[i] = filename[i];
+
+    auto server = start_yaml_server();
+    ASSERT_TRUE(server->is_connected());
+    auto response = send_message(zmq::const_buffer(request_data.data(), request_data.size())).to_string();
+    ASSERT_EQ(response, expected_response);
+}
+
+TEST(ttlens_communication, convert_from_noc0) {
+    constexpr std::string_view core_type = "core_type";
+    constexpr std::string_view coord_system = "coord_system";
+    std::string expected_response =
+        "- type: 103\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  core_type_size: 9\n  coord_system_size: 12\n  data: "
+        "core_typecoord_system";
+    std::array<uint8_t, core_type.size() + coord_system.size() + sizeof(tt::lens::convert_from_noc0_request)>
+        request_data = {0};
+    auto request = reinterpret_cast<tt::lens::convert_from_noc0_request*>(&request_data[0]);
+    request->type = tt::lens::request_type::convert_from_noc0;
+    request->chip_id = 1;
+    request->noc_x = 2;
+    request->noc_y = 3;
+    request->core_type_size = core_type.size();
+    request->coord_system_size = coord_system.size();
+    memcpy(request->data, core_type.data(), request->core_type_size);
+    memcpy(request->data + request->core_type_size, coord_system.data(), request->coord_system_size);
 
     auto server = start_yaml_server();
     ASSERT_TRUE(server->is_connected());

@@ -61,15 +61,14 @@ void tt::lens::server::process(const tt::lens::request& base_request) {
                                                   request.size, request.data_format));
             break;
         }
-        case tt::lens::request_type::get_runtime_data:
-            respond(implementation->get_runtime_data());
-            break;
         case tt::lens::request_type::get_cluster_description:
             respond(implementation->get_cluster_description());
             break;
-        case tt::lens::request_type::get_harvester_coordinate_translation: {
-            auto& request = static_cast<const tt::lens::get_harvester_coordinate_translation_request&>(base_request);
-            respond(implementation->get_harvester_coordinate_translation(request.chip_id));
+        case tt::lens::request_type::convert_from_noc0: {
+            auto& request = static_cast<const tt::lens::convert_from_noc0_request&>(base_request);
+            respond(implementation->convert_from_noc0(
+                request.chip_id, request.noc_x, request.noc_y, std::string(request.data, request.core_type_size),
+                std::string(request.data + request.core_type_size, request.coord_system_size)));
             break;
         }
         case tt::lens::request_type::get_device_ids:
@@ -98,10 +97,6 @@ void tt::lens::server::process(const tt::lens::request& base_request) {
             auto& request = static_cast<const tt::lens::arc_msg_request&>(base_request);
             respond(implementation->arc_msg(request.chip_id, request.msg_code, request.wait_for_done, request.arg0,
                                             request.arg1, request.timeout));
-            break;
-        }
-        case tt::lens::request_type::get_buda_run_dirpath: {
-            respond(get_run_dirpath());
             break;
         }
 
@@ -162,6 +157,17 @@ void tt::lens::server::respond(std::optional<std::vector<uint8_t>> response) {
     }
 }
 
+void tt::lens::server::respond(std::optional<std::tuple<uint8_t, uint8_t>> response) {
+    if (!response) {
+        respond_not_supported();
+    } else {
+        std::vector<uint8_t> data;
+        data.push_back(std::get<0>(response.value()));
+        data.push_back(std::get<1>(response.value()));
+        communication::respond(data.data(), data.size());
+    }
+}
+
 void tt::lens::server::respond(std::optional<std::tuple<int, uint32_t, uint32_t>> response) {
     if (!response) {
         respond_not_supported();
@@ -181,5 +187,3 @@ std::optional<std::vector<uint8_t>> tt::lens::server::get_file(const std::string
     }
     return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), {});
 }
-
-std::optional<std::string> tt::lens::server::get_run_dirpath() { return run_dirpath; }

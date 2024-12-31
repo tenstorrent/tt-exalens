@@ -7,7 +7,6 @@ import os
 import pickle
 
 from ttlens.tt_lens_ifc_base import TTLensCommunicator
-from ttlens import tt_device
 from ttlens import tt_util as util
 
 
@@ -50,6 +49,7 @@ class TTLensCacheThrough(TTLensCache):
     """
     This class uses a decorator wrapped around the regular interface functions to perform caching.
     """
+
     def cache_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
@@ -97,16 +97,12 @@ class TTLensCacheThrough(TTLensCache):
         return self.communicator.pci_write32_raw(chip_id, reg_addr, data)
 
     @cache_decorator
-    def get_runtime_data(self) -> str:
-        return self.communicator.get_runtime_data()
-
-    @cache_decorator
     def get_cluster_description(self):
         return self.communicator.get_cluster_description()
 
     @cache_decorator
-    def get_harvester_coordinate_translation(self, chip_id):
-        return self.communicator.get_harvester_coordinate_translation(chip_id)
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
+        return self.communicator.convert_from_noc0(chip_id, noc_x, noc_y, core_type, coord_system)
 
     @cache_decorator
     def get_device_ids(self):
@@ -127,10 +123,6 @@ class TTLensCacheThrough(TTLensCache):
     @cache_binary_decorator
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         return self.communicator.get_binary(binary_path)
-
-    @cache_decorator
-    def get_run_dirpath(self) -> str:
-        return self.communicator.get_run_dirpath()
 
     @cache_decorator
     def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
@@ -164,40 +156,35 @@ class TTLensCacheReader(TTLensCache):
 
     def load(self):
         if os.path.exists(self.filepath):
-            util.INFO(
-                f"Loading server cache from file {self.filepath}"
-            )
+            util.INFO(f"Loading server cache from file {self.filepath}")
             with open(self.filepath, "rb") as f:
                 self.cache = pickle.load(f)
-                util.INFO(
-                    f"  Loaded {len(self.cache)} entries"
-                )
+                util.INFO(f"  Loaded {len(self.cache)} entries")
         else:
             util.ERROR(f"Cache file {self.filepath} does not exist")
 
     """
     The decorator performs all the work of reading from the cache. The functions just provide the correct interface.
     """
+
     def read_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
 
             if key not in self.cache:
-                util.ERROR(
-                    f"Cache miss for {func.__name__}.")
+                util.ERROR(f"Cache miss for {func.__name__}.")
                 raise util.TTException(f"Cache miss for {func.__name__}.")
 
             return self.cache[key]
 
         return wrapper
-    
+
     def read_cached_binary_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
 
             if key not in self.cache:
-                util.ERROR(
-                    f"Cache miss for {func.__name__}.")
+                util.ERROR(f"Cache miss for {func.__name__}.")
                 raise util.TTException(f"Cache miss for {func.__name__}.")
 
             return io.BytesIO(self.cache[key])
@@ -234,15 +221,11 @@ class TTLensCacheReader(TTLensCache):
         raise util.TTException("Device not available, cannot write to cache.")
 
     @read_decorator
-    def get_runtime_data(self) -> str:
-        pass
-
-    @read_decorator
     def get_cluster_description(self):
         pass
 
     @read_decorator
-    def get_harvester_coordinate_translation(self, chip_id):
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
         pass
 
     @read_decorator
@@ -266,10 +249,6 @@ class TTLensCacheReader(TTLensCache):
         pass
 
     @read_decorator
-    def get_run_dirpath(self) -> str:
-        pass
-
-    @read_decorator
     def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
         return self.communicator.jtag_read32(chip_id, noc_x, noc_y, address)
 
@@ -287,12 +266,12 @@ class TTLensCacheReader(TTLensCache):
         return True
 
 
-def init_cache_writer(filepath="ttlens_cache.pkl"):
-    tt_device.SERVER_IFC = TTLensCacheThrough(tt_device.SERVER_IFC, filepath)
-    atexit.register(tt_device.SERVER_IFC.save)
-    return tt_device.SERVER_IFC
+def init_cache_writer(original_communicator, filepath="ttlens_cache.pkl"):
+    communicator = TTLensCacheThrough(original_communicator, filepath)
+    atexit.register(communicator.save)
+    return communicator
 
 
 def init_cache_reader(filepath="ttlens_cache.pkl"):
-    tt_device.SERVER_IFC = TTLensCacheReader(filepath)
-    return tt_device.SERVER_IFC
+    communicator = TTLensCacheReader(filepath)
+    return communicator

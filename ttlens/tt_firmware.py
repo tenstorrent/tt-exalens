@@ -12,17 +12,6 @@ import re
 from fuzzywuzzy import process, fuzz
 from sys import getsizeof
 
-# This is a list of firmware variables that do not make it to the ELF file (e.g. they
-# are hard-coded through #define). We need to 'inject' them into the symbol table with
-# the correct type to have the lookup work.
-BUDA_FW_VARS = {
-    "EPOCH_INFO_PTR": {
-        "offset": "EPOCH_INFO_ADDR",  # The address of the variable. If string, it is looked up in the ELF
-        # If int, it is used as is
-        "type": "epoch_t",  # The type of the variable.
-    },
-    "ETH_EPOCH_INFO_PTR": {"offset": "ETH_EPOCH_INFO_ADDR", "type": "epoch_t"},
-}
 
 class FAKE_DIE(object):
     """
@@ -61,9 +50,7 @@ class ELF:
             util.INFO(f"Loading ELF file: '{filename}'", end="")
             start_time = time.time()
             self.names[prefix] = tt_parse_elf.read_elf(self._file_ifc, filename)
-            util.INFO(
-                f" ({getsizeof(self.names[prefix])} bytes loaded in {time.time() - start_time:.2f}s)"
-            )
+            util.INFO(f" ({getsizeof(self.names[prefix])} bytes loaded in {time.time() - start_time:.2f}s)")
 
             # Inject the variables that are not in the ELF
             if extra_vars:
@@ -79,15 +66,11 @@ class ELF:
                 continue
             offset_var = var["offset"]
             if offset_var not in self.names[prefix]["variable"]:
-                raise util.TTException(
-                    f"Variable '{offset_var}' not found in ELF. Cannot add '{var_name}'"
-                )
+                raise util.TTException(f"Variable '{offset_var}' not found in ELF. Cannot add '{var_name}'")
             ov = self.names[prefix]["variable"][offset_var]
             addr = addr = ov.value if ov.value else ov.address
             resolved_type = self.names[prefix]["type"][var["type"]].resolved_type
-            self.names[prefix]["variable"][var_name] = FAKE_DIE(
-                var_name, addr=addr, resolved_type=resolved_type
-            )
+            self.names[prefix]["variable"][var_name] = FAKE_DIE(var_name, addr=addr, resolved_type=resolved_type)
 
     def _get_prefix_and_suffix(self, path_str):
         dot_pos = path_str.find(".")
@@ -118,10 +101,7 @@ class ELF:
         sorted_matches = sorted(matches, key=lambda x: x[1], reverse=True)
 
         if elf:
-            filtered_matches = [
-                f"{'@' if at_prefix else ''}{elf_name}.{match}"
-                for match, score in sorted_matches
-            ]
+            filtered_matches = [f"{'@' if at_prefix else ''}{elf_name}.{match}" for match, score in sorted_matches]
         else:
             filtered_matches = [match for match, score in sorted_matches]
         return filtered_matches
@@ -228,23 +208,17 @@ class ELF:
         if path_str.startswith("@"):
             path_str = path_str[1:]
         elf_name, var_name = self._get_prefix_and_suffix(path_str)
-        data, ret_addr, ret_size_bytes, type_die = tt_parse_elf.mem_access(
-            self.names[elf_name], var_name, mem_reader
-        )
+        data, ret_addr, ret_size_bytes, type_die = tt_parse_elf.mem_access(self.names[elf_name], var_name, mem_reader)
         return data
 
     @staticmethod
-    def get_mem_reader(device_id, core_loc):
+    def get_mem_reader(context, device_id, core_loc):
         """
         Returns a simple memory reader function that reads from a given device and a given core.
         """
+        from ttlens.tt_lens_lib import read_word_from_device
 
-        def mem_reader(addr, size_bytes):
-            import tt_device
-
-            data = tt_device.SERVER_IFC.pci_read32(
-                device_id, *core_loc.to("nocVirt"), addr
-            )
-            return [data]
+        def mem_reader(context, addr, size_bytes):
+            return [read_word_from_device(core_loc, addr, device_id, context)]
 
         return mem_reader

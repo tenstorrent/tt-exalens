@@ -7,8 +7,7 @@ build:
 		if which ccache > /dev/null; then \
 			cmake -B build -G Ninja -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=$(CONFIG); \
 		else \
-			cmake -B build -G Ninja; \
-		cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=$(CONFIG); \
+			cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=$(CONFIG); \
 		fi \
 	fi
 	@ninja -C build
@@ -19,6 +18,9 @@ clean:
 
 .PHONY: test
 test:
+	@echo "Installing dependencies"
+	TTLENS_INSTALL=true TEST_INSTALL=true $(TTLENS_HOME)/scripts/install-deps.sh
+
 	@echo "Running tests"
 	./test/run_all.sh
 

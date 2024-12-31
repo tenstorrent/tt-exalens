@@ -1,0 +1,187 @@
+name: "Run all tests"
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+
+  build-image:
+    runs-on: runner
+    outputs:
+      docker-image: ${{ steps.build.outputs.docker-image }}
+    steps:
+      - name: Fix permissions
+        shell: bash
+        run: sudo chown ubuntu:ubuntu -R $(pwd)
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          lfs: true
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker images and output the image name
+        id: build
+        shell: bash
+        run: |
+          # Output the image name
+          set pipefail
+          .github/build-docker-images.sh | tee docker.log
+          DOCKER_CI_IMAGE=$(tail -n 1 docker.log)
+          echo "DOCKER_CI_IMAGE $DOCKER_CI_IMAGE"
+          echo "docker-image=$DOCKER_CI_IMAGE" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: build-image
+    uses: ./.github/workflows/build-ttlens.yml
+    with:
+      docker-image: ${{ needs.build-image.outputs.docker-image }}
+
+  build-and-run-unit-tests:
+    needs:
+      - build
+      - build-image
+    strategy:
+      matrix:
+        runner-info: [
+          {arch: "grayskull", runs-on: ["in-service", "e150"]},
+          {arch: "wormhole_b0", runs-on: ["in-service", "n150"]},
+          {arch: "wormhole_b0", runs-on: ["in-service", "n300"]},
+        ]
+    env:
+      ARCH_NAME: ${{ matrix.runner-info.arch }}
+      CONFIG: ci
+      # So we can get all the makefile output we want
+      VERBOSE: 5
+      LOGGER_LEVEL: INFO
+    runs-on: ${{ matrix.runner-info.runs-on }}
+    container:
+      image: ${{ needs.build-image.outputs.docker-image }}
+      options: --device /dev/tenstorrent/0
+      volumes:
+        - /dev/hugepages:/dev/hugepages
+        - /dev/hugepages-1G:/dev/hugepages-1G
+        - /etc/udev/rules.d:/etc/udev/rules.d
+        - /lib/modules:/lib/modules
+    name: Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.runs-on[1] }}
+    steps:
+      - name: Git safe dir
+        run: git config --global --add safe.directory '*'
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          lfs: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ttlens-build
+          path: build
+
+      - name: Set reusable strings
+        id: strings
+        shell: bash
+        env:
+          job-name: "Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.runs-on[1] }}"
+        run: |
+          # Github job context unfortunately doesn't contain job_id, this is the workaround how to fetch it using GH API
+
+          curl -s -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/jobs" | \
+            jq -r '.jobs[] | .name'
+
+          echo "Expected job name: ${{ env.job-name }}"
+          JOB_ID=$(curl -s -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/jobs" | \
+            jq -r '.jobs[] | select(.name | contains("${{ env.job-name }}")) | .id ')
+          echo "Current job id: $JOB_ID"
+          echo "job-id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          echo "test_report_path=report_$JOB_ID.xml" >> "$GITHUB_OUTPUT"
+
+      - name: Update permissions for downloaded binaries
+        shell: bash
+        run: |
+          chmod +x build/bin/ttlens-server-standalone
+          chmod +x build/bin/ttlens_server_unit_tests
+          ls -la build/lib # Debug reomve
+
+      - name: Run C++ tests
+        run: |
+          make ttlens_server_unit_tests_run_only
+
+      - name: Run Python tests for ttlens library
+        run: |
+          python3 -m xmlrunner discover -v -t . -s test/ttlens -p '*test*.py' \
+          --output-file ${{ steps.strings.outputs.test_report_path }}
+
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.runs-on[1] }}
+          path: ${{ steps.strings.outputs.test_report_path }}
+
+      - name: Run Python tests for TTLens app
+        run: |
+          python3 -m unittest discover -v -t . -s test/app -p *test*.py
+
+
+  wheel-test:
+    needs:
+      - build
+      - build-image
+    strategy:
+      matrix:
+        runner-info: [
+          {arch: "grayskull", runs-on: ["in-service", "e150"]},
+          {arch: "wormhole_b0", runs-on: ["in-service", "n150"]},
+          {arch: "wormhole_b0", runs-on: ["in-service", "n300"]},
+        ]
+    env:
+      ARCH_NAME: ${{ matrix.runner-info.arch }}
+      CONFIG: ci
+      # So we can get all the makefile output we want
+      VERBOSE: 5
+    runs-on: ${{ matrix.runner-info.runs-on }}
+    container:
+      image: ${{ needs.build-image.outputs.docker-image }}
+      options: --device /dev/tenstorrent/0
+      volumes:
+        - /dev/hugepages:/dev/hugepages
+        - /dev/hugepages-1G:/dev/hugepages-1G
+        - /etc/udev/rules.d:/etc/udev/rules.d
+        - /lib/modules:/lib/modules
+    name: Build, install wheel and test it on ${{ matrix.runner-info.arch }}
+    steps:
+      - name: Git safe dir
+        run: git config --global --add safe.directory '*'
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          lfs: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: ttlens-build
+          path: build
+      - name: Update permissions for downloaded binaries
+        run: |
+          chmod +x build/bin/ttlens-server-standalone
+          chmod +x build/bin/ttlens_server_unit_tests
+      - name: Install wheel
+        run: |
+          pip install build/ttlens_wheel/*.whl
+      - name: Run tests
+        run: |
+          # Change to the wheel tests directory so that we are certain we don't import dev files
+          cd test/wheel
+          ./run-wheel.sh

@@ -17,7 +17,7 @@
 // TODO: Resolve this. Dependencies:
 // (c)xy_pair
 // tt_device
-#include "device/device_api_metal.h"
+#include "umd/device/device_api_metal.h"
 
 namespace tt::lens::tile {
 
@@ -45,10 +45,9 @@ enum class TileDataFormat : uint8_t {
 };
 TileDataFormat to_data_format(uint8_t i);
 
-std::optional<std::string> read_tile_implementation(
-	uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t size, uint8_t data_format, tt_device* device);
+std::optional<std::string> read_tile_implementation(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                                                    uint32_t size, uint8_t data_format, tt_device* device);
 std::optional<std::string> dump_tile(const std::vector<uint32_t>& mem_vector, TileDataFormat df);
-
 
 TileDataFormat to_data_format(uint8_t i);
 
@@ -63,4 +62,4 @@ static __attribute__((always_inline)) inline uint32_t get_half(uint32_t word, ui
 uint32_t get_indexed_num(uint32_t data_index, const std::vector<uint32_t>& packed_data, TileDataFormat data_format);
 float dword_to_float(uint32_t dword);
 
-} // namespace tt::lens::tile
+}  // namespace tt::lens::tile

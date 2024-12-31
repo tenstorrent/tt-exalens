@@ -45,30 +45,29 @@ Examples:
 """
 
 command_metadata = {
-    "short": "rv", 
-    "type": "low-level", 
+    "short": "rv",
+    "type": "low-level",
     "description": __doc__,
-    "context": ["limited", "buda", "metal"],
-    "common_option_names": [ "--device", "--loc", "--risc", "--verbose" ]
+    "context": ["limited", "metal"],
+    "common_option_names": ["--device", "--loc", "--risc", "--verbose"],
 }
 
 from ttlens.tt_uistate import UIState
 
 from ttlens import tt_commands
-from ttlens import tt_device
 from ttlens import tt_util as util
 from ttlens.tt_debug_risc import RiscDebug, RiscLoc, get_risc_name
 
 
-def run_riscv_command(device, loc, risc_id, args):
+def run_riscv_command(context, device, loc, risc_id, args):
     """
     Given a command trough args, run the corresponding RISC-V command
     """
     verbose = args["-v"]
-    where = f"{get_risc_name(risc_id)} {loc.to_str('netlist')} [{device._id}]"
+    where = f"{get_risc_name(risc_id)} {loc.to_str('logical')} [{device._id}]"
 
     noc_id = 0
-    risc = RiscDebug(RiscLoc(loc, noc_id, risc_id), tt_device.SERVER_IFC, verbose=verbose)
+    risc = RiscDebug(RiscLoc(loc, noc_id, risc_id), context, verbose=verbose)
 
     if args["halt"]:
         risc.enable_debug()
@@ -84,37 +83,37 @@ def run_riscv_command(device, loc, risc_id, args):
         risc.continue_without_debug()
 
     elif args["rd"]:
-        if args['<address>'] is None:
+        if args["<address>"] is None:
             util.ERROR("Address is required for memory read")
         else:
-            addr = int(args.get('<address>', 0), 0)
+            addr = int(args.get("<address>", 0), 0)
             util.INFO(f"Reading from memory {where}")
             data = risc.read_memory(addr)
             util.INFO("  0x{:08x}".format(data))
 
     elif args["rreg"]:
-        if args['<index>'] is None:
+        if args["<index>"] is None:
             util.ERROR("Index is required for register read")
         else:
-            reg_index = int(args.get('<index>', 0), 0)
+            reg_index = int(args.get("<index>", 0), 0)
             util.INFO(f"Reading from register {reg_index} on {where}")
             data = risc.read_gpr(reg_index)
             util.INFO("  0x{:08x}".format(data))
 
     elif args["wr"]:
-        if args['<address>'] is None or args["<data>"] is None:
+        if args["<address>"] is None or args["<data>"] is None:
             util.ERROR("Address and data are required for memory write")
         else:
-            addr = int(args.get('<address>', 0), 0)
+            addr = int(args.get("<address>", 0), 0)
             data = int(args.get("<data>", 0), 0)
             util.INFO(f"Writing to memory {where}")
             risc.write_memory(addr, data)
 
     elif args["wreg"]:
-        if args['<index>'] is None or args["<data>"] is None:
+        if args["<index>"] is None or args["<data>"] is None:
             util.ERROR("Index and data are required for register write")
         else:
-            reg_index = int(args.get('<index>', 0), 0)
+            reg_index = int(args.get("<index>", 0), 0)
             data = int(args.get("<data>", 0), 0)
             util.INFO(f"Writing to register {reg_index} on {where}")
             risc.write_gpr(reg_index, data)
@@ -123,7 +122,7 @@ def run_riscv_command(device, loc, risc_id, args):
         if "set" in args and args["set"]:
             util.INFO(f"Setting breakpoint at address {args['<address>']} for {where}")
             bkpt_index = int(args.get("-pt", "0"), 0)
-            risc.set_watchpoint_on_pc_address(bkpt_index, int(args['<address>'], 0))
+            risc.set_watchpoint_on_pc_address(bkpt_index, int(args["<address>"], 0))
         elif "del" in args and args["del"]:
             # Handle 'bkpt del' case
             bkpt_index = int(args.get("-pt", "0"), 0)
@@ -136,17 +135,15 @@ def run_riscv_command(device, loc, risc_id, args):
         if "setr" in args and args["setr"]:
             util.INFO(f"Setting read watchpoint at address {args['<address>']} for {where}")
             bkpt_index = int(args.get("-pt", "0"), 0)
-            risc.set_watchpoint_on_memory_write(bkpt_index, int(args['<address>'], 0))
+            risc.set_watchpoint_on_memory_write(bkpt_index, int(args["<address>"], 0))
         elif "setw" in args and args["setw"]:
             util.INFO(f"Setting write watchpoint at address {args['<address>']} for {where}")
             bkpt_index = int(args.get("-pt", "0"), 0)
-            risc.set_watchpoint_on_memory_read(bkpt_index, int(args['<address>'], 0))
+            risc.set_watchpoint_on_memory_read(bkpt_index, int(args["<address>"], 0))
         elif "setrw" in args and args["setrw"]:
-            util.INFO(
-                f"Setting read/write watchpoint at address {args['<address>']} for {where}"
-            )
+            util.INFO(f"Setting read/write watchpoint at address {args['<address>']} for {where}")
             bkpt_index = int(args.get("-pt", "0"), 0)
-            risc.set_watchpoint_on_memory_access(bkpt_index, int(args['<address>'], 0))
+            risc.set_watchpoint_on_memory_access(bkpt_index, int(args["<address>"], 0))
         elif "del" in args and args["del"]:
             bkpt_index = int(args.get("-pt", "0"), 0)
             risc.disable_watchpoint(bkpt_index)
@@ -166,10 +163,10 @@ def run_riscv_command(device, loc, risc_id, args):
                 util.INFO(f"  RUNNING - {where}")
 
     elif args["reset"]:
-        if args['1']:
+        if args["1"]:
             util.INFO(f"Setting reset for {where}")
             risc.set_reset_signal(1)
-        elif args['0']:
+        elif args["0"]:
             util.INFO(f"Clearing reset for {where}")
             risc.set_reset_signal(0)
         else:
@@ -177,12 +174,15 @@ def run_riscv_command(device, loc, risc_id, args):
             risc.set_reset_signal(1)
             risc.set_reset_signal(0)
 
+
 def run(cmd_text, context, ui_state: UIState = None):
-    dopt = tt_commands.tt_docopt(command_metadata["description"], argv=cmd_text.split()[1:],
-                                common_option_names=command_metadata["common_option_names"]
-                                )
+    dopt = tt_commands.tt_docopt(
+        command_metadata["description"],
+        argv=cmd_text.split()[1:],
+        common_option_names=command_metadata["common_option_names"],
+    )
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             for risc_id in dopt.for_each("--risc", context, ui_state):
-                run_riscv_command(device, loc, risc_id, dopt.args)
+                run_riscv_command(context, device, loc, risc_id, dopt.args)
     return None

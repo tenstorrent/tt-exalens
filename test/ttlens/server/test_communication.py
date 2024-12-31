@@ -10,6 +10,7 @@ from ttlens.tt_lens_ifc import ttlens_server_communication
 server_port = 0
 server_communication = None
 
+
 def check_response(response, expected_response):
     response = response.decode("utf-8")
     if response != expected_response:
@@ -21,11 +22,6 @@ def check_response(response, expected_response):
 def ping():
     global server_communication
     check_response(server_communication.ping(), "- type: 1")
-
-
-def get_runtime_data():
-    global server_communication
-    check_response(server_communication.get_runtime_data(), "- type: 101")
 
 
 def get_cluster_description():
@@ -94,14 +90,6 @@ def pci_read_tile():
     )
 
 
-def get_harvester_coordinate_translation():
-    global server_communication
-    check_response(
-        server_communication.get_harvester_coordinate_translation(1),
-        "- type: 17\n  chip_id: 1",
-    )
-
-
 def get_device_arch():
     global server_communication
     check_response(
@@ -118,14 +106,21 @@ def get_device_soc_description():
     )
 
 
+def convert_from_noc0():
+    global server_communication
+    check_response(
+        server_communication.convert_from_noc0(1, 2, 3, "core_type", "coord_system"),
+        "- type: 103\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  core_type_size: 9\n  coord_system_size: 12\n  data: core_typecoord_system",
+    )
+
+
 def pci_write():
     global server_communication
     check_response(
-        server_communication.pci_write(
-            1, 2, 3, 123456, bytes([10, 11, 12, 13, 14, 15, 16, 17])
-        ),
+        server_communication.pci_write(1, 2, 3, 123456, bytes([10, 11, 12, 13, 14, 15, 16, 17])),
         "- type: 13\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, 12, 13, 14, 15, 16, 17]",
     )
+
 
 def get_file():
     global server_communication
@@ -134,12 +129,6 @@ def get_file():
         "- type: 200\n  size: 9\n  path: test_file",
     )
 
-def get_buda_run_dirpath():
-    global server_communication
-    check_response(
-        server_communication.get_run_dirpath(),
-        "- type: 201",
-    )
 
 def jtag_read32():
     global server_communication
@@ -156,6 +145,7 @@ def jtag_write32():
         "- type: 51\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654",
     )
 
+
 def jtag_read32_axi():
     global server_communication
     check_response(
@@ -171,12 +161,11 @@ def jtag_write32_axi():
         "- type: 53\n  chip_id: 1\n  address: 123456\n  data: 987654",
     )
 
+
 def main():
     # Check if at least two arguments are provided (script name + function name)
     if len(sys.argv) < 3:
-        print(
-            "Usage: python test_communication.py <server_port> <function_name> [args...]"
-        )
+        print("Usage: python test_communication.py <server_port> <function_name> [args...]")
         sys.exit(1)
 
     # Get server port and remove it from the arguments list

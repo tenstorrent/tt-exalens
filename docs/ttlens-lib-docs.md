@@ -17,7 +17,7 @@ a singleton, as it can be explicitly provided to library functions.
 ## init_ttlens
 
 ```
-init_ttlens(output_dir_path=None, netlist_path=None, wanted_devices=None, cache_path=None) -> Context
+init_ttlens(wanted_devices=None, cache_path=None, init_jtag=False) -> Context
 ```
 
 
@@ -29,8 +29,6 @@ Interfacing device is local, through pybind.
 
 ### Args
 
-- `output_dir_path` *(str, optional)*: Path to the Buda run output directory. If None, TTLens will be initialized in limited mode.
-- `netlist_path` *(str, optional)*: Path to the Buda netlist file.
 - `wanted_devices` *(list, optional)*: List of device IDs we want to connect to. If None, connect to all available devices.
 - `caching_path` *(str, optional)*: Path to the cache file to write. If None, caching is disabled.
 
@@ -70,7 +68,7 @@ Interfacing device is done remotely through TTLens client.
 ## init_ttlens_cached
 
 ```
-init_ttlens_cached(cache_path, netlist_path=None) -> None
+init_ttlens_cached(cache_path) -> None
 ```
 
 
@@ -83,7 +81,6 @@ Only cached commands are available.
 ### Args
 
 - `cache_path` *(str)*: Path to the cache file.
-- `netlist_path` *(str, optional)*: Path to the netlist file.
 
 
 ### Returns
@@ -92,10 +89,10 @@ Only cached commands are available.
 
 
 
-## get_yamls
+## get_cluster_desc_yaml
 
 ```
-get_yamls(lens_ifc) -> tuple[util.YamlFile, util.YamlFile]
+get_cluster_desc_yaml(lens_ifc) -> tuple[util.YamlFile, util.YamlFile]
 ```
 
 
@@ -109,7 +106,7 @@ Get the runtime data and cluster description yamls through the TTLens interface.
 ## load_context
 
 ```
-load_context(server_ifc, netlist_filepath, runtime_data_yaml, cluster_desc_yaml) -> Context
+load_context(server_ifc) -> Context
 ```
 
 
@@ -144,25 +141,6 @@ Set the active TTLens context object.
 
 
 
-## find_runtime_data_yaml_filename
-
-```
-find_runtime_data_yaml_filename(output_dir=None) -> str | None
-```
-
-
-### Description
-
-Find the runtime data yaml file in the output directory. If directory is not specified, try to find the most recent Buda output directory.
-
-
-### Args
-
-- `output_dir` *(str, optional)*: Path to the output directory.
-
-
-
-
 ## locate_most_recent_build_output_dir
 
 ```
@@ -181,6 +159,32 @@ Try to find a default output directory.
 
 # tt_lens_lib
 
+## read_word_from_device
+
+```
+read_word_from_device(core_loc, addr, device_id=0, context=None) -> int
+```
+
+
+### Description
+
+Reads one word of data, from address 'addr' at core <x-y>.
+
+
+### Args
+
+- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+- `addr` *(int)*: Memory address to read from.
+- `device_id` *(int, default 0)*: ID number of device to read from.
+- `context` *(Context, optional)*: TTLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+
+
+### Returns
+
+ *(int)*: Data read from the device.
+
+
+
 ## read_words_from_device
 
 ```
@@ -195,7 +199,7 @@ Reads word_count four-byte words of data, starting from address 'addr' at core <
 
 ### Args
 
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
 - `addr` *(int)*: Memory address to read from.
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `word_count` *(int, default 1)*: Number of 4-byte words to read.
@@ -222,7 +226,7 @@ Reads num_bytes of data starting from address 'addr' at core <x-y>.
 
 ### Args
 
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
 - `addr` *(int)*: Memory address to read from.
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `num_bytes` *(int, default 4)*: Number of bytes to read.
@@ -249,7 +253,7 @@ Writes data word to address 'addr' at noc0 location x-y of the current chip.
 
 ### Args
 
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
 - `addr` *(int)*: Memory address to write to. If multiple words are to be written, the address is the starting address.
 - `data` *(int | List[int])*: 4-byte integer word to be written, or a list of them.
 - `device_id` *(int, default 0)*: ID number of device to write to.
@@ -276,7 +280,7 @@ Writes data to address 'addr' at noc0 location x-y of the current chip.
 
 ### Args
 
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (nocTr) or R,C (netlist) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
 - `addr` *(int)*: Memory address to write to.
 - `data` *(List[int] | bytes)*: Data to be written. Lists are converted to bytes before writing, each element a byte. Elements must be between 0 and 255.
 - `device_id` *(int, default 0)*: ID number of device to write to.
@@ -306,8 +310,8 @@ Loads the given ELF file into the specified RISC core and executes it.
 - `elf_file` *(os.PathLike)*: Path to the ELF file to run.
 - `core_loc` *(str | OnChipCoordinate | List[str | OnChipCoordinate])*: One of the following:
 1. "all" to run the ELF on all cores;
-2. an X-Y (nocTr) or R,C (netlist) location of a core in string format;
-3. a list of X-Y (nocTr), R,C (netlist) or OnChipCoordinate locations of cores, possibly mixed;
+2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
+3. a list of X-Y (noc0/translated), X,Y (logical) or OnChipCoordinate locations of cores, possibly mixed;
 4. an OnChipCoordinate object.
 - `risc_id` *(int, default 0)*: RiscV ID (0: brisc, 1-3 triscs).
 - `device_id` *(int, default 0)*: ID number of device to run ELF on.
@@ -364,6 +368,3 @@ Sends an ARC message to the device.
 
 
 # tt_coordinate
-
-
-

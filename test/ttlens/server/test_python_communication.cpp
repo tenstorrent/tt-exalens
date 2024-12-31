@@ -53,8 +53,6 @@ static void call_python(const std::string& python_args, const std::string& expec
 
 TEST(ttlens_python_communication, ping) { call_python("ping", "- type: 1\n"); }
 
-TEST(ttlens_python_communication, get_runtime_data) { call_python("get_runtime_data", "- type: 101\n"); }
-
 TEST(ttlens_python_communication, get_cluster_description) { call_python("get_cluster_description", "- type: 102\n"); }
 
 TEST(ttlens_python_communication, get_device_ids) { call_python("get_device_ids", "- type: 18\n"); }
@@ -89,14 +87,16 @@ TEST(ttlens_python_communication, pci_read_tile) {
         "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14\n");
 }
 
-TEST(ttlens_python_communication, get_harvester_coordinate_translation) {
-    call_python("get_harvester_coordinate_translation", "- type: 17\n  chip_id: 1\n");
-}
-
 TEST(ttlens_python_communication, get_device_arch) { call_python("get_device_arch", "- type: 19\n  chip_id: 1\n"); }
 
 TEST(ttlens_python_communication, get_device_soc_description) {
     call_python("get_device_soc_description", "- type: 20\n  chip_id: 1\n");
+}
+
+TEST(ttlens_python_communication, convert_from_noc0) {
+    call_python("convert_from_noc0",
+                "- type: 103\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  core_type_size: 9\n  coord_system_size: 12\n  "
+                "data: core_typecoord_system\n");
 }
 
 TEST(ttlens_python_communication, pci_write) {
@@ -107,8 +107,6 @@ TEST(ttlens_python_communication, pci_write) {
 }
 
 TEST(ttlens_python_communication, get_file) { call_python("get_file", "- type: 200\n  size: 9\n  path: test_file\n"); }
-
-TEST(ttlens_python_communication, get_buda_run_dirpath) { call_python("get_buda_run_dirpath", "- type: 201\n"); }
 
 TEST(ttlens_python_communication, jtag_read32) {
     call_python("jtag_read32", "- type: 50\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n");

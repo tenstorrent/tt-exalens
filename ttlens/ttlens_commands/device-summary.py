@@ -3,144 +3,134 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  device [<device-id> [<axis-coordinate> [<cell-contents>]]]
+  device [-d <device-id>] [<axis-coordinate> [<cell-contents>]] [--no-legend]
 
 Arguments:
-  device-id            ID of the device [default: 0]
-  axis-coordinate      Coordinate system for the axis [default: netlist]
-                       Supported: netlist, noc0, noc1, nocTr, nocVirt, die, tensix
-  cell-contents        A comma separated list of the cell contents [default: nocTr]
+  device-id            ID of the device [default: all]
+  axis-coordinate      Coordinate system for the axis [default: logical-tensix]
+                       Supported: noc0, noc1, translated, virtual, die, logical-tensix, logical-eth, logical-dram
+  cell-contents        A comma separated list of the cell contents [default: block]
                        Supported:
-                         op - show operation running on the core with epoch ID in parenthesis
                          riscv - show the status of the RISC-V ('R': running, '-': in reset)
                          block - show the type of the block at that coordinate
-                         netlist, noc0, noc1, nocTr, nocVirt, die, tensix - show coordinate
+                         logical, noc0, noc1, translated, virtual, die - show coordinate
 
 Description:
-  Shows a device summary. When no argument is supplied, it iterates through all devices used by the
-  currently loaded netlist.
+  Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
 
 Examples:
-  device             # Shows op mapping for all devices
-  device 0 noc0      # Shows noc0 to nocTr mapping for device 0
-  device 0 nocTr op  # Shows op mapping in nocTr coordinates for device 0 # Needs Buda context / output of a Buda run
-"""  # Note: Limit the above comment to 100 characters in width
+  device                              # Shows the status of the RISC-V for all devices
+  device noc0                         # Shows the status of the RISC-V on noc0 axis for all devices
+  device logical-tensix noc0          # Shows noc0 coordinates on logical tensix axis for all devices
+  device noc0 block --no-legend       # Shows the block type in noc0 axis for all devices without legend
+  device -d 0 die                     # Shows the status of the RISC-V on die axis for device 0
+  device -d 0 logical-dram noc0       # Shows noc0 coordinates on logical dram axis for device 0
+  device -d 0 noc0 block --no-legend  # Shows the block type on noc0 axis for device 0 without legend
+"""  # Note: Limit the above comment to 120 characters in width
 
 command_metadata = {
     "short": "d",
     "long": "device",
     "type": "high-level",
     "description": __doc__,
-    "context": ["limited", "buda", "metal"],
+    "context": ["limited", "metal"],
+    "common_option_names": ["--device"],
 }
 
 from docopt import docopt
 
-from ttlens import tt_util as util
+from ttlens import tt_commands, tt_util as util
+from ttlens.tt_device import Device
 from ttlens.tt_coordinate import VALID_COORDINATE_TYPES
 from ttlens.tt_lens_context import LimitedContext
 
+
+def color_block(text: str, block_type: str):
+    color = Device.block_types[block_type]["color"]
+    return f"{color}{text}{util.CLR_END}"
+
+
 def run(cmd_text, context, ui_state=None):
-    args = docopt(__doc__, argv=cmd_text.split()[1:])
-
-    if args["<device-id>"]:
-        device_id = int(args["<device-id>"])
-        if device_id not in context.devices:
-            util.ERROR(
-                f"Invalid device ID ({device_id}). Valid devices IDs: {list(context.devices)}"
-            )
-            return []
-        devices_list = [device_id]
-    else:
-        devices_list = list(context.devices.keys())
-
-    axis_coordinate = args["<axis-coordinate>"] or "netlist"
-    if axis_coordinate not in VALID_COORDINATE_TYPES:
-        util.ERROR(
-            f"Invalid axis coordinate type: {axis_coordinate}. Valid types: {VALID_COORDINATE_TYPES}"
-        )
+    dopt = tt_commands.tt_docopt(
+        command_metadata["description"],
+        argv=cmd_text.split()[1:],
+        common_option_names=command_metadata["common_option_names"],
+    )
+    dont_print_legend = dopt.args["--no-legend"]
+    axis_coordinate = dopt.args["<axis-coordinate>"] or "logical-tensix"
+    valid_axis_types = [coord for coord in VALID_COORDINATE_TYPES if coord != "logical"]
+    if axis_coordinate not in valid_axis_types:
+        util.ERROR(f"Invalid axis coordinate type: {axis_coordinate}. Valid types: {valid_axis_types}")
         return []
 
-    # If context is not LimitedContext, "op" is the default cell contents
+    if not dopt.args["-d"]:
+        dopt.args["-d"] = "all"
+
     cell_contents = ""
-    if args["<cell-contents>"]:
-        cell_contents = args["<cell-contents>"]
+    if dopt.args["<cell-contents>"]:
+        cell_contents = dopt.args["<cell-contents>"]
     elif isinstance(context, LimitedContext):
         cell_contents = "riscv"
     else:
-        cell_contents = "op"
+        raise util.TTException(f"Invalid cell contents")
 
-    for device_id in devices_list:
-        device = context.devices[device_id]
-        util.INFO(f"==== Device {device.id()}")
+    # Create a legend
+    if not dont_print_legend:
 
-        func_workers = device.get_block_locations(block_type="functional_workers")
+        def print_legend(line):
+            print(util.CLR_INFO + line + util.CLR_END)
+
+        print_legend("")
+        print_legend(f"Legend:")
+        print_legend(f"  Axis coordinates: {axis_coordinate}")
+        print_legend(f"  Cell contents: {cell_contents}")
+        if "riscv" in cell_contents:
+            print_legend(f"    riscv - show the status of the RISC-V ('R': running, '-': in reset)")
+        if "block" in cell_contents:
+            print_legend(f"    block - show the type of the block at that coordinate")
+        print_legend(f"  Colors:")
+        if axis_coordinate == "logical-tensix":
+            print_legend(f"    {color_block('functional_workers', 'functional_workers')}")
+        elif axis_coordinate == "logical-eth":
+            print_legend(f"    {color_block('eth', 'eth')}")
+        elif axis_coordinate == "logical-dram":
+            print_legend(f"    {color_block('dram', 'dram')}")
+        else:
+            for block_type in Device.block_types:
+                print_legend(f"    {color_block(block_type, block_type)}")
+        print_legend("")
+
+    for device in dopt.for_each("--device", context, ui_state):
+        jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
+        util.INFO(f"==== Device {jtag_prompt}{device.id()}")
 
         # What to render in each cell
         cell_contents_array = [s.strip() for s in cell_contents.split(",")]
-
-        if "op" in cell_contents_array:
-            loc_to_epoch = dict()  # loc -> epoch_id
-            op_color_map = dict()  # op_name -> color
-
-            for loc in func_workers:
-                loc_to_epoch[loc] = device.get_epoch_id(loc)
-
-            epoch_ids = list(set(loc_to_epoch.values()))
-            epoch_ids.sort()
-            if len(epoch_ids) > 1:
-                util.WARN(
-                    f"Device {device_id} has functional workers in multiple epochs: {epoch_ids}"
-                )
-            else:
-                graph_name = context.netlist.get_graph_name(epoch_ids[0], device_id)
-                if not graph_name:
-                    util.WARN(
-                        f"Device {device_id} has no graph in epoch {epoch_ids[0]}"
-                    )
-                    continue
 
         def cell_render_function(loc):
             # One string for each of cell_contents_array elements
             cell_contents_str = []
 
             for ct in cell_contents_array:
-                if ct == "op":
-                    if loc in func_workers:
-                        epoch_id = device.get_epoch_id(loc)
-                        graph_name = context.netlist.get_graph_name(epoch_id, device_id)
-                        if graph_name:
-                            graph = context.netlist.graph(graph_name)
-                            op_name = graph.location_to_op_name(loc)
-                            if op_name:
-                                if (
-                                    op_name not in op_color_map
-                                ):  # Assign a new color for each op
-                                    op_color_map[op_name] = util.clr_by_index(
-                                        len(op_color_map)
-                                    )
-                                cell_contents_str.append(
-                                    f"{op_color_map[op_name]}{op_name} ({loc_to_epoch[loc]}){util.CLR_END}"
-                                )
-                elif ct == "block":
-                    block_type = device.get_block_type(loc)
-                    cell_contents_str.append(block_type)
+                block_type = device.get_block_type(loc)
+                if ct == "block":
+                    cell_contents_str.append(color_block(block_type, block_type))
                 elif ct == "riscv":
-                    block_type = device.get_riscv_run_status(loc)
-                    cell_contents_str.append(block_type)
+                    text = device.get_riscv_run_status(loc)
+                    cell_contents_str.append(color_block(text, block_type))
                 elif ct in VALID_COORDINATE_TYPES:
                     try:
                         coord_str = loc.to_str(ct)
                     except Exception as e:
                         coord_str = "N/A"
-                    cell_contents_str.append(coord_str)
+                    cell_contents_str.append(color_block(coord_str, block_type))
                 else:
                     raise util.TTException(f"Invalid cell contents requested: '{ct}'")
             return ", ".join(cell_contents_str)
 
         print(
             device.render(
-                legend=[],
+                legend=None,
                 axis_coordinate=axis_coordinate,
                 cell_renderer=cell_render_function,
             )

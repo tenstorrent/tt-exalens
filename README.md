@@ -1,6 +1,6 @@
 <div align="center">
 <h1> TTLens </h1>
-  
+
 A low level hardware debugger
 
 <img src="./docs/images/tt_logo_stacked_color.png" alt="ttnn logo" height="100"/>
@@ -9,7 +9,7 @@ A low level hardware debugger
 <br/>
 
 TTLens is a low level debugging tool for Tenstorrent's hardware.
-It can be used to access and communicate with the device, or explore bugs and hangs in PyBuda models.
+It can be used to access and communicate with the device.
 At the moment, Grayskull and Wormhole devices are supported, while the support for Blackhole cards, as well as support for the Metal runtime are under development.
 
 ---
@@ -22,6 +22,8 @@ After cloning the TTLens repository, be sure to run
 
 ```bash
 git submodule update --init --recursive
+git lfs install
+git submodule foreach 'git lfs fetch --all && git lfs pull'
 ```
 
 so that all the submodules are properly loaded.
@@ -41,11 +43,12 @@ To build TTLens, you need the following dependencies:
 - libhwloc-dev,
 - libzmq3-dev,
 - xxd,
+- ninja-build
 
 which can be installed by running
 
 ```bash
-sudo apt install software-properties-common build-essential libyaml-cpp-dev libboost-all-dev libhwloc-dev libzmq3-dev libgtest-dev libgmock-dev xxd
+sudo apt install software-properties-common build-essential libyaml-cpp-dev libboost-all-dev libhwloc-dev libzmq3-dev libgtest-dev libgmock-dev xxd ninja-build
 ```
 
 Both python 3.8 and 3.10 are actively supported, so you can use either
@@ -94,9 +97,9 @@ in the root directory.
 
 ## Building and Installing Wheel
 
-Wheel can be installed either from the [GitHub release](https://github.com/tenstorrent/tt-debuda/releases), built from source, or installed directly from GitHub with
+Wheel can be installed either from the [GitHub release](https://github.com/tenstorrent/tt-lens/releases), built from source, or installed directly from GitHub with
 ```
-pip install git+https://github.com/tenstorrent/tt-debuda.git
+pip install git+https://github.com/tenstorrent/tt-lens.git
 ```
 
 To build TTLens wheel from source, simply run `make wheel` in the root directory. The installation is then done by running `pip install build/ttlens_wheel/<ttlens_wheel>.whl`, where `<ttlens_wheel>` is an automatically generated name unique for each build.
@@ -104,14 +107,12 @@ To build TTLens wheel from source, simply run `make wheel` in the root directory
 ## Running TTLens
 
 TTLens can be run through `tt-lens.py` script or by invoking `ttlens` command after wheel installation.
-There are two basic modes of operation: Limited mode and Buda mode.
-Limited mode is entered when no output directory is specified, and it enables basic communication with the device, like writing to and reading from registers or device memory and running .elf files on RISC cores.
-Buda mode is invoked by specifying an output directory of PyBuda run.
-It enables TTLens access to runtime information, and opens up possibility of using more advanced commands to explore models run on device.
+TTLens currently operates in Limited mode, with plans to extend functionality to include other modes in the future..
+Limited mode is entered by default, and it enables basic communication with the device, like writing to and reading from registers or device memory and running .elf files on RISC cores.
 
 TTLens can run locally or remotely.
 For remote runs, a TTLens server is needed.
-It can be started either through TTLens application, or from PyBuda runtime.
+It can be started either through TTLens application.
 
 It is also possible to write all the results from TTLens session to cache, and use them to run TTLens commands again on a system that does not have Tenstorrent hardware.
 
@@ -148,10 +149,6 @@ which can be installed by running
 pip install -r test/test_requirements.txt
 ```
 
-Some tests require using output of a Buda run.
-To be able to run those, you need to have a clone of [Budabackend](https://github.com/tenstorrent/tt-budabackend/tree/main), and an environment variable `BUDA_HOME` set to point to the cloned repository.
-Tests will build Budabackend in the background and run Buda code on the device so that the output of the run can be used.
-
 #### Running tests
 
 It is currently possible to run tests locally, by running
@@ -162,8 +159,20 @@ from the project root directory.
 
 ### Updating documentation
 
+In order to update documentation virtual environment has to be created first by running the following command:
+
+```bash
+./scripts/create-venv.sh
+```
+
+To activate created environment use
+
+```bash
+.venv/bin/activate
+```
+
 Library documentation is automatically generated from source code docstrings.
-To update the library docs, you need to run:
+To update the library docs, you need to run (while in created environment):
 
 `make docs`
 
@@ -172,20 +181,31 @@ For more advanced use cases, refer to the source code of the documentation gener
 
 ### Static checks
 
-To be sure that the code passes static checks in the CI pipeline, you can run
+#### Pre-commit
 
-```bash
-pip install -r ./infra/requirements-infra.txt
-python -m check_copyright --verbose --config infra/copyright-config.yaml 
+We have defined various pre-commit hooks that check the code for formatting, licensing issues, etc.
+
+To install pre-commit , run the following command:
+
+```sh
+pip install pre-commit
 ```
 
-which will add license headers and newlines at file ands where neccessary, and
+After installing pre-commit, you can install the hooks by running:
 
-```bash
-./scripts/clang-format-repo.sh
+```sh
+pre-commit install
 ```
 
-which will format C++ files.
+Now, each time you run `git commit` the pre-commit hooks (checks) will be executed.
+
+If you have already committed before installing the pre-commit hooks, you can run on all files to "catch up":
+
+```sh
+pre-commit run --all-files
+```
+
+For more information visit [pre-commit](https://pre-commit.com/)
 
 ### Updating docker images
 
@@ -243,7 +263,7 @@ Traceback (most recent call last):
     module = self._get_module_from_name(name)
   File "/usr/lib/python3.10/unittest/loader.py", line 377, in _get_module_from_name
     __import__(name)
-  File "/home/dcvijetic/work/tt-debuda/test/ttlens/pybind/test_bindings.py", line 17, in <module>
+  File "/home/dcvijetic/work/tt-lens/test/ttlens/pybind/test_bindings.py", line 17, in <module>
     from ttlens_pybind_unit_tests import set_ttlens_test_implementation
 ModuleNotFoundError: No module named 'ttlens_pybind_unit_tests'
 ```
