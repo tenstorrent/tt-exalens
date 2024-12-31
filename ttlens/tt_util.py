@@ -805,5 +805,20 @@ def clr_by_index(idx):
     return f"\033[{31 + idx % 7}m"
 
 
+def generate_address_array(start_address, count):
+    """Generates an array of addresses starting from start_address and incrementing by 4 for count number of elements"""
+    data = []
+    for i in range(count):
+        address = start_address + (i * 4)
+        data.append(address)
+    return data
+
+
+def convert_int_array_to_byte_array(int_array):
+    import struct
+
+    return b"".join(struct.pack("<I", i) for i in int_array)
+
+
 def color_text_by_index(text, color_index):
     return f"{clr_by_index(color_index)}{text}{CLR_END}"
