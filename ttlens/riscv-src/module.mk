@@ -1,4 +1,4 @@
-TOOL_PATH?=$(TTLENS_HOME)/third_party/sfpi/compiler/bin
+TOOL_PATH?=$(TTLENS_HOME)/sfpi/compiler/bin
 
 # Tool paths
 GXX=$(TOOL_PATH)/riscv32-unknown-elf-g++
