@@ -476,6 +476,7 @@ class TestRunElf(unittest.TestCase):
         # Enable branch prediction
         rloader.set_branch_prediction(True)
 
+
 class TestARC(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
