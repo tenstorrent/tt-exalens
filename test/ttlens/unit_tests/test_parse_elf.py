@@ -109,60 +109,60 @@ class TestParseElf(unittest.TestCase):
 
         # Variable, pointer, reference
         # As mem_access returns a type
-        assert mem_access(name_dict, "GLOBAL_INT", mem_reader)[0] == [724920]
+        assert mem_access(name_dict, "GLOBAL_INT", mem_reader)[0] == [725160]
         with self.assertRaises(Exception):
             assert mem_access(name_dict, "*GLOBAL_INT", mem_reader)[0] == [0]
-        assert mem_access(name_dict, "GLOBAL_INT_PTR", mem_reader)[0] == [724960]
-        assert mem_access(name_dict, "GLOBAL_INT_PTR_PTR", mem_reader)[0] == [725000]
-        assert mem_access(name_dict, "*GLOBAL_INT_PTR_PTR", mem_reader)[0] == [7250000]
-        assert mem_access(name_dict, "**GLOBAL_INT_PTR_PTR", mem_reader)[0] == [72500000]
+        assert mem_access(name_dict, "GLOBAL_INT_PTR", mem_reader)[0] == [725200]
+        assert mem_access(name_dict, "GLOBAL_INT_PTR_PTR", mem_reader)[0] == [725240]
+        assert mem_access(name_dict, "*GLOBAL_INT_PTR_PTR", mem_reader)[0] == [7252400]
+        assert mem_access(name_dict, "**GLOBAL_INT_PTR_PTR", mem_reader)[0] == [72524000]
         with self.assertRaises(Exception):
             assert mem_access(name_dict, "***GLOBAL_INT_PTR_PTR", mem_reader)[0]  # This fails
         assert mem_access(name_dict, "*s_ptr", mem_reader)[0] == [
-            7252000,
-            7252040,
-            7252080,
-            7252120,
-            7252160,
-            7252200,
+            7254400,
+            7254440,
+            7254480,
+            7254520,
+            7254560,
+            7254600,
         ]
-        assert mem_access(name_dict, "GLOBAL_INT_REF", mem_reader)[0] == [7248000]
+        assert mem_access(name_dict, "GLOBAL_INT_REF", mem_reader)[0] == [7250400]
         assert mem_access(name_dict, "global_s", mem_reader)[0] == [
-            725520,
-            725560,
-            725600,
-            725640,
-            725680,
-            725720,
+            725760,
+            725800,
+            725840,
+            725880,
+            725920,
+            725960,
         ]
-        assert mem_access(name_dict, "global_s.an_int", mem_reader)[0] == [725520]
-        assert mem_access(name_dict, "global_s.an_int2", mem_reader)[0] == [725560]
-        assert mem_access(name_dict, "*global_s.an_int_ptr", mem_reader)[0] == [7256000]
+        assert mem_access(name_dict, "global_s.an_int", mem_reader)[0] == [725760]
+        assert mem_access(name_dict, "global_s.an_int2", mem_reader)[0] == [725800]
+        assert mem_access(name_dict, "*global_s.an_int_ptr", mem_reader)[0] == [7258400]
         assert mem_access(name_dict, "global_s.nested_s", mem_reader)[0] == [
-            725680,
-            725720,
+            725920,
+            725960,
         ]
-        assert mem_access(name_dict, "global_s.nested_s.nested_int", mem_reader)[0] == [725680]
-        assert mem_access(name_dict, "global_s.nested_s.nested_int2", mem_reader)[0] == [725720]
+        assert mem_access(name_dict, "global_s.nested_s.nested_int", mem_reader)[0] == [725920]
+        assert mem_access(name_dict, "global_s.nested_s.nested_int2", mem_reader)[0] == [725960]
 
         # Pointer
-        assert mem_access(name_dict, "s_ptr", mem_reader)[0] == [725200]
+        assert mem_access(name_dict, "s_ptr", mem_reader)[0] == [725440]
         assert mem_access(name_dict, "*s_ptr", mem_reader)[0] == [
-            7252000,
-            7252040,
-            7252080,
-            7252120,
-            7252160,
-            7252200,
+            7254400,
+            7254440,
+            7254480,
+            7254520,
+            7254560,
+            7254600,
         ]
-        assert mem_access(name_dict, "s_ptr->an_int", mem_reader)[0] == [7252000]
-        assert mem_access(name_dict, "s_ptr->an_int2", mem_reader)[0] == [7252040]
+        assert mem_access(name_dict, "s_ptr->an_int", mem_reader)[0] == [7254400]
+        assert mem_access(name_dict, "s_ptr->an_int2", mem_reader)[0] == [7254440]
 
         # Namespace
-        assert mem_access(name_dict, "ns::ns_int", mem_reader)[0] == [725120]
-        assert mem_access(name_dict, "ns::ns_s", mem_reader)[0] == [725160]
-        assert mem_access(name_dict, "ns::ns_s.global_s", mem_reader)[0] == [725160]
-        assert mem_access(name_dict, "*ns::ns_s.global_s", mem_reader)[0] == [7251600]
+        assert mem_access(name_dict, "ns::ns_int", mem_reader)[0] == [725360]
+        assert mem_access(name_dict, "ns::ns_s", mem_reader)[0] == [725400]
+        assert mem_access(name_dict, "ns::ns_s.global_s", mem_reader)[0] == [725400]
+        assert mem_access(name_dict, "*ns::ns_s.global_s", mem_reader)[0] == [7254000]
 
         # Cleanup generated files
         for generated_file in generated_files:
@@ -192,32 +192,32 @@ class TestParseElf(unittest.TestCase):
         compile_test_cpp_program(program_path, program_definition["program_text"])
         name_dict = read_elf(file_ifc, f"{program_path}.elf")
         assert mem_access(name_dict, "GLOBAL_INT_ARRAY", mem_reader)[0] == [
-            710960,
-            711000,
-            711040,
-            711080,
-        ]
-        assert mem_access(name_dict, "GLOBAL_INT_ARRAY[0]", mem_reader)[0] == [710960]
-        assert mem_access(name_dict, "GLOBAL_INT_ARRAY[2]", mem_reader)[0] == [711040]
-        assert mem_access(name_dict, "my_s.local_int_array", mem_reader)[0] == [
-            711120,
-            711160,
             711200,
             711240,
-        ]
-        assert mem_access(name_dict, "my_s.local_int_array[2]", mem_reader)[0] == [711200]
-        assert mem_access(name_dict, "my_s.local_point_array", mem_reader)[0] == [
             711280,
             711320,
+        ]
+        assert mem_access(name_dict, "GLOBAL_INT_ARRAY[0]", mem_reader)[0] == [711200]
+        assert mem_access(name_dict, "GLOBAL_INT_ARRAY[2]", mem_reader)[0] == [711280]
+        assert mem_access(name_dict, "my_s.local_int_array", mem_reader)[0] == [
             711360,
             711400,
             711440,
             711480,
+        ]
+        assert mem_access(name_dict, "my_s.local_int_array[2]", mem_reader)[0] == [711440]
+        assert mem_access(name_dict, "my_s.local_point_array", mem_reader)[0] == [
             711520,
             711560,
+            711600,
+            711640,
+            711680,
+            711720,
+            711760,
+            711800,
         ]
-        assert mem_access(name_dict, "my_s.local_point_array[1].x", mem_reader)[0] == [711360]
-        assert mem_access(name_dict, "my_s.local_point_array[2].y", mem_reader)[0] == [711480]
+        assert mem_access(name_dict, "my_s.local_point_array[1].x", mem_reader)[0] == [711600]
+        assert mem_access(name_dict, "my_s.local_point_array[2].y", mem_reader)[0] == [711720]
         for generated_file in generated_files:
             os.system(f"rm -f {generated_file}")
 
@@ -237,14 +237,14 @@ class TestParseElf(unittest.TestCase):
         generated_files = compile_test_cpp_program(program_name, program_definition["program_text"])
         name_dict = read_elf(file_ifc, f"{program_name}.elf")
 
-        assert mem_access(name_dict, "double_int_array[0][2]", mem_reader)[0] == [10 * ((71096) + 2 * 4)]
-        assert mem_access(name_dict, "double_int_array[1][2]", mem_reader)[0] == [10 * ((71096) + 5 * 4)]
+        assert mem_access(name_dict, "double_int_array[0][2]", mem_reader)[0] == [10 * ((71120) + 2 * 4)]
+        assert mem_access(name_dict, "double_int_array[1][2]", mem_reader)[0] == [10 * ((71120) + 5 * 4)]
         assert mem_access(name_dict, "double_int_array[1]", mem_reader)[0] == [
-            10 * ((71096) + 3 * 4),
-            10 * ((71096) + 4 * 4),
-            10 * ((71096) + 5 * 4),
+            10 * ((71120) + 3 * 4),
+            10 * ((71120) + 4 * 4),
+            10 * ((71120) + 5 * 4),
         ]
-        assert mem_access(name_dict, "double_int_array", mem_reader)[0] == [10 * ((71096) + i * 4) for i in range(6)]
+        assert mem_access(name_dict, "double_int_array", mem_reader)[0] == [10 * ((71120) + i * 4) for i in range(6)]
 
         # These are expected to throw exceptions
         with self.assertRaises(Exception):
@@ -281,11 +281,11 @@ class TestParseElf(unittest.TestCase):
         program_path = os.path.join(TestParseElf.output_dir, program_name)
         compile_test_cpp_program(program_path, program_definition["program_text"])
         name_dict = read_elf(file_ifc, f"{program_path}.elf")
-        assert mem_access(name_dict, "my_s.my_union.an_int", mem_reader)[0] == [722120]
-        assert mem_access(name_dict, "my_s.my_union.a_float", mem_reader)[0] == [722120]
-        assert mem_access(name_dict, "my_s.an_unnamed_int", mem_reader)[0] == [722080]
-        assert mem_access(name_dict, "my_s.a_unnamed_float", mem_reader)[0] == [722080]
-        assert mem_access(name_dict, "my_unnamed_s.x", mem_reader)[0] == [722160]
+        assert mem_access(name_dict, "my_s.my_union.an_int", mem_reader)[0] == [722360]
+        assert mem_access(name_dict, "my_s.my_union.a_float", mem_reader)[0] == [722360]
+        assert mem_access(name_dict, "my_s.an_unnamed_int", mem_reader)[0] == [722320]
+        assert mem_access(name_dict, "my_s.a_unnamed_float", mem_reader)[0] == [722320]
+        assert mem_access(name_dict, "my_unnamed_s.x", mem_reader)[0] == [722400]
 
     def get_var_addr(self, name_dict, name):
         if name in name_dict:

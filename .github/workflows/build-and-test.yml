@@ -120,6 +120,7 @@ jobs:
 
       - name: Run Python tests for ttlens library
         run: |
+          cmake -S . -B build
           python3 -m xmlrunner discover -v -t . -s test/ttlens -p '*test*.py' \
           --output-file ${{ steps.strings.outputs.test_report_path }}
 
