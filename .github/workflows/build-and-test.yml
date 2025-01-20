@@ -120,6 +120,8 @@ jobs:
 
       - name: Run Python tests for ttlens library
         run: |
+          # Calling cmake configure for project located in ./ttlens/riscv-src/ to fetch sfpi.
+          cmake -S ./ttlens/riscv-src/ -B build_tmp
           python3 -m xmlrunner discover -v -t . -s test/ttlens -p '*test*.py' \
           --output-file ${{ steps.strings.outputs.test_report_path }}
 

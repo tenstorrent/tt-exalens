@@ -331,6 +331,9 @@ class TestRunElf(unittest.TestCase):
         loc = rloader.risc_debug.location.loc
         device = loc._device
 
+        # Disable branch rediction due to bne instruction in the elf
+        rloader.set_branch_prediction(False)
+
         # Step 0: halt and continue a couple of times.
         def halt_cont_test():
             rdbg.halt()
@@ -469,6 +472,9 @@ class TestRunElf(unittest.TestCase):
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertEqual(mbox_val, 0xFFB12088, f"RISC at location {loc} did not reach step STEP END.")
+
+        # Enable branch prediction
+        rloader.set_branch_prediction(True)
 
 
 class TestARC(unittest.TestCase):

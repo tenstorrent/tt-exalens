@@ -8,8 +8,19 @@ if(NOT TTLENS_HOME)
     set(TTLENS_HOME "${CMAKE_CURRENT_LIST_DIR}/../..")
 endif()
 
+include(FetchContent)
+FetchContent_Declare(
+    sfpi
+    URL
+        https://github.com/tenstorrent/sfpi/releases/download/v5.0.0/sfpi-release.tgz
+    URL_HASH MD5=10cacabe92846076cb4d7596e46d06be
+    SOURCE_DIR
+    ${TTLENS_HOME}/sfpi
+)
+FetchContent_MakeAvailable(sfpi)
+
 # Set toolchain and tools
-set(TOOL_PATH "${TTLENS_HOME}/third_party/sfpi/compiler/bin")
+set(TOOL_PATH "${TTLENS_HOME}/sfpi/compiler/bin")
 set(GXX "${TOOL_PATH}/riscv32-unknown-elf-g++")
 set(OBJDUMP "${TOOL_PATH}/riscv32-unknown-elf-objdump")
 set(OBJCOPY "${TOOL_PATH}/riscv32-unknown-elf-objcopy")
