@@ -8,6 +8,8 @@ if(NOT TTLENS_HOME)
     set(TTLENS_HOME "${CMAKE_CURRENT_LIST_DIR}/../..")
 endif()
 
+message(STATUS "Downloading sfpi release")
+
 include(FetchContent)
 FetchContent_Declare(
     sfpi
