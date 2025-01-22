@@ -3,6 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 from ttlens import tt_util as util
 from ttlens import tt_device
+from ttlens.tt_device import ConfigurationRegisterDescription, DebugRegisterDescription
+
+
+class GrayskullInstructions(tt_device.TensixInstructions):
+    def __init__(self):
+        import ttlens.tt_grayskull_ops as ops
+
+        super().__init__(ops)
+
 
 #
 # Device
@@ -34,28 +43,26 @@ class GrayskullDevice(tt_device.Device):
             device_desc_path,
             context,
         )
+        self.instructions = GrayskullInstructions()
 
     def get_tensix_configuration_register_base(self) -> int:
         return 0xFFEF0000
 
     __configuration_register_map = {
-        "DISABLE_RISC_BP_Disable_main": tt_device.TensixRegisterDescription(address=2 * 4, mask=0x100000, shift=20),
-        "DISABLE_RISC_BP_Disable_trisc": tt_device.TensixRegisterDescription(address=2 * 4, mask=0xE00000, shift=21),
-        "DISABLE_RISC_BP_Disable_ncrisc": tt_device.TensixRegisterDescription(address=2 * 4, mask=0x1000000, shift=24),
-        "RISCV_IC_INVALIDATE_InvalidateAll": tt_device.TensixRegisterDescription(address=177 * 4, mask=0x1F, shift=0),
-        "TRISC_RESET_PC_SEC0_PC": tt_device.TensixRegisterDescription(address=178 * 4, mask=0xFFFFFFFF, shift=0),
-        "TRISC_RESET_PC_SEC1_PC": tt_device.TensixRegisterDescription(address=179 * 4, mask=0xFFFFFFFF, shift=0),
-        "TRISC_RESET_PC_SEC2_PC": tt_device.TensixRegisterDescription(address=180 * 4, mask=0xFFFFFFFF, shift=0),
-        "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": tt_device.TensixRegisterDescription(
-            address=181 * 4, mask=0x7, shift=0
-        ),
-        "NCRISC_RESET_PC_PC": tt_device.TensixRegisterDescription(address=182 * 4, mask=0xFFFFFFFF, shift=0),
-        "NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": tt_device.TensixRegisterDescription(
-            address=183 * 4, mask=0x1, shift=0
-        ),
+        "ALU_FORMAT_SPEC_REG2_Dstacc": ConfigurationRegisterDescription(index=0, mask=0x1E000000, shift=25),
+        "DISABLE_RISC_BP_Disable_main": ConfigurationRegisterDescription(index=2, mask=0x100000, shift=20),
+        "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(index=2, mask=0xE00000, shift=21),
+        "DISABLE_RISC_BP_Disable_ncrisc": ConfigurationRegisterDescription(index=2, mask=0x1000000, shift=24),
+        "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=177, mask=0x1F),
+        "TRISC_RESET_PC_SEC0_PC": ConfigurationRegisterDescription(index=178),
+        "TRISC_RESET_PC_SEC1_PC": ConfigurationRegisterDescription(index=179),
+        "TRISC_RESET_PC_SEC2_PC": ConfigurationRegisterDescription(index=180),
+        "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=181, mask=0x7),
+        "NCRISC_RESET_PC_PC": ConfigurationRegisterDescription(index=182),
+        "NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=183, mask=0x1),
     }
 
-    def get_configuration_register_description(self, register_name: str) -> tt_device.TensixRegisterDescription:
+    def get_configuration_register_description(self, register_name: str) -> ConfigurationRegisterDescription:
         if register_name in GrayskullDevice.__configuration_register_map:
             return GrayskullDevice.__configuration_register_map[register_name]
         return None
@@ -64,18 +71,23 @@ class GrayskullDevice(tt_device.Device):
         return 0xFFB12000
 
     __debug_register_map = {
-        "RISCV_DEBUG_REG_RISC_DBG_CNTL_0": tt_device.TensixRegisterDescription(address=0x80, mask=0xFFFFFFFF, shift=0),
-        "RISCV_DEBUG_REG_RISC_DBG_CNTL_1": tt_device.TensixRegisterDescription(address=0x84, mask=0xFFFFFFFF, shift=0),
-        "RISCV_DEBUG_REG_RISC_DBG_STATUS_0": tt_device.TensixRegisterDescription(
-            address=0x88, mask=0xFFFFFFFF, shift=0
-        ),
-        "RISCV_DEBUG_REG_RISC_DBG_STATUS_1": tt_device.TensixRegisterDescription(
-            address=0x8C, mask=0xFFFFFFFF, shift=0
-        ),
-        "RISCV_DEBUG_REG_SOFT_RESET_0": tt_device.TensixRegisterDescription(address=0x1B0, mask=0xFFFFFFFF, shift=0),
+        "RISCV_DEBUG_REG_CFGREG_RD_CNTL": DebugRegisterDescription(address=0x58),
+        "RISCV_DEBUG_REG_DBG_RD_DATA": DebugRegisterDescription(address=0x5C),
+        "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN": DebugRegisterDescription(address=0x60),
+        "RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD": DebugRegisterDescription(address=0x64),
+        "RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA": DebugRegisterDescription(address=0x6C),
+        "RISCV_DEBUG_REG_CFGREG_RDDATA": DebugRegisterDescription(address=0x78),
+        "RISCV_DEBUG_REG_RISC_DBG_CNTL_0": DebugRegisterDescription(address=0x80),
+        "RISCV_DEBUG_REG_RISC_DBG_CNTL_1": DebugRegisterDescription(address=0x84),
+        "RISCV_DEBUG_REG_RISC_DBG_STATUS_0": DebugRegisterDescription(address=0x88),
+        "RISCV_DEBUG_REG_RISC_DBG_STATUS_1": DebugRegisterDescription(address=0x8C),
+        "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0": DebugRegisterDescription(address=0xA0),
+        "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1": DebugRegisterDescription(address=0xA4),
+        "RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS": DebugRegisterDescription(address=0xA8),
+        "RISCV_DEBUG_REG_SOFT_RESET_0": DebugRegisterDescription(address=0x1B0),
     }
 
-    def get_debug_register_description(self, register_name: str) -> tt_device.TensixRegisterDescription:
+    def get_debug_register_description(self, register_name: str) -> DebugRegisterDescription:
         if register_name in GrayskullDevice.__debug_register_map:
             return GrayskullDevice.__debug_register_map[register_name]
         return None

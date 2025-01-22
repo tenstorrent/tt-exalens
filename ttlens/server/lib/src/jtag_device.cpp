@@ -49,19 +49,6 @@ JtagDevice::JtagDevice(std::unique_ptr<Jtag> jtag_device) : jtag(std::move(jtag_
          * format */
         efuse_harvesting.push_back(bad_row_bits);
 
-        uint32_t mapping_idx[ROW_LEN] = {0, 2, 4, 6, 8, 10, 11, 9, 7, 5, 3, 1};
-        uint32_t x = 0;
-        for (int i = 0; i < ROW_LEN; i++) {
-            if ((bad_row_bits << 1) & (1 << mapping_idx[i])) {
-                x |= (1 << i);
-            }
-        }
-
-        /* device_harvesting is the remapped harvesting value, where the bits are
-         * remapped to the sequential order of rows, and it is used for
-         * harvesting info passed as CEM output */
-        device_harvesting.push_back(x);
-
         jtag->close_jlink();
     }
     if (jlink_devices.empty()) {
@@ -86,14 +73,6 @@ std::optional<uint32_t> JtagDevice::get_efuse_harvesting(uint8_t chip_id) const 
     }
 
     return efuse_harvesting[chip_id];
-}
-
-std::optional<uint32_t> JtagDevice::get_device_harvesting(uint8_t chip_id) const {
-    if (chip_id >= get_device_cnt()) {
-        return {};
-    }
-
-    return device_harvesting[chip_id];
 }
 
 bool JtagDevice::select_device(uint8_t chip_id) {

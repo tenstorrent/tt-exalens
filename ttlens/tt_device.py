@@ -8,12 +8,37 @@ from ttlens.tt_lens_context import Context
 from ttlens.tt_object import TTObject
 from ttlens import tt_util as util
 from ttlens.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
-from collections import namedtuple
 from abc import abstractmethod
 from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device
 
-TensixRegisterDescription = namedtuple("TensixRegisterDescription", ["address", "mask", "shift"])
+
+class TensixInstructions:
+    def __init__(self, ops: __module__):
+        for func_name in dir(ops):
+            func = getattr(ops, func_name)
+            if callable(func):
+                static_method = staticmethod(func)
+                setattr(self.__class__, func_name, static_method)
+
+
+class TensixRegisterDescription:
+    def __init__(self, address: int, mask: int = 0xFFFFFFFF, shift: int = 0):
+        self.address = address
+        self.mask = mask
+        self.shift = shift
+
+
+class DebugRegisterDescription(TensixRegisterDescription):
+    def __init__(self, address: int, mask: int = 0xFFFFFFFF, shift: int = 0):
+        super().__init__(address, mask, shift)
+
+
+class ConfigurationRegisterDescription(TensixRegisterDescription):
+    def __init__(self, index: int, mask: int = 0xFFFFFFFF, shift: int = 0, base_address=0):
+        super().__init__(base_address + index * 4, mask, shift)
+        self.index = index
+
 
 #
 # Device class: generic API for talking to specific devices. This class is the parent of specific
@@ -374,24 +399,31 @@ class Device(TTObject):
         pass
 
     @abstractmethod
-    def get_configuration_register_description(self, register_name: str) -> TensixRegisterDescription:
+    def get_configuration_register_description(self, register_name: str) -> ConfigurationRegisterDescription:
         pass
 
     @abstractmethod
-    def get_debug_register_description(self, register_name: str) -> TensixRegisterDescription:
+    def get_debug_register_description(self, register_name: str) -> DebugRegisterDescription:
         pass
 
     def get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
         register_description = self.get_configuration_register_description(register_name)
         if register_description != None:
             base_register_address = self.get_tensix_configuration_register_base()
+            return ConfigurationRegisterDescription(
+                register_description.index, register_description.mask, register_description.shift, base_register_address
+            )
         else:
             register_description = self.get_debug_register_description(register_name)
             if register_description != None:
                 base_register_address = self.get_tenxis_debug_register_base()
+                return DebugRegisterDescription(
+                    base_register_address + register_description.address,
+                    register_description.mask,
+                    register_description.shift,
+                )
             else:
                 raise ValueError(f"Unknown tensix register name: {register_name}")
-        return register_description._replace(address=base_register_address + register_description.address)
 
     def get_tensix_register_address(self, register_name: str) -> int:
         description = self.get_tensix_register_description(register_name)

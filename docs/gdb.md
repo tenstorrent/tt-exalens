@@ -15,7 +15,9 @@ After starting gdb server, you can stop it with `gdb` command. Run `gdb stop`.
 
 ## Connecting gdb client
 
-- Start gdb client (`./third_party/sfpi/compiler/bin/riscv32-unknown-elf-gdb` in TT-Lens repository).
+- Start gdb client (`./sfpi/compiler/bin/riscv32-unknown-elf-gdb` in TT-Lens repository).
+***Note:*** Currently gdb client is not part of sfpi library.
+You will need to clone it from https://github.com/tenstorrent-metal/sfpi-rel.
 - If you want to debug client/server communication execute `set debug remote 1` in GDB client
 - Connect GDB client to TT-Lens: `target extended-remote localhost:<gdb_port>` where `<gdb_port>` is port used in TT-Lens when starting gdb server.
 

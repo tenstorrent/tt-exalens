@@ -49,20 +49,10 @@ set_target_properties(ttlens_server_lib PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
-# JTAG
-set(JTAG_ACCESS_LIB_PATH "${TTLENS_HOME}/third_party/jtag-access-library")
-set(LIBJTAG "${CMAKE_BINARY_DIR}/lib/libjtag.so")
-set(LIBJTAG_SOURCE "${JTAG_ACCESS_LIB_PATH}/out/libjtag.so")
-set(LIBJTAG_DEP "${CMAKE_BINARY_DIR}/lib/libjlinkarm.so")
-set(LIBJTAG_DEP_SOURCE "${JTAG_ACCESS_LIB_PATH}/lib/libjlinkarm.so")
-
-if(EXISTS "${JTAG_ACCESS_LIB_PATH}")
-    add_custom_target(dummy_target ALL DEPENDS copy_jtag)
-    add_custom_command(
-        OUTPUT copy_jtag
-        COMMAND make -C "${JTAG_ACCESS_LIB_PATH}"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${LIBJTAG_SOURCE}" "${LIBJTAG}"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${LIBJTAG_DEP_SOURCE}" "${LIBJTAG_DEP}"
-        COMMENT "Rebuilding & copying JTAG libraries to ${CMAKE_BINARY_DIR}/lib"
-    )
-endif()
+add_custom_target(dummy_target ALL DEPENDS setup_jtag)
+add_custom_command(
+    OUTPUT setup_jtag
+    COMMAND bash "${TTLENS_HOME}/scripts/get_jtag_access_library.sh" "${CMAKE_BINARY_DIR}"
+    COMMENT "Setting up JTAG"
+    WORKING_DIRECTORY "${TTLENS_HOME}"
+)

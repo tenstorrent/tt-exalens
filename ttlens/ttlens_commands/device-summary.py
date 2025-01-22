@@ -63,6 +63,9 @@ def run(cmd_text, context, ui_state=None):
         util.ERROR(f"Invalid axis coordinate type: {axis_coordinate}. Valid types: {valid_axis_types}")
         return []
 
+    if not dopt.args["-d"]:
+        dopt.args["-d"] = "all"
+
     cell_contents = ""
     if dopt.args["<cell-contents>"]:
         cell_contents = dopt.args["<cell-contents>"]
