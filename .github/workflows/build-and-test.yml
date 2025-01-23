@@ -54,7 +54,7 @@ jobs:
         runner-info: [
           {arch: "grayskull", runs-on: ["in-service", "e150"]},
           {arch: "wormhole_b0", runs-on: ["in-service", "n150"]},
-          {arch: "wormhole_b0", runs-on: ["in-service", "n300"]},
+          {arch: "wormhole_b0", runs-on: tt-beta-ubuntu-2204-n300-large-stable},
         ]
     env:
       ARCH_NAME: ${{ matrix.runner-info.arch }}
@@ -145,7 +145,7 @@ jobs:
         runner-info: [
           {arch: "grayskull", runs-on: ["in-service", "e150"]},
           {arch: "wormhole_b0", runs-on: ["in-service", "n150"]},
-          {arch: "wormhole_b0", runs-on: ["in-service", "n300"]},
+          {arch: "wormhole_b0", runs-on: tt-beta-ubuntu-2204-n300-large-stable},
         ]
     env:
       ARCH_NAME: ${{ matrix.runner-info.arch }}
