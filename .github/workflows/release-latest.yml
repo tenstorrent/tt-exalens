@@ -21,7 +21,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          lfs: true
       - uses: ./.github/actions/install-ttlens-deps
       - uses: actions/setup-python@v5
         with:
