@@ -25,7 +25,7 @@ jobs:
       # So we can get all the makefile output we want
       VERBOSE: 1
     # TODO: This will need to change when we get cloud runners
-    runs-on: ${{ inputs.os }}
+    runs-on: tt-beta-ubuntu-2204-small
     container:
       image: ${{ inputs.docker-image }}
     name: "Build TT-LENS."
