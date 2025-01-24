@@ -163,16 +163,6 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << "  x_size: " << soc_descriptor.grid_size.x << std::endl;
     outfile << "  y_size: " << soc_descriptor.grid_size.y << std::endl << std::endl;
 
-    if (soc_descriptor.physical_grid_size.x != soc_descriptor.grid_size.x ||
-        soc_descriptor.physical_grid_size.y != soc_descriptor.grid_size.y) {
-        outfile << "physical:" << std::endl;
-        outfile << "  x_size: " << std::min(soc_descriptor.physical_grid_size.x, soc_descriptor.grid_size.x)
-                << std::endl;
-        outfile << "  y_size: " << std::min(soc_descriptor.physical_grid_size.y, soc_descriptor.grid_size.y)
-                << std::endl
-                << std::endl;
-    }
-
     outfile << "arc:" << std::endl;
     outfile << "  [" << std::endl;
 
