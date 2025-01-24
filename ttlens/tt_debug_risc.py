@@ -579,6 +579,34 @@ class RiscLoader:
                         self.risc_debug.is_in_reset()
                     ), f"RISC at location {self.risc_debug.location} is not in reset."
 
+    @contextmanager
+    def ensure_reading_register(self):
+        """
+        Ensures that an reading register operation is performed in correct state.
+        """
+
+        # If core is not in reset, we can use it to read configuration.
+        if not self.risc_debug.is_in_reset():
+            # Read the configuration register using the core itself
+            with self.risc_debug.ensure_halted():
+                yield self.risc_debug
+        else:
+            addr = self.get_risc_start_address()
+            if addr == None:
+                self.set_risc_start_address(0)
+                addr = 0
+
+            # Start RISC in infinite loop and read the configuration register
+            self.start_risc_in_infinite_loop(addr)
+
+            try:
+                with self.risc_debug.ensure_halted():
+                    yield self.risc_debug
+            finally:
+                # Return RISC in reset
+                self.risc_debug.set_reset_signal(1)
+                assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
+
     def set_branch_prediction(self, value: bool):
         """
         Set the branch prediction configuration register to enable/disable for selected core.

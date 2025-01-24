@@ -48,6 +48,15 @@ class BlackholeDevice(tt_device.Device):
     def get_tensix_configuration_register_base(self) -> int:
         return 0xFFEF0000
 
+    def get_tensix_pc_buffer_base(self) -> int:
+        return 0xFFE80000
+
+    def get_tensix_buf_semaphore_base(self) -> int:
+        return 8
+
+    def get_tensix_regfile_base(self) -> int:
+        return 0xFFE00000
+
     __configuration_register_map = {
         "ALU_FORMAT_SPEC_REG2_Dstacc": ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
         "ALU_ACC_CTRL_Fp32_enabled": ConfigurationRegisterDescription(index=1, mask=0x20000000, shift=29),
@@ -55,6 +64,32 @@ class BlackholeDevice(tt_device.Device):
         "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(index=2, mask=0x3800000, shift=23),
         "DISABLE_RISC_BP_Disable_ncrisc": ConfigurationRegisterDescription(index=2, mask=0x4000000, shift=26),
         "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=185, mask=0x1F),
+        "ALU_ACC_CTRL_SFPU_Fp32_enabled": ConfigurationRegisterDescription(index=1, mask=0x40000000, shift=30),
+        "ALU_ACC_CTRL_Zero_Flag_disabled_src": ConfigurationRegisterDescription(index=2, mask=0x1, shift=0),
+        "ALU_FORMAT_SPEC_REG_Dstacc_override": ConfigurationRegisterDescription(index=0, mask=0x4000, shift=14),
+        "ALU_FORMAT_SPEC_REG_SrcA_val": ConfigurationRegisterDescription(index=0, mask=0xF, shift=0),
+        "ALU_FORMAT_SPEC_REG0_SrcA": ConfigurationRegisterDescription(index=1, mask=0x1E0000, shift=17),
+        "ALU_FORMAT_SPEC_REG0_SrcAUnsigned": ConfigurationRegisterDescription(index=1, mask=0x8000, shift=15),
+        "ALU_FORMAT_SPEC_REG0_SrcBUnsigned": ConfigurationRegisterDescription(index=1, mask=0x10000, shift=16),
+        "ALU_ROUNDING_MODE_Fpu_srnd_en": ConfigurationRegisterDescription(index=1, mask=0x1, shift=0),
+        "ALU_ROUNDING_MODE_Gasket_srnd_en": ConfigurationRegisterDescription(index=1, mask=0x2, shift=1),
+        "ALU_ROUNDING_MODE_Packer_srnd_en": ConfigurationRegisterDescription(index=1, mask=0x4, shift=2),
+        "SRCA_SET_Base": ConfigurationRegisterDescription(index=5),
+        "THCON_SEC0_REG0_TileDescriptor": ConfigurationRegisterDescription(index=64),
+        "THCON_SEC0_REG2_Haloize_mode": ConfigurationRegisterDescription(index=72, mask=0x100, shift=8),
+        "THCON_SEC0_REG2_Out_data_format": ConfigurationRegisterDescription(index=72),
+        "THCON_SEC0_REG3_Base_address": ConfigurationRegisterDescription(index=76),
+        "THCON_SEC0_REG5_Dest_cntx0_address": ConfigurationRegisterDescription(index=84),
+        "THCON_SEC0_REG5_Tile_x_dim_cntx0": ConfigurationRegisterDescription(index=86),
+        "THCON_SEC1_REG0_TileDescriptor": ConfigurationRegisterDescription(index=112),
+        "THCON_SEC1_REG2_Out_data_format": ConfigurationRegisterDescription(index=120),
+        "THCON_SEC1_REG3_Base_address": ConfigurationRegisterDescription(index=124),
+        "UNP0_ADD_DEST_ADDR_CNTR_add_dest_addr_cntr": ConfigurationRegisterDescription(index=50, shift=8),
+        "UNP0_ADDR_CTRL_ZW_REG_1_Wstride": ConfigurationRegisterDescription(index=57, shift=16),
+        "UNP0_ADDR_CTRL_ZW_REG_1_Zstride": ConfigurationRegisterDescription(index=57, shift=0),
+        "UNP1_ADDR_CTRL_ZW_REG_1_Wstride": ConfigurationRegisterDescription(index=59, shift=16),
+        "UNP1_ADDR_CTRL_ZW_REG_1_Zstride": ConfigurationRegisterDescription(index=59, shift=0),
+        "UNPACK_MISC_CFG_CfgContextOffset_0": ConfigurationRegisterDescription(index=41),
     }
 
     def get_configuration_register_description(self, register_name: str) -> ConfigurationRegisterDescription:

@@ -381,6 +381,18 @@ class Device(TTObject):
         pass
 
     @abstractmethod
+    def get_tensix_pc_buffer_base(self) -> int:
+        pass
+
+    @abstractmethod
+    def get_tensix_buf_semaphore_base(self) -> int:
+        pass
+
+    @abstractmethod
+    def get_tensix_regfile_base(self) -> int:
+        pass
+
+    @abstractmethod
     def get_tenxis_debug_register_base(self) -> int:
         pass
 
