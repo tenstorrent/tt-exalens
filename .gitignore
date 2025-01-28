@@ -27,3 +27,7 @@ compile_commands.json
 *.egg-info
 
 /third_party/jtag-access-library
+
+# Noc CodeGen
+scripts/noc_to_python/codegen-noc-overlay-blackhole
+scripts/noc_to_python/codegen-noc-overlay-wormhole
