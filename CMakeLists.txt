@@ -58,6 +58,9 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/umd)
 # Check for ZeroMQ
 include(${PROJECT_SOURCE_DIR}/cmake/ZeroMQ.cmake)
 
+# Including private repository
+include(${PROJECT_SOURCE_DIR}/cmake/ttlens_private.cmake)
+
 # Add subdirectories
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttlens)
 add_subdirectory(${PROJECT_SOURCE_DIR}/utils)

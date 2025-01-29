@@ -1,0 +1,12 @@
+include(ExternalProject)
+
+ExternalProject_Add(
+    ttlens_private
+    GIT_REPOSITORY ${TTLENS_PRIVATE_GIT_REPOSITORY}
+    GIT_TAG ${TTLENS_PRIVATE_GIT_TAG}
+    GIT_SHALLOW TRUE
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/ttlens_private
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+)

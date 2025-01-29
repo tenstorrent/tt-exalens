@@ -36,7 +36,7 @@ add_custom_target(generate_embed_files ALL
 # Library project
 file(GLOB TTLENS_SERVER_LIB_SRCS "src/*.cpp")
 add_library(ttlens_server_lib STATIC ${TTLENS_SERVER_LIB_SRCS})
-add_dependencies(ttlens_server_lib generate_embed_files)
+add_dependencies(ttlens_server_lib generate_embed_files ttlens_jtag_lib)
 target_link_libraries(ttlens_server_lib
     PUBLIC umd::device fmt cppzmq-static dl
 )
@@ -47,12 +47,4 @@ set_target_properties(ttlens_server_lib PROPERTIES
     OUTPUT_NAME libttlensserver
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
     POSITION_INDEPENDENT_CODE ON
-)
-
-add_custom_target(dummy_target ALL DEPENDS setup_jtag)
-add_custom_command(
-    OUTPUT setup_jtag
-    COMMAND bash "${TTLENS_HOME}/scripts/get_jtag_access_library.sh" "${CMAKE_BINARY_DIR}"
-    COMMENT "Setting up JTAG"
-    WORKING_DIRECTORY "${TTLENS_HOME}"
 )
