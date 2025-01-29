@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2025 Tenstorrent AI ULC
+//
+// SPDX-License-Identifier: Apache-2.0
 #include <iostream>
 
 #include "noc_overlay_parameters.h"
@@ -18,8 +21,37 @@ std::string replace(const std::string& input, const std::string& from, const std
     return str;
 }
 
+std::string trimRightBeforeNewline(std::string input) {
+    size_t pos = 0;
+
+    while (pos < input.size()) {
+        // Find the next newline character
+        size_t newline_pos = input.find('\n', pos);
+        if (newline_pos == std::string::npos) {
+            break;
+        }
+
+        // Find the position where trailing spaces start
+        size_t trim_pos = newline_pos;
+        while (trim_pos > pos && std::isspace(input[trim_pos - 1])) {
+            --trim_pos;
+        }
+
+        // Remove trailing spaces before newline
+        if (trim_pos < newline_pos) {
+            input.replace(trim_pos, newline_pos - trim_pos, "");
+        }
+
+        pos = trim_pos + 1;  // Move to the next line
+    }
+
+    return input;
+}
+
 std::string fixDescription(const std::string& input, const std::string& to) {
-    return replace(replace(input, "// ", to), "//", "");
+    std::string description = replace(replace(input, "// ", to), "//", "");
+    description = trimRightBeforeNewline(description);
+    return description;
 }
 
 int main() {
@@ -39,10 +71,11 @@ int main() {
 #ifdef ETH_NOC_NUM_STREAMS
     std::cout << "ETH_NOC_NUM_STREAMS = " << ETH_NOC_NUM_STREAMS << std::endl;
 #endif
-    std::cout << "NOC_OVERLAY_START_ADDR = 0x" << std::hex << NOC_OVERLAY_START_ADDR << std::endl;
-    std::cout << "NOC_STREAM_REG_SPACE_SIZE = 0x" << std::hex << NOC_STREAM_REG_SPACE_SIZE << std::endl;
-    std::cout << "NOC0_REGS_START_ADDR = 0x" << std::hex << NOC0_REGS_START_ADDR << std::endl;
-    std::cout << "NOC1_REGS_START_ADDR = 0x" << std::hex << NOC1_REGS_START_ADDR << std::endl;
+    std::cout << "NOC_OVERLAY_START_ADDR = 0x" << std::hex << std::uppercase << NOC_OVERLAY_START_ADDR << std::endl;
+    std::cout << "NOC_STREAM_REG_SPACE_SIZE = 0x" << std::hex << std::uppercase << NOC_STREAM_REG_SPACE_SIZE
+              << std::endl;
+    std::cout << "NOC0_REGS_START_ADDR = 0x" << std::hex << std::uppercase << NOC0_REGS_START_ADDR << std::endl;
+    std::cout << "NOC1_REGS_START_ADDR = 0x" << std::hex << std::uppercase << NOC1_REGS_START_ADDR << std::endl;
     std::cout << std::endl;
 
     // Print structures used for parsing registers
@@ -64,9 +97,11 @@ int main() {
             calculatedOffset += field.width;
         }
 
+        std::cout << std::endl;
+
         // Generate structure that will be used to read register
-        std::string baseClass = uniqueBitmasks ? "LittleEndianStructure" : "";
-        std::cout << "class Noc_" << reg.name << "(" << baseClass << "):" << std::endl;
+        std::string baseClass = uniqueBitmasks ? "(LittleEndianStructure)" : "";
+        std::cout << "class Noc_" << reg.name << baseClass << ":" << std::endl;
 
         // Add class description
         if (!reg.description.empty()) {
@@ -77,7 +112,7 @@ int main() {
 
         // Add field type hints and description
         for (auto& field : reg.fields) {
-            std::cout << "    " << field.name << " : int" << std::endl;
+            std::cout << "    " << field.name << ": int" << std::endl;
             if (!field.description.empty()) {
                 std::cout << "    \"\"\"" << std::endl
                           << fixDescription(field.description, "    ") << "    \"\"\"" << std::endl
@@ -99,7 +134,7 @@ int main() {
             std::cout << "    @classmethod" << std::endl;
             std::cout << "    def from_buffer_copy(cls, buffer: memoryview):" << std::endl;
             std::cout << "        instance = cls()" << std::endl;
-            std::cout << "        value = struct.unpack_from('<I', buffer[0:4])[0]" << std::endl;
+            std::cout << "        value = struct.unpack_from(\"<I\", buffer[0:4])[0]" << std::endl;
             for (auto& field : reg.fields) {
                 std::cout << "        instance." << field.name << " = (value >> " << std::dec << field.offset
                           << ") & ((1 << " << std::dec << field.width << ") - 1)" << std::endl;
@@ -109,8 +144,10 @@ int main() {
         std::cout << std::endl;
     }
 
+    std::cout << std::endl;
+
     // Print class definition to parse all registers
-    std::cout << "class NocOverlayRegistersState():" << std::endl;
+    std::cout << "class NocOverlayRegistersState:" << std::endl;
     std::cout << "    def __init__(self, buffer: bytes):" << std::endl;
     std::cout << "        self.__buffer = memoryview(buffer)" << std::endl;
     std::cout << std::endl;
@@ -124,7 +161,7 @@ int main() {
                 std::cout << "        \"\"\"" << std::endl
                           << fixDescription(reg.description, "        ") << "        \"\"\"" << std::endl;
             }
-            std::cout << "        return struct.unpack_from('<I', self.__buffer[" << std::dec << (reg.index * 4)
+            std::cout << "        return struct.unpack_from(\"<I\", self.__buffer[" << std::dec << (reg.index * 4)
                       << ":])[0]" << std::endl;
             std::cout << std::endl;
         } else {
@@ -152,11 +189,10 @@ int main() {
     }
 
     std::cout << "    def get_stream_reg_field(self, reg_index: int, start_bit: int, num_bits: int):" << std::endl;
-    std::cout << "        value = struct.unpack_from('<I', self.__buffer[reg_index * 4:])[0]" << std::endl;
+    std::cout << "        value = struct.unpack_from(\"<I\", self.__buffer[reg_index * 4 :])[0]" << std::endl;
     std::cout << "        mask = (1 << num_bits) - 1" << std::endl;
     std::cout << "        value = (value >> start_bit) & mask" << std::endl;
     std::cout << "        return value" << std::endl;
-    std::cout << std::endl;
 
 #ifdef GENERATE_DEBUG_INFO
     // Print methods to read registers (debugging info)
