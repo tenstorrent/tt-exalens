@@ -29,8 +29,8 @@ def get_ttlens_py_files(file_dir: os.PathLike = f"{ttlens_home}/ttlens", ignorel
 def get_libjtag() -> list:
     """A function to get the libjtag if it exists."""
 
-    if os.path.exists(f"{ttlens_home}/build/lib/libjtag.so"):
-        return ["libjtag.so", "libjlinkarm.so"]
+    if os.path.exists(f"{ttlens_home}/build/lib/libttlens_jtag.so"):
+        return ["libttlens_jtag.so", "libjlinkarm.so"]
 
     return []
 
