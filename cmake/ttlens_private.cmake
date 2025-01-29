@@ -2,7 +2,7 @@
 # If it is not, we should check if user has access to private repository.
 
 set(TTLENS_PRIVATE_GIT_REPOSITORY "git@yyz-gitlab.local.tenstorrent.com:tenstorrent/tt-lens-private.git")
-set(TTLENS_PRIVATE_GIT_TAG "vjovanovic/moving_to_cmake")#"main") # TODO: Fix this before check-in!!!
+set(TTLENS_PRIVATE_GIT_TAG "main")
 set(DOWNLOAD_TTLENS_PRIVATE ON)
 
 if (NOT EXISTS "$ENV{CPM_SOURCE_CACHE}/ttlens_private")
