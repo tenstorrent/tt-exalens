@@ -25,3 +25,7 @@ compile_commands.json
 # Various build fragments
 .coverage
 *.egg-info
+
+# Noc CodeGen
+scripts/noc_to_python/codegen-noc-overlay-blackhole
+scripts/noc_to_python/codegen-noc-overlay-wormhole
