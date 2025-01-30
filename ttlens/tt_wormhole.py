@@ -4,6 +4,7 @@
 from ttlens import tt_util as util
 from ttlens import tt_device
 from ttlens.tt_device import ConfigurationRegisterDescription, DebugRegisterDescription
+from ttlens.tt_debug_tensix import TensixDebug
 
 
 class WormholeInstructions(tt_device.TensixInstructions):
@@ -191,3 +192,116 @@ class WormholeDevice(tt_device.Device):
         if register_name in WormholeDevice.__debug_register_map:
             return WormholeDevice.__debug_register_map[register_name]
         return None
+
+    def read_config_field(self, name: str, config: dict, debug_tensix: TensixDebug):
+        config[name] = debug_tensix.read_tensix_register(name)
+
+    def get_alu_config(self, debug_tensix: TensixDebug) -> list[dict]:
+        alu_config = {}
+
+        self.read_config_field("ALU_ROUNDING_MODE_Fpu_srnd_en", alu_config, debug_tensix)
+        self.read_config_field("ALU_ROUNDING_MODE_Gasket_srnd_en", alu_config, debug_tensix)
+        self.read_config_field("ALU_ROUNDING_MODE_Packer_srnd_en", alu_config, debug_tensix)
+        self.read_config_field("ALU_ROUNDING_MODE_Padding", alu_config, debug_tensix)
+        self.read_config_field("ALU_ROUNDING_MODE_GS_LF", alu_config, debug_tensix)
+        self.read_config_field("ALU_ROUNDING_MODE_Bfp8_HF", alu_config, debug_tensix)
+        self.read_config_field("ALU_FORMAT_SPEC_REG0_SrcAUnsigned", alu_config, debug_tensix)
+        self.read_config_field("ALU_FORMAT_SPEC_REG0_SrcBUnsigned", alu_config, debug_tensix)
+        self.read_config_field("ALU_FORMAT_SPEC_REG0_SrcA", alu_config, debug_tensix)
+        self.read_config_field("ALU_FORMAT_SPEC_REG1_SrcB", alu_config, debug_tensix)
+        self.read_config_field("ALU_FORMAT_SPEC_REG2_Dstacc", alu_config, debug_tensix)
+        self.read_config_field("ALU_ACC_CTRL_Fp32_enabled", alu_config, debug_tensix)
+        self.read_config_field("ALU_ACC_CTRL_SFPU_Fp32_enabled", alu_config, debug_tensix)
+        self.read_config_field("ALU_ACC_CTRL_INT8_math_enabled", alu_config, debug_tensix)
+
+        return [alu_config]
+
+    def get_unpack_tile_descriptor(self, debug_tensix: TensixDebug) -> list[dict]:
+        tile_descriptor0 = {}
+        tile_descriptor1 = {}
+
+        # REG_ID = 0
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR0_in_data_format", tile_descriptor0, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR0_uncompressed", tile_descriptor0, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR0_reserved_0", tile_descriptor0, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR0_blobs_per_xy_plane", tile_descriptor0, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR0_reserved_1", tile_descriptor0, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR0_x_dim", tile_descriptor0, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR0_y_dim", tile_descriptor0, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR0_z_dim", tile_descriptor0, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR0_w_dim", tile_descriptor0, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR0_blobs_y_start_lo", tile_descriptor0, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR0_blobs_y_start_hi", tile_descriptor0, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR0_digest_type", tile_descriptor0, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR0_digest_size", tile_descriptor0, debug_tensix)
+
+        # REG_ID = 1
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR1_in_data_format", tile_descriptor1, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR1_uncompressed", tile_descriptor1, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR1_reserved_0", tile_descriptor1, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR1_blobs_per_xy_plane", tile_descriptor1, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR1_reserved_1", tile_descriptor1, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR1_x_dim", tile_descriptor1, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR1_y_dim", tile_descriptor1, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR1_z_dim", tile_descriptor1, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR1_w_dim", tile_descriptor1, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR1_blobs_y_start_lo", tile_descriptor1, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR1_blobs_y_start_hi", tile_descriptor1, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR1_digest_type", tile_descriptor1, debug_tensix)
+        self.read_config_field("UNPACK_TILE_DESCRIPTOR1_digest_size", tile_descriptor1, debug_tensix)
+
+        tile_descriptor = [tile_descriptor0, tile_descriptor1]
+        return tile_descriptor
+
+    def get_unpack_config(self, debug_tensix: TensixDebug) -> list[dict]:
+        unpack_config0 = {}
+        unpack_config1 = {}
+
+        self.read_config_field("UNPACK_CONFIG0_out_data_format", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_throttle_mode", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_context_count", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_haloize_mode", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_tileize_mode", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_unpack_src_reg_set_upd", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_unpack_if_sel", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_upsample_rate", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_reserved_1", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_upsample_and_interleave", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_shift_amount", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_uncompress_cntx0_3", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_unpack_if_sel_cntx0_3", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_force_shared_exp", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_reserved_2", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_uncompress_cntx4_7", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_unpack_if_sel_cntx4_7", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_reserved_3", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_limit_addr", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_reserved_4", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_fifo_size", unpack_config0, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG0_reserved_5", unpack_config0, debug_tensix)
+
+        self.read_config_field("UNPACK_CONFIG1_out_data_format", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_throttle_mode", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_context_count", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_haloize_mode", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_tileize_mode", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_unpack_src_reg_set_upd", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_unpack_if_sel", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_upsample_rate", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_reserved_1", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_upsample_and_interleave", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_shift_amount", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_uncompress_cntx0_3", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_unpack_if_sel_cntx0_3", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_force_shared_exp", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_reserved_2", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_uncompress_cntx4_7", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_unpack_if_sel_cntx4_7", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_reserved_3", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_limit_addr", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_reserved_4", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_fifo_size", unpack_config1, debug_tensix)
+        self.read_config_field("UNPACK_CONFIG1_reserved_5", unpack_config1, debug_tensix)
+
+        unpack_config = [unpack_config0, unpack_config1]
+        return unpack_config

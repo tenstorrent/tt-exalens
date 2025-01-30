@@ -377,6 +377,18 @@ class Device(TTObject):
                 util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 
     @abstractmethod
+    def get_unpack_tile_descriptor(self) -> list[dict]:
+        pass
+
+    @abstractmethod
+    def get_unpack_config(self) -> list[dict]:
+        pass
+
+    @abstractmethod
+    def get_alu_config(self) -> list[dict]:
+        pass
+
+    @abstractmethod
     def get_tensix_configuration_register_base(self) -> int:
         pass
 
