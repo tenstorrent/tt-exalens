@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Core utility functions used by tt_lens_lib and other modules
 from ttlens import tt_lens_init
-from ttlens.tt_lens_context import Context
-from ttlens.tt_util import TTException
+from ttlens.context import Context
+from ttlens.util import TTException
 
 
 def check_context(context: Context = None) -> Context:

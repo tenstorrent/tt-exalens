@@ -4,12 +4,12 @@
 from functools import cached_property
 from typing import List, Sequence, Tuple
 from tabulate import tabulate
-from ttlens.tt_lens_context import Context
-from ttlens.tt_object import TTObject
-from ttlens import tt_util as util
-from ttlens.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
+from ttlens.context import Context
+from ttlens.object import TTObject
+from ttlens import util as util
+from ttlens.coordinate import CoordinateTranslationError, OnChipCoordinate
 from abc import abstractmethod
-from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
+from ttlens.debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device
 
 
@@ -69,21 +69,21 @@ class Device(TTObject):
     def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
         dev = None
         if arch.lower() == "grayskull":
-            from ttlens import tt_grayskull
+            from ttlens import grayskull
 
-            dev = tt_grayskull.GrayskullDevice(
+            dev = grayskull.GrayskullDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
         if "wormhole" in arch.lower():
-            from ttlens import tt_wormhole
+            from ttlens import wormhole
 
-            dev = tt_wormhole.WormholeDevice(
+            dev = wormhole.WormholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
         if "blackhole" in arch.lower():
-            from ttlens import tt_blackhole
+            from ttlens import blackhole
 
-            dev = tt_blackhole.BlackholeDevice(
+            dev = blackhole.BlackholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
 
@@ -135,7 +135,7 @@ class Device(TTObject):
         self._init_coordinate_systems()
         self._init_register_addresses()
 
-    # Coordinate conversion functions (see tt_coordinate.py for description of coordinate systems)
+    # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
     def __die_to_noc(self, die_loc, noc_id=0):
         die_x, die_y = die_loc
         if noc_id == 0:
@@ -272,7 +272,7 @@ class Device(TTObject):
 
     # Returns a string representation of the device. When printed, the string will
     # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list
-    # See tt_coordinates for valid values of axis_coordinates
+    # See coordinate.py for valid values of axis_coordinates
     def render(self, axis_coordinate="die", cell_renderer=None, legend=None):
         dev = self.yaml_file.root
         rows = []

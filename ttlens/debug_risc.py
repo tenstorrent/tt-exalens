@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 from dataclasses import dataclass
 from typing import Union
-from ttlens.tt_lens_context import Context
-from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens import tt_util as util
+from ttlens.context import Context
+from ttlens.coordinate import OnChipCoordinate
+from ttlens import util as util
 import os
 from contextlib import contextmanager
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device, read_from_device, write_to_device

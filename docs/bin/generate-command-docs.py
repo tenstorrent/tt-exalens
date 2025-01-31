@@ -37,7 +37,7 @@ import sys, re, os, importlib.util
 from docopt import docopt
 
 # We need to import common options as they are sometimes injected into the docstrings
-from ttlens.tt_commands import tt_docopt
+from ttlens.commands import tt_docopt
 
 OPTIONS = tt_docopt.OPTIONS
 for opt in OPTIONS.keys():
@@ -133,7 +133,7 @@ class CmdParser:
         return result
 
     def parse_options(self, help: str) -> dict:
-        # This function builds an option dictionary akin to one in the tt_commands module
+        # This function builds an option dictionary akin to one in the commands module
         result = {}
         lines = [line.strip() for line in help.split("\n")]
 

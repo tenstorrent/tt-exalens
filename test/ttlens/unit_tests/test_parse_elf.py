@@ -4,8 +4,8 @@
 import unittest
 import os
 
-from ttlens.tt_parse_elf import read_elf, mem_access
-from ttlens import tt_util as util
+from ttlens.parse_elf import read_elf, mem_access
+from ttlens import util as util
 
 
 class TestFileIfc:

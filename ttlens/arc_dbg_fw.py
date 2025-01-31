@@ -5,8 +5,8 @@
 import os
 import time
 from typing import Union, List
-from ttlens.tt_lens_context import Context
-from ttlens.tt_util import TTException
+from ttlens.context import Context
+from ttlens.util import TTException
 from ttlens.tt_lens_lib_utils import check_context, arc_read, arc_write
 
 

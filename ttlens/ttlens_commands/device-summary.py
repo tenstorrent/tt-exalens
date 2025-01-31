@@ -39,10 +39,10 @@ command_metadata = {
 
 from docopt import docopt
 
-from ttlens import tt_commands, tt_util as util
-from ttlens.tt_device import Device
-from ttlens.tt_coordinate import VALID_COORDINATE_TYPES
-from ttlens.tt_lens_context import LimitedContext
+from ttlens import commands, util as util
+from ttlens.device import Device
+from ttlens.coordinate import VALID_COORDINATE_TYPES
+from ttlens.context import LimitedContext
 
 
 def color_block(text: str, block_type: str):
@@ -51,7 +51,7 @@ def color_block(text: str, block_type: str):
 
 
 def run(cmd_text, context, ui_state=None):
-    dopt = tt_commands.tt_docopt(
+    dopt = commands.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
         common_option_names=command_metadata["common_option_names"],

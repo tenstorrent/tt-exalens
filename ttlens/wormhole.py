@@ -1,14 +1,13 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from ttlens import tt_util as util
-from ttlens import tt_device
-from ttlens.tt_device import ConfigurationRegisterDescription, DebugRegisterDescription
+from ttlens import util as util
+from ttlens.device import ConfigurationRegisterDescription, DebugRegisterDescription, Device, TensixInstructions
 
 
-class GrayskullInstructions(tt_device.TensixInstructions):
+class WormholeInstructions(TensixInstructions):
     def __init__(self):
-        import ttlens.tt_grayskull_ops as ops
+        import ttlens.wormhole_ops as ops
 
         super().__init__(ops)
 
@@ -16,11 +15,11 @@ class GrayskullInstructions(tt_device.TensixInstructions):
 #
 # Device
 #
-class GrayskullDevice(tt_device.Device):
-    # Physical location mapping
-    DIE_X_TO_NOC_0_X = [0, 12, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6]
+class WormholeDevice(Device):
+    # Physical location mapping. Physical coordinates are the geografical coordinates on a chip's die.
+    DIE_X_TO_NOC_0_X = [0, 9, 1, 8, 2, 7, 3, 6, 4, 5]
     DIE_Y_TO_NOC_0_Y = [0, 11, 1, 10, 2, 9, 3, 8, 4, 7, 5, 6]
-    DIE_X_TO_NOC_1_X = [12, 0, 11, 1, 10, 2, 9, 3, 8, 4, 7, 5, 6]
+    DIE_X_TO_NOC_1_X = [9, 0, 8, 1, 7, 2, 6, 3, 5, 4]
     DIE_Y_TO_NOC_1_Y = [11, 0, 10, 1, 9, 2, 8, 3, 7, 4, 6, 5]
     NOC_0_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_0_X)
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
@@ -31,9 +30,13 @@ class GrayskullDevice(tt_device.Device):
     PCI_ARC_CSM_DATA_BASE_ADDR = 0x1FE80000
     PCI_ARC_ROM_DATA_BASE_ADDR = 0x1FF00000
 
-    EFUSE_PCI = 0x1FF40200
-    EFUSE_JTAG_AXI = 0x80040200
-    EFUSE_NOC = 0x80040200
+    NOC_ARC_RESET_BASE_ADDR = 0x880030000
+    NOC_ARC_CSM_DATA_BASE_ADDR = 0x810000000
+    NOC_ARC_ROM_DATA_BASE_ADDR = 0x880000000
+
+    EFUSE_PCI = 0x1FF42200
+    EFUSE_JTAG_AXI = 0x80042200
+    EFUSE_NOC = 0x880042200
 
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(
@@ -43,28 +46,32 @@ class GrayskullDevice(tt_device.Device):
             device_desc_path,
             context,
         )
-        self.instructions = GrayskullInstructions()
+        self.instructions = WormholeInstructions()
+
+    def is_translated_coordinate(self, x: int, y: int) -> bool:
+        return x >= 16 and y >= 16
 
     def get_tensix_configuration_register_base(self) -> int:
         return 0xFFEF0000
 
     __configuration_register_map = {
-        "ALU_FORMAT_SPEC_REG2_Dstacc": ConfigurationRegisterDescription(index=0, mask=0x1E000000, shift=25),
-        "DISABLE_RISC_BP_Disable_main": ConfigurationRegisterDescription(index=2, mask=0x100000, shift=20),
-        "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(index=2, mask=0xE00000, shift=21),
-        "DISABLE_RISC_BP_Disable_ncrisc": ConfigurationRegisterDescription(index=2, mask=0x1000000, shift=24),
-        "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=177, mask=0x1F),
-        "TRISC_RESET_PC_SEC0_PC": ConfigurationRegisterDescription(index=178),
-        "TRISC_RESET_PC_SEC1_PC": ConfigurationRegisterDescription(index=179),
-        "TRISC_RESET_PC_SEC2_PC": ConfigurationRegisterDescription(index=180),
-        "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=181, mask=0x7),
-        "NCRISC_RESET_PC_PC": ConfigurationRegisterDescription(index=182),
-        "NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=183, mask=0x1),
+        "ALU_FORMAT_SPEC_REG2_Dstacc": ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
+        "ALU_ACC_CTRL_Fp32_enabled": ConfigurationRegisterDescription(index=1, mask=0x20000000, shift=29),
+        "DISABLE_RISC_BP_Disable_main": ConfigurationRegisterDescription(index=2, mask=0x400000, shift=22),
+        "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(index=2, mask=0x3800000, shift=23),
+        "DISABLE_RISC_BP_Disable_ncrisc": ConfigurationRegisterDescription(index=2, mask=0x4000000, shift=26),
+        "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=157, mask=0x1F),
+        "TRISC_RESET_PC_SEC0_PC": ConfigurationRegisterDescription(index=158),
+        "TRISC_RESET_PC_SEC1_PC": ConfigurationRegisterDescription(index=159),
+        "TRISC_RESET_PC_SEC2_PC": ConfigurationRegisterDescription(index=160),
+        "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=161, mask=0x7),
+        "NCRISC_RESET_PC_PC": ConfigurationRegisterDescription(index=162),
+        "NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=163, mask=0x1),
     }
 
     def get_configuration_register_description(self, register_name: str) -> ConfigurationRegisterDescription:
-        if register_name in GrayskullDevice.__configuration_register_map:
-            return GrayskullDevice.__configuration_register_map[register_name]
+        if register_name in WormholeDevice.__configuration_register_map:
+            return WormholeDevice.__configuration_register_map[register_name]
         return None
 
     def get_tenxis_debug_register_base(self) -> int:
@@ -88,6 +95,6 @@ class GrayskullDevice(tt_device.Device):
     }
 
     def get_debug_register_description(self, register_name: str) -> DebugRegisterDescription:
-        if register_name in GrayskullDevice.__debug_register_map:
-            return GrayskullDevice.__debug_register_map[register_name]
+        if register_name in WormholeDevice.__debug_register_map:
+            return WormholeDevice.__debug_register_map[register_name]
         return None
