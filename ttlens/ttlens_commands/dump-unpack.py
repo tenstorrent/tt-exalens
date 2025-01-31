@@ -28,16 +28,20 @@ command_metadata = {
 
 from ttlens.tt_uistate import UIState
 from ttlens.tt_debug_tensix import TensixDebug
-
 from ttlens import tt_commands
 
+import tabulate
 
-def print_dict_list(dicts: list[dict]):
-    for id, dict in enumerate(dicts):
-        if len(dicts) > 1:
-            print(f"  REG_ID = {id + 1}:")
-        for key, value in dict.items():
-            print(f"    {key}: {value}")
+
+def dict_list_to_table(dicts: list[dict], register_name: str) -> str:
+    keys = dicts[0].keys()
+    data = [[key] + [d[key] for d in dicts] for key in keys]
+    if len(dicts) == 1:
+        headers = [register_name] + ["VALUES"]
+    else:
+        headers = [register_name] + [f"REG_ID={i+1}" for i in range(len(dicts))]
+
+    return tabulate.tabulate(data, headers=headers, tablefmt="grid")
 
 
 def run(cmd_text, context, ui_state: UIState = None):
@@ -55,11 +59,8 @@ def run(cmd_text, context, ui_state: UIState = None):
             tile_descriptor = device.get_unpack_tile_descriptor(debug_tensix)
             unpack_config = device.get_unpack_config(debug_tensix)
 
-            print("ALU CONFIG:")
-            print_dict_list(alu_config)
-            print("TILE DESC:")
-            print_dict_list(tile_descriptor)
-            print("UNPACK_CONFIG")
-            print_dict_list(unpack_config)
+            print(dict_list_to_table(alu_config, "ALU CONFIG"))
+            print(dict_list_to_table(tile_descriptor, "TILE DESCRIPTOR"))
+            print(dict_list_to_table(unpack_config, "UNPACK CONFIG"))
 
     return None
