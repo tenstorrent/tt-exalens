@@ -306,3 +306,6 @@ class TensixDebug:
         df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
         unpacked_data = unpack_data(data, df)
         return unpacked_data
+
+    def get_config_field(self, name: str, config: dict, start: int = 0, dec: bool = False):
+        config[name[start:]] = hex(self.read_tensix_register(name)) if not dec else self.read_tensix_register(name)
