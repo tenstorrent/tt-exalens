@@ -234,6 +234,11 @@ class BlackholeDevice(tt_device.Device):
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_w_dim", tile_descriptor0, start, True)
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_blobs_y_start_lo", tile_descriptor0, start)
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_blobs_y_start_hi", tile_descriptor0, start)
+        tile_descriptor0["blobs_y_start"] = (tile_descriptor0["blobs_y_start_hi"] << 16) | tile_descriptor0[
+            "blobs_y_start_lo"
+        ]
+        del tile_descriptor0["blobs_y_start_lo"]
+        del tile_descriptor0["blobs_y_start_hi"]
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_digest_type", tile_descriptor0, start)
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_digest_size", tile_descriptor0, start)
 
@@ -249,6 +254,11 @@ class BlackholeDevice(tt_device.Device):
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_w_dim", tile_descriptor1, start, True)
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_blobs_y_start_lo", tile_descriptor1, start)
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_blobs_y_start_hi", tile_descriptor1, start)
+        tile_descriptor1["blobs_y_start"] = (tile_descriptor1["blobs_y_start_hi"] << 16) | tile_descriptor1[
+            "blobs_y_start_lo"
+        ]
+        del tile_descriptor1["blobs_y_start_lo"]
+        del tile_descriptor1["blobs_y_start_hi"]
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_digest_type", tile_descriptor1, start)
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_digest_size", tile_descriptor1, start)
 
