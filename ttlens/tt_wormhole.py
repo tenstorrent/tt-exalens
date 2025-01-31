@@ -258,6 +258,7 @@ class WormholeDevice(tt_device.Device):
 
         start = 15  # ignores field name prefix
 
+        # REG_ID = 1
         debug_tensix.get_config_field("UNPACK_CONFIG0_out_data_format", unpack_config0, start)
         debug_tensix.get_config_field("UNPACK_CONFIG0_throttle_mode", unpack_config0, start)
         debug_tensix.get_config_field("UNPACK_CONFIG0_context_count", unpack_config0, start)
@@ -281,6 +282,7 @@ class WormholeDevice(tt_device.Device):
         debug_tensix.get_config_field("UNPACK_CONFIG0_fifo_size", unpack_config0, start, True)
         debug_tensix.get_config_field("UNPACK_CONFIG0_reserved_5", unpack_config0, start)
 
+        # REG_ID = 2
         debug_tensix.get_config_field("UNPACK_CONFIG1_out_data_format", unpack_config1, start)
         debug_tensix.get_config_field("UNPACK_CONFIG1_throttle_mode", unpack_config1, start)
         debug_tensix.get_config_field("UNPACK_CONFIG1_context_count", unpack_config1, start)
