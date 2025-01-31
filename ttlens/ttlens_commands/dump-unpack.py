@@ -39,7 +39,7 @@ def dict_list_to_table(dicts: list[dict], register_name: str) -> str:
     if len(dicts) == 1:
         headers = [register_name] + ["VALUES"]
     else:
-        headers = [register_name] + [f"REG_ID={i+1}" for i in range(len(dicts))]
+        headers = [register_name] + [f"REG_ID = {i+1}" for i in range(len(dicts))]
 
     return tabulate.tabulate(data, headers=headers, tablefmt="grid")
 
@@ -58,9 +58,11 @@ def run(cmd_text, context, ui_state: UIState = None):
             alu_config = device.get_alu_config(debug_tensix)
             tile_descriptor = device.get_unpack_tile_descriptor(debug_tensix)
             unpack_config = device.get_unpack_config(debug_tensix)
+            pack_config = device.get_pack_config(debug_tensix)
 
             print(dict_list_to_table(alu_config, "ALU CONFIG"))
             print(dict_list_to_table(tile_descriptor, "TILE DESCRIPTOR"))
             print(dict_list_to_table(unpack_config, "UNPACK CONFIG"))
+            print(dict_list_to_table(pack_config, "PACK CONFIG"))
 
     return None

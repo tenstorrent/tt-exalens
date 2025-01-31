@@ -150,6 +150,94 @@ class WormholeDevice(tt_device.Device):
         "ALU_ACC_CTRL_Fp32_enabled": ConfigurationRegisterDescription(index=1, mask=0x20000000, shift=29),
         "ALU_ACC_CTRL_SFPU_Fp32_enabled": ConfigurationRegisterDescription(index=1, mask=0x40000000, shift=30),
         "ALU_ACC_CTRL_INT8_math_enabled": ConfigurationRegisterDescription(index=1, mask=0x80000000, shift=31),
+        # PACK CONFIG SEC 0 REG 1
+        "PACK_CONFIG01_row_ptr_section_size": ConfigurationRegisterDescription(index=56, mask=0xFFFF, shift=0),
+        "PACK_CONFIG01_exp_section_size": ConfigurationRegisterDescription(index=56, mask=0xFFFF0000, shift=16),
+        "PACK_CONFIG01_l1_dest_addr": ConfigurationRegisterDescription(index=57, mask=0xFFFFFFFF, shift=0),
+        "PACK_CONFIG01_uncompress": ConfigurationRegisterDescription(index=58, mask=0x1, shift=0),
+        "PACK_CONFIG01_add_l1_dest_addr_offset": ConfigurationRegisterDescription(index=58, mask=0x2, shift=1),
+        "PACK_CONFIG01_reserved_0": ConfigurationRegisterDescription(index=58, mask=0xC, shift=2),
+        "PACK_CONFIG01_out_data_format": ConfigurationRegisterDescription(index=58, mask=0xF0, shift=4),
+        "PACK_CONFIG01_in_data_format": ConfigurationRegisterDescription(index=58, mask=0xF00, shift=8),
+        "PACK_CONFIG01_reserved_1": ConfigurationRegisterDescription(index=58, mask=0xF000, shift=12),
+        "PACK_CONFIG01_src_if_sel": ConfigurationRegisterDescription(index=58, mask=0x10000, shift=16),
+        "PACK_CONFIG01_pack_per_xy_plane": ConfigurationRegisterDescription(index=58, mask=0xFE0000, shift=17),
+        "PACK_CONFIG01_l1_src_addr": ConfigurationRegisterDescription(index=58, mask=0xFF000000, shift=24),
+        "PACK_CONFIG01_downsample_mask": ConfigurationRegisterDescription(index=59, mask=0xFFFF, shift=0),
+        "PACK_CONFIG01_downsample_shift_count": ConfigurationRegisterDescription(index=59, mask=0x70000, shift=16),
+        "PACK_CONFIG01_read_mode": ConfigurationRegisterDescription(index=59, mask=0x80000, shift=19),
+        "PACK_CONFIG01_exp_threshold_en": ConfigurationRegisterDescription(index=59, mask=0x100000, shift=20),
+        "PACK_CONFIG01_pack_l1_acc_disable_pack_zero_flag": ConfigurationRegisterDescription(
+            index=59, mask=0x600000, shift=21
+        ),
+        "PACK_CONFIG01_reserved_2": ConfigurationRegisterDescription(index=59, mask=0x800000, shift=23),
+        "PACK_CONFIG01_exp_threshold": ConfigurationRegisterDescription(index=59, mask=0xFF000000, shift=24),
+        # PACK CONFIG SEC 0 REG 8
+        "PACK_CONFIG08_row_ptr_section_size": ConfigurationRegisterDescription(index=84, mask=0xFFFF, shift=0),
+        "PACK_CONFIG08_exp_section_size": ConfigurationRegisterDescription(index=84, mask=0xFFFF0000, shift=16),
+        "PACK_CONFIG08_l1_dest_addr": ConfigurationRegisterDescription(index=85, mask=0xFFFFFFFF, shift=0),
+        "PACK_CONFIG08_uncompress": ConfigurationRegisterDescription(index=86, mask=0x1, shift=0),
+        "PACK_CONFIG08_add_l1_dest_addr_offset": ConfigurationRegisterDescription(index=86, mask=0x2, shift=1),
+        "PACK_CONFIG08_reserved_0": ConfigurationRegisterDescription(index=86, mask=0xC, shift=2),
+        "PACK_CONFIG08_out_data_format": ConfigurationRegisterDescription(index=86, mask=0xF0, shift=4),
+        "PACK_CONFIG08_in_data_format": ConfigurationRegisterDescription(index=86, mask=0xF00, shift=8),
+        "PACK_CONFIG08_reserved_1": ConfigurationRegisterDescription(index=86, mask=0xF000, shift=12),
+        "PACK_CONFIG08_src_if_sel": ConfigurationRegisterDescription(index=86, mask=0x10000, shift=16),
+        "PACK_CONFIG08_pack_per_xy_plane": ConfigurationRegisterDescription(index=86, mask=0xFE0000, shift=17),
+        "PACK_CONFIG08_l1_src_addr": ConfigurationRegisterDescription(index=86, mask=0xFF000000, shift=24),
+        "PACK_CONFIG08_downsample_mask": ConfigurationRegisterDescription(index=87, mask=0xFFFF, shift=0),
+        "PACK_CONFIG08_downsample_shift_count": ConfigurationRegisterDescription(index=87, mask=0x70000, shift=16),
+        "PACK_CONFIG08_read_mode": ConfigurationRegisterDescription(index=87, mask=0x80000, shift=19),
+        "PACK_CONFIG08_exp_threshold_en": ConfigurationRegisterDescription(index=87, mask=0x100000, shift=20),
+        "PACK_CONFIG08_pack_l1_acc_disable_pack_zero_flag": ConfigurationRegisterDescription(
+            index=87, mask=0x600000, shift=21
+        ),
+        "PACK_CONFIG08_reserved_2": ConfigurationRegisterDescription(index=87, mask=0x800000, shift=23),
+        "PACK_CONFIG08_exp_threshold": ConfigurationRegisterDescription(index=87, mask=0xFF000000, shift=24),
+        # PACK CONFIG SEC 1 REG 1
+        "PACK_CONFIG11_row_ptr_section_size": ConfigurationRegisterDescription(index=96, mask=0xFFFF, shift=0),
+        "PACK_CONFIG11_exp_section_size": ConfigurationRegisterDescription(index=96, mask=0xFFFF0000, shift=16),
+        "PACK_CONFIG11_l1_dest_addr": ConfigurationRegisterDescription(index=97, mask=0xFFFFFFFF, shift=0),
+        "PACK_CONFIG11_uncompress": ConfigurationRegisterDescription(index=98, mask=0x1, shift=0),
+        "PACK_CONFIG11_add_l1_dest_addr_offset": ConfigurationRegisterDescription(index=98, mask=0x2, shift=1),
+        "PACK_CONFIG11_reserved_0": ConfigurationRegisterDescription(index=98, mask=0xC, shift=2),
+        "PACK_CONFIG11_out_data_format": ConfigurationRegisterDescription(index=98, mask=0xF0, shift=4),
+        "PACK_CONFIG11_in_data_format": ConfigurationRegisterDescription(index=98, mask=0xF00, shift=8),
+        "PACK_CONFIG11_reserved_1": ConfigurationRegisterDescription(index=98, mask=0xF000, shift=12),
+        "PACK_CONFIG11_src_if_sel": ConfigurationRegisterDescription(index=98, mask=0x10000, shift=16),
+        "PACK_CONFIG11_pack_per_xy_plane": ConfigurationRegisterDescription(index=98, mask=0xFE0000, shift=17),
+        "PACK_CONFIG11_l1_src_addr": ConfigurationRegisterDescription(index=98, mask=0xFF000000, shift=24),
+        "PACK_CONFIG11_downsample_mask": ConfigurationRegisterDescription(index=99, mask=0xFFFF, shift=0),
+        "PACK_CONFIG11_downsample_shift_count": ConfigurationRegisterDescription(index=99, mask=0x70000, shift=16),
+        "PACK_CONFIG11_read_mode": ConfigurationRegisterDescription(index=99, mask=0x80000, shift=19),
+        "PACK_CONFIG11_exp_threshold_en": ConfigurationRegisterDescription(index=99, mask=0x100000, shift=20),
+        "PACK_CONFIG11_pack_l1_acc_disable_pack_zero_flag": ConfigurationRegisterDescription(
+            index=99, mask=0x600000, shift=21
+        ),
+        "PACK_CONFIG11_reserved_2": ConfigurationRegisterDescription(index=99, mask=0x800000, shift=23),
+        "PACK_CONFIG11_exp_threshold": ConfigurationRegisterDescription(index=99, mask=0xFF000000, shift=24),
+        # PACK CONFIG SEC 1 REG 8
+        "PACK_CONFIG18_row_ptr_section_size": ConfigurationRegisterDescription(index=124, mask=0xFFFF, shift=0),
+        "PACK_CONFIG18_exp_section_size": ConfigurationRegisterDescription(index=124, mask=0xFFFF0000, shift=16),
+        "PACK_CONFIG18_l1_dest_addr": ConfigurationRegisterDescription(index=125, mask=0xFFFFFFFF, shift=0),
+        "PACK_CONFIG18_uncompress": ConfigurationRegisterDescription(index=126, mask=0x1, shift=0),
+        "PACK_CONFIG18_add_l1_dest_addr_offset": ConfigurationRegisterDescription(index=126, mask=0x2, shift=1),
+        "PACK_CONFIG18_reserved_0": ConfigurationRegisterDescription(index=126, mask=0xC, shift=2),
+        "PACK_CONFIG18_out_data_format": ConfigurationRegisterDescription(index=126, mask=0xF0, shift=4),
+        "PACK_CONFIG18_in_data_format": ConfigurationRegisterDescription(index=126, mask=0xF00, shift=8),
+        "PACK_CONFIG18_reserved_1": ConfigurationRegisterDescription(index=126, mask=0xF000, shift=12),
+        "PACK_CONFIG18_src_if_sel": ConfigurationRegisterDescription(index=126, mask=0x10000, shift=16),
+        "PACK_CONFIG18_pack_per_xy_plane": ConfigurationRegisterDescription(index=126, mask=0xFE0000, shift=17),
+        "PACK_CONFIG18_l1_src_addr": ConfigurationRegisterDescription(index=126, mask=0xFF000000, shift=24),
+        "PACK_CONFIG18_downsample_mask": ConfigurationRegisterDescription(index=127, mask=0xFFFF, shift=0),
+        "PACK_CONFIG18_downsample_shift_count": ConfigurationRegisterDescription(index=127, mask=0x70000, shift=16),
+        "PACK_CONFIG18_read_mode": ConfigurationRegisterDescription(index=127, mask=0x80000, shift=19),
+        "PACK_CONFIG18_exp_threshold_en": ConfigurationRegisterDescription(index=127, mask=0x100000, shift=20),
+        "PACK_CONFIG18_pack_l1_acc_disable_pack_zero_flag": ConfigurationRegisterDescription(
+            index=127, mask=0x600000, shift=21
+        ),
+        "PACK_CONFIG18_reserved_2": ConfigurationRegisterDescription(index=127, mask=0x800000, shift=23),
+        "PACK_CONFIG18_exp_threshold": ConfigurationRegisterDescription(index=127, mask=0xFF000000, shift=24),
         # REST
         "DISABLE_RISC_BP_Disable_main": ConfigurationRegisterDescription(index=2, mask=0x400000, shift=22),
         "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(index=2, mask=0x3800000, shift=23),
@@ -192,6 +280,8 @@ class WormholeDevice(tt_device.Device):
         if register_name in WormholeDevice.__debug_register_map:
             return WormholeDevice.__debug_register_map[register_name]
         return None
+
+    # UNPACKER GETTERS
 
     def get_alu_config(self, debug_tensix: TensixDebug) -> list[dict]:
         alu_config = {}
@@ -259,8 +349,7 @@ class WormholeDevice(tt_device.Device):
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_digest_type", tile_descriptor1, start)
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_digest_size", tile_descriptor1, start)
 
-        tile_descriptor = [tile_descriptor0, tile_descriptor1]
-        return tile_descriptor
+        return [tile_descriptor0, tile_descriptor1]
 
     def get_unpack_config(self, debug_tensix: TensixDebug) -> list[dict]:
         unpack_config0 = {}
@@ -316,5 +405,98 @@ class WormholeDevice(tt_device.Device):
         debug_tensix.get_config_field("UNPACK_CONFIG1_fifo_size", unpack_config1, start, True)
         debug_tensix.get_config_field("UNPACK_CONFIG1_reserved_5", unpack_config1, start)
 
-        unpack_config = [unpack_config0, unpack_config1]
-        return unpack_config
+        return [unpack_config0, unpack_config1]
+
+    def get_pack_config(self, debug_tensix: TensixDebug):
+        pack_config0 = {}
+        pack_config1 = {}
+        pack_config2 = {}
+        pack_config3 = {}
+
+        start = 14  # ignores field name prefix
+
+        # REG_ID = 1
+        debug_tensix.get_config_field("PACK_CONFIG01_row_ptr_section_size", pack_config0, start, True)
+        debug_tensix.get_config_field("PACK_CONFIG01_exp_section_size", pack_config0, start, True)
+        debug_tensix.get_config_field("PACK_CONFIG01_l1_dest_addr", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_uncompress", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_add_l1_dest_addr_offset", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_reserved_0", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_out_data_format", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_in_data_format", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_reserved_1", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_src_if_sel", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_pack_per_xy_plane", pack_config0, start, True)
+        debug_tensix.get_config_field("PACK_CONFIG01_l1_src_addr", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_downsample_mask", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_downsample_shift_count", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_read_mode", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_exp_threshold_en", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_pack_l1_acc_disable_pack_zero_flag", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_reserved_2", pack_config0, start)
+        debug_tensix.get_config_field("PACK_CONFIG01_exp_threshold", pack_config0, start, True)
+
+        # REG_ID = 2
+        debug_tensix.get_config_field("PACK_CONFIG08_row_ptr_section_size", pack_config1, start, True)
+        debug_tensix.get_config_field("PACK_CONFIG08_exp_section_size", pack_config1, start, True)
+        debug_tensix.get_config_field("PACK_CONFIG08_l1_dest_addr", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_uncompress", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_add_l1_dest_addr_offset", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_reserved_0", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_out_data_format", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_in_data_format", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_reserved_1", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_src_if_sel", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_pack_per_xy_plane", pack_config1, start, True)
+        debug_tensix.get_config_field("PACK_CONFIG08_l1_src_addr", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_downsample_mask", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_downsample_shift_count", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_read_mode", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_exp_threshold_en", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_pack_l1_acc_disable_pack_zero_flag", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_reserved_2", pack_config1, start)
+        debug_tensix.get_config_field("PACK_CONFIG08_exp_threshold", pack_config1, start, True)
+
+        # REG_ID = 3
+        debug_tensix.get_config_field("PACK_CONFIG11_row_ptr_section_size", pack_config2, start, True)
+        debug_tensix.get_config_field("PACK_CONFIG11_exp_section_size", pack_config2, start, True)
+        debug_tensix.get_config_field("PACK_CONFIG11_l1_dest_addr", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_uncompress", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_add_l1_dest_addr_offset", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_reserved_0", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_out_data_format", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_in_data_format", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_reserved_1", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_src_if_sel", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_pack_per_xy_plane", pack_config2, start, True)
+        debug_tensix.get_config_field("PACK_CONFIG11_l1_src_addr", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_downsample_mask", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_downsample_shift_count", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_read_mode", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_exp_threshold_en", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_pack_l1_acc_disable_pack_zero_flag", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_reserved_2", pack_config2, start)
+        debug_tensix.get_config_field("PACK_CONFIG11_exp_threshold", pack_config2, start, True)
+
+        # REG_ID = 4
+        debug_tensix.get_config_field("PACK_CONFIG18_row_ptr_section_size", pack_config3, start, True)
+        debug_tensix.get_config_field("PACK_CONFIG18_exp_section_size", pack_config3, start, True)
+        debug_tensix.get_config_field("PACK_CONFIG18_l1_dest_addr", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_uncompress", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_add_l1_dest_addr_offset", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_reserved_0", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_out_data_format", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_in_data_format", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_reserved_1", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_src_if_sel", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_pack_per_xy_plane", pack_config3, start, True)
+        debug_tensix.get_config_field("PACK_CONFIG18_l1_src_addr", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_downsample_mask", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_downsample_shift_count", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_read_mode", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_exp_threshold_en", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_pack_l1_acc_disable_pack_zero_flag", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_reserved_2", pack_config3, start)
+        debug_tensix.get_config_field("PACK_CONFIG18_exp_threshold", pack_config3, start, True)
+
+        return [pack_config0, pack_config1, pack_config2, pack_config3]

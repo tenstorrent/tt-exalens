@@ -376,6 +376,8 @@ class Device(TTObject):
             if rst_reg != ALL_SOFT_RESET:
                 util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 
+    # UNPACKER GETTERS
+
     @abstractmethod
     def get_unpack_tile_descriptor(self) -> list[dict]:
         pass
@@ -386,6 +388,12 @@ class Device(TTObject):
 
     @abstractmethod
     def get_alu_config(self) -> list[dict]:
+        pass
+
+    # PACKER GETTERS
+
+    @abstractmethod
+    def get_pack_config(self) -> list[dict]:
         pass
 
     @abstractmethod

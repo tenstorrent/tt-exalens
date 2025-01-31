@@ -205,8 +205,7 @@ class GrayskullDevice(tt_device.Device):
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_digest_type", tile_descriptor1, start)
         debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_digest_size", tile_descriptor1, start)
 
-        tile_descriptor = [tile_descriptor0, tile_descriptor1]
-        return tile_descriptor
+        return [tile_descriptor0, tile_descriptor1]
 
     def get_unpack_config(self, debug_tensix: TensixDebug) -> list[dict]:
         unpack_config0 = {}
@@ -250,5 +249,4 @@ class GrayskullDevice(tt_device.Device):
         debug_tensix.get_config_field("UNPACK_CONFIG1_limit_addr", unpack_config0, start)
         debug_tensix.get_config_field("UNPACK_CONFIG1_fifo_size", unpack_config0, start)
 
-        unpack_config = [unpack_config0, unpack_config1]
-        return unpack_config
+        return [unpack_config0, unpack_config1]
