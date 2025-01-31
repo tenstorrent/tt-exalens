@@ -44,6 +44,23 @@ def dict_list_to_table(dicts: list[dict], register_name: str) -> str:
     return tabulate.tabulate(data, headers=headers, tablefmt="grid")
 
 
+def join_tables_side_by_side(tables: list[str]) -> str:
+    # Split each table into rows by lines
+    split_tables = [table.split("\n") for table in tables]
+
+    # Find the maximum number of rows across all tables
+    max_rows = max(len(table) for table in split_tables)
+
+    # Pad each table with empty lines to ensure equal row count
+    padded_tables = [table + [" " * len(table[0])] * (max_rows - len(table)) for table in split_tables]
+
+    # Combine the rows of all tables side by side
+    side_by_side = ["   ".join(row) for row in zip(*padded_tables)]
+
+    # Join all rows into a single string
+    return "\n".join(side_by_side)
+
+
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = tt_commands.tt_docopt(
         command_metadata["description"],
@@ -60,9 +77,12 @@ def run(cmd_text, context, ui_state: UIState = None):
             unpack_config = device.get_unpack_config(debug_tensix)
             pack_config = device.get_pack_config(debug_tensix)
 
-            print(dict_list_to_table(alu_config, "ALU CONFIG"))
-            print(dict_list_to_table(tile_descriptor, "TILE DESCRIPTOR"))
-            print(dict_list_to_table(unpack_config, "UNPACK CONFIG"))
-            print(dict_list_to_table(pack_config, "PACK CONFIG"))
+            alu_config_table = dict_list_to_table(alu_config, "ALU CONFIG")
+            tile_descriptor_table = dict_list_to_table(tile_descriptor, "TILE DESCRIPTOR")
+            unpack_config_table = dict_list_to_table(unpack_config, "UNPACK CONFIG")
+            pack_config_table = dict_list_to_table(pack_config, "PACK CONFIG")
+
+            print(join_tables_side_by_side([alu_config_table, tile_descriptor_table, unpack_config_table]))
+            print(pack_config_table)
 
     return None
