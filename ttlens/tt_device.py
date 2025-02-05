@@ -1,14 +1,19 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+
+from abc import abstractmethod
+from copy import deepcopy
+from dataclasses import dataclass, replace
 from functools import cached_property
 from typing import List, Sequence, Tuple
+
 from tabulate import tabulate
+
 from ttlens.tt_lens_context import Context
 from ttlens.tt_object import TTObject
 from ttlens import tt_util as util
 from ttlens.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
-from abc import abstractmethod
 from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device
 
@@ -22,22 +27,34 @@ class TensixInstructions:
                 setattr(self.__class__, func_name, static_method)
 
 
+@dataclass
 class TensixRegisterDescription:
-    def __init__(self, address: int, mask: int = 0xFFFFFFFF, shift: int = 0):
-        self.address = address
-        self.mask = mask
-        self.shift = shift
+    address: int = 0
+    mask: int = 0xFFFFFFFF
+    shift: int = 0
+
+    def clone(self, offset: int = 0):
+        new_instance = deepcopy(self)
+        new_instance.address += offset
+        return new_instance
 
 
+@dataclass
 class DebugRegisterDescription(TensixRegisterDescription):
-    def __init__(self, address: int, mask: int = 0xFFFFFFFF, shift: int = 0):
-        super().__init__(address, mask, shift)
+    pass
 
 
+@dataclass
 class ConfigurationRegisterDescription(TensixRegisterDescription):
-    def __init__(self, index: int, mask: int = 0xFFFFFFFF, shift: int = 0, base_address=0):
-        super().__init__(base_address + index * 4, mask, shift)
-        self.index = index
+    index: int = 0
+
+    def __post_init__(self):
+        self.address = self.address + self.index * 4
+
+
+@dataclass
+class NocStatusRegisterDescription(TensixRegisterDescription):
+    pass
 
 
 #
@@ -377,39 +394,23 @@ class Device(TTObject):
                 util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 
     @abstractmethod
-    def get_tensix_configuration_register_base(self) -> int:
+    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:
         pass
 
     @abstractmethod
-    def get_tenxis_debug_register_base(self) -> int:
-        pass
-
-    @abstractmethod
-    def get_configuration_register_description(self, register_name: str) -> ConfigurationRegisterDescription:
-        pass
-
-    @abstractmethod
-    def get_debug_register_description(self, register_name: str) -> DebugRegisterDescription:
+    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
         pass
 
     def get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
-        register_description = self.get_configuration_register_description(register_name)
+        register_description = self._get_tensix_register_description(register_name)
         if register_description != None:
-            base_register_address = self.get_tensix_configuration_register_base()
-            return ConfigurationRegisterDescription(
-                register_description.index, register_description.mask, register_description.shift, base_register_address
-            )
-        else:
-            register_description = self.get_debug_register_description(register_name)
-            if register_description != None:
-                base_register_address = self.get_tenxis_debug_register_base()
-                return DebugRegisterDescription(
-                    base_register_address + register_description.address,
-                    register_description.mask,
-                    register_description.shift,
-                )
+            base_address = self._get_tensix_register_base_address(register_description)
+            if base_address != None:
+                return register_description.clone(base_address)
             else:
-                raise ValueError(f"Unknown tensix register name: {register_name}")
+                raise ValueError(f"Unknown tensix register base address for register: {register_name}")
+        else:
+            raise ValueError(f"Unknown tensix register name: {register_name}")
 
     def get_tensix_register_address(self, register_name: str) -> int:
         description = self.get_tensix_register_description(register_name)

@@ -2,11 +2,16 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from ttlens import tt_util as util
-from ttlens import tt_device
-from ttlens.tt_device import ConfigurationRegisterDescription, DebugRegisterDescription
+from ttlens.tt_device import (
+    TensixInstructions,
+    Device,
+    ConfigurationRegisterDescription,
+    DebugRegisterDescription,
+    TensixRegisterDescription,
+)
 
 
-class BlackholeInstructions(tt_device.TensixInstructions):
+class BlackholeInstructions(TensixInstructions):
     def __init__(self):
         import ttlens.tt_blackhole_ops as ops
 
@@ -16,7 +21,7 @@ class BlackholeInstructions(tt_device.TensixInstructions):
 #
 # Device
 #
-class BlackholeDevice(tt_device.Device):
+class BlackholeDevice(Device):
     # Physical location mapping. Physical coordinates are the geografical coordinates on a chip's die.
     DIE_X_TO_NOC_0_X = [0, 1, 16, 2, 15, 3, 14, 4, 13, 5, 12, 6, 11, 7, 10, 8, 9]
     DIE_Y_TO_NOC_0_Y = [0, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6]
@@ -35,6 +40,10 @@ class BlackholeDevice(tt_device.Device):
     NOC_ARC_CSM_DATA_BASE_ADDR = 0x10000000
     NOC_ARC_ROM_DATA_BASE_ADDR = 0x80000000
 
+    # Register base addresses
+    CONFIGURATION_REGISTER_BASE = 0xFFEF0000
+    DEBUG_REGISTER_BASE = 0xFFB12000
+
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(
             id,
@@ -45,27 +54,29 @@ class BlackholeDevice(tt_device.Device):
         )
         self.instructions = BlackholeInstructions()
 
-    def get_tensix_configuration_register_base(self) -> int:
-        return 0xFFEF0000
+    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
+        """Overrides the base class method to provide register descriptions for Blackhole device."""
+        if register_name in BlackholeDevice.__register_map:
+            return BlackholeDevice.__register_map[register_name]
+        else:
+            return None
 
-    __configuration_register_map = {
+    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:
+        """Overrides the base class method to provide register base addresses for Blackhole device."""
+        if isinstance(register_description, ConfigurationRegisterDescription):
+            return BlackholeDevice.CONFIGURATION_REGISTER_BASE
+        elif isinstance(register_description, DebugRegisterDescription):
+            return BlackholeDevice.DEBUG_REGISTER_BASE
+        else:
+            return None
+
+    __register_map = {
         "ALU_FORMAT_SPEC_REG2_Dstacc": ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
         "ALU_ACC_CTRL_Fp32_enabled": ConfigurationRegisterDescription(index=1, mask=0x20000000, shift=29),
         "DISABLE_RISC_BP_Disable_main": ConfigurationRegisterDescription(index=2, mask=0x400000, shift=22),
         "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(index=2, mask=0x3800000, shift=23),
         "DISABLE_RISC_BP_Disable_ncrisc": ConfigurationRegisterDescription(index=2, mask=0x4000000, shift=26),
         "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=185, mask=0x1F),
-    }
-
-    def get_configuration_register_description(self, register_name: str) -> ConfigurationRegisterDescription:
-        if register_name in BlackholeDevice.__configuration_register_map:
-            return BlackholeDevice.__configuration_register_map[register_name]
-        return None
-
-    def get_tenxis_debug_register_base(self) -> int:
-        return 0xFFB12000
-
-    __debug_register_map = {
         "RISCV_DEBUG_REG_CFGREG_RD_CNTL": DebugRegisterDescription(address=0x58),
         "RISCV_DEBUG_REG_DBG_RD_DATA": DebugRegisterDescription(address=0x5C),
         "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN": DebugRegisterDescription(address=0x60),
@@ -97,8 +108,3 @@ class BlackholeDevice(tt_device.Device):
         ),  # Old name from configuration register
         "RISCV_DEBUG_REG_NCRISC_RESET_PC_OVERRIDE": DebugRegisterDescription(address=0x23C, mask=0x1),  # New name
     }
-
-    def get_debug_register_description(self, register_name: str) -> DebugRegisterDescription:
-        if register_name in BlackholeDevice.__debug_register_map:
-            return BlackholeDevice.__debug_register_map[register_name]
-        return None
