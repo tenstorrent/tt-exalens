@@ -395,7 +395,7 @@ class Device(TTObject):
         if register_description != None:
             base_address = self._get_tensix_register_base_address(register_description)
             if base_address != None:
-                return replace(register_description, base_address + register_description.address)
+                return replace(register_description, address=base_address + register_description.address)
             else:
                 raise ValueError(f"Unknown tensix register base address for register: {register_name}")
         else:
