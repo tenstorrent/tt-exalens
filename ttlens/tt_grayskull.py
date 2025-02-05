@@ -10,6 +10,7 @@ from ttlens.tt_device import (
     TensixRegisterDescription,
 )
 
+
 class GrayskullInstructions(TensixInstructions):
     def __init__(self):
         import ttlens.tt_grayskull_ops as ops

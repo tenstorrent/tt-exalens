@@ -25,15 +25,18 @@ class TensixInstructions:
                 static_method = staticmethod(func)
                 setattr(self.__class__, func_name, static_method)
 
+
 @dataclass
 class TensixRegisterDescription:
     address: int = 0
     mask: int = 0xFFFFFFFF
     shift: int = 0
 
+
 @dataclass
 class DebugRegisterDescription(TensixRegisterDescription):
     pass
+
 
 @dataclass
 class ConfigurationRegisterDescription(TensixRegisterDescription):
@@ -42,9 +45,11 @@ class ConfigurationRegisterDescription(TensixRegisterDescription):
     def __post_init__(self):
         self.address = self.address + self.index * 4
 
+
 @dataclass
 class NocStatusRegisterDescription(TensixRegisterDescription):
     pass
+
 
 #
 # Device class: generic API for talking to specific devices. This class is the parent of specific

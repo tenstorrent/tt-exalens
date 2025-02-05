@@ -11,6 +11,7 @@ from ttlens.tt_device import (
     NocStatusRegisterDescription,
 )
 
+
 class WormholeInstructions(TensixInstructions):
     def __init__(self):
         import ttlens.tt_wormhole_ops as ops
@@ -48,7 +49,6 @@ class WormholeDevice(Device):
     DEBUG_REGISTER_BASE = 0xFFB12000
     NOC_STATUS_REGISTER_BASE = 0xFFB22000
 
-
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(
             id,
@@ -61,7 +61,6 @@ class WormholeDevice(Device):
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         return x >= 16 and y >= 16
-
 
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
         """Overrides the base class method to provide register descriptions for Wormhole device."""
@@ -94,7 +93,6 @@ class WormholeDevice(Device):
         "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=161, mask=0x7),
         "NCRISC_RESET_PC_PC": ConfigurationRegisterDescription(index=162),
         "NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=163, mask=0x1),
-
         "RISCV_DEBUG_REG_CFGREG_RD_CNTL": DebugRegisterDescription(address=0x58),
         "RISCV_DEBUG_REG_DBG_RD_DATA": DebugRegisterDescription(address=0x5C),
         "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN": DebugRegisterDescription(address=0x60),
@@ -109,7 +107,6 @@ class WormholeDevice(Device):
         "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1": DebugRegisterDescription(address=0xA4),
         "RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS": DebugRegisterDescription(address=0xA8),
         "RISCV_DEBUG_REG_SOFT_RESET_0": DebugRegisterDescription(address=0x1B0),
-
         "NIU_MST_ATOMIC_RESP_RECEIVED": NocStatusRegisterDescription(address=0x0),
         "NIU_MST_WR_ACK_RECEIVED": NocStatusRegisterDescription(address=0x4),
         "NIU_MST_RD_RESP_RECEIVED": NocStatusRegisterDescription(address=0x8),

@@ -10,6 +10,7 @@ from ttlens.tt_device import (
     TensixRegisterDescription,
 )
 
+
 class BlackholeInstructions(TensixInstructions):
     def __init__(self):
         import ttlens.tt_blackhole_ops as ops
