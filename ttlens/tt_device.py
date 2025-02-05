@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from abc import abstractmethod
+from copy import deepcopy
 from dataclasses import dataclass, replace
 from functools import cached_property
 from typing import List, Sequence, Tuple
@@ -31,6 +32,11 @@ class TensixRegisterDescription:
     address: int = 0
     mask: int = 0xFFFFFFFF
     shift: int = 0
+
+    def clone(self, offset: int = 0):
+        new_instance = deepcopy(self)
+        new_instance.address += offset
+        return new_instance
 
 
 @dataclass
@@ -400,7 +406,7 @@ class Device(TTObject):
         if register_description != None:
             base_address = self._get_tensix_register_base_address(register_description)
             if base_address != None:
-                return replace(register_description, address=base_address + register_description.address)
+                return register_description.clone(base_address)
             else:
                 raise ValueError(f"Unknown tensix register base address for register: {register_name}")
         else:
