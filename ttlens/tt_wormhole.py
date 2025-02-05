@@ -65,7 +65,6 @@ class WormholeDevice(Device):
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
         """Overrides the base class method to provide register descriptions for Wormhole device."""
         if register_name in WormholeDevice.__register_map:
-            print(WormholeDevice.__register_map[register_name])
             return WormholeDevice.__register_map[register_name]
         return None
 
