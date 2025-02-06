@@ -9,6 +9,8 @@ from ttlens.tt_device import (
     DebugRegisterDescription,
     TensixRegisterDescription,
     NocStatusRegisterDescription,
+    NocConfigurationRegisterDescription,
+    NocControlRegisterDescription,
 )
 
 
@@ -47,7 +49,9 @@ class WormholeDevice(Device):
 
     CONFIGURATION_REGISTER_BASE = 0xFFEF0000
     DEBUG_REGISTER_BASE = 0xFFB12000
-    NOC_STATUS_REGISTER_BASE = 0xFFB22000
+    NOC_CONTROL_REGISTER_BASE = 0xFFB20000
+    NOC_CONFIGURATION_REGISTER_BASE = 0xFFB20100
+    NOC_STATUS_REGISTER_BASE = 0xFFB20200
 
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(
@@ -76,6 +80,8 @@ class WormholeDevice(Device):
             return WormholeDevice.DEBUG_REGISTER_BASE
         elif isinstance(register_description, NocStatusRegisterDescription):
             return WormholeDevice.NOC_STATUS_REGISTER_BASE
+        elif isinstance(register_description, NocConfigurationRegisterDescription):
+            return WormholeDevice.NOC_CONFIGURATION_REGISTER_BASE
         else:
             return None
 
@@ -106,6 +112,7 @@ class WormholeDevice(Device):
         "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1": DebugRegisterDescription(address=0xA4),
         "RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS": DebugRegisterDescription(address=0xA8),
         "RISCV_DEBUG_REG_SOFT_RESET_0": DebugRegisterDescription(address=0x1B0),
+        # NOC Registers
         "NIU_MST_ATOMIC_RESP_RECEIVED": NocStatusRegisterDescription(address=0x0),
         "NIU_MST_WR_ACK_RECEIVED": NocStatusRegisterDescription(address=0x4),
         "NIU_MST_RD_RESP_RECEIVED": NocStatusRegisterDescription(address=0x8),
@@ -122,6 +129,8 @@ class WormholeDevice(Device):
         "NIU_MST_POSTED_WR_REQ_STARTED": NocStatusRegisterDescription(address=0x34),
         "NIU_MST_RD_REQ_STARTED": NocStatusRegisterDescription(address=0x38),
         "NIU_MST_NONPOSTED_ATOMIC_STARTED": NocStatusRegisterDescription(address=0x3C),
+        "NIU_MST_REQS_OUTSTANDING_ID": NocStatusRegisterDescription(address=0x40),  # 16 registers
+        "NIU_MST_WRITE_REQS_OUTGOING_ID": NocStatusRegisterDescription(address=0x80),  # 16 registers
         "NIU_SLV_ATOMIC_RESP_SENT": NocStatusRegisterDescription(address=0xC0),
         "NIU_SLV_WR_ACK_SENT": NocStatusRegisterDescription(address=0xC4),
         "NIU_SLV_RD_RESP_SENT": NocStatusRegisterDescription(address=0xC8),
@@ -136,4 +145,38 @@ class WormholeDevice(Device):
         "NIU_SLV_POSTED_WR_REQ_RECEIVED": NocStatusRegisterDescription(address=0xEC),
         "NIU_SLV_NONPOSTED_WR_REQ_STARTED": NocStatusRegisterDescription(address=0xF0),
         "NIU_SLV_POSTED_WR_REQ_STARTED": NocStatusRegisterDescription(address=0xF4),
+        "NIU_CFG_0": NocConfigurationRegisterDescription(address=0x0),
+        "ROUTER_CFG_0": NocConfigurationRegisterDescription(address=0x4),
+        "ROUTER_CFG_1": NocConfigurationRegisterDescription(address=0x8),
+        "ROUTER_CFG_2": NocConfigurationRegisterDescription(address=0xC),
+        "ROUTER_CFG_3": NocConfigurationRegisterDescription(address=0x10),
+        "ROUTER_CFG_4": NocConfigurationRegisterDescription(address=0x14),
+        "ROUTER_CFG_5": NocConfigurationRegisterDescription(address=0x18),
+        "NOC_X_ID_TRANSLATE_TABLE_0": NocConfigurationRegisterDescription(address=0x1C),
+        "NOC_X_ID_TRANSLATE_TABLE_1": NocConfigurationRegisterDescription(address=0x20),
+        "NOC_X_ID_TRANSLATE_TABLE_2": NocConfigurationRegisterDescription(address=0x24),
+        "NOC_X_ID_TRANSLATE_TABLE_3": NocConfigurationRegisterDescription(address=0x28),
+        "NOC_Y_ID_TRANSLATE_TABLE_0": NocConfigurationRegisterDescription(address=0x2C),
+        "NOC_Y_ID_TRANSLATE_TABLE_1": NocConfigurationRegisterDescription(address=0x30),
+        "NOC_Y_ID_TRANSLATE_TABLE_2": NocConfigurationRegisterDescription(address=0x34),
+        "NOC_Y_ID_TRANSLATE_TABLE_3": NocConfigurationRegisterDescription(address=0x38),
+        "NOC_ID_LOGICAL": NocConfigurationRegisterDescription(address=0x3C),
+        "NOC_TARG_ADDR_LO": NocControlRegisterDescription(address=0x0),
+        "NOC_TARG_ADDR_MID": NocControlRegisterDescription(address=0x4),
+        "NOC_TARG_ADDR_HI": NocControlRegisterDescription(address=0x8),
+        "NOC_RET_ADDR_LO": NocControlRegisterDescription(address=0xC),
+        "NOC_RET_ADDR_MID": NocControlRegisterDescription(address=0x10),
+        "NOC_RET_ADDR_HI": NocControlRegisterDescription(address=0x14),
+        "NOC_PACKET_TAG": NocControlRegisterDescription(address=0x18),
+        "NOC_CTRL": NocControlRegisterDescription(address=0x1C),
+        "NOC_AT_LEN_BE": NocControlRegisterDescription(address=0x20),
+        "NOC_AT_DATA": NocControlRegisterDescription(address=0x24),
+        "NOC_CMD_CTRL": NocControlRegisterDescription(address=0x28),
+        "NOC_NODE_ID": NocControlRegisterDescription(address=0x2C),
+        "NOC_ENDPOINT_ID": NocControlRegisterDescription(address=0x30),
+        "NUM_MEM_PARITY_ERR": NocControlRegisterDescription(address=0x40),
+        "NUM_HEADER_1B_ERR": NocControlRegisterDescription(address=0x44),
+        "NUM_HEADER_2B_ERR": NocControlRegisterDescription(address=0x48),
+        "ECC_CTRL": NocControlRegisterDescription(address=0x4C),
+        "NOC_CLEAR_OUTSTANDING_REQ_CNT": NocControlRegisterDescription(address=0x50),
     }
