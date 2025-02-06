@@ -38,13 +38,16 @@ Examples:
   -h --help      Show this screen.
 """
 from functools import cached_property
+import os
 import re
 from typing import Dict
 
 try:
     from elftools.elf.elffile import ELFFile
-    from elftools.dwarf.die import DIE as DWARF_DIE
+    from elftools.dwarf.callframe import CIE, FDE
     from elftools.dwarf.compileunit import CompileUnit as DWARF_CU
+    from elftools.dwarf.dwarfinfo import DWARFInfo
+    from elftools.dwarf.die import DIE as DWARF_DIE
     from elftools.elf.enums import ENUM_ST_INFO_TYPE
     from docopt import docopt
     from tabulate import tabulate
@@ -78,8 +81,106 @@ def strip_DW_(s):
     return re.sub(r"^DW_[^_]*_", "", s)
 
 
+class MY_DWARF:
+    def __init__(self, dwarf: DWARFInfo):
+        self.dwarf = dwarf
+        self._cus: Dict[int, MY_CU] = {}
+
+    @cached_property
+    def range_lists(self):
+        return self.dwarf.range_lists()
+
+    def get_cu(self, dwarf_cu: DWARF_CU):
+        cu = self._cus.get(id(dwarf_cu))
+        if cu == None:
+            cu = MY_CU(self, dwarf_cu)
+            self._cus[id(dwarf_cu)] = cu
+        return cu
+
+    def iter_CUs(self):
+        for cu in self.dwarf.iter_CUs():
+            yield self.get_cu(cu)
+
+    def find_DIE_at_offset(self, offset):
+        """
+        Given an offset, find the DIE that has that offset
+        """
+        for cu in self.iter_CUs():
+            die = cu.find_DIE_at_local_offset(offset - cu.dwarf_cu.cu_offset)
+            if die:
+                return die
+        return None
+
+    def find_function_by_address(self, address):
+        """
+        Given an address, find the function that contains that address. Goes through all CUs and all DIEs and all inlined functions.
+        """
+        # Try to find CU that contains this address
+        for cu in self.iter_CUs():
+            # Top DIE should contain the address
+            top_die = cu.top_DIE
+            for range in top_die.address_ranges:
+                if range[0] <= address < range[1]:
+                    # Try to recurse until we find last child that contains the address
+                    result_die = top_die
+                    found = True
+                    while found:
+                        found = False
+                        for child in result_die.iter_children():
+                            for range in child.address_ranges:
+                                if range[0] <= address < range[1]:
+                                    result_die = child
+                                    found = True
+                                    break
+                    return result_die
+
+        # We failed to find the function
+        return None
+
+    @cached_property
+    def file_lines_ranges(self):
+        result = dict()
+        for cu in self.iter_CUs():
+            lineprog = cu.line_program
+            delta = 1 if lineprog.header.version < 5 else 0
+            previous_entry = None
+            for entry in lineprog.get_entries():
+                if entry.state is None:
+                    continue
+
+                file_entry = lineprog["file_entry"][entry.state.file - delta]
+                directory = lineprog["include_directory"][file_entry.dir_index].decode("utf-8")
+                filename = file_entry.name.decode("utf-8")
+                filename = os.path.join(directory, filename)
+                line = entry.state.line
+                column = entry.state.column
+                current_entry = (entry.state.address, filename, line, column)
+                if previous_entry is not None:
+                    result[(previous_entry[0], current_entry[0])] = (
+                        previous_entry[1],
+                        previous_entry[2],
+                        previous_entry[3],
+                    )
+                previous_entry = current_entry
+            if previous_entry is not None:
+                result[(previous_entry[0], previous_entry[0] + 4)] = (
+                    previous_entry[1],
+                    previous_entry[2],
+                    previous_entry[3],
+                )
+        return result
+
+    def find_file_line_by_address(self, address):
+        ranges = self.file_lines_ranges
+        for (start, end), info in ranges.items():
+            if start <= address < end:
+                return info
+        return None
+
+
 class MY_CU:
-    def __init__(self, dwarf_cu: DWARF_CU):
+    def __init__(self, dwarf: MY_DWARF, dwarf_cu: DWARF_CU):
+        self.dwarf = dwarf
         self.dwarf_cu = dwarf_cu
         self.offsets: Dict[int, MY_DIE] = {}
         self._dies: Dict[int, MY_DIE] = {}
@@ -96,6 +197,10 @@ class MY_CU:
     @cached_property
     def top_DIE(self):
         return self.get_die(self.dwarf_cu.get_top_DIE())
+
+    @cached_property
+    def line_program(self):
+        return self.dwarf.dwarf.line_program_for_CU(self.dwarf_cu)
 
     def iter_DIEs(self):
         for die in self.dwarf_cu.iter_DIEs():
@@ -189,13 +294,15 @@ class MY_DIE:
             pass  # Just skip these tags
         elif self.tag == "DW_TAG_namespace":
             return "type"
+        elif self.tag == "DW_TAG_inlined_subroutine":
+            return "inlined_function"
         elif (
             self.tag == "DW_TAG_imported_declaration"
             or self.tag == "DW_TAG_imported_module"
             or self.tag == "DW_TAG_template_type_param"
             or self.tag == "DW_TAG_template_value_param"
             or self.tag == "DW_TAG_lexical_block"
-            or self.tag == "DW_TAG_inlined_subroutine"
+            or self.tag == "DW_TAG_call_site"
             or self.tag == "DW_TAG_GNU_call_site"
             or self.tag == "DW_TAG_GNU_template_parameter_pack"
             or self.tag == "DW_TAG_GNU_formal_parameter_pack"
@@ -351,10 +458,43 @@ class MY_DIE:
                 name = f"{self.dereference_type.name}*"
         elif self.tag_is("reference_type"):
             name = f"{self.dereference_type.name}&"
+        elif "DW_AT_abstract_origin" in self.attributes:
+            offset = self.attributes["DW_AT_abstract_origin"].value
+            name = self.cu.dwarf.find_DIE_at_offset(offset).name
         else:
             # We can't figure out the name of this variable. Just give it a name based on the ELF offset.
             name = f"{self.tag}-{hex(self.offset)}"
         return name
+
+    @cached_property
+    def address_ranges(self):
+        if "DW_AT_low_pc" in self.attributes and "DW_AT_high_pc" in self.attributes:
+            return [
+                (
+                    self.attributes["DW_AT_low_pc"].value,
+                    self.attributes["DW_AT_low_pc"].value + self.attributes["DW_AT_high_pc"].value,
+                )
+            ]
+        elif "DW_AT_ranges" in self.attributes:
+            ranges = self.cu.dwarf.range_lists.get_range_list_at_offset(self.attributes["DW_AT_ranges"].value)
+            return [(r.begin_offset, r.end_offset) for r in ranges]
+        return []
+
+    @cached_property
+    def call_file_info(self):
+        file = None
+        line = None
+        column = None
+        if "DW_AT_call_file" in self.attributes:
+            file_entry = self.cu.line_program["file_entry"][self.attributes["DW_AT_call_file"].value]
+            directory = self.cu.line_program["include_directory"][file_entry.dir_index].decode("utf-8")
+            file = file_entry.name.decode("utf-8")
+            file = os.path.join(directory, file)
+        if "DW_AT_call_line" in self.attributes:
+            line = self.attributes["DW_AT_call_line"].value
+        if "DW_AT_call_column" in self.attributes:
+            column = self.attributes["DW_AT_call_column"].value
+        return (file, line, column)
 
     def iter_children(self):
         """
@@ -440,10 +580,81 @@ def decode_file_line(dwarfinfo):
         for entry in lineprog.get_entries():
             if entry.state is None:
                 continue
-            filename = lineprog["file_entry"][entry.state.file - delta].name
+
+            file_entry = lineprog["file_entry"][entry.state.file - delta]
+            directory = lineprog["include_directory"][file_entry.dir_index].decode("utf-8")
+            filename = file_entry.name.decode("utf-8")
+            filename = os.path.join(directory, filename)
             line = entry.state.line
-            PC_to_fileline_map[entry.state.address] = (filename, line)
+            column = entry.state.column
+            PC_to_fileline_map[entry.state.address] = (filename, line, column)
     return PC_to_fileline_map
+
+
+class FrameDescription:
+    def __init__(self, pc: int, fde: FDE, risc_debug):
+        self.pc = pc
+        self.fde = fde
+        self.risc_debug = risc_debug
+
+        # Go through fde and try to find one that fits the pc
+        decoded = self.fde.get_decoded()
+        for entry in decoded.table:
+            if entry["pc"] > self.pc:
+                break
+            self.current_fde_entry = entry
+
+    def read_register(self, register_index: int, cfa: int):
+        if self.current_fde_entry is not None and register_index in self.current_fde_entry:
+            register_rule = self.current_fde_entry[register_index]
+            if register_rule.type == "OFFSET":
+                address = cfa + register_rule.arg
+            else:
+                address = None
+            if address is not None:
+                return self.risc_debug.read_memory(address)
+        return self.risc_debug.read_gpr(register_index)
+
+    def read_previous_cfa(self, current_cfa: int | None = None):
+        if self.current_fde_entry is not None and self.fde.cie is not None:
+            cfa_location = self.current_fde_entry["cfa"]
+            register_index = cfa_location.reg
+
+            # Check if it is first CFA
+            if current_cfa is None:
+                # We have rule on how to calculate CFA (register_value + offset)
+                return self.risc_debug.read_gpr(register_index) + cfa_location.offset
+            else:
+                # If register is not stored in the current frame, we can calculate it from the previous CFA
+                if not register_index in self.current_fde_entry:
+                    return current_cfa + cfa_location.offset
+
+                # Just read stored value of the register in current frame
+                return self.read_register(register_index, current_cfa)
+
+        # We don't know how to calculate CFA, return 0 which will stop callstack evaluation
+        return 0
+
+
+class FrameInfoProvider:
+    def __init__(self, dwarf_info):
+        self.dwarf_info = dwarf_info
+        self.fdes = []
+
+        # Check if we have dwarf_frame CFI section
+        if dwarf_info.has_CFI():
+            for entry in dwarf_info.CFI_entries():
+                if not isinstance(entry, FDE):
+                    continue
+                start_address = entry.header["initial_location"]
+                end_address = start_address + entry.header["address_range"]
+                self.fdes.append((start_address, end_address, entry))
+
+    def get_frame_description(self, pc, risc_debug) -> FrameDescription:
+        for start_address, end_address, fde in self.fdes:
+            if start_address <= pc < end_address:
+                return FrameDescription(pc, fde, risc_debug)
+        return None
 
 
 def decode_symbols(elf_file):
@@ -461,7 +672,7 @@ def decode_symbols(elf_file):
     return functions
 
 
-def parse_dwarf(dwarf):
+def parse_dwarf(dwarf: DWARFInfo):
     """
     Itaretes recursively over all the DIEs in the DWARF info and returns a dictionary
     with the following keys:
@@ -471,16 +682,16 @@ def parse_dwarf(dwarf):
         'enumerator' - all the enumerators in the DWARF info
         'PC' - mappings between PC values and source code locations
     """
+    my_dwarf = MY_DWARF(dwarf)
     recurse_dict = {
         "variable": dict(),
         "type": dict(),
         "member": dict(),
         "enumerator": dict(),
-        "file-line": dict(),
+        "dwarf": my_dwarf,
     }
 
-    for dwarf_cu in dwarf.iter_CUs():
-        cu = MY_CU(dwarf_cu)
+    for cu in my_dwarf.iter_CUs():
         top_DIE = cu.top_DIE
         cu_name = "N/A"
         if "DW_AT_name" in top_DIE.attributes:
@@ -490,8 +701,11 @@ def parse_dwarf(dwarf):
         # Process the names etc
         recurse_DIE(top_DIE, recurse_dict)
 
-        # Process the PC (program counter) values so we can map them to source code
-        recurse_dict["file-line"] = decode_file_line(dwarf)
+    # Process the PC (program counter) values so we can map them to source code
+    recurse_dict["file-line"] = decode_file_line(dwarf)
+
+    # Process frame info
+    recurse_dict["frame-info"] = FrameInfoProvider(dwarf)
 
     return recurse_dict
 
