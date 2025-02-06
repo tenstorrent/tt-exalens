@@ -56,6 +56,13 @@ class ConfigurationRegisterDescription(TensixRegisterDescription):
 class NocStatusRegisterDescription(TensixRegisterDescription):
     pass
 
+@dataclass
+class NocConfigurationRegisterDescription(TensixRegisterDescription):
+    pass
+
+@dataclass
+class NocControlRegisterDescription(TensixRegisterDescription):
+    pass
 
 #
 # Device class: generic API for talking to specific devices. This class is the parent of specific
