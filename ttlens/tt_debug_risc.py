@@ -1,14 +1,17 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from collections import namedtuple
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Union
-from ttlens.tt_lens_context import Context
-from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens import tt_util as util
 import os
-from contextlib import contextmanager
+
+from ttlens import tt_util as util
+from ttlens.tt_coordinate import OnChipCoordinate
+from ttlens.tt_lens_context import Context
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device, read_from_device, write_to_device
+from ttlens.tt_parse_elf import read_elf
 
 # Register address
 REG_STATUS = 0
@@ -231,9 +234,10 @@ class RiscDebugWatchpointState:
 
 
 class RiscDebug:
-    def __init__(self, location: RiscLoc, context, verbose=False):
+    def __init__(self, location: RiscLoc, context, verbose=False, enable_asserts=True):
         assert 0 <= location.risc_id <= 4, f"Invalid risc id({location.risc_id})"
         self.location = location
+        self.enable_asserts = enable_asserts
         self.CONTROL0_WRITE = 0x80010000 + (self.location.risc_id << 17)
         self.CONTROL0_READ = 0x80000000 + (self.location.risc_id << 17)
         self.verbose = verbose
@@ -263,13 +267,15 @@ class RiscDebug:
             return f"Unknown register {addr}"
 
     def __write(self, addr, data):
-        self.assert_not_in_reset()
+        if self.enable_asserts:
+            self.assert_not_in_reset()
         if self.verbose:
             util.DEBUG(f"{self.get_reg_name_for_address(addr)} <- WR   0x{data:08x}")
         write_words_to_device(self.location.loc, addr, data, self.location.loc._device._id, self.context)
 
     def __read(self, addr):
-        self.assert_not_in_reset()
+        if self.enable_asserts:
+            self.assert_not_in_reset()
         data = read_word_from_device(self.location.loc, addr, self.location.loc._device._id, self.context)
         if self.verbose:
             util.DEBUG(f"{self.get_reg_name_for_address(addr)} -> RD == 0x{data:08x}")
@@ -305,10 +311,11 @@ class RiscDebug:
             util.INFO(f"  __riscv_read({reg_addr})")
         self.__trigger_read(reg_addr)
 
-        if not self.__is_read_valid():
-            util.WARN(
-                f"Reading from RiscV debug registers failed (debug read valid bit is set to 0). Run `srs 0` to check if core is active."
-            )
+        if self.enable_asserts:
+            if not self.__is_read_valid():
+                util.WARN(
+                    f"Reading from RiscV debug registers failed (debug read valid bit is set to 0). Run `srs 0` to check if core is active."
+                )
         return self.__read(self.RISC_DBG_STATUS1)
 
     def enable_debug(self):
@@ -316,13 +323,16 @@ class RiscDebug:
             util.INFO("  enable_debug()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE)
 
+    def _halt_command(self):
+        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_HALT)
+
     def halt(self):
         if self.is_halted():
             util.WARN(f"Halt: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is already halted")
             return
         if self.verbose:
             util.INFO("  halt()")
-        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_HALT)
+        self._halt_command()
         assert self.is_halted(), f"Failed to halt {get_risc_name(self.location.risc_id)} core at {self.location.loc}"
 
     @contextmanager
@@ -407,6 +417,7 @@ class RiscDebug:
         )
         if new_reset_reg != reset_reg:
             util.ERROR(f"Error writing reset signal. Expected 0x{reset_reg:08x}, got 0x{new_reset_reg:08x}")
+        return reset_reg
 
     def assert_not_in_reset(self, message=""):
         """
@@ -448,7 +459,8 @@ class RiscDebug:
         self.__riscv_write(REG_COMMAND, 0x80000000 + COMMAND_WRITE_REGISTER)
 
     def read_memory(self, addr):
-        self.assert_halted()
+        if self.enable_asserts:
+            self.assert_halted()
         if self.verbose:
             util.INFO(f"  read_memory(0x{addr:08x})")
         self.__riscv_write(REG_COMMAND_ARG_0, addr)
@@ -459,7 +471,8 @@ class RiscDebug:
         return data
 
     def write_memory(self, addr, value):
-        self.assert_halted()
+        if self.enable_asserts:
+            self.assert_halted()
         if self.verbose:
             util.INFO(f"  write_memory(0x{addr:08x}, 0x{value:08x})")
         self.__riscv_write(REG_COMMAND_ARG_1, value)
@@ -511,12 +524,14 @@ class RiscDebug:
         self.write_configuration_register("RISCV_IC_INVALIDATE_InvalidateAll", 1 << self.location.risc_id)
 
     def read_configuration_register(self, register_name: str):
-        self.assert_halted()
+        if self.enable_asserts:
+            self.assert_halted()
         register = self.location.loc._device.get_tensix_register_description(register_name)
         return (self.read_memory(register.address) & register.mask) >> register.shift
 
     def write_configuration_register(self, register_name: str, value: int):
-        self.assert_halted()
+        if self.enable_asserts:
+            self.assert_halted()
         register = self.location.loc._device.get_tensix_register_description(register_name)
 
         # Speed optimization: if register mask is 0xffffffff, we can write directly to memory
@@ -824,7 +839,7 @@ class RiscLoader:
             return address
         return address
 
-    def load_elf(self, elf_path, loader_data: Union[str, int], loader_code: Union[str, int]):
+    def load_elf_sections(self, elf_path, loader_data: Union[str, int], loader_code: Union[str, int]):
         """
         Given an ELF file, this function loads the sections specified in SECTIONS_TO_LOAD to the
         memory of the RISC-V core. It also loads (into location 0) the jump instruction to the
@@ -891,14 +906,12 @@ class RiscLoader:
         self.context.elf_loaded(self.risc_debug.location.loc, self.risc_debug.location.risc_id, elf_path)
         return init_section_address
 
-    def run_elf(self, elf_path: str):
-        # Make sure risc is in reset
-        if not self.risc_debug.is_in_reset():
-            self.risc_debug.set_reset_signal(1)
+    def load_elf(self, elf_path: str):
+        # Risc must be in reset
         assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is not in reset."
 
         # Load elf file to the L1 memory; avoid writing to private sections
-        init_section_address = self.load_elf(elf_path, loader_data=".loader_init", loader_code=".loader_code")
+        init_section_address = self.load_elf_sections(elf_path, loader_data=".loader_init", loader_code=".loader_code")
         assert init_section_address is not None, "No .init section found in the ELF file"
 
         # Change core start address to the start of the .init section
@@ -919,7 +932,77 @@ class RiscLoader:
             # Change core start address
             self.set_risc_start_address(init_section_address)
 
+    def run_elf(self, elf_path: str):
+        # Make sure risc is in reset
+        if not self.risc_debug.is_in_reset():
+            self.risc_debug.set_reset_signal(1)
+
+        self.load_elf(elf_path)
+
         # Take risc out of reset
         self.risc_debug.set_reset_signal(0)
         assert not self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.location} is still in reset."
-        assert not self.risc_debug.is_halted(), f"RISC at location {self.risc_debug.location} is still halted."
+        assert (
+            not self.risc_debug.is_halted() or self.risc_debug.read_status().is_ebreak_hit
+        ), f"RISC at location {self.risc_debug.location} is still halted, but not because of ebreak."
+
+    def get_callstack(self, elf_path: str, limit: int = 100, stop_on_main: bool = True):
+        callstack = []
+        with self.risc_debug.ensure_halted():
+            elf = read_elf(self.context.server_ifc, elf_path)
+            pc = self.risc_debug.read_gpr(32)
+            frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
+            frame_pointer = frame_description.read_previous_cfa()
+            i = 0
+            while i < limit:
+                file_line = elf["dwarf"].find_file_line_by_address(pc)
+                function_die = elf["dwarf"].find_function_by_address(pc)
+                if function_die is not None and function_die.category == "inlined_function":
+                    # Returning inlined functions (virtual frames)
+                    callstack.append(
+                        CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
+                    )
+                    file_line = function_die.call_file_info
+                    while function_die.category == "inlined_function":
+                        i = i + 1
+                        function_die = function_die.parent
+                        callstack.append(
+                            CallstackEntry(
+                                None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer
+                            )
+                        )
+                        file_line = function_die.call_file_info
+                elif function_die is not None and function_die.category == "subprogram":
+                    callstack.append(
+                        CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
+                    )
+                else:
+                    if file_line is not None:
+                        callstack.append(
+                            CallstackEntry(pc, None, file_line[0], file_line[1], file_line[2], frame_pointer)
+                        )
+                    else:
+                        callstack.append(CallstackEntry(pc, None, None, None, None, frame_pointer))
+
+                # We want to stop when we print main as frame descriptor might not be correct afterwards
+                if stop_on_main and function_die.name == "main":
+                    break
+
+                # We want to stop when we are at the end of frames list
+                if frame_pointer == 0:
+                    break
+
+                frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
+                if frame_description is None:
+                    util.WARN("We don't have information on frame and we don't know how to proceed")
+                    break
+
+                cfa = frame_pointer
+                return_address = frame_description.read_register(1, cfa)
+                frame_pointer = frame_description.read_previous_cfa(cfa)
+                pc = return_address
+                i = i + 1
+        return callstack
+
+
+CallstackEntry = namedtuple("CallstackEntry", ["pc", "function_name", "file", "line", "column", "cfa"])
