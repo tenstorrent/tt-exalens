@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from ttlens import tt_util as util
+from ttlens import util
 from ttlens.device import (
     TensixInstructions,
     Device,

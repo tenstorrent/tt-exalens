@@ -7,6 +7,7 @@ core
 *.log
 *.pkl
 
+.cpmcache
 /build
 /sfpi
 
