@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from docopt import DocoptExit, docopt
-from ttlens.tt_coordinate import OnChipCoordinate
+from ttlens.coordinate import OnChipCoordinate
 
 
 class CommandParsingException(Exception):

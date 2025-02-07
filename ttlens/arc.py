@@ -2,8 +2,8 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from typing import Union, List
-from ttlens.tt_lens_context import Context
-from ttlens.tt_util import TTException
+from ttlens.context import Context
+from ttlens.util import TTException
 import re
 import os
 

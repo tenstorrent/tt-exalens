@@ -17,7 +17,7 @@ Examples:
 
 from docopt import docopt
 
-from ttlens.tt_uistate import UIState
+from ttlens.uistate import UIState
 
 command_metadata = {
     "short": "pcir",

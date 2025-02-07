@@ -9,9 +9,9 @@ from typing import Union, List
 
 from ttlens import tt_lens_init
 
-from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_lens_context import Context
-from ttlens.tt_util import TTException
+from ttlens.coordinate import OnChipCoordinate
+from ttlens.context import Context
+from ttlens.util import TTException
 
 
 def read_word_from_device(
@@ -211,7 +211,7 @@ def load_elf(
             device_id (int, default 0):	ID number of device to run ELF on.
             context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
-    from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc
+    from ttlens.debug_risc import RiscLoader, RiscDebug, RiscLoc
 
     context = check_context(context)
 
@@ -266,7 +266,7 @@ def run_elf(
             device_id (int, default 0):	ID number of device to run ELF on.
             context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
-    from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc
+    from ttlens.debug_risc import RiscLoader, RiscDebug, RiscLoc
 
     context = check_context(context)
 

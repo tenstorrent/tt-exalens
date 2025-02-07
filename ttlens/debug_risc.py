@@ -5,13 +5,12 @@ from collections import namedtuple
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Union
-import os
-
-from ttlens import tt_util as util
-from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_lens_context import Context
+from ttlens.context import Context
+from ttlens.coordinate import OnChipCoordinate
+from ttlens.parse_elf import read_elf
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device, read_from_device, write_to_device
-from ttlens.tt_parse_elf import read_elf
+from ttlens import util as util
+import os
 
 # Register address
 REG_STATUS = 0

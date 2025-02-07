@@ -6,8 +6,8 @@ This module is used to represent the firmware
 """
 
 import time
-from ttlens import tt_parse_elf
-from ttlens import tt_util as util
+from ttlens import parse_elf
+from ttlens import util as util
 import re
 from fuzzywuzzy import process, fuzz
 from sys import getsizeof
@@ -49,7 +49,7 @@ class ELF:
 
             util.INFO(f"Loading ELF file: '{filename}'", end="")
             start_time = time.time()
-            self.names[prefix] = tt_parse_elf.read_elf(self._file_ifc, filename)
+            self.names[prefix] = parse_elf.read_elf(self._file_ifc, filename)
             util.INFO(f" ({getsizeof(self.names[prefix])} bytes loaded in {time.time() - start_time:.2f}s)")
 
             # Inject the variables that are not in the ELF
@@ -143,7 +143,7 @@ class ELF:
             "addr": addr,
             "size": size,
             "value": value,
-            "type": type_die,  # ELF DIE (see tt_parse_elf.py)
+            "type": type_die,  # ELF DIE (see parse_elf.py)
             "children": [],
         }
 
@@ -173,7 +173,7 @@ class ELF:
         if mem_reader is None:
             mem_reader = my_mem_reader
 
-        _, ret_addr, ret_size_bytes, ret_value, type_die = tt_parse_elf.mem_access(
+        _, ret_addr, ret_size_bytes, ret_value, type_die = parse_elf.mem_access(
             self.names[elf_name], var_name, mem_reader
         )
         return ret_addr, ret_size_bytes, ret_value, type_die
@@ -208,7 +208,7 @@ class ELF:
         if path_str.startswith("@"):
             path_str = path_str[1:]
         elf_name, var_name = self._get_prefix_and_suffix(path_str)
-        data, ret_addr, ret_size_bytes, type_die = tt_parse_elf.mem_access(self.names[elf_name], var_name, mem_reader)
+        data, ret_addr, ret_size_bytes, type_die = parse_elf.mem_access(self.names[elf_name], var_name, mem_reader)
         return data
 
     @staticmethod

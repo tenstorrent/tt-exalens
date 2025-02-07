@@ -216,7 +216,6 @@ distributed as part of the software:
 | Dependency                  | License                                                                                                     |
 |-----------------------------|-------------------------------------------------------------------------------------------------------------|
 | `yaml-cpp`                  | [MIT License](https://github.com/jbeder/yaml-cpp/blob/master/LICENSE)                                       |
-| `boost`                     | [boost license](https://github.com/jbeder/yaml-cpp/blob/master/LICENSE)                                     |
 | `deprecation`               | [Apache License 2.0](https://github.com/briancurtin/deprecation/blob/master/LICENSE)                        |
 | `docopt`                    | [MIT License](https://github.com/docopt/docopt/blob/master/LICENSE-MIT)                                     |
 | `fastnumbers`               | [MIT License](https://github.com/SethMMorton/fastnumbers/blob/main/LICENSE)                                 |

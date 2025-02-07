@@ -6,9 +6,9 @@ from parameterized import parameterized_class
 from ttlens import tt_lens_init
 from ttlens import tt_lens_lib as lib
 
-from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_lens_context import Context
-from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index, get_risc_id
+from ttlens.coordinate import OnChipCoordinate
+from ttlens.context import Context
+from ttlens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index, get_risc_id
 
 
 @parameterized_class(

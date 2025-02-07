@@ -15,9 +15,9 @@ Examples:
 """
 from docopt import docopt
 
-from ttlens.tt_uistate import UIState
+from ttlens.uistate import UIState
 
-from ttlens import tt_util as util
+from ttlens import util as util
 
 command_metadata = {
     "short": "gdb",

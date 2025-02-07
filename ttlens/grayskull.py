@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from ttlens import tt_util as util
-from ttlens.tt_device import (
+from ttlens import util
+from ttlens.device import (
     TensixInstructions,
     Device,
     ConfigurationRegisterDescription,
@@ -13,7 +13,7 @@ from ttlens.tt_device import (
 
 class GrayskullInstructions(TensixInstructions):
     def __init__(self):
-        import ttlens.tt_grayskull_ops as ops
+        import ttlens.grayskull_ops as ops
 
         super().__init__(ops)
 

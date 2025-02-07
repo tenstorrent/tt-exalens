@@ -22,7 +22,7 @@ Description:
     this is allowed: "*s_global_var.my_member".
 
 Usage:
-  tt_parse_elf.py <elf-file> [ <access-path> ] [ -d | --debug ]
+  parse_elf.py <elf-file> [ <access-path> ] [ -d | --debug ]
 
 Options:
   -d --debug             Enable debug messages
@@ -32,7 +32,7 @@ Arguments:
   access-path            Access path to a variable in the ELF file
 
 Examples:
-  tt_parse_elf.py ./build/riscv-src/wormhole/sample.brisc.elf
+  parse_elf.py ./build/riscv-src/wormhole/sample.brisc.elf
 
   Options:
   -h --help      Show this screen.

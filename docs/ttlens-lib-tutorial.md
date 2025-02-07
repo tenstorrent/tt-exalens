@@ -68,7 +68,7 @@ TTLens library package is called `ttlens`.
 It contains multiple modules, three of which are interesting to external user:
 - _tt_lens_init_: A module containing various functions for device and context initialization.
 - _tt_lens_lib_: A module containing useful functions for device interactions.
-- _tt_coordinate_: A module useful for advanced specification of device core coordinates.
+- _coordinate_: A module useful for advanced specification of device core coordinates.
 
 The command `context = init_ttlens()` initializes a new default TTLens context and establishes a connection to the device.
 
@@ -91,7 +91,7 @@ If you pass a string, it can be in the form of
   - "pX,Y", for a logical coordinate targeting pcie coordinates.
   - "tX,Y", for a logical coordinate targeting tensix cores.
 
-It is also possible to create an `OnChipCoordinate` object for more advanced use cases. For more details on this approach, please refer to [the documentation](ttlens-lib-docs.md#tt_coordinate).
+It is also possible to create an `OnChipCoordinate` object for more advanced use cases. For more details on this approach, please refer to [the documentation](ttlens-lib-docs.md#coordinate).
 One notable thing about `OnChipCoordinate` objects is that they need to have a device specified on construction for coordinate transforms to be possible (due to device specifics, like different architectures and harvesting within one architecture).
 Not specifying a device results in an error.
 It is possible to access available devices through the `Context` object, so an example object construction could look like this:

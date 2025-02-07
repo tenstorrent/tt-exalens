@@ -25,15 +25,15 @@ command_metadata = {
 }
 
 import os
-from ttlens.tt_uistate import UIState
+from ttlens.uistate import UIState
 
-from ttlens import tt_commands
-from ttlens import tt_util as util
-from ttlens.tt_debug_risc import RiscDebug, RiscLoc, get_risc_name, RiscLoader
+from ttlens import commands
+from ttlens import util
+from ttlens.debug_risc import RiscDebug, RiscLoc, get_risc_name, RiscLoader
 
 
 def run(cmd_text, context, ui_state: UIState = None):
-    dopt = tt_commands.tt_docopt(
+    dopt = commands.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
         common_option_names=command_metadata["common_option_names"],

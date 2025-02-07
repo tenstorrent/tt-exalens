@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from ttlens.tt_lens_context import Context
-from ttlens.tt_gdb_server import GdbServer, ServerSocket
-from ttlens.tt_coordinate import OnChipCoordinate
+from ttlens.context import Context
+from ttlens.gdb_server import GdbServer, ServerSocket
+from ttlens.coordinate import OnChipCoordinate
 
 
 class UIState:
