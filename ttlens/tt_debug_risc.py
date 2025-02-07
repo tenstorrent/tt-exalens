@@ -968,7 +968,7 @@ class RiscLoader:
                         function_die = function_die.parent
                         callstack.append(
                             CallstackEntry(
-                                pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer
+                                None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer
                             )
                         )
                         file_line = function_die.call_file_info

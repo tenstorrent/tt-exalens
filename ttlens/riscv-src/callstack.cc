@@ -37,6 +37,9 @@ void infloop() {
 }
 
 int main() {
+    if (*g_MAILBOX <= 0 || *g_MAILBOX > 1000) {
+        *g_MAILBOX = 10;
+    }
     int sum = recurse(*g_MAILBOX);
 
     *g_MAILBOX = sum;
