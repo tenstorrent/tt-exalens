@@ -11,6 +11,7 @@ from ttlens.device import (
     NocStatusRegisterDescription,
     NocConfigurationRegisterDescription,
     NocControlRegisterDescription,
+    DebugBusSignalDescription,
 )
 
 
@@ -98,6 +99,7 @@ class WormholeDevice(Device):
         "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=161, mask=0x7),
         "NCRISC_RESET_PC_PC": ConfigurationRegisterDescription(index=162),
         "NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=163, mask=0x1),
+        "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG": DebugRegisterDescription(address=0x54),
         "RISCV_DEBUG_REG_CFGREG_RD_CNTL": DebugRegisterDescription(address=0x58),
         "RISCV_DEBUG_REG_DBG_RD_DATA": DebugRegisterDescription(address=0x5C),
         "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN": DebugRegisterDescription(address=0x60),
@@ -179,4 +181,18 @@ class WormholeDevice(Device):
         "NUM_HEADER_2B_ERR": NocControlRegisterDescription(address=0x48),
         "ECC_CTRL": NocControlRegisterDescription(address=0x4C),
         "NOC_CLEAR_OUTSTANDING_REQ_CNT": NocControlRegisterDescription(address=0x50),
+    }
+
+    def _get_debug_bus_signal_description(self, name):
+        """Overrides the base class method to provide debug bus signal descriptions for Wormhole device."""
+        if name in WormholeDevice.__debug_bus_signal_map:
+            return WormholeDevice.__debug_bus_signal_map[name]
+        return None
+
+    __debug_bus_signal_map = {
+        # For the other signals applying the pc_mask.
+        "brisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 9, mask=0x7FFFFFFF),
+        "trisc0_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 10, mask=0x7FFFFFFF),
+        "trisc1_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 11, mask=0x7FFFFFFF),
+        "trisc2_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 12, mask=0x7FFFFFFF),
     }

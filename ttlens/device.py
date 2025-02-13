@@ -67,6 +67,14 @@ class NocControlRegisterDescription(TensixRegisterDescription):
     pass
 
 
+@dataclass
+class DebugBusSignalDescription:
+    rd_sel: int = 0
+    daisy_sel: int = 0
+    sig_sel: int = 0
+    mask: int = 0xFFFFFFFF
+
+
 #
 # Device class: generic API for talking to specific devices. This class is the parent of specific
 # device classes (e.g. GrayskullDevice, WormholeDevice). The create class method is used to create
@@ -160,7 +168,7 @@ class Device(TTObject):
         )
 
         self._init_coordinate_systems()
-        self._init_register_addresses()
+        self._init_arc_register_adresses()
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
     def __die_to_noc(self, die_loc, noc_id=0):
@@ -446,7 +454,7 @@ class Device(TTObject):
 
     REGISTER_ADDRESSES = {}
 
-    def get_register_addr(self, name: str) -> int:
+    def get_arc_register_addr(self, name: str) -> int:
         try:
             addr = self.REGISTER_ADDRESSES[name]
         except KeyError:
@@ -454,7 +462,7 @@ class Device(TTObject):
 
         return addr
 
-    def _init_register_addresses(self):
+    def _init_arc_register_adresses(self):
         base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
         csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
         rom_data_base_addr = self.PCI_ARC_ROM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_ROM_DATA_BASE_ADDR
@@ -472,6 +480,31 @@ class Device(TTObject):
             "ARC_CSM_DATA": csm_data_base_addr,
             "ARC_ROM_DATA": rom_data_base_addr,
         }
+
+    @abstractmethod
+    def _get_debug_bus_signal_description(self, name):
+        pass
+
+    def read_debug_bus_signal(self, loc: OnChipCoordinate, name) -> int:
+        signal = self._get_debug_bus_signal_description(name)
+
+        if signal is None:
+            raise ValueError(f"Unknown debug bus signal name: {name}")
+
+        # Write the configuration
+        en = 1
+        config_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_DBG_BUS_CNTL_REG")
+        config = (en << 29) | (signal.rd_sel << 25) | (signal.daisy_sel << 16) | signal.sig_sel
+        write_words_to_device(loc, config_addr, config)
+
+        # Read the data
+        data_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RD_CNTL")
+        data = read_word_from_device(loc, data_addr)
+
+        # Disable the signal
+        write_words_to_device(loc, config_addr, 0)
+
+        return data if signal.mask is None else data & signal.mask
 
 
 # end of class Device

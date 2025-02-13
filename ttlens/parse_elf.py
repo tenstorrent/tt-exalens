@@ -40,7 +40,7 @@ Examples:
 from functools import cached_property
 import os
 import re
-from typing import Dict
+from typing import Dict, Optional
 
 try:
     from elftools.elf.elffile import ELFFile
@@ -615,7 +615,7 @@ class FrameDescription:
                 return self.risc_debug.read_memory(address)
         return self.risc_debug.read_gpr(register_index)
 
-    def read_previous_cfa(self, current_cfa: int | None = None):
+    def read_previous_cfa(self, current_cfa: Optional[int] = None):
         if self.current_fde_entry is not None and self.fde.cie is not None:
             cfa_location = self.current_fde_entry["cfa"]
             register_index = cfa_location.reg
