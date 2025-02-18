@@ -515,6 +515,8 @@ class TestARC(unittest.TestCase):
             device = self.context.devices[device_id]
             arc_core_loc = device.get_arc_block_location()
 
-            scratch2 = arc_read(self.context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH2"))
+            scratch2 = arc_read(
+                self.context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_SCRATCH2")
+            )
 
             assert scratch2 == 0xBEBACECA
