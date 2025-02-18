@@ -3,24 +3,24 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump-unpack [ -d <device> ] [ -l <loc> ]
+  dump-alu [ -d <device> ] [ -l <loc> ]
 
 Options:
   -d <device>   Device ID. Optional and repeatable. Default: current device
   -l <loc       Either X-Y or R,C location of a core
 
 Description:
-  Prints unpacker's configuration register.
+  Prints alu configuration register.
 
 Examples:
-  unpack
-  unpack -d 0
-  unpack -l 0,0
-  unpack -d 0 -l 0,0
+  alu
+  alu -d 0
+  alu -l 0,0
+  alu -d 0 -l 0,0
 """
 
 command_metadata = {
-    "short": "unpack",
+    "short": "alu",
     "type": "dev",
     "description": __doc__,
     "context": ["limited"],
@@ -35,7 +35,6 @@ import tabulate
 
 def dict_list_to_table(dicts: list[dict], register_name: str) -> str:
     keys = dicts[0].keys()
-    #data = [[key] + [d[key] for d in dicts] for key in keys]
     data = []
     for key in keys:
         row = [key]
@@ -53,24 +52,6 @@ def dict_list_to_table(dicts: list[dict], register_name: str) -> str:
 
     return tabulate.tabulate(data, headers=headers, tablefmt="grid")
 
-
-def join_tables_side_by_side(tables: list[str]) -> str:
-    # Split each table into rows by lines
-    split_tables = [table.split("\n") for table in tables]
-
-    # Find the maximum number of rows across all tables
-    max_rows = max(len(table) for table in split_tables)
-
-    # Pad each table with empty lines to ensure equal row count
-    padded_tables = [table + [" " * len(table[0])] * (max_rows - len(table)) for table in split_tables]
-
-    # Combine the rows of all tables side by side
-    side_by_side = ["   ".join(row) for row in zip(*padded_tables)]
-
-    # Join all rows into a single string
-    return "\n".join(side_by_side)
-
-
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = tt_commands.tt_docopt(
         command_metadata["description"],
@@ -82,12 +63,9 @@ def run(cmd_text, context, ui_state: UIState = None):
             debug_tensix = TensixDebug(loc, device.id(), context)
             device = debug_tensix.context.devices[debug_tensix.device_id]
 
-            tile_descriptor = device.get_unpack_tile_descriptor(debug_tensix)
-            unpack_config = device.get_unpack_config(debug_tensix)
+            alu_config = device.get_alu_config(debug_tensix)
+            alu_config_table = dict_list_to_table(alu_config, "ALU CONFIG")
 
-            tile_descriptor_table = dict_list_to_table(tile_descriptor, "TILE DESCRIPTOR")
-            unpack_config_table = dict_list_to_table(unpack_config, "UNPACK CONFIG")
-
-            print(join_tables_side_by_side([unpack_config_table, tile_descriptor_table]))
-
+            print(alu_config_table)
+            
     return None
