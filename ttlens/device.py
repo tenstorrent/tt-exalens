@@ -494,15 +494,15 @@ class Device(TTObject):
         # Write the configuration
         en = 1
         config_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_DBG_BUS_CNTL_REG")
-        config = (en << 29) | (signal.rd_sel << 25) | (signal.daisy_sel << 16) | signal.sig_sel
-        write_words_to_device(loc, config_addr, config)
+        config = (en << 29) | (signal.rd_sel << 25) | (signal.daisy_sel << 16) | (signal.sig_sel << 0)
+        write_words_to_device(loc, config_addr, config, self._id)
 
         # Read the data
-        data_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RD_CNTL")
+        data_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_DBG_RD_DATA")
         data = read_word_from_device(loc, data_addr)
 
         # Disable the signal
-        write_words_to_device(loc, config_addr, 0)
+        write_words_to_device(loc, config_addr, self._id)
 
         return data if signal.mask is None else data & signal.mask
 
