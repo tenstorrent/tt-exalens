@@ -40,6 +40,9 @@ class WormholeDevice(tt_device.Device):
     EFUSE_JTAG_AXI = 0x80042200
     EFUSE_NOC = 0x880042200
 
+    NUM_UNPACKERS = 2
+    NUM_PACKERS = 4
+
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(
             id,
@@ -238,6 +241,61 @@ class WormholeDevice(tt_device.Device):
         ),
         "PACK_CONFIG18_reserved_2": ConfigurationRegisterDescription(index=127, mask=0x800000, shift=23),
         "PACK_CONFIG18_exp_threshold": ConfigurationRegisterDescription(index=127, mask=0xFF000000, shift=24),
+        # RELU CONFIG
+        "ALU_ACC_CTRL_Zero_Flag_disabled_src": ConfigurationRegisterDescription(index=2, mask=0x1, shift=0),
+        "ALU_ACC_CTRL_Zero_Flag_disabled_dst": ConfigurationRegisterDescription(index=2, mask=0x2, shift=1),
+        "STACC_RELU_ApplyRelu": ConfigurationRegisterDescription(index=2, mask=0x3c, shift=2),
+        "STACC_RELU_ReluThreshold": ConfigurationRegisterDescription(index=2, mask=0x3fffc0, shift=6),
+        "DISABLE_RISC_BP_Disable_main": ConfigurationRegisterDescription(index=2, mask=0x400000, shift=22),
+        "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(index=2, mask=0x3800000, shift=23),
+        "DISABLE_RISC_BP_Disable_ncrisc": ConfigurationRegisterDescription(index=2, mask=0x4000000, shift=26),
+        "DISABLE_RISC_BP_Disable_bmp_clear_main": ConfigurationRegisterDescription(index=2, mask=0x8000000, shift=27),
+        "DISABLE_RISC_BP_Disable_bmp_clear_trisc": ConfigurationRegisterDescription(index=2, mask=0x70000000, shift=28),
+        "DISABLE_RISC_BP_Disable_bmp_clear_ncrisc": ConfigurationRegisterDescription(index=2, mask=0x80000000, shift=31),
+        # DEST RD CTRL
+        "PACK_DEST_RD_CTRL_Read_32b_data": ConfigurationRegisterDescription(index=14, mask=0x1, shift=0),
+        "PACK_DEST_RD_CTRL_Read_unsigned": ConfigurationRegisterDescription(index=14, mask=0x2, shift=1),
+        "PACK_DEST_RD_CTRL_Read_int8": ConfigurationRegisterDescription(index=14, mask=0x4, shift=2),
+        "PACK_DEST_RD_CTRL_Round_10b_mant": ConfigurationRegisterDescription(index=14, mask=0x8, shift=3),
+        "PACK_DEST_RD_CTRL_Reserved": ConfigurationRegisterDescription(index=14, mask=0xfffffff0, shift=4),
+        # EDGE OFFSET SEC 0
+        "PACK_EDGE_OFFSET0_mask": ConfigurationRegisterDescription(index=20, mask=0xffff, shift=0),
+        "PACK_EDGE_OFFSET0_mode": ConfigurationRegisterDescription(index=20, mask=0x10000, shift=16),
+        "PACK_EDGE_OFFSET0_tile_row_set_select_pack0": ConfigurationRegisterDescription(index=20, mask=0x60000, shift=17),
+        "PACK_EDGE_OFFSET0_tile_row_set_select_pack1": ConfigurationRegisterDescription(index=20, mask=0x180000, shift=19),
+        "PACK_EDGE_OFFSET0_tile_row_set_select_pack2": ConfigurationRegisterDescription(index=20, mask=0x600000, shift=21),
+        "PACK_EDGE_OFFSET0_tile_row_set_select_pack3": ConfigurationRegisterDescription(index=20, mask=0x1800000, shift=23),
+        "PACK_EDGE_OFFSET0_reserved": ConfigurationRegisterDescription(index=20,mask=0xfe000000, shift=25),
+        # EDGE OFFSET SEC 1
+        "PACK_EDGE_OFFSET1_mask": ConfigurationRegisterDescription(index=21, mask=0xffff, shift=0),
+        # EDGE OFFSET SEC2
+        "PACK_EDGE_OFFSET2_mask": ConfigurationRegisterDescription(index=22, mask=0xffff, shift=0),
+        # EDGE OFFSET SEC3
+        "PACK_EDGE_OFFSET3_mask": ConfigurationRegisterDescription(index=23, mask=0xffff, shift=0),
+        # PACK COUNTERS SEC 0
+        "PACK_COUNTERS0_pack_per_xy_plane": ConfigurationRegisterDescription(index=24, mask=0xff, shift=0),
+        "PACK_COUNTERS0_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=24, mask=0xff00, shift=8),
+        "PACK_COUNTERS0_pack_xys_per_til": ConfigurationRegisterDescription(index=24, mask=0x7f0000, shift=16),
+        "PACK_COUNTERS0_pack_yz_transposed": ConfigurationRegisterDescription(index=24, mask=800000, shift=23),
+        "PACK_COUNTERS0_pack_per_xy_plane_offset": ConfigurationRegisterDescription(index=24, mask=0xff000000, shift=24),
+        # PACK COUNTERS SEC 1
+        "PACK_COUNTERS1_pack_per_xy_plane": ConfigurationRegisterDescription(index=25, mask=0xff, shift=0),
+        "PACK_COUNTERS1_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=25, mask=0xff00, shift=8),
+        "PACK_COUNTERS1_pack_xys_per_til": ConfigurationRegisterDescription(index=25, mask=0x7f0000, shift=16),
+        "PACK_COUNTERS1_pack_yz_transposed": ConfigurationRegisterDescription(index=25, mask=800000, shift=23),
+        "PACK_COUNTERS1_pack_per_xy_plane_offset": ConfigurationRegisterDescription(index=25, mask=0xff000000, shift=24), 
+        # PACK COUNTERS SEC 2
+        "PACK_COUNTERS2_pack_per_xy_plane": ConfigurationRegisterDescription(index=26, mask=0xff, shift=0),
+        "PACK_COUNTERS2_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=26, mask=0xff00, shift=8),
+        "PACK_COUNTERS2_pack_xys_per_til": ConfigurationRegisterDescription(index=26, mask=0x7f0000, shift=16),
+        "PACK_COUNTERS2_pack_yz_transposed": ConfigurationRegisterDescription(index=26, mask=800000, shift=23),
+        "PACK_COUNTERS2_pack_per_xy_plane_offset": ConfigurationRegisterDescription(index=26, mask=0xff000000, shift=24),
+        # PACK COUNTERS SEC 3
+        "PACK_COUNTERS3_pack_per_xy_plane": ConfigurationRegisterDescription(index=27, mask=0xff, shift=0),
+        "PACK_COUNTERS3_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=27, mask=0xff00, shift=8),
+        "PACK_COUNTERS3_pack_xys_per_til": ConfigurationRegisterDescription(index=27, mask=0x7f0000, shift=16),
+        "PACK_COUNTERS3_pack_yz_transposed": ConfigurationRegisterDescription(index=27, mask=800000, shift=23),
+        "PACK_COUNTERS3_pack_per_xy_plane_offset": ConfigurationRegisterDescription(index=27, mask=0xff000000, shift=24), 
         # REST
         "DISABLE_RISC_BP_Disable_main": ConfigurationRegisterDescription(index=2, mask=0x400000, shift=22),
         "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(index=2, mask=0x3800000, shift=23),
@@ -304,199 +362,169 @@ class WormholeDevice(tt_device.Device):
         return [alu_config]
 
     def get_unpack_tile_descriptor(self, debug_tensix: TensixDebug) -> list[dict]:
-        tile_descriptor0 = {}
-        tile_descriptor1 = {}
+        tile_descriptor_list = []
 
         start = 24  # ignores field name prefix
 
-        # REG_ID = 1
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_in_data_format", tile_descriptor0, start)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_uncompressed", tile_descriptor0, start)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_reserved_0", tile_descriptor0, start)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_blobs_per_xy_plane", tile_descriptor0, start, True)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_reserved_1", tile_descriptor0, start)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_x_dim", tile_descriptor0, start, True)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_y_dim", tile_descriptor0, start, True)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_z_dim", tile_descriptor0, start, True)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_w_dim", tile_descriptor0, start, True)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_blobs_y_start_lo", tile_descriptor0, start, True)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_blobs_y_start_hi", tile_descriptor0, start, True)
-        tile_descriptor0["blobs_y_start"] = (tile_descriptor0["blobs_y_start_hi"] << 16) | tile_descriptor0[
-            "blobs_y_start_lo"
-        ]
-        del tile_descriptor0["blobs_y_start_lo"]
-        del tile_descriptor0["blobs_y_start_hi"]
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_digest_type", tile_descriptor0, start)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR0_digest_size", tile_descriptor0, start)
+        for i in range(self.NUM_UNPACKERS):
+            tile_descriptor = {}
 
-        # REG_ID = 2
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_in_data_format", tile_descriptor1, start)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_uncompressed", tile_descriptor1, start)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_reserved_0", tile_descriptor1, start)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_blobs_per_xy_plane", tile_descriptor1, start, True)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_reserved_1", tile_descriptor1, start)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_x_dim", tile_descriptor1, start, True)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_y_dim", tile_descriptor1, start, True)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_z_dim", tile_descriptor1, start, True)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_w_dim", tile_descriptor1, start, True)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_blobs_y_start_lo", tile_descriptor1, start, True)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_blobs_y_start_hi", tile_descriptor1, start, True)
-        tile_descriptor1["blobs_y_start"] = (tile_descriptor1["blobs_y_start_hi"] << 16) | tile_descriptor1[
-            "blobs_y_start_lo"
-        ]
-        del tile_descriptor1["blobs_y_start_lo"]
-        del tile_descriptor1["blobs_y_start_hi"]
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_digest_type", tile_descriptor1, start)
-        debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR1_digest_size", tile_descriptor1, start)
+            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_in_data_format", tile_descriptor, start)
+            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_uncompressed", tile_descriptor, start)
+            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_reserved_0", tile_descriptor, start)
+            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_blobs_per_xy_plane", tile_descriptor, start, True)
+            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_reserved_1", tile_descriptor, start)
+            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_x_dim", tile_descriptor, start, True)
+            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_y_dim", tile_descriptor, start, True)
+            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_z_dim", tile_descriptor, start, True)
+            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_w_dim", tile_descriptor, start, True)
+            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_blobs_y_start_lo", tile_descriptor, start, True)
+            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_blobs_y_start_hi", tile_descriptor, start, True)
+            tile_descriptor["blobs_y_start"] = (tile_descriptor["blobs_y_start_hi"] << 16) | tile_descriptor[
+                "blobs_y_start_lo"
+            ]
+            del tile_descriptor["blobs_y_start_lo"]
+            del tile_descriptor["blobs_y_start_hi"]
+            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_digest_type", tile_descriptor, start)
+            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_digest_size", tile_descriptor, start, True)
 
-        return [tile_descriptor0, tile_descriptor1]
+            tile_descriptor_list.append(tile_descriptor)
+
+        return tile_descriptor_list
 
     def get_unpack_config(self, debug_tensix: TensixDebug) -> list[dict]:
-        unpack_config0 = {}
-        unpack_config1 = {}
+        unpack_config_list = []
 
         start = 15  # ignores field name prefix
 
-        # REG_ID = 1
-        debug_tensix.get_config_field("UNPACK_CONFIG0_out_data_format", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_throttle_mode", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_context_count", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_haloize_mode", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_tileize_mode", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_unpack_src_reg_set_upd", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_unpack_if_sel", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_upsample_rate", unpack_config0, start, True)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_reserved_1", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_upsample_and_interleave", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_shift_amount", unpack_config0, start, True)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_uncompress_cntx0_3", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_unpack_if_sel_cntx0_3", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_force_shared_exp", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_reserved_2", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_uncompress_cntx4_7", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_unpack_if_sel_cntx4_7", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_reserved_3", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_limit_addr", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_reserved_4", unpack_config0, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_fifo_size", unpack_config0, start, True)
-        debug_tensix.get_config_field("UNPACK_CONFIG0_reserved_5", unpack_config0, start)
+        for i in range(self.NUM_UNPACKERS):
+            unpack_config = {}
 
-        # REG_ID = 2
-        debug_tensix.get_config_field("UNPACK_CONFIG1_out_data_format", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_throttle_mode", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_context_count", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_haloize_mode", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_tileize_mode", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_unpack_src_reg_set_upd", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_unpack_if_sel", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_upsample_rate", unpack_config1, start, True)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_reserved_1", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_upsample_and_interleave", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_shift_amount", unpack_config1, start, True)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_uncompress_cntx0_3", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_unpack_if_sel_cntx0_3", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_force_shared_exp", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_reserved_2", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_uncompress_cntx4_7", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_unpack_if_sel_cntx4_7", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_reserved_3", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_limit_addr", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_reserved_4", unpack_config1, start)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_fifo_size", unpack_config1, start, True)
-        debug_tensix.get_config_field("UNPACK_CONFIG1_reserved_5", unpack_config1, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_out_data_format", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_throttle_mode", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_context_count", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_haloize_mode", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_tileize_mode", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_unpack_src_reg_set_upd", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_unpack_if_sel", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_upsample_rate", unpack_config, start, True)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_reserved_1", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_upsample_and_interleave", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_shift_amount", unpack_config, start, True)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_uncompress_cntx0_3", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_unpack_if_sel_cntx0_3", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_force_shared_exp", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_reserved_2", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_uncompress_cntx4_7", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_unpack_if_sel_cntx4_7", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_reserved_3", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_limit_addr", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_reserved_4", unpack_config, start)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_fifo_size", unpack_config, start, True)
+            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_reserved_5", unpack_config, start)
 
-        return [unpack_config0, unpack_config1]
+            unpack_config_list.append(unpack_config)
 
-    def get_pack_config(self, debug_tensix: TensixDebug):
-        pack_config0 = {}
-        pack_config1 = {}
-        pack_config2 = {}
-        pack_config3 = {}
+        return unpack_config_list
+
+    def get_pack_config(self, debug_tensix: TensixDebug) -> list[dict]:
+        pack_config_list = []
 
         start = 14  # ignores field name prefix
 
-        # REG_ID = 1
-        debug_tensix.get_config_field("PACK_CONFIG01_row_ptr_section_size", pack_config0, start, True)
-        debug_tensix.get_config_field("PACK_CONFIG01_exp_section_size", pack_config0, start, True)
-        debug_tensix.get_config_field("PACK_CONFIG01_l1_dest_addr", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_uncompress", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_add_l1_dest_addr_offset", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_reserved_0", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_out_data_format", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_in_data_format", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_reserved_1", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_src_if_sel", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_pack_per_xy_plane", pack_config0, start, True)
-        debug_tensix.get_config_field("PACK_CONFIG01_l1_src_addr", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_downsample_mask", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_downsample_shift_count", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_read_mode", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_exp_threshold_en", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_pack_l1_acc_disable_pack_zero_flag", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_reserved_2", pack_config0, start)
-        debug_tensix.get_config_field("PACK_CONFIG01_exp_threshold", pack_config0, start, True)
+        for i in [0,1]:
+            for j in [1,8]:
+                pack_config = {}
 
-        # REG_ID = 2
-        debug_tensix.get_config_field("PACK_CONFIG08_row_ptr_section_size", pack_config1, start, True)
-        debug_tensix.get_config_field("PACK_CONFIG08_exp_section_size", pack_config1, start, True)
-        debug_tensix.get_config_field("PACK_CONFIG08_l1_dest_addr", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_uncompress", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_add_l1_dest_addr_offset", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_reserved_0", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_out_data_format", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_in_data_format", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_reserved_1", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_src_if_sel", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_pack_per_xy_plane", pack_config1, start, True)
-        debug_tensix.get_config_field("PACK_CONFIG08_l1_src_addr", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_downsample_mask", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_downsample_shift_count", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_read_mode", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_exp_threshold_en", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_pack_l1_acc_disable_pack_zero_flag", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_reserved_2", pack_config1, start)
-        debug_tensix.get_config_field("PACK_CONFIG08_exp_threshold", pack_config1, start, True)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_row_ptr_section_size", pack_config, start, True)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_exp_section_size", pack_config, start, True)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_l1_dest_addr", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_uncompress", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_add_l1_dest_addr_offset", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_reserved_0", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_out_data_format", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_in_data_format", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_reserved_1", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_src_if_sel", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_pack_per_xy_plane", pack_config, start, True)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_l1_src_addr", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_downsample_mask", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_downsample_shift_count", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_read_mode", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_exp_threshold_en", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_pack_l1_acc_disable_pack_zero_flag", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_reserved_2", pack_config, start)
+                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_exp_threshold", pack_config, start, True)
 
-        # REG_ID = 3
-        debug_tensix.get_config_field("PACK_CONFIG11_row_ptr_section_size", pack_config2, start, True)
-        debug_tensix.get_config_field("PACK_CONFIG11_exp_section_size", pack_config2, start, True)
-        debug_tensix.get_config_field("PACK_CONFIG11_l1_dest_addr", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_uncompress", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_add_l1_dest_addr_offset", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_reserved_0", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_out_data_format", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_in_data_format", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_reserved_1", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_src_if_sel", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_pack_per_xy_plane", pack_config2, start, True)
-        debug_tensix.get_config_field("PACK_CONFIG11_l1_src_addr", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_downsample_mask", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_downsample_shift_count", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_read_mode", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_exp_threshold_en", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_pack_l1_acc_disable_pack_zero_flag", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_reserved_2", pack_config2, start)
-        debug_tensix.get_config_field("PACK_CONFIG11_exp_threshold", pack_config2, start, True)
+                pack_config_list.append(pack_config)
 
-        # REG_ID = 4
-        debug_tensix.get_config_field("PACK_CONFIG18_row_ptr_section_size", pack_config3, start, True)
-        debug_tensix.get_config_field("PACK_CONFIG18_exp_section_size", pack_config3, start, True)
-        debug_tensix.get_config_field("PACK_CONFIG18_l1_dest_addr", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_uncompress", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_add_l1_dest_addr_offset", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_reserved_0", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_out_data_format", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_in_data_format", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_reserved_1", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_src_if_sel", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_pack_per_xy_plane", pack_config3, start, True)
-        debug_tensix.get_config_field("PACK_CONFIG18_l1_src_addr", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_downsample_mask", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_downsample_shift_count", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_read_mode", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_exp_threshold_en", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_pack_l1_acc_disable_pack_zero_flag", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_reserved_2", pack_config3, start)
-        debug_tensix.get_config_field("PACK_CONFIG18_exp_threshold", pack_config3, start, True)
+        return pack_config_list
 
-        return [pack_config0, pack_config1, pack_config2, pack_config3]
+    def get_relu_config(self, debug_tensix: TensixDebug) -> list[dict]:
+        relu_config = {}
+
+        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_src", relu_config)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_dst", relu_config)
+        debug_tensix.get_config_field("STACC_RELU_ApplyRelu", relu_config)
+        debug_tensix.get_config_field("STACC_RELU_ReluThreshold", relu_config, 0, True)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_main", relu_config)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_trisc", relu_config)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_ncrisc", relu_config)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_main", relu_config)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_trisc", relu_config)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_ncrisc", relu_config)
+
+        return [relu_config]
+    
+    def get_pack_dest_rd_ctrl(self, debug_tensix: TensixDebug) -> list[dict]:
+        dest = {}
+
+        start = 18
+
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_32b_data", dest, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_unsigned", dest, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_int8", dest, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Round_10b_mant", dest, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Reserved", dest, start)
+
+        return [dest]
+    
+    def get_pack_edge_offset(self, debug_tensix: TensixDebug) -> list[dict]:
+        edge_list = []
+
+        start = 18
+
+        for i in range(self.NUM_PACKERS):
+            edge = {}
+
+            debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_mask", edge, start)
+
+            if i == 0:
+                debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_mode", edge, start)
+                debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_tile_row_set_select_pack0", edge, start)
+                debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_tile_row_set_select_pack1", edge, start)
+                debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_tile_row_set_select_pack2", edge, start)
+                debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_tile_row_set_select_pack3", edge, start)
+                debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_reserved", edge, start)
+
+            edge_list.append(edge)
+
+        return edge_list
+    
+    def get_pack_counters(self, debug_tensix: TensixDebug) -> list[dict]:
+        start = 15
+        counters_list = []
+
+        for i in range(self.NUM_PACKERS):
+            counters = {}
+
+            debug_tensix.get_config_field("PACK_COUNTERS" + str(i) + "_pack_per_xy_plane", counters, start, True)
+            debug_tensix.get_config_field("PACK_COUNTERS" + str(i) + "_pack_reads_per_xy_plane", counters, start, True)
+            debug_tensix.get_config_field("PACK_COUNTERS" + str(i) + "_pack_xys_per_til", counters, start, True)
+            debug_tensix.get_config_field("PACK_COUNTERS" + str(i) + "_pack_yz_transposed", counters, start)
+            debug_tensix.get_config_field("PACK_COUNTERS" + str(i) + "_pack_per_xy_plane_offset", counters, start, True)
+
+            counters_list.append(counters)
+        
+        return counters_list
+
