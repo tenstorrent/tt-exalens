@@ -15,7 +15,7 @@ if (NOT EXISTS "$ENV{CPM_SOURCE_CACHE}/ttlens_private")
     file(COPY "${CMAKE_CURRENT_LIST_DIR}/ttlens_private_check.cmake"
         DESTINATION "${CMAKE_BINARY_DIR}/tt_lens_private_check")
 
-    file(WRITE "${CMAKE_BINARY_DIR}/tt_lens_private_check/CMakeLists.txt" "include(${CMAKE_CURRENT_LIST_DIR}/ttlens_private_check.cmake)")
+    file(WRITE "${CMAKE_BINARY_DIR}/tt_lens_private_check/CMakeLists.txt" "cmake_minimum_required(VERSION 3.16)\ncmake_policy(VERSION 3.16)\ninclude(\${CMAKE_CURRENT_LIST_DIR}/ttlens_private_check.cmake)")
 
     execute_process(
         COMMAND ${CMAKE_COMMAND} -B build -Wno-dev -DTTLENS_PRIVATE_GIT_REPOSITORY=${TTLENS_PRIVATE_GIT_REPOSITORY} -DTTLENS_PRIVATE_GIT_TAG=${TTLENS_PRIVATE_GIT_TAG}
