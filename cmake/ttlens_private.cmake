@@ -2,7 +2,7 @@
 # If it is not, we should check if user has access to private repository.
 
 set(TTLENS_PRIVATE_GIT_REPOSITORY "git@yyz-gitlab.local.tenstorrent.com:tenstorrent/tt-lens-private.git")
-set(TTLENS_PRIVATE_GIT_TAG "main")
+set(TTLENS_PRIVATE_GIT_TAG "b8dea1699eb9a5159cab1e57e0adffa49b82a9e9")
 set(DOWNLOAD_TTLENS_PRIVATE ON)
 
 if (NOT EXISTS "$ENV{CPM_SOURCE_CACHE}/ttlens_private")
