@@ -28,6 +28,35 @@ class REGFILE(Enum):
     SRCB = 1
     DSTACC = 2
 
+class DataFormat(Enum):
+    Float32 = 0
+    Float16 = 1
+    Bfp8 = 2
+    Bfp4 = 3
+    Bfp2 = 11
+    Float16_b = 5
+    Bfp8_b = 6
+    Bfp4_b = 7
+    Bfp2_b = 15
+    Lf8 = 10
+    Fp8_e4m3 = 0x1A
+    UInt16 = 9
+    Int8 = 14
+    UInt8 = 30
+    Tf32 = 4
+    Int32 = 8
+    RawUInt8 = 0xf0
+    RawUInt16 = 0xf1
+    RawUInt32 = 0xf2
+    Invalid = 0xff
+
+class ValueType(Enum):
+    HEX = 0
+    DEC = 1
+    FORMAT = 2
+
+def data_format_to_string(data_format: DataFormat) -> str:
+    return data_format.name
 
 def convert_regfile(regfile: Union[int, str, REGFILE]) -> REGFILE:
     if isinstance(regfile, REGFILE):
@@ -307,5 +336,12 @@ class TensixDebug:
         unpacked_data = unpack_data(data, df)
         return unpacked_data
 
-    def get_config_field(self, name: str, config: dict, start: int = 0, dec: bool = False):
-        config[name[start:]] = hex(self.read_tensix_register(name)) if not dec else self.read_tensix_register(name)
+    def get_config_field(self, name: str, config: dict, value_type: ValueType, start: int = 0):
+        value = self.read_tensix_register(name)
+        if value_type == ValueType.HEX:
+            config[name[start:]] = hex(value)
+        elif value_type == ValueType.DEC:
+            config[name[start:]] = value
+        elif value_type == ValueType.FORMAT:
+            config[name[start:]] = data_format_to_string(DataFormat(value))
+        

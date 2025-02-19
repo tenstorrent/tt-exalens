@@ -7,7 +7,7 @@ Usage:
 
 Options:
   -d <device>   Device ID. Optional and repeatable. Default: current device
-  -l <loc       Either X-Y or R,C location of a core
+  -l <loc>      Either X-Y or R,C location of a core
 
 Description:
   Prints unpacker's configuration register.
@@ -27,7 +27,7 @@ command_metadata = {
 }
 
 from ttlens.tt_uistate import UIState
-from ttlens.tt_debug_tensix import TensixDebug
+from ttlens.tt_debug_tensix import TensixDebug, DataFormat
 from ttlens import tt_commands
 
 import tabulate
@@ -35,7 +35,6 @@ import tabulate
 
 def dict_list_to_table(dicts: list[dict], register_name: str) -> str:
     keys = dicts[0].keys()
-    #data = [[key] + [d[key] for d in dicts] for key in keys]
     data = []
     for key in keys:
         row = [key]

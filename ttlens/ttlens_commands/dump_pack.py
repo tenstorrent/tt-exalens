@@ -7,7 +7,7 @@ Usage:
 
 Options:
   -d <device>   Device ID. Optional and repeatable. Default: current device
-  -l <loc       Either X-Y or R,C location of a core
+  -l <loc>      Either X-Y or R,C location of a core
 
 Description:
   Prints packer's configuration register.
@@ -27,7 +27,7 @@ command_metadata = {
 }
 
 from ttlens.tt_uistate import UIState
-from ttlens.tt_debug_tensix import TensixDebug
+from ttlens.tt_debug_tensix import TensixDebug, DataFormat
 from ttlens import tt_commands
 
 import tabulate
@@ -82,18 +82,27 @@ def run(cmd_text, context, ui_state: UIState = None):
             device = debug_tensix.context.devices[debug_tensix.device_id]
 
             pack_config = device.get_pack_config(debug_tensix)
-            relu_config = device.get_relu_config(debug_tensix)
-            dest_rd_ctrl = device.get_pack_dest_rd_ctrl(debug_tensix)
             edge_offset = device.get_pack_edge_offset(debug_tensix)
             pack_counters = device.get_pack_counters(debug_tensix)
+            pack_strides = device.get_pack_strides(debug_tensix)
 
             pack_config_table = dict_list_to_table(pack_config, "PACK CONFIG")
-            relu_config_table = dict_list_to_table(relu_config, "RELU CONFIG")
-            dest_rd_ctrl_table = dict_list_to_table(dest_rd_ctrl, "DEST RD CTRL")
             edge_offset_table = dict_list_to_table(edge_offset, "EDGE OFFSET")
             pack_counters_table = dict_list_to_table(pack_counters, "PACK COUNTERS")
+            pack_strides_table = dict_list_to_table(pack_strides, "PACK STRIDES")
 
-            print(join_tables_side_by_side([edge_offset_table, pack_counters_table]))
-            print(join_tables_side_by_side([pack_config_table, relu_config_table, dest_rd_ctrl_table]))
+            if device._arch == "wormhole_b0" or device._arch == "blackhole":
+                relu_config = device.get_relu_config(debug_tensix)
+                dest_rd_ctrl = device.get_pack_dest_rd_ctrl(debug_tensix)
+
+                relu_config_table = dict_list_to_table(relu_config, "RELU CONFIG")
+                dest_rd_ctrl_table = dict_list_to_table(dest_rd_ctrl, "DEST RD CTRL")
+
+                print(join_tables_side_by_side([edge_offset_table, pack_counters_table, dest_rd_ctrl_table]))
+                print(join_tables_side_by_side([pack_config_table, relu_config_table, pack_strides_table]))
+            
+            else:
+                print(pack_config_table)
+                print(join_tables_side_by_side([edge_offset_table, pack_counters_table, pack_strides_table]))
 
     return None

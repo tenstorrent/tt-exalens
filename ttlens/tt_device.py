@@ -12,7 +12,6 @@ from abc import abstractmethod
 from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device
 
-
 class TensixInstructions:
     def __init__(self, ops: __module__):
         for func_name in dir(ops):
@@ -38,7 +37,6 @@ class ConfigurationRegisterDescription(TensixRegisterDescription):
     def __init__(self, index: int, mask: int = 0xFFFFFFFF, shift: int = 0, base_address=0):
         super().__init__(base_address + index * 4, mask, shift)
         self.index = index
-
 
 #
 # Device class: generic API for talking to specific devices. This class is the parent of specific

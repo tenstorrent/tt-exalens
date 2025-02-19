@@ -4,7 +4,7 @@
 from ttlens import tt_util as util
 from ttlens import tt_device
 from ttlens.tt_device import ConfigurationRegisterDescription, DebugRegisterDescription
-from ttlens.tt_debug_tensix import TensixDebug
+from ttlens.tt_debug_tensix import TensixDebug, ValueType
 
 
 class WormholeInstructions(tt_device.TensixInstructions):
@@ -60,7 +60,7 @@ class WormholeDevice(tt_device.Device):
         return 0xFFEF0000
 
     __configuration_register_map = {
-        # UNPACK TILE DESCRIPTOR SEC0
+        # UNPACK TILE DESCRIPTOR SEC 0
         "UNPACK_TILE_DESCRIPTOR0_in_data_format": ConfigurationRegisterDescription(index=52, mask=0xF, shift=0),
         "UNPACK_TILE_DESCRIPTOR0_uncompressed": ConfigurationRegisterDescription(index=52, mask=0x10, shift=4),
         "UNPACK_TILE_DESCRIPTOR0_reserved_0": ConfigurationRegisterDescription(index=52, mask=0xE0, shift=5),
@@ -76,7 +76,7 @@ class WormholeDevice(tt_device.Device):
         "UNPACK_TILE_DESCRIPTOR0_blobs_y_start_hi": ConfigurationRegisterDescription(index=55, mask=0xFFFF, shift=0),
         "UNPACK_TILE_DESCRIPTOR0_digest_type": ConfigurationRegisterDescription(index=55, mask=0xFF0000, shift=16),
         "UNPACK_TILE_DESCRIPTOR0_digest_size": ConfigurationRegisterDescription(index=55, mask=0xFF000000, shift=24),
-        # UNPACK TILE DESCRIPTOR SEC1
+        # UNPACK TILE DESCRIPTOR SEC 1
         "UNPACK_TILE_DESCRIPTOR1_in_data_format": ConfigurationRegisterDescription(index=92, mask=0xF, shift=0),
         "UNPACK_TILE_DESCRIPTOR1_uncompressed": ConfigurationRegisterDescription(index=92, mask=0x10, shift=4),
         "UNPACK_TILE_DESCRIPTOR1_reserved_0": ConfigurationRegisterDescription(index=92, mask=0xE0, shift=5),
@@ -92,7 +92,7 @@ class WormholeDevice(tt_device.Device):
         "UNPACK_TILE_DESCRIPTOR1_blobs_y_start_hi": ConfigurationRegisterDescription(index=95, mask=0xFFFF, shift=0),
         "UNPACK_TILE_DESCRIPTOR1_digest_type": ConfigurationRegisterDescription(index=95, mask=0xFF0000, shift=16),
         "UNPACK_TILE_DESCRIPTOR1_digest_size": ConfigurationRegisterDescription(index=95, mask=0xFF000000, shift=24),
-        # UNPACK CONFIG SEC0
+        # UNPACK CONFIG SEC 0
         "UNPACK_CONFIG0_out_data_format": ConfigurationRegisterDescription(index=60, mask=0xF, shift=0),
         "UNPACK_CONFIG0_throttle_mode": ConfigurationRegisterDescription(index=60, mask=0x30, shift=4),
         "UNPACK_CONFIG0_context_count": ConfigurationRegisterDescription(index=60, mask=0xC0, shift=6),
@@ -115,7 +115,7 @@ class WormholeDevice(tt_device.Device):
         "UNPACK_CONFIG0_reserved_4": ConfigurationRegisterDescription(index=62, mask=0xFFFE0000, shift=17),
         "UNPACK_CONFIG0_fifo_size": ConfigurationRegisterDescription(index=63, mask=0x1FFFF, shift=0),
         "UNPACK_CONFIG0_reserved_5": ConfigurationRegisterDescription(index=63, mask=0xFFFE0000, shift=17),
-        # UNPACK CONFIG SEC1
+        # UNPACK CONFIG SEC 1
         "UNPACK_CONFIG1_out_data_format": ConfigurationRegisterDescription(index=100, mask=0xF, shift=0),
         "UNPACK_CONFIG1_throttle_mode": ConfigurationRegisterDescription(index=100, mask=0x30, shift=4),
         "UNPACK_CONFIG1_context_count": ConfigurationRegisterDescription(index=100, mask=0xC0, shift=6),
@@ -268,9 +268,9 @@ class WormholeDevice(tt_device.Device):
         "PACK_EDGE_OFFSET0_reserved": ConfigurationRegisterDescription(index=20,mask=0xfe000000, shift=25),
         # EDGE OFFSET SEC 1
         "PACK_EDGE_OFFSET1_mask": ConfigurationRegisterDescription(index=21, mask=0xffff, shift=0),
-        # EDGE OFFSET SEC2
+        # EDGE OFFSET SEC 2
         "PACK_EDGE_OFFSET2_mask": ConfigurationRegisterDescription(index=22, mask=0xffff, shift=0),
-        # EDGE OFFSET SEC3
+        # EDGE OFFSET SEC 3
         "PACK_EDGE_OFFSET3_mask": ConfigurationRegisterDescription(index=23, mask=0xffff, shift=0),
         # PACK COUNTERS SEC 0
         "PACK_COUNTERS0_pack_per_xy_plane": ConfigurationRegisterDescription(index=24, mask=0xff, shift=0),
@@ -295,7 +295,17 @@ class WormholeDevice(tt_device.Device):
         "PACK_COUNTERS3_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=27, mask=0xff00, shift=8),
         "PACK_COUNTERS3_pack_xys_per_til": ConfigurationRegisterDescription(index=27, mask=0x7f0000, shift=16),
         "PACK_COUNTERS3_pack_yz_transposed": ConfigurationRegisterDescription(index=27, mask=800000, shift=23),
-        "PACK_COUNTERS3_pack_per_xy_plane_offset": ConfigurationRegisterDescription(index=27, mask=0xff000000, shift=24), 
+        "PACK_COUNTERS3_pack_per_xy_plane_offset": ConfigurationRegisterDescription(index=27, mask=0xff000000, shift=24),
+        # PACK STRIDES REG 0
+        "PACK_STRIDES0_x_stride": ConfigurationRegisterDescription(index=8, mask=0xfff, shift=0),
+        "PACK_STRIDES0_y_stride": ConfigurationRegisterDescription(index=8, mask=0xfff000, shift=12),
+        "PACK_STRIDES0_z_stride": ConfigurationRegisterDescription(index=9, mask=0xfff, shift=0),
+        "PACK_STRIDES0_w_stride": ConfigurationRegisterDescription(index=9, mask=0xffff000, shift=12),
+        # PACK STRIDES REG 1
+        "PACK_STRIDES1_x_stride": ConfigurationRegisterDescription(index=10, mask=0xfff, shift=0),
+        "PACK_STRIDES1_y_stride": ConfigurationRegisterDescription(index=10, mask=0xfff000, shift=12),
+        "PACK_STRIDES1_z_stride": ConfigurationRegisterDescription(index=11, mask=0xfff, shift=0),
+        "PACK_STRIDES1_w_stride": ConfigurationRegisterDescription(index=11, mask=0xffff000, shift=12), 
         # REST
         "DISABLE_RISC_BP_Disable_main": ConfigurationRegisterDescription(index=2, mask=0x400000, shift=22),
         "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(index=2, mask=0x3800000, shift=23),
@@ -344,117 +354,129 @@ class WormholeDevice(tt_device.Device):
     def get_alu_config(self, debug_tensix: TensixDebug) -> list[dict]:
         alu_config = {}
 
-        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Fpu_srnd_en", alu_config)
-        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Gasket_srnd_en", alu_config)
-        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Packer_srnd_en", alu_config)
-        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Padding", alu_config)
-        debug_tensix.get_config_field("ALU_ROUNDING_MODE_GS_LF", alu_config)
-        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Bfp8_HF", alu_config)
-        debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG0_SrcAUnsigned", alu_config)
-        debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG0_SrcBUnsigned", alu_config)
-        debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG0_SrcA", alu_config)
-        debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG1_SrcB", alu_config)
-        debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG2_Dstacc", alu_config)
-        debug_tensix.get_config_field("ALU_ACC_CTRL_Fp32_enabled", alu_config)
-        debug_tensix.get_config_field("ALU_ACC_CTRL_SFPU_Fp32_enabled", alu_config)
-        debug_tensix.get_config_field("ALU_ACC_CTRL_INT8_math_enabled", alu_config)
+        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Fpu_srnd_en", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Gasket_srnd_en", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Packer_srnd_en", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Padding", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ROUNDING_MODE_GS_LF", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Bfp8_HF", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG0_SrcAUnsigned", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG0_SrcBUnsigned", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG0_SrcA", alu_config, ValueType.FORMAT)
+        debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG1_SrcB", alu_config, ValueType.FORMAT)
+        debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG2_Dstacc", alu_config, ValueType.FORMAT)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_Fp32_enabled", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_SFPU_Fp32_enabled", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_INT8_math_enabled", alu_config, ValueType.HEX)
 
         return [alu_config]
 
     def get_unpack_tile_descriptor(self, debug_tensix: TensixDebug) -> list[dict]:
-        tile_descriptor_list = []
+        struct_name = "UNPACK_TILE_DESCRIPTOR"
 
-        start = 24  # ignores field name prefix
+        tile_descriptor_list = []
 
         for i in range(self.NUM_UNPACKERS):
             tile_descriptor = {}
 
-            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_in_data_format", tile_descriptor, start)
-            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_uncompressed", tile_descriptor, start)
-            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_reserved_0", tile_descriptor, start)
-            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_blobs_per_xy_plane", tile_descriptor, start, True)
-            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_reserved_1", tile_descriptor, start)
-            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_x_dim", tile_descriptor, start, True)
-            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_y_dim", tile_descriptor, start, True)
-            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_z_dim", tile_descriptor, start, True)
-            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_w_dim", tile_descriptor, start, True)
-            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_blobs_y_start_lo", tile_descriptor, start, True)
-            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_blobs_y_start_hi", tile_descriptor, start, True)
+            register_name = struct_name + str(i)
+
+            start = len(register_name) + 1 # ignores name prefix
+
+            debug_tensix.get_config_field(register_name + "_in_data_format", tile_descriptor, ValueType.FORMAT, start)
+            debug_tensix.get_config_field(register_name + "_uncompressed", tile_descriptor, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_reserved_0", tile_descriptor, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_blobs_per_xy_plane", tile_descriptor, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_reserved_1", tile_descriptor, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_x_dim", tile_descriptor, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_y_dim", tile_descriptor, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_z_dim", tile_descriptor, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_w_dim", tile_descriptor, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_blobs_y_start_lo", tile_descriptor, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_blobs_y_start_hi", tile_descriptor, ValueType.DEC, start)
             tile_descriptor["blobs_y_start"] = (tile_descriptor["blobs_y_start_hi"] << 16) | tile_descriptor[
                 "blobs_y_start_lo"
             ]
             del tile_descriptor["blobs_y_start_lo"]
             del tile_descriptor["blobs_y_start_hi"]
-            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_digest_type", tile_descriptor, start)
-            debug_tensix.get_config_field("UNPACK_TILE_DESCRIPTOR" + str(i) + "_digest_size", tile_descriptor, start, True)
+            debug_tensix.get_config_field(register_name + "_digest_type", tile_descriptor, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_digest_size", tile_descriptor, ValueType.DEC, start)
 
             tile_descriptor_list.append(tile_descriptor)
 
         return tile_descriptor_list
 
     def get_unpack_config(self, debug_tensix: TensixDebug) -> list[dict]:
+        struct_name = "UNPACK_CONFIG"
+        
         unpack_config_list = []
-
-        start = 15  # ignores field name prefix
 
         for i in range(self.NUM_UNPACKERS):
             unpack_config = {}
 
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_out_data_format", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_throttle_mode", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_context_count", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_haloize_mode", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_tileize_mode", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_unpack_src_reg_set_upd", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_unpack_if_sel", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_upsample_rate", unpack_config, start, True)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_reserved_1", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_upsample_and_interleave", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_shift_amount", unpack_config, start, True)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_uncompress_cntx0_3", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_unpack_if_sel_cntx0_3", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_force_shared_exp", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_reserved_2", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_uncompress_cntx4_7", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_unpack_if_sel_cntx4_7", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_reserved_3", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_limit_addr", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_reserved_4", unpack_config, start)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_fifo_size", unpack_config, start, True)
-            debug_tensix.get_config_field("UNPACK_CONFIG" + str(i) + "_reserved_5", unpack_config, start)
+            register_name = struct_name + str(i)
+
+            start = len(register_name) + 1 # ignores name prefix
+
+            debug_tensix.get_config_field(register_name + "_out_data_format", unpack_config, ValueType.FORMAT, start)
+            debug_tensix.get_config_field(register_name + "_throttle_mode", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_context_count", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_haloize_mode", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_tileize_mode", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_unpack_src_reg_set_upd", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_unpack_if_sel", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_upsample_rate", unpack_config, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_reserved_1", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_upsample_and_interleave", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_shift_amount", unpack_config, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_uncompress_cntx0_3", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_unpack_if_sel_cntx0_3", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_force_shared_exp", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_reserved_2", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_uncompress_cntx4_7", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_unpack_if_sel_cntx4_7", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_reserved_3", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_limit_addr", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_reserved_4", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_fifo_size", unpack_config, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_reserved_5", unpack_config, ValueType.HEX, start)
 
             unpack_config_list.append(unpack_config)
 
         return unpack_config_list
 
     def get_pack_config(self, debug_tensix: TensixDebug) -> list[dict]:
-        pack_config_list = []
+        struct_name = "PACK_CONFIG"
 
-        start = 14  # ignores field name prefix
+        pack_config_list = []
 
         for i in [0,1]:
             for j in [1,8]:
                 pack_config = {}
 
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_row_ptr_section_size", pack_config, start, True)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_exp_section_size", pack_config, start, True)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_l1_dest_addr", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_uncompress", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_add_l1_dest_addr_offset", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_reserved_0", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_out_data_format", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_in_data_format", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_reserved_1", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_src_if_sel", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_pack_per_xy_plane", pack_config, start, True)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_l1_src_addr", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_downsample_mask", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_downsample_shift_count", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_read_mode", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_exp_threshold_en", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_pack_l1_acc_disable_pack_zero_flag", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_reserved_2", pack_config, start)
-                debug_tensix.get_config_field("PACK_CONFIG" + str(i) + str(j) + "_exp_threshold", pack_config, start, True)
+                register_name = struct_name + str(i) + str(j)
+
+                start = len(register_name) + 1# ignores name prefix
+
+                debug_tensix.get_config_field(register_name + "_row_ptr_section_size", pack_config, ValueType.DEC, start)
+                debug_tensix.get_config_field(register_name + "_exp_section_size", pack_config, ValueType.DEC, start)
+                debug_tensix.get_config_field(register_name + "_l1_dest_addr", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_uncompress", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_add_l1_dest_addr_offset", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_reserved_0", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_out_data_format", pack_config, ValueType.FORMAT, start)
+                debug_tensix.get_config_field(register_name + "_in_data_format", pack_config, ValueType.FORMAT, start)
+                debug_tensix.get_config_field(register_name + "_reserved_1", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_src_if_sel", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_pack_per_xy_plane", pack_config, ValueType.DEC, start)
+                debug_tensix.get_config_field(register_name + "_l1_src_addr", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_downsample_mask", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_downsample_shift_count", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_read_mode", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_exp_threshold_en", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_pack_l1_acc_disable_pack_zero_flag", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_reserved_2", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_exp_threshold", pack_config, ValueType.DEC, start)
 
                 pack_config_list.append(pack_config)
 
@@ -463,16 +485,16 @@ class WormholeDevice(tt_device.Device):
     def get_relu_config(self, debug_tensix: TensixDebug) -> list[dict]:
         relu_config = {}
 
-        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_src", relu_config)
-        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_dst", relu_config)
-        debug_tensix.get_config_field("STACC_RELU_ApplyRelu", relu_config)
-        debug_tensix.get_config_field("STACC_RELU_ReluThreshold", relu_config, 0, True)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_main", relu_config)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_trisc", relu_config)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_ncrisc", relu_config)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_main", relu_config)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_trisc", relu_config)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_ncrisc", relu_config)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_src", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_dst", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("STACC_RELU_ApplyRelu", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("STACC_RELU_ReluThreshold", relu_config, ValueType.DEC)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_main", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_trisc", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_ncrisc", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_main", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_trisc", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_ncrisc", relu_config, ValueType.HEX)
 
         return [relu_config]
     
@@ -481,50 +503,79 @@ class WormholeDevice(tt_device.Device):
 
         start = 18
 
-        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_32b_data", dest, start)
-        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_unsigned", dest, start)
-        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_int8", dest, start)
-        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Round_10b_mant", dest, start)
-        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Reserved", dest, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_32b_data", dest, ValueType.HEX, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_unsigned", dest, ValueType.HEX, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_int8", dest, ValueType.HEX, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Round_10b_mant", dest, ValueType.HEX, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Reserved", dest, ValueType.HEX, start)
 
         return [dest]
     
     def get_pack_edge_offset(self, debug_tensix: TensixDebug) -> list[dict]:
-        edge_list = []
+        struct_name = "PACK_EDGE_OFFSET"
 
-        start = 18
+        edge_list = []
 
         for i in range(self.NUM_PACKERS):
             edge = {}
 
-            debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_mask", edge, start)
+            register_name = struct_name + str(i)
+
+            start = len(register_name) + 1 # ignores name prefix
+
+            debug_tensix.get_config_field(register_name + "_mask", edge, ValueType.HEX, start)
 
             if i == 0:
-                debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_mode", edge, start)
-                debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_tile_row_set_select_pack0", edge, start)
-                debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_tile_row_set_select_pack1", edge, start)
-                debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_tile_row_set_select_pack2", edge, start)
-                debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_tile_row_set_select_pack3", edge, start)
-                debug_tensix.get_config_field("PACK_EDGE_OFFSET" + str(i) + "_reserved", edge, start)
+                debug_tensix.get_config_field(register_name + "_mode", edge, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_tile_row_set_select_pack0", edge, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_tile_row_set_select_pack1", edge, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_tile_row_set_select_pack2", edge, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_tile_row_set_select_pack3", edge, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_reserved", edge, ValueType.HEX, start)
 
             edge_list.append(edge)
 
         return edge_list
     
     def get_pack_counters(self, debug_tensix: TensixDebug) -> list[dict]:
-        start = 15
+        struct_name = "PACK_COUNTERS"
+        
         counters_list = []
 
         for i in range(self.NUM_PACKERS):
             counters = {}
 
-            debug_tensix.get_config_field("PACK_COUNTERS" + str(i) + "_pack_per_xy_plane", counters, start, True)
-            debug_tensix.get_config_field("PACK_COUNTERS" + str(i) + "_pack_reads_per_xy_plane", counters, start, True)
-            debug_tensix.get_config_field("PACK_COUNTERS" + str(i) + "_pack_xys_per_til", counters, start, True)
-            debug_tensix.get_config_field("PACK_COUNTERS" + str(i) + "_pack_yz_transposed", counters, start)
-            debug_tensix.get_config_field("PACK_COUNTERS" + str(i) + "_pack_per_xy_plane_offset", counters, start, True)
+            register_name = struct_name + str(i)
+
+            start = len(register_name) + 1 # ignores name prefix
+
+            debug_tensix.get_config_field(register_name + "_pack_per_xy_plane", counters, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_pack_reads_per_xy_plane", counters, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_pack_xys_per_til", counters, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_pack_yz_transposed", counters, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_pack_per_xy_plane_offset", counters, ValueType.DEC, start)
 
             counters_list.append(counters)
         
         return counters_list
 
+    def get_pack_strides(self, debug_tensix: TensixDebug) -> list[dict]:
+        struct_name = "PACK_STRIDES"
+
+        strides_list = []
+
+        for i in range(2):
+            strides = {}
+            
+            register_name = struct_name + str(i)
+
+            start = len(register_name) + 1 # ignores name prefix
+
+            debug_tensix.get_config_field(register_name + "_x_stride", strides, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_y_stride", strides, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_z_stride", strides, ValueType.DEC, start)
+            debug_tensix.get_config_field(register_name + "_w_stride", strides, ValueType.DEC, start)
+        
+            strides_list.append(strides)
+        
+        return strides_list
