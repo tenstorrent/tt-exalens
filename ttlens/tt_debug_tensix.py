@@ -54,6 +54,7 @@ class ValueType(Enum):
     HEX = 0
     DEC = 1
     FORMAT = 2
+    BOOL = 3
 
 def data_format_to_string(data_format: DataFormat) -> str:
     return data_format.name
@@ -344,4 +345,6 @@ class TensixDebug:
             config[name[start:]] = value
         elif value_type == ValueType.FORMAT:
             config[name[start:]] = data_format_to_string(DataFormat(value))
+        elif value_type == ValueType.BOOL:
+            config[name[start:]] = "True" if value else "False"
         

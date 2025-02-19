@@ -354,9 +354,9 @@ class WormholeDevice(tt_device.Device):
     def get_alu_config(self, debug_tensix: TensixDebug) -> list[dict]:
         alu_config = {}
 
-        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Fpu_srnd_en", alu_config, ValueType.HEX)
-        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Gasket_srnd_en", alu_config, ValueType.HEX)
-        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Packer_srnd_en", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Fpu_srnd_en", alu_config, ValueType.BOOL)
+        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Gasket_srnd_en", alu_config, ValueType.BOOL)
+        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Packer_srnd_en", alu_config, ValueType.BOOL)
         debug_tensix.get_config_field("ALU_ROUNDING_MODE_Padding", alu_config, ValueType.HEX)
         debug_tensix.get_config_field("ALU_ROUNDING_MODE_GS_LF", alu_config, ValueType.HEX)
         debug_tensix.get_config_field("ALU_ROUNDING_MODE_Bfp8_HF", alu_config, ValueType.HEX)
@@ -365,9 +365,9 @@ class WormholeDevice(tt_device.Device):
         debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG0_SrcA", alu_config, ValueType.FORMAT)
         debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG1_SrcB", alu_config, ValueType.FORMAT)
         debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG2_Dstacc", alu_config, ValueType.FORMAT)
-        debug_tensix.get_config_field("ALU_ACC_CTRL_Fp32_enabled", alu_config, ValueType.HEX)
-        debug_tensix.get_config_field("ALU_ACC_CTRL_SFPU_Fp32_enabled", alu_config, ValueType.HEX)
-        debug_tensix.get_config_field("ALU_ACC_CTRL_INT8_math_enabled", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_Fp32_enabled", alu_config, ValueType.BOOL)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_SFPU_Fp32_enabled", alu_config, ValueType.BOOL)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_INT8_math_enabled", alu_config, ValueType.BOOL)
 
         return [alu_config]
 
