@@ -45,7 +45,7 @@ The following coordinate systems are available to represent a grid location on t
                     grid. It is used by the NOC hardware and it is programmable ahead of time. Notation: X-Y
 """
 
-from ttlens.tt_util import TTException
+from ttlens.util import TTException
 
 VALID_COORDINATE_TYPES = [
     "die",

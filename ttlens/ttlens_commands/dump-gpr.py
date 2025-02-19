@@ -28,12 +28,12 @@ command_metadata = {
 
 import tabulate
 
-from ttlens.tt_uistate import UIState
+from ttlens.uistate import UIState
 
-from ttlens import tt_commands
-from ttlens import tt_util as util
-from ttlens.tt_debug_risc import RiscDebug, RiscLoc, RISCV_REGS, get_risc_name, get_register_index
-from ttlens.tt_firmware import ELF
+from ttlens import commands
+from ttlens import util as util
+from ttlens.debug_risc import RiscDebug, RiscLoc, RISCV_REGS, get_risc_name, get_register_index
+from ttlens.firmware import ELF
 
 
 def reg_included(reg_index, regs_to_include):
@@ -127,7 +127,7 @@ def get_register_data(device, context, loc, args):
 
 
 def run(cmd_text, context, ui_state: UIState = None):
-    dopt = tt_commands.tt_docopt(
+    dopt = commands.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
         common_option_names=command_metadata["common_option_names"],

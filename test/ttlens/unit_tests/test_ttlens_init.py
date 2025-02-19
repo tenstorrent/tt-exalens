@@ -5,7 +5,7 @@ import unittest
 import os
 
 from ttlens import tt_lens_init
-from ttlens.tt_lens_context import Context
+from ttlens.context import Context
 from ttlens.tt_lens_server import start_server, stop_server
 
 

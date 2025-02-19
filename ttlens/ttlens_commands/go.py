@@ -11,7 +11,7 @@ Description:
 Examples:
   go -d 0 -l 0,0
 """
-from ttlens import tt_commands
+from ttlens import commands
 
 command_metadata = {
     "short": "go",
@@ -23,7 +23,7 @@ command_metadata = {
 
 
 def run(cmd_text, context, ui_state=None):
-    dopt = tt_commands.tt_docopt(
+    dopt = commands.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
         common_option_names=command_metadata["common_option_names"],

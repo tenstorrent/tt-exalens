@@ -35,9 +35,9 @@ command_metadata = {
 
 from docopt import docopt
 
-from ttlens.tt_uistate import UIState
-from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_debug_tensix import TensixDebug
+from ttlens.uistate import UIState
+from ttlens.coordinate import OnChipCoordinate
+from ttlens.debug_tensix import TensixDebug
 from typing import List, Union
 
 

@@ -4,9 +4,9 @@
 from abc import abstractmethod
 from functools import cached_property
 from typing import Dict, Optional, Set
-from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens import tt_util as util
-from ttlens.tt_firmware import ELF
+from ttlens.coordinate import OnChipCoordinate
+from ttlens import util as util
+from ttlens.firmware import ELF
 
 # All-encompassing structure representing a TTLens context
 class Context:
@@ -23,14 +23,14 @@ class Context:
 
     @cached_property
     def devices(self):
-        from ttlens import tt_device
+        from ttlens import device
 
         device_ids = self.device_ids
-        devices: Dict[int, tt_device.Device] = dict()
+        devices: Dict[int, device.Device] = dict()
         for device_id in device_ids:
             device_desc_path = self.server_ifc.get_device_soc_description(device_id)
             util.DEBUG(f"Loading device {device_id} from {device_desc_path}")
-            devices[device_id] = tt_device.Device.create(
+            devices[device_id] = device.Device.create(
                 self.arch,
                 device_id=device_id,
                 cluster_desc=self.cluster_desc.root,

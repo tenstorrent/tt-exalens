@@ -3,7 +3,6 @@
 		"software-properties-common",
 		"build-essential",
 		"libyaml-cpp-dev",
-		"libboost-all-dev",
 		"libhwloc-dev",
 		"xxd",
 		"cmake",

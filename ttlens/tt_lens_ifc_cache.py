@@ -7,7 +7,7 @@ import os
 import pickle
 
 from ttlens.tt_lens_ifc_base import TTLensCommunicator
-from ttlens import tt_util as util
+from ttlens import util as util
 
 
 """

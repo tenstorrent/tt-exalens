@@ -14,7 +14,6 @@ RUN apt-get update && apt-get install -y \
     git \
     git-lfs \
 	libyaml-cpp-dev \
-	libboost-all-dev \
 	libhwloc-dev \
 	libzmq3-dev \
     libnsl2 \

@@ -6,9 +6,9 @@ from typing import Union
 
 from ttlens import tt_lens_ifc
 from ttlens import tt_lens_ifc_cache
-from ttlens import tt_util as util
+from ttlens import util as util
 
-from ttlens.tt_lens_context import Context, LimitedContext
+from ttlens.context import Context, LimitedContext
 
 """
 GLOBAL_CONTEXT is a convenience variable to store fallback TTLens context object.

@@ -7,7 +7,7 @@ from typing import Union
 __all__ = [
     "tt_lens_init",
     "tt_lens_lib",
-    "tt_coordinate",
+    "coordinate",
 ]
 
 # Setting the verbosity of messages shown

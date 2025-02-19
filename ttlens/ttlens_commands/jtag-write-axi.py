@@ -28,9 +28,9 @@ command_metadata = {
 
 from docopt import docopt
 
-from ttlens.tt_uistate import UIState
+from ttlens.uistate import UIState
 
-from ttlens.tt_coordinate import OnChipCoordinate
+from ttlens.coordinate import OnChipCoordinate
 
 
 # A helper to print the result of a single JTAG AXI write

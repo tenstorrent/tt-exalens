@@ -11,17 +11,17 @@ from parameterized import parameterized
 from test.ttlens.unit_tests.test_base import init_default_test_context
 from ttlens import tt_lens_init
 from ttlens import tt_lens_lib as lib
-from ttlens import tt_util
+from ttlens import util
 
-from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_lens_context import Context
-from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name
-from ttlens.tt_firmware import ELF
-from ttlens.tt_object import DataArray
+from ttlens.coordinate import OnChipCoordinate
+from ttlens.context import Context
+from ttlens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name
+from ttlens.firmware import ELF
+from ttlens.object import DataArray
 import os
 
-from ttlens.tt_arc import load_arc_fw
-from ttlens.tt_arc_dbg_fw import arc_dbg_fw_check_msg_loop_running, arc_dbg_fw_command, NUM_LOG_CALLS_OFFSET
+from ttlens.arc import load_arc_fw
+from ttlens.arc_dbg_fw import arc_dbg_fw_check_msg_loop_running, arc_dbg_fw_command, NUM_LOG_CALLS_OFFSET
 from ttlens.tt_lens_lib_utils import arc_read
 
 
@@ -203,9 +203,9 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_inputs_read(self, core_loc, address, device_id, word_count):
         """Test invalid inputs for read functions."""
-        with self.assertRaises((tt_util.TTException, ValueError)):
+        with self.assertRaises((util.TTException, ValueError)):
             lib.read_words_from_device(core_loc, address, device_id, word_count)
-        with self.assertRaises((tt_util.TTException, ValueError)):
+        with self.assertRaises((util.TTException, ValueError)):
             # word_count can be used as num_bytes
             lib.read_from_device(core_loc, address, device_id, word_count)
 
@@ -220,7 +220,7 @@ class TestReadWrite(unittest.TestCase):
         ]
     )
     def test_invalid_write_word(self, core_loc, address, data, device_id):
-        with self.assertRaises((tt_util.TTException, ValueError)):
+        with self.assertRaises((util.TTException, ValueError)):
             lib.write_words_to_device(core_loc, address, data, device_id)
 
     @parameterized.expand(
@@ -236,7 +236,7 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_write(self, core_loc, address, data, device_id):
         """Test invalid inputs for write function."""
-        with self.assertRaises((tt_util.TTException, ValueError)):
+        with self.assertRaises((util.TTException, ValueError)):
             lib.write_to_device(core_loc, address, data, device_id)
 
 
@@ -299,7 +299,7 @@ class TestRunElf(unittest.TestCase):
     def test_run_elf_invalid(self, elf_file, core_loc, risc_id, device_id):
         if elf_file is None:
             elf_file = self.get_elf_path("run_elf_test", 0)
-        with self.assertRaises((tt_util.TTException, ValueError)):
+        with self.assertRaises((util.TTException, ValueError)):
             lib.run_elf(elf_file, core_loc, risc_id, device_id, context=self.context)
 
     # TODO: This test should be restructured (Issue #70)
@@ -421,7 +421,7 @@ class TestRunElf(unittest.TestCase):
             timeout_retries -= 1
 
         if timeout_retries == 0 and mbox_val != 0:
-            raise tt_util.TTFatalException(f"RISC at location {loc} did not get past step 6.")
+            raise util.TTFatalException(f"RISC at location {loc} did not get past step 6.")
         self.assertFalse(
             rdbg.is_pc_watchpoint_hit(), f"RISC at location {loc} hit the breakpoint but it should not have."
         )
@@ -434,7 +434,7 @@ class TestRunElf(unittest.TestCase):
         status = rdbg.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.is_watchpoint3_hit:
-            raise tt_util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 3.")
+            raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 3.")
         rdbg.cont(verify=False)
 
         mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
@@ -444,7 +444,7 @@ class TestRunElf(unittest.TestCase):
         status = rdbg.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.is_watchpoint5_hit:
-            raise tt_util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 5.")
+            raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 5.")
         rdbg.cont(verify=False)
 
         mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
@@ -454,7 +454,7 @@ class TestRunElf(unittest.TestCase):
         status = rdbg.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.is_watchpoint0_hit:
-            raise tt_util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 0.")
+            raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 0.")
             return False
         rdbg.cont(verify=False)
 
@@ -465,7 +465,7 @@ class TestRunElf(unittest.TestCase):
         status = rdbg.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.is_watchpoint4_hit:
-            raise tt_util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 4.")
+            raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 4.")
         rdbg.cont(verify=False)
 
         # STEP END:
@@ -516,6 +516,8 @@ class TestARC(unittest.TestCase):
             device = self.context.devices[device_id]
             arc_core_loc = device.get_arc_block_location()
 
-            scratch2 = arc_read(self.context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_SCRATCH2"))
+            scratch2 = arc_read(
+                self.context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_SCRATCH2")
+            )
 
             assert scratch2 == 0xBEBACECA
