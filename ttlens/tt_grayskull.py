@@ -94,7 +94,7 @@ class GrayskullDevice(tt_device.Device):
         "UNPACK_CONFIG0_force_shared_exp": ConfigurationRegisterDescription(index=56, mask=0x400, shift=10),
         "UNPACK_CONFIG0_reserved_0": ConfigurationRegisterDescription(index=56, mask=0x800, shift=11),
         "UNPACK_CONFIG0_upsample_rate": ConfigurationRegisterDescription(index=56, mask=0x7000, shift=12),
-        "UNPACK_CONFIG0_upsamle_and_interlave": ConfigurationRegisterDescription(index=56, mask=0x8000, shift=15),
+        "UNPACK_CONFIG0_upsample_and_interlave": ConfigurationRegisterDescription(index=56, mask=0x8000, shift=15),
         "UNPACK_CONFIG0_shift_amount": ConfigurationRegisterDescription(index=56, mask=0xFFFF0000, shift=16),
         "UNPACK_CONFIG0_uncompress_cntx0_3": ConfigurationRegisterDescription(index=57, mask=0xF, shift=0),
         "UNPACK_CONFIG0_reserved_1": ConfigurationRegisterDescription(index=57, mask=0xFFF0, shift=4),
@@ -111,7 +111,7 @@ class GrayskullDevice(tt_device.Device):
         "UNPACK_CONFIG1_force_shared_exp": ConfigurationRegisterDescription(index=90, mask=0x400, shift=10),
         "UNPACK_CONFIG1_reserved_0": ConfigurationRegisterDescription(index=90, mask=0x800, shift=11),
         "UNPACK_CONFIG1_upsample_rate": ConfigurationRegisterDescription(index=90, mask=0x7000, shift=12),
-        "UNPACK_CONFIG1_upsamle_and_interlave": ConfigurationRegisterDescription(index=90, mask=0x8000, shift=15),
+        "UNPACK_CONFIG1_upsample_and_interlave": ConfigurationRegisterDescription(index=90, mask=0x8000, shift=15),
         "UNPACK_CONFIG1_shift_amount": ConfigurationRegisterDescription(index=90, mask=0xFFFF0000, shift=16),
         "UNPACK_CONFIG1_uncompress_cntx0_3": ConfigurationRegisterDescription(index=91, mask=0xF, shift=0),
         "UNPACK_CONFIG1_reserved_1": ConfigurationRegisterDescription(index=91, mask=0xFFF0, shift=4),
@@ -341,7 +341,7 @@ class GrayskullDevice(tt_device.Device):
             debug_tensix.get_config_field(register_name + "_force_shared_exp", unpack_config, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_reserved_0", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_upsample_rate", unpack_config, ValueType.DEC, start)
-            debug_tensix.get_config_field(register_name + "_upsample_and_interleave", unpack_config, ValueType.BOOL, start)
+            debug_tensix.get_config_field(register_name + "_upsample_and_interlave", unpack_config, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_shift_amount", unpack_config, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_uncompress_cntx0_3", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_reserved_1", unpack_config, ValueType.HEX, start)
@@ -367,7 +367,7 @@ class GrayskullDevice(tt_device.Device):
 
                 register_name = struct_name + str(i) + str(j)
 
-                debug_tensix.get_config_field(register_name + "_row_ptr_section_size", pack_config, ValueType.DEC, start, True)
+                debug_tensix.get_config_field(register_name + "_row_ptr_section_size", pack_config, ValueType.DEC, start)
                 debug_tensix.get_config_field(register_name + "_exp_section_size", pack_config, ValueType.DEC, start)
                 debug_tensix.get_config_field(register_name + "_l1_dest_addr", pack_config, ValueType.HEX, start)
                 debug_tensix.get_config_field(register_name + "_uncompress", pack_config, ValueType.BOOL, start)

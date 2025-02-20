@@ -102,7 +102,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                 print(join_tables_side_by_side([pack_config_table, relu_config_table, pack_strides_table]))
             
             else:
-                print(pack_config_table)
-                print(join_tables_side_by_side([edge_offset_table, pack_counters_table, pack_strides_table]))
+                print(join_tables_side_by_side([pack_config_table, pack_counters_table]))
+                print(join_tables_side_by_side([edge_offset_table, pack_strides_table]))
 
     return None
