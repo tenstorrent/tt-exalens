@@ -317,6 +317,15 @@ class TensixDebug:
         return unpacked_data
 
     def get_config_field(self, name: str, config: dict, value_type: ValueType, start: int = 0):
+        """Writes the value of a configuration register field, specified by its name, to a given dictionary based on the provided value type.
+         
+        Args:
+                name (str): Name of configuration register field.
+                config (dict): Dictionary to write field's value into.
+                value_type (ValueType): Argument that determines what type of value we are writing.
+                start (int): Dictionary key is name from index start onwards.
+        """
+
         value = self.read_tensix_register(name)
         if value_type == ValueType.HEX:
             config[name[start:]] = hex(value)

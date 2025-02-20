@@ -29,28 +29,9 @@ command_metadata = {
 from ttlens.tt_uistate import UIState
 from ttlens.tt_debug_tensix import TensixDebug
 from ttlens import tt_commands
+from ttlens.tt_util import dict_list_to_table
 
 import tabulate
-
-
-def dict_list_to_table(dicts: list[dict], register_name: str) -> str:
-    keys = dicts[0].keys()
-    data = []
-    for key in keys:
-        row = [key]
-        for d in dicts:
-            if key in d:
-                row.append(d[key])
-            else:
-                row.append("/")
-        data.append(row)
-            
-    if len(dicts) == 1:
-        headers = [register_name] + ["VALUES"]
-    else:
-        headers = [register_name] + [f"REG_ID = {i+1}" for i in range(len(dicts))]
-
-    return tabulate.tabulate(data, headers=headers, tablefmt="grid")
 
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = tt_commands.tt_docopt(

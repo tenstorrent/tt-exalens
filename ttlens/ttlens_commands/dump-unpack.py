@@ -29,46 +29,9 @@ command_metadata = {
 from ttlens.tt_uistate import UIState
 from ttlens.tt_debug_tensix import TensixDebug
 from ttlens import tt_commands
+from ttlens.tt_util import dict_list_to_table, put_table_list_side_by_side
 
 import tabulate
-
-
-def dict_list_to_table(dicts: list[dict], register_name: str) -> str:
-    keys = dicts[0].keys()
-    data = []
-    for key in keys:
-        row = [key]
-        for d in dicts:
-            if key in d:
-                row.append(d[key])
-            else:
-                row.append("/")
-        data.append(row)
-            
-    if len(dicts) == 1:
-        headers = [register_name] + ["VALUES"]
-    else:
-        headers = [register_name] + [f"REG_ID = {i+1}" for i in range(len(dicts))]
-
-    return tabulate.tabulate(data, headers=headers, tablefmt="grid")
-
-
-def join_tables_side_by_side(tables: list[str]) -> str:
-    # Split each table into rows by lines
-    split_tables = [table.split("\n") for table in tables]
-
-    # Find the maximum number of rows across all tables
-    max_rows = max(len(table) for table in split_tables)
-
-    # Pad each table with empty lines to ensure equal row count
-    padded_tables = [table + [" " * len(table[0])] * (max_rows - len(table)) for table in split_tables]
-
-    # Combine the rows of all tables side by side
-    side_by_side = ["   ".join(row) for row in zip(*padded_tables)]
-
-    # Join all rows into a single string
-    return "\n".join(side_by_side)
-
 
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = tt_commands.tt_docopt(
@@ -87,6 +50,6 @@ def run(cmd_text, context, ui_state: UIState = None):
             tile_descriptor_table = dict_list_to_table(tile_descriptor, "TILE DESCRIPTOR")
             unpack_config_table = dict_list_to_table(unpack_config, "UNPACK CONFIG")
 
-            print(join_tables_side_by_side([unpack_config_table, tile_descriptor_table]))
+            print(put_table_list_side_by_side([unpack_config_table, tile_descriptor_table]))
 
     return None
