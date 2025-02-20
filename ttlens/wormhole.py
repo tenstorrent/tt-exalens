@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from typing import List
 from ttlens import util
 from ttlens.device import (
     TensixInstructions,
@@ -197,3 +198,8 @@ class WormholeDevice(Device):
         "trisc2_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 8, mask=0x7FFFFFFF),
         "ncrisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 12, mask=0x7FFFFFFF),
     }
+
+    def get_debug_bus_signal_names(self) -> List[str]:
+        return list(self.__debug_bus_signal_map.keys())
+
+# end of class WormholeDevice

@@ -74,6 +74,20 @@ class DebugBusSignalDescription:
     sig_sel: int = 0
     mask: int = 0xFFFFFFFF
 
+    def __post_init__(self):
+        """Validate field values after object creation."""
+        if not (0 <= self.rd_sel <= 3):  # Example range, update if needed
+            raise ValueError(f"rd_sel must be between 0 and 3, got {self.rd_sel}")
+
+        if not (0 <= self.daisy_sel <= 255):  # Example range, update if needed
+            raise ValueError(f"daisy_sel must be between 0 and 255, got {self.daisy_sel}")
+
+        if not (0 <= self.sig_sel <= 65535):  # Example range, update if needed
+            raise ValueError(f"sig_sel must be between 0 and 65535, got {self.sig_sel}")
+
+        if not (0 <= self.mask <= 0xFFFFFFFF):  # Mask should be a valid 32-bit value
+            raise ValueError(f"mask must be a valid 32-bit integer, got {self.mask}")
+
 
 #
 # Device class: generic API for talking to specific devices. This class is the parent of specific
@@ -482,14 +496,24 @@ class Device(TTObject):
         }
 
     @abstractmethod
-    def _get_debug_bus_signal_description(self, name):
+    def _get_debug_bus_signal_description(self, name) -> DebugBusSignalDescription:
         pass
 
-    def read_debug_bus_signal(self, loc: OnChipCoordinate, name) -> int:
-        signal = self._get_debug_bus_signal_description(name)
+    def get_debug_bus_signal_names(self) -> List[str]:
+        return []
 
+    def get_debug_bus_signal_description(self, name):
+        if name in self.get_debug_bus_signal_names():
+            return self._get_debug_bus_signal_description(name);
+        raise ValueError(f"Unknown debug bus signal name: {name}")
+
+    def read_debug_bus_signal(self, loc: OnChipCoordinate, name: str) -> int:
+        signal = self.get_debug_bus_signal_description(name)
+        return self.read_debug_bus_signal_from_description(loc, signal)
+
+    def read_debug_bus_signal_from_description(self, loc: OnChipCoordinate, signal: DebugBusSignalDescription) -> int:
         if signal is None:
-            raise ValueError(f"Unknown debug bus signal name: {name}")
+            raise ValueError(f"Debug Bus signal description is not defined")
 
         # Write the configuration
         en = 1
@@ -502,7 +526,7 @@ class Device(TTObject):
         data = read_word_from_device(loc, data_addr)
 
         # Disable the signal
-        write_words_to_device(loc, config_addr, self._id)
+        write_words_to_device(loc, config_addr, 0, self._id)
 
         return data if signal.mask is None else data & signal.mask
 
