@@ -503,9 +503,10 @@ class Device(TTObject):
         return []
 
     def get_debug_bus_signal_description(self, name):
-        if name in self.get_debug_bus_signal_names():
-            return self._get_debug_bus_signal_description(name)
-        raise ValueError(f"Unknown debug bus signal name: {name}")
+        debug_bus_signal_description = self._get_debug_bus_signal_description(name)
+        if debug_bus_signal_description is None:
+            raise ValueError(f"Unknown debug bus signal name: {name}")
+        return debug_bus_signal_description
 
     def read_debug_bus_signal(self, loc: OnChipCoordinate, name: str) -> int:
         signal = self.get_debug_bus_signal_description(name)
