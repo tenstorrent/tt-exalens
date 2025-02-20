@@ -291,12 +291,12 @@ class GrayskullDevice(tt_device.Device):
         
         tile_descriptor_list = []
 
-        start = 24  # ignores field name prefix
-
         for i in range(self.NUM_UNPACKERS):
             tile_descriptor = {}
 
             register_name = struct_name + str(i)
+
+            start = len(register_name) + 1 # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_in_data_format", tile_descriptor, ValueType.FORMAT, start)
             debug_tensix.get_config_field(register_name + "_uncompressed", tile_descriptor, ValueType.BOOL, start)
@@ -326,12 +326,12 @@ class GrayskullDevice(tt_device.Device):
         
         unpack_config_list = []
 
-        start = 15  # ignores field name prefix
-
         for i in range(self.NUM_UNPACKERS):
             unpack_config = {}
 
             register_name = struct_name + str(i)
+
+            start = len(register_name) + 1 # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_out_data_format", unpack_config, ValueType.FORMAT, start)
             debug_tensix.get_config_field(register_name + "_throttle_mode", unpack_config, ValueType.HEX, start)
@@ -359,13 +359,13 @@ class GrayskullDevice(tt_device.Device):
 
         pack_config_list = []
 
-        start = 14 # ignores field name prefix
-
         for i in [0,1]:
             for j in [1,8]:
                 pack_config = {}
 
                 register_name = struct_name + str(i) + str(j)
+
+                start = len(register_name) + 1 # ignores name prefix
 
                 debug_tensix.get_config_field(register_name + "_row_ptr_section_size", pack_config, ValueType.DEC, start)
                 debug_tensix.get_config_field(register_name + "_exp_section_size", pack_config, ValueType.DEC, start)
@@ -395,12 +395,12 @@ class GrayskullDevice(tt_device.Device):
 
         edge_list = []
 
-        start = 18
-
         for i in range(self.NUM_PACKERS):
             edge = {}
 
             register_name = struct_name + str(i)
+
+            start = len(register_name) + 1 # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_mask", edge, ValueType.HEX, start)
 
@@ -421,12 +421,12 @@ class GrayskullDevice(tt_device.Device):
         
         counters_list = []
 
-        start = 15
-
         for i in range(self.NUM_PACKERS):
             counters = {}
 
             register_name = struct_name + str(i)
+
+            start = len(register_name) + 1 # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_pack_per_xy_plane", counters, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_pack_reads_per_xy_plane", counters, ValueType.DEC, start)
@@ -444,12 +444,12 @@ class GrayskullDevice(tt_device.Device):
 
         strides_list = []
 
-        start = 14
-
         for i in range(2):
             strides = {}
             
             register_name = struct_name + str(i)
+
+            start = len(register_name) + 1 # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_x_stride", strides, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_y_stride", strides, ValueType.DEC, start)
