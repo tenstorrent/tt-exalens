@@ -33,6 +33,7 @@ from ttlens.tt_util import dict_list_to_table
 
 import tabulate
 
+
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = tt_commands.tt_docopt(
         command_metadata["description"],
@@ -40,7 +41,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     )
 
     for device in dopt.for_each("--device", context, ui_state):
-        
+
         if device._arch == "grayskull":
             print("Not supported on grayskull")
             continue
@@ -48,7 +49,7 @@ def run(cmd_text, context, ui_state: UIState = None):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             debug_tensix = TensixDebug(loc, device.id(), context)
             device = debug_tensix.context.devices[debug_tensix.device_id]
-                
+
             alu_config = device.get_alu_config(debug_tensix)
 
             alu_config_table = dict_list_to_table(alu_config, "ALU CONFIG")

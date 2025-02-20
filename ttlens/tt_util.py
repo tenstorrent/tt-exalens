@@ -173,6 +173,7 @@ def dict_to_table(dct):
         table = [["", ""]]
     return table
 
+
 # Converts list of dictionaries with same keys to a table where every column is one dictionary.
 def dict_list_to_table(dicts: list[dict], register_name: str) -> str:
     keys = dicts[0].keys()
@@ -185,13 +186,14 @@ def dict_list_to_table(dicts: list[dict], register_name: str) -> str:
             else:
                 row.append("/")
         data.append(row)
-            
+
     if len(dicts) == 1:
         headers = [register_name] + ["VALUES"]
     else:
         headers = [register_name] + [f"REG_ID = {i+1}" for i in range(len(dicts))]
 
     return tabulate(data, headers=headers, tablefmt="pretty", colalign=("left",) * len(headers))
+
 
 # Given two tables 'a' and 'b' merge them into a wider table
 def merge_tables_side_by_side(a, b):
@@ -209,6 +211,7 @@ def merge_tables_side_by_side(a, b):
 
         t.append(row)
     return t
+
 
 # Puts tables from the list side by side.
 def put_table_list_side_by_side(tables: list[str]) -> str:

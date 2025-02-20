@@ -111,15 +111,15 @@ def unpack_bfp8_b(data):
     return bfloat16_values
 
 
-def unpack_data(data, df: Union[int,TensixDataFormat]):
+def unpack_data(data, df: Union[int, TensixDataFormat]):
     if isinstance(df, int):
-        df =TensixDataFormat(df)
+        df = TensixDataFormat(df)
 
-    if df ==TensixDataFormat.Float16:
+    if df == TensixDataFormat.Float16:
         return unpack_fp16(data)
-    elif df ==TensixDataFormat.Float16_b:
+    elif df == TensixDataFormat.Float16_b:
         return unpack_bfp16(data)
-    elif df ==TensixDataFormat.Bfp8_b:
+    elif df == TensixDataFormat.Bfp8_b:
         return unpack_bfp8_b(data)
     else:
         raise ValueError(f"Unknown or unsupported data format {df}")

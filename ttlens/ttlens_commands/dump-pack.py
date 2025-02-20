@@ -33,6 +33,7 @@ from ttlens.tt_util import dict_list_to_table, put_table_list_side_by_side
 
 import tabulate
 
+
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = tt_commands.tt_docopt(
         command_metadata["description"],
@@ -63,7 +64,7 @@ def run(cmd_text, context, ui_state: UIState = None):
 
                 print(put_table_list_side_by_side([edge_offset_table, pack_counters_table, dest_rd_ctrl_table]))
                 print(put_table_list_side_by_side([pack_config_table, relu_config_table, pack_strides_table]))
-            
+
             else:
                 print(put_table_list_side_by_side([pack_config_table, pack_counters_table]))
                 print(put_table_list_side_by_side([edge_offset_table, pack_strides_table]))

@@ -147,66 +147,82 @@ class BlackholeDevice(tt_device.Device):
         "ALU_ACC_CTRL_SFPU_Fp32_enabled": ConfigurationRegisterDescription(index=1, mask=0x40000000, shift=30),
         "ALU_ACC_CTRL_INT8_math_enabled": ConfigurationRegisterDescription(index=1, mask=0x80000000, shift=31),
         # PACK CONFIG SEC 0 REG 1
-        "PACK_CONFIG01_row_ptr_section_size": ConfigurationRegisterDescription(index=68, mask=0xffff, shift=0),
-        "PACK_CONFIG01_exp_section_size": ConfigurationRegisterDescription(index=68, mask=0xffff0000, shift=16),
-        "PACK_CONFIG01_l1_dest_addr": ConfigurationRegisterDescription(index=69, mask=0xffffffff, shift=0),
+        "PACK_CONFIG01_row_ptr_section_size": ConfigurationRegisterDescription(index=68, mask=0xFFFF, shift=0),
+        "PACK_CONFIG01_exp_section_size": ConfigurationRegisterDescription(index=68, mask=0xFFFF0000, shift=16),
+        "PACK_CONFIG01_l1_dest_addr": ConfigurationRegisterDescription(index=69, mask=0xFFFFFFFF, shift=0),
         "PACK_CONFIG01_uncompress": ConfigurationRegisterDescription(index=70, mask=0x1, shift=0),
         "PACK_CONFIG01_add_l1_dest_addr_offset": ConfigurationRegisterDescription(index=70, mask=0x2, shift=1),
         "PACK_CONFIG01_disable_pack_zero_flag": ConfigurationRegisterDescription(index=70, mask=0x4, shift=2),
         "PACK_CONFIG01_reserved_0": ConfigurationRegisterDescription(index=70, mask=0x8, shift=3),
-        "PACK_CONFIG01_out_data_foramt": ConfigurationRegisterDescription(index=70, mask=0xf0, shift=4),
-        "PACK_CONFIG01_in_data_format": ConfigurationRegisterDescription(index=70, mask=0xf00, shift=8),
+        "PACK_CONFIG01_out_data_foramt": ConfigurationRegisterDescription(index=70, mask=0xF0, shift=4),
+        "PACK_CONFIG01_in_data_format": ConfigurationRegisterDescription(index=70, mask=0xF00, shift=8),
         "PACK_CONFIG01_dis_shared_exp_assembler": ConfigurationRegisterDescription(index=70, mask=0x1000, shift=12),
         "PACK_CONFIG01_auto_set_last_pacr_intf_sel": ConfigurationRegisterDescription(index=70, mask=0x2000, shift=13),
         "PACK_CONFIG01_enable_out_fifo": ConfigurationRegisterDescription(index=70, mask=0x4000, shift=14),
         "PACK_CONFIG01_sub_l1_tile_header_size": ConfigurationRegisterDescription(index=70, mask=0x8000, shift=15),
         "PACK_CONFIG01_src_if_sel": ConfigurationRegisterDescription(index=70, mask=0x10000, shift=16),
-        "PACK_CONFIG01_pack_start_intf_pos": ConfigurationRegisterDescription(index=70, mask=0x1e0000, shift=17),
-        "PACK_CONFIG01_all_pack_disable_zero_compress_ovrd": ConfigurationRegisterDescription(index=70, mask=0x200000, shift=21),
+        "PACK_CONFIG01_pack_start_intf_pos": ConfigurationRegisterDescription(index=70, mask=0x1E0000, shift=17),
+        "PACK_CONFIG01_all_pack_disable_zero_compress_ovrd": ConfigurationRegisterDescription(
+            index=70, mask=0x200000, shift=21
+        ),
         "PACK_CONFIG01_add_tile_header_size": ConfigurationRegisterDescription(index=70, mask=0x400000, shift=22),
-        "PACK_CONFIG01_pack_dis_y_pos_start_offset": ConfigurationRegisterDescription(index=70, mask=0x800000, shift=23),
-        "PACK_CONFIG01_l1_src_addr": ConfigurationRegisterDescription(index=70, mask=0xff000000, shift=24),
+        "PACK_CONFIG01_pack_dis_y_pos_start_offset": ConfigurationRegisterDescription(
+            index=70, mask=0x800000, shift=23
+        ),
+        "PACK_CONFIG01_l1_src_addr": ConfigurationRegisterDescription(index=70, mask=0xFF000000, shift=24),
         # RELU CONFIG
         "ALU_ACC_CTRL_Zero_Flag_disabled_src": ConfigurationRegisterDescription(index=2, mask=0x1, shift=0),
         "ALU_ACC_CTRL_Zero_Flag_disabled_dst": ConfigurationRegisterDescription(index=2, mask=0x2, shift=1),
-        "STACC_RELU_ApplyRelu": ConfigurationRegisterDescription(index=2, mask=0x3c, shift=2),
-        "STACC_RELU_ReluThreshold": ConfigurationRegisterDescription(index=2, mask=0x3fffc0, shift=6),
+        "STACC_RELU_ApplyRelu": ConfigurationRegisterDescription(index=2, mask=0x3C, shift=2),
+        "STACC_RELU_ReluThreshold": ConfigurationRegisterDescription(index=2, mask=0x3FFFC0, shift=6),
         "DISABLE_RISC_BP_Disable_main": ConfigurationRegisterDescription(index=2, mask=0x400000, shift=22),
         "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(index=2, mask=0x3800000, shift=23),
         "DISABLE_RISC_BP_Disable_ncrisc": ConfigurationRegisterDescription(index=2, mask=0x4000000, shift=26),
         "DISABLE_RISC_BP_Disable_bmp_clear_main": ConfigurationRegisterDescription(index=2, mask=0x8000000, shift=27),
         "DISABLE_RISC_BP_Disable_bmp_clear_trisc": ConfigurationRegisterDescription(index=2, mask=0x70000000, shift=28),
-        "DISABLE_RISC_BP_Disable_bmp_clear_ncrisc": ConfigurationRegisterDescription(index=2, mask=0x80000000, shift=31),
+        "DISABLE_RISC_BP_Disable_bmp_clear_ncrisc": ConfigurationRegisterDescription(
+            index=2, mask=0x80000000, shift=31
+        ),
         # DEST RD CTRL
         "PACK_DEST_RD_CTRL_Read_32b_data": ConfigurationRegisterDescription(index=18, mask=0x1, shift=0),
         "PACK_DEST_RD_CTRL_Read_unsigned": ConfigurationRegisterDescription(index=18, mask=0x2, shift=1),
         "PACK_DEST_RD_CTRL_Read_int8": ConfigurationRegisterDescription(index=18, mask=0x4, shift=2),
         "PACK_DEST_RD_CTRL_Round_10b_mant": ConfigurationRegisterDescription(index=18, mask=0x8, shift=3),
-        "PACK_DEST_RD_CTRL_Reserved": ConfigurationRegisterDescription(index=18, mask=0xfffffff0, shift=4),
+        "PACK_DEST_RD_CTRL_Reserved": ConfigurationRegisterDescription(index=18, mask=0xFFFFFFF0, shift=4),
         # EDGE OFFSET SEC 0
-        "PACK_EDGE_OFFSET0_mask": ConfigurationRegisterDescription(index=24, mask=0xffff, shift=0),
+        "PACK_EDGE_OFFSET0_mask": ConfigurationRegisterDescription(index=24, mask=0xFFFF, shift=0),
         "PACK_EDGE_OFFSET0_mode": ConfigurationRegisterDescription(index=24, mask=0x10000, shift=16),
-        "PACK_EDGE_OFFSET0_tile_row_set_select_pack0": ConfigurationRegisterDescription(index=24, mask=0x60000, shift=17),
-        "PACK_EDGE_OFFSET0_tile_row_set_select_pack1": ConfigurationRegisterDescription(index=24, mask=0x180000, shift=19),
-        "PACK_EDGE_OFFSET0_tile_row_set_select_pack2": ConfigurationRegisterDescription(index=24, mask=0x600000, shift=21),
-        "PACK_EDGE_OFFSET0_tile_row_set_select_pack3": ConfigurationRegisterDescription(index=24, mask=0x1800000, shift=23),
-        "PACK_EDGE_OFFSET0_reserved": ConfigurationRegisterDescription(index=24,mask=0xfe000000, shift=25),
+        "PACK_EDGE_OFFSET0_tile_row_set_select_pack0": ConfigurationRegisterDescription(
+            index=24, mask=0x60000, shift=17
+        ),
+        "PACK_EDGE_OFFSET0_tile_row_set_select_pack1": ConfigurationRegisterDescription(
+            index=24, mask=0x180000, shift=19
+        ),
+        "PACK_EDGE_OFFSET0_tile_row_set_select_pack2": ConfigurationRegisterDescription(
+            index=24, mask=0x600000, shift=21
+        ),
+        "PACK_EDGE_OFFSET0_tile_row_set_select_pack3": ConfigurationRegisterDescription(
+            index=24, mask=0x1800000, shift=23
+        ),
+        "PACK_EDGE_OFFSET0_reserved": ConfigurationRegisterDescription(index=24, mask=0xFE000000, shift=25),
         # PACK COUNTERS SEC 0
-        "PACK_COUNTERS0_pack_per_xy_plane": ConfigurationRegisterDescription(index=28, mask=0xff, shift=0),
-        "PACK_COUNTERS0_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=28, mask=0xff00, shift=8),
-        "PACK_COUNTERS0_pack_xys_per_til": ConfigurationRegisterDescription(index=28, mask=0x7f0000, shift=16),
+        "PACK_COUNTERS0_pack_per_xy_plane": ConfigurationRegisterDescription(index=28, mask=0xFF, shift=0),
+        "PACK_COUNTERS0_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=28, mask=0xFF00, shift=8),
+        "PACK_COUNTERS0_pack_xys_per_til": ConfigurationRegisterDescription(index=28, mask=0x7F0000, shift=16),
         "PACK_COUNTERS0_pack_yz_transposed": ConfigurationRegisterDescription(index=28, mask=800000, shift=23),
-        "PACK_COUNTERS0_pack_per_xy_plane_offset": ConfigurationRegisterDescription(index=28, mask=0xff000000, shift=24),
+        "PACK_COUNTERS0_pack_per_xy_plane_offset": ConfigurationRegisterDescription(
+            index=28, mask=0xFF000000, shift=24
+        ),
         # PACK STRIDES REG 0
-        "PACK_STRIDES0_x_stride": ConfigurationRegisterDescription(index=12, mask=0xffff, shift=0),
-        "PACK_STRIDES0_y_stride": ConfigurationRegisterDescription(index=12, mask=0xffff0000, shift=16),
-        "PACK_STRIDES0_z_stride": ConfigurationRegisterDescription(index=13, mask=0xffff, shift=0),
-        "PACK_STRIDES0_w_stride": ConfigurationRegisterDescription(index=13, mask=0xffff0000, shift=16),
+        "PACK_STRIDES0_x_stride": ConfigurationRegisterDescription(index=12, mask=0xFFFF, shift=0),
+        "PACK_STRIDES0_y_stride": ConfigurationRegisterDescription(index=12, mask=0xFFFF0000, shift=16),
+        "PACK_STRIDES0_z_stride": ConfigurationRegisterDescription(index=13, mask=0xFFFF, shift=0),
+        "PACK_STRIDES0_w_stride": ConfigurationRegisterDescription(index=13, mask=0xFFFF0000, shift=16),
         # PACK STRIDES REG 1
-        "PACK_STRIDES1_x_stride": ConfigurationRegisterDescription(index=14, mask=0xffff, shift=0),
-        "PACK_STRIDES1_y_stride": ConfigurationRegisterDescription(index=14, mask=0xffff0000, shift=16),
-        "PACK_STRIDES1_z_stride": ConfigurationRegisterDescription(index=15, mask=0xffff, shift=0),
-        "PACK_STRIDES1_w_stride": ConfigurationRegisterDescription(index=15, mask=0xffff0000, shift=16),
+        "PACK_STRIDES1_x_stride": ConfigurationRegisterDescription(index=14, mask=0xFFFF, shift=0),
+        "PACK_STRIDES1_y_stride": ConfigurationRegisterDescription(index=14, mask=0xFFFF0000, shift=16),
+        "PACK_STRIDES1_z_stride": ConfigurationRegisterDescription(index=15, mask=0xFFFF, shift=0),
+        "PACK_STRIDES1_w_stride": ConfigurationRegisterDescription(index=15, mask=0xFFFF0000, shift=16),
         # REST
         "DISABLE_RISC_BP_Disable_main": ConfigurationRegisterDescription(index=2, mask=0x400000, shift=22),
         "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(index=2, mask=0x3800000, shift=23),
@@ -282,7 +298,7 @@ class BlackholeDevice(tt_device.Device):
 
     def get_unpack_tile_descriptor(self, debug_tensix: TensixDebug) -> list[dict]:
         struct_name = "UNPACK_TILE_DESCRIPTOR"
-        
+
         tile_descriptor_list = []
 
         for i in range(self.NUM_UNPACKERS):
@@ -290,7 +306,7 @@ class BlackholeDevice(tt_device.Device):
 
             register_name = struct_name + str(i)
 
-            start = len(register_name) + 1 # ignores name prefix
+            start = len(register_name) + 1  # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_in_data_format", tile_descriptor, ValueType.FORMAT, start)
             debug_tensix.get_config_field(register_name + "_uncompressed", tile_descriptor, ValueType.BOOL, start)
@@ -317,7 +333,7 @@ class BlackholeDevice(tt_device.Device):
 
     def get_unpack_config(self, debug_tensix: TensixDebug) -> list[dict]:
         struct_name = "UNPACK_CONFIG"
-        
+
         unpack_config_list = []
 
         for i in range(self.NUM_UNPACKERS):
@@ -325,18 +341,22 @@ class BlackholeDevice(tt_device.Device):
 
             register_name = struct_name + str(i)
 
-            start = len(register_name) + 1 # ignores name prefix
+            start = len(register_name) + 1  # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_out_data_format", unpack_config, ValueType.FORMAT, start)
             debug_tensix.get_config_field(register_name + "_throttle_mode", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_context_count", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_haloize_mode", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_tileize_mode", unpack_config, ValueType.HEX, start)
-            debug_tensix.get_config_field(register_name + "_unpack_src_reg_set_upd", unpack_config, ValueType.BOOL, start)
+            debug_tensix.get_config_field(
+                register_name + "_unpack_src_reg_set_upd", unpack_config, ValueType.BOOL, start
+            )
             debug_tensix.get_config_field(register_name + "_unpack_if_sel", unpack_config, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_upsample_rate", unpack_config, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_reserved_1", unpack_config, ValueType.HEX, start)
-            debug_tensix.get_config_field(register_name + "_upsample_and_interleave", unpack_config, ValueType.BOOL, start)
+            debug_tensix.get_config_field(
+                register_name + "_upsample_and_interleave", unpack_config, ValueType.BOOL, start
+            )
             debug_tensix.get_config_field(register_name + "_shift_amount", unpack_config, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_uncompress_cntx0_3", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_unpack_if_sel_cntx0_3", unpack_config, ValueType.HEX, start)
@@ -353,12 +373,12 @@ class BlackholeDevice(tt_device.Device):
             unpack_config_list.append(unpack_config)
 
         return unpack_config_list
-    
+
     def get_pack_config(self, debug_tensix: TensixDebug) -> list[dict]:
         struct_name = "PACK_CONFIG"
         register_name = struct_name + "01"
 
-        start = len(register_name) + 1 # ignores name prefix
+        start = len(register_name) + 1  # ignores name prefix
 
         pack_config = {}
 
@@ -377,11 +397,13 @@ class BlackholeDevice(tt_device.Device):
         debug_tensix.get_config_field(register_name + "sub_l1_tile_header_size", pack_config, ValueType.DEC, start)
         debug_tensix.get_config_field(register_name + "src_if_sel", pack_config, ValueType.BOOL, start)
         debug_tensix.get_config_field(register_name + "pack_start_intf_pos", pack_config, ValueType.HEX, start)
-        debug_tensix.get_config_field(register_name + "all_pack_disable_zero_compress_ovrd", pack_config, ValueType.BOOL, start)
+        debug_tensix.get_config_field(
+            register_name + "all_pack_disable_zero_compress_ovrd", pack_config, ValueType.BOOL, start
+        )
         debug_tensix.get_config_field(register_name + "add_tile_header_size", pack_config, ValueType.BOOL, start)
         debug_tensix.get_config_field(register_name + "pack_dis_y_pos_start_offset", pack_config, ValueType.HEX, start)
         debug_tensix.get_config_field(register_name + "l1_src_addr", pack_config, ValueType.HEX, start)
-        
+
         return [pack_config]
 
     def get_relu_config(self, debug_tensix: TensixDebug) -> list[dict]:
@@ -399,11 +421,11 @@ class BlackholeDevice(tt_device.Device):
         debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_ncrisc", relu_config, ValueType.BOOL)
 
         return [relu_config]
-    
+
     def get_pack_dest_rd_ctrl(self, debug_tensix: TensixDebug) -> list[dict]:
         dest = {}
 
-        start = 18 # ignores field name prefix
+        start = 18  # ignores field name prefix
 
         debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_32b_data", dest, ValueType.BOOL, start)
         debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_unsigned", dest, ValueType.BOOL, start)
@@ -423,7 +445,7 @@ class BlackholeDevice(tt_device.Device):
 
             register_name = struct_name + str(i)
 
-            start = len(register_name) + 1 # ignores name prefix
+            start = len(register_name) + 1  # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_mask", edge, ValueType.HEX, start)
 
@@ -438,10 +460,10 @@ class BlackholeDevice(tt_device.Device):
             edge_list.append(edge)
 
         return edge_list
-    
+
     def get_pack_counters(self, debug_tensix: TensixDebug) -> list[dict]:
         struct_name = "PACK_COUNTERS"
-        
+
         counters_list = []
 
         for i in range(self.NUM_PACKERS):
@@ -449,7 +471,7 @@ class BlackholeDevice(tt_device.Device):
 
             register_name = struct_name + str(i)
 
-            start = len(register_name) + 1 # ignores name prefix
+            start = len(register_name) + 1  # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_pack_per_xy_plane", counters, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_pack_reads_per_xy_plane", counters, ValueType.DEC, start)
@@ -458,9 +480,9 @@ class BlackholeDevice(tt_device.Device):
             debug_tensix.get_config_field(register_name + "_pack_per_xy_plane_offset", counters, ValueType.DEC, start)
 
             counters_list.append(counters)
-        
+
         return counters_list
-    
+
     def get_pack_strides(self, debug_tensix: TensixDebug) -> list[dict]:
         struct_name = "PACK_STRIDES"
 
@@ -468,16 +490,16 @@ class BlackholeDevice(tt_device.Device):
 
         for i in range(2):
             strides = {}
-            
+
             register_name = struct_name + str(i)
 
-            start = len(register_name) + 1 # ignores name prefix
+            start = len(register_name) + 1  # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_x_stride", strides, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_y_stride", strides, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_z_stride", strides, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_w_stride", strides, ValueType.DEC, start)
-        
+
             strides_list.append(strides)
-        
+
         return strides_list

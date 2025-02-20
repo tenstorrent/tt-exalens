@@ -29,14 +29,17 @@ class REGFILE(Enum):
     SRCB = 1
     DSTACC = 2
 
+
 class ValueType(Enum):
     HEX = 0
     DEC = 1
     FORMAT = 2
     BOOL = 3
 
+
 def data_format_to_string(data_format: TensixDataFormat) -> str:
     return data_format.name
+
 
 def convert_regfile(regfile: Union[int, str, REGFILE]) -> REGFILE:
     if isinstance(regfile, REGFILE):
@@ -318,7 +321,7 @@ class TensixDebug:
 
     def get_config_field(self, name: str, config: dict, value_type: ValueType, start: int = 0):
         """Writes the value of a configuration register field, specified by its name, to a given dictionary based on the provided value type.
-         
+
         Args:
                 name (str): Name of configuration register field.
                 config (dict): Dictionary to write field's value into.
@@ -335,4 +338,3 @@ class TensixDebug:
             config[name[start:]] = data_format_to_string(TensixDataFormat(value))
         elif value_type == ValueType.BOOL:
             config[name[start:]] = "True" if value else "False"
-        

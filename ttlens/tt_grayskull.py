@@ -196,53 +196,69 @@ class GrayskullDevice(tt_device.Device):
         "PACK_CONFIG18_reserved_2": ConfigurationRegisterDescription(index=119, mask=0xE00000, shift=21),
         "PACK_CONFIG18_exp_threshold": ConfigurationRegisterDescription(index=119, mask=0xFF000000, shift=24),
         # EDGE OFFSET SEC 0
-        "PACK_EDGE_OFFSET0_mask": ConfigurationRegisterDescription(index=20, mask=0xffff, shift=0),
+        "PACK_EDGE_OFFSET0_mask": ConfigurationRegisterDescription(index=20, mask=0xFFFF, shift=0),
         "PACK_EDGE_OFFSET0_mode": ConfigurationRegisterDescription(index=20, mask=0x10000, shift=16),
-        "PACK_EDGE_OFFSET0_tile_row_set_select_pack0": ConfigurationRegisterDescription(index=20, mask=0x60000, shift=17),
-        "PACK_EDGE_OFFSET0_tile_row_set_select_pack1": ConfigurationRegisterDescription(index=20, mask=0x180000, shift=19),
-        "PACK_EDGE_OFFSET0_tile_row_set_select_pack2": ConfigurationRegisterDescription(index=20, mask=0x600000, shift=21),
-        "PACK_EDGE_OFFSET0_tile_row_set_select_pack3": ConfigurationRegisterDescription(index=20, mask=0x1800000, shift=23),
-        "PACK_EDGE_OFFSET0_reserved": ConfigurationRegisterDescription(index=20,mask=0xfe000000, shift=25),
+        "PACK_EDGE_OFFSET0_tile_row_set_select_pack0": ConfigurationRegisterDescription(
+            index=20, mask=0x60000, shift=17
+        ),
+        "PACK_EDGE_OFFSET0_tile_row_set_select_pack1": ConfigurationRegisterDescription(
+            index=20, mask=0x180000, shift=19
+        ),
+        "PACK_EDGE_OFFSET0_tile_row_set_select_pack2": ConfigurationRegisterDescription(
+            index=20, mask=0x600000, shift=21
+        ),
+        "PACK_EDGE_OFFSET0_tile_row_set_select_pack3": ConfigurationRegisterDescription(
+            index=20, mask=0x1800000, shift=23
+        ),
+        "PACK_EDGE_OFFSET0_reserved": ConfigurationRegisterDescription(index=20, mask=0xFE000000, shift=25),
         # EDGE OFFSET SEC 1
-        "PACK_EDGE_OFFSET1_mask": ConfigurationRegisterDescription(index=21, mask=0xffff, shift=0),
+        "PACK_EDGE_OFFSET1_mask": ConfigurationRegisterDescription(index=21, mask=0xFFFF, shift=0),
         # EDGE OFFSET SEC 2
-        "PACK_EDGE_OFFSET2_mask": ConfigurationRegisterDescription(index=22, mask=0xffff, shift=0),
+        "PACK_EDGE_OFFSET2_mask": ConfigurationRegisterDescription(index=22, mask=0xFFFF, shift=0),
         # EDGE OFFSET SEC 3
-        "PACK_EDGE_OFFSET3_mask": ConfigurationRegisterDescription(index=23, mask=0xffff, shift=0),
+        "PACK_EDGE_OFFSET3_mask": ConfigurationRegisterDescription(index=23, mask=0xFFFF, shift=0),
         # PACK COUNTERS SEC 0
-        "PACK_COUNTERS0_pack_per_xy_plane": ConfigurationRegisterDescription(index=24, mask=0xff, shift=0),
-        "PACK_COUNTERS0_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=24, mask=0xff00, shift=8),
-        "PACK_COUNTERS0_pack_xys_per_til": ConfigurationRegisterDescription(index=24, mask=0x7f0000, shift=16),
+        "PACK_COUNTERS0_pack_per_xy_plane": ConfigurationRegisterDescription(index=24, mask=0xFF, shift=0),
+        "PACK_COUNTERS0_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=24, mask=0xFF00, shift=8),
+        "PACK_COUNTERS0_pack_xys_per_til": ConfigurationRegisterDescription(index=24, mask=0x7F0000, shift=16),
         "PACK_COUNTERS0_pack_yz_transposed": ConfigurationRegisterDescription(index=24, mask=800000, shift=23),
-        "PACK_COUNTERS0_pack_per_xy_plane_offset": ConfigurationRegisterDescription(index=24, mask=0xff000000, shift=24),
+        "PACK_COUNTERS0_pack_per_xy_plane_offset": ConfigurationRegisterDescription(
+            index=24, mask=0xFF000000, shift=24
+        ),
         # PACK COUNTERS SEC 1
-        "PACK_COUNTERS1_pack_per_xy_plane": ConfigurationRegisterDescription(index=25, mask=0xff, shift=0),
-        "PACK_COUNTERS1_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=25, mask=0xff00, shift=8),
-        "PACK_COUNTERS1_pack_xys_per_til": ConfigurationRegisterDescription(index=25, mask=0x7f0000, shift=16),
+        "PACK_COUNTERS1_pack_per_xy_plane": ConfigurationRegisterDescription(index=25, mask=0xFF, shift=0),
+        "PACK_COUNTERS1_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=25, mask=0xFF00, shift=8),
+        "PACK_COUNTERS1_pack_xys_per_til": ConfigurationRegisterDescription(index=25, mask=0x7F0000, shift=16),
         "PACK_COUNTERS1_pack_yz_transposed": ConfigurationRegisterDescription(index=25, mask=800000, shift=23),
-        "PACK_COUNTERS1_pack_per_xy_plane_offset": ConfigurationRegisterDescription(index=25, mask=0xff000000, shift=24), 
+        "PACK_COUNTERS1_pack_per_xy_plane_offset": ConfigurationRegisterDescription(
+            index=25, mask=0xFF000000, shift=24
+        ),
         # PACK COUNTERS SEC 2
-        "PACK_COUNTERS2_pack_per_xy_plane": ConfigurationRegisterDescription(index=26, mask=0xff, shift=0),
-        "PACK_COUNTERS2_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=26, mask=0xff00, shift=8),
-        "PACK_COUNTERS2_pack_xys_per_til": ConfigurationRegisterDescription(index=26, mask=0x7f0000, shift=16),
+        "PACK_COUNTERS2_pack_per_xy_plane": ConfigurationRegisterDescription(index=26, mask=0xFF, shift=0),
+        "PACK_COUNTERS2_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=26, mask=0xFF00, shift=8),
+        "PACK_COUNTERS2_pack_xys_per_til": ConfigurationRegisterDescription(index=26, mask=0x7F0000, shift=16),
         "PACK_COUNTERS2_pack_yz_transposed": ConfigurationRegisterDescription(index=26, mask=800000, shift=23),
-        "PACK_COUNTERS2_pack_per_xy_plane_offset": ConfigurationRegisterDescription(index=26, mask=0xff000000, shift=24),
+        "PACK_COUNTERS2_pack_per_xy_plane_offset": ConfigurationRegisterDescription(
+            index=26, mask=0xFF000000, shift=24
+        ),
         # PACK COUNTERS SEC 3
-        "PACK_COUNTERS3_pack_per_xy_plane": ConfigurationRegisterDescription(index=27, mask=0xff, shift=0),
-        "PACK_COUNTERS3_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=27, mask=0xff00, shift=8),
-        "PACK_COUNTERS3_pack_xys_per_til": ConfigurationRegisterDescription(index=27, mask=0x7f0000, shift=16),
+        "PACK_COUNTERS3_pack_per_xy_plane": ConfigurationRegisterDescription(index=27, mask=0xFF, shift=0),
+        "PACK_COUNTERS3_pack_reads_per_xy_plane": ConfigurationRegisterDescription(index=27, mask=0xFF00, shift=8),
+        "PACK_COUNTERS3_pack_xys_per_til": ConfigurationRegisterDescription(index=27, mask=0x7F0000, shift=16),
         "PACK_COUNTERS3_pack_yz_transposed": ConfigurationRegisterDescription(index=27, mask=800000, shift=23),
-        "PACK_COUNTERS3_pack_per_xy_plane_offset": ConfigurationRegisterDescription(index=27, mask=0xff000000, shift=24),
+        "PACK_COUNTERS3_pack_per_xy_plane_offset": ConfigurationRegisterDescription(
+            index=27, mask=0xFF000000, shift=24
+        ),
         # PACK STRIDES REG 0
-        "PACK_STRIDES0_x_stride": ConfigurationRegisterDescription(index=8, mask=0xfff, shift=0),
-        "PACK_STRIDES0_y_stride": ConfigurationRegisterDescription(index=8, mask=0xfff000, shift=12),
-        "PACK_STRIDES0_z_stride": ConfigurationRegisterDescription(index=9, mask=0xfff, shift=0),
-        "PACK_STRIDES0_w_stride": ConfigurationRegisterDescription(index=9, mask=0xffff000, shift=12),
+        "PACK_STRIDES0_x_stride": ConfigurationRegisterDescription(index=8, mask=0xFFF, shift=0),
+        "PACK_STRIDES0_y_stride": ConfigurationRegisterDescription(index=8, mask=0xFFF000, shift=12),
+        "PACK_STRIDES0_z_stride": ConfigurationRegisterDescription(index=9, mask=0xFFF, shift=0),
+        "PACK_STRIDES0_w_stride": ConfigurationRegisterDescription(index=9, mask=0xFFFF000, shift=12),
         # PACK STRIDES REG 1
-        "PACK_STRIDES1_x_stride": ConfigurationRegisterDescription(index=10, mask=0xfff, shift=0),
-        "PACK_STRIDES1_y_stride": ConfigurationRegisterDescription(index=10, mask=0xfff000, shift=12),
-        "PACK_STRIDES1_z_stride": ConfigurationRegisterDescription(index=11, mask=0xfff, shift=0),
-        "PACK_STRIDES1_w_stride": ConfigurationRegisterDescription(index=11, mask=0xffff000, shift=12),  
+        "PACK_STRIDES1_x_stride": ConfigurationRegisterDescription(index=10, mask=0xFFF, shift=0),
+        "PACK_STRIDES1_y_stride": ConfigurationRegisterDescription(index=10, mask=0xFFF000, shift=12),
+        "PACK_STRIDES1_z_stride": ConfigurationRegisterDescription(index=11, mask=0xFFF, shift=0),
+        "PACK_STRIDES1_w_stride": ConfigurationRegisterDescription(index=11, mask=0xFFFF000, shift=12),
         # REST
         "DISABLE_RISC_BP_Disable_main": ConfigurationRegisterDescription(index=2, mask=0x100000, shift=20),
         "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(index=2, mask=0xE00000, shift=21),
@@ -288,7 +304,7 @@ class GrayskullDevice(tt_device.Device):
 
     def get_unpack_tile_descriptor(self, debug_tensix: TensixDebug) -> list[dict]:
         struct_name = "UNPACK_TILE_DESCRIPTOR"
-        
+
         tile_descriptor_list = []
 
         for i in range(self.NUM_UNPACKERS):
@@ -296,7 +312,7 @@ class GrayskullDevice(tt_device.Device):
 
             register_name = struct_name + str(i)
 
-            start = len(register_name) + 1 # ignores name prefix
+            start = len(register_name) + 1  # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_in_data_format", tile_descriptor, ValueType.FORMAT, start)
             debug_tensix.get_config_field(register_name + "_uncompressed", tile_descriptor, ValueType.BOOL, start)
@@ -323,7 +339,7 @@ class GrayskullDevice(tt_device.Device):
 
     def get_unpack_config(self, debug_tensix: TensixDebug) -> list[dict]:
         struct_name = "UNPACK_CONFIG"
-        
+
         unpack_config_list = []
 
         for i in range(self.NUM_UNPACKERS):
@@ -331,7 +347,7 @@ class GrayskullDevice(tt_device.Device):
 
             register_name = struct_name + str(i)
 
-            start = len(register_name) + 1 # ignores name prefix
+            start = len(register_name) + 1  # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_out_data_format", unpack_config, ValueType.FORMAT, start)
             debug_tensix.get_config_field(register_name + "_throttle_mode", unpack_config, ValueType.HEX, start)
@@ -341,7 +357,9 @@ class GrayskullDevice(tt_device.Device):
             debug_tensix.get_config_field(register_name + "_force_shared_exp", unpack_config, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_reserved_0", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_upsample_rate", unpack_config, ValueType.DEC, start)
-            debug_tensix.get_config_field(register_name + "_upsample_and_interlave", unpack_config, ValueType.BOOL, start)
+            debug_tensix.get_config_field(
+                register_name + "_upsample_and_interlave", unpack_config, ValueType.BOOL, start
+            )
             debug_tensix.get_config_field(register_name + "_shift_amount", unpack_config, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_uncompress_cntx0_3", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_reserved_1", unpack_config, ValueType.HEX, start)
@@ -353,25 +371,29 @@ class GrayskullDevice(tt_device.Device):
             unpack_config_list.append(unpack_config)
 
         return unpack_config_list
-    
+
     def get_pack_config(self, debug_tensix: TensixDebug) -> list[dict]:
         struct_name = "PACK_CONFIG"
 
         pack_config_list = []
 
-        for i in [0,1]:
-            for j in [1,8]:
+        for i in [0, 1]:
+            for j in [1, 8]:
                 pack_config = {}
 
                 register_name = struct_name + str(i) + str(j)
 
-                start = len(register_name) + 1 # ignores name prefix
+                start = len(register_name) + 1  # ignores name prefix
 
-                debug_tensix.get_config_field(register_name + "_row_ptr_section_size", pack_config, ValueType.DEC, start)
+                debug_tensix.get_config_field(
+                    register_name + "_row_ptr_section_size", pack_config, ValueType.DEC, start
+                )
                 debug_tensix.get_config_field(register_name + "_exp_section_size", pack_config, ValueType.DEC, start)
                 debug_tensix.get_config_field(register_name + "_l1_dest_addr", pack_config, ValueType.HEX, start)
                 debug_tensix.get_config_field(register_name + "_uncompress", pack_config, ValueType.BOOL, start)
-                debug_tensix.get_config_field(register_name + "_add_l1_dest_addr_offset", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(
+                    register_name + "_add_l1_dest_addr_offset", pack_config, ValueType.HEX, start
+                )
                 debug_tensix.get_config_field(register_name + "_reserved_0", pack_config, ValueType.HEX, start)
                 debug_tensix.get_config_field(register_name + "_out_data_format", pack_config, ValueType.FORMAT, start)
                 debug_tensix.get_config_field(register_name + "_in_data_format", pack_config, ValueType.FORMAT, start)
@@ -380,7 +402,9 @@ class GrayskullDevice(tt_device.Device):
                 debug_tensix.get_config_field(register_name + "_pack_per_xy_plane", pack_config, ValueType.DEC, start)
                 debug_tensix.get_config_field(register_name + "_l1_src_addr", pack_config, ValueType.HEX, start)
                 debug_tensix.get_config_field(register_name + "_downsample_mask", pack_config, ValueType.HEX, start)
-                debug_tensix.get_config_field(register_name + "_downsample_shift_count", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(
+                    register_name + "_downsample_shift_count", pack_config, ValueType.HEX, start
+                )
                 debug_tensix.get_config_field(register_name + "_read_mode", pack_config, ValueType.HEX, start)
                 debug_tensix.get_config_field(register_name + "_exp_threshold_en", pack_config, ValueType.BOOL, start)
                 debug_tensix.get_config_field(register_name + "_reserved_2", pack_config, ValueType.HEX, start)
@@ -389,7 +413,7 @@ class GrayskullDevice(tt_device.Device):
                 pack_config_list.append(pack_config)
 
         return pack_config_list
-    
+
     def get_pack_edge_offset(self, debug_tensix: TensixDebug) -> list[dict]:
         struct_name = "PACK_EDGE_OFFSET"
 
@@ -400,7 +424,7 @@ class GrayskullDevice(tt_device.Device):
 
             register_name = struct_name + str(i)
 
-            start = len(register_name) + 1 # ignores name prefix
+            start = len(register_name) + 1  # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_mask", edge, ValueType.HEX, start)
 
@@ -415,10 +439,10 @@ class GrayskullDevice(tt_device.Device):
             edge_list.append(edge)
 
         return edge_list
-    
+
     def get_pack_counters(self, debug_tensix: TensixDebug) -> list[dict]:
         struct_name = "PACK_COUNTERS"
-        
+
         counters_list = []
 
         for i in range(self.NUM_PACKERS):
@@ -426,7 +450,7 @@ class GrayskullDevice(tt_device.Device):
 
             register_name = struct_name + str(i)
 
-            start = len(register_name) + 1 # ignores name prefix
+            start = len(register_name) + 1  # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_pack_per_xy_plane", counters, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_pack_reads_per_xy_plane", counters, ValueType.DEC, start)
@@ -435,9 +459,8 @@ class GrayskullDevice(tt_device.Device):
             debug_tensix.get_config_field(register_name + "_pack_per_xy_plane_offset", counters, ValueType.DEC, start)
 
             counters_list.append(counters)
-        
-        return counters_list
 
+        return counters_list
 
     def get_pack_strides(self, debug_tensix: TensixDebug) -> list[dict]:
         struct_name = "PACK_STRIDES"
@@ -446,16 +469,16 @@ class GrayskullDevice(tt_device.Device):
 
         for i in range(2):
             strides = {}
-            
+
             register_name = struct_name + str(i)
 
-            start = len(register_name) + 1 # ignores name prefix
+            start = len(register_name) + 1  # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_x_stride", strides, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_y_stride", strides, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_z_stride", strides, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_w_stride", strides, ValueType.DEC, start)
-        
+
             strides_list.append(strides)
-        
+
         return strides_list
