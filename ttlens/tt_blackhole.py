@@ -263,9 +263,9 @@ class BlackholeDevice(tt_device.Device):
     def get_alu_config(self, debug_tensix: TensixDebug) -> list[dict]:
         alu_config = {}
 
-        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Fpu_srnd_en", alu_config, ValueType.HEX)
-        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Gasket_srnd_en", alu_config, ValueType.HEX)
-        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Packer_srnd_en", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Fpu_srnd_en", alu_config, ValueType.BOOL)
+        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Gasket_srnd_en", alu_config, ValueType.BOOL)
+        debug_tensix.get_config_field("ALU_ROUNDING_MODE_Packer_srnd_en", alu_config, ValueType.BOOL)
         debug_tensix.get_config_field("ALU_ROUNDING_MODE_Padding", alu_config, ValueType.HEX)
         debug_tensix.get_config_field("ALU_ROUNDING_MODE_GS_LF", alu_config, ValueType.HEX)
         debug_tensix.get_config_field("ALU_ROUNDING_MODE_Bfp8_HF", alu_config, ValueType.HEX)
@@ -274,9 +274,9 @@ class BlackholeDevice(tt_device.Device):
         debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG0_SrcA", alu_config, ValueType.FORMAT)
         debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG1_SrcB", alu_config, ValueType.FORMAT)
         debug_tensix.get_config_field("ALU_FORMAT_SPEC_REG2_Dstacc", alu_config, ValueType.FORMAT)
-        debug_tensix.get_config_field("ALU_ACC_CTRL_Fp32_enabled", alu_config, ValueType.HEX)
-        debug_tensix.get_config_field("ALU_ACC_CTRL_SFPU_Fp32_enabled", alu_config, ValueType.HEX)
-        debug_tensix.get_config_field("ALU_ACC_CTRL_INT8_math_enabled", alu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_Fp32_enabled", alu_config, ValueType.BOOL)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_SFPU_Fp32_enabled", alu_config, ValueType.BOOL)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_INT8_math_enabled", alu_config, ValueType.BOOL)
 
         return [alu_config]
 
@@ -293,7 +293,7 @@ class BlackholeDevice(tt_device.Device):
             register_name = struct_name + str(i)
 
             debug_tensix.get_config_field(register_name + "_in_data_format", tile_descriptor, ValueType.FORMAT, start)
-            debug_tensix.get_config_field(register_name + "_uncompressed", tile_descriptor, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_uncompressed", tile_descriptor, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_reserved_0", tile_descriptor, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_blobs_per_xy_plane", tile_descriptor, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_reserved_1", tile_descriptor, ValueType.HEX, start)
@@ -332,15 +332,15 @@ class BlackholeDevice(tt_device.Device):
             debug_tensix.get_config_field(register_name + "_context_count", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_haloize_mode", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_tileize_mode", unpack_config, ValueType.HEX, start)
-            debug_tensix.get_config_field(register_name + "_unpack_src_reg_set_upd", unpack_config, ValueType.HEX, start)
-            debug_tensix.get_config_field(register_name + "_unpack_if_sel", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_unpack_src_reg_set_upd", unpack_config, ValueType.BOOL, start)
+            debug_tensix.get_config_field(register_name + "_unpack_if_sel", unpack_config, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_upsample_rate", unpack_config, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_reserved_1", unpack_config, ValueType.HEX, start)
-            debug_tensix.get_config_field(register_name + "_upsample_and_interleave", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_upsample_and_interleave", unpack_config, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_shift_amount", unpack_config, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_uncompress_cntx0_3", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_unpack_if_sel_cntx0_3", unpack_config, ValueType.HEX, start)
-            debug_tensix.get_config_field(register_name + "_force_shared_exp", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_force_shared_exp", unpack_config, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_reserved_2", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_uncompress_cntx4_7", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_unpack_if_sel_cntx4_7", unpack_config, ValueType.HEX, start)
@@ -365,20 +365,20 @@ class BlackholeDevice(tt_device.Device):
         debug_tensix.get_config_field(register_name + "_row_ptr_section_size", pack_config, ValueType.DEC, start)
         debug_tensix.get_config_field(register_name + "_exp_section_size", pack_config, ValueType.DEC, start)
         debug_tensix.get_config_field(register_name + "l1_dest_addr", pack_config, ValueType.HEX, start)
-        debug_tensix.get_config_field(register_name + "uncompress", pack_config, ValueType.HEX, start)
-        debug_tensix.get_config_field(register_name + "add_l1_dest_addr_offset", pack_config, ValueType.HEX, start)
-        debug_tensix.get_config_field(register_name + "disable_pack_zero_flag", pack_config, ValueType.HEX, start)
+        debug_tensix.get_config_field(register_name + "uncompress", pack_config, ValueType.BOOL, start)
+        debug_tensix.get_config_field(register_name + "add_l1_dest_addr_offset", pack_config, ValueType.BOOL, start)
+        debug_tensix.get_config_field(register_name + "disable_pack_zero_flag", pack_config, ValueType.BOOL, start)
         debug_tensix.get_config_field(register_name + "reserved_0", pack_config, ValueType.HEX, start)
         debug_tensix.get_config_field(register_name + "out_data_format", pack_config, ValueType.FORMAT, start)
         debug_tensix.get_config_field(register_name + "in_data_format", pack_config, ValueType.FORMAT, start)
-        debug_tensix.get_config_field(register_name + "dis_shared_exp_assembler", pack_config, ValueType.HEX, start)
-        debug_tensix.get_config_field(register_name + "auto_set_last_pacr_intf_sel", pack_config, ValueType.HEX, start)
-        debug_tensix.get_config_field(register_name + "enable_out_fifo", pack_config, ValueType.HEX, start)
+        debug_tensix.get_config_field(register_name + "dis_shared_exp_assembler", pack_config, ValueType.BOOL, start)
+        debug_tensix.get_config_field(register_name + "auto_set_last_pacr_intf_sel", pack_config, ValueType.BOOL, start)
+        debug_tensix.get_config_field(register_name + "enable_out_fifo", pack_config, ValueType.BOOL, start)
         debug_tensix.get_config_field(register_name + "sub_l1_tile_header_size", pack_config, ValueType.DEC, start)
-        debug_tensix.get_config_field(register_name + "src_if_sel", pack_config, ValueType.HEX, start)
+        debug_tensix.get_config_field(register_name + "src_if_sel", pack_config, ValueType.BOOL, start)
         debug_tensix.get_config_field(register_name + "pack_start_intf_pos", pack_config, ValueType.HEX, start)
-        debug_tensix.get_config_field(register_name + "all_pack_disable_zero_compress_ovrd", pack_config, ValueType.HEX, start)
-        debug_tensix.get_config_field(register_name + "add_tile_header_size", pack_config, ValueType.DEC, start)
+        debug_tensix.get_config_field(register_name + "all_pack_disable_zero_compress_ovrd", pack_config, ValueType.BOOL, start)
+        debug_tensix.get_config_field(register_name + "add_tile_header_size", pack_config, ValueType.BOOL, start)
         debug_tensix.get_config_field(register_name + "pack_dis_y_pos_start_offset", pack_config, ValueType.HEX, start)
         debug_tensix.get_config_field(register_name + "l1_src_addr", pack_config, ValueType.HEX, start)
         
@@ -387,16 +387,16 @@ class BlackholeDevice(tt_device.Device):
     def get_relu_config(self, debug_tensix: TensixDebug) -> list[dict]:
         relu_config = {}
 
-        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_src", relu_config, ValueType.HEX)
-        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_dst", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_src", relu_config, ValueType.BOOL)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_dst", relu_config, ValueType.BOOL)
         debug_tensix.get_config_field("STACC_RELU_ApplyRelu", relu_config, ValueType.HEX)
         debug_tensix.get_config_field("STACC_RELU_ReluThreshold", relu_config, ValueType.DEC)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_main", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_main", relu_config, ValueType.BOOL)
         debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_trisc", relu_config, ValueType.HEX)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_ncrisc", relu_config, ValueType.HEX)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_main", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_ncrisc", relu_config, ValueType.BOOL)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_main", relu_config, ValueType.BOOL)
         debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_trisc", relu_config, ValueType.HEX)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_ncrisc", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_ncrisc", relu_config, ValueType.BOOL)
 
         return [relu_config]
     
@@ -405,10 +405,10 @@ class BlackholeDevice(tt_device.Device):
 
         start = 18 # ignores field name prefix
 
-        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_32b_data", dest, ValueType.HEX, start)
-        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_unsigned", dest, ValueType.HEX, start)
-        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_int8", dest, ValueType.HEX, start)
-        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Round_10b_mant", dest, ValueType.HEX, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_32b_data", dest, ValueType.BOOL, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_unsigned", dest, ValueType.BOOL, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_int8", dest, ValueType.BOOL, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Round_10b_mant", dest, ValueType.BOOL, start)
         debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Reserved", dest, ValueType.HEX, start)
 
         return [dest]
@@ -454,7 +454,7 @@ class BlackholeDevice(tt_device.Device):
             debug_tensix.get_config_field(register_name + "_pack_per_xy_plane", counters, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_pack_reads_per_xy_plane", counters, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_pack_xys_per_til", counters, ValueType.DEC, start)
-            debug_tensix.get_config_field(register_name + "_pack_yz_transposed", counters, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_pack_yz_transposed", counters, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_pack_per_xy_plane_offset", counters, ValueType.DEC, start)
 
             counters_list.append(counters)

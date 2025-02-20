@@ -384,7 +384,7 @@ class WormholeDevice(tt_device.Device):
             start = len(register_name) + 1 # ignores name prefix
 
             debug_tensix.get_config_field(register_name + "_in_data_format", tile_descriptor, ValueType.FORMAT, start)
-            debug_tensix.get_config_field(register_name + "_uncompressed", tile_descriptor, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_uncompressed", tile_descriptor, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_reserved_0", tile_descriptor, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_blobs_per_xy_plane", tile_descriptor, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_reserved_1", tile_descriptor, ValueType.HEX, start)
@@ -423,15 +423,15 @@ class WormholeDevice(tt_device.Device):
             debug_tensix.get_config_field(register_name + "_context_count", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_haloize_mode", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_tileize_mode", unpack_config, ValueType.HEX, start)
-            debug_tensix.get_config_field(register_name + "_unpack_src_reg_set_upd", unpack_config, ValueType.HEX, start)
-            debug_tensix.get_config_field(register_name + "_unpack_if_sel", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_unpack_src_reg_set_upd", unpack_config, ValueType.BOOL, start)
+            debug_tensix.get_config_field(register_name + "_unpack_if_sel", unpack_config, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_upsample_rate", unpack_config, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_reserved_1", unpack_config, ValueType.HEX, start)
-            debug_tensix.get_config_field(register_name + "_upsample_and_interleave", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_upsample_and_interleave", unpack_config, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_shift_amount", unpack_config, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_uncompress_cntx0_3", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_unpack_if_sel_cntx0_3", unpack_config, ValueType.HEX, start)
-            debug_tensix.get_config_field(register_name + "_force_shared_exp", unpack_config, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_force_shared_exp", unpack_config, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_reserved_2", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_uncompress_cntx4_7", unpack_config, ValueType.HEX, start)
             debug_tensix.get_config_field(register_name + "_unpack_if_sel_cntx4_7", unpack_config, ValueType.HEX, start)
@@ -461,19 +461,19 @@ class WormholeDevice(tt_device.Device):
                 debug_tensix.get_config_field(register_name + "_row_ptr_section_size", pack_config, ValueType.DEC, start)
                 debug_tensix.get_config_field(register_name + "_exp_section_size", pack_config, ValueType.DEC, start)
                 debug_tensix.get_config_field(register_name + "_l1_dest_addr", pack_config, ValueType.HEX, start)
-                debug_tensix.get_config_field(register_name + "_uncompress", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_uncompress", pack_config, ValueType.BOOL, start)
                 debug_tensix.get_config_field(register_name + "_add_l1_dest_addr_offset", pack_config, ValueType.HEX, start)
                 debug_tensix.get_config_field(register_name + "_reserved_0", pack_config, ValueType.HEX, start)
                 debug_tensix.get_config_field(register_name + "_out_data_format", pack_config, ValueType.FORMAT, start)
                 debug_tensix.get_config_field(register_name + "_in_data_format", pack_config, ValueType.FORMAT, start)
                 debug_tensix.get_config_field(register_name + "_reserved_1", pack_config, ValueType.HEX, start)
-                debug_tensix.get_config_field(register_name + "_src_if_sel", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_src_if_sel", pack_config, ValueType.BOOL, start)
                 debug_tensix.get_config_field(register_name + "_pack_per_xy_plane", pack_config, ValueType.DEC, start)
                 debug_tensix.get_config_field(register_name + "_l1_src_addr", pack_config, ValueType.HEX, start)
                 debug_tensix.get_config_field(register_name + "_downsample_mask", pack_config, ValueType.HEX, start)
                 debug_tensix.get_config_field(register_name + "_downsample_shift_count", pack_config, ValueType.HEX, start)
                 debug_tensix.get_config_field(register_name + "_read_mode", pack_config, ValueType.HEX, start)
-                debug_tensix.get_config_field(register_name + "_exp_threshold_en", pack_config, ValueType.HEX, start)
+                debug_tensix.get_config_field(register_name + "_exp_threshold_en", pack_config, ValueType.BOOL, start)
                 debug_tensix.get_config_field(register_name + "_pack_l1_acc_disable_pack_zero_flag", pack_config, ValueType.HEX, start)
                 debug_tensix.get_config_field(register_name + "_reserved_2", pack_config, ValueType.HEX, start)
                 debug_tensix.get_config_field(register_name + "_exp_threshold", pack_config, ValueType.DEC, start)
@@ -485,16 +485,16 @@ class WormholeDevice(tt_device.Device):
     def get_relu_config(self, debug_tensix: TensixDebug) -> list[dict]:
         relu_config = {}
 
-        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_src", relu_config, ValueType.HEX)
-        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_dst", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_src", relu_config, ValueType.BOOL)
+        debug_tensix.get_config_field("ALU_ACC_CTRL_Zero_Flag_disabled_dst", relu_config, ValueType.BOOL)
         debug_tensix.get_config_field("STACC_RELU_ApplyRelu", relu_config, ValueType.HEX)
         debug_tensix.get_config_field("STACC_RELU_ReluThreshold", relu_config, ValueType.DEC)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_main", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_main", relu_config, ValueType.BOOL)
         debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_trisc", relu_config, ValueType.HEX)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_ncrisc", relu_config, ValueType.HEX)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_main", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_ncrisc", relu_config, ValueType.BOOL)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_main", relu_config, ValueType.BOOL)
         debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_trisc", relu_config, ValueType.HEX)
-        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_ncrisc", relu_config, ValueType.HEX)
+        debug_tensix.get_config_field("DISABLE_RISC_BP_Disable_bmp_clear_ncrisc", relu_config, ValueType.BOOL)
 
         return [relu_config]
     
@@ -503,10 +503,10 @@ class WormholeDevice(tt_device.Device):
 
         start = 18
 
-        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_32b_data", dest, ValueType.HEX, start)
-        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_unsigned", dest, ValueType.HEX, start)
-        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_int8", dest, ValueType.HEX, start)
-        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Round_10b_mant", dest, ValueType.HEX, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_32b_data", dest, ValueType.BOOL, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_unsigned", dest, ValueType.BOOL, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Read_int8", dest, ValueType.BOOL, start)
+        debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Round_10b_mant", dest, ValueType.BOOL, start)
         debug_tensix.get_config_field("PACK_DEST_RD_CTRL_Reserved", dest, ValueType.HEX, start)
 
         return [dest]
@@ -552,7 +552,7 @@ class WormholeDevice(tt_device.Device):
             debug_tensix.get_config_field(register_name + "_pack_per_xy_plane", counters, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_pack_reads_per_xy_plane", counters, ValueType.DEC, start)
             debug_tensix.get_config_field(register_name + "_pack_xys_per_til", counters, ValueType.DEC, start)
-            debug_tensix.get_config_field(register_name + "_pack_yz_transposed", counters, ValueType.HEX, start)
+            debug_tensix.get_config_field(register_name + "_pack_yz_transposed", counters, ValueType.BOOL, start)
             debug_tensix.get_config_field(register_name + "_pack_per_xy_plane_offset", counters, ValueType.DEC, start)
 
             counters_list.append(counters)
