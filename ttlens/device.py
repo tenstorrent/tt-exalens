@@ -123,16 +123,9 @@ class Device(TTObject):
             )
 
         if "quasar" in arch.lower():
-            from ttlens import tt_quasar
+            from ttlens import quasar
 
-            dev = tt_quasar.QuasarDevice(
-                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
-            )
-
-        if "quasar" in arch.lower():
-            from ttlens import tt_quasar
-
-            dev = tt_quasar.QuasarDevice(
+            dev = quasar.QuasarDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
 
