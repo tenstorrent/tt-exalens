@@ -27,7 +27,7 @@ command_metadata = {
 }
 
 from ttlens.tt_uistate import UIState
-from ttlens.tt_debug_tensix import TensixDebug, DataFormat
+from ttlens.tt_debug_tensix import TensixDebug
 from ttlens import tt_commands
 
 import tabulate

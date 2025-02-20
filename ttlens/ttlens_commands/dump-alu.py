@@ -27,7 +27,7 @@ command_metadata = {
 }
 
 from ttlens.tt_uistate import UIState
-from ttlens.tt_debug_tensix import TensixDebug, DataFormat
+from ttlens.tt_debug_tensix import TensixDebug
 from ttlens import tt_commands
 
 import tabulate
@@ -57,8 +57,6 @@ def run(cmd_text, context, ui_state: UIState = None):
         command_metadata["description"],
         argv=cmd_text.split()[1:],
     )
-
-    
 
     for device in dopt.for_each("--device", context, ui_state):
         

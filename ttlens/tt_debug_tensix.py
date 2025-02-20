@@ -11,6 +11,7 @@ from ttlens.tt_util import TTException
 from ttlens.tt_device import Device, ConfigurationRegisterDescription
 from ttlens.tt_unpack_regfile import unpack_data
 from ttlens.tt_debug_risc import RiscDebug, RiscLoc, RiscLoader
+from ttlens.tt_unpack_regfile import TensixDataFormat
 
 
 def validate_trisc_id(trisc_id: int, context: Context) -> None:
@@ -28,35 +29,13 @@ class REGFILE(Enum):
     SRCB = 1
     DSTACC = 2
 
-class DataFormat(Enum):
-    Float32 = 0
-    Float16 = 1
-    Bfp8 = 2
-    Bfp4 = 3
-    Bfp2 = 11
-    Float16_b = 5
-    Bfp8_b = 6
-    Bfp4_b = 7
-    Bfp2_b = 15
-    Lf8 = 10
-    Fp8_e4m3 = 0x1A
-    UInt16 = 9
-    Int8 = 14
-    UInt8 = 30
-    Tf32 = 4
-    Int32 = 8
-    RawUInt8 = 0xf0
-    RawUInt16 = 0xf1
-    RawUInt32 = 0xf2
-    Invalid = 0xff
-
 class ValueType(Enum):
     HEX = 0
     DEC = 1
     FORMAT = 2
     BOOL = 3
 
-def data_format_to_string(data_format: DataFormat) -> str:
+def data_format_to_string(data_format: TensixDataFormat) -> str:
     return data_format.name
 
 def convert_regfile(regfile: Union[int, str, REGFILE]) -> REGFILE:
@@ -344,7 +323,7 @@ class TensixDebug:
         elif value_type == ValueType.DEC:
             config[name[start:]] = value
         elif value_type == ValueType.FORMAT:
-            config[name[start:]] = data_format_to_string(DataFormat(value))
+            config[name[start:]] = data_format_to_string(TensixDataFormat(value))
         elif value_type == ValueType.BOOL:
             config[name[start:]] = "True" if value else "False"
         
