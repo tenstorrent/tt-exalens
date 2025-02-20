@@ -37,6 +37,7 @@ from ttlens import commands
 from ttlens import util as util
 from ttlens.device import DebugBusSignalDescription
 
+
 def run_debug_bus_command(context, device, loc, args):
     """
     Given a command trough args, run the corresponding RISC-V command
@@ -59,7 +60,7 @@ def run_debug_bus_command(context, device, loc, args):
             util.ERROR("Debug Bus signal description is required")
             return
         else:
-            configuration =  args.get("<signal-description>", "")
+            configuration = args.get("<signal-description>", "")
             params = [int(n, 0) for n in configuration.split(",")]
             if len(params) < 4:
                 util.ERROR("Debug Bus configuration values are not formatted correctly")
@@ -71,6 +72,7 @@ def run_debug_bus_command(context, device, loc, args):
             print(f"{where} Debug Bus Config({signal_description}) = 0x{value:x}")
     else:
         raise ValueError(f"Unknown input parameters")
+
 
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = commands.tt_docopt(
