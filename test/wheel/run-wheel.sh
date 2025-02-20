@@ -10,7 +10,7 @@ source ${THIS_SCRIPT_DIR}/../test-base.sh
 ############################################################################################
 # Running tests
 
-TTLENS_COMMANDS='h;wxy 0,0 0 0x123;brxy 0,0 0 64;gpr;d -d 0 logical-tensix virtual;x'
+TTLENS_COMMANDS='h;wxy 0,0 0 0x123;brxy 0,0 0 64;gpr;d -d 0 logical-tensix virtual;alu;unpack;pack;x'
 
 echo -e "${YELLOW}INFO: ${NC}Running simple TTLens commands ..."
 tt-lens --test --commands="$TTLENS_COMMANDS"
