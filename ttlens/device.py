@@ -241,7 +241,14 @@ class Device(TTObject):
         try:
             return self._from_noc0[(noc0_tuple, coord_system)]
         except:
-            raise CoordinateTranslationError(f"from_noc0(noc0_tuple={noc0_tuple}, coord_system={coord_system})")
+            try:
+                # Try to recover using UMD API
+                converted_location = self._context.server_ifc.convert_from_noc0(
+                    self._id, noc0_tuple[0], noc0_tuple[1], "router_only", coord_system
+                )
+                return (converted_location, "router_only")
+            except:
+                raise CoordinateTranslationError(f"from_noc0(noc0_tuple={noc0_tuple}, coord_system={coord_system})")
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         # Base class doesn't know if it is translated coordinate, but specialized classes do

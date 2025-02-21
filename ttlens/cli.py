@@ -4,8 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-lens [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [--jtag]
-  tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag]
+  tt-lens [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1]
+  tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [--use-noc1]
   tt-lens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
   tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test]
   tt-lens -h | --help
@@ -25,6 +25,7 @@ Options:
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
+  --use-noc1                      Use NOC1 for communication with the device.
 
 Description:
   TTLens parses the build output files and reads the device state to provide a debugging interface for the user.
@@ -404,7 +405,9 @@ def main():
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
         print(f"Starting TTLens server at {args['--port']}")
-        ttlens_server = tt_lens_server.start_server(args["--port"], wanted_devices, init_jtag=args["--jtag"])
+        ttlens_server = tt_lens_server.start_server(
+            args["--port"], wanted_devices, init_jtag=args["--jtag"], use_noc1=args["--use-noc1"]
+        )
         if args["--test"]:
             while True:
                 pass
@@ -422,7 +425,7 @@ def main():
         util.INFO(f"Connecting to TTLens server at {server_ip}:{server_port}")
         context = tt_lens_init.init_ttlens_remote(server_ip, int(server_port), cache_path)
     else:
-        context = tt_lens_init.init_ttlens(wanted_devices, cache_path, args["--jtag"])
+        context = tt_lens_init.init_ttlens(wanted_devices, cache_path, args["--jtag"], args["--use-noc1"])
 
     # Main function
     exit_code = main_loop(args, context)
