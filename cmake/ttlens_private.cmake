@@ -2,7 +2,7 @@
 # If it is not, we should check if user has access to private repository.
 
 set(TTLENS_PRIVATE_GIT_REPOSITORY "git@yyz-gitlab.local.tenstorrent.com:tenstorrent/tt-lens-private.git")
-set(TTLENS_PRIVATE_GIT_TAG "main")
+set(TTLENS_PRIVATE_GIT_TAG "b8dea1699eb9a5159cab1e57e0adffa49b82a9e9")
 set(DOWNLOAD_TTLENS_PRIVATE ON)
 
 if (NOT EXISTS "$ENV{CPM_SOURCE_CACHE}/ttlens_private")
@@ -15,7 +15,7 @@ if (NOT EXISTS "$ENV{CPM_SOURCE_CACHE}/ttlens_private")
     file(COPY "${CMAKE_CURRENT_LIST_DIR}/ttlens_private_check.cmake"
         DESTINATION "${CMAKE_BINARY_DIR}/tt_lens_private_check")
 
-    file(WRITE "${CMAKE_BINARY_DIR}/tt_lens_private_check/CMakeLists.txt" "include(${CMAKE_CURRENT_LIST_DIR}/ttlens_private_check.cmake)")
+    file(WRITE "${CMAKE_BINARY_DIR}/tt_lens_private_check/CMakeLists.txt" "cmake_minimum_required(VERSION 3.16)\ncmake_policy(VERSION 3.16)\ninclude(\${CMAKE_CURRENT_LIST_DIR}/ttlens_private_check.cmake)")
 
     execute_process(
         COMMAND ${CMAKE_COMMAND} -B build -Wno-dev -DTTLENS_PRIVATE_GIT_REPOSITORY=${TTLENS_PRIVATE_GIT_REPOSITORY} -DTTLENS_PRIVATE_GIT_TAG=${TTLENS_PRIVATE_GIT_TAG}
