@@ -23,7 +23,7 @@ command_metadata = {
     "short": "unpack",
     "type": "dev",
     "description": __doc__,
-    "context": ["limited"],
+    "context": ["limited", "metal"],
 }
 
 from ttlens.tt_uistate import UIState
