@@ -192,7 +192,7 @@ def dict_list_to_table(dicts: list[dict], register_name: str) -> str:
     else:
         headers = [register_name] + [f"REG_ID = {i+1}" for i in range(len(dicts))]
 
-    return tabulate(data, headers=headers, tablefmt="pretty", colalign=("left",) * len(headers))
+    return tabulate(data, headers=headers, tablefmt="simple_outline", colalign=("left",) * len(headers))
 
 
 # Given two tables 'a' and 'b' merge them into a wider table
