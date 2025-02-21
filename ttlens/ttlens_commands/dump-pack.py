@@ -29,7 +29,7 @@ command_metadata = {
 from ttlens.tt_uistate import UIState
 from ttlens.tt_debug_tensix import TensixDebug
 from ttlens import tt_commands
-from ttlens.tt_util import dict_list_to_table, put_table_list_side_by_side
+from ttlens.tt_util import dict_list_to_table, put_table_list_side_by_side, INFO
 
 import tabulate
 
@@ -42,6 +42,8 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
+            INFO(f"Packer's configuration registers for location {loc} on device {device.id()}")
+
             debug_tensix = TensixDebug(loc, device.id(), context)
             device = debug_tensix.context.devices[debug_tensix.device_id]
 
