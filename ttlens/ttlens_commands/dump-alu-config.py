@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump-alu [ -d <device> ] [ -l <loc> ]
+  dump-alu-config [ -d <device> ] [ -l <loc> ]
 
 Options:
   -d <device>   Device ID. Optional and repeatable. Default: current device
