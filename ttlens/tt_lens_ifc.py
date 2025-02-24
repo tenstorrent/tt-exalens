@@ -428,9 +428,9 @@ import ttlens_pybind
 
 
 class TTLensPybind(TTLensCommunicator):
-    def __init__(self, wanted_devices: list = [], init_jtag=False):
+    def __init__(self, wanted_devices: list = [], init_jtag=False, use_noc1=False):
         super().__init__()
-        if not ttlens_pybind.open_device(binary_path, wanted_devices, init_jtag):
+        if not ttlens_pybind.open_device(binary_path, wanted_devices, init_jtag, use_noc1):
             raise Exception("Failed to open device using pybind library")
 
     def _check_result(self, result):
@@ -518,11 +518,11 @@ class TTLensPybind(TTLensCommunicator):
         return self._check_result(ttlens_pybind.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout))
 
 
-def init_pybind(wanted_devices=None, init_jtag=False):
+def init_pybind(wanted_devices=None, init_jtag=False, use_noc1=False):
     if not wanted_devices:
         wanted_devices = []
 
-    communicator = TTLensPybind(wanted_devices, init_jtag)
+    communicator = TTLensPybind(wanted_devices, init_jtag, use_noc1)
     util.VERBOSE("Device opened successfully.")
     return communicator
 

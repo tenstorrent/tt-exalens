@@ -80,10 +80,12 @@ class WormholeDevice(Device):
             return WormholeDevice.CONFIGURATION_REGISTER_BASE
         elif isinstance(register_description, DebugRegisterDescription):
             return WormholeDevice.DEBUG_REGISTER_BASE
-        elif isinstance(register_description, NocStatusRegisterDescription):
-            return WormholeDevice.NOC_STATUS_REGISTER_BASE
+        elif isinstance(register_description, NocControlRegisterDescription):
+            return WormholeDevice.NOC_CONTROL_REGISTER_BASE
         elif isinstance(register_description, NocConfigurationRegisterDescription):
             return WormholeDevice.NOC_CONFIGURATION_REGISTER_BASE
+        elif isinstance(register_description, NocStatusRegisterDescription):
+            return WormholeDevice.NOC_STATUS_REGISTER_BASE
         else:
             return None
 

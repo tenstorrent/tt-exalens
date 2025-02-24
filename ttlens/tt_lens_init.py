@@ -23,6 +23,7 @@ def init_ttlens(
     wanted_devices: list = None,
     cache_path: str = None,
     init_jtag: bool = False,
+    use_noc1: bool = False,
 ) -> Context:
     """Initializes TTLens internals by creating the device interface and TTLens context.
     Interfacing device is local, through pybind.
@@ -35,11 +36,11 @@ def init_ttlens(
             Context: TTLens context object.
     """
 
-    lens_ifc = tt_lens_ifc.init_pybind(wanted_devices, init_jtag)
+    lens_ifc = tt_lens_ifc.init_pybind(wanted_devices, init_jtag, use_noc1)
     if cache_path:
         lens_ifc = tt_lens_ifc_cache.init_cache_writer(lens_ifc, cache_path)
 
-    return load_context(lens_ifc)
+    return load_context(lens_ifc, use_noc1)
 
 
 def init_ttlens_remote(
@@ -63,7 +64,7 @@ def init_ttlens_remote(
     if cache_path:
         lens_ifc = tt_lens_ifc_cache.init_cache_writer(lens_ifc, cache_path)
 
-    return load_context(lens_ifc)
+    return load_context(lens_ifc, use_noc1=False)  # TODO: Unsupported!
 
 
 def init_ttlens_cached(
@@ -98,9 +99,9 @@ def get_cluster_desc_yaml(lens_ifc: tt_lens_ifc.TTLensCommunicator) -> "tuple[ut
     return cluster_desc_yaml
 
 
-def load_context(server_ifc: tt_lens_ifc.TTLensCommunicator) -> Context:
+def load_context(server_ifc: tt_lens_ifc.TTLensCommunicator, use_noc1: bool = False) -> Context:
     """Load the TTLens context object with specified parameters."""
-    context = LimitedContext(server_ifc, get_cluster_desc_yaml(server_ifc))
+    context = LimitedContext(server_ifc, get_cluster_desc_yaml(server_ifc), use_noc1)
 
     global GLOBAL_CONTEXT
     GLOBAL_CONTEXT = context

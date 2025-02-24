@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from typing import List
 from ttlens import util as util
 
 import os
@@ -9,9 +10,9 @@ import subprocess
 import time
 
 
-def start_server(port: int, wanted_devices: "List[int]" = None, init_jtag=False) -> subprocess.Popen:
+def start_server(port: int, wanted_devices: "List[int]" = None, init_jtag=False, use_noc1=False) -> subprocess.Popen:
     if util.is_port_available(int(port)):
-        ttlens_server = spawn_standalone_ttlens_stub(port, wanted_devices, init_jtag)
+        ttlens_server = spawn_standalone_ttlens_stub(port, wanted_devices, init_jtag, use_noc1)
         if ttlens_server is None:
             raise util.TTFatalException("Could not start ttlens-server.")
         return ttlens_server
@@ -19,7 +20,9 @@ def start_server(port: int, wanted_devices: "List[int]" = None, init_jtag=False)
     raise util.TTFatalException(f"Port {port} not available. A TTLens server might alreasdy be running.")
 
 
-def spawn_standalone_ttlens_stub(port: int, wanted_devices: "List[int]" = None, init_jtag=False) -> subprocess.Popen:
+def spawn_standalone_ttlens_stub(
+    port: int, wanted_devices: "List[int]" = None, init_jtag=False, use_noc1=False
+) -> subprocess.Popen:
     print("Spawning ttlens-server...")
 
     ttlens_server_standalone = "/ttlens-server-standalone"
@@ -40,6 +43,9 @@ def spawn_standalone_ttlens_stub(port: int, wanted_devices: "List[int]" = None, 
 
         if init_jtag:
             ttlens_stub_args += ["--jtag"]
+
+        if use_noc1:
+            ttlens_stub_args += ["--use-noc1"]
 
         ttlens_stub = subprocess.Popen(
             [ttlens_stub_path] + ttlens_stub_args,

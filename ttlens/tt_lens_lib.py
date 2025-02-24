@@ -38,7 +38,7 @@ def read_word_from_device(
     if context.devices[device_id]._has_jtag:
         word = context.server_ifc.jtag_read32(device_id, *core_loc.to("noc0"), addr)
     else:
-        word = context.server_ifc.pci_read32(device_id, *core_loc.to("virtual"), addr)
+        word = context.server_ifc.pci_read32(device_id, *context.convert_loc_to_umd(core_loc), addr)
     return word
 
 
@@ -71,7 +71,7 @@ def read_words_from_device(
         if context.devices[device_id]._has_jtag:
             word = context.server_ifc.jtag_read32(device_id, *core_loc.to("noc0"), addr + 4 * i)
         else:
-            word = context.server_ifc.pci_read32(device_id, *core_loc.to("virtual"), addr + 4 * i)
+            word = context.server_ifc.pci_read32(device_id, *context.convert_loc_to_umd(core_loc), addr + 4 * i)
         data.append(word)
     return data
 
@@ -105,7 +105,7 @@ def read_from_device(
         int_array = read_words_from_device(core_loc, addr, device_id, num_bytes // 4 + (num_bytes % 4 > 0), context)
         return struct.pack(f"{len(int_array)}I", *int_array)[:num_bytes]
 
-    return context.server_ifc.pci_read(device_id, *core_loc.to("virtual"), addr, num_bytes)
+    return context.server_ifc.pci_read(device_id, *context.convert_loc_to_umd(core_loc), addr, num_bytes)
 
 
 def write_words_to_device(
@@ -143,7 +143,9 @@ def write_words_to_device(
         if context.devices[device_id]._has_jtag:
             bytes_written += context.server_ifc.jtag_write32(device_id, *core_loc.to("noc0"), addr + i * 4, word)
         else:
-            bytes_written += context.server_ifc.pci_write32(device_id, *core_loc.to("virtual"), addr + i * 4, word)
+            bytes_written += context.server_ifc.pci_write32(
+                device_id, *context.convert_loc_to_umd(core_loc), addr + i * 4, word
+            )
     return bytes_written
 
 
@@ -188,7 +190,7 @@ def write_to_device(
             write_words_to_device(core_loc, addr + i, struct.unpack("<I", data[i : i + 4])[0], device_id, context)
         return len(data)
 
-    return context.server_ifc.pci_write(device_id, *core_loc.to("virtual"), addr, data)
+    return context.server_ifc.pci_write(device_id, *context.convert_loc_to_umd(core_loc), addr, data)
 
 
 def load_elf(
