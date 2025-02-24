@@ -273,7 +273,7 @@ Since we are running from cache, we can't write to device:
 gdb:None Current epoch:None(None) device:0 loc:1-1 (0,0) > wxy 0,0 0x100 0x1234
 ------------------------------------------  -----------  --------------------------------------------------------------------------
 tt-lens:428                                 main_loop    new_navigation_suggestions = found_command["module"].run(
-ttlens/ttlens_commands/pci-write-xy.py:52   run            tt_device.SERVER_IFC.pci_write32(
+ttlens/ttlens_commands/pci-write-xy.py:52   run            device.SERVER_IFC.pci_write32(
 ttlens/tt_lens_ifc_cache.py:198             pci_write32      raise util.TTException("Device not available, cannot write to cache.")
 ttlens/tt_lens_ifc_cache.py:198             pci_write32  TTException: Device not available, cannot write to cache.
 ------------------------------------------  -----------  --------------------------------------------------------------------------

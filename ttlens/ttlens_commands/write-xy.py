@@ -26,9 +26,9 @@ command_metadata = {
 
 from docopt import docopt
 
-from ttlens.tt_uistate import UIState
+from ttlens.uistate import UIState
 
-from ttlens.tt_coordinate import OnChipCoordinate
+from ttlens.coordinate import OnChipCoordinate
 from ttlens.tt_lens_lib import write_words_to_device
 
 

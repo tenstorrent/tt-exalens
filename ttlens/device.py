@@ -1,15 +1,20 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+
+from abc import abstractmethod
+from copy import deepcopy
+from dataclasses import dataclass, replace
 from functools import cached_property
 from typing import List, Sequence, Tuple
+
 from tabulate import tabulate
-from ttlens.tt_lens_context import Context
-from ttlens.tt_object import TTObject
-from ttlens import tt_util as util
-from ttlens.tt_coordinate import CoordinateTranslationError, OnChipCoordinate
+from ttlens.context import Context
+from ttlens.object import TTObject
+from ttlens import util as util
+from ttlens.coordinate import CoordinateTranslationError, OnChipCoordinate
 from abc import abstractmethod
-from ttlens.tt_debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
+from ttlens.debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device
 
 
@@ -22,22 +27,66 @@ class TensixInstructions:
                 setattr(self.__class__, func_name, static_method)
 
 
+@dataclass
 class TensixRegisterDescription:
-    def __init__(self, address: int, mask: int = 0xFFFFFFFF, shift: int = 0):
-        self.address = address
-        self.mask = mask
-        self.shift = shift
+    address: int = 0
+    mask: int = 0xFFFFFFFF
+    shift: int = 0
+
+    def clone(self, offset: int = 0):
+        new_instance = deepcopy(self)
+        new_instance.address += offset
+        return new_instance
 
 
+@dataclass
 class DebugRegisterDescription(TensixRegisterDescription):
-    def __init__(self, address: int, mask: int = 0xFFFFFFFF, shift: int = 0):
-        super().__init__(address, mask, shift)
+    pass
 
 
+@dataclass
 class ConfigurationRegisterDescription(TensixRegisterDescription):
-    def __init__(self, index: int, mask: int = 0xFFFFFFFF, shift: int = 0, base_address=0):
-        super().__init__(base_address + index * 4, mask, shift)
-        self.index = index
+    index: int = 0
+
+    def __post_init__(self):
+        self.address = self.address + self.index * 4
+
+
+@dataclass
+class NocStatusRegisterDescription(TensixRegisterDescription):
+    pass
+
+
+@dataclass
+class NocConfigurationRegisterDescription(TensixRegisterDescription):
+    pass
+
+
+@dataclass
+class NocControlRegisterDescription(TensixRegisterDescription):
+    pass
+
+
+@dataclass
+class DebugBusSignalDescription:
+    rd_sel: int = 0
+    daisy_sel: int = 0
+    sig_sel: int = 0
+    mask: int = 0xFFFFFFFF
+
+    def __post_init__(self):
+        """Validate field values after object creation."""
+        if not (0 <= self.rd_sel <= 3):  # Example range, update if needed
+            raise ValueError(f"rd_sel must be between 0 and 3, got {self.rd_sel}")
+
+        if not (0 <= self.daisy_sel <= 255):  # Example range, update if needed
+            raise ValueError(f"daisy_sel must be between 0 and 255, got {self.daisy_sel}")
+
+        if not (0 <= self.sig_sel <= 65535):  # Example range, update if needed
+            raise ValueError(f"sig_sel must be between 0 and 65535, got {self.sig_sel}")
+
+        if not (0 <= self.mask <= 0xFFFFFFFF):  # Mask should be a valid 32-bit value
+            raise ValueError(f"mask must be a valid 32-bit integer, got {self.mask}")
 
 
 #
@@ -69,21 +118,21 @@ class Device(TTObject):
     def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
         dev = None
         if arch.lower() == "grayskull":
-            from ttlens import tt_grayskull
+            from ttlens import grayskull
 
-            dev = tt_grayskull.GrayskullDevice(
+            dev = grayskull.GrayskullDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
         if "wormhole" in arch.lower():
-            from ttlens import tt_wormhole
+            from ttlens import wormhole
 
-            dev = tt_wormhole.WormholeDevice(
+            dev = wormhole.WormholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
         if "blackhole" in arch.lower():
-            from ttlens import tt_blackhole
+            from ttlens import blackhole
 
-            dev = tt_blackhole.BlackholeDevice(
+            dev = blackhole.BlackholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
 
@@ -133,9 +182,9 @@ class Device(TTObject):
         )
 
         self._init_coordinate_systems()
-        self._init_register_addresses()
+        self._init_arc_register_adresses()
 
-    # Coordinate conversion functions (see tt_coordinate.py for description of coordinate systems)
+    # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
     def __die_to_noc(self, die_loc, noc_id=0):
         die_x, die_y = die_loc
         if noc_id == 0:
@@ -272,7 +321,7 @@ class Device(TTObject):
 
     # Returns a string representation of the device. When printed, the string will
     # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list
-    # See tt_coordinates for valid values of axis_coordinates
+    # See coordinate.py for valid values of axis_coordinates
     def render(self, axis_coordinate="die", cell_renderer=None, legend=None):
         dev = self.yaml_file.root
         rows = []
@@ -406,39 +455,23 @@ class Device(TTObject):
         pass
 
     @abstractmethod
-    def get_tensix_configuration_register_base(self) -> int:
+    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:
         pass
 
     @abstractmethod
-    def get_tenxis_debug_register_base(self) -> int:
-        pass
-
-    @abstractmethod
-    def get_configuration_register_description(self, register_name: str) -> ConfigurationRegisterDescription:
-        pass
-
-    @abstractmethod
-    def get_debug_register_description(self, register_name: str) -> DebugRegisterDescription:
+    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
         pass
 
     def get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
-        register_description = self.get_configuration_register_description(register_name)
+        register_description = self._get_tensix_register_description(register_name)
         if register_description != None:
-            base_register_address = self.get_tensix_configuration_register_base()
-            return ConfigurationRegisterDescription(
-                register_description.index, register_description.mask, register_description.shift, base_register_address
-            )
-        else:
-            register_description = self.get_debug_register_description(register_name)
-            if register_description != None:
-                base_register_address = self.get_tenxis_debug_register_base()
-                return DebugRegisterDescription(
-                    base_register_address + register_description.address,
-                    register_description.mask,
-                    register_description.shift,
-                )
+            base_address = self._get_tensix_register_base_address(register_description)
+            if base_address != None:
+                return register_description.clone(base_address)
             else:
-                raise ValueError(f"Unknown tensix register name: {register_name}")
+                raise ValueError(f"Unknown tensix register base address for register: {register_name}")
+        else:
+            raise ValueError(f"Unknown tensix register name: {register_name}")
 
     def get_tensix_register_address(self, register_name: str) -> int:
         description = self.get_tensix_register_description(register_name)
@@ -464,7 +497,7 @@ class Device(TTObject):
 
     REGISTER_ADDRESSES = {}
 
-    def get_register_addr(self, name: str) -> int:
+    def get_arc_register_addr(self, name: str) -> int:
         try:
             addr = self.REGISTER_ADDRESSES[name]
         except KeyError:
@@ -472,7 +505,7 @@ class Device(TTObject):
 
         return addr
 
-    def _init_register_addresses(self):
+    def _init_arc_register_adresses(self):
         base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
         csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
         rom_data_base_addr = self.PCI_ARC_ROM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_ROM_DATA_BASE_ADDR
@@ -490,6 +523,42 @@ class Device(TTObject):
             "ARC_CSM_DATA": csm_data_base_addr,
             "ARC_ROM_DATA": rom_data_base_addr,
         }
+
+    @abstractmethod
+    def _get_debug_bus_signal_description(self, name) -> DebugBusSignalDescription:
+        pass
+
+    def get_debug_bus_signal_names(self) -> List[str]:
+        return []
+
+    def get_debug_bus_signal_description(self, name):
+        debug_bus_signal_description = self._get_debug_bus_signal_description(name)
+        if debug_bus_signal_description is None:
+            raise ValueError(f"Unknown debug bus signal name: {name}")
+        return debug_bus_signal_description
+
+    def read_debug_bus_signal(self, loc: OnChipCoordinate, name: str) -> int:
+        signal = self.get_debug_bus_signal_description(name)
+        return self.read_debug_bus_signal_from_description(loc, signal)
+
+    def read_debug_bus_signal_from_description(self, loc: OnChipCoordinate, signal: DebugBusSignalDescription) -> int:
+        if signal is None:
+            raise ValueError(f"Debug Bus signal description is not defined")
+
+        # Write the configuration
+        en = 1
+        config_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_DBG_BUS_CNTL_REG")
+        config = (en << 29) | (signal.rd_sel << 25) | (signal.daisy_sel << 16) | (signal.sig_sel << 0)
+        write_words_to_device(loc, config_addr, config, self._id)
+
+        # Read the data
+        data_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_DBG_RD_DATA")
+        data = read_word_from_device(loc, data_addr)
+
+        # Disable the signal
+        write_words_to_device(loc, config_addr, 0, self._id)
+
+        return data if signal.mask is None else data & signal.mask
 
 
 # end of class Device

@@ -4,14 +4,18 @@
 from typing import Union, List
 from enum import Enum
 
-from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_lens_context import Context
+from ttlens.coordinate import OnChipCoordinate
+from ttlens.context import Context
 from ttlens.tt_lens_lib import check_context, validate_device_id, read_word_from_device, write_words_to_device
-from ttlens.tt_util import TTException
-from ttlens.tt_device import Device, ConfigurationRegisterDescription
-from ttlens.tt_unpack_regfile import unpack_data
-from ttlens.tt_debug_risc import RiscDebug, RiscLoc, RiscLoader
-from ttlens.tt_unpack_regfile import TensixDataFormat
+from ttlens.util import TTException
+from ttlens.device import Device, ConfigurationRegisterDescription
+from ttlens.unpack_regfile import unpack_data
+from ttlens.debug_risc import RiscDebug, RiscLoc, RiscLoader
+from ttlens.unpack_regfile import TensixDataFormat
+from ttlens.util import TTException
+from ttlens.device import Device, ConfigurationRegisterDescription
+from ttlens.unpack_regfile import unpack_data
+from ttlens.debug_risc import RiscDebug, RiscLoc, RiscLoader
 
 
 def validate_trisc_id(trisc_id: int, context: Context) -> None:

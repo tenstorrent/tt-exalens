@@ -1,15 +1,23 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from ttlens import tt_util as util
-from ttlens import tt_device
-from ttlens.tt_device import ConfigurationRegisterDescription, DebugRegisterDescription
-from ttlens.tt_debug_tensix import TensixDebug, ValueType
+from ttlens import util as util
+from ttlens import device
+from ttlens.device import ConfigurationRegisterDescription, DebugRegisterDescription
+from ttlens.debug_tensix import TensixDebug, ValueType
+from ttlens import util
+from ttlens.device import (
+    TensixInstructions,
+    Device,
+    ConfigurationRegisterDescription,
+    DebugRegisterDescription,
+    TensixRegisterDescription,
+)
 
 
-class GrayskullInstructions(tt_device.TensixInstructions):
+class GrayskullInstructions(TensixInstructions):
     def __init__(self):
-        import ttlens.tt_grayskull_ops as ops
+        import ttlens.grayskull_ops as ops
 
         super().__init__(ops)
 
@@ -17,7 +25,7 @@ class GrayskullInstructions(tt_device.TensixInstructions):
 #
 # Device
 #
-class GrayskullDevice(tt_device.Device):
+class GrayskullDevice(Device):
     # Physical location mapping
     DIE_X_TO_NOC_0_X = [0, 12, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6]
     DIE_Y_TO_NOC_0_Y = [0, 11, 1, 10, 2, 9, 3, 8, 4, 7, 5, 6]
@@ -38,6 +46,11 @@ class GrayskullDevice(tt_device.Device):
 
     NUM_UNPACKERS = 2
     NUM_PACKERS = 4
+    CONFIGURATION_REGISTER_BASE = 0xFFEF0000
+    DEBUG_REGISTER_BASE = 0xFFB12000
+
+    NUM_UNPACKERS = 2
+    NUM_PACKERS = 4
 
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(
@@ -49,10 +62,22 @@ class GrayskullDevice(tt_device.Device):
         )
         self.instructions = GrayskullInstructions()
 
-    def get_tensix_configuration_register_base(self) -> int:
-        return 0xFFEF0000
+    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
+        """Overrides the base class method to provide register descriptions for Grayskull device."""
+        if register_name in GrayskullDevice.__register_map:
+            return GrayskullDevice.__register_map[register_name]
+        return None
 
-    __configuration_register_map = {
+    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:
+        """Overrides the base class method to provide register base addresses for Grayskull device."""
+        if isinstance(register_description, ConfigurationRegisterDescription):
+            return GrayskullDevice.CONFIGURATION_REGISTER_BASE
+        elif isinstance(register_description, DebugRegisterDescription):
+            return GrayskullDevice.DEBUG_REGISTER_BASE
+        else:
+            return None
+
+    __register_map = {
         # UNPACK TILE DESCRIPTOR SEC0
         "UNPACK_TILE_DESCRIPTOR0_in_data_format": ConfigurationRegisterDescription(index=48, mask=0xF, shift=0),
         "UNPACK_TILE_DESCRIPTOR0_uncompressed": ConfigurationRegisterDescription(index=48, mask=0x10, shift=4),
@@ -260,6 +285,7 @@ class GrayskullDevice(tt_device.Device):
         "PACK_STRIDES1_z_stride": ConfigurationRegisterDescription(index=11, mask=0xFFF, shift=0),
         "PACK_STRIDES1_w_stride": ConfigurationRegisterDescription(index=11, mask=0xFFFF000, shift=12),
         # REST
+        "ALU_FORMAT_SPEC_REG2_Dstacc": ConfigurationRegisterDescription(index=0, mask=0x1E000000, shift=25),
         "DISABLE_RISC_BP_Disable_main": ConfigurationRegisterDescription(index=2, mask=0x100000, shift=20),
         "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(index=2, mask=0xE00000, shift=21),
         "DISABLE_RISC_BP_Disable_ncrisc": ConfigurationRegisterDescription(index=2, mask=0x1000000, shift=24),
@@ -270,17 +296,6 @@ class GrayskullDevice(tt_device.Device):
         "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=181, mask=0x7),
         "NCRISC_RESET_PC_PC": ConfigurationRegisterDescription(index=182),
         "NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=183, mask=0x1),
-    }
-
-    def get_configuration_register_description(self, register_name: str) -> ConfigurationRegisterDescription:
-        if register_name in GrayskullDevice.__configuration_register_map:
-            return GrayskullDevice.__configuration_register_map[register_name]
-        return None
-
-    def get_tenxis_debug_register_base(self) -> int:
-        return 0xFFB12000
-
-    __debug_register_map = {
         "RISCV_DEBUG_REG_CFGREG_RD_CNTL": DebugRegisterDescription(address=0x58),
         "RISCV_DEBUG_REG_DBG_RD_DATA": DebugRegisterDescription(address=0x5C),
         "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN": DebugRegisterDescription(address=0x60),

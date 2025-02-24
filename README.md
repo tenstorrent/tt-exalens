@@ -39,7 +39,6 @@ To build TTLens, you need the following dependencies:
 - build-essential,
 - python3.X-venv,
 - libyaml-cpp-dev,
-- libboost-all-dev,
 - libhwloc-dev,
 - libzmq3-dev,
 - xxd,
@@ -48,7 +47,7 @@ To build TTLens, you need the following dependencies:
 which can be installed by running
 
 ```bash
-sudo apt install software-properties-common build-essential libyaml-cpp-dev libboost-all-dev libhwloc-dev libzmq3-dev libgtest-dev libgmock-dev xxd ninja-build
+sudo apt install software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libzmq3-dev libgtest-dev libgmock-dev xxd ninja-build
 ```
 
 Both python 3.8 and 3.10 are actively supported, so you can use either
@@ -237,7 +236,7 @@ ttlens/server/lib/inc/ttlensserver/communication.h:9:10: fatal error: zmq.hpp: N
 This happens when the docker image does not contain the required dependencies.
 Fix:
 ```
-sudo apt update && sudo apt-get install -y libzmq3-dev libboost-all-dev libgtest-dev libgmock-dev
+sudo apt update && sudo apt-get install -y libzmq3-dev libgtest-dev libgmock-dev
 ```
 
 

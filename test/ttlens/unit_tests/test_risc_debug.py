@@ -6,9 +6,9 @@ from parameterized import parameterized_class
 from ttlens import tt_lens_init
 from ttlens import tt_lens_lib as lib
 
-from ttlens.tt_coordinate import OnChipCoordinate
-from ttlens.tt_lens_context import Context
-from ttlens.tt_debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index, get_risc_id
+from ttlens.coordinate import OnChipCoordinate
+from ttlens.context import Context
+from ttlens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index, get_risc_id
 
 
 @parameterized_class(
@@ -89,6 +89,10 @@ class TestDebugging(unittest.TestCase):
         """Check if the device is blackhole."""
         return self.context.devices[0]._arch == "blackhole"
 
+    def is_wormhole(self):
+        """Check if the device is wormhole_b0."""
+        return self.context.devices[0]._arch == "wormhole_b0"
+
     def read_data(self, addr):
         """Read data from memory."""
         ret = lib.read_words_from_device(self.core_loc, addr, context=self.context)
@@ -110,6 +114,17 @@ class TestDebugging(unittest.TestCase):
             self.program_base_address + expected,
             f"Pc should be {expected} + program_base_addres ({self.program_base_address + expected}).",
         )
+
+        if self.is_wormhole():
+            # checks pc over debug bus
+            self.assertEqual(
+                self.get_pc_from_debug_bus(),
+                self.program_base_address + expected,
+                f"Pc (DBGBUS) should be {expected} + program_base_addres ({self.program_base_address + expected}).",
+            )
+
+    def get_pc_from_debug_bus(self):
+        return self.context.devices[0].read_debug_bus_signal(self.core_loc, self.risc_name.lower() + "_pc")
 
     def assertPcLess(self, expected):
         """Assert PC register is less than expected value."""
@@ -316,7 +331,6 @@ class TestDebugging(unittest.TestCase):
         # Infinite loop (jal 0)
         self.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
 
-        # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # On blackhole, we need to step one more time...
@@ -326,17 +340,14 @@ class TestDebugging(unittest.TestCase):
         # Verify value at address, value should not be changed and should stay the same since core is in halt
         self.assertEqual(self.read_data(addr), 0x12345678)
         self.assertPcEquals(4)
-
         # Step and verify that pc is 8 and value is not changed
         self.rdbg.step()
         self.assertEqual(self.read_data(addr), 0x12345678)
         self.assertPcEquals(8)
-
         # Step and verify that pc is 12 and value has changed
         self.rdbg.step()
         self.assertEqual(self.read_data(addr), 0x87654000)
         self.assertPcEquals(12)
-
         # Since we are on endless loop, we should never go past 16
         for i in range(10):
             # Step and verify that pc is 16 and value has changed

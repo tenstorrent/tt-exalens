@@ -2,8 +2,8 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from typing import Union, List
-from ttlens.tt_lens_context import Context
-from ttlens.tt_util import TTException
+from ttlens.context import Context
+from ttlens.util import TTException
 import re
 import os
 
@@ -25,7 +25,7 @@ def run_arc_core(mask: int, device_id: int = 0, context: Context = None):
     arc_core_loc = device.get_arc_block_location()
 
     # Write to bits 0-3
-    reg_addr = device.get_register_addr("ARC_RESET_ARC_MISC_CNTL")
+    reg_addr = device.get_arc_register_addr("ARC_RESET_ARC_MISC_CNTL")
 
     # Read current value
     current = arc_read(context, device_id, arc_core_loc, reg_addr)
@@ -36,7 +36,7 @@ def run_arc_core(mask: int, device_id: int = 0, context: Context = None):
     # Wait for acknowledgment
     core_run_ack = 0
     while core_run_ack & mask != mask:
-        status = arc_read(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_ARC_MISC_STATUS"))
+        status = arc_read(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_ARC_MISC_STATUS"))
         core_run_ack = status & 0xF  # Read bits 0-3
 
     # Clear control bits
@@ -57,7 +57,7 @@ def halt_arc_core(mask: int, device_id: int = 0, context: Context = None):
     device = context.devices[device_id]
     arc_core_loc = device.get_arc_block_location()
 
-    reg_addr = device.get_register_addr("ARC_RESET_ARC_MISC_CNTL")
+    reg_addr = device.get_arc_register_addr("ARC_RESET_ARC_MISC_CNTL")
 
     # Read current value
     current = arc_read(context, device_id, arc_core_loc, reg_addr)
@@ -68,7 +68,7 @@ def halt_arc_core(mask: int, device_id: int = 0, context: Context = None):
     # Wait for acknowledgment
     core_halt_ack = 0
     while core_halt_ack != mask:
-        status = arc_read(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_ARC_MISC_STATUS"))
+        status = arc_read(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_ARC_MISC_STATUS"))
         core_halt_ack = (status >> 4) & 0xF  # Read bits 4-7
 
     # Clear halt bits
@@ -103,7 +103,7 @@ def set_udmiaxi_region(mem_type: str, device_id: int = 0, context: Context = Non
     if context.devices[device_id]._arch == "blackhole":
         base_addr |= 0x100
 
-    arc_write(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_ARC_UDMIAXI_REGION"), base_addr)
+    arc_write(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_ARC_UDMIAXI_REGION"), base_addr)
 
 
 def trigger_fw_int(device_id: int = 0, context: Context = None) -> bool:
@@ -120,13 +120,13 @@ def trigger_fw_int(device_id: int = 0, context: Context = None) -> bool:
     device = context.devices[device_id]
     arc_core_loc = device.get_arc_block_location()
 
-    misc = arc_read(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET_ARC_MISC_CNTL"))
+    misc = arc_read(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_ARC_MISC_CNTL"))
 
     if misc & (1 << 16):
         return False
 
     misc_bit16_set = misc | (1 << 16)
-    arc_write(context, device_id, arc_core_loc, device.get_register_addr("ARC_RESET.ARC_MISC_CNTL"), misc_bit16_set)
+    arc_write(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET.ARC_MISC_CNTL"), misc_bit16_set)
 
     return True
 
@@ -165,7 +165,7 @@ def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context =
             context,
             device_id,
             arc_core_loc,
-            device.get_register_addr("ARC_RESET_SCRATCH5"),
+            device.get_arc_register_addr("ARC_RESET_SCRATCH5"),
             0xAA00 | MSG_TYPE_ARC_GO_TO_SLEEP,
         )
 
@@ -174,7 +174,7 @@ def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context =
 
     set_udmiaxi_region(mem_type, device_id, context)
 
-    base_addr = device.get_register_addr("ARC_CSM_DATA")
+    base_addr = device.get_arc_register_addr("ARC_CSM_DATA")
 
     def read_contiguous_hex_chunks(f):
         chunk_start_address = 0
@@ -202,7 +202,7 @@ def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context =
         for offset, data in read_contiguous_hex_chunks(f):
             if first_chunk:  # Load reset vector
                 word = int.from_bytes(data[0:4], "little")
-                arc_write(context, device_id, arc_core_loc, device.get_register_addr("ARC_ROM_DATA"), word)
+                arc_write(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_ROM_DATA"), word)
                 first_chunk = False
 
             for i in range(len(data) // 4):

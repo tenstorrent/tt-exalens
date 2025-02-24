@@ -27,16 +27,16 @@ command_metadata = {
     "command_option_names": ["--device", "--loc"],
 }
 
-from ttlens.tt_uistate import UIState
-from ttlens.tt_debug_tensix import TensixDebug
-from ttlens import tt_commands
-from ttlens.tt_util import dict_list_to_table, INFO
+from ttlens.uistate import UIState
+from ttlens.debug_tensix import TensixDebug
+from ttlens import commands
+from ttlens.util import dict_list_to_table, INFO
 
 import tabulate
 
 
 def run(cmd_text, context, ui_state: UIState = None):
-    dopt = tt_commands.tt_docopt(
+    dopt = commands.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
     )
