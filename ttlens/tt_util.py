@@ -10,7 +10,6 @@ import ryml, yaml
 
 from ttlens import Verbosity
 
-
 # Pretty print exceptions (traceback)
 def notify_exception(exc_type, exc_value, tb):
     rows = []
