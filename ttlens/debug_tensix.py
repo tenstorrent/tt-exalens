@@ -339,3 +339,5 @@ class TensixDebug:
             config[name[start:]] = TensixDataFormat(value).name
         elif value_type == ValueType.BOOL:
             config[name[start:]] = "True" if value else "False"
+        else:
+            raise ValueError("Invalid value for value_type")
