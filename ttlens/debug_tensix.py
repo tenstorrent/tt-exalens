@@ -42,10 +42,6 @@ class ValueType(Enum):
     BOOL = 3
 
 
-def data_format_to_string(data_format: TensixDataFormat) -> str:
-    return data_format.name
-
-
 def convert_regfile(regfile: Union[int, str, REGFILE]) -> REGFILE:
     if isinstance(regfile, REGFILE):
         return regfile
@@ -340,6 +336,6 @@ class TensixDebug:
         elif value_type == ValueType.DEC:
             config[name[start:]] = value
         elif value_type == ValueType.FORMAT:
-            config[name[start:]] = data_format_to_string(TensixDataFormat(value))
+            config[name[start:]] = TensixDataFormat(value).name
         elif value_type == ValueType.BOOL:
             config[name[start:]] = "True" if value else "False"
