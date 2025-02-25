@@ -35,6 +35,13 @@ from ttlens.util import dict_list_to_table, put_table_list_side_by_side, INFO
 import tabulate
 
 
+def create_column_names(num_of_columns, column_name: str):
+    if num_of_columns == 1:
+        return ["VALUES"]
+    else:
+        return [f"{column_name} = {i}" for i in range(1, num_of_columns + 1)]
+
+
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = commands.tt_docopt(
         command_metadata["description"],
@@ -53,17 +60,30 @@ def run(cmd_text, context, ui_state: UIState = None):
             pack_counters = device.get_pack_counters(debug_tensix)
             pack_strides = device.get_pack_strides(debug_tensix)
 
-            pack_config_table = dict_list_to_table(pack_config, "PACK CONFIG")
-            edge_offset_table = dict_list_to_table(edge_offset, "EDGE OFFSET")
-            pack_counters_table = dict_list_to_table(pack_counters, "PACK COUNTERS")
-            pack_strides_table = dict_list_to_table(pack_strides, "PACK STRIDES")
+            column_name = "REG_ID"
+            pack_config_table = dict_list_to_table(
+                pack_config, "PACK CONFIG", create_column_names(len(pack_config), column_name)
+            )
+            edge_offset_table = dict_list_to_table(
+                edge_offset, "EDGE OFFSET", create_column_names(len(edge_offset), column_name)
+            )
+            pack_counters_table = dict_list_to_table(
+                pack_counters, "PACK COUNTERS", create_column_names(len(pack_counters), column_name)
+            )
+            pack_strides_table = dict_list_to_table(
+                pack_strides, "PACK STRIDES", create_column_names(len(pack_strides), column_name)
+            )
 
             if device._arch == "wormhole_b0" or device._arch == "blackhole":
                 relu_config = device.get_relu_config(debug_tensix)
                 dest_rd_ctrl = device.get_pack_dest_rd_ctrl(debug_tensix)
 
-                relu_config_table = dict_list_to_table(relu_config, "RELU CONFIG")
-                dest_rd_ctrl_table = dict_list_to_table(dest_rd_ctrl, "DEST RD CTRL")
+                relu_config_table = dict_list_to_table(
+                    relu_config, "RELU CONFIG", create_column_names(len(relu_config), column_name)
+                )
+                dest_rd_ctrl_table = dict_list_to_table(
+                    dest_rd_ctrl, "DEST RD CTRL", create_column_names(len(dest_rd_ctrl), column_name)
+                )
 
                 print(put_table_list_side_by_side([edge_offset_table, pack_counters_table, dest_rd_ctrl_table]))
                 print(put_table_list_side_by_side([pack_config_table, relu_config_table, pack_strides_table]))

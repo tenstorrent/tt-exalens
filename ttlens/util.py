@@ -174,7 +174,7 @@ def dict_to_table(dct):
 
 
 # Converts list of dictionaries with same keys to a table where every column is one dictionary.
-def dict_list_to_table(dicts: list[dict], register_name: str) -> str:
+def dict_list_to_table(dicts: list[dict], table_name: str, column_names: list[str]) -> str:
     keys = dicts[0].keys()
     data = []
     for key in keys:
@@ -186,10 +186,7 @@ def dict_list_to_table(dicts: list[dict], register_name: str) -> str:
                 row.append("/")
         data.append(row)
 
-    if len(dicts) == 1:
-        headers = [register_name] + ["VALUES"]
-    else:
-        headers = [register_name] + [f"REG_ID = {i+1}" for i in range(len(dicts))]
+    headers = [table_name] + column_names
 
     return tabulate(data, headers=headers, tablefmt="simple_outline", colalign=("left",) * len(headers))
 

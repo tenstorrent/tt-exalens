@@ -35,6 +35,13 @@ from ttlens.util import dict_list_to_table, put_table_list_side_by_side, INFO
 import tabulate
 
 
+def create_column_names(num_of_columns, column_name: str):
+    if num_of_columns == 1:
+        return ["VALUES"]
+    else:
+        return [f"{column_name} = {i}" for i in range(1, num_of_columns + 1)]
+
+
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = commands.tt_docopt(
         command_metadata["description"],
@@ -51,8 +58,12 @@ def run(cmd_text, context, ui_state: UIState = None):
             tile_descriptor = device.get_unpack_tile_descriptor(debug_tensix)
             unpack_config = device.get_unpack_config(debug_tensix)
 
-            tile_descriptor_table = dict_list_to_table(tile_descriptor, "TILE DESCRIPTOR")
-            unpack_config_table = dict_list_to_table(unpack_config, "UNPACK CONFIG")
+            tile_descriptor_table = dict_list_to_table(
+                tile_descriptor, "TILE DESCRIPTOR", create_column_names(len(tile_descriptor), "REG_ID")
+            )
+            unpack_config_table = dict_list_to_table(
+                unpack_config, "UNPACK CONFIG", create_column_names(len(unpack_config), "REG_ID")
+            )
 
             print(put_table_list_side_by_side([unpack_config_table, tile_descriptor_table]))
 

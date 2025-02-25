@@ -55,7 +55,7 @@ def run(cmd_text, context, ui_state: UIState = None):
 
             alu_config = device.get_alu_config(debug_tensix)
 
-            alu_config_table = dict_list_to_table(alu_config, "ALU CONFIG")
+            alu_config_table = dict_list_to_table(alu_config, "ALU CONFIG", ["VALUES"])
 
             print(alu_config_table)
 
