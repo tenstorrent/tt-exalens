@@ -34,10 +34,11 @@ class REGFILE(Enum):
     DSTACC = 2
 
 
+# An enumeration to specify the format for printing values.
 class ValueType(Enum):
     HEX = 0
     DEC = 1
-    FORMAT = 2
+    FORMAT = 2  # Data Format
     BOOL = 3
 
 
