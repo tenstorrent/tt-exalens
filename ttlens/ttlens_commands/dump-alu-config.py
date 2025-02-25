@@ -32,7 +32,7 @@ from ttlens.debug_tensix import TensixDebug
 from ttlens import commands
 from ttlens.util import dict_list_to_table, INFO
 
-import tabulate
+from tabulate import tabulate
 
 
 def print_config_regs(config_regs: list[dict], debug_tensix: TensixDebug, table_name: str, column_names: list[str]):
@@ -45,11 +45,11 @@ def print_config_regs(config_regs: list[dict], debug_tensix: TensixDebug, table_
                 row.append(debug_tensix.read_tensix_register(config[key]))
             else:
                 row.append("/")
-    data.append(row)
+        data.append(row)
 
-    headers = [table_name] + [column_names]
+    headers = [table_name] + column_names
 
-    return tabulate(data, headers=headers, tablefmt="simple_outline", colalign=("left",) * len(headers))
+    print(tabulate(data, headers=headers, tablefmt="simple_outline", colalign=("left",) * len(headers)))
 
 
 def run(cmd_text, context, ui_state: UIState = None):
