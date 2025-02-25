@@ -30,7 +30,8 @@ class open_implementation : public BaseClass {
 
    public:
     static std::unique_ptr<open_implementation<BaseClass>> open(const std::filesystem::path& binary_directory = {},
-                                                                const std::vector<uint8_t>& wanted_devices = {});
+                                                                const std::vector<uint8_t>& wanted_devices = {},
+                                                                bool use_noc1 = false);
 
     std::optional<std::string> get_cluster_description() override;
     std::optional<std::vector<uint8_t>> get_device_ids() override;

@@ -43,6 +43,7 @@ from ttlens import commands, util as util
 from ttlens.device import Device
 from ttlens.coordinate import VALID_COORDINATE_TYPES
 from ttlens.context import LimitedContext
+from ttlens.tt_lens_lib import read_words_from_device
 
 
 def color_block(text: str, block_type: str):
@@ -118,6 +119,15 @@ def run(cmd_text, context, ui_state=None):
                 elif ct == "riscv":
                     text = device.get_riscv_run_status(loc)
                     cell_contents_str.append(color_block(text, block_type))
+                elif ct == "noc_id":
+                    if block_type is not None and block_type != "pcie":
+                        noc_node_id_address = device.get_tensix_register_address("NOC_NODE_ID")
+                        data = read_words_from_device(loc, noc_node_id_address, device._id, 1, context)[0]
+                        x = data & 0x3F
+                        y = (data >> 6) & 0x3F
+                        cell_contents_str.append(f"{x:02}-{y:02}")
+                    else:
+                        cell_contents_str.append("")
                 elif ct in VALID_COORDINATE_TYPES:
                     try:
                         coord_str = loc.to_str(ct)
