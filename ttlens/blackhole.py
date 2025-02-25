@@ -2,7 +2,8 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from ttlens import util
-from ttlens.debug_tensix import TensixDebug, DATA_FORMAT
+from ttlens.debug_tensix import TensixDebug
+from ttlens.enums import DATA_FORMAT
 from ttlens.device import (
     TensixInstructions,
     Device,

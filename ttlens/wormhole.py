@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import List
 from ttlens import util
-from ttlens.debug_tensix import TensixDebug, DATA_FORMAT
+from ttlens.debug_tensix import TensixDebug
+from ttlens.enums import DATA_FORMAT
 from ttlens.device import (
     TensixInstructions,
     Device,
@@ -173,20 +174,48 @@ class WormholeDevice(Device):
         "UNPACK_CONFIG1_fifo_size": ConfigurationRegisterDescription(index=103, mask=0x1FFFF, shift=0),
         "UNPACK_CONFIG1_reserved_5": ConfigurationRegisterDescription(index=103, mask=0xFFFE0000, shift=17),
         # ALU CONFIG
-        "ALU_ROUNDING_MODE_Fpu_srnd_en": ConfigurationRegisterDescription(index=1, mask=0x1, shift=0),
-        "ALU_ROUNDING_MODE_Gasket_srnd_en": ConfigurationRegisterDescription(index=1, mask=0x2, shift=1),
-        "ALU_ROUNDING_MODE_Packer_srnd_en": ConfigurationRegisterDescription(index=1, mask=0x4, shift=2),
-        "ALU_ROUNDING_MODE_Padding": ConfigurationRegisterDescription(index=1, mask=0x1FF8, shift=3),
-        "ALU_ROUNDING_MODE_GS_LF": ConfigurationRegisterDescription(index=1, mask=0x2000, shift=13),
-        "ALU_ROUNDING_MODE_Bfp8_HF": ConfigurationRegisterDescription(index=1, mask=0x4000, shift=14),
-        "ALU_FORMAT_SPEC_REG0_SrcAUnsigned": ConfigurationRegisterDescription(index=1, mask=0x8000, shift=15),
-        "ALU_FORMAT_SPEC_REG0_SrcBUnsigned": ConfigurationRegisterDescription(index=1, mask=0x10000, shift=16),
-        "ALU_FORMAT_SPEC_REG0_SrcA": ConfigurationRegisterDescription(index=1, mask=0x1E0000, shift=17),
-        "ALU_FORMAT_SPEC_REG1_SrcB": ConfigurationRegisterDescription(index=1, mask=0x1E00000, shift=21),
-        "ALU_FORMAT_SPEC_REG2_Dstacc": ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
-        "ALU_ACC_CTRL_Fp32_enabled": ConfigurationRegisterDescription(index=1, mask=0x20000000, shift=29),
-        "ALU_ACC_CTRL_SFPU_Fp32_enabled": ConfigurationRegisterDescription(index=1, mask=0x40000000, shift=30),
-        "ALU_ACC_CTRL_INT8_math_enabled": ConfigurationRegisterDescription(index=1, mask=0x80000000, shift=31),
+        "ALU_ROUNDING_MODE_Fpu_srnd_en": ConfigurationRegisterDescription(
+            index=1, mask=0x1, shift=0, data_format=DATA_FORMAT.BOOL
+        ),
+        "ALU_ROUNDING_MODE_Gasket_srnd_en": ConfigurationRegisterDescription(
+            index=1, mask=0x2, shift=1, data_format=DATA_FORMAT.BOOL
+        ),
+        "ALU_ROUNDING_MODE_Packer_srnd_en": ConfigurationRegisterDescription(
+            index=1, mask=0x4, shift=2, data_format=DATA_FORMAT.BOOL
+        ),
+        "ALU_ROUNDING_MODE_Padding": ConfigurationRegisterDescription(
+            index=1, mask=0x1FF8, shift=3, data_format=DATA_FORMAT.HEX
+        ),
+        "ALU_ROUNDING_MODE_GS_LF": ConfigurationRegisterDescription(
+            index=1, mask=0x2000, shift=13, data_format=DATA_FORMAT.HEX
+        ),
+        "ALU_ROUNDING_MODE_Bfp8_HF": ConfigurationRegisterDescription(
+            index=1, mask=0x4000, shift=14, data_format=DATA_FORMAT.HEX
+        ),
+        "ALU_FORMAT_SPEC_REG0_SrcAUnsigned": ConfigurationRegisterDescription(
+            index=1, mask=0x8000, shift=15, data_format=DATA_FORMAT.HEX
+        ),
+        "ALU_FORMAT_SPEC_REG0_SrcBUnsigned": ConfigurationRegisterDescription(
+            index=1, mask=0x10000, shift=16, data_format=DATA_FORMAT.HEX
+        ),
+        "ALU_FORMAT_SPEC_REG0_SrcA": ConfigurationRegisterDescription(
+            index=1, mask=0x1E0000, shift=17, data_format=DATA_FORMAT.FORMAT
+        ),
+        "ALU_FORMAT_SPEC_REG1_SrcB": ConfigurationRegisterDescription(
+            index=1, mask=0x1E00000, shift=21, data_format=DATA_FORMAT.FORMAT
+        ),
+        "ALU_FORMAT_SPEC_REG2_Dstacc": ConfigurationRegisterDescription(
+            index=1, mask=0x1E000000, shift=25, data_format=DATA_FORMAT.FORMAT
+        ),
+        "ALU_ACC_CTRL_Fp32_enabled": ConfigurationRegisterDescription(
+            index=1, mask=0x20000000, shift=29, data_format=DATA_FORMAT.BOOL
+        ),
+        "ALU_ACC_CTRL_SFPU_Fp32_enabled": ConfigurationRegisterDescription(
+            index=1, mask=0x40000000, shift=30, data_format=DATA_FORMAT.BOOL
+        ),
+        "ALU_ACC_CTRL_INT8_math_enabled": ConfigurationRegisterDescription(
+            index=1, mask=0x80000000, shift=31, data_format=DATA_FORMAT.BOOL
+        ),
         # PACK CONFIG SEC 0 REG 1
         "PACK_CONFIG01_row_ptr_section_size": ConfigurationRegisterDescription(index=56, mask=0xFFFF, shift=0),
         "PACK_CONFIG01_exp_section_size": ConfigurationRegisterDescription(index=56, mask=0xFFFF0000, shift=16),
@@ -468,7 +497,7 @@ class WormholeDevice(Device):
         return list(self.__debug_bus_signal_map.keys())
 
     # UNPACKER GETTERS
-
+    """
     def get_alu_config(self, debug_tensix: TensixDebug) -> list[dict]:
         alu_config = {}
 
@@ -486,6 +515,27 @@ class WormholeDevice(Device):
         debug_tensix.get_config_field("ALU_ACC_CTRL_Fp32_enabled", alu_config, DATA_FORMAT.BOOL)
         debug_tensix.get_config_field("ALU_ACC_CTRL_SFPU_Fp32_enabled", alu_config, DATA_FORMAT.BOOL)
         debug_tensix.get_config_field("ALU_ACC_CTRL_INT8_math_enabled", alu_config, DATA_FORMAT.BOOL)
+
+        return [alu_config]
+    """
+
+    def get_alu_config(self) -> List[dict]:
+        alu_config = {}
+
+        alu_config["Fpu_srnd_en"] = "ALU_ROUNDING_MODE_Fpu_srnd_en"
+        alu_config["Gasket_srnd_en"] = "ALU_ROUNDING_MODE_Gasket_srnd_en"
+        alu_config["Packer_srnd_en"] = "ALU_ROUNDING_MODE_Packer_srnd_en"
+        alu_config["Padding"] = "ALU_ROUNDING_MODE_Padding"
+        alu_config["GS_LF"] = "ALU_ROUNDING_MODE_GS_LF"
+        alu_config["Bfp8_HF"] = "ALU_ROUNDING_MODE_Bfp8_HF"
+        alu_config["SrcAUnsigned"] = "ALU_FORMAT_SPEC_REG0_SrcAUnsigned"
+        alu_config["SrcBUnsigned"] = "ALU_FORMAT_SPEC_REG0_SrcBUnsigned"
+        alu_config["Format_SrcA"] = "ALU_FORMAT_SPEC_REG0_SrcA"
+        alu_config["Format_SrcB"] = "ALU_FORMAT_SPEC_REG1_SrcB"
+        alu_config["Format_Dstacc"] = "ALU_FORMAT_SPEC_REG2_Dstacc"
+        alu_config["Fp32_enabled"] = "ALU_ACC_CTRL_Fp32_enabled"
+        alu_config["SFPU_Fp32_enabled"] = "ALU_ACC_CTRL_SFPU_Fp32_enabled"
+        alu_config["INT8_math_enabled"] = "ALU_ACC_CTRL_INT8_math_enabled"
 
         return [alu_config]
 

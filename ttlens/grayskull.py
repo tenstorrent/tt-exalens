@@ -4,7 +4,8 @@
 from ttlens import util as util
 from ttlens import device
 from ttlens.device import ConfigurationRegisterDescription, DebugRegisterDescription
-from ttlens.debug_tensix import TensixDebug, DATA_FORMAT
+from ttlens.debug_tensix import TensixDebug
+from ttlens.enums import DATA_FORMAT
 from ttlens import util
 from ttlens.device import (
     TensixInstructions,

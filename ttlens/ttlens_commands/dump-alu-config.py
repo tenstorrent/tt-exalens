@@ -35,6 +35,23 @@ from ttlens.util import dict_list_to_table, INFO
 import tabulate
 
 
+def print_config_regs(config_regs: list[dict], debug_tensix: TensixDebug, table_name: str, column_names: list[str]):
+    keys = config_regs[0]
+    data = []
+    for key in keys:
+        row = [key]
+        for config in config_regs:
+            if key in config:
+                row.append(debug_tensix.read_tensix_register(config[key]))
+            else:
+                row.append("/")
+    data.append(row)
+
+    headers = [table_name] + [column_names]
+
+    return tabulate(data, headers=headers, tablefmt="simple_outline", colalign=("left",) * len(headers))
+
+
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = commands.tt_docopt(
         command_metadata["description"],
@@ -53,10 +70,7 @@ def run(cmd_text, context, ui_state: UIState = None):
             debug_tensix = TensixDebug(loc, device.id(), context)
             device = debug_tensix.context.devices[debug_tensix.device_id]
 
-            alu_config = device.get_alu_config(debug_tensix)
-
-            alu_config_table = dict_list_to_table(alu_config, "ALU CONFIG", ["VALUES"])
-
-            print(alu_config_table)
+            alu_config = device.get_alu_config()
+            print_config_regs(alu_config, debug_tensix, "ALU_CONIFG", ["VALUES"])
 
     return None

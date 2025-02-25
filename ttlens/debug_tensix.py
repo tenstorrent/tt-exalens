@@ -16,6 +16,7 @@ from ttlens.util import TTException
 from ttlens.device import Device, ConfigurationRegisterDescription
 from ttlens.unpack_regfile import unpack_data
 from ttlens.debug_risc import RiscDebug, RiscLoc, RiscLoader
+from ttlens.enums import DATA_FORMAT
 
 
 def validate_trisc_id(trisc_id: int, context: Context) -> None:
@@ -32,14 +33,6 @@ class REGFILE(Enum):
     SRCA = 0
     SRCB = 1
     DSTACC = 2
-
-
-# An enumeration to specify the format for printing values.
-class DATA_FORMAT(Enum):
-    HEX = 0
-    DEC = 1
-    FORMAT = 2  # data type
-    BOOL = 3
 
 
 def convert_regfile(regfile: Union[int, str, REGFILE]) -> REGFILE:
