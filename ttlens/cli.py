@@ -408,7 +408,7 @@ def main():
     if args["--server"]:
         print(f"Starting TTLens server at {args['--port']}")
         ttlens_server = tt_lens_server.start_server(
-            args["--port"], wanted_devices, init_jtag=args["--jtag"], use_noc1=args["--use-noc1"]
+            args["--port"], wanted_devices, init_jtag=args["--jtag"], use_noc1=args["--use-noc1"], simulation_directory=args["-s"], background=args["--background"]
         )
         if args["--test"]:
             while True:

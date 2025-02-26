@@ -50,8 +50,9 @@ int run_ttlens_server(const server_config& config) {
                         tt::lens::open_implementation<tt::lens::umd_implementation>::open({}, config.wanted_devices, config.use_noc1);
                 }
             } else {
-                implementation =
-                    tt::lens::open_implementation<tt::lens::umd_implementation>::open({}, config.wanted_devices, config.use_noc1);
+                ensure_directory("VCS binary", config.simulation_directory);
+                implementation = tt::lens::open_implementation<tt::lens::umd_implementation>::open_simulation(
+                    config.simulation_directory);
             }
         } catch (std::runtime_error& error) {
             log_custom(tt::Logger::Level::Error, tt::LogTTLens, "Cannot open device: {}.", error.what());
