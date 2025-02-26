@@ -43,11 +43,11 @@ int run_ttlens_server(const server_config& config) {
         try {
             if (config.simulation_directory.empty()) {
                 if (config.init_jtag) {
-                    implementation =
-                        tt::lens::open_implementation<tt::lens::jtag_implementation>::open({}, config.wanted_devices, config.use_noc1);
+                    implementation = tt::lens::open_implementation<tt::lens::jtag_implementation>::open(
+                        {}, config.wanted_devices, config.use_noc1);
                 } else {
-                    implementation =
-                        tt::lens::open_implementation<tt::lens::umd_implementation>::open({}, config.wanted_devices, config.use_noc1);
+                    implementation = tt::lens::open_implementation<tt::lens::umd_implementation>::open(
+                        {}, config.wanted_devices, config.use_noc1);
                 }
             } else {
                 ensure_directory("VCS binary", config.simulation_directory);

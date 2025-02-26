@@ -10,9 +10,18 @@ import subprocess
 import time
 
 
-def start_server(port: int, wanted_devices: "List[int]" = None, init_jtag=False, use_noc1=False, simulation_directory:str=None, background=False) -> subprocess.Popen:
+def start_server(
+    port: int,
+    wanted_devices: "List[int]" = None,
+    init_jtag=False,
+    use_noc1=False,
+    simulation_directory: str = None,
+    background=False,
+) -> subprocess.Popen:
     if util.is_port_available(int(port)):
-        ttlens_server = spawn_standalone_ttlens_stub(port, wanted_devices, init_jtag, use_noc1, simulation_directory, background)
+        ttlens_server = spawn_standalone_ttlens_stub(
+            port, wanted_devices, init_jtag, use_noc1, simulation_directory, background
+        )
         if ttlens_server is None:
             raise util.TTFatalException("Could not start ttlens-server.")
         return ttlens_server
@@ -21,7 +30,12 @@ def start_server(port: int, wanted_devices: "List[int]" = None, init_jtag=False,
 
 
 def spawn_standalone_ttlens_stub(
-    port: int, wanted_devices: "List[int]" = None, init_jtag=False, use_noc1=False, simulation_directory:str=None, background=False
+    port: int,
+    wanted_devices: "List[int]" = None,
+    init_jtag=False,
+    use_noc1=False,
+    simulation_directory: str = None,
+    background=False,
 ) -> subprocess.Popen:
     print("Spawning ttlens-server...")
 
@@ -49,7 +63,7 @@ def spawn_standalone_ttlens_stub(
 
         if background:
             ttlens_stub_args += ["--background"]
-        
+
         if simulation_directory:
             ttlens_stub_args += ["-s", simulation_directory]
 
