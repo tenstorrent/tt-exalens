@@ -20,6 +20,7 @@ struct server_config {
     std::filesystem::path simulation_directory;
     std::vector<uint8_t> wanted_devices;
     bool init_jtag;
+    bool use_noc1;
 };
 
 // Make sure that the directory exists
@@ -43,15 +44,14 @@ int run_ttlens_server(const server_config& config) {
             if (config.simulation_directory.empty()) {
                 if (config.init_jtag) {
                     implementation =
-                        tt::lens::open_implementation<tt::lens::jtag_implementation>::open({}, config.wanted_devices);
+                        tt::lens::open_implementation<tt::lens::jtag_implementation>::open({}, config.wanted_devices, config.use_noc1);
                 } else {
                     implementation =
-                        tt::lens::open_implementation<tt::lens::umd_implementation>::open({}, config.wanted_devices);
+                        tt::lens::open_implementation<tt::lens::umd_implementation>::open({}, config.wanted_devices, config.use_noc1);
                 }
             } else {
-                ensure_directory("VCS binary", config.simulation_directory);
-                implementation = tt::lens::open_implementation<tt::lens::umd_implementation>::open_simulation(
-                    config.simulation_directory);
+                implementation_umd =
+                    tt::lens::open_implementation<tt::lens::umd_implementation>::open({}, config.wanted_devices, config.use_noc1);
             }
         } catch (std::runtime_error& error) {
             log_custom(tt::Logger::Level::Error, tt::LogTTLens, "Cannot open device: {}.", error.what());
@@ -104,6 +104,7 @@ server_config parse_args(int argc, char** argv) {
     server_config config = server_config();
     config.port = atoi(argv[1]);
     config.init_jtag = false;
+    config.use_noc1 = false;
 
     int i = 2;
     while (i < argc) {
@@ -139,6 +140,9 @@ server_config parse_args(int argc, char** argv) {
         } else if (strcmp(argv[i], "--jtag") == 0) {
             config.init_jtag = true;
             i++;
+        } else if (strcmp(argv[i], "--use-noc1") == 0) {
+            config.use_noc1 = true;
+            i++;
         } else {
             log_error("Unknown argument: {}", argv[i]);
             return {};
@@ -152,7 +156,7 @@ int main(int argc, char** argv) {
     if (argc < 2) {
         log_error(
             "Need arguments: <port> [-s <simulation_directory>] [-d <device_id1> [<device_id2> ... "
-            "<device_idN>]] [--jtag] [--background]");
+            "<device_idN>]] [--jtag] [--background] [--use-noc1]");
         return 1;
     }
 

@@ -32,17 +32,18 @@ void set_ttlens_implementation(std::unique_ptr<tt::lens::ttlens_implementation> 
     ttlens_implementation = std::move(imp);
 }
 
-bool open_device(const std::string &binary_directory, const std::vector<uint8_t> &wanted_devices, bool init_jtag) {
+bool open_device(const std::string &binary_directory, const std::vector<uint8_t> &wanted_devices, bool init_jtag,
+                 bool use_noc1) {
     try {
         // Since tt::umd::Cluster is printing some output and we don't want to see it in python, we disable std::cout
         scoped_null_stdout null_stdout;
 
         if (init_jtag) {
-            ttlens_implementation =
-                tt::lens::open_implementation<tt::lens::jtag_implementation>::open(binary_directory, wanted_devices);
+            ttlens_implementation = tt::lens::open_implementation<tt::lens::jtag_implementation>::open(
+                binary_directory, wanted_devices, use_noc1);
         } else {
-            ttlens_implementation =
-                tt::lens::open_implementation<tt::lens::umd_implementation>::open(binary_directory, wanted_devices);
+            ttlens_implementation = tt::lens::open_implementation<tt::lens::umd_implementation>::open(
+                binary_directory, wanted_devices, use_noc1);
         }
         if (!ttlens_implementation) {
             return false;
@@ -212,7 +213,7 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> arc_msg(uint8_t chip_id, uint
 PYBIND11_MODULE(ttlens_pybind, m) {
     m.def("open_device", &open_device, "Opens tt device. Prints error message if failed.",
           pybind11::arg("binary_directory"), pybind11::arg_v("wanted_devices", std::vector<uint8_t>(), "[]"),
-          pybind11::arg("init_jtag"));
+          pybind11::arg("init_jtag"), pybind11::arg("use_noc1"));
     m.def("pci_read32", &pci_read32, "Reads 4 bytes from PCI address", pybind11::arg("chip_id"), pybind11::arg("noc_x"),
           pybind11::arg("noc_y"), pybind11::arg("address"));
     m.def("pci_write32", &pci_write32, "Writes 4 bytes to PCI address", pybind11::arg("chip_id"),
