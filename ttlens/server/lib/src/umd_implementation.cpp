@@ -16,7 +16,7 @@ static std::string LARGE_WRITE_TLB_STR = "LARGE_WRITE_TLB";
 
 namespace tt::lens {
 
-umd_implementation::umd_implementation(tt::umd::Cluster* device) : device(device) {}
+umd_implementation::umd_implementation(tt_device* device) : device(device) {}
 
 std::optional<uint32_t> umd_implementation::pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                        uint64_t address) {
@@ -73,7 +73,13 @@ std::optional<uint32_t> umd_implementation::pci_write(uint8_t chip_id, uint8_t n
 }
 
 bool umd_implementation::is_chip_mmio_capable(uint8_t chip_id) {
-    auto mmio_targets = device->get_target_mmio_device_ids();
+    tt::umd::Cluster* silicon_device = dynamic_cast<tt::umd::Cluster*>(device);
+
+    if (!silicon_device) {
+        return false;
+    }
+
+    auto mmio_targets = silicon_device->get_target_mmio_device_ids();
 
     return mmio_targets.find(chip_id) != mmio_targets.end();
 }
@@ -81,20 +87,26 @@ bool umd_implementation::is_chip_mmio_capable(uint8_t chip_id) {
 std::optional<uint32_t> umd_implementation::pci_read32_raw(uint8_t chip_id, uint64_t address) {
     // TODO: @ihamer, finish this
     if (is_chip_mmio_capable(chip_id)) {
-        return device->bar_read32(chip_id, address);
-    } else {
-        return {};
+        tt::umd::Cluster* silicon_device = dynamic_cast<tt::umd::Cluster*>(device);
+
+        if (silicon_device) {
+            return silicon_device->bar_read32(chip_id, address);
+        }
     }
+    return {};
 }
 
 std::optional<uint32_t> umd_implementation::pci_write32_raw(uint8_t chip_id, uint64_t address, uint32_t data) {
     // TODO: @ihamer, finish this
     if (is_chip_mmio_capable(chip_id)) {
-        device->bar_write32(chip_id, address, data);
-        return 4;
-    } else {
-        return {};
+        tt::umd::Cluster* silicon_device = dynamic_cast<tt::umd::Cluster*>(device);
+
+        if (silicon_device) {
+            silicon_device->bar_write32(chip_id, address, data);
+            return 4;
+        }
     }
+    return {};
 }
 
 std::optional<uint32_t> umd_implementation::dma_buffer_read32(uint8_t chip_id, uint64_t address, uint32_t channel) {

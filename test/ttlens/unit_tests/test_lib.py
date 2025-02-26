@@ -8,6 +8,7 @@ from functools import wraps
 
 from parameterized import parameterized
 
+from test.ttlens.unit_tests.test_base import init_default_test_context
 from ttlens import tt_lens_init
 from ttlens import tt_lens_lib as lib
 from ttlens import util
@@ -66,7 +67,7 @@ class TestAutoContext(unittest.TestCase):
 
 class TestReadWrite(unittest.TestCase):
     def setUp(self):
-        self.context = tt_lens_init.init_ttlens()
+        self.context = init_default_test_context()
         self.assertIsNotNone(self.context)
         self.assertIsInstance(self.context, Context)
 
@@ -85,7 +86,7 @@ class TestReadWrite(unittest.TestCase):
 
     def test_write_read_bytes(self):
         """Test write bytes -- read bytes."""
-        core_loc = "1,1"
+        core_loc = "1,0"
         address = 0x100
 
         data = b"abcd"
@@ -98,14 +99,14 @@ class TestReadWrite(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("1,1", 1024, 0x100, 0),  # 1KB from device 0 at location 1,1
-            ("1,1", 2048, 0x104, 0),  # 2KB from device 0 at location 1,1
-            ("1,1", 4096, 0x108, 0),  # 4KB from device 0 at location 1,1
-            ("1,1", 8192, 0x10C, 0),  # 8KB from device 0 at location 1,1
-            ("1,1", 1024, 0x100, 1),  # 1KB from device 1 at location 1,1
-            ("1,1", 2048, 0x104, 1),  # 2KB from device 1 at location 1,1
-            ("1,1", 4096, 0x108, 1),  # 4KB from device 1 at location 1,1
-            ("1,1", 8192, 0x10C, 1),  # 8KB from device 1 at location 1,1
+            ("1,0", 1024, 0x100, 0),  # 1KB from device 0 at location 1,0
+            ("1,0", 2048, 0x104, 0),  # 2KB from device 0 at location 1,0
+            ("1,0", 4096, 0x108, 0),  # 4KB from device 0 at location 1,0
+            ("1,0", 8192, 0x10C, 0),  # 8KB from device 0 at location 1,0
+            ("1,0", 1024, 0x100, 1),  # 1KB from device 1 at location 1,0
+            ("1,0", 2048, 0x104, 1),  # 2KB from device 1 at location 1,0
+            ("1,0", 4096, 0x108, 1),  # 4KB from device 1 at location 1,0
+            ("1,0", 8192, 0x10C, 1),  # 8KB from device 1 at location 1,0
             ("ch0", 1024, 0x100, 0),  # 1KB from device 0 at location DRAM channel 0
             ("ch0", 2048, 0x104, 0),  # 2KB from device 0 at location DRAM channel 0
             ("ch0", 4096, 0x108, 0),  # 4KB from device 0 at location DRAM channel 0
@@ -143,7 +144,7 @@ class TestReadWrite(unittest.TestCase):
 
     def test_write_read_words(self):
         """Test write words -- read words."""
-        core_loc = "1,1"
+        core_loc = "1,0"
 
         address = [0x100, 0x104, 0x108]
         data = [156, 2, 212, 9]
@@ -176,7 +177,7 @@ class TestReadWrite(unittest.TestCase):
 
     def test_write_bytes_read_words(self):
         """Test write bytes -- read words."""
-        core_loc = "1,1"
+        core_loc = "1,0"
         address = 0x100
         data = [0, 1, 2, 3]
 
@@ -242,7 +243,7 @@ class TestReadWrite(unittest.TestCase):
 class TestRunElf(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.context = tt_lens_init.init_ttlens()
+        cls.context = init_default_test_context()
 
     def is_blackhole(self):
         """Check if the device is blackhole."""

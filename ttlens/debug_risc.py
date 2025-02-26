@@ -447,7 +447,7 @@ class RiscDebug:
         if self.verbose:
             util.INFO(f"  read_gpr({reg_index})")
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
-        self.__riscv_write(REG_COMMAND, 0x80000000 + COMMAND_READ_REGISTER)
+        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_REGISTER)
         return self.__riscv_read(REG_COMMAND_RETURN_VALUE)
 
     def write_gpr(self, reg_index, value):
@@ -455,7 +455,7 @@ class RiscDebug:
             util.INFO(f"  write_gpr({reg_index}, 0x{value:08x})")
         self.__riscv_write(REG_COMMAND_ARG_1, value)
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
-        self.__riscv_write(REG_COMMAND, 0x80000000 + COMMAND_WRITE_REGISTER)
+        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_REGISTER)
 
     def read_memory(self, addr):
         if self.enable_asserts:
@@ -463,7 +463,7 @@ class RiscDebug:
         if self.verbose:
             util.INFO(f"  read_memory(0x{addr:08x})")
         self.__riscv_write(REG_COMMAND_ARG_0, addr)
-        self.__riscv_write(REG_COMMAND, 0x80000000 + COMMAND_READ_MEMORY)
+        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_MEMORY)
         data = self.__riscv_read(REG_COMMAND_RETURN_VALUE)
         if self.verbose:
             util.INFO(f"                             read -> 0x{data:08x}")
@@ -476,7 +476,7 @@ class RiscDebug:
             util.INFO(f"  write_memory(0x{addr:08x}, 0x{value:08x})")
         self.__riscv_write(REG_COMMAND_ARG_1, value)
         self.__riscv_write(REG_COMMAND_ARG_0, addr)
-        self.__riscv_write(REG_COMMAND, 0x80000000 + COMMAND_WRITE_MEMORY)
+        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_MEMORY)
 
     def __update_watchpoint_setting(self, id, value):
         assert 0 <= value <= 15

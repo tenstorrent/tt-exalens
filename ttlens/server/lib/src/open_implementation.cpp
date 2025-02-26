@@ -18,6 +18,7 @@
 #include "umd/device/cluster.h"
 #include "umd/device/tt_cluster_descriptor.h"
 #include "umd/device/tt_core_coordinates.h"
+#include "umd/device/tt_simulation_device.h"
 #include "umd/device/tt_soc_descriptor.h"
 #include "umd/device/tt_xy_pair.h"
 #include "umd/device/types/arch.h"
@@ -104,6 +105,43 @@ static std::filesystem::path find_binary_directory() {
         return path.substr(0, pos);
     }
     return {};
+}
+
+static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
+    std::string cluster_descriptor_path = temp_working_directory / "cluster_desc.yaml";
+    std::ofstream cluster_descriptor(cluster_descriptor_path);
+
+    if (!cluster_descriptor.is_open()) {
+        throw std::runtime_error("Failed to open file for writing: " + cluster_descriptor_path);
+    }
+
+    std::string arch_str = tt::arch_to_str(arch);
+
+    cluster_descriptor << "arch: {" << std::endl;
+    cluster_descriptor << "   0: " << arch_str << "," << std::endl;
+    cluster_descriptor << "}" << std::endl << std::endl;
+    cluster_descriptor << "chips: {" << std::endl;
+    cluster_descriptor << "   0: [0,0,0,0]," << std::endl;
+    cluster_descriptor << "}" << std::endl << std::endl;
+    cluster_descriptor << "ethernet_connections: [" << std::endl;
+    cluster_descriptor << "]" << std::endl << std::endl;
+    cluster_descriptor << "chips_with_mmio: [" << std::endl;
+    cluster_descriptor << "   0: 0," << std::endl;
+    cluster_descriptor << "]" << std::endl << std::endl;
+    cluster_descriptor << "# harvest_mask is the bit indicating which tensix row is harvested. So bit 0 = first "
+                          "tensix row; bit 1 = second tensix row etc..."
+                       << std::endl;
+    cluster_descriptor << "harvesting: {" << std::endl;
+    cluster_descriptor << "   0: {noc_translation: false, harvest_mask: 0}," << std::endl;
+    cluster_descriptor << "}" << std::endl << std::endl;
+    cluster_descriptor << "# This value will be null if the boardtype is unknown, should never happen in practice "
+                          "but to be defensive it would be useful to throw an error on this case."
+                       << std::endl;
+    cluster_descriptor << "boardtype: {" << std::endl;
+    cluster_descriptor << "   0: " << arch_str << "Simulator," << std::endl;
+    cluster_descriptor << "}" << std::endl;
+
+    return cluster_descriptor_path;
 }
 
 static std::unique_ptr<tt::umd::Cluster> create_grayskull_device(const std::string &device_configuration_path,
@@ -267,13 +305,12 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << std::endl;
 }
 
-static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Cluster *device,
+static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_device *device,
                                                                     const std::vector<uint8_t> &device_ids) {
-    tt_device *d = static_cast<tt_device *>(device);
     std::map<uint8_t, std::string> device_soc_descriptors_yamls;
 
     for (auto device_id : device_ids) {
-        auto &soc_descriptor = d->get_soc_descriptor(device_id);
+        auto &soc_descriptor = device->get_soc_descriptor(device_id);
         std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
         write_soc_descriptor(file_name, soc_descriptor);
 
@@ -372,7 +409,6 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
     auto implementation = std::unique_ptr<open_implementation<jtag_implementation>>(
         new open_implementation<jtag_implementation>(std::move(jtag_device)));
 
-    implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
     implementation->device_ids = device_ids;
     implementation->soc_descriptors = std::move(soc_descriptors);
@@ -452,8 +488,46 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(device)));
 
-    implementation->device_configuration_path = device_configuration_path;
     implementation->cluster_descriptor_path = cluster_descriptor_path;
+    implementation->device_ids = device_ids;
+    implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
+    implementation->soc_descriptors = std::move(soc_descriptors);
+    return std::move(implementation);
+}
+
+template <>
+std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open_simulation(
+    const std::filesystem::path &simulation_directory) {
+    std::unique_ptr<tt_SimulationDevice> device = std::make_unique<tt_SimulationDevice>(simulation_directory);
+
+    // Initialize simulation device
+    device->start_device({});
+
+    // Default behavior is to start brisc on all functional workers.
+    // Since it is easier to put brisc in endless loop then to put it in reset, we will do that.
+    // Write 0x6f (JAL x0, 0) to address 0 in L1 of all tensix cores.
+    auto &soc_descriptor = device->get_soc_descriptor(0);
+
+    for (const auto &worker : soc_descriptor.get_cores(CoreType::TENSIX)) {
+        uint32_t data = 0x6f;  // while (true);
+        tt::umd::cxy_pair cxy(0, worker.x, worker.y);
+
+        device->write_to_device(&data, sizeof(data), cxy, 0, {});
+    }
+
+    device->deassert_risc_reset();
+
+    std::vector<uint8_t> device_ids{0};
+    auto device_soc_descriptors_yamls = create_device_soc_descriptors(device.get(), device_ids);
+    std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
+    for (auto device_id : device_ids) {
+        soc_descriptors[device_id] = device->get_soc_descriptor(device_id);
+    }
+
+    auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
+        new open_implementation<umd_implementation>(std::move(device)));
+
+    implementation->cluster_descriptor_path = create_simulation_cluster_descriptor_file(soc_descriptor.arch);
     implementation->device_ids = device_ids;
     implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
     implementation->soc_descriptors = std::move(soc_descriptors);

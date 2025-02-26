@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import unittest
 from parameterized import parameterized_class
-from ttlens import tt_lens_init
+from test.ttlens.unit_tests.test_base import init_default_test_context
 from ttlens import tt_lens_lib as lib
 
 from ttlens.coordinate import OnChipCoordinate
@@ -36,7 +36,7 @@ class TestDebugging(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.context = tt_lens_init.init_ttlens()
+        cls.context = init_default_test_context()
         cls.pc_register_index = get_register_index("pc")
 
     def setUp(self):
