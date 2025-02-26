@@ -50,7 +50,7 @@ int run_ttlens_server(const server_config& config) {
                         tt::lens::open_implementation<tt::lens::umd_implementation>::open({}, config.wanted_devices, config.use_noc1);
                 }
             } else {
-                implementation_umd =
+                implementation =
                     tt::lens::open_implementation<tt::lens::umd_implementation>::open({}, config.wanted_devices, config.use_noc1);
             }
         } catch (std::runtime_error& error) {
