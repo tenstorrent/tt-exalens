@@ -16,7 +16,7 @@ from ttlens.coordinate import CoordinateTranslationError, OnChipCoordinate
 from abc import abstractmethod
 from ttlens.debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device
-from ttlens.enums import DATA_FORMAT
+from ttlens.util import DATA_FORMAT, DATA_TYPE
 
 
 class TensixInstructions:
@@ -48,7 +48,7 @@ class DebugRegisterDescription(TensixRegisterDescription):
 @dataclass
 class ConfigurationRegisterDescription(TensixRegisterDescription):
     index: int = 0
-    data_format: DATA_FORMAT = DATA_FORMAT.HEX
+    data_type: DATA_TYPE = DATA_TYPE.UNKNOWN
 
     def __post_init__(self):
         self.address = self.address + self.index * 4

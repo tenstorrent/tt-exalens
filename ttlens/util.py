@@ -732,6 +732,65 @@ PRINT_FORMATS = {
     "hex8": {"is_hex": True, "bytes": 1},
 }
 
+from enum import Enum
+from ttlens.unpack_regfile import TensixDataFormat
+
+
+class DATA_FORMAT(Enum):
+    HEX = 0
+    DEC = 1
+    FORMAT = 2
+    BOOL = 3
+
+
+# An enumeration of different data types in registers.
+class DATA_TYPE(Enum):
+    DIMENSION = 0
+    SIZE = 1
+    STRIDE = 2
+    THRESHOLD = 3
+    SHIFT = 4
+    COUNT = 5
+    ADDRESS = 6
+    MASK = 7
+    FLAG = 8
+    MULTI_BIT_FLAG = 9
+    DATA_FORMAT = 10
+    MODE = 11
+    CONTEXT = 12
+    RESERVED = 13
+    UNKNOWN = 14
+
+
+# Convert value to specified data format
+def convert_value(value: int, data_type: DATA_TYPE):
+    if (
+        data_type == DATA_TYPE.DIMENSION
+        or data_type == DATA_TYPE.SIZE
+        or data_type == DATA_TYPE.STRIDE
+        or data_type == DATA_TYPE.THRESHOLD
+        or data_type == DATA_TYPE.SHIFT
+        or data_type == DATA_TYPE.COUNT
+        or data_type == DATA_TYPE.MODE
+    ):
+        return value
+    elif (
+        data_type == DATA_TYPE.ADDRESS
+        or data_type == DATA_TYPE.MASK
+        or data_type == DATA_TYPE.CONTEXT
+        or data_type == DATA_TYPE.RESERVED
+        or data_type == DATA_TYPE.UNKNOWN
+    ):
+        return hex(value)
+    elif data_type == DATA_TYPE.FLAG:
+        return "True" if value else "False"
+    elif data_type == DATA_TYPE.MULTI_BIT_FLAG:
+        return bin(value)
+    elif data_type == DATA_TYPE.DATA_FORMAT:
+        return TensixDataFormat(value).name
+    else:
+        raise ValueError("Invalid value for data_type")
+
 
 def word_to_byte_array(A):
     byte_array = []

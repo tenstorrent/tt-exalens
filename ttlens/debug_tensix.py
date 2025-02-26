@@ -16,7 +16,7 @@ from ttlens.util import TTException
 from ttlens.device import Device, ConfigurationRegisterDescription
 from ttlens.unpack_regfile import unpack_data
 from ttlens.debug_risc import RiscDebug, RiscLoc, RiscLoader
-from ttlens.enums import DATA_FORMAT
+from ttlens.util import DATA_FORMAT
 
 
 def validate_trisc_id(trisc_id: int, context: Context) -> None:
