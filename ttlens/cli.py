@@ -5,7 +5,7 @@
 """
 Usage:
   tt-lens [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1]
-  tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [--use-noc1]
+  tt-lens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1]
   tt-lens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
   tt-lens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test]
   tt-lens -h | --help
@@ -22,6 +22,8 @@ Options:
   --write-cache                   Write the cache to disk.
   --cache-path=<path>             If running in --cached mode, this is the path to the cache file. If writing cache, this is the path for output. [default: ttlens_cache.pkl]
   --devices=<devices>             Comma-separated list of devices to load. If not supplied, all devices will be loaded.
+  --background                    Start the server in the background detached from console (doesn't require ENTER button for exit, but exit.server file to be created).
+  -s=<simulation_directory>       Specifies build output directory of the simulator.
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
@@ -406,7 +408,12 @@ def main():
     if args["--server"]:
         print(f"Starting TTLens server at {args['--port']}")
         ttlens_server = tt_lens_server.start_server(
-            args["--port"], wanted_devices, init_jtag=args["--jtag"], use_noc1=args["--use-noc1"]
+            args["--port"],
+            wanted_devices,
+            init_jtag=args["--jtag"],
+            use_noc1=args["--use-noc1"],
+            simulation_directory=args["-s"],
+            background=args["--background"],
         )
         if args["--test"]:
             while True:
