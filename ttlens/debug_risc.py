@@ -249,9 +249,6 @@ class RiscDebug:
         self.RISC_DBG_STATUS1 = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_1")
         self.RISC_DBG_SOFT_RESET0 = device.get_tensix_register_address("RISCV_DEBUG_REG_SOFT_RESET_0")
         self.DEBUG_READ_VALID_BIT = 1 << 30
-        # There is bug in hardware and this valid bit is shifted in blackhole for 3 bits
-        if device._arch == "blackhole":
-            self.DEBUG_READ_VALID_BIT = 1 << 27
 
     def get_reg_name_for_address(self, addr):
         if addr == self.RISC_DBG_CNTL0:
@@ -984,7 +981,7 @@ class RiscLoader:
                         callstack.append(CallstackEntry(pc, None, None, None, None, frame_pointer))
 
                 # We want to stop when we print main as frame descriptor might not be correct afterwards
-                if stop_on_main and function_die.name == "main":
+                if stop_on_main and function_die is not None and function_die.name == "main":
                     break
 
                 # We want to stop when we are at the end of frames list
