@@ -402,7 +402,7 @@ class WormholeDevice(Device):
             index=59, mask=0x100000, shift=20, data_type=DATA_TYPE.FLAG
         ),
         "PACK_CONFIG01_pack_l1_acc_disable_pack_zero_flag": ConfigurationRegisterDescription(
-            index=59, mask=0x600000, shift=21, data_type=DATA_TYPE.MULTI_BIT_FLAG
+            index=59, mask=0x600000, shift=21, data_type=DATA_TYPE.THREE_BIT_FLAG
         ),
         "PACK_CONFIG01_reserved_2": ConfigurationRegisterDescription(
             index=59, mask=0x800000, shift=23, data_type=DATA_TYPE.RESERVED
@@ -460,7 +460,7 @@ class WormholeDevice(Device):
             index=87, mask=0x100000, shift=20, data_type=DATA_TYPE.FLAG
         ),
         "PACK_CONFIG08_pack_l1_acc_disable_pack_zero_flag": ConfigurationRegisterDescription(
-            index=87, mask=0x600000, shift=21, data_type=DATA_TYPE.MULTI_BIT_FLAG
+            index=87, mask=0x600000, shift=21, data_type=DATA_TYPE.THREE_BIT_FLAG
         ),
         "PACK_CONFIG08_reserved_2": ConfigurationRegisterDescription(
             index=87, mask=0x800000, shift=23, data_type=DATA_TYPE.RESERVED
@@ -518,7 +518,7 @@ class WormholeDevice(Device):
             index=99, mask=0x100000, shift=20, data_type=DATA_TYPE.FLAG
         ),
         "PACK_CONFIG11_pack_l1_acc_disable_pack_zero_flag": ConfigurationRegisterDescription(
-            index=99, mask=0x600000, shift=21, data_type=DATA_TYPE.MULTI_BIT_FLAG
+            index=99, mask=0x600000, shift=21, data_type=DATA_TYPE.THREE_BIT_FLAG
         ),
         "PACK_CONFIG11_reserved_2": ConfigurationRegisterDescription(
             index=99, mask=0x800000, shift=23, data_type=DATA_TYPE.RESERVED
@@ -576,7 +576,7 @@ class WormholeDevice(Device):
             index=127, mask=0x100000, shift=20, data_type=DATA_TYPE.FLAG
         ),
         "PACK_CONFIG18_pack_l1_acc_disable_pack_zero_flag": ConfigurationRegisterDescription(
-            index=127, mask=0x600000, shift=21, data_type=DATA_TYPE.MULTI_BIT_FLAG
+            index=127, mask=0x600000, shift=21, data_type=DATA_TYPE.THREE_BIT_FLAG
         ),
         "PACK_CONFIG18_reserved_2": ConfigurationRegisterDescription(
             index=127, mask=0x800000, shift=23, data_type=DATA_TYPE.RESERVED
@@ -599,7 +599,7 @@ class WormholeDevice(Device):
             index=2, mask=0x400000, shift=22, data_type=DATA_TYPE.FLAG
         ),
         "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(
-            index=2, mask=0x3800000, shift=23, data_type=DATA_TYPE.MULTI_BIT_FLAG
+            index=2, mask=0x3800000, shift=23, data_type=DATA_TYPE.THREE_BIT_FLAG
         ),
         "DISABLE_RISC_BP_Disable_ncrisc": ConfigurationRegisterDescription(
             index=2, mask=0x4000000, shift=26, data_type=DATA_TYPE.FLAG
@@ -608,7 +608,7 @@ class WormholeDevice(Device):
             index=2, mask=0x8000000, shift=27, data_type=DATA_TYPE.FLAG
         ),
         "DISABLE_RISC_BP_Disable_bmp_clear_trisc": ConfigurationRegisterDescription(
-            index=2, mask=0x70000000, shift=28, data_type=DATA_TYPE.MULTI_BIT_FLAG
+            index=2, mask=0x70000000, shift=28, data_type=DATA_TYPE.THREE_BIT_FLAG
         ),
         "DISABLE_RISC_BP_Disable_bmp_clear_ncrisc": ConfigurationRegisterDescription(
             index=2, mask=0x80000000, shift=31, data_type=DATA_TYPE.FLAG

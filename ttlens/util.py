@@ -746,7 +746,7 @@ class DATA_TYPE(Enum):
     ADDRESS = 6
     MASK = 7
     FLAG = 8
-    MULTI_BIT_FLAG = 9
+    THREE_BIT_FLAG = 9
     DATA_FORMAT = 10
     MODE = 11
     CONTEXT = 12
@@ -754,7 +754,7 @@ class DATA_TYPE(Enum):
     UNKNOWN = 14
 
 
-# Convert value to specified data format
+# Convert value to specified data type
 def convert_value(value: int, data_type: DATA_TYPE):
     if (
         data_type == DATA_TYPE.DIMENSION
@@ -776,8 +776,8 @@ def convert_value(value: int, data_type: DATA_TYPE):
         return hex(value)
     elif data_type == DATA_TYPE.FLAG:
         return "True" if value else "False"
-    elif data_type == DATA_TYPE.MULTI_BIT_FLAG:
-        return bin(value)
+    elif data_type == DATA_TYPE.THREE_BIT_FLAG:
+        return "b" + f"{value:0{3}b}"
     elif data_type == DATA_TYPE.DATA_FORMAT:
         return TensixDataFormat(value).name
     else:
