@@ -2,17 +2,18 @@
 
 THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+# Define color variables
 source ${THIS_SCRIPT_DIR}/../test-base.sh
 
 echo -e "${YELLOW}Running wheel test ...${NC}"
 
 if ! test -d ${THIS_SCRIPT_DIR}/.venv; then
-	echo -e "Creating virtual environment ..."
-	python3 -m venv ${THIS_SCRIPT_DIR}/.venv
+    echo -e "Creating virtual environment ..."
+    python3 -m venv ${THIS_SCRIPT_DIR}/.venv
 fi
 
 echo -e "Activating virtual environment ..."
-source ${THIS_SCRIPT_DIR}/.venv/bin/activate
+source ${THIS_SCRIPT_DIR}/.venv/bin/activate || { echo "Activation failed, removing .venv"; rm -rf ${THIS_SCRIPT_DIR}/.venv; exit 1; }
 
 echo -e "Installing wheel ..."
 pip3 install --upgrade pip

@@ -1,5 +1,5 @@
-file(GLOB_RECURSE TTLENS_SERVER_UNIT_TESTS_SRCS "*.cpp")
-add_executable(ttlens_server_unit_tests ${TTLENS_SERVER_UNIT_TESTS_SRCS})
+file(GLOB_RECURSE TTEXALENS_SERVER_UNIT_TESTS_SRCS "*.cpp")
+add_executable(ttlens_server_unit_tests ${TTEXALENS_SERVER_UNIT_TESTS_SRCS})
 target_link_libraries(ttlens_server_unit_tests
     ttlens_server_lib
     ttlens_utils

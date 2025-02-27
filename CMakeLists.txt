@@ -48,7 +48,7 @@ message(STATUS "Python3 include dirs: ${Python3_INCLUDE_DIRS}")
 
 # Set default values for variables/options
 set(CMAKE_BUILD_BIN_DIR "${CMAKE_BINARY_DIR}/bin")
-set(TTLENS_HOME "${PROJECT_SOURCE_DIR}")
+set(TTEXALENS_HOME "${PROJECT_SOURCE_DIR}")
 set(UMD_HOME "${PROJECT_SOURCE_DIR}/third_party/umd")
 
 # Third party dependencies

@@ -3,9 +3,9 @@ cmake_policy(VERSION 3.16)
 
 project(RISCVProject LANGUAGES CXX ASM)
 
-# Check if TTLENS_HOME is set, if not set it to ../../ from the directory that contains this file
-if(NOT TTLENS_HOME)
-    set(TTLENS_HOME "${CMAKE_CURRENT_LIST_DIR}/../..")
+# Check if TTEXALENS_HOME is set, if not set it to ../../ from the directory that contains this file
+if(NOT TTEXALENS_HOME)
+    set(TTEXALENS_HOME "${CMAKE_CURRENT_LIST_DIR}/../..")
 endif()
 
 message(STATUS "Downloading sfpi release")
@@ -17,12 +17,12 @@ FetchContent_Declare(
         https://github.com/tenstorrent/sfpi/releases/download/v5.0.0/sfpi-release.tgz
     URL_HASH MD5=10cacabe92846076cb4d7596e46d06be
     SOURCE_DIR
-    ${TTLENS_HOME}/sfpi
+    ${TTEXALENS_HOME}/sfpi
 )
 FetchContent_MakeAvailable(sfpi)
 
 # Set toolchain and tools
-set(TOOL_PATH "${TTLENS_HOME}/sfpi/compiler/bin")
+set(TOOL_PATH "${TTEXALENS_HOME}/sfpi/compiler/bin")
 set(GXX "${TOOL_PATH}/riscv32-unknown-elf-g++")
 set(OBJDUMP "${TOOL_PATH}/riscv32-unknown-elf-objdump")
 set(OBJCOPY "${TOOL_PATH}/riscv32-unknown-elf-objcopy")

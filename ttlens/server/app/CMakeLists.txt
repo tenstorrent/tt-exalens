@@ -1,7 +1,7 @@
 add_executable(ttlens-server-standalone)
 
-file(GLOB_RECURSE TTLENS_SERVER_SRCS "*.cpp")
-target_sources(ttlens-server-standalone PRIVATE ${TTLENS_SERVER_SRCS})
+file(GLOB_RECURSE TTEXALENS_SERVER_SRCS "*.cpp")
+target_sources(ttlens-server-standalone PRIVATE ${TTEXALENS_SERVER_SRCS})
 
 target_link_libraries(ttlens-server-standalone
     PRIVATE ttlens_server_lib ttlens_utils yaml-cpp stdc++fs pthread

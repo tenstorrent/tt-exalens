@@ -20,14 +20,14 @@ echo -e "${RED}This script is intended for running all tests in the project loca
 echo ""
 echo ""
 
-big_echo "BUILDING TTLENS"
+big_echo "BUILDING TTEXALENS"
 make clean
 make build
 
 big_echo "RUNNING C++ TESTS"
 make ttlens_server_unit_tests_run_only
 
-big_echo "RUNNING PYTHON TTLENS TESTS"
+big_echo "RUNNING PYTHON TTEXALENS TESTS"
 python3 -m unittest discover -v -t . -s test/ttlens -p *test*.py
 
 big_echo "RUNNING PYTHON APP TESTS"

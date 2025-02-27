@@ -1,5 +1,5 @@
-file(GLOB_RECURSE TTLENS_PYBIND_SRCS "src/*.cpp")
-add_library(ttlens_pybind SHARED ${TTLENS_PYBIND_SRCS})
+file(GLOB_RECURSE TTEXALENS_PYBIND_SRCS "src/*.cpp")
+add_library(ttlens_pybind SHARED ${TTEXALENS_PYBIND_SRCS})
 set_target_properties(ttlens_pybind PROPERTIES
     OUTPUT_NAME "ttlens_pybind"
     PREFIX ""
