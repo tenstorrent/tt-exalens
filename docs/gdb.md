@@ -9,17 +9,17 @@ TTExaLens application is hosting gdb server. You should use gdb client to connec
 You can start gdb server with ttlens application:
 
 - With command line argument: Start ttlens with `--start-gdb=<gdb_port>` where `<gdb_port>` is integer number for port that will be used for gdb server.
-- With `gdb` command: After you start TT-Lens, you can use `gdb` command to start gdb server. Run `gdb start --port <port>` where `<port>` is integer number fo port that will be used for gdb server.
+- With `gdb` command: After you start TT-ExaLens, you can use `gdb` command to start gdb server. Run `gdb start --port <port>` where `<port>` is integer number fo port that will be used for gdb server.
 
 After starting gdb server, you can stop it with `gdb` command. Run `gdb stop`.
 
 ## Connecting gdb client
 
-- Start gdb client (`./sfpi/compiler/bin/riscv32-unknown-elf-gdb` in TT-Lens repository).
+- Start gdb client (`./sfpi/compiler/bin/riscv32-unknown-elf-gdb` in TT-ExaLens repository).
 ***Note:*** Currently gdb client is not part of sfpi library.
 You will need to clone it from https://github.com/tenstorrent-metal/sfpi-rel.
 - If you want to debug client/server communication execute `set debug remote 1` in GDB client
-- Connect GDB client to TT-Lens: `target extended-remote localhost:<gdb_port>` where `<gdb_port>` is port used in TT-Lens when starting gdb server.
+- Connect GDB client to TT-ExaLens: `target extended-remote localhost:<gdb_port>` where `<gdb_port>` is port used in TT-ExaLens when starting gdb server.
 
 After connection has been established, you can use `info os processes` to list all available processes that you can debug with GDB. Use `attach <pid>` to start debugging selested riscv core.
 
