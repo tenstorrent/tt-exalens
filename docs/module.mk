@@ -18,7 +18,7 @@ docs:
 	$(PRINT_OK)
 
 	echo "Generating application documentation..."
-	python -m docs.bin.generate-command-docs $(TTEXALENS_HOME)/ttlens/ttlens_commands $(DOC_DIR)/ttlens-app-docs.md
+	python -m docs.bin.generate-command-docs $(TTEXALENS_HOME)/ttlens/cli_commands $(DOC_DIR)/ttlens-app-docs.md
 	$(PRINT_OK)
 
 .PHONY: clean-docs

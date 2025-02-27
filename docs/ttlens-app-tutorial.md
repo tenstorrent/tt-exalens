@@ -26,7 +26,7 @@ Full Name        Short    Description
 ---------------  -------  --------------------------------------------------------------------------------------------------------------------------------
 exit             x        Exits the program. The optional argument represents the exit code. Defaults to 0.
 help             h        Prints documentation summary. Use -v for details. If a command name is specified, it prints documentation for that command only.
-reload           rl       Reloads files in ttlens_commands directory. Useful for development of commands.
+reload           rl       Reloads files in cli_commands directory. Useful for development of commands.
 burst-read-xy    brxy     Reads and prints a block of data from address 'addr' at core <core-loc>.
 dump-gpr         gpr      Prints all RISC-V registers for BRISC, TRISC0, TRISC1, and TRISC2 on the current core.
 write-xy         wxy      Writes data word to address 'addr' at noc0 location x-y of the current chip.
@@ -273,7 +273,7 @@ Since we are running from cache, we can't write to device:
 gdb:None Current epoch:None(None) device:0 loc:1-1 (0,0) > wxy 0,0 0x100 0x1234
 ------------------------------------------  -----------  --------------------------------------------------------------------------
 tt-lens:428                                 main_loop    new_navigation_suggestions = found_command["module"].run(
-ttlens/ttlens_commands/pci-write-xy.py:52   run            device.SERVER_IFC.pci_write32(
+ttlens/cli_commands/pci-write-xy.py:52   run            device.SERVER_IFC.pci_write32(
 ttlens/tt_lens_ifc_cache.py:198             pci_write32      raise util.TTException("Device not available, cannot write to cache.")
 ttlens/tt_lens_ifc_cache.py:198             pci_write32  TTException: Device not available, cannot write to cache.
 ------------------------------------------  -----------  --------------------------------------------------------------------------
@@ -296,8 +296,8 @@ gdb:None Current epoch:None(None) device:0 loc:1-1(0,0) > brxy 0,0 0x200
 Cache miss for pci_read32.
 --------------------------------------------  ----------------------  ---------------------------------------------------------------------------------
 cli.py:428                                    main_loop               new_navigation_suggestions = found_command["module"].run(
-ttlens/ttlens_commands/burst-read-xy.py:97    run                       print_a_pci_burst_read(
-ttlens/ttlens_commands/burst-read-xy.py:123   print_a_pci_burst_read      data = read_words_from_device(core_loc, addr, device_id, word_count, context)
+ttlens/cli_commands/burst-read-xy.py:97    run                       print_a_pci_burst_read(
+ttlens/cli_commands/burst-read-xy.py:123   print_a_pci_burst_read      data = read_words_from_device(core_loc, addr, device_id, word_count, context)
 ttlens/tt_lens_lib.py:50                      read_words_from_device        word = context.server_ifc.pci_read32(
 ttlens/tt_lens_ifc_cache.py:174               wrapper                         raise util.TTException(f"Cache miss for {func.__name__}.")
 ttlens/tt_lens_ifc_cache.py:174               wrapper                 TTException: Cache miss for pci_read32.
@@ -318,7 +318,7 @@ tt-lens --commands "go -l 2,2; gpr; x"
 The above command will run `go -l 2,2`, changing active location to 2,2, followed by `gpr` and then exit. The output can then be redirected to a file for further processing.
 
 
-### Developing new commands (`ttlens/ttlens_commands/` folder)
+### Developing new commands (`ttlens/cli_commands/` folder)
 
 This folder contains python files that define TTExaLens commands.
 To create a new command, create a new file in this folder.

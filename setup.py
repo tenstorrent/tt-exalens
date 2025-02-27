@@ -37,10 +37,10 @@ def get_libjtag() -> list:
 
 ttlens_files = {
     "ttlens_lib": {"path": "ttlens", "files": get_ttlens_py_files(), "output": "ttlens"},
-    "ttlens_commands": {
-        "path": "ttlens/ttlens_commands",
-        "files": get_ttlens_py_files(f"{ttlens_home}/ttlens/ttlens_commands"),
-        "output": "ttlens/ttlens_commands",
+    "cli_commands": {
+        "path": "ttlens/cli_commands",
+        "files": get_ttlens_py_files(f"{ttlens_home}/ttlens/cli_commands"),
+        "output": "ttlens/cli_commands",
     },
     "libs": {
         "path": "build/lib",

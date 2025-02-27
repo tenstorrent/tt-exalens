@@ -178,8 +178,8 @@ def print_navigation_suggestions(navigation_suggestions):
         print(tabulate(rows, headers=["#", "Description", "Command"], disable_numparse=True))
 
 
-# Imports 'plugin' commands from ttlens_commands/ directory
-# With 'reload' argument set to True, the ttlens_commands can be live-reloaded (using importlib.reload)
+# Imports 'plugin' commands from cli_commands/ directory
+# With 'reload' argument set to True, the cli_commands can be live-reloaded (using importlib.reload)
 def import_commands(reload=False):
     # Built-in commands
     commands = [
@@ -203,7 +203,7 @@ def import_commands(reload=False):
             "long": "reload",
             "short": "rl",
             "type": "housekeeping",
-            "description": "Description:\n  Reloads files in ttlens_commands directory. Useful for development of commands.",
+            "description": "Description:\n  Reloads files in cli_commands directory. Useful for development of commands.",
             "context": "util",
         },
         {
@@ -216,11 +216,11 @@ def import_commands(reload=False):
     ]
 
     cmd_files = []
-    for root, dirnames, filenames in os.walk(util.application_path() + "/ttlens_commands"):
+    for root, dirnames, filenames in os.walk(util.application_path() + "/cli_commands"):
         for filename in fnmatch.filter(filenames, "*.py"):
             cmd_files.append(os.path.join(root, filename))
 
-    sys.path.append(util.application_path() + "/ttlens_commands")
+    sys.path.append(util.application_path() + "/cli_commands")
 
     cmd_files.sort()
     for cmdfile in cmd_files:
