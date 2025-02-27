@@ -96,7 +96,7 @@ def parse_command_arguments(args):
 
 
 def run(cmd_text, context, ui_state: UIState = None):
-    dopt = commands.tt_docopt(
+    dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
         common_option_names=command_metadata["common_option_names"],

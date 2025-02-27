@@ -52,7 +52,7 @@ def color_block(text: str, block_type: str):
 
 
 def run(cmd_text, context, ui_state=None):
-    dopt = commands.tt_docopt(
+    dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
         common_option_names=command_metadata["common_option_names"],
