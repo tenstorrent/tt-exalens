@@ -16,7 +16,6 @@ from ttlens.util import TTException
 from ttlens.device import Device, ConfigurationRegisterDescription
 from ttlens.unpack_regfile import unpack_data
 from ttlens.debug_risc import RiscDebug, RiscLoc, RiscLoader
-from ttlens.util import DATA_FORMAT
 
 
 def validate_trisc_id(trisc_id: int, context: Context) -> None:
@@ -312,25 +311,3 @@ class TensixDebug:
         df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
         unpacked_data = unpack_data(data, df)
         return unpacked_data
-
-    def get_config_field(self, name: str, config: dict, data_format: DATA_FORMAT, start: int = 0):
-        """Writes the value of a configuration register field, specified by its name, to a given dictionary based on the provided value type.
-
-        Args:
-                name (str): Name of configuration register field.
-                config (dict): Dictionary to write field's value into.
-                data_format (DATA_FORMAT): Argument that determines what type of value we are writing.
-                start (int): Dictionary key is name from index start onwards.
-        """
-
-        value = self.read_tensix_register(name)
-        if data_format == DATA_FORMAT.HEX:
-            config[name[start:]] = hex(value)
-        elif data_format == DATA_FORMAT.DEC:
-            config[name[start:]] = value
-        elif data_format == DATA_FORMAT.FORMAT:
-            config[name[start:]] = TensixDataFormat(value).name
-        elif data_format == DATA_FORMAT.BOOL:
-            config[name[start:]] = "True" if value else "False"
-        else:
-            raise ValueError("Invalid value for data_format")

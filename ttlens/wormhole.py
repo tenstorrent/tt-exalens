@@ -4,7 +4,7 @@
 from typing import List
 from ttlens import util
 from ttlens.debug_tensix import TensixDebug
-from ttlens.util import DATA_FORMAT, DATA_TYPE
+from ttlens.util import DATA_TYPE
 from ttlens.device import (
     TensixInstructions,
     Device,

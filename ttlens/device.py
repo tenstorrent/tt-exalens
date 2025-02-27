@@ -16,7 +16,7 @@ from ttlens.coordinate import CoordinateTranslationError, OnChipCoordinate
 from abc import abstractmethod
 from ttlens.debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttlens.tt_lens_lib import read_word_from_device, write_words_to_device
-from ttlens.util import DATA_FORMAT, DATA_TYPE
+from ttlens.util import DATA_TYPE
 
 
 class TensixInstructions:

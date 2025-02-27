@@ -735,14 +735,6 @@ PRINT_FORMATS = {
 from enum import Enum
 from ttlens.unpack_regfile import TensixDataFormat
 
-
-class DATA_FORMAT(Enum):
-    HEX = 0
-    DEC = 1
-    FORMAT = 2
-    BOOL = 3
-
-
 # An enumeration of different data types in registers.
 class DATA_TYPE(Enum):
     DIMENSION = 0
