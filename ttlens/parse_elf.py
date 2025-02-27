@@ -989,7 +989,7 @@ if __name__ == "__main__":
 
 
 # TODO:
-# 2. Integration into TTLens:
+# 2. Integration into TTExaLens:
 #   - Fuzzy search for autocomplete
 #   - Real memory reader function
 #   - Test

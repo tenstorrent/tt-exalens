@@ -27,7 +27,7 @@ from ttlens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index
 class TestDebugging(unittest.TestCase):
     risc_name: str = None  # Risc name
     risc_id: int = None  # Risc ID - being parametrized
-    context: Context = None  # TTLens context
+    context: Context = None  # TTExaLens context
     core_desc: str = None  # Core description ETH0, FW0, FW1 - being parametrized
     core_loc: str = None  # Core location
     rdbg: RiscDebug = None  # RiscDebug object

@@ -12,11 +12,11 @@ Usage:
 
 Options:
   -h --help                       Show this help message and exit.
-  --server                        Start a TTLens server. If not specified, the port will be set to 5555.
-  --remote                        Attach to the remote TTLens server. If not specified, IP defaults to localhost and port to 5555.
-  --cached                        Use the cache from previous TTLens run to simulate device communication.
-  --port=<port>                   Port of the TTLens server. If not specified, defaults to 5555.  [default: 5555]
-  --remote-address=<ip:port>      Address of the remote TTLens server, in the form of ip:port, or just :port, if ip is localhost. If not specified, defaults to localhost:5555. [default: localhost:5555]
+  --server                        Start a TTExaLens server. If not specified, the port will be set to 5555.
+  --remote                        Attach to the remote TTExaLens server. If not specified, IP defaults to localhost and port to 5555.
+  --cached                        Use the cache from previous TTExaLens run to simulate device communication.
+  --port=<port>                   Port of the TTExaLens server. If not specified, defaults to 5555.  [default: 5555]
+  --remote-address=<ip:port>      Address of the remote TTExaLens server, in the form of ip:port, or just :port, if ip is localhost. If not specified, defaults to localhost:5555. [default: localhost:5555]
   --commands=<cmds>               Execute a list of semicolon-separated commands.
   --start-gdb=<gdb_port>          Start a gdb server on the specified port.
   --write-cache                   Write the cache to disk.
@@ -30,14 +30,14 @@ Options:
   --use-noc1                      Use NOC1 for communication with the device.
 
 Description:
-  TTLens parses the build output files and reads the device state to provide a debugging interface for the user.
+  TTExaLens parses the build output files and reads the device state to provide a debugging interface for the user.
 
   There are three modes of operation:
     1. Local mode: The user can run tt-lens with a specific output directory. This will load the runtime data from the output directory. If the output directory is not specified, the most recent subdirectory of tt_build/ will be used.
-    2. Remote mode: The user can connect to a TTLens server running on a remote machine. The server will provide the runtime data.
-    3. Cached mode: The user can use a cache file from previous TTLens run. This is useful for debugging without a connection to the device. Writing is disabled in this mode.
+    2. Remote mode: The user can connect to a TTExaLens server running on a remote machine. The server will provide the runtime data.
+    3. Cached mode: The user can use a cache file from previous TTExaLens run. This is useful for debugging without a connection to the device. Writing is disabled in this mode.
 
-  Passing the --server flag will start a TTLens server. The server will listen on the specified port (default 5555) for incoming connections.
+  Passing the --server flag will start a TTExaLens server. The server will listen on the specified port (default 5555) for incoming connections.
 """
 
 try:
@@ -64,7 +64,7 @@ from ttlens.commands import find_command, CommandParsingException
 from ttlens import Verbosity
 
 
-class TTLensCompleter(Completer):
+class TTExaLensCompleter(Completer):
     def __init__(self, commands, context):
         self.commands = [cmd["long"] for cmd in commands] + [cmd["short"] for cmd in commands]
         self.context = context
@@ -279,7 +279,7 @@ def main_loop(args, context):
 
     # Create prompt object.
     context.prompt_session = (
-        PromptSession(completer=TTLensCompleter(context.commands, context))
+        PromptSession(completer=TTExaLensCompleter(context.commands, context))
         if sys.stdin.isatty()
         else SimplePromptSession()
     )
@@ -406,7 +406,7 @@ def main():
 
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
-        print(f"Starting TTLens server at {args['--port']}")
+        print(f"Starting TTExaLens server at {args['--port']}")
         ttlens_server = tt_lens_server.start_server(
             args["--port"],
             wanted_devices,
@@ -423,13 +423,13 @@ def main():
         sys.exit(0)
 
     if args["--cached"]:
-        util.INFO(f"Starting TTLens from cache.")
+        util.INFO(f"Starting TTExaLens from cache.")
         context = tt_lens_init.init_ttlens_cached(args["--cache-path"])
     elif args["--remote"]:
         address = args["--remote-address"].split(":")
         server_ip = address[0] if address[0] != "" else "localhost"
         server_port = address[-1]
-        util.INFO(f"Connecting to TTLens server at {server_ip}:{server_port}")
+        util.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
         context = tt_lens_init.init_ttlens_remote(server_ip, int(server_port), cache_path)
     else:
         context = tt_lens_init.init_ttlens(wanted_devices, cache_path, args["--jtag"], args["--use-noc1"])

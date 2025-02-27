@@ -18,21 +18,21 @@ def tearDownModule():
         os.remove(CACHE_PATH)
 
 
-class TestLocalTTLensInit(unittest.TestCase):
+class TestLocalTTExaLensInit(unittest.TestCase):
     def test_local_init(self):
-        """Test local TTLens initialization."""
+        """Test local TTExaLens initialization."""
         context = tt_lens_init.init_ttlens()
         self.assertIsNotNone(context)
         self.assertIsInstance(context, Context)
 
     def test_local_with_cache(self):
-        """Test local TTLens initialization with cache."""
+        """Test local TTExaLens initialization with cache."""
         context = tt_lens_init.init_ttlens(cache_path=CACHE_PATH)
         self.assertIsNotNone(context)
         self.assertIsInstance(context, Context)
 
     def test_local_wanted_devices(self):
-        """Test local TTLens initialization with specification of wanted devices."""
+        """Test local TTExaLens initialization with specification of wanted devices."""
         context = tt_lens_init.init_ttlens(
             wanted_devices=[
                 0,
@@ -42,7 +42,7 @@ class TestLocalTTLensInit(unittest.TestCase):
         self.assertIsInstance(context, Context)
 
 
-class TestRemoteTTLens(unittest.TestCase):
+class TestRemoteTTExaLens(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.server = start_server(5555)
@@ -52,19 +52,19 @@ class TestRemoteTTLens(unittest.TestCase):
         stop_server(cls.server)
 
     def test_remote_init(self):
-        """Test remote TTLens initialization."""
+        """Test remote TTExaLens initialization."""
         context = tt_lens_init.init_ttlens_remote()
         self.assertIsNotNone(context)
         self.assertIsInstance(context, Context)
 
     def test_remote_with_cache(self):
-        """Test remote TTLens initialization with cache."""
+        """Test remote TTExaLens initialization with cache."""
         context = tt_lens_init.init_ttlens_remote(cache_path=CACHE_PATH)
         self.assertIsNotNone(context)
         self.assertIsInstance(context, Context)
 
 
-class TestCachedTTLens(unittest.TestCase):
+class TestCachedTTExaLens(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         context = tt_lens_init.init_ttlens(cache_path=CACHE_PATH)
@@ -74,7 +74,7 @@ class TestCachedTTLens(unittest.TestCase):
         del context
 
     def test_cached_init(self):
-        """Test TTLens initialization with cache."""
+        """Test TTExaLens initialization with cache."""
         context = tt_lens_init.init_ttlens_cached(cache_path=CACHE_PATH)
         self.assertIsNotNone(context)
         self.assertIsInstance(context, Context)

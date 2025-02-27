@@ -199,7 +199,7 @@ def main():
         # connect_to_server won't work here because it prints to stdout
         server = ttlens_client("localhost", port)
     except:
-        print(f"Couldn't connect to TTLens server on port '{port}'")
+        print(f"Couldn't connect to TTExaLens server on port '{port}'")
         sys.exit(1)
 
     # Get the function name and remove it from the arguments list

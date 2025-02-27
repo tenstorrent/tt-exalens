@@ -10,7 +10,7 @@ import zmq
 
 from ttlens import util as util
 from ttlens import tt_lens_ifc_cache as tt_lens_ifc_cache
-from ttlens.tt_lens_ifc_base import TTLensCommunicator
+from ttlens.tt_lens_ifc_base import TTExaLensCommunicator
 
 
 class ttlens_server_request_type(Enum):
@@ -55,7 +55,7 @@ class ttlens_server_not_supported(Exception):
 
 class ttlens_server_communication:
     """
-    This class handles the communication with the TTLens server using ZMQ. It is responsible for sending requests and
+    This class handles the communication with the TTExaLens server using ZMQ. It is responsible for sending requests and
     parsing and checking the responses.
     """
 
@@ -314,12 +314,12 @@ class ttlens_server_communication:
         return self._check(self._socket.recv())
 
 
-class ttlens_client(TTLensCommunicator):
+class ttlens_client(TTExaLensCommunicator):
     def __init__(self, address: str, port: int):
         super().__init__()
         self._communication = ttlens_server_communication(address, port)
 
-        # Check ping/pong to verify it is TTLens server on the other end
+        # Check ping/pong to verify it is TTExaLens server on the other end
         pong = self._communication.ping()
         if pong != b"PONG":
             raise ConnectionError()
@@ -427,7 +427,7 @@ if not os.path.isfile(os.path.join(ttlens_pybind_path, "ttlens_pybind.so")):
 import ttlens_pybind
 
 
-class TTLensPybind(TTLensCommunicator):
+class TTExaLensPybind(TTExaLensCommunicator):
     def __init__(self, wanted_devices: list = [], init_jtag=False, use_noc1=False):
         super().__init__()
         if not ttlens_pybind.open_device(binary_path, wanted_devices, init_jtag, use_noc1):
@@ -522,7 +522,7 @@ def init_pybind(wanted_devices=None, init_jtag=False, use_noc1=False):
     if not wanted_devices:
         wanted_devices = []
 
-    communicator = TTLensPybind(wanted_devices, init_jtag, use_noc1)
+    communicator = TTExaLensPybind(wanted_devices, init_jtag, use_noc1)
     util.VERBOSE("Device opened successfully.")
     return communicator
 
@@ -536,6 +536,6 @@ def connect_to_server(ip="localhost", port=5555):
         communicator = ttlens_client(ip, port)
         util.VERBOSE("Connected to ttlens-server.")
     except:
-        raise util.TTFatalException("Failed to connect to TTLens server.")
+        raise util.TTFatalException("Failed to connect to TTExaLens server.")
 
     return communicator

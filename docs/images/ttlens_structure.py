@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This script generates a diagram of the communication flow in TTLens.
+This script generates a diagram of the communication flow in TTExaLens.
 To run it, you need to install the `diagrams` package:
 pip install diagrams
 """
@@ -26,8 +26,8 @@ node_attr = {
     "width": "2",
 }
 
-with Diagram(name="TTLens's communication flow", filename="ttlens-structure", show=False, graph_attr=graph_attr):
-    contexts_holder = Cluster("0", graph_attr={"label": "TTLens Contexts"})
+with Diagram(name="TTExaLens's communication flow", filename="ttlens-structure", show=False, graph_attr=graph_attr):
+    contexts_holder = Cluster("0", graph_attr={"label": "TTExaLens Contexts"})
     with contexts_holder:
         contexts = [
             Node("Limited", **node_attr),

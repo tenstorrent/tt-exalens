@@ -1,13 +1,13 @@
-# TTLens Application Tutorial
+# TTExaLens Application Tutorial
 
-This tutorial shows how to use the TTLens application.
-It gives examples of basic commands, as well as how to run TTLens on remote machine and from cache.
+This tutorial shows how to use the TTExaLens application.
+It gives examples of basic commands, as well as how to run TTExaLens on remote machine and from cache.
 
-To follow this tutorial, you should either [build TTLens from source](./../README.md#building-ttlens) and run it through the python script with `./tt-lens.py`, or [install from wheel](./../README.md#building-and-installing-wheel) and run with `tt-lens.py`.
+To follow this tutorial, you should either [build TTExaLens from source](./../README.md#building-ttlens) and run it through the python script with `./tt-lens.py`, or [install from wheel](./../README.md#building-and-installing-wheel) and run with `tt-lens.py`.
 
 ## Basic Usage
 
-Running TTLens application should give the following output:
+Running TTExaLens application should give the following output:
 
 ```bash
 gdb:None device:0 loc:1-1 (0, 0) >
@@ -138,10 +138,10 @@ To see more details about this command, refer to [the documentation](./ttlens-ap
 
 ### Runing .elf files (`re`)
 
-It is possible to run .elf files on Tenstorrent hardware through TTLens using `re` command.
+It is possible to run .elf files on Tenstorrent hardware through TTExaLens using `re` command.
 
-We can try and run the sample program that is used in testing TTLens.
-First, be sure that you have [cloned TTLens repository and built TTLens](../README.md#building-ttlens).
+We can try and run the sample program that is used in testing TTExaLens.
+First, be sure that you have [cloned TTExaLens repository and built TTExaLens](../README.md#building-ttlens).
 If everything worked as expected, there should be a file in `build/riscv-src/wormhole` directory named `run_elf_test.brisc.elf`.
 That simple program writes value 0x12345678 to the address 0x0 in L1 memory of the selected core.
 Currently, running `brxy 0,0 0x0` returns
@@ -198,18 +198,18 @@ Register     BRISC    TRISC0    TRISC1    TRISC2
 We can see that the core that `gpr` acts on has changed.
 
 
-## Using TTLens Server
+## Using TTExaLens Server
 
-TTLens can be started in client-server mode, which allows debugging on the remote machine.
+TTExaLens can be started in client-server mode, which allows debugging on the remote machine.
 The server can be started as standalone program.
-To start TTLens server, simply call
+To start TTExaLens server, simply call
 ```
 ./tt-lens.py --server
 ```
 You can optionally set the port to be used by specifying `--port=<port>`, but the default value of 5555 is fine for the purpose of this tutorial.
 The server can be exited by simply pressing enter key in the terminal.
 
-To attach to the server, you can spin up a TTLens client with
+To attach to the server, you can spin up a TTExaLens client with
 ```
 ./tt-lens.py --remote --remote-address=<ip:port>
 ```
@@ -223,17 +223,17 @@ Running
 ./tt-lens.py --remote
 ```
 will try to connect to server on port 5555 running on localhost.
-From there on, you can use TTLens the same way you would use it in local mode.
+From there on, you can use TTExaLens the same way you would use it in local mode.
 
 
-## Using TTLens's caching Mechanism
+## Using TTExaLens's caching Mechanism
 
-TTLens has a built-in caching mechanism which allows you to save the results of commands you run and reuse them later, or on a different machine.
+TTExaLens has a built-in caching mechanism which allows you to save the results of commands you run and reuse them later, or on a different machine.
 The caching can be turned on using `--write-cache` flag in either local or client mode.
-The cache is saved as a pickle file and can be read by running TTLens in cached mode.
+The cache is saved as a pickle file and can be read by running TTExaLens in cached mode.
 
 Let's say that you need to save the results of some commands to take another look at them on another machine which does not have TT hardware.
-You can run TTLens with cache writing turned on:
+You can run TTExaLens with cache writing turned on:
 ```
 ./tt-lens.py --write-cache --cache-path=tutorial_cache.pkl
 ```
@@ -249,20 +249,20 @@ gdb:None Current epoch:None(None) device:0 loc:1-1 (0,0) > brxy 0,0 0x100 4
 0,0 (L1) : 0x00000100 (16 bytes)
 0x00000100:  00001234  00000000  00000000  00000000
 ```
-Finally, by exiting TTLens, cache is automatically written to the specified file:
+Finally, by exiting TTExaLens, cache is automatically written to the specified file:
 ```
 gdb:None Current epoch:None(None) device:0 loc:1-1 (0,0) > x
 Saving server cache to file tutorial_cache.pkl
   Saved 11 entries
 ```
 
-We can now open this cache in TTLens by calling
+We can now open this cache in TTExaLens by calling
 ```
 ./tt-lens.py --cached --cache-path=tutorial_cache.pkl
 ```
 which gives
 ```
-Starting TTLens from cache.
+Starting TTExaLens from cache.
 Loading server cache from file tutorial_cache.pkl
   Loaded 7 entries
 gdb:None device:0 loc:1-1 (0, 0) >
@@ -304,14 +304,14 @@ ttlens/tt_lens_ifc_cache.py:174               wrapper                 TTExceptio
 --------------------------------------------  ----------------------  ---------------------------------------------------------------------------------
 ```
 
-For more details of inner workings of TTLens refer to [the `ttlens` library tutorial](./ttlens-lib-tutorial.md#ttlens-internal-structure-and-initialization).
+For more details of inner workings of TTExaLens refer to [the `ttlens` library tutorial](./ttlens-lib-tutorial.md#ttlens-internal-structure-and-initialization).
 
 
 ## Scripting and Development
 
 ### Simple scripting with --commands CLI argument
 
-When starting TTLens, you can specify a list of commands to run. For example:
+When starting TTExaLens, you can specify a list of commands to run. For example:
 ```
 tt-lens --commands "go -l 2,2; gpr; x"
 ```
@@ -320,7 +320,7 @@ The above command will run `go -l 2,2`, changing active location to 2,2, followe
 
 ### Developing new commands (`ttlens/ttlens_commands/` folder)
 
-This folder contains python files that define TTLens commands.
+This folder contains python files that define TTExaLens commands.
 To create a new command, create a new file in this folder.
 The file name will be the command name. For example, `op-map.py` defines the `op-map` command.
 The file must contain a function called `run()` which represents the main entry point for the command.

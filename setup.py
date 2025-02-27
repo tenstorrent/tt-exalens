@@ -10,7 +10,7 @@ __requires__ = ["pip >= 24.0"]
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 
-# TTLens files to be copied to build directory
+# TTExaLens files to be copied to build directory
 ttlens_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ttlens")
 ttlens_home = os.path.dirname(ttlens_folder_path)
 
@@ -97,13 +97,13 @@ class MyBuild(build_ext):
                         subprocess.check_call(["strip", path + "/" + f])
 
 
-# Fake TTLens extension
+# Fake TTExaLens extension
 ttlens_fake_extension = TTExtension("ttlens.fake_extension")
 
 with open("README.md", "r") as f:
     long_description = f.read()
 
-# Add specific requirements for TTLens
+# Add specific requirements for TTExaLens
 with open(f"{ttlens_folder_path}/requirements.txt", "r") as f:
     requirements = [r for r in f.read().splitlines() if not r.startswith("-r")]
 

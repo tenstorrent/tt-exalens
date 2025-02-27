@@ -131,7 +131,7 @@ jobs:
           name: test-reports-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.runs-on[1] }}
           path: ${{ steps.strings.outputs.test_report_path }}
 
-      - name: Run Python tests for TTLens app
+      - name: Run Python tests for TTExaLens app
         run: |
           python3 -m unittest discover -v -t . -s test/app -p *test*.py
 

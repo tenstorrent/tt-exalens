@@ -11,7 +11,7 @@
 
 namespace tt::lens {
 
-// Interface that should be implemented for TTLens server to process requests.
+// Interface that should be implemented for TTExaLens server to process requests.
 class ttlens_implementation {
    public:
     virtual ~ttlens_implementation() = default;

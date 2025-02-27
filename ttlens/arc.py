@@ -17,7 +17,7 @@ def run_arc_core(mask: int, device_id: int = 0, context: Context = None):
     Args:
         mask : Mask specifying which ARC core to run.
         device_id (int, default 0) : ID number of device to run ARC core on.
-        context (Context, optional) : TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
+        context (Context, optional) : TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
     context = check_context(context)
 
@@ -50,7 +50,7 @@ def halt_arc_core(mask: int, device_id: int = 0, context: Context = None):
     Args:
         mask : Mask specifying which ARC core to halt.
         device_id (int, default 0) : ID number of device to halt ARC core on.
-        context (Context, optional) : TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
+        context (Context, optional) : TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
     context = check_context(context)
 
@@ -82,7 +82,7 @@ def set_udmiaxi_region(mem_type: str, device_id: int = 0, context: Context = Non
     Args:
         mem_type (str): Memory type to set the UDMIAXI region to. Can be 'iccm', 'iccm0', 'iccm1', 'iccm2', 'iccm3', or 'csm'.
         device_id (int, default 0): ID number of device to set UDMIAXI region on.
-        context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
+        context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
     context = check_context(context)
 
@@ -138,7 +138,7 @@ def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context =
         file_name (str): Path to the file containing the ARC firmware.
         iccm_id (int): ICCM ID to load the firmware into. Must be between 0 and 3.
         device_id (int, default 0): ID number of device to load firmware on.
-        context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
+        context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
     # Check that iccm_id is valid
     if iccm_id not in range(4):

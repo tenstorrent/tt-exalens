@@ -1,5 +1,5 @@
 <div align="center">
-<h1> TTLens </h1>
+<h1> TTExaLens </h1>
 
 A low level hardware debugger
 
@@ -8,17 +8,17 @@ A low level hardware debugger
 </div>
 <br/>
 
-TTLens is a low level debugging tool for Tenstorrent's hardware.
+TTExaLens is a low level debugging tool for Tenstorrent's hardware.
 It can be used to access and communicate with the device.
 At the moment, Grayskull and Wormhole devices are supported, while the support for Blackhole cards, as well as support for the Metal runtime are under development.
 
 ---
 
-## Building TTLens
+## Building TTExaLens
 
 ### Cloning repository and setting up the environment
 
-After cloning the TTLens repository, be sure to run
+After cloning the TTExaLens repository, be sure to run
 
 ```bash
 git submodule update --init --recursive
@@ -30,10 +30,10 @@ so that all the submodules are properly loaded.
 
 ### Requirements
 
-TTLens has been tested on Ubuntu versions 22.04 and 20.04.
+TTExaLens has been tested on Ubuntu versions 22.04 and 20.04.
 
 [//]: # (TODO: We should check this on vanilla system and also separate test, build and run dependencies, as per #)
-To build TTLens, you need the following dependencies:
+To build TTExaLens, you need the following dependencies:
 
 - software-properties-common,
 - build-essential,
@@ -72,13 +72,13 @@ pip install -r ttlens/requirements.txt
 
 ### Building the library and the application
 
-Once the dependencies are installed, building TTLens should be straightforward, and is done simply by running
+Once the dependencies are installed, building TTExaLens should be straightforward, and is done simply by running
 
 ```
 make build
 ```
 
-in TTLens home directory.
+in TTExaLens home directory.
 To be sure that the build was succesful, try running
 
 ```bash
@@ -101,37 +101,37 @@ Wheel can be installed either from the [GitHub release](https://github.com/tenst
 pip install git+https://github.com/tenstorrent/tt-lens.git
 ```
 
-To build TTLens wheel from source, simply run `make wheel` in the root directory. The installation is then done by running `pip install build/ttlens_wheel/<ttlens_wheel>.whl`, where `<ttlens_wheel>` is an automatically generated name unique for each build.
+To build TTExaLens wheel from source, simply run `make wheel` in the root directory. The installation is then done by running `pip install build/ttlens_wheel/<ttlens_wheel>.whl`, where `<ttlens_wheel>` is an automatically generated name unique for each build.
 
-## Running TTLens
+## Running TTExaLens
 
-TTLens can be run through `tt-lens.py` script or by invoking `ttlens` command after wheel installation.
-TTLens currently operates in Limited mode, with plans to extend functionality to include other modes in the future..
+TTExaLens can be run through `tt-lens.py` script or by invoking `ttlens` command after wheel installation.
+TTExaLens currently operates in Limited mode, with plans to extend functionality to include other modes in the future..
 Limited mode is entered by default, and it enables basic communication with the device, like writing to and reading from registers or device memory and running .elf files on RISC cores.
 
-TTLens can run locally or remotely.
-For remote runs, a TTLens server is needed.
-It can be started either through TTLens application.
+TTExaLens can run locally or remotely.
+For remote runs, a TTExaLens server is needed.
+It can be started either through TTExaLens application.
 
-It is also possible to write all the results from TTLens session to cache, and use them to run TTLens commands again on a system that does not have Tenstorrent hardware.
+It is also possible to write all the results from TTExaLens session to cache, and use them to run TTExaLens commands again on a system that does not have Tenstorrent hardware.
 
-GDB server can be started from TTLens, allowing features like stepping through code and breakpoints to be used through GDB client.
+GDB server can be started from TTExaLens, allowing features like stepping through code and breakpoints to be used through GDB client.
 
-For more information about how to use the TTLens application, refer to [the tutorial](./docs/ttlens-app-tutorial.md), or [the documentation](./docs/ttlens-app-docs.md).
+For more information about how to use the TTExaLens application, refer to [the tutorial](./docs/ttlens-app-tutorial.md), or [the documentation](./docs/ttlens-app-docs.md).
 
-## Using TTLens library
+## Using TTExaLens library
 
-TTLens's functionalities can also be used through ttlens library to create Python scripts that interact with Tenstorrent's hardware.
+TTExaLens's functionalities can also be used through ttlens library to create Python scripts that interact with Tenstorrent's hardware.
 For a quick start with ttlens library, check out [the tutorial](docs/ttlens-lib-tutorial.md).
 Full documentation is also available [here](docs/ttlens-lib-docs.md).
 
 ## Development
 
-### Testing TTLens
+### Testing TTExaLens
 
 #### Test dependencies
 
-Apart from the base TTLens dependencies, tests require additional python packages:
+Apart from the base TTExaLens dependencies, tests require additional python packages:
 
 - pytest,
 - coverage,

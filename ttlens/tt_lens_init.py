@@ -11,9 +11,9 @@ from ttlens import util as util
 from ttlens.context import Context, LimitedContext
 
 """
-GLOBAL_CONTEXT is a convenience variable to store fallback TTLens context object.
+GLOBAL_CONTEXT is a convenience variable to store fallback TTExaLens context object.
 If a library function needs context parameter but it isn't provided, it will use
-whatever is in GLOBAL_CONTEXT variable. This does not mean that TTLens context is
+whatever is in GLOBAL_CONTEXT variable. This does not mean that TTExaLens context is
 a singleton, as it can be explicitly provided to library functions.
 """
 GLOBAL_CONTEXT: Context = None
@@ -25,7 +25,7 @@ def init_ttlens(
     init_jtag: bool = False,
     use_noc1: bool = False,
 ) -> Context:
-    """Initializes TTLens internals by creating the device interface and TTLens context.
+    """Initializes TTExaLens internals by creating the device interface and TTExaLens context.
     Interfacing device is local, through pybind.
 
     Args:
@@ -33,7 +33,7 @@ def init_ttlens(
             caching_path (str, optional): Path to the cache file to write. If None, caching is disabled.
 
     Returns:
-            Context: TTLens context object.
+            Context: TTExaLens context object.
     """
 
     lens_ifc = tt_lens_ifc.init_pybind(wanted_devices, init_jtag, use_noc1)
@@ -48,16 +48,16 @@ def init_ttlens_remote(
     port: int = 5555,
     cache_path: str = None,
 ) -> Context:
-    """Initializes TTLens internals by creating the device interface and TTLens context.
-    Interfacing device is done remotely through TTLens client.
+    """Initializes TTExaLens internals by creating the device interface and TTExaLens context.
+    Interfacing device is done remotely through TTExaLens client.
 
     Args:
-            ip_address (str): IP address of the TTLens server. Default is 'localhost'.
-            port (int): Port number of the TTLens server interface. Default is 5555.
+            ip_address (str): IP address of the TTExaLens server. Default is 'localhost'.
+            port (int): Port number of the TTExaLens server interface. Default is 5555.
             cache_path (str, optional): Path to the cache file to write. If None, caching is disabled.
 
     Returns:
-            Context: TTLens context object.
+            Context: TTExaLens context object.
     """
 
     lens_ifc = tt_lens_ifc.connect_to_server(ip_address, port)
@@ -70,14 +70,14 @@ def init_ttlens_remote(
 def init_ttlens_cached(
     cache_path: str,
 ):
-    """Initializes TTLens internals by reading cached session data. There is no connection to the device.
+    """Initializes TTExaLens internals by reading cached session data. There is no connection to the device.
     Only cached commands are available.
 
     Args:
             cache_path (str): Path to the cache file.
 
     Returns:
-            Context: TTLens context object.
+            Context: TTExaLens context object.
     """
     if not os.path.exists(cache_path) or not os.path.isfile(cache_path):
         raise util.TTFatalException(f"Error: Cache file at {cache_path} does not exist.")
@@ -87,20 +87,20 @@ def init_ttlens_cached(
     return load_context(lens_ifc)
 
 
-def get_cluster_desc_yaml(lens_ifc: tt_lens_ifc.TTLensCommunicator) -> "tuple[util.YamlFile, util.YamlFile]":
-    """Get the runtime data and cluster description yamls through the TTLens interface."""
+def get_cluster_desc_yaml(lens_ifc: tt_lens_ifc.TTExaLensCommunicator) -> "tuple[util.YamlFile, util.YamlFile]":
+    """Get the runtime data and cluster description yamls through the TTExaLens interface."""
 
     try:
         cluster_desc_path = lens_ifc.get_cluster_description()
         cluster_desc_yaml = util.YamlFile(lens_ifc, cluster_desc_path)
     except:
-        raise util.TTFatalException("TTLens does not support cluster description. Cannot connect to device.")
+        raise util.TTFatalException("TTExaLens does not support cluster description. Cannot connect to device.")
 
     return cluster_desc_yaml
 
 
-def load_context(server_ifc: tt_lens_ifc.TTLensCommunicator, use_noc1: bool = False) -> Context:
-    """Load the TTLens context object with specified parameters."""
+def load_context(server_ifc: tt_lens_ifc.TTExaLensCommunicator, use_noc1: bool = False) -> Context:
+    """Load the TTExaLens context object with specified parameters."""
     context = LimitedContext(server_ifc, get_cluster_desc_yaml(server_ifc), use_noc1)
 
     global GLOBAL_CONTEXT
@@ -111,10 +111,10 @@ def load_context(server_ifc: tt_lens_ifc.TTLensCommunicator, use_noc1: bool = Fa
 
 def set_active_context(context: Context) -> None:
     """
-    Set the active TTLens context object.
+    Set the active TTExaLens context object.
 
     Args:
-            context (Context): TTLens context object.
+            context (Context): TTExaLens context object.
 
     Notes:
             - Every new context initialization will overwrite the currently active context.

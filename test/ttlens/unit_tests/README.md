@@ -1,8 +1,8 @@
-# TTLens tests
+# TTExaLens tests
 
-TTLens tests run on silicon.
+TTExaLens tests run on silicon.
 
-To run TTLens tests locally, run:
+To run TTExaLens tests locally, run:
 ```
 make test
 ```

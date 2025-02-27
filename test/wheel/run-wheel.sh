@@ -12,7 +12,7 @@ source ${THIS_SCRIPT_DIR}/../test-base.sh
 
 TTEXALENS_COMMANDS='h;wxy 0,0 0 0x123;brxy 0,0 0 64;gpr;d -d 0 logical-tensix virtual;x'
 
-echo -e "${YELLOW}INFO: ${NC}Running simple TTLens commands ..."
+echo -e "${YELLOW}INFO: ${NC}Running simple TTExaLens commands ..."
 tt-lens --test --commands="$TTEXALENS_COMMANDS"
 
 echo -e "${GREEN}Wheel tests passed.${NC}"

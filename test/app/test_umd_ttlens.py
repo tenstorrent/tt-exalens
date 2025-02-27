@@ -11,11 +11,11 @@ import subprocess
 import re
 
 
-class TTLensOutputVerifier:
+class TTExaLensOutputVerifier:
     def __init__(self):
         pass
 
-    def verify_start(self, runner: "TTLensTestRunner", tester: unittest.TestCase):
+    def verify_start(self, runner: "TTExaLensTestRunner", tester: unittest.TestCase):
         lines, prompt = runner.read_until_prompt()
         self.verify_startup(lines, prompt, tester)
         pass
@@ -29,7 +29,7 @@ class TTLensOutputVerifier:
         pass
 
 
-class UmdTTLensOutputVerifier(TTLensOutputVerifier):
+class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
     prompt_regex = r"^gdb:[^ ]+ device:\d+ loc:\d+-\d+ \(\d+, \d+\) > $"
 
     def __init__(self):
@@ -72,8 +72,8 @@ class UmdTTLensOutputVerifier(TTLensOutputVerifier):
         return True
 
 
-class TTLensTestRunner:
-    def __init__(self, verifier: TTLensOutputVerifier):
+class TTExaLensTestRunner:
+    def __init__(self, verifier: TTExaLensOutputVerifier):
         self.interpreter_path = sys.executable
         self.ttlens_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "tt-lens.py")
         self.process: subprocess.Popen = None
@@ -113,7 +113,7 @@ class TTLensTestRunner:
             if len(rlist) == 0:
                 if not self.is_running:
                     return None
-                raise Exception(f"Hit timeout ({timeoutSeconds}s) while waiting for output from TTLens")
+                raise Exception(f"Hit timeout ({timeoutSeconds}s) while waiting for output from TTExaLens")
         line = rlist[0].readline()
         if line.endswith("\n"):
             line = line[:-1]
@@ -157,10 +157,10 @@ class TTLensTestRunner:
             raise e
 
 
-class TestUmdTTLens(unittest.TestCase):
+class TestUmdTTExaLens(unittest.TestCase):
     @unittest.skip("Disabling this test for the moment. Something not working in CI, investigation needed.")
     def test_startup_and_exit_just_return_code(self):
-        runner = TTLensTestRunner(UmdTTLensOutputVerifier())
+        runner = TTExaLensTestRunner(UmdTTExaLensOutputVerifier())
         runner.start(self)
         runner.writeline("x")
         runner.wait()

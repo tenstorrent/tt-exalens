@@ -26,7 +26,7 @@ def start_server(
             raise util.TTFatalException("Could not start ttlens-server.")
         return ttlens_server
 
-    raise util.TTFatalException(f"Port {port} not available. A TTLens server might alreasdy be running.")
+    raise util.TTFatalException(f"Port {port} not available. A TTExaLens server might alreasdy be running.")
 
 
 def spawn_standalone_ttlens_stub(

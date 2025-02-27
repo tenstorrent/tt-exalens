@@ -23,7 +23,7 @@ def read_word_from_device(
             core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
             addr (int): Memory address to read from.
             device_id (int, default 0):	ID number of device to read from.
-            context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 
     Returns:
             int: Data read from the device.
@@ -52,7 +52,7 @@ def read_words_from_device(
             addr (int): Memory address to read from.
             device_id (int, default 0):	ID number of device to read from.
             word_count (int, default 1): Number of 4-byte words to read.
-            context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 
     Returns:
             List[int]: Data read from the device.
@@ -86,7 +86,7 @@ def read_from_device(
             addr (int): Memory address to read from.
             device_id (int, default 0): ID number of device to read from.
             num_bytes (int, default 4): Number of bytes to read.
-            context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 
     Returns:
             bytes: Data read from the device.
@@ -122,7 +122,7 @@ def write_words_to_device(
             addr (int): Memory address to write to. If multiple words are to be written, the address is the starting address.
             data (int | List[int]): 4-byte integer word to be written, or a list of them.
             device_id (int, default 0): ID number of device to write to.
-            context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 
     Returns:
             int: If the execution is successful, return value should be 4 (number of bytes written).
@@ -163,7 +163,7 @@ def write_to_device(
             addr (int):	Memory address to write to.
             data (List[int] | bytes): Data to be written. Lists are converted to bytes before writing, each element a byte. Elements must be between 0 and 255.
             device_id (int, default 0):	ID number of device to write to.
-            context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 
     Returns:
             int: If the execution is successful, return value should be number of bytes written.
@@ -211,7 +211,7 @@ def load_elf(
                     4. an OnChipCoordinate object.
             risc_id (int, default 0): RiscV ID (0: brisc, 1-3 triscs).
             device_id (int, default 0):	ID number of device to run ELF on.
-            context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
     from ttlens.debug_risc import RiscLoader, RiscDebug, RiscLoc
 
@@ -266,7 +266,7 @@ def run_elf(
                     4. an OnChipCoordinate object.
             risc_id (int, default 0): RiscV ID (0: brisc, 1-3 triscs).
             device_id (int, default 0):	ID number of device to run ELF on.
-            context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
     from ttlens.debug_risc import RiscLoader, RiscDebug, RiscLoc
 
@@ -305,7 +305,7 @@ def run_elf(
 
 def check_context(context: Context = None) -> Context:
     """Function to initialize context if not provided. By default, it starts a local
-    TTLens session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
+    TTExaLens session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
     that the context can be reused in calls to other functions.
     """
     if context is not None:
@@ -338,7 +338,7 @@ def arc_msg(
             arg0 (int): First argument to the message.
             arg1 (int): Second argument to the message.
             timeout (int): Timeout in milliseconds.
-            context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 
     Returns:
             List[int]: return code, reply0, reply1.

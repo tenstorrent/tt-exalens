@@ -21,7 +21,7 @@ pip3 install --upgrade build
 pip3 install --upgrade setuptools
 pip3 install wheel
 
-echo -e "Building TTLens ..."
+echo -e "Building TTExaLens ..."
 make clean
 make build
 

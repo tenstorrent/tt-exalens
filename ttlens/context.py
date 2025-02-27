@@ -8,7 +8,7 @@ from ttlens.coordinate import OnChipCoordinate
 from ttlens import util as util
 from ttlens.firmware import ELF
 
-# All-encompassing structure representing a TTLens context
+# All-encompassing structure representing a TTExaLens context
 class Context:
     def __init__(self, server_ifc, cluster_desc, short_name, use_noc1=False):
         self.server_ifc = server_ifc

@@ -30,7 +30,7 @@ def arc_dbg_fw_send_message(message, arg0: int = 0, arg1: int = 0, device_id: in
         arg0 (int, default 0): First argument to the message.
         arg1 (int, default 0): Second argument to the message.
         device_id (int, default 0): ID number of device to send message to.
-        context (Context, optional): TTLens context object used for interaction with device. If None, global context is used and potentially initialized.
+        context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
     # // Message format in scratch_2:
     # // +-----------+-----------+-----------+-----------+

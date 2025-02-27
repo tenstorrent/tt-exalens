@@ -47,7 +47,7 @@ namespace tt {
     X(PerfPostProcess) \
     X(PerfCheck)       \
     X(PerfInfra)       \
-    X(TTLens)          \
+    X(TTExaLens)          \
     X(Firmware)        \
     X(SiliconDriver)   \
     X(Trisc0)          \

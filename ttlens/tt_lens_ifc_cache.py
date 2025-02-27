@@ -6,17 +6,17 @@ import io
 import os
 import pickle
 
-from ttlens.tt_lens_ifc_base import TTLensCommunicator
+from ttlens.tt_lens_ifc_base import TTExaLensCommunicator
 from ttlens import util as util
 
 
 """
-This module provides a cache for the TTLens interface. It can be used to store the results of device communications,
+This module provides a cache for the TTExaLens interface. It can be used to store the results of device communications,
 or load state from the previous run. This is useful when the device is not available.
 """
 
 
-class TTLensCache(TTLensCommunicator):
+class TTExaLensCache(TTExaLensCommunicator):
     """
     Base caching class that provides cache dictionary and a function to save the cache to a file.
     """
@@ -32,12 +32,12 @@ class TTLensCache(TTLensCommunicator):
             util.INFO(f"  Saved {len(self.cache)} entries")
 
 
-class TTLensCacheThrough(TTLensCache):
+class TTExaLensCacheThrough(TTExaLensCache):
     """
     A class for caching the return values or device calls. Caching is implemented using a decorator.
 
     Args:
-        communicator (TTLensCommunicator): The interface that contacts the device.
+        communicator (TTExaLensCommunicator): The interface that contacts the device.
         filepath (str): The path to save the cache file. Default is "ttlens_cache.pkl".
     """
 
@@ -142,7 +142,7 @@ class TTLensCacheThrough(TTLensCache):
         return True
 
 
-class TTLensCacheReader(TTLensCache):
+class TTExaLensCacheReader(TTExaLensCache):
     """
     A class for reading the cache file. It imitates the high-level interface used to communicate with the device.
     Reading is implemented using a decorator.
@@ -267,11 +267,11 @@ class TTLensCacheReader(TTLensCache):
 
 
 def init_cache_writer(original_communicator, filepath="ttlens_cache.pkl"):
-    communicator = TTLensCacheThrough(original_communicator, filepath)
+    communicator = TTExaLensCacheThrough(original_communicator, filepath)
     atexit.register(communicator.save)
     return communicator
 
 
 def init_cache_reader(filepath="ttlens_cache.pkl"):
-    communicator = TTLensCacheReader(filepath)
+    communicator = TTExaLensCacheReader(filepath)
     return communicator
