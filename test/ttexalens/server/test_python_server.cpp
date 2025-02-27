@@ -148,7 +148,9 @@ static void call_python_server(const std::string& python_args, int port = DEFAUL
     call_python(python_tests_path, simulation_server.get_port(), python_args, "pass\n");
 }
 
-TEST(ttexalens_python_empty_server, get_cluster_description) { call_python_empty_server("empty_get_cluster_description"); }
+TEST(ttexalens_python_empty_server, get_cluster_description) {
+    call_python_empty_server("empty_get_cluster_description");
+}
 
 TEST(ttexalens_python_empty_server, pci_read32) { call_python_empty_server("empty_pci_read32"); }
 
@@ -186,7 +188,9 @@ TEST(ttexalens_python_server, convert_from_noc0) { call_python_server("convert_f
 
 TEST(ttexalens_python_server, jtag_write32_jtag_read32) { call_python_server("jtag_write32_jtag_read32"); }
 
-TEST(ttexalens_python_server, jtag_write32_axi_jtag_read32_axi) { call_python_server("jtag_write32_axi_jtag_read32_axi"); }
+TEST(ttexalens_python_server, jtag_write32_axi_jtag_read32_axi) {
+    call_python_server("jtag_write32_axi_jtag_read32_axi");
+}
 
 TEST(ttexalens_python_server, get_device_ids) { call_python_server("get_device_ids"); }
 

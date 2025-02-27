@@ -53,7 +53,9 @@ static void call_python(const std::string& python_args, const std::string& expec
 
 TEST(ttexalens_python_communication, ping) { call_python("ping", "- type: 1\n"); }
 
-TEST(ttexalens_python_communication, get_cluster_description) { call_python("get_cluster_description", "- type: 102\n"); }
+TEST(ttexalens_python_communication, get_cluster_description) {
+    call_python("get_cluster_description", "- type: 102\n");
+}
 
 TEST(ttexalens_python_communication, get_device_ids) { call_python("get_device_ids", "- type: 18\n"); }
 
@@ -106,7 +108,9 @@ TEST(ttexalens_python_communication, pci_write) {
         "15, 16, 17]\n");
 }
 
-TEST(ttexalens_python_communication, get_file) { call_python("get_file", "- type: 200\n  size: 9\n  path: test_file\n"); }
+TEST(ttexalens_python_communication, get_file) {
+    call_python("get_file", "- type: 200\n  size: 9\n  path: test_file\n");
+}
 
 TEST(ttexalens_python_communication, jtag_read32) {
     call_python("jtag_read32", "- type: 50\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n");

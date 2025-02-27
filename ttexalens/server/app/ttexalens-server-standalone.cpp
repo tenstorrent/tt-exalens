@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-// The main purpose of this file is to create a ttexalens-server (see loader/ttexalens_server.cpp) so that TTExaLens can connect
-// to it.
+// The main purpose of this file is to create a ttexalens-server (see loader/ttexalens_server.cpp) so that TTExaLens can
+// connect to it.
 #include <ctime>
 #include <filesystem>
 #include <iostream>
