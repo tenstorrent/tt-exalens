@@ -90,7 +90,7 @@ class BlackholeDevice(Device):
     __register_map = {
         # UNPACK TILE DESCRIPTOR SEC0
         "UNPACK_TILE_DESCRIPTOR0_in_data_format": ConfigurationRegisterDescription(
-            index=64, mask=0xF, shift=0, data_type=DATA_TYPE.DATA_FORMAT
+            index=64, mask=0xF, shift=0, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "UNPACK_TILE_DESCRIPTOR0_uncompressed": ConfigurationRegisterDescription(
             index=64, mask=0x10, shift=4, data_type=DATA_TYPE.FLAG
@@ -130,7 +130,7 @@ class BlackholeDevice(Device):
         ),
         # UNPACK TILE DESCRIPTOR SEC1
         "UNPACK_TILE_DESCRIPTOR1_in_data_format": ConfigurationRegisterDescription(
-            index=112, mask=0xF, shift=0, data_type=DATA_TYPE.DATA_FORMAT
+            index=112, mask=0xF, shift=0, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "UNPACK_TILE_DESCRIPTOR1_uncompressed": ConfigurationRegisterDescription(
             index=112, mask=0x10, shift=4, data_type=DATA_TYPE.FLAG
@@ -170,7 +170,7 @@ class BlackholeDevice(Device):
         ),
         # UNPACK CONFIG SEC 0
         "UNPACK_CONFIG0_out_data_format": ConfigurationRegisterDescription(
-            index=72, mask=0xF, shift=0, data_type=DATA_TYPE.DATA_FORMAT
+            index=72, mask=0xF, shift=0, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "UNPACK_CONFIG0_throttle_mode": ConfigurationRegisterDescription(
             index=72, mask=0x30, shift=4, data_type=DATA_TYPE.MODE
@@ -237,7 +237,7 @@ class BlackholeDevice(Device):
         ),
         # UNPACK CONFIG SEC 1
         "UNPACK_CONFIG1_out_data_format": ConfigurationRegisterDescription(
-            index=120, mask=0xF, shift=0, data_type=DATA_TYPE.DATA_FORMAT
+            index=120, mask=0xF, shift=0, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "UNPACK_CONFIG1_throttle_mode": ConfigurationRegisterDescription(
             index=120, mask=0x30, shift=4, data_type=DATA_TYPE.MODE
@@ -328,13 +328,13 @@ class BlackholeDevice(Device):
             index=1, mask=0x10000, shift=16, data_type=DATA_TYPE.FLAG
         ),
         "ALU_FORMAT_SPEC_REG0_SrcA": ConfigurationRegisterDescription(
-            index=1, mask=0x1E0000, shift=17, data_type=DATA_TYPE.DATA_FORMAT
+            index=1, mask=0x1E0000, shift=17, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "ALU_FORMAT_SPEC_REG1_SrcB": ConfigurationRegisterDescription(
-            index=1, mask=0x1E00000, shift=21, data_type=DATA_TYPE.DATA_FORMAT
+            index=1, mask=0x1E00000, shift=21, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "ALU_FORMAT_SPEC_REG2_Dstacc": ConfigurationRegisterDescription(
-            index=1, mask=0x1E000000, shift=25, data_type=DATA_TYPE.DATA_FORMAT
+            index=1, mask=0x1E000000, shift=25, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "ALU_ACC_CTRL_Fp32_enabled": ConfigurationRegisterDescription(
             index=1, mask=0x20000000, shift=29, data_type=DATA_TYPE.FLAG
@@ -368,10 +368,10 @@ class BlackholeDevice(Device):
             index=70, mask=0x8, shift=3, data_type=DATA_TYPE.RESERVED
         ),
         "PACK_CONFIG01_out_data_format": ConfigurationRegisterDescription(
-            index=70, mask=0xF0, shift=4, data_type=DATA_TYPE.DATA_FORMAT
+            index=70, mask=0xF0, shift=4, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG01_in_data_format": ConfigurationRegisterDescription(
-            index=70, mask=0xF00, shift=8, data_type=DATA_TYPE.DATA_FORMAT
+            index=70, mask=0xF00, shift=8, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG01_dis_shared_exp_assembler": ConfigurationRegisterDescription(
             index=70, mask=0x1000, shift=12, data_type=DATA_TYPE.FLAG
@@ -418,16 +418,16 @@ class BlackholeDevice(Device):
             index=2, mask=0x400000, shift=22, data_type=DATA_TYPE.FLAG
         ),
         "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(
-            index=2, mask=0x3800000, shift=23, data_type=DATA_TYPE.THREE_BIT_FLAG
+            index=2, mask=0x3800000, shift=23, data_type=DATA_TYPE.FLAGS
         ),
         "DISABLE_RISC_BP_Disable_ncrisc": ConfigurationRegisterDescription(
             index=2, mask=0x4000000, shift=26, data_type=DATA_TYPE.FLAG
         ),
         "DISABLE_RISC_BP_Disable_bmp_clear_main": ConfigurationRegisterDescription(
-            index=2, mask=0x8000000, shift=27, data_type=DATA_TYPE.THREE_BIT_FLAG
+            index=2, mask=0x8000000, shift=27, data_type=DATA_TYPE.FLAG
         ),
         "DISABLE_RISC_BP_Disable_bmp_clear_trisc": ConfigurationRegisterDescription(
-            index=2, mask=0x70000000, shift=28, data_type=DATA_TYPE.FLAG
+            index=2, mask=0x70000000, shift=28, data_type=DATA_TYPE.FLAGS
         ),
         "DISABLE_RISC_BP_Disable_bmp_clear_ncrisc": ConfigurationRegisterDescription(
             index=2, mask=0x80000000, shift=31
@@ -642,65 +642,45 @@ class BlackholeDevice(Device):
         "PORT2_FLIT_COUNTER_UPPER": NocControlRegisterDescription(address=0x5C0),  # 16 instances
     }
 
-    def get_alu_config(self) -> list[dict]:
-        alu_config = {}
-
-        alu_config["Fpu_srnd_en"] = "ALU_ROUNDING_MODE_Fpu_srnd_en"
-        alu_config["Gasket_srnd_en"] = "ALU_ROUNDING_MODE_Gasket_srnd_en"
-        alu_config["Packer_srnd_en"] = "ALU_ROUNDING_MODE_Packer_srnd_en"
-        alu_config["Padding"] = "ALU_ROUNDING_MODE_Padding"
-        alu_config["GS_LF"] = "ALU_ROUNDING_MODE_GS_LF"
-        alu_config["Bfp8_HF"] = "ALU_ROUNDING_MODE_Bfp8_HF"
-        alu_config["SrcAUnsigned"] = "ALU_FORMAT_SPEC_REG0_SrcAUnsigned"
-        alu_config["SrcBUnsigned"] = "ALU_FORMAT_SPEC_REG0_SrcBUnsigned"
-        alu_config["Format_SrcA"] = "ALU_FORMAT_SPEC_REG0_SrcA"
-        alu_config["Format_SrcB"] = "ALU_FORMAT_SPEC_REG1_SrcB"
-        alu_config["Format_Dstacc"] = "ALU_FORMAT_SPEC_REG2_Dstacc"
-        alu_config["Fp32_enabled"] = "ALU_ACC_CTRL_Fp32_enabled"
-        alu_config["SFPU_Fp32_enabled"] = "ALU_ACC_CTRL_SFPU_Fp32_enabled"
-        alu_config["INT8_math_enabled"] = "ALU_ACC_CTRL_INT8_math_enabled"
-
-        return [alu_config]
+    def get_alu_config(self) -> List[dict]:
+        return [
+            {
+                "Fpu_srnd_en": "ALU_ROUNDING_MODE_Fpu_srnd_en",
+                "Gasket_srnd_en": "ALU_ROUNDING_MODE_Gasket_srnd_en",
+                "Packer_srnd_en": "ALU_ROUNDING_MODE_Packer_srnd_en",
+                "Padding": "ALU_ROUNDING_MODE_Padding",
+                "GS_LF": "ALU_ROUNDING_MODE_GS_LF",
+                "Bfp8_HF": "ALU_ROUNDING_MODE_Bfp8_HF",
+                "SrcAUnsigned": "ALU_FORMAT_SPEC_REG0_SrcAUnsigned",
+                "SrcBUnsigned": "ALU_FORMAT_SPEC_REG0_SrcBUnsigned",
+                "Format_SrcA": "ALU_FORMAT_SPEC_REG0_SrcA",
+                "Format_SrcB": "ALU_FORMAT_SPEC_REG1_SrcB",
+                "Format_Dstacc": "ALU_FORMAT_SPEC_REG2_Dstacc",
+                "Fp32_enabled": "ALU_ACC_CTRL_Fp32_enabled",
+                "SFPU_Fp32_enabled": "ALU_ACC_CTRL_SFPU_Fp32_enabled",
+                "INT8_math_enabled": "ALU_ACC_CTRL_INT8_math_enabled",
+            }
+        ]
 
     def get_unpack_tile_descriptor(self) -> list[dict]:
         struct_name = "UNPACK_TILE_DESCRIPTOR"
-        tile_descriptor_list = []
+        fields = [
+            "in_data_format",
+            "uncompressed",
+            "reserved_0",
+            "blobs_per_xy_plane",
+            "reserved_1",
+            "x_dim",
+            "y_dim",
+            "z_dim",
+            "w_dim",
+            "blobs_y_start_lo",
+            "blobs_y_start_hi",
+            "digest_type",
+            "digest_size",
+        ]
 
-        for i in range(self.NUM_UNPACKERS):
-            tile_descriptor = {}
-
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "in_data_format"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "uncompressed"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "reserved_0"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "blobs_per_xy_plane"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "reserved_1"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "x_dim"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "y_dim"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "z_dim"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "w_dim"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "blobs_y_start_lo"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "blobs_y_start_hi"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "digest_type"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "digest_size"
-            tile_descriptor[field_name] = register_name + field_name
-
-            tile_descriptor_list.append(tile_descriptor)
-
-        return tile_descriptor_list
+        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
     def get_unpack_config(self) -> list[dict]:
         struct_name = "UNPACK_CONFIG"

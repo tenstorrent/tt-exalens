@@ -443,32 +443,32 @@ class Device(TTObject):
 
     # ALU GETTER
     def get_alu_config(self) -> list[dict]:
-        pass
+        return []
 
     # UNPACKER GETTERS
 
     def get_unpack_tile_descriptor(self) -> list[dict]:
-        pass
+        return []
 
     def get_unpack_config(self) -> list[dict]:
-        pass
+        return []
 
     # PACKER GETTERS
 
     def get_pack_config(self) -> list[dict]:
-        pass
+        return []
 
     def get_relu_config(self) -> list[dict]:
-        pass
+        return []
 
     def get_pack_dest_rd_ctrl(self) -> list[dict]:
-        pass
+        return []
 
     def get_pack_edge_offset(self) -> list[dict]:
-        pass
+        return []
 
     def get_pack_counters(self) -> list[dict]:
-        pass
+        return []
 
     @abstractmethod
     def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:

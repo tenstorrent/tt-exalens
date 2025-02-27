@@ -35,7 +35,7 @@ from ttlens.uistate import UIState
 from ttlens.debug_tensix import TensixDebug
 from ttlens.device import Device
 from ttlens import commands
-from ttlens.util import convert_value, put_table_list_side_by_side, INFO, CLR_GREEN, CLR_END
+from ttlens.util import convert_value, put_table_list_side_by_side, INFO, CLR_GREEN, CLR_END, dict_list_to_table
 
 from tabulate import tabulate
 
@@ -48,37 +48,28 @@ def create_column_names(num_of_columns):
 
 
 # Converts list of configuration registers to table
-def config_regs_to_table(
-    config_regs: list[dict], table_name: str, column_names: list[str], debug_tensix: TensixDebug, device: Device
-):
-    keys = config_regs[0]
-    data = []
-    for key in keys:
-        if key == "blobs_y_start_lo":
-            continue
-        elif key == "blobs_y_start_hi":
-            row = ["blobs_y_start"]
-        else:
-            row = [key]
+def config_regs_to_table(config_regs: list[dict], table_name: str, debug_tensix: TensixDebug, device: Device):
+    keys = list(config_regs[0].keys())
+
+    if "blobs_y_start_lo" in keys and "blobs_y_start_hi" in keys:
         for config in config_regs:
-            if key == "blobs_y_start_hi":
-                row.append(
-                    (debug_tensix.read_tensix_register(config["blobs_y_start_hi"]) << 16)
-                    + debug_tensix.read_tensix_register(config["blobs_y_start_lo"])
-                )
-                continue
-            if key == "blobs_y_start_low":
-                continue
+            config["blobs_y_start"] = (
+                debug_tensix.read_tensix_register(config["blobs_y_start_hi"]) << 16
+            ) + debug_tensix.read_tensix_register(config["blobs_y_start_hi"])
+            del config["blobs_y_start_lo"]
+            del config["blobs_y_start_hi"]
+
+        keys.remove("blobs_y_start_lo")
+        keys.remove("blobs_y_start_hi")
+
+    for config in config_regs:
+        for key in keys:
             if key in config:
                 value = debug_tensix.read_tensix_register(config[key])
-                row.append(convert_value(value, device.get_tensix_register_description(config[key]).data_type))
-            else:
-                row.append("/")
-        data.append(row)
+                reg_desc = device.get_tensix_register_description(config[key])
+                config[key] = convert_value(value, reg_desc.data_type, bin(reg_desc.mask).count("1"))
 
-    headers = [table_name] + column_names
-
-    return tabulate(data, headers=headers, tablefmt="simple_outline", colalign=("left",) * len(headers))
+    return dict_list_to_table(config_regs, table_name, create_column_names(len(config_regs)))
 
 
 def run(cmd_text, context, ui_state: UIState = None):
@@ -103,9 +94,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                     print("Not supported on grayskull")
                 else:
                     alu_config = device.get_alu_config()
-                    alu_config_table = config_regs_to_table(
-                        alu_config, "ALU CONFIG", create_column_names(len(alu_config)), debug_tensix, device
-                    )
+                    alu_config_table = config_regs_to_table(alu_config, "ALU CONFIG", debug_tensix, device)
                     print(alu_config_table)
 
             if cfg == "unpack" or cfg == "all":
@@ -114,12 +103,8 @@ def run(cmd_text, context, ui_state: UIState = None):
                 tile_descriptor = device.get_unpack_tile_descriptor()
                 unpack_config = device.get_unpack_config()
 
-                tile_descriptor_table = config_regs_to_table(
-                    tile_descriptor, "TILE DESCRIPTOR", create_column_names(len(tile_descriptor)), debug_tensix, device
-                )
-                unpack_config_table = config_regs_to_table(
-                    unpack_config, "UNPACK CONFIG", create_column_names(len(unpack_config)), debug_tensix, device
-                )
+                tile_descriptor_table = config_regs_to_table(tile_descriptor, "TILE DESCRIPTOR", debug_tensix, device)
+                unpack_config_table = config_regs_to_table(unpack_config, "UNPACK CONFIG", debug_tensix, device)
 
                 print(put_table_list_side_by_side([unpack_config_table, tile_descriptor_table]))
 
@@ -131,29 +116,17 @@ def run(cmd_text, context, ui_state: UIState = None):
                 edge_offset = device.get_pack_edge_offset()
                 pack_strides = device.get_pack_strides()
 
-                pack_config_table = config_regs_to_table(
-                    pack_config, "PACK CONFIG", create_column_names(len(pack_config)), debug_tensix, device
-                )
-                pack_counters_table = config_regs_to_table(
-                    pack_counters, "COUNTERS", create_column_names(len(pack_counters)), debug_tensix, device
-                )
-                edge_offset_table = config_regs_to_table(
-                    edge_offset, "EDGE OFFSET", create_column_names(len(edge_offset)), debug_tensix, device
-                )
-                pack_strides_table = config_regs_to_table(
-                    pack_strides, "STRIDES", create_column_names(len(pack_strides)), debug_tensix, device
-                )
+                pack_config_table = config_regs_to_table(pack_config, "PACK CONFIG", debug_tensix, device)
+                pack_counters_table = config_regs_to_table(pack_counters, "COUNTERS", debug_tensix, device)
+                edge_offset_table = config_regs_to_table(edge_offset, "EDGE OFFSET", debug_tensix, device)
+                pack_strides_table = config_regs_to_table(pack_strides, "STRIDES", debug_tensix, device)
 
                 if device._arch == "wormhole_b0" or device._arch == "blackhole":
                     relu_config = device.get_relu_config()
                     dest_rd_ctrl = device.get_pack_dest_rd_ctrl()
 
-                    relu_config_table = config_regs_to_table(
-                        relu_config, "RELU CONFIG", create_column_names(len(relu_config)), debug_tensix, device
-                    )
-                    dest_rd_ctrl_table = config_regs_to_table(
-                        dest_rd_ctrl, "DEST RD CTRL", create_column_names(len(dest_rd_ctrl)), debug_tensix, device
-                    )
+                    relu_config_table = config_regs_to_table(relu_config, "RELU CONFIG", debug_tensix, device)
+                    dest_rd_ctrl_table = config_regs_to_table(dest_rd_ctrl, "DEST RD CTRL", debug_tensix, device)
 
                     print(put_table_list_side_by_side([edge_offset_table, pack_counters_table, dest_rd_ctrl_table]))
                     print(put_table_list_side_by_side([pack_config_table, relu_config_table, pack_strides_table]))

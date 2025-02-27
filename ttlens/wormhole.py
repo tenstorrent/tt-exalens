@@ -97,7 +97,7 @@ class WormholeDevice(Device):
     __register_map = {
         # UNPACK TILE DESCRIPTOR SEC 0
         "UNPACK_TILE_DESCRIPTOR0_in_data_format": ConfigurationRegisterDescription(
-            index=52, mask=0xF, shift=0, data_type=DATA_TYPE.DATA_FORMAT
+            index=52, mask=0xF, shift=0, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "UNPACK_TILE_DESCRIPTOR0_uncompressed": ConfigurationRegisterDescription(
             index=52, mask=0x10, shift=4, data_type=DATA_TYPE.FLAG
@@ -137,7 +137,7 @@ class WormholeDevice(Device):
         ),
         # UNPACK TILE DESCRIPTOR SEC 1
         "UNPACK_TILE_DESCRIPTOR1_in_data_format": ConfigurationRegisterDescription(
-            index=92, mask=0xF, shift=0, data_type=DATA_TYPE.DATA_FORMAT
+            index=92, mask=0xF, shift=0, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "UNPACK_TILE_DESCRIPTOR1_uncompressed": ConfigurationRegisterDescription(
             index=92, mask=0x10, shift=4, data_type=DATA_TYPE.FLAG
@@ -177,7 +177,7 @@ class WormholeDevice(Device):
         ),
         # UNPACK CONFIG SEC 0
         "UNPACK_CONFIG0_out_data_format": ConfigurationRegisterDescription(
-            index=60, mask=0xF, shift=0, data_type=DATA_TYPE.DATA_FORMAT
+            index=60, mask=0xF, shift=0, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "UNPACK_CONFIG0_throttle_mode": ConfigurationRegisterDescription(
             index=60, mask=0x30, shift=4, data_type=DATA_TYPE.MODE
@@ -244,7 +244,7 @@ class WormholeDevice(Device):
         ),
         # UNPACK CONFIG SEC 1
         "UNPACK_CONFIG1_out_data_format": ConfigurationRegisterDescription(
-            index=100, mask=0xF, shift=0, data_type=DATA_TYPE.DATA_FORMAT
+            index=100, mask=0xF, shift=0, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "UNPACK_CONFIG1_throttle_mode": ConfigurationRegisterDescription(
             index=100, mask=0x30, shift=4, data_type=DATA_TYPE.MODE
@@ -335,13 +335,13 @@ class WormholeDevice(Device):
             index=1, mask=0x10000, shift=16, data_type=DATA_TYPE.FLAG
         ),
         "ALU_FORMAT_SPEC_REG0_SrcA": ConfigurationRegisterDescription(
-            index=1, mask=0x1E0000, shift=17, data_type=DATA_TYPE.DATA_FORMAT
+            index=1, mask=0x1E0000, shift=17, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "ALU_FORMAT_SPEC_REG1_SrcB": ConfigurationRegisterDescription(
-            index=1, mask=0x1E00000, shift=21, data_type=DATA_TYPE.DATA_FORMAT
+            index=1, mask=0x1E00000, shift=21, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "ALU_FORMAT_SPEC_REG2_Dstacc": ConfigurationRegisterDescription(
-            index=1, mask=0x1E000000, shift=25, data_type=DATA_TYPE.DATA_FORMAT
+            index=1, mask=0x1E000000, shift=25, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "ALU_ACC_CTRL_Fp32_enabled": ConfigurationRegisterDescription(
             index=1, mask=0x20000000, shift=29, data_type=DATA_TYPE.FLAG
@@ -372,10 +372,10 @@ class WormholeDevice(Device):
             index=58, mask=0xC, shift=2, data_type=DATA_TYPE.RESERVED
         ),
         "PACK_CONFIG01_out_data_format": ConfigurationRegisterDescription(
-            index=58, mask=0xF0, shift=4, data_type=DATA_TYPE.DATA_FORMAT
+            index=58, mask=0xF0, shift=4, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG01_in_data_format": ConfigurationRegisterDescription(
-            index=58, mask=0xF00, shift=8, data_type=DATA_TYPE.DATA_FORMAT
+            index=58, mask=0xF00, shift=8, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG01_reserved_1": ConfigurationRegisterDescription(
             index=58, mask=0xF000, shift=12, data_type=DATA_TYPE.RESERVED
@@ -402,7 +402,7 @@ class WormholeDevice(Device):
             index=59, mask=0x100000, shift=20, data_type=DATA_TYPE.FLAG
         ),
         "PACK_CONFIG01_pack_l1_acc_disable_pack_zero_flag": ConfigurationRegisterDescription(
-            index=59, mask=0x600000, shift=21, data_type=DATA_TYPE.THREE_BIT_FLAG
+            index=59, mask=0x600000, shift=21, data_type=DATA_TYPE.FLAGS
         ),
         "PACK_CONFIG01_reserved_2": ConfigurationRegisterDescription(
             index=59, mask=0x800000, shift=23, data_type=DATA_TYPE.RESERVED
@@ -430,10 +430,10 @@ class WormholeDevice(Device):
             index=86, mask=0xC, shift=2, data_type=DATA_TYPE.RESERVED
         ),
         "PACK_CONFIG08_out_data_format": ConfigurationRegisterDescription(
-            index=86, mask=0xF0, shift=4, data_type=DATA_TYPE.DATA_FORMAT
+            index=86, mask=0xF0, shift=4, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG08_in_data_format": ConfigurationRegisterDescription(
-            index=86, mask=0xF00, shift=8, data_type=DATA_TYPE.DATA_FORMAT
+            index=86, mask=0xF00, shift=8, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG08_reserved_1": ConfigurationRegisterDescription(
             index=86, mask=0xF000, shift=12, data_type=DATA_TYPE.RESERVED
@@ -460,7 +460,7 @@ class WormholeDevice(Device):
             index=87, mask=0x100000, shift=20, data_type=DATA_TYPE.FLAG
         ),
         "PACK_CONFIG08_pack_l1_acc_disable_pack_zero_flag": ConfigurationRegisterDescription(
-            index=87, mask=0x600000, shift=21, data_type=DATA_TYPE.THREE_BIT_FLAG
+            index=87, mask=0x600000, shift=21, data_type=DATA_TYPE.FLAGS
         ),
         "PACK_CONFIG08_reserved_2": ConfigurationRegisterDescription(
             index=87, mask=0x800000, shift=23, data_type=DATA_TYPE.RESERVED
@@ -488,10 +488,10 @@ class WormholeDevice(Device):
             index=98, mask=0xC, shift=2, data_type=DATA_TYPE.RESERVED
         ),
         "PACK_CONFIG11_out_data_format": ConfigurationRegisterDescription(
-            index=98, mask=0xF0, shift=4, data_type=DATA_TYPE.DATA_FORMAT
+            index=98, mask=0xF0, shift=4, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG11_in_data_format": ConfigurationRegisterDescription(
-            index=98, mask=0xF00, shift=8, data_type=DATA_TYPE.DATA_FORMAT
+            index=98, mask=0xF00, shift=8, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG11_reserved_1": ConfigurationRegisterDescription(
             index=98, mask=0xF000, shift=12, data_type=DATA_TYPE.RESERVED
@@ -518,7 +518,7 @@ class WormholeDevice(Device):
             index=99, mask=0x100000, shift=20, data_type=DATA_TYPE.FLAG
         ),
         "PACK_CONFIG11_pack_l1_acc_disable_pack_zero_flag": ConfigurationRegisterDescription(
-            index=99, mask=0x600000, shift=21, data_type=DATA_TYPE.THREE_BIT_FLAG
+            index=99, mask=0x600000, shift=21, data_type=DATA_TYPE.FLAGS
         ),
         "PACK_CONFIG11_reserved_2": ConfigurationRegisterDescription(
             index=99, mask=0x800000, shift=23, data_type=DATA_TYPE.RESERVED
@@ -546,10 +546,10 @@ class WormholeDevice(Device):
             index=126, mask=0xC, shift=2, data_type=DATA_TYPE.RESERVED
         ),
         "PACK_CONFIG18_out_data_format": ConfigurationRegisterDescription(
-            index=126, mask=0xF0, shift=4, data_type=DATA_TYPE.DATA_FORMAT
+            index=126, mask=0xF0, shift=4, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG18_in_data_format": ConfigurationRegisterDescription(
-            index=126, mask=0xF00, shift=8, data_type=DATA_TYPE.DATA_FORMAT
+            index=126, mask=0xF00, shift=8, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG18_reserved_1": ConfigurationRegisterDescription(
             index=126, mask=0xF000, shift=12, data_type=DATA_TYPE.RESERVED
@@ -576,7 +576,7 @@ class WormholeDevice(Device):
             index=127, mask=0x100000, shift=20, data_type=DATA_TYPE.FLAG
         ),
         "PACK_CONFIG18_pack_l1_acc_disable_pack_zero_flag": ConfigurationRegisterDescription(
-            index=127, mask=0x600000, shift=21, data_type=DATA_TYPE.THREE_BIT_FLAG
+            index=127, mask=0x600000, shift=21, data_type=DATA_TYPE.FLAGS
         ),
         "PACK_CONFIG18_reserved_2": ConfigurationRegisterDescription(
             index=127, mask=0x800000, shift=23, data_type=DATA_TYPE.RESERVED
@@ -599,7 +599,7 @@ class WormholeDevice(Device):
             index=2, mask=0x400000, shift=22, data_type=DATA_TYPE.FLAG
         ),
         "DISABLE_RISC_BP_Disable_trisc": ConfigurationRegisterDescription(
-            index=2, mask=0x3800000, shift=23, data_type=DATA_TYPE.THREE_BIT_FLAG
+            index=2, mask=0x3800000, shift=23, data_type=DATA_TYPE.FLAGS
         ),
         "DISABLE_RISC_BP_Disable_ncrisc": ConfigurationRegisterDescription(
             index=2, mask=0x4000000, shift=26, data_type=DATA_TYPE.FLAG
@@ -608,7 +608,7 @@ class WormholeDevice(Device):
             index=2, mask=0x8000000, shift=27, data_type=DATA_TYPE.FLAG
         ),
         "DISABLE_RISC_BP_Disable_bmp_clear_trisc": ConfigurationRegisterDescription(
-            index=2, mask=0x70000000, shift=28, data_type=DATA_TYPE.THREE_BIT_FLAG
+            index=2, mask=0x70000000, shift=28, data_type=DATA_TYPE.FLAGS
         ),
         "DISABLE_RISC_BP_Disable_bmp_clear_ncrisc": ConfigurationRegisterDescription(
             index=2, mask=0x80000000, shift=31, data_type=DATA_TYPE.FLAG
@@ -864,275 +864,163 @@ class WormholeDevice(Device):
         return list(self.__debug_bus_signal_map.keys())
 
     def get_alu_config(self) -> List[dict]:
-        alu_config = {}
-
-        alu_config["Fpu_srnd_en"] = "ALU_ROUNDING_MODE_Fpu_srnd_en"
-        alu_config["Gasket_srnd_en"] = "ALU_ROUNDING_MODE_Gasket_srnd_en"
-        alu_config["Packer_srnd_en"] = "ALU_ROUNDING_MODE_Packer_srnd_en"
-        alu_config["Padding"] = "ALU_ROUNDING_MODE_Padding"
-        alu_config["GS_LF"] = "ALU_ROUNDING_MODE_GS_LF"
-        alu_config["Bfp8_HF"] = "ALU_ROUNDING_MODE_Bfp8_HF"
-        alu_config["SrcAUnsigned"] = "ALU_FORMAT_SPEC_REG0_SrcAUnsigned"
-        alu_config["SrcBUnsigned"] = "ALU_FORMAT_SPEC_REG0_SrcBUnsigned"
-        alu_config["Format_SrcA"] = "ALU_FORMAT_SPEC_REG0_SrcA"
-        alu_config["Format_SrcB"] = "ALU_FORMAT_SPEC_REG1_SrcB"
-        alu_config["Format_Dstacc"] = "ALU_FORMAT_SPEC_REG2_Dstacc"
-        alu_config["Fp32_enabled"] = "ALU_ACC_CTRL_Fp32_enabled"
-        alu_config["SFPU_Fp32_enabled"] = "ALU_ACC_CTRL_SFPU_Fp32_enabled"
-        alu_config["INT8_math_enabled"] = "ALU_ACC_CTRL_INT8_math_enabled"
-
-        return [alu_config]
+        return [
+            {
+                "Fpu_srnd_en": "ALU_ROUNDING_MODE_Fpu_srnd_en",
+                "Gasket_srnd_en": "ALU_ROUNDING_MODE_Gasket_srnd_en",
+                "Packer_srnd_en": "ALU_ROUNDING_MODE_Packer_srnd_en",
+                "Padding": "ALU_ROUNDING_MODE_Padding",
+                "GS_LF": "ALU_ROUNDING_MODE_GS_LF",
+                "Bfp8_HF": "ALU_ROUNDING_MODE_Bfp8_HF",
+                "SrcAUnsigned": "ALU_FORMAT_SPEC_REG0_SrcAUnsigned",
+                "SrcBUnsigned": "ALU_FORMAT_SPEC_REG0_SrcBUnsigned",
+                "Format_SrcA": "ALU_FORMAT_SPEC_REG0_SrcA",
+                "Format_SrcB": "ALU_FORMAT_SPEC_REG1_SrcB",
+                "Format_Dstacc": "ALU_FORMAT_SPEC_REG2_Dstacc",
+                "Fp32_enabled": "ALU_ACC_CTRL_Fp32_enabled",
+                "SFPU_Fp32_enabled": "ALU_ACC_CTRL_SFPU_Fp32_enabled",
+                "INT8_math_enabled": "ALU_ACC_CTRL_INT8_math_enabled",
+            }
+        ]
 
     # UNPACKER GETTERS
 
-    def get_unpack_tile_descriptor(self):
+    def get_unpack_tile_descriptor(self) -> list[dict]:
         struct_name = "UNPACK_TILE_DESCRIPTOR"
-        tile_descriptor_list = []
+        fields = [
+            "in_data_format",
+            "uncompressed",
+            "reserved_0",
+            "blobs_per_xy_plane",
+            "reserved_1",
+            "x_dim",
+            "y_dim",
+            "z_dim",
+            "w_dim",
+            "blobs_y_start_lo",
+            "blobs_y_start_hi",
+            "digest_type",
+            "digest_size",
+        ]
 
-        for i in range(self.NUM_UNPACKERS):
-            tile_descriptor = {}
-
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "in_data_format"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "uncompressed"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "reserved_0"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "blobs_per_xy_plane"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "reserved_1"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "x_dim"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "y_dim"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "z_dim"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "w_dim"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "blobs_y_start_lo"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "blobs_y_start_hi"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "digest_type"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "digest_size"
-            tile_descriptor[field_name] = register_name + field_name
-
-            tile_descriptor_list.append(tile_descriptor)
-
-        return tile_descriptor_list
+        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
     def get_unpack_config(self) -> list[dict]:
         struct_name = "UNPACK_CONFIG"
-        unpack_config_list = []
+        fields = [
+            "out_data_format",
+            "throttle_mode",
+            "context_count",
+            "haloize_mode",
+            "tileize_mode",
+            "unpack_src_reg_set_upd",
+            "unpack_if_sel",
+            "upsample_rate",
+            "reserved_1",
+            "upsample_and_interleave",
+            "shift_amount",
+            "uncompress_cntx0_3",
+            "unpack_if_sel_cntx0_3",
+            "force_shared_exp",
+            "reserved_2",
+            "uncompress_cntx4_7",
+            "unpack_if_sel_cntx4_7",
+            "reserved_3",
+            "limit_addr",
+            "reserved_4",
+            "fifo_size",
+            "reserved_5",
+        ]
 
-        for i in range(self.NUM_UNPACKERS):
-            unpack_config = {}
-
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "out_data_format"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "throttle_mode"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "context_count"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "haloize_mode"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "tileize_mode"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "unpack_src_reg_set_upd"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "unpack_if_sel"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "upsample_rate"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "reserved_1"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "upsample_and_interleave"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "shift_amount"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "uncompress_cntx0_3"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "unpack_if_sel_cntx0_3"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "force_shared_exp"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "reserved_2"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "uncompress_cntx4_7"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "unpack_if_sel_cntx4_7"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "reserved_3"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "limit_addr"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "reserved_4"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "fifo_size"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "reserved_5"
-            unpack_config[field_name] = register_name + field_name
-
-            unpack_config_list.append(unpack_config)
-
-        return unpack_config_list
+        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
     def get_pack_config(self) -> list[dict]:
         struct_name = "PACK_CONFIG"
-        pack_config_list = []
 
-        for i in [0, 1]:
-            for j in [1, 8]:
-                pack_config = {}
+        fields = [
+            "row_ptr_section_size",
+            "exp_section_size",
+            "l1_dest_addr",
+            "uncompress",
+            "add_l1_dest_addr_offset",
+            "reserved_0",
+            "out_data_format",
+            "in_data_format",
+            "reserved_1",
+            "src_if_sel",
+            "l1_src_addr",
+            "downsample_mask",
+            "downsample_shift_count",
+            "read_mode",
+            "exp_threshold_en",
+            "pack_l1_acc_disable_pack_zero_flag",
+            "reserved_2",
+            "exp_threshold",
+        ]
 
-                register_name = struct_name + str(i) + str(j) + "_"
-
-                field_name = "row_ptr_section_size"
-                pack_config[field_name] = register_name + field_name
-                field_name = "exp_section_size"
-                pack_config[field_name] = register_name + field_name
-                field_name = "l1_dest_addr"
-                pack_config[field_name] = register_name + field_name
-                field_name = "uncompress"
-                pack_config[field_name] = register_name + field_name
-                field_name = "add_l1_dest_addr_offset"
-                pack_config[field_name] = register_name + field_name
-                field_name = "reserved_0"
-                pack_config[field_name] = register_name + field_name
-                field_name = "out_data_format"
-                pack_config[field_name] = register_name + field_name
-                field_name = "in_data_format"
-                pack_config[field_name] = register_name + field_name
-                field_name = "reserved_1"
-                pack_config[field_name] = register_name + field_name
-                field_name = "src_if_sel"
-                pack_config[field_name] = register_name + field_name
-                field_name = "l1_src_addr"
-                pack_config[field_name] = register_name + field_name
-                field_name = "downsample_mask"
-                pack_config[field_name] = register_name + field_name
-                field_name = "downsample_shift_count"
-                pack_config[field_name] = register_name + field_name
-                field_name = "read_mode"
-                pack_config[field_name] = register_name + field_name
-                field_name = "exp_threshold_en"
-                pack_config[field_name] = register_name + field_name
-                field_name = "pack_l1_acc_disable_pack_zero_flag"
-                pack_config[field_name] = register_name + field_name
-                field_name = "reserved_2"
-                pack_config[field_name] = register_name + field_name
-                field_name = "exp_threshold"
-                pack_config[field_name] = register_name + field_name
-
-                pack_config_list.append(pack_config)
-
-        return pack_config_list
+        return [{field: f"{struct_name}{i}{j}_{field}" for field in fields} for i in [0, 1] for j in [1, 8]]
 
     def get_relu_config(self) -> list[dict]:
-        relu_config = {}
 
-        relu_config["disabled_src"] = "ALU_ACC_CTRL_Zero_Flag_disabled_src"
-        relu_config["disabled_dst"] = "ALU_ACC_CTRL_Zero_Flag_disabled_dst"
-        relu_config["apply_relu"] = "STACC_RELU_ApplyRelu"
-        relu_config["relu_threshold"] = "STACC_RELU_ReluThreshold"
-        relu_config["disable_main"] = "DISABLE_RISC_BP_Disable_main"
-        relu_config["disable_trisc"] = "DISABLE_RISC_BP_Disable_trisc"
-        relu_config["disable_ncrisc"] = "DISABLE_RISC_BP_Disable_ncrisc"
-        relu_config["disable_bmp_clear_main"] = "DISABLE_RISC_BP_Disable_bmp_clear_main"
-        relu_config["disable_bmp_clear_trisc"] = "DISABLE_RISC_BP_Disable_bmp_clear_trisc"
-        relu_config["disable_bmp_clear_ncrisc"] = "DISABLE_RISC_BP_Disable_bmp_clear_ncrisc"
-
-        return [relu_config]
+        return [
+            {
+                "disabled_src": "ALU_ACC_CTRL_Zero_Flag_disabled_src",
+                "disabled_dst": "ALU_ACC_CTRL_Zero_Flag_disabled_dst",
+                "apply_relu": "STACC_RELU_ApplyRelu",
+                "relu_threshold": "STACC_RELU_ReluThreshold",
+                "disable_main": "DISABLE_RISC_BP_Disable_main",
+                "disable_trisc": "DISABLE_RISC_BP_Disable_trisc",
+                "disable_ncrisc": "DISABLE_RISC_BP_Disable_ncrisc",
+                "disable_bmp_clear_main": "DISABLE_RISC_BP_Disable_bmp_clear_main",
+                "disable_bmp_clear_trisc": "DISABLE_RISC_BP_Disable_bmp_clear_trisc",
+                "disable_bmp_clear_ncrisc": "DISABLE_RISC_BP_Disable_bmp_clear_ncrisc",
+            }
+        ]
 
     def get_pack_dest_rd_ctrl(self) -> list[dict]:
-        dest = {}
-
-        dest["read_32b_data"] = "PACK_DEST_RD_CTRL_Read_32b_data"
-        dest["read_unsigned"] = "PACK_DEST_RD_CTRL_Read_unsigned"
-        dest["read_int8"] = "PACK_DEST_RD_CTRL_Read_int8"
-        dest["round_10b_mant"] = "PACK_DEST_RD_CTRL_Round_10b_mant"
-        dest["reserved"] = "PACK_DEST_RD_CTRL_Reserved"
-
-        return [dest]
+        return [
+            {
+                "read_32b_data": "PACK_DEST_RD_CTRL_Read_32b_data",
+                "read_unsigned": "PACK_DEST_RD_CTRL_Read_unsigned",
+                "read_int8": "PACK_DEST_RD_CTRL_Read_int8",
+                "round_10b_mant": "PACK_DEST_RD_CTRL_Round_10b_mant",
+                "reserved": "PACK_DEST_RD_CTRL_Reserved",
+            }
+        ]
 
     def get_pack_edge_offset(self) -> list[dict]:
         struct_name = "PACK_EDGE_OFFSET"
-        edge_list = []
+        fields = [
+            "mask",
+            "mode",
+            "tile_row_set_select_pack0",
+            "tile_row_set_select_pack1",
+            "tile_row_set_select_pack2",
+            "tile_row_set_select_pack3",
+        ]
 
-        for i in range(self.NUM_PACKERS):
-            edge = {}
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "mask"
-            edge[field_name] = register_name + field_name
-
-            if i == 0:
-                field_name = "mode"
-                edge[field_name] = register_name + field_name
-                field_name = "tile_row_set_select_pack0"
-                edge[field_name] = register_name + field_name
-                field_name = "tile_row_set_select_pack1"
-                edge[field_name] = register_name + field_name
-                field_name = "tile_row_set_select_pack2"
-                edge[field_name] = register_name + field_name
-                field_name = "tile_row_set_select_pack3"
-                edge[field_name] = register_name + field_name
-                field_name = "reserved"
-                edge[field_name] = register_name + field_name
-
-            edge_list.append(edge)
-
-        return edge_list
+        return [
+            {field: f"{struct_name}{i}_{field}" for field in (fields if i == 0 else fields[:1])}
+            for i in range(self.NUM_PACKERS)
+        ]
 
     def get_pack_counters(self) -> list[dict]:
         struct_name = "PACK_COUNTERS"
-        counters_list = []
+        fields = [
+            "pack_per_xy_plane",
+            "pack_reads_per_xy_plane",
+            "pack_xys_per_til",
+            "pack_yz_transposed",
+            "pack_per_xy_plane_offset",
+        ]
 
-        for i in range(self.NUM_PACKERS):
-            counters = {}
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "pack_per_xy_plane"
-            counters[field_name] = register_name + field_name
-            field_name = "pack_reads_per_xy_plane"
-            counters[field_name] = register_name + field_name
-            field_name = "pack_xys_per_til"
-            counters[field_name] = register_name + field_name
-            field_name = "pack_yz_transposed"
-            counters[field_name] = register_name + field_name
-            field_name = "pack_per_xy_plane_offset"
-            counters[field_name] = register_name + field_name
-
-            counters_list.append(counters)
-
-        return counters_list
+        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_PACKERS)]
 
     def get_pack_strides(self) -> list[dict]:
         struct_name = "PACK_STRIDES"
-        strides_list = []
+        fields = ["x_stride", "y_stride", "z_stride", "w_stride"]
 
-        for i in range(2):
-            strides = {}
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "x_stride"
-            strides[field_name] = register_name + field_name
-            field_name = "y_stride"
-            strides[field_name] = register_name + field_name
-            field_name = "z_stride"
-            strides[field_name] = register_name + field_name
-            field_name = "w_stride"
-            strides[field_name] = register_name + field_name
-
-            strides_list.append(strides)
-
-        return strides_list
+        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(2)]
 
 
 # end of class WormholeDevice

@@ -81,7 +81,7 @@ class GrayskullDevice(Device):
     __register_map = {
         # UNPACK TILE DESCRIPTOR SEC0
         "UNPACK_TILE_DESCRIPTOR0_in_data_format": ConfigurationRegisterDescription(
-            index=48, mask=0xF, shift=0, data_type=DATA_TYPE.DATA_FORMAT
+            index=48, mask=0xF, shift=0, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "UNPACK_TILE_DESCRIPTOR0_uncompressed": ConfigurationRegisterDescription(
             index=48, mask=0x10, shift=4, data_type=DATA_TYPE.FLAG
@@ -121,7 +121,7 @@ class GrayskullDevice(Device):
         ),
         # UNPACK TILE DESCRIPTOR SEC1
         "UNPACK_TILE_DESCRIPTOR1_in_data_format": ConfigurationRegisterDescription(
-            index=84, mask=0xF, shift=0, data_type=DATA_TYPE.DATA_FORMAT
+            index=84, mask=0xF, shift=0, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "UNPACK_TILE_DESCRIPTOR1_uncompressed": ConfigurationRegisterDescription(
             index=84, mask=0x10, shift=4, data_type=DATA_TYPE.FLAG
@@ -161,7 +161,7 @@ class GrayskullDevice(Device):
         ),
         # UNPACK CONFIG SEC0
         "UNPACK_CONFIG0_out_data_format": ConfigurationRegisterDescription(
-            index=56, mask=0xF, shift=0, data_type=DATA_TYPE.DATA_FORMAT
+            index=56, mask=0xF, shift=0, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "UNPACK_CONFIG0_throttle_mode": ConfigurationRegisterDescription(
             index=56, mask=0x30, shift=4, data_type=DATA_TYPE.MODE
@@ -210,7 +210,7 @@ class GrayskullDevice(Device):
         ),
         # UNPACK CONFIG SEC1
         "UNPACK_CONFIG1_out_data_format": ConfigurationRegisterDescription(
-            index=90, mask=0xF, shift=0, data_type=DATA_TYPE.DATA_FORMAT
+            index=90, mask=0xF, shift=0, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "UNPACK_CONFIG1_throttle_mode": ConfigurationRegisterDescription(
             index=90, mask=0x30, shift=4, data_type=DATA_TYPE.MODE
@@ -277,10 +277,10 @@ class GrayskullDevice(Device):
             index=54, mask=0xC, shift=2, data_type=DATA_TYPE.RESERVED
         ),
         "PACK_CONFIG01_out_data_format": ConfigurationRegisterDescription(
-            index=54, mask=0xF0, shift=4, data_type=DATA_TYPE.DATA_FORMAT
+            index=54, mask=0xF0, shift=4, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG01_in_data_format": ConfigurationRegisterDescription(
-            index=54, mask=0xF00, shift=8, data_type=DATA_TYPE.DATA_FORMAT
+            index=54, mask=0xF00, shift=8, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG01_reserved_1": ConfigurationRegisterDescription(
             index=54, mask=0xF000, shift=12, data_type=DATA_TYPE.RESERVED
@@ -332,10 +332,10 @@ class GrayskullDevice(Device):
             index=82, mask=0xC, shift=2, data_type=DATA_TYPE.RESERVED
         ),
         "PACK_CONFIG08_out_data_format": ConfigurationRegisterDescription(
-            index=82, mask=0xF0, shift=4, data_type=DATA_TYPE.DATA_FORMAT
+            index=82, mask=0xF0, shift=4, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG08_in_data_format": ConfigurationRegisterDescription(
-            index=82, mask=0xF00, shift=8, data_type=DATA_TYPE.DATA_FORMAT
+            index=82, mask=0xF00, shift=8, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG08_reserved_1": ConfigurationRegisterDescription(
             index=82, mask=0xF000, shift=12, data_type=DATA_TYPE.RESERVED
@@ -387,10 +387,10 @@ class GrayskullDevice(Device):
             index=90, mask=0xC, shift=2, data_type=DATA_TYPE.RESERVED
         ),
         "PACK_CONFIG11_out_data_format": ConfigurationRegisterDescription(
-            index=90, mask=0xF0, shift=4, data_type=DATA_TYPE.DATA_FORMAT
+            index=90, mask=0xF0, shift=4, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG11_in_data_format": ConfigurationRegisterDescription(
-            index=90, mask=0xF00, shift=8, data_type=DATA_TYPE.DATA_FORMAT
+            index=90, mask=0xF00, shift=8, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG11_reserved_1": ConfigurationRegisterDescription(
             index=90, mask=0xF000, shift=12, data_type=DATA_TYPE.RESERVED
@@ -442,10 +442,10 @@ class GrayskullDevice(Device):
             index=118, mask=0xC, shift=2, data_type=DATA_TYPE.RESERVED
         ),
         "PACK_CONFIG18_out_data_format": ConfigurationRegisterDescription(
-            index=118, mask=0xF0, shift=4, data_type=DATA_TYPE.DATA_FORMAT
+            index=118, mask=0xF0, shift=4, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG18_in_data_format": ConfigurationRegisterDescription(
-            index=118, mask=0xF00, shift=8, data_type=DATA_TYPE.DATA_FORMAT
+            index=118, mask=0xF00, shift=8, data_type=DATA_TYPE.TENSIX_DATA_FORMAT
         ),
         "PACK_CONFIG18_reserved_1": ConfigurationRegisterDescription(
             index=118, mask=0xF000, shift=12, data_type=DATA_TYPE.RESERVED
