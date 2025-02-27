@@ -30,7 +30,7 @@ import tabulate
 
 from ttlens.uistate import UIState
 
-from ttlens import commands
+from ttlens import command_parser
 from ttlens import util as util
 from ttlens.debug_risc import RiscDebug, RiscLoc, RISCV_REGS, get_risc_name, get_register_index
 from ttlens.firmware import ELF

@@ -59,7 +59,7 @@ from ttlens import tt_lens_init
 from ttlens import tt_lens_server
 from ttlens import util as util
 from ttlens.uistate import UIState
-from ttlens.commands import find_command, CommandParsingException
+from ttlens.command_parser import find_command, CommandParsingException
 
 from ttlens import Verbosity
 

@@ -33,7 +33,7 @@ import re
 
 from ttlens.uistate import UIState
 
-from ttlens import commands
+from ttlens import command_parser
 from ttlens import util as util
 from ttlens.device import DebugBusSignalDescription
 

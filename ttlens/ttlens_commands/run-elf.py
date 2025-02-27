@@ -16,7 +16,7 @@ Examples:
 """
 
 from ttlens import util as util
-from ttlens import commands
+from ttlens import command_parser
 from ttlens.tt_lens_lib import run_elf
 
 command_metadata = {

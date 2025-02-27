@@ -54,7 +54,7 @@ command_metadata = {
 
 from ttlens.uistate import UIState
 
-from ttlens import commands
+from ttlens import command_parser
 from ttlens import util as util
 from ttlens.debug_risc import RiscDebug, RiscLoc, get_risc_name
 

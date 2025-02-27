@@ -39,7 +39,7 @@ command_metadata = {
 
 from docopt import docopt
 
-from ttlens import commands, util as util
+from ttlens import command_parser, util as util
 from ttlens.device import Device
 from ttlens.coordinate import VALID_COORDINATE_TYPES
 from ttlens.context import LimitedContext

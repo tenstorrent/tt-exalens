@@ -11,7 +11,7 @@ Description:
 Examples:
   go -d 0 -l 0,0
 """
-from ttlens import commands
+from ttlens import command_parser
 
 command_metadata = {
     "short": "go",
