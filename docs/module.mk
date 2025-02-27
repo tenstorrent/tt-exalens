@@ -14,16 +14,16 @@ docs:
 	@echo "${YELLOW}Using the output directory $(DOC_DIR)${NC}"
 
 	echo "Generating library documentation..."
-	python -m docs.bin.generate-lib-docs $(TTEXALENS_HOME)/ttlens $(DOC_DIR)/ttlens-lib-docs.md
+	python -m docs.bin.generate-lib-docs $(TTEXALENS_HOME)/ttexalens $(DOC_DIR)/ttexalens-lib-docs.md
 	$(PRINT_OK)
 
 	echo "Generating application documentation..."
-	python -m docs.bin.generate-command-docs $(TTEXALENS_HOME)/ttlens/cli_commands $(DOC_DIR)/ttlens-app-docs.md
+	python -m docs.bin.generate-command-docs $(TTEXALENS_HOME)/ttexalens/cli_commands $(DOC_DIR)/ttexalens-app-docs.md
 	$(PRINT_OK)
 
 .PHONY: clean-docs
 clean-docs:
 	@echo "${YELLOW}Cleaning documentation${NC}"
-	rm -rf $(DOC_DIR)/ttlens-lib-docs.md
-	rm -rf $(DOC_DIR)/ttlens-app-docs.md
+	rm -rf $(DOC_DIR)/ttexalens-lib-docs.md
+	rm -rf $(DOC_DIR)/ttexalens-app-docs.md
 	$(PRINT_OK)

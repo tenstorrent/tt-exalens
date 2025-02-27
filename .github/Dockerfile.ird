@@ -6,10 +6,10 @@ SHELL ["/bin/bash", "-c"]
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TT_LENS_INFRA_DIR=/opt/tt_lens_infra
+ENV TT_EXALENS_INFRA_DIR=/opt/tt_exalens_infra
 
 # Create directories for infra
-RUN mkdir -p ${TT_LENS_INFRA_DIR}
+RUN mkdir -p ${TT_EXALENS_INFRA_DIR}
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y \
     vim
 
 # Install compatible gdb debugger for clang-17
-RUN cd $TT_LENS_INFRA_DIR \
+RUN cd $TT_EXALENS_INFRA_DIR \
     && wget https://ftp.gnu.org/gnu/gdb/gdb-14.2.tar.gz \
     && tar -xvf gdb-14.2.tar.gz \
     && cd gdb-14.2 \
@@ -30,4 +30,4 @@ RUN cd $TT_LENS_INFRA_DIR \
     && make -j$(nproc) \
     && make install \
     && cd / \
-    && rm -rf $TT_LENS_INFRA_DIR
+    && rm -rf $TT_EXALENS_INFRA_DIR

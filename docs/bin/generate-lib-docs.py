@@ -45,7 +45,7 @@ from docopt import docopt
 from .doc_utils import INFO, WARNING, ERROR
 from .doc_utils import SectionPPrinter
 
-with open("ttlens/tt_lens_init.py") as f:
+with open("ttexalens/tt_exalens_init.py") as f:
     tree = ast.parse(f.read())
 
 
@@ -305,7 +305,7 @@ class LibPPrinter(SectionPPrinter):
 def get_all_files(path: os.PathLike) -> list:
     """Returns a list of .py files specified in the __all__ variable in __init__.py,
     or all .py files in the directory if __init__.py is not found or does not contain __all__."""
-    spec = importlib.util.spec_from_file_location("ttlens", os.path.join(path, "__init__.py"))
+    spec = importlib.util.spec_from_file_location("ttexalens", os.path.join(path, "__init__.py"))
     if spec is not None:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)

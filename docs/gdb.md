@@ -6,9 +6,9 @@ TTExaLens application is hosting gdb server. You should use gdb client to connec
 
 ## Starting gdb server
 
-You can start gdb server with ttlens application:
+You can start gdb server with ttexalens application:
 
-- With command line argument: Start ttlens with `--start-gdb=<gdb_port>` where `<gdb_port>` is integer number for port that will be used for gdb server.
+- With command line argument: Start ttexalens with `--start-gdb=<gdb_port>` where `<gdb_port>` is integer number for port that will be used for gdb server.
 - With `gdb` command: After you start TT-ExaLens, you can use `gdb` command to start gdb server. Run `gdb start --port <port>` where `<port>` is integer number fo port that will be used for gdb server.
 
 After starting gdb server, you can stop it with `gdb` command. Run `gdb stop`.
@@ -25,7 +25,7 @@ After connection has been established, you can use `info os processes` to list a
 
 ## Sample app debugging script:
 
-Once you started gdb server, you can use run-elf command to execute `ttlens/riscv-src/sample.cc` application on chip. For wormhole, you can execute `re build/riscv-src/wormhole/sample.brisc.elf` to run application on brisc core.
+Once you started gdb server, you can use run-elf command to execute `ttexalens/riscv-src/sample.cc` application on chip. For wormhole, you can execute `re build/riscv-src/wormhole/sample.brisc.elf` to run application on brisc core.
 
 After that, you can execute this example script in gdb client to debug it:
 

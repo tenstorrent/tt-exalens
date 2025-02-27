@@ -5,7 +5,7 @@ on:
     branches:
       - "main"
 
-run-name: "Release latest ttlens wheel, activated by updating main."
+run-name: "Release latest ttexalens wheel, activated by updating main."
 
 jobs:
   pre-release:
@@ -22,7 +22,7 @@ jobs:
         with:
           submodules: recursive
           lfs: true
-      - uses: ./.github/actions/install-ttlens-deps
+      - uses: ./.github/actions/install-ttexalens-deps
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.build-info.py-version }}
@@ -39,7 +39,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: "wheel-latest-${{ matrix.build-info.py-version }}"
-          path: build/ttlens_wheel/*.whl
+          path: build/ttexalens_wheel/*.whl
 
   make-release:
     needs: pre-release

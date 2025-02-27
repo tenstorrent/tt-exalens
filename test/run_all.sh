@@ -25,10 +25,10 @@ make clean
 make build
 
 big_echo "RUNNING C++ TESTS"
-make ttlens_server_unit_tests_run_only
+make ttexalens_server_unit_tests_run_only
 
 big_echo "RUNNING PYTHON TTEXALENS TESTS"
-python3 -m unittest discover -v -t . -s test/ttlens -p *test*.py
+python3 -m unittest discover -v -t . -s test/ttexalens -p *test*.py
 
 big_echo "RUNNING PYTHON APP TESTS"
 python3 -m unittest discover -v -t . -s test/app -p *test*.py

@@ -15,10 +15,10 @@ __pycache__
 .venv
 
 # TTExaLens related files
-ttlens-export*.zip
-ttlens-export
-ttlens-server.pkl
-ttlens/server/lib/configuration/*.embed
+ttexalens-export*.zip
+ttexalens-export
+ttexalens-server.pkl
+ttexalens/server/lib/configuration/*.embed
 
 # ClangD
 compile_commands.json

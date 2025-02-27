@@ -29,7 +29,7 @@ echo -e "Building wheel ..."
 make wheel
 
 echo -e "Installing wheel ..."
-pip install build/ttlens_wheel/*.whl
+pip install build/ttexalens_wheel/*.whl
 
 echo -e " --- Running wheel test ---"
 source ${THIS_SCRIPT_DIR}/run-wheel.sh

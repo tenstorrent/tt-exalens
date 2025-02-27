@@ -64,10 +64,10 @@ sudo apt install python3.10-venv
 
 depending on Python version available on your system.
 
-Additional Python dependencies are listed in `ttlens/requirements.txt` file, and can be installed via `pip`:
+Additional Python dependencies are listed in `ttexalens/requirements.txt` file, and can be installed via `pip`:
 
 ```bash
-pip install -r ttlens/requirements.txt
+pip install -r ttexalens/requirements.txt
 ```
 
 ### Building the library and the application
@@ -96,16 +96,16 @@ in the root directory.
 
 ## Building and Installing Wheel
 
-Wheel can be installed either from the [GitHub release](https://github.com/tenstorrent/tt-lens/releases), built from source, or installed directly from GitHub with
+Wheel can be installed either from the [GitHub release](https://github.com/tenstorrent/tt-exalens/releases), built from source, or installed directly from GitHub with
 ```
-pip install git+https://github.com/tenstorrent/tt-lens.git
+pip install git+https://github.com/tenstorrent/tt-exalens.git
 ```
 
-To build TTExaLens wheel from source, simply run `make wheel` in the root directory. The installation is then done by running `pip install build/ttlens_wheel/<ttlens_wheel>.whl`, where `<ttlens_wheel>` is an automatically generated name unique for each build.
+To build TTExaLens wheel from source, simply run `make wheel` in the root directory. The installation is then done by running `pip install build/ttexalens_wheel/<ttexalens_wheel>.whl`, where `<ttexalens_wheel>` is an automatically generated name unique for each build.
 
 ## Running TTExaLens
 
-TTExaLens can be run through `tt-lens.py` script or by invoking `ttlens` command after wheel installation.
+TTExaLens can be run through `tt-lens.py` script or by invoking `ttexalens` command after wheel installation.
 TTExaLens currently operates in Limited mode, with plans to extend functionality to include other modes in the future..
 Limited mode is entered by default, and it enables basic communication with the device, like writing to and reading from registers or device memory and running .elf files on RISC cores.
 
@@ -117,13 +117,13 @@ It is also possible to write all the results from TTExaLens session to cache, an
 
 GDB server can be started from TTExaLens, allowing features like stepping through code and breakpoints to be used through GDB client.
 
-For more information about how to use the TTExaLens application, refer to [the tutorial](./docs/ttlens-app-tutorial.md), or [the documentation](./docs/ttlens-app-docs.md).
+For more information about how to use the TTExaLens application, refer to [the tutorial](./docs/ttexalens-app-tutorial.md), or [the documentation](./docs/ttexalens-app-docs.md).
 
 ## Using TTExaLens library
 
-TTExaLens's functionalities can also be used through ttlens library to create Python scripts that interact with Tenstorrent's hardware.
-For a quick start with ttlens library, check out [the tutorial](docs/ttlens-lib-tutorial.md).
-Full documentation is also available [here](docs/ttlens-lib-docs.md).
+TTExaLens's functionalities can also be used through ttexalens library to create Python scripts that interact with Tenstorrent's hardware.
+For a quick start with ttexalens library, check out [the tutorial](docs/ttexalens-lib-tutorial.md).
+Full documentation is also available [here](docs/ttexalens-lib-docs.md).
 
 ## Development
 
@@ -227,9 +227,9 @@ This will automatically generate new image releases and tag them as `latest`.
 ### fatal error: zmq.hpp: No such file or directory
 
 ```
-In file included from ttlens/server/lib/inc/ttlensserver/server.h:8,
-                 from ttlens/server/app/ttlens-server-standalone.cpp:11:
-ttlens/server/lib/inc/ttlensserver/communication.h:9:10: fatal error: zmq.hpp: No such file or directory
+In file included from ttexalens/server/lib/inc/ttexalensserver/server.h:8,
+                 from ttexalens/server/app/ttexalens-server-standalone.cpp:11:
+ttexalens/server/lib/inc/ttexalensserver/communication.h:9:10: fatal error: zmq.hpp: No such file or directory
     9 | #include <zmq.hpp>
 ```
 
@@ -252,19 +252,19 @@ alias python=python3
 
 
 
-### ModuleNotFoundError: No module named 'ttlens_pybind_unit_tests'
+### ModuleNotFoundError: No module named 'ttexalens_pybind_unit_tests'
 
 This error might occur when trying to run unit tests:
 ```
-Failed to import test module: test.ttlens.pybind.test_bindings
+Failed to import test module: test.ttexalens.pybind.test_bindings
 Traceback (most recent call last):
   File "/usr/lib/python3.10/unittest/loader.py", line 436, in _find_test_path
     module = self._get_module_from_name(name)
   File "/usr/lib/python3.10/unittest/loader.py", line 377, in _get_module_from_name
     __import__(name)
-  File "/home/dcvijetic/work/tt-lens/test/ttlens/pybind/test_bindings.py", line 17, in <module>
-    from ttlens_pybind_unit_tests import set_ttlens_test_implementation
-ModuleNotFoundError: No module named 'ttlens_pybind_unit_tests'
+  File "/home/dcvijetic/work/tt-lens/test/ttexalens/pybind/test_bindings.py", line 17, in <module>
+    from ttexalens_pybind_unit_tests import set_ttexalens_test_implementation
+ModuleNotFoundError: No module named 'ttexalens_pybind_unit_tests'
 ```
 To fix, just build the neccessary test library:
 ```
