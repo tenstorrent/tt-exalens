@@ -8,7 +8,7 @@ In this tutorial, we will demonstrate how to use TTExaLens library through a few
 ## Setting up TTExaLens
 
 To follow this tutorial, you need a virtual environment with installed TTExaLens wheel.
-TTExaLens wheel can be installed from [this link](https://github.com/tenstorrent/tt-lens/releases).
+TTExaLens wheel can be installed from [this link](https://github.com/tenstorrent/tt-exalens/releases).
 Publishing the wheel to PyPI is in the works.
 It is also possible to [build wheel from source](./../README.md#building-and-installing-wheel).
 

@@ -262,7 +262,7 @@ Traceback (most recent call last):
     module = self._get_module_from_name(name)
   File "/usr/lib/python3.10/unittest/loader.py", line 377, in _get_module_from_name
     __import__(name)
-  File "/home/dcvijetic/work/tt-lens/test/ttexalens/pybind/test_bindings.py", line 17, in <module>
+  File "./test/ttexalens/pybind/test_bindings.py", line 17, in <module>
     from ttexalens_pybind_unit_tests import set_ttexalens_test_implementation
 ModuleNotFoundError: No module named 'ttexalens_pybind_unit_tests'
 ```

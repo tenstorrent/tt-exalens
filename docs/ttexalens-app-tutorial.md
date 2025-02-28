@@ -272,10 +272,10 @@ Since we are running from cache, we can't write to device:
 ```
 gdb:None Current epoch:None(None) device:0 loc:1-1 (0,0) > wxy 0,0 0x100 0x1234
 ------------------------------------------  -----------  --------------------------------------------------------------------------
-tt-lens:428                                 main_loop    new_navigation_suggestions = found_command["module"].run(
+tt-exalens:428                              main_loop    new_navigation_suggestions = found_command["module"].run(
 ttexalens/cli_commands/pci-write-xy.py:52   run            device.SERVER_IFC.pci_write32(
-ttexalens/tt_exalens_ifc_cache.py:198             pci_write32      raise util.TTException("Device not available, cannot write to cache.")
-ttexalens/tt_exalens_ifc_cache.py:198             pci_write32  TTException: Device not available, cannot write to cache.
+ttexalens/tt_exalens_ifc_cache.py:198       pci_write32      raise util.TTException("Device not available, cannot write to cache.")
+ttexalens/tt_exalens_ifc_cache.py:198       pci_write32  TTException: Device not available, cannot write to cache.
 ------------------------------------------  -----------  --------------------------------------------------------------------------
 ```
 but we can repeat our read command and get the same results:
@@ -313,7 +313,7 @@ For more details of inner workings of TTExaLens refer to [the `ttexalens` librar
 
 When starting TTExaLens, you can specify a list of commands to run. For example:
 ```
-tt-lens --commands "go -l 2,2; gpr; x"
+tt-exalens --commands "go -l 2,2; gpr; x"
 ```
 The above command will run `go -l 2,2`, changing active location to 2,2, followed by `gpr` and then exit. The output can then be redirected to a file for further processing.
 

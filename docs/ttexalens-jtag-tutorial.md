@@ -30,8 +30,8 @@ init_ttexalens(init_jtag=True)
 To use JTAG in the ttexalens app, you will need to add ```--jtag``` parameter to command.
 ```
 ./tt-exalens.py --jtag
-tt-lens --command "brxy 0,0 0" --jtag
-tt-lens --server --jtag
+tt-exalens --command "brxy 0,0 0" --jtag
+tt-exalens --server --jtag
 ```
 
 ## JTAG Access Overview
@@ -45,13 +45,13 @@ To make a correlation between chips accessed by JTAG and PCI, we can use the ```
 In context of ttexalens "Device" is a unique chip accessed via one of the interfaces.
 
 ```
-tt-lens --command "if; x" --jtag
+tt-exalens --command "if; x" --jtag
 
 JTAG Device 0: {'lot_id': '8IPY38007', 'wafer_id': '.13B2', 'wafer_alias': '', 'x_coord': '005', 'y_coord': '00', 'binning': '', 'test_program_rev': ''}
 ```
 
 ```
-tt-lens --command "if; x"
+tt-exalens --command "if; x"
 
 NOC Device 0: {'lot_id': '8IPY38007', 'wafer_id': '.13B2', 'wafer_alias': '', 'x_coord': '005', 'y_coord': '00', 'binning': '', 'test_program_rev': ''}
 NOC Device 1: {'lot_id': '8IPY38007', 'wafer_id': '.12B7', 'wafer_alias': '', 'x_coord': '001', 'y_coord': '00', 'binning': '', 'test_program_rev': ''}
