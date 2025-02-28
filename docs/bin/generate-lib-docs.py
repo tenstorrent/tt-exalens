@@ -122,7 +122,13 @@ class DocstringParser:
                 # Argument name is before the first opening parenthesis
                 name = arg.split("(")[0].strip()
                 # Argument types are inside the parentheses
-                types = re.findall(r"\((.*?)\)", arg)[0].split(", ")
+                types_match = re.findall(r"\((.*?)\)", arg)
+                if not types_match:
+                    # Docstring didn't match expected "arg (type): description" format.
+                    # Skip, or provide a default type.
+                    types = [""]
+                else:
+                    types = types_match[0].split(", ")
 
                 description = line[1]
                 # Remove leading/trailing whitespaces
@@ -173,7 +179,7 @@ class FileParser:
 
         # We keep track of the functions and variables we find in the file
         # At some point we might want to add support for classes
-        result = {"functions": [], "variables": []}
+        result = {"functions": [], "variables": [], "classes": []}
 
         for id, node in enumerate(tree.body):
             if type(node) == ast.FunctionDef:
@@ -197,6 +203,40 @@ class FileParser:
             elif type(node) == ast.Import or type(node) == ast.ImportFrom or type(node) == ast.Expr:
                 # We don't need to do anything with these nodes
                 continue
+
+            elif isinstance(node, ast.ClassDef):
+                # Get class docstring
+                class_docstring = ast.get_docstring(node)
+                if class_docstring:
+                    INFO(f"Class {node.name} docstring found.")
+                    # parse with your docstring_parser
+                    parsed_doc = self.docstring_parser.parse(class_docstring)
+                else:
+                    WARNING(f"No docstring found for class {node.name}.")
+
+                # Now parse methods inside the class
+                methods = []
+                for class_node in node.body:
+                    if isinstance(class_node, ast.FunctionDef):
+                        method_info = self.parse_function(class_node)  # same function you have
+                        if method_info["docstring"]:
+                            method_info["docs"] = self.docstring_parser.parse(method_info["docstring"])
+                            methods.append(method_info)
+
+                # Then store it all in the result dict
+                result["classes"].append(
+                    {
+                        "name": node.name,
+                        "docstring": class_docstring,
+                        "docs": parsed_doc if class_docstring else None,
+                        "methods": methods,
+                    }
+                )
+
+            elif isinstance(node, ast.Assign):
+                # Similar to AnnAssign but with no annotation
+                INFO(f"Found assignment to {node.targets[0].id} at line {node.lineno}.")
+                # ...handle docstring/comment if desired...
 
             else:
                 WARNING(f"Node type {type(node)} at index {id} not implemented. Skipping...")
@@ -267,7 +307,7 @@ class LibPPrinter(SectionPPrinter):
 
         result += self.print_variables(docstring.get("variables", []))
         result += self.print_functions(docstring.get("functions", []))
-
+        result += self.print_classes(docstring.get("classes", []))
         return result
 
     def print_functions(self, functions: list) -> str:
@@ -301,6 +341,44 @@ class LibPPrinter(SectionPPrinter):
         for sec in self.section_printers.keys():
             if sec in docstring.keys():
                 result += self.eprinter.print_section(sec, self.section_printers[sec](docstring[sec]))
+        return result
+
+    def print_classes(self, classes: list) -> str:
+        """
+        Print documentation for a list of classes and their methods.
+        """
+        result = ""
+        for cls in classes:
+            # Print class name as a section
+            result += self.eprinter.print_section(cls["name"], "", level=2)
+
+            # If there’s a docstring or docs section
+            if cls.get("docs"):
+                # For example, if you stored the class docstring in 'Description'
+                description = cls["docs"].get("Description")
+                if description:
+                    result += self.print_description(description)
+
+            # Print each method
+            for method in cls.get("methods", []):
+                method_name = method["name"]
+                signature = method["call"]
+
+                # Print method as a sub-section
+                result += self.eprinter.print_section(method_name, "", level=3)
+                result += self.eprinter.print_code(signature)
+
+                # Print method doc sections
+                docs = method.get("docs", {})
+                if "Description" in docs:
+                    result += self.print_description(docs["Description"])
+                if "Args" in docs:
+                    result += self.print_arguments(docs["Args"])
+                if "Returns" in docs:
+                    result += self.print_returns(docs["Returns"])
+                if "Notes" in docs:
+                    result += self.print_notes(docs["Notes"])
+
         return result
 
 

@@ -395,3 +395,78 @@ Sends an ARC message to the device.
 
 
 # coordinate
+
+## CoordinateTranslationError
+
+
+
+This exception is thrown when a coordinate translation fails.
+## OnChipCoordinate
+
+
+
+This class represents a coordinate on the chip. It can be used to convert between the various
+coordinate systems we use.
+### __init__
+
+
+
+```
+__init__(self, x, y, input_type, device, core_type=any) -> None
+```
+Constructor for the Coordinate class.
+- `x` *(int)*: The x-coordinate value.
+- `y` *(int)*: The y-coordinate value.
+- `input_type` *(str)*: The input coordinate system type. One of the following:
+- `- noc0`: NOC routing coordinate for NOC 0. (X-Y). Also known as "physical" coordinate.
+- `- noc1`: NOC routing coordinate for NOC 1. (X-Y)
+- `- die`: Die coordinate, a location on the die grid. (X,Y)
+- `- logical`: Logical grid coordinate. Notation: qX,Y, where q represents first letter of the core type. If q is not present, it is considered as tensix core.
+- `- virtual`: Virtual NOC coordinate. Similar to noc0, but with the harvested rows removed, and the locations of functioning rows shifted down to fill in the gap. (X-Y)
+- `- translated`: Translated NOC coordinate. (X-Y)
+- `device`: The device object used for coordinate conversion.
+- `core_type` *(str, optional)*: The core_type used for coordinate conversion. Some coordinate systems require core_type as third dimension. Defaults to "any".
+- If the device is not specified, coordinate conversion to other systems will not be possible.
+### to
+
+
+
+```
+to(self, output_type) -> None
+```
+Returns a tuple with the coordinates in the specified coordinate system.
+- `output_type` *(str)*: The desired output coordinate system.
+ *(tuple)*: The coordinates in the specified coordinate system.### to_str
+
+
+
+```
+to_str(self, output_type=noc0) -> None
+```
+Returns a tuple with the coordinates in the specified coordinate system.
+### to_user_str
+
+
+
+```
+to_user_str(self) -> None
+```
+Returns a string representation of the coordinate that is suitable for the user.
+### change_device
+
+
+
+```
+change_device(self, device) -> None
+```
+Returns coordinates for the specified device.
+- `device` *(Device)*: The device object representing the chip.
+ *(OnChipCoordinate)*: The new coordinate object for the specified device.### create
+
+
+
+```
+create(coord_str, device, coord_type=None) -> None
+```
+Creates a coordinate object from a string. The string can be in any of the supported coordinate systems.
+ *(OnChipCoordinate)*: The created coordinate object.
