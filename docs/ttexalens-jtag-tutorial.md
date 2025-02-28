@@ -29,7 +29,7 @@ init_ttexalens(init_jtag=True)
 ### App
 To use JTAG in the ttexalens app, you will need to add ```--jtag``` parameter to command.
 ```
-./tt-lens.py --jtag
+./tt-exalens.py --jtag
 tt-lens --command "brxy 0,0 0" --jtag
 tt-lens --server --jtag
 ```

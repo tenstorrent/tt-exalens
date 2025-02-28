@@ -82,13 +82,13 @@ in TTExaLens home directory.
 To be sure that the build was succesful, try running
 
 ```bash
-python tt-lens.py
+python tt-exalens.py
 ```
 
 or
 
 ```bash
-./tt-lens.py
+./tt-exalens.py
 ```
 
 in the root directory.
@@ -105,7 +105,7 @@ To build TTExaLens wheel from source, simply run `make wheel` in the root direct
 
 ## Running TTExaLens
 
-TTExaLens can be run through `tt-lens.py` script or by invoking `ttexalens` command after wheel installation.
+TTExaLens can be run through `tt-exalens.py` script or by invoking `ttexalens` command after wheel installation.
 TTExaLens currently operates in Limited mode, with plans to extend functionality to include other modes in the future..
 Limited mode is entered by default, and it enables basic communication with the device, like writing to and reading from registers or device memory and running .elf files on RISC cores.
 

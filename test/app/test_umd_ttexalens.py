@@ -75,7 +75,7 @@ class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
 class TTExaLensTestRunner:
     def __init__(self, verifier: TTExaLensOutputVerifier):
         self.interpreter_path = sys.executable
-        self.ttexalens_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "tt-lens.py")
+        self.ttexalens_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "tt-exalens.py")
         self.process: subprocess.Popen = None
         self.verifier = verifier
 

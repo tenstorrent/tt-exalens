@@ -45,7 +45,7 @@ def trim_line_and_append_elipsis(line, max_length):
 
 # Captures everything between the command and the exit command
 def execute_ttexalens_command(command):
-    full_command = ["./tt-lens.py", "--commands", f"{command}; x"]
+    full_command = ["./tt-exalens.py", "--commands", f"{command}; x"]
 
     # Sometimes a sequence of commands is needed to get the correct output.
     # If that is the case, we only want to show the last command.

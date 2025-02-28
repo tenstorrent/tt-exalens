@@ -3,7 +3,7 @@
 This tutorial shows how to use the TTExaLens application.
 It gives examples of basic commands, as well as how to run TTExaLens on remote machine and from cache.
 
-To follow this tutorial, you should either [build TTExaLens from source](./../README.md#building-ttexalens) and run it through the python script with `./tt-lens.py`, or [install from wheel](./../README.md#building-and-installing-wheel) and run with `tt-lens.py`.
+To follow this tutorial, you should either [build TTExaLens from source](./../README.md#building-ttexalens) and run it through the python script with `./tt-exalens.py`, or [install from wheel](./../README.md#building-and-installing-wheel) and run with `tt-exalens.py`.
 
 ## Basic Usage
 
@@ -204,23 +204,23 @@ TTExaLens can be started in client-server mode, which allows debugging on the re
 The server can be started as standalone program.
 To start TTExaLens server, simply call
 ```
-./tt-lens.py --server
+./tt-exalens.py --server
 ```
 You can optionally set the port to be used by specifying `--port=<port>`, but the default value of 5555 is fine for the purpose of this tutorial.
 The server can be exited by simply pressing enter key in the terminal.
 
 To attach to the server, you can spin up a TTExaLens client with
 ```
-./tt-lens.py --remote --remote-address=<ip:port>
+./tt-exalens.py --remote --remote-address=<ip:port>
 ```
 where you can specify the ip address and port, or write just
 ```
-./tt-lens.py --remote --remote-address=<:port>
+./tt-exalens.py --remote --remote-address=<:port>
 ```
 to connect to the port on the localhost.
 Running
 ```
-./tt-lens.py --remote
+./tt-exalens.py --remote
 ```
 will try to connect to server on port 5555 running on localhost.
 From there on, you can use TTExaLens the same way you would use it in local mode.
@@ -235,7 +235,7 @@ The cache is saved as a pickle file and can be read by running TTExaLens in cach
 Let's say that you need to save the results of some commands to take another look at them on another machine which does not have TT hardware.
 You can run TTExaLens with cache writing turned on:
 ```
-./tt-lens.py --write-cache --cache-path=tutorial_cache.pkl
+./tt-exalens.py --write-cache --cache-path=tutorial_cache.pkl
 ```
 By default, cache path is set to `ttexalens_cache.pkl`, but we have changed that here.
 Let's write something to memory:
@@ -258,7 +258,7 @@ Saving server cache to file tutorial_cache.pkl
 
 We can now open this cache in TTExaLens by calling
 ```
-./tt-lens.py --cached --cache-path=tutorial_cache.pkl
+./tt-exalens.py --cached --cache-path=tutorial_cache.pkl
 ```
 which gives
 ```
