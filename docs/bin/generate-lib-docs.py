@@ -228,10 +228,12 @@ class FileParser:
         elif type(node.returns) == ast.Constant:
             returns = node.returns.value
         elif type(node.returns) == ast.Subscript:
-            # Some functions return multiple types
-            returns = [el.id if type(el) == ast.Name else el.value for el in node.returns.slice.elts]
-            returns = [el if el else "None" for el in returns]
-            returns = " | ".join(returns)
+            slice_val = node.returns.slice.value  # Get the actual slice value
+            if isinstance(slice_val, ast.Tuple):
+                returns = [(el.id if isinstance(el, ast.Name) else el.value) or "None" for el in slice_val.elts]
+            else:
+                returns = (slice_val.id if isinstance(slice_val, ast.Name) else slice_val.value) or "None"
+            returns = " | ".join(returns) if isinstance(returns, list) else returns
         elif node.returns is None:
             returns = "None"
         else:
