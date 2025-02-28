@@ -163,6 +163,8 @@ void tt::exalens::communication::request_loop() {
 
 void tt::exalens::communication::respond(const std::string& message) { respond(message.c_str(), message.size()); }
 
-void tt::exalens::communication::respond(const void* data, size_t size) { zmq_socket.send(zmq::const_buffer(data, size)); }
+void tt::exalens::communication::respond(const void* data, size_t size) {
+    zmq_socket.send(zmq::const_buffer(data, size));
+}
 
 bool tt::exalens::communication::is_connected() const { return port != -1; }

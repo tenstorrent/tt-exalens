@@ -65,7 +65,9 @@ void test_yaml_request(const T& request, const std::string& expected_response) {
     ASSERT_EQ(response, expected_response);
 }
 
-TEST(ttexalens_communication, ping) { test_yaml_request(tt::exalens::request{tt::exalens::request_type::ping}, "- type: 1"); }
+TEST(ttexalens_communication, ping) {
+    test_yaml_request(tt::exalens::request{tt::exalens::request_type::ping}, "- type: 1");
+}
 
 TEST(ttexalens_communication, get_cluster_description) {
     test_yaml_request(tt::exalens::request{tt::exalens::request_type::get_cluster_description}, "- type: 102");
@@ -96,13 +98,15 @@ TEST(ttexalens_communication, pci_read32_raw) {
 }
 
 TEST(ttexalens_communication, pci_write32_raw) {
-    test_yaml_request(tt::exalens::pci_write32_raw_request{tt::exalens::request_type::pci_write32_raw, 1, 123456, 987654},
-                      "- type: 15\n  chip_id: 1\n  address: 123456\n  data: 987654");
+    test_yaml_request(
+        tt::exalens::pci_write32_raw_request{tt::exalens::request_type::pci_write32_raw, 1, 123456, 987654},
+        "- type: 15\n  chip_id: 1\n  address: 123456\n  data: 987654");
 }
 
 TEST(ttexalens_communication, dma_buffer_read32) {
-    test_yaml_request(tt::exalens::dma_buffer_read32_request{tt::exalens::request_type::dma_buffer_read32, 1, 123456, 456},
-                      "- type: 16\n  chip_id: 1\n  address: 123456\n  channel: 456");
+    test_yaml_request(
+        tt::exalens::dma_buffer_read32_request{tt::exalens::request_type::dma_buffer_read32, 1, 123456, 456},
+        "- type: 16\n  chip_id: 1\n  address: 123456\n  channel: 456");
 }
 
 TEST(ttexalens_communication, pci_read_tile) {

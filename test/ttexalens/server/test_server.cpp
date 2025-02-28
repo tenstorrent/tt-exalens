@@ -244,7 +244,8 @@ TEST(ttexalens_server, ping) {
 }
 
 TEST(ttexalens_server, get_cluster_description) {
-    test_not_implemented_request(tt::exalens::request{tt::exalens::request_type::get_cluster_description}, "- type: 102");
+    test_not_implemented_request(tt::exalens::request{tt::exalens::request_type::get_cluster_description},
+                                 "- type: 102");
 }
 
 TEST(ttexalens_server, get_device_ids) {
@@ -252,8 +253,9 @@ TEST(ttexalens_server, get_device_ids) {
 }
 
 TEST(ttexalens_server, pci_read32) {
-    test_not_implemented_request(tt::exalens::pci_read32_request{tt::exalens::request_type::pci_read32, 1, 2, 3, 123456},
-                                 "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
+    test_not_implemented_request(
+        tt::exalens::pci_read32_request{tt::exalens::request_type::pci_read32, 1, 2, 3, 123456},
+        "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
 }
 
 TEST(ttexalens_server, pci_write32) {
@@ -263,13 +265,15 @@ TEST(ttexalens_server, pci_write32) {
 }
 
 TEST(ttexalens_server, pci_read) {
-    test_not_implemented_request(tt::exalens::pci_read_request{tt::exalens::request_type::pci_read, 1, 2, 3, 123456, 1024},
-                                 "- type: 12\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024");
+    test_not_implemented_request(
+        tt::exalens::pci_read_request{tt::exalens::request_type::pci_read, 1, 2, 3, 123456, 1024},
+        "- type: 12\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024");
 }
 
 TEST(ttexalens_server, pci_read32_raw) {
-    test_not_implemented_request(tt::exalens::pci_read32_raw_request{tt::exalens::request_type::pci_read32_raw, 1, 123456},
-                                 "- type: 14\n  chip_id: 1\n  address: 123456");
+    test_not_implemented_request(
+        tt::exalens::pci_read32_raw_request{tt::exalens::request_type::pci_read32_raw, 1, 123456},
+        "- type: 14\n  chip_id: 1\n  address: 123456");
 }
 
 TEST(ttexalens_server, pci_write32_raw) {
@@ -302,8 +306,9 @@ TEST(ttexalens_server, get_device_soc_description) {
 }
 
 TEST(ttexalens_server, jtag_read32) {
-    test_not_implemented_request(tt::exalens::jtag_read32_request{tt::exalens::request_type::jtag_read32, 1, 2, 3, 123456},
-                                 "- type: 50\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
+    test_not_implemented_request(
+        tt::exalens::jtag_read32_request{tt::exalens::request_type::jtag_read32, 1, 2, 3, 123456},
+        "- type: 50\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
 }
 
 TEST(ttexalens_server, jtag_write32) {
@@ -313,8 +318,9 @@ TEST(ttexalens_server, jtag_write32) {
 }
 
 TEST(ttexalens_server, jtag_read32_axi) {
-    test_not_implemented_request(tt::exalens::jtag_read32_axi_request{tt::exalens::request_type::jtag_read32_axi, 1, 123456},
-                                 "- type: 52\n  chip_id: 1\n  address: 123456");
+    test_not_implemented_request(
+        tt::exalens::jtag_read32_axi_request{tt::exalens::request_type::jtag_read32_axi, 1, 123456},
+        "- type: 52\n  chip_id: 1\n  address: 123456");
 }
 
 TEST(ttexalens_server, jtag_write32_axi) {
