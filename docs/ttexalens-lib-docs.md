@@ -395,6 +395,3 @@ Sends an ARC message to the device.
 
 
 # coordinate
-
-
-
