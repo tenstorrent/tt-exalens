@@ -863,7 +863,7 @@ class WormholeDevice(Device):
     def get_debug_bus_signal_names(self) -> List[str]:
         return list(self.__debug_bus_signal_map.keys())
 
-    def get_alu_config(self) -> List[dict]:
+    def get_alu_config(self) -> list[dict]:
         return [
             {
                 "Fpu_srnd_en": "ALU_ROUNDING_MODE_Fpu_srnd_en",

@@ -642,7 +642,7 @@ class BlackholeDevice(Device):
         "PORT2_FLIT_COUNTER_UPPER": NocControlRegisterDescription(address=0x5C0),  # 16 instances
     }
 
-    def get_alu_config(self) -> List[dict]:
+    def get_alu_config(self) -> list[dict]:
         return [
             {
                 "Fpu_srnd_en": "ALU_ROUNDING_MODE_Fpu_srnd_en",
@@ -661,6 +661,8 @@ class BlackholeDevice(Device):
                 "INT8_math_enabled": "ALU_ACC_CTRL_INT8_math_enabled",
             }
         ]
+
+    # UNPACKER GETTERS
 
     def get_unpack_tile_descriptor(self) -> list[dict]:
         struct_name = "UNPACK_TILE_DESCRIPTOR"
@@ -684,211 +686,104 @@ class BlackholeDevice(Device):
 
     def get_unpack_config(self) -> list[dict]:
         struct_name = "UNPACK_CONFIG"
-        unpack_config_list = []
+        fields = [
+            "out_data_format",
+            "throttle_mode",
+            "context_count",
+            "haloize_mode",
+            "tileize_mode",
+            "unpack_src_reg_set_upd",
+            "unpack_if_sel",
+            "upsample_rate",
+            "reserved_1",
+            "upsample_and_interleave",
+            "shift_amount",
+            "uncompress_cntx0_3",
+            "unpack_if_sel_cntx0_3",
+            "force_shared_exp",
+            "reserved_2",
+            "uncompress_cntx4_7",
+            "unpack_if_sel_cntx4_7",
+            "reserved_3",
+            "limit_addr",
+            "reserved_4",
+            "fifo_size",
+            "reserved_5",
+        ]
 
-        for i in range(self.NUM_UNPACKERS):
-            unpack_config = {}
-
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "out_data_format"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "throttle_mode"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "context_count"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "haloize_mode"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "tileize_mode"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "unpack_src_reg_set_upd"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "unpack_if_sel"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "upsample_rate"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "reserved_1"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "upsample_and_interleave"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "shift_amount"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "uncompress_cntx0_3"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "unpack_if_sel_cntx0_3"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "force_shared_exp"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "reserved_2"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "uncompress_cntx4_7"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "unpack_if_sel_cntx4_7"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "reserved_3"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "limit_addr"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "reserved_4"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "fifo_size"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "reserved_5"
-            unpack_config[field_name] = register_name + field_name
-
-            unpack_config_list.append(unpack_config)
-
-        return unpack_config_list
+        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
     def get_pack_config(self) -> list[dict]:
         struct_name = "PACK_CONFIG"
-        pack_config_list = []
 
-        for i in [0]:
-            for j in [1]:
-                pack_config = {}
+        fields = ["row_ptr_section_size", "exp_section_size", "l1_dest_addr", "uncompress", 
+                "add_l1_dest_addr_offset", "disable_pack_zero_flag", "reserved_0", 
+                "out_data_format", "in_data_format", "dis_shared_exp_assembler", 
+                "auto_set_last_pacr_intf_sel", "enable_out_fifo", "sub_l1_tile_header_size", 
+                "src_if_sel", "pack_start_intf_pos", "all_pack_disable_zero_compress_ovrd", 
+                "add_tile_header_size", "pack_dis_y_pos_start_offset", "l1_src_addr"]
 
-                register_name = struct_name + str(i) + str(j) + "_"
-
-                field_name = "row_ptr_section_size"
-                pack_config[field_name] = register_name + field_name
-                field_name = "exp_section_size"
-                pack_config[field_name] = register_name + field_name
-                field_name = "l1_dest_addr"
-                pack_config[field_name] = register_name + field_name
-                field_name = "uncompress"
-                pack_config[field_name] = register_name + field_name
-                field_name = "add_l1_dest_addr_offset"
-                pack_config[field_name] = register_name + field_name
-                field_name = "disable_pack_zero_flag"
-                pack_config[field_name] = register_name + field_name
-                field_name = "reserved_0"
-                pack_config[field_name] = register_name + field_name
-                field_name = "out_data_format"
-                pack_config[field_name] = register_name + field_name
-                field_name = "in_data_format"
-                pack_config[field_name] = register_name + field_name
-                field_name = "dis_shared_exp_assembler"
-                pack_config[field_name] = register_name + field_name
-                field_name = "auto_set_last_pacr_intf_sel"
-                pack_config[field_name] = register_name + field_name
-                field_name = "enable_out_fifo"
-                pack_config[field_name] = register_name + field_name
-                field_name = "sub_l1_tile_header_size"
-                pack_config[field_name] = register_name + field_name
-                field_name = "src_if_sel"
-                pack_config[field_name] = register_name + field_name
-                field_name = "pack_start_intf_pos"
-                pack_config[field_name] = register_name + field_name
-                field_name = "all_pack_disable_zero_compress_ovrd"
-                pack_config[field_name] = register_name + field_name
-                field_name = "add_tile_header_size"
-                pack_config[field_name] = register_name + field_name
-                field_name = "pack_dis_y_pos_start_offset"
-                pack_config[field_name] = register_name + field_name
-                field_name = "l1_src_addr"
-                pack_config[field_name] = register_name + field_name
-
-                pack_config_list.append(pack_config)
-
-        return pack_config_list
+        return [{field: f"{struct_name}{i}{j}_{field}" for field in fields} for i in [0] for j in [1]]
 
     def get_relu_config(self) -> list[dict]:
-        relu_config = {}
 
-        relu_config["disabled_src"] = "ALU_ACC_CTRL_Zero_Flag_disabled_src"
-        relu_config["disabled_dst"] = "ALU_ACC_CTRL_Zero_Flag_disabled_dst"
-        relu_config["apply_relu"] = "STACC_RELU_ApplyRelu"
-        relu_config["relu_threshold"] = "STACC_RELU_ReluThreshold"
-        relu_config["disable_main"] = "DISABLE_RISC_BP_Disable_main"
-        relu_config["disable_trisc"] = "DISABLE_RISC_BP_Disable_trisc"
-        relu_config["disable_ncrisc"] = "DISABLE_RISC_BP_Disable_ncrisc"
-        relu_config["disable_bmp_clear_main"] = "DISABLE_RISC_BP_Disable_bmp_clear_main"
-        relu_config["disable_bmp_clear_trisc"] = "DISABLE_RISC_BP_Disable_bmp_clear_trisc"
-        relu_config["disable_bmp_clear_ncrisc"] = "DISABLE_RISC_BP_Disable_bmp_clear_ncrisc"
-
-        return [relu_config]
+        return [
+            {
+                "disabled_src": "ALU_ACC_CTRL_Zero_Flag_disabled_src",
+                "disabled_dst": "ALU_ACC_CTRL_Zero_Flag_disabled_dst",
+                "apply_relu": "STACC_RELU_ApplyRelu",
+                "relu_threshold": "STACC_RELU_ReluThreshold",
+                "disable_main": "DISABLE_RISC_BP_Disable_main",
+                "disable_trisc": "DISABLE_RISC_BP_Disable_trisc",
+                "disable_ncrisc": "DISABLE_RISC_BP_Disable_ncrisc",
+                "disable_bmp_clear_main": "DISABLE_RISC_BP_Disable_bmp_clear_main",
+                "disable_bmp_clear_trisc": "DISABLE_RISC_BP_Disable_bmp_clear_trisc",
+                "disable_bmp_clear_ncrisc": "DISABLE_RISC_BP_Disable_bmp_clear_ncrisc",
+            }
+        ]
 
     def get_pack_dest_rd_ctrl(self) -> list[dict]:
-        dest = {}
-
-        dest["read_32b_data"] = "PACK_DEST_RD_CTRL_Read_32b_data"
-        dest["read_unsigned"] = "PACK_DEST_RD_CTRL_Read_unsigned"
-        dest["read_int8"] = "PACK_DEST_RD_CTRL_Read_int8"
-        dest["round_10b_mant"] = "PACK_DEST_RD_CTRL_Round_10b_mant"
-        dest["reserved"] = "PACK_DEST_RD_CTRL_Reserved"
-
-        return [dest]
+        return [
+            {
+                "read_32b_data": "PACK_DEST_RD_CTRL_Read_32b_data",
+                "read_unsigned": "PACK_DEST_RD_CTRL_Read_unsigned",
+                "read_int8": "PACK_DEST_RD_CTRL_Read_int8",
+                "round_10b_mant": "PACK_DEST_RD_CTRL_Round_10b_mant",
+                "reserved": "PACK_DEST_RD_CTRL_Reserved",
+            }
+        ]
 
     def get_pack_edge_offset(self) -> list[dict]:
         struct_name = "PACK_EDGE_OFFSET"
-        edge_list = []
+        fields = [
+            "mask",
+            "mode",
+            "tile_row_set_select_pack0",
+            "tile_row_set_select_pack1",
+            "tile_row_set_select_pack2",
+            "tile_row_set_select_pack3",
+        ]
 
-        for i in range(self.NUM_PACKERS):
-            edge = {}
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "mask"
-            edge[field_name] = register_name + field_name
-
-            if i == 0:
-                field_name = "mode"
-                edge[field_name] = register_name + field_name
-                field_name = "tile_row_set_select_pack0"
-                edge[field_name] = register_name + field_name
-                field_name = "tile_row_set_select_pack1"
-                edge[field_name] = register_name + field_name
-                field_name = "tile_row_set_select_pack2"
-                edge[field_name] = register_name + field_name
-                field_name = "tile_row_set_select_pack3"
-                edge[field_name] = register_name + field_name
-                field_name = "reserved"
-                edge[field_name] = register_name + field_name
-
-            edge_list.append(edge)
-
-        return edge_list
+        return [
+            {field: f"{struct_name}{i}_{field}" for field in (fields if i == 0 else fields[:1])}
+            for i in range(self.NUM_PACKERS)
+        ]
 
     def get_pack_counters(self) -> list[dict]:
         struct_name = "PACK_COUNTERS"
-        counters_list = []
+        fields = [
+            "pack_per_xy_plane",
+            "pack_reads_per_xy_plane",
+            "pack_xys_per_til",
+            "pack_yz_transposed",
+            "pack_per_xy_plane_offset",
+        ]
 
-        for i in range(self.NUM_PACKERS):
-            counters = {}
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "pack_per_xy_plane"
-            counters[field_name] = register_name + field_name
-            field_name = "pack_reads_per_xy_plane"
-            counters[field_name] = register_name + field_name
-            field_name = "pack_xys_per_til"
-            counters[field_name] = register_name + field_name
-            field_name = "pack_yz_transposed"
-            counters[field_name] = register_name + field_name
-            field_name = "pack_per_xy_plane_offset"
-            counters[field_name] = register_name + field_name
-
-            counters_list.append(counters)
-
-        return counters_list
+        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_PACKERS)]
 
     def get_pack_strides(self) -> list[dict]:
         struct_name = "PACK_STRIDES"
-        strides_list = []
+        fields = ["x_stride", "y_stride", "z_stride", "w_stride"]
 
-        for i in range(2):
-            strides = {}
-            register_name = struct_name + str(i) + "_"
+        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(2)]
 
-            field_name = "x_stride"
-            strides[field_name] = register_name + field_name
-            field_name = "y_stride"
-            strides[field_name] = register_name + field_name
-            field_name = "z_stride"
-            strides[field_name] = register_name + field_name
-            field_name = "w_stride"
-            strides[field_name] = register_name + field_name
-
-            strides_list.append(strides)
-
-        return strides_list
