@@ -128,5 +128,5 @@ setup(
     install_requires=requirements,
     license="TBD",
     keywords="debugging tenstorrent",
-    entry_points={"console_scripts": ["tt-lens = ttexalens.cli:main"]},
+    entry_points={"console_scripts": ["tt-lens = ttexalens.cli:main", "tt-exalens = ttexalens.cli:main"]},
 )
