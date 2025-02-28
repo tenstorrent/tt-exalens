@@ -716,12 +716,27 @@ class BlackholeDevice(Device):
     def get_pack_config(self) -> list[dict]:
         struct_name = "PACK_CONFIG"
 
-        fields = ["row_ptr_section_size", "exp_section_size", "l1_dest_addr", "uncompress", 
-                "add_l1_dest_addr_offset", "disable_pack_zero_flag", "reserved_0", 
-                "out_data_format", "in_data_format", "dis_shared_exp_assembler", 
-                "auto_set_last_pacr_intf_sel", "enable_out_fifo", "sub_l1_tile_header_size", 
-                "src_if_sel", "pack_start_intf_pos", "all_pack_disable_zero_compress_ovrd", 
-                "add_tile_header_size", "pack_dis_y_pos_start_offset", "l1_src_addr"]
+        fields = [
+            "row_ptr_section_size",
+            "exp_section_size",
+            "l1_dest_addr",
+            "uncompress",
+            "add_l1_dest_addr_offset",
+            "disable_pack_zero_flag",
+            "reserved_0",
+            "out_data_format",
+            "in_data_format",
+            "dis_shared_exp_assembler",
+            "auto_set_last_pacr_intf_sel",
+            "enable_out_fifo",
+            "sub_l1_tile_header_size",
+            "src_if_sel",
+            "pack_start_intf_pos",
+            "all_pack_disable_zero_compress_ovrd",
+            "add_tile_header_size",
+            "pack_dis_y_pos_start_offset",
+            "l1_src_addr",
+        ]
 
         return [{field: f"{struct_name}{i}{j}_{field}" for field in fields} for i in [0] for j in [1]]
 
@@ -786,4 +801,3 @@ class BlackholeDevice(Device):
         fields = ["x_stride", "y_stride", "z_stride", "w_stride"]
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(2)]
-
