@@ -5,7 +5,7 @@
 
 #include <cstdint>
 
-namespace tt::lens {
+namespace tt::exalens {
 
 // When adding new request, please add it into category
 // New requests should always be added at the end of request group
@@ -167,4 +167,4 @@ struct jtag_write32_axi_request : request {
     uint32_t data;
 } __attribute__((packed));
 
-}  // namespace tt::lens
+}  // namespace tt::exalens

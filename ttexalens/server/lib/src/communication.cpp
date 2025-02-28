@@ -8,26 +8,26 @@
 
 #include "ttexalensserver/requests.h"
 
-namespace tt::lens {
+namespace tt::exalens {
 
 // Simple function that forwards background thread to member function
-int communication_loop(tt::lens::communication* communication) {
+int communication_loop(tt::exalens::communication* communication) {
     communication->request_loop();
     return 0;
 }
 
-}  // namespace tt::lens
+}  // namespace tt::exalens
 
-tt::lens::communication::communication() : port(-1) {}
+tt::exalens::communication::communication() : port(-1) {}
 
-tt::lens::communication::~communication() {
+tt::exalens::communication::~communication() {
     try {
         stop();
     } catch (...) {
     }
 }
 
-void tt::lens::communication::stop() {
+void tt::exalens::communication::stop() {
     port = -1;
     should_stop = true;
     zmq_context.shutdown();
@@ -39,7 +39,7 @@ void tt::lens::communication::stop() {
     zmq_context.close();
 }
 
-void tt::lens::communication::start(int port) {
+void tt::exalens::communication::start(int port) {
     stop();
     zmq_context = zmq::context_t();
     zmq_socket = zmq::socket_t(zmq_context, zmq::socket_type::rep);
@@ -49,7 +49,7 @@ void tt::lens::communication::start(int port) {
     this->port = port;
 }
 
-void tt::lens::communication::request_loop() {
+void tt::exalens::communication::request_loop() {
     while (!should_stop) {
         try {
             // Receive message
@@ -104,7 +104,7 @@ void tt::lens::communication::request_loop() {
                     case request_type::get_device_soc_description:
                         invalid_message = message.size() != sizeof(get_device_soc_description_request);
                         break;
-                    case tt::lens::request_type::arc_msg:
+                    case tt::exalens::request_type::arc_msg:
                         invalid_message = message.size() != sizeof(arc_msg_request);
                         break;
 
@@ -161,8 +161,8 @@ void tt::lens::communication::request_loop() {
     }
 }
 
-void tt::lens::communication::respond(const std::string& message) { respond(message.c_str(), message.size()); }
+void tt::exalens::communication::respond(const std::string& message) { respond(message.c_str(), message.size()); }
 
-void tt::lens::communication::respond(const void* data, size_t size) { zmq_socket.send(zmq::const_buffer(data, size)); }
+void tt::exalens::communication::respond(const void* data, size_t size) { zmq_socket.send(zmq::const_buffer(data, size)); }
 
-bool tt::lens::communication::is_connected() const { return port != -1; }
+bool tt::exalens::communication::is_connected() const { return port != -1; }

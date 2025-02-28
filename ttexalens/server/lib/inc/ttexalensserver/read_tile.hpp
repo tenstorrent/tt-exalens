@@ -19,7 +19,7 @@
 // tt_device
 #include "umd/device/device_api_metal.h"
 
-namespace tt::lens::tile {
+namespace tt::exalens::tile {
 
 enum class TileDataFormat : uint8_t {
     Float32 = 0,
@@ -62,4 +62,4 @@ static __attribute__((always_inline)) inline uint32_t get_half(uint32_t word, ui
 uint32_t get_indexed_num(uint32_t data_index, const std::vector<uint32_t>& packed_data, TileDataFormat data_format);
 float dword_to_float(uint32_t dword);
 
-}  // namespace tt::lens::tile
+}  // namespace tt::exalens::tile

@@ -4,7 +4,7 @@
 
 #include "bindings.h"
 
-class bindings_implementation : public tt::lens::ttexalens_implementation {
+class bindings_implementation : public tt::exalens::ttexalens_implementation {
    private:
     std::map<std::tuple<uint8_t, uint8_t, uint8_t, uint64_t>, uint32_t> read_write_4;
     std::map<std::tuple<uint8_t, uint8_t, uint8_t, uint64_t, uint32_t>, std::vector<uint8_t>> read_write;

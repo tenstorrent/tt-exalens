@@ -8,9 +8,9 @@
 #include "communication.h"
 #include "ttexalens_implementation.h"
 
-namespace tt::lens {
+namespace tt::exalens {
 
-// Server class implements tt::lens::communication to process requests and provides
+// Server class implements tt::exalens::communication to process requests and provides
 // virtual functions for each request type. If function is not implemented, it should return {},
 // which means that command is not supported by the server.
 class server : public communication {
@@ -21,7 +21,7 @@ class server : public communication {
     void process(const request& request) override;
 
    private:
-    // Helper functions that wrap optional into tt::lens::communication::respond function calls.
+    // Helper functions that wrap optional into tt::exalens::communication::respond function calls.
     void respond(std::optional<std::string> response);
     void respond(std::optional<uint32_t> response);
     void respond(std::optional<std::vector<uint8_t>> response);
@@ -34,4 +34,4 @@ class server : public communication {
     std::unique_ptr<ttexalens_implementation> implementation;
 };
 
-}  // namespace tt::lens
+}  // namespace tt::exalens

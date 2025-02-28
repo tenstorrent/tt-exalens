@@ -10,7 +10,7 @@
 
 #include "umd/device/tt_soc_descriptor.h"
 
-namespace tt::lens {
+namespace tt::exalens {
 
 template <typename BaseClass>
 class open_implementation : public BaseClass {
@@ -42,4 +42,4 @@ class open_implementation : public BaseClass {
                                                                   const std::string& coord_system) override;
 };
 
-}  // namespace tt::lens
+}  // namespace tt::exalens

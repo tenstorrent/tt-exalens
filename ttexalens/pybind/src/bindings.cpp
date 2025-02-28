@@ -11,7 +11,7 @@
 #include <fstream>
 #include <optional>
 
-static std::unique_ptr<tt::lens::ttexalens_implementation> ttexalens_implementation;
+static std::unique_ptr<tt::exalens::ttexalens_implementation> ttexalens_implementation;
 
 class scoped_null_stdout {
    private:
@@ -28,7 +28,7 @@ class scoped_null_stdout {
     ~scoped_null_stdout() { std::cout.rdbuf(original_stdout); }
 };
 
-void set_ttexalens_implementation(std::unique_ptr<tt::lens::ttexalens_implementation> imp) {
+void set_ttexalens_implementation(std::unique_ptr<tt::exalens::ttexalens_implementation> imp) {
     ttexalens_implementation = std::move(imp);
 }
 
@@ -39,10 +39,10 @@ bool open_device(const std::string &binary_directory, const std::vector<uint8_t>
         scoped_null_stdout null_stdout;
 
         if (init_jtag) {
-            ttexalens_implementation = tt::lens::open_implementation<tt::lens::jtag_implementation>::open(
+            ttexalens_implementation = tt::exalens::open_implementation<tt::exalens::jtag_implementation>::open(
                 binary_directory, wanted_devices, use_noc1);
         } else {
-            ttexalens_implementation = tt::lens::open_implementation<tt::lens::umd_implementation>::open(
+            ttexalens_implementation = tt::exalens::open_implementation<tt::exalens::umd_implementation>::open(
                 binary_directory, wanted_devices, use_noc1);
         }
         if (!ttexalens_implementation) {

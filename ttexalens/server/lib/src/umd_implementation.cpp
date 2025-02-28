@@ -14,7 +14,7 @@ static std::string SMALL_READ_WRITE_TLB_STR = "SMALL_READ_WRITE_TLB";
 static std::string LARGE_READ_TLB_STR = "LARGE_READ_TLB";
 static std::string LARGE_WRITE_TLB_STR = "LARGE_WRITE_TLB";
 
-namespace tt::lens {
+namespace tt::exalens {
 
 umd_implementation::umd_implementation(tt_device* device) : device(device) {}
 
@@ -118,7 +118,7 @@ std::optional<uint32_t> umd_implementation::dma_buffer_read32(uint8_t chip_id, u
 
 std::optional<std::string> umd_implementation::pci_read_tile(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                              uint64_t address, uint32_t size, uint8_t data_format) {
-    return tt::lens::tile::read_tile_implementation(chip_id, noc_x, noc_y, address, size, data_format, device);
+    return tt::exalens::tile::read_tile_implementation(chip_id, noc_x, noc_y, address, size, data_format, device);
 }
 
 std::optional<std::string> umd_implementation::get_device_arch(uint8_t chip_id) {
@@ -142,4 +142,4 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(u
     return std::make_tuple(return_code, return_3, return_4);
 }
 
-}  // namespace tt::lens
+}  // namespace tt::exalens

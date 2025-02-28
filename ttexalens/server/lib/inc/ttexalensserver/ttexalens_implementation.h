@@ -9,7 +9,7 @@
 #include <tuple>
 #include <vector>
 
-namespace tt::lens {
+namespace tt::exalens {
 
 // Interface that should be implemented for TTExaLens server to process requests.
 class ttexalens_implementation {
@@ -67,4 +67,4 @@ class ttexalens_implementation {
     }
 };
 
-}  // namespace tt::lens
+}  // namespace tt::exalens

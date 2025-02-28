@@ -8,7 +8,7 @@
 #include "ttexalensserver/jtag_device.h"
 #include "ttexalensserver/ttexalens_implementation.h"
 
-namespace tt::lens {
+namespace tt::exalens {
 
 class jtag_implementation : public ttexalens_implementation {
    public:
@@ -28,4 +28,4 @@ class jtag_implementation : public ttexalens_implementation {
     JtagDevice* jtag_device = nullptr;
 };
 
-}  // namespace tt::lens
+}  // namespace tt::exalens

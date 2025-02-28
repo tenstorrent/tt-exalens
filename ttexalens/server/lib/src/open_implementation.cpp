@@ -362,7 +362,7 @@ static std::string jtag_create_device_soc_descriptor(const tt_SocDescriptor &soc
     return file_name;
 }
 
-namespace tt::lens {
+namespace tt::exalens {
 
 template <typename BaseClass>
 open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> device)
@@ -607,4 +607,4 @@ std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::conv
     }
 }
 
-}  // namespace tt::lens
+}  // namespace tt::exalens

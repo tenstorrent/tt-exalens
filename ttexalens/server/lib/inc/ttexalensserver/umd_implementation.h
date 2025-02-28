@@ -8,7 +8,7 @@
 #include "ttexalens_implementation.h"
 #include "umd/device/cluster.h"
 
-namespace tt::lens {
+namespace tt::exalens {
 
 class umd_implementation : public ttexalens_implementation {
    public:
@@ -43,4 +43,4 @@ class umd_implementation : public ttexalens_implementation {
     std::string cluster_descriptor_path;
 };
 
-}  // namespace tt::lens
+}  // namespace tt::exalens

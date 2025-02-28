@@ -40,8 +40,6 @@ def spawn_standalone_ttexalens_stub(
     print("Spawning ttexalens-server...")
 
     ttexalens_server_standalone = "/ttexalens-server-standalone"
-    if "BUDA_HOME" not in os.environ:
-        os.environ["BUDA_HOME"] = os.path.abspath(util.application_path() + "/../")
     ttexalens_server_standalone = f"/../build/bin{ttexalens_server_standalone}"
 
     ttexalens_stub_path = os.path.abspath(util.application_path() + ttexalens_server_standalone)

@@ -14,7 +14,7 @@ on:
       docker-image:
         required: false
         type: string
-        default: "ghcr.io/${{ github.repository }}/tt-lens-ubuntu-22-04:latest"
+        default: "ghcr.io/${{ github.repository }}/tt-exalens-ubuntu-22-04:latest"
 
 run-name: BUILD TTEXALENS by @${{ github.actor }} triggered by ${{ github.event_name }} event (${{ github.ref_name }})
 

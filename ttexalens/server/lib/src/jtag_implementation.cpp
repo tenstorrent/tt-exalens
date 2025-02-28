@@ -7,7 +7,7 @@
 #include "umd/device/tt_soc_descriptor.h"
 #include "umd/device/types/arch.h"
 
-namespace tt::lens {
+namespace tt::exalens {
 
 jtag_implementation::jtag_implementation(JtagDevice* device) : jtag_device(device) {}
 
@@ -34,4 +34,4 @@ std::optional<uint32_t> jtag_implementation::jtag_read32(uint8_t chip_id, uint8_
     return jtag_device->read32(chip_id, noc_x, noc_y, address);
 }
 
-}  // namespace tt::lens
+}  // namespace tt::exalens

@@ -38,20 +38,20 @@ void ensure_directory(const std::string& name, const std::filesystem::path& dire
 int run_ttexalens_server(const server_config& config) {
     if (config.port > 1024 && config.port < 65536) {
         // Open wanted devices
-        std::unique_ptr<tt::lens::ttexalens_implementation> implementation;
+        std::unique_ptr<tt::exalens::ttexalens_implementation> implementation;
         // Try to open only wanted devices
         try {
             if (config.simulation_directory.empty()) {
                 if (config.init_jtag) {
-                    implementation = tt::lens::open_implementation<tt::lens::jtag_implementation>::open(
+                    implementation = tt::exalens::open_implementation<tt::exalens::jtag_implementation>::open(
                         {}, config.wanted_devices, config.use_noc1);
                 } else {
-                    implementation = tt::lens::open_implementation<tt::lens::umd_implementation>::open(
+                    implementation = tt::exalens::open_implementation<tt::exalens::umd_implementation>::open(
                         {}, config.wanted_devices, config.use_noc1);
                 }
             } else {
                 ensure_directory("VCS binary", config.simulation_directory);
-                implementation = tt::lens::open_implementation<tt::lens::umd_implementation>::open_simulation(
+                implementation = tt::exalens::open_implementation<tt::exalens::umd_implementation>::open_simulation(
                     config.simulation_directory);
             }
         } catch (std::runtime_error& error) {
@@ -63,9 +63,9 @@ int run_ttexalens_server(const server_config& config) {
         log_info(tt::LogTTExaLens, "Debug server starting on {}...", connection_address);
 
         // Spawn server
-        std::unique_ptr<tt::lens::server> server;
+        std::unique_ptr<tt::exalens::server> server;
         try {
-            server = std::make_unique<tt::lens::server>(std::move(implementation));
+            server = std::make_unique<tt::exalens::server>(std::move(implementation));
             server->start(config.port);
             log_info(tt::LogTTExaLens, "Debug server started on {}.", connection_address);
         } catch (...) {
