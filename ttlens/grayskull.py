@@ -634,212 +634,105 @@ class GrayskullDevice(Device):
             return GrayskullDevice.__debug_register_map[register_name]
         return None
 
-    def get_unpack_tile_descriptor(self):
+    def get_unpack_tile_descriptor(self) -> list[dict]:
         struct_name = "UNPACK_TILE_DESCRIPTOR"
-        tile_descriptor_list = []
+        fields = [
+            "in_data_format",
+            "uncompressed",
+            "reserved_0",
+            "blobs_per_xy_plane",
+            "reserved_1",
+            "x_dim",
+            "y_dim",
+            "z_dim",
+            "w_dim",
+            "blobs_y_start_lo",
+            "blobs_y_start_hi",
+            "digest_type",
+            "digest_size",
+        ]
 
-        for i in range(self.NUM_UNPACKERS):
-            tile_descriptor = {}
-
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "in_data_format"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "uncompressed"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "reserved_0"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "blobs_per_xy_plane"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "reserved_1"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "x_dim"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "y_dim"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "z_dim"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "w_dim"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "blobs_y_start_lo"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "blobs_y_start_hi"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "digest_type"
-            tile_descriptor[field_name] = register_name + field_name
-            field_name = "digest_size"
-            tile_descriptor[field_name] = register_name + field_name
-
-            tile_descriptor_list.append(tile_descriptor)
-
-        return tile_descriptor_list
+        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
     def get_unpack_config(self) -> list[dict]:
         struct_name = "UNPACK_CONFIG"
-        unpack_config_list = []
+        fields = [
+            "out_data_format",
+            "throttle_mode",
+            "context_count",
+            "haloize_mode",
+            "tileize_mode",
+            "force_shared_exp",
+            "reserved_0",
+            "upsample_rate",
+            "upsample_and_interlave",
+            "shift_amount",
+            "uncompress_cntx0_3",
+            "reserved_1",
+            "uncompress_cntx4_7",
+            "reserved_2",
+            "limit_addr",
+            "fifo_size",
+        ]
 
-        for i in range(self.NUM_UNPACKERS):
-            unpack_config = {}
-
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "out_data_format"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "throttle_mode"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "context_count"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "haloize_mode"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "tileize_mode"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "force_shared_exp"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "reserved_0"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "upsample_rate"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "upsample_and_interlave"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "shift_amount"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "uncompress_cntx0_3"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "reserved_1"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "uncompress_cntx4_7"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "reserved_2"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "limit_addr"
-            unpack_config[field_name] = register_name + field_name
-            field_name = "fifo_size"
-            unpack_config[field_name] = register_name + field_name
-
-            unpack_config_list.append(unpack_config)
-
-        return unpack_config_list
+        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
     def get_pack_config(self) -> list[dict]:
         struct_name = "PACK_CONFIG"
-        pack_config_list = []
 
-        for i in [0, 1]:
-            for j in [1, 8]:
-                pack_config = {}
+        fields = [
+            "row_ptr_section_size",
+            "exp_section_size",
+            "l1_dest_addr",
+            "uncompress",
+            "add_l1_dest_addr_offset",
+            "reserved_0",
+            "out_data_format",
+            "in_data_format",
+            "reserved_1",
+            "src_if_sel",
+            "pack_per_xy_plane",
+            "l1_src_addr",
+            "downsample_mask",
+            "downsample_shift_count",
+            "read_mode",
+            "exp_threshold_en",
+            "reserved_2",
+            "exp_threshold",
+        ]
 
-                register_name = struct_name + str(i) + str(j) + "_"
-
-                field_name = "row_ptr_section_size"
-                pack_config[field_name] = register_name + field_name
-                field_name = "exp_section_size"
-                pack_config[field_name] = register_name + field_name
-                field_name = "l1_dest_addr"
-                pack_config[field_name] = register_name + field_name
-                field_name = "uncompress"
-                pack_config[field_name] = register_name + field_name
-                field_name = "add_l1_dest_addr_offset"
-                pack_config[field_name] = register_name + field_name
-                field_name = "reserved_0"
-                pack_config[field_name] = register_name + field_name
-                field_name = "out_data_format"
-                pack_config[field_name] = register_name + field_name
-                field_name = "in_data_format"
-                pack_config[field_name] = register_name + field_name
-                field_name = "reserved_1"
-                pack_config[field_name] = register_name + field_name
-                field_name = "src_if_sel"
-                pack_config[field_name] = register_name + field_name
-                field_name = "pack_per_xy_plane"
-                pack_config[field_name] = register_name + field_name
-                field_name = "l1_src_addr"
-                pack_config[field_name] = register_name + field_name
-                field_name = "downsample_mask"
-                pack_config[field_name] = register_name + field_name
-                field_name = "downsample_shift_count"
-                pack_config[field_name] = register_name + field_name
-                field_name = "read_mode"
-                pack_config[field_name] = register_name + field_name
-                field_name = "exp_threshold_en"
-                pack_config[field_name] = register_name + field_name
-                field_name = "reserved_2"
-                pack_config[field_name] = register_name + field_name
-                field_name = "exp_threshold"
-                pack_config[field_name] = register_name + field_name
-
-                pack_config_list.append(pack_config)
-
-        return pack_config_list
+        return [{field: f"{struct_name}{i}{j}_{field}" for field in fields} for i in [0, 1] for j in [1, 8]]
 
     def get_pack_edge_offset(self) -> list[dict]:
         struct_name = "PACK_EDGE_OFFSET"
-        edge_list = []
+        fields = [
+            "mask",
+            "mode",
+            "tile_row_set_select_pack0",
+            "tile_row_set_select_pack1",
+            "tile_row_set_select_pack2",
+            "tile_row_set_select_pack3",
+        ]
 
-        for i in range(self.NUM_PACKERS):
-            edge = {}
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "mask"
-            edge[field_name] = register_name + field_name
-
-            if i == 0:
-                field_name = "mode"
-                edge[field_name] = register_name + field_name
-                field_name = "tile_row_set_select_pack0"
-                edge[field_name] = register_name + field_name
-                field_name = "tile_row_set_select_pack1"
-                edge[field_name] = register_name + field_name
-                field_name = "tile_row_set_select_pack2"
-                edge[field_name] = register_name + field_name
-                field_name = "tile_row_set_select_pack3"
-                edge[field_name] = register_name + field_name
-                field_name = "reserved"
-                edge[field_name] = register_name + field_name
-
-            edge_list.append(edge)
-
-        return edge_list
+        return [
+            {field: f"{struct_name}{i}_{field}" for field in (fields if i == 0 else fields[:1])}
+            for i in range(self.NUM_PACKERS)
+        ]
 
     def get_pack_counters(self) -> list[dict]:
         struct_name = "PACK_COUNTERS"
-        counters_list = []
+        fields = [
+            "pack_per_xy_plane",
+            "pack_reads_per_xy_plane",
+            "pack_xys_per_til",
+            "pack_yz_transposed",
+            "pack_per_xy_plane_offset",
+        ]
 
-        for i in range(self.NUM_PACKERS):
-            counters = {}
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "pack_per_xy_plane"
-            counters[field_name] = register_name + field_name
-            field_name = "pack_reads_per_xy_plane"
-            counters[field_name] = register_name + field_name
-            field_name = "pack_xys_per_til"
-            counters[field_name] = register_name + field_name
-            field_name = "pack_yz_transposed"
-            counters[field_name] = register_name + field_name
-            field_name = "pack_per_xy_plane_offset"
-            counters[field_name] = register_name + field_name
-
-            counters_list.append(counters)
-
-        return counters_list
+        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_PACKERS)]
 
     def get_pack_strides(self) -> list[dict]:
         struct_name = "PACK_STRIDES"
-        strides_list = []
+        fields = ["x_stride", "y_stride", "z_stride", "w_stride"]
 
-        for i in range(2):
-            strides = {}
-            register_name = struct_name + str(i) + "_"
-
-            field_name = "x_stride"
-            strides[field_name] = register_name + field_name
-            field_name = "y_stride"
-            strides[field_name] = register_name + field_name
-            field_name = "z_stride"
-            strides[field_name] = register_name + field_name
-            field_name = "w_stride"
-            strides[field_name] = register_name + field_name
-
-            strides_list.append(strides)
-
-        return strides_list
+        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(2)]
