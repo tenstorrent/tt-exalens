@@ -19,7 +19,7 @@ Options:
   -i, --interactive  Run in interactive mode. Pause after parsing each file.
 
 Description:
-  This is a script for automatically generating markdown documentation for TTLens library files
+  This is a script for automatically generating markdown documentation for TTExaLens library files
   using docstrings of their functions and variables. The script can be run on a single command file or a directory.
 
 Notes:
@@ -45,7 +45,7 @@ from docopt import docopt
 from .doc_utils import INFO, WARNING, ERROR
 from .doc_utils import SectionPPrinter
 
-with open("ttlens/tt_lens_init.py") as f:
+with open("ttexalens/tt_exalens_init.py") as f:
     tree = ast.parse(f.read())
 
 
@@ -228,10 +228,12 @@ class FileParser:
         elif type(node.returns) == ast.Constant:
             returns = node.returns.value
         elif type(node.returns) == ast.Subscript:
-            # Some functions return multiple types
-            returns = [el.id if type(el) == ast.Name else el.value for el in node.returns.slice.elts]
-            returns = [el if el else "None" for el in returns]
-            returns = " | ".join(returns)
+            slice_val = node.returns.slice.value  # Get the actual slice value
+            if isinstance(slice_val, ast.Tuple):
+                returns = [(el.id if isinstance(el, ast.Name) else el.value) or "None" for el in slice_val.elts]
+            else:
+                returns = (slice_val.id if isinstance(slice_val, ast.Name) else slice_val.value) or "None"
+            returns = " | ".join(returns) if isinstance(returns, list) else returns
         elif node.returns is None:
             returns = "None"
         else:
@@ -305,7 +307,7 @@ class LibPPrinter(SectionPPrinter):
 def get_all_files(path: os.PathLike) -> list:
     """Returns a list of .py files specified in the __all__ variable in __init__.py,
     or all .py files in the directory if __init__.py is not found or does not contain __all__."""
-    spec = importlib.util.spec_from_file_location("ttlens", os.path.join(path, "__init__.py"))
+    spec = importlib.util.spec_from_file_location("ttexalens", os.path.join(path, "__init__.py"))
     if spec is not None:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)

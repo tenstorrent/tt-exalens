@@ -14,11 +14,11 @@ core
 __pycache__
 .venv
 
-# TTLens related files
-ttlens-export*.zip
-ttlens-export
-ttlens-server.pkl
-ttlens/server/lib/configuration/*.embed
+# TTExaLens related files
+ttexalens-export*.zip
+ttexalens-export
+ttexalens-server.pkl
+ttexalens/server/lib/configuration/*.embed
 
 # ClangD
 compile_commands.json

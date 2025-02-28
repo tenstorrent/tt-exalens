@@ -1,13 +1,13 @@
 #! /bin/bash
 set -eo pipefail
 
-TTLENS_INSTALL=${TTLENS_INSTALL:-}
+TTEXALENS_INSTALL=${TTEXALENS_INSTALL:-}
 TEST_INSTALL=${TEST_INSTALL:-}
 WHEEL_INSTALL=${WHEEL_INSTALL:-}
 
-if [ -n "$TTLENS_INSTALL" ]; then
-    echo "Installing ttlens dependencies..."
-    pip install -r ttlens/requirements.txt
+if [ -n "$TTEXALENS_INSTALL" ]; then
+    echo "Installing ttexalens dependencies..."
+    pip install -r ttexalens/requirements.txt
 fi
 
 if [ -n "$TEST_INSTALL" ]; then
