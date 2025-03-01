@@ -128,8 +128,9 @@ def run(cmd_text, context, ui_state: UIState = None):
                     relu_config_table = config_regs_to_table(relu_config, "RELU CONFIG", debug_tensix, device)
                     dest_rd_ctrl_table = config_regs_to_table(dest_rd_ctrl, "DEST RD CTRL", debug_tensix, device)
 
-                    print(put_table_list_side_by_side([edge_offset_table, pack_counters_table, dest_rd_ctrl_table]))
-                    print(put_table_list_side_by_side([pack_config_table, relu_config_table, pack_strides_table]))
+                    print(put_table_list_side_by_side([edge_offset_table, pack_counters_table]))
+                    print(pack_config_table)
+                    print(put_table_list_side_by_side([relu_config_table, dest_rd_ctrl_table, pack_strides_table]))
 
                 else:
                     print(put_table_list_side_by_side([pack_config_table, pack_counters_table]))
