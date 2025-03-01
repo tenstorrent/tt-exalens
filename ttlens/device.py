@@ -33,6 +33,7 @@ class TensixRegisterDescription:
     address: int = 0
     mask: int = 0xFFFFFFFF
     shift: int = 0
+    data_type: DATA_TYPE = DATA_TYPE.INT_VALUE
 
     def clone(self, offset: int = 0):
         new_instance = deepcopy(self)
@@ -48,7 +49,6 @@ class DebugRegisterDescription(TensixRegisterDescription):
 @dataclass
 class ConfigurationRegisterDescription(TensixRegisterDescription):
     index: int = 0
-    data_type: DATA_TYPE = DATA_TYPE.UNKNOWN
 
     def __post_init__(self):
         self.address = self.address + self.index * 4

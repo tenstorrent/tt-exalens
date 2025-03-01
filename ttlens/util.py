@@ -737,51 +737,25 @@ from ttlens.unpack_regfile import TensixDataFormat
 
 # An enumeration of different data types in registers.
 class DATA_TYPE(Enum):
-    DIMENSION = 0
-    SIZE = 1
-    STRIDE = 2
-    THRESHOLD = 3
-    SHIFT = 4
-    COUNT = 5
-    ADDRESS = 6
-    MASK = 7
-    FLAG = 8
-    FLAGS = 9
-    TENSIX_DATA_FORMAT = 10
-    MODE = 11
-    CONTEXT = 12
-    RESERVED = 13
-    UNKNOWN = 14
+    INT_VALUE = 0
+    ADDRESS = 1
+    MASK = 2
+    FLAGS = 3
+    TENSIX_DATA_FORMAT = 4
 
 
 # Convert value to specified data type
 def convert_value(value: int, data_type: DATA_TYPE, number_of_bits: int):
-    if (
-        data_type == DATA_TYPE.DIMENSION
-        or data_type == DATA_TYPE.SIZE
-        or data_type == DATA_TYPE.STRIDE
-        or data_type == DATA_TYPE.THRESHOLD
-        or data_type == DATA_TYPE.SHIFT
-        or data_type == DATA_TYPE.COUNT
-        or data_type == DATA_TYPE.MODE
-    ):
+    if data_type == DATA_TYPE.INT_VALUE:
         return value
-    elif (
-        data_type == DATA_TYPE.ADDRESS
-        or data_type == DATA_TYPE.MASK
-        or data_type == DATA_TYPE.CONTEXT
-        or data_type == DATA_TYPE.RESERVED
-        or data_type == DATA_TYPE.UNKNOWN
-    ):
+    elif data_type == DATA_TYPE.ADDRESS or DATA_TYPE.MASK:
         return hex(value)
-    elif data_type == DATA_TYPE.FLAG:
-        return "True" if value else "False"
     elif data_type == DATA_TYPE.FLAGS:
         return "b" + f"{value:0{number_of_bits}b}"
     elif data_type == DATA_TYPE.TENSIX_DATA_FORMAT:
         return f"TensixDataFormat.{TensixDataFormat(value).name}"
     else:
-        raise ValueError("Invalid value for data_type")
+        raise ValueError(f"Invalid value for data_type: {data_type}")
 
 
 def word_to_byte_array(A):
