@@ -748,10 +748,12 @@ class DATA_TYPE(Enum):
 def convert_value(value: int, data_type: DATA_TYPE, number_of_bits: int):
     if data_type == DATA_TYPE.INT_VALUE:
         return value
-    elif data_type == DATA_TYPE.ADDRESS or DATA_TYPE.MASK:
+    elif data_type == DATA_TYPE.ADDRESS or data_type == DATA_TYPE.MASK:
         return hex(value)
     elif data_type == DATA_TYPE.FLAGS:
-        return "b" + f"{value:0{number_of_bits}b}"
+        bin_repr = f"{value:0{number_of_bits}b}"
+        return ",".join("True" if bit == "1" else "False" for bit in bin_repr)
+
     elif data_type == DATA_TYPE.TENSIX_DATA_FORMAT:
         return f"TensixDataFormat.{TensixDataFormat(value).name}"
     else:
