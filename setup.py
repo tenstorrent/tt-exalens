@@ -10,13 +10,13 @@ __requires__ = ["pip >= 24.0"]
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 
-# TTLens files to be copied to build directory
-ttlens_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ttlens")
-ttlens_home = os.path.dirname(ttlens_folder_path)
+# TTExaLens files to be copied to build directory
+ttexalens_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ttexalens")
+ttexalens_home = os.path.dirname(ttexalens_folder_path)
 
 
-def get_ttlens_py_files(file_dir: os.PathLike = f"{ttlens_home}/ttlens", ignorelist: list = []) -> list:
-    """A function to get the list of files in the ttlens lib directory.
+def get_ttexalens_py_files(file_dir: os.PathLike = f"{ttexalens_home}/ttexalens", ignorelist: list = []) -> list:
+    """A function to get the list of files in the ttexalens lib directory.
     Ignore the files in the ignorelist."""
 
     files = os.listdir(file_dir)
@@ -29,28 +29,28 @@ def get_ttlens_py_files(file_dir: os.PathLike = f"{ttlens_home}/ttlens", ignorel
 def get_libjtag() -> list:
     """A function to get the libjtag if it exists."""
 
-    if os.path.exists(f"{ttlens_home}/build/lib/libttlens_jtag.so"):
-        return ["libttlens_jtag.so", "libjlinkarm.so"]
+    if os.path.exists(f"{ttexalens_home}/build/lib/libttexalens_jtag.so"):
+        return ["libttexalens_jtag.so", "libjlinkarm.so"]
 
     return []
 
 
-ttlens_files = {
-    "ttlens_lib": {"path": "ttlens", "files": get_ttlens_py_files(), "output": "ttlens"},
-    "ttlens_commands": {
-        "path": "ttlens/ttlens_commands",
-        "files": get_ttlens_py_files(f"{ttlens_home}/ttlens/ttlens_commands"),
-        "output": "ttlens/ttlens_commands",
+ttexalens_files = {
+    "ttexalens_lib": {"path": "ttexalens", "files": get_ttexalens_py_files(), "output": "ttexalens"},
+    "cli_commands": {
+        "path": "ttexalens/cli_commands",
+        "files": get_ttexalens_py_files(f"{ttexalens_home}/ttexalens/cli_commands"),
+        "output": "ttexalens/cli_commands",
     },
     "libs": {
         "path": "build/lib",
-        "files": ["libdevice.so", "ttlens_pybind.so"] + get_libjtag(),
+        "files": ["libdevice.so", "ttexalens_pybind.so"] + get_libjtag(),
         "output": "build/lib",
         "strip": True,
     },
-    "ttlens-server-standalone": {
+    "ttexalens-server-standalone": {
         "path": "build/bin",
-        "files": ["ttlens-server-standalone"],
+        "files": ["ttexalens-server-standalone"],
         "output": "build/bin",
         "strip": True,
     },
@@ -78,15 +78,15 @@ class MyBuild(build_ext):
         env = os.environ.copy()
         nproc = os.cpu_count()
         print(f"make")
-        subprocess.check_call([f"cd {ttlens_home} && make"], env=env, shell=True)
+        subprocess.check_call([f"cd {ttexalens_home} && make"], env=env, shell=True)
 
     def _copy_files(self, target_path):
         strip_symbols = os.environ.get("STRIP_SYMBOLS", "0") == "1"
-        for _, d in ttlens_files.items():
+        for _, d in ttexalens_files.items():
             path = target_path + "/" + d["output"]
             os.makedirs(path, exist_ok=True)
 
-            src_path = ttlens_home + "/" + d["path"]
+            src_path = ttexalens_home + "/" + d["path"]
             if d["files"] == "*":
                 self.copy_tree(src_path, path)
             else:
@@ -97,14 +97,14 @@ class MyBuild(build_ext):
                         subprocess.check_call(["strip", path + "/" + f])
 
 
-# Fake TTLens extension
-ttlens_fake_extension = TTExtension("ttlens.fake_extension")
+# Fake TTExaLens extension
+ttexalens_fake_extension = TTExtension("ttexalens.fake_extension")
 
 with open("README.md", "r") as f:
     long_description = f.read()
 
-# Add specific requirements for TTLens
-with open(f"{ttlens_folder_path}/requirements.txt", "r") as f:
+# Add specific requirements for TTExaLens
+with open(f"{ttexalens_folder_path}/requirements.txt", "r") as f:
     requirements = [r for r in f.read().splitlines() if not r.startswith("-r")]
 
 short_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
@@ -113,20 +113,20 @@ date = datetime.today().strftime("%y%m%d")
 version = "0.1." + date + "+dev." + short_hash
 
 setup(
-    name="ttlens",
+    name="ttexalens",
     version=version,
-    packages=["ttlens"],
-    package_dir={"ttlens": "ttlens"},
+    packages=["ttexalens"],
+    package_dir={"ttexalens": "ttexalens"},
     author="Tenstorrent",
     url="http://www.tenstorrent.com",
     author_email="info@tenstorrent.com",
     description="Debugger for Tenstorrent devices",
     python_requires=">=3.8",
-    ext_modules=[ttlens_fake_extension],
+    ext_modules=[ttexalens_fake_extension],
     cmdclass=dict(build_ext=MyBuild),
     zip_safe=False,
     install_requires=requirements,
-    license="TBD",
+    license="Apache-2.0",
     keywords="debugging tenstorrent",
-    entry_points={"console_scripts": ["tt-lens = ttlens.cli:main"]},
+    entry_points={"console_scripts": ["tt-lens = ttexalens.cli:main", "tt-exalens = ttexalens.cli:main"]},
 )

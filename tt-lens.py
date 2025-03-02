@@ -5,8 +5,10 @@
 # -*- coding: utf-8 -*-
 import re
 import sys
-from ttlens.cli import main
+from ttexalens.cli import main
+from ttexalens.util import INFO
 
 if __name__ == "__main__":
     sys.argv[0] = re.sub(r"(-script\.pyw|\.exe)?$", "", sys.argv[0])
+    INFO("Please use tt-exalens.py instead of tt-lens.py. tt-lens.py will be deprecated in the future.")
     sys.exit(main())

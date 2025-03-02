@@ -5,9 +5,9 @@
 
 set -e
 
-REPO=tenstorrent/tt-lens
-CI_IMAGE_NAME=ghcr.io/$REPO/tt-lens-ci-ubuntu-22-04
-IRD_IMAGE_NAME=ghcr.io/$REPO/tt-lens-ird-ubuntu-22-04
+REPO=tenstorrent/tt-exalens
+CI_IMAGE_NAME=ghcr.io/$REPO/tt-exalens-ci-ubuntu-22-04
+IRD_IMAGE_NAME=ghcr.io/$REPO/tt-exalens-ird-ubuntu-22-04
 
 # Compute the hash of the Dockerfile
 DOCKER_TAG=$(./.github/get-docker-tag.sh)
