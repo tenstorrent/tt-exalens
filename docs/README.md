@@ -6,5 +6,6 @@
 - [*ttexalens-app-docs.md*](ttexalens-app-docs.md): TTExaLens application documentation, all commands with examples (automatically generated)
 - [*elf_loader.md*](elf_loader.md): Explains how elf loader works in TTExaLens
 - [*gdb.md*](gdb.md): Explains how to use gdb to debug riscv cores
+- [*coordinates.md*](coordinates.md): Explains how to use coordinates in TTExaLens
 
 Non `.md` files are used to generate automatic documentation files.
