@@ -25,7 +25,7 @@ Examples:
 
 command_metadata = {
     "short": "cfg",
-    "type": "dev",
+    "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],
     "command_option_names": ["--device", "--loc"],
