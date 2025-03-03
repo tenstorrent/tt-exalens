@@ -520,7 +520,7 @@ class GrayskullDevice(Device):
             index=24, mask=0x7F0000, shift=16, data_type=DATA_TYPE.INT_VALUE
         ),
         "PACK_COUNTERS0_pack_yz_transposed": ConfigurationRegisterDescription(
-            index=24, mask=800000, shift=23, data_type=DATA_TYPE.FLAGS
+            index=24, mask=0x800000, shift=23, data_type=DATA_TYPE.FLAGS
         ),
         "PACK_COUNTERS0_pack_per_xy_plane_offset": ConfigurationRegisterDescription(
             index=24, mask=0xFF000000, shift=24, data_type=DATA_TYPE.INT_VALUE
@@ -536,7 +536,7 @@ class GrayskullDevice(Device):
             index=25, mask=0x7F0000, shift=16, data_type=DATA_TYPE.INT_VALUE
         ),
         "PACK_COUNTERS1_pack_yz_transposed": ConfigurationRegisterDescription(
-            index=25, mask=800000, shift=23, data_type=DATA_TYPE.FLAGS
+            index=25, mask=0x800000, shift=23, data_type=DATA_TYPE.FLAGS
         ),
         "PACK_COUNTERS1_pack_per_xy_plane_offset": ConfigurationRegisterDescription(
             index=25, mask=0xFF000000, shift=24, data_type=DATA_TYPE.INT_VALUE
@@ -552,7 +552,7 @@ class GrayskullDevice(Device):
             index=26, mask=0x7F0000, shift=16, data_type=DATA_TYPE.INT_VALUE
         ),
         "PACK_COUNTERS2_pack_yz_transposed": ConfigurationRegisterDescription(
-            index=26, mask=800000, shift=23, data_type=DATA_TYPE.FLAGS
+            index=26, mask=0x800000, shift=23, data_type=DATA_TYPE.FLAGS
         ),
         "PACK_COUNTERS2_pack_per_xy_plane_offset": ConfigurationRegisterDescription(
             index=26, mask=0xFF000000, shift=24, data_type=DATA_TYPE.INT_VALUE
@@ -568,7 +568,7 @@ class GrayskullDevice(Device):
             index=27, mask=0x7F0000, shift=16, data_type=DATA_TYPE.INT_VALUE
         ),
         "PACK_COUNTERS3_pack_yz_transposed": ConfigurationRegisterDescription(
-            index=27, mask=800000, shift=23, data_type=DATA_TYPE.FLAGS
+            index=27, mask=0x800000, shift=23, data_type=DATA_TYPE.FLAGS
         ),
         "PACK_COUNTERS3_pack_per_xy_plane_offset": ConfigurationRegisterDescription(
             index=27, mask=0xFF000000, shift=24, data_type=DATA_TYPE.INT_VALUE

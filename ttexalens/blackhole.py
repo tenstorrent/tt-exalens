@@ -484,7 +484,7 @@ class BlackholeDevice(Device):
             index=28, mask=0x7F0000, shift=16, data_type=DATA_TYPE.INT_VALUE
         ),
         "PACK_COUNTERS0_pack_yz_transposed": ConfigurationRegisterDescription(
-            index=28, mask=800000, shift=23, data_type=DATA_TYPE.FLAGS
+            index=28, mask=0x800000, shift=23, data_type=DATA_TYPE.FLAGS
         ),
         "PACK_COUNTERS0_pack_per_xy_plane_offset": ConfigurationRegisterDescription(
             index=28, mask=0xFF000000, shift=24, data_type=DATA_TYPE.INT_VALUE
