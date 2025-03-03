@@ -754,7 +754,10 @@ def convert_value(value: int, data_type: DATA_TYPE, number_of_bits: int):
         bin_repr = f"{value:0{number_of_bits}b}"
         return ",".join("True" if bit == "1" else "False" for bit in bin_repr)
     elif data_type == DATA_TYPE.TENSIX_DATA_FORMAT:
-        return f"TensixDataFormat.{TensixDataFormat(value).name}"
+        try:
+            return f"TensixDataFormat.{TensixDataFormat(value).name}"
+        except:
+            return f"{value} -> INVALID VALUE"
     else:
         raise ValueError(f"Invalid value for data_type: {data_type}")
 
