@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
+  dump-config-reg list-names
   dump-config-reg [ <config-reg> ] [ -d <device> ] [ -l <loc> ]
 
 Options:
@@ -79,9 +80,32 @@ def run(cmd_text, context, ui_state: UIState = None):
     )
 
     cfg = dopt.args["<config-reg>"] if dopt.args["<config-reg>"] else "all"
-    print(cfg)
 
     for device in dopt.for_each("--device", context, ui_state):
+
+        alu_config = device.get_alu_config()
+        tile_descriptor = device.get_unpack_tile_descriptor()
+        unpack_config = device.get_unpack_config()
+        pack_config = device.get_pack_config()
+        pack_counters = device.get_pack_counters()
+        edge_offset = device.get_pack_edge_offset()
+        pack_strides = device.get_pack_strides()
+        relu_config = device.get_relu_config()
+        dest_rd_ctrl = device.get_pack_dest_rd_ctrl()
+
+        if dopt.args["list-names"]:
+            print (f"Alu: {list(alu_config[0].keys())}\n")
+            print (f"TileDesc {list(tile_descriptor[0].keys())}\n")
+            print (f"UnpackConfig: {list(unpack_config[0].keys())}\n")
+            print (f"PackConfig {list(pack_config[0].keys())}\n")
+            print (f"ReluConfig {list(relu_config[0].keys())}\n")
+            print (f"DestRdCtrl {list(dest_rd_ctrl[0].keys())}\n")
+            print (f"EdgeOffset {list(edge_offset[0].keys())}\n")
+            print (f"PackCounters {list(pack_counters[0].keys())}\n")
+            print (f"Strides {list(pack_strides[0].keys())}\n")
+
+            return
+
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             INFO(f"Configuration registers for location {loc} on device {device.id()}")
 
