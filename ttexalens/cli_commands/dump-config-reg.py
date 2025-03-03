@@ -3,29 +3,31 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump-config-reg [<config-reg>] [ -d <device> ] [ -l <loc> ]
+  dump-config-reg <config-reg> [ -d <device> ] [ -l <loc> ]
+
+Arguements:
+  <config-reg>  Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
 
 Options:
-  -d <device>   Device ID. Optional and repeatable. Default: current device
-  -l <loc>      Either X-Y or R,C location of a core
-  <config-reg>  Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
+  -d <device>   Device ID. Optional. Default: current device
+  -l <loc>      Core location in X-Y or R,C format
 
 Description:
   Prints the configuration register of the given name, at the specified location and device.
 
 Examples:
-  cfg
-  cfg -d 0
-  cfg -l 0,0
-  cfg all
-  cfg alu
-  cfg pack
-  cfg unpack
+  cfg              Prints all configuration registers for current device and core
+  cfg -d 0         Prints all configuration reigsters for device with id 0 and current core
+  cfg -l 0,0       Pirnts all configuration registers for current device and core at location 0,0
+  cfg all          Prints all configuration registers for current device and core
+  cfg alu          Prints alu configuration registers for current device and core
+  cfg pack         Prints packer's configuration registers for current device and core
+  cfg unpack       Prints unpacker's configuration registers for current device and core
 """
 
 command_metadata = {
     "short": "cfg",
-    "type": "low-level",
+    "type": "dev",
     "description": __doc__,
     "context": ["limited", "metal"],
     "command_option_names": ["--device", "--loc"],
@@ -78,14 +80,14 @@ def run(cmd_text, context, ui_state: UIState = None):
         argv=cmd_text.split()[1:],
     )
 
+    cfg = dopt.args["<config-reg>"] if dopt.args["<config-reg>"] else "all"
+
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             INFO(f"Configuration registers for location {loc} on device {device.id()}")
 
             debug_tensix = TensixDebug(loc, device.id(), context)
             device = debug_tensix.context.devices[debug_tensix.device_id]
-
-            cfg = dopt.args["<config-reg>"] if dopt.args["<config-reg>"] else "all"
 
             if cfg == "alu" or cfg == "all":
                 print(f"{CLR_GREEN}ALU{CLR_END}")
