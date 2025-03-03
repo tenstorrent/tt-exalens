@@ -624,7 +624,6 @@ class GrayskullDevice(Device):
         "RISCV_DEBUG_REG_SOFT_RESET_0": DebugRegisterDescription(address=0x1B0),
     }
 
-
     def get_unpack_tile_descriptor(self) -> list[dict]:
         struct_name = "UNPACK_TILE_DESCRIPTOR"
         fields = [
