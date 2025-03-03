@@ -4,22 +4,22 @@ This document explains how we handle different coordinate systems on a chip. The
 
 ## Coordinate Systems
 
-1. **die**  
-   - Represents a “geographic” location on the die grid. Used mainly for diagrams or marketing visuals.  
+1. **die**
+   - Represents a “geographic” location on the die grid. Used mainly for diagrams or marketing visuals.
 
-2. **noc0** (also called “physical”)  
+2. **noc0** (also called “physical”)
    - The main routing coordinate for NOC 0 (X-Y notation). One hop is one clock cycle on the network.
 
-3. **noc1**  
+3. **noc1**
    - Similar to `noc0`, but for NOC 1. It routes in the opposite direction.
 
-4. **logical**  
+4. **logical**
    - Abstracts physical details. Often used to reference Tensix cores (e.g., `t0,0`), Ethernet (`e0,0`), DRAM (`d0,0`), etc.
 
-5. **virtual**  
+5. **virtual**
    - A “compressed” version of `noc0`, skipping harvested (disabled) rows.
 
-6. **translated**  
+6. **translated**
    - A hardware-usable coordinate system offset by certain values (e.g., `(16,16)` on some chips), automatically accounting for harvesting.
 
 ## Class Overview
@@ -53,10 +53,10 @@ print(coord.to("noc0"))       # Translate to (x_noc0, y_noc0)
 print(coord.to("translated")) # If supported, translate to "translated" coords
 ```
 
-1. **Automatic Parsing**  
+1. **Automatic Parsing**
    `create()` inspects the string format (`"-"`, `","`, or `"ch"`) and determines which coordinate system to use.
 
-2. **Translations**  
+2. **Translations**
    Calling `coord.to("<system>")` returns the coordinate in that system.
 
 ---
@@ -73,10 +73,10 @@ logical_coord = my_coord.to("logical")
 print("Logical coords:", logical_coord)
 ```
 
-1. **Direct Instantiation**  
+1. **Direct Instantiation**
    You can manually instantiate `OnChipCoordinate(x, y, input_type, device)` if you know the type (e.g., `"noc0"`).
 
-2. **Switching Types**  
+2. **Switching Types**
    Use `.to("logical")`, `.to("noc0")`, `.to("virtual")`, etc., as needed.
 
 ---
@@ -141,30 +141,29 @@ If no arguments are provided, the command defaults to displaying the RISC-V stat
 
 ### Examples
 
-- **Show default RISC-V status for all devices**  
+- **Show default RISC-V status for all devices**
   ```
   device
   ```
 
-- **Show RISC-V status in `noc0` coordinates**  
+- **Show RISC-V status in `noc0` coordinates**
   ```
   device noc0
   ```
 
-- **Show block types in `logical-tensix` coordinates**  
+- **Show block types in `logical-tensix` coordinates**
   ```
   device logical-tensix block
   ```
 
-- **Show `noc0` coordinates on a `logical-dram` axis for device 0**  
+- **Show `noc0` coordinates on a `logical-dram` axis for device 0**
   ```
   device -d 0 logical-dram noc0
   ```
 
-- **Hide the legend**  
+- **Hide the legend**
   ```
   device noc0 block --no-legend
   ```
 
 Using `device` in different ways lets you explore how the chip’s coordinates relate to each other, whether you’re looking at physical routing (`noc0`) or logical groupings (`logical-tensix`, `logical-dram`)—all from a single command.
-
