@@ -42,7 +42,7 @@ from ttexalens.coordinate import OnChipCoordinate
 # Suppose we have a device list: context.devices[0]
 device = context.devices[0]
 
-# Example coordinate string: could be "3-5" (noc0), "3,5" (logical), or "ch2" (DRAM channel).
+# Example coordinate string: could be "3-5" (noc0), "3,5" (logical), or "ch4" (DRAM channel).
 core_loc_str = "3-5"
 
 # Convert it into an OnChipCoordinate:
@@ -72,6 +72,7 @@ logical_coord = my_coord.to("logical")
 
 print("Logical coords:", logical_coord)
 ```
+
 
 1. **Direct Instantiation**
    You can manually instantiate `OnChipCoordinate(x, y, input_type, device)` if you know the type (e.g., `"noc0"`).
@@ -127,6 +128,19 @@ print("Device 1 logical:", coord_dev1)
 - **Use `.to("noc0")`:** Most lower-level hardware calls need noc0 coordinates.
 - **Harvesting:** If certain rows/columns are disabled, the device’s translation logic in `OnChipCoordinate` takes care of offsetting them internally.
 
+#### Logical Coordinate Return Format
+
+When calling `.to("logical")` on an `OnChipCoordinate`, the method returns a **two-part tuple**:
+
+1. **The Logical Coordinates** `(x, y)`
+2. **The Core Type**, such as `"tensix"`, `"eth"`, or `"dram"`
+
+For example:
+```
+((2, 5), "tensix")
+```
+- `(2, 5)` is the logical coordinate.
+- `"tensix"` is the core type.
 
 ## Device Command
 
