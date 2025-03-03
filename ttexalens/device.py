@@ -14,6 +14,8 @@ from ttexalens.object import TTObject
 from ttexalens import util as util
 from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
 from abc import abstractmethod
+
+from ttexalens.util import DATA_TYPE
 from ttexalens.debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 
@@ -32,6 +34,7 @@ class TensixRegisterDescription:
     address: int = 0
     mask: int = 0xFFFFFFFF
     shift: int = 0
+    data_type: DATA_TYPE = DATA_TYPE.INT_VALUE
 
     def clone(self, offset: int = 0):
         new_instance = deepcopy(self)
@@ -438,6 +441,35 @@ class Device(TTObject):
             rst_reg = read_word_from_device(loc, RISC_SOFT_RESET_0_ADDR, self.id(), self._context)
             if rst_reg != ALL_SOFT_RESET:
                 util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
+
+    # ALU GETTER
+    def get_alu_config(self) -> list[dict]:
+        return []
+
+    # UNPACKER GETTERS
+
+    def get_unpack_tile_descriptor(self) -> list[dict]:
+        return []
+
+    def get_unpack_config(self) -> list[dict]:
+        return []
+
+    # PACKER GETTERS
+
+    def get_pack_config(self) -> list[dict]:
+        return []
+
+    def get_relu_config(self) -> list[dict]:
+        return []
+
+    def get_pack_dest_rd_ctrl(self) -> list[dict]:
+        return []
+
+    def get_pack_edge_offset(self) -> list[dict]:
+        return []
+
+    def get_pack_counters(self) -> list[dict]:
+        return []
 
     @abstractmethod
     def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:

@@ -10,7 +10,7 @@ source ${THIS_SCRIPT_DIR}/../test-base.sh
 ############################################################################################
 # Running tests
 
-TTEXALENS_COMMANDS='h;wxy 0,0 0 0x123;brxy 0,0 0 64;gpr;d -d 0 logical-tensix virtual;x'
+TTEXALENS_COMMANDS='h;wxy 0,0 0 0x123;brxy 0,0 0 64;gpr;d -d 0 logical-tensix virtual;cfg;x'
 
 echo -e "${YELLOW}INFO: ${NC}Running simple TTExaLens commands ..."
 tt-exalens --test --commands="$TTEXALENS_COMMANDS"

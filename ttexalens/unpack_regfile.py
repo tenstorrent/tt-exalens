@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Union
 
 
-class tensix_data_format(Enum):
+class TensixDataFormat(Enum):
     Float32 = 0
     Float16 = 1
     Bfp8 = 2
@@ -111,15 +111,15 @@ def unpack_bfp8_b(data):
     return bfloat16_values
 
 
-def unpack_data(data, df: Union[int, tensix_data_format]):
+def unpack_data(data, df: Union[int, TensixDataFormat]):
     if isinstance(df, int):
-        df = tensix_data_format(df)
+        df = TensixDataFormat(df)
 
-    if df == tensix_data_format.Float16:
+    if df == TensixDataFormat.Float16:
         return unpack_fp16(data)
-    elif df == tensix_data_format.Float16_b:
+    elif df == TensixDataFormat.Float16_b:
         return unpack_bfp16(data)
-    elif df == tensix_data_format.Bfp8_b:
+    elif df == TensixDataFormat.Bfp8_b:
         return unpack_bfp8_b(data)
     else:
         raise ValueError(f"Unknown or unsupported data format {df}")

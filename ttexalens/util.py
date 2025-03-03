@@ -10,7 +10,6 @@ import ryml, yaml
 
 from ttexalens import Verbosity
 
-
 # Pretty print exceptions (traceback)
 def notify_exception(exc_type, exc_value, tb):
     rows = []
@@ -174,6 +173,24 @@ def dict_to_table(dct):
     return table
 
 
+# Converts list of dictionaries with same keys to a table where every column is one dictionary.
+def dict_list_to_table(dicts: list[dict], table_name: str, column_names: list[str]) -> str:
+    keys = dicts[0].keys()
+    data = []
+    for key in keys:
+        row = [key]
+        for d in dicts:
+            if key in d:
+                row.append(d[key])
+            else:
+                row.append("/")
+        data.append(row)
+
+    headers = [table_name] + column_names
+
+    return tabulate(data, headers=headers, tablefmt="simple_outline", colalign=("left",) * len(headers))
+
+
 # Given two tables 'a' and 'b' merge them into a wider table
 def merge_tables_side_by_side(a, b):
     width_a = len(a[0])
@@ -190,6 +207,24 @@ def merge_tables_side_by_side(a, b):
 
         t.append(row)
     return t
+
+
+# Puts tables from the list side by side.
+def put_table_list_side_by_side(tables: list[str]) -> str:
+    # Split each table into rows by lines
+    split_tables = [table.split("\n") for table in tables]
+
+    # Find the maximum number of rows across all tables
+    max_rows = max(len(table) for table in split_tables)
+
+    # Pad each table with empty lines to ensure equal row count
+    padded_tables = [table + [" " * len(table[0])] * (max_rows - len(table)) for table in split_tables]
+
+    # Combine the rows of all tables side by side
+    side_by_side = ["   ".join(row) for row in zip(*padded_tables)]
+
+    # Join all rows into a single string
+    return "\n".join(side_by_side)
 
 
 # Given an array of dicts, and their titles. Print a flattened version of all the dicts as a big table.
@@ -696,6 +731,35 @@ PRINT_FORMATS = {
     "hex16": {"is_hex": True, "bytes": 2},
     "hex8": {"is_hex": True, "bytes": 1},
 }
+
+from enum import Enum
+from ttexalens.unpack_regfile import TensixDataFormat
+
+# An enumeration of different data types in registers.
+class DATA_TYPE(Enum):
+    INT_VALUE = 0
+    ADDRESS = 1
+    MASK = 2
+    FLAGS = 3
+    TENSIX_DATA_FORMAT = 4
+
+
+# Convert value to specified data type
+def convert_value(value: int, data_type: DATA_TYPE, number_of_bits: int):
+    if data_type == DATA_TYPE.INT_VALUE:
+        return value
+    elif data_type == DATA_TYPE.ADDRESS or data_type == DATA_TYPE.MASK:
+        return hex(value)
+    elif data_type == DATA_TYPE.FLAGS:
+        bin_repr = f"{value:0{number_of_bits}b}"
+        return ",".join("True" if bit == "1" else "False" for bit in bin_repr)
+    elif data_type == DATA_TYPE.TENSIX_DATA_FORMAT:
+        try:
+            return f"TensixDataFormat.{TensixDataFormat(value).name}"
+        except:
+            return f"{value} -> INVALID VALUE"
+    else:
+        raise ValueError(f"Invalid value for data_type: {data_type}")
 
 
 def word_to_byte_array(A):
