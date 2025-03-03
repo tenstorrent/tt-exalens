@@ -624,10 +624,6 @@ class GrayskullDevice(Device):
         "RISCV_DEBUG_REG_SOFT_RESET_0": DebugRegisterDescription(address=0x1B0),
     }
 
-    def get_debug_register_description(self, register_name: str) -> DebugRegisterDescription:
-        if register_name in GrayskullDevice.__debug_register_map:
-            return GrayskullDevice.__debug_register_map[register_name]
-        return None
 
     def get_unpack_tile_descriptor(self) -> list[dict]:
         struct_name = "UNPACK_TILE_DESCRIPTOR"

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump-config-reg [<config-reg>] [ -d <device> ] [ -l <loc> ]
+  dump-config-reg [ <config-reg> ] [ -d <device> ] [ -l <loc> ]
 
 Options:
   <config-reg>  Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
