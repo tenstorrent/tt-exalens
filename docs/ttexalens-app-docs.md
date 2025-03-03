@@ -1,82 +1,3 @@
-## re
-
-### Usage
-
-```
-run-elf <elf-file> [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
-```
-
-
-### Description
-
-Loads an elf file into a brisc and runs it.
-
-
-### Options
-
-- `-r` = **\<risc\>**: RiscV ID (0: brisc, 1-3 triscs). [default: 0]
-
-
-### Examples
-
-Command:
-```
-run-elf build/riscv-src/wormhole/sample.brisc.elf
-```
-Output:
-```
-Reading from RiscV debug registers failed (debug read valid bit is set to 0). Run `srs 0` to check if core is active.
-```
-
-
-### Common options
-
-- `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
-- `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
-- `--verbose, -v`: Execute command with verbose output. [default: False]
-
-
-
-
-
-
-## dbus
-
-### Usage
-
-```
-debug-bus list-names [-v] [-d <device>] [-l <loc>]
-debug-bus [<signals>] [-v] [-d <device>] [-l <loc>]
-```
-
-
-### Description
-
-Commands for RISC-V debugging:
-- list-names:    List all predefined debug bus signal names.
-- [<signals>]:   List of signals described by signal name or signal description.
-<signal-description>: DaisyId,RDSel,SigSel,Mask
--DaisyId - daisy chain identifier
--RDSel   - select 32bit data in 128bit register -> values [0-3]
--SigSel  - select 128bit register
--Mask    - 32bit number to show only significant bits (optional)
-Examples:
-debug-bus list-names                       # List predefined debug bus signals
-debug-bus trisc0_pc,trisc1_pc              # Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
-debug-bus [7,0,12,0x3ffffff],trisc2_pc     # Prints custom debug bus signal and trisc2_pc
-
-
-### Common options
-
-- `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
-- `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
-- `--verbose, -v`: Execute command with verbose output. [default: False]
-
-
-
-
-
-
 ## rv
 
 ### Usage
@@ -126,8 +47,7 @@ riscv status
 ```
 Output:
 ```
-Reading from RiscV debug registers failed (debug read valid bit is set to 0). Run `srs 0` to check if core is active.
-  RUNNING - BRISC 0,0 [0]
+  HALTED PC=0x00000c58 - BRISC 0,0 [0]
   IN RESET - TRISC0 0,0 [0]
   IN RESET - TRISC1 0,0 [0]
   IN RESET - TRISC2 0,0 [0]
@@ -180,83 +100,6 @@ riscv wchpt setw 0 0xc
 - `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
 - `--risc, -r` = **\<risc-id\>**: RiscV ID (0: brisc, 1-3 triscs, all). [default: all]
 - `--verbose, -v`: Execute command with verbose output. [default: False]
-
-
-
-
-
-
-## gdb
-
-### Usage
-
-```
-gdb start --port <port>
-gdb stop
-```
-
-
-### Description
-
-Starts or stops gdb server.
-
-
-### Examples
-
-Command:
-```
-gdb start --port 6767
-```
-Command:
-```
-gdb stop
-```
-
-
-
-
-
-
-## gpr
-
-### Usage
-
-```
-gpr [ <reg-list> ] [ <elf-file> ] [ -v ] [ -d <device> ] [ -l <loc> ] [ -r <risc> ]
-```
-
-
-### Description
-
-Prints all RISC-V registers for BRISC, TRISC0, TRISC1, and TRISC2 on the current core.
-If the core cannot be halted, it prints nothing. If core is not active, an exception
-is thrown.
-
-
-### Options
-
-- `reg-list`: List of registers to dump, comma-separated
-- `elf-file`: Name of the elf file to use to resolve the source code location
-
-
-### Examples
-
-Command:
-```
-gpr
-```
-Command:
-```
-gpr ra,sp,pc
-```
-
-
-### Common options
-
-- `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
-- `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
-- `--verbose, -v`: Execute command with verbose output. [default: False]
-- `--risc, -r` = **\<risc-id\>**: RiscV ID (0: brisc, 1-3 triscs, all). [default: all]
 
 
 
@@ -338,25 +181,25 @@ brxy 0,0 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000000 (0) => 0x2010006f (537919599) - 24120 times
+0,0 (L1) : 0x00000000 (0) => 0x2010006f (537919599) - 25588 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000004 (4) => 0x2010006f (537919599) - 24201 times
+0,0 (L1) : 0x00000004 (4) => 0x2010006f (537919599) - 25775 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000008 (8) => 0x2010006f (537919599) - 24039 times
+0,0 (L1) : 0x00000008 (8) => 0x2010006f (537919599) - 25780 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x0000000c (12) => 0x2010006f (537919599) - 24137 times
+0,0 (L1) : 0x0000000c (12) => 0x2010006f (537919599) - 25704 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000010 (16) => 0x2010006f (537919599) - 24186 times
+0,0 (L1) : 0x00000010 (16) => 0x2010006f (537919599) - 25768 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000014 (20) => 0x2010006f (537919599) - 24224 times
+0,0 (L1) : 0x00000014 (20) => 0x2010006f (537919599) - 25873 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000018 (24) => 0x2010006f (537919599) - 24187 times
+0,0 (L1) : 0x00000018 (24) => 0x2010006f (537919599) - 25924 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x0000001c (28) => 0x2010006f (537919599) - 24216 times
+0,0 (L1) : 0x0000001c (28) => 0x2010006f (537919599) - 25750 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000020 (32) => 0x2010006f (537919599) - 24248 times
+0,0 (L1) : 0x00000020 (32) => 0x2010006f (537919599) - 25832 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000024 (36) => 0x2010006f (537919599) - 24217 times
+0,0 (L1) : 0x00000024 (36) => 0x2010006f (537919599) - 25923 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -366,7 +209,7 @@ brxy ch0 0x0 16
 Output:
 ```
 ch0 (DRAM) : 0x00000000 (64 bytes)
-0x00000000:  00000000  00000000  00000000  00000000
+0x00000000:  000000bb  00000000  00000000  00000000
 0x00000010:  00000000  00000000  00000000  00000000
 0x00000020:  00000000  00000000  00000000  00000000
 0x00000030:  00000000  00000000  00000000  00000000
@@ -377,31 +220,25 @@ ch0 (DRAM) : 0x00000000 (64 bytes)
 
 
 
-## bt
+## go
 
 ### Usage
 
 ```
-callstack <elf-file> [-r <risc>] [-m <max-depth>] [-v] [-d <device>] [-l <loc>]
+go [ -d <device> ] [ -l <loc> ]
 ```
 
 
 ### Description
 
-Prints callstack using provided elf for a given RiscV core.
-
-
-### Options
-
-- `-r` = **\<risc\>**: RiscV ID (0: brisc, 1-3 triscs). [Default: 0]
-- `-m` = **\<max-depth\>**: Maximum depth of callstack. [Default: 100]
+Sets the current device/location.
 
 
 ### Examples
 
 Command:
 ```
-callstack build/riscv-src/wormhole/sample.brisc.elf -r 0
+go -d 0 -l 0,0
 ```
 
 
@@ -409,44 +246,6 @@ callstack build/riscv-src/wormhole/sample.brisc.elf -r 0
 
 - `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
 - `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
-- `--verbose, -v`: Execute command with verbose output. [default: False]
-
-
-
-
-
-
-## wxy
-
-### Usage
-
-```
-wxy <core-loc> <addr> <data>
-```
-
-
-### Description
-
-Writes data word to address 'addr' at noc0 location x-y of the current chip.
-
-
-### Arguments
-
-- `core-loc`: Either X-Y or R,C location of a core, or dram channel (e.g. ch3)
-- `addr`: Address to write to
-- `data`: Data to write
-
-
-### Examples
-
-Command:
-```
-wxy 0,0 0x0 0x1234
-```
-Output:
-```
-0,0 (L1) : 0x00000000 (0) <= 0x00001234 (4660)
-```
 
 
 
@@ -492,14 +291,16 @@ Legend:
 
 ==== Device 0
     00    01    02    03    04    05    06    07    08    09    10    11
-00  R---  ----  ----  ----  ----  RRRR  ----  ----  ----  RRRR  ----  ----
-01  ----  ----  ----  RRRR  ----  ----  ----  RRRR  ----  ----  ----  ----
-02  ----  RRRR  ----  ----  ----  RRRR  ----  ----  ----  ----  ----  RRRR
-03  ----  ----  ----  RRRR  ----  ----  ----  ----  ----  RRRR  ----  ----
-04  ----  RRRR  ----  ----  ----  ----  ----  RRRR  ----  ----  ----  RRRR
-05  ----  ----  ----  ----  ----  RRRR  ----  ----  ----  RRRR  ----  ----
-06  ----  ----  ----  RRRR  ----  ----  ----  RRRR  ----  ----  ----  ----
-07  ----  RRRR  ----  ----  ----  RRRR  ----  ----  ----  ----  ----  RRRR
+00  R---  R---  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
+01  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
+02  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
+03  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
+04  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
+05  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
+06  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
+07  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
+08  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
+09  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
 ```
 Shows the status of the RISC-V on noc0 axis for all devices
 ```
@@ -525,7 +326,7 @@ Legend:
     00    01    02    03    04    05    06    07    08    09    10    11    12
 00        dram              dram              dram              dram
 01        R---  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
-02  arc   ----  ----  ----  ----  ----  ----  ----  ----  RRRR  RRRR  RRRR  ----
+02  arc   R---  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
 03        ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
 ...
 ```
@@ -543,15 +344,17 @@ Legend:
     functional_workers
 
 ==== Device 0
-    00    01    02     03     04    05    06    07    08    09    10    11
-00  1-1   1-2   1-3    1-4    1-5   1-7   1-8   1-9   1-10  1-11  2-1   2-2
-01  2-3   2-4   2-5    2-7    2-8   2-9   2-10  2-11  3-1   3-2   3-3   3-4
-02  3-5   3-7   3-8    3-9    3-10  3-11  4-1   4-2   4-3   4-4   4-5   4-7
-03  4-8   4-9   4-10   4-11   5-1   5-2   5-3   5-4   5-5   5-7   5-8   5-9
-04  5-10  5-11  6-1    6-2    6-3   6-4   6-5   6-7   6-8   6-9   6-10  6-11
-05  8-3   8-4   8-5    8-7    8-8   8-9   8-10  8-11  9-1   9-2   9-3   9-4
-06  9-5   9-7   9-8    9-9    9-10  9-11  10-1  10-2  10-3  10-4  10-5  10-7
-07  10-8  10-9  10-10  10-11  11-1  11-2  11-3  11-4  11-5  11-7  11-8  11-9
+    00     01     02     03     04    05    06    07    08    09    10     11
+00  1-1    1-2    1-3    1-4    1-5   1-7   1-8   1-9   1-10  1-11  2-1    2-2
+01  2-3    2-4    2-5    2-7    2-8   2-9   2-10  2-11  3-1   3-2   3-3    3-4
+02  3-5    3-7    3-8    3-9    3-10  3-11  4-1   4-2   4-3   4-4   4-5    4-7
+03  4-8    4-9    4-10   4-11   5-1   5-2   5-3   5-4   5-5   5-7   5-8    5-9
+04  5-10   5-11   6-1    6-2    6-3   6-4   6-5   6-7   6-8   6-9   6-10   6-11
+05  7-1    7-2    7-3    7-4    7-5   7-7   7-8   7-9   7-10  7-11  8-1    8-2
+06  8-3    8-4    8-5    8-7    8-8   8-9   8-10  8-11  9-1   9-2   9-3    9-4
+07  9-5    9-7    9-8    9-9    9-10  9-11  10-1  10-2  10-3  10-4  10-5   10-7
+08  10-8   10-9   10-10  10-11  11-1  11-2  11-3  11-4  11-5  11-7  11-8   11-9
+09  11-10  11-11  12-1   12-2   12-3  12-4  12-5  12-7  12-8  12-9  12-10  12-11
 ```
 Shows the block type in noc0 axis for all devices without legend
 ```
@@ -597,7 +400,7 @@ Legend:
 ==== Device 0
     00    01    02    03    04    05    06    07    08    09    10    11    12
 00              dram              dram              dram              dram
-01        ----  RRRR  ----  RRRR  ----  RRRR  ----  RRRR  ----  RRRR  ----  RRRR
+01        ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
 02        ----  R---  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
 03        ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----  ----
 ...
@@ -651,25 +454,104 @@ Output:
 
 
 
-## go
+## gdb
 
 ### Usage
 
 ```
-go [ -d <device> ] [ -l <loc> ]
+gdb start --port <port>
+gdb stop
 ```
 
 
 ### Description
 
-Sets the current device/location.
+Starts or stops gdb server.
 
 
 ### Examples
 
 Command:
 ```
-go -d 0 -l 0,0
+gdb start --port 6767
+```
+Command:
+```
+gdb stop
+```
+
+
+
+
+
+
+## wxy
+
+### Usage
+
+```
+wxy <core-loc> <addr> <data>
+```
+
+
+### Description
+
+Writes data word to address 'addr' at noc0 location x-y of the current chip.
+
+
+### Arguments
+
+- `core-loc`: Either X-Y or R,C location of a core, or dram channel (e.g. ch3)
+- `addr`: Address to write to
+- `data`: Data to write
+
+
+### Examples
+
+Command:
+```
+wxy 0,0 0x0 0x1234
+```
+Output:
+```
+0,0 (L1) : 0x00000000 (0) <= 0x00001234 (4660)
+```
+
+
+
+
+
+
+## bt
+
+### Usage
+
+```
+callstack <elf-file> [-r <risc>] [-m <max-depth>] [-v] [-d <device>] [-l <loc>]
+```
+
+
+### Description
+
+Prints callstack using provided elf for a given RiscV core.
+
+
+### Options
+
+- `-r` = **\<risc\>**: RiscV ID (0: brisc, 1-3 triscs). [Default: 0]
+- `-m` = **\<max-depth\>**: Maximum depth of callstack. [Default: 100]
+
+
+### Examples
+
+Command:
+```
+callstack build/riscv-src/wormhole/sample.brisc.elf -r 0
+```
+Output:
+```
+Location: 1-1 (0,0), core: BRISC
+  #0 0x00000C40 in main () at /localdev/macimovic/work/tt-exalens/ttexalens/riscv-src/sample.cc 46:22
 ```
 
 
@@ -677,3 +559,368 @@ go -d 0 -l 0,0
 
 - `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
 - `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
+- `--verbose, -v`: Execute command with verbose output. [default: False]
+
+
+
+
+
+
+## cfg
+
+### Usage
+
+```
+dump-config-reg [ <config-reg> ] [ -d <device> ] [ -l <loc> ]
+```
+
+
+### Description
+
+Prints the configuration register of the given name, at the specified location and device.
+
+
+### Options
+
+- `config-reg`: Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
+- `-d` = **\<device\>**: Device ID. Optional. Default: current device
+- `-l` = **\<loc\>**: Core location in X-Y or R,C format
+
+
+### Examples
+
+Prints all configuration registers for current device and core
+```
+cfg
+```
+Output:
+```
+all
+Configuration registers for location 0,0 on device 0
+ALU
+Not supported on grayskull
+UNPACKER
+┌────────────────────────┬──────────────────────────┬──────────────────────────┐   ┌────────────────────┬─────────────────────────...
+│ UNPACK CONFIG          │ REG_ID = 1               │ REG_ID = 2               │   │ TILE DESCRIPTOR    │ REG_ID = 1              ...
+├────────────────────────┼──────────────────────────┼──────────────────────────┤   ├────────────────────┼─────────────────────────...
+│ out_data_format        │ TensixDataFormat.Float32 │ TensixDataFormat.Float32 │   │ in_data_format     │ TensixDataFormat.Float32...
+│ throttle_mode          │ 0                        │ 0                        │   │ uncompressed       │ False                   ...
+│ context_count          │ 0                        │ 0                        │   │ reserved_0         │ 0                       ...
+│ haloize_mode           │ 0                        │ 0                        │   │ blobs_per_xy_plane │ 0                       ...
+│ tileize_mode           │ 0                        │ 0                        │   │ reserved_1         │ 0                       ...
+│ force_shared_exp       │ False                    │ False                    │   │ x_dim              │ 0                       ...
+│ reserved_0             │ 0                        │ 0                        │   │ y_dim              │ 0                       ...
+│ upsample_rate          │ 0                        │ 0                        │   │ z_dim              │ 0                       ...
+│ upsample_and_interlave │ False                    │ False                    │   │ w_dim              │ 0                       ...
+│ shift_amount           │ 0                        │ 0                        │   │ digest_type        │ 0                       ...
+│ uncompress_cntx0_3     │ 0                        │ 0                        │   │ digest_size        │ 0                       ...
+│ reserved_1             │ 0                        │ 0                        │   │ blobs_y_start      │ 0                       ...
+...
+```
+Prints all configuration reigsters for device with id 0 and current core
+```
+cfg -d 0
+```
+Output:
+```
+all
+Configuration registers for location 0,0 on device 0
+ALU
+Not supported on grayskull
+UNPACKER
+┌────────────────────────┬──────────────────────────┬──────────────────────────┐   ┌────────────────────┬─────────────────────────...
+│ UNPACK CONFIG          │ REG_ID = 1               │ REG_ID = 2               │   │ TILE DESCRIPTOR    │ REG_ID = 1              ...
+├────────────────────────┼──────────────────────────┼──────────────────────────┤   ├────────────────────┼─────────────────────────...
+│ out_data_format        │ TensixDataFormat.Float32 │ TensixDataFormat.Float32 │   │ in_data_format     │ TensixDataFormat.Float32...
+│ throttle_mode          │ 0                        │ 0                        │   │ uncompressed       │ False                   ...
+│ context_count          │ 0                        │ 0                        │   │ reserved_0         │ 0                       ...
+│ haloize_mode           │ 0                        │ 0                        │   │ blobs_per_xy_plane │ 0                       ...
+│ tileize_mode           │ 0                        │ 0                        │   │ reserved_1         │ 0                       ...
+│ force_shared_exp       │ False                    │ False                    │   │ x_dim              │ 0                       ...
+│ reserved_0             │ 0                        │ 0                        │   │ y_dim              │ 0                       ...
+│ upsample_rate          │ 0                        │ 0                        │   │ z_dim              │ 0                       ...
+│ upsample_and_interlave │ False                    │ False                    │   │ w_dim              │ 0                       ...
+│ shift_amount           │ 0                        │ 0                        │   │ digest_type        │ 0                       ...
+│ uncompress_cntx0_3     │ 0                        │ 0                        │   │ digest_size        │ 0                       ...
+│ reserved_1             │ 0                        │ 0                        │   │ blobs_y_start      │ 0                       ...
+...
+```
+Pirnts all configuration registers for current device and core at location 0,0
+```
+cfg -l 0,0
+```
+Output:
+```
+all
+Configuration registers for location 0,0 on device 0
+ALU
+Not supported on grayskull
+UNPACKER
+┌────────────────────────┬──────────────────────────┬──────────────────────────┐   ┌────────────────────┬─────────────────────────...
+│ UNPACK CONFIG          │ REG_ID = 1               │ REG_ID = 2               │   │ TILE DESCRIPTOR    │ REG_ID = 1              ...
+├────────────────────────┼──────────────────────────┼──────────────────────────┤   ├────────────────────┼─────────────────────────...
+│ out_data_format        │ TensixDataFormat.Float32 │ TensixDataFormat.Float32 │   │ in_data_format     │ TensixDataFormat.Float32...
+│ throttle_mode          │ 0                        │ 0                        │   │ uncompressed       │ False                   ...
+│ context_count          │ 0                        │ 0                        │   │ reserved_0         │ 0                       ...
+│ haloize_mode           │ 0                        │ 0                        │   │ blobs_per_xy_plane │ 0                       ...
+│ tileize_mode           │ 0                        │ 0                        │   │ reserved_1         │ 0                       ...
+│ force_shared_exp       │ False                    │ False                    │   │ x_dim              │ 0                       ...
+│ reserved_0             │ 0                        │ 0                        │   │ y_dim              │ 0                       ...
+│ upsample_rate          │ 0                        │ 0                        │   │ z_dim              │ 0                       ...
+│ upsample_and_interlave │ False                    │ False                    │   │ w_dim              │ 0                       ...
+│ shift_amount           │ 0                        │ 0                        │   │ digest_type        │ 0                       ...
+│ uncompress_cntx0_3     │ 0                        │ 0                        │   │ digest_size        │ 0                       ...
+│ reserved_1             │ 0                        │ 0                        │   │ blobs_y_start      │ 0                       ...
+...
+```
+Prints all configuration registers for current device and core
+```
+cfg all
+```
+Output:
+```
+all
+Configuration registers for location 0,0 on device 0
+ALU
+Not supported on grayskull
+UNPACKER
+┌────────────────────────┬──────────────────────────┬──────────────────────────┐   ┌────────────────────┬─────────────────────────...
+│ UNPACK CONFIG          │ REG_ID = 1               │ REG_ID = 2               │   │ TILE DESCRIPTOR    │ REG_ID = 1              ...
+├────────────────────────┼──────────────────────────┼──────────────────────────┤   ├────────────────────┼─────────────────────────...
+│ out_data_format        │ TensixDataFormat.Float32 │ TensixDataFormat.Float32 │   │ in_data_format     │ TensixDataFormat.Float32...
+│ throttle_mode          │ 0                        │ 0                        │   │ uncompressed       │ False                   ...
+│ context_count          │ 0                        │ 0                        │   │ reserved_0         │ 0                       ...
+│ haloize_mode           │ 0                        │ 0                        │   │ blobs_per_xy_plane │ 0                       ...
+│ tileize_mode           │ 0                        │ 0                        │   │ reserved_1         │ 0                       ...
+│ force_shared_exp       │ False                    │ False                    │   │ x_dim              │ 0                       ...
+│ reserved_0             │ 0                        │ 0                        │   │ y_dim              │ 0                       ...
+│ upsample_rate          │ 0                        │ 0                        │   │ z_dim              │ 0                       ...
+│ upsample_and_interlave │ False                    │ False                    │   │ w_dim              │ 0                       ...
+│ shift_amount           │ 0                        │ 0                        │   │ digest_type        │ 0                       ...
+│ uncompress_cntx0_3     │ 0                        │ 0                        │   │ digest_size        │ 0                       ...
+│ reserved_1             │ 0                        │ 0                        │   │ blobs_y_start      │ 0                       ...
+...
+```
+Prints alu configuration registers for current device and core
+```
+cfg alu
+```
+Output:
+```
+alu
+Configuration registers for location 0,0 on device 0
+ALU
+Not supported on grayskull
+```
+Prints packer's configuration registers for current device and core
+```
+cfg pack
+```
+Output:
+```
+pack
+Configuration registers for location 0,0 on device 0
+PACKER
+┌──────────────────────────┬──────────────┬──────────────┬──────────────┬──────────────┐
+│ COUNTERS                 │ REG_ID = 1   │ REG_ID = 2   │ REG_ID = 3   │ REG_ID = 4   │
+├──────────────────────────┼──────────────┼──────────────┼──────────────┼──────────────┤
+│ pack_per_xy_plane        │ 0            │ 0            │ 0            │ 0            │
+│ pack_reads_per_xy_plane  │ 0            │ 0            │ 0            │ 0            │
+│ pack_xys_per_til         │ 0            │ 0            │ 0            │ 0            │
+│ pack_yz_transposed       │ False        │ False        │ False        │ False        │
+│ pack_per_xy_plane_offset │ 0            │ 0            │ 0            │ 0            │
+└──────────────────────────┴──────────────┴──────────────┴──────────────┴──────────────┘
+┌─────────────────────────┬──────────────────────────┬──────────────────────────┬──────────────────────────┬──────────────────────...
+│ PACK CONFIG             │ REG_ID = 1               │ REG_ID = 2               │ REG_ID = 3               │ REG_ID = 4           ...
+├─────────────────────────┼──────────────────────────┼──────────────────────────┼──────────────────────────┼──────────────────────...
+│ row_ptr_section_size    │ 0                        │ 0                        │ 0                        │ 0                    ...
+│ exp_section_size        │ 0                        │ 0                        │ 0                        │ 0                    ...
+│ l1_dest_addr            │ 0x0                      │ 0x0                      │ 0x0                      │ 0x0                  ...
+│ uncompress              │ False                    │ False                    │ False                    │ False                ...
+│ add_l1_dest_addr_offset │ False                    │ False                    │ False                    │ False                ...
+...
+```
+Prints unpacker's configuration registers for current device and core
+```
+cfg unpack
+```
+Output:
+```
+unpack
+Configuration registers for location 0,0 on device 0
+UNPACKER
+┌────────────────────────┬──────────────────────────┬──────────────────────────┐   ┌────────────────────┬─────────────────────────...
+│ UNPACK CONFIG          │ REG_ID = 1               │ REG_ID = 2               │   │ TILE DESCRIPTOR    │ REG_ID = 1              ...
+├────────────────────────┼──────────────────────────┼──────────────────────────┤   ├────────────────────┼─────────────────────────...
+│ out_data_format        │ TensixDataFormat.Float32 │ TensixDataFormat.Float32 │   │ in_data_format     │ TensixDataFormat.Float32...
+│ throttle_mode          │ 0                        │ 0                        │   │ uncompressed       │ False                   ...
+│ context_count          │ 0                        │ 0                        │   │ reserved_0         │ 0                       ...
+│ haloize_mode           │ 0                        │ 0                        │   │ blobs_per_xy_plane │ 0                       ...
+│ tileize_mode           │ 0                        │ 0                        │   │ reserved_1         │ 0                       ...
+│ force_shared_exp       │ False                    │ False                    │   │ x_dim              │ 0                       ...
+│ reserved_0             │ 0                        │ 0                        │   │ y_dim              │ 0                       ...
+│ upsample_rate          │ 0                        │ 0                        │   │ z_dim              │ 0                       ...
+│ upsample_and_interlave │ False                    │ False                    │   │ w_dim              │ 0                       ...
+│ shift_amount           │ 0                        │ 0                        │   │ digest_type        │ 0                       ...
+│ uncompress_cntx0_3     │ 0                        │ 0                        │   │ digest_size        │ 0                       ...
+│ reserved_1             │ 0                        │ 0                        │   │ blobs_y_start      │ 0                       ...
+│ uncompress_cntx4_7     │ 0                        │ 0                        │   └────────────────────┴─────────────────────────...
+│ reserved_2             │ 0                        │ 0                        │                                                  ...
+...
+```
+
+
+
+
+
+
+## re
+
+### Usage
+
+```
+run-elf <elf-file> [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
+```
+
+
+### Description
+
+Loads an elf file into a brisc and runs it.
+
+
+### Options
+
+- `-r` = **\<risc\>**: RiscV ID (0: brisc, 1-3 triscs). [default: 0]
+
+
+### Examples
+
+Command:
+```
+run-elf build/riscv-src/wormhole/sample.brisc.elf
+```
+
+
+### Common options
+
+- `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
+- `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
+- `--verbose, -v`: Execute command with verbose output. [default: False]
+
+
+
+
+
+
+## dbus
+
+### Usage
+
+```
+debug-bus list-names [-v] [-d <device>] [-l <loc>]
+debug-bus [<signals>] [-v] [-d <device>] [-l <loc>]
+```
+
+
+### Description
+
+Commands for RISC-V debugging:
+- list-names:    List all predefined debug bus signal names.
+- [<signals>]:   List of signals described by signal name or signal description.
+<signal-description>: DaisyId,RDSel,SigSel,Mask
+-DaisyId - daisy chain identifier
+-RDSel   - select 32bit data in 128bit register -> values [0-3]
+-SigSel  - select 128bit register
+-Mask    - 32bit number to show only significant bits (optional)
+Examples:
+debug-bus list-names                       # List predefined debug bus signals
+debug-bus trisc0_pc,trisc1_pc              # Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
+debug-bus [7,0,12,0x3ffffff],trisc2_pc     # Prints custom debug bus signal and trisc2_pc
+
+
+### Common options
+
+- `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
+- `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
+- `--verbose, -v`: Execute command with verbose output. [default: False]
+
+
+
+
+
+
+## gpr
+
+### Usage
+
+```
+gpr [ <reg-list> ] [ <elf-file> ] [ -v ] [ -d <device> ] [ -l <loc> ] [ -r <risc> ]
+```
+
+
+### Description
+
+Prints all RISC-V registers for BRISC, TRISC0, TRISC1, and TRISC2 on the current core.
+If the core cannot be halted, it prints nothing. If core is not active, an exception
+is thrown.
+
+
+### Options
+
+- `reg-list`: List of registers to dump, comma-separated
+- `elf-file`: Name of the elf file to use to resolve the source code location
+
+
+### Examples
+
+Command:
+```
+gpr
+```
+Output:
+```
+RISC-V registers for location 0,0 on device 0
+Register     BRISC       TRISC0    TRISC1    TRISC2
+-----------  ----------  --------  --------  --------
+0 - zero     0x00000000
+1 - ra       0x00000b64
+2 - sp       0xffb00fe0
+3 - gp       0xffb00800
+4 - tp       0x00000000
+5 - t0       0x0000f640
+6 - t1       0xffb00440
+7 - t2       0xffb00440
+8 - s0 / fp  0xffb00ff0
+9 - s1       0x00000000
+10 - a0      0x00000001
+11 - a1      0xffb00ff0
+12 - a2      0x00000000
+13 - a3      0x00000000
+14 - a4      0xffb1208c
+15 - a5      0xffffedcc
+16 - a6      0x00000000
+...
+```
+Command:
+```
+gpr ra,sp,pc
+```
+Output:
+```
+RISC-V registers for location 0,0 on device 0
+Register    BRISC       TRISC0    TRISC1    TRISC2
+----------  ----------  --------  --------  --------
+1 - ra      0x00000b64
+2 - sp      0xffb00fe0
+32 - pc     0x00000c58
+Soft reset  0           1         1         1
+Halted      False       -         -         -
+```
+
+
+### Common options
+
+- `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
+- `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
+- `--verbose, -v`: Execute command with verbose output. [default: False]
+- `--risc, -r` = **\<risc-id\>**: RiscV ID (0: brisc, 1-3 triscs, all). [default: all]
