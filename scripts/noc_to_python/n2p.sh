@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
 
 # This script is used to generate the python code for the NoC overlay parameters
 # If you have tt-metal in same parent folder as tt-exalens, than you can run this script
