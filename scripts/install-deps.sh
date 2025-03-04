@@ -1,4 +1,8 @@
 #! /bin/bash
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
+
 set -eo pipefail
 
 TTEXALENS_INSTALL=${TTEXALENS_INSTALL:-}
