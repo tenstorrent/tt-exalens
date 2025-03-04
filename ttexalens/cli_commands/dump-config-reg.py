@@ -36,7 +36,7 @@ from ttexalens.debug_tensix import TensixDebug
 from ttexalens.device import Device
 from ttexalens import command_parser
 from ttexalens.util import convert_value, put_table_list_side_by_side, INFO, CLR_GREEN, CLR_END, dict_list_to_table
-
+from typing import List
 from tabulate import tabulate
 
 # Creates list of column names for configuration register table
@@ -48,7 +48,7 @@ def create_column_names(num_of_columns):
 
 
 # Converts list of configuration registers to table
-def config_regs_to_table(config_regs: list[dict], table_name: str, debug_tensix: TensixDebug, device: Device):
+def config_regs_to_table(config_regs: List[dict], table_name: str, debug_tensix: TensixDebug, device: Device):
     keys = list(config_regs[0].keys())
 
     if "blobs_y_start_lo" in keys and "blobs_y_start_hi" in keys:
