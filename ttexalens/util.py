@@ -7,7 +7,7 @@ from tabulate import tabulate
 from sortedcontainers import SortedSet
 import traceback, socket
 import ryml, yaml
-
+from typing import List
 from ttexalens import Verbosity
 
 # Pretty print exceptions (traceback)
@@ -174,7 +174,7 @@ def dict_to_table(dct):
 
 
 # Converts list of dictionaries with same keys to a table where every column is one dictionary.
-def dict_list_to_table(dicts: list[dict], table_name: str, column_names: list[str]) -> str:
+def dict_list_to_table(dicts: List[dict], table_name: str, column_names: List[str]) -> str:
     keys = dicts[0].keys()
     data = []
     for key in keys:
@@ -210,7 +210,7 @@ def merge_tables_side_by_side(a, b):
 
 
 # Puts tables from the list side by side.
-def put_table_list_side_by_side(tables: list[str]) -> str:
+def put_table_list_side_by_side(tables: List[str]) -> str:
     # Split each table into rows by lines
     split_tables = [table.split("\n") for table in tables]
 

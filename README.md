@@ -22,8 +22,6 @@ After cloning the TTExaLens repository, be sure to run
 
 ```bash
 git submodule update --init --recursive
-git lfs install
-git submodule foreach 'git lfs fetch --all && git lfs pull'
 ```
 
 so that all the submodules are properly loaded.

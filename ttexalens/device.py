@@ -443,32 +443,32 @@ class Device(TTObject):
                 util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 
     # ALU GETTER
-    def get_alu_config(self) -> list[dict]:
+    def get_alu_config(self) -> List[dict]:
         return []
 
     # UNPACKER GETTERS
 
-    def get_unpack_tile_descriptor(self) -> list[dict]:
+    def get_unpack_tile_descriptor(self) -> List[dict]:
         return []
 
-    def get_unpack_config(self) -> list[dict]:
+    def get_unpack_config(self) -> List[dict]:
         return []
 
     # PACKER GETTERS
 
-    def get_pack_config(self) -> list[dict]:
+    def get_pack_config(self) -> List[dict]:
         return []
 
-    def get_relu_config(self) -> list[dict]:
+    def get_relu_config(self) -> List[dict]:
         return []
 
-    def get_pack_dest_rd_ctrl(self) -> list[dict]:
+    def get_pack_dest_rd_ctrl(self) -> List[dict]:
         return []
 
-    def get_pack_edge_offset(self) -> list[dict]:
+    def get_pack_edge_offset(self) -> List[dict]:
         return []
 
-    def get_pack_counters(self) -> list[dict]:
+    def get_pack_counters(self) -> List[dict]:
         return []
 
     @abstractmethod

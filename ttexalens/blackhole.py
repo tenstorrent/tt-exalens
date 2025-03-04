@@ -4,6 +4,7 @@
 import ttexalens.util as util
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
+from typing import List
 from ttexalens.device import (
     TensixInstructions,
     Device,
@@ -644,7 +645,7 @@ class BlackholeDevice(Device):
         "PORT2_FLIT_COUNTER_UPPER": NocControlRegisterDescription(address=0x5C0),  # 16 instances
     }
 
-    def get_alu_config(self) -> list[dict]:
+    def get_alu_config(self) -> List[dict]:
         return [
             {
                 "Fpu_srnd_en": "ALU_ROUNDING_MODE_Fpu_srnd_en",
@@ -666,7 +667,7 @@ class BlackholeDevice(Device):
 
     # UNPACKER GETTERS
 
-    def get_unpack_tile_descriptor(self) -> list[dict]:
+    def get_unpack_tile_descriptor(self) -> List[dict]:
         struct_name = "UNPACK_TILE_DESCRIPTOR"
         fields = [
             "in_data_format",
@@ -686,7 +687,7 @@ class BlackholeDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
-    def get_unpack_config(self) -> list[dict]:
+    def get_unpack_config(self) -> List[dict]:
         struct_name = "UNPACK_CONFIG"
         fields = [
             "out_data_format",
@@ -715,7 +716,7 @@ class BlackholeDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
-    def get_pack_config(self) -> list[dict]:
+    def get_pack_config(self) -> List[dict]:
         struct_name = "PACK_CONFIG"
 
         fields = [
@@ -742,7 +743,7 @@ class BlackholeDevice(Device):
 
         return [{field: f"{struct_name}{i}{j}_{field}" for field in fields} for i in [0] for j in [1]]
 
-    def get_relu_config(self) -> list[dict]:
+    def get_relu_config(self) -> List[dict]:
 
         return [
             {
@@ -759,7 +760,7 @@ class BlackholeDevice(Device):
             }
         ]
 
-    def get_pack_dest_rd_ctrl(self) -> list[dict]:
+    def get_pack_dest_rd_ctrl(self) -> List[dict]:
         return [
             {
                 "read_32b_data": "PACK_DEST_RD_CTRL_Read_32b_data",
@@ -770,7 +771,7 @@ class BlackholeDevice(Device):
             }
         ]
 
-    def get_pack_edge_offset(self) -> list[dict]:
+    def get_pack_edge_offset(self) -> List[dict]:
         struct_name = "PACK_EDGE_OFFSET"
         fields = [
             "mask",
@@ -786,7 +787,7 @@ class BlackholeDevice(Device):
             for i in range(self.NUM_PACKERS)
         ]
 
-    def get_pack_counters(self) -> list[dict]:
+    def get_pack_counters(self) -> List[dict]:
         struct_name = "PACK_COUNTERS"
         fields = [
             "pack_per_xy_plane",
@@ -798,7 +799,7 @@ class BlackholeDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_PACKERS)]
 
-    def get_pack_strides(self) -> list[dict]:
+    def get_pack_strides(self) -> List[dict]:
         struct_name = "PACK_STRIDES"
         fields = ["x_stride", "y_stride", "z_stride", "w_stride"]
 

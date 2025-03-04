@@ -4,6 +4,7 @@
 import ttexalens.util as util
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
+from typing import List
 from ttexalens.device import (
     TensixInstructions,
     Device,
@@ -624,7 +625,7 @@ class GrayskullDevice(Device):
         "RISCV_DEBUG_REG_SOFT_RESET_0": DebugRegisterDescription(address=0x1B0),
     }
 
-    def get_unpack_tile_descriptor(self) -> list[dict]:
+    def get_unpack_tile_descriptor(self) -> List[dict]:
         struct_name = "UNPACK_TILE_DESCRIPTOR"
         fields = [
             "in_data_format",
@@ -644,7 +645,7 @@ class GrayskullDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
-    def get_unpack_config(self) -> list[dict]:
+    def get_unpack_config(self) -> List[dict]:
         struct_name = "UNPACK_CONFIG"
         fields = [
             "out_data_format",
@@ -667,7 +668,7 @@ class GrayskullDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
-    def get_pack_config(self) -> list[dict]:
+    def get_pack_config(self) -> List[dict]:
         struct_name = "PACK_CONFIG"
 
         fields = [
@@ -693,7 +694,7 @@ class GrayskullDevice(Device):
 
         return [{field: f"{struct_name}{i}{j}_{field}" for field in fields} for i in [0, 1] for j in [1, 8]]
 
-    def get_pack_edge_offset(self) -> list[dict]:
+    def get_pack_edge_offset(self) -> List[dict]:
         struct_name = "PACK_EDGE_OFFSET"
         fields = [
             "mask",
@@ -709,7 +710,7 @@ class GrayskullDevice(Device):
             for i in range(self.NUM_PACKERS)
         ]
 
-    def get_pack_counters(self) -> list[dict]:
+    def get_pack_counters(self) -> List[dict]:
         struct_name = "PACK_COUNTERS"
         fields = [
             "pack_per_xy_plane",
@@ -721,7 +722,7 @@ class GrayskullDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_PACKERS)]
 
-    def get_pack_strides(self) -> list[dict]:
+    def get_pack_strides(self) -> List[dict]:
         struct_name = "PACK_STRIDES"
         fields = ["x_stride", "y_stride", "z_stride", "w_stride"]
 
