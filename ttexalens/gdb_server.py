@@ -145,6 +145,8 @@ class GdbServer(threading.Thread):
 
     def process_client(self, client: ClientSocket):
         util.VERBOSE("GDB client connected")
+        self.current_process = None
+        self.debugging_threads.clear()
         input_stream = GdbInputStream(client)
         writer = GdbMessageWriter(client)
         while not self.stop_event.is_set():
@@ -156,9 +158,12 @@ class GdbServer(threading.Thread):
                 if self.process_message(parser, writer):
                     if should_ack:
                         client.write(b"+")
+                        util.VERBOSE(f"sent response to GDB: +")
+                    util.VERBOSE(f"sent response to GDB: {writer.data.decode()}")
                     writer.send()
             except Exception as e:
                 client.write(b"-")
+                util.VERBOSE(f"sent response to GDB: -")
                 util.ERROR(f"GDB exception: {e}")
         util.VERBOSE("GDB client closed")
 
@@ -275,7 +280,7 @@ class GdbServer(threading.Thread):
             op = parser.read_char()
             thread_id = parser.parse_thread_id()
             util.VERBOSE(f"GDB: Set thread {thread_id} and prepare for op '{chr(op)}'")
-            if self.current_process is None:
+            if self.current_process is None or thread_id is None:
                 # Respond that we are not debugging anything at the moment
                 writer.append(b"E01")
             else:
@@ -290,7 +295,7 @@ class GdbServer(threading.Thread):
                         # Unknown process!!!
                         util.ERROR(f"GDB: Unknown process id in self.debugging_threads: {thread_id.process_id}")
                         writer.append(b"E01")
-                        return
+                        return True
                     thread_id = t
 
                 # Change current thread
@@ -461,6 +466,16 @@ class GdbServer(threading.Thread):
                 # To avoid implementing this feature on multiple places, we will initialize it with empty dictionary
                 self.paged_thread_list = GdbThreadListPaged({})
             self.paged_thread_list.next(writer, writer.socket.packet_size - 4)
+        elif parser.parse(
+            b"qThreadExtraInfo"
+        ):  # Obtain from the target OS a printable string description of thread attributes for the thread thread-id.
+            # ‘qThreadExtraInfo,thread-id’
+            parser.parse(b",")
+            thread_id = parser.parse_thread_id()
+            if thread_id.process_id in self.available_processes:
+                writer.append_string_as_hex("Runnable")
+            else:
+                writer.append(b"E01")
         elif parser.parse(b"qC"):  # Return the current thread ID.
             # Return the current thread ID.
             if self.current_process is not None:
@@ -576,13 +591,14 @@ class GdbServer(threading.Thread):
                 try:
                     # We should halt selected core
                     process.risc_debug.enable_debug()
-                    process.risc_debug.halt()
+                    if not process.risc_debug.is_halted():
+                        process.risc_debug.halt()
                     self.debugging_threads[process.process_id] = process.thread_id
 
                     # Respond with Stop Reply Packet
                     # Example on x64: T0006:008e3ced17560000;07:d0b6f7f6fe7f0000;10:9bf26da6a27f0000;thread:pd60.d60;core:5;
                     # We want to return "T00" - signal 0, user requested halt
-                    writer.append(b"T00")
+                    writer.append(b"T00")  # TODO: Check if ebreak should be returned differently!!!
                     # TODO: Then we want to return maybe list of registers that we read?!? Basically, we can use this opportunity to return only needed registers to gdb so it won't issue 'g' command.
                     # And lastly, we want to return thread and core
                     writer.append(b";thread:")
@@ -1125,6 +1141,7 @@ class GdbServer(threading.Thread):
                         process.risc_debug.location.risc_id
                     ),  # TODO: Once we add support for ETH cores, we should update this -> method should be part of device class and it also needs coordinate as well
                     "command": process.elf_path,
+                    "vscode_fix": 1,
                 }
             )
 

@@ -363,6 +363,11 @@ class GdbMessageWriter:
     def append_string(self, value: str):
         self.append(value.encode())
 
+    def append_string_as_hex(self, value: str):
+        encoded = value.encode()
+        for char in encoded:
+            self.append_hex(char, 2)
+
     def append_thread_id(self, thread_id: GdbThreadId):
         self.append(b"p")
         self.append_hex(thread_id.process_id)
