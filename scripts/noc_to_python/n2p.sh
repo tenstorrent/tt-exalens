@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
 
 # This script is used to generate the python code for the NoC overlay parameters
-# If you have tt-metal in same parent folder as tt-lens, than you can run this script
-# from tt-lens root
+# If you have tt-metal in same parent folder as tt-exalens, than you can run this script
+# from tt-exalens root
 #
 # DEVNOTE: At the moment of wormhole version of noc_overlay_parameters.cpp
 # is missing to include noc_overlay_parameters.hpp. In order to build, you need to
@@ -21,5 +24,5 @@ g++ -o ./scripts/noc_to_python/codegen-noc-overlay-blackhole \
     scripts/noc_to_python/noc_to_python.cpp \
     "$METAL_HW_INC"blackhole/noc/noc_overlay_parameters.cpp
 
-./scripts/noc_to_python/codegen-noc-overlay-wormhole > ./ttlens/noc_overlay_wormhole.py
-./scripts/noc_to_python/codegen-noc-overlay-blackhole > ./ttlens/noc_overlay_blackhole.py
+./scripts/noc_to_python/codegen-noc-overlay-wormhole > ./ttexalens/noc_overlay_wormhole.py
+./scripts/noc_to_python/codegen-noc-overlay-blackhole > ./ttexalens/noc_overlay_blackhole.py

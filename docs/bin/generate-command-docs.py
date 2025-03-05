@@ -17,7 +17,7 @@ Options:
   -i, --interactive  Run in interactive mode. Pause after parsing each file.
 
 Description:
-  This is a script for automatically generating markdown documentation for TTLens commands
+  This is a script for automatically generating markdown documentation for TTExaLens commands
   using their docopt strings. The script can be run on a single command file or a directory.
   If examples are provided in a command's description, the script will run each example and capture its output to add to the documentation.
 
@@ -37,7 +37,7 @@ import sys, re, os, importlib.util
 from docopt import docopt
 
 # We need to import common options as they are sometimes injected into the docstrings
-from ttlens.commands import tt_docopt
+from ttexalens.command_parser import tt_docopt
 
 OPTIONS = tt_docopt.OPTIONS
 for opt in OPTIONS.keys():
@@ -47,13 +47,13 @@ for opt in OPTIONS.keys():
 MAX_OUTPUT_LINES = 20  # Max number of lines to show for each example
 MAX_CHARACTERS_PER_LINE = 130  # Max number of characters to show for each line
 
-from .run_ttlens_on_help_examples import execute_ttlens_command
+from .run_ttexalens_on_help_examples import execute_ttexalens_command
 from .doc_utils import SectionPPrinter, INFO, WARNING, ERROR
 
 
 class CmdParser:
     def __init__(self, valid_sections: list = None, section_parsers: dict = None):
-        """The parser class for TTLens command docstrings.
+        """The parser class for TTExaLens command docstrings.
 
         Args:
         - valid_sections (list): List of valid section names in the docstring.
@@ -195,7 +195,7 @@ class CmdParser:
 
             command_dict = {}
             # Get the command result
-            command_dict["result"] = execute_ttlens_command(parts[0].strip())
+            command_dict["result"] = execute_ttexalens_command(parts[0].strip())
 
             # Use the description if provided, otherwise use "Command:"
             if len(parts) > 1:
@@ -226,7 +226,7 @@ class CmdParser:
 
 class CmdPPrinter(SectionPPrinter):
     def __init__(self):
-        """The pretty printer class for TTLens command documentation."""
+        """The pretty printer class for TTExaLens command documentation."""
         super().__init__()
         self.section_printers = {
             "Usage": self.print_usage,

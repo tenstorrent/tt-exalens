@@ -27,7 +27,7 @@ else()
     FIND_AND_SET_CLANG17()
 endif()
 
-project(ttlens)
+project(ttexalens)
 
 CHECK_COMPILERS()
 
@@ -48,7 +48,7 @@ message(STATUS "Python3 include dirs: ${Python3_INCLUDE_DIRS}")
 
 # Set default values for variables/options
 set(CMAKE_BUILD_BIN_DIR "${CMAKE_BINARY_DIR}/bin")
-set(TTLENS_HOME "${PROJECT_SOURCE_DIR}")
+set(TTEXALENS_HOME "${PROJECT_SOURCE_DIR}")
 set(UMD_HOME "${PROJECT_SOURCE_DIR}/third_party/umd")
 
 # Third party dependencies
@@ -59,10 +59,10 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/umd)
 include(${PROJECT_SOURCE_DIR}/cmake/ZeroMQ.cmake)
 
 # Including private repository
-include(${PROJECT_SOURCE_DIR}/cmake/ttlens_private.cmake)
+include(${PROJECT_SOURCE_DIR}/cmake/ttexalens_private.cmake)
 
 # Add subdirectories
-add_subdirectory(${PROJECT_SOURCE_DIR}/ttlens)
+add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens)
 add_subdirectory(${PROJECT_SOURCE_DIR}/utils)
-add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttlens/pybind)
-add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttlens/server)
+add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/pybind)
+add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/server)
