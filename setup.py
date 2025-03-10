@@ -42,6 +42,16 @@ ttexalens_files = {
         "files": get_ttexalens_py_files(f"{ttexalens_home}/ttexalens/cli_commands"),
         "output": "ttexalens/cli_commands",
     },
+    "hw": {
+        "path": "ttexalens/hw",
+        "files": "*.py",
+        "output": "ttexalens/hw",
+    },
+    "gdb": {
+        "path": "ttexalens/gdb",
+        "files": "*.py",
+        "output": "ttexalens/gdb",
+    },
     "libs": {
         "path": "build/lib",
         "files": ["libdevice.so", "ttexalens_pybind.so"] + get_libjtag(),
@@ -89,6 +99,18 @@ class MyBuild(build_ext):
             src_path = ttexalens_home + "/" + d["path"]
             if d["files"] == "*":
                 self.copy_tree(src_path, path)
+            elif d["files"] == "*.py":
+                if d["files"] == "*.py":
+                    for root, dirs, files in os.walk(src_path):
+                        for f in files:
+                            if f.endswith(".py"):
+                                src_file = os.path.join(root, f)
+                                # Compute the destination directory relative to src_path.
+                                rel_dir = os.path.relpath(root, src_path)
+                                dest_dir = os.path.join(path, rel_dir)
+                                os.makedirs(dest_dir, exist_ok=True)
+                                dest_file = os.path.join(dest_dir, f)
+                                self.copy_file(src_file, dest_file)
             else:
                 for f in d["files"]:
                     self.copy_file(src_path + "/" + f, path + "/" + f)

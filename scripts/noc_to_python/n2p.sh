@@ -24,5 +24,5 @@ g++ -o ./scripts/noc_to_python/codegen-noc-overlay-blackhole \
     scripts/noc_to_python/noc_to_python.cpp \
     "$METAL_HW_INC"blackhole/noc/noc_overlay_parameters.cpp
 
-./scripts/noc_to_python/codegen-noc-overlay-wormhole > ./ttexalens/noc_overlay_wormhole.py
-./scripts/noc_to_python/codegen-noc-overlay-blackhole > ./ttexalens/noc_overlay_blackhole.py
+./scripts/noc_to_python/codegen-noc-overlay-wormhole > ./ttexalens/arch/wormhole/noc_overlay.py
+./scripts/noc_to_python/codegen-noc-overlay-blackhole > ./ttexalens/arch/blakchole/noc_overlay.py

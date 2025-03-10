@@ -121,26 +121,26 @@ class Device(TTObject):
     def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
         dev = None
         if arch.lower() == "grayskull":
-            from ttexalens import grayskull
+            from ttexalens.hw.tensix.grayskull import grayskull
 
             dev = grayskull.GrayskullDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
         if "wormhole" in arch.lower():
-            from ttexalens import wormhole
+            from ttexalens.hw.tensix.wormhole import wormhole
 
             dev = wormhole.WormholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
         if "blackhole" in arch.lower():
-            from ttexalens import blackhole
+            from ttexalens.hw.tensix.blackhole import blackhole
 
             dev = blackhole.BlackholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
 
         if "quasar" in arch.lower():
-            from ttexalens import quasar
+            from ttexalens.hw.tensix.quasar import quasar
 
             dev = quasar.QuasarDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context

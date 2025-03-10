@@ -16,7 +16,7 @@ from ttexalens.device import (
 
 class GrayskullInstructions(TensixInstructions):
     def __init__(self):
-        import ttexalens.grayskull_ops as ops
+        import ttexalens.hw.tensix.grayskull.grayskull_ops as ops
 
         super().__init__(ops)
 
