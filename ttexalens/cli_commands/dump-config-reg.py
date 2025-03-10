@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump-config-reg list-names
-  dump-config-reg [ <config-reg> ] [ -d <device> ] [ -l <loc> ]
+  dump-config-reg list-names <group-name>
+  dump-config-reg <group-name> [ <reg-name> ] [ -d <device> ] [ -l <loc> ]
 
 Options:
-  <config-reg>  Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
+  -<group-name>  Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
   -d <device>   Device ID. Optional. Default: current device
   -l <loc>      Core location in X-Y or R,C format
 
@@ -39,6 +39,8 @@ from ttexalens import command_parser
 from ttexalens.util import convert_value, put_table_list_side_by_side, INFO, CLR_GREEN, CLR_END, dict_list_to_table
 from typing import List
 from tabulate import tabulate
+
+import readline
 
 # Creates list of column names for configuration register table
 def create_column_names(num_of_columns):
@@ -73,36 +75,48 @@ def config_regs_to_table(config_regs: List[dict], table_name: str, debug_tensix:
     return dict_list_to_table(config_regs, table_name, create_column_names(len(config_regs)))
 
 
+def print_keys(dict: dict):
+    for key in dict.keys():
+        print(key)
+
+
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
     )
 
-    cfg = dopt.args["<config-reg>"] if dopt.args["<config-reg>"] else "all"
+    cfg = dopt.args["<group-name>"]
+    reg = dopt.args["<reg-name>"] if dopt.args["<reg-name>"] else None
 
     for device in dopt.for_each("--device", context, ui_state):
 
-        alu_config = device.get_alu_config()
-        tile_descriptor = device.get_unpack_tile_descriptor()
-        unpack_config = device.get_unpack_config()
-        pack_config = device.get_pack_config()
-        pack_counters = device.get_pack_counters()
-        edge_offset = device.get_pack_edge_offset()
-        pack_strides = device.get_pack_strides()
-        relu_config = device.get_relu_config()
-        dest_rd_ctrl = device.get_pack_dest_rd_ctrl()
-
         if dopt.args["list-names"]:
-            print (f"Alu: {list(alu_config[0].keys())}\n")
-            print (f"TileDesc {list(tile_descriptor[0].keys())}\n")
-            print (f"UnpackConfig: {list(unpack_config[0].keys())}\n")
-            print (f"PackConfig {list(pack_config[0].keys())}\n")
-            print (f"ReluConfig {list(relu_config[0].keys())}\n")
-            print (f"DestRdCtrl {list(dest_rd_ctrl[0].keys())}\n")
-            print (f"EdgeOffset {list(edge_offset[0].keys())}\n")
-            print (f"PackCounters {list(pack_counters[0].keys())}\n")
-            print (f"Strides {list(pack_strides[0].keys())}\n")
+
+            if cfg == "alu" or cfg == "all":
+                alu_config = device.get_alu_config()
+                print(f"{CLR_GREEN}ALU{CLR_END}")
+                print_keys(alu_config[0])
+            if cfg == "unpack" or cfg == "all":
+                tile_descriptor = device.get_unpack_tile_descriptor()
+                unpack_config = device.get_unpack_config()
+                print(f"{CLR_GREEN}UNPACK{CLR_END}")
+                print_keys(tile_descriptor[0])
+                print_keys(unpack_config[0])
+            if cfg == "pack" or cfg == "all":
+                pack_config = device.get_pack_config()
+                pack_counters = device.get_pack_counters()
+                edge_offset = device.get_pack_edge_offset()
+                pack_strides = device.get_pack_strides()
+                relu_config = device.get_relu_config()
+                dest_rd_ctrl = device.get_pack_dest_rd_ctrl()
+                print(f"{CLR_GREEN}PACK{CLR_END}")
+                print_keys(pack_config[0])
+                print_keys(pack_counters[0])
+                print_keys(edge_offset[0])
+                print_keys(pack_strides[0])
+                print_keys(relu_config[0])
+                print_keys(dest_rd_ctrl[0])
 
             return
 
@@ -119,8 +133,18 @@ def run(cmd_text, context, ui_state: UIState = None):
                     print("Not supported on grayskull")
                 else:
                     alu_config = device.get_alu_config()
-                    alu_config_table = config_regs_to_table(alu_config, "ALU CONFIG", debug_tensix, device)
-                    print(alu_config_table)
+                    if reg:
+                        if reg in alu_config[0]:
+                            for config in alu_config:
+                                reg_desc = device.get_tensix_register_description(config[reg])
+                                print(
+                                    f"{reg} = {convert_value(debug_tensix.read_tensix_register(config[reg]), reg_desc.data_type, bin(reg_desc.mask).count('1'))}"
+                                )
+                        else:
+                            print(f"{reg} not found in ALU CONFIG")
+                    else:
+                        alu_config_table = config_regs_to_table(alu_config, "ALU CONFIG", debug_tensix, device)
+                        print(alu_config_table)
 
             if cfg == "unpack" or cfg == "all":
                 print(f"{CLR_GREEN}UNPACKER{CLR_END}")
@@ -128,10 +152,28 @@ def run(cmd_text, context, ui_state: UIState = None):
                 tile_descriptor = device.get_unpack_tile_descriptor()
                 unpack_config = device.get_unpack_config()
 
-                tile_descriptor_table = config_regs_to_table(tile_descriptor, "TILE DESCRIPTOR", debug_tensix, device)
-                unpack_config_table = config_regs_to_table(unpack_config, "UNPACK CONFIG", debug_tensix, device)
+                if reg:
+                    if reg in tile_descriptor[0]:
+                        for config in tile_descriptor:
+                            reg_desc = device.get_tensix_register_description(config[reg])
+                            print(
+                                f"{reg} = {convert_value(debug_tensix.read_tensix_register(config[reg]), reg_desc.data_type, bin(reg_desc.mask).count('1'))}"
+                            )
+                    elif reg in unpack_config[0]:
+                        for config in unpack_config:
+                            reg_desc = device.get_tensix_register_description(config[reg])
+                            print(
+                                f"{reg} = {convert_value(debug_tensix.read_tensix_register(config[reg]), reg_desc.data_type, bin(reg_desc.mask).count('1'))}"
+                            )
+                    else:
+                        print(f"{reg} not found in UNPACK CONFIG")
+                else:
+                    tile_descriptor_table = config_regs_to_table(
+                        tile_descriptor, "TILE DESCRIPTOR", debug_tensix, device
+                    )
+                    unpack_config_table = config_regs_to_table(unpack_config, "UNPACK CONFIG", debug_tensix, device)
 
-                print(put_table_list_side_by_side([unpack_config_table, tile_descriptor_table]))
+                    print(put_table_list_side_by_side([unpack_config_table, tile_descriptor_table]))
 
             if cfg == "pack" or cfg == "all":
                 print(f"{CLR_GREEN}PACKER{CLR_END}")
@@ -140,25 +182,66 @@ def run(cmd_text, context, ui_state: UIState = None):
                 pack_counters = device.get_pack_counters()
                 edge_offset = device.get_pack_edge_offset()
                 pack_strides = device.get_pack_strides()
-
-                pack_config_table = config_regs_to_table(pack_config, "PACK CONFIG", debug_tensix, device)
-                pack_counters_table = config_regs_to_table(pack_counters, "COUNTERS", debug_tensix, device)
-                edge_offset_table = config_regs_to_table(edge_offset, "EDGE OFFSET", debug_tensix, device)
-                pack_strides_table = config_regs_to_table(pack_strides, "STRIDES", debug_tensix, device)
-
                 if device._arch == "wormhole_b0" or device._arch == "blackhole":
                     relu_config = device.get_relu_config()
                     dest_rd_ctrl = device.get_pack_dest_rd_ctrl()
 
-                    relu_config_table = config_regs_to_table(relu_config, "RELU CONFIG", debug_tensix, device)
-                    dest_rd_ctrl_table = config_regs_to_table(dest_rd_ctrl, "DEST RD CTRL", debug_tensix, device)
-
-                    print(pack_counters_table)
-                    print(pack_config_table)
-                    print(put_table_list_side_by_side([edge_offset_table, pack_strides_table]))
-                    print(put_table_list_side_by_side([relu_config_table, dest_rd_ctrl_table]))
-
+                if reg:
+                    if reg in pack_config[0]:
+                        for i, config in enumerate(pack_config):
+                            reg_desc = device.get_tensix_register_description(config[reg])
+                            print(
+                                f"({i+1}) {reg} = {convert_value(debug_tensix.read_tensix_register(config[reg]), reg_desc.data_type, bin(reg_desc.mask).count('1'))}"
+                            )
+                    elif reg in pack_counters[0]:
+                        for config in pack_counters:
+                            reg_desc = device.get_tensix_register_description(config[reg])
+                            print(
+                                f"{reg} = {convert_value(debug_tensix.read_tensix_register(config[reg]), reg_desc.data_type, bin(reg_desc.mask).count('1'))}"
+                            )
+                    elif reg in edge_offset[0]:
+                        for config in edge_offset:
+                            reg_desc = device.get_tensix_register_description(config[reg])
+                            print(
+                                f"{reg} = {convert_value(debug_tensix.read_tensix_register(config[reg]), reg_desc.data_type, bin(reg_desc.mask).count('1'))}"
+                            )
+                    elif reg in pack_strides[0]:
+                        for config in pack_strides:
+                            reg_desc = device.get_tensix_register_description(config[reg])
+                            print(
+                                f"{reg} = {convert_value(debug_tensix.read_tensix_register(config[reg]), reg_desc.data_type, bin(reg_desc.mask).count('1'))}"
+                            )
+                    elif device._arch == "wormhole_b0" or device._arch == "blackhole":
+                        if reg in relu_config[0]:
+                            for config in relu_config:
+                                reg_desc = device.get_tensix_register_description(config[reg])
+                                print(
+                                    f"{reg} = {convert_value(debug_tensix.read_tensix_register(config[reg]), reg_desc.data_type, bin(reg_desc.mask).count('1'))}"
+                                )
+                        elif reg in dest_rd_ctrl[0]:
+                            for config in dest_rd_ctrl:
+                                reg_desc = device.get_tensix_register_description(config[reg])
+                                print(
+                                    f"{reg} = {convert_value(debug_tensix.read_tensix_register(config[reg]), reg_desc.data_type, bin(reg_desc.mask).count('1'))}"
+                                )
+                    else:
+                        print(f"{reg} not found in PACK CONFIG")
                 else:
-                    print(pack_counters_table)
-                    print(pack_config_table)
-                    print(put_table_list_side_by_side([edge_offset_table, pack_strides_table]))
+                    pack_config_table = config_regs_to_table(pack_config, "PACK CONFIG", debug_tensix, device)
+                    pack_counters_table = config_regs_to_table(pack_counters, "COUNTERS", debug_tensix, device)
+                    edge_offset_table = config_regs_to_table(edge_offset, "EDGE OFFSET", debug_tensix, device)
+                    pack_strides_table = config_regs_to_table(pack_strides, "STRIDES", debug_tensix, device)
+
+                    if device._arch == "wormhole_b0" or device._arch == "blackhole":
+                        relu_config_table = config_regs_to_table(relu_config, "RELU CONFIG", debug_tensix, device)
+                        dest_rd_ctrl_table = config_regs_to_table(dest_rd_ctrl, "DEST RD CTRL", debug_tensix, device)
+
+                        print(pack_counters_table)
+                        print(pack_config_table)
+                        print(put_table_list_side_by_side([edge_offset_table, pack_strides_table]))
+                        print(put_table_list_side_by_side([relu_config_table, dest_rd_ctrl_table]))
+
+                    else:
+                        print(pack_counters_table)
+                        print(pack_config_table)
+                        print(put_table_list_side_by_side([edge_offset_table, pack_strides_table]))
