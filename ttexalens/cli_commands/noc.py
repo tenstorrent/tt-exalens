@@ -1,27 +1,32 @@
-# # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+# SPDX-FileCopyrightText: © 2025 Tenstorrent AI ULC
 # SPDX-License-Identifier: Apache-2.0
+
 """
 Usage:
-  noc status [-d <device>] [-noc <noc-id>] [-l <loc>]
-  noc stream <stream-id> [-d <device>] [-noc <noc-id>] [-l <loc>]
-  noc dump [-d <device>] [-noc <noc-id>] [-l <loc>]
+    noc status [-d <device>] [-noc <noc-id>] [-l <loc>] [-s]
+    noc stream <stream-id> [-d <device>] [-noc <noc-id>] [-l <loc>] [-s]
+    noc dump [-d <device>] [-noc <noc-id>] [-l <loc>] [-s]
 
 Arguments:
-  device-id         ID of the device [default: current active]
-  stream-id         ID of the stream to dump registers for
-  noc-id            Identifier for the NOC (e.g. 0, 1) [default: both noc0 and noc1]
-  loc               Location identifier (e.g. 0-0) [default: current active]
+    device-id         ID of the device [default: current active]
+    stream-id         ID of the stream to dump registers for
+    noc-id            Identifier for the NOC (e.g. 0, 1) [default: both noc0 and noc1]
+    loc               Location identifier (e.g. 0-0) [default: current active]
+
+Options:
+    -s, --simple     Print simple output
 
 Description:
-  Dumps NOC registers.
-    • "noc status" prints status registers.
-    • "noc stream <stream-id>" prints registers for a specific stream.
-    • "noc dump" dumps a continuous block of registers.
+    Dumps NOC registers.
+        • "noc status" prints status registers.
+        • "noc stream <stream-id>" prints registers for a specific stream.
+        • "noc dump" dumps a continuous block of registers.
 
 Examples:
-  noc status -d 0 -l 0,0                      # Prints status registers for device 0 on 0,0
-  noc stream 3 -d 1 -noc 1                    # Prints stream 3 registers for device 1 on noc1
-  noc dump                                    # Dumps all registers for device 0 on current core
+    noc status -d 0 -l 0,0                      # Prints status registers for device 0 on 0,0
+    noc stream 3 -d 1 -noc 1                    # Prints stream 3 registers for device 1 on noc1
+    noc dump                                    # Dumps all registers for device 0 on current core
+    noc status -s                               # Prints status registers with simple output
 """
 
 command_metadata = {
@@ -45,6 +50,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.columns import Columns
+from rich import box
 
 # Create a global console instance.
 console = Console()
@@ -323,13 +329,17 @@ def get_formatted_value_from_reg_info(reg_info: dict) -> str:
     else:
         return str(raw_value)
 
-def rich_create_group_table(group_name: str, registers: dict) -> Table:
+def rich_create_group_table(group_name: str, registers: dict, simple_print) -> Table:
     """
     Creates a Rich Table for a given group of stream registers.
-    Displays two columns: "Register" and "Value" (formatted accordingly).
+    Displays two columns: "Description" and "Value" (formatted accordingly).
     """
     table = Table(title=group_name, title_style="bold magenta")
-    table.add_column("Register", style="cyan", no_wrap=True)
+    if simple_print:
+        table.box = box.SIMPLE
+        table.show_header=False
+
+    table.add_column("Description", style="cyan", no_wrap=True)
     table.add_column("Value", style="green")
     for reg_name, reg_info in registers.items():
         if isinstance(reg_info, dict):
@@ -338,26 +348,33 @@ def rich_create_group_table(group_name: str, registers: dict) -> Table:
             table.add_row(reg_name, f"0x{reg_info:08x} ({reg_info:d})")
     return table
 
-def print_grouped_table(stream_regs: dict, grouping: List[List[str]]) -> None:
+def print_grouped_table(stream_regs: dict, grouping: List[List[str]], simple_print) -> None:
     """
     Uses a grouping specification to print stream registers.
     Each inner list is printed as a row (side-by-side via Rich Columns).
     If a group name is missing, a Panel with "<No data>" is shown.
     """
+    if simple_print:
+        grouping = simplify_grouping(grouping)
+
     for group_row in grouping:
         tables = []
         for group_name in group_row:
             if group_name in stream_regs:
-                tables.append(rich_create_group_table(group_name, stream_regs[group_name]))
+                tables.append(rich_create_group_table(group_name, stream_regs[group_name], simple_print))
             else:
                 tables.append(Panel("<No data>", title=group_name))
         console.print(Columns(tables, equal=True, expand=False))
         console.print()  # blank line
 
+def simplify_grouping(grouping):
+    # Transforms grouping into single-column format for simple print mode
+    return [[group] for group in [item for sublist in grouping for item in sublist]]
+
 ###############################################################################
 # Rich Print Status Registers
 ###############################################################################
-def rich_print_noc_status_registers(loc, device_id, noc_id):
+def rich_print_noc_status_registers(loc, device_id, noc_id, simple_print=False):
     console.print(f"[bold]NOC{noc_id} Registers[/bold]")
     noc_registers = get_noc_status_registers(loc, device_id, noc_id)
     grouping = [
@@ -365,12 +382,13 @@ def rich_print_noc_status_registers(loc, device_id, noc_id):
         ["Router Port Status", "Router Port NIU Debug"],
         ["Router Port X Debug", "Router Port Y Debug"]
     ]
-    print_grouped_table(noc_registers, grouping)
+
+    print_grouped_table(noc_registers, grouping, simple_print)
 
 ###############################################################################
 # Print Stream Registers
 ###############################################################################
-def rich_print_noc_stream_registers(loc, device_id, stream_id):
+def rich_print_noc_stream_registers(loc, device_id, stream_id, simple_print=False):
     console.print(f"[bold]Stream {stream_id} Registers[/bold]")
     stream_regs = get_stream_registers(loc, device_id, stream_id)
     grouping = [
@@ -378,16 +396,17 @@ def rich_print_noc_stream_registers(loc, device_id, stream_id):
         ["Remote Receiver", "Remote Source", "Local Sources"],
         ["Debug", "Scratch Registers"]
     ]
-    print_grouped_table(stream_regs, grouping)
+
+    print_grouped_table(stream_regs, grouping, simple_print)
 
 ###############################################################################
 # Dumping All NOC Registers
 ###############################################################################
-def rich_dump_all_noc_registers(loc, device_id):
+def rich_dump_all_noc_registers(loc, device_id, simple_print=False):
     for i in range(0, 64):
-        rich_print_noc_stream_registers(loc, device_id, i)
-    rich_print_noc_status_registers(loc, device_id, 0)
-    rich_print_noc_status_registers(loc, device_id, 1)
+        rich_print_noc_stream_registers(loc, device_id, i, simple_print)
+    rich_print_noc_status_registers(loc, device_id, 0, simple_print)
+    rich_print_noc_status_registers(loc, device_id, 1, simple_print)
 
 ###############################################################################
 # Main Command Entry
@@ -412,16 +431,18 @@ def run(cmd_text, context, ui_state: UIState = None):
     else:
         noc_ids = [0, 1]
 
+    simple_print = dopt.args["--simple"]
+
     # Iterate over selected devices, locations, and NOC identifiers
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             console.print(f"[bold green]==== Device {device.id()} - Location: {loc.to_str('noc0')}[/bold green]")
             if dopt.args["status"]:
                 for noc_id in noc_ids:
-                    rich_print_noc_status_registers(loc, device.id(), noc_id)
+                    rich_print_noc_status_registers(loc, device.id(), noc_id, simple_print)
             elif dopt.args["stream"]:
                 stream_id = int(dopt.args["<stream-id>"])
-                rich_print_noc_stream_registers(loc, device.id(), stream_id)
+                rich_print_noc_stream_registers(loc, device.id(), stream_id, simple_print)
             elif dopt.args["dump"]:
-                rich_dump_all_noc_registers(loc, device.id())
+                rich_dump_all_noc_registers(loc, device.id(), simple_print)
     return []
