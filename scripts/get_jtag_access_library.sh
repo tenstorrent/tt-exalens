@@ -1,4 +1,7 @@
 #!/bin/sh
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
 
 TT_HOME="$(cd "$(dirname "$0")" && pwd)/.."
 CMAKE_BINARY_DIR="$1"
