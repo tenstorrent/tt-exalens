@@ -350,3 +350,110 @@ def arc_msg(
         raise TTException("Timeout must be greater than or equal to 0.")
 
     return context.server_ifc.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
+
+
+def read_tensix_register(
+    core_loc: Union[str, OnChipCoordinate],
+    is_config: bool = False,
+    addr: int = 0,
+    index: int = 0,
+    mask: int = 0xFFFFFFFF,
+    shift: int = 0,
+    device_id: int = 0,
+    context: Context = None,
+) -> int:
+    from ttexalens.device import TensixRegisterDescription, ConfigurationRegisterDescription
+
+    context = check_context(context)
+    device = context.devices[device_id]
+
+    if is_config:
+        validate_addr(index)
+        register = ConfigurationRegisterDescription(index=index, mask=mask, shift=shift)
+    else:
+        validate_addr(addr)
+        register = TensixRegisterDescription(address=addr)
+
+    validate_device_id(device_id, context)
+
+    if not isinstance(core_loc, OnChipCoordinate):
+        core_loc = OnChipCoordinate.create(core_loc, device=device)
+
+    if isinstance(register, ConfigurationRegisterDescription):
+        write_words_to_device(
+            core_loc,
+            device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RD_CNTL"),
+            register.index,
+            device_id,
+            context,
+        )
+        a = read_word_from_device(
+            core_loc,
+            device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RDDATA"),
+            device_id,
+            context,
+        )
+    else:
+        a = read_word_from_device(
+            core_loc,
+            register.address,
+            device_id,
+            context,
+        )
+
+    return (a & register.mask) >> register.shift
+
+
+def write_tensix_register(
+    core_loc: Union[str, OnChipCoordinate],
+    value: int,
+    is_config: bool = False,
+    addr: int = 0,
+    index: int = 0,
+    mask: int = 0xFFFFFFFF,
+    shift: int = 0,
+    device_id: int = 0,
+    context: Context = None,
+) -> None:
+
+    from ttexalens.device import TensixRegisterDescription, ConfigurationRegisterDescription
+    from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc
+
+    context = check_context(context)
+    device = context.devices[device_id]
+
+    if is_config:
+        validate_addr(index)
+        register = ConfigurationRegisterDescription(index=index, mask=mask, shift=shift)
+    else:
+        validate_addr(addr)
+        register = TensixRegisterDescription(address=addr)
+
+    validate_device_id(device_id, context)
+
+    if not isinstance(core_loc, OnChipCoordinate):
+        core_loc = OnChipCoordinate.create(core_loc, device=device)
+
+    if isinstance(register, ConfigurationRegisterDescription):
+        rdbg = RiscDebug(RiscLoc(core_loc), context)
+        rldr = RiscLoader(rdbg, context)
+        with rldr.ensure_reading_configuration_register() as rdbg:
+            if rdbg.enable_asserts:
+                rdbg.assert_halted()
+
+            register.address += device._get_tensix_register_base_address(register)
+
+            if register.mask == 0xFFFFFFFF:
+                rdbg.write_memory(register.address, value)
+            else:
+                old_value = rdbg.read_memory(register.address)
+                new_value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
+                rdbg.write_memory(register.address, new_value)
+    else:
+        write_words_to_device(
+            core_loc,
+            register.address,
+            value,
+            device_id,
+            context,
+        )
