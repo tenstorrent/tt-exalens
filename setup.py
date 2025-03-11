@@ -18,12 +18,14 @@ ttexalens_home = os.path.dirname(ttexalens_folder_path)
 def get_ttexalens_py_files(file_dir: os.PathLike = f"{ttexalens_home}/ttexalens", ignorelist: list = []) -> list:
     """A function to get the list of files in the ttexalens lib directory.
     Ignore the files in the ignorelist."""
-
-    files = os.listdir(file_dir)
-    files = [f for f in files if f.endswith(".py")]
-    files = [f for f in files if f not in ignorelist]
-
-    return files
+    py_files = []
+    for root, _, files in os.walk(file_dir):
+        for f in files:
+            if f.endswith(".py") and f not in ignorelist:
+                full_path = os.path.join(root, f)
+                rel_path = os.path.relpath(full_path, file_dir)
+                py_files.append(rel_path)
+    return py_files
 
 
 def get_libjtag() -> list:
@@ -36,22 +38,10 @@ def get_libjtag() -> list:
 
 
 ttexalens_files = {
-    "ttexalens_lib": {"path": "ttexalens", "files": get_ttexalens_py_files(), "output": "ttexalens"},
-    "cli_commands": {
-        "path": "ttexalens/cli_commands",
-        "files": get_ttexalens_py_files(f"{ttexalens_home}/ttexalens/cli_commands"),
-        "output": "ttexalens/cli_commands",
-    },
-    "hw": {
-        "path": "ttexalens/hw",
-        "files": "*.py",
-        "output": "ttexalens/hw",
-    },
-    "gdb": {
-        "path": "ttexalens/gdb",
-        "files": "*.py",
-        "output": "ttexalens/gdb",
-    },
+    "ttexalens_lib": {
+        "path": "ttexalens",
+        "files": get_ttexalens_py_files(),
+        "output": "ttexalens"},
     "libs": {
         "path": "build/lib",
         "files": ["libdevice.so", "ttexalens_pybind.so"] + get_libjtag(),
@@ -99,21 +89,12 @@ class MyBuild(build_ext):
             src_path = ttexalens_home + "/" + d["path"]
             if d["files"] == "*":
                 self.copy_tree(src_path, path)
-            elif d["files"] == "*.py":
-                if d["files"] == "*.py":
-                    for root, dirs, files in os.walk(src_path):
-                        for f in files:
-                            if f.endswith(".py"):
-                                src_file = os.path.join(root, f)
-                                # Compute the destination directory relative to src_path.
-                                rel_dir = os.path.relpath(root, src_path)
-                                dest_dir = os.path.join(path, rel_dir)
-                                os.makedirs(dest_dir, exist_ok=True)
-                                dest_file = os.path.join(dest_dir, f)
-                                self.copy_file(src_file, dest_file)
             else:
                 for f in d["files"]:
-                    self.copy_file(src_path + "/" + f, path + "/" + f)
+                    src_file = src_path + "/" + f
+                    dest_file = path + "/" + f
+                    os.makedirs(os.path.dirname(dest_file), exist_ok=True)
+                    self.copy_file(src_file, dest_file)
                     if d.get("strip", False) and strip_symbols:
                         print(f"Stripping symbols from {path}/{f}")
                         subprocess.check_call(["strip", path + "/" + f])
