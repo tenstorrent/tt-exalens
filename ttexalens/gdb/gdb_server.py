@@ -6,7 +6,7 @@ import threading
 from typing import Dict, List, Set
 from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 
-from ttexalens.gdb_communication import (
+from ttexalens.gdb.gdb_communication import (
     GDB_ASCII_COLON,
     GDB_ASCII_COMMA,
     GDB_ASCII_SEMICOLON,
@@ -16,8 +16,8 @@ from ttexalens.gdb_communication import (
     GdbMessageWriter,
     ServerSocket,
 )
-from ttexalens.gdb_data import GdbProcess, GdbThreadId
-from ttexalens.gdb_file_server import GdbFileServer
+from ttexalens.gdb.gdb_data import GdbProcess, GdbThreadId
+from ttexalens.gdb.gdb_file_server import GdbFileServer
 from ttexalens.context import Context
 from ttexalens.debug_risc import RiscLoc, get_risc_name
 from ttexalens import util as util

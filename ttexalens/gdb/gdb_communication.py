@@ -4,7 +4,7 @@
 # TODO: Try replacing socket with ZMQ. Ask GPT for example.
 import select
 import socket
-from ttexalens.gdb_data import GdbThreadId
+from ttexalens.gdb.gdb_data import GdbThreadId
 from ttexalens import util as util
 
 # Simple class that wraps reading/writing to a socket

@@ -3,7 +3,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from ttexalens.context import Context
-from ttexalens.gdb_server import GdbServer, ServerSocket
+from ttexalens.gdb.gdb_server import GdbServer, ServerSocket
 from ttexalens.coordinate import OnChipCoordinate
 
 
