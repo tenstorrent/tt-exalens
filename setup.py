@@ -38,10 +38,7 @@ def get_libjtag() -> list:
 
 
 ttexalens_files = {
-    "ttexalens_lib": {
-        "path": "ttexalens",
-        "files": get_ttexalens_py_files(),
-        "output": "ttexalens"},
+    "ttexalens_lib": {"path": "ttexalens", "files": get_ttexalens_py_files(), "output": "ttexalens"},
     "libs": {
         "path": "build/lib",
         "files": ["libdevice.so", "ttexalens_pybind.so"] + get_libjtag(),
