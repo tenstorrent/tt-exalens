@@ -6,8 +6,11 @@ Usage:
   dump-config-reg list-names <group-name>
   dump-config-reg <group-name> [ <reg-name> ] [ -d <device> ] [ -l <loc> ]
 
+Arguments:
+  <group-name>  Configuration register group name to dump. Options: [alu, pack, unpack, all]
+
 Options:
-  -<group-name>  Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
+  <reg-name>    Configuration register name to dump.
   -d <device>   Device ID. Optional. Default: current device
   -l <loc>      Core location in X-Y or R,C format
 
@@ -36,11 +39,19 @@ from ttexalens.uistate import UIState
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.device import Device
 from ttexalens import command_parser
-from ttexalens.util import convert_value, put_table_list_side_by_side, INFO, CLR_GREEN, CLR_END, dict_list_to_table
+from ttexalens.util import (
+    convert_value,
+    put_table_list_side_by_side,
+    INFO,
+    ERROR,
+    CLR_GREEN,
+    CLR_END,
+    dict_list_to_table,
+)
 from typing import List
 from tabulate import tabulate
 
-import readline
+possible_groups = ["alu", "pack", "unpack", "all"]
 
 # Creates list of column names for configuration register table
 def create_column_names(num_of_columns):
@@ -70,7 +81,7 @@ def config_regs_to_table(config_regs: List[dict], table_name: str, debug_tensix:
             if key in config:
                 value = debug_tensix.read_tensix_register(config[key])
                 reg_desc = device.get_tensix_register_description(config[key])
-                config[key] = convert_value(value, reg_desc.data_type, bin(reg_desc.mask).count("1"))
+                config[key] = convert_value(value, reg_desc.data_type, (reg_desc.mask).bit_count())
 
     return dict_list_to_table(config_regs, table_name, create_column_names(len(config_regs)))
 
@@ -87,6 +98,9 @@ def run(cmd_text, context, ui_state: UIState = None):
     )
 
     cfg = dopt.args["<group-name>"]
+    if cfg not in possible_groups:
+        ERROR(f"Invalid register group name. Options: {possible_groups}")
+        return
     reg = dopt.args["<reg-name>"] if dopt.args["<reg-name>"] else None
 
     for device in dopt.for_each("--device", context, ui_state):
@@ -141,7 +155,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                                     f"{reg} = {convert_value(debug_tensix.read_tensix_register(config[reg]), reg_desc.data_type, bin(reg_desc.mask).count('1'))}"
                                 )
                         else:
-                            print(f"{reg} not found in ALU CONFIG")
+                            ERROR(f"{reg} not found in ALU")
                     else:
                         alu_config_table = config_regs_to_table(alu_config, "ALU CONFIG", debug_tensix, device)
                         print(alu_config_table)
@@ -166,7 +180,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                                 f"{reg} = {convert_value(debug_tensix.read_tensix_register(config[reg]), reg_desc.data_type, bin(reg_desc.mask).count('1'))}"
                             )
                     else:
-                        print(f"{reg} not found in UNPACK CONFIG")
+                        ERROR(f"{reg} not found in UNPACK")
                 else:
                     tile_descriptor_table = config_regs_to_table(
                         tile_descriptor, "TILE DESCRIPTOR", debug_tensix, device
@@ -225,7 +239,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                                     f"{reg} = {convert_value(debug_tensix.read_tensix_register(config[reg]), reg_desc.data_type, bin(reg_desc.mask).count('1'))}"
                                 )
                     else:
-                        print(f"{reg} not found in PACK CONFIG")
+                        ERROR(f"{reg} not found in PACK")
                 else:
                     pack_config_table = config_regs_to_table(pack_config, "PACK CONFIG", debug_tensix, device)
                     pack_counters_table = config_regs_to_table(pack_counters, "COUNTERS", debug_tensix, device)
