@@ -239,6 +239,20 @@ class TestReadWrite(unittest.TestCase):
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_to_device(core_loc, address, data, device_id)
 
+    @parameterized.expand(
+        [
+            ("0,0", True, 0, 60, 0xF, 0, 1),
+            ("0,0", True, 0, 1, 0x1E000000, 25, 2),
+            ("0,0", False, 0x54, 1, 0x1E000000, 25, 18),
+        ]
+    )
+    def test_read_write_tensix_register(self, core_loc, is_config, addr, index, mask, shift, value):
+
+        lib.write_tensix_register(core_loc, value, is_config, addr, index, mask, shift)
+        ret = lib.read_tensix_register(core_loc, is_config, addr, index, mask, shift)
+
+        self.assertEqual(ret, value)
+
 
 class TestRunElf(unittest.TestCase):
     @classmethod
