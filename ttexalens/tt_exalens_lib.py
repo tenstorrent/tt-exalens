@@ -355,8 +355,7 @@ def arc_msg(
 def read_tensix_register(
     core_loc: Union[str, OnChipCoordinate],
     is_config: bool = False,
-    addr: int = 0,
-    index: int = 0,
+    mem_loc: int = 0,
     mask: int = 0xFFFFFFFF,
     shift: int = 0,
     device_id: int = 0,
@@ -367,12 +366,13 @@ def read_tensix_register(
     context = check_context(context)
     device = context.devices[device_id]
 
-    if is_config:
-        validate_addr(index)
-        register = ConfigurationRegisterDescription(index=index, mask=mask, shift=shift)
-    else:
-        validate_addr(addr)
-        register = TensixRegisterDescription(address=addr)
+    validate_addr(mem_loc)
+
+    register = (
+        ConfigurationRegisterDescription(index=mem_loc, mask=mask, shift=shift)
+        if is_config
+        else TensixRegisterDescription(address=mem_loc)
+    )
 
     validate_device_id(device_id, context)
 
@@ -408,8 +408,7 @@ def write_tensix_register(
     core_loc: Union[str, OnChipCoordinate],
     value: int,
     is_config: bool = False,
-    addr: int = 0,
-    index: int = 0,
+    mem_loc: int = 0,
     mask: int = 0xFFFFFFFF,
     shift: int = 0,
     device_id: int = 0,
@@ -422,12 +421,13 @@ def write_tensix_register(
     context = check_context(context)
     device = context.devices[device_id]
 
-    if is_config:
-        validate_addr(index)
-        register = ConfigurationRegisterDescription(index=index, mask=mask, shift=shift)
-    else:
-        validate_addr(addr)
-        register = TensixRegisterDescription(address=addr)
+    validate_addr(mem_loc)
+
+    register = (
+        ConfigurationRegisterDescription(index=mem_loc, mask=mask, shift=shift)
+        if is_config
+        else TensixRegisterDescription(address=mem_loc)
+    )
 
     validate_device_id(device_id, context)
 
