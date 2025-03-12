@@ -20,7 +20,7 @@ from ttexalens.device import (
 
 class WormholeInstructions(TensixInstructions):
     def __init__(self):
-        import ttexalens.wormhole_ops as ops
+        import ttexalens.hw.tensix.wormhole.wormhole_ops as ops
 
         super().__init__(ops)
 

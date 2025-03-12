@@ -20,8 +20,8 @@ from ttexalens.firmware import ELF
 from ttexalens.object import DataArray
 import os
 
-from ttexalens.arc import load_arc_fw
-from ttexalens.arc_dbg_fw import arc_dbg_fw_check_msg_loop_running, arc_dbg_fw_command, NUM_LOG_CALLS_OFFSET
+from ttexalens.hw.arc.arc import load_arc_fw
+from ttexalens.hw.arc.arc_dbg_fw import arc_dbg_fw_check_msg_loop_running, arc_dbg_fw_command, NUM_LOG_CALLS_OFFSET
 from ttexalens.tt_exalens_lib_utils import arc_read
 
 
