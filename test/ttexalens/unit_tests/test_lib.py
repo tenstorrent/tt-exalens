@@ -239,7 +239,7 @@ class TestReadWrite(unittest.TestCase):
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_to_device(core_loc, address, data, device_id)
 
-    from ttexalens.device import ConfigurationRegisterDescription, DebugRegisterDescription
+    from ttexalens.device import ConfigurationRegisterDescription, DebugRegisterDescription, DebugBusSignalDescription
 
     @parameterized.expand(
         [
@@ -274,6 +274,23 @@ class TestReadWrite(unittest.TestCase):
 
         # Checking if read value is equal to the original value
         self.assertEqual(ret, original_value)
+
+    @parameterized.expand(
+        [
+            ("abcd", ConfigurationRegisterDescription(), 0, 0),  # Invalid core_loc string
+            ("-10", ConfigurationRegisterDescription(), 0, 0),  # Invalid core_loc string
+            ("0,0", ConfigurationRegisterDescription(), 0, -1),  # Invalid device_id
+            ("0,0", ConfigurationRegisterDescription(), 0, 112),  # Invalid device_id (too high)
+            ("0,0", DebugBusSignalDescription(), 0, 0),  # Invalid register type
+            ("0,0", "invalid_register_name", 0, 0),  # Invalid register name
+        ]
+    )
+    def test_invalid_write_read_tensix_register(self, core_loc, register, value, device_id):
+        """Test invalid inputs for tensix register read and write functions."""
+        with self.assertRaises((util.TTException, ValueError)):
+            lib.read_tensix_register(core_loc, register, device_id)
+        with self.assertRaises((util.TTException, ValueError)):
+            lib.write_tensix_register(core_loc, register, value, device_id)
 
 
 class TestRunElf(unittest.TestCase):
