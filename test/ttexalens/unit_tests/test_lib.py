@@ -248,17 +248,19 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", DebugRegisterDescription(address=0x54), 18),
         ]
     )
-    def test_read_write_tensix_register(self, core_loc, register, value):
+    def test_write_read_tensix_register(self, core_loc, register, value):
 
-        lib.write_tensix_register(core_loc, value, register)
+        original_value = lib.read_tensix_register(core_loc, register)
+
+        lib.write_tensix_register(core_loc, register, value)
         ret = lib.read_tensix_register(core_loc, register)
 
-        import time
-
-        print(ret, value)
-        time.sleep(2)
-
         self.assertEqual(ret, value)
+
+        lib.write_tensix_register(core_loc, register, original_value)
+        ret = lib.read_tensix_register(core_loc, register)
+
+        self.assertEqual(ret, original_value)
 
 
 class TestRunElf(unittest.TestCase):
