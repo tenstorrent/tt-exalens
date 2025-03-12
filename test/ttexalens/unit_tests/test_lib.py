@@ -243,9 +243,16 @@ class TestReadWrite(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("0,0", ConfigurationRegisterDescription(index=60, mask=0xF, shift=0), 1),
-            ("0,0", ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25), 2),
-            ("0,0", DebugRegisterDescription(address=0x54), 18),
+            ("0,0", ConfigurationRegisterDescription(index=60, mask=0xF, shift=0), 1),  # UNPACK_CONFIG0_out_data_format
+            (
+                "0,0",
+                ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
+                2,
+            ),  # ALU_FORMAT_SPEC_REG2_Dstacc
+            ("0,0", DebugRegisterDescription(address=0x54), 18),  # RISCV_DEBUG_REG_DBG_BUS_CNTL_REG
+            ("0,0", "ALU_FORMAT_SPEC_REG2_Dstacc", 6),
+            ("0,0", "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1),
+            ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 9),
         ]
     )
     def test_write_read_tensix_register(self, core_loc, register, value):

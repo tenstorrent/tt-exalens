@@ -362,7 +362,7 @@ def read_tensix_register(
 
     Args:
             core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-            register (TensixRegisterDescription): Configuration or debug register to read from.
+            register (str | TensixRegisterDescription): Tensix register to read from (name or class instance).
             device_id (int, default 0):	ID number of device to read from.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 
@@ -379,9 +379,11 @@ def read_tensix_register(
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=device)
 
-    if not isinstance(register, TensixRegisterDescription):
+    if isinstance(register, str):
+        register = device.get_tensix_register_description(register)
+    elif not isinstance(register, TensixRegisterDescription):
         TTException(
-            f"Invalid register type. Must be an istance of TensixRegisterDescription or its subclasses, but got {type(register)}"
+            f"Invalid register type. Must be an str or instance of TensixRegisterDescription or its subclasses, but got {type(register)}"
         )
 
     if isinstance(register, ConfigurationRegisterDescription):
@@ -421,7 +423,7 @@ def write_tensix_register(
 
     Args:
             core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-            register (TensixRegisterDescription): Configuration or debug register to read from.
+            register (str | TensixRegisterDescription): Tensix register to read from (name or class instance).
             value (int): Value to write to the register.
             device_id (int, default 0):	ID number of device to read from.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
@@ -438,9 +440,18 @@ def write_tensix_register(
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=device)
 
-    if not isinstance(register, TensixRegisterDescription):
+    if isinstance(register, str):
+        register = device.get_tensix_register_description(register)
+        address = register.address
+    elif isinstance(register, TensixRegisterDescription):
+        address = (
+            register.address + device._get_tensix_register_base_address(register)
+            if isinstance(register, ConfigurationRegisterDescription)
+            else register.address
+        )
+    else:
         TTException(
-            f"Invalid register type. Must be an istance of TensixRegisterDescription or its subclasses, but got {type(register)}"
+            f"Invalid register type. Must be an str or instance of TensixRegisterDescription or its subclasses, but got {type(register)}"
         )
 
     if isinstance(register, ConfigurationRegisterDescription):
@@ -449,8 +460,6 @@ def write_tensix_register(
         with rldr.ensure_reading_configuration_register() as rdbg:
             if rdbg.enable_asserts:
                 rdbg.assert_halted()
-
-            address = register.address + device._get_tensix_register_base_address(register)
 
             if register.mask == 0xFFFFFFFF:
                 rdbg.write_memory(address, value)
@@ -461,7 +470,7 @@ def write_tensix_register(
     else:
         write_words_to_device(
             core_loc,
-            register.address,
+            address,
             value,
             device_id,
             context,
