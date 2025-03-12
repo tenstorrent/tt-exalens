@@ -358,7 +358,7 @@ def read_tensix_register(
     device_id: int = 0,
     context: Context = None,
 ) -> int:
-    from ttexalens.device import TensixRegisterDescription, ConfigurationRegisterDescription
+    from ttexalens.device import ConfigurationRegisterDescription
 
     context = check_context(context)
     device = context.devices[device_id]
@@ -401,7 +401,7 @@ def write_tensix_register(
     context: Context = None,
 ) -> None:
 
-    from ttexalens.device import TensixRegisterDescription, ConfigurationRegisterDescription
+    from ttexalens.device import ConfigurationRegisterDescription
     from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc
 
     context = check_context(context)
@@ -419,14 +419,14 @@ def write_tensix_register(
             if rdbg.enable_asserts:
                 rdbg.assert_halted()
 
-            register.address += device._get_tensix_register_base_address(register)
+            address = register.address + device._get_tensix_register_base_address(register)
 
             if register.mask == 0xFFFFFFFF:
-                rdbg.write_memory(register.address, value)
+                rdbg.write_memory(address, value)
             else:
-                old_value = rdbg.read_memory(register.address)
+                old_value = rdbg.read_memory(address)
                 new_value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-                rdbg.write_memory(register.address, new_value)
+                rdbg.write_memory(address, new_value)
     else:
         write_words_to_device(
             core_loc,
