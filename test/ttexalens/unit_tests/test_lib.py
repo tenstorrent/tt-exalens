@@ -249,17 +249,23 @@ class TestReadWrite(unittest.TestCase):
         ]
     )
     def test_write_read_tensix_register(self, core_loc, register, value):
+        """Test writing and reading tensix registers"""
 
+        # Storing the original value of the register
         original_value = lib.read_tensix_register(core_loc, register)
 
+        # Writing a value to the register and reading it back
         lib.write_tensix_register(core_loc, register, value)
         ret = lib.read_tensix_register(core_loc, register)
 
+        # Checking if the value was written and read correctly
         self.assertEqual(ret, value)
 
+        # Writing the original value back to the register and reading it
         lib.write_tensix_register(core_loc, register, original_value)
         ret = lib.read_tensix_register(core_loc, register)
 
+        # Checking if read value is equal to the original value
         self.assertEqual(ret, original_value)
 
 

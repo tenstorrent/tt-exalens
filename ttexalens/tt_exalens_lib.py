@@ -358,6 +358,17 @@ def read_tensix_register(
     device_id: int = 0,
     context: Context = None,
 ) -> int:
+    """Reads the value of a configuration or debug register from the tensix core.
+
+    Args:
+            core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+            register (TensixRegisterDescription): Configuration or debug register to read from.
+            device_id (int, default 0):	ID number of device to read from.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+
+    Returns:
+            int: Value of the configuration or debug register specified.
+    """
     from ttexalens.device import ConfigurationRegisterDescription
 
     context = check_context(context)
@@ -400,6 +411,16 @@ def write_tensix_register(
     device_id: int = 0,
     context: Context = None,
 ) -> None:
+
+    """Writes value to a configuration or debug register on the tensix core.
+
+    Args:
+            core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+            register (TensixRegisterDescription): Configuration or debug register to read from.
+            value (int): Value to write to the register.
+            device_id (int, default 0):	ID number of device to read from.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+    """
 
     from ttexalens.device import ConfigurationRegisterDescription
     from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc
