@@ -372,9 +372,9 @@ def read_tensix_register(
     from ttexalens.device import TensixRegisterDescription, ConfigurationRegisterDescription
 
     context = check_context(context)
-    device = context.devices[device_id]
-
     validate_device_id(device_id, context)
+
+    device = context.devices[device_id]
 
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=device)
@@ -382,7 +382,7 @@ def read_tensix_register(
     if isinstance(register, str):
         register = device.get_tensix_register_description(register)
     elif not isinstance(register, TensixRegisterDescription):
-        TTException(
+        raise TTException(
             f"Invalid register type. Must be an str or instance of TensixRegisterDescription or its subclasses, but got {type(register)}"
         )
 
@@ -433,9 +433,8 @@ def write_tensix_register(
     from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc
 
     context = check_context(context)
-    device = context.devices[device_id]
-
     validate_device_id(device_id, context)
+    device = context.devices[device_id]
 
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=device)
@@ -450,7 +449,7 @@ def write_tensix_register(
             else register.address
         )
     else:
-        TTException(
+        raise TTException(
             f"Invalid register type. Must be an str or instance of TensixRegisterDescription or its subclasses, but got {type(register)}"
         )
 
