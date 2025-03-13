@@ -370,6 +370,7 @@ def read_tensix_register(
             int: Value of the configuration or debug register specified.
     """
     from ttexalens.device import TensixRegisterDescription, ConfigurationRegisterDescription
+    from ttexalens.debug_tensix import TensixDebug
 
     context = check_context(context)
     validate_device_id(device_id, context)
@@ -379,36 +380,12 @@ def read_tensix_register(
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=device)
 
-    if isinstance(register, str):
-        register = device.get_tensix_register_description(register)
-    elif not isinstance(register, TensixRegisterDescription):
+    if not isinstance(register, TensixRegisterDescription) and not isinstance(register, str):
         raise TTException(
             f"Invalid register type. Must be an str or instance of TensixRegisterDescription or its subclasses, but got {type(register)}"
         )
 
-    if isinstance(register, ConfigurationRegisterDescription):
-        write_words_to_device(
-            core_loc,
-            device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RD_CNTL"),
-            register.index,
-            device_id,
-            context,
-        )
-        a = read_word_from_device(
-            core_loc,
-            device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RDDATA"),
-            device_id,
-            context,
-        )
-    else:
-        a = read_word_from_device(
-            core_loc,
-            register.address,
-            device_id,
-            context,
-        )
-
-    return (a & register.mask) >> register.shift
+    return TensixDebug(core_loc, device_id, context).read_tensix_register(register)
 
 
 def write_tensix_register(
@@ -430,6 +407,7 @@ def write_tensix_register(
     """
 
     from ttexalens.device import TensixRegisterDescription, ConfigurationRegisterDescription
+    from ttexalens.debug_tensix import TensixDebug
     from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc
 
     context = check_context(context)
@@ -442,20 +420,14 @@ def write_tensix_register(
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=device)
 
-    if isinstance(register, str):
-        register = device.get_tensix_register_description(register)
-        address = register.address
-    elif isinstance(register, TensixRegisterDescription):
-        address = (
-            register.address + device._get_tensix_register_base_address(register)
-            if isinstance(register, ConfigurationRegisterDescription)
-            else register.address
-        )
-    else:
+    if not isinstance(register, TensixRegisterDescription) and not isinstance(register, str):
         raise TTException(
             f"Invalid register type. Must be an str or instance of TensixRegisterDescription or its subclasses, but got {type(register)}"
         )
 
+    TensixDebug(core_loc, device_id, context).write_tensix_register(register, value)
+
+    """
     if isinstance(register, ConfigurationRegisterDescription):
         rdbg = RiscDebug(RiscLoc(core_loc), context)
         rldr = RiscLoader(rdbg, context)
@@ -477,3 +449,4 @@ def write_tensix_register(
             device_id,
             context,
         )
+    """
