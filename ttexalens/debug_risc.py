@@ -525,10 +525,12 @@ class RiscDebug:
         register = self.location.loc._device.get_tensix_register_description(register_name)
         return (self.read_memory(register.address) & register.mask) >> register.shift
 
-    def write_configuration_register(self, register_name: str, value: int):
+    def write_configuration_register(self, register, value: int):
         if self.enable_asserts:
             self.assert_halted()
-        register = self.location.loc._device.get_tensix_register_description(register_name)
+
+        if isinstance(register, str):
+            register = self.location.loc._device.get_tensix_register_description(register)
 
         # Speed optimization: if register mask is 0xffffffff, we can write directly to memory
         if register.mask == 0xFFFFFFFF:

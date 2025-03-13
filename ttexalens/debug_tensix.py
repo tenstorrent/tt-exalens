@@ -190,32 +190,18 @@ class TensixDebug:
 
         if isinstance(register, str):
             register = device.get_tensix_register_description(register)
-            address = register.address
-        elif isinstance(register, TensixRegisterDescription):
-            address = (
-                register.address + device._get_tensix_register_base_address(register)
-                if isinstance(register, ConfigurationRegisterDescription)
-                else register.address
-            )
+        elif isinstance(register, ConfigurationRegisterDescription):
+            register = register.clone(device._get_tensix_register_base_address(register))
 
         if isinstance(register, ConfigurationRegisterDescription):
             rdbg = RiscDebug(RiscLoc(self.core_loc), self.context)
             rldr = RiscLoader(rdbg, self.context)
             with rldr.ensure_reading_configuration_register() as rdbg:
-                # rdbg.write_configuration_register(name, value)
-                if rdbg.enable_asserts:
-                    rdbg.assert_halted()
-
-                if register.mask == 0xFFFFFFFF:
-                    rdbg.write_memory(address, value)
-                else:
-                    old_value = rdbg.read_memory(address)
-                    new_value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-                    rdbg.write_memory(address, new_value)
+                rdbg.write_configuration_register(register, value)
         else:
             write_words_to_device(
                 self.core_loc,
-                address,
+                register.address,
                 value,
                 self.device_id,
                 self.context,
