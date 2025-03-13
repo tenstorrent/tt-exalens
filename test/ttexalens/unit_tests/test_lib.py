@@ -285,6 +285,11 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", ConfigurationRegisterDescription(), 0, 112),  # Invalid device_id (too high)
             ("0,0", DebugBusSignalDescription(), 0, 0),  # Invalid register type
             ("0,0", "invalid_register_name", 0, 0),  # Invalid register name
+            ("0,0", ConfigurationRegisterDescription(), 0, -1),  # Invalid value (negative)
+            ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 0, 2**32),  # Invalid value (too high)
+            ("0,0", ConfigurationRegisterDescription(index=-1), 0, 0),  # Invalid index (negative)
+            ("0,0", ConfigurationRegisterDescription(index=2**32), 0, 0),  # Invalid index (too high)
+            ("0,0", 0xFFB12345, 0, 0),  # Address alone is not enough to represent index
         ]
     )
     def test_invalid_write_read_tensix_register(self, core_loc, register, value, device_id):
@@ -292,8 +297,9 @@ class TestReadWrite(unittest.TestCase):
         if self.context.arch == "grayskull":
             self.skipTest("Skipping the test on grayskull.")
 
-        with self.assertRaises((util.TTException, ValueError)):
-            lib.read_tensix_register(core_loc, register, device_id)
+        if value == 0:  # Invalid value does not raies an exception in read so we skip it
+            with self.assertRaises((util.TTException, ValueError)):
+                lib.read_tensix_register(core_loc, register, device_id)
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_tensix_register(core_loc, register, value, device_id)
 

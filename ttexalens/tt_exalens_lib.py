@@ -415,9 +415,6 @@ def write_tensix_register(
     validate_device_id(device_id, context)
     device = context.devices[device_id]
 
-    if value < 0:
-        raise ValueError("Value must be greater than or equal to 0, but got {value}")
-
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=device)
 

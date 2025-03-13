@@ -156,6 +156,10 @@ class TensixDebug:
             register = device.get_tensix_register_description(register)
 
         if isinstance(register, ConfigurationRegisterDescription):
+            if register.index < 0 or register.index > 2**32 - 1:
+                raise ValueError(f"Register index must be positive, but got {register.index}")
+
+        if isinstance(register, ConfigurationRegisterDescription):
             write_words_to_device(
                 self.core_loc,
                 device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RD_CNTL"),
@@ -191,7 +195,18 @@ class TensixDebug:
         if isinstance(register, str):
             register = device.get_tensix_register_description(register)
         elif isinstance(register, ConfigurationRegisterDescription):
-            register = register.clone(device._get_tensix_register_base_address(register))
+            base_address = device._get_tensix_register_base_address(register)
+            if base_address != None:
+                register = register.clone(base_address)
+            else:
+                raise ValueError(f"Unknown tensix register base address for given register")
+
+        if value < 0 or value > 2 ** bin(register.mask).count("1") - 1:
+            raise ValueError(f"Value must be between 0 and {2 ** bin(register.mask).count('1') - 1}, but got {value}")
+
+        if isinstance(register, ConfigurationRegisterDescription):
+            if register.index < 0 or register.index > 2**32 - 1:
+                raise ValueError(f"Register index must be positive, but got {register.index}")
 
         if isinstance(register, ConfigurationRegisterDescription):
             rdbg = RiscDebug(RiscLoc(self.core_loc), self.context)
