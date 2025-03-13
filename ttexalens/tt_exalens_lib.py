@@ -369,7 +369,7 @@ def read_tensix_register(
     Returns:
             int: Value of the configuration or debug register specified.
     """
-    from ttexalens.device import TensixRegisterDescription, ConfigurationRegisterDescription
+    from ttexalens.device import TensixRegisterDescription
     from ttexalens.debug_tensix import TensixDebug
 
     context = check_context(context)
@@ -406,9 +406,8 @@ def write_tensix_register(
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
     """
 
-    from ttexalens.device import TensixRegisterDescription, ConfigurationRegisterDescription
+    from ttexalens.device import TensixRegisterDescription
     from ttexalens.debug_tensix import TensixDebug
-    from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc
 
     context = check_context(context)
     validate_device_id(device_id, context)
