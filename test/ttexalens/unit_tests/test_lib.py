@@ -257,6 +257,8 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_write_read_tensix_register(self, core_loc, register, value):
         """Test writing and reading tensix registers"""
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull.")
 
         # Storing the original value of the register
         original_value = lib.read_tensix_register(core_loc, register)
@@ -287,6 +289,9 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_write_read_tensix_register(self, core_loc, register, value, device_id):
         """Test invalid inputs for tensix register read and write functions."""
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull.")
+
         with self.assertRaises((util.TTException, ValueError)):
             lib.read_tensix_register(core_loc, register, device_id)
         with self.assertRaises((util.TTException, ValueError)):
