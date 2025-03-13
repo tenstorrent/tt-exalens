@@ -426,27 +426,3 @@ def write_tensix_register(
         )
 
     TensixDebug(core_loc, device_id, context).write_tensix_register(register, value)
-
-    """
-    if isinstance(register, ConfigurationRegisterDescription):
-        rdbg = RiscDebug(RiscLoc(core_loc), context)
-        rldr = RiscLoader(rdbg, context)
-        with rldr.ensure_reading_configuration_register() as rdbg:
-            if rdbg.enable_asserts:
-                rdbg.assert_halted()
-
-            if register.mask == 0xFFFFFFFF:
-                rdbg.write_memory(address, value)
-            else:
-                old_value = rdbg.read_memory(address)
-                new_value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-                rdbg.write_memory(address, new_value)
-    else:
-        write_words_to_device(
-            core_loc,
-            address,
-            value,
-            device_id,
-            context,
-        )
-    """
