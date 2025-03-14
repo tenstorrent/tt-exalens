@@ -288,8 +288,8 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", ConfigurationRegisterDescription(), 0, -1),  # Invalid value (negative)
             ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 0, 2**32),  # Invalid value (too high)
             ("0,0", ConfigurationRegisterDescription(index=-1), 0, 0),  # Invalid index (negative)
-            ("0,0", ConfigurationRegisterDescription(index=2**32), 0, 0),  # Invalid index (too high)
-            ("0,0", 0xFFB12345, 0, 0),  # Address alone is not enough to represent index
+            ("0,0", ConfigurationRegisterDescription(index=2**14), 0, 0),  # Invalid index (too high)
+            ("0,0", 0xFFB12345, 0, 0),  # Address alone is not enough to represent index)
         ]
     )
     def test_invalid_write_read_tensix_register(self, core_loc, register, value, device_id):

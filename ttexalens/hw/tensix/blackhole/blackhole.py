@@ -53,6 +53,8 @@ class BlackholeDevice(Device):
     NOC_CONFIGURATION_REGISTER_BASE = 0xFFB20100
     NOC_STATUS_REGISTER_BASE = 0xFFB20200
 
+    CONFIGURATION_REGISTER_END = 0xFFEFFFFF
+
     NUM_UNPACKERS = 2
     NUM_PACKERS = 1
 
@@ -85,6 +87,13 @@ class BlackholeDevice(Device):
             return BlackholeDevice.NOC_CONFIGURATION_REGISTER_BASE
         elif isinstance(register_description, NocStatusRegisterDescription):
             return BlackholeDevice.NOC_STATUS_REGISTER_BASE
+        else:
+            return None
+        
+    def _get_tensix_register_end_addres(self, register_description: TensixRegisterDescription) -> int:
+        """Overrides the base class method to provide register end addresses for Wormhole device."""
+        if isinstance(register_description, ConfigurationRegisterDescription):
+            return BlackholeDevice.CONFIGURATION_REGISTER_END
         else:
             return None
 

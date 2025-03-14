@@ -476,6 +476,10 @@ class Device(TTObject):
         pass
 
     @abstractmethod
+    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int:
+        pass
+
+    @abstractmethod
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
         pass
 
