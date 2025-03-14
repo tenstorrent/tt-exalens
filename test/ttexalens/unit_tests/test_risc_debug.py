@@ -299,8 +299,7 @@ class TestDebugging(unittest.TestCase):
     def test_ebreak_and_step(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
         addr = 0x10000
-        loader = RiscLoader(self.rdbg, self.context)
-        loader.set_branch_prediction(True)
+
         # Write our data to memory
         self.write_data_checked(addr, 0x12345678)
 
