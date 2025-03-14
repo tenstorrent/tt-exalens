@@ -8,7 +8,7 @@ Usage:
 Options:
   <config-reg>  Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
   -d <device>   Device ID. Optional. Default: current device
-  -l <loc>      Core location in X-Y or R,C format
+  -l <loc>      Core location in X-Y or R,C format. Defualt: current core
 
 Description:
   Prints the configuration register of the given name, at the specified location and device.
@@ -79,7 +79,6 @@ def run(cmd_text, context, ui_state: UIState = None):
     )
 
     cfg = dopt.args["<config-reg>"] if dopt.args["<config-reg>"] else "all"
-    print(cfg)
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
