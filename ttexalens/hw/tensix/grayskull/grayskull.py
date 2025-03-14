@@ -76,7 +76,7 @@ class GrayskullDevice(Device):
         else:
             return None
 
-    def _get_tensix_register_end_addres(self, register_description: TensixRegisterDescription) -> int:
+    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int:
         """Overrides the base class method to provide register end addresses for Grayskull device."""
         if isinstance(register_description, ConfigurationRegisterDescription):
             return GrayskullDevice.CONFIGURATION_REGISTER_END
