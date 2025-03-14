@@ -332,9 +332,10 @@ class TestDebugging(unittest.TestCase):
         self.rdbg.step()
         self.assertEqual(self.read_data(addr), 0x12345678)
         self.assertPcEquals(8)
-        # Step and verify that pc is 12 and value has changed
+        # Adding two steps since logic in hw automatically updates register and memory values
         self.rdbg.step()
         self.rdbg.step()
+        # Verify that pc is 16 and value has changed
         self.assertEqual(self.read_data(addr), 0x87654000)
         self.assertPcEquals(16)
         # Since we are on endless loop, we should never go past 16
