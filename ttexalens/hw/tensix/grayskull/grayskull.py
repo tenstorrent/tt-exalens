@@ -75,9 +75,9 @@ class GrayskullDevice(Device):
             return GrayskullDevice.DEBUG_REGISTER_BASE
         else:
             return None
-    
+
     def _get_tensix_register_end_addres(self, register_description: TensixRegisterDescription) -> int:
-        """Overrides the base class method to provide register end addresses for Wormhole device."""
+        """Overrides the base class method to provide register end addresses for Grayskull device."""
         if isinstance(register_description, ConfigurationRegisterDescription):
             return GrayskullDevice.CONFIGURATION_REGISTER_END
         else:
