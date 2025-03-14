@@ -156,9 +156,19 @@ class TensixDebug:
             register = device.get_tensix_register_description(register)
 
         if isinstance(register, ConfigurationRegisterDescription):
-            max_index = int((device._get_tensix_register_end_address(register) - device._get_tensix_register_base_address(register) + 1)/4 - 1)
+            max_index = int(
+                (
+                    device._get_tensix_register_end_address(register)
+                    - device._get_tensix_register_base_address(register)
+                    + 1
+                )
+                / 4
+                - 1
+            )
             if register.index < 0 or register.index > max_index:
-                raise ValueError(f"Register index must be positive and less than or equal to {max_index}, but got {register.index}")
+                raise ValueError(
+                    f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
+                )
 
         if isinstance(register, ConfigurationRegisterDescription):
             write_words_to_device(
@@ -206,9 +216,19 @@ class TensixDebug:
             raise ValueError(f"Value must be between 0 and {2 ** bin(register.mask).count('1') - 1}, but got {value}")
 
         if isinstance(register, ConfigurationRegisterDescription):
-            max_index = int((device._get_tensix_register_end_address(register) - device._get_tensix_register_base_address(register) + 1)/4 - 1)
+            max_index = int(
+                (
+                    device._get_tensix_register_end_address(register)
+                    - device._get_tensix_register_base_address(register)
+                    + 1
+                )
+                / 4
+                - 1
+            )
             if register.index < 0 or register.index > max_index:
-                raise ValueError(f"Register index must be positive and less than or equal to {max_index}, but got {register.index}")
+                raise ValueError(
+                    f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
+                )
 
         if isinstance(register, ConfigurationRegisterDescription):
             rdbg = RiscDebug(RiscLoc(self.core_loc), self.context)
