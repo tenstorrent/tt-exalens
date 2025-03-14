@@ -227,7 +227,7 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << "dram:" << std::endl;
     outfile << "  [" << std::endl;
 
-    for (const auto &dram_cores : soc_descriptor.dram_cores) {
+    for (const auto &dram_cores : soc_descriptor.get_dram_cores()) {
         // Insert the dram core if it's within the given grid
         bool has_data = false;
 
