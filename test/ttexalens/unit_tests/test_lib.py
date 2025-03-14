@@ -483,8 +483,16 @@ class TestARC(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.context = tt_exalens_init.init_ttexalens()
 
+    def is_blackhole(self):
+        """Check if the device is blackhole."""
+        return self.context.devices[0]._arch == "blackhole"
+
     def test_arc_msg(self):
         """Test getting AICLK from ARC."""
+
+        if self.is_blackhole():
+            self.skipTest("Arc message is not supported on blackhole UMD")
+
         device_id = 0
         msg_code = 0xAA34  # Get AICLK. See src/hardware/soc/tb/arc_fw/wh_fw/src/level_2.c
         wait_for_done = True
