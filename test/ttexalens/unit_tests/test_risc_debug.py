@@ -123,7 +123,6 @@ class TestDebugging(unittest.TestCase):
                 f"Pc should be {expected} + program_base_addres ({self.program_base_address + expected}).",
             )
 
-
     def get_pc_from_debug_bus(self):
         return self.context.devices[0].read_debug_bus_signal(self.core_loc, self.risc_name.lower() + "_pc")
 
