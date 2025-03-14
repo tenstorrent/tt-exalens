@@ -46,6 +46,8 @@ class GrayskullDevice(Device):
     CONFIGURATION_REGISTER_BASE = 0xFFEF0000
     DEBUG_REGISTER_BASE = 0xFFB12000
 
+    CONFIGURATION_REGISTER_END = 0xFFEFFFFF
+
     NUM_UNPACKERS = 2
     NUM_PACKERS = 4
 
@@ -71,6 +73,13 @@ class GrayskullDevice(Device):
             return GrayskullDevice.CONFIGURATION_REGISTER_BASE
         elif isinstance(register_description, DebugRegisterDescription):
             return GrayskullDevice.DEBUG_REGISTER_BASE
+        else:
+            return None
+
+    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int:
+        """Overrides the base class method to provide register end addresses for Grayskull device."""
+        if isinstance(register_description, ConfigurationRegisterDescription):
+            return GrayskullDevice.CONFIGURATION_REGISTER_END
         else:
             return None
 
