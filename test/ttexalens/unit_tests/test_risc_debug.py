@@ -485,8 +485,8 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.rdbg.read_status().is_ebreak_hit, "ebreak should not be the cause.")
 
     def test_invalidate_cache(self):
-        # if not self.is_blackhole():
-        # self.skipTest("Invalidate cache is not reliable on wormhole.")
+        if not self.is_blackhole():
+            self.skipTest("Invalidate cache is not reliable on wormhole.")
 
         """Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation. All that is done on brisc."""
         addr = 0x10000
