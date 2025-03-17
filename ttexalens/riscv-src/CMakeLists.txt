@@ -44,7 +44,7 @@ set(RISCV_OUTPUT "${CMAKE_BINARY_DIR}/riscv-src")
 set(RISCV_OBJECT "${CMAKE_BINARY_DIR}/obj/riscv-src")
 
 # Define architectures, applications, and cores
-set(RISCV_ARCHITECTURES "grayskull" "wormhole" "blackhole")
+set(RISCV_ARCHITECTURES "wormhole" "blackhole")
 set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc")
 set(RISCV_APPS "sample" "run_elf_test" "callstack")
 set(RISCV_OPTIMIZED_APPS "callstack")

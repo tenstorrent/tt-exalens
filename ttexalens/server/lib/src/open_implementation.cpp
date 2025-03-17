@@ -27,9 +27,6 @@
 static const uint8_t blackhole_configuration_bytes[] = {
 #include "../configuration/blackhole.embed"
 };
-static const uint8_t grayskull_configuration_bytes[] = {
-#include "../configuration/grayskull.embed"
-};
 static const uint8_t wormhole_b0_configuration_bytes[] = {
 #include "../configuration/wormhole_b0.embed"
 };
@@ -76,10 +73,6 @@ static std::string create_temp_configuration_file(tt::ARCH arch) {
         case tt::ARCH::BLACKHOLE:
             configuration_bytes = blackhole_configuration_bytes;
             configuration_length = sizeof(blackhole_configuration_bytes) / sizeof(blackhole_configuration_bytes[0]);
-            break;
-        case tt::ARCH::GRAYSKULL:
-            configuration_bytes = grayskull_configuration_bytes;
-            configuration_length = sizeof(grayskull_configuration_bytes) / sizeof(grayskull_configuration_bytes[0]);
             break;
         case tt::ARCH::WORMHOLE_B0:
             configuration_bytes = wormhole_b0_configuration_bytes;
@@ -142,17 +135,6 @@ static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
     cluster_descriptor << "}" << std::endl;
 
     return cluster_descriptor_path;
-}
-
-static std::unique_ptr<tt::umd::Cluster> create_grayskull_device(const std::string &device_configuration_path,
-                                                                 const std::set<chip_id_t> &target_devices) {
-    uint32_t num_host_mem_ch_per_mmio_device = 1;
-    std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
-
-    auto device =
-        std::make_unique<tt::umd::Cluster>(device_configuration_path, target_devices, num_host_mem_ch_per_mmio_device);
-
-    return device;
 }
 
 static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::string &device_configuration_path,
@@ -227,7 +209,7 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << "dram:" << std::endl;
     outfile << "  [" << std::endl;
 
-    for (const auto &dram_cores : soc_descriptor.dram_cores) {
+    for (const auto &dram_cores : soc_descriptor.get_dram_cores()) {
         // Insert the dram core if it's within the given grid
         bool has_data = false;
 
@@ -466,9 +448,6 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     for (auto device_id : device_ids) target_devices.insert(device_id);
 
     switch (arch) {
-        case tt::ARCH::GRAYSKULL:
-            device = create_grayskull_device(device_configuration_path, target_devices);
-            break;
         case tt::ARCH::WORMHOLE_B0:
             device = create_wormhole_device(device_configuration_path, target_devices);
             break;
