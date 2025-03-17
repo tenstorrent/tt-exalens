@@ -8,6 +8,7 @@ import sys
 import struct
 import zmq
 
+from ttexalens.utils import logging as logging
 from ttexalens import util as util
 from ttexalens import tt_exalens_ifc_cache as tt_exalens_ifc_cache
 from ttexalens.tt_exalens_ifc_base import TTExaLensCommunicator
@@ -523,19 +524,19 @@ def init_pybind(wanted_devices=None, init_jtag=False, use_noc1=False):
         wanted_devices = []
 
     communicator = TTExaLensPybind(wanted_devices, init_jtag, use_noc1)
-    util.VERBOSE("Device opened successfully.")
+    logging.VERBOSE("Device opened successfully.")
     return communicator
 
 
 # Spawns ttexalens-server and initializes the communication
 def connect_to_server(ip="localhost", port=5555):
     ttexalens_stub_address = f"tcp://{ip}:{port}"
-    util.VERBOSE(f"Connecting to ttexalens-server at {ttexalens_stub_address}...")
+    logging.VERBOSE(f"Connecting to ttexalens-server at {ttexalens_stub_address}...")
 
     try:
         communicator = ttexalens_client(ip, port)
-        util.VERBOSE("Connected to ttexalens-server.")
+        logging.VERBOSE("Connected to ttexalens-server.")
     except:
-        raise util.TTFatalException("Failed to connect to TTExaLens server.")
+        raise logging.FATAL("Failed to connect to TTExaLens server.")
 
     return communicator

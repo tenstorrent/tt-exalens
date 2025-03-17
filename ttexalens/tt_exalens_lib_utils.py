@@ -4,7 +4,7 @@
 # Core utility functions used by tt_exalens_lib and other modules
 from ttexalens import tt_exalens_init
 from ttexalens.context import Context
-from ttexalens.util import TTException
+from ttexalens.utils.exceptions import TTException
 
 
 def check_context(context: Context = None) -> Context:

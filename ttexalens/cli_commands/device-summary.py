@@ -44,11 +44,11 @@ from ttexalens.device import Device
 from ttexalens.coordinate import VALID_COORDINATE_TYPES
 from ttexalens.context import LimitedContext
 from ttexalens.tt_exalens_lib import read_words_from_device
-
+from ttexalens.utils import logging as logging
 
 def color_block(text: str, block_type: str):
     color = Device.block_types[block_type]["color"]
-    return f"{color}{text}{util.CLR_END}"
+    return f"{color}{text}{logging.CLR_END}"
 
 
 def run(cmd_text, context, ui_state=None):
@@ -79,7 +79,7 @@ def run(cmd_text, context, ui_state=None):
     if not dont_print_legend:
 
         def print_legend(line):
-            print(util.CLR_INFO + line + util.CLR_END)
+            print(logging.CLR_INFO + line + logging.CLR_END)
 
         print_legend("")
         print_legend(f"Legend:")

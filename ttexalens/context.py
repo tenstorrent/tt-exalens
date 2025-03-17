@@ -6,6 +6,7 @@ from functools import cached_property
 from typing import Dict, Optional, Set
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
+from ttexalens.utils import logging as logging
 from ttexalens.firmware import ELF
 
 # All-encompassing structure representing a TTExaLens context
@@ -30,7 +31,7 @@ class Context:
         devices: Dict[int, device.Device] = dict()
         for device_id in device_ids:
             device_desc_path = self.server_ifc.get_device_soc_description(device_id)
-            util.DEBUG(f"Loading device {device_id} from {device_desc_path}")
+            logging.DEBUG(f"Loading device {device_id} from {device_desc_path}")
             devices[device_id] = device.Device.create(
                 self.arch,
                 device_id=device_id,
@@ -62,7 +63,7 @@ class Context:
     @property
     @abstractmethod
     def elf(self):
-        raise util.TTException(f"We are running with limited functionality, elf files are not available.")
+        raise TTException(f"We are running with limited functionality, elf files are not available.")
 
     @abstractmethod
     def get_risc_elf_path(self, location: OnChipCoordinate, risc_id: int) -> Optional[str]:

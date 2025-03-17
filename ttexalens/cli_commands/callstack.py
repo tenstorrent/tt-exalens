@@ -30,7 +30,7 @@ from ttexalens.uistate import UIState
 from ttexalens import command_parser
 from ttexalens import util
 from ttexalens.debug_risc import RiscDebug, RiscLoc, get_risc_name, RiscLoader
-
+from ttexalens.utils import logging
 
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = command_parser.tt_docopt(
@@ -59,18 +59,18 @@ def run(cmd_text, context, ui_state: UIState = None):
                 loader = RiscLoader(risc_debug, context, verbose)
                 callstack = loader.get_callstack(elf_path, limit, stop_on_main)
                 print(
-                    f"Location: {util.CLR_INFO}{loc.to_user_str()}{util.CLR_END}, core: {util.CLR_WHITE}{get_risc_name(risc_id)}{util.CLR_END}"
+                    f"Location: {logging.CLR_INFO}{loc.to_user_str()}{logging.CLR_END}, core: {logging.CLR_WHITE}{get_risc_name(risc_id)}{logging.CLR_END}"
                 )
 
                 frame_number_width = len(str(len(callstack) - 1))
                 for i, frame in enumerate(callstack):
                     print(f"  #{i:<{frame_number_width}} ", end="")
                     if frame.pc is not None:
-                        print(f"{util.CLR_BLUE}0x{frame.pc:08X}{util.CLR_END} in ", end="")
+                        print(f"{logging.CLR_BLUE}0x{frame.pc:08X}{logging.CLR_END} in ", end="")
                     if frame.function_name is not None:
-                        print(f"{util.CLR_YELLOW}{frame.function_name}{util.CLR_END} () ", end="")
+                        print(f"{logging.CLR_YELLOW}{frame.function_name}{logging.CLR_END} () ", end="")
                     if frame.file is not None:
-                        print(f"at {util.CLR_GREEN}{frame.file} {frame.line}:{frame.column}{util.CLR_END}", end="")
+                        print(f"at {logging.CLR_GREEN}{frame.file} {frame.line}:{frame.column}{logging.CLR_END}", end="")
                     print()
 
     return None

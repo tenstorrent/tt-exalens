@@ -6,7 +6,7 @@ import os
 import time
 from typing import Union, List
 from ttexalens.context import Context
-from ttexalens.util import TTException
+from ttexalens.utils.exceptions import TTException
 from ttexalens.tt_exalens_lib_utils import check_context, arc_read, arc_write
 
 

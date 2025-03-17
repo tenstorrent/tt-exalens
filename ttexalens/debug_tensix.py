@@ -7,7 +7,7 @@ from enum import Enum
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.tt_exalens_lib import check_context, validate_device_id, read_word_from_device, write_words_to_device
-from ttexalens.util import TTException
+from ttexalens.utils.exceptions import TTException
 from ttexalens.device import Device, ConfigurationRegisterDescription, TensixRegisterDescription
 from ttexalens.unpack_regfile import unpack_data
 from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader

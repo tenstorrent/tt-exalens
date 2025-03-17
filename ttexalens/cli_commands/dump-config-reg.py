@@ -35,7 +35,8 @@ from ttexalens.uistate import UIState
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.device import Device
 from ttexalens import command_parser
-from ttexalens.util import convert_value, put_table_list_side_by_side, INFO, CLR_GREEN, CLR_END, dict_list_to_table
+from ttexalens.util import convert_value, put_table_list_side_by_side, dict_list_to_table
+from ttexalens.utils.logging import INFO, CLR_GREEN, CLR_END
 from typing import List
 from tabulate import tabulate
 

@@ -11,7 +11,7 @@ from ttexalens import tt_exalens_init
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.util import TTException
+from ttexalens.utils.exceptions import TTException
 
 
 def read_word_from_device(

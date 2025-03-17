@@ -57,6 +57,7 @@ except ModuleNotFoundError as e:
 
 from ttexalens import tt_exalens_init
 from ttexalens import tt_exalens_server
+from ttexalens.utils import logging as logging
 from ttexalens import util as util
 from ttexalens.uistate import UIState
 from ttexalens.command_parser import find_command, CommandParsingException
@@ -103,7 +104,7 @@ def format_commands(commands, type, specific_cmd=None, verbose=False):
         if c["type"] == type and (specific_cmd is None or c["long"] == specific_cmd or c["short"] == specific_cmd):
             description = c["description"]
             if verbose:
-                row = [f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{c['short']}", ""]
+                row = [f"{logging.CLR_INFO}{c['long']}{logging.CLR_END}", f"{c['short']}", ""]
                 rows.append(row)
                 row2 = [f"", f"", f"{description}"]
                 rows.append(row2)
@@ -123,7 +124,7 @@ def format_commands(commands, type, specific_cmd=None, verbose=False):
                     description = description[0]
                 description = description.strip()
                 row = [
-                    f"{util.CLR_INFO}{c['long']}{util.CLR_END}",
+                    f"{logging.CLR_INFO}{c['long']}{logging.CLR_END}",
                     f"{c['short']}",
                     f"{description}",
                 ]
@@ -146,7 +147,7 @@ def print_help(commands, cmd):
     # rows += format_commands (commands, 'dev', "Development")
 
     if not rows:
-        util.WARN(f"Command '{specific_cmd}' not found")
+        logging.WARN(f"Command '{specific_cmd}' not found")
         return
 
     # Replace each line starting with <--MIDRULE-->, with a ruler line to separate the commands visually
@@ -231,7 +232,7 @@ def import_commands(reload=False):
             cmd_module = importlib.import_module(module_path)
         except Exception as e:
             # Print call stack
-            util.notify_exception(type(e), e, e.__traceback__)
+            logging.notify_exception(type(e), e, e.__traceback__)
             continue
         command_metadata = cmd_module.command_metadata
         command_metadata["module"] = cmd_module
@@ -239,7 +240,7 @@ def import_commands(reload=False):
         # Make the module name the default 'long' invocation string
         if "long" not in command_metadata:
             command_metadata["long"] = cmd_module.__name__
-        util.VERBOSE(f"Importing command {command_metadata['long']} from '{cmd_module.__name__}'")
+        logging.VERBOSE(f"Importing command {command_metadata['long']} from '{cmd_module.__name__}'")
 
         if reload:
             importlib.reload(cmd_module)
@@ -247,9 +248,9 @@ def import_commands(reload=False):
         # Check command names/shortcut overlap (only when not reloading)
         for cmd in commands:
             if cmd["long"] == command_metadata["long"]:
-                util.FATAL(f"Command {cmd['long']} already exists")
+                logging.FATAL(f"Command {cmd['long']} already exists")
             if cmd["short"] == command_metadata["short"]:
-                util.FATAL(
+                logging.FATAL(
                     f"Commands {cmd['long']} and {command_metadata['long']} use the same shortcut: {cmd['short']}"
                 )
         commands.append(command_metadata)
@@ -310,19 +311,19 @@ def main_loop(args, context):
                 cmd_raw = non_interactive_commands[0].strip()
                 non_interactive_commands = non_interactive_commands[1:]
                 if len(cmd_raw) > 0:
-                    print(f"{util.CLR_INFO}Executing command: %s{util.CLR_END}" % cmd_raw)
+                    print(f"{logging.CLR_INFO}Executing command: %s{logging.CLR_END}" % cmd_raw)
             else:
                 if ui_state.gdb_server is None:
-                    gdb_status = f"{util.CLR_PROMPT_BAD_VALUE}None{util.CLR_PROMPT_BAD_VALUE_END}"
+                    gdb_status = f"{logging.CLR_PROMPT_BAD_VALUE}None{logging.CLR_PROMPT_BAD_VALUE_END}"
                 else:
-                    gdb_status = f"{util.CLR_PROMPT}{ui_state.gdb_server.server.port}{util.CLR_PROMPT_END}"
+                    gdb_status = f"{logging.CLR_PROMPT}{ui_state.gdb_server.server.port}{logging.CLR_PROMPT_END}"
                     # TODO: Since we cannot update status during prompt, this is commented out for now
                     # if ui_state.gdb_server.is_connected:
                     #     gdb_status += "(connected)"
                 my_prompt = f"gdb:{gdb_status} "
                 jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
-                my_prompt += f"device:{util.CLR_PROMPT}{jtag_prompt}{ui_state.current_device_id}{util.CLR_PROMPT_END} "
-                my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
+                my_prompt += f"device:{logging.CLR_PROMPT}{jtag_prompt}{ui_state.current_device_id}{logging.CLR_PROMPT_END} "
+                my_prompt += f"loc:{logging.CLR_PROMPT}{current_loc.to_user_str()}{logging.CLR_PROMPT_END} "
                 my_prompt += f"{ui_state.current_prompt}> "
                 cmd_raw = context.prompt_session.prompt(HTML(my_prompt))
 
@@ -331,7 +332,7 @@ def main_loop(args, context):
                 if navigation_suggestions and cmd_int >= 0 and cmd_int < len(navigation_suggestions):
                     cmd_raw = navigation_suggestions[cmd_int]["cmd"]
                 else:
-                    raise util.TTException(f"Invalid speed dial number: {cmd_int}")
+                    raise logging.TTException(f"Invalid speed dial number: {cmd_int}")
 
             cmd = cmd_raw.split()
             if len(cmd) > 0:
@@ -346,7 +347,7 @@ def main_loop(args, context):
                 if found_command == None:
                     # Print help on invalid commands
                     print_help(context.commands, cmd)
-                    raise util.TTException(f"Invalid command '{cmd_string}'")
+                    raise logging.TTException(f"Invalid command '{cmd_string}'")
                 else:
                     if found_command["long"] == "exit":
                         exit_code = int(cmd[1]) if len(cmd) > 1 else 0
@@ -365,7 +366,7 @@ def main_loop(args, context):
 
         except CommandParsingException as e:
             if e.is_parsing_error():
-                util.ERROR(e)
+                logging.ERROR(e)
                 if args["--test"]:  # Always raise in test mode
                     raise
             elif e.is_help_message():
@@ -375,11 +376,11 @@ def main_loop(args, context):
                 raise
         except Exception as e:
             if args["--test"]:  # Always raise in test mode
-                util.ERROR("CLI option --test is set. Raising exception to exit.")
+                logging.ERROR("CLI option --test is set. Raising exception to exit.")
                 raise
             else:
-                util.notify_exception(type(e), e, e.__traceback__)
-            if have_non_interactive_commands or type(e) == util.TTFatalException:
+                logging.notify_exception(type(e), e, e.__traceback__)
+            if have_non_interactive_commands or type(e) == logging.TTFatalException:
                 # In non-interactive mode and on fatal excepions, we re-raise to exit the program
                 raise
 
@@ -392,8 +393,8 @@ def main():
         verbosity = int(args["--verbosity"])
         Verbosity.set(verbosity)
     except:
-        util.WARN("Verbosity level must be an integer. Falling back to default value.")
-    util.VERBOSE(f"Verbosity level: {Verbosity.get().name} ({Verbosity.get().value})")
+        logging.WARN("Verbosity level must be an integer. Falling back to default value.")
+    logging.VERBOSE(f"Verbosity level: {Verbosity.get().name} ({Verbosity.get().value})")
 
     wanted_devices = None
     if args["--devices"]:
@@ -423,13 +424,13 @@ def main():
         sys.exit(0)
 
     if args["--cached"]:
-        util.INFO(f"Starting TTExaLens from cache.")
+        logging.INFO(f"Starting TTExaLens from cache.")
         context = tt_exalens_init.init_ttexalens_cached(args["--cache-path"])
     elif args["--remote"]:
         address = args["--remote-address"].split(":")
         server_ip = address[0] if address[0] != "" else "localhost"
         server_port = address[-1]
-        util.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
+        logging.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
         context = tt_exalens_init.init_ttexalens_remote(server_ip, int(server_port), cache_path)
     else:
         context = tt_exalens_init.init_ttexalens(wanted_devices, cache_path, args["--jtag"], args["--use-noc1"])
@@ -437,7 +438,7 @@ def main():
     # Main function
     exit_code = main_loop(args, context)
 
-    util.VERBOSE(f"Exiting with code {exit_code} ")
+    logging.VERBOSE(f"Exiting with code {exit_code} ")
     sys.exit(exit_code)
 
 

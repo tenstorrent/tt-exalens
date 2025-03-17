@@ -19,6 +19,7 @@ from ttexalens.util import DATA_TYPE
 from ttexalens.debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 
+from ttexalens.utils import logging as logging
 
 class TensixInstructions:
     def __init__(self, ops: __module__):
@@ -318,14 +319,14 @@ class Device(TTObject):
             "symbol": ".",
             "desc": "Functional worker",
             "core_type": "tensix",
-            "color": util.CLR_GREEN,
+            "color": logging.CLR_GREEN,
         },
-        "eth": {"symbol": "E", "desc": "Ethernet", "core_type": "eth", "color": util.CLR_YELLOW},
-        "arc": {"symbol": "A", "desc": "ARC", "core_type": "arc", "color": util.CLR_GREY},
-        "dram": {"symbol": "D", "desc": "DRAM", "core_type": "dram", "color": util.CLR_TEAL},
-        "pcie": {"symbol": "P", "desc": "PCIE", "core_type": "pcie", "color": util.CLR_GREY},
-        "router_only": {"symbol": " ", "desc": "Router only", "core_type": "router_only", "color": util.CLR_GREY},
-        "harvested_workers": {"symbol": "-", "desc": "Harvested", "core_type": "tensix", "color": util.CLR_RED},
+        "eth": {"symbol": "E", "desc": "Ethernet", "core_type": "eth", "color": logging.CLR_YELLOW},
+        "arc": {"symbol": "A", "desc": "ARC", "core_type": "arc", "color": logging.CLR_GREY},
+        "dram": {"symbol": "D", "desc": "DRAM", "core_type": "dram", "color": logging.CLR_TEAL},
+        "pcie": {"symbol": "P", "desc": "PCIE", "core_type": "pcie", "color": logging.CLR_GREY},
+        "router_only": {"symbol": " ", "desc": "Router only", "core_type": "router_only", "color": logging.CLR_GREY},
+        "harvested_workers": {"symbol": "-", "desc": "Harvested", "core_type": "tensix", "color": logging.CLR_RED},
     }
 
     core_types = {v["core_type"] for v in block_types.values()}
@@ -371,8 +372,8 @@ class Device(TTObject):
                     pass
 
         screen_row_y = 0
-        C = util.CLR_INFO
-        E = util.CLR_END
+        C = logging.CLR_INFO
+        E = logging.CLR_END
 
         def append_horizontal_axis_labels(rows, ui_hor_range):
             row = [""] + [
@@ -401,7 +402,7 @@ class Device(TTObject):
             # 2. Add legend
             legend_y = screen_row_y
             if legend and legend_y < len(legend):
-                row = row + [util.CLR_INFO + "    " + legend[legend_y] + util.CLR_END]
+                row = row + [logging.CLR_INFO + "    " + legend[legend_y] + logging.CLR_END]
 
             rows.append(row)
             screen_row_y += 1
