@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  write-reg <reg-type> <reg_parameters> <value> [ -d <device> ] [ -l <loc> ]
+  write-reg <reg-type> <reg-parameters> <value> [ -d <device> ] [ -l <loc> ]
 
 Arguments:
   <reg-type>        Register type to write to. Options: [cfg, dbg]
-  <reg_parameters>  Register parameters. For cfg: index, mask, shift. For dbg: address
+  <reg-parameters>  Register parameters. For cfg: index, mask, shift. For dbg: address
   <value>           Value to write to the register.
 
 Options:
@@ -85,7 +85,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     )
 
     reg_type = dopt.args["<reg-type>"]
-    reg_params = parse_reg_params(dopt.args["<reg_parameters>"])
+    reg_params = parse_reg_params(dopt.args["<reg-parameters>"])
     value = int(dopt.args["<value>"])
 
     register = create_register_description(reg_type, reg_params)

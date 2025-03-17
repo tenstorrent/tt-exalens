@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump-reg <reg-type> <reg_parameters> [ -d <device> ] [ -l <loc> ]
+  dump-reg <reg-type> <reg-parameters> [ -d <device> ] [ -l <loc> ]
 
 Arguments:
-  <reg-type>    Register type to dump. Options: [cfg, dbg]
-  <reg_parameters>  Register parameters. For cfg: index, mask, shift. For dbg: address
+  <reg-type>        Register type to dump. Options: [cfg, dbg]
+  <reg-parameters>  Register parameters. For cfg: index, mask, shift. For dbg: address
 
 Options:
   -d <device>   Device ID. Optional. Default: current device
@@ -84,7 +84,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     )
 
     reg_type = dopt.args["<reg-type>"]
-    reg_params = parse_reg_params(dopt.args["<reg_parameters>"])
+    reg_params = parse_reg_params(dopt.args["<reg-parameters>"])
 
     register = create_register_description(reg_type, reg_params)
 
