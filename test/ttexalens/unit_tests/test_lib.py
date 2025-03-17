@@ -239,6 +239,70 @@ class TestReadWrite(unittest.TestCase):
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_to_device(core_loc, address, data, device_id)
 
+    from ttexalens.device import ConfigurationRegisterDescription, DebugRegisterDescription, DebugBusSignalDescription
+
+    @parameterized.expand(
+        [
+            ("0,0", ConfigurationRegisterDescription(index=60, mask=0xF, shift=0), 1),  # UNPACK_CONFIG0_out_data_format
+            (
+                "0,0",
+                ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
+                2,
+            ),  # ALU_FORMAT_SPEC_REG2_Dstacc
+            ("0,0", DebugRegisterDescription(address=0x54), 18),  # RISCV_DEBUG_REG_DBG_BUS_CNTL_REG
+            ("0,0", "UNPACK_CONFIG0_out_data_format", 6),
+            ("0,0", "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1),
+            ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 9),
+        ]
+    )
+    def test_write_read_tensix_register(self, core_loc, register, value):
+        """Test writing and reading tensix registers"""
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull.")
+
+        # Storing the original value of the register
+        original_value = lib.read_tensix_register(core_loc, register)
+
+        # Writing a value to the register and reading it back
+        lib.write_tensix_register(core_loc, register, value)
+        ret = lib.read_tensix_register(core_loc, register)
+
+        # Checking if the value was written and read correctly
+        self.assertEqual(ret, value)
+
+        # Writing the original value back to the register and reading it
+        lib.write_tensix_register(core_loc, register, original_value)
+        ret = lib.read_tensix_register(core_loc, register)
+
+        # Checking if read value is equal to the original value
+        self.assertEqual(ret, original_value)
+
+    @parameterized.expand(
+        [
+            ("abcd", ConfigurationRegisterDescription(), 0, 0),  # Invalid core_loc string
+            ("-10", ConfigurationRegisterDescription(), 0, 0),  # Invalid core_loc string
+            ("0,0", ConfigurationRegisterDescription(), 0, -1),  # Invalid device_id
+            ("0,0", ConfigurationRegisterDescription(), 0, 112),  # Invalid device_id (too high)
+            ("0,0", DebugBusSignalDescription(), 0, 0),  # Invalid register type
+            ("0,0", "invalid_register_name", 0, 0),  # Invalid register name
+            ("0,0", ConfigurationRegisterDescription(), 0, -1),  # Invalid value (negative)
+            ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 0, 2**32),  # Invalid value (too high)
+            ("0,0", ConfigurationRegisterDescription(index=-1), 0, 0),  # Invalid index (negative)
+            ("0,0", ConfigurationRegisterDescription(index=2**14), 0, 0),  # Invalid index (too high)
+            ("0,0", 0xFFB12345, 0, 0),  # Address alone is not enough to represent index)
+        ]
+    )
+    def test_invalid_write_read_tensix_register(self, core_loc, register, value, device_id):
+        """Test invalid inputs for tensix register read and write functions."""
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull.")
+
+        if value == 0:  # Invalid value does not raies an exception in read so we skip it
+            with self.assertRaises((util.TTException, ValueError)):
+                lib.read_tensix_register(core_loc, register, device_id)
+        with self.assertRaises((util.TTException, ValueError)):
+            lib.write_tensix_register(core_loc, register, value, device_id)
+
 
 class TestRunElf(unittest.TestCase):
     @classmethod
@@ -483,8 +547,16 @@ class TestARC(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.context = tt_exalens_init.init_ttexalens()
 
+    def is_blackhole(self):
+        """Check if the device is blackhole."""
+        return self.context.devices[0]._arch == "blackhole"
+
     def test_arc_msg(self):
         """Test getting AICLK from ARC."""
+
+        if self.is_blackhole():
+            self.skipTest("Arc message is not supported on blackhole UMD")
+
         device_id = 0
         msg_code = 0x90  # ArcMessageType::TEST
         wait_for_done = True

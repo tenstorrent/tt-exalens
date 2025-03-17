@@ -14,6 +14,7 @@ from ttexalens.device import (
     NocStatusRegisterDescription,
     NocConfigurationRegisterDescription,
     NocControlRegisterDescription,
+    DebugBusSignalDescription,
 )
 
 
@@ -53,6 +54,8 @@ class BlackholeDevice(Device):
     NOC_CONFIGURATION_REGISTER_BASE = 0xFFB20100
     NOC_STATUS_REGISTER_BASE = 0xFFB20200
 
+    CONFIGURATION_REGISTER_END = 0xFFEFFFFF
+
     NUM_UNPACKERS = 2
     NUM_PACKERS = 1
 
@@ -85,6 +88,13 @@ class BlackholeDevice(Device):
             return BlackholeDevice.NOC_CONFIGURATION_REGISTER_BASE
         elif isinstance(register_description, NocStatusRegisterDescription):
             return BlackholeDevice.NOC_STATUS_REGISTER_BASE
+        else:
+            return None
+
+    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int:
+        """Overrides the base class method to provide register end addresses for Wormhole device."""
+        if isinstance(register_description, ConfigurationRegisterDescription):
+            return BlackholeDevice.CONFIGURATION_REGISTER_END
         else:
             return None
 
@@ -517,6 +527,7 @@ class BlackholeDevice(Device):
         ),
         # REST
         "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=185, mask=0x1F),
+        "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG": DebugRegisterDescription(address=0x54),
         "RISCV_DEBUG_REG_CFGREG_RD_CNTL": DebugRegisterDescription(address=0x58),
         "RISCV_DEBUG_REG_DBG_RD_DATA": DebugRegisterDescription(address=0x5C),
         "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN": DebugRegisterDescription(address=0x60),
@@ -644,6 +655,24 @@ class BlackholeDevice(Device):
         "PORT2_FLIT_COUNTER_LOWER": NocControlRegisterDescription(address=0x580),  # 16 instances
         "PORT2_FLIT_COUNTER_UPPER": NocControlRegisterDescription(address=0x5C0),  # 16 instances
     }
+
+    def _get_debug_bus_signal_description(self, name):
+        """Overrides the base class method to provide debug bus signal descriptions for Wormhole device."""
+        if name in BlackholeDevice.__debug_bus_signal_map:
+            return BlackholeDevice.__debug_bus_signal_map[name]
+        return None
+
+    __debug_bus_signal_map = {
+        # For the other signals applying the pc_mask.
+        "brisc_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 5 + 1, mask=0x3FFFFFFF),
+        "trisc0_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 6 + 1, mask=0x3FFFFFFF),
+        "trisc1_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 7 + 1, mask=0x3FFFFFFF),
+        "trisc2_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 8 + 1, mask=0x3FFFFFFF),
+        "ncrisc_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 12 + 1, mask=0x3FFFFFFF),
+    }
+
+    def get_debug_bus_signal_names(self) -> List[str]:
+        return list(self.__debug_bus_signal_map.keys())
 
     def get_alu_config(self) -> List[dict]:
         return [

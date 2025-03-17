@@ -57,8 +57,12 @@ class WormholeDevice(Device):
     NOC_CONFIGURATION_REGISTER_BASE = 0xFFB20100
     NOC_STATUS_REGISTER_BASE = 0xFFB20200
 
+    CONFIGURATION_REGISTER_END = 0xFFEFFFFF
+
     NUM_UNPACKERS = 2
     NUM_PACKERS = 4
+
+    MAX_CFG_REG_INDEX = 2**14 - 1
 
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(
@@ -91,6 +95,13 @@ class WormholeDevice(Device):
             return WormholeDevice.NOC_CONFIGURATION_REGISTER_BASE
         elif isinstance(register_description, NocStatusRegisterDescription):
             return WormholeDevice.NOC_STATUS_REGISTER_BASE
+        else:
+            return None
+
+    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int:
+        """Overrides the base class method to provide register end addresses for Wormhole device."""
+        if isinstance(register_description, ConfigurationRegisterDescription):
+            return WormholeDevice.CONFIGURATION_REGISTER_END
         else:
             return None
 

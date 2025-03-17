@@ -17,7 +17,7 @@ from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name, 
         {"core_desc": "FW0", "risc_name": "BRISC"},
         {"core_desc": "FW0", "risc_name": "TRISC0"},
         {"core_desc": "FW0", "risc_name": "TRISC1"},
-        {"core_desc": "FW0", "risc_name": "TRISC2"},
+        # {"core_desc": "FW0", "risc_name": "TRISC2"}, - there is a bug on TRISC2: #266
     ]
 )
 class TestCallStack(unittest.TestCase):
