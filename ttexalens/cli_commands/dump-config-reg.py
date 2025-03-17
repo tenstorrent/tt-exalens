@@ -39,6 +39,8 @@ from ttexalens.util import convert_value, put_table_list_side_by_side, INFO, CLR
 from typing import List
 from tabulate import tabulate
 
+possible_registers = ["all", "alu", "pack", "unpack"]
+
 # Creates list of column names for configuration register table
 def create_column_names(num_of_columns):
     if num_of_columns == 1:
@@ -86,6 +88,9 @@ def run(cmd_text, context, ui_state: UIState = None):
 
             debug_tensix = TensixDebug(loc, device.id(), context)
             device = debug_tensix.context.devices[debug_tensix.device_id]
+
+            if cfg not in possible_registers:
+                raise ValueError(f"Invalid configuration register: {cfg}. Possible values: {possible_registers}")
 
             if cfg == "alu" or cfg == "all":
                 print(f"{CLR_GREEN}ALU{CLR_END}")

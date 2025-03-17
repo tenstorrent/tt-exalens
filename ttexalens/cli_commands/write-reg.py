@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump-reg <reg-type> <reg_parameters> <value> [ -d <device> ] [ -l <loc> ]
+  write-reg <reg-type> <reg_parameters> <value> [ -d <device> ] [ -l <loc> ]
 
 Arguments:
   <reg-type>        Register type to write to. Options: [cfg, dbg]
   <reg_parameters>  Register parameters. For cfg: index, mask, shift. For dbg: address
-  <value>           Value to write to the register. Range: [0, 2^32-1]
+  <value>           Value to write to the register.
 
 Options:
   -d <device>   Device ID. Optional. Default: current device
