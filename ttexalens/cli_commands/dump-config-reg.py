@@ -91,12 +91,9 @@ def run(cmd_text, context, ui_state: UIState = None):
             if cfg == "alu" or cfg == "all":
                 print(f"{CLR_GREEN}ALU{CLR_END}")
 
-                if device._arch == "grayskull":
-                    print("Not supported on grayskull")
-                else:
-                    alu_config = device.get_alu_config()
-                    alu_config_table = config_regs_to_table(alu_config, "ALU CONFIG", debug_tensix, device)
-                    print(alu_config_table)
+                alu_config = device.get_alu_config()
+                alu_config_table = config_regs_to_table(alu_config, "ALU CONFIG", debug_tensix, device)
+                print(alu_config_table)
 
             if cfg == "unpack" or cfg == "all":
                 print(f"{CLR_GREEN}UNPACKER{CLR_END}")

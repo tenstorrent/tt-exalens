@@ -52,7 +52,6 @@ jobs:
     strategy:
       matrix:
         runner-info: [
-          {arch: "grayskull", runs-on: ["in-service", "e150"]},
           {arch: "wormhole_b0", runs-on: ["in-service", "n150"]},
           {arch: "wormhole_b0", runs-on: ["in-service", "n300"]},
         ]
@@ -143,7 +142,6 @@ jobs:
     strategy:
       matrix:
         runner-info: [
-          {arch: "grayskull", runs-on: ["in-service", "e150"]},
           {arch: "wormhole_b0", runs-on: ["in-service", "n150"]},
           {arch: "wormhole_b0", runs-on: ["in-service", "n300"]},
         ]
