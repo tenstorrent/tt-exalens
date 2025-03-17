@@ -144,7 +144,7 @@ Set the active TTExaLens context object.
 ## locate_most_recent_build_output_dir
 
 ```
-locate_most_recent_build_output_dir() -> str | None
+locate_most_recent_build_output_dir() -> Unknown
 ```
 
 
