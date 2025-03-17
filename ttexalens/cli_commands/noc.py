@@ -100,9 +100,9 @@ src_state_map = {
 ###############################################################################
 # Reading registers
 ###############################################################################
-def read_noc_status_register(loc, device_id, noc_id, reg_index):
-    reg_addr = 0xFFB20000 + (noc_id * 0x10000) + 0x200 + (reg_index * 4)
-    val = read_words_from_device(loc, reg_addr, device_id)[0]
+def read_noc_status_register(loc, device, noc_id, reg_name):
+    reg_addr = device.get_tensix_register_address(reg_name) + (noc_id * 0x10000)
+    val = read_words_from_device(loc, reg_addr, device.id())[0]
     return val
 
 def get_stream_reg_field(loc, device_id, stream_id, reg_index, start_bit, num_bits):
@@ -114,64 +114,35 @@ def get_stream_reg_field(loc, device_id, stream_id, reg_index, start_bit, num_bi
 ###############################################################################
 # Register Definitions and Extraction
 ###############################################################################
-def get_noc_status_registers(loc, device_id, noc_id):
+def get_noc_status_registers(loc, device, noc_id):
     register_groups = {
         "Transaction Counters (Sent)": {
-            "nonposted write reqs sent": 0xA,
-            "posted write reqs sent": 0xB,
-            "nonposted write words sent": 0x8,
-            "posted write words sent": 0x9,
-            "write acks received": 0x1,
-            "read reqs sent": 0x5,
-            "read words received": 0x3,
-            "read resps received": 0x2
+            "nonposted write reqs sent"                       : "NIU_MST_NONPOSTED_WR_REQ_SENT",
+            "posted write reqs sent"                          : "NIU_MST_POSTED_WR_REQ_SENT",
+            "nonposted write words sent"                      : "NIU_MST_NONPOSTED_WR_DATA_WORD_SENT",
+            "posted write words sent"                         : "NIU_MST_POSTED_WR_DATA_WORD_SENT",
+            "write acks received"                             : "NIU_MST_WR_ACK_RECEIVED",
+            "read reqs sent"                                  : "NIU_MST_RD_REQ_SENT",
+            "read words received"                             : "NIU_MST_RD_DATA_WORD_RECEIVED",
+            "read resps received"                             : "NIU_MST_RD_RESP_RECEIVED"
         },
+
         "Transaction Counters (Received)": {
-            "nonposted write reqs received": 0x1A,
-            "posted write reqs received": 0x1B,
-            "nonposted write words received": 0x18,
-            "posted write words received": 0x19,
-            "write acks sent": 0x10,
-            "read reqs received": 0x15,
-            "read words sent": 0x13,
-            "read resps sent": 0x12
+            "nonposted write reqs received"                   : "NIU_SLV_NONPOSTED_WR_REQ_RECEIVED",
+            "posted write reqs received"                      : "NIU_SLV_POSTED_WR_REQ_RECEIVED",
+            "nonposted write words received"                  : "NIU_SLV_NONPOSTED_WR_DATA_WORD_RECEIVED",
+            "posted write words received"                     : "NIU_SLV_POSTED_WR_DATA_WORD_RECEIVED",
+            "write acks sent"                                 : "NIU_SLV_WR_ACK_SENT",
+            "read reqs received"                              : "NIU_SLV_RD_REQ_RECEIVED",
+            "read words sent"                                 : "NIU_SLV_RD_DATA_WORD_SENT",
+            "read resps sent"                                 : "NIU_SLV_RD_RESP_SENT"
         },
-        "Router Port Status": {
-            "router port x out vc full credit out vc stall": 0x24,
-            "router port y out vc full credit out vc stall": 0x22,
-            "router port niu out vc full credit out vc stall": 0x20
-        },
-        "Router Port X Debug": {
-            "router port x VC14 & VC15 dbg": 0x3d,
-            "router port x VC12 & VC13 dbg": 0x3c,
-            "router port x VC10 & VC11 dbg": 0x3b,
-            "router port x VC8 & VC9 dbg": 0x3a,
-            "router port x VC6 & VC7 dbg": 0x39,
-            "router port x VC4 & VC5 dbg": 0x38,
-            "router port x VC2 & VC3 dbg": 0x37,
-            "router port x VC0 & VC1 dbg": 0x36
-        },
-        "Router Port Y Debug": {
-            "router port y VC14 & VC15 dbg": 0x35,
-            "router port y VC12 & VC13 dbg": 0x34,
-            "router port y VC10 & VC11 dbg": 0x33,
-            "router port y VC8 & VC9 dbg": 0x32,
-            "router port y VC6 & VC7 dbg": 0x31,
-            "router port y VC4 & VC5 dbg": 0x30,
-            "router port y VC2 & VC3 dbg": 0x2f,
-            "router port y VC0 & VC1 dbg": 0x2e
-        },
-        "Router Port NIU Debug": {
-            "router port niu VC6 & VC7 dbg": 0x29,
-            "router port niu VC4 & VC5 dbg": 0x28,
-            "router port niu VC2 & VC3 dbg": 0x27,
-            "router port niu VC0 & VC1 dbg": 0x26
-        }
     }
+
     noc_registers = {group_name: {} for group_name in register_groups.keys()}
     for group_name, registers in register_groups.items():
-        for reg_name, reg_index in registers.items():
-            noc_registers[group_name][reg_name] = read_noc_status_register(loc, device_id, noc_id, reg_index)
+        for register_desc, reg_name in registers.items():
+            noc_registers[group_name][register_desc] = read_noc_status_register(loc, device, noc_id, reg_name)
     return noc_registers
 
 def get_stream_register_definitions():
@@ -260,7 +231,8 @@ def get_stream_register_definitions():
     }
     return register_defs
 
-def get_stream_registers(loc, device_id, stream_id):
+def get_stream_registers(loc, device, stream_id):
+    device_id = device.id()
     register_defs = get_stream_register_definitions()
     stream_registers = {group_name: {} for group_name in register_defs.keys()}
 
@@ -313,7 +285,7 @@ def get_stream_registers(loc, device_id, stream_id):
     return stream_registers
 
 ###############################################################################
-# Rich Table Formatting Helpers for Stream Registers
+# Rich Table Formatting Helpers
 ###############################################################################
 def get_formatted_value_from_reg_info(reg_info: dict) -> str:
     reg_format = reg_info.get("format", "")
@@ -374,13 +346,11 @@ def simplify_grouping(grouping):
 ###############################################################################
 # Rich Print Status Registers
 ###############################################################################
-def rich_print_noc_status_registers(loc, device_id, noc_id, simple_print=False):
+def rich_print_noc_status_registers(loc, device, noc_id, simple_print=False):
     console.print(f"[bold]NOC{noc_id} Registers[/bold]")
-    noc_registers = get_noc_status_registers(loc, device_id, noc_id)
+    noc_registers = get_noc_status_registers(loc, device, noc_id)
     grouping = [
         ["Transaction Counters (Sent)", "Transaction Counters (Received)"],
-        ["Router Port Status", "Router Port NIU Debug"],
-        ["Router Port X Debug", "Router Port Y Debug"]
     ]
 
     print_grouped_table(noc_registers, grouping, simple_print)
@@ -388,9 +358,9 @@ def rich_print_noc_status_registers(loc, device_id, noc_id, simple_print=False):
 ###############################################################################
 # Print Stream Registers
 ###############################################################################
-def rich_print_noc_stream_registers(loc, device_id, stream_id, simple_print=False):
+def rich_print_noc_stream_registers(loc, device, stream_id, simple_print=False):
     console.print(f"[bold]Stream {stream_id} Registers[/bold]")
-    stream_regs = get_stream_registers(loc, device_id, stream_id)
+    stream_regs = get_stream_registers(loc, device, stream_id)
     grouping = [
         ["Basic Stream Info", "Stream Control", "Buffer Control"],
         ["Remote Receiver", "Remote Source", "Local Sources"],
@@ -402,11 +372,11 @@ def rich_print_noc_stream_registers(loc, device_id, stream_id, simple_print=Fals
 ###############################################################################
 # Dumping All NOC Registers
 ###############################################################################
-def rich_dump_all_noc_registers(loc, device_id, simple_print=False):
+def rich_dump_all_noc_registers(loc, device, simple_print=False):
     for i in range(0, 64):
-        rich_print_noc_stream_registers(loc, device_id, i, simple_print)
-    rich_print_noc_status_registers(loc, device_id, 0, simple_print)
-    rich_print_noc_status_registers(loc, device_id, 1, simple_print)
+        rich_print_noc_stream_registers(loc, device, i, simple_print)
+    rich_print_noc_status_registers(loc, device, 0, simple_print)
+    rich_print_noc_status_registers(loc, device, 1, simple_print)
 
 ###############################################################################
 # Main Command Entry
@@ -439,10 +409,10 @@ def run(cmd_text, context, ui_state: UIState = None):
             console.print(f"[bold green]==== Device {device.id()} - Location: {loc.to_str('noc0')}[/bold green]")
             if dopt.args["status"]:
                 for noc_id in noc_ids:
-                    rich_print_noc_status_registers(loc, device.id(), noc_id, simple_print)
+                    rich_print_noc_status_registers(loc, device, noc_id, simple_print)
             elif dopt.args["stream"]:
                 stream_id = int(dopt.args["<stream-id>"])
-                rich_print_noc_stream_registers(loc, device.id(), stream_id, simple_print)
+                rich_print_noc_stream_registers(loc, device, stream_id, simple_print)
             elif dopt.args["dump"]:
-                rich_dump_all_noc_registers(loc, device.id(), simple_print)
+                rich_dump_all_noc_registers(loc, device, simple_print)
     return []
