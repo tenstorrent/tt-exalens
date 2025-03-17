@@ -558,28 +558,24 @@ class TestARC(unittest.TestCase):
             self.skipTest("Arc message is not supported on blackhole UMD")
 
         device_id = 0
-        msg_code = 0xAA34  # Get AICLK. See src/hardware/soc/tb/arc_fw/wh_fw/src/level_2.c
+        msg_code = 0x90  # ArcMessageType::TEST
         wait_for_done = True
         arg0 = 0
         arg1 = 0
         timeout = 1000
 
-        # Ask for reply, check for reasonable AICLK value
+        # Ask for reply, check for reasonable TEST value
         ret, return_3, _ = lib.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, context=self.context)
 
-        print(f"ARC message result={ret}, aiclk={return_3}")
+        print(f"ARC message result={ret}, test={return_3}")
         self.assertEqual(ret, 0)
 
-        # Asserting that return_3 (aiclk) is greater than 400 and less than 2000
-        self.assertTrue(return_3 > 200 and return_3 < 2000)
+        # Asserting that return_3 (test) is 0
+        self.assertEqual(return_3, 0)
 
     fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
 
     def test_load_arc_fw(self):
-        if self.context.arch == "grayskull":
-            self.skipTest(
-                "Skipping the test on grayskull since the card on CI does not reset the ARC inbetween tests. We do not want to mess up the state of the card for other tests."
-            )
         wait_time = 0.1
         TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024
 

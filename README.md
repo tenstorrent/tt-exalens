@@ -10,7 +10,7 @@ A low level hardware debugger
 
 TTExaLens is a low level debugging tool for Tenstorrent's hardware.
 It can be used to access and communicate with the device.
-At the moment, Grayskull and Wormhole devices are supported, while the support for Blackhole cards, as well as support for the Metal runtime are under development.
+At the moment, Wormhole and Blackhole devices are supported.
 
 ---
 

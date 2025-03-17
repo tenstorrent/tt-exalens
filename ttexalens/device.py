@@ -94,7 +94,7 @@ class DebugBusSignalDescription:
 
 #
 # Device class: generic API for talking to specific devices. This class is the parent of specific
-# device classes (e.g. GrayskullDevice, WormholeDevice). The create class method is used to create
+# device classes (e.g. WormholeDevice, BlackholeDevice). The create class method is used to create
 # a specific device.
 #
 class Device(TTObject):
@@ -106,7 +106,7 @@ class Device(TTObject):
 
     @cached_property
     def debuggable_cores(self):
-        # Base implementation for grayskull, wormhole and blackhole
+        # Base implementation for wormhole and blackhole
         cores: List[RiscDebug] = []
         for coord in self.get_block_locations("functional_workers"):
             for risc_id in range(4):  # 4 because we have a hardware bug for debugging ncrisc
@@ -120,12 +120,6 @@ class Device(TTObject):
     # Class method to create a Device object given device architecture
     def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
         dev = None
-        if arch.lower() == "grayskull":
-            from ttexalens.hw.tensix.grayskull import grayskull
-
-            dev = grayskull.GrayskullDevice(
-                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
-            )
         if "wormhole" in arch.lower():
             from ttexalens.hw.tensix.wormhole import wormhole
 
@@ -183,8 +177,6 @@ class Device(TTObject):
             if id not in harvesting_desc:
                 raise util.TTFatalException(f"Key {id} not found in: {harvesting_desc}")
             self._harvesting = harvesting_desc[id]
-        elif arch.lower() == "grayskull":
-            self._harvesting = None
         else:
             raise util.TTFatalException(f"Cluster description is not valid. 'harvesting_desc' reads: {harvesting_desc}")
         util.DEBUG(
