@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tensix-reg <register> [ --write <value> ] [ -d <device> ] [ -l <loc> ]
+  tensix-reg <register> [--type <data-type>] [ --write <value> ] [ -d <device> ] [ -l <loc> ]
 
 Arguments:
   <register>    Register to dump/write to. Format: <reg-type>(<reg-parameters>)
@@ -11,9 +11,10 @@ Arguments:
                 <reg-parameters> Register parameters, comma separated integers. For cfg: index,mask,shift. For dbg: address
 
 Options:
-  --write <value>  Value to write to the register. If not given, register is dumped instead.
-  -d <device>      Device ID. Optional. Default: current device
-  -l <loc>         Core location in X-Y or R,C format. Default: current core
+  --type <data-type>  Data type of the register. Options: [INT_VALUE, ADDRESS, MASK, FLAGS, TENSIX_DATA_FORMAT]. Default: INT_VALUE
+  --write <value>     Value to write to the register. If not given, register is dumped instead.
+  -d <device>         Device ID. Optional. Default: current device
+  -l <loc>            Core location in X-Y or R,C format. Default: current core
 
 Description:
   Prints/writes to the specified register, at the specified location and device.
@@ -45,10 +46,11 @@ from ttexalens.device import (
     DebugRegisterDescription,
 )
 from ttexalens import command_parser
-from ttexalens.util import TTException, INFO
+from ttexalens.util import TTException, INFO, DATA_TYPE, convert_value
 import re
 
 reg_types = ["cfg", "dbg"]
+data_types = ["INT_VALUE", "ADDRESS", "MASK", "FLAGS", "TENSIX_DATA_FORMAT"]
 
 
 def convert_to_int(param: str) -> int:
@@ -76,19 +78,21 @@ def parse_register(register: str) -> tuple:
     return match.groups()
 
 
-def create_register_description(reg_type: str, reg_params: list[int]) -> TensixRegisterDescription:
+def create_register_description(reg_type: str, reg_params: list[int], data_type: str) -> TensixRegisterDescription:
     if reg_type == "cfg":
         if len(reg_params) != 3:
             raise TTException(
                 "Invalid number of parameters for configuration register since it requires 3 parameters (index, mask, shift)."
             )
-        return ConfigurationRegisterDescription(index=reg_params[0], mask=reg_params[1], shift=reg_params[2])
+        return ConfigurationRegisterDescription(
+            index=reg_params[0], mask=reg_params[1], shift=reg_params[2], data_type=DATA_TYPE[data_type]
+        )
     elif reg_type == "dbg":
         if len(reg_params) != 1:
             raise TTException(
                 "Invalid number of parameters for debug register since it requires 1 parameter (address)."
             )
-        return DebugRegisterDescription(address=reg_params[0])
+        return DebugRegisterDescription(address=reg_params[0], data_type=DATA_TYPE[data_type])
     else:
         raise ValueError(f"Unknown register type: {reg_type}. Possible values: {reg_types}")
 
@@ -103,8 +107,12 @@ def run(cmd_text, context, ui_state: UIState = None):
     reg_params = convert_reg_params(reg_params)
     value = convert_to_int(dopt.args["--write"]) if dopt.args["--write"] else None
     value_str = dopt.args["--write"]
+    data_type = dopt.args["--type"] if dopt.args["--type"] else "INT_VALUE"
 
-    register = create_register_description(reg_type, reg_params)
+    if data_type not in data_types:
+        raise ValueError(f"Invalid data type: {data_type}. Possible values: {data_types}")
+
+    register = create_register_description(reg_type, reg_params, data_type)
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
@@ -112,4 +120,5 @@ def run(cmd_text, context, ui_state: UIState = None):
                 TensixDebug(loc, device.id(), context).write_tensix_register(register, value)
                 INFO(f"Register {register} written with value {value_str}.")
             else:
-                print(TensixDebug(loc, device.id(), context).read_tensix_register(register))
+                value = TensixDebug(loc, device.id(), context).read_tensix_register(register)
+                print(convert_value(value, register.data_type, bin(register.mask).count("1")))
