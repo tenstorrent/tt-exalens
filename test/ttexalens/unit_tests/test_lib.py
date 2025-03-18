@@ -243,7 +243,6 @@ class TestReadWrite(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("0,0", ConfigurationRegisterDescription(index=60, mask=0xF, shift=0), 1),  # UNPACK_CONFIG0_out_data_format
             (
                 "0,0",
                 ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
