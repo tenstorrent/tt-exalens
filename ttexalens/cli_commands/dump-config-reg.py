@@ -81,6 +81,8 @@ def run(cmd_text, context, ui_state: UIState = None):
     )
 
     cfg = dopt.args["<config-reg>"] if dopt.args["<config-reg>"] else "all"
+    if cfg not in possible_registers:
+        raise ValueError(f"Invalid configuration register: {cfg}. Possible values: {possible_registers}")
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
@@ -88,9 +90,6 @@ def run(cmd_text, context, ui_state: UIState = None):
 
             debug_tensix = TensixDebug(loc, device.id(), context)
             device = debug_tensix.context.devices[debug_tensix.device_id]
-
-            if cfg not in possible_registers:
-                raise ValueError(f"Invalid configuration register: {cfg}. Possible values: {possible_registers}")
 
             if cfg == "alu" or cfg == "all":
                 print(f"{CLR_GREEN}ALU{CLR_END}")
