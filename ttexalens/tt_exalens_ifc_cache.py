@@ -8,7 +8,8 @@ import pickle
 
 from ttexalens.tt_exalens_ifc_base import TTExaLensCommunicator
 from ttexalens import util as util
-
+from ttexalens.utils.exceptions import TTException
+from ttexalens.utils import logging as logging
 
 """
 This module provides a cache for the TTExaLens interface. It can be used to store the results of device communications,
@@ -26,10 +27,10 @@ class TTExaLensCache(TTExaLensCommunicator):
         self.cache = {}
 
     def save(self):
-        util.INFO(f"Saving server cache to file {self.filepath}")
+        logging.INFO(f"Saving server cache to file {self.filepath}")
         with open(self.filepath, "wb") as f:
             pickle.dump(self.cache, f)
-            util.INFO(f"  Saved {len(self.cache)} entries")
+            logging.INFO(f"  Saved {len(self.cache)} entries")
 
 
 class TTExaLensCacheThrough(TTExaLensCache):
@@ -156,12 +157,12 @@ class TTExaLensCacheReader(TTExaLensCache):
 
     def load(self):
         if os.path.exists(self.filepath):
-            util.INFO(f"Loading server cache from file {self.filepath}")
+            logging.INFO(f"Loading server cache from file {self.filepath}")
             with open(self.filepath, "rb") as f:
                 self.cache = pickle.load(f)
-                util.INFO(f"  Loaded {len(self.cache)} entries")
+                logging.INFO(f"  Loaded {len(self.cache)} entries")
         else:
-            util.ERROR(f"Cache file {self.filepath} does not exist")
+            logging.ERROR(f"Cache file {self.filepath} does not exist")
 
     """
     The decorator performs all the work of reading from the cache. The functions just provide the correct interface.
@@ -172,8 +173,8 @@ class TTExaLensCacheReader(TTExaLensCache):
             key = (func.__name__, args)
 
             if key not in self.cache:
-                util.ERROR(f"Cache miss for {func.__name__}.")
-                raise util.TTException(f"Cache miss for {func.__name__}.")
+                logging.ERROR(f"Cache miss for {func.__name__}.")
+                raise TTException(f"Cache miss for {func.__name__}.")
 
             return self.cache[key]
 
@@ -184,8 +185,8 @@ class TTExaLensCacheReader(TTExaLensCache):
             key = (func.__name__, args)
 
             if key not in self.cache:
-                util.ERROR(f"Cache miss for {func.__name__}.")
-                raise util.TTException(f"Cache miss for {func.__name__}.")
+                logging.ERROR(f"Cache miss for {func.__name__}.")
+                raise TTException(f"Cache miss for {func.__name__}.")
 
             return io.BytesIO(self.cache[key])
 
@@ -196,14 +197,14 @@ class TTExaLensCacheReader(TTExaLensCache):
         pass
 
     def pci_write32(self, chip_id, noc_x, noc_y, reg_addr, data):
-        raise util.TTException("Device not available, cannot write to cache.")
+        raise TTException("Device not available, cannot write to cache.")
 
     @read_decorator
     def pci_read(self, chip_id, noc_x, noc_y, reg_addr, size):
         pass
 
     def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
-        raise util.TTException("Device not available, cannot write to cache.")
+        raise TTException("Device not available, cannot write to cache.")
 
     @read_decorator
     def dma_buffer_read32(self, chip_id, dram_addr, dram_chan):
@@ -218,7 +219,7 @@ class TTExaLensCacheReader(TTExaLensCache):
         pass
 
     def pci_write32_raw(self, chip_id, reg_addr, data):
-        raise util.TTException("Device not available, cannot write to cache.")
+        raise TTException("Device not available, cannot write to cache.")
 
     @read_decorator
     def get_cluster_description(self):

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import Union, List
 from ttexalens.context import Context
-from ttexalens.util import TTException
+from ttexalens.utils.exceptions import TTException
 import re
 import os
 

@@ -6,7 +6,7 @@ import os
 
 from ttexalens.parse_elf import read_elf, mem_access
 from ttexalens import util as util
-
+from ttexalens.utils import logging as logging
 
 class TestFileIfc:
     def get_binary(self, filename):
@@ -32,7 +32,7 @@ def compile_test_cpp_program(program_path, program_text):
     # Compile the program
     os.system(f"./sfpi/compiler/bin/riscv32-unknown-elf-g++ -g {src_file_name} -o {program_path}.elf")
     if not os.path.exists(elf_file_name):
-        util.ERROR(f"ERROR: Failed to compile {src_file_name}")
+        logging.ERROR(f"ERROR: Failed to compile {src_file_name}")
         exit(1)
 
     return [elf_file_name, src_file_name]

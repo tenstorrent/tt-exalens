@@ -178,17 +178,17 @@ class Device(TTObject):
         if isinstance(harvesting_desc, Sequence) and len(harvesting_desc) > id:
             device_desc = harvesting_desc[id]
             if id not in device_desc:
-                raise util.TTFatalException(f"Key {id} not found in: {device_desc}")
+                logging.FATAL(f"Key {id} not found in: {device_desc}")
             self._harvesting = device_desc[id]
         elif isinstance(harvesting_desc, dict) or isinstance(harvesting_desc, util.RymlLazyDictionary):
             if id not in harvesting_desc:
-                raise util.TTFatalException(f"Key {id} not found in: {harvesting_desc}")
+                logging.FATAL(f"Key {id} not found in: {harvesting_desc}")
             self._harvesting = harvesting_desc[id]
         elif arch.lower() == "grayskull":
             self._harvesting = None
         else:
-            raise util.TTFatalException(f"Cluster description is not valid. 'harvesting_desc' reads: {harvesting_desc}")
-        util.DEBUG(
+            logging.FATAL(f"Cluster description is not valid. 'harvesting_desc' reads: {harvesting_desc}")
+        logging.DEBUG(
             "Opened device: id=%d, arch=%s, has_mmio=%s, harvesting=%s" % (id, arch, self._has_mmio, self._harvesting)
         )
 
@@ -441,7 +441,7 @@ class Device(TTObject):
             # Check what we wrote
             rst_reg = read_word_from_device(loc, RISC_SOFT_RESET_0_ADDR, self.id(), self._context)
             if rst_reg != ALL_SOFT_RESET:
-                util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
+                logging.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 
     # ALU GETTER
     def get_alu_config(self) -> List[dict]:

@@ -8,6 +8,9 @@ This module is used to represent the firmware
 import time
 from ttexalens import parse_elf
 from ttexalens import util as util
+from ttexalens.utils.exceptions import TTException
+from ttexalens.utils import logging as logging
+
 import re
 from fuzzywuzzy import process, fuzz
 from sys import getsizeof
@@ -47,10 +50,10 @@ class ELF:
             if prefix not in self.names:
                 self.names[prefix] = dict()
 
-            util.INFO(f"Loading ELF file: '{filename}'", end="")
+            logging.INFO(f"Loading ELF file: '{filename}'", end="")
             start_time = time.time()
             self.names[prefix] = parse_elf.read_elf(self._file_ifc, filename)
-            util.INFO(f" ({getsizeof(self.names[prefix])} bytes loaded in {time.time() - start_time:.2f}s)")
+            logging.INFO(f" ({getsizeof(self.names[prefix])} bytes loaded in {time.time() - start_time:.2f}s)")
 
             # Inject the variables that are not in the ELF
             if extra_vars:
@@ -62,11 +65,11 @@ class ELF:
         """
         for var_name, var in extra_vars.items():
             if var_name in self.names[prefix]["variable"]:
-                util.INFO(f"Variable '{var_name}' already in ELF. Skipping")
+                logging.INFO(f"Variable '{var_name}' already in ELF. Skipping")
                 continue
             offset_var = var["offset"]
             if offset_var not in self.names[prefix]["variable"]:
-                raise util.TTException(f"Variable '{offset_var}' not found in ELF. Cannot add '{var_name}'")
+                raise TTException(f"Variable '{offset_var}' not found in ELF. Cannot add '{var_name}'")
             ov = self.names[prefix]["variable"][offset_var]
             addr = addr = ov.value if ov.value else ov.address
             resolved_type = self.names[prefix]["type"][var["type"]].resolved_type

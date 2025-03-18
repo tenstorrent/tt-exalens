@@ -10,6 +10,9 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.parse_elf import read_elf
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device, read_from_device, write_to_device
 from ttexalens import util as util
+from ttexalens.utils.exceptions import TTException
+from ttexalens.utils import logging as logging
+
 import os
 
 # Register address
@@ -266,7 +269,7 @@ class RiscDebug:
         if self.enable_asserts:
             self.assert_not_in_reset()
         if self.verbose:
-            util.DEBUG(f"{self.get_reg_name_for_address(addr)} <- WR   0x{data:08x}")
+            logging.DEBUG(f"{self.get_reg_name_for_address(addr)} <- WR   0x{data:08x}")
         write_words_to_device(self.location.loc, addr, data, self.location.loc._device._id, self.context)
 
     def __read(self, addr):
@@ -274,49 +277,49 @@ class RiscDebug:
             self.assert_not_in_reset()
         data = read_word_from_device(self.location.loc, addr, self.location.loc._device._id, self.context)
         if self.verbose:
-            util.DEBUG(f"{self.get_reg_name_for_address(addr)} -> RD == 0x{data:08x}")
+            logging.DEBUG(f"{self.get_reg_name_for_address(addr)} -> RD == 0x{data:08x}")
         return data
 
     def __trigger_write(self, reg_addr):
         if self.verbose:
-            util.INFO(f"      __trigger_write({reg_addr})")
+            logging.INFO(f"      __trigger_write({reg_addr})")
         self.__write(self.RISC_DBG_CNTL0, self.CONTROL0_WRITE + reg_addr)
         self.__write(self.RISC_DBG_CNTL0, 0)
 
     def __trigger_read(self, reg_addr):
         if self.verbose:
-            util.INFO(f"      __trigger_read({reg_addr})")
+            logging.INFO(f"      __trigger_read({reg_addr})")
         self.__write(self.RISC_DBG_CNTL0, self.CONTROL0_READ + reg_addr)
         self.__write(self.RISC_DBG_CNTL0, 0)
 
     def __riscv_write(self, reg_addr, value):
         if self.verbose:
-            util.INFO(f"    __riscv_write({reg_addr}, 0x{value:08x})")
+            logging.INFO(f"    __riscv_write({reg_addr}, 0x{value:08x})")
         # set wrdata
         self.__write(self.RISC_DBG_CNTL1, value)
         self.__trigger_write(reg_addr)
 
     def __is_read_valid(self):
         if self.verbose:
-            util.INFO("  __is_read_valid()")
+            logging.INFO("  __is_read_valid()")
         status0 = self.__read(self.RISC_DBG_STATUS0)
         return (status0 & self.DEBUG_READ_VALID_BIT) == self.DEBUG_READ_VALID_BIT
 
     def __riscv_read(self, reg_addr):
         if self.verbose:
-            util.INFO(f"  __riscv_read({reg_addr})")
+            logging.INFO(f"  __riscv_read({reg_addr})")
         self.__trigger_read(reg_addr)
 
         if self.enable_asserts:
             if not self.__is_read_valid():
-                util.WARN(
+                logging.WARN(
                     f"Reading from RiscV debug registers failed (debug read valid bit is set to 0). Run `srs 0` to check if core is active."
                 )
         return self.__read(self.RISC_DBG_STATUS1)
 
     def enable_debug(self):
         if self.verbose:
-            util.INFO("  enable_debug()")
+            logging.INFO("  enable_debug()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE)
 
     def _halt_command(self):
@@ -324,10 +327,10 @@ class RiscDebug:
 
     def halt(self):
         if self.is_halted():
-            util.WARN(f"Halt: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is already halted")
+            logging.WARN(f"Halt: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is already halted")
             return
         if self.verbose:
-            util.INFO("  halt()")
+            logging.INFO("  halt()")
         self._halt_command()
         assert self.is_halted(), f"Failed to halt {get_risc_name(self.location.risc_id)} core at {self.location.loc}"
 
@@ -347,7 +350,7 @@ class RiscDebug:
 
     def step(self):
         if self.verbose:
-            util.INFO("  step()")
+            logging.INFO("  step()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_STEP)
         # There is bug in hardware and for blackhole step should be executed twice
         if self.location.loc._device._arch == "blackhole":
@@ -355,10 +358,10 @@ class RiscDebug:
 
     def cont(self, verify=True):
         if not self.is_halted():
-            util.WARN(f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is alredy running")
+            logging.WARN(f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is alredy running")
             return
         if self.verbose:
-            util.INFO("  cont()")
+            logging.INFO("  cont()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_CONTINUE)
         assert (
             not verify or not self.is_halted()
@@ -366,26 +369,26 @@ class RiscDebug:
 
     def continue_without_debug(self):
         if not self.is_halted():
-            util.WARN(f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is alredy running")
+            logging.WARN(f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is alredy running")
             return
         if self.verbose:
-            util.INFO("  cont()")
+            logging.INFO("  cont()")
         self.__riscv_write(REG_COMMAND, COMMAND_CONTINUE)
 
     def read_status(self) -> RiscDebugStatus:
         if self.verbose:
-            util.INFO("  read_status()")
+            logging.INFO("  read_status()")
         status = self.__riscv_read(REG_STATUS)
         return RiscDebugStatus.from_register(status)
 
     def is_halted(self):
         if self.verbose:
-            util.INFO("  is_halted()")
+            logging.INFO("  is_halted()")
         return self.read_status().is_halted
 
     def is_pc_watchpoint_hit(self):
         if self.verbose:
-            util.INFO("  is_pc_watchpoint_hit()")
+            logging.INFO("  is_pc_watchpoint_hit()")
         return self.read_status().is_pc_watchpoint_hit
 
     def is_in_reset(self):
@@ -412,7 +415,7 @@ class RiscDebug:
             self.location.loc, self.RISC_DBG_SOFT_RESET0, self.location.loc._device.id(), self.context
         )
         if new_reset_reg != reset_reg:
-            util.ERROR(f"Error writing reset signal. Expected 0x{reset_reg:08x}, got 0x{new_reset_reg:08x}")
+            logging.ERROR(f"Error writing reset signal. Expected 0x{reset_reg:08x}, got 0x{new_reset_reg:08x}")
         return reset_reg
 
     def assert_not_in_reset(self, message=""):
@@ -437,19 +440,19 @@ class RiscDebug:
 
     def is_memory_watchpoint_hit(self):
         if self.verbose:
-            util.INFO("  is_pc_watchpoint_hit()")
+            logging.INFO("  is_pc_watchpoint_hit()")
         return self.read_status().is_memory_watchpoint_hit
 
     def read_gpr(self, reg_index):
         if self.verbose:
-            util.INFO(f"  read_gpr({reg_index})")
+            logging.INFO(f"  read_gpr({reg_index})")
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_REGISTER)
         return self.__riscv_read(REG_COMMAND_RETURN_VALUE)
 
     def write_gpr(self, reg_index, value):
         if self.verbose:
-            util.INFO(f"  write_gpr({reg_index}, 0x{value:08x})")
+            logging.INFO(f"  write_gpr({reg_index}, 0x{value:08x})")
         self.__riscv_write(REG_COMMAND_ARG_1, value)
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_REGISTER)
@@ -458,19 +461,19 @@ class RiscDebug:
         if self.enable_asserts:
             self.assert_halted()
         if self.verbose:
-            util.INFO(f"  read_memory(0x{addr:08x})")
+            logging.INFO(f"  read_memory(0x{addr:08x})")
         self.__riscv_write(REG_COMMAND_ARG_0, addr)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_MEMORY)
         data = self.__riscv_read(REG_COMMAND_RETURN_VALUE)
         if self.verbose:
-            util.INFO(f"                             read -> 0x{data:08x}")
+            logging.INFO(f"                             read -> 0x{data:08x}")
         return data
 
     def write_memory(self, addr, value):
         if self.enable_asserts:
             self.assert_halted()
         if self.verbose:
-            util.INFO(f"  write_memory(0x{addr:08x}, 0x{value:08x})")
+            logging.INFO(f"  write_memory(0x{addr:08x}, 0x{value:08x})")
         self.__riscv_write(REG_COMMAND_ARG_1, value)
         self.__riscv_write(REG_COMMAND_ARG_0, addr)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_MEMORY)
@@ -774,7 +777,7 @@ class RiscLoader:
                 rd.write_memory(address + i, word)
                 # ww = rd.read_memory(address + i)
                 # if ww != word:
-                #     util.ERROR(f"Error writing word at address 0x{address + i:08x}. Expected 0x{word:08x}, got 0x{ww:08x}")
+                #     logging.ERROR(f"Error writing word at address 0x{address + i:08x}. Expected 0x{word:08x}, got 0x{ww:08x}")
 
     def read_block_through_debug(self, address, byte_count):
         """
@@ -878,7 +881,7 @@ class RiscLoader:
                         if name == ".init":
                             init_section_address = address
 
-                        util.VERBOSE(f"Writing section {name} to address 0x{address:08x}. Size: {len(data)} bytes")
+                        logging.VERBOSE(f"Writing section {name} to address 0x{address:08x}. Size: {len(data)} bytes")
                         self.write_block(address, data)
 
             # Check that what we have written is correct
@@ -891,15 +894,15 @@ class RiscLoader:
                         address = self.remap_address(address, loader_data, loader_code)
                         read_data = self.read_block(address, len(data))
                         if read_data != data:
-                            util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
+                            logging.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
                             continue
                         else:
-                            util.VERBOSE(
+                            logging.VERBOSE(
                                 f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes"
                             )
         except Exception as e:
-            util.ERROR(e)
-            raise util.TTException(f"Error loading elf file {elf_path}")
+            logging.ERROR(e)
+            raise TTException(f"Error loading elf file {elf_path}")
 
         self.context.elf_loaded(self.risc_debug.location.loc, self.risc_debug.location.risc_id, elf_path)
         return init_section_address
@@ -992,7 +995,7 @@ class RiscLoader:
 
                 frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
                 if frame_description is None:
-                    util.WARN("We don't have information on frame and we don't know how to proceed")
+                    logging.WARN("We don't have information on frame and we don't know how to proceed")
                     break
 
                 cfa = frame_pointer

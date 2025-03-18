@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import List
 from ttexalens import util as util
+from ttexalens.utils import logging as logging
 
 import os
 import signal
@@ -23,10 +24,10 @@ def start_server(
             port, wanted_devices, init_jtag, use_noc1, simulation_directory, background
         )
         if ttexalens_server is None:
-            raise util.TTFatalException("Could not start ttexalens-server.")
+            logging.FATAL("Could not start ttexalens-server.")
         return ttexalens_server
 
-    raise util.TTFatalException(f"Port {port} not available. A TTExaLens server might alreasdy be running.")
+    logging.FATAL(f"Port {port} not available. A TTExaLens server might alreasdy be running.")
 
 
 def spawn_standalone_ttexalens_stub(
@@ -74,10 +75,10 @@ def spawn_standalone_ttexalens_stub(
     except:
         if os.path.islink(ttexalens_stub_path):
             if not os.path.exists(os.readlink(ttexalens_stub_path)):
-                util.FATAL(f"Missing ttexalens-server-standalone. Try: make build")
+                logging.FATAL(f"Missing ttexalens-server-standalone. Try: make build")
         raise
 
-    util.INFO("ttexalens-server started.")
+    logging.INFO("ttexalens-server started.")
     return ttexalens_stub
 
 
@@ -87,13 +88,13 @@ def stop_server(ttexalens_stub: subprocess.Popen):
         os.killpg(os.getpgid(ttexalens_stub.pid), signal.SIGTERM)
         time.sleep(0.1)
         if ttexalens_stub.poll() is None:
-            util.VERBOSE("ttexalens-server did not respond to SIGTERM. Sending SIGKILL...")
+            logging.VERBOSE("ttexalens-server did not respond to SIGTERM. Sending SIGKILL...")
             os.killpg(os.getpgid(ttexalens_stub.pid), signal.SIGKILL)
 
         time.sleep(0.1)
         if ttexalens_stub.poll() is None:
-            util.ERROR(
+            logging.ERROR(
                 f"ttexalens-server did not respond to SIGKILL. The process {ttexalens_stub.pid} is still running. Please kill it manually."
             )
         else:
-            util.INFO("ttexalens-server terminated.")
+            logging.INFO("ttexalens-server terminated.")

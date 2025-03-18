@@ -12,6 +12,8 @@ from test.ttexalens.unit_tests.test_base import init_default_test_context
 from ttexalens import tt_exalens_init
 from ttexalens import tt_exalens_lib as lib
 from ttexalens import util
+from ttexalens.utils.exceptions import TTException
+from ttexalens.utils import logging as logging
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
@@ -203,9 +205,9 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_inputs_read(self, core_loc, address, device_id, word_count):
         """Test invalid inputs for read functions."""
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.read_words_from_device(core_loc, address, device_id, word_count)
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             # word_count can be used as num_bytes
             lib.read_from_device(core_loc, address, device_id, word_count)
 
@@ -220,7 +222,7 @@ class TestReadWrite(unittest.TestCase):
         ]
     )
     def test_invalid_write_word(self, core_loc, address, data, device_id):
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_words_to_device(core_loc, address, data, device_id)
 
     @parameterized.expand(
@@ -236,7 +238,7 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_write(self, core_loc, address, data, device_id):
         """Test invalid inputs for write function."""
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_to_device(core_loc, address, data, device_id)
 
     from ttexalens.device import ConfigurationRegisterDescription, DebugRegisterDescription, DebugBusSignalDescription
@@ -298,9 +300,9 @@ class TestReadWrite(unittest.TestCase):
             self.skipTest("Skipping the test on grayskull.")
 
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
-            with self.assertRaises((util.TTException, ValueError)):
+            with self.assertRaises((TTException, ValueError)):
                 lib.read_tensix_register(core_loc, register, device_id)
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_tensix_register(core_loc, register, value, device_id)
 
 
@@ -363,7 +365,7 @@ class TestRunElf(unittest.TestCase):
     def test_run_elf_invalid(self, elf_file, core_loc, risc_id, device_id):
         if elf_file is None:
             elf_file = self.get_elf_path("run_elf_test", 0)
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.run_elf(elf_file, core_loc, risc_id, device_id, context=self.context)
 
     # TODO: This test should be restructured (Issue #70)
@@ -468,7 +470,7 @@ class TestRunElf(unittest.TestCase):
         while mbox_val >= 0 and mbox_val < 0xFF000000 and timeout_retries > 0:
             if rdbg.is_halted():
                 if rdbg.is_pc_watchpoint_hit():
-                    pass  # util.INFO (f"Breakpoint hit.")
+                    pass  # logging.INFO (f"Breakpoint hit.")
 
             try:
                 rdbg.cont()
@@ -485,7 +487,7 @@ class TestRunElf(unittest.TestCase):
             timeout_retries -= 1
 
         if timeout_retries == 0 and mbox_val != 0:
-            raise util.TTFatalException(f"RISC at location {loc} did not get past step 6.")
+            logging.FATAL(f"RISC at location {loc} did not get past step 6.")
         self.assertFalse(
             rdbg.is_pc_watchpoint_hit(), f"RISC at location {loc} hit the breakpoint but it should not have."
         )
@@ -498,7 +500,7 @@ class TestRunElf(unittest.TestCase):
         status = rdbg.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.is_watchpoint3_hit:
-            raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 3.")
+            logging.FATAL(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 3.")
         rdbg.cont(verify=False)
 
         mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
@@ -508,7 +510,7 @@ class TestRunElf(unittest.TestCase):
         status = rdbg.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.is_watchpoint5_hit:
-            raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 5.")
+            logging.FATAL(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 5.")
         rdbg.cont(verify=False)
 
         mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
@@ -518,7 +520,7 @@ class TestRunElf(unittest.TestCase):
         status = rdbg.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.is_watchpoint0_hit:
-            raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 0.")
+            logging.FATAL(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 0.")
             return False
         rdbg.cont(verify=False)
 
@@ -529,7 +531,7 @@ class TestRunElf(unittest.TestCase):
         status = rdbg.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.is_watchpoint4_hit:
-            raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 4.")
+            logging.FATAL(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 4.")
         rdbg.cont(verify=False)
 
         # STEP END:

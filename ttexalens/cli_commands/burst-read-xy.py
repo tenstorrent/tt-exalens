@@ -44,7 +44,7 @@ from ttexalens.tt_exalens_lib import read_words_from_device, read_from_device
 from ttexalens.firmware import ELF
 from ttexalens.object import DataArray
 from ttexalens import util as util
-
+from ttexalens.utils.exceptions import TTException
 
 def run(cmd_text, context, ui_state: UIState = None):
     args = docopt(command_metadata["description"], argv=cmd_text.split()[1:])
@@ -67,7 +67,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     word_count = int(args["<word-count>"]) if args["<word-count>"] else size_words
     format = args["--format"] if args["--format"] else "hex32"
     if format not in util.PRINT_FORMATS:
-        raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
+        raise TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
 
     offsets = args["-o"]
     for offset in offsets:

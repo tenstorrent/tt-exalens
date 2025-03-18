@@ -46,6 +46,7 @@ The following coordinate systems are available to represent a grid location on t
 """
 
 from ttexalens.utils.exceptions import TTException
+from ttexalens.utils import logging as logging
 
 VALID_COORDINATE_TYPES = [
     "die",
@@ -241,7 +242,7 @@ class OnChipCoordinate:
 
     # == operator
     def __eq__(self, other):
-        # util.DEBUG("Comparing coordinates: " + str(self) + " ?= " + str(other))
+        # logging.DEBUG("Comparing coordinates: " + str(self) + " ?= " + str(other))
         return (self._noc0_coord == other._noc0_coord) and (self._device == other._device)
 
     def __lt__(self, other):

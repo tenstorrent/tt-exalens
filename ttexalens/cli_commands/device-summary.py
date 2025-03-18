@@ -45,6 +45,7 @@ from ttexalens.coordinate import VALID_COORDINATE_TYPES
 from ttexalens.context import LimitedContext
 from ttexalens.tt_exalens_lib import read_words_from_device
 from ttexalens.utils import logging as logging
+from ttexalens.utils.exceptions import TTException
 
 def color_block(text: str, block_type: str):
     color = Device.block_types[block_type]["color"]
@@ -73,7 +74,7 @@ def run(cmd_text, context, ui_state=None):
     elif isinstance(context, LimitedContext):
         cell_contents = "riscv"
     else:
-        raise util.TTException(f"Invalid cell contents")
+        raise TTException(f"Invalid cell contents")
 
     # Create a legend
     if not dont_print_legend:
@@ -135,7 +136,7 @@ def run(cmd_text, context, ui_state=None):
                         coord_str = "N/A"
                     cell_contents_str.append(color_block(coord_str, block_type))
                 else:
-                    raise util.TTException(f"Invalid cell contents requested: '{ct}'")
+                    raise TTException(f"Invalid cell contents requested: '{ct}'")
             return ", ".join(cell_contents_str)
 
         print(

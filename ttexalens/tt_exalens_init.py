@@ -7,6 +7,7 @@ from typing import Union
 from ttexalens import tt_exalens_ifc
 from ttexalens import tt_exalens_ifc_cache
 from ttexalens import util as util
+from ttexalens.utils import logging as logging
 
 from ttexalens.context import Context, LimitedContext
 
@@ -80,7 +81,7 @@ def init_ttexalens_cached(
             Context: TTExaLens context object.
     """
     if not os.path.exists(cache_path) or not os.path.isfile(cache_path):
-        raise util.TTFatalException(f"Error: Cache file at {cache_path} does not exist.")
+        logging.FATAL(f"Error: Cache file at {cache_path} does not exist.")
 
     lens_ifc = tt_exalens_ifc_cache.init_cache_reader(cache_path)
 
@@ -94,7 +95,7 @@ def get_cluster_desc_yaml(lens_ifc: tt_exalens_ifc.TTExaLensCommunicator) -> "tu
         cluster_desc_path = lens_ifc.get_cluster_description()
         cluster_desc_yaml = util.YamlFile(lens_ifc, cluster_desc_path)
     except:
-        raise util.TTFatalException("TTExaLens does not support cluster description. Cannot connect to device.")
+        logging.FATAL("TTExaLens does not support cluster description. Cannot connect to device.")
 
     return cluster_desc_yaml
 
