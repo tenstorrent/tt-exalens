@@ -8,7 +8,7 @@ Usage:
 Options:
   <config-reg>  Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
   -d <device>   Device ID. Optional. Default: current device
-  -l <loc>      Core location in X-Y or R,C format. Defualt: current core
+  -l <loc>      Core location in X-Y or R,C format. Default: current core
 
 Description:
   Prints the configuration register of the given name, at the specified location and device.
