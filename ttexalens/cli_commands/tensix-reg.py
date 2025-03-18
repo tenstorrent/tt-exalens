@@ -153,7 +153,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                 # Overwritting data type of register if user specified it
                 # Do we need/want this???
                 if dopt.args["--type"]:
-                    register.data_type = data_type
+                    register.data_type = DATA_TYPE[data_type]
 
             if value is not None:
                 debug_tensix.write_tensix_register(register, value)
