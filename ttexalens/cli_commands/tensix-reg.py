@@ -101,8 +101,8 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     reg_type, reg_params = parse_register(dopt.args["<register>"])
     reg_params = convert_reg_params(reg_params)
-    value = convert_to_int(dopt.args["<value>"]) if dopt.args["<value>"] else None
-    value_str = dopt.args["<value>"]
+    value = convert_to_int(dopt.args["--write"]) if dopt.args["--write"] else None
+    value_str = dopt.args["--write"]
 
     register = create_register_description(reg_type, reg_params)
 
