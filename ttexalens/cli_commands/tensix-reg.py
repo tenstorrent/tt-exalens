@@ -49,6 +49,7 @@ from ttexalens.device import (
 )
 from ttexalens import command_parser
 from ttexalens.util import TTException, INFO, DATA_TYPE, convert_value
+from ttexalens.unpack_regfile import TensixDataFormat
 import re
 
 reg_types = ["cfg", "dbg"]
@@ -62,7 +63,7 @@ def convert_to_int(param: str) -> int:
         else:
             return int(param)
     except ValueError:
-        raise ValueError(f"Invalid value {param}. Expected an integer.")
+        raise ValueError(f"Invalid parameter {param}. Expected a hexadecimal or decimal integer.")
 
 
 def convert_reg_params(reg_params: str) -> list[int]:
@@ -71,6 +72,21 @@ def convert_reg_params(reg_params: str) -> list[int]:
         params.append(convert_to_int(param))
 
     return params
+
+
+def convert_write_value(value: str) -> int:
+    if re.match(r"^0x[0-9a-fA-F]+$", value):
+        return int(value, 16)
+    elif re.match(r"^[0-9]+$", value):
+        return int(value)
+    elif re.match(r"^(True|False)(,(True|False))*$", value):
+        return int("".join(["1" if v == "True" else "0" for v in value.split(",")]), 2)
+    elif value in TensixDataFormat.__members__:
+        return TensixDataFormat[value].value
+    else:
+        raise ValueError(
+            f"Invalid value {value}. Expected a hexadecimal or decimal integer, boolean list or TensixDataFormat."
+        )
 
 
 def create_register_description(reg_type: str, reg_params: list[int], data_type: str) -> TensixRegisterDescription:
@@ -114,7 +130,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     if data_type not in data_types:
         raise ValueError(f"Invalid data type: {data_type}. Possible values: {data_types}")
 
-    value = convert_to_int(dopt.args["--write"]) if dopt.args["--write"] else None
+    value = convert_write_value(dopt.args["--write"]) if dopt.args["--write"] else None
     value_str = dopt.args["--write"]
 
     if isinstance(register_ref, tuple):
@@ -133,6 +149,11 @@ def run(cmd_text, context, ui_state: UIState = None):
                     raise ValueError(
                         f"Referencing register by {register_ref} is invalid. Please use valid register name or <reg-type>(<reg-parameters>) format."
                     )
+
+                # Overwritting data type of register if user specified it
+                # Do we need/want this???
+                if dopt.args["--type"]:
+                    register.data_type = data_type
 
             if value is not None:
                 debug_tensix.write_tensix_register(register, value)
