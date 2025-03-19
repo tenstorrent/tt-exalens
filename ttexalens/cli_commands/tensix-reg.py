@@ -15,7 +15,7 @@ Arguments:
 Options:
   --type <data-type>  Data type of the register. This affects print format. Options: [INT_VALUE, ADDRESS, MASK, FLAGS, TENSIX_DATA_FORMAT]. Default: INT_VALUE.
   --write <value>     Value to write to the register. If not given, register is dumped instead.
-  --max <max-regs>    Maximum number of register names to print when searching. Negative values print all. Default: 10.
+  --max <max-regs>    Maximum number of register names to print when searching or all for everything. Default: 10.
   -d <device>         Device ID. Optional. Default: current device.
   -l <loc>            Core location in X-Y or R,C format. Default: current core.
 
@@ -27,7 +27,7 @@ Examples:
   reg dbg(0x54)                                       # Prints debug register with address 0x54
   reg --search PACK*                                  # Prints names of first 10 registers that start with PACK
   reg --search ALU* --max 5                           # Prints names of first 5 registers that start with ALU
-  reg --search *format* --max -1                      # Prints names of all reigsters that include word format
+  reg --search *format* --max all                     # Prints names of all reigsters that include word format
   reg UNPACK_CONFIG0_out_data_format                  # Prints register with name UNPACK_CONFIG0_out_data_format
   reg cfg(1,0x1E000000,25) --type TENSIX_DATA_FORMAT  # Prints configuration register with index 60, mask 0xf, shift 0 in tensix data format
   reg dbg(0x54) --type INT_VALUE                      # Prints debug register with address 0x54 in integer format
@@ -153,13 +153,18 @@ def run(cmd_text, context, ui_state: UIState = None):
 
         # Do this only if search is enabled
         if register_pattern != None:
+            register_names = device._get_tensix_register_map_keys()
             max_regs = dopt.args["--max"] if dopt.args["--max"] else 10
             try:
-                max_regs = int(max_regs)
+                if max_regs != "all":
+                    max_regs = int(max_regs)
+                    if max_regs <= 0:
+                        raise ValueError(f"Invalid value for max-regs. Expected positive integer, but got {max_regs}")
+                else:
+                    max_regs = len(register_names)
             except:
                 raise ValueError(f"Invalid value for max-regs. Expected an integer, but got {max_regs}")
 
-            register_names = device._get_tensix_register_map_keys()
             INFO(f"Register names that match pattern for device {device.id()}")
             print_matches(register_pattern, register_names, max_regs)
 
