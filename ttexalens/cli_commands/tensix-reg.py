@@ -4,17 +4,20 @@
 """
 Usage:
   tensix-reg <register> [--type <data-type>] [ --write <value> ] [ -d <device> ] [ -l <loc> ]
+  tensix-reg --search <register_pattern> [ --max <max-regs> ] [ -d <device> ] [ -l <loc> ]
 
 Arguments:
-  <register>    Register to dump/write to. Format: <reg-type>(<reg-parameters>) or register name.
-                <reg-type> Register type. Options: [cfg, dbg]
-                <reg-parameters> Register parameters, comma separated integers. For cfg: index,mask,shift. For dbg: address
+  <register>            Register to dump/write to. Format: <reg-type>(<reg-parameters>) or register name.
+                        <reg-type> Register type. Options: [cfg, dbg].
+                        <reg-parameters> Register parameters, comma separated integers. For cfg: index,mask,shift. For dbg: address.
+  <register-pattern>    Register pattern used to print register names that match it. Format: wildcard.
 
 Options:
-  --type <data-type>  Data type of the register. This affects print format. Options: [INT_VALUE, ADDRESS, MASK, FLAGS, TENSIX_DATA_FORMAT]. Default: INT_VALUE
+  --type <data-type>  Data type of the register. This affects print format. Options: [INT_VALUE, ADDRESS, MASK, FLAGS, TENSIX_DATA_FORMAT]. Default: INT_VALUE.
   --write <value>     Value to write to the register. If not given, register is dumped instead.
-  -d <device>         Device ID. Optional. Default: current device
-  -l <loc>            Core location in X-Y or R,C format. Default: current core
+  --max <max-regs>    Maximum number of register names to print when searching. Negative values print all. Default: 10.
+  -d <device>         Device ID. Optional. Default: current device.
+  -l <loc>            Core location in X-Y or R,C format. Default: current core.
 
 Description:
   Prints/writes to the specified register, at the specified location and device.
@@ -22,6 +25,8 @@ Description:
 Examples:
   reg cfg(1,0x1E000000,25)                            # Prints configuration register with index 1, mask 0x1E000000, shift 25
   reg dbg(0x54)                                       # Prints debug register with address 0x54
+  reg --search PACK*                                  # Prints names of first 10 register that start with PACK
+  reg --search ALU* --max 5                           # Prints names of first 5 register that start with ALU
   reg UNPACK_CONFIG0_out_data_format                  # Prints register with name UNPACK_CONFIG0_out_data_format
   reg cfg(1,0x1E000000,25) --type TENSIX_DATA_FORMAT  # Prints configuration register with index 60, mask 0xf, shift 0 in tensix data format
   reg dbg(0x54) --type INT_VALUE                      # Prints debug register with address 0x54 in integer format
@@ -52,6 +57,7 @@ from ttexalens import command_parser
 from ttexalens.util import TTException, INFO, DATA_TYPE, convert_int_to_data_type, convert_data_type_to_int
 from ttexalens.unpack_regfile import TensixDataFormat
 import re
+from fnmatch import fnmatch
 
 reg_types = ["cfg", "dbg"]
 data_types = ["INT_VALUE", "ADDRESS", "MASK", "FLAGS", "TENSIX_DATA_FORMAT"]
@@ -73,6 +79,7 @@ def convert_reg_params(reg_params: str) -> list[int]:
         params.append(convert_str_to_int(param))
 
     return params
+
 
 def create_register_description(reg_type: str, reg_params: list[int], data_type: str) -> TensixRegisterDescription:
     if reg_type == "cfg":
@@ -103,26 +110,53 @@ def parse_register_argument(register: str):
         return register
 
 
+def print_matches(pattern: str, strings: list[str], max_prints: int) -> None:
+    for s in strings:
+        if max_prints == 0:
+            break
+
+        if fnmatch(s, pattern):
+            print(s)
+            max_prints -= 1
+
+
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
     )
 
-    register_ref = parse_register_argument(dopt.args["<register>"])
+    register_pattern = dopt.args["<register_pattern>"] if dopt.args["--search"] else None
 
-    data_type = dopt.args["--type"] if dopt.args["--type"] else "INT_VALUE"
-    if data_type not in data_types:
-        raise ValueError(f"Invalid data type: {data_type}. Possible values: {data_types}")
+    if register_pattern == None:
+        register_ref = parse_register_argument(dopt.args["<register>"])
 
-    value = convert_data_type_to_int(dopt.args["--write"]) if dopt.args["--write"] else None
-    value_str = dopt.args["--write"]
+        data_type = dopt.args["--type"] if dopt.args["--type"] else "INT_VALUE"
+        if data_type not in data_types:
+            raise ValueError(f"Invalid data type: {data_type}. Possible values: {data_types}")
 
-    if isinstance(register_ref, tuple):
-        reg_type, reg_params = register_ref
-        register = create_register_description(reg_type, reg_params, data_type)
+        value = convert_data_type_to_int(dopt.args["--write"]) if dopt.args["--write"] else None
+        value_str = dopt.args["--write"]
+
+        if isinstance(register_ref, tuple):
+            reg_type, reg_params = register_ref
+            register = create_register_description(reg_type, reg_params, data_type)
 
     for device in dopt.for_each("--device", context, ui_state):
+
+        if register_pattern != None:
+            max_regs = dopt.args["--max"] if dopt.args["--max"] else 10
+            try:
+                max_regs = int(max_regs)
+            except:
+                raise ValueError(f"Invalid value for max-regs. Expected an integer, but got {max_regs}")
+
+            register_names = device._get_tensix_register_map_keys()
+            INFO(f"Register names that match pattern for device {device.id()}")
+            print_matches(register_pattern.upper(), register_names, max_regs)
+
+            continue
+
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
 
             debug_tensix = TensixDebug(loc, device.id(), context)
@@ -136,7 +170,6 @@ def run(cmd_text, context, ui_state: UIState = None):
                     )
 
                 # Overwritting data type of register if user specified it
-                # Do we need/want this???
                 if dopt.args["--type"]:
                     register.data_type = DATA_TYPE[data_type]
 
