@@ -22,6 +22,7 @@ Description:
 Examples:
   reg cfg(1,0x1E000000,25)                            # Prints configuration register with index 1, mask 0x1E000000, shift 25
   reg dbg(0x54)                                       # Prints debug register with address 0x54
+  reg UNPACK_CONFIG0_out_data_format                  # Prints register with name UNPACK_CONFIG0_out_data_format
   reg cfg(1,0x1E000000,25) --type TENSIX_DATA_FORMAT  # Prints configuration register with index 60, mask 0xf, shift 0 in tensix data format
   reg dbg(0x54) --type INT_VALUE                      # Prints debug register with address 0x54 in integer format
   reg dbg(0x54) --write 18                            # Writes 18 to debug register with address 0x54
@@ -48,7 +49,7 @@ from ttexalens.device import (
     DebugRegisterDescription,
 )
 from ttexalens import command_parser
-from ttexalens.util import TTException, INFO, DATA_TYPE, convert_value
+from ttexalens.util import TTException, INFO, DATA_TYPE, convert_int_to_data_type
 from ttexalens.unpack_regfile import TensixDataFormat
 import re
 
@@ -56,7 +57,7 @@ reg_types = ["cfg", "dbg"]
 data_types = ["INT_VALUE", "ADDRESS", "MASK", "FLAGS", "TENSIX_DATA_FORMAT"]
 
 
-def convert_to_int(param: str) -> int:
+def convert_str_to_int(param: str) -> int:
     try:
         if param.startswith("0x"):
             return int(param, 16)
@@ -69,7 +70,7 @@ def convert_to_int(param: str) -> int:
 def convert_reg_params(reg_params: str) -> list[int]:
     params = []
     for param in reg_params.split(","):
-        params.append(convert_to_int(param))
+        params.append(convert_str_to_int(param))
 
     return params
 
@@ -160,4 +161,4 @@ def run(cmd_text, context, ui_state: UIState = None):
                 INFO(f"Register {register} written with value {value_str}.")
             else:
                 value = debug_tensix.read_tensix_register(register)
-                print(convert_value(value, register.data_type, bin(register.mask).count("1")))
+                print(convert_int_to_data_type(value, register.data_type, bin(register.mask).count("1")))

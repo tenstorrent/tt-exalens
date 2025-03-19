@@ -745,7 +745,7 @@ class DATA_TYPE(Enum):
 
 
 # Convert value to specified data type
-def convert_value(value: int, data_type: DATA_TYPE, number_of_bits: int):
+def convert_int_to_data_type(value: int, data_type: DATA_TYPE, number_of_bits: int):
     if data_type == DATA_TYPE.INT_VALUE:
         return value
     elif data_type == DATA_TYPE.ADDRESS or data_type == DATA_TYPE.MASK:
