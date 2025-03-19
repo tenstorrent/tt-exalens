@@ -424,3 +424,31 @@ def write_tensix_register(
         )
 
     TensixDebug(core_loc, device_id, context).write_tensix_register(register, value)
+
+
+def read_riscv_memory(
+    core_loc: Union[str, OnChipCoordinate],
+    noc_id: int,
+    risc_id: int,
+    addr: int,
+    device_id: int = 0,
+    context: Context = None,
+    verbose: bool = False,
+):
+    from ttexalens.debug_risc import RiscDebug, RiscLoc
+
+    context = check_context(context)
+    validate_device_id(device_id, context)
+    validate_addr(addr)
+    device = context.devices[device_id]
+
+    if not isinstance(core_loc, OnChipCoordinate):
+        core_loc = OnChipCoordinate.create(core_loc, device=device)
+
+    if noc_id < 0 or noc_id > 1:
+        raise ValueError("Invalid value for noc_id. Expected 0 or 1.")
+
+    location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
+    debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
+
+    return debug_risc.read_memory(addr)
