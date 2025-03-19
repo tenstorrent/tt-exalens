@@ -392,6 +392,57 @@ Sends an ARC message to the device.
 
 
 
+## read_tensix_register
+
+```
+read_tensix_register(core_loc, register, device_id=0, context=None) -> int
+```
+
+
+### Description
+
+Reads the value of a register from the tensix core.
+
+
+### Args
+
+- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+- `register` *(str | TensixRegisterDescription)*: Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
+ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
+- `device_id` *(int, default 0)*: ID number of device to read from.
+- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+
+
+### Returns
+
+ *(int)*: Value of the configuration or debug register specified.
+
+
+
+## write_tensix_register
+
+```
+write_tensix_register(core_loc, register, value, device_id=0, context=None) -> None
+```
+
+
+### Description
+
+Writes value to a register on the tensix core.
+
+
+### Args
+
+- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+- `register` *(str | TensixRegisterDescription)*: Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
+ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
+- `value` *(int)*: Value to write to the register.
+- `device_id` *(int, default 0)*: ID number of device to read from.
+- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+
+
+
+
 
 
 # coordinate

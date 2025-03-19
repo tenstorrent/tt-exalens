@@ -69,6 +69,9 @@ class BlackholeDevice(Device):
         )
         self.instructions = BlackholeInstructions()
 
+    def _get_tensix_register_map_keys(self) -> list[str]:
+        return list(BlackholeDevice.__register_map.keys())
+
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
         """Overrides the base class method to provide register descriptions for Blackhole device."""
         if register_name in BlackholeDevice.__register_map:

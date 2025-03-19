@@ -8,7 +8,7 @@ Usage:
 Options:
   <config-reg>  Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
   -d <device>   Device ID. Optional. Default: current device
-  -l <loc>      Core location in X-Y or R,C format
+  -l <loc>      Core location in X-Y or R,C format. Default: current core
 
 Description:
   Prints the configuration register of the given name, at the specified location and device.
@@ -35,9 +35,18 @@ from ttexalens.uistate import UIState
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.device import Device
 from ttexalens import command_parser
-from ttexalens.util import convert_value, put_table_list_side_by_side, INFO, CLR_GREEN, CLR_END, dict_list_to_table
+from ttexalens.util import (
+    convert_int_to_data_type,
+    put_table_list_side_by_side,
+    INFO,
+    CLR_GREEN,
+    CLR_END,
+    dict_list_to_table,
+)
 from typing import List
 from tabulate import tabulate
+
+possible_registers = ["all", "alu", "pack", "unpack"]
 
 # Creates list of column names for configuration register table
 def create_column_names(num_of_columns):
@@ -67,7 +76,7 @@ def config_regs_to_table(config_regs: List[dict], table_name: str, debug_tensix:
             if key in config:
                 value = debug_tensix.read_tensix_register(config[key])
                 reg_desc = device.get_tensix_register_description(config[key])
-                config[key] = convert_value(value, reg_desc.data_type, bin(reg_desc.mask).count("1"))
+                config[key] = convert_int_to_data_type(value, reg_desc.data_type, bin(reg_desc.mask).count("1"))
 
     return dict_list_to_table(config_regs, table_name, create_column_names(len(config_regs)))
 
@@ -79,7 +88,8 @@ def run(cmd_text, context, ui_state: UIState = None):
     )
 
     cfg = dopt.args["<config-reg>"] if dopt.args["<config-reg>"] else "all"
-    print(cfg)
+    if cfg not in possible_registers:
+        raise ValueError(f"Invalid configuration register: {cfg}. Possible values: {possible_registers}")
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
