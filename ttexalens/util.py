@@ -733,6 +733,7 @@ PRINT_FORMATS = {
     "hex8": {"is_hex": True, "bytes": 1},
 }
 
+
 from enum import Enum
 from ttexalens.unpack_regfile import TensixDataFormat
 
@@ -761,6 +762,7 @@ def convert_int_to_data_type(value: int, data_type: DATA_TYPE, number_of_bits: i
             return f"{value} -> INVALID VALUE"
     else:
         raise ValueError(f"Invalid value for data_type: {data_type}")
+
 
 def convert_data_type_to_int(value: str) -> int:
     if re.match(r"^0x[0-9a-fA-F]+$", value):
