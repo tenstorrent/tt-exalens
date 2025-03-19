@@ -55,7 +55,7 @@ from ttexalens.device import (
     DebugRegisterDescription,
 )
 from ttexalens import command_parser
-from ttexalens.util import TTException, INFO, DATA_TYPE, convert_int_to_data_type, convert_data_type_to_int
+from ttexalens.util import TTException, INFO, WARN, DATA_TYPE, convert_int_to_data_type, convert_data_type_to_int
 from ttexalens.unpack_regfile import TensixDataFormat
 import re
 from fnmatch import fnmatch
@@ -119,6 +119,7 @@ def print_matches(pattern: str, strings: list[str], max_prints: int) -> None:
     pattern = pattern.lower()
     for s in strings:
         if max_prints == 0:
+            WARN("Hit printing limit. To see more results, increase the --max value.")
             break
 
         if fnmatch(s.lower(), pattern):
@@ -165,7 +166,7 @@ def run(cmd_text, context, ui_state: UIState = None):
             except:
                 raise ValueError(f"Invalid value for max-regs. Expected an integer, but got {max_regs}")
 
-            INFO(f"Register names that match pattern for device {device.id()}")
+            INFO(f"Register names that match pattern on device {device.id()}")
             print_matches(register_pattern, register_names, max_regs)
 
             continue
@@ -184,9 +185,9 @@ def run(cmd_text, context, ui_state: UIState = None):
 
             if value != None:
                 debug_tensix.write_tensix_register(register, value)
-                INFO(f"Register {register} written with value {value_str}.")
+                INFO(f"Register {register} on device {device.id()} and location {loc} written with value {value_str}.")
             else:
-                value = debug_tensix.read_tensix_register(register)
+                reg_value = debug_tensix.read_tensix_register(register)
 
                 # Overwritting data type of register if user specified it
                 if dopt.args["--type"]:
@@ -194,4 +195,5 @@ def run(cmd_text, context, ui_state: UIState = None):
                 else:
                     data_type = register.data_type
 
-                print(convert_int_to_data_type(value, data_type, bin(register.mask).count("1")))
+                INFO(f"Value of register {register} on device {device.id()} and location {loc}:")
+                print(convert_int_to_data_type(reg_value, data_type, bin(register.mask).count("1")))
