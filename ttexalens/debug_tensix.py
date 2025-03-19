@@ -170,6 +170,12 @@ class TensixDebug:
                     f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
                 )
 
+        if register.mask < 0 or register.mask > 0xFFFFFFFF:
+            raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
+
+        if register.shift < 0 or register.shift > 31:
+            raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
+
         if isinstance(register, ConfigurationRegisterDescription):
             write_words_to_device(
                 self.core_loc,
@@ -229,6 +235,12 @@ class TensixDebug:
                 raise ValueError(
                     f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
                 )
+
+        if register.mask < 0 or register.mask > 0xFFFFFFFF:
+            raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
+
+        if register.shift < 0 or register.shift > 31:
+            raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
 
         if isinstance(register, ConfigurationRegisterDescription):
             rdbg = RiscDebug(RiscLoc(self.core_loc), self.context)
