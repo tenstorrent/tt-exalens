@@ -25,8 +25,9 @@ Description:
 Examples:
   reg cfg(1,0x1E000000,25)                            # Prints configuration register with index 1, mask 0x1E000000, shift 25
   reg dbg(0x54)                                       # Prints debug register with address 0x54
-  reg --search PACK*                                  # Prints names of first 10 register that start with PACK
-  reg --search ALU* --max 5                           # Prints names of first 5 register that start with ALU
+  reg --search PACK*                                  # Prints names of first 10 registers that start with PACK
+  reg --search ALU* --max 5                           # Prints names of first 5 registers that start with ALU
+  reg --search *format* --max -1                      # Prints names of all reigsters that include word format
   reg UNPACK_CONFIG0_out_data_format                  # Prints register with name UNPACK_CONFIG0_out_data_format
   reg cfg(1,0x1E000000,25) --type TENSIX_DATA_FORMAT  # Prints configuration register with index 60, mask 0xf, shift 0 in tensix data format
   reg dbg(0x54) --type INT_VALUE                      # Prints debug register with address 0x54 in integer format
@@ -59,6 +60,7 @@ from ttexalens.unpack_regfile import TensixDataFormat
 import re
 from fnmatch import fnmatch
 
+# Possible values
 reg_types = ["cfg", "dbg"]
 data_types = ["INT_VALUE", "ADDRESS", "MASK", "FLAGS", "TENSIX_DATA_FORMAT"]
 
@@ -73,6 +75,7 @@ def convert_str_to_int(param: str) -> int:
         raise ValueError(f"Invalid parameter {param}. Expected a hexadecimal or decimal integer.")
 
 
+# Convert register parameters to integers
 def convert_reg_params(reg_params: str) -> list[int]:
     params = []
     for param in reg_params.split(","):
@@ -81,6 +84,7 @@ def convert_reg_params(reg_params: str) -> list[int]:
     return params
 
 
+# Create register description object given parameters
 def create_register_description(reg_type: str, reg_params: list[int], data_type: str) -> TensixRegisterDescription:
     if reg_type == "cfg":
         if len(reg_params) != 3:
@@ -110,12 +114,14 @@ def parse_register_argument(register: str):
         return register
 
 
+# Print strings that match wildcard pattern. Maximum max_prints, negaitve values enable print all.
 def print_matches(pattern: str, strings: list[str], max_prints: int) -> None:
+    pattern = pattern.lower()
     for s in strings:
         if max_prints == 0:
             break
 
-        if fnmatch(s, pattern):
+        if fnmatch(s.lower(), pattern):
             print(s)
             max_prints -= 1
 
@@ -128,6 +134,7 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     register_pattern = dopt.args["<register_pattern>"] if dopt.args["--search"] else None
 
+    # Do this only if search is disabled
     if register_pattern == None:
         register_ref = parse_register_argument(dopt.args["<register>"])
 
@@ -144,6 +151,7 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     for device in dopt.for_each("--device", context, ui_state):
 
+        # Do this only if search is enabled
         if register_pattern != None:
             max_regs = dopt.args["--max"] if dopt.args["--max"] else 10
             try:
@@ -153,7 +161,7 @@ def run(cmd_text, context, ui_state: UIState = None):
 
             register_names = device._get_tensix_register_map_keys()
             INFO(f"Register names that match pattern for device {device.id()}")
-            print_matches(register_pattern.upper(), register_names, max_regs)
+            print_matches(register_pattern, register_names, max_regs)
 
             continue
 
@@ -169,13 +177,16 @@ def run(cmd_text, context, ui_state: UIState = None):
                         f"Referencing register by {register_ref} is invalid. Please use valid register name or <reg-type>(<reg-parameters>) format."
                     )
 
-                # Overwritting data type of register if user specified it
-                if dopt.args["--type"]:
-                    register.data_type = DATA_TYPE[data_type]
-
-            if value is not None:
+            if value != None:
                 debug_tensix.write_tensix_register(register, value)
                 INFO(f"Register {register} written with value {value_str}.")
             else:
                 value = debug_tensix.read_tensix_register(register)
-                print(convert_int_to_data_type(value, register.data_type, bin(register.mask).count("1")))
+
+                # Overwritting data type of register if user specified it
+                if dopt.args["--type"]:
+                    data_type = DATA_TYPE[data_type]
+                else:
+                    data_type = register.data_type
+
+                print(convert_int_to_data_type(value, data_type, bin(register.mask).count("1")))
