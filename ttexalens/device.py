@@ -464,7 +464,7 @@ class Device(TTObject):
         return []
 
     @abstractmethod
-    def _get_tensix_register_map_keys(self) -> list[str]:
+    def _get_tensix_register_map_keys(self) -> List[str]:
         pass
 
     @abstractmethod
