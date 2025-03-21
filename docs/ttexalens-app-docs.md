@@ -147,24 +147,45 @@ Halt brisc
 ```
 riscv halt
 ```
+Output:
+```
+Halting BRISC 0,0 [0]
+Halting TRISC0 0,0 [0]
+Halting TRISC1 0,0 [0]
+Halting TRISC2 0,0 [0]
+```
 Print status
 ```
 riscv status
 ```
 Output:
 ```
-  HALTED PC=0x00000c40 - BRISC 0,0 [0]
-  IN RESET - TRISC0 0,0 [0]
-  IN RESET - TRISC1 0,0 [0]
-  IN RESET - TRISC2 0,0 [0]
+  HALTED PC=0x00000c58 - BRISC 0,0 [0]
+  HALTED PC=0x00006000 - TRISC0 0,0 [0]
+  HALTED PC=0x0000a000 - TRISC1 0,0 [0]
+  HALTED PC=0x0000e000 - TRISC2 0,0 [0]
 ```
 Step
 ```
 riscv step
 ```
+Output:
+```
+Stepping BRISC 0,0 [0]
+Stepping TRISC0 0,0 [0]
+Stepping TRISC1 0,0 [0]
+Stepping TRISC2 0,0 [0]
+```
 Continue
 ```
 riscv cont
+```
+Output:
+```
+Continuing BRISC 0,0 [0]
+Continuing TRISC0 0,0 [0]
+Continuing TRISC1 0,0 [0]
+Continuing TRISC2 0,0 [0]
 ```
 Write a word to address 0
 ```
@@ -178,25 +199,71 @@ Write a word to register 1
 ```
 riscv wreg 1 0xabcd
 ```
+Output:
+```
+Writing to register 1 on BRISC 0,0 [0]
+Writing to register 1 on TRISC0 0,0 [0]
+Writing to register 1 on TRISC1 0,0 [0]
+Writing to register 1 on TRISC2 0,0 [0]
+```
 Read a word from register 1
 ```
 riscv rreg 1
+```
+Output:
+```
+Reading from register 1 on BRISC 0,0 [0]
+  0xffb1208c
+Reading from register 1 on TRISC0 0,0 [0]
+  0x00006000
+Reading from register 1 on TRISC1 0,0 [0]
+  0x0000a000
+Reading from register 1 on TRISC2 0,0 [0]
+  0x0000e000
 ```
 Set breakpoint
 ```
 riscv bkpt set 0 0x1244
 ```
+Output:
+```
+Setting breakpoint at address 0 for BRISC 0,0 [0]
+Setting breakpoint at address 0 for TRISC0 0,0 [0]
+Setting breakpoint at address 0 for TRISC1 0,0 [0]
+Setting breakpoint at address 0 for TRISC2 0,0 [0]
+```
 Delete breakpoint
 ```
 riscv bkpt del 0
+```
+Output:
+```
+Deleting breakpoint 0 for BRISC 0,0 [0]
+Deleting breakpoint 0 for TRISC0 0,0 [0]
+Deleting breakpoint 0 for TRISC1 0,0 [0]
+Deleting breakpoint 0 for TRISC2 0,0 [0]
 ```
 Set a read watchpoint
 ```
 riscv wchpt setr 0 0xc
 ```
+Output:
+```
+Setting read watchpoint at address 0 for BRISC 0,0 [0]
+Setting read watchpoint at address 0 for TRISC0 0,0 [0]
+Setting read watchpoint at address 0 for TRISC1 0,0 [0]
+Setting read watchpoint at address 0 for TRISC2 0,0 [0]
+```
 Set a write watchpoint
 ```
 riscv wchpt setw 0 0xc
+```
+Output:
+```
+Setting write watchpoint at address 0 for BRISC 0,0 [0]
+Setting write watchpoint at address 0 for TRISC0 0,0 [0]
+Setting write watchpoint at address 0 for TRISC1 0,0 [0]
+Setting write watchpoint at address 0 for TRISC2 0,0 [0]
 ```
 
 
@@ -476,9 +543,9 @@ Legend:
 
 ==== Device 0
     00    01    02    03    04    05    06    07
-00  R---  ----  ----  ----  ----  ----  ----  ----
-01  ----  ----  ----  ----  ----  ----  ----  ----
-02  ----  ----  ----  ----  ----  ----  ----  ----
+00  RRRR  ----  ----  ----  ----  ----  ----  ----
+01  ----  RRRR  ----  ----  ----  ----  ----  ----
+02  ----  ----  RRRR  ----  ----  ----  ----  ----
 03  ----  ----  ----  ----  ----  ----  ----  ----
 04  ----  ----  ----  ----  ----  ----  ----  ----
 05  ----  ----  ----  ----  ----  ----  ----  ----
@@ -509,9 +576,9 @@ Legend:
 ==== Device 0
     00    01    02    03    04    05    06    07    08    09
 00  dram  eth   eth   eth   eth   dram  eth   eth   eth   eth
-01  dram  R---  ----  ----  ----  dram  ----  ----  ----  ----
-02        ----  ----  ----  ----  dram  ----  ----  ----  ----
-03  pcie  ----  ----  ----  ----  dram  ----  ----  ----  ----
+01  dram  RRRR  ----  ----  ----  dram  ----  ----  ----  ----
+02        ----  RRRR  ----  ----  dram  ----  ----  ----  ----
+03  pcie  ----  ----  RRRR  ----  dram  ----  ----  ----  ----
 ...
 ```
 Shows noc0 coordinates on logical tensix axis for all devices
@@ -584,7 +651,7 @@ Legend:
     00    01    02    03    04    05    06    07    08    09
 00  dram  eth   eth   eth   eth   eth   eth   eth   eth   dram
 01  dram  ----  ----  ----  ----  ----  ----  ----  ----  dram
-02  dram  ----  R---  ----  ----  ----  ----  ----  ----  dram
+02  dram  ----  RRRR  ----  ----  ----  ----  ----  ----  dram
 03  arc   ----  ----  ----  ----  ----  ----  ----  ----  dram
 ...
 ```
@@ -670,25 +737,25 @@ gpr
 Output:
 ```
 RISC-V registers for location 0,0 on device 0
-Register     BRISC       TRISC0    TRISC1    TRISC2
------------  ----------  --------  --------  --------
-0 - zero     0x00000000
-1 - ra       0x00000b64
-2 - sp       0xffb00fe0
-3 - gp       0xffb00800
-4 - tp       0x00000000
-5 - t0       0x0000f640
-6 - t1       0xffb00440
-7 - t2       0xffb00440
-8 - s0 / fp  0xffb00ff0
-9 - s1       0x00000000
-10 - a0      0x00000001
-11 - a1      0xffb00ff0
-12 - a2      0x00000000
-13 - a3      0x00000000
-14 - a4      0xffb1208c
-15 - a5      0x00000001
-16 - a6      0x00000000
+Register     BRISC       TRISC0      TRISC1      TRISC2
+-----------  ----------  ----------  ----------  ----------
+0 - zero     0x00000000  0x00000000  0x00000000  0x00000000
+1 - ra       0x00000b64  0x00000000  0x00000000  0x00000000
+2 - sp       0xffb00fe0  0x00000000  0x00000000  0x00000000
+3 - gp       0xffb00800  0x00000000  0x00000000  0x00000000
+4 - tp       0x00000000  0x00000000  0x00000000  0x00000000
+5 - t0       0x0000f640  0x00000000  0x00000000  0x00000000
+6 - t1       0xffb00440  0x00000000  0x00000000  0x00000000
+7 - t2       0xffb00440  0x00000000  0x00000000  0x00000000
+8 - s0 / fp  0xffb00ff0  0x00000000  0x00000000  0x00000000
+9 - s1       0x00000000  0x00000000  0x00000000  0x00000000
+10 - a0      0x00000001  0x00000000  0x00000000  0x00000000
+11 - a1      0xffb00ff0  0x00000000  0x00000000  0x00000000
+12 - a2      0x00000000  0x00000000  0x00000000  0x00000000
+13 - a3      0x00000000  0x00000000  0x00000000  0x00000000
+14 - a4      0xffb1208c  0x00000000  0x00000000  0x00000000
+15 - a5      0xffb10e58  0x00000000  0x00000000  0x00000000
+16 - a6      0x00000000  0x00000000  0x00000000  0x00000000
 ...
 ```
 Command:
@@ -698,13 +765,13 @@ gpr ra,sp,pc
 Output:
 ```
 RISC-V registers for location 0,0 on device 0
-Register    BRISC       TRISC0    TRISC1    TRISC2
-----------  ----------  --------  --------  --------
-1 - ra      0x00000b64
-2 - sp      0xffb00fe0
-32 - pc     0x00000c40
-Soft reset  0           1         1         1
-Halted      False       -         -         -
+Register    BRISC       TRISC0      TRISC1      TRISC2
+----------  ----------  ----------  ----------  ----------
+1 - ra      0x00000b64  0x00000000  0x00000000  0x00000000
+2 - sp      0xffb00fe0  0x00000000  0x00000000  0x00000000
+32 - pc     0x00000c40  0x00006000  0x0000a000  0x0000e000
+Soft reset  0           0           0           0
+Halted      False       False       False       False
 ```
 
 
@@ -799,10 +866,10 @@ brxy 0,0 0x0 16
 Output:
 ```
 0,0 (L1) : 0x00000000 (64 bytes)
-0x00000000:  2010006f  115a5319  520db495  2abed9d7
-0x00000010:  b0d386d9  1efa78c7  d18084aa  c800a080
-0x00000020:  51128ef9  dc250037  c621ffc2  ed4574e9
-0x00000030:  112b0a0e  a3202000  373a7ee4  4b2df440
+0x00000000:  2010006f  deadbeef  deadbeef  deadbeef
+0x00000010:  deadbeef  deadbeef  deadbeef  deadbeef
+0x00000020:  deadbeef  deadbeef  deadbeef  deadbeef
+0x00000030:  deadbeef  deadbeef  deadbeef  deadbeef
 ```
 Prints 32 bytes in i8 format
 ```
@@ -811,14 +878,14 @@ brxy 0,0 0x0 32 --format i8
 Output:
 ```
 0,0 (L1) : 0x00000000 (128 bytes)
-0x00000000:  111  0    16   32   25   83   90   17   149  180  13   82   215  217  190  42
-0x00000010:  217  134  211  176  199  120  250  30   170  132  128  209  128  160  0    200
-0x00000020:  249  142  18   81   55   0    37   220  194  255  33   198  233  116  69   237
-0x00000030:  14   10   43   17   0    32   32   163  228  126  58   55   64   244  45   75
-0x00000040:  140  216  221  14   13   83   174  27   106  24   174  15   165  24   216  28
-0x00000050:  56   4    193  56   133  136  70   216  84   249  8    169  35   114  44   3
-0x00000060:  205  1    72   120  81   76   106  232  194  104  3    237  120  187  67   177
-0x00000070:  46   224  17   12   65   166  148  44   28   165  228  66   199  37   211  22
+0x00000000:  111  0    16   32   239  190  173  222  239  190  173  222  239  190  173  222
+0x00000010:  239  190  173  222  239  190  173  222  239  190  173  222  239  190  173  222
+0x00000020:  239  190  173  222  239  190  173  222  239  190  173  222  239  190  173  222
+0x00000030:  239  190  173  222  239  190  173  222  239  190  173  222  239  190  173  222
+0x00000040:  239  190  173  222  239  190  173  222  239  190  173  222  239  190  173  222
+0x00000050:  239  190  173  222  239  190  173  222  239  190  173  222  239  190  173  222
+0x00000060:  239  190  173  222  239  190  173  222  239  190  173  222  239  190  173  222
+0x00000070:  239  190  173  222  239  190  173  222  239  190  173  222  239  190  173  222
 ```
 Sample for 5 seconds
 ```
@@ -827,25 +894,25 @@ brxy 0,0 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000000 (0) => 0x2010006f (537919599) - 25157 times
+0,0 (L1) : 0x00000000 (0) => 0x2010006f (537919599) - 25241 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000004 (4) => 0x2010006f (537919599) - 25169 times
+0,0 (L1) : 0x00000004 (4) => 0x2010006f (537919599) - 25578 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000008 (8) => 0x2010006f (537919599) - 24647 times
+0,0 (L1) : 0x00000008 (8) => 0x2010006f (537919599) - 25574 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x0000000c (12) => 0x2010006f (537919599) - 25347 times
+0,0 (L1) : 0x0000000c (12) => 0x2010006f (537919599) - 25522 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000010 (16) => 0x2010006f (537919599) - 25175 times
+0,0 (L1) : 0x00000010 (16) => 0x2010006f (537919599) - 25587 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000014 (20) => 0x2010006f (537919599) - 24859 times
+0,0 (L1) : 0x00000014 (20) => 0x2010006f (537919599) - 25556 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000018 (24) => 0x2010006f (537919599) - 25183 times
+0,0 (L1) : 0x00000018 (24) => 0x2010006f (537919599) - 25365 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x0000001c (28) => 0x2010006f (537919599) - 25497 times
+0,0 (L1) : 0x0000001c (28) => 0x2010006f (537919599) - 25583 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000020 (32) => 0x2010006f (537919599) - 25584 times
+0,0 (L1) : 0x00000020 (32) => 0x2010006f (537919599) - 25639 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000024 (36) => 0x2010006f (537919599) - 25673 times
+0,0 (L1) : 0x00000024 (36) => 0x2010006f (537919599) - 25605 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -886,10 +953,36 @@ Commands for RISC-V debugging:
 -RDSel   - select 32bit data in 128bit register -> values [0-3]
 -SigSel  - select 128bit register
 -Mask    - 32bit number to show only significant bits (optional)
-Examples:
-debug-bus list-names                       # List predefined debug bus signals
-debug-bus trisc0_pc,trisc1_pc              # Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
-debug-bus [7,0,12,0x3ffffff],trisc2_pc     # Prints custom debug bus signal and trisc2_pc
+
+
+### Examples
+
+List predefined debug bus signals
+```
+debug-bus list-names
+```
+Output:
+```
+['brisc_pc', 'trisc0_pc', 'trisc1_pc', 'trisc2_pc', 'ncrisc_pc']
+```
+Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
+```
+debug-bus trisc0_pc,trisc1_pc
+```
+Output:
+```
+device:0 loc:0,0  trisc0_pc: 0x6000
+device:0 loc:0,0  trisc1_pc: 0xa000
+```
+Prints custom debug bus signal and trisc2_pc
+```
+debug-bus [7,0,12,0x3ffffff],trisc2_pc
+```
+Output:
+```
+device:0 loc:0,0  Debug Bus Config(Diasy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff) = 0x6000
+device:0 loc:0,0  trisc2_pc: 0xe000
+```
 
 
 ### Common options
@@ -932,7 +1025,7 @@ callstack build/riscv-src/wormhole/sample.brisc.elf -r 0
 Output:
 ```
 Location: 1-1 (0,0), core: BRISC
-  #0 0x00000C40 in main () at /localdev/vjovanovic/tt-exalens/ttexalens/riscv-src/sample.cc 46:22
+  #0 0x00000C4C in main () at /localdev/vjovanovic/tt-exalens/ttexalens/riscv-src/sample.cc 46:22
 ```
 
 
