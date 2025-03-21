@@ -385,6 +385,12 @@ def main_loop(args, context):
             if have_non_interactive_commands or type(e) == util.TTFatalException:
                 # In non-interactive mode and on fatal excepions, we re-raise to exit the program
                 raise
+        except DocoptExit as e:
+            if args["--test"]:  # Always raise in test mode
+                util.ERROR("CLI option --test is set. Raising exception to exit.")
+                raise
+            else:
+                print(e.usage)
 
 
 def main():
