@@ -18,6 +18,7 @@ Options:
 
 Examples:
   wxy 0,0 0x0 0x1234
+  wxy 0,0 0x0 0x1234 --repeat 10
 """
 
 command_metadata = {
@@ -30,6 +31,7 @@ command_metadata = {
 from docopt import docopt
 
 from ttexalens.uistate import UIState
+import ttexalens.util as util
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import write_words_to_device
@@ -48,6 +50,9 @@ def run(cmd_text, context, ui_state: UIState = None):
     addr = int(args["<addr>"], 0)
     data = int(args["<data>"], 0)
     repeat = int(args["--repeat"]) if args["--repeat"] else 1
+    if repeat <= 0:
+        util.WARN("Repeat count must be a positive integer, defaulting to 1")
+        repeat = 1
 
     current_device_id = ui_state.current_device_id
     current_device = context.devices[current_device_id]
