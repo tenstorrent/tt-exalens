@@ -69,7 +69,7 @@ class BlackholeDevice(Device):
         )
         self.instructions = BlackholeInstructions()
 
-    def _get_tensix_register_map_keys(self) -> list[str]:
+    def _get_tensix_register_map_keys(self) -> List[str]:
         return list(BlackholeDevice.__register_map.keys())
 
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:

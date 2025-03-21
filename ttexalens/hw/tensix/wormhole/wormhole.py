@@ -77,7 +77,7 @@ class WormholeDevice(Device):
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         return x >= 16 and y >= 16
 
-    def _get_tensix_register_map_keys(self) -> list[str]:
+    def _get_tensix_register_map_keys(self) -> List[str]:
         return list(WormholeDevice.__register_map.keys())
 
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
