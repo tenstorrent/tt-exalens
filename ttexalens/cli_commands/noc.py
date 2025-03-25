@@ -17,11 +17,9 @@ Options:
 Description:
     Displays NOC (Network on Chip) registers.
         • "noc status" prints status registers for transaction counters.
-        • "noc dump" displays registers for both NOCs (0 and 1).
 
 Examples:
     noc status -d 0 -l 0,0                      # Prints status registers for device 0 on 0,0
-    noc dump                                    # Shows all NOC registers for device 0 on current core
     noc status -s                               # Prints status registers with simple output
 """
 
@@ -202,7 +200,5 @@ def run(cmd_text: str, context: Dict, ui_state: Optional[UIState] = None) -> Lis
             if dopt.args["status"]:
                 for noc_id in noc_ids:
                     display_noc_registers(loc, device, noc_id, simple_print)
-            elif dopt.args["dump"]:
-                display_all_noc_registers(loc, device, simple_print)
 
     return []
