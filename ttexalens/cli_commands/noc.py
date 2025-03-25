@@ -46,9 +46,6 @@ command_metadata = {
     "common_option_names": ["--device", "--loc"],
 }
 
-# NOC register offset between NOC0 and NOC1
-NOC_REGISTER_OFFSET = 0x10000
-
 ###############################################################################
 # Reading registers
 ###############################################################################
@@ -66,7 +63,8 @@ def read_noc_register(loc: OnChipCoordinate, device, noc_id: int, reg_name: str)
         Register value as integer
     """
     try:
-        reg_addr = device.get_tensix_register_address(reg_name) + (noc_id * NOC_REGISTER_OFFSET)
+        # Use device's method to get NOC register address
+        reg_addr = device.get_noc_register_address(reg_name, noc_id)
         val = read_words_from_device(loc, reg_addr, device.id())[0]
         return val
     except Exception as e:
