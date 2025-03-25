@@ -464,6 +464,10 @@ class Device(TTObject):
         return []
 
     @abstractmethod
+    def _get_tensix_register_map_keys(self) -> List[str]:
+        pass
+
+    @abstractmethod
     def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:
         pass
 
