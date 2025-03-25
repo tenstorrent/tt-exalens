@@ -300,7 +300,7 @@ def parse_source_file(input_file: os.PathLike, parser: CmdParser = CmdParser()) 
 def parse_directory(root: os.PathLike, parser: CmdParser = CmdParser(), interactive: bool = False) -> str:
 
     result = []
-    for file in os.listdir(root):
+    for file in sorted(os.listdir(root)):
         if file.endswith(".py") and not file.startswith("__"):
 
             if interactive:
