@@ -47,8 +47,8 @@ Output:
 0,0 (L1) : 0x00000000 (64 bytes)
 0x00000000:  2010006f  00001234  00001234  00001234
 0x00000010:  00001234  00001234  00001234  00001234
-0x00000020:  00001234  00001234  be6f0270  84a55850
-0x00000030:  8f9c3df1  4063874a  4744194e  2bc0f044
+0x00000020:  00001234  00001234  11e10076  06294070
+0x00000030:  e38381ac  66100780  738926a0  490a9608
 ```
 Prints 32 bytes in i8 format
 ```
@@ -57,14 +57,14 @@ brxy 0,0 0x0 32 --format i8
 Output:
 ```
 0,0 (L1) : 0x00000000 (128 bytes)
-0x00000000:  111  0    16   32   52  18   0   0   52   18   0    0    52   18   0    0
-0x00000010:  52   18   0    0    52  18   0   0   52   18   0    0    52   18   0    0
-0x00000020:  52   18   0    0    52  18   0   0   112  2    111  190  80   88   165  132
-0x00000030:  241  61   156  143  74  135  99  64  78   25   68   71   68   240  192  43
-0x00000040:  0    0    0    0    0   0    0   0   0    32   0    32   0    8    0    0
-0x00000050:  176  65   0    148  18  0    0   0   12   9    183  144  212  156  148  149
-0x00000060:  0    4    0    0    0   0    0   4   0    0    58   32   0    0    0    128
-0x00000070:  159  172  194  147  38  57   90  51  244  161  26   10   30   13   64   0
+0x00000000:  111  0    16   32   52   18   0    0    52   18   0    0    52   18   0    0
+0x00000010:  52   18   0    0    52   18   0    0    52   18   0    0    52   18   0    0
+0x00000020:  52   18   0    0    52   18   0    0    118  0    225  17   112  64   41   6
+0x00000030:  172  129  131  227  128  7    16   102  160  38   137  115  8    150  10   73
+0x00000040:  85   32   208  60   80   64   132  132  0    161  131  233  9    6    128  75
+0x00000050:  140  201  11   3    18   0    0    0    40   70   91   134  179  223  66   133
+0x00000060:  194  28   2    124  138  26   137  225  243  22   83   193  206  7    203  204
+0x00000070:  218  0    9    192  1    245  84   72   15   75   213  23   181  171  192  136
 ```
 Sample for 5 seconds
 ```
@@ -73,25 +73,25 @@ brxy 0,0 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000000 (0) => 0x2010006f (537919599) - 14492 times
+0,0 (L1) : 0x00000000 (0) => 0x2010006f (537919599) - 14394 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000004 (4) => 0x2010006f (537919599) - 14579 times
+0,0 (L1) : 0x00000004 (4) => 0x2010006f (537919599) - 14639 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000008 (8) => 0x2010006f (537919599) - 14385 times
+0,0 (L1) : 0x00000008 (8) => 0x2010006f (537919599) - 14660 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x0000000c (12) => 0x2010006f (537919599) - 14586 times
+0,0 (L1) : 0x0000000c (12) => 0x2010006f (537919599) - 14488 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000010 (16) => 0x2010006f (537919599) - 14629 times
+0,0 (L1) : 0x00000010 (16) => 0x2010006f (537919599) - 14553 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000014 (20) => 0x2010006f (537919599) - 14525 times
+0,0 (L1) : 0x00000014 (20) => 0x2010006f (537919599) - 14538 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000018 (24) => 0x2010006f (537919599) - 14536 times
+0,0 (L1) : 0x00000018 (24) => 0x2010006f (537919599) - 14589 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x0000001c (28) => 0x2010006f (537919599) - 14443 times
+0,0 (L1) : 0x0000001c (28) => 0x2010006f (537919599) - 14722 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000020 (32) => 0x2010006f (537919599) - 14127 times
+0,0 (L1) : 0x00000020 (32) => 0x2010006f (537919599) - 14642 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000024 (36) => 0x2010006f (537919599) - 14490 times
+0,0 (L1) : 0x00000024 (36) => 0x2010006f (537919599) - 14501 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -101,10 +101,10 @@ brxy ch0 0x0 16
 Output:
 ```
 ch0 (DRAM) : 0x00000000 (64 bytes)
-0x00000000:  55555555  55555555  55555555  55555555
+0x00000000:  545000bf  55555555  55555555  55555555
 0x00000010:  55555555  55555555  55555555  55555555
-0x00000020:  55555555  55555555  55555555  55555555
-0x00000030:  55555555  55555555  55555555  55555555
+0x00000020:  fff5fd65  ff557f75  77773d55  9efff555
+0x00000030:  5566be55  f595ff55  bf77feff  ff9575f5
 ```
 
 
@@ -141,7 +141,7 @@ callstack build/riscv-src/wormhole/sample.brisc.elf -r 0
 Output:
 ```
 Location: 1-1 (0,0), core: BRISC
-  #0 0x00000C50 in main () at /localdev/vjovanovic/tt-exalens/ttexalens/riscv-src/sample.cc 46:22
+  #0 0x00000C54 in main () at /localdev/macimovic/work/tt-exalens/ttexalens/riscv-src/sample.cc 46:22
 ```
 
 
@@ -194,8 +194,8 @@ debug-bus trisc0_pc,trisc1_pc
 ```
 Output:
 ```
-device:0 loc:0,0  trisc0_pc: 0x337f5654
-device:0 loc:0,0  trisc1_pc: 0x6440bd75
+device:0 loc:0,0  trisc0_pc: 0xb08c6a1
+device:0 loc:0,0  trisc1_pc: 0x5e7534b0
 ```
 Prints custom debug bus signal and trisc2_pc
 ```
@@ -203,8 +203,8 @@ debug-bus [7,0,12,0x3ffffff],trisc2_pc
 ```
 Output:
 ```
-device:0 loc:0,0  Debug Bus Config(Diasy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff) = 0x37f5654
-device:0 loc:0,0  trisc2_pc: 0x14eb043f
+device:0 loc:0,0  Debug Bus Config(Diasy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff) = 0x308c6a1
+device:0 loc:0,0  trisc2_pc: 0x4bcbca3f
 ```
 
 
@@ -314,16 +314,16 @@ Legend:
 ==== Device 0
     00    01    02    03    04    05    06    07
 00  1-1   2-1   3-1   4-1   6-1   7-1   8-1   9-1
-01  1-2   2-2   3-2   4-2   6-2   7-2   8-2   9-2
-02  1-3   2-3   3-3   4-3   6-3   7-3   8-3   9-3
-03  1-4   2-4   3-4   4-4   6-4   7-4   8-4   9-4
+01  1-3   2-3   3-3   4-3   6-3   7-3   8-3   9-3
+02  1-4   2-4   3-4   4-4   6-4   7-4   8-4   9-4
+03  1-5   2-5   3-5   4-5   6-5   7-5   8-5   9-5
 04  1-7   2-7   3-7   4-7   6-7   7-7   8-7   9-7
 05  1-8   2-8   3-8   4-8   6-8   7-8   8-8   9-8
 06  1-9   2-9   3-9   4-9   6-9   7-9   8-9   9-9
 07  1-10  2-10  3-10  4-10  6-10  7-10  8-10  9-10
 ==== Device 1
-    00   01   02   03   04   05   06   07
-00  1-1  2-1  3-1  4-1  6-1  7-1  8-1  9-1
+    00    01    02    03    04    05    06    07
+00  1-1   2-1   3-1   4-1   6-1   7-1   8-1   9-1
 ...
 ```
 Shows the block type in noc0 axis for all devices without legend
@@ -336,10 +336,10 @@ Output:
     00    01                  02                  03                  04                  05    06                  07            ...
 00  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
 01  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-02        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+02        harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvested_work...
 03  pcie  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
 04        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-05  dram  harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvested_work...
+05  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
 06  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
 07  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
 08        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
@@ -351,7 +351,7 @@ Output:
 00  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
 01  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
 02        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-03  pcie  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+03  pcie  harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvested_work...
 ...
 ```
 Shows the status of the RISC-V on die axis for device 0
@@ -411,10 +411,10 @@ Output:
     00    01                  02                  03                  04                  05    06                  07            ...
 00  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
 01  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-02        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
+02        harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvested_work...
 03  pcie  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
 04        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-05  dram  harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvested_work...
+05  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
 06  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
 07  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
 08        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
@@ -720,7 +720,7 @@ Register    BRISC       TRISC0    TRISC1    TRISC2
 ----------  ----------  --------  --------  --------
 1 - ra      0x00000b64
 2 - sp      0xffb00fe0
-32 - pc     0x00000c4c
+32 - pc     0x00000c48
 Soft reset  0           1         1         1
 Halted      False       -         -         -
 ```
@@ -801,6 +801,104 @@ go -d 0 -l 0,0
 
 
 
+## noc / nc
+
+### Usage
+
+```
+noc status [-d <device>] [--noc <noc-id>] [-l <loc>] [-s]
+noc dump [-d <device>] [-l <loc>] [-s]
+```
+
+
+### Description
+
+Displays NOC (Network on Chip) registers.
+• "noc status" prints status registers for transaction counters.
+
+
+### Arguments
+
+- `device-id`: ID of the device [default: current active]
+- `noc-id`: Identifier for the NOC (e.g. 0, 1) [default: both noc0 and noc1]
+- `loc`: Location identifier (e.g. 0-0) [default: current active]
+
+
+### Options
+
+- `-s,` = **--simple**: Print simple output
+
+
+### Examples
+
+Prints status registers for device 0 on 0,0
+```
+noc status -d 0 -l 0,0
+```
+Output:
+```
+==== Device 0 - Location: 1-1
+NOC0 Registers
+          Transaction Counters (Sent)                       Transaction Counters (Received)
+╭────────────────────────────┬────────────────╮ ╭────────────────────────────────┬─────────────────────╮
+│ Description                │ Value          │ │ Description                    │ Value               │
+├────────────────────────────┼────────────────┤ ├────────────────────────────────┼─────────────────────┤
+│ nonposted write reqs sent  │ 0x00000000 (0) │ │ nonposted write reqs received  │ 0x00000a69 (2665)   │
+│ posted write reqs sent     │ 0x00000000 (0) │ │ posted write reqs received     │ 0x00000000 (0)      │
+│ nonposted write words sent │ 0x00000000 (0) │ │ nonposted write words received │ 0x00000a9f (2719)   │
+│ posted write words sent    │ 0x00000000 (0) │ │ posted write words received    │ 0x00000000 (0)      │
+│ write acks received        │ 0x00000000 (0) │ │ write acks sent                │ 0x00000a69 (2665)   │
+│ read reqs sent             │ 0x00000000 (0) │ │ read reqs received             │ 0x000e53b0 (938928) │
+│ read words received        │ 0x00000000 (0) │ │ read words sent                │ 0x000e53b0 (938928) │
+│ read resps received        │ 0x00000000 (0) │ │ read resps sent                │ 0x000e53b1 (938929) │
+╰────────────────────────────┴────────────────╯ ╰────────────────────────────────┴─────────────────────╯
+
+NOC1 Registers
+          Transaction Counters (Sent)                     Transaction Counters (Received)
+╭────────────────────────────┬────────────────╮ ╭────────────────────────────────┬─────────────────╮
+│ Description                │ Value          │ │ Description                    │ Value           │
+...
+```
+Prints status registers with simple output
+```
+noc status -s
+```
+Output:
+```
+==== Device 0 - Location: 1-1
+NOC0 Registers
+          Transaction Counters (Sent)
+
+  nonposted write reqs sent    0x00000000 (0)
+  posted write reqs sent       0x00000000 (0)
+  nonposted write words sent   0x00000000 (0)
+  posted write words sent      0x00000000 (0)
+  write acks received          0x00000000 (0)
+  read reqs sent               0x00000000 (0)
+  read words received          0x00000000 (0)
+  read resps received          0x00000000 (0)
+
+
+            Transaction Counters (Received)
+
+  nonposted write reqs received    0x00000a69 (2665)
+  posted write reqs received       0x00000000 (0)
+  nonposted write words received   0x00000a9f (2719)
+  posted write words received      0x00000000 (0)
+...
+```
+
+
+### Common options
+
+- `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
+- `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
+
+
+
+
+
+
 ## rv
 
 ### Usage
@@ -850,7 +948,7 @@ riscv status
 ```
 Output:
 ```
-  HALTED PC=0x00000c58 - BRISC 0,0 [0]
+  HALTED PC=0x00000c4c - BRISC 0,0 [0]
   IN RESET - TRISC0 0,0 [0]
   IN RESET - TRISC1 0,0 [0]
   IN RESET - TRISC2 0,0 [0]
