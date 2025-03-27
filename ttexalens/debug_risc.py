@@ -587,10 +587,8 @@ class RiscLoader:
                         yield brisc_debug
                 finally:
                     # Return BRISC in reset
-                    self.risc_debug.set_reset_signal(1)
-                    assert (
-                        self.risc_debug.is_in_reset()
-                    ), f"RISC at location {self.risc_debug.location} is not in reset."
+                    brisc_debug.set_reset_signal(1)
+                    assert brisc_debug.is_in_reset(), f"RISC at location {brisc_debug.location} is not in reset."
 
     def set_branch_prediction(self, value: bool):
         """
