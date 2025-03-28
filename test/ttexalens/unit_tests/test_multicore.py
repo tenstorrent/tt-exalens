@@ -6,6 +6,7 @@ import time
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 
+
 class TestMulticore(unittest.TestCase):
     """Test class for multi-core scenarios."""
 
@@ -60,23 +61,23 @@ class TestMulticore(unittest.TestCase):
 
         # Write BRISC program (Reader)
         brisc_program = [
-            0xffec12b7,  # lui t0, 0xffec1 - Load upper immediate: t0 = 0xFFEC1000 (mailbox read address)
-            0x00000e37,  # lui t3, 0x0    - Load upper immediate: t3 = 0 (initialize counter)
-            0x001e0e13,  # addi t3, t3, 1 - Add immediate: t3 += 1 (increment counter)
-            0x0002a303,  # lw t1, 0(t0)   - Load word: t1 = MEM[t0 + 0] (read from mailbox)
-            self.brisc.loader.get_jump_to_offset_instruction(-8)  # Jump back 8 bytes (2 instructions) to addi
+            0xFFEC12B7,  # lui t0, 0xffec1 - Load upper immediate: t0 = 0xFFEC1000 (mailbox read address)
+            0x00000E37,  # lui t3, 0x0    - Load upper immediate: t3 = 0 (initialize counter)
+            0x001E0E13,  # addi t3, t3, 1 - Add immediate: t3 += 1 (increment counter)
+            0x0002A303,  # lw t1, 0(t0)   - Load word: t1 = MEM[t0 + 0] (read from mailbox)
+            self.brisc.loader.get_jump_to_offset_instruction(-8),  # Jump back 8 bytes (2 instructions) to addi
         ]
         self._write_program_sequence(self.brisc, brisc_program)
 
         # Write TRISC0 program (Writer)
         trisc0_program = [
-            0xffec02b7,  # lui t0, 0xffec0 - Load upper immediate: t0 = 0xFFEC0000 (mailbox write address)
-            0x00000e37,  # lui t3, 0x0     - Load upper immediate: t3 = 0 (initialize counter)
-            0x001e0e13,  # addi t3, t3, 1  - Add immediate: t3 += 1 (increment counter)
-            0x014e1313,  # slli t1, t3, 20 - Shift left logical immediate: t1 = t3 << 20 (delay write frequency)
-            0xfe031ce3,  # bne t1, x0, -8  - Branch if not equal: if(t1 != 0) goto t0_loop (branch to addi)
-            0x01c2a023,  # sw t3, 0(t0)    - Store word: MEM[t0 + 0] = t3 (write counter to mailbox)
-            0xff1ff06f,  # jal x0, -16     - Jump and link: jump back to addi (loop)
+            0xFFEC02B7,  # lui t0, 0xffec0 - Load upper immediate: t0 = 0xFFEC0000 (mailbox write address)
+            0x00000E37,  # lui t3, 0x0     - Load upper immediate: t3 = 0 (initialize counter)
+            0x001E0E13,  # addi t3, t3, 1  - Add immediate: t3 += 1 (increment counter)
+            0x014E1313,  # slli t1, t3, 20 - Shift left logical immediate: t1 = t3 << 20 (delay write frequency)
+            0xFE031CE3,  # bne t1, x0, -8  - Branch if not equal: if(t1 != 0) goto t0_loop (branch to addi)
+            0x01C2A023,  # sw t3, 0(t0)    - Store word: MEM[t0 + 0] = t3 (write counter to mailbox)
+            0xFF1FF06F,  # jal x0, -16     - Jump and link: jump back to addi (loop)
         ]
         self._write_program_sequence(self.trisc0, trisc0_program)
 
@@ -94,5 +95,6 @@ class TestMulticore(unittest.TestCase):
             print(f"\nExpected exception occurred: {e}")
             self._verify_core_states()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

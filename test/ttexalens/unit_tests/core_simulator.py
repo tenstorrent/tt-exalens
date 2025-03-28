@@ -7,6 +7,7 @@ from ttexalens.context import Context
 from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index, get_risc_id
 import time
 
+
 class RiscvCoreSimulator:
     """Class to simulate and control a RISC-V core for testing purposes."""
 
@@ -141,13 +142,13 @@ class RiscvCoreSimulator:
 
     def read_gpr(self, reg_num: int) -> int:
         """Read general purpose register value.
-        
+
         Args:
             reg_num: Register number (0-31)
-            
+
         Returns:
             int: Register value
-            
+
         Raises:
             ValueError: If register number is invalid
         """
@@ -157,10 +158,10 @@ class RiscvCoreSimulator:
 
     def get_reg_num(self, reg_name: str) -> int:
         """Get register number from name.
-        
+
         Args:
             reg_name: Register name (e.g. "zero", "ra", "sp", "t0", etc.)
-            
+
         Returns:
             int: Register number
         """
