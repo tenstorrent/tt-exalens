@@ -77,7 +77,7 @@ class TestMulticore(unittest.TestCase):
             0x014E1313,  # slli t1, t3, 20 - Shift left logical immediate: t1 = t3 << 20 (delay write frequency)
             0xFE031CE3,  # bne t1, x0, -8  - Branch if not equal: if(t1 != 0) goto t0_loop (branch to addi)
             0x01C2A023,  # sw t3, 0(t0)    - Store word: MEM[t0 + 0] = t3 (write counter to mailbox)
-            0xFF1FF06F,  # jal x0, -16     - Jump and link: jump back to addi (loop)
+            self.brisc.loader.get_jump_to_offset_instruction(-16),  # Jump and link: jump back to addi (loop)
         ]
         self._write_program_sequence(self.trisc0, trisc0_program)
 
