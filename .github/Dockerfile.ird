@@ -35,6 +35,7 @@ RUN cd $TT_EXALENS_INFRA_DIR \
     && cd / \
     && rm -rf $TT_EXALENS_INFRA_DIR
 
-# Install tt-smi
+# Install tt-smi, tt-flash
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && pip install git+https://github.com/tenstorrent/tt-smi.git
+    && pip install git+https://github.com/tenstorrent/tt-smi.git \
+    && pip install git+https://github.com/tenstorrent/tt-flash.git
