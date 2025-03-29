@@ -7,6 +7,7 @@ SHELL ["/bin/bash", "-c"]
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TT_EXALENS_INFRA_DIR=/opt/tt_exalens_infra
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Create directories for infra
 RUN mkdir -p ${TT_EXALENS_INFRA_DIR}
@@ -19,7 +20,10 @@ RUN apt-get update && apt-get install -y \
     libmpfr-dev \
     rsync \
     ssh \
-    vim
+    vim \
+    nano \
+    pico \
+    htop
 
 # Install compatible gdb debugger for clang-17
 RUN cd $TT_EXALENS_INFRA_DIR \
@@ -31,3 +35,12 @@ RUN cd $TT_EXALENS_INFRA_DIR \
     && make install \
     && cd / \
     && rm -rf $TT_EXALENS_INFRA_DIR
+
+# Increase inotify watches limit for VSCode file watcher
+RUN echo "# Needed for VSCode file watcher" >> /etc/sysctl.conf \
+    && echo "fs.inotify.max_user_watches=524288" >> /etc/sysctl.conf \
+    && sysctl -p
+
+# Install tt-smi
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh \
+    && pip install git+https://github.com/tenstorrent/tt-smi.git
