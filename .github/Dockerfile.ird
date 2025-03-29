@@ -36,5 +36,5 @@ RUN cd $TT_EXALENS_INFRA_DIR \
     && rm -rf $TT_EXALENS_INFRA_DIR
 
 # Install tt-smi
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh \
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
     && pip install git+https://github.com/tenstorrent/tt-smi.git
