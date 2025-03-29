@@ -35,11 +35,6 @@ RUN cd $TT_EXALENS_INFRA_DIR \
     && cd / \
     && rm -rf $TT_EXALENS_INFRA_DIR
 
-# Increase inotify watches limit for VSCode file watcher
-RUN echo "# Needed for VSCode file watcher" >> /etc/sysctl.conf \
-    && echo "fs.inotify.max_user_watches=524288" >> /etc/sysctl.conf \
-    && sysctl -p
-
 # Install tt-smi
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh \
     && pip install git+https://github.com/tenstorrent/tt-smi.git
