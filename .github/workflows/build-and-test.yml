@@ -84,6 +84,13 @@ jobs:
           name: ttexalens-build
           path: build
 
+      - name: Debug list
+        shell: bash
+        run: |
+          ls -la
+          ls -la build
+          ls -la build/build
+
       - name: Set reusable strings
         id: strings
         shell: bash
