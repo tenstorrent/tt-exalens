@@ -81,7 +81,7 @@ jobs:
           submodules: recursive
           lfs: true
 
-      - uses: actions/download-artifact@v4
+      - uses: pyTooling/download-artifact@v4
         with:
           name: ttexalens-build
           path: build
@@ -105,13 +105,6 @@ jobs:
           echo "Current job id: $JOB_ID"
           echo "job-id=$JOB_ID" >> "$GITHUB_OUTPUT"
           echo "test_report_path=report_$JOB_ID.xml" >> "$GITHUB_OUTPUT"
-
-      - name: Update permissions for downloaded binaries
-        shell: bash
-        run: |
-          chmod +x build/bin/ttexalens-server-standalone
-          chmod +x build/bin/ttexalens_server_unit_tests
-          ls -la build/lib # Debug reomve
 
       - name: Run C++ tests
         run: |
@@ -169,14 +162,10 @@ jobs:
         with:
           submodules: recursive
           lfs: true
-      - uses: actions/download-artifact@v4
+      - uses: pyTooling/download-artifact@v4
         with:
           name: ttexalens-build
           path: build
-      - name: Update permissions for downloaded binaries
-        run: |
-          chmod +x build/bin/ttexalens-server-standalone
-          chmod +x build/bin/ttexalens_server_unit_tests
       - name: Install wheel
         run: |
           pip install build/ttexalens_wheel/*.whl
