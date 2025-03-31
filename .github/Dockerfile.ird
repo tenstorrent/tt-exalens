@@ -7,6 +7,7 @@ SHELL ["/bin/bash", "-c"]
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TT_EXALENS_INFRA_DIR=/opt/tt_exalens_infra
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Create directories for infra
 RUN mkdir -p ${TT_EXALENS_INFRA_DIR}
@@ -15,11 +16,14 @@ RUN mkdir -p ${TT_EXALENS_INFRA_DIR}
 RUN apt-get update && apt-get install -y \
 	docker \
     gh \
+    git-lfs \
     libgmp-dev \
     libmpfr-dev \
     rsync \
     ssh \
-    vim
+    vim \
+    nano \
+    htop
 
 # Install compatible gdb debugger for clang-17
 RUN cd $TT_EXALENS_INFRA_DIR \
@@ -31,3 +35,8 @@ RUN cd $TT_EXALENS_INFRA_DIR \
     && make install \
     && cd / \
     && rm -rf $TT_EXALENS_INFRA_DIR
+
+# Install tt-smi, tt-flash
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    && pip install git+https://github.com/tenstorrent/tt-smi.git \
+    && pip install git+https://github.com/tenstorrent/tt-flash.git

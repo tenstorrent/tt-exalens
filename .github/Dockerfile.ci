@@ -12,7 +12,6 @@ RUN apt-get update && apt-get install -y \
 	software-properties-common \
 	build-essential \
     git \
-    git-lfs \
 	libyaml-cpp-dev \
 	libhwloc-dev \
 	libzmq3-dev \
