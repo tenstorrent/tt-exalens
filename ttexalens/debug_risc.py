@@ -365,6 +365,18 @@ class RiscDebug:
         ), f"Failed to continue {get_risc_name(self.location.risc_id)} core at {self.location.loc}"
 
     def continue_without_debug(self):
+        """
+        Continues RISC-V core execution without debugging functionality.
+        This method triggers core execution to continue by writing COMMAND_CONTINUE to the command register.
+        Note: This function might trigger core lockup - use cont() method instead.
+        Returns:
+            None
+        Warns:
+            If the core is already running when method is called
+        Side Effects:
+            - Writes to RISC-V command register
+            - May log debug information if verbose mode is enabled
+        """
         if not self.is_halted():
             util.WARN(f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is alredy running")
             return
@@ -587,10 +599,8 @@ class RiscLoader:
                         yield brisc_debug
                 finally:
                     # Return BRISC in reset
-                    self.risc_debug.set_reset_signal(1)
-                    assert (
-                        self.risc_debug.is_in_reset()
-                    ), f"RISC at location {self.risc_debug.location} is not in reset."
+                    brisc_debug.set_reset_signal(1)
+                    assert brisc_debug.is_in_reset(), f"RISC at location {brisc_debug.location} is not in reset."
 
     def set_branch_prediction(self, value: bool):
         """
