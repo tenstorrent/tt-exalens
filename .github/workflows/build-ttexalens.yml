@@ -33,7 +33,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          lfs: true
       - name: Git safe dir
         run: git config --global --add safe.directory $(pwd)
       - name: ccache
@@ -48,7 +47,7 @@ jobs:
         run: |
           make wheel
       - name: Upload libraries as artifacts
-        uses: actions/upload-artifact@v4
+        uses: pyTooling/upload-artifact@v4
         with:
           name: ttexalens-build
           path: build

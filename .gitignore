@@ -9,7 +9,6 @@ core
 
 .cpmcache
 /build
-/sfpi
 
 __pycache__
 .venv
