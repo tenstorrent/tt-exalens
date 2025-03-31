@@ -8,21 +8,8 @@ if(NOT TTEXALENS_HOME)
     set(TTEXALENS_HOME "${CMAKE_CURRENT_LIST_DIR}/../..")
 endif()
 
-message(STATUS "Downloading sfpi release")
-
-include(FetchContent)
-FetchContent_Declare(
-    sfpi
-    URL
-        https://github.com/tenstorrent/sfpi/releases/download/v5.0.0/sfpi-release.tgz
-    URL_HASH MD5=10cacabe92846076cb4d7596e46d06be
-    SOURCE_DIR
-    ${TTEXALENS_HOME}/sfpi
-)
-FetchContent_MakeAvailable(sfpi)
-
 # Set toolchain and tools
-set(TOOL_PATH "${TTEXALENS_HOME}/sfpi/compiler/bin")
+set(TOOL_PATH "${SFPI_RELEASE_PATH}/compiler/bin")
 set(GXX "${TOOL_PATH}/riscv32-unknown-elf-g++")
 set(OBJDUMP "${TOOL_PATH}/riscv32-unknown-elf-objdump")
 set(OBJCOPY "${TOOL_PATH}/riscv32-unknown-elf-objcopy")
@@ -34,7 +21,7 @@ set(OPTIMIZED_OPTIONS_COMPILE -fno-use-cxa-atexit -Wall -fno-exceptions -fno-rtt
 set(OPTIMIZED_OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
 # Compiler options
-set(OPTIONS_ALL -O0 -march=rv32imw -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math)
+set(OPTIONS_ALL -O0 -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math)
 set(OPTIONS_COMPILE -fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable)
 set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
