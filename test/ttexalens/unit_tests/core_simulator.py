@@ -69,8 +69,7 @@ class RiscvCoreSimulator:
 
     def read_data(self, addr: int) -> int:
         """Read data from memory at specified address."""
-        ret = lib.read_words_from_device(self.core_loc, addr, context=self.context)
-        return ret[0]
+        return lib.read_word_from_device(self.core_loc, addr, context=self.context)
 
     def set_reset(self, reset: bool):
         """Set or clear reset signal."""
@@ -144,7 +143,7 @@ class RiscvCoreSimulator:
         """Read general purpose register value.
 
         Args:
-            reg_num: Register number (0-31)
+            reg_num: Register number (0-32)
 
         Returns:
             int: Register value
@@ -152,8 +151,8 @@ class RiscvCoreSimulator:
         Raises:
             ValueError: If register number is invalid
         """
-        if not 0 <= reg_num <= 31:
-            raise ValueError(f"Invalid register number {reg_num}. Must be between 0 and 31.")
+        if not 0 <= reg_num <= 32:
+            raise ValueError(f"Invalid register number {reg_num}. Must be between 0 and 32.")
         return self.rdbg.read_gpr(reg_num)
 
     def get_reg_num(self, reg_name: str) -> int:
