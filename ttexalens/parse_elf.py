@@ -96,20 +96,15 @@ class MY_DWARF:
             cu = MY_CU(self, dwarf_cu)
             self._cus[id(dwarf_cu)] = cu
         return cu
+    
+    def get_die(self, dwarf_die: DWARF_DIE):
+        dwarf_cu = dwarf_die.cu
+        cu = self.get_cu(dwarf_cu)
+        return cu.get_die(dwarf_die)
 
     def iter_CUs(self):
         for cu in self.dwarf.iter_CUs():
             yield self.get_cu(cu)
-
-    def find_DIE_at_offset(self, offset):
-        """
-        Given an offset, find the DIE that has that offset
-        """
-        for cu in self.iter_CUs():
-            die = cu.find_DIE_at_local_offset(offset - cu.dwarf_cu.cu_offset)
-            if die:
-                return die
-        return None
 
     def find_function_by_address(self, address):
         """
@@ -306,6 +301,7 @@ class MY_DIE:
             or self.tag == "DW_TAG_GNU_call_site"
             or self.tag == "DW_TAG_GNU_template_parameter_pack"
             or self.tag == "DW_TAG_GNU_formal_parameter_pack"
+            or self.tag == "DW_TAG_inheritance"
         ):
             return None
         else:
@@ -459,8 +455,9 @@ class MY_DIE:
         elif self.tag_is("reference_type"):
             name = f"{self.dereference_type.name}&"
         elif "DW_AT_abstract_origin" in self.attributes:
-            offset = self.attributes["DW_AT_abstract_origin"].value
-            name = self.cu.dwarf.find_DIE_at_offset(offset).name
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
+            die = self.cu.dwarf.get_die(dwarf_die)
+            name = die.name
         else:
             # We can't figure out the name of this variable. Just give it a name based on the ELF offset.
             name = f"{self.tag}-{hex(self.offset)}"
