@@ -237,8 +237,8 @@ class RiscDebug:
         assert 0 <= location.risc_id <= 4, f"Invalid risc id({location.risc_id})"
         self.location = location
         self.enable_asserts = enable_asserts
-        self.CONTROL0_WRITE = 0x80010000 + (self.location.risc_id << 17)
-        self.CONTROL0_READ = 0x80000000 + (self.location.risc_id << 17)
+        self.CONTROL0_WRITE = 0x80010000 + ((self.location.risc_id+1) << 17) # TODO: This is mitigation for quasar (should be removed)
+        self.CONTROL0_READ = 0x80000000 + ((self.location.risc_id+1) << 17) # TODO: This is mitigation for quasar (should be removed)
         self.verbose = verbose
         self.context = context
         self.max_watchpoints = 8
@@ -249,6 +249,13 @@ class RiscDebug:
         self.RISC_DBG_STATUS1 = device.get_tensix_register_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_1")
         self.RISC_DBG_SOFT_RESET0 = device.get_tensix_register_address("RISCV_DEBUG_REG_SOFT_RESET_0")
         self.DEBUG_READ_VALID_BIT = 1 << 30
+        # TODO: Hardcoded in device class for Quasar. Should be refactored.
+        if device.RISC_NAME_TO_ID is not None:
+            self.risc_name = next((name for name, id in device.RISC_NAME_TO_ID.items() if id == location.risc_id), None)
+            if self.risc_name is None:
+                raise ValueError(f"Unknown RISC ID {location.risc_id} in device.RISC_NAME_TO_ID")
+        else:
+            self.risc_name = get_risc_name(location.risc_id)
 
     def get_reg_name_for_address(self, addr):
         if addr == self.RISC_DBG_CNTL0:
@@ -324,12 +331,12 @@ class RiscDebug:
 
     def halt(self):
         if self.is_halted():
-            util.WARN(f"Halt: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is already halted")
+            util.WARN(f"Halt: {self.risc_name} core at {self.location.loc} is already halted")
             return
         if self.verbose:
             util.INFO("  halt()")
         self._halt_command()
-        assert self.is_halted(), f"Failed to halt {get_risc_name(self.location.risc_id)} core at {self.location.loc}"
+        assert self.is_halted(), f"Failed to halt {self.risc_name} core at {self.location.loc}"
 
     @contextmanager
     def ensure_halted(self):
@@ -350,23 +357,23 @@ class RiscDebug:
             util.INFO("  step()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_STEP)
         # There is bug in hardware and for blackhole step should be executed twice
-        if self.location.loc._device._arch == "blackhole":
+        if self.location.loc._device._arch == "blackhole" or self.location.loc._device._arch == "quasar":
             self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_STEP)
 
     def cont(self, verify=True):
         if not self.is_halted():
-            util.WARN(f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is alredy running")
+            util.WARN(f"Continue: {self.risc_name} core at {self.location.loc} is alredy running")
             return
         if self.verbose:
             util.INFO("  cont()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_CONTINUE)
         assert (
             not verify or not self.is_halted()
-        ), f"Failed to continue {get_risc_name(self.location.risc_id)} core at {self.location.loc}"
+        ), f"Failed to continue {self.risc_name} core at {self.location.loc}"
 
     def continue_without_debug(self):
         if not self.is_halted():
-            util.WARN(f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is alredy running")
+            util.WARN(f"Continue: {self.risc_name} core at {self.location.loc} is alredy running")
             return
         if self.verbose:
             util.INFO("  cont()")
@@ -420,7 +427,7 @@ class RiscDebug:
         Make sure that the RISC-V core is not in reset.
         """
         if self.is_in_reset():
-            exception_message = f"{get_risc_name(self.location.risc_id)} is in reset"
+            exception_message = f"{self.risc_name} is in reset"
             if message:
                 exception_message += f": {message}"
             raise ValueError(exception_message)
@@ -430,7 +437,7 @@ class RiscDebug:
         Make sure that the RISC-V core is halted.
         """
         if not self.is_halted():
-            exception_message = f"{get_risc_name(self.location.risc_id)} is not halted"
+            exception_message = f"{self.risc_name} is not halted"
             if message:
                 exception_message += f": {message}"
             raise ValueError(exception_message)
@@ -517,6 +524,8 @@ class RiscDebug:
         """
         Invalidates the instruction cache of the RISC-V core.
         """
+        if self.location.loc._device._arch == "quasar":
+            self.write_configuration_register("RISCV_IC_INVALIDATE_InvalidateAll", 0)
         self.write_configuration_register("RISCV_IC_INVALIDATE_InvalidateAll", 1 << self.location.risc_id)
 
     def read_configuration_register(self, register_name: str):
@@ -532,13 +541,24 @@ class RiscDebug:
         if isinstance(register, str):
             register = self.location.loc._device.get_tensix_register_description(register)
 
-        # Speed optimization: if register mask is 0xffffffff, we can write directly to memory
-        if register.mask == 0xFFFFFFFF:
-            self.write_memory(register.address, value)
+        from ttexalens.device import ConfigurationRegisterDescription
+
+        if isinstance(register, ConfigurationRegisterDescription):
+            # Speed optimization: if register mask is 0xffffffff, we can write directly to memory
+            if register.mask == 0xFFFFFFFF:
+                self.write_memory(register.address, value)
+            else:
+                old_value = self.read_memory(register.address)
+                new_value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
+                self.write_memory(register.address, new_value)
         else:
-            old_value = self.read_memory(register.address)
-            new_value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            self.write_memory(register.address, new_value)
+            # Speed optimization: if register mask is 0xffffffff, we can write directly to memory
+            if register.mask == 0xFFFFFFFF:
+                write_words_to_device(self.location.loc, register.address, value, self.location.loc._device._id, self.context)
+            else:
+                old_value = read_word_from_device(self.location.loc, register.address, self.location.loc._device._id, self.context)
+                new_value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
+                write_words_to_device(self.location.loc, register.address, new_value, self.location.loc._device._id, self.context)
 
 
 from elftools.elf.elffile import ELFFile
@@ -563,6 +583,12 @@ class RiscLoader:
         """
         Ensures that an reading configuration register operation is performed in correct state.
         """
+
+        # TODO: HACK!!!
+        if self.risc_debug.location.loc._device._arch == "quasar":
+            yield self.risc_debug
+            return
+
 
         # If core is not in reset, we can use it to read configuration.
         if not self.risc_debug.is_in_reset():
@@ -598,8 +624,7 @@ class RiscLoader:
         """
         assert value in [0, 1]
         value = 0 if value else 1
-        risc_id = self.risc_debug.location.risc_id
-        risc_name = get_risc_name(risc_id)
+        risc_name = self.risc_debug.risc_name
 
         with self.ensure_reading_configuration_register() as rdbg:
             if risc_name == "BRISC":
@@ -607,21 +632,27 @@ class RiscLoader:
             elif risc_name == "TRISC0":
                 previous_value = rdbg.read_configuration_register("DISABLE_RISC_BP_Disable_trisc")
                 if value:
-                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value | 0b001)
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value | 0b0001)
                 else:
-                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value & ~0b001)
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value & ~0b0001)
             elif risc_name == "TRISC1":
                 previous_value = rdbg.read_configuration_register("DISABLE_RISC_BP_Disable_trisc")
                 if value:
-                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value | 0b010)
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value | 0b0010)
                 else:
-                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value & ~0b010)
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value & ~0b0010)
             elif risc_name == "TRISC2":
                 previous_value = rdbg.read_configuration_register("DISABLE_RISC_BP_Disable_trisc")
                 if value:
-                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value | 0b100)
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value | 0b0100)
                 else:
-                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value & ~0b100)
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value & ~0b0100)
+            elif risc_name == "TRISC3":
+                previous_value = rdbg.read_configuration_register("DISABLE_RISC_BP_Disable_trisc")
+                if value:
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value | 0b1000)
+                else:
+                    rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_trisc", previous_value & ~0b1000)
             elif risc_name == "NCRISC":
                 rdbg.write_configuration_register("DISABLE_RISC_BP_Disable_ncrisc", value)
             else:
@@ -631,8 +662,7 @@ class RiscLoader:
         """
         Returns namedtuple that has names of two configuration registers: address register and enable register, and the bit that enables this core.
         """
-        risc_id = self.risc_debug.location.risc_id
-        risc_name = get_risc_name(risc_id)
+        risc_name = self.risc_debug.risc_name
 
         # BRISC is always at 0 and it doesn't have register name, so we return None
         if risc_name == "BRISC":
@@ -914,9 +944,7 @@ class RiscLoader:
 
         # Change core start address to the start of the .init section
         # if it is BRISC, we should just add jump to start address instead, since we cannot change start address
-        risc_id = self.risc_debug.location.risc_id
-        risc_name = get_risc_name(risc_id)
-        if risc_name == "BRISC":
+        if self.risc_debug.risc_name == "BRISC":
             if init_section_address != 0:
                 jump_instruction = RiscLoader.get_jump_to_offset_instruction(init_section_address)
                 write_words_to_device(

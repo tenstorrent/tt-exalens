@@ -5,12 +5,17 @@
 
 # TODO: This is plain copy of blackhole.py. Need to update this file with Quasar specific details
 from ttexalens import util
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import (
     Device,
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
     TensixRegisterDescription,
+    DebugBusSignalDescription,
 )
+from typing import List
+
+from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 
 #
 # Device
@@ -26,21 +31,27 @@ class QuasarDevice(Device):
     NOC_1_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_1_X)
     NOC_1_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_1_Y)
 
+    RISC_NAME_TO_ID = { "TRISC0": 0, "TRISC1": 1, "TRISC2": 2, "TRISC3": 3}
+
     # Register base addresses (Neo 0)
-    CONFIGURATION_REGISTER_BASE = 0x0080A000
-    DEBUG_REGISTER_BASE = 0x00800000
+    CONFIGURATION_REGISTER_BASE = 0x0180A000
+    DEBUG_REGISTER_BASE = 0x01800000
+    RISC_START_ADDRESS = { "TRISC0": 0x00006000, "TRISC1": 0x0000a000, "TRISC2": 0x0000e000, "TRISC3": 0x00012000 }
 
     # # Register base addresses (Neo 1)
-    # CONFIGURATION_REGISTER_BASE = 0x0081A000
-    # DEBUG_REGISTER_BASE = 0x00810000
+    # CONFIGURATION_REGISTER_BASE = 0x0181A000
+    # DEBUG_REGISTER_BASE = 0x01810000
+    # RISC_START_ADDRESS = { "TRISC0": 0x00016000, "TRISC1": 0x0001a000, "TRISC2": 0x0001e000, "TRISC3": 0x00022000 }
 
     # # Register base addresses (Neo 2)
-    # CONFIGURATION_REGISTER_BASE = 0x0082A000
-    # DEBUG_REGISTER_BASE = 0x00820000
+    # CONFIGURATION_REGISTER_BASE = 0x0182A000
+    # DEBUG_REGISTER_BASE = 0x01820000
+    # RISC_START_ADDRESS = { "TRISC0": 0x00026000, "TRISC1": 0x0002a000, "TRISC2": 0x0002e000, "TRISC3": 0x00032000 }
 
     # # Register base addresses (Neo 3)
-    # CONFIGURATION_REGISTER_BASE = 0x0083A000
-    # DEBUG_REGISTER_BASE = 0x00830000
+    # CONFIGURATION_REGISTER_BASE = 0x0183A000
+    # DEBUG_REGISTER_BASE = 0x01830000
+    # RISC_START_ADDRESS = { "TRISC0": 0x00036000, "TRISC1": 0x0003a000, "TRISC2": 0x0003e000, "TRISC3": 0x00042000 }
 
     # NOC_CONTROL_REGISTER_BASE = 0xFFB20000
     # NOC_CONFIGURATION_REGISTER_BASE = 0xFFB20100
@@ -72,25 +83,63 @@ class QuasarDevice(Device):
             return None
 
     __register_map = {
-        # 'DISABLE_RISC_BP_Disable_main': tt_device.TensixRegisterDescription(address=2 * 4, mask=0x400000, shift=22),
-        # 'DISABLE_RISC_BP_Disable_trisc': tt_device.TensixRegisterDescription(address=2 * 4, mask=0x3800000, shift=23),
-        # 'DISABLE_RISC_BP_Disable_ncrisc': tt_device.TensixRegisterDescription(address=2 * 4, mask=0x4000000, shift=26),
-        # 'RISCV_IC_INVALIDATE_InvalidateAll': tt_device.TensixRegisterDescription(address=185 * 4, mask=0x1f, shift=0),
-        "RISCV_DEBUG_REG_RISC_DBG_CNTL_0": DebugRegisterDescription(address=0x60, mask=0xFFFFFFFF, shift=0),
-        "RISCV_DEBUG_REG_RISC_DBG_CNTL_1": DebugRegisterDescription(address=0x64, mask=0xFFFFFFFF, shift=0),
-        "RISCV_DEBUG_REG_RISC_DBG_STATUS_0": DebugRegisterDescription(address=0x68, mask=0xFFFFFFFF, shift=0),
-        "RISCV_DEBUG_REG_RISC_DBG_STATUS_1": DebugRegisterDescription(address=0x6C, mask=0xFFFFFFFF, shift=0),
-        "RISCV_DEBUG_REG_SOFT_RESET_0": DebugRegisterDescription(address=0xC4, mask=0xFFFFFFFF, shift=0),
-        # 'TRISC_RESET_PC_SEC0_PC': tt_device.TensixRegisterDescription(address=0x228, mask=0xffffffff, shift=0), # Old name from configuration register
-        # 'RISCV_DEBUG_REG_TRISC0_RESET_PC': tt_device.TensixRegisterDescription(address=0x228, mask=0xffffffff, shift=0), # New name
-        # 'TRISC_RESET_PC_SEC1_PC': tt_device.TensixRegisterDescription(address=0x22c, mask=0xffffffff, shift=0), # Old name from configuration register
-        # 'RISCV_DEBUG_REG_TRISC1_RESET_PC': tt_device.TensixRegisterDescription(address=0x22c, mask=0xffffffff, shift=0), # New name
-        # 'TRISC_RESET_PC_SEC2_PC': tt_device.TensixRegisterDescription(address=0x230, mask=0xffffffff, shift=0), # Old name from configuration register
-        # 'RISCV_DEBUG_REG_TRISC2_RESET_PC': tt_device.TensixRegisterDescription(address=0x230, mask=0xffffffff, shift=0), # New name
-        # 'TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': tt_device.TensixRegisterDescription(address=0x234, mask=0x7, shift=0), # Old name from configuration register
-        # 'RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE': tt_device.TensixRegisterDescription(address=0x234, mask=0x7, shift=0), # New name
-        # 'NCRISC_RESET_PC_PC': tt_device.TensixRegisterDescription(address=0x238, mask=0xffffffff, shift=0), # Old name from configuration register
-        # 'RISCV_DEBUG_REG_NCRISC_RESET_PC': tt_device.TensixRegisterDescription(address=0x238, mask=0xffffffff, shift=0), # New name
-        # 'NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': tt_device.TensixRegisterDescription(address=0x23c, mask=0x1, shift=0), # Old name from configuration register
-        # 'RISCV_DEBUG_REG_NCRISC_RESET_PC_OVERRIDE': tt_device.TensixRegisterDescription(address=0x23c, mask=0x1, shift=0), # New name
+        "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG": DebugRegisterDescription(address=0x34),
+        "RISCV_DEBUG_REG_CFGREG_RD_CNTL": DebugRegisterDescription(address=0x38),
+        "RISCV_DEBUG_REG_DBG_RD_DATA": DebugRegisterDescription(address=0x3C),
+        "DISABLE_RISC_BP_Disable_trisc": DebugRegisterDescription(address=0x274, mask=0xf, shift=0), # Old name from previous architectures
+        "RISC_BRANCH_PREDICTION_CTRL": DebugRegisterDescription(address=0x274, mask=0xf, shift=0), # New name
+        "RISCV_IC_INVALIDATE_InvalidateAll": DebugRegisterDescription(address=0x25C, mask=0xf, shift=0),
+        "RISCV_DEBUG_REG_RISC_DBG_CNTL_0": DebugRegisterDescription(address=0x60),
+        "RISCV_DEBUG_REG_RISC_DBG_CNTL_1": DebugRegisterDescription(address=0x64),
+        "RISCV_DEBUG_REG_RISC_DBG_STATUS_0": DebugRegisterDescription(address=0x68),
+        "RISCV_DEBUG_REG_RISC_DBG_STATUS_1": DebugRegisterDescription(address=0x6C),
+        "RISCV_DEBUG_REG_SOFT_RESET_0": DebugRegisterDescription(address=0xC4),
+        'TRISC_RESET_PC_SEC0_PC': DebugRegisterDescription(address=0x10C), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC0_RESET_PC': DebugRegisterDescription(address=0x10C), # New name
+        'TRISC_RESET_PC_SEC1_PC': DebugRegisterDescription(address=0x110), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC1_RESET_PC': DebugRegisterDescription(address=0x110), # New name
+        'TRISC_RESET_PC_SEC2_PC': DebugRegisterDescription(address=0x114), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC2_RESET_PC': DebugRegisterDescription(address=0x114), # New name
+        'TRISC_RESET_PC_SEC3_PC': DebugRegisterDescription(address=0x118), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC3_RESET_PC': DebugRegisterDescription(address=0x118), # New name
+        'TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': DebugRegisterDescription(address=0x11C, mask=0xF, shift=0), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE': DebugRegisterDescription(address=0x11C, mask=0xF, shift=0), # New name
     }
+
+    def _get_debug_bus_signal_description(self, name):
+        """Overrides the base class method to provide debug bus signal descriptions for Wormhole device."""
+        if name in QuasarDevice.__debug_bus_signal_map:
+            return QuasarDevice.__debug_bus_signal_map[name]
+        return None
+
+    # TODO: Should be copied from Blackhole. Current values are only for debugging purposes.
+    __debug_bus_signal_map = {
+        # For the other signals applying the pc_mask.
+        "trisc0_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 6 + 1, mask=0x3FFFFFFF),
+        "trisc1_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=6, mask=0x3FFFFFFF),
+        "trisc2_pc": DebugBusSignalDescription(rd_sel=5, daisy_sel=7, sig_sel=6, mask=0x3FFFFFFF),
+        "trisc3_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 6 + 1, mask=0x3FFFFFFF),
+    }
+
+    def get_debug_bus_signal_names(self) -> List[str]:
+        return list(self.__debug_bus_signal_map.keys())
+
+    # TODO: Should be removed, it was for debugging why reading debug bus fails
+    def read_debug_bus_signal_from_description(self, loc: OnChipCoordinate, signal: DebugBusSignalDescription) -> int:
+        if signal is None:
+            raise ValueError(f"Debug Bus signal description is not defined")
+
+        # Write the configuration
+        en = 1
+        config_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_DBG_BUS_CNTL_REG")
+        config = (en << 29) | (signal.rd_sel << 25) | (signal.daisy_sel << 16) | (signal.sig_sel << 0)
+        write_words_to_device(loc, config_addr, config, self._id)
+
+        # Read the data
+        data_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_DBG_RD_DATA")
+        data = read_word_from_device(loc, data_addr)
+
+        # Disable the signal
+        write_words_to_device(loc, config_addr, 0, self._id)
+
+        return data if signal.mask is None else data & signal.mask

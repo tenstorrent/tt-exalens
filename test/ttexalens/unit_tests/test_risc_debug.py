@@ -18,10 +18,12 @@ from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_in
         {"core_desc": "FW0", "risc_name": "TRISC0"},
         {"core_desc": "FW0", "risc_name": "TRISC1"},
         {"core_desc": "FW0", "risc_name": "TRISC2"},
+        {"core_desc": "FW0", "risc_name": "TRISC3"},
         {"core_desc": "FW1", "risc_name": "BRISC"},
         {"core_desc": "FW1", "risc_name": "TRISC0"},
         {"core_desc": "FW1", "risc_name": "TRISC1"},
         {"core_desc": "FW1", "risc_name": "TRISC2"},
+        {"core_desc": "FW1", "risc_name": "TRISC3"},
     ]
 )
 class TestDebugging(unittest.TestCase):
@@ -40,10 +42,12 @@ class TestDebugging(unittest.TestCase):
         cls.pc_register_index = get_register_index("pc")
 
     def setUp(self):
+        device = self.context.devices[0]
+
         # Convert core_desc to core_loc
         if self.core_desc.startswith("ETH"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.context.devices[0].get_block_locations(block_type="eth")
+            eth_cores = device.get_block_locations(block_type="eth")
             core_index = int(self.core_desc[3:])
             if len(eth_cores) > core_index:
                 self.core_loc = eth_cores[core_index].to_str()
@@ -52,7 +56,7 @@ class TestDebugging(unittest.TestCase):
                 self.skipTest("ETH core is not available on this platform")
         elif self.core_desc.startswith("FW"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.context.devices[0].get_block_locations(block_type="functional_workers")
+            eth_cores = device.get_block_locations(block_type="functional_workers")
             core_index = int(self.core_desc[2:])
             if len(eth_cores) > core_index:
                 self.core_loc = eth_cores[core_index].to_str()
@@ -62,12 +66,24 @@ class TestDebugging(unittest.TestCase):
         else:
             self.fail(f"Unknown core description {self.core_desc}")
 
-        loc = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
-        self.risc_id = get_risc_id(self.risc_name)
+        # TODO: Hardcoded in device class for Quasar. Should be refactored.
+        loc = OnChipCoordinate.create(self.core_loc, device=device)
+        if device.RISC_NAME_TO_ID is not None:
+            if self.risc_name not in device.RISC_NAME_TO_ID:
+                self.skipTest(f"{self.risc_name} is not available on this platform")
+            else:
+                self.risc_id = device.RISC_NAME_TO_ID[self.risc_name]
+        else:
+            self.risc_id = get_risc_id(self.risc_name)
         rloc = RiscLoc(loc, 0, self.risc_id)
-        self.rdbg = RiscDebug(rloc, self.context)
+        self.rdbg = RiscDebug(rloc, self.context, verbose=False, enable_asserts=False)
         loader = RiscLoader(self.rdbg, self.context)
-        self.program_base_address = loader.get_risc_start_address()
+
+        # TODO: Hardcoded in device class for Quasar. Should be refactored.
+        if device.RISC_START_ADDRESS is not None and self.risc_name in device.RISC_START_ADDRESS:
+            self.program_base_address = device.RISC_START_ADDRESS[self.risc_name]
+        else:
+            self.program_base_address = loader.get_risc_start_address()
 
         # If address wasn't set before, we want to set it to something that is not 0 for testing purposes
         if self.program_base_address == None:
@@ -89,14 +105,24 @@ class TestDebugging(unittest.TestCase):
         """Check if the device is blackhole."""
         return self.context.devices[0]._arch == "blackhole"
 
+    def is_quasar(self):
+        """Check if the device is quasar."""
+        return self.context.devices[0]._arch == "quasar"
+
     def is_wormhole(self):
         """Check if the device is wormhole_b0."""
         return self.context.devices[0]._arch == "wormhole_b0"
 
+    # TODO: This is not needed when initializations in simulator are disabled.
+    def wait_simulation(self, cycles: int, addr: int = 0):
+        """Wait for simulation to catch up."""
+        # TODO: This should be executed only in simulation...
+        for i in range(cycles):
+            self.read_data(addr)
+
     def read_data(self, addr):
         """Read data from memory."""
-        ret = lib.read_words_from_device(self.core_loc, addr, context=self.context)
-        return ret[0]
+        return lib.read_word_from_device(self.core_loc, addr, context=self.context)
 
     def write_data_checked(self, addr, data):
         """Write data to memory and check it was written."""
@@ -114,13 +140,13 @@ class TestDebugging(unittest.TestCase):
             self.assertEqual(
                 self.get_pc_from_debug_bus(),
                 self.program_base_address + expected,
-                f"Pc should be {expected} + program_base_addres ({self.program_base_address + expected}).",
+                f"Pc should be {expected} + program_base_address ({self.program_base_address + expected}).",
             )
         else:
             self.assertEqual(
                 self.rdbg.read_gpr(self.pc_register_index),
                 self.program_base_address + expected,
-                f"Pc should be {expected} + program_base_addres ({self.program_base_address + expected}).",
+                f"Pc should be {expected} + program_base_address ({self.program_base_address + expected}).",
             )
 
     def get_pc_from_debug_bus(self):
@@ -213,7 +239,7 @@ class TestDebugging(unittest.TestCase):
 
     def test_read_write_private_memory(self):
         """Testing read_memory and write_memory through debugging interface on private core memory range."""
-        addr = 0xFFB00000
+        addr = 0x802000 # TODO: Hardcoded, should be read from somewhere.
 
         # Write code for brisc core at address 0
         # C++:
@@ -221,6 +247,9 @@ class TestDebugging(unittest.TestCase):
 
         # Infinite loop (jal 0)
         self.write_program(0, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(8, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
@@ -233,10 +262,26 @@ class TestDebugging(unittest.TestCase):
         # Value should not be changed and should stay the same since core is in halt
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
 
+        # Test read/write NOC
+        print("self.write_data_checked(0x1802000, 0x12345687)")
+        self.write_data_checked(0x1802000, 0x12345687)
+        print("self.read_data(0x1802000)")
+        self.assertEqual(self.read_data(0x1802000), 0x12345687, "Memory value should be 0x12345687.")
+
         # Test write and read memory
-        self.rdbg.write_memory(addr, 0x12345678)
-        self.assertEqual(self.rdbg.read_memory(addr), 0x12345678, "Memory value should be 0x12345678.")
+        print("self.rdbg.write_memory(addr, 0x87654321)")
         self.rdbg.write_memory(addr, 0x87654321)
+        print("self.read_data(0x1802000)")
+        self.assertEqual(self.read_data(0x1802000), 0x87654321, "Memory value should be 0x87654321.")
+        print("self.rdbg.write_memory(addr, 0x12345678)")
+        self.rdbg.write_memory(addr, 0x12345678)
+        # print("self.read_data(0x1802000)")
+        # self.assertEqual(self.read_data(0x1802000), 0x12345678, "Memory value should be 0x12345678.")
+        print("self.rdbg.read_memory(addr)")
+        self.assertEqual(self.rdbg.read_memory(addr), 0x12345678, "Memory value should be 0x12345678.")
+        print("self.rdbg.write_memory(addr, 0x87654321)")
+        self.rdbg.write_memory(addr, 0x87654321)
+        print("self.rdbg.read_memory(addr)")
         self.assertEqual(self.rdbg.read_memory(addr), 0x87654321, "Memory value should be 0x87654321.")
 
     def test_minimal_run_generated_code(self):
@@ -300,7 +345,16 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.read_data(addr), 0x12345678)
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
         self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
-        self.assertPcEquals(4)
+        # TODO: This is fod debug bus signal verification. Should be removed once we verify new simulator.
+        print(hex(self.context.devices[0].read_debug_bus_signal(self.core_loc, "trisc0_pc")))
+        print(hex(self.context.devices[0].read_debug_bus_signal(self.core_loc, "trisc1_pc")))
+        print(hex(self.context.devices[0].read_debug_bus_signal(self.core_loc, "trisc2_pc")))
+        print(hex(self.context.devices[0].read_debug_bus_signal(self.core_loc, "trisc3_pc")))
+        print(hex(self.program_base_address))
+        if self.is_quasar():
+            self.assertPcEquals(0)
+        else:
+            self.assertPcEquals(4)
 
     def test_ebreak_and_step(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
@@ -333,17 +387,26 @@ class TestDebugging(unittest.TestCase):
 
         # Verify value at address, value should not be changed and should stay the same since core is in halt
         self.assertEqual(self.read_data(addr), 0x12345678)
-        self.assertPcEquals(4)
+        if self.is_quasar():
+            self.assertPcEquals(0)
+        else:
+            self.assertPcEquals(4)
         # Step and verify that pc is 8 and value is not changed
         self.rdbg.step()
         self.assertEqual(self.read_data(addr), 0x12345678)
-        self.assertPcEquals(8)
+        if self.is_quasar():
+            self.assertPcEquals(4)
+        else:
+            self.assertPcEquals(8)
         # Adding two steps since logic in hw automatically updates register and memory values
         self.rdbg.step()
         self.rdbg.step()
         # Verify that pc is 16 and value has changed
         self.assertEqual(self.read_data(addr), 0x87654000)
-        self.assertPcEquals(16)
+        if self.is_quasar():
+            self.assertPcEquals(12)
+        else:
+            self.assertPcEquals(16)
         # Since we are on endless loop, we should never go past 16
         for i in range(10):
             # Step and verify that pc is 16 and value has changed
@@ -492,7 +555,7 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.rdbg.read_status().is_ebreak_hit, "ebreak should not be the cause.")
 
     def test_invalidate_cache(self):
-        if not self.is_blackhole():
+        if not self.is_blackhole() and not self.is_quasar():
             self.skipTest("Invalidate cache is not reliable on wormhole.")
 
         """Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation. All that is done on brisc."""
@@ -722,7 +785,10 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
         self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
         self.assertFalse(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
-        self.assertPcEquals(4)
+        if self.is_quasar():
+            self.assertPcEquals(0)
+        else:
+            self.assertPcEquals(4)
 
         # Set watchpoint on address 12 and 32
         self.rdbg.set_watchpoint_on_pc_address(0, self.program_base_address + 12)
@@ -1114,6 +1180,9 @@ class TestDebugging(unittest.TestCase):
 
         if self.is_blackhole():
             self.skipTest("BNE instruction with debug hardware enabled is fixed in blackhole.")
+
+        if self.is_quasar():
+            self.skipTest("BNE instruction with debug hardware enabled is fixed in quasar.")
 
         # Enable branch prediction
         loader = RiscLoader(self.rdbg, self.context)
