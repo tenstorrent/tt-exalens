@@ -96,7 +96,7 @@ class MY_DWARF:
             cu = MY_CU(self, dwarf_cu)
             self._cus[id(dwarf_cu)] = cu
         return cu
-    
+
     def get_die(self, dwarf_die: DWARF_DIE):
         dwarf_cu = dwarf_die.cu
         cu = self.get_cu(dwarf_cu)
