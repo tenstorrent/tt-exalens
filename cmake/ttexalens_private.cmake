@@ -1,8 +1,8 @@
 # Check if there is ttexalens_private project already in cpmcache.
 # If it is not, we should check if user has access to private repository.
 
-set(TTEXALENS_PRIVATE_GIT_REPOSITORY "git@yyz-gitlab.local.tenstorrent.com:tenstorrent/tt-lens-private.git")
-set(TTEXALENS_PRIVATE_GIT_TAG "b8dea1699eb9a5159cab1e57e0adffa49b82a9e9")
+set(TTEXALENS_PRIVATE_GIT_REPOSITORY "git@yyz-gitlab.local.tenstorrent.com:tenstorrent/tt-exalens-private.git")
+set(TTEXALENS_PRIVATE_GIT_TAG "f9a32973839bbdbd8a329b913cd5192a0c840a51")
 option(DOWNLOAD_TTEXALENS_PRIVATE "Download tt-lens private repository" OFF)
 
 if (DOWNLOAD_TTEXALENS_PRIVATE)
