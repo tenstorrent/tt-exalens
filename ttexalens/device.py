@@ -79,8 +79,8 @@ class DebugBusSignalDescription:
 
     def __post_init__(self):
         """Validate field values after object creation."""
-        if not (0 <= self.rd_sel <= 3):  # Example range, update if needed
-            raise ValueError(f"rd_sel must be between 0 and 3, got {self.rd_sel}")
+        if not (0 <= self.rd_sel <= 15):  # Example range, update if needed
+            raise ValueError(f"rd_sel must be between 0 and 15, got {self.rd_sel}")
 
         if not (0 <= self.daisy_sel <= 255):  # Example range, update if needed
             raise ValueError(f"daisy_sel must be between 0 and 255, got {self.daisy_sel}")
