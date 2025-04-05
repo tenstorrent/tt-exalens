@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from typing import List
 from docopt import DocoptExit, docopt
 from ttexalens.coordinate import OnChipCoordinate
 
@@ -51,12 +52,15 @@ class tt_docopt:
         else:
             yield OnChipCoordinate.create(loc_str, device)
 
-    def risc_id_for_each(risc_id, context, ui_state):
-        if not risc_id or risc_id == "all":
-            for risc_id in range(4):
-                yield risc_id
+    def risc_name_for_each(risc_name, context, ui_state, device, location: OnChipCoordinate):
+        risc_names = device.get_risc_names_for_location(location)
+        if not risc_name or risc_name == "all":
+            for risc in risc_names:
+                yield risc
+        elif risc_name.lower() in risc_names:
+            yield risc_name.lower()
         else:
-            yield int(risc_id, 0)
+            raise ValueError(f"Invalid RiscV name: {risc_name}. Available names: {risc_names}")
 
     # We define command options that apply to more than one command here
     OPTIONS = {
@@ -83,9 +87,9 @@ class tt_docopt:
         },
         "--risc": {
             "short": "-r",
-            "arg": "<risc-id>",
-            "description": "RiscV ID (0: brisc, 1-3 triscs, all). [default: all]",
-            "for_each": risc_id_for_each,
+            "arg": "<risc-name>",
+            "description": "RiscV name (brisc, triscs0, trisc1, trisc2, erisc, all). [default: all]",
+            "for_each": risc_name_for_each,
         },
     }
 

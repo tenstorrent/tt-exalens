@@ -14,6 +14,8 @@ Arguments:
                          riscv - show the status of the RISC-V ('R': running, '-': in reset)
                          block - show the type of the block at that coordinate
                          logical, noc0, noc1, translated, virtual, die - show coordinate
+                         noc0_id - show the NOC0 node ID (x-y) for the block
+                         noc1_id - show the NOC1 node ID (x-y) for the block (if there is no noc1 block, it will show empty)
 
 Description:
   Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
@@ -41,7 +43,7 @@ from docopt import docopt
 
 from ttexalens import command_parser, util as util
 from ttexalens.device import Device
-from ttexalens.coordinate import VALID_COORDINATE_TYPES
+from ttexalens.coordinate import VALID_COORDINATE_TYPES, OnChipCoordinate
 from ttexalens.context import LimitedContext
 from ttexalens.tt_exalens_lib import read_words_from_device
 
@@ -49,6 +51,24 @@ from ttexalens.tt_exalens_lib import read_words_from_device
 def color_block(text: str, block_type: str):
     color = Device.block_types[block_type]["color"]
     return f"{color}{text}{util.CLR_END}"
+
+
+def get_riscv_run_status(device: Device, location: OnChipCoordinate) -> str:
+    """
+    Returns the riscv soft reset status as a string of 4 characters one for each riscv core.
+    '-' means the core is in reset, 'R' means the core is running.
+    """
+    risc_names = device.get_risc_names_for_location(location)
+    block_type = device.get_block_type(location)
+    if block_type == "functional_workers":
+        status_str = ""
+        for risc_name in risc_names:
+            risc_debug = device.get_risc_debug(location, risc_name)
+            status_str += "-" if risc_debug.is_in_reset() else "R"
+        return status_str
+    if block_type == "harvested_workers":
+        return "----"
+    return block_type
 
 
 def run(cmd_text, context, ui_state=None):
@@ -101,6 +121,7 @@ def run(cmd_text, context, ui_state=None):
                 print_legend(f"    {color_block(block_type, block_type)}")
         print_legend("")
 
+    device: Device
     for device in dopt.for_each("--device", context, ui_state):
         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
         util.INFO(f"==== Device {jtag_prompt}{device.id()}")
@@ -117,16 +138,16 @@ def run(cmd_text, context, ui_state=None):
                 if ct == "block":
                     cell_contents_str.append(color_block(block_type, block_type))
                 elif ct == "riscv":
-                    text = device.get_riscv_run_status(loc)
+                    text = get_riscv_run_status(device, loc)
                     cell_contents_str.append(color_block(text, block_type))
-                elif ct == "noc_id":
-                    if block_type is not None and block_type != "pcie":
-                        noc_node_id_address = device.get_tensix_register_address("NOC_NODE_ID")
-                        data = read_words_from_device(loc, noc_node_id_address, device._id, 1, context)[0]
-                        x = data & 0x3F
-                        y = (data >> 6) & 0x3F
-                        cell_contents_str.append(f"{x:02}-{y:02}")
-                    else:
+                elif ct == "noc0_id" or ct == "noc1_id":
+                    noc_id = 0 if ct == "noc0_id" else 1
+                    try:
+                        noc_node_id = device.get_register_store(loc, noc_id=noc_id).read_register("NOC_NODE_ID")
+                        x = noc_node_id & 0x3F
+                        y = (noc_node_id >> 6) & 0x3F
+                        cell_contents_str.append(color_block(f"{x:02}-{y:02}", block_type))
+                    except:
                         cell_contents_str.append("")
                 elif ct in VALID_COORDINATE_TYPES:
                     try:

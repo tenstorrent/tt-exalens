@@ -19,7 +19,7 @@ from ttexalens.gdb.gdb_communication import (
 from ttexalens.gdb.gdb_data import GdbProcess, GdbThreadId
 from ttexalens.gdb.gdb_file_server import GdbFileServer
 from ttexalens.context import Context
-from ttexalens.debug_risc import RiscLoc, get_risc_name
+from ttexalens.risc_debug import RiscLocation
 from ttexalens import util as util
 
 # Helper class returns currently debugging list of threads to gdb client in paged manner
@@ -81,7 +81,7 @@ class GdbServer(threading.Thread):
         ] = {}  # Dictionary of threads that are currently being debugged (key: pid)
         self.next_pid = 1
         self._last_available_processes: Dict[
-            RiscLoc, GdbProcess
+            RiscLocation, GdbProcess
         ] = {}  # Dictionary of last executed available processes that can be debugged (key: pid)
 
     @property
@@ -89,7 +89,7 @@ class GdbServer(threading.Thread):
         available_processes: Dict[
             int, GdbProcess
         ] = {}  # Dictionary of available processes that can be debugged (key: pid)
-        last_available_processes: Dict[RiscLoc, GdbProcess] = {}
+        last_available_processes: Dict[RiscLocation, GdbProcess] = {}
         for device in self.context.devices.values():
             for risc_debug in device.debuggable_cores:
                 if not risc_debug.is_in_reset():
@@ -107,7 +107,7 @@ class GdbServer(threading.Thread):
                         pid = self.next_pid
                         self.next_pid += 1
                         virtual_core = (
-                            pid  # TODO: Maybe we should actually have some mapping from RiscLoc to virtual core
+                            pid  # TODO: Maybe we should actually have some mapping from RiscLocation to virtual core
                         )
                         process = GdbProcess(pid, elf_path, risc_debug, virtual_core, core_type)
                     else:

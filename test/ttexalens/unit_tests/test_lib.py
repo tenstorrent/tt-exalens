@@ -13,15 +13,18 @@ from ttexalens import tt_exalens_init
 from ttexalens import tt_exalens_lib as lib
 from ttexalens import util
 
+from ttexalens.baby_risc_debug import BabyRiscDebug, get_register_index
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.firmware import ELF
 from ttexalens.object import DataArray
 import os
 
 from ttexalens.hw.arc.arc import load_arc_fw
 from ttexalens.hw.arc.arc_dbg_fw import arc_dbg_fw_check_msg_loop_running, arc_dbg_fw_command, NUM_LOG_CALLS_OFFSET
+from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
+from ttexalens.risc_info import RiscInfo
 from ttexalens.tt_exalens_lib_utils import arc_read
 
 
@@ -239,8 +242,6 @@ class TestReadWrite(unittest.TestCase):
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_to_device(core_loc, address, data, device_id)
 
-    from ttexalens.device import ConfigurationRegisterDescription, DebugRegisterDescription, DebugBusSignalDescription
-
     @parameterized.expand(
         [
             (
@@ -323,6 +324,46 @@ class TestRunElf(unittest.TestCase):
             arch = "wormhole"
         risc = get_risc_name(risc_id).lower()
         return f"build/riscv-src/{arch}/{app_name}.{risc}.elf"
+
+    def test_risc_start_address(self):
+        """Test default start address of a RISC."""
+        core_loc = "2,2"
+        device_id = 0
+
+        # Set start address to default (None) for all riscs
+        device = self.context.devices[device_id]
+        loc = OnChipCoordinate.create(core_loc, device=device)
+        for risc_name in device.get_risc_names_for_location(loc):
+            risc_debug: BabyRiscDebug = device.get_risc_debug(loc, risc_name)
+
+            # Ensure that start address is set to default
+            risc_debug.risc_info.set_code_start_address(risc_debug.register_store, None)
+
+        # Write `JAL 0` instruction to whole L1
+        l1_size = risc_debug.risc_info.l1_size
+        self.assertIsNotNone(l1_size)
+        self.assertGreater(l1_size, 0)
+
+        lib.write_words_to_device(
+            core_loc, 0, [RiscInfo.get_jump_to_offset_instruction(0)] * (l1_size // 4), device_id, context=self.context
+        )
+
+        # Test all riscs
+        for risc_name in device.get_risc_names_for_location(loc):
+            risc_debug: BabyRiscDebug = device.get_risc_debug(loc, risc_name)
+
+            # Start riscs
+            risc_debug.set_reset_signal(True)
+            risc_debug.set_reset_signal(False)
+
+            # Verify that start address is correct
+            risc_debug.halt()
+            pc = risc_debug.read_gpr(get_register_index("pc"))
+            self.assertEqual(
+                pc,
+                risc_debug.risc_info.default_code_start_address,
+                f"RISC {risc_name} did not start at address {risc_debug.risc_info.default_code_start_address}.",
+            )
 
     @parameterized.expand(
         [

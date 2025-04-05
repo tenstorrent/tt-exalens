@@ -6,9 +6,13 @@ from parameterized import parameterized_class
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from ttexalens import tt_exalens_lib as lib
 
+from ttexalens.baby_risc_debug import BabyRiscDebug, get_register_index
+from ttexalens.baby_risc_info import BabyRiscInfo
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index, get_risc_id
+from ttexalens.device import Device
+from ttexalens.risc_debug import RiscDebug
+from ttexalens.risc_info import RiscInfo
 
 
 @parameterized_class(
@@ -26,7 +30,6 @@ from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_in
 )
 class TestDebugging(unittest.TestCase):
     risc_name: str = None  # Risc name
-    risc_id: int = None  # Risc ID - being parametrized
     context: Context = None  # TTExaLens context
     core_desc: str = None  # Core description ETH0, FW0, FW1 - being parametrized
     core_loc: str = None  # Core location
@@ -40,10 +43,12 @@ class TestDebugging(unittest.TestCase):
         cls.pc_register_index = get_register_index("pc")
 
     def setUp(self):
+        device = self.context.devices[0]
+
         # Convert core_desc to core_loc
         if self.core_desc.startswith("ETH"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.context.devices[0].get_block_locations(block_type="eth")
+            eth_cores = device.get_block_locations(block_type="eth")
             core_index = int(self.core_desc[3:])
             if len(eth_cores) > core_index:
                 self.core_loc = eth_cores[core_index].to_str()
@@ -52,7 +57,7 @@ class TestDebugging(unittest.TestCase):
                 self.skipTest("ETH core is not available on this platform")
         elif self.core_desc.startswith("FW"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.context.devices[0].get_block_locations(block_type="functional_workers")
+            eth_cores = device.get_block_locations(block_type="functional_workers")
             core_index = int(self.core_desc[2:])
             if len(eth_cores) > core_index:
                 self.core_loc = eth_cores[core_index].to_str()
@@ -62,19 +67,17 @@ class TestDebugging(unittest.TestCase):
         else:
             self.fail(f"Unknown core description {self.core_desc}")
 
-        loc = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
-        self.risc_id = get_risc_id(self.risc_name)
-        rloc = RiscLoc(loc, 0, self.risc_id)
-        self.rdbg = RiscDebug(rloc, self.context)
-        loader = RiscLoader(self.rdbg, self.context)
-        self.program_base_address = loader.get_risc_start_address()
+        loc = OnChipCoordinate.create(self.core_loc, device=device)
+        self.rdbg: BabyRiscDebug = device.get_risc_debug(loc, self.risc_name)
+        self.program_base_address = self.rdbg.risc_info.get_code_start_address(self.rdbg.register_store)
 
-        # If address wasn't set before, we want to set it to something that is not 0 for testing purposes
-        if self.program_base_address == None:
-            # Set program base address to 0xd000
-            loader.set_risc_start_address(0xD000)
-            self.program_base_address = loader.get_risc_start_address()
-            self.assertEqual(self.program_base_address, 0xD000)
+        # TODO: We need to change this to be a test. Currently, we will add default values for risc code start address, so we won't need to overwrite it.
+        # # If address wasn't set before, we want to set it to something that is not 0 for testing purposes
+        # if self.program_base_address == None:
+        #     # Set program base address to 0xd000
+        #     loader.set_risc_start_address(0xD000)
+        #     self.program_base_address = loader.get_risc_start_address()
+        #     self.assertEqual(self.program_base_address, 0xD000)
 
         # Stop risc with reset
         self.rdbg.set_reset_signal(True)
@@ -109,22 +112,11 @@ class TestDebugging(unittest.TestCase):
 
     def assertPcEquals(self, expected):
         """Assert PC register equals to expected value."""
-        if self.is_wormhole() or self.is_blackhole():
-            # checks pc over debug bus
-            self.assertEqual(
-                self.get_pc_from_debug_bus(),
-                self.program_base_address + expected,
-                f"Pc should be {expected} + program_base_addres ({self.program_base_address + expected}).",
-            )
-        else:
-            self.assertEqual(
-                self.rdbg.read_gpr(self.pc_register_index),
-                self.program_base_address + expected,
-                f"Pc should be {expected} + program_base_addres ({self.program_base_address + expected}).",
-            )
-
-    def get_pc_from_debug_bus(self):
-        return self.context.devices[0].read_debug_bus_signal(self.core_loc, self.risc_name.lower() + "_pc")
+        self.assertEqual(
+            self.rdbg.read_gpr(self.pc_register_index),
+            self.program_base_address + expected,
+            f"Pc should be {expected} + program_base_addres ({self.program_base_address + expected}).",
+        )
 
     def assertPcLess(self, expected):
         """Assert PC register is less than expected value."""
@@ -134,6 +126,20 @@ class TestDebugging(unittest.TestCase):
             f"Pc should be less than {expected} + program_base_addres ({self.program_base_address + expected}).",
         )
 
+    def _all_riscs_assert_soft_reset(self, device: Device) -> None:
+        """
+        Put all risc cores under reset. Nothing will run until the reset is deasserted.
+        """
+        for loc in device.get_block_locations(block_type="functional_workers"):
+            register_store = device.get_register_store(loc)
+            RISC_SOFT_RESET_0_ADDR = register_store.get_register_noc_address("RISCV_DEBUG_REG_SOFT_RESET_0")
+            ALL_SOFT_RESET = 0
+            risc_names = device.get_risc_names_for_location(loc)
+            for risc_name in risc_names:
+                risc_info: BabyRiscInfo = device.get_risc_info(loc, risc_name)
+                ALL_SOFT_RESET = ALL_SOFT_RESET | (1 << risc_info.reset_flag_shift)
+            lib.write_words_to_device(loc, RISC_SOFT_RESET_0_ADDR, ALL_SOFT_RESET, device.id(), self.context)
+
     def test_reset_all_functional_workers(self):
         """Reset all functional workers."""
         if self.core_desc.startswith("ETH"):
@@ -141,7 +147,7 @@ class TestDebugging(unittest.TestCase):
                 "Playing with ETH core moves device into unknown state after we should warm reset it. This test cannot be run at that moment."
             )
         for device in self.context.devices.values():
-            device.all_riscs_assert_soft_reset()
+            self._all_riscs_assert_soft_reset(device)
             for rdbg in device.debuggable_cores:
                 self.assertTrue(rdbg.is_in_reset())
 
@@ -156,18 +162,17 @@ class TestDebugging(unittest.TestCase):
         # NOP
         self.write_program(0, 0x00000013)
         # Infinite loop (jal 0)
-        self.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(4, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
         self.assertFalse(self.rdbg.is_in_reset())
 
         # Halt core
-        self.rdbg.enable_debug()
         self.rdbg.halt()
 
         # Value should not be changed and should stay the same since core is in halt
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
 
         # Test readonly registers
         self.assertEqual(self.rdbg.read_gpr(get_register_index("zero")), 0, "zero should always be 0.")
@@ -192,18 +197,17 @@ class TestDebugging(unittest.TestCase):
         #   while (true);
 
         # Infinite loop (jal 0)
-        self.write_program(0, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(0, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
         self.assertFalse(self.rdbg.is_in_reset())
 
         # Halt core
-        self.rdbg.enable_debug()
         self.rdbg.halt()
 
         # Value should not be changed and should stay the same since core is in halt
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
 
         # Test read and write memory
         self.assertEqual(self.rdbg.read_memory(addr), 0x12345678, "Memory value should be 0x12345678.")
@@ -220,18 +224,17 @@ class TestDebugging(unittest.TestCase):
         #   while (true);
 
         # Infinite loop (jal 0)
-        self.write_program(0, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(0, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
         self.assertFalse(self.rdbg.is_in_reset())
 
         # Halt core
-        self.rdbg.enable_debug()
         self.rdbg.halt()
 
         # Value should not be changed and should stay the same since core is in halt
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
 
         # Test write and read memory
         self.rdbg.write_memory(addr, 0x12345678)
@@ -259,7 +262,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.write_program(8, 0x00B52023)
         # Infinite loop (jal 0)
-        self.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(12, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
@@ -291,15 +294,15 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.write_program(12, 0x00B52023)
         # Infinite loop (jal 0)
-        self.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(16, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # Verify value at address, value should not be changed and should stay the same since core is in halt
         self.assertEqual(self.read_data(addr), 0x12345678)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should be the cause.")
         self.assertPcEquals(4)
 
     def test_ebreak_and_step(self):
@@ -325,7 +328,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.write_program(12, 0x00B52023)
         # Infinite loop (jal 0)
-        self.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(16, RiscInfo.get_jump_to_offset_instruction(0))
 
         self.rdbg.set_reset_signal(False)
 
@@ -373,13 +376,12 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.write_program(12, 0x00B52023)
         # Infinite loop (jal 0)
-        self.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(16, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # Continue
-        self.rdbg.enable_debug()
         self.rdbg.cont()
 
         # Verify value at address
@@ -413,7 +415,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.write_program(20, 0x00B52023)
         # Infinite loop (jal -8)
-        self.write_program(24, RiscLoader.get_jump_to_offset_instruction(-8))
+        self.write_program(24, RiscInfo.get_jump_to_offset_instruction(-8))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
@@ -422,7 +424,6 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.read_data(addr), 0x12345678)
 
         # Continue
-        self.rdbg.enable_debug()
         self.rdbg.cont()
 
         # Verify that value changed cause of continue
@@ -468,28 +469,27 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.write_program(12, 0x00B52023)
         # Infinite loop (jal 0)
-        self.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(16, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # Verify value at address
         self.assertEqual(self.read_data(addr), 0x12345678)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should be the cause.")
 
         # Continue
-        self.rdbg.enable_debug()
         self.rdbg.cont()
 
         # Verify value at address
         self.assertEqual(self.read_data(addr), 0x87654000)
-        self.assertFalse(self.rdbg.read_status().is_halted, "Core should not be halted.")
+        self.assertFalse(self.rdbg.is_halted(), "Core should not be halted.")
 
         # Halt and test status
         self.rdbg.halt()
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertFalse(self.rdbg.read_status().is_ebreak_hit, "ebreak should not be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should not be the cause.")
 
     def test_invalidate_cache(self):
         if not self.is_blackhole():
@@ -507,21 +507,20 @@ class TestDebugging(unittest.TestCase):
         #   while (true);
         #   while (true);
         #   while (true);
-        self.write_program(0, RiscLoader.get_jump_to_offset_instruction(0))
-        self.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
-        self.write_program(8, RiscLoader.get_jump_to_offset_instruction(0))
-        self.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(0, RiscInfo.get_jump_to_offset_instruction(0))
+        self.write_program(4, RiscInfo.get_jump_to_offset_instruction(0))
+        self.write_program(8, RiscInfo.get_jump_to_offset_instruction(0))
+        self.write_program(12, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # Halt core
-        self.rdbg.enable_debug()
         self.rdbg.halt()
 
         # Value should not be changed and should stay the same since core is in halt
         self.assertEqual(self.read_data(addr), 0x12345678)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
         self.assertPcEquals(0)
 
         # Write new code for brisc core at address 0
@@ -537,18 +536,18 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.write_program(8, 0x00B52023)
         # Infinite loop (jal 0)
-        self.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(12, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Invalidate instruction cache
         self.rdbg.invalidate_instruction_cache()
 
         # Continue
         self.rdbg.cont()
-        self.assertFalse(self.rdbg.read_status().is_halted, "Core should not be halted.")
+        self.assertFalse(self.rdbg.is_halted(), "Core should not be halted.")
 
         # Halt to verify PC
         self.rdbg.halt()
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should not be halted.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should not be halted.")
 
         # There is hardware bug on blackhole that causes PC to be 0
         self.assertPcEquals(12)
@@ -569,21 +568,20 @@ class TestDebugging(unittest.TestCase):
         #   while (true);
         #   while (true);
         #   while (true);
-        self.write_program(0, RiscLoader.get_jump_to_offset_instruction(0))
-        self.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
-        self.write_program(8, RiscLoader.get_jump_to_offset_instruction(0))
-        self.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(0, RiscInfo.get_jump_to_offset_instruction(0))
+        self.write_program(4, RiscInfo.get_jump_to_offset_instruction(0))
+        self.write_program(8, RiscInfo.get_jump_to_offset_instruction(0))
+        self.write_program(12, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # Halt core
-        self.rdbg.enable_debug()
         self.rdbg.halt()
 
         # Value should not be changed and should stay the same since core is in halt
         self.assertEqual(self.read_data(addr), 0x12345678)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
         self.assertPcEquals(0)
 
         # Write new code for brisc core at address 0
@@ -599,16 +597,16 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.write_program(8, 0x00B52023)
         # Infinite loop (jal 0)
-        self.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(12, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Invalidate instruction cache with reset
         self.rdbg.set_reset_signal(True)
         self.rdbg.set_reset_signal(False)
-        self.assertFalse(self.rdbg.read_status().is_halted, "Core should not be halted.")
+        self.assertFalse(self.rdbg.is_halted(), "Core should not be halted.")
 
         # Halt to verify PC
         self.rdbg.halt()
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should not be halted.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should not be halted.")
         self.assertPcEquals(12)
 
         # Verify value at address
@@ -639,15 +637,15 @@ class TestDebugging(unittest.TestCase):
         for i in range(jump_addr // 4):
             self.write_program(i * 4, 0x00000013)
         self.write_program(break_addr, 0x00100073)
-        self.write_program(jump_addr, RiscLoader.get_jump_to_offset_instruction(-jump_addr))
+        self.write_program(jump_addr, RiscInfo.get_jump_to_offset_instruction(-jump_addr))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # Value should not be changed and should stay the same since core is in halt
         self.assertEqual(self.read_data(addr), 0x12345678)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should be the cause.")
         self.assertPcEquals(break_addr + 4)
 
         # Write new code for brisc core at address 0
@@ -663,15 +661,15 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.write_program(8, 0x00B52023)
         # Infinite loop (jal 0)
-        self.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(12, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Continue execution
-        self.rdbg.cont(False)
-        self.assertFalse(self.rdbg.read_status().is_halted, "Core should not be halted.")
+        self.rdbg.cont()
+        self.assertFalse(self.rdbg.is_halted(), "Core should not be halted.")
 
         # Halt to verify PC
         self.rdbg.halt()
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
         self.assertPcEquals(12)
 
         # Verify value at address
@@ -712,16 +710,18 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.write_program(28, 0x00B52023)
         # Infinite loop (jal 0)
-        self.write_program(32, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(32, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # Verify value at address
         self.assertEqual(self.read_data(addr), 0x12345678)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
-        self.assertFalse(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should be the cause.")
+        self.assertFalse(
+            self.rdbg.debug_hardware.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause."
+        )
         self.assertPcEquals(4)
 
         # Set watchpoint on address 12 and 32
@@ -730,24 +730,34 @@ class TestDebugging(unittest.TestCase):
 
         # Continue and verify that we hit first watchpoint
         self.rdbg.cont(False)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertFalse(self.rdbg.read_status().is_ebreak_hit, "ebreak should not be the cause.")
-        self.assertTrue(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should be the cause.")
-        self.assertFalse(self.rdbg.read_status().is_memory_watchpoint_hit, "Memory watchpoint should not be the cause.")
-        self.assertTrue(self.rdbg.read_status().is_watchpoint0_hit, "Watchpoint 0 should be hit.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint1_hit, "Watchpoint 1 should not be hit.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should not be the cause.")
+        self.assertTrue(
+            self.rdbg.debug_hardware.read_status().is_pc_watchpoint_hit, "PC watchpoint should be the cause."
+        )
+        self.assertFalse(
+            self.rdbg.debug_hardware.read_status().is_memory_watchpoint_hit,
+            "Memory watchpoint should not be the cause.",
+        )
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_watchpoint0_hit, "Watchpoint 0 should be hit.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint1_hit, "Watchpoint 1 should not be hit.")
 
         self.assertPcLess(28)
         self.assertEqual(self.read_data(addr), 0x12345678)
 
         # Continue and verify that we hit first watchpoint
         self.rdbg.cont(False)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertFalse(self.rdbg.read_status().is_ebreak_hit, "ebreak should not be the cause.")
-        self.assertTrue(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should be the cause.")
-        self.assertFalse(self.rdbg.read_status().is_memory_watchpoint_hit, "Memory watchpoint should not be the cause.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint0_hit, "Watchpoint 0 should not be hit.")
-        self.assertTrue(self.rdbg.read_status().is_watchpoint1_hit, "Watchpoint 1 should be hit.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should not be the cause.")
+        self.assertTrue(
+            self.rdbg.debug_hardware.read_status().is_pc_watchpoint_hit, "PC watchpoint should be the cause."
+        )
+        self.assertFalse(
+            self.rdbg.debug_hardware.read_status().is_memory_watchpoint_hit,
+            "Memory watchpoint should not be the cause.",
+        )
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint0_hit, "Watchpoint 0 should not be hit.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_watchpoint1_hit, "Watchpoint 1 should be hit.")
         self.assertPcEquals(32)
         self.assertEqual(self.read_data(addr), 0x87654000)
 
@@ -762,15 +772,17 @@ class TestDebugging(unittest.TestCase):
         # ebreak
         self.write_program(0, 0x00100073)
         # Infinite loop (jal 0)
-        self.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(4, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # Verify that we hit ebreak
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
-        self.assertFalse(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should be the cause.")
+        self.assertFalse(
+            self.rdbg.debug_hardware.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause."
+        )
 
         # Set PC watchpoints
         self.rdbg.set_watchpoint_on_pc_address(0, 12)
@@ -883,15 +895,17 @@ class TestDebugging(unittest.TestCase):
         # ebreak
         self.write_program(0, 0x00100073)
         # Infinite loop (jal 0)
-        self.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(4, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # Verify that we hit ebreak
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
-        self.assertFalse(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should be the cause.")
+        self.assertFalse(
+            self.rdbg.debug_hardware.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause."
+        )
 
         # Set watchpoints
         self.rdbg.set_watchpoint_on_pc_address(0, 12)
@@ -1048,16 +1062,18 @@ class TestDebugging(unittest.TestCase):
         self.write_program(56, 0x00052603)
 
         # Infinite loop (jal 0)
-        self.write_program(60, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(60, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # Verify value at address
         self.assertEqual(self.read_data(addr1), 0x12345678)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
-        self.assertFalse(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should be the cause.")
+        self.assertFalse(
+            self.rdbg.debug_hardware.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause."
+        )
 
         # Set memory watchpoints
         self.rdbg.set_watchpoint_on_memory_write(0, 0x10000)
@@ -1067,47 +1083,63 @@ class TestDebugging(unittest.TestCase):
 
         # Continue and verify that we hit first watchpoint
         self.rdbg.cont(False)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertFalse(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
-        self.assertTrue(self.rdbg.read_status().is_memory_watchpoint_hit, "Memory watchpoint should be the cause.")
-        self.assertTrue(self.rdbg.read_status().is_watchpoint0_hit, "Watchpoint 0 should be hit.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint1_hit, "Watchpoint 1 should not be hit.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint2_hit, "Watchpoint 2 should not be hit.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint3_hit, "Watchpoint 3 should not be hit.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertFalse(
+            self.rdbg.debug_hardware.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause."
+        )
+        self.assertTrue(
+            self.rdbg.debug_hardware.read_status().is_memory_watchpoint_hit, "Memory watchpoint should be the cause."
+        )
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_watchpoint0_hit, "Watchpoint 0 should be hit.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint1_hit, "Watchpoint 1 should not be hit.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint2_hit, "Watchpoint 2 should not be hit.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint3_hit, "Watchpoint 3 should not be hit.")
 
         self.assertEqual(self.read_data(addr1), 0x45678000)
 
         # Continue and verify that we hit second watchpoint
         self.rdbg.cont(False)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertFalse(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
-        self.assertTrue(self.rdbg.read_status().is_memory_watchpoint_hit, "Memory watchpoint should be the cause.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint0_hit, "Watchpoint 0 should not be hit.")
-        self.assertTrue(self.rdbg.read_status().is_watchpoint1_hit, "Watchpoint 1 should be hit.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint2_hit, "Watchpoint 2 should not be hit.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint3_hit, "Watchpoint 3 should not be hit.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertFalse(
+            self.rdbg.debug_hardware.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause."
+        )
+        self.assertTrue(
+            self.rdbg.debug_hardware.read_status().is_memory_watchpoint_hit, "Memory watchpoint should be the cause."
+        )
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint0_hit, "Watchpoint 0 should not be hit.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_watchpoint1_hit, "Watchpoint 1 should be hit.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint2_hit, "Watchpoint 2 should not be hit.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint3_hit, "Watchpoint 3 should not be hit.")
 
         # Continue and verify that we hit third watchpoint
         self.rdbg.cont(False)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertFalse(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
-        self.assertTrue(self.rdbg.read_status().is_memory_watchpoint_hit, "Memory watchpoint should be the cause.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint0_hit, "Watchpoint 0 should not be hit.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint1_hit, "Watchpoint 1 should not be hit.")
-        self.assertTrue(self.rdbg.read_status().is_watchpoint2_hit, "Watchpoint 2 should be hit.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint3_hit, "Watchpoint 3 should not be hit.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertFalse(
+            self.rdbg.debug_hardware.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause."
+        )
+        self.assertTrue(
+            self.rdbg.debug_hardware.read_status().is_memory_watchpoint_hit, "Memory watchpoint should be the cause."
+        )
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint0_hit, "Watchpoint 0 should not be hit.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint1_hit, "Watchpoint 1 should not be hit.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_watchpoint2_hit, "Watchpoint 2 should be hit.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint3_hit, "Watchpoint 3 should not be hit.")
 
         self.assertEqual(self.read_data(addr3), 0x87654000)
 
         # Continue and verify that we hit fourth watchpoint
         self.rdbg.cont(False)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertFalse(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
-        self.assertTrue(self.rdbg.read_status().is_memory_watchpoint_hit, "Memory watchpoint should be the cause.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint0_hit, "Watchpoint 0 should not be hit.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint1_hit, "Watchpoint 1 should not be hit.")
-        self.assertFalse(self.rdbg.read_status().is_watchpoint2_hit, "Watchpoint 2 should not be hit.")
-        self.assertTrue(self.rdbg.read_status().is_watchpoint3_hit, "Watchpoint 3 should be hit.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertFalse(
+            self.rdbg.debug_hardware.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause."
+        )
+        self.assertTrue(
+            self.rdbg.debug_hardware.read_status().is_memory_watchpoint_hit, "Memory watchpoint should be the cause."
+        )
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint0_hit, "Watchpoint 0 should not be hit.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint1_hit, "Watchpoint 1 should not be hit.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_watchpoint2_hit, "Watchpoint 2 should not be hit.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_watchpoint3_hit, "Watchpoint 3 should be hit.")
 
     def test_bne_with_debug_fail(self):
         """Test running 48 bytes of generated code that confirms problem with BNE when debugging hardware is enabled."""
@@ -1116,8 +1148,7 @@ class TestDebugging(unittest.TestCase):
             self.skipTest("BNE instruction with debug hardware enabled is fixed in blackhole.")
 
         # Enable branch prediction
-        loader = RiscLoader(self.rdbg, self.context)
-        loader.set_branch_prediction(True)
+        self.rdbg.set_branch_prediction(True)
 
         addr = 0x10000
 
@@ -1142,11 +1173,11 @@ class TestDebugging(unittest.TestCase):
         # See if they are equal (bne x1, x2, 8)
         self.write_program(12, 0x00209463)
         # Jump to ebreak
-        self.write_program(16, RiscLoader.get_jump_to_offset_instruction(12))
+        self.write_program(16, RiscInfo.get_jump_to_offset_instruction(12))
         # Increase value in x1 (addi x1, x1, 1)
         self.write_program(20, 0x00108093)
         # Jump to bne
-        self.write_program(24, RiscLoader.get_jump_to_offset_instruction(-12))
+        self.write_program(24, RiscInfo.get_jump_to_offset_instruction(-12))
         # ebreak
         self.write_program(28, 0x00100073)
         # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
@@ -1156,22 +1187,21 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.write_program(40, 0x00B52023)
         # Infinite loop (jal 0)
-        self.write_program(44, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(44, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # Verify value at address
         self.assertEqual(self.read_data(addr), 0x12345678)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should be the cause.")
 
         # Continue to proceed with bne test
-        self.rdbg.enable_debug()
-        self.rdbg.cont(False)
+        self.rdbg.cont()
 
         # Confirm failure
-        self.assertFalse(self.rdbg.read_status().is_halted, "Core should not be halted.")
+        self.assertFalse(self.rdbg.is_halted(), "Core should not be halted.")
         self.rdbg.halt()
         x1 = self.rdbg.read_gpr(1)  # x1 is counter and it should never go over x2
         x2 = self.rdbg.read_gpr(2)  # x2 is value for loop end
@@ -1184,8 +1214,7 @@ class TestDebugging(unittest.TestCase):
         """Test running 48 bytes of generated code that confirms that there is no problem with BNE when debugging hardware is disabled."""
 
         # Enable branch prediction
-        loader = RiscLoader(self.rdbg, self.context)
-        loader.set_branch_prediction(True)
+        self.rdbg.set_branch_prediction(True)
 
         addr = 0x10000
 
@@ -1210,11 +1239,11 @@ class TestDebugging(unittest.TestCase):
         # See if they are equal (bne x1, x2, 8)
         self.write_program(12, 0x00209463)
         # Jump to ebreak
-        self.write_program(16, RiscLoader.get_jump_to_offset_instruction(12))
+        self.write_program(16, RiscInfo.get_jump_to_offset_instruction(12))
         # Increase value in x1 (addi x1, x1, 1)
         self.write_program(20, 0x00108093)
         # Jump to bne
-        self.write_program(24, RiscLoader.get_jump_to_offset_instruction(-12))
+        self.write_program(24, RiscInfo.get_jump_to_offset_instruction(-12))
         # ebreak
         self.write_program(28, 0x00100073)
         # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
@@ -1224,40 +1253,38 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.write_program(40, 0x00B52023)
         # Infinite loop (jal 0)
-        self.write_program(44, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(44, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # Verify value at address
         self.assertEqual(self.read_data(addr), 0x12345678)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should be the cause.")
 
         # Continue to proceed with bne test
-        self.rdbg.enable_debug()
-        self.rdbg.continue_without_debug()
+        self.rdbg.debug_hardware.continue_without_debug()
 
         # We should pass for loop very fast and should be halted here already
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should be the cause.")
 
         # Verify value at address
         self.rdbg.cont()
         self.assertEqual(self.read_data(addr), 0x87654000)
-        self.assertFalse(self.rdbg.read_status().is_halted, "Core should not be halted.")
+        self.assertFalse(self.rdbg.is_halted(), "Core should not be halted.")
 
         # Halt and test status
         self.rdbg.halt()
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertFalse(self.rdbg.read_status().is_ebreak_hit, "ebreak should not be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should not be the cause.")
 
     def test_bne_with_debug_without_bp(self):
         """Test running 48 bytes of generated code that confirms that there is no problem with BNE when debugging hardware is enabled and branch prediction is disabled."""
 
         # Enable branch prediction
-        loader = RiscLoader(self.rdbg, self.context)
-        loader.set_branch_prediction(True)
+        self.rdbg.set_branch_prediction(True)
 
         addr = 0x10000
 
@@ -1282,11 +1309,11 @@ class TestDebugging(unittest.TestCase):
         # See if they are equal (bne x1, x2, 8)
         self.write_program(12, 0x00209463)
         # Jump to ebreak
-        self.write_program(16, RiscLoader.get_jump_to_offset_instruction(12))
+        self.write_program(16, RiscInfo.get_jump_to_offset_instruction(12))
         # Increase value in x1 (addi x1, x1, 1)
         self.write_program(20, 0x00108093)
         # Jump to bne
-        self.write_program(24, RiscLoader.get_jump_to_offset_instruction(-12))
+        self.write_program(24, RiscInfo.get_jump_to_offset_instruction(-12))
         # ebreak
         self.write_program(28, 0x00100073)
         # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
@@ -1296,35 +1323,34 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.write_program(40, 0x00B52023)
         # Infinite loop (jal 0)
-        self.write_program(44, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(44, RiscInfo.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.rdbg.set_reset_signal(False)
 
         # Verify value at address
         self.assertEqual(self.read_data(addr), 0x12345678)
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should be the cause.")
 
         # Disable branch prediction
         if not self.is_blackhole():
             # Disabling branch prediction fails this test on blackhole :(
-            loader.set_branch_prediction(False)
+            self.rdbg.set_branch_prediction(False)
 
         # Continue to proceed with bne test
-        self.rdbg.enable_debug()
-        self.rdbg.cont(False)
+        self.rdbg.cont()
 
         # We should pass for loop very fast and should be halted here already
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertTrue(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should be the cause.")
 
         # Verify value at address
         self.rdbg.cont()
         self.assertEqual(self.read_data(addr), 0x87654000)
-        self.assertFalse(self.rdbg.read_status().is_halted, "Core should not be halted.")
+        self.assertFalse(self.rdbg.is_halted(), "Core should not be halted.")
 
         # Halt and test status
         self.rdbg.halt()
-        self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        self.assertFalse(self.rdbg.read_status().is_ebreak_hit, "ebreak should not be the cause.")
+        self.assertTrue(self.rdbg.is_halted(), "Core should be halted.")
+        self.assertFalse(self.rdbg.debug_hardware.read_status().is_ebreak_hit, "ebreak should not be the cause.")

@@ -47,72 +47,15 @@ command_metadata = {
 }
 
 from ttexalens.uistate import UIState
-from ttexalens.debug_tensix import TensixDebug
-from ttexalens.device import (
-    Device,
-    TensixRegisterDescription,
-    ConfigurationRegisterDescription,
-    DebugRegisterDescription,
-)
+from ttexalens.device import Device
+from ttexalens.register_store import REGISTER_DATA_TYPE, format_register_value, parse_register_value
 from ttexalens import command_parser
-from ttexalens.util import TTException, INFO, WARN, DATA_TYPE, convert_int_to_data_type, convert_data_type_to_int
-from ttexalens.unpack_regfile import TensixDataFormat
+from ttexalens.util import INFO, WARN
 from typing import List
-import re
 from fnmatch import fnmatch
 
 # Possible values
-reg_types = ["cfg", "dbg"]
 data_types = ["INT_VALUE", "ADDRESS", "MASK", "FLAGS", "TENSIX_DATA_FORMAT"]
-
-
-def convert_str_to_int(param: str) -> int:
-    try:
-        if param.startswith("0x"):
-            return int(param, 16)
-        else:
-            return int(param)
-    except ValueError:
-        raise ValueError(f"Invalid parameter {param}. Expected a hexadecimal or decimal integer.")
-
-
-# Convert register parameters to integers
-def convert_reg_params(reg_params: str) -> List[int]:
-    params = []
-    for param in reg_params.split(","):
-        params.append(convert_str_to_int(param))
-
-    return params
-
-
-# Create register description object given parameters
-def create_register_description(reg_type: str, reg_params: List[int], data_type: str) -> TensixRegisterDescription:
-    if reg_type == "cfg":
-        if len(reg_params) != 3:
-            raise TTException(
-                "Invalid number of parameters for configuration register since it requires 3 parameters (index, mask, shift)."
-            )
-        return ConfigurationRegisterDescription(
-            index=reg_params[0], mask=reg_params[1], shift=reg_params[2], data_type=DATA_TYPE[data_type]
-        )
-    elif reg_type == "dbg":
-        if len(reg_params) != 1:
-            raise TTException(
-                "Invalid number of parameters for debug register since it requires 1 parameter (address)."
-            )
-        return DebugRegisterDescription(address=reg_params[0], data_type=DATA_TYPE[data_type])
-    else:
-        raise ValueError(f"Unknown register type: {reg_type}. Possible values: {reg_types}")
-
-
-def parse_register_argument(register: str):
-    match = re.match(r"(\w+)\((.*?)\)", register)
-    if match:
-        reg_type = match.group(1)
-        reg_params = convert_reg_params(match.group(2))
-        return reg_type, reg_params
-    else:
-        return register
 
 
 # Print strings that match wildcard pattern. Maximum max_prints, negaitve values enable print all.
@@ -138,63 +81,52 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     # Do this only if search is disabled
     if register_pattern == None:
-        register_ref = parse_register_argument(dopt.args["<register>"])
-
         data_type = dopt.args["--type"] if dopt.args["--type"] else "INT_VALUE"
         if data_type not in data_types:
             raise ValueError(f"Invalid data type: {data_type}. Possible values: {data_types}")
 
-        value = convert_data_type_to_int(dopt.args["--write"]) if dopt.args["--write"] else None
         value_str = dopt.args["--write"]
+        value = parse_register_value(value_str) if value_str else None
 
-        if isinstance(register_ref, tuple):
-            reg_type, reg_params = register_ref
-            register = create_register_description(reg_type, reg_params, data_type)
-
+    device: Device
     for device in dopt.for_each("--device", context, ui_state):
-
-        # Do this only if search is enabled
-        if register_pattern != None:
-            register_names = device._get_tensix_register_map_keys()
-            max_regs = dopt.args["--max"] if dopt.args["--max"] else 10
-            try:
-                if max_regs != "all":
-                    max_regs = int(max_regs)
-                    if max_regs <= 0:
-                        raise ValueError(f"Invalid value for max-regs. Expected positive integer, but got {max_regs}")
-                else:
-                    max_regs = len(register_names)
-            except:
-                raise ValueError(f"Invalid value for max-regs. Expected an integer, but got {max_regs}")
-
-            INFO(f"Register names that match pattern on device {device.id()}")
-            print_matches(register_pattern, register_names, max_regs)
-
-            continue
-
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
+            register_store = device.get_register_store(loc)
 
-            debug_tensix = TensixDebug(loc, device.id(), context)
+            # Do this only if search is enabled
+            if register_pattern != None:
+                register_names = register_store.get_register_names()
+                max_regs = dopt.args["--max"] if dopt.args["--max"] else 10
+                try:
+                    if max_regs != "all":
+                        max_regs = int(max_regs)
+                        if max_regs <= 0:
+                            raise ValueError(
+                                f"Invalid value for max-regs. Expected positive integer, but got {max_regs}"
+                            )
+                    else:
+                        max_regs = len(register_names)
+                except:
+                    raise ValueError(f"Invalid value for max-regs. Expected an integer, but got {max_regs}")
 
-            if isinstance(register_ref, str):
-                device = debug_tensix.context.devices[debug_tensix.device_id]
-                register = device._get_tensix_register_description(register_ref)
-                if register == None:
-                    raise ValueError(
-                        f"Referencing register by {register_ref} is invalid. Please use valid register name or <reg-type>(<reg-parameters>) format."
-                    )
+                INFO(f"Register names that match pattern on device {device.id()}")
+                print_matches(register_pattern, register_names, max_regs)
+
+                continue
+            else:
+                register = register_store.parse_register_description(dopt.args["<register>"])
 
             if value != None:
-                debug_tensix.write_tensix_register(register, value)
+                register_store.write_register(register, value)
                 INFO(f"Register {register} on device {device.id()} and location {loc} written with value {value_str}.")
             else:
-                reg_value = debug_tensix.read_tensix_register(register)
+                reg_value = register_store.read_register(register)
 
                 # Overwritting data type of register if user specified it
                 if dopt.args["--type"]:
-                    data_type = DATA_TYPE[data_type]
+                    data_type = REGISTER_DATA_TYPE[data_type]
                 else:
                     data_type = register.data_type
 
                 INFO(f"Value of register {register} on device {device.id()} and location {loc}:")
-                print(convert_int_to_data_type(reg_value, data_type, bin(register.mask).count("1")))
+                print(format_register_value(reg_value, data_type, bin(register.mask).count("1")))

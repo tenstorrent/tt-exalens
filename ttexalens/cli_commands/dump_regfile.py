@@ -35,9 +35,10 @@ command_metadata = {
 
 from docopt import docopt
 
-from ttexalens.uistate import UIState
+from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.debug_tensix import TensixDebug
+from ttexalens.tensix_debug import TensixDebug
+from ttexalens.uistate import UIState
 from typing import List, Union
 
 
@@ -48,7 +49,7 @@ def print_regfile(data: List[Union[int, float]]):
             print()
 
 
-def run(cmd_text, context, ui_state: UIState = None):
+def run(cmd_text, context: Context, ui_state: UIState = None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
 
     core_loc_str = args["<core-loc>"]
@@ -63,8 +64,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     for device_id in device_array:
         current_device = context.devices[device_id]
         core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
-
-        debug_tensix = TensixDebug(core_loc, device_id, context)
+        debug_tensix = current_device.get_tensix_debug(core_loc)
         data = debug_tensix.read_regfile(regfile)
         print_regfile(data)
 

@@ -3,20 +3,22 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from abc import abstractmethod
-from copy import deepcopy
 from dataclasses import dataclass, replace
 from functools import cached_property
-from typing import List, Sequence, Tuple
+from typing import List, Sequence, Tuple, Union
 
 from tabulate import tabulate
 from ttexalens.context import Context
+from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.object import TTObject
 from ttexalens import util as util
 from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
 from abc import abstractmethod
 
-from ttexalens.util import DATA_TYPE
-from ttexalens.debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
+from ttexalens.risc_debug import RiscDebug, RiscLocation
+from ttexalens.register_store import RegisterStore
+from ttexalens.risc_info import RiscInfo
+from ttexalens.tensix_debug import TensixDebug
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 
 
@@ -27,69 +29,6 @@ class TensixInstructions:
             if callable(func):
                 static_method = staticmethod(func)
                 setattr(self.__class__, func_name, static_method)
-
-
-@dataclass
-class TensixRegisterDescription:
-    address: int = 0
-    mask: int = 0xFFFFFFFF
-    shift: int = 0
-    data_type: DATA_TYPE = DATA_TYPE.INT_VALUE
-
-    def clone(self, offset: int = 0):
-        new_instance = deepcopy(self)
-        new_instance.address += offset
-        return new_instance
-
-
-@dataclass
-class DebugRegisterDescription(TensixRegisterDescription):
-    pass
-
-
-@dataclass
-class ConfigurationRegisterDescription(TensixRegisterDescription):
-    index: int = 0
-
-    def __post_init__(self):
-        self.address = self.address + self.index * 4
-
-
-@dataclass
-class NocStatusRegisterDescription(TensixRegisterDescription):
-    pass
-
-
-@dataclass
-class NocConfigurationRegisterDescription(TensixRegisterDescription):
-    pass
-
-
-@dataclass
-class NocControlRegisterDescription(TensixRegisterDescription):
-    pass
-
-
-@dataclass
-class DebugBusSignalDescription:
-    rd_sel: int = 0
-    daisy_sel: int = 0
-    sig_sel: int = 0
-    mask: int = 0xFFFFFFFF
-
-    def __post_init__(self):
-        """Validate field values after object creation."""
-        if not (0 <= self.rd_sel <= 3):  # Example range, update if needed
-            raise ValueError(f"rd_sel must be between 0 and 3, got {self.rd_sel}")
-
-        if not (0 <= self.daisy_sel <= 255):  # Example range, update if needed
-            raise ValueError(f"daisy_sel must be between 0 and 255, got {self.daisy_sel}")
-
-        if not (0 <= self.sig_sel <= 65535):  # Example range, update if needed
-            raise ValueError(f"sig_sel must be between 0 and 65535, got {self.sig_sel}")
-
-        if not (0 <= self.mask <= 0xFFFFFFFF):  # Mask should be a valid 32-bit value
-            raise ValueError(f"mask must be a valid 32-bit integer, got {self.mask}")
 
 
 #
@@ -109,9 +48,8 @@ class Device(TTObject):
         # Base implementation for wormhole and blackhole
         cores: List[RiscDebug] = []
         for coord in self.get_block_locations("functional_workers"):
-            for risc_id in range(4):  # 4 because we have a hardware bug for debugging ncrisc
-                risc_location = RiscLoc(coord, 0, risc_id)
-                risc_debug = RiscDebug(risc_location, self._context)
+            for risc_name in self.get_risc_names_for_location(coord):
+                risc_debug = self.get_risc_debug(coord, risc_name)
                 cores.append(risc_debug)
 
         # TODO: Can we debug eth cores?
@@ -184,7 +122,6 @@ class Device(TTObject):
         )
 
         self._init_coordinate_systems()
-        self._init_arc_register_adresses()
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
     def __die_to_noc(self, die_loc, noc_id=0):
@@ -281,9 +218,9 @@ class Device(TTObject):
         Returns OnChipCoordinate of the ARC block
         """
         arc_locations = self.get_block_locations(block_type="arc")
-
+        if len(arc_locations) == 0:
+            raise ValueError("No ARC block found")
         assert len(arc_locations) == 1
-
         return arc_locations[0]
 
     @cached_property
@@ -415,25 +352,6 @@ class Device(TTObject):
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         return self._context.server_ifc.pci_read_tile(self.id(), x, y, reg_addr, msg_size, data_format)
 
-    def all_riscs_assert_soft_reset(self) -> None:
-        """
-        Put all risc cores under reset. Nothing will run until the reset is deasserted.
-        """
-        RISC_SOFT_RESET_0_ADDR = self.get_tensix_register_address("RISCV_DEBUG_REG_SOFT_RESET_0")
-
-        ALL_SOFT_RESET = 0
-        for risc_id in range(5):
-            ALL_SOFT_RESET = ALL_SOFT_RESET | (1 << get_risc_reset_shift(risc_id))
-        noc_id = 0
-
-        for loc in self.get_block_locations(block_type="functional_workers"):
-            write_words_to_device(loc, RISC_SOFT_RESET_0_ADDR, ALL_SOFT_RESET, self.id(), self._context)
-
-            # Check what we wrote
-            rst_reg = read_word_from_device(loc, RISC_SOFT_RESET_0_ADDR, self.id(), self._context)
-            if rst_reg != ALL_SOFT_RESET:
-                util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
-
     # ALU GETTER
     def get_alu_config(self) -> List[dict]:
         return []
@@ -463,149 +381,114 @@ class Device(TTObject):
     def get_pack_counters(self) -> List[dict]:
         return []
 
-    @abstractmethod
-    def _get_tensix_register_map_keys(self) -> List[str]:
-        pass
-
-    @abstractmethod
-    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:
-        pass
-
-    @abstractmethod
-    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int:
-        pass
-
-    @abstractmethod
-    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
-        pass
-
-    def get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
-        register_description = self._get_tensix_register_description(register_name)
-        if register_description != None:
-            base_address = self._get_tensix_register_base_address(register_description)
-            if base_address != None:
-                return register_description.clone(base_address)
-            else:
-                raise ValueError(f"Unknown tensix register base address for register: {register_name}")
-        else:
-            raise ValueError(f"Unknown tensix register name: {register_name}")
-
-    def get_tensix_register_address(self, register_name: str) -> int:
-        description = self.get_tensix_register_description(register_name)
-        assert description.mask == 0xFFFFFFFF and description.shift == 0
-        return description.address
-
-    def get_riscv_run_status(self, loc: OnChipCoordinate) -> str:
-        """
-        Returns the riscv soft reset status as a string of 4 characters one for each riscv core.
-        '-' means the core is in reset, 'R' means the core is running.
-        """
-        status_str = ""
-        bt = self.get_block_type(loc)
-        if bt == "functional_workers":
-            for risc_id in range(4):
-                risc_location = RiscLoc(loc, 0, risc_id)
-                risc_debug = RiscDebug(risc_location, self._context)
-                status_str += "-" if risc_debug.is_in_reset() else "R"
-            return status_str
-        if bt == "harvested_workers":
-            return "----"
-        return bt
-
-    REGISTER_ADDRESSES = {}
-
+    # TODO: Replace arc registers with get_arc_register_store. This requires Arc refactor!!!!
     def get_arc_register_addr(self, name: str) -> int:
         try:
-            addr = self.REGISTER_ADDRESSES[name]
+            register_store = self.get_arc_register_store()
+            if self._has_mmio:
+                return register_store.get_register_internal_address(name)
+            else:
+                return register_store.get_register_noc_address(name)
         except KeyError:
             raise ValueError(f"Unknown register name: {name}. Available registers: {self.REGISTER_ADDRESSES.keys()}")
 
-        return addr
-
-    def _init_arc_register_adresses(self):
-        if len(self.get_block_locations("arc")) > 0:
-            base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
-            csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
-            rom_data_base_addr = self.PCI_ARC_ROM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_ROM_DATA_BASE_ADDR
-
-            self.REGISTER_ADDRESSES = {
-                "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
-                "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
-                "ARC_RESET_ARC_UDMIAXI_REGION": base_addr + 0x10C,
-                "ARC_RESET_SCRATCH0": base_addr + 0x060,
-                "ARC_RESET_SCRATCH1": base_addr + 0x064,
-                "ARC_RESET_SCRATCH2": base_addr + 0x068,
-                "ARC_RESET_SCRATCH3": base_addr + 0x06C,
-                "ARC_RESET_SCRATCH4": base_addr + 0x070,
-                "ARC_RESET_SCRATCH5": base_addr + 0x074,
-                "ARC_CSM_DATA": csm_data_base_addr,
-                "ARC_ROM_DATA": rom_data_base_addr,
-            }
+    def get_debug_bus_signal_store(
+        self, location: OnChipCoordinate, neo_id: Union[int, None] = None
+    ) -> DebugBusSignalStore:
+        """
+        Returns the debug bus signal store for the given coordinate.
+        """
+        block_type = self.get_block_type(location)
+        debug_bus_signal_store = self._get_debug_bus_signal_store_for_block(block_type, location, neo_id)
+        if debug_bus_signal_store is None:
+            raise ValueError(f"Unknown debug bus signal store for block type {block_type} at location {location}")
+        return debug_bus_signal_store
 
     @abstractmethod
-    def _get_debug_bus_signal_description(self, name) -> DebugBusSignalDescription:
+    def _get_debug_bus_signal_store_for_block(
+        self, block_type: str, location: OnChipCoordinate, neo_id: Union[int, None] = None
+    ) -> Union[DebugBusSignalStore, None]:
+        """
+        Returns the debug bus signal store for the given block type and coordinate.
+        """
         pass
 
-    def get_debug_bus_signal_names(self) -> List[str]:
-        return []
-
-    def get_debug_bus_signal_description(self, name):
-        debug_bus_signal_description = self._get_debug_bus_signal_description(name)
-        if debug_bus_signal_description is None:
-            raise ValueError(f"Unknown debug bus signal name: {name}")
-        return debug_bus_signal_description
-
-    def read_debug_bus_signal(self, loc: OnChipCoordinate, name: str) -> int:
-        signal = self.get_debug_bus_signal_description(name)
-        return self.read_debug_bus_signal_from_description(loc, signal)
-
-    def read_debug_bus_signal_from_description(self, loc: OnChipCoordinate, signal: DebugBusSignalDescription) -> int:
-        if signal is None:
-            raise ValueError(f"Debug Bus signal description is not defined")
-
-        # Write the configuration
-        en = 1
-        config_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_DBG_BUS_CNTL_REG")
-        config = (en << 29) | (signal.rd_sel << 25) | (signal.daisy_sel << 16) | (signal.sig_sel << 0)
-        write_words_to_device(loc, config_addr, config, self._id)
-
-        # Read the data
-        data_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_DBG_RD_DATA")
-        data = read_word_from_device(loc, data_addr)
-
-        # Disable the signal
-        write_words_to_device(loc, config_addr, 0, self._id)
-
-        return data if signal.mask is None else data & signal.mask
-
-    def get_noc_register_address(self, reg_name: str, noc_id: int) -> int:
+    def get_register_store(
+        self, location: OnChipCoordinate, noc_id: Union[int, None] = None, neo_id: Union[int, None] = None
+    ) -> RegisterStore:
         """
-        Get the address for a NOC register.
-
-        Args:
-            reg_name: Register name
-            noc_id: NOC identifier (0 or 1)
-
-        Returns:
-            Register address
-
-        Raises:
-            ValueError: If reg_name is not a NOC register or noc_id is invalid
+        Returns the register store for the given coordinate.
         """
-        if noc_id not in [0, 1]:
-            raise ValueError(f"Invalid NOC identifier: {noc_id}. Must be 0 or 1.")
+        block_type = self.get_block_type(location)
+        register_store = self._get_register_store_for_block(block_type, location, noc_id, neo_id)
+        if register_store is None:
+            raise ValueError(f"Unknown register store for block type {block_type} at location {location}")
+        return register_store
 
-        description = self.get_tensix_register_description(reg_name)
+    @abstractmethod
+    def _get_register_store_for_block(
+        self,
+        block_type: str,
+        location: OnChipCoordinate,
+        noc_id: Union[int, None] = None,
+        neo_id: Union[int, None] = None,
+    ) -> Union[RegisterStore, None]:
+        """
+        Returns the register store for the given block type and coordinate.
+        """
+        pass
 
-        # Validate this is a NOC register
-        if not isinstance(
-            description,
-            (NocStatusRegisterDescription, NocConfigurationRegisterDescription, NocControlRegisterDescription),
-        ):
-            raise ValueError(f"Register {reg_name} is not a NOC register")
+    def get_arc_register_store(self) -> RegisterStore:
+        """
+        Returns the register store for the ARC block.
+        """
+        return self.get_register_store(self.get_arc_block_location())
 
-        base_addr = description.address
-        return base_addr + (noc_id * self.NOC_REGISTER_OFFSET)
+    def get_risc_names_for_location(self, location: OnChipCoordinate, neo_id: Union[int, None] = None) -> List[str]:
+        """
+        Returns the names of the RISC cores available for the given location.
+        """
+        block_type = self.get_block_type(location)
+        return self._get_risc_names_for_location(block_type, location, neo_id)
+
+    @abstractmethod
+    def _get_risc_names_for_location(
+        self, block_type: str, location: OnChipCoordinate, neo_id: Union[int, None] = None
+    ) -> List[str]:
+        """
+        Returns the names of the RISC cores available for the given location.
+        """
+        pass
+
+    @abstractmethod
+    def get_risc_info(self, location: OnChipCoordinate, risc_name: str, neo_id: Union[int, None] = None) -> RiscInfo:
+        """
+        Returns the RISC info object for the given location and RISC name.
+        """
+        pass
+
+    @abstractmethod
+    def get_risc_debug(
+        self,
+        location: OnChipCoordinate,
+        risc_name: str,
+        noc_id: Union[int, None] = None,
+        neo_id: Union[int, None] = None,
+        verbose: bool = False,
+    ) -> RiscDebug:
+        """
+        Returns the RISC debug object for the given location and RISC name.
+        """
+        pass
+
+    @abstractmethod
+    def get_tensix_debug(
+        self, location: OnChipCoordinate, neo_id: Union[int, None] = None, verbose: bool = False
+    ) -> TensixDebug:
+        """
+        Returns the Tensix debug object for the given location and RISC name.
+        """
+        pass
 
 
 # end of class Device

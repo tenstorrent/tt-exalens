@@ -262,7 +262,15 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << std::endl;
     outfile << "  ]" << std::endl << std::endl;
 
-    outfile << "router_only:" << std::endl << "  []" << std::endl << std::endl;
+    outfile << "router_only:" << std::endl;
+    outfile << "  [" << std::endl;
+    for (const auto &router_only : soc_descriptor.get_cores(CoreType::ROUTER_ONLY)) {
+        if (router_only.x < soc_descriptor.grid_size.x && router_only.y < soc_descriptor.grid_size.y) {
+            write_coord(outfile, router_only, CoreType::TENSIX, soc_descriptor);
+        }
+    }
+    outfile << std::endl;
+    outfile << "  ]" << std::endl << std::endl;
 
     // Fill in the rest that are static to our device
     outfile << "worker_l1_size:" << std::endl;

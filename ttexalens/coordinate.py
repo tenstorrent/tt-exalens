@@ -106,8 +106,11 @@ class OnChipCoordinate:
         Notes:
             - If the device is not specified, coordinate conversion to other systems will not be possible.
         """
+        from ttexalens.device import Device
+
         assert device is not None
-        self._device = device
+        assert isinstance(device, Device)
+        self._device: Device = device
         if input_type == "noc0" or input_type == "physical":
             self._noc0_coord = (x, y)
         elif input_type == "virtual":

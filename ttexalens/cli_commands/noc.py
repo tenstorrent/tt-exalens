@@ -32,9 +32,9 @@ from docopt import docopt
 # Local imports
 from ttexalens import command_parser, util
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.tt_exalens_lib import read_words_from_device
+from ttexalens.device import Device
 from ttexalens.uistate import UIState
-from ttexalens.rich_formatters import formatter, console
+from ttexalens.rich_formatters import formatter
 
 # Command metadata
 command_metadata = {
@@ -46,36 +46,11 @@ command_metadata = {
     "common_option_names": ["--device", "--loc"],
 }
 
-###############################################################################
-# Reading registers
-###############################################################################
-def read_noc_register(loc: OnChipCoordinate, device, noc_id: int, reg_name: str) -> int:
-    """
-    Read a NOC register value from the device.
-
-    Args:
-        loc: On-chip coordinate
-        device: Device object
-        noc_id: NOC identifier (0 or 1)
-        reg_name: Register name
-
-    Returns:
-        Register value as integer
-    """
-    try:
-        # Use device's method to get NOC register address
-        reg_addr = device.get_noc_register_address(reg_name, noc_id)
-        val = read_words_from_device(loc, reg_addr, device.id())[0]
-        return val
-    except Exception as e:
-        util.ERROR(f"Failed to read register {reg_name} from NOC{noc_id}: {str(e)}")
-        return 0
-
 
 ###############################################################################
 # Register Definitions and Extraction
 ###############################################################################
-def get_noc_status_registers(loc: OnChipCoordinate, device, noc_id: int) -> Dict[str, Dict[str, int]]:
+def get_noc_status_registers(loc: OnChipCoordinate, device: Device, noc_id: int) -> Dict[str, Dict[str, int]]:
     """
     Get all NOC status registers organized by groups.
 
@@ -110,17 +85,18 @@ def get_noc_status_registers(loc: OnChipCoordinate, device, noc_id: int) -> Dict
         },
     }
 
+    register_store = device.get_register_store(loc, noc_id=noc_id)
     noc_registers = {group_name: {} for group_name in register_groups.keys()}
     for group_name, registers in register_groups.items():
         for register_desc, reg_name in registers.items():
-            noc_registers[group_name][register_desc] = read_noc_register(loc, device, noc_id, reg_name)
+            noc_registers[group_name][register_desc] = register_store.read_register(reg_name)
     return noc_registers
 
 
 ###############################################################################
 # NOC Register Display Functions
 ###############################################################################
-def display_noc_registers(loc: OnChipCoordinate, device, noc_id: int, simple_print: bool = False) -> None:
+def display_noc_registers(loc: OnChipCoordinate, device: Device, noc_id: int, simple_print: bool = False) -> None:
     """
     Display registers for a specific NOC.
 
@@ -140,7 +116,7 @@ def display_noc_registers(loc: OnChipCoordinate, device, noc_id: int, simple_pri
     formatter.display_grouped_data(noc_registers, grouping, simple_print)
 
 
-def display_all_noc_registers(loc: OnChipCoordinate, device, simple_print: bool = False) -> None:
+def display_all_noc_registers(loc: OnChipCoordinate, device: Device, simple_print: bool = False) -> None:
     """
     Display registers for both NOCs.
 
@@ -186,11 +162,13 @@ def run(cmd_text: str, context: Dict, ui_state: Optional[UIState] = None) -> Lis
             util.ERROR(f"Invalid NOC identifier: {dopt.args['--noc']}. Must be 0 or 1.")
             return []
     else:
+        # TODO: Read from device available noc block registers for location
         noc_ids = [0, 1]
 
     simple_print = dopt.args["--simple"]
 
     # Iterate over selected devices, locations, and NOC identifiers
+    device: Device
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             formatter.print_device_header(device, loc)

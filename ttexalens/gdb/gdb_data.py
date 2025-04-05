@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from dataclasses import dataclass
 from functools import cached_property
-from ttexalens.debug_risc import RiscDebug
+from ttexalens.risc_debug import RiscDebug
 
 
 @dataclass

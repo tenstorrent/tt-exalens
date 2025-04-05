@@ -9,7 +9,7 @@ Description:
   Prints callstack using provided elf for a given RiscV core.
 
 Options:
-  -r <risc>           RiscV ID (0: brisc, 1-3 triscs). [Default: 0]
+  -r <risc>           RiscV name (brisc, triscs0, trisc1, trisc2, erisc, all). [default: all]
   -m <max-depth>      Maximum depth of callstack. [Default: 100]
 
 Examples:
@@ -25,11 +25,12 @@ command_metadata = {
 }
 
 import os
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.uistate import UIState
 
 from ttexalens import command_parser
 from ttexalens import util
-from ttexalens.debug_risc import RiscDebug, RiscLoc, get_risc_name, RiscLoader
+from ttexalens.device import Device
 
 
 def run(cmd_text, context, ui_state: UIState = None):
@@ -41,7 +42,6 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     verbose = dopt.args["-v"]
     limit = int(dopt.args["-m"])
-    noc_id = 0
     elf_path = dopt.args["<elf-file>"]
     stop_on_main = True
 
@@ -49,17 +49,18 @@ def run(cmd_text, context, ui_state: UIState = None):
         util.ERROR(f"File {elf_path} does not exist")
         return
 
+    device: Device
     for device in dopt.for_each("--device", context, ui_state):
+        loc: OnChipCoordinate
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            for risc_id in dopt.for_each("--risc", context, ui_state):
-                risc_debug = RiscDebug(RiscLoc(loc, noc_id, risc_id), context, verbose=verbose)
+            for risc_name in dopt.for_each("--risc", context, ui_state):
+                risc_debug = device.get_risc_debug(loc, risc_name, verbose=verbose)
                 if risc_debug.is_in_reset():
-                    util.WARN(f"RiscV core {get_risc_name(risc_id)} on location {loc.to_user_str()} is in reset")
+                    util.WARN(f"RiscV core {risc_name} on location {loc.to_user_str()} is in reset")
                     continue
-                loader = RiscLoader(risc_debug, context, verbose)
-                callstack = loader.get_callstack(elf_path, limit, stop_on_main)
+                callstack = risc_debug.get_callstack(elf_path, limit, stop_on_main)
                 print(
-                    f"Location: {util.CLR_INFO}{loc.to_user_str()}{util.CLR_END}, core: {util.CLR_WHITE}{get_risc_name(risc_id)}{util.CLR_END}"
+                    f"Location: {util.CLR_INFO}{loc.to_user_str()}{util.CLR_END}, core: {util.CLR_WHITE}{risc_name}{util.CLR_END}"
                 )
 
                 frame_number_width = len(str(len(callstack) - 1))

@@ -31,12 +31,11 @@ command_metadata = {
     "command_option_names": ["--device", "--loc"],
 }
 
+from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
-from ttexalens.debug_tensix import TensixDebug
 from ttexalens.device import Device
 from ttexalens import command_parser
 from ttexalens.util import (
-    convert_int_to_data_type,
     put_table_list_side_by_side,
     INFO,
     CLR_GREEN,
@@ -57,14 +56,14 @@ def create_column_names(num_of_columns):
 
 
 # Converts list of configuration registers to table
-def config_regs_to_table(config_regs: List[dict], table_name: str, debug_tensix: TensixDebug, device: Device):
+def config_regs_to_table(config_regs: List[dict], table_name: str, register_store: RegisterStore):
     keys = list(config_regs[0].keys())
 
     if "blobs_y_start_lo" in keys and "blobs_y_start_hi" in keys:
         for config in config_regs:
             config["blobs_y_start"] = (
-                debug_tensix.read_tensix_register(config["blobs_y_start_hi"]) << 16
-            ) + debug_tensix.read_tensix_register(config["blobs_y_start_hi"])
+                register_store.read_register(config["blobs_y_start_hi"]) << 16
+            ) + register_store.read_register(config["blobs_y_start_hi"])
             del config["blobs_y_start_lo"]
             del config["blobs_y_start_hi"]
 
@@ -74,9 +73,9 @@ def config_regs_to_table(config_regs: List[dict], table_name: str, debug_tensix:
     for config in config_regs:
         for key in keys:
             if key in config:
-                value = debug_tensix.read_tensix_register(config[key])
-                reg_desc = device.get_tensix_register_description(config[key])
-                config[key] = convert_int_to_data_type(value, reg_desc.data_type, bin(reg_desc.mask).count("1"))
+                reg_desc = register_store.get_register_description(config[key])
+                value = register_store.read_register(reg_desc)
+                config[key] = format_register_value(value, reg_desc.data_type, bin(reg_desc.mask).count("1"))
 
     return dict_list_to_table(config_regs, table_name, create_column_names(len(config_regs)))
 
@@ -91,18 +90,17 @@ def run(cmd_text, context, ui_state: UIState = None):
     if cfg not in possible_registers:
         raise ValueError(f"Invalid configuration register: {cfg}. Possible values: {possible_registers}")
 
+    device: Device
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             INFO(f"Configuration registers for location {loc} on device {device.id()}")
 
-            debug_tensix = TensixDebug(loc, device.id(), context)
-            device = debug_tensix.context.devices[debug_tensix.device_id]
-
+            register_store = device.get_register_store(loc)
             if cfg == "alu" or cfg == "all":
                 print(f"{CLR_GREEN}ALU{CLR_END}")
 
                 alu_config = device.get_alu_config()
-                alu_config_table = config_regs_to_table(alu_config, "ALU CONFIG", debug_tensix, device)
+                alu_config_table = config_regs_to_table(alu_config, "ALU CONFIG", register_store)
                 print(alu_config_table)
 
             if cfg == "unpack" or cfg == "all":
@@ -111,8 +109,8 @@ def run(cmd_text, context, ui_state: UIState = None):
                 tile_descriptor = device.get_unpack_tile_descriptor()
                 unpack_config = device.get_unpack_config()
 
-                tile_descriptor_table = config_regs_to_table(tile_descriptor, "TILE DESCRIPTOR", debug_tensix, device)
-                unpack_config_table = config_regs_to_table(unpack_config, "UNPACK CONFIG", debug_tensix, device)
+                tile_descriptor_table = config_regs_to_table(tile_descriptor, "TILE DESCRIPTOR", register_store)
+                unpack_config_table = config_regs_to_table(unpack_config, "UNPACK CONFIG", register_store)
 
                 print(put_table_list_side_by_side([unpack_config_table, tile_descriptor_table]))
 
@@ -124,17 +122,17 @@ def run(cmd_text, context, ui_state: UIState = None):
                 edge_offset = device.get_pack_edge_offset()
                 pack_strides = device.get_pack_strides()
 
-                pack_config_table = config_regs_to_table(pack_config, "PACK CONFIG", debug_tensix, device)
-                pack_counters_table = config_regs_to_table(pack_counters, "COUNTERS", debug_tensix, device)
-                edge_offset_table = config_regs_to_table(edge_offset, "EDGE OFFSET", debug_tensix, device)
-                pack_strides_table = config_regs_to_table(pack_strides, "STRIDES", debug_tensix, device)
+                pack_config_table = config_regs_to_table(pack_config, "PACK CONFIG", register_store)
+                pack_counters_table = config_regs_to_table(pack_counters, "COUNTERS", register_store)
+                edge_offset_table = config_regs_to_table(edge_offset, "EDGE OFFSET", register_store)
+                pack_strides_table = config_regs_to_table(pack_strides, "STRIDES", register_store)
 
                 if device._arch == "wormhole_b0" or device._arch == "blackhole":
                     relu_config = device.get_relu_config()
                     dest_rd_ctrl = device.get_pack_dest_rd_ctrl()
 
-                    relu_config_table = config_regs_to_table(relu_config, "RELU CONFIG", debug_tensix, device)
-                    dest_rd_ctrl_table = config_regs_to_table(dest_rd_ctrl, "DEST RD CTRL", debug_tensix, device)
+                    relu_config_table = config_regs_to_table(relu_config, "RELU CONFIG", register_store)
+                    dest_rd_ctrl_table = config_regs_to_table(dest_rd_ctrl, "DEST RD CTRL", register_store)
 
                     print(pack_counters_table)
                     print(pack_config_table)

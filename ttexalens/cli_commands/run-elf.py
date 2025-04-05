@@ -9,7 +9,7 @@ Description:
   Loads an elf file into a brisc and runs it.
 
 Options:
-  -r <risc>           RiscV ID (0: brisc, 1-3 triscs). [default: 0]
+  -r <risc>           RiscV name (brisc, triscs0, trisc1, trisc2, erisc, all). [default: all]
 
 Examples:
   run-elf build/riscv-src/wormhole/sample.brisc.elf

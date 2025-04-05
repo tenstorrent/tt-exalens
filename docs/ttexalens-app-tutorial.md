@@ -341,7 +341,7 @@ The fields of this dictionary are as follwos:
   - --test: run in test mode; default: false,
   - --device: device ID to run the command on; default: current device,
   - --loc: grid location for running the command; default: current location,
-  - --risc: RiscV ID (0: brisc, 1-3 trisc, all); default: all
+  - --risc: RiscV name (brisc, triscs0, trisc1, trisc2, erisc, all). [default: all]
 
 
 Note: long and short name can't be left out.

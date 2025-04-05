@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-# TODO: This is plain copy of blackhole.py. Need to update this file with Quasar specific details
+# TODO: This file is stale and should be updated to new refactor
 from ttexalens import util
 from ttexalens.device import (
     Device,
