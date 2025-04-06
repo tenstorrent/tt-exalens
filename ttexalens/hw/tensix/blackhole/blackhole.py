@@ -20,15 +20,21 @@ from ttexalens.device import (
 from ttexalens.hw.tensix.blackhole.tensix_debug_bus_signal_store import (
     debug_bus_signal_map as tensix_debug_bus_signal_map,
 )
-from ttexalens.hw.tensix.blackhole.arc_register_store import register_map as arc_register_map
+from ttexalens.hw.tensix.blackhole.arc_register_store import register_map_noc0 as arc_register_map_noc0, register_map_noc1 as arc_register_map_noc1
 from ttexalens.hw.tensix.blackhole.eth_register_store import (
     register_map_noc0 as eth_register_map_noc0,
     register_map_noc1 as eth_register_map_noc1,
+)
+from ttexalens.hw.tensix.blackhole.dram_register_store import (
+    register_map_noc0 as dram_register_map_noc0,
+    register_map_noc1 as dram_register_map_noc1,
 )
 from ttexalens.hw.tensix.blackhole.harvested_tensix_register_store import (
     register_map_noc0 as harvested_tensix_register_map_noc0,
     register_map_noc1 as harvested_tensix_register_map_noc1,
 )
+from ttexalens.hw.tensix.blackhole.pcie_register_store import register_map as pcie_register_map
+from ttexalens.hw.tensix.blackhole.router_only_register_store import register_map as router_only_register_map
 from ttexalens.hw.tensix.blackhole.tensix_register_store import (
     register_map_noc0 as tensix_register_map_noc0,
     register_map_noc1 as tensix_register_map_noc1,
@@ -265,7 +271,21 @@ class BlackholeDevice(Device):
                 return RegisterStore(harvested_tensix_register_map_noc1, location)
         elif block_type == "arc":
             if noc_id == 0 or noc_id is None:
-                return RegisterStore(arc_register_map, location)
+                return RegisterStore(arc_register_map_noc0, location)
+            elif noc_id == 1:
+                return RegisterStore(arc_register_map_noc1, location)
+        elif block_type == "dram":
+            if noc_id == 0 or noc_id is None:
+                return RegisterStore(dram_register_map_noc0, location)
+            elif noc_id == 1:
+                return RegisterStore(dram_register_map_noc1, location)
+        # TODO: These hangs device :(
+        # elif block_type == "pcie":
+        #     if noc_id == 0 or noc_id is None:
+        #         return RegisterStore(pcie_register_map, location)
+        # elif block_type == "router_only":
+        #     if noc_id == 0 or noc_id is None:
+        #         return RegisterStore(router_only_register_map, location)
         return None
 
     def _get_risc_names_for_location(
