@@ -957,12 +957,25 @@ class RiscLoader:
     def get_callstack(self, elf_path: str, limit: int = 100, stop_on_main: bool = True):
         callstack = []
         with self.risc_debug.ensure_halted():
-            elf = read_elf(self.context.server_ifc, elf_path)
+
+            # def mem_reader(addr, size_bytes):
+            #   value = [read_word_from_device(self.risc_debug.location.loc, addr, self.risc_debug.location.loc._device._id, self.context)]
+            #   print(f"Read {size_bytes} bytes from address 0x{addr:08x} -> {value[0]:08x}")
+            #   return value
+            # from ttexalens.parse_elf import mem_access
+            # print(mem_access(elf, 'mailboxes->launch_msg_rd_ptr', mem_reader)[0])
+            # print(mem_access(elf, 'mailboxes->launch[0].kernel_config.kernel_config_base[0]', mem_reader)[0])
+            # print(mem_access(elf, 'mailboxes->launch[0].kernel_config.kernel_text_offset[0]', mem_reader)[0])
+
+            kernel_address = 28736  # mailboxes->launch[0].kernel_config.kernel_text_offset[0] + mailboxes->launch[0].kernel_config.kernel_config_base[0] GOT FROM FW ELF
+            elf = read_elf(self.context.server_ifc, elf_path, kernel_address)
+
             pc = self.risc_debug.read_gpr(32)
             frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
             frame_pointer = frame_description.read_previous_cfa()
             i = 0
             while i < limit:
+                frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
                 file_line = elf["dwarf"].find_file_line_by_address(pc)
                 function_die = elf["dwarf"].find_function_by_address(pc)
                 if function_die is not None and function_die.category == "inlined_function":
@@ -1000,7 +1013,6 @@ class RiscLoader:
                 if frame_pointer == 0:
                     break
 
-                frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
                 if frame_description is None:
                     util.WARN("We don't have information on frame and we don't know how to proceed")
                     break

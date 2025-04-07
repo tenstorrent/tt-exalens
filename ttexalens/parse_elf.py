@@ -82,8 +82,9 @@ def strip_DW_(s):
 
 
 class MY_DWARF:
-    def __init__(self, dwarf: DWARFInfo):
+    def __init__(self, dwarf: DWARFInfo, loaded_offset=0):
         self.dwarf = dwarf
+        self.loaded_offset = loaded_offset
         self._cus: Dict[int, MY_CU] = {}
 
     @cached_property
@@ -110,6 +111,7 @@ class MY_DWARF:
         """
         Given an address, find the function that contains that address. Goes through all CUs and all DIEs and all inlined functions.
         """
+        address += self.loaded_offset
         # Try to find CU that contains this address
         for cu in self.iter_CUs():
             # Top DIE should contain the address
@@ -166,6 +168,7 @@ class MY_DWARF:
         return result
 
     def find_file_line_by_address(self, address):
+        address += self.loaded_offset
         ranges = self.file_lines_ranges
         for (start, end), info in ranges.items():
             if start <= address < end:
@@ -225,10 +228,11 @@ class MY_CU:
             for DIE in dwarf_cu.iter_DIEs():
                 if "DW_AT_specification" in DIE.attributes:
                     if DIE.attributes["DW_AT_specification"].value == die.offset:
-                        return MY_DIE(dwarf_cu, DIE)
+                        return self.dwarf.get_die(DIE)
                 if "DW_AT_abstract_origin" in DIE.attributes:
-                    if DIE.attributes["DW_AT_abstract_origin"].value == die.offset:
-                        return MY_DIE(dwarf_cu, DIE)
+                    dwarf_die = DIE.get_DIE_from_attribute("DW_AT_abstract_origin")
+                    if dwarf_die == die.dwarf_die and len(DIE.attributes) > 1:
+                        return self.dwarf.get_die(DIE)
         return None
 
 
@@ -268,7 +272,9 @@ class MY_DIE:
 
     @cached_property
     def local_offset(self):
-        return self.attributes["DW_AT_type"].value
+        if "DW_AT_type" in self.attributes:
+            return self.attributes["DW_AT_type"].value
+        return None
 
     @cached_property
     def category(self):
@@ -329,13 +335,37 @@ class MY_DIE:
         Resolve to underlying type
         TODO: test typedefs, this looks overly complicated
         """
-        if self.tag == "DW_TAG_typedef":
+        if self.tag == "DW_TAG_typedef" and self.local_offset != None:
             typedef_DIE = self.cu.find_DIE_at_local_offset(self.local_offset)
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_type")
+            if typedef_DIE.dwarf_die != dwarf_die:
+                print("ERROR")
             if typedef_DIE:  # If typedef, recursivelly do it
                 return typedef_DIE.resolved_type
-        elif self.category != "type" and "DW_AT_type" in self.attributes:
+        elif self.tag == "DW_TAG_const_type" and self.local_offset != None:
+            typedef_DIE = self.cu.find_DIE_at_local_offset(self.local_offset)
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_type")
+            if typedef_DIE.dwarf_die != dwarf_die:
+                print("ERROR")
+            if typedef_DIE:  # If typedef, recursivelly do it
+                return typedef_DIE.resolved_type
+        elif self.tag == "DW_TAG_volatile_type" and self.local_offset != None:
+            typedef_DIE = self.cu.find_DIE_at_local_offset(self.local_offset)
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_type")
+            if typedef_DIE.dwarf_die != dwarf_die:
+                print("ERROR")
+            if typedef_DIE:  # If typedef, recursivelly do it
+                return typedef_DIE.resolved_type
+        elif self.category != "type" and "DW_AT_type" in self.attributes and self.local_offset != None:
             my_type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
-            if my_type_die.tag == "DW_TAG_typedef":
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_type")
+            if my_type_die.dwarf_die != dwarf_die:
+                print("ERROR")
+            if (
+                my_type_die.tag == "DW_TAG_typedef"
+                or my_type_die.tag == "DW_TAG_const_type"
+                or my_type_die.tag == "DW_TAG_volatile_type"
+            ):
                 return my_type_die.resolved_type
             return my_type_die
         return self
@@ -422,7 +452,7 @@ class MY_DIE:
                 return 0  # All members of a union start at the same address
             else:
                 if self.attributes.get("DW_AT_const_value"):
-                    pass
+                    return self.attributes["DW_AT_const_value"].value
                 else:
                     print(f"{CLR_RED}ERROR: Cannot find address for {self}{CLR_END}")
         return addr
@@ -634,8 +664,9 @@ class FrameDescription:
 
 
 class FrameInfoProvider:
-    def __init__(self, dwarf_info):
+    def __init__(self, dwarf_info, loaded_offset):
         self.dwarf_info = dwarf_info
+        self.loaded_offset = loaded_offset
         self.fdes = []
 
         # Check if we have dwarf_frame CFI section
@@ -648,6 +679,7 @@ class FrameInfoProvider:
                 self.fdes.append((start_address, end_address, entry))
 
     def get_frame_description(self, pc, risc_debug) -> FrameDescription:
+        pc = pc + self.loaded_offset
         for start_address, end_address, fde in self.fdes:
             if start_address <= pc < end_address:
                 return FrameDescription(pc, fde, risc_debug)
@@ -669,7 +701,7 @@ def decode_symbols(elf_file):
     return functions
 
 
-def parse_dwarf(dwarf: DWARFInfo):
+def parse_dwarf(dwarf: DWARFInfo, loaded_offset=0):
     """
     Itaretes recursively over all the DIEs in the DWARF info and returns a dictionary
     with the following keys:
@@ -702,12 +734,12 @@ def parse_dwarf(dwarf: DWARFInfo):
     recurse_dict["file-line"] = decode_file_line(dwarf)
 
     # Process frame info
-    recurse_dict["frame-info"] = FrameInfoProvider(dwarf)
+    recurse_dict["frame-info"] = FrameInfoProvider(dwarf, loaded_offset)
 
     return recurse_dict
 
 
-def read_elf(file_ifc, elf_file_path):
+def read_elf(file_ifc, elf_file_path, load_address=None):
     """
     Reads the ELF file and returns a dictionary with the DWARF info
     """
@@ -719,11 +751,18 @@ def read_elf(file_ifc, elf_file_path):
     if not elf.has_dwarf_info():
         print(f"ERROR: {elf_file_path} does not have DWARF info. Source file must be compiled with -g")
         return
+    text_sh_address = elf.get_section_by_name(".text")["sh_addr"]
+    if load_address is None:
+        load_address = text_sh_address
+
     dwarf = elf.get_dwarf_info()
 
-    recurse_dict = parse_dwarf(dwarf)
+    recurse_dict = parse_dwarf(dwarf, loaded_offset=text_sh_address - load_address)
 
     recurse_dict["symbols"] = decode_symbols(elf)
+
+    recurse_dict["dwarf"].loaded_offset = text_sh_address - load_address
+
     return recurse_dict
 
 
@@ -851,6 +890,7 @@ def mem_access(name_dict, access_path, mem_access_function):
             if not type_die.tag_is("pointer_type"):
                 raise Exception(f"ERROR: {type_die.path} is not a pointer")
             type_die = type_die.dereference_type.resolved_type
+            pointer_address = mem_access_function(current_address, 4)[0] if die.value is None else die.value
             die = type_die.get_child_by_name(member_name)
             if not die:
                 die = resolve_unnamed_union_member(type_die, member_name)
@@ -858,7 +898,7 @@ def mem_access(name_dict, access_path, mem_access_function):
                 member_path = type_die.path + "::" + member_name
                 raise Exception(f"ERROR: Cannot find {member_path}")
             type_die = die.resolved_type
-            current_address = mem_access_function(current_address, 4)[0] + die.address  # Assuming 4 byte pointers
+            current_address = pointer_address + die.address  # Assuming 4 byte pointers
 
         elif path_divider == "[":
             if num_members_to_read > 1:
