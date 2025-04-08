@@ -18,7 +18,7 @@ class BriscInfo(BabyRiscInfo):
             code_start_address_register="",
             code_start_address_enable_register="",
             code_start_address_enable_bit=0,
-            l1_size=0x00200000,
+            l1_size=1464 * 1024,
             private_memory_base=0xFFB00000,
         )
 
@@ -42,7 +42,7 @@ class Trisc0Info(BabyRiscInfo):
             code_start_address_register="TRISC_RESET_PC_SEC0_PC",
             code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b001,
-            l1_size=0x0020000,
+            l1_size=1464 * 1024,
             private_memory_base=0xFFB00000,
         )
 
@@ -59,7 +59,7 @@ class Trisc1Info(BabyRiscInfo):
             code_start_address_register="TRISC_RESET_PC_SEC1_PC",
             code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b010,
-            l1_size=0x0020000,
+            l1_size=1464 * 1024,
             private_memory_base=0xFFB00000,
         )
 
@@ -76,7 +76,7 @@ class Trisc2Info(BabyRiscInfo):
             code_start_address_register="TRISC_RESET_PC_SEC2_PC",
             code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b100,
-            l1_size=0x0020000,
+            l1_size=1464 * 1024,
             private_memory_base=0xFFB00000,
         )
 
@@ -93,7 +93,7 @@ class NcriscInfo(BabyRiscInfo):
             code_start_address_register="NCRISC_RESET_PC_PC",
             code_start_address_enable_register="NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b1,
-            l1_size=0x0020000,
+            l1_size=1464 * 1024,
             private_memory_base=0xFFB00000,
             private_code_base=0xFFC00000,
         )
@@ -111,7 +111,7 @@ class EriscInfo(BabyRiscInfo):
             code_start_address_register="",
             code_start_address_enable_register="",
             code_start_address_enable_bit=0,
-            l1_size=0x00200000,
+            l1_size=256 * 1024,
             private_memory_base=0xFFB00000,
         )
 
