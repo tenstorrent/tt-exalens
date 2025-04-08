@@ -5,7 +5,7 @@ from ttexalens.baby_risc_debug import BabyRiscLocation
 from ttexalens.baby_risc_info import BabyRiscInfo
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
-from ttexalens.hw.tensix.wormhole.riscs_info import BriscInfo, EriscInfo, Trisc0Info, Trisc1Info, Trisc2Info
+from ttexalens.hw.tensix.wormhole.riscs_info import BriscInfo, EriscInfo, NcriscInfo, Trisc0Info, Trisc1Info, Trisc2Info
 from ttexalens.register_store import RegisterStore
 from ttexalens.risc_debug import RiscDebug
 from ttexalens.risc_info import RiscInfo
@@ -309,7 +309,7 @@ class WormholeDevice(Device):
     ) -> List[str]:
         assert neo_id is None
         if block_type == "functional_workers":
-            return ["brisc", "trisc0", "trisc1", "trisc2"]
+            return ["brisc", "trisc0", "trisc1", "trisc2", "ncrisc"]
         elif block_type == "eth":
             return ["erisc"]
         return []
@@ -343,6 +343,8 @@ class WormholeDevice(Device):
                 return Trisc1Info()
             if risc_name == "trisc2":
                 return Trisc2Info()
+            if risc_name == "ncrisc":
+                return NcriscInfo()
         elif block_type == "eth":
             if risc_name == "erisc":
                 return EriscInfo()

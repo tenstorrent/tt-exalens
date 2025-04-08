@@ -20,6 +20,7 @@ class BriscInfo(BabyRiscInfo):
             code_start_address_enable_bit=0,
             l1_size=1464 * 1024,
             private_memory_base=0xFFB00000,
+            can_change_code_start_address=False,
         )
 
     def get_code_start_address(self, register_store: RegisterStore) -> int:
@@ -96,6 +97,7 @@ class NcriscInfo(BabyRiscInfo):
             l1_size=1464 * 1024,
             private_memory_base=0xFFB00000,
             private_code_base=0xFFC00000,
+            has_debug_hardware=False,
         )
 
 
@@ -113,6 +115,7 @@ class EriscInfo(BabyRiscInfo):
             code_start_address_enable_bit=0,
             l1_size=256 * 1024,
             private_memory_base=0xFFB00000,
+            can_change_code_start_address=False,
         )
 
     def get_code_start_address(self, register_store: RegisterStore) -> int:

@@ -251,7 +251,7 @@ def load_elf(
 def run_elf(
     elf_file: os.PathLike,
     core_loc: Union[str, OnChipCoordinate, List[Union[str, OnChipCoordinate]]],
-    risc_id: int = 0,
+    risc_name: str,
     device_id: int = 0,
     context: Context = None,
 ) -> None:
@@ -264,17 +264,13 @@ def run_elf(
                     2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
                     3. a list of X-Y (noc0/translated), X,Y (logical) or OnChipCoordinate locations of cores, possibly mixed;
                     4. an OnChipCoordinate object.
-            risc_id (int, default 0): RiscV ID (0: brisc, 1-3 triscs).
+            risc_name (str): RiscV name (brisc, triscs0, trisc1, trisc2, ncrisc, erisc).
             device_id (int, default 0):	ID number of device to run ELF on.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
-    from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc
-
     context = check_context(context)
 
     validate_device_id(device_id, context)
-    if (risc_id < 0) or (risc_id > 4):
-        raise TTException("Invalid RiscV ID. Must be between 0 and 4.")
 
     device = context.devices[device_id]
 
@@ -298,9 +294,8 @@ def run_elf(
 
     assert locs, "No valid core locations provided."
     for loc in locs:
-        rdbg = RiscDebug(RiscLoc(loc, 0, risc_id), context, False)
-        rloader = RiscLoader(rdbg, context, False)
-        rloader.run_elf(elf_file)
+        risc_debug = device.get_risc_debug(loc, risc_name)
+        risc_debug.run_elf(elf_file)
 
 
 def check_context(context: Context = None) -> Context:
@@ -370,23 +365,24 @@ def read_tensix_register(
     Returns:
             int: Value of the configuration or debug register specified.
     """
-    from ttexalens.device import TensixRegisterDescription
-    from ttexalens.debug_tensix import TensixDebug
+    from ttexalens.register_store import RegisterDescription
 
     context = check_context(context)
     validate_device_id(device_id, context)
 
     device = context.devices[device_id]
+    noc_id = 0
+    neo_id = None
 
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=device)
 
-    if not isinstance(register, TensixRegisterDescription) and not isinstance(register, str):
+    if not isinstance(register, RegisterDescription) and not isinstance(register, str):
         raise TTException(
             f"Invalid register type. Must be an str or instance of TensixRegisterDescription or its subclasses, but got {type(register)}"
         )
 
-    return TensixDebug(core_loc, device_id, context).read_tensix_register(register)
+    return device.get_register_store(core_loc, noc_id=noc_id, neo_id=neo_id).read_register(register)
 
 
 def write_tensix_register(
@@ -407,20 +403,20 @@ def write_tensix_register(
             device_id (int, default 0):	ID number of device to read from.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
     """
-
-    from ttexalens.device import TensixRegisterDescription
-    from ttexalens.debug_tensix import TensixDebug
+    from ttexalens.register_store import RegisterDescription
 
     context = check_context(context)
     validate_device_id(device_id, context)
     device = context.devices[device_id]
+    noc_id = 0
+    neo_id = None
 
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=device)
 
-    if not isinstance(register, TensixRegisterDescription) and not isinstance(register, str):
+    if not isinstance(register, RegisterDescription) and not isinstance(register, str):
         raise TTException(
             f"Invalid register type. Must be an str or instance of TensixRegisterDescription or its subclasses, but got {type(register)}"
         )
 
-    TensixDebug(core_loc, device_id, context).write_tensix_register(register, value)
+    return device.get_register_store(core_loc, noc_id=noc_id, neo_id=neo_id).write_register(register, value)

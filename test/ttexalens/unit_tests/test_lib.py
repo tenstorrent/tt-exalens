@@ -317,13 +317,12 @@ class TestRunElf(unittest.TestCase):
         """Check if the device is blackhole."""
         return self.context.devices[0]._arch == "blackhole"
 
-    def get_elf_path(self, app_name, risc_id):
+    def get_elf_path(self, app_name, risc_name):
         """Get the path to the ELF file."""
         arch = self.context.devices[0]._arch.lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
-        risc = get_risc_name(risc_id).lower()
-        return f"build/riscv-src/{arch}/{app_name}.{risc}.elf"
+        return f"build/riscv-src/{arch}/{app_name}.{risc_name}.elf"
 
     def test_risc_start_address(self):
         """Test default start address of a RISC."""
@@ -351,6 +350,9 @@ class TestRunElf(unittest.TestCase):
         # Test all riscs
         for risc_name in device.get_risc_names_for_location(loc):
             risc_debug: BabyRiscDebug = device.get_risc_debug(loc, risc_name)
+            # TODO: Think about how we can expose this feature to RiscDebug class...
+            if not risc_debug.risc_info.has_debug_hardware:
+                continue
 
             # Start riscs
             risc_debug.set_reset_signal(True)
@@ -367,14 +369,14 @@ class TestRunElf(unittest.TestCase):
 
     @parameterized.expand(
         [
-            (0),  # Load private sections on BRISC
-            (1),  # Load private sections on TRISC0
-            (2),  # Load private sections on TRISC1
-            (3),  # Load private sections on TRISC2
-            (4),  # Load private sections on NCRISC
+            ("brisc"),
+            ("trisc0"),
+            ("trisc1"),
+            ("trisc2"),
+            ("ncrisc"),
         ]
     )
-    def test_run_elf(self, risc_id: int):
+    def test_run_elf(self, risc_name: str):
         """Test running an ELF file."""
         core_loc = "0,0"
         addr = 0x0
@@ -385,63 +387,61 @@ class TestRunElf(unittest.TestCase):
         self.assertEqual(ret[0], 0)
 
         # Run an ELF that writes to the addr and check if it executed correctly
-        elf_path = self.get_elf_path("run_elf_test", risc_id)
-        lib.run_elf(elf_path, core_loc, risc_id, context=self.context)
+        elf_path = self.get_elf_path("run_elf_test", risc_name)
+        lib.run_elf(elf_path, core_loc, risc_name, context=self.context)
         ret = lib.read_words_from_device(core_loc, addr, context=self.context)
         self.assertEqual(ret[0], 0x12345678)
 
     @parameterized.expand(
         [
-            ("", "0,0", 0, 0),  # Invalid ELF path
-            ("/sbin/non_existing_elf", "0,0", 0, 0),  # Invalid ELF path
-            (None, "abcd", 0, 0),  # Invalid core_loc
-            (None, "-10", 0, 0),  # Invalid core_loc
-            (None, "0,0/", 0, 0),  # Invalid core_loc
-            (None, "0,0/00b", 0, 0),  # Invalid core_loc
-            (None, "0,0", -1, 0),  # Invalid risc_id
-            (None, "0,0", 5, 0),  # Invalid risc_id
-            (None, "0,0", 0, -1),  # Invalid device_id
-            (None, "0,0", 0, 112),  # Invalid device_id (too high)
+            ("", "0,0", "brisc", 0),  # Invalid ELF path
+            ("/sbin/non_existing_elf", "0,0", "brisc", 0),  # Invalid ELF path
+            (None, "abcd", "brisc", 0),  # Invalid core_loc
+            (None, "-10", "brisc", 0),  # Invalid core_loc
+            (None, "0,0/", "brisc", 0),  # Invalid core_loc
+            (None, "0,0/00b", "brisc", 0),  # Invalid core_loc
+            (None, "0,0", "invalid_risc", 0),  # Invalid risc_name
+            (None, "0,0", "erisc", 0),  # Invalid risc_name
+            (None, "0,0", "brisc", -1),  # Invalid device_id
+            (None, "0,0", "brisc", 112),  # Invalid device_id (too high)
         ]
     )
-    def test_run_elf_invalid(self, elf_file, core_loc, risc_id, device_id):
+    def test_run_elf_invalid(self, elf_file, core_loc, risc_name, device_id):
         if elf_file is None:
-            elf_file = self.get_elf_path("run_elf_test", 0)
+            elf_file = self.get_elf_path("run_elf_test", "brisc")
         with self.assertRaises((util.TTException, ValueError)):
-            lib.run_elf(elf_file, core_loc, risc_id, device_id, context=self.context)
+            lib.run_elf(elf_file, core_loc, risc_name, device_id, context=self.context)
 
     # TODO: This test should be restructured (Issue #70)
     @parameterized.expand(
         [
-            (0),  # Load private sections on BRISC
-            (1),  # Load private sections on TRISC0
-            (2),  # Load private sections on TRISC1
-            (3),  # Load private sections on TRISC2
+            ("brisc"),
+            ("trisc0"),
+            ("trisc1"),
+            ("trisc2"),
         ]
     )
-    def test_old_elf_test(self, risc_id: int):
+    def test_old_elf_test(self, risc_name: int):
         if self.is_blackhole():
             self.skipTest("This test doesn't work as expected on blackhole. Disabling it until bug #120 is fixed.")
 
         """ Running old elf test, formerly done with -t option. """
         core_loc = "0,0"
-        elf_path = self.get_elf_path("sample", risc_id)
+        elf_path = self.get_elf_path("sample", risc_name)
 
-        lib.run_elf(elf_path, core_loc, context=self.context)
+        lib.run_elf(elf_path, core_loc, risc_name, context=self.context)
 
         # Testing
         elf = ELF(self.context.server_ifc, {"fw": elf_path})
         MAILBOX_ADDR, MAILBOX_SIZE, _, _ = elf.parse_addr_size_value_type("fw.g_MAILBOX")
         TESTBYTEACCESS_ADDR, _, _, _ = elf.parse_addr_size_value_type("fw.g_TESTBYTEACCESS")
 
-        loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
-        rdbg = RiscDebug(RiscLoc(loc, 0, 0), self.context, False)
-        rloader = RiscLoader(rdbg, self.context, False)
-        loc = rloader.risc_debug.location.loc
-        device = loc._device
+        device = self.context.devices[0]
+        loc = OnChipCoordinate.create(core_loc, device=device)
+        rdbg: BabyRiscDebug = device.get_risc_debug(loc, risc_name)
 
         # Disable branch rediction due to bne instruction in the elf
-        rloader.set_branch_prediction(False)
+        rdbg.set_branch_prediction(False)
 
         # Step 0: halt and continue a couple of times.
         def halt_cont_test():
@@ -457,7 +457,7 @@ class TestRunElf(unittest.TestCase):
         halt_cont_test()
 
         # Step 1: Check that the RISC at location {loc} set the mailbox value to 0xFFB1208C.
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        mbox_val = rdbg._read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertEqual(mbox_val, 0xFFB1208C, f"RISC at location {loc} did not set the mailbox value to 0xFFB1208C.")
@@ -467,7 +467,7 @@ class TestRunElf(unittest.TestCase):
         try:
             da.data = [0x1234]
             bts = da.bytes()
-            rloader.write_block(MAILBOX_ADDR, bts)
+            rdbg._write_block(MAILBOX_ADDR, bts)
         except Exception as e:
             if e.args[0].startswith("Failed to continue"):
                 # We are expecting this to assert as here, the core will halt istself by calling halt()
@@ -476,19 +476,19 @@ class TestRunElf(unittest.TestCase):
                 raise e
 
         # Step 3: Check that the RISC at location {loc} set the mailbox value to 0xFFB12080.
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        mbox_val = rdbg._read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertEqual(mbox_val, 0xFFB12080, f"RISC at location {loc} did not set the mailbox value to 0xFFB12080.")
 
         # Step 4: Check that the RISC at location {loc} is halted.
-        status = rdbg.read_status()
+        status = rdbg.debug_hardware.read_status()
         # print_PC_and_source(rdbg.read_gpr(32), elf)
         self.assertTrue(status.is_halted, f"Step 4: RISC at location {loc} is not halted.")
         self.assertTrue(status.is_ebreak_hit, f"Step 4: RISC at location {loc} is not halted with ebreak.")
 
         # Step 5a: Make sure that the core did not reach step 5
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        mbox_val = rdbg._read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertNotEqual(mbox_val, 0xFFB12088, f"RISC at location {loc} reached step 5, but it should not have.")
@@ -522,7 +522,7 @@ class TestRunElf(unittest.TestCase):
                     pass
                 else:
                     raise e
-            mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+            mbox_val = rdbg._read_block(MAILBOX_ADDR, MAILBOX_SIZE)
             da = DataArray("g_MAILBOX")
             mbox_val = da.from_bytes(mbox_val)[0]
             # Step 5b: Continue RISC
@@ -535,55 +535,55 @@ class TestRunElf(unittest.TestCase):
         )
 
         # STEP 7: Testing byte access memory watchpoints")
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        mbox_val = rdbg._read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertEqual(mbox_val, 0xFF000003, f"RISC at location {loc} did not set the mailbox value to 0xff000003.")
-        status = rdbg.read_status()
+        status = rdbg.debug_hardware.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.is_watchpoint3_hit:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 3.")
         rdbg.cont(verify=False)
 
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        mbox_val = rdbg._read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertEqual(mbox_val, 0xFF000005, f"RISC at location {loc} did not set the mailbox value to 0xff000005.")
-        status = rdbg.read_status()
+        status = rdbg.debug_hardware.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.is_watchpoint5_hit:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 5.")
         rdbg.cont(verify=False)
 
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        mbox_val = rdbg._read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertEqual(mbox_val, 0xFF000000, f"RISC at location {loc} did not set the mailbox value to 0xff000000.")
-        status = rdbg.read_status()
+        status = rdbg.debug_hardware.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.is_watchpoint0_hit:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 0.")
             return False
         rdbg.cont(verify=False)
 
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        mbox_val = rdbg._read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertEqual(mbox_val, 0xFF000004, f"RISC at location {loc} did not set the mailbox value to 0xff000004.")
-        status = rdbg.read_status()
+        status = rdbg.debug_hardware.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.is_watchpoint4_hit:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 4.")
         rdbg.cont(verify=False)
 
         # STEP END:
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        mbox_val = rdbg._read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertEqual(mbox_val, 0xFFB12088, f"RISC at location {loc} did not reach step STEP END.")
 
         # Enable branch prediction
-        rloader.set_branch_prediction(True)
+        rdbg.set_branch_prediction(True)
 
 
 class TestARC(unittest.TestCase):

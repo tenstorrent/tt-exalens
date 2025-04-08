@@ -23,6 +23,8 @@ class BabyRiscInfo(RiscInfo):
         l1_size: int,
         private_memory_base: Union[int, None],
         private_code_base: Union[int, None] = None,
+        can_change_code_start_address: bool = True,
+        has_debug_hardware: bool = True,
         max_watchpoints: int = 8,
         status_read_valid_mask: int = 1 << 30,
     ):
@@ -38,6 +40,8 @@ class BabyRiscInfo(RiscInfo):
         self.l1_size = l1_size
         self.private_memory_base = private_memory_base
         self.private_code_base = private_code_base
+        self.has_debug_hardware = has_debug_hardware
+        self.can_change_code_start_address = can_change_code_start_address
         self.max_watchpoints = max_watchpoints
         self.status_read_valid_mask = status_read_valid_mask
 

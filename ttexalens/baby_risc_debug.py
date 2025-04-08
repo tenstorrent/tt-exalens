@@ -504,23 +504,18 @@ class BabyRiscDebug(RiscDebug):
         register_store = location.coord._device.get_register_store(
             location.coord, noc_id=location.noc_id, neo_id=location.neo_id
         )
-        self.debug_hardware = BabyRiscDebugHardware(location, register_store, risc_info, verbose, enable_asserts)
+        self.location = location
+        self.risc_info = risc_info
+        self.register_store = register_store
+        self.debug_hardware = (
+            BabyRiscDebugHardware(location, register_store, risc_info, verbose, enable_asserts)
+            if risc_info.has_debug_hardware
+            else None
+        )
         self.enable_asserts = enable_asserts
         self.verbose = verbose
 
         self.RISC_DBG_SOFT_RESET0 = register_store.get_register_noc_address("RISCV_DEBUG_REG_SOFT_RESET_0")
-
-    @property
-    def location(self) -> BabyRiscLocation:
-        return self.debug_hardware.location
-
-    @property
-    def risc_info(self) -> BabyRiscInfo:
-        return self.debug_hardware.risc_info
-
-    @property
-    def register_store(self) -> RegisterStore:
-        return self.debug_hardware.register_store
 
     @property
     def device(self) -> Device:
@@ -569,33 +564,46 @@ class BabyRiscDebug(RiscDebug):
         """
         self.write_register("RISCV_IC_INVALIDATE_InvalidateAll", 1 << self.location.risc_id)
 
+    def assert_debug_hardware(self):
+        """
+        Make sure that the debug hardware is present.
+        """
+        if self.debug_hardware is None:
+            raise ValueError(f"{self.location.risc_name} does not have debug hardware")
+
     def read_register(self, register: Union[str | RegisterDescription]):
         if self.enable_asserts:
             self.assert_not_in_reset()
-            self.debug_hardware.assert_halted()
 
         if isinstance(register, str):
             register = self.register_store.get_register_description(register)
         else:
             assert isinstance(register, RegisterDescription), f"Invalid register type {type(register)}"
         if register.noc_address is None:
+            self.assert_debug_hardware()
+            if self.enable_asserts:
+                self.debug_hardware.assert_halted()
             value = self.debug_hardware.read_memory(register.address)
         else:
             value = self.__read(register.noc_address)
         return (value & register.mask) >> register.shift
 
     def write_register(self, register: Union[str | RegisterDescription], value: int):
-        if self.enable_asserts:
-            self.assert_not_in_reset()
-            self.debug_hardware.assert_halted()
-
         if isinstance(register, str):
             register = self.register_store.get_register_description(register)
         else:
             assert isinstance(register, RegisterDescription), f"Invalid register type {type(register)}"
 
-        read = self.__read if register.noc_address is not None else self.debug_hardware.read_memory
-        write = self.__write if register.noc_address is not None else self.debug_hardware.write_memory
+        if register.noc_address is None:
+            self.assert_debug_hardware()
+            if self.enable_asserts:
+                self.assert_not_in_reset()
+                self.debug_hardware.assert_halted()
+            read = self.debug_hardware.read_memory
+            write = self.debug_hardware.write_memory
+        else:
+            read = self.__read
+            write = self.__write
 
         # If register mask is not 0xffffffff, we need to read other bits
         if register.mask != 0xFFFFFFFF:
@@ -605,6 +613,7 @@ class BabyRiscDebug(RiscDebug):
 
     @contextmanager
     def ensure_private_memory_access(self):
+        self.assert_debug_hardware()
         if not self.is_in_reset():
             with self.debug_hardware.ensure_halted():
                 yield
@@ -642,48 +651,57 @@ class BabyRiscDebug(RiscDebug):
     def is_halted(self) -> bool:
         if self.enable_asserts:
             self.assert_not_in_reset()
+        self.assert_debug_hardware()
         return self.debug_hardware.is_halted()
 
     def halt(self):
         if self.enable_asserts:
             self.assert_not_in_reset()
+        self.assert_debug_hardware()
         return self.debug_hardware.halt()
 
     def step(self):
         if self.enable_asserts:
             self.assert_not_in_reset()
+        self.assert_debug_hardware()
         return self.debug_hardware.step()
 
     def cont(self):
         if self.enable_asserts:
             self.assert_not_in_reset()
+        self.assert_debug_hardware()
         return self.debug_hardware.cont(verify=False)
 
     @contextmanager
     def ensure_halted(self):
         if self.enable_asserts:
             self.assert_not_in_reset()
+        self.assert_debug_hardware()
         with self.debug_hardware.ensure_halted():
             yield
 
     def read_gpr(self, register_index: int) -> int:
         if self.enable_asserts:
             self.assert_not_in_reset()
+        self.assert_debug_hardware()
         return self.debug_hardware.read_gpr(register_index)
 
     def write_gpr(self, register_index: int, value: int):
         if self.enable_asserts:
             self.assert_not_in_reset()
+        self.assert_debug_hardware()
         self.debug_hardware.write_gpr(register_index, value)
 
     def read_memory(self, address: int) -> int:
         if self.enable_asserts:
             self.assert_not_in_reset()
+        self.assert_debug_hardware()
         return self.debug_hardware.read_memory(address)
 
     def write_memory(self, address: int, value: int):
         if self.enable_asserts:
             self.assert_not_in_reset()
+        self.assert_debug_hardware()
         self.debug_hardware.write_memory(address, value)
 
     def get_callstack(self, elf_path: str, limit: int = 100, stop_on_main: bool = True):
@@ -897,7 +915,7 @@ class BabyRiscDebug(RiscDebug):
 
         # Change core start address to the start of the .init section
         # if it is BRISC or ERISC, we should just add jump to start address instead, since we cannot change start address
-        if self.risc_info.default_code_start_address == 0:
+        if not self.risc_info.can_change_code_start_address:
             if init_section_address != 0:
                 jump_instruction = BabyRiscInfo.get_jump_to_offset_instruction(init_section_address)
                 self.__write(0, jump_instruction)
@@ -915,6 +933,7 @@ class BabyRiscDebug(RiscDebug):
         # Take risc out of reset
         self.set_reset_signal(False)
         assert not self.is_in_reset(), f"RISC at location {self.location} is still in reset."
-        assert (
-            not self.is_halted() or self.debug_hardware.read_status().is_ebreak_hit
-        ), f"RISC at location {self.location} is still halted, but not because of ebreak."
+        if self.debug_hardware is not None:
+            assert (
+                not self.is_halted() or self.debug_hardware.read_status().is_ebreak_hit
+            ), f"RISC at location {self.location} is still halted, but not because of ebreak."
