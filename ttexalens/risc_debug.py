@@ -131,7 +131,6 @@ class RiscDebug:
         """
         pass
 
-    # TODO: Implement the following methods in BabyRiscDebug
     @abstractmethod
     def get_callstack(self, elf_path: str, limit: int = 100, stop_on_main: bool = True) -> List[CallstackEntry]:
         """
@@ -145,4 +144,12 @@ class RiscDebug:
         Returns:
             List[CallstackEntry]: List of callstack entries.
         """
+        pass
+
+    @abstractmethod
+    def load_elf(self, elf_path: str):
+        pass
+
+    @abstractmethod
+    def run_elf(self, elf_path: str):
         pass

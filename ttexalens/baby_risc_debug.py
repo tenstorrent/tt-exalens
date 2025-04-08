@@ -3,15 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 from contextlib import contextmanager
 from dataclasses import dataclass
+from elftools.elf.elffile import ELFFile
+import os
 from typing import List, Union
 
 from ttexalens import util
 from ttexalens.baby_risc_info import BabyRiscInfo
 from ttexalens.context import Context
 from ttexalens.device import Device
-from ttexalens.risc_debug import RiscLocation, RiscDebug
+from ttexalens.parse_elf import read_elf
+from ttexalens.risc_debug import CallstackEntry, RiscLocation, RiscDebug
 from ttexalens.register_store import RegisterDescription, RegisterStore
-from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
+from ttexalens.tt_exalens_lib import read_from_device, read_word_from_device, write_to_device, write_words_to_device
 
 # Register address
 REG_STATUS = 0
@@ -682,3 +685,236 @@ class BabyRiscDebug(RiscDebug):
         if self.enable_asserts:
             self.assert_not_in_reset()
         self.debug_hardware.write_memory(address, value)
+
+    def get_callstack(self, elf_path: str, limit: int = 100, stop_on_main: bool = True):
+        callstack = []
+        with self.ensure_halted():
+            elf = read_elf(self.context.server_ifc, elf_path)
+            pc = self.read_gpr(32)
+            frame_description = elf["frame-info"].get_frame_description(pc, self)
+            frame_pointer = frame_description.read_previous_cfa()
+            i = 0
+            while i < limit:
+                file_line = elf["dwarf"].find_file_line_by_address(pc)
+                function_die = elf["dwarf"].find_function_by_address(pc)
+                if function_die is not None and function_die.category == "inlined_function":
+                    # Returning inlined functions (virtual frames)
+                    callstack.append(
+                        CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
+                    )
+                    file_line = function_die.call_file_info
+                    while function_die.category == "inlined_function":
+                        i = i + 1
+                        function_die = function_die.parent
+                        callstack.append(
+                            CallstackEntry(
+                                None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer
+                            )
+                        )
+                        file_line = function_die.call_file_info
+                elif function_die is not None and function_die.category == "subprogram":
+                    callstack.append(
+                        CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
+                    )
+                else:
+                    if file_line is not None:
+                        callstack.append(
+                            CallstackEntry(pc, None, file_line[0], file_line[1], file_line[2], frame_pointer)
+                        )
+                    else:
+                        callstack.append(CallstackEntry(pc, None, None, None, None, frame_pointer))
+
+                # We want to stop when we print main as frame descriptor might not be correct afterwards
+                if stop_on_main and function_die is not None and function_die.name == "main":
+                    break
+
+                # We want to stop when we are at the end of frames list
+                if frame_pointer == 0:
+                    break
+
+                frame_description = elf["frame-info"].get_frame_description(pc, self)
+                if frame_description is None:
+                    util.WARN("We don't have information on frame and we don't know how to proceed")
+                    break
+
+                cfa = frame_pointer
+                return_address = frame_description.read_register(1, cfa)
+                frame_pointer = frame_description.read_previous_cfa(cfa)
+                pc = return_address
+                i = i + 1
+        return callstack
+
+    # TODO: Move load methods to RiscLoader
+    def _write_block_through_debug(self, address, data):
+        """
+        Writes a block of data to a given address through the debug interface.
+        """
+        with self.ensure_halted():
+            for i in range(0, len(data), 4):
+                word = data[i : i + 4]
+                word = word.ljust(4, b"\x00")
+                word = int.from_bytes(word, byteorder="little")
+                self.write_memory(address + i, word)
+
+    def _read_block_through_debug(self, address, byte_count):
+        """
+        Reads a block of data from a given address through the debug interface.
+        """
+        with self.ensure_halted():
+            data = bytearray()
+            for i in range(0, byte_count, 4):
+                word = self.read_memory(address + i)
+                data.extend(word.to_bytes(4, byteorder="little"))
+
+        return data
+
+    def _write_block(self, address, data: bytes):
+        """
+        Writes a block of bytes to a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
+        the debug interface to write them.
+        """
+        if address & self.risc_info.private_memory_base == self.risc_info.private_memory_base or (
+            self.risc_info.private_code_base is not None
+            and address & self.risc_info.private_code_base == self.risc_info.private_code_base
+        ):
+            # Use debug interface
+            self._write_block_through_debug(address, data)
+        else:
+            write_to_device(self.location.coord, address, data, self.location.coord._device._id, self.context)
+
+    def _read_block(self, address, byte_count):
+        """
+        Reads a block of bytes from a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
+        the debug interface to read them.
+        """
+        if address & self.risc_info.private_memory_base == self.risc_info.private_memory_base or (
+            self.risc_info.private_code_base is not None
+            and address & self.risc_info.private_code_base == self.risc_info.private_code_base
+        ):
+            # Use debug interface
+            return self._read_block_through_debug(address, byte_count)
+        else:
+            return read_from_device(
+                self.location.coord,
+                address,
+                self.location.coord._device._id,
+                byte_count,
+                self.context,
+            )
+
+    SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".stack"]
+
+    def _remap_address(self, address: int, loader_data: int, loader_code: int):
+        if address & self.risc_info.private_memory_base == self.risc_info.private_memory_base:
+            if loader_data is not None and isinstance(loader_data, int):
+                return address - self.risc_info.private_memory_base + loader_data
+            return address
+        if (
+            self.risc_info.private_code_base is not None
+            and address & self.risc_info.private_code_base == self.risc_info.private_code_base
+        ):
+            if loader_code is not None and isinstance(loader_code, int):
+                return address - self.risc_info.private_code_base + loader_code
+            return address
+        return address
+
+    def _load_elf_sections(self, elf_path, loader_data: Union[str, int], loader_code: Union[str, int]):
+        """
+        Given an ELF file, this function loads the sections specified in SECTIONS_TO_LOAD to the
+        memory of the RISC-V core. It also loads (into location 0) the jump instruction to the
+        address of the .init section.
+        """
+        if not os.path.exists(elf_path):
+            raise FileNotFoundError(f"File {elf_path} not found")
+
+        # Remember the .init section address to jump to after loading
+        init_section_address = None
+
+        try:
+            elf_file = self.context.server_ifc.get_binary(elf_path)
+            elf_file = ELFFile(elf_file)
+
+            # Try to find address mapping for loader_data and loader_code
+            for section in elf_file.iter_sections():
+                if section.data() and hasattr(section.header, "sh_addr"):
+                    name = section.name
+                    address = section.header.sh_addr
+                    if name == loader_data:
+                        loader_data = address
+                    elif name == loader_code:
+                        loader_code = address
+
+            # Load section into memory
+            for section in elf_file.iter_sections():
+                if section.data() and hasattr(section.header, "sh_addr"):
+                    name = section.name
+                    if name in self.SECTIONS_TO_LOAD:
+                        address = section.header.sh_addr
+                        if address % 4 != 0:
+                            raise ValueError(f"Section address 0x{address:08x} is not 32-bit aligned")
+
+                        address = self._remap_address(address, loader_data, loader_code)
+                        data = section.data()
+
+                        if name == ".init":
+                            init_section_address = address
+
+                        util.VERBOSE(f"Writing section {name} to address 0x{address:08x}. Size: {len(data)} bytes")
+                        self._write_block(address, data)
+
+            # Check that what we have written is correct
+            if self.enable_asserts:
+                for section in elf_file.iter_sections():
+                    if section.data() and hasattr(section.header, "sh_addr"):
+                        name = section.name
+                        if name in self.SECTIONS_TO_LOAD:
+                            address = section.header.sh_addr
+                            data = section.data()
+                            address = self._remap_address(address, loader_data, loader_code)
+                            read_data = self._read_block(address, len(data))
+                            if read_data != data:
+                                util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
+                                continue
+                            else:
+                                util.VERBOSE(
+                                    f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes"
+                                )
+        except Exception as e:
+            util.ERROR(e)
+            raise util.TTException(f"Error loading elf file {elf_path}")
+
+        # TODO: Update risc_id
+        self.context.elf_loaded(self.location.coord, self.location.risc_id, elf_path)
+        return init_section_address
+
+    def load_elf(self, elf_path: str):
+        # Risc must be in reset
+        assert self.is_in_reset(), f"RISC at location {self.location} is not in reset."
+
+        # Load elf file to the L1 memory; avoid writing to private sections
+        init_section_address = self._load_elf_sections(elf_path, loader_data=".loader_init", loader_code=".loader_code")
+        assert init_section_address is not None, "No .init section found in the ELF file"
+
+        # Change core start address to the start of the .init section
+        # if it is BRISC or ERISC, we should just add jump to start address instead, since we cannot change start address
+        if self.risc_info.default_code_start_address == 0:
+            if init_section_address != 0:
+                jump_instruction = BabyRiscInfo.get_jump_to_offset_instruction(init_section_address)
+                self.__write(0, jump_instruction)
+        else:
+            # Change core start address
+            self.risc_info.set_code_start_address(self.register_store, init_section_address)
+
+    def run_elf(self, elf_path: str):
+        # Make sure risc is in reset
+        if not self.is_in_reset():
+            self.set_reset_signal(True)
+
+        self.load_elf(elf_path)
+
+        # Take risc out of reset
+        self.set_reset_signal(False)
+        assert not self.is_in_reset(), f"RISC at location {self.location} is still in reset."
+        assert (
+            not self.is_halted() or self.debug_hardware.read_status().is_ebreak_hit
+        ), f"RISC at location {self.location} is still halted, but not because of ebreak."

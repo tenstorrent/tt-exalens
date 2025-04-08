@@ -19,6 +19,7 @@ class BriscInfo(BabyRiscInfo):
             code_start_address_enable_register="",
             code_start_address_enable_bit=0,
             l1_size=0x00200000,
+            private_memory_base=0xFFB00000,
         )
 
     def get_code_start_address(self, register_store: RegisterStore) -> int:
@@ -42,6 +43,7 @@ class Trisc0Info(BabyRiscInfo):
             code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b001,
             l1_size=0x0020000,
+            private_memory_base=0xFFB00000,
         )
 
 
@@ -54,10 +56,11 @@ class Trisc1Info(BabyRiscInfo):
             branch_prediction_register="DISABLE_RISC_BP_Disable_trisc",
             branch_prediction_mask=0b010,
             default_code_start_address=0xA000,
-            code_start_address_register="TRISC_RESET_PC_SEC0_PC",
+            code_start_address_register="TRISC_RESET_PC_SEC1_PC",
             code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b010,
             l1_size=0x0020000,
+            private_memory_base=0xFFB00000,
         )
 
 
@@ -70,10 +73,29 @@ class Trisc2Info(BabyRiscInfo):
             branch_prediction_register="DISABLE_RISC_BP_Disable_trisc",
             branch_prediction_mask=0b100,
             default_code_start_address=0xE000,
-            code_start_address_register="TRISC_RESET_PC_SEC0_PC",
+            code_start_address_register="TRISC_RESET_PC_SEC2_PC",
             code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b100,
             l1_size=0x0020000,
+            private_memory_base=0xFFB00000,
+        )
+
+
+class NcriscInfo(BabyRiscInfo):
+    def __init__(self):
+        super().__init__(
+            risc_name="ncrisc",
+            risc_id=3,
+            reset_flag_shift=18,
+            branch_prediction_register="DISABLE_RISC_BP_Disable_ncrisc",
+            branch_prediction_mask=0x1,
+            default_code_start_address=0xFFC00000,
+            code_start_address_register="NCRISC_RESET_PC_PC",
+            code_start_address_enable_register="NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
+            code_start_address_enable_bit=0b1,
+            l1_size=0x0020000,
+            private_memory_base=0xFFB00000,
+            private_code_base=0xFFC00000,
         )
 
 
@@ -90,6 +112,7 @@ class EriscInfo(BabyRiscInfo):
             code_start_address_enable_register="",
             code_start_address_enable_bit=0,
             l1_size=0x00200000,
+            private_memory_base=0xFFB00000,
         )
 
     def get_code_start_address(self, register_store: RegisterStore) -> int:

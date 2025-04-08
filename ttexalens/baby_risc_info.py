@@ -7,6 +7,7 @@ from ttexalens.register_store import RegisterStore
 from ttexalens.risc_info import RiscInfo
 
 
+# TODO: Add info if debug hardware is present. Use that information to return debuggable cores. get_risc_names_for_location should return ncrisc as well. We should filter it out based on the debug hardware.
 class BabyRiscInfo(RiscInfo):
     def __init__(
         self,
@@ -20,6 +21,8 @@ class BabyRiscInfo(RiscInfo):
         code_start_address_enable_register: str,
         code_start_address_enable_bit: int,
         l1_size: int,
+        private_memory_base: Union[int, None],
+        private_code_base: Union[int, None] = None,
         max_watchpoints: int = 8,
         status_read_valid_mask: int = 1 << 30,
     ):
@@ -33,6 +36,8 @@ class BabyRiscInfo(RiscInfo):
         self.code_start_address_enable_register = code_start_address_enable_register
         self.code_start_address_enable_bit = code_start_address_enable_bit
         self.l1_size = l1_size
+        self.private_memory_base = private_memory_base
+        self.private_code_base = private_code_base
         self.max_watchpoints = max_watchpoints
         self.status_read_valid_mask = status_read_valid_mask
 

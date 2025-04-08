@@ -86,7 +86,7 @@ class TestCallStack(unittest.TestCase):
     def test_callstack(self, recursion_count):
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack")
-        self.loader.run_elf(elf_path)
+        self.risc_debug.run_elf(elf_path)
         callstack = self.risc_debug.get_callstack(elf_path)
         self.assertEqual(len(callstack), recursion_count + 3)
         self.assertEqual(callstack[0].function_name, "halt")
@@ -99,7 +99,7 @@ class TestCallStack(unittest.TestCase):
     def test_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack.optimized")
-        self.loader.run_elf(elf_path)
+        self.risc_debug.run_elf(elf_path)
         callstack = self.risc_debug.get_callstack(elf_path)
 
         # Optimized version for non-blackhole doesn't have halt on callstack
