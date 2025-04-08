@@ -297,12 +297,13 @@ class MY_DIE:
             return "type"
         elif self.tag == "DW_TAG_inlined_subroutine":
             return "inlined_function"
+        elif self.tag == "DW_TAG_lexical_block":
+            return "lexical_block"
         elif (
             self.tag == "DW_TAG_imported_declaration"
             or self.tag == "DW_TAG_imported_module"
             or self.tag == "DW_TAG_template_type_param"
             or self.tag == "DW_TAG_template_value_param"
-            or self.tag == "DW_TAG_lexical_block"
             or self.tag == "DW_TAG_call_site"
             or self.tag == "DW_TAG_GNU_call_site"
             or self.tag == "DW_TAG_GNU_template_parameter_pack"

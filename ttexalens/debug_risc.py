@@ -4,7 +4,7 @@
 from collections import namedtuple
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Union
+from typing import List, Union
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.parse_elf import read_elf
@@ -954,30 +954,62 @@ class RiscLoader:
             not self.risc_debug.is_halted() or self.risc_debug.read_status().is_ebreak_hit
         ), f"RISC at location {self.risc_debug.location} is still halted, but not because of ebreak."
 
-    def get_callstack(self, elf_path: str, limit: int = 100, stop_on_main: bool = True):
+    def get_callstack(self, elf_paths: List[str], offsets: List[int], limit: int = 100, stop_on_main: bool = True):
         callstack = []
         with self.risc_debug.ensure_halted():
 
+            # fw_path = '/localdev/adjordjevic/work/tt-metal/built/7236cff555/4097/firmware/brisc/brisc.elf'
+            # elf_fw = read_elf(self.context.server_ifc, fw_path)
+
             # def mem_reader(addr, size_bytes):
             #   value = [read_word_from_device(self.risc_debug.location.loc, addr, self.risc_debug.location.loc._device._id, self.context)]
-            #   print(f"Read {size_bytes} bytes from address 0x{addr:08x} -> {value[0]:08x}")
+            #   #print(f"Read {size_bytes} bytes from address 0x{addr:08x} -> {value[0]:08x}")
             #   return value
             # from ttexalens.parse_elf import mem_access
-            # print(mem_access(elf, 'mailboxes->launch_msg_rd_ptr', mem_reader)[0])
-            # print(mem_access(elf, 'mailboxes->launch[0].kernel_config.kernel_config_base[0]', mem_reader)[0])
-            # print(mem_access(elf, 'mailboxes->launch[0].kernel_config.kernel_text_offset[0]', mem_reader)[0])
+            # # print(mem_access(elf_fw, 'mailboxes->launch_msg_rd_ptr', mem_reader)[0])
+            # # print(mem_access(elf_fw, 'mailboxes->launch[0].kernel_config.kernel_config_base[0]', mem_reader)[0])
+            # # print(mem_access(elf_fw, 'mailboxes->launch[0].kernel_config.kernel_text_offset[0]', mem_reader)[0])
 
-            kernel_address = 28736  # mailboxes->launch[0].kernel_config.kernel_text_offset[0] + mailboxes->launch[0].kernel_config.kernel_config_base[0] GOT FROM FW ELF
-            elf = read_elf(self.context.server_ifc, elf_path, kernel_address)
+            # kernel_address = mem_access(elf_fw, 'mailboxes->launch[0].kernel_config.kernel_config_base[0]', mem_reader)[0][0] + mem_access(elf_fw, 'mailboxes->launch[0].kernel_config.kernel_text_offset[0]', mem_reader)[0][0]
 
-            pc = self.risc_debug.read_gpr(32)
+            # elf = read_elf(self.context.server_ifc, elf_path, kernel_address)
+
+            elfs = []
+            for elf_path, offset in zip(elf_paths, offsets):
+                if offset == 0:
+                    offset = None
+                elfs.append(read_elf(self.context.server_ifc, elf_path, offset))
+
+            elf = elfs[0]
+
+            pc = self.risc_debug.read_gpr(32) - 4
             frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
+            if frame_description is None:
+                for e in elfs:
+                    elf = e
+                    frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
+                    if frame_description is not None:
+                        break
+
+                if frame_description is None:
+                    util.WARN("We don't have information on frame and we don't know how to proceed.")
+                    return []
+
             frame_pointer = frame_description.read_previous_cfa()
             i = 0
             while i < limit:
                 frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
+
+                if frame_description is None:
+                    for i in range(len(elfs)):
+                        elf = elfs[i]
+                        frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
+                        if frame_description is not None:
+                            break
+
                 file_line = elf["dwarf"].find_file_line_by_address(pc)
                 function_die = elf["dwarf"].find_function_by_address(pc)
+
                 if function_die is not None and function_die.category == "inlined_function":
                     # Returning inlined functions (virtual frames)
                     callstack.append(
@@ -987,6 +1019,10 @@ class RiscLoader:
                     while function_die.category == "inlined_function":
                         i = i + 1
                         function_die = function_die.parent
+                        while function_die.category == "lexical_block":
+                            util.WARN("Skipping lexical block and going to parent")
+                            function_die = function_die.parent
+
                         callstack.append(
                             CallstackEntry(
                                 None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer
