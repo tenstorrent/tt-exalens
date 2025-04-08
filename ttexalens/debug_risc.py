@@ -958,22 +958,6 @@ class RiscLoader:
         callstack = []
         with self.risc_debug.ensure_halted():
 
-            # fw_path = '/localdev/adjordjevic/work/tt-metal/built/7236cff555/4097/firmware/brisc/brisc.elf'
-            # elf_fw = read_elf(self.context.server_ifc, fw_path)
-
-            # def mem_reader(addr, size_bytes):
-            #   value = [read_word_from_device(self.risc_debug.location.loc, addr, self.risc_debug.location.loc._device._id, self.context)]
-            #   #print(f"Read {size_bytes} bytes from address 0x{addr:08x} -> {value[0]:08x}")
-            #   return value
-            # from ttexalens.parse_elf import mem_access
-            # # print(mem_access(elf_fw, 'mailboxes->launch_msg_rd_ptr', mem_reader)[0])
-            # # print(mem_access(elf_fw, 'mailboxes->launch[0].kernel_config.kernel_config_base[0]', mem_reader)[0])
-            # # print(mem_access(elf_fw, 'mailboxes->launch[0].kernel_config.kernel_text_offset[0]', mem_reader)[0])
-
-            # kernel_address = mem_access(elf_fw, 'mailboxes->launch[0].kernel_config.kernel_config_base[0]', mem_reader)[0][0] + mem_access(elf_fw, 'mailboxes->launch[0].kernel_config.kernel_text_offset[0]', mem_reader)[0][0]
-
-            # elf = read_elf(self.context.server_ifc, elf_path, kernel_address)
-
             elfs = []
             for elf_path, offset in zip(elf_paths, offsets):
                 if offset == 0:
@@ -982,7 +966,7 @@ class RiscLoader:
 
             elf = elfs[0]
 
-            pc = self.risc_debug.read_gpr(32) - 4
+            pc = self.risc_debug.read_gpr(32)
             frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
             if frame_description is None:
                 for e in elfs:
@@ -1010,8 +994,15 @@ class RiscLoader:
                 file_line = elf["dwarf"].find_file_line_by_address(pc)
                 function_die = elf["dwarf"].find_function_by_address(pc)
 
-                if function_die is not None and function_die.category == "inlined_function":
+                if function_die is not None and (
+                    function_die.category == "inlined_function" or function_die.category == "lexical_block"
+                ):
                     # Returning inlined functions (virtual frames)
+
+                    while function_die.category == "lexical_block":
+                        util.WARN("Skipping lexical block and going to parent")
+                        function_die = function_die.parent
+
                     callstack.append(
                         CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
                     )
