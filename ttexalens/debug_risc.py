@@ -957,7 +957,7 @@ class RiscLoader:
     def _read_elfs(self, elf_paths: List[str], offsets: List[int]) -> List[dict]:
         if not isinstance(elf_paths, list):
             elf_paths = [elf_paths]
-        offsets = [0] * len(elf_paths) if offsets is None else offsets
+        offsets = [None] * len(elf_paths) if offsets is None else offsets
 
         elfs = []
         for elf_path, offset in zip(elf_paths, offsets):
@@ -999,18 +999,10 @@ class RiscLoader:
             frame_pointer = frame_description.read_previous_cfa()
             i = 0
             while i < limit:
-                frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
-                # If we do not get frame description from current elf check in others
-                if frame_description is None:
-                    for e in elfs:
-                        frame_description = e["frame-info"].get_frame_description(pc, self.risc_debug)
-                        if frame_description is not None:
-                            elf = e
-                            break
-
                 file_line = elf["dwarf"].find_file_line_by_address(pc)
                 function_die = elf["dwarf"].find_function_by_address(pc)
 
+                # Skipping lexical blocks since we do not print them
                 while function_die is not None and function_die.category == "lexical_block":
                     function_die = function_die.parent
 
@@ -1060,11 +1052,21 @@ class RiscLoader:
                     util.WARN("We don't have information on frame and we don't know how to proceed")
                     break
 
+                # Prepare for next iteration
                 cfa = frame_pointer
                 return_address = frame_description.read_register(1, cfa)
                 frame_pointer = frame_description.read_previous_cfa(cfa)
                 pc = return_address
                 i = i + 1
+
+                frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
+                # If we do not get frame description from current elf check in others
+                if frame_description is None:
+                    for e in elfs:
+                        frame_description = e["frame-info"].get_frame_description(pc, self.risc_debug)
+                        if frame_description is not None:
+                            elf = e
+                            break
         return callstack
 
 
