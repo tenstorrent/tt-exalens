@@ -48,6 +48,9 @@ def run(cmd_text, context, ui_state: UIState = None):
     noc_id = 0
     elf_paths = dopt.args["<elf-files>"].split(",")
     offsets = list(map(int, dopt.args["-o"].split(","))) if dopt.args["-o"] else [None for _ in range(len(elf_paths))]
+    if len(offsets) != len(elf_paths):
+        util.ERROR("Number of offsets must match the number of elf files")
+        return
     stop_on_main = True
 
     for elf_path in elf_paths:
