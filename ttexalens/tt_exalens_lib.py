@@ -468,23 +468,25 @@ def callstack(
 
     for elf_path in elf_paths:
         if not os.path.exists(elf_path):
-            TTException(f"File {elf_path} does not exist")
+            raise TTException(f"File {elf_path} does not exist")
 
     offsets = offsets if offsets is not None else [None for _ in range(len(elf_paths))]
+    if isinstance(offsets, int):
+        offsets = [offsets]
 
     if len(offsets) != len(elf_paths):
-        TTException("Number of offsets must match the number of elf files")
+        raise TTException("Number of offsets must match the number of elf files")
 
     if risc_id < 0 or risc_id > 3:
-        TTException("Invalid RiscV ID. Must be between 0 and 3.")
+        raise TTException("Invalid RiscV ID. Must be between 0 and 3.")
 
     if max_depth <= 0:
-        TTException("Max depth must be greater than 0.")
+        raise TTException("Max depth must be greater than 0.")
 
     noc_id = 0
     risc_debug = RiscDebug(RiscLoc(core_loc, noc_id, risc_id), context, verbose=verbose)
     if risc_debug.is_in_reset():
-        TTException(f"RiscV core {get_risc_name(risc_id)} on location {core_loc.to_user_str()} is in reset")
+        raise TTException(f"RiscV core {get_risc_name(risc_id)} on location {core_loc.to_user_str()} is in reset")
     loader = RiscLoader(risc_debug, context, verbose)
 
     return loader.get_callstack(elf_paths, offsets, max_depth, stop_on_main)
