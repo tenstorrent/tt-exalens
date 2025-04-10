@@ -338,30 +338,18 @@ class MY_DIE:
         """
         if self.tag == "DW_TAG_typedef" and self.local_offset != None:
             typedef_DIE = self.cu.find_DIE_at_local_offset(self.local_offset)
-            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_type")
-            if typedef_DIE.dwarf_die != dwarf_die:
-                print("ERROR")
             if typedef_DIE:  # If typedef, recursivelly do it
                 return typedef_DIE.resolved_type
         elif self.tag == "DW_TAG_const_type" and self.local_offset != None:
             typedef_DIE = self.cu.find_DIE_at_local_offset(self.local_offset)
-            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_type")
-            if typedef_DIE.dwarf_die != dwarf_die:
-                print("ERROR")
             if typedef_DIE:  # If typedef, recursivelly do it
                 return typedef_DIE.resolved_type
         elif self.tag == "DW_TAG_volatile_type" and self.local_offset != None:
             typedef_DIE = self.cu.find_DIE_at_local_offset(self.local_offset)
-            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_type")
-            if typedef_DIE.dwarf_die != dwarf_die:
-                print("ERROR")
             if typedef_DIE:  # If typedef, recursivelly do it
                 return typedef_DIE.resolved_type
         elif self.category != "type" and "DW_AT_type" in self.attributes and self.local_offset != None:
             my_type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
-            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_type")
-            if my_type_die.dwarf_die != dwarf_die:
-                print("ERROR")
             if (
                 my_type_die.tag == "DW_TAG_typedef"
                 or my_type_die.tag == "DW_TAG_const_type"
