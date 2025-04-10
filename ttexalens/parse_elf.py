@@ -53,7 +53,7 @@ try:
     from tabulate import tabulate
 except:
     print(
-        "ERROR: Please install dependencies with: pip install pyelftools docopt fuzzywuzzy python-Levenshtein tabulate"
+        "ERROR: Please install dependencies with: pip install tt-pyelftools docopt fuzzywuzzy python-Levenshtein tabulate"
     )
     exit(1)
 
