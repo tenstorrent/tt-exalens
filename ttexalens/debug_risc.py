@@ -1002,12 +1002,14 @@ class RiscLoader:
                 function_die = elf["dwarf"].find_function_by_address(pc)
 
                 # Skipping lexical blocks since we do not print them
-                while function_die is not None and function_die.category == "lexical_block":
-                    function_die = function_die.parent
-
-                # Skipping lexical blocks since we do not print them
-                if function_die is not None and (function_die.category == "inlined_function"):
+                if function_die is not None and (
+                    function_die.category == "inlined_function" or function_die.category == "lexical_block"
+                ):
                     # Returning inlined functions (virtual frames)
+
+                    # Skipping lexical blocks since we do not print them
+                    while function_die.category == "lexical_block":
+                        function_die = function_die.parent
 
                     callstack.append(
                         CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
