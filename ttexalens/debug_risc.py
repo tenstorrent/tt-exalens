@@ -966,6 +966,15 @@ class RiscLoader:
 
         return elfs
 
+    def _find_elf_and_frame_description(self, elfs: List[dict], pc: int):
+        for elf in elfs:
+            frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
+            # If we get frame description from elf we return that elf and frame description
+            if frame_description is not None:
+                return elf, frame_description
+
+        return None, None
+
     def get_callstack(
         self, elf_paths: List[str], offsets: List[int] = None, limit: int = 100, stop_on_main: bool = True
     ):
@@ -975,26 +984,16 @@ class RiscLoader:
             # Reading the elf files for given paths and offsets
             elfs = self._read_elfs(elf_paths, offsets)
 
-            # Choosing first elf as starting point
-            elf = elfs[0]
-
             # Reading the program counter from risc register
             pc = self.risc_debug.read_gpr(32)
 
-            frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
-            # If we do not get frame description from current elf check in others
-            if frame_description is None:
-                for e in elfs:
-                    frame_description = e["frame-info"].get_frame_description(pc, self.risc_debug)
-                    # If we get frame description from elf we proceed with that elf
-                    if frame_description is not None:
-                        elf = e
-                        break
+            # Choose the elf which is referenced by the program counter
+            elf, frame_description = self._find_elf_and_frame_description(elfs, pc)
 
-                # If we do not get frame description from any elf, we cannot proceed
-                if frame_description is None:
-                    util.WARN("We don't have information on frame and we don't know how to proceed.")
-                    return []
+            # If we do not get frame description from any elf, we cannot proceed
+            if frame_description is None:
+                util.WARN("We don't have information on frame and we don't know how to proceed.")
+                return []
 
             frame_pointer = frame_description.read_previous_cfa()
             i = 0
@@ -1062,11 +1061,10 @@ class RiscLoader:
                 frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
                 # If we do not get frame description from current elf check in others
                 if frame_description is None:
-                    for e in elfs:
-                        frame_description = e["frame-info"].get_frame_description(pc, self.risc_debug)
-                        if frame_description is not None:
-                            elf = e
-                            break
+                    new_elf, frame_description = self._find_elf_and_frame_description(elfs, pc)
+                    if frame_description is not None:
+                        elf = new_elf
+
         return callstack
 
 
