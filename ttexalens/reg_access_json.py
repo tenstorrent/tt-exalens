@@ -101,7 +101,11 @@ class JsonRegister(BaseRegister):
     def _calculate_base_address(self) -> int:
         base_addr = self._block.base_offset + self._reg_def.get('address', 0)
         if self._index is not None:
-            increment = self._reg_def.get('address_increment', 0)
+            # Get the register size in bytes (default to 8 for 64-bit)
+            reg_size_bits = self._block._regsize
+            reg_size_bytes = reg_size_bits // 8
+            # Use either the specified increment or the register size in bytes
+            increment = self._reg_def.get('address_increment', reg_size_bytes)
             base_addr += self._index * increment
         return base_addr
 
@@ -157,10 +161,16 @@ class JsonRegisterArray(BaseRegisterArray):
 
 class JsonRegisterBlock(BaseRegisterBlock):
     def _load_register_data(self) -> dict:
-        return self._block_def.get('registers', {})
+        data = self._block_def.get('registers', {})
+        # Scale address increments by register size
+        reg_size_bytes = self._get_regsize() // 8
+        for reg_def in data.values():
+            if 'address_increment' in reg_def:
+                reg_def['address_increment'] *= reg_size_bytes
+        return data
 
     def _get_regsize(self) -> int:
-        return self._block_def.get('regsize', 64)
+        return self._block_def.get('regsize', 32)  # Default to 32-bit registers
 
     def _create_register_array(self, name: str, reg_def: dict) -> JsonRegisterArray:
         return JsonRegisterArray(name, reg_def, self)

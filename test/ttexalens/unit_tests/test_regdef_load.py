@@ -83,15 +83,15 @@ class TestRegDefLoad(unittest.TestCase):
         # Try to access memory block if it exists
         log_stage("Testing register array print")
         if self.family() == 'WH':
-            log_stage("Printing ICCM")
-            print(reg_map.ARC_ICCM)
-            log_stage("Printing ICCM[10]")
-            print(reg_map.ARC_ICCM.DATA[10])
+            log_stage("Printing CSM")
+            print(reg_map.ARC_CSM)
+            log_stage("Printing CSM[10]")
+            print(reg_map.ARC_CSM.DATA[10])
         elif self.family() == 'BH':
-            log_stage("Printing iccm_memory")
-            print(reg_map.iccm_memory)
-            log_stage("Printing iccm_memory[10]")
-            print(reg_map.iccm_memory.iccm_memory[10].read())
+            log_stage("Printing csm_memory")
+            print(reg_map.csm_memory)
+            log_stage("Printing CSM_memory[10]")
+            print(reg_map.csm_memory.csm_memory[10].read())
 
     @unittest.skip("Skipping field access test")
     def test_regdef_field_access(self):
