@@ -436,7 +436,22 @@ def callstack(
     verbose: bool = False,
     device_id: int = 0,
     context: Context = None,
-):
+) -> List:
+
+    """Retrieves the callstack of the specified RISC core for a given ELF.
+    Args:
+            core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, DRAM channel (e.g., ch3), or OnChipCoordinate object.
+            elf_paths (List[str] | str): Paths to the ELF files to be used for the callstack.
+            offsets (List[int], optional): List of offsets for each ELF file. Default: None.
+            risc_id (int): RISC-V ID (0: brisc, 1-3 triscs). Default: 0.
+            max_depth (int): Maximum depth of the callstack. Default: 100.
+            stop_on_main (bool): If True, stops at the main function. Default: True.
+            verbose (bool): If True, enables verbose output. Default: False.
+            device_id (int): ID of the device on which the kernel is run. Default: 0.
+            context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+    Returns:
+            List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
+    """
 
     from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name
 
@@ -450,19 +465,19 @@ def callstack(
     # If given a single string, convert to list
     if isinstance(elf_paths, str):
         elf_paths = [elf_paths]
-    # Check if all paths exist
+
     for elf_path in elf_paths:
         if not os.path.exists(elf_path):
             TTException(f"File {elf_path} does not exist")
-    # Check if offsets are provided
+
     offsets = offsets if offsets is not None else [None for _ in range(len(elf_paths))]
-    # Check if number of offsets match the number of elf_paths
+
     if len(offsets) != len(elf_paths):
         TTException("Number of offsets must match the number of elf files")
-    # Check if risc_id is valid
+
     if risc_id < 0 or risc_id > 3:
         TTException("Invalid RiscV ID. Must be between 0 and 3.")
-    # Check if max_depth is valid
+
     if max_depth <= 0:
         TTException("Max depth must be greater than 0.")
 
