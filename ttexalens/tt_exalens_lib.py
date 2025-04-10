@@ -424,3 +424,52 @@ def write_tensix_register(
         )
 
     TensixDebug(core_loc, device_id, context).write_tensix_register(register, value)
+
+
+def callstack(
+    core_loc: Union[str, OnChipCoordinate],
+    elf_paths: Union[List[str], str],
+    offsets: List[int] = None,
+    risc_id: int = 0,
+    max_depth: int = 100,
+    stop_on_main: bool = True,
+    verbose: bool = False,
+    device_id: int = 0,
+    context: Context = None,
+):
+
+    from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name
+
+    context = check_context(context)
+    validate_device_id(device_id, context)
+    device = context.devices[device_id]
+
+    if not isinstance(core_loc, OnChipCoordinate):
+        core_loc = OnChipCoordinate.create(core_loc, device=device)
+
+    # If given a single string, convert to list
+    if isinstance(elf_paths, str):
+        elf_paths = [elf_paths]
+    # Check if all paths exist
+    for elf_path in elf_paths:
+        if not os.path.exists(elf_path):
+            TTException(f"File {elf_path} does not exist")
+    # Check if offsets are provided
+    offsets = offsets if offsets is not None else [None for _ in range(len(elf_paths))]
+    # Check if number of offsets match the number of elf_paths
+    if len(offsets) != len(elf_paths):
+        TTException("Number of offsets must match the number of elf files")
+    # Check if risc_id is valid
+    if risc_id < 0 or risc_id > 3:
+        TTException("Invalid RiscV ID. Must be between 0 and 3.")
+    # Check if max_depth is valid
+    if max_depth <= 0:
+        TTException("Max depth must be greater than 0.")
+
+    noc_id = 0
+    risc_debug = RiscDebug(RiscLoc(core_loc, noc_id, risc_id), context, verbose=verbose)
+    if risc_debug.is_in_reset():
+        TTException(f"RiscV core {get_risc_name(risc_id)} on location {core_loc.to_user_str()} is in reset")
+    loader = RiscLoader(risc_debug, context, verbose)
+
+    return loader.get_callstack(elf_paths, offsets, max_depth, stop_on_main)
