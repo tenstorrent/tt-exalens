@@ -424,3 +424,69 @@ def write_tensix_register(
         )
 
     TensixDebug(core_loc, device_id, context).write_tensix_register(register, value)
+
+
+def callstack(
+    core_loc: Union[str, OnChipCoordinate],
+    elf_paths: Union[List[str], str],
+    offsets: List[int] = None,
+    risc_id: int = 0,
+    max_depth: int = 100,
+    stop_on_main: bool = True,
+    verbose: bool = False,
+    device_id: int = 0,
+    context: Context = None,
+) -> List:
+
+    """Retrieves the callstack of the specified RISC core for a given ELF.
+    Args:
+            core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, DRAM channel (e.g., ch3), or OnChipCoordinate object.
+            elf_paths (List[str] | str): Paths to the ELF files to be used for the callstack.
+            offsets (List[int], optional): List of offsets for each ELF file. Default: None.
+            risc_id (int): RISC-V ID (0: brisc, 1-3 triscs). Default: 0.
+            max_depth (int): Maximum depth of the callstack. Default: 100.
+            stop_on_main (bool): If True, stops at the main function. Default: True.
+            verbose (bool): If True, enables verbose output. Default: False.
+            device_id (int): ID of the device on which the kernel is run. Default: 0.
+            context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+    Returns:
+            List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
+    """
+
+    from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name
+
+    context = check_context(context)
+    validate_device_id(device_id, context)
+    device = context.devices[device_id]
+
+    if not isinstance(core_loc, OnChipCoordinate):
+        core_loc = OnChipCoordinate.create(core_loc, device=device)
+
+    # If given a single string, convert to list
+    if isinstance(elf_paths, str):
+        elf_paths = [elf_paths]
+
+    for elf_path in elf_paths:
+        if not os.path.exists(elf_path):
+            raise TTException(f"File {elf_path} does not exist")
+
+    offsets = offsets if offsets is not None else [None for _ in range(len(elf_paths))]
+    if isinstance(offsets, int):
+        offsets = [offsets]
+
+    if len(offsets) != len(elf_paths):
+        raise TTException("Number of offsets must match the number of elf files")
+
+    if risc_id < 0 or risc_id > 3:
+        raise ValueError("Invalid RiscV ID. Must be between 0 and 3.")
+
+    if max_depth <= 0:
+        raise ValueError("Max depth must be greater than 0.")
+
+    noc_id = 0
+    risc_debug = RiscDebug(RiscLoc(core_loc, noc_id, risc_id), context, verbose=verbose)
+    if risc_debug.is_in_reset():
+        raise TTException(f"RiscV core {get_risc_name(risc_id)} on location {core_loc.to_user_str()} is in reset")
+    loader = RiscLoader(risc_debug, context, verbose)
+
+    return loader.get_callstack(elf_paths, offsets, max_depth, stop_on_main)

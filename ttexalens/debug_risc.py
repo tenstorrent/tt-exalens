@@ -4,7 +4,7 @@
 from collections import namedtuple
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Union
+from typing import List, Union
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.parse_elf import read_elf
@@ -954,19 +954,63 @@ class RiscLoader:
             not self.risc_debug.is_halted() or self.risc_debug.read_status().is_ebreak_hit
         ), f"RISC at location {self.risc_debug.location} is still halted, but not because of ebreak."
 
-    def get_callstack(self, elf_path: str, limit: int = 100, stop_on_main: bool = True):
+    def _read_elfs(self, elf_paths: List[str], offsets: List[int]) -> List[dict]:
+        if not isinstance(elf_paths, list):
+            elf_paths = [elf_paths]
+        offsets = [None] * len(elf_paths) if offsets is None else offsets
+
+        elfs = []
+        for elf_path, offset in zip(elf_paths, offsets):
+            offset = None if offset == 0 else offset
+            elfs.append(read_elf(self.context.server_ifc, elf_path, offset))
+
+        return elfs
+
+    def _find_elf_and_frame_description(self, elfs: List[dict], pc: int):
+        for elf in elfs:
+            frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
+            # If we get frame description from elf we return that elf and frame description
+            if frame_description is not None:
+                return elf, frame_description
+
+        return None, None
+
+    def get_callstack(
+        self, elf_paths: List[str], offsets: List[int] = None, limit: int = 100, stop_on_main: bool = True
+    ):
         callstack = []
         with self.risc_debug.ensure_halted():
-            elf = read_elf(self.context.server_ifc, elf_path)
+
+            # Reading the elf files for given paths and offsets
+            elfs = self._read_elfs(elf_paths, offsets)
+
+            # Reading the program counter from risc register
             pc = self.risc_debug.read_gpr(32)
-            frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
+
+            # Choose the elf which is referenced by the program counter
+            elf, frame_description = self._find_elf_and_frame_description(elfs, pc)
+
+            # If we do not get frame description from any elf, we cannot proceed
+            if frame_description is None:
+                util.WARN("We don't have information on frame and we don't know how to proceed.")
+                return []
+
             frame_pointer = frame_description.read_previous_cfa()
             i = 0
             while i < limit:
                 file_line = elf["dwarf"].find_file_line_by_address(pc)
                 function_die = elf["dwarf"].find_function_by_address(pc)
-                if function_die is not None and function_die.category == "inlined_function":
+
+                # Skipping lexical blocks since we do not print them
+                if function_die is not None and (
+                    function_die.category == "inlined_function" or function_die.category == "lexical_block"
+                ):
                     # Returning inlined functions (virtual frames)
+
+                    # Skipping lexical blocks since we do not print them
+                    while function_die.category == "lexical_block":
+                        function_die = function_die.parent
+
                     callstack.append(
                         CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
                     )
@@ -974,6 +1018,10 @@ class RiscLoader:
                     while function_die.category == "inlined_function":
                         i = i + 1
                         function_die = function_die.parent
+                        # Skipping lexical blocks since we do not print them
+                        while function_die.category == "lexical_block":
+                            function_die = function_die.parent
+
                         callstack.append(
                             CallstackEntry(
                                 None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer
@@ -1000,16 +1048,25 @@ class RiscLoader:
                 if frame_pointer == 0:
                     break
 
-                frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
+                # If we do not get frame description from any elf, we cannot proceed
                 if frame_description is None:
                     util.WARN("We don't have information on frame and we don't know how to proceed")
                     break
 
+                # Prepare for next iteration
                 cfa = frame_pointer
                 return_address = frame_description.read_register(1, cfa)
                 frame_pointer = frame_description.read_previous_cfa(cfa)
                 pc = return_address
                 i = i + 1
+
+                frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
+                # If we do not get frame description from current elf check in others
+                if frame_description is None:
+                    new_elf, frame_description = self._find_elf_and_frame_description(elfs, pc)
+                    if frame_description is not None:
+                        elf = new_elf
+
         return callstack
 
 
