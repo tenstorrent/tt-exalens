@@ -381,7 +381,7 @@ std::optional<std::string> read_tile_implementation(uint8_t chip_id, uint8_t noc
     std::vector<std::uint32_t> mem_vector;
 
     if (df != TileDataFormat::Invalid) {
-        tt_cxy_pair target(chip_id, noc_x, noc_y);
+        tt::umd::CoreCoord target = device->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
         bool small_access = false;
         bool register_txn = true;  // FIX: This should not be register access, actually
 
@@ -394,11 +394,11 @@ std::optional<std::string> read_tile_implementation(uint8_t chip_id, uint8_t noc
         if (mmio_targets.find(chip_id) == mmio_targets.end()) {
             for (uint32_t done = 0; done < size;) {
                 uint32_t block = std::min(size - done, 1024u);
-                device->read_from_device(mem_vector.data() + done, target, address + done, block, tlb_to_use);
+                device->read_from_device(mem_vector.data() + done, chip_id, target, address + done, block, tlb_to_use);
                 done += block;
             }
         } else {
-            device->read_from_device(mem_vector.data(), target, address, size, tlb_to_use);
+            device->read_from_device(mem_vector.data(), chip_id, target, address, size, tlb_to_use);
         }
 
         return dump_tile(mem_vector, df);
