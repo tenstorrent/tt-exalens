@@ -381,7 +381,8 @@ std::optional<std::string> read_tile_implementation(uint8_t chip_id, uint8_t noc
     std::vector<std::uint32_t> mem_vector;
 
     if (df != TileDataFormat::Invalid) {
-        tt::umd::CoreCoord target = device->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
+        tt::umd::CoreCoord target =
+            device->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
         bool small_access = false;
         bool register_txn = true;  // FIX: This should not be register access, actually
 
