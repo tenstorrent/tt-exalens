@@ -478,10 +478,10 @@ def callstack(
         raise TTException("Number of offsets must match the number of elf files")
 
     if risc_id < 0 or risc_id > 3:
-        raise TTException("Invalid RiscV ID. Must be between 0 and 3.")
+        raise ValueError("Invalid RiscV ID. Must be between 0 and 3.")
 
     if max_depth <= 0:
-        raise TTException("Max depth must be greater than 0.")
+        raise ValueError("Max depth must be greater than 0.")
 
     noc_id = 0
     risc_debug = RiscDebug(RiscLoc(core_loc, noc_id, risc_id), context, verbose=verbose)
