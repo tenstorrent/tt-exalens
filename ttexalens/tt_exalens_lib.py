@@ -445,6 +445,7 @@ def read_riscv_memory(
 ) -> int:
 
     """Reads a 32-bit word from the specified RISC-V core's private memory.
+
     Args:
             core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
             addr (int): Memory address to read from.
@@ -453,6 +454,7 @@ def read_riscv_memory(
             device_id (int): ID number of device to read from. Default 0.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
             verbose (bool): If True, enables verbose output. Default False.
+
     Returns:
             int: Data read from the device.
     """
@@ -502,6 +504,7 @@ def write_riscv_memory(
 ) -> None:
 
     """Writes a 32-bit word to the specified RISC-V core's private memory.
+
     Args:
             core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
             addr (int): Memory address to read from.
