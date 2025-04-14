@@ -34,6 +34,7 @@ from ttexalens.uistate import UIState
 from ttexalens import command_parser
 from ttexalens import util
 from ttexalens.debug_risc import RiscDebug, RiscLoc, get_risc_name, RiscLoader
+import ttexalens.tt_exalens_lib as lib
 
 
 def run(cmd_text, context, ui_state: UIState = None):
@@ -61,13 +62,17 @@ def run(cmd_text, context, ui_state: UIState = None):
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             for risc_id in dopt.for_each("--risc", context, ui_state):
-                risc_debug = RiscDebug(RiscLoc(loc, noc_id, risc_id), context, verbose=verbose)
-                if risc_debug.is_in_reset():
-                    util.WARN(f"RiscV core {get_risc_name(risc_id)} on location {loc.to_user_str()} is in reset")
-                    continue
-                loader = RiscLoader(risc_debug, context, verbose)
-
-                callstack = loader.get_callstack(elf_paths, offsets, limit, stop_on_main)
+                callstack = lib.callstack(
+                    core_loc=loc,
+                    elf_paths=elf_paths,
+                    offsets=offsets,
+                    risc_id=risc_id,
+                    max_depth=limit,
+                    stop_on_main=stop_on_main,
+                    verbose=verbose,
+                    device_id=device.id(),
+                    context=context,
+                )
                 print(
                     f"Location: {util.CLR_INFO}{loc.to_user_str()}{util.CLR_END}, core: {util.CLR_WHITE}{get_risc_name(risc_id)}{util.CLR_END}"
                 )
