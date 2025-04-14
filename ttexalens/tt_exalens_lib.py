@@ -426,14 +426,12 @@ def write_tensix_register(
     TensixDebug(core_loc, device_id, context).write_tensix_register(register, value)
 
 
-def _write_data_checked(core_loc, context, addr, data):
-    """Write data to memory and check it was written."""
-    write_words_to_device(core_loc, addr, data, context=context)
-
-
+# Write code for brisc core at address 0
+# C++:
+#   while (true);
 def _write_program(core_loc, context, program_base_address, addr, data):
     """Write program code data to L1 memory."""
-    _write_data_checked(core_loc, context, program_base_address + addr, data)
+    write_words_to_device(core_loc, program_base_address + addr, data, context=context)
 
 
 def read_riscv_memory(
@@ -444,7 +442,21 @@ def read_riscv_memory(
     device_id: int = 0,
     context: Context = None,
     verbose: bool = False,
-):
+) -> int:
+
+    """Reads a 32-bit word from the specified RISC-V core's private memory.
+    Args:
+            core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+            addr (int): Memory address to read from.
+            noc_id (int): What noc to use. Options [0,1]. Default 0.
+            risc_id (int): RiscV ID (0: brisc, 1-3 triscs). Default 0.
+            device_id (int): ID number of device to read from. Default 0.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+            verbose (bool): If True, enables verbose output. Default False.
+    Returns:
+            int: Data read from the device.
+    """
+
     from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader
 
     context = check_context(context)
@@ -487,7 +499,20 @@ def write_riscv_memory(
     device_id: int = 0,
     context: Context = None,
     verbose: bool = False,
-):
+) -> None:
+
+    """Writes a 32-bit word to the specified RISC-V core's private memory.
+    Args:
+            core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+            addr (int): Memory address to read from.
+            value (int): Value to write.
+            noc_id (int): What noc to use. Options [0,1]. Default 0.
+            risc_id (int): RiscV ID (0: brisc, 1-3 triscs). Default 0.
+            device_id (int): ID number of device to read from. Default 0.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+            verbose (bool): If True, enables verbose output. Default False.
+    """
+
     from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader
 
     context = check_context(context)
@@ -521,4 +546,4 @@ def write_riscv_memory(
     debug_risc.enable_debug()
     debug_risc.halt()
 
-    return debug_risc.write_memory(addr, value)
+    debug_risc.write_memory(addr, value)
