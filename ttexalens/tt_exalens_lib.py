@@ -428,9 +428,9 @@ def write_tensix_register(
 
 def read_riscv_memory(
     core_loc: Union[str, OnChipCoordinate],
-    noc_id: int,
-    risc_id: int,
     addr: int,
+    noc_id: int = 0,
+    risc_id: int = 0,
     device_id: int = 0,
     context: Context = None,
     verbose: bool = False,
@@ -447,6 +447,9 @@ def read_riscv_memory(
 
     if noc_id < 0 or noc_id > 1:
         raise ValueError("Invalid value for noc_id. Expected 0 or 1.")
+
+    if risc_id < 0 or risc_id > 3:
+        raise ValueError("Invalid value for risc_id. Expected value between 0 and 3.")
 
     location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
     debug_risc = RiscDebug(location=location, context=context, verbose=verbose)

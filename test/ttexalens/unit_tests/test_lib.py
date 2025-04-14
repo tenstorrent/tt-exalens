@@ -306,6 +306,22 @@ class TestReadWrite(unittest.TestCase):
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_tensix_register(core_loc, register, value, device_id)
 
+    @parameterized.expand(
+        [
+            ("abcd", 0xFFB00000),  # Invalid core_loc string
+            ("0,0", -1),  # Invalid address
+            ("0,0", 0xFFB00000, -1),  # Invalid noc_id (too low)
+            ("0,0", 0xFFB00000, 2),  # Invalid noc_id (too high)
+            ("0,0", 0xFFB00000, 0, -1),  # Invalid risc_id (too low)
+            ("0,0", 0xFFB00000, 0, 4),  # Invalid risc_id (too high)
+            ("0,0", 0xFFB00000, 0, 0, -1),  # Invalid device_id
+        ]
+    )
+    def test_invalid_read_private_memory(self, core_loc, address, noc_id=0, risc_id=0, device_id=0):
+        """Test invalid inputs for reading private memory."""
+        with self.assertRaises((util.TTException, ValueError)):
+            lib.read_riscv_memory(core_loc, address, noc_id, risc_id, device_id)
+
 
 class TestRunElf(unittest.TestCase):
     @classmethod
