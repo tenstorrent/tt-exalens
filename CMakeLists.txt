@@ -55,6 +55,9 @@ set(UMD_HOME "${PROJECT_SOURCE_DIR}/third_party/umd")
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/pybind11)
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/umd)
 
+# Check for SFPI release
+include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
+
 # Check for ZeroMQ
 include(${PROJECT_SOURCE_DIR}/cmake/ZeroMQ.cmake)
 

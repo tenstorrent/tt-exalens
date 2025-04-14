@@ -21,54 +21,54 @@ umd_implementation::umd_implementation(tt_device* device) : device(device) {}
 std::optional<uint32_t> umd_implementation::pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                        uint64_t address) {
     uint32_t result;
-    tt_cxy_pair target(chip_id, noc_x, noc_y);
+    tt::umd::CoreCoord target = device->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
 
-    device->read_from_device(&result, target, address, sizeof(result), REG_TLB_STR);
+    device->read_from_device(&result, chip_id, target, address, sizeof(result), REG_TLB_STR);
     return result;
 }
 
 std::optional<uint32_t> umd_implementation::pci_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                                         uint32_t data) {
-    tt_cxy_pair target(chip_id, noc_x, noc_y);
+    tt::umd::CoreCoord target = device->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
 
-    device->write_to_device(&data, sizeof(data), target, address, LARGE_WRITE_TLB_STR);
+    device->write_to_device(&data, sizeof(data), chip_id, target, address, LARGE_WRITE_TLB_STR);
     return 4;
 }
 
 std::optional<std::vector<uint8_t>> umd_implementation::pci_read(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                                  uint64_t address, uint32_t size) {
-    tt_cxy_pair target(chip_id, noc_x, noc_y);
     std::vector<uint8_t> result(size);
+    tt::umd::CoreCoord target = device->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
 
     // TODO #124: Mitigation for UMD bug #77
     if (!is_chip_mmio_capable(chip_id)) {
         for (uint32_t done = 0; done < size;) {
             uint32_t block = std::min(size - done, 1024u);
-            device->read_from_device(result.data() + done, target, address + done, block, REG_TLB_STR);
+            device->read_from_device(result.data() + done, chip_id, target, address + done, block, REG_TLB_STR);
             done += block;
         }
         return result;
     }
 
-    device->read_from_device(result.data(), target, address, size, REG_TLB_STR);
+    device->read_from_device(result.data(), chip_id, target, address, size, REG_TLB_STR);
     return result;
 }
 
 std::optional<uint32_t> umd_implementation::pci_write(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                                       const uint8_t* data, uint32_t size) {
-    tt_cxy_pair target(chip_id, noc_x, noc_y);
+    tt::umd::CoreCoord target = device->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
 
     // TODO #124: Mitigation for UMD bug #77
     if (!is_chip_mmio_capable(chip_id)) {
         for (uint32_t done = 0; done < size;) {
             uint32_t block = std::min(size - done, 1024u);
-            device->write_to_device(data + done, block, target, address + done, LARGE_WRITE_TLB_STR);
+            device->write_to_device(data + done, block, chip_id, target, address + done, LARGE_WRITE_TLB_STR);
             done += block;
         }
         return size;
     }
 
-    device->write_to_device(data, size, target, address, LARGE_WRITE_TLB_STR);
+    device->write_to_device(data, size, chip_id, target, address, LARGE_WRITE_TLB_STR);
     return size;
 }
 

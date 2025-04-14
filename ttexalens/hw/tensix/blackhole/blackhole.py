@@ -46,6 +46,7 @@ class BlackholeDevice(Device):
     NOC_ARC_RESET_BASE_ADDR = 0x80030000
     NOC_ARC_CSM_DATA_BASE_ADDR = 0x10000000
     NOC_ARC_ROM_DATA_BASE_ADDR = 0x80000000
+    NOC_REGISTER_OFFSET = 0x10000
 
     # Register base addresses
     CONFIGURATION_REGISTER_BASE = 0xFFEF0000
@@ -69,7 +70,7 @@ class BlackholeDevice(Device):
         )
         self.instructions = BlackholeInstructions()
 
-    def _get_tensix_register_map_keys(self) -> list[str]:
+    def _get_tensix_register_map_keys(self) -> List[str]:
         return list(BlackholeDevice.__register_map.keys())
 
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:

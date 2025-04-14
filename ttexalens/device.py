@@ -464,7 +464,7 @@ class Device(TTObject):
         return []
 
     @abstractmethod
-    def _get_tensix_register_map_keys(self) -> list[str]:
+    def _get_tensix_register_map_keys(self) -> List[str]:
         pass
 
     @abstractmethod
@@ -577,6 +577,35 @@ class Device(TTObject):
         write_words_to_device(loc, config_addr, 0, self._id)
 
         return data if signal.mask is None else data & signal.mask
+
+    def get_noc_register_address(self, reg_name: str, noc_id: int) -> int:
+        """
+        Get the address for a NOC register.
+
+        Args:
+            reg_name: Register name
+            noc_id: NOC identifier (0 or 1)
+
+        Returns:
+            Register address
+
+        Raises:
+            ValueError: If reg_name is not a NOC register or noc_id is invalid
+        """
+        if noc_id not in [0, 1]:
+            raise ValueError(f"Invalid NOC identifier: {noc_id}. Must be 0 or 1.")
+
+        description = self.get_tensix_register_description(reg_name)
+
+        # Validate this is a NOC register
+        if not isinstance(
+            description,
+            (NocStatusRegisterDescription, NocConfigurationRegisterDescription, NocControlRegisterDescription),
+        ):
+            raise ValueError(f"Register {reg_name} is not a NOC register")
+
+        base_addr = description.address
+        return base_addr + (noc_id * self.NOC_REGISTER_OFFSET)
 
 
 # end of class Device

@@ -385,6 +385,37 @@ class TestDebugging(unittest.TestCase):
         # Verify value at address
         self.assertEqual(self.read_data(addr), 0x87654000)
 
+    def test_core_lockup(self):
+        """Running code that should lock up the core and then trying to halt it."""
+        # lui t3, 0 - 0x00000e37
+        # b_loop:
+        #    addi t3, t3, 1 # Counter increment 0x001e0e13
+        #    lw t1, 0(x0) # L1 read             0x00002303
+        #    lw t2, 0(x0) # L1 read             0x00002383
+        #    jal b_loop(-12) 0xff5ff06f
+        self.write_program(0, 0x00000E37)
+        self.write_program(4, 0x001E0E13)
+        self.write_program(8, 0x00002303)
+        self.write_program(12, 0x00002383)
+        self.write_program(16, RiscLoader.get_jump_to_offset_instruction(-12))
+
+        self.rdbg.set_reset_signal(False)
+        iteration = 0
+        while True:
+            try:
+                self.rdbg.halt()
+                self.rdbg.continue_without_debug()
+                iteration = iteration + 1
+                if iteration > 1000:
+                    break
+            except Exception as e:
+                # print pc
+                self.rdbg.set_reset_signal(True)
+                return
+
+        self.assertFalse(False, "Exception not raised")
+        self.rdbg.set_reset_signal(True)
+
     def test_halt_continue(self):
         """Test running 28 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
         addr = 0x10000

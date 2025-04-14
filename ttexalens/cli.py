@@ -326,6 +326,9 @@ def main_loop(args, context):
                 my_prompt += f"{ui_state.current_prompt}> "
                 cmd_raw = context.prompt_session.prompt(HTML(my_prompt))
 
+            # Trim comments
+            cmd_raw = cmd_raw.split("#")[0].strip()
+
             cmd_int = try_int(cmd_raw)
             if type(cmd_int) == int:
                 if navigation_suggestions and cmd_int >= 0 and cmd_int < len(navigation_suggestions):
@@ -382,6 +385,12 @@ def main_loop(args, context):
             if have_non_interactive_commands or type(e) == util.TTFatalException:
                 # In non-interactive mode and on fatal excepions, we re-raise to exit the program
                 raise
+        except DocoptExit as e:
+            if args["--test"]:  # Always raise in test mode
+                util.ERROR("CLI option --test is set. Raising exception to exit.")
+                raise
+            else:
+                print(e.usage)
 
 
 def main():

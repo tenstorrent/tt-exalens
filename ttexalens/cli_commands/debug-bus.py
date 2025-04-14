@@ -15,6 +15,7 @@ Description:
             -RDSel   - select 32bit data in 128bit register -> values [0-3]
             -SigSel  - select 128bit register
             -Mask    - 32bit number to show only significant bits (optional)
+
 Examples:
   debug-bus list-names                       # List predefined debug bus signals
   debug-bus trisc0_pc,trisc1_pc              # Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1

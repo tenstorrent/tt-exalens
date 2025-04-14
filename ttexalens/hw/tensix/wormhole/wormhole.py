@@ -56,6 +56,7 @@ class WormholeDevice(Device):
     NOC_CONTROL_REGISTER_BASE = 0xFFB20000
     NOC_CONFIGURATION_REGISTER_BASE = 0xFFB20100
     NOC_STATUS_REGISTER_BASE = 0xFFB20200
+    NOC_REGISTER_OFFSET = 0x10000
 
     CONFIGURATION_REGISTER_END = 0xFFEFFFFF
 
@@ -77,7 +78,7 @@ class WormholeDevice(Device):
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         return x >= 16 and y >= 16
 
-    def _get_tensix_register_map_keys(self) -> list[str]:
+    def _get_tensix_register_map_keys(self) -> List[str]:
         return list(WormholeDevice.__register_map.keys())
 
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:

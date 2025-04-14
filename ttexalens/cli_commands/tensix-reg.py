@@ -57,6 +57,7 @@ from ttexalens.device import (
 from ttexalens import command_parser
 from ttexalens.util import TTException, INFO, WARN, DATA_TYPE, convert_int_to_data_type, convert_data_type_to_int
 from ttexalens.unpack_regfile import TensixDataFormat
+from typing import List
 import re
 from fnmatch import fnmatch
 
@@ -76,7 +77,7 @@ def convert_str_to_int(param: str) -> int:
 
 
 # Convert register parameters to integers
-def convert_reg_params(reg_params: str) -> list[int]:
+def convert_reg_params(reg_params: str) -> List[int]:
     params = []
     for param in reg_params.split(","):
         params.append(convert_str_to_int(param))
@@ -85,7 +86,7 @@ def convert_reg_params(reg_params: str) -> list[int]:
 
 
 # Create register description object given parameters
-def create_register_description(reg_type: str, reg_params: list[int], data_type: str) -> TensixRegisterDescription:
+def create_register_description(reg_type: str, reg_params: List[int], data_type: str) -> TensixRegisterDescription:
     if reg_type == "cfg":
         if len(reg_params) != 3:
             raise TTException(
@@ -115,7 +116,7 @@ def parse_register_argument(register: str):
 
 
 # Print strings that match wildcard pattern. Maximum max_prints, negaitve values enable print all.
-def print_matches(pattern: str, strings: list[str], max_prints: int) -> None:
+def print_matches(pattern: str, strings: List[str], max_prints: int) -> None:
     pattern = pattern.lower()
     for s in strings:
         if max_prints == 0:

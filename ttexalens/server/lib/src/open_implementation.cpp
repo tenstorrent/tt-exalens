@@ -23,14 +23,6 @@
 #include "umd/device/tt_xy_pair.h"
 #include "umd/device/types/arch.h"
 
-// Include automatically generated files that we embed in source to avoid managing their deployment
-static const uint8_t blackhole_configuration_bytes[] = {
-#include "../configuration/blackhole.embed"
-};
-static const uint8_t wormhole_b0_configuration_bytes[] = {
-#include "../configuration/wormhole_b0.embed"
-};
-
 static std::filesystem::path get_temp_working_directory() {
     std::filesystem::path temp_path = std::filesystem::temp_directory_path();
     std::string temp_name = temp_path / "ttexalens_server_XXXXXX";
@@ -63,27 +55,6 @@ static std::string write_temp_file(const std::string &file_name, const char *byt
     conf_file.write(bytes, length);
     conf_file.close();
     return temp_file_name;
-}
-
-static std::string create_temp_configuration_file(tt::ARCH arch) {
-    const uint8_t *configuration_bytes = nullptr;
-    size_t configuration_length = 0;
-
-    switch (arch) {
-        case tt::ARCH::BLACKHOLE:
-            configuration_bytes = blackhole_configuration_bytes;
-            configuration_length = sizeof(blackhole_configuration_bytes) / sizeof(blackhole_configuration_bytes[0]);
-            break;
-        case tt::ARCH::WORMHOLE_B0:
-            configuration_bytes = wormhole_b0_configuration_bytes;
-            configuration_length = sizeof(wormhole_b0_configuration_bytes) / sizeof(wormhole_b0_configuration_bytes[0]);
-            break;
-        default:
-            throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");
-    }
-
-    return write_temp_file("soc_descriptor.yaml", reinterpret_cast<const char *>(configuration_bytes),
-                           configuration_length);
 }
 
 // Identifies and returns the directory path of the currently running executable in a Linux environment.
@@ -137,13 +108,11 @@ static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
     return cluster_descriptor_path;
 }
 
-static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::string &device_configuration_path,
-                                                                const std::set<chip_id_t> &target_devices) {
+static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
     std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
 
-    auto device =
-        std::make_unique<tt::umd::Cluster>(device_configuration_path, target_devices, num_host_mem_ch_per_mmio_device);
+    auto device = std::make_unique<tt::umd::Cluster>(target_devices, num_host_mem_ch_per_mmio_device);
     for (auto chip_id : device->get_target_mmio_device_ids()) {
         device->configure_active_ethernet_cores_for_mmio_device(chip_id, {});
     }
@@ -151,13 +120,11 @@ static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::strin
     return device;
 }
 
-static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::string &device_configuration_path,
-                                                                 const std::set<chip_id_t> &target_devices) {
+static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
     std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
 
-    auto device =
-        std::make_unique<tt::umd::Cluster>(device_configuration_path, target_devices, num_host_mem_ch_per_mmio_device);
+    auto device = std::make_unique<tt::umd::Cluster>(target_devices, num_host_mem_ch_per_mmio_device);
 
     return device;
 }
@@ -371,10 +338,6 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
         }
     }
     auto cluster_descriptor_path = jtag_create_temp_network_descriptor_file(jtag_device.get());
-    auto device_configuration_path = create_temp_configuration_file(arch);
-    if (device_configuration_path.empty()) {
-        return {};
-    }
 
     std::map<uint8_t, std::string> device_soc_descriptors_yamls;
     std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
@@ -382,7 +345,7 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
     for (size_t device_id = 0; device_id < jtag_device->get_device_cnt(); device_id++) {
         tt::ARCH arch = *jtag_device->get_jtag_arch(device_id);
         uint32_t harvesting = *jtag_device->get_efuse_harvesting(device_id);
-        soc_descriptors[device_id] = tt_SocDescriptor(device_configuration_path, harvesting);
+        soc_descriptors[device_id] = tt_SocDescriptor(arch, harvesting);
         device_soc_descriptors_yamls[device_id] =
             jtag_create_device_soc_descriptor(soc_descriptors[device_id], device_id);
         device_ids.push_back(device_id);
@@ -425,10 +388,6 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     }
 
     // Create device
-    auto device_configuration_path = create_temp_configuration_file(arch);
-    if (device_configuration_path.empty()) {
-        return {};
-    }
     std::vector<uint8_t> device_ids;
     std::unique_ptr<tt::umd::Cluster> device;
 
@@ -449,10 +408,10 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 
     switch (arch) {
         case tt::ARCH::WORMHOLE_B0:
-            device = create_wormhole_device(device_configuration_path, target_devices);
+            device = create_wormhole_device(target_devices);
             break;
         case tt::ARCH::BLACKHOLE:
-            device = create_blackhole_device(device_configuration_path, target_devices);
+            device = create_blackhole_device(target_devices);
             break;
         default:
             throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");
@@ -489,9 +448,8 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 
     for (const auto &worker : soc_descriptor.get_cores(CoreType::TENSIX)) {
         uint32_t data = 0x6f;  // while (true);
-        tt::umd::cxy_pair cxy(0, worker.x, worker.y);
 
-        device->write_to_device(&data, sizeof(data), cxy, 0, {});
+        device->write_to_device(&data, sizeof(data), 0, worker, 0, {});
     }
 
     device->deassert_risc_reset();
