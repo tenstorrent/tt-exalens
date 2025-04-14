@@ -426,6 +426,16 @@ def write_tensix_register(
     TensixDebug(core_loc, device_id, context).write_tensix_register(register, value)
 
 
+def _write_data_checked(core_loc, context, addr, data):
+    """Write data to memory and check it was written."""
+    write_words_to_device(core_loc, addr, data, context=context)
+
+
+def _write_program(core_loc, context, program_base_address, addr, data):
+    """Write program code data to L1 memory."""
+    _write_data_checked(core_loc, context, program_base_address + addr, data)
+
+
 def read_riscv_memory(
     core_loc: Union[str, OnChipCoordinate],
     addr: int,
@@ -435,7 +445,7 @@ def read_riscv_memory(
     context: Context = None,
     verbose: bool = False,
 ):
-    from ttexalens.debug_risc import RiscDebug, RiscLoc
+    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader
 
     context = check_context(context)
     validate_device_id(device_id, context)
@@ -453,5 +463,62 @@ def read_riscv_memory(
 
     location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
     debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
+    loader = RiscLoader(debug_risc, context)
+
+    _write_program(core_loc, context, loader.get_risc_start_address(), 0, RiscLoader.get_jump_to_offset_instruction(0))
+
+    debug_risc.set_reset_signal(False)
+    if debug_risc.is_in_reset():
+        raise TTException(f"RISC core with id {risc_id} is in reset.")
+
+    # Halt core
+    debug_risc.enable_debug()
+    debug_risc.halt()
 
     return debug_risc.read_memory(addr)
+
+
+def write_riscv_memory(
+    core_loc: Union[str, OnChipCoordinate],
+    addr: int,
+    value: int,
+    noc_id: int = 0,
+    risc_id: int = 0,
+    device_id: int = 0,
+    context: Context = None,
+    verbose: bool = False,
+):
+    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader
+
+    context = check_context(context)
+    validate_device_id(device_id, context)
+    validate_addr(addr)
+    device = context.devices[device_id]
+
+    if not isinstance(core_loc, OnChipCoordinate):
+        core_loc = OnChipCoordinate.create(core_loc, device=device)
+
+    if value < 0 or value > 0xFFFFFFFF:
+        raise ValueError(f"Invalid value {value}. Value must be a 32-bit unsigned integer.")
+
+    if noc_id < 0 or noc_id > 1:
+        raise ValueError(f"Invalid value for noc_id {noc_id}. Expected 0 or 1.")
+
+    if risc_id < 0 or risc_id > 3:
+        raise ValueError(f"Invalid value for risc_id {risc_id}. Expected value between 0 and 3.")
+
+    location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
+    debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
+    loader = RiscLoader(debug_risc, context)
+
+    _write_program(core_loc, context, loader.get_risc_start_address(), 0, RiscLoader.get_jump_to_offset_instruction(0))
+
+    debug_risc.set_reset_signal(False)
+    if debug_risc.is_in_reset():
+        raise TTException(f"RISC core with id {risc_id} is in reset.")
+
+    # Halt core
+    debug_risc.enable_debug()
+    debug_risc.halt()
+
+    return debug_risc.write_memory(addr, value)

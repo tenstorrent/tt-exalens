@@ -308,19 +308,51 @@ class TestReadWrite(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("abcd", 0xFFB00000),  # Invalid core_loc string
-            ("0,0", -1),  # Invalid address
-            ("0,0", 0xFFB00000, -1),  # Invalid noc_id (too low)
-            ("0,0", 0xFFB00000, 2),  # Invalid noc_id (too high)
-            ("0,0", 0xFFB00000, 0, -1),  # Invalid risc_id (too low)
-            ("0,0", 0xFFB00000, 0, 4),  # Invalid risc_id (too high)
-            ("0,0", 0xFFB00000, 0, 0, -1),  # Invalid device_id
+            ("0,0", 0, 0),
+            ("0,1", 0, 0),
+            ("0,0", 1, 0),
+            ("0,0", 0, 1),
+            ("0,0", 0, 2),
+            ("0,0", 0, 3),
         ]
     )
-    def test_invalid_read_private_memory(self, core_loc, address, noc_id=0, risc_id=0, device_id=0):
+    def test_read_write_private_memory(self, core_loc, noc_id, risc_id):
+        """Testing read_memory and write_memory through debugging interface on private core memory range."""
+        addr = 0xFFB00000
+
+        original_value = lib.read_riscv_memory(core_loc, addr, noc_id, risc_id)
+
+        # Writing a value to the memory and reading it back
+        value = 0x12345678
+        lib.write_riscv_memory(core_loc, addr, value, noc_id, risc_id)
+        ret = lib.read_riscv_memory(core_loc, addr, noc_id, risc_id)
+        self.assertEqual(ret, value)
+        # Writing the original value back to the memory
+        lib.write_riscv_memory(core_loc, addr, original_value, noc_id, risc_id)
+        ret = lib.read_riscv_memory(core_loc, addr, noc_id, risc_id)
+        self.assertEqual(ret, original_value)
+
+    @parameterized.expand(
+        [
+            ("abcd", 0xFFB00000, 0),  # Invalid core_loc string
+            ("-10", 0xFFB00000, 0),  # Invalid core_loc string
+            ("0,0", -1, 0),  # Invalid address
+            ("0,0", 0xFFB00000, 0, -1),  # Invalid noc_id (too low)
+            ("0,0", 0xFFB00000, 0, 2),  # Invalid noc_id (too high)
+            ("0,0", 0xFFB00000, 0, 0, -1),  # Invalid risc_id (too low)
+            ("0,0", 0xFFB00000, 0, 0, 4),  # Invalid risc_id (too high)
+            ("0,0", 0xFFB00000, 0, 0, 0, -1),  # Invalid device_id
+            ("0,0", 0xFFB00000, -1),  # Invalid value (too low)
+            ("0,0", 0xFFB00000, 2**32),  # Invalid value (too high)
+        ]
+    )
+    def test_invalid_read_private_memory(self, core_loc, address, value, noc_id=0, risc_id=0, device_id=0):
         """Test invalid inputs for reading private memory."""
+        if value == 0:  # Invalid value does not raies an exception in read so we skip it
+            with self.assertRaises((util.TTException, ValueError)):
+                lib.read_riscv_memory(core_loc, address, noc_id, risc_id, device_id)
         with self.assertRaises((util.TTException, ValueError)):
-            lib.read_riscv_memory(core_loc, address, noc_id, risc_id, device_id)
+            lib.write_riscv_memory(core_loc, address, value, noc_id, risc_id, device_id)
 
 
 class TestRunElf(unittest.TestCase):
