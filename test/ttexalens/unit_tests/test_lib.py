@@ -306,6 +306,10 @@ class TestReadWrite(unittest.TestCase):
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_tensix_register(core_loc, register, value, device_id)
 
+    def write_program(self, core_loc, addr, data):
+        """Write program code data to L1 memory."""
+        lib.write_words_to_device(core_loc, addr, data, device_id=self.context.devices[0].id(), context=self.context)
+
     @parameterized.expand(
         [
             ("0,0", 0, 0),
@@ -319,6 +323,14 @@ class TestReadWrite(unittest.TestCase):
     def test_read_write_private_memory(self, core_loc, noc_id, risc_id):
         """Testing read_memory and write_memory through debugging interface on private core memory range."""
         addr = 0xFFB00000
+
+        loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
+        rloc = RiscLoc(loc, noc_id, risc_id)
+        rdbg = RiscDebug(rloc, self.context)
+        loader = RiscLoader(rdbg, self.context)
+        program_base_address = loader.get_risc_start_address()
+
+        self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
 
         original_value = lib.read_riscv_memory(core_loc, addr, noc_id, risc_id)
 
