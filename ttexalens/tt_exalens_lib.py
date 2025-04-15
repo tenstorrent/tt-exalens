@@ -425,6 +425,7 @@ def write_tensix_register(
 
     TensixDebug(core_loc, device_id, context).write_tensix_register(register, value)
 
+
 def read_riscv_memory(
     core_loc: Union[str, OnChipCoordinate],
     addr: int,
@@ -460,7 +461,7 @@ def read_riscv_memory(
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=device)
 
-    if noc_id not in (0,1):
+    if noc_id not in (0, 1):
         raise ValueError("Invalid value for noc_id. Expected 0 or 1.")
 
     if risc_id < 0 or risc_id > 3:
@@ -481,7 +482,7 @@ def read_riscv_memory(
 
     debug_risc.continue_without_debug()
 
-    return ret 
+    return ret
 
 
 def write_riscv_memory(
@@ -521,7 +522,7 @@ def write_riscv_memory(
     if value < 0 or value > 0xFFFFFFFF:
         raise ValueError(f"Invalid value {value}. Value must be a 32-bit unsigned integer.")
 
-    if noc_id not in (0,1):
+    if noc_id not in (0, 1):
         raise ValueError(f"Invalid value for noc_id {noc_id}. Expected 0 or 1.")
 
     if risc_id < 0 or risc_id > 3:
@@ -541,5 +542,3 @@ def write_riscv_memory(
     debug_risc.write_memory(addr, value)
 
     debug_risc.continue_without_debug()
-
-    
