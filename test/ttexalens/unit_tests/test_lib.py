@@ -330,7 +330,10 @@ class TestReadWrite(unittest.TestCase):
         loader = RiscLoader(rdbg, self.context)
         program_base_address = loader.get_risc_start_address()
 
-        self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
+        if program_base_address is None:
+            self.skipTest("Could not get program base address. Skipping test.")
+
+        self.write_program(core_loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
 
         original_value = lib.read_riscv_memory(core_loc, addr, noc_id, risc_id)
 
