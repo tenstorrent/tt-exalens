@@ -425,15 +425,6 @@ def write_tensix_register(
 
     TensixDebug(core_loc, device_id, context).write_tensix_register(register, value)
 
-
-# Write code for brisc core at address 0
-# C++:
-#   while (true);
-def _write_program(core_loc, context, program_base_address, addr, data):
-    """Write program code data to L1 memory."""
-    write_words_to_device(core_loc, program_base_address + addr, data, context=context)
-
-
 def read_riscv_memory(
     core_loc: Union[str, OnChipCoordinate],
     addr: int,
@@ -469,7 +460,7 @@ def read_riscv_memory(
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=device)
 
-    if noc_id < 0 or noc_id > 1:
+    if noc_id not in (0,1):
         raise ValueError("Invalid value for noc_id. Expected 0 or 1.")
 
     if risc_id < 0 or risc_id > 3:
@@ -477,9 +468,6 @@ def read_riscv_memory(
 
     location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
     debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
-    loader = RiscLoader(debug_risc, context)
-
-    _write_program(core_loc, context, loader.get_risc_start_address(), 0, RiscLoader.get_jump_to_offset_instruction(0))
 
     debug_risc.set_reset_signal(False)
     if debug_risc.is_in_reset():
@@ -489,7 +477,11 @@ def read_riscv_memory(
     debug_risc.enable_debug()
     debug_risc.halt()
 
-    return debug_risc.read_memory(addr)
+    ret = debug_risc.read_memory(addr)
+
+    debug_risc.continue_without_debug()
+
+    return ret 
 
 
 def write_riscv_memory(
@@ -529,7 +521,7 @@ def write_riscv_memory(
     if value < 0 or value > 0xFFFFFFFF:
         raise ValueError(f"Invalid value {value}. Value must be a 32-bit unsigned integer.")
 
-    if noc_id < 0 or noc_id > 1:
+    if noc_id not in (0,1):
         raise ValueError(f"Invalid value for noc_id {noc_id}. Expected 0 or 1.")
 
     if risc_id < 0 or risc_id > 3:
@@ -537,9 +529,6 @@ def write_riscv_memory(
 
     location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
     debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
-    loader = RiscLoader(debug_risc, context)
-
-    _write_program(core_loc, context, loader.get_risc_start_address(), 0, RiscLoader.get_jump_to_offset_instruction(0))
 
     debug_risc.set_reset_signal(False)
     if debug_risc.is_in_reset():
@@ -550,3 +539,7 @@ def write_riscv_memory(
     debug_risc.halt()
 
     debug_risc.write_memory(addr, value)
+
+    debug_risc.continue_without_debug()
+
+    
