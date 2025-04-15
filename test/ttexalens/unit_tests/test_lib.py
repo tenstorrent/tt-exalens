@@ -318,11 +318,11 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", 0, 1),
             ("0,0", 0, 2),
             ("0,0", 0, 3),
+            ("0,1", 0, 0, 0xFFB00FFF),
         ]
     )
-    def test_read_write_private_memory(self, core_loc, noc_id, risc_id):
+    def test_read_write_private_memory(self, core_loc, noc_id, risc_id, addr=0xFFB00000):
         """Testing read_memory and write_memory through debugging interface on private core memory range."""
-        addr = 0xFFB00000
 
         loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
         rloc = RiscLoc(loc, noc_id, risc_id)

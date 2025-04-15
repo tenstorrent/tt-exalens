@@ -480,7 +480,7 @@ def read_riscv_memory(
 
     ret = debug_risc.read_memory(addr)
 
-    debug_risc.continue_without_debug()
+    debug_risc.cont()
 
     return ret
 
@@ -541,4 +541,4 @@ def write_riscv_memory(
 
     debug_risc.write_memory(addr, value)
 
-    debug_risc.continue_without_debug()
+    debug_risc.cont()
