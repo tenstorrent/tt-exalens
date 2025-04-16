@@ -276,7 +276,7 @@ def run(cmd_text: str, context: Dict, ui_state: Optional[UIState] = None) -> Lis
     if dopt.args["--noc"]:
         try:
             noc_id = int(dopt.args["<noc-id>"])
-            if noc_id not in [0, 1]:
+            if noc_id not in (0, 1):
                 util.ERROR(f"Invalid NOC identifier: {noc_id}. Must be 0 or 1.")
                 return []
             noc_ids = [noc_id]
