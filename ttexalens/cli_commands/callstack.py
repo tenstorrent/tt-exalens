@@ -3,12 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  callstack <elf-file> [-r <risc>] [-m <max-depth>] [-v] [-d <device>] [-l <loc>]
+  callstack <elf-files> [-o <offsets>] [-r <risc>] [-m <max-depth>] [-v] [-d <device>] [-l <loc>]
 
 Description:
   Prints callstack using provided elf for a given RiscV core.
 
+Arguments:
+    <elf-files>       Paths to the elf files to be used for callstack, comma separated.
+
 Options:
+  -o <offsets>        List of offsets for each elf file, comma separated.
   -r <risc>           RiscV ID (0: brisc, 1-3 triscs). [Default: 0]
   -m <max-depth>      Maximum depth of callstack. [Default: 100]
 
@@ -30,6 +34,7 @@ from ttexalens.uistate import UIState
 from ttexalens import command_parser
 from ttexalens import util
 from ttexalens.debug_risc import RiscDebug, RiscLoc, get_risc_name, RiscLoader
+import ttexalens.tt_exalens_lib as lib
 
 
 def run(cmd_text, context, ui_state: UIState = None):
@@ -42,22 +47,32 @@ def run(cmd_text, context, ui_state: UIState = None):
     verbose = dopt.args["-v"]
     limit = int(dopt.args["-m"])
     noc_id = 0
-    elf_path = dopt.args["<elf-file>"]
+    elf_paths = dopt.args["<elf-files>"].split(",")
+    offsets = list(map(int, dopt.args["-o"].split(","))) if dopt.args["-o"] else [None for _ in range(len(elf_paths))]
+    if len(offsets) != len(elf_paths):
+        util.ERROR("Number of offsets must match the number of elf files")
+        return
     stop_on_main = True
 
-    if not os.path.exists(elf_path):
-        util.ERROR(f"File {elf_path} does not exist")
-        return
+    for elf_path in elf_paths:
+        if not os.path.exists(elf_path):
+            util.ERROR(f"File {elf_path} does not exist")
+            return
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             for risc_id in dopt.for_each("--risc", context, ui_state):
-                risc_debug = RiscDebug(RiscLoc(loc, noc_id, risc_id), context, verbose=verbose)
-                if risc_debug.is_in_reset():
-                    util.WARN(f"RiscV core {get_risc_name(risc_id)} on location {loc.to_user_str()} is in reset")
-                    continue
-                loader = RiscLoader(risc_debug, context, verbose)
-                callstack = loader.get_callstack(elf_path, limit, stop_on_main)
+                callstack = lib.callstack(
+                    core_loc=loc,
+                    elf_paths=elf_paths,
+                    offsets=offsets,
+                    risc_id=risc_id,
+                    max_depth=limit,
+                    stop_on_main=stop_on_main,
+                    verbose=verbose,
+                    device_id=device.id(),
+                    context=context,
+                )
                 print(
                     f"Location: {util.CLR_INFO}{loc.to_user_str()}{util.CLR_END}, core: {util.CLR_WHITE}{get_risc_name(risc_id)}{util.CLR_END}"
                 )
