@@ -8,6 +8,8 @@ endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+option(TT_UMD_BUILD_SIMULATION "Force UMD to include its simulation harnessing" ON)
+
 include(third_party/umd/cmake/compilers.cmake)
 
 set(CMAKE_CXX_STANDARD 17)
