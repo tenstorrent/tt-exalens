@@ -455,7 +455,6 @@ def read_riscv_memory(
 
     context = check_context(context)
     validate_device_id(device_id, context)
-    validate_addr(addr)
     device = context.devices[device_id]
 
     if not isinstance(core_loc, OnChipCoordinate):
@@ -466,6 +465,14 @@ def read_riscv_memory(
 
     if risc_id < 0 or risc_id > 3:
         raise ValueError("Invalid value for risc_id. Expected value between 0 and 3.")
+
+    base_addres = device._get_riscv_local_memory_base_address()
+    size = device._get_riscv_local_memory_size(risc_id)
+
+    if addr < base_addres or addr >= base_addres + size:
+        raise ValueError(
+            f"Invalid address {hex(addr)}. Address must be between {hex(base_addres)} and {hex(base_addres + size)}."
+        )
 
     location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
     debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
@@ -527,6 +534,14 @@ def write_riscv_memory(
 
     if risc_id < 0 or risc_id > 3:
         raise ValueError(f"Invalid value for risc_id {risc_id}. Expected value between 0 and 3.")
+
+    base_addres = device._get_riscv_local_memory_base_address()
+    size = device._get_riscv_local_memory_size(risc_id)
+
+    if addr < base_addres or addr >= base_addres + size:
+        raise ValueError(
+            f"Invalid address {hex(addr)}. Address must be between {hex(base_addres)} and {hex(base_addres + size)}."
+        )
 
     location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
     debug_risc = RiscDebug(location=location, context=context, verbose=verbose)

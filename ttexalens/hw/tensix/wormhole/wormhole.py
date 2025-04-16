@@ -60,6 +60,12 @@ class WormholeDevice(Device):
 
     CONFIGURATION_REGISTER_END = 0xFFEFFFFF
 
+    # RISC LOCAL MEMORY
+    RISC_LOCAL_MEM_BASE = 0xFFB00000
+    BRISC_LOCAL_MEM_SIZE = 4 * 1024  # 8KB
+    NCRISC_LOCAL_MEM_SIZE = 4 * 1024  # 8KB
+    TRISC_LOCAL_MEM_SIZE = 2 * 1024  # 4KB
+
     NUM_UNPACKERS = 2
     NUM_PACKERS = 4
 
@@ -106,6 +112,19 @@ class WormholeDevice(Device):
         """Overrides the base class method to provide register end addresses for Wormhole device."""
         if isinstance(register_description, ConfigurationRegisterDescription):
             return WormholeDevice.CONFIGURATION_REGISTER_END
+        else:
+            return None
+
+    def _get_riscv_local_memory_base_address(self) -> int:
+        return WormholeDevice.RISC_LOCAL_MEM_BASE
+
+    def _get_riscv_local_memory_size(self, risc_id):
+        if risc_id == 0:
+            return WormholeDevice.BRISC_LOCAL_MEM_SIZE
+        elif 1 <= risc_id <= 3:
+            return WormholeDevice.TRISC_LOCAL_MEM_SIZE
+        elif risc_id == 4:
+            return WormholeDevice.NCRISC_LOCAL_MEM_SIZE
         else:
             return None
 
