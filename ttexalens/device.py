@@ -578,6 +578,12 @@ class Device(TTObject):
 
         return data if signal.mask is None else data & signal.mask
 
+    def _is_noc_register_description(self, description: TensixRegisterDescription) -> bool:
+        return isinstance(
+            description,
+            (NocStatusRegisterDescription, NocConfigurationRegisterDescription, NocControlRegisterDescription),
+        )
+
     def get_noc_register_address(self, reg_name: str, noc_id: int) -> int:
         """
         Get the address for a NOC register.
@@ -592,20 +598,30 @@ class Device(TTObject):
         Raises:
             ValueError: If reg_name is not a NOC register or noc_id is invalid
         """
-        if noc_id not in [0, 1]:
+        if noc_id not in (0, 1):
             raise ValueError(f"Invalid NOC identifier: {noc_id}. Must be 0 or 1.")
 
         description = self.get_tensix_register_description(reg_name)
 
         # Validate this is a NOC register
-        if not isinstance(
-            description,
-            (NocStatusRegisterDescription, NocConfigurationRegisterDescription, NocControlRegisterDescription),
-        ):
+        if not self._is_noc_register_description(description):
             raise ValueError(f"Register {reg_name} is not a NOC register")
 
         base_addr = description.address
         return base_addr + (noc_id * self.NOC_REGISTER_OFFSET)
+
+    def get_noc_register_names(self) -> List[str]:
+        """
+        Get the list of NOC register names.
+
+        Returns:
+            List of NOC register descriptions
+        """
+        return [
+            name
+            for name in self._get_tensix_register_map_keys()
+            if self._is_noc_register_description(self.get_tensix_register_description(name))
+        ]
 
 
 # end of class Device
