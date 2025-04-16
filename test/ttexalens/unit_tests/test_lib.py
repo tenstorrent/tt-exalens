@@ -341,23 +341,25 @@ class TestReadWrite(unittest.TestCase):
 
         was_in_reset = rdbg.is_in_reset()
 
-        rdbg.set_reset_signal(False)
+        if was_in_reset:
+            rdbg.set_reset_signal(False)
 
-        self.write_program(core_loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
+        self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
 
-        original_value = lib.read_riscv_memory(core_loc, addr, noc_id, risc_id)
+        original_value = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
 
         # Writing a value to the memory and reading it back
         value = 0x12345678
-        lib.write_riscv_memory(core_loc, addr, value, noc_id, risc_id)
-        ret = lib.read_riscv_memory(core_loc, addr, noc_id, risc_id)
+        lib.write_riscv_memory(loc, addr, value, noc_id, risc_id)
+        ret = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
         self.assertEqual(ret, value)
         # Writing the original value back to the memory
-        lib.write_riscv_memory(core_loc, addr, original_value, noc_id, risc_id)
-        ret = lib.read_riscv_memory(core_loc, addr, noc_id, risc_id)
+        lib.write_riscv_memory(loc, addr, original_value, noc_id, risc_id)
+        ret = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
         self.assertEqual(ret, original_value)
 
-        rdbg.set_reset_signal(was_in_reset)
+        if was_in_reset:
+            rdbg.set_reset_signal(True)
 
     @parameterized.expand(
         [
