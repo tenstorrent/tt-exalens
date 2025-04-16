@@ -523,6 +523,9 @@ def read_riscv_memory(
     validate_device_id(device_id, context)
     device = context.devices[device_id]
 
+    if not isinstance(core_loc, OnChipCoordinate):
+        core_loc = OnChipCoordinate.create(core_loc, device=device)
+
     if noc_id not in (0, 1):
         raise ValueError("Invalid value for noc_id. Expected 0 or 1.")
 
@@ -540,16 +543,11 @@ def read_riscv_memory(
     location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
     debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
 
-    debug_risc.set_reset_signal(False)
     if debug_risc.is_in_reset():
         raise TTException(f"RISC core with id {risc_id} is in reset.")
 
-    # Halt core
-    debug_risc.halt()
-
-    ret = debug_risc.read_memory(addr)
-
-    debug_risc.cont()
+    with debug_risc.ensure_halted():
+        ret = debug_risc.read_memory(addr)
 
     return ret
 
@@ -607,13 +605,8 @@ def write_riscv_memory(
     location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
     debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
 
-    debug_risc.set_reset_signal(False)
     if debug_risc.is_in_reset():
         raise TTException(f"RISC core with id {risc_id} is in reset.")
 
-    # Halt core
-    debug_risc.halt()
-
-    debug_risc.write_memory(addr, value)
-
-    debug_risc.cont()
+    with debug_risc.ensure_halted():
+        debug_risc.write_memory(addr, value)
