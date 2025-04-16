@@ -90,7 +90,7 @@ std::optional<uint32_t> umd_implementation::pci_read32_raw(uint8_t chip_id, uint
         tt::umd::Cluster* silicon_device = dynamic_cast<tt::umd::Cluster*>(device);
 
         if (silicon_device) {
-            return silicon_device->bar_read32(chip_id, address);
+            return silicon_device->get_chip(chip_id)->get_tt_device()->bar_read32(address);
         }
     }
     return {};
@@ -102,7 +102,7 @@ std::optional<uint32_t> umd_implementation::pci_write32_raw(uint8_t chip_id, uin
         tt::umd::Cluster* silicon_device = dynamic_cast<tt::umd::Cluster*>(device);
 
         if (silicon_device) {
-            silicon_device->bar_write32(chip_id, address, data);
+            silicon_device->get_chip(chip_id)->get_tt_device()->bar_write32(address, data);
             return 4;
         }
     }
