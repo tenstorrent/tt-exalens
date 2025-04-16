@@ -425,7 +425,7 @@ def write_tensix_register(
 
     TensixDebug(core_loc, device_id, context).write_tensix_register(register, value)
 
-    
+
 def callstack(
     core_loc: Union[str, OnChipCoordinate],
     elf_paths: Union[List[str], str],
@@ -461,8 +461,8 @@ def callstack(
 
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=device)
-        
-     # If given a single string, convert to list
+
+    # If given a single string, convert to list
     if isinstance(elf_paths, str):
         elf_paths = [elf_paths]
 
@@ -491,6 +491,7 @@ def callstack(
 
     return loader.get_callstack(elf_paths, offsets, max_depth, stop_on_main)
 
+
 def read_riscv_memory(
     core_loc: Union[str, OnChipCoordinate],
     addr: int,
@@ -517,6 +518,10 @@ def read_riscv_memory(
     """
 
     from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader
+
+    context = check_context(context)
+    validate_device_id(device_id, context)
+    device = context.devices[device_id]
 
     if noc_id not in (0, 1):
         raise ValueError("Invalid value for noc_id. Expected 0 or 1.")
@@ -577,7 +582,6 @@ def write_riscv_memory(
 
     context = check_context(context)
     validate_device_id(device_id, context)
-    validate_addr(addr)
     device = context.devices[device_id]
 
     if not isinstance(core_loc, OnChipCoordinate):
@@ -613,4 +617,3 @@ def write_riscv_memory(
     debug_risc.write_memory(addr, value)
 
     debug_risc.cont()
-
