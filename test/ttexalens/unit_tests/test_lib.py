@@ -322,7 +322,7 @@ class TestReadWrite(unittest.TestCase):
             ("0,1", 0, 0, 0xFFB00FFF),  # last address for brisc for wormhole
         ]
     )
-    def test_read_write_private_memory(self, core_loc, noc_id, risc_id, addr=0xFFB00000):
+    def test_write_read_private_memory(self, core_loc, noc_id, risc_id, addr=0xFFB00000):
         """Testing read_memory and write_memory through debugging interface on private core memory range."""
 
         loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
@@ -358,7 +358,8 @@ class TestReadWrite(unittest.TestCase):
         [
             ("abcd", 0xFFB00000, 0),  # Invalid core_loc string
             ("-10", 0xFFB00000, 0),  # Invalid core_loc string
-            ("0,0", -1, 0),  # Invalid address
+            ("0,0", 0xFFA00000, 0),  # Invalid address (too low)
+            ("0,0", 0xFFC00000, 0),  # Invalid address (too high)
             ("0,0", 0xFFB00000, 0, -1),  # Invalid noc_id (too low)
             ("0,0", 0xFFB00000, 0, 2),  # Invalid noc_id (too high)
             ("0,0", 0xFFB00000, 0, 0, -1),  # Invalid risc_id (too low)
