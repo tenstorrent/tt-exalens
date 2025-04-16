@@ -524,12 +524,12 @@ def read_riscv_memory(
     if risc_id < 0 or risc_id > 3:
         raise ValueError("Invalid value for risc_id. Expected value between 0 and 3.")
 
-    base_addres = device._get_riscv_local_memory_base_address()
+    base_address = device._get_riscv_local_memory_base_address()
     size = device._get_riscv_local_memory_size(risc_id)
 
-    if addr < base_addres or addr >= base_addres + size:
+    if addr < base_address or addr >= base_address + size:
         raise ValueError(
-            f"Invalid address {hex(addr)}. Address must be between {hex(base_addres)} and {hex(base_addres + size)}."
+            f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size)}."
         )
 
     location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
@@ -540,7 +540,6 @@ def read_riscv_memory(
         raise TTException(f"RISC core with id {risc_id} is in reset.")
 
     # Halt core
-    debug_risc.enable_debug()
     debug_risc.halt()
 
     ret = debug_risc.read_memory(addr)
@@ -593,12 +592,12 @@ def write_riscv_memory(
     if risc_id < 0 or risc_id > 3:
         raise ValueError(f"Invalid value for risc_id {risc_id}. Expected value between 0 and 3.")
 
-    base_addres = device._get_riscv_local_memory_base_address()
+    base_address = device._get_riscv_local_memory_base_address()
     size = device._get_riscv_local_memory_size(risc_id)
 
-    if addr < base_addres or addr >= base_addres + size:
+    if addr < base_address or addr >= base_address + size:
         raise ValueError(
-            f"Invalid address {hex(addr)}. Address must be between {hex(base_addres)} and {hex(base_addres + size)}."
+            f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size)}."
         )
 
     location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
@@ -609,7 +608,6 @@ def write_riscv_memory(
         raise TTException(f"RISC core with id {risc_id} is in reset.")
 
     # Halt core
-    debug_risc.enable_debug()
     debug_risc.halt()
 
     debug_risc.write_memory(addr, value)
