@@ -343,8 +343,7 @@ class TestReadWrite(unittest.TestCase):
 
         if was_in_reset:
             rdbg.set_reset_signal(False)
-
-        self.assertFalse(self.rdbg.is_in_reset())
+        self.assertFalse(rdbg.is_in_reset())
 
         self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
 
