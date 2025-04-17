@@ -447,7 +447,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     for (const auto &worker : soc_descriptor.get_cores(CoreType::TENSIX)) {
         uint32_t data = 0x6f;  // while (true);
 
-        device->write_to_device(&data, sizeof(data), 0, worker, 0, {});
+        device->write_to_device(&data, sizeof(data), 0, worker, 0);
     }
 
     device->deassert_risc_reset();
