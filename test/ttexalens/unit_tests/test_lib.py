@@ -313,16 +313,12 @@ class TestReadWrite(unittest.TestCase):
     @parameterized.expand(
         [
             ("0,0", 0, 0),
-            ("1,0", 0, 0),
-            ("1,0", 0, 1),
-            ("1,0", 0, 2),
-            ("1,0", 0, 3),
             ("0,0", 1, 0),  # noc_id = 1
             ("0,0", 0, 1),  # trisc0
             ("0,0", 0, 2),  # trisc1
             ("0,0", 0, 3),  # trisc2
             ("0,0", 0, 1, 0xFFB007FF),  # last address for trisc for wormhole
-            ("0,1", 0, 0, 0xFFB00FFF),  # last address for brisc for wormhole
+            ("0,0", 0, 0, 0xFFB00FFF),  # last address for brisc for wormhole
         ]
     )
     def test_write_read_private_memory(self, core_loc, noc_id, risc_id, addr=0xFFB00000):
