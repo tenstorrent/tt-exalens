@@ -335,7 +335,8 @@ class TestReadWrite(unittest.TestCase):
 
         was_in_reset = rdbg.is_in_reset()
 
-        rdbg.set_reset_signal(False)
+        if was_in_reset:
+            rdbg.set_reset_signal(False)
         self.assertFalse(rdbg.is_in_reset())
 
         self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
@@ -352,7 +353,8 @@ class TestReadWrite(unittest.TestCase):
         ret = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
         self.assertEqual(ret, original_value)
 
-        rdbg.set_reset_signal(True)
+        if was_in_reset:
+            rdbg.set_reset_signal(True)
 
     @parameterized.expand(
         [
