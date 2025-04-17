@@ -332,7 +332,9 @@ class TestReadWrite(unittest.TestCase):
         program_base_address = loader.get_risc_start_address()
 
         if program_base_address is None:
-            self.skipTest("Could not get program base address. Skipping test.")
+            loader.set_risc_start_address(0xD000)
+            program_base_address = loader.get_risc_start_address()
+            self.assertEqual(program_base_address, 0xD000)
 
         was_in_reset = rdbg.is_in_reset()
 
