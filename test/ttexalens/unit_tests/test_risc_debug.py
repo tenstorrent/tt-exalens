@@ -387,6 +387,9 @@ class TestDebugging(unittest.TestCase):
 
     def test_core_lockup(self):
         """Running code that should lock up the core and then trying to halt it."""
+        if not self.is_wormhole():
+            self.skipTest("Issue is hit only on wormhole.")
+
         # lui t3, 0 - 0x00000e37
         # b_loop:
         #    addi t3, t3, 1 # Counter increment 0x001e0e13
@@ -413,7 +416,7 @@ class TestDebugging(unittest.TestCase):
                 self.rdbg.set_reset_signal(True)
                 return
 
-        self.assertFalse(False, "Exception not raised")
+        self.assertFalse(True, "Exception not raised")
         self.rdbg.set_reset_signal(True)
 
     def test_halt_continue(self):
