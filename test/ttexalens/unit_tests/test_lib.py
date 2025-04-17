@@ -323,7 +323,7 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", 0, 1),  # trisc0
             ("0,0", 0, 2),  # trisc1
             ("0,0", 0, 3),  # trisc2
-            ("0,0", 0, 1, 0xFFB007FF),  # last address for trisc0 for wormhole
+            ("0,0", 0, 1, 0xFFB007FF),  # last address for trisc for wormhole
             ("0,1", 0, 0, 0xFFB00FFF),  # last address for brisc for wormhole
         ]
     )
@@ -343,6 +343,8 @@ class TestReadWrite(unittest.TestCase):
 
         if was_in_reset:
             rdbg.set_reset_signal(False)
+
+        self.assertFalse(self.rdbg.is_in_reset())
 
         self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
 
