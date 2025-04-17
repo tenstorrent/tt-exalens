@@ -308,7 +308,7 @@ class TestReadWrite(unittest.TestCase):
 
     def write_program(self, core_loc, addr, data):
         """Write program code data to L1 memory."""
-        lib.write_words_to_device(core_loc, addr, data, device_id=self.context.devices[0].id(), context=self.context)
+        lib.write_words_to_device(core_loc, addr, data, context=self.context)
 
     @parameterized.expand(
         [
