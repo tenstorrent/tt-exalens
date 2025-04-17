@@ -9,11 +9,6 @@
 #include "ttexalensserver/read_tile.hpp"
 #include "umd/device/cluster.h"
 
-static std::string REG_TLB_STR = "REG_TLB";
-static std::string SMALL_READ_WRITE_TLB_STR = "SMALL_READ_WRITE_TLB";
-static std::string LARGE_READ_TLB_STR = "LARGE_READ_TLB";
-static std::string LARGE_WRITE_TLB_STR = "LARGE_WRITE_TLB";
-
 namespace tt::exalens {
 
 umd_implementation::umd_implementation(tt_device* device) : device(device) {}
@@ -23,7 +18,7 @@ std::optional<uint32_t> umd_implementation::pci_read32(uint8_t chip_id, uint8_t 
     uint32_t result;
     tt::umd::CoreCoord target = device->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
 
-    device->read_from_device(&result, chip_id, target, address, sizeof(result), REG_TLB_STR);
+    device->read_from_device_reg(&result, chip_id, target, address, sizeof(result));
     return result;
 }
 
@@ -31,7 +26,7 @@ std::optional<uint32_t> umd_implementation::pci_write32(uint8_t chip_id, uint8_t
                                                         uint32_t data) {
     tt::umd::CoreCoord target = device->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
 
-    device->write_to_device(&data, sizeof(data), chip_id, target, address, LARGE_WRITE_TLB_STR);
+    device->write_to_device(&data, sizeof(data), chip_id, target, address);
     return 4;
 }
 
@@ -44,13 +39,13 @@ std::optional<std::vector<uint8_t>> umd_implementation::pci_read(uint8_t chip_id
     if (!is_chip_mmio_capable(chip_id)) {
         for (uint32_t done = 0; done < size;) {
             uint32_t block = std::min(size - done, 1024u);
-            device->read_from_device(result.data() + done, chip_id, target, address + done, block, REG_TLB_STR);
+            device->read_from_device_reg(result.data() + done, chip_id, target, address + done, block);
             done += block;
         }
         return result;
     }
 
-    device->read_from_device(result.data(), chip_id, target, address, size, REG_TLB_STR);
+    device->read_from_device_reg(result.data(), chip_id, target, address, size);
     return result;
 }
 
@@ -62,13 +57,13 @@ std::optional<uint32_t> umd_implementation::pci_write(uint8_t chip_id, uint8_t n
     if (!is_chip_mmio_capable(chip_id)) {
         for (uint32_t done = 0; done < size;) {
             uint32_t block = std::min(size - done, 1024u);
-            device->write_to_device(data + done, block, chip_id, target, address + done, LARGE_WRITE_TLB_STR);
+            device->write_to_device(data + done, block, chip_id, target, address + done);
             done += block;
         }
         return size;
     }
 
-    device->write_to_device(data, size, chip_id, target, address, LARGE_WRITE_TLB_STR);
+    device->write_to_device(data, size, chip_id, target, address);
     return size;
 }
 
