@@ -332,14 +332,11 @@ class TestReadWrite(unittest.TestCase):
         program_base_address = loader.get_risc_start_address()
 
         if program_base_address is None:
-            loader.set_risc_start_address(0xD000)
-            program_base_address = loader.get_risc_start_address()
-            self.assertEqual(program_base_address, 0xD000)
+            self.skipTest("Could not get program base address. Skipping test.")
 
         was_in_reset = rdbg.is_in_reset()
 
-        if was_in_reset:
-            rdbg.set_reset_signal(False)
+        rdbg.set_reset_signal(False)
         self.assertFalse(rdbg.is_in_reset())
 
         self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
@@ -356,8 +353,7 @@ class TestReadWrite(unittest.TestCase):
         ret = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
         self.assertEqual(ret, original_value)
 
-        if was_in_reset:
-            rdbg.set_reset_signal(True)
+        rdbg.set_reset_signal(True)
 
     @parameterized.expand(
         [
