@@ -26,7 +26,7 @@ std::optional<uint32_t> umd_implementation::pci_write32(uint8_t chip_id, uint8_t
                                                         uint32_t data) {
     tt::umd::CoreCoord target = device->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
 
-    device->write_to_device(&data, sizeof(data), chip_id, target, address);
+    device->write_to_device_reg(&data, sizeof(data), chip_id, target, address);
     return 4;
 }
 
