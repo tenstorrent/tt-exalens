@@ -383,11 +383,6 @@ std::optional<std::string> read_tile_implementation(uint8_t chip_id, uint8_t noc
     if (df != TileDataFormat::Invalid) {
         tt::umd::CoreCoord target =
             device->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
-        bool small_access = false;
-        bool register_txn = true;  // FIX: This should not be register access, actually
-
-        std::string tlb_to_use =
-            "REG_TLB";  // register_txn ? "REG_TLB" : (small_access ? "SMALL_READ_WRITE_TLB" : "LARGE_READ_TLB");
 
         // TODO #124: Mitigation for UMD bug #77
         auto mmio_targets = device->get_target_mmio_device_ids();
@@ -395,11 +390,11 @@ std::optional<std::string> read_tile_implementation(uint8_t chip_id, uint8_t noc
         if (mmio_targets.find(chip_id) == mmio_targets.end()) {
             for (uint32_t done = 0; done < size;) {
                 uint32_t block = std::min(size - done, 1024u);
-                device->read_from_device(mem_vector.data() + done, chip_id, target, address + done, block, tlb_to_use);
+                device->read_from_device_reg(mem_vector.data() + done, chip_id, target, address + done, block);
                 done += block;
             }
         } else {
-            device->read_from_device(mem_vector.data(), chip_id, target, address, size, tlb_to_use);
+            device->read_from_device_reg(mem_vector.data(), chip_id, target, address, size);
         }
 
         return dump_tile(mem_vector, df);
