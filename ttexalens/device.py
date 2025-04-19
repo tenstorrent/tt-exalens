@@ -479,6 +479,14 @@ class Device(TTObject):
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
         pass
 
+    @abstractmethod
+    def _get_riscv_local_memory_base_address(self) -> int:
+        pass
+
+    @abstractmethod
+    def _get_riscv_local_memory_size(self, risc_id: int) -> int:
+        pass
+
     def get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
         register_description = self._get_tensix_register_description(register_name)
         if register_description != None:
