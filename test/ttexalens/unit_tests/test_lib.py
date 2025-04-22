@@ -340,9 +340,6 @@ class TestReadWrite(unittest.TestCase):
         rdbg.set_reset_signal(False)
         self.assertFalse(rdbg.is_in_reset())
 
-        rdbg.enable_debug()
-        rdbg.halt()
-
         original_value = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
 
         # Writing a value to the memory and reading it back
