@@ -340,6 +340,9 @@ class TestReadWrite(unittest.TestCase):
 
         self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
 
+        rdbg.enable_debug()
+        rdbg.halt()
+
         original_value = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
 
         # Writing a value to the memory and reading it back
