@@ -335,10 +335,10 @@ class TestReadWrite(unittest.TestCase):
         if program_base_address is None:
             self.skipTest("Could not get program base address. Skipping test.")
 
+        self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
+
         rdbg.set_reset_signal(False)
         self.assertFalse(rdbg.is_in_reset())
-
-        self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
 
         rdbg.enable_debug()
         rdbg.halt()
@@ -347,12 +347,12 @@ class TestReadWrite(unittest.TestCase):
 
         # Writing a value to the memory and reading it back
         value = 0x12345678
-        lib.write_riscv_memory(loc, addr, value, noc_id, risc_id, rdbg)
-        ret = lib.read_riscv_memory(loc, addr, noc_id, risc_id, rdbg)
+        lib.write_riscv_memory(loc, addr, value, noc_id, risc_id)
+        ret = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
         self.assertEqual(ret, value)
         # Writing the original value back to the memory
-        lib.write_riscv_memory(loc, addr, original_value, noc_id, risc_id, rdbg)
-        ret = lib.read_riscv_memory(loc, addr, noc_id, risc_id, rdbg)
+        lib.write_riscv_memory(loc, addr, original_value, noc_id, risc_id)
+        ret = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
         self.assertEqual(ret, original_value)
 
         rdbg.set_reset_signal(True)
@@ -377,9 +377,9 @@ class TestReadWrite(unittest.TestCase):
         """Test invalid inputs for reading private memory."""
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
             with self.assertRaises((util.TTException, ValueError)):
-                lib.read_riscv_memory(core_loc, address, noc_id, risc_id, None, device_id)
+                lib.read_riscv_memory(core_loc, address, noc_id, risc_id, device_id)
         with self.assertRaises((util.TTException, ValueError)):
-            lib.write_riscv_memory(core_loc, address, value, noc_id, risc_id, None, device_id)
+            lib.write_riscv_memory(core_loc, address, value, noc_id, risc_id, device_id)
 
 
 class TestRunElf(unittest.TestCase):

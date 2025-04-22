@@ -497,7 +497,6 @@ def read_riscv_memory(
     addr: int,
     noc_id: int = 0,
     risc_id: int = 0,
-    debug_risc=None,
     device_id: int = 0,
     context: Context = None,
     verbose: bool = False,
@@ -541,9 +540,8 @@ def read_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size)}."
         )
 
-    if debug_risc is None:
-        location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
-        debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
+    location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
+    debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
 
     if debug_risc.is_in_reset():
         raise TTException(f"RISC core with id {risc_id} is in reset.")
@@ -562,7 +560,6 @@ def write_riscv_memory(
     value: int,
     noc_id: int = 0,
     risc_id: int = 0,
-    debug_risc=None,
     device_id: int = 0,
     context: Context = None,
     verbose: bool = False,
@@ -607,9 +604,8 @@ def write_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size)}."
         )
 
-    if debug_risc is None:
-        location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
-        debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
+    location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
+    debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
 
     if debug_risc.is_in_reset():
         raise TTException(f"RISC core with id {risc_id} is in reset.")
