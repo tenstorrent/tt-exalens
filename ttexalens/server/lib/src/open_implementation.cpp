@@ -110,7 +110,6 @@ static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
 
 static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
-    std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
 
     auto device = std::make_unique<tt::umd::Cluster>(target_devices, num_host_mem_ch_per_mmio_device);
     for (auto chip_id : device->get_target_mmio_device_ids()) {
@@ -122,7 +121,6 @@ static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::set<c
 
 static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
-    std::unordered_map<std::string, std::int32_t> dynamic_tlb_config;
 
     auto device = std::make_unique<tt::umd::Cluster>(target_devices, num_host_mem_ch_per_mmio_device);
 
@@ -449,7 +447,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     for (const auto &worker : soc_descriptor.get_cores(CoreType::TENSIX)) {
         uint32_t data = 0x6f;  // while (true);
 
-        device->write_to_device(&data, sizeof(data), 0, worker, 0, {});
+        device->write_to_device(&data, sizeof(data), 0, worker, 0);
     }
 
     device->deassert_risc_reset();
