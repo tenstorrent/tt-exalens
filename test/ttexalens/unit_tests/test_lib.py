@@ -308,11 +308,13 @@ class TestReadWrite(unittest.TestCase):
 
     def write_program(self, core_loc, addr, data):
         """Write program code data to L1 memory."""
-        lib.write_words_to_device(core_loc, addr, data, context=self.context)
+        bytes_written = lib.write_words_to_device(core_loc, addr, data, context=self.context)
+        self.assertEqual(bytes_written, 4)
 
     @parameterized.expand(
         [
             ("0,0", 0, 0),
+            ("1,0", 0, 0),
             ("0,0", 1, 0),  # noc_id = 1
             ("0,0", 0, 1),  # trisc0
             ("0,0", 0, 2),  # trisc1
@@ -333,10 +335,7 @@ class TestReadWrite(unittest.TestCase):
         if program_base_address is None:
             self.skipTest("Could not get program base address. Skipping test.")
 
-        was_in_reset = rdbg.is_in_reset()
-
-        if was_in_reset:
-            rdbg.set_reset_signal(False)
+        rdbg.set_reset_signal(False)
         self.assertFalse(rdbg.is_in_reset())
 
         self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
@@ -353,8 +352,8 @@ class TestReadWrite(unittest.TestCase):
         ret = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
         self.assertEqual(ret, original_value)
 
-        if was_in_reset:
-            rdbg.set_reset_signal(True)
+        rdbg.set_reset_signal(True)
+        self.assertTrue(rdbg.is_in_reset())
 
     @parameterized.expand(
         [
