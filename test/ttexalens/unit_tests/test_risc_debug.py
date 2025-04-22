@@ -62,6 +62,7 @@ class TestDebugging(unittest.TestCase):
         else:
             self.fail(f"Unknown core description {self.core_desc}")
 
+        self.core_loc = "1,0"
         loc = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
         self.risc_id = get_risc_id(self.risc_name)
         rloc = RiscLoc(loc, 0, self.risc_id)

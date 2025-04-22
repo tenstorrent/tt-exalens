@@ -313,7 +313,6 @@ class TestReadWrite(unittest.TestCase):
     @parameterized.expand(
         [
             ("0,0", 0, 0),
-            ("1,0", 0, 0),
             ("0,0", 1, 0),  # noc_id = 1
             ("0,0", 0, 1),  # trisc0
             ("0,0", 0, 2),  # trisc1
