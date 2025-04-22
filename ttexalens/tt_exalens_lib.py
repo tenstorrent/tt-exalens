@@ -546,8 +546,18 @@ def read_riscv_memory(
     if debug_risc.is_in_reset():
         raise TTException(f"RISC core with id {risc_id} is in reset.")
 
-    with debug_risc.ensure_halted():
-        ret = debug_risc.read_memory(addr)
+    # with debug_risc.ensure_halted():
+    #     ret = debug_risc.read_memory(addr)
+
+    was_halted = debug_risc.is_halted()
+
+    if not was_halted:
+        debug_risc.halt()
+
+    ret = debug_risc.read_memory(addr)
+
+    if not was_halted:
+        debug_risc.cont()
 
     return ret
 
@@ -608,5 +618,15 @@ def write_riscv_memory(
     if debug_risc.is_in_reset():
         raise TTException(f"RISC core with id {risc_id} is in reset.")
 
-    with debug_risc.ensure_halted():
-        debug_risc.write_memory(addr, value)
+    # with debug_risc.ensure_halted():
+    #     debug_risc.write_memory(addr, value)
+
+    was_halted = debug_risc.is_halted()
+
+    if not was_halted:
+        debug_risc.halt()
+
+    debug_risc.write_memory(addr, value)
+
+    if not was_halted:
+        debug_risc.cont()
