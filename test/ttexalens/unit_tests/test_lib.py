@@ -306,6 +306,88 @@ class TestReadWrite(unittest.TestCase):
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_tensix_register(core_loc, register, value, device_id)
 
+    def write_program(self, core_loc, addr, data):
+        """Write program code data to L1 memory."""
+        bytes_written = lib.write_words_to_device(core_loc, addr, data, context=self.context)
+        self.assertEqual(bytes_written, 4)
+
+    @parameterized.expand(
+        [
+            ("0,0", 0, 0),
+            ("1,0", 0, 0),
+            ("1,0", 1, 0),
+            ("1,0", 0, 1),
+            ("0,1", 0, 0),
+            ("1,1", 0, 0),
+            ("0,0", 1, 0),  # noc_id = 1
+            ("0,0", 0, 1),  # trisc0
+            ("0,0", 0, 2),  # trisc1
+            ("0,0", 0, 3),  # trisc2
+            ("0,0", 0, 1, 0xFFB007FF),  # last address for trisc for wormhole
+            ("0,0", 0, 0, 0xFFB00FFF),  # last address for brisc for wormhole
+        ]
+    )
+    def test_write_read_private_memory(self, core_loc, noc_id, risc_id, addr=0xFFB00000):
+        """Testing read_memory and write_memory through debugging interface on private core memory range."""
+
+        loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
+        rloc = RiscLoc(loc, noc_id, risc_id)
+        rdbg = RiscDebug(rloc, self.context)
+        loader = RiscLoader(rdbg, self.context)
+        program_base_address = loader.get_risc_start_address()
+
+        # If address wasn't set before, we want to set it to something that is not 0 for testing purposes
+        if program_base_address is None:
+            loader.set_risc_start_address(0xD000)
+            program_base_address = loader.get_risc_start_address()
+            self.assertEqual(program_base_address, 0xD000)
+
+        self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
+
+        was_in_reset = rdbg.is_in_reset()
+
+        if was_in_reset:
+            rdbg.set_reset_signal(False)
+        self.assertFalse(rdbg.is_in_reset())
+
+        original_value = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
+
+        # Writing a value to the memory and reading it back
+        value = 0x12345678
+        lib.write_riscv_memory(loc, addr, value, noc_id, risc_id)
+        ret = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
+        self.assertEqual(ret, value)
+        # Writing the original value back to the memory
+        lib.write_riscv_memory(loc, addr, original_value, noc_id, risc_id)
+        ret = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
+        self.assertEqual(ret, original_value)
+
+        if was_in_reset:
+            rdbg.set_reset_signal(True)
+
+    @parameterized.expand(
+        [
+            ("abcd", 0xFFB00000, 0),  # Invalid core_loc string
+            ("-10", 0xFFB00000, 0),  # Invalid core_loc string
+            ("0,0", 0xFFA00000, 0),  # Invalid address (too low)
+            ("0,0", 0xFFC00000, 0),  # Invalid address (too high)
+            ("0,0", 0xFFB00000, 0, -1),  # Invalid noc_id (too low)
+            ("0,0", 0xFFB00000, 0, 2),  # Invalid noc_id (too high)
+            ("0,0", 0xFFB00000, 0, 0, -1),  # Invalid risc_id (too low)
+            ("0,0", 0xFFB00000, 0, 0, 4),  # Invalid risc_id (too high)
+            ("0,0", 0xFFB00000, 0, 0, 0, -1),  # Invalid device_id
+            ("0,0", 0xFFB00000, -1),  # Invalid value (too low)
+            ("0,0", 0xFFB00000, 2**32),  # Invalid value (too high)
+        ]
+    )
+    def test_invalid_read_private_memory(self, core_loc, address, value, noc_id=0, risc_id=0, device_id=0):
+        """Test invalid inputs for reading private memory."""
+        if value == 0:  # Invalid value does not raies an exception in read so we skip it
+            with self.assertRaises((util.TTException, ValueError)):
+                lib.read_riscv_memory(core_loc, address, noc_id, risc_id, device_id)
+        with self.assertRaises((util.TTException, ValueError)):
+            lib.write_riscv_memory(core_loc, address, value, noc_id, risc_id, device_id)
+
 
 class TestRunElf(unittest.TestCase):
     @classmethod

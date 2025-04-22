@@ -490,3 +490,123 @@ def callstack(
     loader = RiscLoader(risc_debug, context, verbose)
 
     return loader.get_callstack(elf_paths, offsets, max_depth, stop_on_main)
+
+
+def read_riscv_memory(
+    core_loc: Union[str, OnChipCoordinate],
+    addr: int,
+    noc_id: int = 0,
+    risc_id: int = 0,
+    device_id: int = 0,
+    context: Context = None,
+    verbose: bool = False,
+) -> int:
+
+    """Reads a 32-bit word from the specified RISC-V core's private memory.
+
+    Args:
+            core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+            addr (int): Memory address to read from.
+            noc_id (int): What noc to use. Options [0,1]. Default 0.
+            risc_id (int): RiscV ID (0: brisc, 1-3 triscs). Default 0.
+            device_id (int): ID number of device to read from. Default 0.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+            verbose (bool): If True, enables verbose output. Default False.
+
+    Returns:
+            int: Data read from the device.
+    """
+
+    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader
+
+    context = check_context(context)
+    validate_device_id(device_id, context)
+    device = context.devices[device_id]
+
+    if not isinstance(core_loc, OnChipCoordinate):
+        core_loc = OnChipCoordinate.create(core_loc, device=device)
+
+    if noc_id not in (0, 1):
+        raise ValueError("Invalid value for noc_id. Expected 0 or 1.")
+
+    if risc_id < 0 or risc_id > 3:
+        raise ValueError("Invalid value for risc_id. Expected value between 0 and 3.")
+
+    base_address = device._get_riscv_local_memory_base_address()
+    size = device._get_riscv_local_memory_size(risc_id)
+
+    if addr < base_address or addr >= base_address + size:
+        raise ValueError(
+            f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size)}."
+        )
+
+    location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
+    debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
+
+    if debug_risc.is_in_reset():
+        raise TTException(f"RISC core with id {risc_id} is in reset.")
+
+    with debug_risc.ensure_halted():
+        ret = debug_risc.read_memory(addr)
+
+    return ret
+
+
+def write_riscv_memory(
+    core_loc: Union[str, OnChipCoordinate],
+    addr: int,
+    value: int,
+    noc_id: int = 0,
+    risc_id: int = 0,
+    device_id: int = 0,
+    context: Context = None,
+    verbose: bool = False,
+) -> None:
+
+    """Writes a 32-bit word to the specified RISC-V core's private memory.
+
+    Args:
+            core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+            addr (int): Memory address to read from.
+            value (int): Value to write.
+            noc_id (int): What noc to use. Options [0,1]. Default 0.
+            risc_id (int): RiscV ID (0: brisc, 1-3 triscs). Default 0.
+            device_id (int): ID number of device to read from. Default 0.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+            verbose (bool): If True, enables verbose output. Default False.
+    """
+
+    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader
+
+    context = check_context(context)
+    validate_device_id(device_id, context)
+    device = context.devices[device_id]
+
+    if not isinstance(core_loc, OnChipCoordinate):
+        core_loc = OnChipCoordinate.create(core_loc, device=device)
+
+    if value < 0 or value > 0xFFFFFFFF:
+        raise ValueError(f"Invalid value {value}. Value must be a 32-bit unsigned integer.")
+
+    if noc_id not in (0, 1):
+        raise ValueError(f"Invalid value for noc_id {noc_id}. Expected 0 or 1.")
+
+    if risc_id < 0 or risc_id > 3:
+        raise ValueError(f"Invalid value for risc_id {risc_id}. Expected value between 0 and 3.")
+
+    base_address = device._get_riscv_local_memory_base_address()
+    size = device._get_riscv_local_memory_size(risc_id)
+
+    if addr < base_address or addr >= base_address + size:
+        raise ValueError(
+            f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size)}."
+        )
+
+    location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
+    debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
+
+    if debug_risc.is_in_reset():
+        raise TTException(f"RISC core with id {risc_id} is in reset.")
+
+    with debug_risc.ensure_halted():
+        debug_risc.write_memory(addr, value)
