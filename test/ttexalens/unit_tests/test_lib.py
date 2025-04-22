@@ -332,8 +332,13 @@ class TestReadWrite(unittest.TestCase):
         loader = RiscLoader(rdbg, self.context)
         program_base_address = loader.get_risc_start_address()
 
+        # If address wasn't set before, we want to set it to something that is not 0 for testing purposes
         if program_base_address is None:
-            self.skipTest("Could not get program base address. Skipping test.")
+            # Set program base address to 0xd000
+            loader.set_risc_start_address(0xD000)
+            program_base_address = loader.get_risc_start_address()
+            self.assertEqual(self.program_base_address, 0xD000)
+        #           self.skipTest("Could not get program base address. Skipping test.")
 
         self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
 
