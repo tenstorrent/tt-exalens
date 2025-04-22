@@ -315,6 +315,10 @@ class TestReadWrite(unittest.TestCase):
         [
             ("0,0", 0, 0),
             ("1,0", 0, 0),
+            ("1,0", 1, 0),
+            ("1,0", 0, 1),
+            ("0,1", 0, 0),
+            ("1,1", 0, 0),
             ("0,0", 1, 0),  # noc_id = 1
             ("0,0", 0, 1),  # trisc0
             ("0,0", 0, 2),  # trisc1
@@ -334,11 +338,9 @@ class TestReadWrite(unittest.TestCase):
 
         # If address wasn't set before, we want to set it to something that is not 0 for testing purposes
         if program_base_address is None:
-            # Set program base address to 0xd000
             loader.set_risc_start_address(0xD000)
             program_base_address = loader.get_risc_start_address()
             self.assertEqual(program_base_address, 0xD000)
-        #           self.skipTest("Could not get program base address. Skipping test.")
 
         self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
 
