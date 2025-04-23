@@ -11,7 +11,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(TT_UMD_BUILD_SIMULATION "Force UMD to include its simulation harnessing" ON)
 
 include(third_party/umd/cmake/compilers.cmake)
-include(third_party/umd/cmake/CPM.cmake)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -66,6 +65,9 @@ include(${PROJECT_SOURCE_DIR}/cmake/ZeroMQ.cmake)
 
 # Including private repository
 include(${PROJECT_SOURCE_DIR}/cmake/ttexalens_private.cmake)
+
+# Include CPM
+include(${PROJECT_SOURCE_DIR}/cmake/CPM.cmake)
 
 # Add subdirectories
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens)
