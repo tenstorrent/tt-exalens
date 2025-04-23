@@ -9,7 +9,6 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(TT_UMD_BUILD_SIMULATION "Force UMD to include its simulation harnessing" ON)
-option(TEST_INSTALL "Install test dependencies" ON)
 
 include(third_party/umd/cmake/compilers.cmake)
 include(third_party/umd/cmake/CPM.cmake)
