@@ -27,11 +27,11 @@ test:
 
 .PHONY: wheel_develop
 wheel_develop:
-	CONFIG=Debug python3 setup.py bdist_wheel -d build/ttexalens_wheel
+	TEST_INSTALL=ON CONFIG=Debug python3 setup.py bdist_wheel -d build/ttexalens_wheel
 
 .PHONY: wheel
 wheel:
-	TEST_INSTALL=true STRIP_SYMBOLS=1 CONFIG=Release python3 setup.py bdist_wheel -d build/ttexalens_wheel
+	STRIP_SYMBOLS=1 CONFIG=Release python3 setup.py bdist_wheel -d build/ttexalens_wheel
 
 .PHONY: ttexalens_server_unit_tests_run_only
 ttexalens_server_unit_tests_run_only:
