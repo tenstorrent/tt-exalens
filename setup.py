@@ -73,6 +73,7 @@ class MyBuild(build_ext):
 
     def _call_build(self):
         env = os.environ.copy()
+        env["TEST_INSTALL"] = "true"
         nproc = os.cpu_count()
         print(f"make")
         subprocess.check_call([f"cd {ttexalens_home} && make"], env=env, shell=True)
