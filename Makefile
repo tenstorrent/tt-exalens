@@ -31,7 +31,7 @@ wheel_develop:
 
 .PHONY: wheel
 wheel:
-	STRIP_SYMBOLS=1 CONFIG=Release python3 setup.py bdist_wheel -d build/ttexalens_wheel
+	TEST_INSTALL=ON STRIP_SYMBOLS=1 CONFIG=Release python3 setup.py bdist_wheel -d build/ttexalens_wheel
 
 .PHONY: ttexalens_server_unit_tests_run_only
 ttexalens_server_unit_tests_run_only:
