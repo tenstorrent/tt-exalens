@@ -11,6 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(TT_UMD_BUILD_SIMULATION "Force UMD to include its simulation harnessing" ON)
 
 include(third_party/umd/cmake/compilers.cmake)
+include(third_party/umd/cmake/CPM.cmake)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -71,3 +72,12 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens)
 add_subdirectory(${PROJECT_SOURCE_DIR}/utils)
 add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/pybind)
 add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/server)
+
+CPMAddPackage(
+    NAME googletest
+    GITHUB_REPOSITORY google/googletest
+    GIT_TAG v1.13.0
+    VERSION 1.13.0
+    OPTIONS
+        "INSTALL_GTEST OFF"
+)
