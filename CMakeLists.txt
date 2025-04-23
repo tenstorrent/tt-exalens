@@ -74,13 +74,11 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/pybind)
 add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/server)
 
 # Add packages
-if (TEST_INSTALL)
-    CPMAddPackage(
-        NAME googletest
-        GITHUB_REPOSITORY google/googletest
-        GIT_TAG v1.13.0
-        VERSION 1.13.0
-        OPTIONS
-            "INSTALL_GTEST OFF"
-    )
-endif()
+CPMAddPackage(
+    NAME googletest
+    GITHUB_REPOSITORY google/googletest
+    GIT_TAG v1.13.0
+    VERSION 1.13.0
+    OPTIONS
+        "INSTALL_GTEST OFF"
+)
