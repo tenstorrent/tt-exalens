@@ -25,7 +25,8 @@ echo ""
 
 big_echo "BUILDING TTEXALENS"
 make clean
-TEST_INSTALL=true make build
+export TEST_INSTALL=true
+make build
 
 big_echo "RUNNING C++ TESTS"
 make ttexalens_server_unit_tests_run_only
