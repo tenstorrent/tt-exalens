@@ -25,7 +25,6 @@ echo ""
 
 big_echo "BUILDING TTEXALENS"
 make clean
-export TEST_INSTALL=true
 make build
 
 big_echo "RUNNING C++ TESTS"
