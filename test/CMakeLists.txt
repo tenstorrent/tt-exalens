@@ -1,7 +1,3 @@
-# Add subdirectories
-add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/pybind)
-add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/server)
-
 # Include CPM
 include(${PROJECT_SOURCE_DIR}/third_party/umd/cmake/CPM.cmake)
 
@@ -14,3 +10,7 @@ CPMAddPackage(
     OPTIONS
         "INSTALL_GTEST OFF"
 )
+
+# Add subdirectories
+add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/pybind)
+add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/server)
