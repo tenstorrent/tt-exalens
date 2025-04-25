@@ -367,8 +367,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1
     umd::TTDevice::use_noc1(use_noc1);
 
-    auto cluster_descriptor_path = tt_ClusterDescriptor::get_cluster_descriptor_file_path();
-    auto cluster_descriptor = tt_ClusterDescriptor::create_from_yaml(cluster_descriptor_path);
+    auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor();
 
     if (cluster_descriptor->get_number_of_chips() == 0) {
         throw std::runtime_error("No Tenstorrent devices were detected on this system.");
@@ -424,7 +423,9 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(device)));
 
-    implementation->cluster_descriptor_path = cluster_descriptor_path;
+    std::string file_path = temp_working_directory / "cluster_desc.yaml";
+    cluster_descriptor->serialize_to_file(file_path);
+    implementation->cluster_descriptor_path = file_path;
     implementation->device_ids = device_ids;
     implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
     implementation->soc_descriptors = std::move(soc_descriptors);
