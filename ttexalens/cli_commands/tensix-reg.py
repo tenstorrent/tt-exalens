@@ -178,7 +178,7 @@ def run(cmd_text, context, ui_state: UIState = None):
 
             if isinstance(register_ref, str):
                 device = debug_tensix.context.devices[debug_tensix.device_id]
-                register = device._get_tensix_register_description(register_ref)
+                register = device.get_tensix_register_description(register_ref)
                 if register == None:
                     raise ValueError(
                         f"Referencing register by {register_ref} is invalid. Please use valid register name or <reg-type>(<reg-parameters>) format."
