@@ -34,7 +34,7 @@ class QuasarDevice(Device):
     RISC_NAME_TO_ID = { "TRISC0": 0, "TRISC1": 1, "TRISC2": 2, "TRISC3": 3}
 
     # Register base addresses (Neo 0)
-    CONFIGURATION_REGISTER_BASE = 0x0180A000
+    CONFIGURATION_REGISTER_BASE = 0x1820000
     DEBUG_REGISTER_BASE = 0x01800000
     RISC_START_ADDRESS = { "TRISC0": 0x00006000, "TRISC1": 0x0000a000, "TRISC2": 0x0000e000, "TRISC3": 0x00012000 }
 
@@ -83,27 +83,27 @@ class QuasarDevice(Device):
             return None
 
     __register_map = {
-        "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG": DebugRegisterDescription(address=0x34),
-        "RISCV_DEBUG_REG_CFGREG_RD_CNTL": DebugRegisterDescription(address=0x38),
-        "RISCV_DEBUG_REG_DBG_RD_DATA": DebugRegisterDescription(address=0x3C),
-        "DISABLE_RISC_BP_Disable_trisc": DebugRegisterDescription(address=0x274, mask=0xf, shift=0), # Old name from previous architectures
-        "RISC_BRANCH_PREDICTION_CTRL": DebugRegisterDescription(address=0x274, mask=0xf, shift=0), # New name
-        "RISCV_IC_INVALIDATE_InvalidateAll": DebugRegisterDescription(address=0x25C, mask=0xf, shift=0),
-        "RISCV_DEBUG_REG_RISC_DBG_CNTL_0": DebugRegisterDescription(address=0x60),
-        "RISCV_DEBUG_REG_RISC_DBG_CNTL_1": DebugRegisterDescription(address=0x64),
-        "RISCV_DEBUG_REG_RISC_DBG_STATUS_0": DebugRegisterDescription(address=0x68),
-        "RISCV_DEBUG_REG_RISC_DBG_STATUS_1": DebugRegisterDescription(address=0x6C),
-        "RISCV_DEBUG_REG_SOFT_RESET_0": DebugRegisterDescription(address=0xC4),
-        'TRISC_RESET_PC_SEC0_PC': DebugRegisterDescription(address=0x10C), # Old name from configuration register
-        'RISCV_DEBUG_REG_TRISC0_RESET_PC': DebugRegisterDescription(address=0x10C), # New name
-        'TRISC_RESET_PC_SEC1_PC': DebugRegisterDescription(address=0x110), # Old name from configuration register
-        'RISCV_DEBUG_REG_TRISC1_RESET_PC': DebugRegisterDescription(address=0x110), # New name
-        'TRISC_RESET_PC_SEC2_PC': DebugRegisterDescription(address=0x114), # Old name from configuration register
-        'RISCV_DEBUG_REG_TRISC2_RESET_PC': DebugRegisterDescription(address=0x114), # New name
-        'TRISC_RESET_PC_SEC3_PC': DebugRegisterDescription(address=0x118), # Old name from configuration register
-        'RISCV_DEBUG_REG_TRISC3_RESET_PC': DebugRegisterDescription(address=0x118), # New name
-        'TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': DebugRegisterDescription(address=0x11C, mask=0xF, shift=0), # Old name from configuration register
-        'RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE': DebugRegisterDescription(address=0x11C, mask=0xF, shift=0), # New name
+        "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG": DebugRegisterDescription(address=0x28),
+        "RISCV_DEBUG_REG_CFGREG_RD_CNTL": DebugRegisterDescription(address=0x2C),
+        "RISCV_DEBUG_REG_DBG_RD_DATA": DebugRegisterDescription(address=0x30),
+        "DISABLE_RISC_BP_Disable_trisc": DebugRegisterDescription(address=0x260, mask=0xf, shift=0), # Old name from previous architectures
+        "RISC_BRANCH_PREDICTION_CTRL": DebugRegisterDescription(address=0x260, mask=0xf, shift=0), # New name
+        "RISCV_IC_INVALIDATE_InvalidateAll": DebugRegisterDescription(address=0x248, mask=0xf, shift=0),
+        "RISCV_DEBUG_REG_RISC_DBG_CNTL_0": DebugRegisterDescription(address=0x54),
+        "RISCV_DEBUG_REG_RISC_DBG_CNTL_1": DebugRegisterDescription(address=0x58),
+        "RISCV_DEBUG_REG_RISC_DBG_STATUS_0": DebugRegisterDescription(address=0x5C),
+        "RISCV_DEBUG_REG_RISC_DBG_STATUS_1": DebugRegisterDescription(address=0x60),
+        "RISCV_DEBUG_REG_SOFT_RESET_0": DebugRegisterDescription(address=0xB0),
+        'TRISC_RESET_PC_SEC0_PC': DebugRegisterDescription(address=0xF8), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC0_RESET_PC': DebugRegisterDescription(address=0xF8), # New name
+        'TRISC_RESET_PC_SEC1_PC': DebugRegisterDescription(address=0xFC), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC1_RESET_PC': DebugRegisterDescription(address=0xFC), # New name
+        'TRISC_RESET_PC_SEC2_PC': DebugRegisterDescription(address=0x100), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC2_RESET_PC': DebugRegisterDescription(address=0x100), # New name
+        'TRISC_RESET_PC_SEC3_PC': DebugRegisterDescription(address=0x104), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC3_RESET_PC': DebugRegisterDescription(address=0x104), # New name
+        'TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': DebugRegisterDescription(address=0x108, mask=0xF, shift=0), # Old name from configuration register
+        'RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE': DebugRegisterDescription(address=0x108, mask=0xF, shift=0), # New name
     }
 
     def _get_debug_bus_signal_description(self, name):

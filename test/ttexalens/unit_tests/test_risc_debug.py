@@ -144,7 +144,7 @@ class TestDebugging(unittest.TestCase):
             )
         else:
             self.assertEqual(
-                self.rdbg.read_gpr(self.pc_register_index),
+                self.get_pc_from_debug_bus(), # self.rdbg.read_gpr(self.pc_register_index),
                 self.program_base_address + expected,
                 f"Pc should be {expected} + program_base_address ({self.program_base_address + expected}).",
             )
@@ -155,7 +155,7 @@ class TestDebugging(unittest.TestCase):
     def assertPcLess(self, expected):
         """Assert PC register is less than expected value."""
         self.assertLess(
-            self.rdbg.read_gpr(self.pc_register_index),
+            self.get_pc_from_debug_bus(), # self.rdbg.read_gpr(self.pc_register_index),
             self.program_base_address + expected,
             f"Pc should be less than {expected} + program_base_addres ({self.program_base_address + expected}).",
         )

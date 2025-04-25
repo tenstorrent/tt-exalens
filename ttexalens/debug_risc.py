@@ -237,8 +237,8 @@ class RiscDebug:
         assert 0 <= location.risc_id <= 4, f"Invalid risc id({location.risc_id})"
         self.location = location
         self.enable_asserts = enable_asserts
-        self.CONTROL0_WRITE = 0x80010000 + ((self.location.risc_id+1) << 17) # TODO: This is mitigation for quasar (should be removed)
-        self.CONTROL0_READ = 0x80000000 + ((self.location.risc_id+1) << 17) # TODO: This is mitigation for quasar (should be removed)
+        self.CONTROL0_WRITE = 0x80010000 + ((self.location.risc_id) << 17) # TODO: This is mitigation for quasar (should be removed)
+        self.CONTROL0_READ = 0x80000000 + ((self.location.risc_id) << 17) # TODO: This is mitigation for quasar (should be removed)
         self.verbose = verbose
         self.context = context
         self.max_watchpoints = 8
