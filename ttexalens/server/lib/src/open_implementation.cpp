@@ -108,10 +108,13 @@ static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
     return cluster_descriptor_path;
 }
 
-static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::set<chip_id_t> &target_devices) {
+static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::unordered_set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
 
-    auto device = std::make_unique<tt::umd::Cluster>(target_devices, num_host_mem_ch_per_mmio_device);
+    auto device = std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{
+        .num_host_mem_ch_per_mmio_device = num_host_mem_ch_per_mmio_device,
+        .target_devices = target_devices,
+    });
     for (auto chip_id : device->get_target_mmio_device_ids()) {
         device->configure_active_ethernet_cores_for_mmio_device(chip_id, {});
     }
@@ -119,11 +122,13 @@ static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::set<c
     return device;
 }
 
-static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::set<chip_id_t> &target_devices) {
+static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::unordered_set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
 
-    auto device = std::make_unique<tt::umd::Cluster>(target_devices, num_host_mem_ch_per_mmio_device);
-
+    auto device = std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{
+        .num_host_mem_ch_per_mmio_device = num_host_mem_ch_per_mmio_device,
+        .target_devices = target_devices,
+    });
     return device;
 }
 
@@ -252,7 +257,7 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << std::endl;
 }
 
-static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_device *device,
+static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Cluster *device,
                                                                     const std::vector<uint8_t> &device_ids) {
     std::map<uint8_t, std::string> device_soc_descriptors_yamls;
 
@@ -389,7 +394,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     std::unique_ptr<tt::umd::Cluster> device;
 
     // Try to read cluster descriptor
-    std::set<chip_id_t> target_devices;
+    std::unordered_set<chip_id_t> target_devices;
 
     for (chip_id_t i : cluster_descriptor->get_all_chips()) {
         device_ids.push_back(i);
@@ -435,7 +440,8 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open_simulation(
     const std::filesystem::path &simulation_directory) {
-    std::unique_ptr<tt_SimulationDevice> device = std::make_unique<tt_SimulationDevice>(simulation_directory);
+    std::unique_ptr<tt::umd::Cluster> device =
+        std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{.simulator_directory = simulation_directory});
 
     // Initialize simulation device
     device->start_device({});

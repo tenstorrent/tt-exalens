@@ -376,7 +376,7 @@ std::optional<std::string> dump_tile(const std::vector<uint32_t>& mem_vector, Ti
 }
 
 std::optional<std::string> read_tile_implementation(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                                    uint32_t size, uint8_t data_format, tt_device* device) {
+                                                    uint32_t size, uint8_t data_format, tt::umd::Cluster* device) {
     TileDataFormat df = to_data_format(data_format);
     std::vector<std::uint32_t> mem_vector;
 

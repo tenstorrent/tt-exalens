@@ -11,7 +11,7 @@
 
 namespace tt::exalens {
 
-umd_implementation::umd_implementation(tt_device* device) : device(device) {}
+umd_implementation::umd_implementation(tt::umd::Cluster* device) : device(device) {}
 
 std::optional<uint32_t> umd_implementation::pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                        uint64_t address) {
@@ -117,10 +117,8 @@ std::optional<std::string> umd_implementation::pci_read_tile(uint8_t chip_id, ui
 }
 
 std::optional<std::string> umd_implementation::get_device_arch(uint8_t chip_id) {
-    tt_device* d = static_cast<tt_device*>(device);
-
     try {
-        return tt::arch_to_str(d->get_soc_descriptor(chip_id).arch);
+        return tt::arch_to_str(device->get_soc_descriptor(chip_id).arch);
     } catch (...) {
         return {};
     }
@@ -129,11 +127,9 @@ std::optional<std::string> umd_implementation::get_device_arch(uint8_t chip_id) 
 std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(uint8_t chip_id, uint32_t msg_code,
                                                                                bool wait_for_done, uint32_t arg0,
                                                                                uint32_t arg1, int timeout) {
-    tt_device* d = static_cast<tt_device*>(device);
-
     uint32_t return_3 = 0;
     uint32_t return_4 = 0;
-    int return_code = d->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout, &return_3, &return_4);
+    int return_code = device->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout, &return_3, &return_4);
     return std::make_tuple(return_code, return_3, return_4);
 }
 
