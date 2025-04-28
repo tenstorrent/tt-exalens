@@ -69,5 +69,4 @@ include(${PROJECT_SOURCE_DIR}/cmake/ttexalens_private.cmake)
 # Add subdirectories
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens)
 add_subdirectory(${PROJECT_SOURCE_DIR}/utils)
-add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/pybind)
-add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/server)
+add_subdirectory(${PROJECT_SOURCE_DIR}/test)
