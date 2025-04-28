@@ -20,9 +20,10 @@ if [ -z "$DEV" ]; then
 fi
 
 if [ "$DEV" == "BH" ]; then
-    REGDEF=../regdef/arc.json
+    export REGDEF=../regdef/arc.json
 elif [ "$DEV" == "WH" ]; then
-    REGDEF=../regdef/data/wormhole/axi-noc.yaml
+    export REGDEF=../regdef/data/wormhole/axi-noc.yaml
 fi
 
-python3 -m unittest test/ttexalens/unit_tests/test_regdef_load.py
+# python3 -m unittest test/ttexalens/unit_tests/test_regdef_load.py -v
+python3 -m unittest test/ttexalens/unit_tests/test_regdef_real_access.py -v

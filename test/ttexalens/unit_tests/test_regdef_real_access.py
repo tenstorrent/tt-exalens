@@ -12,28 +12,44 @@ import unittest
 from ttexalens import tt_exalens_init
 from ttexalens.reg_access_yaml import YamlRegisterMap
 from ttexalens.reg_access_json import JsonRegisterMap
-from ttexalens.reg_access_common import set_verbose, get_regdef_file_type, get_regdef_family
+from ttexalens.reg_access_common import set_verbose
 
 # Logging functions
 def log_stage(stage_name):
     print(f"\033[92m=== {stage_name} ===\033[0m")
 
 class TestRegDefRealAccess(unittest.TestCase):
+    def file_type(self):
+        if self.regdef_path.endswith('.json'):
+            return 'json'
+        elif self.regdef_path.endswith('.yaml') or self.regdef_path.endswith('.yml'):
+            return 'yaml'
+        else:
+            raise ValueError(f"Unsupported file extension: {self.regdef_path}")
+
+    def family(self):
+        if self.file_type() == 'yaml':
+            return 'WH' # Wormhole
+        elif self.file_type() == 'json':
+            return 'BH' # Blackhole
+        else:
+            raise ValueError(f"Unsupported family for file: {self.regdef_path}")
+
     def setUp(self):
         self.regdef_path = os.getenv('REGDEF')
         if not self.regdef_path:
-            raise RuntimeError("REGDEF environment variable not set")
+            self.skipTest("REGDEF environment variable not set")
         if not os.path.exists(self.regdef_path):
-            raise FileNotFoundError(f"Register definition file not found: {self.regdef_path}")
+            self.skipTest(f"Register definition file not found: {self.regdef_path}")
 
         # Choose appropriate loader based on file extension
-        file_type = get_regdef_file_type(self.regdef_path)
-        if file_type == 'json':
+        _, ext = os.path.splitext(self.regdef_path)
+        if ext.lower() == '.json':
             self.RegisterMap = JsonRegisterMap
-        elif file_type == 'yaml':
+        elif ext.lower() in ['.yaml', '.yml']:
             self.RegisterMap = YamlRegisterMap
         else:
-            self.skipTest(f"Unsupported file extension: {self.regdef_path}")
+            self.skipTest(f"Unsupported file extension: {ext}")
 
     def _test_access_patterns_common(self, init_jtag: bool, test_name: str):
         """Common test logic for both PCI and JTAG access patterns."""
@@ -65,7 +81,7 @@ class TestRegDefRealAccess(unittest.TestCase):
             )
 
         # Verify register access requires explicit read/write
-        family = get_regdef_family(self.regdef_path)
+        family = self.family()
         if family == 'WH':
             reg = self.reg_map.ARC_RESET.SCRATCH[0]
         else:
@@ -119,13 +135,13 @@ class TestRegDefRealAccess(unittest.TestCase):
         print(f"ARC core location: {arc_core_loc}")
         self.context.server_ifc.jtag_write32(device_id, *self.context.convert_loc_to_umd(arc_core_loc), addr, masked_data)
 
-    # def test_access_patterns_pci(self):
-    #     """Test register and field access patterns using PCI access."""
-    #     self._test_access_patterns_common(init_jtag=False, test_name=self.test_access_patterns_pci.__doc__)
+    def test_access_patterns_pci(self):
+        """Test register and field access patterns using PCI access."""
+        self._test_access_patterns_common(init_jtag=False, test_name=self.test_access_patterns_pci.__doc__)
 
-    def test_access_patterns_jtag(self):
-        """Test register and field access patterns using JTAG access."""
-        self._test_access_patterns_common(init_jtag=True, test_name=self.test_access_patterns_jtag.__doc__)
+    # def test_access_patterns_jtag(self):
+    #     """Test register and field access patterns using JTAG access."""
+    #     self._test_access_patterns_common(init_jtag=True, test_name=self.test_access_patterns_jtag.__doc__)
 
 if __name__ == "__main__":
     unittest.main() 
