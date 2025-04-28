@@ -91,9 +91,8 @@ class TestRegDefLoad(unittest.TestCase):
             log_stage("Printing csm_memory")
             print(reg_map.csm_memory)
             log_stage("Printing CSM_memory[10]")
-            print(reg_map.csm_memory.csm_memory[10].read())
+            print(reg_map.csm_memory[10].read())
 
-    @unittest.skip("Skipping field access test")
     def test_regdef_field_access(self):
         """Test field access to registers."""
         log_stage(f"{self.test_regdef_field_access.__doc__}")
@@ -115,18 +114,18 @@ class TestRegDefLoad(unittest.TestCase):
             noc_reset_field = reg_map.ARC_RESET.GLOBAL_RESET._fields['noc_reset']
             print(f"Field info: {noc_reset_field}")
             # Field info is [offset, width]
-            noc_reset_mask = (1 << noc_reset_field[1]) - 1 << noc_reset_field[0]
+            noc_reset_mask = (1 << noc_reset_field[1]) - 1 << noc_reset_field[2]
             print(f"initial_val: {initial_val:X}, noc_reset_mask: {noc_reset_mask:X}")
             
             # Write 1 to NOC reset
-            reg_map.ARC_RESET.GLOBAL_RESET.write_field('noc_reset', 1)
+            reg_map.ARC_RESET.GLOBAL_RESET.noc_reset = 1
             # Read full register and verify only noc_reset bit changed
             new_val = reg_map.ARC_RESET.GLOBAL_RESET.read()
             self.assertEqual(new_val & noc_reset_mask, noc_reset_mask, "noc_reset bit not set")
             self.assertEqual(new_val & ~noc_reset_mask, initial_val & ~noc_reset_mask, "Other bits changed")
             
             # Write 0 to NOC reset
-            reg_map.ARC_RESET.GLOBAL_RESET.write_field('noc_reset', 0)
+            reg_map.ARC_RESET.GLOBAL_RESET.noc_reset = 0
             # Read full register and verify only noc_reset bit changed back
             final_val = reg_map.ARC_RESET.GLOBAL_RESET.read()
             self.assertEqual(final_val & noc_reset_mask, 0, "NOC_RESET bit not cleared")
@@ -136,21 +135,21 @@ class TestRegDefLoad(unittest.TestCase):
             # Read initial register value
             initial_val = reg_map.reset_unit.GLOBAL_RESET.read()
             # Get field info directly from the register
-            noc_reset_field = reg_map.reset_unit.GLOBAL_RESET._fields['noc_reset']
+            noc_reset_field = reg_map.reset_unit.GLOBAL_RESET._fields['noc_reset_n']
             print(f"Field info: {noc_reset_field}")
             # Field info is [offset, width]
-            noc_reset_mask = (1 << noc_reset_field[1]) - 1 << noc_reset_field[0]
+            noc_reset_mask = (1 << noc_reset_field[1]) - 1 << noc_reset_field[2]
             print(f"initial_val: {initial_val:X}, noc_reset_mask: {noc_reset_mask:X}")
             
             # Write 1 to NOC reset
-            reg_map.reset_unit.GLOBAL_RESET.write_field('noc_reset', 1)
+            reg_map.reset_unit.GLOBAL_RESET.noc_reset_n = 1
             # Read full register and verify only NOC_RESET bit changed
             new_val = reg_map.reset_unit.GLOBAL_RESET.read()
             self.assertEqual(new_val & noc_reset_mask, noc_reset_mask, "NOC_RESET bit not set")
             self.assertEqual(new_val & ~noc_reset_mask, initial_val & ~noc_reset_mask, "Other bits changed")
             
             # Write 0 to NOC reset
-            reg_map.reset_unit.GLOBAL_RESET.write_field('noc_reset', 0)
+            reg_map.reset_unit.GLOBAL_RESET.noc_reset_n = 0
             # Read full register and verify only NOC_RESET bit changed back
             final_val = reg_map.reset_unit.GLOBAL_RESET.read()
             self.assertEqual(final_val & noc_reset_mask, 0, "NOC_RESET bit not cleared")
