@@ -115,10 +115,10 @@ class QuasarDevice(Device):
     # TODO: Should be copied from Blackhole. Current values are only for debugging purposes.
     __debug_bus_signal_map = {
         # For the other signals applying the pc_mask.
-        "trisc0_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 6 + 1, mask=0x3FFFFFFF),
-        "trisc1_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=6, mask=0x3FFFFFFF),
-        "trisc2_pc": DebugBusSignalDescription(rd_sel=5, daisy_sel=7, sig_sel=6, mask=0x3FFFFFFF),
-        "trisc3_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 6 + 1, mask=0x3FFFFFFF),
+        "trisc0_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 5 + 1, mask=0x3FFFFFFF),
+        "trisc1_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 6 + 1, mask=0x3FFFFFFF),
+        "trisc2_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 7 + 1, mask=0x3FFFFFFF),
+        "trisc3_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 8 + 1, mask=0x3FFFFFFF),
     }
 
     def get_debug_bus_signal_names(self) -> List[str]:

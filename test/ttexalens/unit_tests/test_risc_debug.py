@@ -351,10 +351,7 @@ class TestDebugging(unittest.TestCase):
         print(hex(self.context.devices[0].read_debug_bus_signal(self.core_loc, "trisc2_pc")))
         print(hex(self.context.devices[0].read_debug_bus_signal(self.core_loc, "trisc3_pc")))
         print(hex(self.program_base_address))
-        if self.is_quasar():
-            self.assertPcEquals(0)
-        else:
-            self.assertPcEquals(4)
+        self.assertPcEquals(4)
 
     def test_ebreak_and_step(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
@@ -387,26 +384,17 @@ class TestDebugging(unittest.TestCase):
 
         # Verify value at address, value should not be changed and should stay the same since core is in halt
         self.assertEqual(self.read_data(addr), 0x12345678)
-        if self.is_quasar():
-            self.assertPcEquals(0)
-        else:
-            self.assertPcEquals(4)
+        self.assertPcEquals(4)
         # Step and verify that pc is 8 and value is not changed
         self.rdbg.step()
         self.assertEqual(self.read_data(addr), 0x12345678)
-        if self.is_quasar():
-            self.assertPcEquals(4)
-        else:
-            self.assertPcEquals(8)
+        self.assertPcEquals(8)
         # Adding two steps since logic in hw automatically updates register and memory values
         self.rdbg.step()
         self.rdbg.step()
         # Verify that pc is 16 and value has changed
         self.assertEqual(self.read_data(addr), 0x87654000)
-        if self.is_quasar():
-            self.assertPcEquals(12)
-        else:
-            self.assertPcEquals(16)
+        self.assertPcEquals(16)
         # Since we are on endless loop, we should never go past 16
         for i in range(10):
             # Step and verify that pc is 16 and value has changed
@@ -557,7 +545,6 @@ class TestDebugging(unittest.TestCase):
     def test_invalidate_cache(self):
         if not self.is_blackhole() and not self.is_quasar():
             self.skipTest("Invalidate cache is not reliable on wormhole.")
-
         """Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation. All that is done on brisc."""
         addr = 0x10000
 
@@ -785,10 +772,7 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
         self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
         self.assertFalse(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
-        if self.is_quasar():
-            self.assertPcEquals(0)
-        else:
-            self.assertPcEquals(4)
+        self.assertPcEquals(4)
 
         # Set watchpoint on address 12 and 32
         self.rdbg.set_watchpoint_on_pc_address(0, self.program_base_address + 12)
