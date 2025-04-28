@@ -30,3 +30,4 @@ scripts/noc_to_python/codegen-noc-overlay-blackhole
 scripts/noc_to_python/codegen-noc-overlay-wormhole
 
 dist
+*-env
