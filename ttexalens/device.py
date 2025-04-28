@@ -41,6 +41,9 @@ class TensixRegisterDescription:
         new_instance.address += offset
         return new_instance
 
+    def __str__(self):
+        return f"{type(self).__name__}(address: {self.address:#x}, mask: {self.mask:#x}, shift: {self.shift}, native_data_type: {self.data_type})"
+
 
 @dataclass
 class DebugRegisterDescription(TensixRegisterDescription):
@@ -53,6 +56,10 @@ class ConfigurationRegisterDescription(TensixRegisterDescription):
 
     def __post_init__(self):
         self.address = self.address + self.index * 4
+
+    def __str__(self):
+        base_str = super().__str__()[:-1]
+        return f"{base_str}, index: {self.index})"
 
 
 @dataclass
