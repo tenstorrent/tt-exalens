@@ -7,13 +7,14 @@ TT Triage:
   Analyze the device state to determine the cause of failure.
 
 Usage:
-  tt-triage [-v | --verbose] [-V | --vverbose] [--dev=<device_id>]...
+  tt-triage [--halt-on-error] [-v | --verbose] [-V | --vverbose] [--dev=<device_id>]...
 
 Options:
   -h --help         Show this screen.
   --dev=<device_id> Specify the device id       [default: all]
   -v --verbose      Print verbose output.       [default: False]
   -V --vverbose     Print more verbose output.  [default: False]
+  --halt-on-error   Halt on error.              [default: False]
 """
 
 # Setup library paths first
@@ -71,6 +72,17 @@ except ImportError as e:
     """)
     exit(1)
 
+class TTTriageError(Exception):
+    """Base class for TT Triage errors."""
+    pass
+
+def raiseTTTriageError(msg):
+    """Raise a TT Triage error."""
+    if HALT_ON_ERROR:
+        raiseTTTriageError(msg)
+    else:
+        print(f"{RED}ERROR: {msg}{RST}")
+
 def verbose(msg):
     """Print message if verbose mode is enabled (-v)"""
     if VERBOSE or VVERBOSE:
@@ -100,7 +112,7 @@ def check_ARC(dev):
     postcode = arc_read(0x880030060)
     if postcode & 0xFFFF0000 != 0xC0DE0000:
         print(f"ARC postcode: {RED}0x{postcode:08x}{RST}. Expected {BLUE}0xc0de____{RST}")
-        raise Exception(check_ARC.__doc__)
+        raiseTTTriageError(check_ARC.__doc__)
 
     # Heartbeat must be increasing
     # heartbeat_0 = dev.ARC.ARC_CSM.DEBUG.heartbeat.read()
@@ -111,7 +123,7 @@ def check_ARC(dev):
     heartbeat_1 = arc_read(0x8100786C4)
     if heartbeat_1 <= heartbeat_0:
         print(f"ARC heartbeat not increasing: {RED}{heartbeat_1}{RST}.")
-        raise Exception(check_ARC.__doc__)
+        raiseTTTriageError(check_ARC.__doc__)
 
     # Compute uptime
     # arcclk_mhz = dev.ARC.ARC_CSM.AICLK_PPM.curr_arcclk.read()
@@ -122,10 +134,10 @@ def check_ARC(dev):
     # Heartbeat must be between 500 and 20000 hb/s
     if heartbeats_per_second < 500:
         print(f"ARC heartbeat is too low: {RED}{heartbeats_per_second}{RST}hb/s. Expected at least {BLUE}500{RST}hb/s")
-        raise Exception(check_ARC.__doc__)  
+        raiseTTTriageError(check_ARC.__doc__)  
     if heartbeats_per_second > 20000:
         print(f"ARC heartbeat is too high: {RED}{heartbeats_per_second}{RST}hb/s. Expected at most {BLUE}20000{RST}hb/s")
-        raise Exception(check_ARC.__doc__)
+        raiseTTTriageError(check_ARC.__doc__)
 
     # Print heartbeat and uptime
     verbose(f"ARC heartbeat: {heartbeat_1} - {heartbeat_0} = {heartbeats_per_second}hb/s, ARCCLK: {arcclk_mhz} MHz")
@@ -145,9 +157,8 @@ def check_L1(dev):
     for loc in dev.get_block_locations(block_type="functional_workers"):
         data = read_words_from_device(loc, addr, device_id=dev.id(), word_count=1, context=context)
         if data[0] != expected:
-            print(f"L1 @{loc}, addr 0x{addr:08x}: {RED}0x{data[0]:08x}{RST}. Expected {BLUE}0x3800306f{RST}")
-            raise Exception(check_L1.__doc__)
-
+            print(f"L1 @{loc}, addr 0x{addr:08x}: {RED}0x{data[0]:08x}{RST}. Expected {BLUE}{expected:08x}{RST}")
+            raiseTTTriageError(check_L1.__doc__)
 
 def noc_ping(dev, loc, use_noc1: False):
     data = read_words_from_device(loc, dev.NOC_CONTROL_REGISTER_BASE + dev.NOC_NODE_ID_OFFSET, device_id=dev.id(), word_count=1)
@@ -174,10 +185,10 @@ def check_riscV(dev):
     # RISC-V soft resets are released
         # Reference table for RISC-V core states
         # after tt-smi reset  - after metal run
-        # - 0: 0x7fdff7fd     - 0x3fcff3fc
+        # - 0: 0x7fdff7fd     - 0x3fcff3fc  # These vary by device
         # - 1: 0xdff7fdff     - 0xcff3fcff
         # - 2: 0xffffff7f     - 0x0000ff3f
-        # - 3: 0xffffffff     - 0x00000000
+        # - 3: 0xffffffff     - 0x00000000  # These do not vary by device
         # - 4: 0xffffffff     - 0x00000000
         # - 5: 0xffffffff     - 0x00000000
         # - 6: 0xffffffff     - 0x00000000
@@ -196,13 +207,13 @@ def check_riscV(dev):
 
     # for i in range(len(dev.ARC.ARC_RESET.RISCV_RESET)):
     #     read_value = dev.ARC.ARC_RESET.RISCV_RESET[i].read()
-    for i in range(8):
+    for i in range(3,8):
         read_value = read_word_from_device(dev.get_arc_block_location(), 0x880030040 + i * 4)
 
         verbose(f"{i}: 0x{read_value:08x}")
         if read_value != expected_after_metal_run[i]:
             print(f"Mismatch in RiscV reset register {i}: Expected {BLUE}0x{expected_after_metal_run[i]:08x}{RST}, but got {RED}0x{read_value:08x}{RST}")
-            raise Exception("RISC-V core state does not match expected 'after metal run' values.")
+            raiseTTTriageError("RISC-V core state does not match expected 'after metal run' values.")
 
     # PC dump through debug bus
     vverbose(f"Debug bus signal names: {dev.get_debug_bus_signal_names()}")
@@ -223,11 +234,12 @@ def check_riscV(dev):
 
 def main(argv=None):
     """Main function that runs the triage script."""
-    global VERBOSE, VVERBOSE, context
+    global VERBOSE, VVERBOSE, context, HALT_ON_ERROR
     
     args = docopt(__doc__, argv=argv)
     VERBOSE = args['--verbose']
     VVERBOSE = args['--vverbose']
+    HALT_ON_ERROR = args['--halt-on-error']
     set_verbose(VVERBOSE)
     
     context = init_ttexalens(use_noc1=False)
@@ -241,12 +253,17 @@ def main(argv=None):
 
     verbose(f"Device IDs: {device_ids}")
 
-    for device_id in device_ids:
-        dev = context.devices[device_id]
-        check_ARC(dev)
-        check_NOC(dev)
-        check_L1(dev)
-        check_riscV(dev)
+    try:
+        for device_id in device_ids:
+            dev = context.devices[device_id]
+            check_ARC(dev)
+            check_NOC(dev)
+            check_L1(dev)
+            check_riscV(dev)
+    except TTTriageError as e:
+        print(f"{RED}ERROR: {e}{RST}")
+        if args['--halt-on-error']:
+            return 1
 
     print (f"{GREEN}DONE: OK{RST}")
     return 0
