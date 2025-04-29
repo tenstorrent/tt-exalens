@@ -255,6 +255,7 @@ def main(argv=None):
 
     try:
         for device_id in device_ids:
+            title (f"Checking device {device_id}")
             dev = context.devices[device_id]
             check_ARC(dev)
             check_NOC(dev)
