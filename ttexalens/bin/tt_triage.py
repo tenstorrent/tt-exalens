@@ -216,7 +216,6 @@ def check_riscV(dev):
             raiseTTTriageError("RISC-V core state does not match expected 'after metal run' values.")
 
     # PC dump through debug bus
-    vverbose(f"Debug bus signal names: {dev.get_debug_bus_signal_names()}")
     table = []
     header_row = [ "Loc\PC", *[ sig[:-3].upper() for sig in dev.get_debug_bus_signal_names() ] ]
     table.append(header_row)
@@ -225,7 +224,6 @@ def check_riscV(dev):
     for loc in dev.get_block_locations(block_type="functional_workers"):
         loc_row = [ f"{loc.to_str('logical')}" ]
         for sig in dev.get_debug_bus_signal_names():
-            vverbose(f"Debug bus signal {sig}: {dev.get_debug_bus_signal_description(sig)}")
             pc = dev.read_debug_bus_signal(loc, sig)
             loc_row.append(f"0x{pc:x}")
         table.append(loc_row)
