@@ -7,13 +7,13 @@ TT Triage:
   Analyze the device state to determine the cause of failure.
 
 Usage:
-  tt-triage.py [-v | --verbose] [-V | --vverbose] [--dev=<device_id>]...
+  tt-triage [-v | --verbose] [-V | --vverbose] [--dev=<device_id>]...
 
 Options:
   -h --help         Show this screen.
   --dev=<device_id> Specify the device id       [default: all]
   -v --verbose      Print verbose output.       [default: False]
-  -V --vverbose    Print more verbose output.  [default: False]
+  -V --vverbose     Print more verbose output.  [default: False]
 """
 
 # Setup library paths first
@@ -36,6 +36,11 @@ RED = "\033[31m"    # For bad values
 GREEN = "\033[32m"  # For instructions
 ORANGE = "\033[33m" # For warnings
 VERBOSE_CLR = "\033[94m"   # For verbose output
+
+# Global variables for verbosity settings
+VERBOSE = False
+VVERBOSE = False
+context = None
 
 try:
     from docopt import docopt
@@ -216,8 +221,15 @@ def check_riscV(dev):
 
     verbose(tabulate(table, headers="firstrow", tablefmt=DEFAULT_TABLE_FORMAT))
 
-def main(args):
-    global context
+def main(argv=None):
+    """Main function that runs the triage script."""
+    global VERBOSE, VVERBOSE, context
+    
+    args = docopt(__doc__, argv=argv)
+    VERBOSE = args['--verbose']
+    VVERBOSE = args['--vverbose']
+    set_verbose(VVERBOSE)
+    
     context = init_ttexalens(use_noc1=False)
     device_ids = list(context.devices.keys())
 
@@ -237,10 +249,7 @@ def main(args):
         check_riscV(dev)
 
     print (f"{GREEN}DONE: OK{RST}")
+    return 0
 
 if __name__ == "__main__":
-    args = docopt(__doc__)
-    VERBOSE = args['--verbose']
-    VVERBOSE = args['--vverbose']
-    set_verbose(VVERBOSE)
-    main(args)
+    sys.exit(main(sys.argv[1:]))

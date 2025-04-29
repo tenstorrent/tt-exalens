@@ -51,11 +51,6 @@ ttexalens_files = {
         "output": "build/bin",
         "strip": True,
     },
-    "tt-triage": {
-        "path": "bin",
-        "files": ["tt-triage.py"],
-        "output": "bin",
-    },
 }
 
 
