@@ -24,11 +24,6 @@ import sys
 bundle_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
 os.environ['LD_LIBRARY_PATH'] = bundle_dir + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
 
-# Now import the ttexalens modules
-from ttexalens.reg_access_yaml import YamlRegisterMap
-from ttexalens.reg_access_json import JsonRegisterMap
-from ttexalens.reg_access_common import set_verbose, DEFAULT_TABLE_FORMAT
-
 import time
 from tabulate import tabulate
 
@@ -52,8 +47,12 @@ except ImportError as e:
 
 try:
     from ttexalens.tt_exalens_init import init_ttexalens
-    from ttexalens.tt_exalens_lib import read_from_device, read_words_from_device, arc_msg
+    from ttexalens.tt_exalens_lib import read_from_device, read_words_from_device, read_word_from_device, write_words_to_device,arc_msg
     from ttexalens.coordinate import OnChipCoordinate
+    from ttexalens.reg_access_yaml import YamlRegisterMap
+    from ttexalens.reg_access_json import JsonRegisterMap
+    from ttexalens.reg_access_common import set_verbose, DEFAULT_TABLE_FORMAT
+
 except ImportError as e:
     print(f"Module '{e}' not found. Please install tt-exalens: {GREEN}", end="")
     print("""
@@ -81,28 +80,37 @@ def title(msg):
     """Print a title."""
     print(f"{GREEN}= {msg}{RST}")
 
-
 def check_ARC(dev):
     """Checking that ARC heartbeat is running. Estimating ARC uptime (-v)."""
     title(check_ARC.__doc__)
 
+    arc_core_loc = dev.get_arc_block_location()
+    def arc_read(addr: int) -> int:
+        """Read ARC register using PCI->NOC->ARC."""
+        value = read_word_from_device(arc_core_loc, addr)
+        return value
+
     # Postcode must be correct (C0DE)
-    postcode = dev.ARC.ARC_RESET.SCRATCH[0].read()
+    # postcode = dev.ARC.ARC_RESET.SCRATCH[0].read()
+    postcode = arc_read(0x880030060)
     if postcode & 0xFFFF0000 != 0xC0DE0000:
         print(f"ARC postcode: {RED}0x{postcode:08x}{RST}. Expected {BLUE}0xc0de____{RST}")
         raise Exception(check_ARC.__doc__)
 
     # Heartbeat must be increasing
-    heartbeat_0 = dev.ARC.ARC_CSM.DEBUG.heartbeat.read()
+    # heartbeat_0 = dev.ARC.ARC_CSM.DEBUG.heartbeat.read()
+    heartbeat_0 = arc_read(0x8100786C4)
     delay_seconds = 0.1
     time.sleep(delay_seconds)
-    heartbeat_1 = dev.ARC.ARC_CSM.DEBUG.heartbeat.read()
+    # heartbeat_1 = dev.ARC.ARC_CSM.DEBUG.heartbeat.read()
+    heartbeat_1 = arc_read(0x8100786C4)
     if heartbeat_1 <= heartbeat_0:
         print(f"ARC heartbeat not increasing: {RED}{heartbeat_1}{RST}.")
         raise Exception(check_ARC.__doc__)
 
     # Compute uptime
-    arcclk_mhz = dev.ARC.ARC_CSM.AICLK_PPM.curr_arcclk.read()
+    # arcclk_mhz = dev.ARC.ARC_CSM.AICLK_PPM.curr_arcclk.read()
+    arcclk_mhz = arc_read(0x8100782AC)
     heartbeats_per_second = (heartbeat_1 - heartbeat_0) / delay_seconds
     uptime_seconds = heartbeat_1 / heartbeats_per_second
 
@@ -181,8 +189,11 @@ def check_riscV(dev):
         7: 0x00000000
     }
 
-    for i in range(len(dev.ARC.ARC_RESET.RISCV_RESET)):
-        read_value = dev.ARC.ARC_RESET.RISCV_RESET[i].read()
+    # for i in range(len(dev.ARC.ARC_RESET.RISCV_RESET)):
+    #     read_value = dev.ARC.ARC_RESET.RISCV_RESET[i].read()
+    for i in range(8):
+        read_value = read_word_from_device(dev.get_arc_block_location(), 0x880030040 + i * 4)
+
         verbose(f"{i}: 0x{read_value:08x}")
         if read_value != expected_after_metal_run[i]:
             print(f"Mismatch in RiscV reset register {i}: Expected {BLUE}0x{expected_after_metal_run[i]:08x}{RST}, but got {RED}0x{read_value:08x}{RST}")

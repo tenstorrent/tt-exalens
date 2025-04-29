@@ -51,6 +51,11 @@ ttexalens_files = {
         "output": "build/bin",
         "strip": True,
     },
+    "tt-triage": {
+        "path": "bin",
+        "files": ["tt-triage.py"],
+        "output": "bin",
+    },
 }
 
 
@@ -128,5 +133,11 @@ setup(
     install_requires=requirements,
     license="Apache-2.0",
     keywords="debugging tenstorrent",
-    entry_points={"console_scripts": ["tt-lens = ttexalens.cli:main", "tt-exalens = ttexalens.cli:main"]},
+    entry_points={
+        "console_scripts": [
+            "tt-lens = ttexalens.cli:main", 
+            "tt-exalens = ttexalens.cli:main",
+            "tt-triage = ttexalens.bin.tt_triage:main"
+        ]
+    },
 )

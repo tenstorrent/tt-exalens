@@ -173,8 +173,6 @@ def postprocess_csm(csm_block):
                 except (StopIteration, IndexError):
                     pass
         
-        verbose_print(f"Found register arrays with field accessors: {reg_arrays}")
-        
         # Process each register array
         for array_name in reg_arrays:
             try:
@@ -199,8 +197,6 @@ def postprocess_csm(csm_block):
                         return self[i]
                     
                     setattr(type(reg_array), field_name, property(getter))
-                
-                verbose_print(f"Added field accessors to {array_name}")
             except Exception as e:
                 verbose_print(f"Error processing {array_name}: {e}")
     except Exception as e:
