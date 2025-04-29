@@ -177,7 +177,8 @@ class BaseRegister:
         headers = ["Field Name", "MSB", "LSB", "Description"]
         table = []
         for field_name, field_def in sorted(self._fields.items(), key=lambda item: item[1][2]):
-            _word_offset, msb, lsb, description = field_def
+            _word_offset, msb, lsb, *rest = field_def
+            description = rest[-1] if rest else ''
             table.append([field_name, msb, lsb, description])
 
         field_table = tabulate(table, headers=headers, tablefmt=DEFAULT_TABLE_FORMAT)
@@ -254,6 +255,12 @@ class BaseRegisterArray:
         info = self._get_info_table()
         field_table = self._get_field_table()
         return f"{title}\n{info}\nFields:\n{field_table}"
+
+    def __len__(self) -> int:
+        """Return the number of elements in the array."""
+        if not self._is_array:
+            raise TypeError(f"Register '{self._name}' is not an array.")
+        return self._get_array_size()
 
     @abstractmethod
     def _get_info_table(self) -> str:
@@ -360,8 +367,6 @@ class BaseRegisterMap:
         self._top_level_data = self._load_top_level_data()
         self.reg_read = reg_read_func if reg_read_func is not None else mock_reg_read
         self.reg_write = reg_write_func if reg_write_func is not None else mock_reg_write
-        verbose_print(f"Using {'custom' if reg_read_func else 'mock'} read function")
-        verbose_print(f"Using {'custom' if reg_write_func else 'mock'} write function")
         self._cached_blocks = {}
 
     @abstractmethod

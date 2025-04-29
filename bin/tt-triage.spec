@@ -30,6 +30,15 @@ so_files = [
     os.path.join(ttexalens_path, f'build/lib/ttexalens_pybind.so')
 ]
 
+# Check that so_files exist
+for so_file in so_files:
+    print (f"Checking {so_file}. ", end='')
+    if not os.path.exists(so_file):
+        print(f"Error: {so_file} does not exist")
+        sys.exit(1)
+    else:
+        print(f"Found.")
+
 # Create binaries list for PyInstaller
 binary_tuples = [(so_file, 'build/lib') for so_file in so_files]
 

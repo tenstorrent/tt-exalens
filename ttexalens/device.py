@@ -104,6 +104,9 @@ class Device(TTObject):
         Config = 1
         Status = 2
 
+    # Static class member for ARC
+    ARC = None
+
     @cached_property
     def debuggable_cores(self):
         # Base implementation for wormhole and blackhole

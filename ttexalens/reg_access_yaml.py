@@ -84,7 +84,8 @@ class YamlRegisterArray(BaseRegisterArray):
         table = []
         fields = self._reg_def.get('Fields', {})
         for field_name, field_def in sorted(fields.items(), key=lambda item: item[1][2]):
-            _word_offset, msb, lsb, description = field_def
+            _word_offset, msb, lsb, *rest = field_def
+            description = rest[-1] if rest else ''
             table.append([field_name, msb, lsb, description])
         return tabulate(table, headers=headers, tablefmt=DEFAULT_TABLE_FORMAT)
 
@@ -146,4 +147,61 @@ class YamlRegisterMap(BaseRegisterMap):
         return tabulate(table, headers=headers, tablefmt=DEFAULT_TABLE_FORMAT)
 
     def __repr__(self):
-        return f"<RegisterMap: {self.top_file_path}>" 
+        return f"<RegisterMap: {self.top_file_path}>"
+
+def postprocess_csm(csm_block):
+    """
+    Special-case hack for csm.yaml:
+    Adds field-name accessors to register arrays in ARC_CSM so that
+    csm_block.<ARRAY>.<fieldname> returns csm_block.<ARRAY>[<index>],
+    where index = field_def[3] // AddressIncrement.
+    
+    This works for DEBUG, AICLK_PPM, and any other similar arrays in CSM.
+    """
+    try:
+        verbose_print(f"Postprocessing CSM block to add field accessors")
+        
+        # Find all register arrays in the CSM block
+        reg_arrays = []
+        for name, item in csm_block._register_data.items():
+            if isinstance(item, dict) and 'ArraySize' in item and 'Fields' in item:
+                try:
+                    # Check if this is an array with field defs like [word_offset, msb, lsb, offset, description]
+                    fields = item['Fields']
+                    if fields and len(next(iter(fields.values()))) >= 4:
+                        reg_arrays.append(name)
+                except (StopIteration, IndexError):
+                    pass
+        
+        verbose_print(f"Found register arrays with field accessors: {reg_arrays}")
+        
+        # Process each register array
+        for array_name in reg_arrays:
+            try:
+                # Access the array to ensure it's created
+                reg_array = getattr(csm_block, array_name) 
+                fields = reg_array._reg_def.get('Fields', {})
+                address_increment = reg_array._reg_def.get('AddressIncrement', 4)
+                
+                # Add each field accessor
+                for field_name, field_def in fields.items():
+                    if len(field_def) < 4:
+                        continue  # Skip fields without an offset
+                    
+                    offset = field_def[3]
+                    index = offset // address_increment
+                    
+                    # Avoid overwriting existing attributes
+                    if hasattr(reg_array, field_name):
+                        continue
+                    
+                    def getter(self, i=index):
+                        return self[i]
+                    
+                    setattr(type(reg_array), field_name, property(getter))
+                
+                verbose_print(f"Added field accessors to {array_name}")
+            except Exception as e:
+                verbose_print(f"Error processing {array_name}: {e}")
+    except Exception as e:
+        verbose_print(f"[postprocess_csm] Failed to add CSM field accessors: {e}") 

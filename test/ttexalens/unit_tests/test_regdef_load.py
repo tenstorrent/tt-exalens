@@ -204,5 +204,36 @@ class TestRegDefLoad(unittest.TestCase):
             array_reg.write(0x87654321)
             self.assertEqual(array_reg.read(), 0x87654321)
 
+    def test_arc_csm_debug(self):
+        """Test ARC_CSM.DEBUG register with special-case field accessors."""
+        log_stage(f"{self.test_arc_csm_debug.__doc__}")
+
+        # Create register map with verbose output
+        set_verbose(True)
+
+        if self.family() == 'WH':
+            from ttexalens.reg_access_yaml import postprocess_csm
+            reg_map = self.RegisterMap(self.regdef_path)
+            postprocess_csm(reg_map.ARC_CSM)
+            # Test both index and field-name access
+            debug_by_index = reg_map.ARC_CSM.DEBUG[1]
+            debug_by_field = reg_map.ARC_CSM.DEBUG.total_timer_irqs
+            print("DEBUG[1]:", debug_by_index)
+            print("DEBUG.total_timer_irqs:", debug_by_field)
+            # Check that addresses match (but they're not the same Python object)
+            self.assertEqual(debug_by_index._base_address, debug_by_field._base_address)
+            # Check that read() returns the same value
+            self.assertEqual(debug_by_index.read(), debug_by_field.read())
+            # Optionally test a few more fields
+            debug_heartbeat = reg_map.ARC_CSM.DEBUG.heartbeat
+            debug_last_message = reg_map.ARC_CSM.DEBUG.last_message
+            print("DEBUG.heartbeat:", debug_heartbeat)
+            print("DEBUG.last_message:", debug_last_message)
+            self.assertEqual(reg_map.ARC_CSM.DEBUG[0]._base_address, debug_heartbeat._base_address)
+            self.assertEqual(reg_map.ARC_CSM.DEBUG[3]._base_address, debug_last_message._base_address)
+        elif self.family() == 'BH':
+            reg_map = self.RegisterMap(self.regdef_path)
+            print(reg_map.csm_memory[0])
+
 if __name__ == "__main__":
     unittest.main() 

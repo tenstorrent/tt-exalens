@@ -25,5 +25,5 @@ elif [ "$DEV" == "WH" ]; then
     export REGDEF=../regdef/data/wormhole/axi-noc.yaml
 fi
 
-# python3 -m unittest test/ttexalens/unit_tests/test_regdef_load.py -v
+python3 -m unittest test/ttexalens/unit_tests/test_regdef_load.py -v
 python3 -m unittest test/ttexalens/unit_tests/test_regdef_real_access.py -v

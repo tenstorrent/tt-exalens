@@ -16,14 +16,15 @@ from ttexalens.device import (
     NocControlRegisterDescription,
     DebugBusSignalDescription,
 )
-
+from ttexalens.reg_access_yaml import YamlRegisterMap
+from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
+import os
 
 class WormholeInstructions(TensixInstructions):
     def __init__(self):
         import ttexalens.hw.tensix.wormhole.wormhole_ops as ops
 
         super().__init__(ops)
-
 
 #
 # Device
@@ -71,6 +72,8 @@ class WormholeDevice(Device):
 
     MAX_CFG_REG_INDEX = 2**14 - 1
 
+    NOC_NODE_ID_OFFSET = 0x2C
+
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(
             id,
@@ -80,6 +83,29 @@ class WormholeDevice(Device):
             context,
         )
         self.instructions = WormholeInstructions()
+        
+        if Device.ARC is None:
+            regdef_path = util.application_path() + '/../../regdef/data/wormhole/axi-noc.yaml'
+            if os.path.exists(regdef_path):
+                WormholeDevice.ARC = YamlRegisterMap(
+                    regdef_path,
+                    reg_read_func=self._pci_arc_reg_read,
+                    reg_write_func=self._pci_arc_reg_write
+                )
+                from ttexalens.reg_access_yaml import postprocess_csm
+                postprocess_csm(WormholeDevice.ARC.ARC_CSM)
+
+    def _pci_arc_reg_read(self, addr: int) -> int:
+        """Read ARC register using PCI->NOC->ARC."""
+        arc_core_loc = self.get_arc_block_location()
+        value = read_word_from_device(arc_core_loc, addr)
+        return value
+
+    def _pci_arc_reg_write(self, addr: int, data: int) -> None:
+        """Write ARC register using PCI->NOC->ARC."""
+        masked_data = data & 0xFFFFFFFFFFFFFFFF
+        arc_core_loc = self.get_arc_block_location()
+        write_word_to_device(arc_core_loc, addr, masked_data)
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         return x >= 16 and y >= 16
