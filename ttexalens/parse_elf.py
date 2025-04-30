@@ -740,7 +740,12 @@ def read_elf(file_ifc, elf_file_path, load_address=None):
     if not elf.has_dwarf_info():
         print(f"ERROR: {elf_file_path} does not have DWARF info. Source file must be compiled with -g")
         return
-    text_sh_address = elf.get_section_by_name(".text")["sh_addr"]
+
+    text_sh = elf.get_section_by_name(".text")
+    if text_sh is None:
+        text_sh = elf.get_section_by_name(".firmware_text")
+    text_sh_address = text_sh["sh_addr"]
+
     if load_address is None:
         load_address = text_sh_address
 
