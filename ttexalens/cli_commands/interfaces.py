@@ -21,9 +21,9 @@ command_metadata = {
     "context": ["limited", "metal"],
 }
 
+from typing import Tuple
 from docopt import docopt
 from ttexalens.context import Context
-from ttexalens.coordinate import OnChipCoordinate
 
 TEST_ID_SIZE = 48
 
@@ -78,7 +78,7 @@ def run(cmd_text, context: Context, ui_state=None):
     devices_list = list(context.devices.keys())
     for device_id in devices_list:
         if not context.devices[device_id]._has_jtag:
-            arc_location: OnChipCoordinate = context.devices[device_id]._block_locations["arc"][0]
+            arc_location: Tuple[int, int] = context.devices[device_id]._block_locations["arc"][0].to("noc0")
             print(
                 f"NOC Device {device_id}: "
                 + str(
@@ -86,7 +86,7 @@ def run(cmd_text, context: Context, ui_state=None):
                         read_noc_size(
                             context,
                             device_id,
-                            *arc_location.to("noc0"),
+                            *arc_location,
                             efuse_noc,
                             TEST_ID_SIZE,
                         )
