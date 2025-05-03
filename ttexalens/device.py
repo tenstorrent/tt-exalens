@@ -125,6 +125,23 @@ class DebugBusSignalDescription:
 # a specific device.
 #
 class Device(TTObject):
+    instructions: TensixInstructions = None
+    DIE_X_TO_NOC_0_X: List[int] = []
+    DIE_Y_TO_NOC_0_Y: List[int] = []
+    DIE_X_TO_NOC_1_X: List[int] = []
+    DIE_Y_TO_NOC_1_Y: List[int] = []
+    NOC_0_X_TO_DIE_X: List[int] = []
+    NOC_0_Y_TO_DIE_Y: List[int] = []
+    NOC_1_X_TO_DIE_X: List[int] = []
+    NOC_1_Y_TO_DIE_Y: List[int] = []
+    PCI_ARC_RESET_BASE_ADDR: int = None
+    NOC_ARC_RESET_BASE_ADDR: int = None
+    PCI_ARC_CSM_DATA_BASE_ADDR: int = None
+    NOC_ARC_CSM_DATA_BASE_ADDR: int = None
+    PCI_ARC_ROM_DATA_BASE_ADDR: int = None
+    NOC_ARC_ROM_DATA_BASE_ADDR: int = None
+    NOC_REGISTER_OFFSET: int = None
+
     # NOC reg type
     class RegType:
         Cmd = 0
@@ -190,22 +207,6 @@ class Device(TTObject):
                 if id in chip:
                     self._has_jtag = True
                     break
-        self.instructions: TensixInstructions = None
-        self.DIE_X_TO_NOC_0_X: List[int] = []
-        self.DIE_Y_TO_NOC_0_Y: List[int] = []
-        self.DIE_X_TO_NOC_1_X: List[int] = []
-        self.DIE_Y_TO_NOC_1_Y: List[int] = []
-        self.NOC_0_X_TO_DIE_X: List[int] = []
-        self.NOC_0_Y_TO_DIE_Y: List[int] = []
-        self.NOC_1_X_TO_DIE_X: List[int] = []
-        self.NOC_1_Y_TO_DIE_Y: List[int] = []
-        self.PCI_ARC_RESET_BASE_ADDR: int = None
-        self.NOC_ARC_RESET_BASE_ADDR: int = None
-        self.PCI_ARC_CSM_DATA_BASE_ADDR: int = None
-        self.NOC_ARC_CSM_DATA_BASE_ADDR: int = None
-        self.PCI_ARC_ROM_DATA_BASE_ADDR: int = None
-        self.NOC_ARC_ROM_DATA_BASE_ADDR: int = None
-        self.NOC_REGISTER_OFFSET: int = None
 
         # Check if harvesting_desc is an array and has id+1 entries at the least
         harvesting_desc = cluster_desc["harvesting"]
