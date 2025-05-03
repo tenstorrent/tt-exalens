@@ -173,7 +173,7 @@ class TensixDebug:
                 raise ValueError(
                     f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
                 )
-
+        assert isinstance(register, TensixRegisterDescription)
         if register.mask < 0 or register.mask > 0xFFFFFFFF:
             raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
 
@@ -222,6 +222,7 @@ class TensixDebug:
             else:
                 raise ValueError(f"Unknown tensix register base address for given register")
 
+        assert isinstance(register, TensixRegisterDescription)
         if value < 0 or value > 2 ** bin(register.mask).count("1") - 1:
             raise ValueError(f"Value must be between 0 and {2 ** bin(register.mask).count('1') - 1}, but got {value}")
 
