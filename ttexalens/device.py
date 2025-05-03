@@ -6,7 +6,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, replace
 from functools import cached_property
-from typing import Iterable, Iterator, List, Sequence, Tuple
+from typing import Dict, Iterable, Iterator, List, Sequence, Tuple
 
 from tabulate import tabulate
 from ttexalens.context import Context
@@ -375,7 +375,7 @@ class Device(TTObject):
     # See coordinate.py for valid values of axis_coordinates
     def render(self, axis_coordinate="die", cell_renderer=None, legend=None):
         dev = self.yaml_file.root
-        rows = []
+        rows: List[List[str]] = []
 
         # Retrieve all block locations
         all_block_locs = dict()
@@ -563,7 +563,7 @@ class Device(TTObject):
             return "----"
         return bt
 
-    REGISTER_ADDRESSES = {}
+    REGISTER_ADDRESSES: Dict[str, int] = {}
 
     def get_arc_register_addr(self, name: str) -> int:
         try:

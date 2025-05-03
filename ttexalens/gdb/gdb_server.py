@@ -618,7 +618,7 @@ class GdbServer(threading.Thread):
             # ‘vCont[;action[:thread-id]]…’
 
             # Create dictionary per thread that will contain actions that should be executed on that thread
-            thread_actions = {}
+            thread_actions: Dict[int, str] = {}
             for pid in self.debugging_threads.keys():
                 thread_actions[pid] = None
 

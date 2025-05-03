@@ -120,7 +120,7 @@ def get_noc_status_registers(loc: OnChipCoordinate, device, noc_id: int) -> Dict
         },
     }
 
-    noc_registers = {group_name: {} for group_name in register_groups.keys()}
+    noc_registers: Dict[str, Dict[str, int]] = {group_name: {} for group_name in register_groups.keys()}
     for group_name, registers in register_groups.items():
         for register_desc, reg_name in registers.items():
             noc_registers[group_name][register_desc] = read_noc_register(loc, device, noc_id, reg_name)
@@ -138,7 +138,7 @@ def get_all_noc_registers(loc: OnChipCoordinate, device) -> Dict[str, Dict[str, 
     Returns:
         Dictionary of all register values for both NOCs
     """
-    noc_registers = {"Noc0 Registers": {}, "Noc1 Registers": {}}
+    noc_registers: Dict[str, Dict[str, int]] = {"Noc0 Registers": {}, "Noc1 Registers": {}}
     register_names = device.get_noc_register_names()
     for reg_name in register_names:
         noc_registers["Noc0 Registers"][reg_name] = read_noc_register(loc, device, 0, reg_name)
@@ -219,7 +219,7 @@ def display_specific_noc_registers(
     valid_register_names = device.get_noc_register_names()
 
     # Create a data structure to hold register values
-    register_data = {f"NOC{noc_id} Registers": {}}
+    register_data: Dict[str, Dict[str, int]] = {f"NOC{noc_id} Registers": {}}
 
     # Check if we have valid registers to display
     valid_registers_found = False
