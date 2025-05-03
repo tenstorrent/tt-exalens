@@ -28,6 +28,26 @@ class TensixInstructions:
                 static_method = staticmethod(func)
                 setattr(self.__class__, func_name, static_method)
 
+    @staticmethod
+    def TT_OP_SFPLOAD(lreg_ind, instr_mod0, sfpu_addr_mode, dest_reg_addr):
+        pass
+
+    @staticmethod
+    def TT_OP_STALLWAIT(stall_res, wait_res):
+        pass
+
+    @staticmethod
+    def TT_OP_MOVDBGA2D(dest_32b_lo, src, addr_mode, instr_mod, dst):
+        pass
+
+    @staticmethod
+    def TT_OP_SFPSTORE(lreg_ind, instr_mod0, sfpu_addr_mode, dest_reg_addr):
+        pass
+
+    @staticmethod
+    def TT_OP_SETRWC(clear_ab_vld, rwc_cr, rwc_d, rwc_b, rwc_a, BitMask):
+        pass
+
 
 @dataclass
 class TensixRegisterDescription:
@@ -170,6 +190,22 @@ class Device(TTObject):
                 if id in chip:
                     self._has_jtag = True
                     break
+        self.instructions: TensixInstructions = None
+        self.DIE_X_TO_NOC_0_X: List[int] = []
+        self.DIE_Y_TO_NOC_0_Y: List[int] = []
+        self.DIE_X_TO_NOC_1_X: List[int] = []
+        self.DIE_Y_TO_NOC_1_Y: List[int] = []
+        self.NOC_0_X_TO_DIE_X: List[int] = []
+        self.NOC_0_Y_TO_DIE_Y: List[int] = []
+        self.NOC_1_X_TO_DIE_X: List[int] = []
+        self.NOC_1_Y_TO_DIE_Y: List[int] = []
+        self.PCI_ARC_RESET_BASE_ADDR: int = None
+        self.NOC_ARC_RESET_BASE_ADDR: int = None
+        self.PCI_ARC_CSM_DATA_BASE_ADDR: int = None
+        self.NOC_ARC_CSM_DATA_BASE_ADDR: int = None
+        self.PCI_ARC_ROM_DATA_BASE_ADDR: int = None
+        self.NOC_ARC_ROM_DATA_BASE_ADDR: int = None
+        self.NOC_REGISTER_OFFSET: int = None
 
         # Check if harvesting_desc is an array and has id+1 entries at the least
         harvesting_desc = cluster_desc["harvesting"]
