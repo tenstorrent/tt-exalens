@@ -821,6 +821,7 @@ class GdbServer(threading.Thread):
             if type(result) is str:
                 writer.append_string(result)
             else:
+                assert type(result) is int
                 writer.append_hex(result)
         elif parser.parse(
             b"vFile:close:"
@@ -844,6 +845,7 @@ class GdbServer(threading.Thread):
                 writer.append_string(pread_result)
             else:
                 # We expect result to be bytes
+                assert type(pread_result) is bytes
                 writer.append(b"F")
                 writer.append_hex(len(pread_result))
                 writer.append(b";")
@@ -862,6 +864,7 @@ class GdbServer(threading.Thread):
                 writer.append_string(pwrite_result)
             else:
                 # We expect result to be int, number of bytes written
+                assert type(pwrite_result) is int
                 writer.append(b"F")
                 writer.append_hex(pwrite_result)
         elif parser.parse(b"X"):  # Write data to memory, where the data is transmitted in binary.

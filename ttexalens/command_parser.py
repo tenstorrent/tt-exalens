@@ -40,7 +40,10 @@ class tt_docopt:
         elif device_id == "all":
             for device in context.devices.values():
                 yield device
+        elif type(device_id) == int:
+            yield context.devices[device_id]
         else:
+            assert type(device_id) == str
             yield context.devices[int(device_id, 0)]
 
     @staticmethod
