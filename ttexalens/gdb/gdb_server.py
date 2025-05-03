@@ -838,16 +838,16 @@ class GdbServer(threading.Thread):
             count = parser.parse_hex()
             parser.parse(b",")
             offset = parser.parse_hex()
-            result = self.file_server.pread(fd, count, offset)
-            if type(result) is str:
+            pread_result = self.file_server.pread(fd, count, offset)
+            if type(pread_result) is str:
                 writer.append(b"F")
-                writer.append_string(result)
+                writer.append_string(pread_result)
             else:
                 # We expect result to be bytes
                 writer.append(b"F")
-                writer.append_hex(len(result))
+                writer.append_hex(len(pread_result))
                 writer.append(b";")
-                writer.append(result)
+                writer.append(pread_result)
         elif parser.parse(b"vFile:pwrite:"):  # Write data (a binary buffer) to the open file corresponding to fd.
             # ‘vFile:pwrite: fd, offset, data’
             fd = parser.parse_hex()
@@ -856,14 +856,14 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             data = parser.read_rest()
             writer.append(b"F-1")
-            result = self.file_server.pwrite(fd, offset, data)
-            if type(result) is str:
+            pwrite_result = self.file_server.pwrite(fd, offset, data)
+            if type(pwrite_result) is str:
                 writer.append(b"F")
-                writer.append_string(result)
+                writer.append_string(pwrite_result)
             else:
                 # We expect result to be int, number of bytes written
                 writer.append(b"F")
-                writer.append_hex(result)
+                writer.append_hex(pwrite_result)
         elif parser.parse(b"X"):  # Write data to memory, where the data is transmitted in binary.
             # ‘X addr,length:XX…’
             try:

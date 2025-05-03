@@ -186,7 +186,7 @@ def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context =
                 # address change splits chunk, output current chunk if not empty
                 if len(current_chunk) > 0:
                     yield (chunk_start_address, current_chunk)
-                    current_chunk = []
+                    current_chunk = bytearray()
 
                 chunk_start_address = int(a[1], 16) * 4  # Parse hex number, hence 16
             else:  # Data
