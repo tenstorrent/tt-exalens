@@ -7,6 +7,7 @@ from typing import Dict, Optional, Set
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
 from ttexalens.firmware import ELF
+from sortedcontainers import SortedSet
 
 # All-encompassing structure representing a TTExaLens context
 class Context:
@@ -45,7 +46,7 @@ class Context:
         return self._cluster_desc
 
     @cached_property
-    def device_ids(self) -> Set[int]:
+    def device_ids(self) -> SortedSet:
         try:
             device_ids = self.server_ifc.get_device_ids()
             return util.set(d for d in device_ids)

@@ -539,8 +539,7 @@ class MY_DIE:
             if isinstance(attr_value, bytes):
                 attr_value = attr_value.decode("utf-8")
             attrs.append(f"{strip_DW_(attr_name)}={attr_value}")
-        attrs = ", ".join(attrs)
-        return f"{strip_DW_(self.tag)}({attrs}) offset={hex(self.offset)}"
+        return f"{strip_DW_(self.tag)}({', '.join(attrs)}) offset={hex(self.offset)}"
 
     def tag_is(self, tag):
         return self.tag == f"DW_TAG_{tag}"
@@ -962,56 +961,6 @@ def access_logger(addr, size_bytes):
     # We must return what we read to support dereferencing
     words_read = [i for i in range((size_bytes - 1) // 4 + 1)]
     return words_read
-
-
-if __name__ == "__main__":
-    args = docopt(__doc__)
-    elf_file_path = args["<elf-file>"]
-    access_path = args["<access-path>"]
-    debug_enabled = args["--debug"]
-
-    name_dict = read_elf(elf_file_path)
-    if access_path:
-        mem_access(name_dict, access_path, access_logger)
-    else:
-        # Debugging display
-        header = [
-            "Category",
-            "Path",
-            "Resolved Type Path",
-            "Size",
-            "Addr",
-            "Hex Addr",
-            "Value",
-            "Hex Value",
-        ]
-        header.append("DIE offset")
-        if debug_enabled:
-            header.append("DIE")
-
-        rows = []
-        for cat, cat_dict in name_dict.items():
-            for key, die in cat_dict.items():
-                if key != die.path:
-                    print(f"{CLR_RED}ERROR: key {key} != die.get_path() {die.path}{CLR_END}")
-                resolved_type_path = die.resolved_type.path
-                if resolved_type_path:  # Some DIEs are just refences to other DIEs. We skip them.
-                    row = [
-                        cat,
-                        die.path,
-                        resolved_type_path,
-                        die.size,
-                        die.address,
-                        hex(die.address) if die.address is not None else "",
-                        die.value,
-                        hex(die.value) if die.value is not None else "",
-                    ]
-                    row.append(hex(die.offset))
-                    if debug_enabled:
-                        row.append(str(die))
-                    rows.append(row)
-
-        print(tabulate(rows, headers=header, showindex=False, disable_numparse=True))
 
 
 # TODO:

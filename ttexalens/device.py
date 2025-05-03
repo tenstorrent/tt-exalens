@@ -6,7 +6,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, replace
 from functools import cached_property
-from typing import List, Sequence, Tuple
+from typing import Iterable, Iterator, List, Sequence, Tuple
 
 from tabulate import tabulate
 from ttexalens.context import Context
@@ -21,7 +21,7 @@ from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_devic
 
 
 class TensixInstructions:
-    def __init__(self, ops: __module__):
+    def __init__(self, ops):
         for func_name in dir(ops):
             func = getattr(ops, func_name)
             if callable(func):
@@ -125,32 +125,30 @@ class Device(TTObject):
         return cores
 
     # Class method to create a Device object given device architecture
+    @staticmethod
     def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
         dev = None
         if "wormhole" in arch.lower():
             from ttexalens.hw.tensix.wormhole import wormhole
 
-            dev = wormhole.WormholeDevice(
+            return wormhole.WormholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
         if "blackhole" in arch.lower():
             from ttexalens.hw.tensix.blackhole import blackhole
 
-            dev = blackhole.BlackholeDevice(
+            return blackhole.BlackholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
 
         if "quasar" in arch.lower():
             from ttexalens.hw.tensix.quasar import quasar
 
-            dev = quasar.QuasarDevice(
+            return quasar.QuasarDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
 
-        if dev is None:
-            raise RuntimeError(f"Architecture {arch} is not supported")
-
-        return dev
+        raise RuntimeError(f"Architecture {arch} is not supported")
 
     @cached_property
     def yaml_file(self):
@@ -277,7 +275,7 @@ class Device(TTObject):
         # Base class doesn't know if it is translated coordinate, but specialized classes do
         return False
 
-    def get_block_locations(self, block_type="functional_workers"):
+    def get_block_locations(self, block_type="functional_workers") -> List[OnChipCoordinate]:
         """
         Returns locations of all blocks of a given type
         """
@@ -379,6 +377,7 @@ class Device(TTObject):
             ]  # This adds the X-axis labels
             rows.append(row)
 
+        ver_range: Iterable[int]
         if OnChipCoordinate.vertical_axis_increasing_up(axis_coordinate):
             ver_range = reversed(range(ui_ver_range[0], ui_ver_range[1] + 1))
         else:

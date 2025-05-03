@@ -87,7 +87,7 @@ def init_ttexalens_cached(
     return load_context(lens_ifc)
 
 
-def get_cluster_desc_yaml(lens_ifc: tt_exalens_ifc.TTExaLensCommunicator) -> "tuple[util.YamlFile, util.YamlFile]":
+def get_cluster_desc_yaml(lens_ifc: tt_exalens_ifc.TTExaLensCommunicator) -> util.YamlFile:
     """Get the runtime data and cluster description yamls through the TTExaLens interface."""
 
     try:

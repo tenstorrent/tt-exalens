@@ -198,7 +198,7 @@ def merge_tables_side_by_side(a, b):
     width_b = len(b[0])
     t = []
     for i in range(max(len(a), len(b))):
-        row = [None] * (width_a + width_b)
+        row: List[str | None] = [None] * (width_a + width_b)
 
         for j in range(width_a):
             row[j] = "" if i >= len(a) else a[i][j]
@@ -254,10 +254,9 @@ def ryml_memory_to_value(mem):
     v = bytes(mem).decode("utf-8")
     # Try to convert v to int allowing for hex string (0x...)
     try:
-        v = int(v, 0)
+        return int(v, 0)
     except ValueError:
-        pass
-    return v
+        return v
 
 
 # Takes a Rapid yaml (ryml) tree and converts it to a Python dict
@@ -268,14 +267,14 @@ def ryml_to_dict(tree, i):
         return None
 
     if is_seq:
-        d = []
+        a = []
         fc = tree.first_child(i)
         while fc != ryml.NONE:
-            d.append(ryml_to_dict(tree, fc))
+            a.append(ryml_to_dict(tree, fc))
             fc = tree.next_sibling(fc)
             if fc == ryml.NONE:
                 break
-        return d
+        return a
 
     elif is_map:
         d = dict()
@@ -607,21 +606,25 @@ def set(*args, **kwargs):
 
 
 class CELLFMT:
+    @staticmethod
     def passthrough(r, c, i, val):
         return val
 
+    @staticmethod
     def odd_even(r, c, i, val):
         if r % 2 == 0:
             return val
         else:
             return f"{CLR_GREY}{val}{CLR_END}"
 
+    @staticmethod
     def hex(bytes_per_entry, prefix="0x", postfix=""):
         def hex_formatter(r, c, i, val):
             return prefix + "{vrednost:{fmt}}".format(fmt="0" + str(bytes_per_entry * 2) + "x", vrednost=val) + postfix
 
         return hex_formatter
 
+    @staticmethod
     def composite(fmt_function_array):
         def cell_fmt(r, c, i, val):
             for f in fmt_function_array:
@@ -630,6 +633,7 @@ class CELLFMT:
 
         return cell_fmt
 
+    @staticmethod
     def dec_and_hex(r, c, i, val):
         return f"{CLR_BLUE}{i:4d}{CLR_END} 0x{i:08x}"
 

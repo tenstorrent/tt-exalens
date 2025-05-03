@@ -18,7 +18,7 @@ def validate_trisc_id(trisc_id: int, context: Context) -> None:
         raise TTException(f"Invalid trisc_id {trisc_id}.")
 
 
-def validate_instruction(instruction: bytearray, context: Context) -> None:
+def validate_instruction(instruction: bytearray | bytes, context: Context) -> None:
     if len(bytearray(instruction)) != 4:
         raise TTException("Instruction must be 4 bytes long.")
 
@@ -39,9 +39,11 @@ def convert_regfile(regfile: Union[int, str, REGFILE]) -> REGFILE:
         pass
 
     try:
-        return REGFILE[regfile.upper()]
+        if isinstance(regfile, str):
+            return REGFILE[regfile.upper()]
     except:
-        raise TTException(f"Invalid regfile {regfile}.")
+        pass
+    raise TTException(f"Invalid regfile {regfile}.")
 
 
 class TensixDebug:
@@ -76,7 +78,7 @@ class TensixDebug:
 
     def inject_instruction(
         self,
-        instruction: Union[bytearray, int],
+        instruction: bytes | bytearray | int,
         trisc_id: int,
     ) -> None:
         """Injects instruction into Tensix pipe for TRISC specified by trisc_id.
@@ -88,8 +90,10 @@ class TensixDebug:
         validate_trisc_id(trisc_id, self.context)
 
         if isinstance(instruction, int):
-            instruction = instruction.to_bytes(4, byteorder="little")
-        validate_instruction(instruction, self.context)
+            instruction_bytes = instruction.to_bytes(4, byteorder="little")
+        else:
+            instruction_bytes = instruction
+        validate_instruction(instruction_bytes, self.context)
 
         # 1. Wait for buffer ready signal (poll bit 0 of DBG_INSTRN_BUF_STATUS until it’s 1)
         while (self.dbg_buff_status() & 1) == 0:
@@ -107,7 +111,7 @@ class TensixDebug:
         write_words_to_device(
             self.core_loc,
             self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1"),
-            int.from_bytes(instruction, byteorder="little"),
+            int.from_bytes(instruction_bytes, byteorder="little"),
             self.device_id,
             self.context,
         )
@@ -259,7 +263,7 @@ class TensixDebug:
     def read_regfile_data(
         self,
         regfile: Union[int, str, REGFILE],
-    ) -> bytearray:
+    ) -> list[int]:
         """Dumps SRCA/DSTACC register file from the specified core.
             Due to the architecture of SRCA, you can see only see last two faces written.
             SRCB is currently not supported.

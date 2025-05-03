@@ -856,6 +856,7 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             data = parser.read_rest()
             writer.append(b"F-1")
+            result = self.file_server.pwrite(fd, offset, data)
             if type(result) is str:
                 writer.append(b"F")
                 writer.append_string(result)
