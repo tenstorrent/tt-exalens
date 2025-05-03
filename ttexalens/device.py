@@ -174,8 +174,8 @@ class Device(TTObject):
     def yaml_file(self):
         return util.YamlFile(self._context.server_ifc, self._device_desc_path)
 
-    def __init__(self, id, arch, cluster_desc, device_desc_path: str, context: Context):
-        self._id = id
+    def __init__(self, id: int, arch: str, cluster_desc, device_desc_path: str, context: Context):
+        self._id: int = id
         self._arch = arch
         self._has_mmio = False
         self._has_jtag = False

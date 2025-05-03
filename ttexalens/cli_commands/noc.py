@@ -40,6 +40,7 @@ from docopt import docopt
 
 # Local imports
 from ttexalens import command_parser, util
+from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import read_words_from_device
 from ttexalens.uistate import UIState
@@ -254,7 +255,7 @@ def display_specific_noc_registers(
 ###############################################################################
 # Main Command Entry
 ###############################################################################
-def run(cmd_text: str, context: Dict, ui_state: Optional[UIState] = None) -> List:
+def run(cmd_text: str, context: Context, ui_state: UIState) -> List:
     """
     Main entry point for the NOC command.
 

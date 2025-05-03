@@ -957,7 +957,7 @@ class RiscLoader:
             not self.risc_debug.is_halted() or self.risc_debug.read_status().is_ebreak_hit
         ), f"RISC at location {self.risc_debug.location} is still halted, but not because of ebreak."
 
-    def _read_elfs(self, elf_paths: List[str], offsets: List[int]) -> List[dict]:
+    def _read_elfs(self, elf_paths: List[str], offsets: List[int | None]) -> List[dict]:
         if not isinstance(elf_paths, list):
             elf_paths = [elf_paths]
         offsets = [None] * len(elf_paths) if offsets is None else offsets
@@ -979,7 +979,7 @@ class RiscLoader:
         return None, None
 
     def get_callstack(
-        self, elf_paths: List[str], offsets: List[int] = None, limit: int = 100, stop_on_main: bool = True
+        self, elf_paths: List[str], offsets: List[int | None] = None, limit: int = 100, stop_on_main: bool = True
     ):
         callstack = []
         with self.risc_debug.ensure_halted():

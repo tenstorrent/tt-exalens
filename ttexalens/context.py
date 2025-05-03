@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from abc import abstractmethod
 from functools import cached_property
-from typing import Dict, Iterable, Optional, Set
+from typing import Dict, Iterable, Optional, Set, Tuple
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
 from ttexalens.firmware import ELF
@@ -73,7 +73,7 @@ class Context:
     def elf_loaded(self, location: OnChipCoordinate, risc_id: int, elf_path: str):
         pass
 
-    def convert_loc_to_umd(self, location: OnChipCoordinate):
+    def convert_loc_to_umd(self, location: OnChipCoordinate) -> Tuple[int, int]:
         if not self.use_noc1:
             return location.to("virtual")
         else:

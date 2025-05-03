@@ -438,7 +438,7 @@ def write_tensix_register(
 def callstack(
     core_loc: Union[str, OnChipCoordinate],
     elf_paths: Union[List[str], str],
-    offsets: List[int] = None,
+    offsets: int | List[int | None] = None,
     risc_id: int = 0,
     max_depth: int = 100,
     stop_on_main: bool = True,
