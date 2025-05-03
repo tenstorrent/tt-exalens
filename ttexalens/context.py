@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from abc import abstractmethod
 from functools import cached_property
-from typing import Dict, Optional, Set
+from typing import Dict, Iterable, Optional, Set
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
 from ttexalens.firmware import ELF
@@ -47,11 +47,12 @@ class Context:
 
     @cached_property
     def device_ids(self) -> SortedSet:
+        device_ids: Iterable[int]
         try:
             device_ids = self.server_ifc.get_device_ids()
-            return util.set(d for d in device_ids)
         except:
-            return None
+            device_ids = []
+        return util.set(d for d in device_ids)
 
     @cached_property
     def arch(self):

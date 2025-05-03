@@ -474,15 +474,15 @@ class Device(TTObject):
         pass
 
     @abstractmethod
-    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:
+    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int | None:
         pass
 
     @abstractmethod
-    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int:
+    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int | None:
         pass
 
     @abstractmethod
-    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
+    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription | None:
         pass
 
     @abstractmethod

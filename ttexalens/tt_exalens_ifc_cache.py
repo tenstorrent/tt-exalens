@@ -247,11 +247,11 @@ class TTExaLensCacheReader(TTExaLensCache):
 
     @read_decorator
     def get_file(self, file_path: str) -> str:
-        pass
+        return ""
 
     @read_cached_binary_decorator
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
-        pass
+        return io.BytesIO()
 
     @read_decorator
     def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):

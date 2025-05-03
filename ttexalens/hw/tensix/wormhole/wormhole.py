@@ -87,13 +87,13 @@ class WormholeDevice(Device):
     def _get_tensix_register_map_keys(self) -> List[str]:
         return list(WormholeDevice.__register_map.keys())
 
-    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
+    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription | None:
         """Overrides the base class method to provide register descriptions for Wormhole device."""
         if register_name in WormholeDevice.__register_map:
             return WormholeDevice.__register_map[register_name]
         return None
 
-    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:
+    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int | None:
         """Overrides the base class method to provide register base addresses for Wormhole device."""
         if isinstance(register_description, ConfigurationRegisterDescription):
             return WormholeDevice.CONFIGURATION_REGISTER_BASE
@@ -108,7 +108,7 @@ class WormholeDevice(Device):
         else:
             return None
 
-    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int:
+    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int | None:
         """Overrides the base class method to provide register end addresses for Wormhole device."""
         if isinstance(register_description, ConfigurationRegisterDescription):
             return WormholeDevice.CONFIGURATION_REGISTER_END

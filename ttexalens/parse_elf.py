@@ -666,7 +666,7 @@ class FrameInfoProvider:
                 end_address = start_address + entry.header["address_range"]
                 self.fdes.append((start_address, end_address, entry))
 
-    def get_frame_description(self, pc, risc_debug) -> FrameDescription:
+    def get_frame_description(self, pc, risc_debug) -> FrameDescription | None:
         pc = pc + self.loaded_offset
         for start_address, end_address, fde in self.fdes:
             if start_address <= pc < end_address:
