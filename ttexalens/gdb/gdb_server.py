@@ -498,7 +498,7 @@ class GdbServer(threading.Thread):
             annex = parser.read_until(GDB_ASCII_COLON).decode()
             offset = parser.parse_hex()
             if not parser.parse(b","):
-                util.ERROR(f"GDB: Something wrong with offset and length: {parser.data}")
+                util.ERROR(f"GDB: Something wrong with offset and length: {parser.data!r}")
                 writer.append(b"E01")
                 return True
             length = parser.parse_hex()
@@ -529,7 +529,7 @@ class GdbServer(threading.Thread):
                     self.write_paged_message(self.prepared_responses_for_paging[paging_key], offset, length, writer)
             else:
                 # We don't support this message
-                util.ERROR(f"GDB: unsupported message: {parser.data}")
+                util.ERROR(f"GDB: unsupported message: {parser.data!r}")
                 pass
         elif parser.parse(b"qSymbol"):  # Notify the target that GDB is prepared to serve symbol lookup requests.
             # We don't need symbol lookup (for now)
@@ -1106,7 +1106,7 @@ class GdbServer(threading.Thread):
             writer.append(b"E01")
         else:
             # Return unsupported message
-            util.WARN(f"GDB: unsupported message: {parser.data}")
+            util.WARN(f"GDB: unsupported message: {parser.data!r}")
             pass
         return True
 
