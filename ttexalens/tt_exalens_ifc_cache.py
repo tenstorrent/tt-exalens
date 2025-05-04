@@ -141,6 +141,10 @@ class TTExaLensCacheThrough(TTExaLensCache):
     def jtag_write32_axi(self, chip_id: int, address: int, data: int):
         return self.communicator.jtag_write32_axi(chip_id, address, data)
 
+    @cache_decorator
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
+        return self.communicator.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
+
     def using_cache(self) -> bool:
         return True
 
@@ -265,6 +269,10 @@ class TTExaLensCacheReader(TTExaLensCache):
         pass
 
     def jtag_write32_axi(self, chip_id: int, address: int, data: int):
+        pass
+
+    @read_decorator
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
         pass
 
     def using_cache(self) -> bool:
