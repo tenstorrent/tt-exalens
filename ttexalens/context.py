@@ -9,9 +9,11 @@ from ttexalens import util as util
 from ttexalens.firmware import ELF
 from sortedcontainers import SortedSet
 
+from ttexalens.tt_exalens_ifc_base import TTExaLensCommunicator
+
 # All-encompassing structure representing a TTExaLens context
 class Context:
-    def __init__(self, server_ifc, cluster_desc, short_name, use_noc1=False):
+    def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc: util.YamlFile, short_name: str, use_noc1=False):
         self.server_ifc = server_ifc
         self._cluster_desc = cluster_desc
         self.short_name = short_name
@@ -87,7 +89,7 @@ class Context:
 
 
 class LimitedContext(Context):
-    def __init__(self, server_ifc, cluster_desc_yaml, use_noc1=False):
+    def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc_yaml, use_noc1=False):
         super().__init__(server_ifc, cluster_desc_yaml, "limited", use_noc1)
         self.loaded_elfs = {}  # (OnChipCoordinate, risc_id) => elf_path
 

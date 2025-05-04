@@ -249,7 +249,7 @@ class Device(TTObject):
 
     def _init_coordinate_systems(self):
         # Fill in coordinates for each block type
-        self._noc0_to_block_type = {}
+        self._noc0_to_block_type: Dict[Tuple[int, int], str] = {}
         for block_type, locations in self._block_locations.items():
             for loc in locations:
                 self._noc0_to_block_type[loc._noc0_coord] = block_type
@@ -333,7 +333,7 @@ class Device(TTObject):
         """
         Returns locations of all blocks as dictionary of tuples (unchanged coordinates from YAML)
         """
-        result = {}
+        result: Dict[str, List[OnChipCoordinate]] = {}
         for block_type in self.block_types:
             locs = []
             dev = self.yaml_file.root
@@ -364,7 +364,7 @@ class Device(TTObject):
 
     core_types = {v["core_type"] for v in block_types.values()}
 
-    def get_block_type(self, loc: OnChipCoordinate):
+    def get_block_type(self, loc: OnChipCoordinate) -> str:
         """
         Returns the type of block at the given location
         """
