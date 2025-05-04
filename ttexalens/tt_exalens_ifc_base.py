@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from abc import ABC, abstractmethod
 import io
-from typing import Iterable, Tuple
+from typing import Iterable, List, Tuple
 
 
 class TTExaLensCommunicator(ABC):
@@ -86,6 +86,12 @@ class TTExaLensCommunicator(ABC):
 
     @abstractmethod
     def jtag_write32_axi(self, chip_id: int, address: int, data: int) -> int:
+        pass
+
+    @abstractmethod
+    def arc_msg(
+        self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int
+    ) -> List[int]:
         pass
 
     def using_cache(self) -> bool:

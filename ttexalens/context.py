@@ -75,6 +75,9 @@ class Context:
     def elf_loaded(self, location: OnChipCoordinate, risc_id: int, elf_path: str):
         pass
 
+    def convert_loc_to_jtag(self, location: OnChipCoordinate) -> Tuple[int, int]:
+        return location.to("noc0")
+
     def convert_loc_to_umd(self, location: OnChipCoordinate) -> Tuple[int, int]:
         if not self.use_noc1:
             return location.to("virtual")
@@ -91,7 +94,7 @@ class Context:
 class LimitedContext(Context):
     def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc_yaml, use_noc1=False):
         super().__init__(server_ifc, cluster_desc_yaml, "limited", use_noc1)
-        self.loaded_elfs = {}  # (OnChipCoordinate, risc_id) => elf_path
+        self.loaded_elfs: Dict[Tuple[OnChipCoordinate, int], str] = {}  # (OnChipCoordinate, risc_id) => elf_path
 
     def get_risc_elf_path(self, location: OnChipCoordinate, risc_id: int) -> Optional[str]:
         return self.loaded_elfs.get((location, risc_id))

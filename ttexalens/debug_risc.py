@@ -860,8 +860,8 @@ class RiscLoader:
         init_section_address = None
 
         try:
-            elf_file = self.context.server_ifc.get_binary(elf_path)
-            elf_file = ELFFile(elf_file)
+            elf_file_io = self.context.server_ifc.get_binary(elf_path)
+            elf_file = ELFFile(elf_file_io)
             address: int
             loader_data_address: int = loader_data if isinstance(loader_data, int) else None
             loader_code_address: int = loader_code if isinstance(loader_code, int) else None

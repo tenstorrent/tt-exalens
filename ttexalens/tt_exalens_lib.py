@@ -55,7 +55,7 @@ def read_word_from_device(
 
     coordinate = convert_coordinate(core_loc, device_id, context)
     if context.devices[device_id]._has_jtag:
-        word = context.server_ifc.jtag_read32(device_id, *coordinate.to("noc0"), addr)
+        word = context.server_ifc.jtag_read32(device_id, *context.convert_loc_to_jtag(coordinate), addr)
     else:
         word = context.server_ifc.pci_read32(device_id, *context.convert_loc_to_umd(coordinate), addr)
     return word
@@ -87,7 +87,7 @@ def read_words_from_device(
     data = []
     for i in range(word_count):
         if context.devices[device_id]._has_jtag:
-            word = context.server_ifc.jtag_read32(device_id, *coordinate.to("noc0"), addr + 4 * i)
+            word = context.server_ifc.jtag_read32(device_id, *context.convert_loc_to_jtag(coordinate), addr + 4 * i)
         else:
             word = context.server_ifc.pci_read32(device_id, *context.convert_loc_to_umd(coordinate), addr + 4 * i)
         data.append(word)
@@ -157,7 +157,9 @@ def write_words_to_device(
     bytes_written = 0
     for i, word in enumerate(data):
         if context.devices[device_id]._has_jtag:
-            bytes_written += context.server_ifc.jtag_write32(device_id, *coordinate.to("noc0"), addr + i * 4, word)
+            bytes_written += context.server_ifc.jtag_write32(
+                device_id, *context.convert_loc_to_jtag(coordinate), addr + i * 4, word
+            )
         else:
             bytes_written += context.server_ifc.pci_write32(
                 device_id, *context.convert_loc_to_umd(coordinate), addr + i * 4, word
