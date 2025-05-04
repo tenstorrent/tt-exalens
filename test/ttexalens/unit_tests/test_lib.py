@@ -17,7 +17,7 @@ from ttexalens import util
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.device import ConfigurationRegisterDescription, DebugRegisterDescription
-from ttexalens.debug_bus_signal import DebugBusSignalDescription
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name, get_risc_id
 from ttexalens.firmware import ELF
 from ttexalens.object import DataArray
