@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import struct
 import unittest
+import os
 
 from functools import wraps
 
@@ -15,10 +16,11 @@ from ttexalens import util
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
+from ttexalens.device import ConfigurationRegisterDescription, DebugRegisterDescription
+from ttexalens.debug_bus_signal import DebugBusSignalDescription
 from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name, get_risc_id
 from ttexalens.firmware import ELF
 from ttexalens.object import DataArray
-import os
 
 from ttexalens.hw.arc.arc import load_arc_fw
 from ttexalens.hw.arc.arc_dbg_fw import arc_dbg_fw_check_msg_loop_running, arc_dbg_fw_command, NUM_LOG_CALLS_OFFSET
@@ -238,8 +240,6 @@ class TestReadWrite(unittest.TestCase):
         """Test invalid inputs for write function."""
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_to_device(core_loc, address, data, device_id)
-
-    from ttexalens.device import ConfigurationRegisterDescription, DebugRegisterDescription, DebugBusSignalDescription
 
     @parameterized.expand(
         [
