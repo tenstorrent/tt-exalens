@@ -36,7 +36,7 @@ class Noc_STREAM_REMOTE_SRC:
     DRAM_READS__TRANS_SIZE_WORDS_LO: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_REMOTE_SRC:
+    def from_buffer_copy(cls, buffer: memoryview) -> "Noc_STREAM_REMOTE_SRC":
         instance = cls()
         value = unpack_int(buffer[0:4])
         instance.STREAM_REMOTE_SRC_X = (value >> 0) & ((1 << 6) - 1)
@@ -114,7 +114,7 @@ class Noc_STREAM_REMOTE_DEST_BUF_SIZE:
     DRAM_WRITES__SCRATCH_1_PTR_HI: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_REMOTE_DEST_BUF_SIZE:
+    def from_buffer_copy(cls, buffer: memoryview) -> "Noc_STREAM_REMOTE_DEST_BUF_SIZE":
         instance = cls()
         value = unpack_int(buffer[0:4])
         instance.REMOTE_DEST_BUF_SIZE_WORDS = (value >> 0) & ((1 << 17) - 1)
@@ -502,7 +502,7 @@ class Noc_STREAM_BLOB_NEXT_AUTO_CFG_DONE:
     BLOB_NEXT_AUTO_CFG_DONE_VALID: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_BLOB_NEXT_AUTO_CFG_DONE:
+    def from_buffer_copy(cls, buffer: memoryview) -> "Noc_STREAM_BLOB_NEXT_AUTO_CFG_DONE":
         instance = cls()
         value = unpack_int(buffer[0:4])
         instance.BLOB_NEXT_AUTO_CFG_DONE_STREAM_ID = (value >> 0) & ((1 << 6) - 1)
@@ -534,7 +534,7 @@ class Noc_STREAM_SCRATCH_1:
     NCRISC_INIT_DISABLE_BLOB_DONE_IRQ: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_SCRATCH_1:
+    def from_buffer_copy(cls, buffer: memoryview) -> "Noc_STREAM_SCRATCH_1":
         instance = cls()
         value = unpack_int(buffer[0:4])
         instance.DRAM_FIFO_RD_PTR_WORDS_LO = (value >> 0) & ((1 << 24) - 1)
@@ -550,7 +550,7 @@ class Noc_STREAM_SCRATCH_2:
     NCRISC_TOTAL_LOOP_ITER: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_SCRATCH_2:
+    def from_buffer_copy(cls, buffer: memoryview) -> "Noc_STREAM_SCRATCH_2":
         instance = cls()
         value = unpack_int(buffer[0:4])
         instance.DRAM_FIFO_RD_PTR_WORDS_HI = (value >> 0) & ((1 << 4) - 1)
@@ -566,7 +566,7 @@ class Noc_STREAM_SCRATCH_3:
     NCRISC_LOOP_BACK_NUM_CFG_REG_WRITES: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_SCRATCH_3:
+    def from_buffer_copy(cls, buffer: memoryview) -> "Noc_STREAM_SCRATCH_3":
         instance = cls()
         value = unpack_int(buffer[0:4])
         instance.DRAM_FIFO_WR_PTR_WORDS_HI = (value >> 0) & ((1 << 8) - 1)
@@ -582,7 +582,7 @@ class Noc_STREAM_SCRATCH_4:
     NCRISC_LOOP_BACK_AUTO_CFG_PTR: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_SCRATCH_4:
+    def from_buffer_copy(cls, buffer: memoryview) -> "Noc_STREAM_SCRATCH_4":
         instance = cls()
         value = unpack_int(buffer[0:4])
         instance.DRAM_FIFO_CAPACITY_PTR_WORDS_HI = (value >> 0) & ((1 << 12) - 1)
@@ -631,7 +631,7 @@ class Noc_STREAM_SCRATCH_5:
     NCRISC_LOOP_NEXT_PIC_INT_ON_PHASE: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_SCRATCH_5:
+    def from_buffer_copy(cls, buffer: memoryview) -> "Noc_STREAM_SCRATCH_5":
         instance = cls()
         value = unpack_int(buffer[0:4])
         instance.DRAM_FIFO_BASE_ADDR_WORDS_HI = (value >> 0) & ((1 << 16) - 1)

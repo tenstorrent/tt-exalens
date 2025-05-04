@@ -137,7 +137,8 @@ int main() {
             // Print class definition with parser function
             std::cout << std::endl;
             std::cout << "    @classmethod" << std::endl;
-            std::cout << "    def from_buffer_copy(cls, buffer: memoryview) -> Noc_" << reg.name << ":" << std::endl;
+            std::cout << "    def from_buffer_copy(cls, buffer: memoryview) -> \"Noc_" << reg.name
+                      << "\":" << std::endl;
             std::cout << "        instance = cls()" << std::endl;
             std::cout << "        value = unpack_int(buffer[0:4])" << std::endl;
             for (auto& field : reg.fields) {
