@@ -18,6 +18,11 @@ NOC0_REGS_START_ADDR = 0xFFB20000
 NOC1_REGS_START_ADDR = 0xFFB30000
 
 
+def unpack_int(buffer: memoryview) -> int:
+    int_value: int = struct.unpack_from("<I", buffer)[0]
+    return int_value
+
+
 class Noc_STREAM_SOURCE_ENDPOINT_NEW_MSG_INFO(LittleEndianStructure):
     """
     For endpoints with SOURCE_ENDPOINT == 1, this register is for firmware
@@ -209,9 +214,9 @@ class Noc_STREAM_REMOTE_SRC:
     DRAM_READS__TRANS_SIZE_WORDS_LO: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview):
+    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_REMOTE_SRC:
         instance = cls()
-        value = struct.unpack_from("<I", buffer[0:4])[0]
+        value = unpack_int(buffer[0:4])
         instance.STREAM_REMOTE_SRC_X = (value >> 0) & ((1 << 6) - 1)
         instance.STREAM_REMOTE_SRC_Y = (value >> 6) & ((1 << 6) - 1)
         instance.REMOTE_SRC_STREAM_ID = (value >> 12) & ((1 << 6) - 1)
@@ -287,9 +292,9 @@ class Noc_STREAM_REMOTE_DEST_BUF_SIZE:
     DRAM_WRITES__SCRATCH_1_PTR_HI: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview):
+    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_REMOTE_DEST_BUF_SIZE:
         instance = cls()
-        value = struct.unpack_from("<I", buffer[0:4])[0]
+        value = unpack_int(buffer[0:4])
         instance.REMOTE_DEST_BUF_SIZE_WORDS = (value >> 0) & ((1 << 17) - 1)
         instance.DRAM_WRITES__SCRATCH_1_PTR_HI = (value >> 0) & ((1 << 3) - 1)
         return instance
@@ -543,9 +548,9 @@ class Noc_STREAM_SCRATCH_1:
     NCRISC_INIT_DISABLE_BLOB_DONE_IRQ: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview):
+    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_SCRATCH_1:
         instance = cls()
-        value = struct.unpack_from("<I", buffer[0:4])[0]
+        value = unpack_int(buffer[0:4])
         instance.DRAM_FIFO_RD_PTR_WORDS_LO = (value >> 0) & ((1 << 24) - 1)
         instance.NCRISC_LOOP_COUNT = (value >> 0) & ((1 << 24) - 1)
         instance.NCRISC_INIT_ENABLE_BLOB_DONE_IRQ = (value >> 0) & ((1 << 1) - 1)
@@ -559,9 +564,9 @@ class Noc_STREAM_SCRATCH_2:
     NCRISC_TOTAL_LOOP_ITER: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview):
+    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_SCRATCH_2:
         instance = cls()
-        value = struct.unpack_from("<I", buffer[0:4])[0]
+        value = unpack_int(buffer[0:4])
         instance.DRAM_FIFO_RD_PTR_WORDS_HI = (value >> 0) & ((1 << 4) - 1)
         instance.DRAM_FIFO_WR_PTR_WORDS_LO = (value >> 4) & ((1 << 20) - 1)
         instance.NCRISC_TOTAL_LOOP_ITER = (value >> 0) & ((1 << 24) - 1)
@@ -575,9 +580,9 @@ class Noc_STREAM_SCRATCH_3:
     NCRISC_LOOP_BACK_NUM_CFG_REG_WRITES: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview):
+    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_SCRATCH_3:
         instance = cls()
-        value = struct.unpack_from("<I", buffer[0:4])[0]
+        value = unpack_int(buffer[0:4])
         instance.DRAM_FIFO_WR_PTR_WORDS_HI = (value >> 0) & ((1 << 8) - 1)
         instance.DRAM_FIFO_CAPACITY_PTR_WORDS_LO = (value >> 8) & ((1 << 16) - 1)
         instance.NCRISC_LOOP_INCR = (value >> 0) & ((1 << 16) - 1)
@@ -591,9 +596,9 @@ class Noc_STREAM_SCRATCH_4:
     NCRISC_LOOP_BACK_AUTO_CFG_PTR: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview):
+    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_SCRATCH_4:
         instance = cls()
-        value = struct.unpack_from("<I", buffer[0:4])[0]
+        value = unpack_int(buffer[0:4])
         instance.DRAM_FIFO_CAPACITY_PTR_WORDS_HI = (value >> 0) & ((1 << 12) - 1)
         instance.DRAM_FIFO_BASE_ADDR_WORDS_LO = (value >> 12) & ((1 << 12) - 1)
         instance.NCRISC_LOOP_BACK_AUTO_CFG_PTR = (value >> 0) & ((1 << 24) - 1)
@@ -640,9 +645,9 @@ class Noc_STREAM_SCRATCH_5:
     NCRISC_LOOP_NEXT_PIC_INT_ON_PHASE: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview):
+    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_SCRATCH_5:
         instance = cls()
-        value = struct.unpack_from("<I", buffer[0:4])[0]
+        value = unpack_int(buffer[0:4])
         instance.DRAM_FIFO_BASE_ADDR_WORDS_HI = (value >> 0) & ((1 << 16) - 1)
         instance.DRAM_EN_BLOCKING = (value >> 16) & ((1 << 1) - 1)
         instance.DRAM_DATA_STRUCTURE_IS_LUT = (value >> 17) & ((1 << 1) - 1)
@@ -782,9 +787,9 @@ class Noc_STREAM_BLOB_NEXT_AUTO_CFG_DONE:
     BLOB_NEXT_AUTO_CFG_DONE_VALID: int
 
     @classmethod
-    def from_buffer_copy(cls, buffer: memoryview):
+    def from_buffer_copy(cls, buffer: memoryview) -> Noc_STREAM_BLOB_NEXT_AUTO_CFG_DONE:
         instance = cls()
-        value = struct.unpack_from("<I", buffer[0:4])[0]
+        value = unpack_int(buffer[0:4])
         instance.BLOB_NEXT_AUTO_CFG_DONE_STREAM_ID = (value >> 0) & ((1 << 6) - 1)
         instance.BLOB_NEXT_AUTO_CFG_DONE_VALID = (value >> 16) & ((1 << 1) - 1)
         return instance
@@ -1118,7 +1123,7 @@ class NocOverlayRegistersState:
         This enables setting thresholds of buf_size/2, buf_size/4, buf_size/8, ... buf_size/256,
         as well as  3*buf_size/4, 7*buf_size/8, etc.
         """
-        return struct.unpack_from("<I", self.__buffer[24:])[0]
+        return unpack_int(self.__buffer[24:])
 
     @cached_property
     def STREAM_REMOTE_DEST(self) -> Noc_STREAM_REMOTE_DEST:
@@ -1174,7 +1179,7 @@ class NocOverlayRegistersState:
         """
         High bits for STREAM_REMOTE_DEST_BUF_START
         """
-        return struct.unpack_from("<I", self.__buffer[36:])[0]
+        return unpack_int(self.__buffer[36:])
 
     @cached_property
     def STREAM_REMOTE_DEST_BUF_SIZE(self) -> Noc_STREAM_REMOTE_DEST_BUF_SIZE:
@@ -1198,7 +1203,7 @@ class NocOverlayRegistersState:
         Can be written directly; automatically reset to 0 when
         STREAM_REMOTE_DEST_BUF_START is written.
         """
-        return struct.unpack_from("<I", self.__buffer[44:])[0]
+        return unpack_int(self.__buffer[44:])
 
     @cached_property
     def STREAM_REMOTE_DEST_MSG_INFO_BUF_SIZE(self) -> Noc_STREAM_REMOTE_DEST_MSG_INFO_BUF_SIZE:
@@ -1220,7 +1225,7 @@ class NocOverlayRegistersState:
         Start address (in words) of the remote destination stream memory buffer.
         Only used when DEST_MSG_INFO_BUF_FLOW_CTRL is true
         """
-        return struct.unpack_from("<I", self.__buffer[52:])[0]
+        return unpack_int(self.__buffer[52:])
 
     @cached_property
     def STREAM_REMOTE_DEST_MSG_INFO_WR_PTR(self) -> int:
@@ -1232,7 +1237,7 @@ class NocOverlayRegistersState:
         Subsequently its incremented automatically as messages are forwarded.
         When DEST_MSG_INFO_BUF_FLOW_CTRL is true this pointer is the one above
         """
-        return struct.unpack_from("<I", self.__buffer[52:])[0]
+        return unpack_int(self.__buffer[52:])
 
     @cached_property
     def STREAM_REMOTE_DEST_MSG_INFO_BUF_START_HI(self) -> int:
@@ -1240,7 +1245,7 @@ class NocOverlayRegistersState:
         High bits for STREAM_REMOTE_DEST_MSG_INFO_BUF_START
         Only used when DEST_MSG_INFO_BUF_FLOW_CTRL is true
         """
-        return struct.unpack_from("<I", self.__buffer[56:])[0]
+        return unpack_int(self.__buffer[56:])
 
     @cached_property
     def STREAM_REMOTE_DEST_MSG_INFO_WR_PTR_HI(self) -> int:
@@ -1248,7 +1253,7 @@ class NocOverlayRegistersState:
         High bits for STREAM_REMOTE_DEST_MSG_INFO_WR_PTR
         When DEST_MSG_INFO_BUF_FLOW_CTRL is true this pointer is the one above
         """
-        return struct.unpack_from("<I", self.__buffer[56:])[0]
+        return unpack_int(self.__buffer[56:])
 
     @cached_property
     def STREAM_REMOTE_DEST_MSG_INFO_WRAP_WR_PTR(self) -> int:
@@ -1258,7 +1263,7 @@ class NocOverlayRegistersState:
         Dont-care unless REMOTE_RECEIVER==1.
         Subsequently its incremented automatically as messages are forwarded.
         """
-        return struct.unpack_from("<I", self.__buffer[60:])[0]
+        return unpack_int(self.__buffer[60:])
 
     @cached_property
     def STREAM_REMOTE_DEST_TRAFFIC(self) -> Noc_STREAM_REMOTE_DEST_TRAFFIC:
@@ -1287,14 +1292,14 @@ class NocOverlayRegistersState:
         """
         Start address (in words) of the memory buffer associated with this stream.
         """
-        return struct.unpack_from("<I", self.__buffer[68:])[0]
+        return unpack_int(self.__buffer[68:])
 
     @cached_property
     def STREAM_BUF_SIZE(self) -> int:
         """
         Stream buffer size (in words).
         """
-        return struct.unpack_from("<I", self.__buffer[72:])[0]
+        return unpack_int(self.__buffer[72:])
 
     @cached_property
     def STREAM_RD_PTR(self) -> Noc_STREAM_RD_PTR:
@@ -1355,7 +1360,7 @@ class NocOverlayRegistersState:
         Start address (in words) of the msg info buffer.
         Only used when MSG_INFO_BUF_FLOW_CTRL is true
         """
-        return struct.unpack_from("<I", self.__buffer[88:])[0]
+        return unpack_int(self.__buffer[88:])
 
     @cached_property
     def STREAM_MSG_INFO_PTR(self) -> int:
@@ -1378,7 +1383,7 @@ class NocOverlayRegistersState:
         STREAM_MSG_INFO_WR_PTR_REG. Write pointer is also reset when writing this register.
         When MSG_INFO_BUF_FLOW_CTRL is true this pointer is the one above
         """
-        return struct.unpack_from("<I", self.__buffer[88:])[0]
+        return unpack_int(self.__buffer[88:])
 
     @cached_property
     def STREAM_MSG_INFO_WRAP_RD_WR_PTR(self) -> Noc_STREAM_MSG_INFO_WRAP_RD_WR_PTR:
@@ -1412,7 +1417,7 @@ class NocOverlayRegistersState:
         STREAM_NUM_MSGS_RECEIVED_INC_REG or STREAM_SOURCE_ENDPOINT_NEW_MSG_INFO_REG.
         When MSG_INFO_BUF_FLOW_CTRL is true this pointer is the one above
         """
-        return struct.unpack_from("<I", self.__buffer[92:])[0]
+        return unpack_int(self.__buffer[92:])
 
     @cached_property
     def STREAM_MCAST_DEST(self) -> Noc_STREAM_MCAST_DEST:
@@ -1468,7 +1473,7 @@ class NocOverlayRegistersState:
         """
         Number of multicast destinations (dont-care for non-multicast streams)
         """
-        return struct.unpack_from("<I", self.__buffer[100:])[0]
+        return unpack_int(self.__buffer[100:])
 
     @cached_property
     def STREAM_GATHER(self) -> Noc_STREAM_GATHER:
@@ -1512,7 +1517,7 @@ class NocOverlayRegistersState:
         pointer goes back to zero (without phase change).
         Dont-care if STREAM_MCAST_EN == 0 or MSG_SRC_IN_ORDER_FWD == 0.
         """
-        return struct.unpack_from("<I", self.__buffer[108:])[0]
+        return unpack_int(self.__buffer[108:])
 
     @cached_property
     def STREAM_CURR_PHASE_BASE(self) -> int:
@@ -1520,14 +1525,14 @@ class NocOverlayRegistersState:
         Actual phase number executed is STREAM_CURR_PHASE_BASE_REG_INDEX + STREAM_CURR_PHASE_REG_INDEX
         When reprogramming this register you must also reprogram STREAM_CURR_PHASE_REG_INDEX and STREAM_REMOTE_SRC_PHASE_REG_INDEX
         """
-        return struct.unpack_from("<I", self.__buffer[112:])[0]
+        return unpack_int(self.__buffer[112:])
 
     @cached_property
     def STREAM_CURR_PHASE(self) -> int:
         """
         Current phase number executed by the stream.
         """
-        return struct.unpack_from("<I", self.__buffer[116:])[0]
+        return unpack_int(self.__buffer[116:])
 
     @cached_property
     def STREAM_PHASE_AUTO_CFG_PTR_BASE(self) -> int:
@@ -1535,7 +1540,7 @@ class NocOverlayRegistersState:
         Actual address accessed will be STREAM_PHASE_AUTO_CFG_PTR_BASE_REG_INDEX + STREAM_PHASE_AUTO_CFG_PTR_REG_INDEX
         When reprogramming this register you must also reprogram STREAM_PHASE_AUTO_CFG_PTR_REG_INDEX
         """
-        return struct.unpack_from("<I", self.__buffer[120:])[0]
+        return unpack_int(self.__buffer[120:])
 
     @cached_property
     def STREAM_PHASE_AUTO_CFG_PTR(self) -> int:
@@ -1545,7 +1550,7 @@ class NocOverlayRegistersState:
         subsequenty.
         Specified as byte address, needs to be multiple of 4B.
         """
-        return struct.unpack_from("<I", self.__buffer[124:])[0]
+        return unpack_int(self.__buffer[124:])
 
     @cached_property
     def STREAM_RELOAD_PHASE_BLOB(self) -> int:
@@ -1556,7 +1561,7 @@ class NocOverlayRegistersState:
         The loaded blob must manually set its phase (using STREAM_CURR_PHASE) for this feature to work correctly.
         Furthermore the phase after the reload blob phase must also set its current phase manually.
         """
-        return struct.unpack_from("<I", self.__buffer[128:])[0]
+        return unpack_int(self.__buffer[128:])
 
     @cached_property
     def STREAM_MSG_HEADER_FORMAT(self) -> Noc_STREAM_MSG_HEADER_FORMAT:
@@ -1638,7 +1643,7 @@ class NocOverlayRegistersState:
         Data can be stored at [23:0] from STREAM_SCRATCH_REG_INDEX + 0 to STREAM_SCRATCH_REG_INDEX + 5
         Can be loaded through overlay blobs.
         """
-        return struct.unpack_from("<I", self.__buffer[144:])[0]
+        return unpack_int(self.__buffer[144:])
 
     @cached_property
     def STREAM_SCRATCH_0(self) -> Noc_STREAM_SCRATCH_0:
@@ -1800,7 +1805,7 @@ class NocOverlayRegistersState:
         Start address (in words) of the message blob buffer.
         Only used when out-of-order execution is enabled. Read value consists of this register + current message blob offset.
         """
-        return struct.unpack_from("<I", self.__buffer[824:])[0]
+        return unpack_int(self.__buffer[824:])
 
     @cached_property
     def STREAM_GLOBAL_OFFSET_TABLE(self) -> Noc_STREAM_GLOBAL_OFFSET_TABLE:
@@ -1828,7 +1833,7 @@ class NocOverlayRegistersState:
         Guarantees that no side-effects occur in Overlay hardware
         Does not map to any actual registers in streams
         """
-        return struct.unpack_from("<I", self.__buffer[832:])[0]
+        return unpack_int(self.__buffer[832:])
 
     @cached_property
     def STREAM_LOCAL_SRC_MASK(self) -> int:
@@ -1837,21 +1842,21 @@ class NocOverlayRegistersState:
         Mask segments [23:0], [47:24], and [63:48] are at indexes STREAM_LOCAL_SRC_MASK_REG_INDEX,
         STREAM_LOCAL_SRC_MASK_REG_INDEX+1, STREAM_LOCAL_SRC_MASK_REG_INDEX+2.
         """
-        return struct.unpack_from("<I", self.__buffer[896:])[0]
+        return unpack_int(self.__buffer[896:])
 
     @cached_property
     def STREAM_MSG_HEADER_FETCH(self) -> int:
         """
         Reserved for msg header fetch interface
         """
-        return struct.unpack_from("<I", self.__buffer[1016:])[0]
+        return unpack_int(self.__buffer[1016:])
 
     @cached_property
     def RESERVED1(self) -> int:
         """
         Reserved for legacy reasons. This range appears not to be used in rtl anymore.
         """
-        return struct.unpack_from("<I", self.__buffer[1020:])[0]
+        return unpack_int(self.__buffer[1020:])
 
     @cached_property
     def STREAM_SCRATCH32(self) -> int:
@@ -1859,7 +1864,7 @@ class NocOverlayRegistersState:
         Only in receiver endpoint/dram streams
         A 32 bit scratch register
         """
-        return struct.unpack_from("<I", self.__buffer[1024:])[0]
+        return unpack_int(self.__buffer[1024:])
 
     @cached_property
     def STREAM_WAIT_STATUS(self) -> Noc_STREAM_WAIT_STATUS:
@@ -1912,7 +1917,7 @@ class NocOverlayRegistersState:
         Only in receiver endpoint streams (stream 4 and 5)
         Read-only. Tells you the number of tiles that have arrived in L1
         """
-        return struct.unpack_from("<I", self.__buffer[1032:])[0]
+        return unpack_int(self.__buffer[1032:])
 
     @cached_property
     def STREAM_NUM_MSGS_RECEIVED(self) -> int:
@@ -1921,7 +1926,7 @@ class NocOverlayRegistersState:
         To get the total number of messages penidng in memory read
         STREAM_NUM_MSGS_RECEIVED_IN_BUF_AND_MEM_REG_INDEX
         """
-        return struct.unpack_from("<I", self.__buffer[1036:])[0]
+        return unpack_int(self.__buffer[1036:])
 
     @cached_property
     def STREAM_BUF_SPACE_AVAILABLE(self) -> int:
@@ -1929,7 +1934,7 @@ class NocOverlayRegistersState:
         Available buffer space at the stream (in 16B words).
         Source cant send data unless available space > 0.
         """
-        return struct.unpack_from("<I", self.__buffer[1040:])[0]
+        return unpack_int(self.__buffer[1040:])
 
     @cached_property
     def STREAM_MSG_INFO_BUF_SPACE_AVAILABLE(self) -> int:
@@ -1938,21 +1943,21 @@ class NocOverlayRegistersState:
         Source cant send data unless available space > 0.
         Only valid when MSG_INFO_BUF_FLOW_CTRL is true
         """
-        return struct.unpack_from("<I", self.__buffer[1044:])[0]
+        return unpack_int(self.__buffer[1044:])
 
     @cached_property
     def STREAM_NEXT_RECEIVED_MSG_ADDR(self) -> int:
         """
         Memory address (in words) of the next in line received message (read-only).
         """
-        return struct.unpack_from("<I", self.__buffer[1048:])[0]
+        return unpack_int(self.__buffer[1048:])
 
     @cached_property
     def STREAM_NEXT_RECEIVED_MSG_SIZE(self) -> int:
         """
         Size in words of the next in line received message (read-only).
         """
-        return struct.unpack_from("<I", self.__buffer[1052:])[0]
+        return unpack_int(self.__buffer[1052:])
 
     @cached_property
     def STREAM_MULTI_MSG_CLEAR(self) -> int:
@@ -1964,7 +1969,7 @@ class NocOverlayRegistersState:
         You should not use both STREAM_MSG_INFO_CLEAR/STREAM_MSG_DATA_CLEAR and STREAM_MULTI_MSG_CLEAR at the same time
         Must be used only for streams where RECEIVER_ENDPOINT == 1.
         """
-        return struct.unpack_from("<I", self.__buffer[1056:])[0]
+        return unpack_int(self.__buffer[1056:])
 
     @cached_property
     def STREAM_MSG_INFO_CLEAR(self) -> int:
@@ -1973,7 +1978,7 @@ class NocOverlayRegistersState:
         No effect on the read pointer.
         Should be used only for streams where RECEIVER_ENDPOINT == 1.
         """
-        return struct.unpack_from("<I", self.__buffer[1060:])[0]
+        return unpack_int(self.__buffer[1060:])
 
     @cached_property
     def STREAM_MSG_DATA_CLEAR(self) -> int:
@@ -1984,14 +1989,14 @@ class NocOverlayRegistersState:
         Should be used only for streams where RECEIVER_ENDPOINT == 1, after
         STREAM_MSG_INFO_CLEAR_REG has been written with the same value.
         """
-        return struct.unpack_from("<I", self.__buffer[1064:])[0]
+        return unpack_int(self.__buffer[1064:])
 
     @cached_property
     def STREAM_PHASE_ADVANCE(self) -> int:
         """
         Write-only. Write 1 to advance to the next phase if PHASE_AUTO_ADVANCE == 0.
         """
-        return struct.unpack_from("<I", self.__buffer[1068:])[0]
+        return unpack_int(self.__buffer[1068:])
 
     @cached_property
     def STREAM_DEST_PHASE_READY_UPDATE(self) -> Noc_STREAM_DEST_PHASE_READY_UPDATE:
@@ -2077,7 +2082,7 @@ class NocOverlayRegistersState:
         """
         Write to reset & stop stream.
         """
-        return struct.unpack_from("<I", self.__buffer[1084:])[0]
+        return unpack_int(self.__buffer[1084:])
 
     @cached_property
     def STREAM_MSG_GROUP_ZERO_MASK_AND(self) -> int:
@@ -2086,21 +2091,21 @@ class NocOverlayRegistersState:
         (Header bits [95:64].)
         Read-only.  Valid only for receiver endpoint streams.
         """
-        return struct.unpack_from("<I", self.__buffer[1088:])[0]
+        return unpack_int(self.__buffer[1088:])
 
     @cached_property
     def STREAM_MSG_INFO_FULL(self) -> int:
         """
         Returns 1 if the message info register is full (read-only).
         """
-        return struct.unpack_from("<I", self.__buffer[1092:])[0]
+        return unpack_int(self.__buffer[1092:])
 
     @cached_property
     def STREAM_MSG_INFO_FULLY_LOADED(self) -> int:
         """
         Returns 1 if the message info register is full (read-only), and there are no outstanding loads in progress.
         """
-        return struct.unpack_from("<I", self.__buffer[1096:])[0]
+        return unpack_int(self.__buffer[1096:])
 
     @cached_property
     def STREAM_MSG_INFO_CAN_PUSH_NEW_MSG(self) -> int:
@@ -2111,7 +2116,7 @@ class NocOverlayRegistersState:
         (I.e. ther is free space in the msg info register, and we dont have any message info headers in the
          memory buffer about to be fetched.)
         """
-        return struct.unpack_from("<I", self.__buffer[1100:])[0]
+        return unpack_int(self.__buffer[1100:])
 
     @cached_property
     def STREAM_MSG_GROUP_COMPRESS(self) -> int:
@@ -2120,21 +2125,21 @@ class NocOverlayRegistersState:
         (Header bit 52.)
         Read-only.  Valid only for receiver endpoint streams.
         """
-        return struct.unpack_from("<I", self.__buffer[1104:])[0]
+        return unpack_int(self.__buffer[1104:])
 
     @cached_property
     def STREAM_PHASE_ALL_MSGS_PUSHED(self) -> int:
         """
         Returns 1 if all msgs that the phase can accept have been pushed into the stream. 0 otherwise.
         """
-        return struct.unpack_from("<I", self.__buffer[1108:])[0]
+        return unpack_int(self.__buffer[1108:])
 
     @cached_property
     def STREAM_READY_FOR_MSG_PUSH(self) -> int:
         """
         Returns 1 if the stream is in a state where it can accept msgs.
         """
-        return struct.unpack_from("<I", self.__buffer[1112:])[0]
+        return unpack_int(self.__buffer[1112:])
 
     @cached_property
     def STREAM_GLOBAL_OFFSET_TABLE_RD(self) -> int:
@@ -2142,7 +2147,7 @@ class NocOverlayRegistersState:
         Returns global offset table entry 0. The rest of the table entries can be read at index
         STREAM_GLOBAL_OFFSET_TABLE_RD_REG_INDEX+i, up to maximum entry size.
         """
-        return struct.unpack_from("<I", self.__buffer[1116:])[0]
+        return unpack_int(self.__buffer[1116:])
 
     @cached_property
     def STREAM_BLOB_AUTO_CFG_DONE(self) -> int:
@@ -2152,7 +2157,7 @@ class NocOverlayRegistersState:
         Can be manually reset to 0 by writing 1 to the corresponding bit.
         Exists only in stream 0
         """
-        return struct.unpack_from("<I", self.__buffer[1152:])[0]
+        return unpack_int(self.__buffer[1152:])
 
     @cached_property
     def STREAM_BLOB_NEXT_AUTO_CFG_DONE(self) -> Noc_STREAM_BLOB_NEXT_AUTO_CFG_DONE:
@@ -2181,7 +2186,7 @@ class NocOverlayRegistersState:
         Write (STREAM_RECEIVER_ENDPOINT_SET_MSG_HEADER_REG_INDEX+i) to set bits [i*32 +: 32]
         of the message header for the next message, prior to writing STREAM_SOURCE_ENDPOINT_NEW_MSG_INFO_REG_INDEX.
         """
-        return struct.unpack_from("<I", self.__buffer[1164:])[0]
+        return unpack_int(self.__buffer[1164:])
 
     @cached_property
     def STREAM_REMOTE_DEST_BUF_SPACE_AVAILABLE(self) -> Noc_STREAM_REMOTE_DEST_BUF_SPACE_AVAILABLE:
@@ -2212,7 +2217,7 @@ class NocOverlayRegistersState:
         Read-only register view of the bits on the o_full_msg_info bus.
         Exposed as 32-bit read-only registers starting at this index.
         """
-        return struct.unpack_from("<I", self.__buffer[1316:])[0]
+        return unpack_int(self.__buffer[1316:])
 
     @cached_property
     def STREAM_DEBUG_STATUS_SEL(self) -> Noc_STREAM_DEBUG_STATUS_SEL:
@@ -2240,7 +2245,7 @@ class NocOverlayRegistersState:
         Debugging: Non-zero value indicates an invalid stream operation occured.
         Sticky, write 1 to clear.
         """
-        return struct.unpack_from("<I", self.__buffer[2000:])[0]
+        return unpack_int(self.__buffer[2000:])
 
     @cached_property
     def STREAM_DEBUG_STATUS(self) -> int:
@@ -2248,17 +2253,17 @@ class NocOverlayRegistersState:
         Read-only register that exposes internal states of the stream.
         Useful for debugging. Valid 32-bit data from STREAM_DEBUG_STATUS_REG_INDEX + 0 to STREAM_DEBUG_STATUS_REG_INDEX + 9
         """
-        return struct.unpack_from("<I", self.__buffer[2004:])[0]
+        return unpack_int(self.__buffer[2004:])
 
     @cached_property
     def RESERVED2(self) -> int:
         """
         Reserved for legacy reasons. This range appears not to be used in rtl anymore.
         """
-        return struct.unpack_from("<I", self.__buffer[2044:])[0]
+        return unpack_int(self.__buffer[2044:])
 
     def get_stream_reg_field(self, reg_index: int, start_bit: int, num_bits: int):
-        value = struct.unpack_from("<I", self.__buffer[reg_index * 4 :])[0]
+        value = unpack_int(self.__buffer[reg_index * 4 :])
         mask = (1 << num_bits) - 1
         value = (value >> start_bit) & mask
         return value

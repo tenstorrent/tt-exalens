@@ -77,6 +77,11 @@ int main() {
     std::cout << "NOC0_REGS_START_ADDR = 0x" << std::hex << std::uppercase << NOC0_REGS_START_ADDR << std::endl;
     std::cout << "NOC1_REGS_START_ADDR = 0x" << std::hex << std::uppercase << NOC1_REGS_START_ADDR << std::endl;
     std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << "def unpack_int(buffer: memoryview) -> int:" << std::endl;
+    std::cout << "    int_value: int = struct.unpack_from(\"<I\", buffer)[0]" << std::endl;
+    std::cout << "    return int_value" << std::endl;
+    std::cout << std::endl;
 
     // Print structures used for parsing registers
     for (auto& reg : OLP::GetAllRegs()) {
@@ -132,9 +137,9 @@ int main() {
             // Print class definition with parser function
             std::cout << std::endl;
             std::cout << "    @classmethod" << std::endl;
-            std::cout << "    def from_buffer_copy(cls, buffer: memoryview):" << std::endl;
+            std::cout << "    def from_buffer_copy(cls, buffer: memoryview) -> Noc_" << reg.name << ":" << std::endl;
             std::cout << "        instance = cls()" << std::endl;
-            std::cout << "        value = struct.unpack_from(\"<I\", buffer[0:4])[0]" << std::endl;
+            std::cout << "        value = unpack_int(buffer[0:4])" << std::endl;
             for (auto& field : reg.fields) {
                 std::cout << "        instance." << field.name << " = (value >> " << std::dec << field.offset
                           << ") & ((1 << " << std::dec << field.width << ") - 1)" << std::endl;
@@ -161,8 +166,8 @@ int main() {
                 std::cout << "        \"\"\"" << std::endl
                           << fixDescription(reg.description, "        ") << "        \"\"\"" << std::endl;
             }
-            std::cout << "        return struct.unpack_from(\"<I\", self.__buffer[" << std::dec << (reg.index * 4)
-                      << ":])[0]" << std::endl;
+            std::cout << "        return unpack_int(self.__buffer[" << std::dec << (reg.index * 4) << ":])"
+                      << std::endl;
             std::cout << std::endl;
         } else {
             std::cout << "    @cached_property" << std::endl;
@@ -189,7 +194,7 @@ int main() {
     }
 
     std::cout << "    def get_stream_reg_field(self, reg_index: int, start_bit: int, num_bits: int):" << std::endl;
-    std::cout << "        value = struct.unpack_from(\"<I\", self.__buffer[reg_index * 4 :])[0]" << std::endl;
+    std::cout << "        value = unpack_int(self.__buffer[reg_index * 4 :])" << std::endl;
     std::cout << "        mask = (1 << num_bits) - 1" << std::endl;
     std::cout << "        value = (value >> start_bit) & mask" << std::endl;
     std::cout << "        return value" << std::endl;
