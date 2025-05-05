@@ -55,7 +55,7 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     elf_path = dopt.args["<elf-file>"]
     risc_id = 0  # For now only works on BRISC
-    noc_id = dopt.args["-n"] if dopt.args["-n"] else 0
+    noc_id = int(dopt.args["-n"]) if dopt.args["-n"] else 0
 
     if not os.path.exists(elf_path):
         util.ERROR(f"File {elf_path} does not exist")
@@ -68,9 +68,11 @@ def run(cmd_text, context, ui_state: UIState = None):
     # Extract symbols from elf
     symbols = decode_symbols(elf)
 
-    # Set default to all for devices and locations
-    dopt.args["-d"] = "all" if dopt.args["-d"] is None else dopt.args["-d"]
-    dopt.args["-l"] = "all" if dopt.args["-l"] is None else dopt.args["-l"]
+    # Set devices and locations to all if not specified
+    if dopt.args["-d"] is None:
+        dopt.args["-d"] = "all"
+    if dopt.args["-l"] is None:
+        dopt.args["-l"] = "all"
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
@@ -80,7 +82,7 @@ def run(cmd_text, context, ui_state: UIState = None):
             # Check if all variables match with corresponding register
             for var in VAR_TO_REG_MAP:
                 reg = VAR_TO_REG_MAP[var]
-                address = symbols[var] + 4 * noc_id
+                address = symbols[var]
                 reg_val = lib.read_tensix_register(loc, reg, device.id(), context)
                 var_val = lib.read_riscv_memory(loc, address, noc_id, risc_id, device.id(), context)
 
@@ -89,9 +91,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                     if passed:
                         print(util.XMARK)
                     passed = False
-                    util.ERROR(
-                        f"\tMismatch between {reg} and {var} at device: {device.id()} at loc: {loc}: {reg_val} != {var_val}"
-                    )
+                    util.ERROR(f"\tMismatch between {reg} and {var} -> {reg_val} != {var_val}")
 
             if passed:
                 print(util.CHECKMARK)
