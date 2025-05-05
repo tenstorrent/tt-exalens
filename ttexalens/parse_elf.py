@@ -687,6 +687,8 @@ def decode_symbols(elf_file):
                     functions[symbol.name] = symbol["st_value"]
                 if symbol["st_info"]["type"] == "STT_FUNC":
                     functions[symbol.name] = symbol["st_value"]
+                if symbol["st_info"]["type"] == "STT_OBJECT":
+                    functions[symbol.name] = symbol["st_value"]
     return functions
 
 

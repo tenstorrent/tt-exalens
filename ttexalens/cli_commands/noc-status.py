@@ -10,11 +10,11 @@ Description:
     Should be only used for BRISC cores.
 
 Arguments:
-    <elf-file>       Path to the firmware elf file.
+    <elf-file>    Path to the risc's firmware elf file.
 
 Options:
-    -d <device>   Device ID. Default: current device
-    -l <loc>      Core location in X-Y or R,C format. Default: current location
+    -d <device>   Device ID. Default: all
+    -l <loc>      Core location in X-Y or R,C format. Default: all
     -n <noc>      Noc ID (0 or 1). Default: 0
 
 Examples:
@@ -32,29 +32,33 @@ import os
 from ttexalens.uistate import UIState
 from ttexalens import command_parser
 from ttexalens import util
-from ttexalens.parse_elf import read_elf
+from ttexalens.parse_elf import read_elf, decode_symbols
 from elftools.elf.elffile import ELFFile
 import ttexalens.tt_exalens_lib as lib
 
 
-VARS_TO_CHECK = {
-    "noc_reads_num_issued": ["NIU_MST_RD_RESP_RECEIVED", None],
-    "noc_nonposted_writes_num_issued": ["NIU_MST_NONPOSTED_WR_REQ_SENT", None],
-    "noc_nonposted_writes_acked": ["NIU_MST_WR_ACK_RECEIVED", None],
-    "noc_nonposted_atomics_acked": ["NIU_MST_ATOMIC_RESP_RECEIVED", None],
-    "noc_posted_writes_num_issued": ["NIU_MST_POSTED_WR_REQ_SENT", None],
+# Dictionary of corresponding variables and registers to check
+VAR_TO_REG_MAP = {
+    "noc_reads_num_issued": "NIU_MST_RD_RESP_RECEIVED",
+    "noc_nonposted_writes_num_issued": "NIU_MST_NONPOSTED_WR_REQ_SENT",
+    "noc_nonposted_writes_acked": "NIU_MST_WR_ACK_RECEIVED",
+    "noc_nonposted_atomics_acked": "NIU_MST_ATOMIC_RESP_RECEIVED",
+    "noc_posted_writes_num_issued": "NIU_MST_POSTED_WR_REQ_SENT",
 }
 
 
-def get_symbol_from_elf(elf, symbol_name):
+# TODO: Move this to parse_elf.py or use one if exists
+def get_symbol_address_from_elf(elf: ELFFile, symbol_name: str, noc_id: int = 0) -> int:
     # Iterate through sections to find the symbol table
     for section in elf.iter_sections():
-        if section.header.sh_type == "SHT_SYMTAB":
+        if section.name == ".symtab":
             symbol_table = section
             for symbol in symbol_table.iter_symbols():
                 # Match the variable name
                 if symbol.name == symbol_name:
-                    return symbol.entry.st_value  # + 4*noc_id
+                    return symbol.entry.st_value + 4 * noc_id
+
+    return None
 
 
 def run(cmd_text, context, ui_state: UIState = None):
@@ -71,25 +75,30 @@ def run(cmd_text, context, ui_state: UIState = None):
         util.ERROR(f"File {elf_path} does not exist")
         return
 
+    # Open elf file from given path
     f = context.server_ifc.get_binary(elf_path)
+    # Read elf
     elf = ELFFile(f)
-    for var in VARS_TO_CHECK:
-        VARS_TO_CHECK[var][1] = get_symbol_from_elf(elf, var)
+    # Extract symbols from elf
+    symbols = decode_symbols(elf)
 
+    # Set default to all for devices and locations
     dopt.args["-d"] = "all" if dopt.args["-d"] is None else dopt.args["-d"]
     dopt.args["-l"] = "all" if dopt.args["-l"] is None else dopt.args["-l"]
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            passed = True
             util.INFO(f"Device: {device.id()}, loc: {loc}", end=" ")
+            passed = True
 
-            for var in VARS_TO_CHECK:
-                reg, address = VARS_TO_CHECK[var]
+            for var in VAR_TO_REG_MAP:
+                reg = VAR_TO_REG_MAP[var]
+                address = symbols[var]
                 reg_val = lib.read_tensix_register(loc, reg, device.id(), context)
                 var_val = lib.read_riscv_memory(loc, address, noc_id, risc_id, device.id(), context)
 
                 if reg_val != var_val:
+                    # If this is the first one to fail print xmark
                     if passed:
                         print(util.XMARK)
                     passed = False
