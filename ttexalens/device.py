@@ -10,6 +10,7 @@ from typing import List, Sequence, Tuple
 
 from tabulate import tabulate
 from ttexalens.context import Context
+from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.object import TTObject
 from ttexalens import util as util
 from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
@@ -75,28 +76,6 @@ class NocConfigurationRegisterDescription(TensixRegisterDescription):
 @dataclass
 class NocControlRegisterDescription(TensixRegisterDescription):
     pass
-
-
-@dataclass
-class DebugBusSignalDescription:
-    rd_sel: int = 0
-    daisy_sel: int = 0
-    sig_sel: int = 0
-    mask: int = 0xFFFFFFFF
-
-    def __post_init__(self):
-        """Validate field values after object creation."""
-        if not (0 <= self.rd_sel <= 3):  # Example range, update if needed
-            raise ValueError(f"rd_sel must be between 0 and 3, got {self.rd_sel}")
-
-        if not (0 <= self.daisy_sel <= 255):  # Example range, update if needed
-            raise ValueError(f"daisy_sel must be between 0 and 255, got {self.daisy_sel}")
-
-        if not (0 <= self.sig_sel <= 65535):  # Example range, update if needed
-            raise ValueError(f"sig_sel must be between 0 and 65535, got {self.sig_sel}")
-
-        if not (0 <= self.mask <= 0xFFFFFFFF):  # Mask should be a valid 32-bit value
-            raise ValueError(f"mask must be a valid 32-bit integer, got {self.mask}")
 
 
 #
@@ -558,40 +537,11 @@ class Device(TTObject):
             }
 
     @abstractmethod
-    def _get_debug_bus_signal_description(self, name) -> DebugBusSignalDescription:
+    def get_debug_bus_signal_store(self, loc: OnChipCoordinate) -> DebugBusSignalStore:
+        """
+        Returns the debug bus signal store for the given location.
+        """
         pass
-
-    def get_debug_bus_signal_names(self) -> List[str]:
-        return []
-
-    def get_debug_bus_signal_description(self, name):
-        debug_bus_signal_description = self._get_debug_bus_signal_description(name)
-        if debug_bus_signal_description is None:
-            raise ValueError(f"Unknown debug bus signal name: {name}")
-        return debug_bus_signal_description
-
-    def read_debug_bus_signal(self, loc: OnChipCoordinate, name: str) -> int:
-        signal = self.get_debug_bus_signal_description(name)
-        return self.read_debug_bus_signal_from_description(loc, signal)
-
-    def read_debug_bus_signal_from_description(self, loc: OnChipCoordinate, signal: DebugBusSignalDescription) -> int:
-        if signal is None:
-            raise ValueError(f"Debug Bus signal description is not defined")
-
-        # Write the configuration
-        en = 1
-        config_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_DBG_BUS_CNTL_REG")
-        config = (en << 29) | (signal.rd_sel << 25) | (signal.daisy_sel << 16) | (signal.sig_sel << 0)
-        write_words_to_device(loc, config_addr, config, self._id)
-
-        # Read the data
-        data_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_DBG_RD_DATA")
-        data = read_word_from_device(loc, data_addr)
-
-        # Disable the signal
-        write_words_to_device(loc, config_addr, 0, self._id)
-
-        return data if signal.mask is None else data & signal.mask
 
     def _is_noc_register_description(self, description: TensixRegisterDescription) -> bool:
         return isinstance(

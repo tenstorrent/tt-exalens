@@ -68,6 +68,7 @@ class TestDebugging(unittest.TestCase):
         self.rdbg = RiscDebug(rloc, self.context)
         loader = RiscLoader(self.rdbg, self.context)
         self.program_base_address = loader.get_risc_start_address()
+        self.debug_bus_store = self.context.devices[0].get_debug_bus_signal_store(loc)
 
         # If address wasn't set before, we want to set it to something that is not 0 for testing purposes
         if self.program_base_address == None:
@@ -124,7 +125,7 @@ class TestDebugging(unittest.TestCase):
             )
 
     def get_pc_from_debug_bus(self):
-        return self.context.devices[0].read_debug_bus_signal(self.core_loc, self.risc_name.lower() + "_pc")
+        return self.debug_bus_store.read_signal(self.risc_name.lower() + "_pc")
 
     def assertPcLess(self, expected):
         """Assert PC register is less than expected value."""

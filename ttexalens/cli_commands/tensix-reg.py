@@ -196,4 +196,4 @@ def run(cmd_text, context, ui_state: UIState = None):
                     data_type = register.data_type
 
                 INFO(f"Value of register {register} on device {device.id()} and location {loc}:")
-                print(convert_int_to_data_type(reg_value, data_type, bin(register.mask).count("1")))
+                print(convert_int_to_data_type(reg_value, data_type, register.mask.bit_count()))
