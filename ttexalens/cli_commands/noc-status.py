@@ -47,20 +47,6 @@ VAR_TO_REG_MAP = {
 }
 
 
-# TODO: Move this to parse_elf.py or use one if exists
-def get_symbol_address_from_elf(elf: ELFFile, symbol_name: str, noc_id: int = 0) -> int:
-    # Iterate through sections to find the symbol table
-    for section in elf.iter_sections():
-        if section.name == ".symtab":
-            symbol_table = section
-            for symbol in symbol_table.iter_symbols():
-                # Match the variable name
-                if symbol.name == symbol_name:
-                    return symbol.entry.st_value + 4 * noc_id
-
-    return None
-
-
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
@@ -91,9 +77,10 @@ def run(cmd_text, context, ui_state: UIState = None):
             util.INFO(f"Device: {device.id()}, loc: {loc}", end=" ")
             passed = True
 
+            # Check if all variables match with corresponding register
             for var in VAR_TO_REG_MAP:
                 reg = VAR_TO_REG_MAP[var]
-                address = symbols[var]
+                address = symbols[var] + 4 * noc_id
                 reg_val = lib.read_tensix_register(loc, reg, device.id(), context)
                 var_val = lib.read_riscv_memory(loc, address, noc_id, risc_id, device.id(), context)
 
