@@ -72,10 +72,7 @@ class Context:
         pass
 
     def convert_loc_to_umd(self, location: OnChipCoordinate):
-        if not self.use_noc1:
-            return location.to("noc0")
-        else:
-            return location.to("noc1")
+        return location.to("noc0")
 
     def __repr__(self):
         return f"context"
