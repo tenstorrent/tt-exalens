@@ -676,7 +676,7 @@ class FrameInfoProvider:
 
 
 def decode_symbols(elf_file):
-    functions = {}
+    symbols = {}
     for section in elf_file.iter_sections():
         # Check if it's a symbol table section
         if section.name == ".symtab":
@@ -684,12 +684,12 @@ def decode_symbols(elf_file):
             for symbol in section.iter_symbols():
                 # Check if it's a label symbol
                 if symbol["st_info"]["type"] == "STT_NOTYPE" and symbol.name:
-                    functions[symbol.name] = symbol["st_value"]
-                if symbol["st_info"]["type"] == "STT_FUNC":
-                    functions[symbol.name] = symbol["st_value"]
-                if symbol["st_info"]["type"] == "STT_OBJECT":
-                    functions[symbol.name] = symbol["st_value"]
-    return functions
+                    symbols[symbol.name] = symbol["st_value"]
+                elif symbol["st_info"]["type"] == "STT_FUNC":
+                    symbols[symbol.name] = symbol["st_value"]
+                elif symbol["st_info"]["type"] == "STT_OBJECT":
+                    symbols[symbol.name] = symbol["st_value"]
+    return symbols
 
 
 def parse_dwarf(dwarf: DWARFInfo, loaded_offset=0):
