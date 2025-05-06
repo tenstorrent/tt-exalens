@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  noc-status <elf-file> [-n <noc>] [-d <device>] [-l <loc>]
+  noc-status <elf-file> [-d <device>] [-l <loc>]
 
 Description:
     Cheks if noc status registers allign with variables from elf file.
@@ -15,10 +15,9 @@ Arguments:
 Options:
     -d <device>   Device ID. Default: all
     -l <loc>      Core location in X-Y or R,C format. Default: all
-    -n <noc>      Noc ID (0 or 1). Default: 0
 
 Examples:
-  noc-status .../brisc.elf
+  # noc-status .../brisc.elf
 """
 
 command_metadata = {
@@ -55,7 +54,7 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     elf_path = dopt.args["<elf-file>"]
     risc_id = 0  # For now only works on BRISC
-    noc_id = int(dopt.args["-n"]) if dopt.args["-n"] else 0
+    noc_id = 0  # For now we only use noc0
 
     if not os.path.exists(elf_path):
         util.ERROR(f"File {elf_path} does not exist")
@@ -89,11 +88,11 @@ def run(cmd_text, context, ui_state: UIState = None):
                 if reg_val != var_val:
                     # If this is the first one to fail print xmark
                     if passed:
-                        print(util.XMARK)
+                        print(f"{util.CLR_GREEN}PASSED{util.CLR_END}")
                     passed = False
                     util.ERROR(f"\tMismatch between {reg} and {var} -> {reg_val} != {var_val}")
 
             if passed:
-                print(util.CHECKMARK)
+                print(f"{util.CLR_ERR}FAILED{util.CLR_END}")
 
     return None
