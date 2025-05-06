@@ -6,6 +6,7 @@ This module is used to represent the firmware
 """
 
 import time
+from typing import Dict, Tuple
 from ttexalens import parse_elf
 from ttexalens import util as util
 import re
@@ -39,7 +40,7 @@ class ELF:
         self.names. For example, if filemap is { "brisc" : "./build/riscv-src/wormhole/sample.brisc.elf" },
         the parsed content of "./build/riscv-src/wormhole/sample.brisc.elf" will be stored in self.names["brisc"].
         """
-        self.names = dict()
+        self.names: Dict[str, Dict] = dict()
         self.filemap = filemap
         self._file_ifc = file_ifc
         self.name_word_pattern = re.compile(r"[_@.a-zA-Z]+")
@@ -72,7 +73,7 @@ class ELF:
             resolved_type = self.names[prefix]["type"][var["type"]].resolved_type
             self.names[prefix]["variable"][var_name] = FAKE_DIE(var_name, addr=addr, resolved_type=resolved_type)
 
-    def _get_prefix_and_suffix(self, path_str):
+    def _get_prefix_and_suffix(self, path_str) -> Tuple[str, str]:
         dot_pos = path_str.find(".")
         if dot_pos == -1:
             return "", path_str  # just the suffix

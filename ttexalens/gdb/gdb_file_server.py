@@ -4,8 +4,6 @@
 import io
 import os
 
-from typing import Union
-
 
 class GdbFileServer:
     def __init__(self, context):
@@ -21,7 +19,7 @@ class GdbFileServer:
         self.opened_files.clear()
         self.next_fd = 0
 
-    def open(self, filename: str, flags: int, mode: int) -> int:
+    def open(self, filename: str, flags: int, mode: int) -> int | str:
         try:
             content = self._context.server_ifc.get_binary(filename)
             id = self.next_fd
@@ -38,7 +36,7 @@ class GdbFileServer:
             return True
         return False
 
-    def pread(self, fd: int, count: int, offset: int) -> bytes:
+    def pread(self, fd: int, count: int, offset: int) -> bytes | str:
         if fd in self.opened_files:
             stream = self.opened_files[fd]
             try:
@@ -49,7 +47,7 @@ class GdbFileServer:
         else:
             return "-1"
 
-    def pwrite(self, fd: int, offset: int, data: bytes) -> Union[int, bytes]:
+    def pwrite(self, fd: int, offset: int, data: bytes) -> int | bytes | str:
         if fd in self.opened_files:
             stream = self.opened_files[fd]
             try:

@@ -91,13 +91,13 @@ def set_udmiaxi_region(mem_type: str, device_id: int = 0, context: Context = Non
 
     iccm_id = re.findall("\d", mem_type)
     if len(iccm_id) == 0:
-        iccm_id = 0
+        iccm_id_int = 0
         assert mem_type == "iccm" or mem_type == "csm"
     else:
-        iccm_id = int(iccm_id[0])
-        assert iccm_id >= 0 and iccm_id <= 3
+        iccm_id_int = int(iccm_id[0])
+        assert iccm_id_int >= 0 and iccm_id_int <= 3
 
-    base_addr = ((0x10000000 >> 24) & 0xFF) if mem_type == "csm" else (iccm_id * 0x3)
+    base_addr = ((0x10000000 >> 24) & 0xFF) if mem_type == "csm" else (iccm_id_int * 0x3)
 
     # Additional bit needs to be set for blackhole, indicating that the udmiaxi region is going to be changed
     if context.devices[device_id]._arch == "blackhole":
@@ -186,7 +186,7 @@ def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context =
                 # address change splits chunk, output current chunk if not empty
                 if len(current_chunk) > 0:
                     yield (chunk_start_address, current_chunk)
-                    current_chunk = []
+                    current_chunk = bytearray()
 
                 chunk_start_address = int(a[1], 16) * 4  # Parse hex number, hence 16
             else:  # Data

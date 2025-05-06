@@ -233,7 +233,7 @@ class RichFormatter:
             grouping = self.flatten_grouping(grouping)
 
         for group_row in grouping:
-            tables = []
+            tables: list = []
             for group_name in group_row:
                 if group_name in data:
                     tables.append(self.create_data_table(group_name, data[group_name], simple_print))
@@ -333,7 +333,7 @@ class RichFormatter:
         """
         console.print(f"[{style}]{text}[/{style}]")
         if line:
-            console.print(Rule(style=style, character=line_char))
+            console.print(Rule(style=style, characters=line_char))
 
 
 # Create a singleton instance that can be imported by other modules

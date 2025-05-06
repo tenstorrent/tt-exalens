@@ -124,7 +124,7 @@ class GdbInputStream:
             util.ERROR(
                 f"GDB message parsing error: Unexpected character at start of message '{self.input_buffer[0:1].decode()}'"
             )
-            socket.write(b"-")
+            self.socket.write(b"-")
             self.input_buffer = bytes()
             return self.read()
 
@@ -178,7 +178,7 @@ class GdbInputStream:
         # Was checksum correct
         if not correct_checksum:
             util.ERROR(f"GDB message parsing error: Unexpected checksum. expected: '{checksum1:X}{checksum2:X}'")
-            socket.write(b"-")
+            self.socket.write(b"-")
             return self.read()
         return GdbMessageParser(bytes(self.next_message))
 

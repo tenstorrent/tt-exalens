@@ -45,6 +45,7 @@ The following coordinate systems are available to represent a grid location on t
                     grid. It is used by the NOC hardware and it is programmable ahead of time. Notation: X-Y
 """
 
+from typing import Tuple
 from ttexalens.util import TTException
 
 VALID_COORDINATE_TYPES = [
@@ -80,7 +81,7 @@ class OnChipCoordinate:
     coordinate systems we use.
     """
 
-    _noc0_coord = (None, None)  # This uses noc0 coordinates: (X,Y)
+    _noc0_coord: Tuple[int, int] = (None, None)  # This uses noc0 coordinates: (X,Y)
     _device = None  # Used for conversions
 
     def __init__(self, x: int, y: int, input_type: str, device, core_type="any"):
@@ -250,6 +251,7 @@ class OnChipCoordinate:
         else:
             return self._device.id() < other._device.id()
 
+    @staticmethod
     def create(coord_str, device, coord_type=None):
         """
         Creates a coordinate object from a string. The string can be in any of the supported coordinate systems.
@@ -279,9 +281,9 @@ class OnChipCoordinate:
 
         if "-" in coord_str:
             core_type = "any"
-            x, y = coord_str.split("-")
-            x = int(x.strip())
-            y = int(y.strip())
+            xs, ys = coord_str.split("-")
+            x = int(xs.strip())
+            y = int(ys.strip())
             if coord_type is None:
                 coord_type = "translated" if device.is_translated_coordinate(x, y) else "noc0"
         elif "," in coord_str:
@@ -295,9 +297,9 @@ class OnChipCoordinate:
                     break
             if coord_type is None:
                 coord_type = "logical"
-            x, y = coord_str.split(",")
-            x = int(x.strip())
-            y = int(y.strip())
+            xs, ys = coord_str.split(",")
+            x = int(xs.strip())
+            y = int(ys.strip())
         elif coord_str[0:2].upper() == "CH":  # This is a DRAM channel
             # Parse the digits after "CH"
             x = int(coord_str[2:])

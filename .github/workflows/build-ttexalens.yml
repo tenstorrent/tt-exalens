@@ -43,6 +43,9 @@ jobs:
       - name: Build TTEXALENS
         run: |
           make build
+      - name: Run mypy
+        run: |
+          make mypy
       - name: Build wheel
         run: |
           make wheel

@@ -25,6 +25,11 @@ test:
 	@echo "Running tests"
 	./test/run_all.sh
 
+.PHONY: mypy
+mypy:
+	@echo "Running mypy"
+	python3 -m mypy -p ttexalens
+
 .PHONY: wheel_develop
 wheel_develop:
 	CONFIG=Debug python3 setup.py bdist_wheel -d build/ttexalens_wheel

@@ -498,7 +498,7 @@ class GdbServer(threading.Thread):
             annex = parser.read_until(GDB_ASCII_COLON).decode()
             offset = parser.parse_hex()
             if not parser.parse(b","):
-                util.ERROR(f"GDB: Something wrong with offset and length: {parser.data}")
+                util.ERROR(f"GDB: Something wrong with offset and length: {parser.data!r}")
                 writer.append(b"E01")
                 return True
             length = parser.parse_hex()
@@ -529,7 +529,7 @@ class GdbServer(threading.Thread):
                     self.write_paged_message(self.prepared_responses_for_paging[paging_key], offset, length, writer)
             else:
                 # We don't support this message
-                util.ERROR(f"GDB: unsupported message: {parser.data}")
+                util.ERROR(f"GDB: unsupported message: {parser.data!r}")
                 pass
         elif parser.parse(b"qSymbol"):  # Notify the target that GDB is prepared to serve symbol lookup requests.
             # We don't need symbol lookup (for now)
@@ -618,7 +618,7 @@ class GdbServer(threading.Thread):
             # ‘vCont[;action[:thread-id]]…’
 
             # Create dictionary per thread that will contain actions that should be executed on that thread
-            thread_actions = {}
+            thread_actions: Dict[int, str] = {}
             for pid in self.debugging_threads.keys():
                 thread_actions[pid] = None
 
@@ -821,6 +821,7 @@ class GdbServer(threading.Thread):
             if type(result) is str:
                 writer.append_string(result)
             else:
+                assert type(result) is int
                 writer.append_hex(result)
         elif parser.parse(
             b"vFile:close:"
@@ -838,16 +839,17 @@ class GdbServer(threading.Thread):
             count = parser.parse_hex()
             parser.parse(b",")
             offset = parser.parse_hex()
-            result = self.file_server.pread(fd, count, offset)
-            if type(result) is str:
+            pread_result = self.file_server.pread(fd, count, offset)
+            if type(pread_result) is str:
                 writer.append(b"F")
-                writer.append_string(result)
+                writer.append_string(pread_result)
             else:
                 # We expect result to be bytes
+                assert type(pread_result) is bytes
                 writer.append(b"F")
-                writer.append_hex(len(result))
+                writer.append_hex(len(pread_result))
                 writer.append(b";")
-                writer.append(result)
+                writer.append(pread_result)
         elif parser.parse(b"vFile:pwrite:"):  # Write data (a binary buffer) to the open file corresponding to fd.
             # ‘vFile:pwrite: fd, offset, data’
             fd = parser.parse_hex()
@@ -856,13 +858,15 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             data = parser.read_rest()
             writer.append(b"F-1")
-            if type(result) is str:
+            pwrite_result = self.file_server.pwrite(fd, offset, data)
+            if type(pwrite_result) is str:
                 writer.append(b"F")
-                writer.append_string(result)
+                writer.append_string(pwrite_result)
             else:
                 # We expect result to be int, number of bytes written
+                assert type(pwrite_result) is int
                 writer.append(b"F")
-                writer.append_hex(result)
+                writer.append_hex(pwrite_result)
         elif parser.parse(b"X"):  # Write data to memory, where the data is transmitted in binary.
             # ‘X addr,length:XX…’
             try:
@@ -1105,7 +1109,7 @@ class GdbServer(threading.Thread):
             writer.append(b"E01")
         else:
             # Return unsupported message
-            util.WARN(f"GDB: unsupported message: {parser.data}")
+            util.WARN(f"GDB: unsupported message: {parser.data!r}")
             pass
         return True
 

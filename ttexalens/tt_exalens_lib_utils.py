@@ -4,6 +4,7 @@
 # Core utility functions used by tt_exalens_lib and other modules
 from ttexalens import tt_exalens_init
 from ttexalens.context import Context
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.util import TTException
 
 
@@ -30,7 +31,7 @@ def validate_device_id(device_id: int, context: Context) -> None:
         raise TTException(f"Invalid device_id {device_id}.")
 
 
-def arc_read(context: Context, device_id: int, core_loc: tuple, reg_addr: int) -> int:
+def arc_read(context: Context, device_id: int, core_loc: OnChipCoordinate, reg_addr: int) -> int:
     """
     Reads a 32-bit value from an ARC address space.
     """
@@ -41,7 +42,7 @@ def arc_read(context: Context, device_id: int, core_loc: tuple, reg_addr: int) -
     return read_val
 
 
-def arc_write(context: Context, device_id: int, core_loc: tuple, reg_addr: int, value: int) -> None:
+def arc_write(context: Context, device_id: int, core_loc: OnChipCoordinate, reg_addr: int, value: int) -> None:
     """
     Writes a 32-bit value to an ARC address space.
     """

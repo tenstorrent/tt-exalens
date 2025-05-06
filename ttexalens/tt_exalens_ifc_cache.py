@@ -23,6 +23,7 @@ class TTExaLensCache(TTExaLensCommunicator):
 
     def __init__(self):
         super().__init__()
+        self.filepath: str = ""
         self.cache = {}
 
     def save(self):
@@ -50,6 +51,7 @@ class TTExaLensCacheThrough(TTExaLensCache):
     This class uses a decorator wrapped around the regular interface functions to perform caching.
     """
 
+    @staticmethod
     def cache_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
@@ -58,6 +60,7 @@ class TTExaLensCacheThrough(TTExaLensCache):
 
         return wrapper
 
+    @staticmethod
     def cache_binary_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
@@ -138,6 +141,10 @@ class TTExaLensCacheThrough(TTExaLensCache):
     def jtag_write32_axi(self, chip_id: int, address: int, data: int):
         return self.communicator.jtag_write32_axi(chip_id, address, data)
 
+    @cache_decorator
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
+        return self.communicator.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
+
     def using_cache(self) -> bool:
         return True
 
@@ -167,6 +174,7 @@ class TTExaLensCacheReader(TTExaLensCache):
     The decorator performs all the work of reading from the cache. The functions just provide the correct interface.
     """
 
+    @staticmethod
     def read_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
@@ -179,6 +187,7 @@ class TTExaLensCacheReader(TTExaLensCache):
 
         return wrapper
 
+    @staticmethod
     def read_cached_binary_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
@@ -242,25 +251,29 @@ class TTExaLensCacheReader(TTExaLensCache):
 
     @read_decorator
     def get_file(self, file_path: str) -> str:
-        pass
+        return ""
 
     @read_cached_binary_decorator
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
-        pass
+        return io.BytesIO()
 
     @read_decorator
     def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self.communicator.jtag_read32(chip_id, noc_x, noc_y, address)
+        pass
 
     def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        return self.communicator.jtag_write32(chip_id, noc_x, noc_y, address, data)
+        pass
 
     @read_decorator
     def jtag_read32_axi(self, chip_id: int, address: int):
-        return self.communicator.jtag_read32_axi(chip_id, address)
+        pass
 
     def jtag_write32_axi(self, chip_id: int, address: int, data: int):
-        return self.communicator.jtag_write32_axi(chip_id, address, data)
+        pass
+
+    @read_decorator
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
+        pass
 
     def using_cache(self) -> bool:
         return True

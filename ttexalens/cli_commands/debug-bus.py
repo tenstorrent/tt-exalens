@@ -31,6 +31,7 @@ command_metadata = {
 }
 
 import re
+from typing import List
 
 from ttexalens.uistate import UIState
 
@@ -79,7 +80,7 @@ def parse_command_arguments(args):
     if not (args.get("<signals>")):
         raise ValueError("Missing debug bus signal parameter")
 
-    result = []
+    result: List[str | DebugBusSignalDescription] = []
 
     signals = parse_string(args.get("<signals>"))
 
