@@ -79,13 +79,7 @@ class Context:
         return location.to("noc0")
 
     def convert_loc_to_umd(self, location: OnChipCoordinate) -> Tuple[int, int]:
-        if not self.use_noc1:
-            return location.to("virtual")
-        else:
-            coord = location.to("noc1")
-            fake_noc0 = OnChipCoordinate(coord[0], coord[1], "noc0", location._device)
-            result = fake_noc0.to("virtual")
-            return result
+        return location.to("noc0")
 
     def __repr__(self):
         return f"context"

@@ -223,8 +223,8 @@ class TensixDebug:
                 raise ValueError(f"Unknown tensix register base address for given register")
 
         assert isinstance(register, TensixRegisterDescription)
-        if value < 0 or value > 2 ** bin(register.mask).count("1") - 1:
-            raise ValueError(f"Value must be between 0 and {2 ** bin(register.mask).count('1') - 1}, but got {value}")
+        if value < 0 or value > 2 ** register.mask.bit_count() - 1:
+            raise ValueError(f"Value must be between 0 and {2 ** register.mask.bit_count() - 1}, but got {value}")
 
         if isinstance(register, ConfigurationRegisterDescription):
             max_index = int(

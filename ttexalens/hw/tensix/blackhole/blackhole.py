@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from ttexalens.coordinate import OnChipCoordinate
 import ttexalens.util as util
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
@@ -14,8 +15,8 @@ from ttexalens.device import (
     NocStatusRegisterDescription,
     NocConfigurationRegisterDescription,
     NocControlRegisterDescription,
-    DebugBusSignalDescription,
 )
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 
 
 class BlackholeInstructions(TensixInstructions):
@@ -679,11 +680,11 @@ class BlackholeDevice(Device):
         "PORT2_FLIT_COUNTER_UPPER": NocControlRegisterDescription(address=0x5C0),  # 16 instances
     }
 
-    def _get_debug_bus_signal_description(self, name):
-        """Overrides the base class method to provide debug bus signal descriptions for Wormhole device."""
-        if name in BlackholeDevice.__debug_bus_signal_map:
-            return BlackholeDevice.__debug_bus_signal_map[name]
-        return None
+    def get_debug_bus_signal_store(self, location: OnChipCoordinate) -> DebugBusSignalStore:
+        block_type = self.get_block_type(location)
+        if block_type == "functional_workers":
+            return DebugBusSignalStore(self.__debug_bus_signal_map, location)
+        raise ValueError(f"Debug bus signal store not available for block type {block_type} at location {location}")
 
     __debug_bus_signal_map = {
         # For the other signals applying the pc_mask.
@@ -3854,9 +3855,6 @@ class BlackholeDevice(Device):
             rd_sel=2, daisy_sel=14, sig_sel=4, mask=0x1
         ),
     }
-
-    def get_debug_bus_signal_names(self) -> List[str]:
-        return list(self.__debug_bus_signal_map.keys())
 
     def get_alu_config(self) -> List[dict]:
         return [
