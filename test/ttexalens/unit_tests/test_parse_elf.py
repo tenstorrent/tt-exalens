@@ -57,9 +57,13 @@ class TestParseElf(unittest.TestCase):
     def setUpClass(cls):
         if os.environ.get("TTEXALENS_PATH"):
             cls.output_dir = os.path.join(os.environ["TTEXALENS_PATH"], "build", "test", "assets")
+            cls.elf_dir = os.path.join(os.environ["TTEXALENS_PATH"], "test", "test_elfs")
         else:
             cls.output_dir = os.path.join("build", "test", "assets")
+            cls.elf_dir = os.path.join("test", "test_elfs")
+
         cls.output_dir = os.path.abspath(cls.output_dir)
+        cls.elf_dir = os.path.abspath(cls.elf_dir)
 
         if not os.path.exists(cls.output_dir):
             os.makedirs(cls.output_dir)
@@ -290,7 +294,7 @@ class TestParseElf(unittest.TestCase):
     def test_firmware_elf(self):
         """Test finding text section in firmware elf"""
         program_name = "firmware_brisc"
-        program_path = os.path.join("/localdev/adjordjevic/work/tt-exalens/test/test_elfs/", program_name)
+        program_path = os.path.join(TestParseElf.elf_dir, program_name)
         name_dict = read_elf(file_ifc, f"{program_path}.elf")
 
         assert name_dict["dwarf"].loaded_offset == 0
@@ -298,7 +302,7 @@ class TestParseElf(unittest.TestCase):
     def test_decode_symbols(self):
         """Test decode_symbols for object files"""
         program_name = "firmware_brisc"
-        program_path = os.path.join("/localdev/adjordjevic/work/tt-exalens/test/test_elfs/", program_name)
+        program_path = os.path.join(TestParseElf.elf_dir, program_name)
         name_dict = read_elf(file_ifc, f"{program_path}.elf")
 
         assert name_dict["symbols"]["noc_reads_num_issued"] == 4289724472
