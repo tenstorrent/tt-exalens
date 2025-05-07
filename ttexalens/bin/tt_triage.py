@@ -81,7 +81,7 @@ class TTTriageError(Exception):
 def raiseTTTriageError(msg):
     """Raise a TT Triage error."""
     if HALT_ON_ERROR:
-        raiseTTTriageError(msg)
+        raise TTTriageError(msg)
     else:
         print(f"{RED}ERROR: {msg}{RST}")
 
