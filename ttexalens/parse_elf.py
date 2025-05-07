@@ -676,7 +676,7 @@ class FrameInfoProvider:
 
 
 def decode_symbols(elf_file):
-    symbols = {}
+    functions = {}
     for section in elf_file.iter_sections():
         # Check if it's a symbol table section
         if section.name == ".symtab":
@@ -684,12 +684,10 @@ def decode_symbols(elf_file):
             for symbol in section.iter_symbols():
                 # Check if it's a label symbol
                 if symbol["st_info"]["type"] == "STT_NOTYPE" and symbol.name:
-                    symbols[symbol.name] = symbol["st_value"]
-                elif symbol["st_info"]["type"] == "STT_FUNC":
-                    symbols[symbol.name] = symbol["st_value"]
-                elif symbol["st_info"]["type"] == "STT_OBJECT":
-                    symbols[symbol.name] = symbol["st_value"]
-    return symbols
+                    functions[symbol.name] = symbol["st_value"]
+                if symbol["st_info"]["type"] == "STT_FUNC":
+                    functions[symbol.name] = symbol["st_value"]
+    return functions
 
 
 def parse_dwarf(dwarf: DWARFInfo, loaded_offset=0):
@@ -742,12 +740,7 @@ def read_elf(file_ifc, elf_file_path, load_address=None):
     if not elf.has_dwarf_info():
         print(f"ERROR: {elf_file_path} does not have DWARF info. Source file must be compiled with -g")
         return
-
-    text_sh = elf.get_section_by_name(".text")
-    if text_sh is None:
-        text_sh = elf.get_section_by_name(".firmware_text")
-    text_sh_address = text_sh["sh_addr"]
-
+    text_sh_address = elf.get_section_by_name(".text")["sh_addr"]
     if load_address is None:
         load_address = text_sh_address
 
