@@ -287,6 +287,26 @@ class TestParseElf(unittest.TestCase):
         assert mem_access(name_dict, "my_s.a_unnamed_float", mem_reader)[0] == [722320]
         assert mem_access(name_dict, "my_unnamed_s.x", mem_reader)[0] == [722400]
 
+    def test_firmware_elf(self):
+        """Test finding text section in firmware elf"""
+        program_name = "brisc"
+        program_path = os.path.join(TestParseElf.output_dir, program_name)
+        name_dict = read_elf(file_ifc, f"{program_path}.elf")
+
+        assert name_dict["dwarf"].loaded_offset == 0
+
+    def test_decode_symbols(self):
+        """Test decode_symbols for object files"""
+        program_name = "brisc"
+        program_path = os.path.join(TestParseElf.output_dir, program_name)
+        name_dict = read_elf(file_ifc, f"{program_path}.elf")
+
+        assert name_dict["symbols"]["noc_reads_num_issued"] == 4289724472
+        assert name_dict["symbols"]["noc_nonposted_writes_num_issued"] == 4289724464
+        assert name_dict["symbols"]["noc_nonposted_writes_acked"] == 4289724456
+        assert name_dict["symbols"]["noc_nonposted_atomics_acked"] == 4289724448
+        assert name_dict["symbols"]["noc_posted_writes_num_issued"] == 4289724440
+
     def get_var_addr(self, name_dict, name):
         if name in name_dict:
             return name_dict[name]["offset"]
