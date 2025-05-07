@@ -25,11 +25,13 @@ class RiscvCoreSimulator:
         self.core_loc = self._get_core_location()
 
         # Initialize core components
-        loc = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
+        self.device = self.context.devices[0]
+        loc = OnChipCoordinate.create(self.core_loc, device=self.device)
         self.risc_id = get_risc_id(self.risc_name)
         rloc = RiscLoc(loc, 0, self.risc_id)
         self.rdbg = RiscDebug(rloc, self.context)
         self.loader = RiscLoader(self.rdbg, self.context)
+        self.debug_bus_store = self.device.get_debug_bus_signal_store(loc)
 
         # Initialize core in reset state
         self.set_reset(True)
@@ -106,7 +108,7 @@ class RiscvCoreSimulator:
 
     def get_pc_from_debug_bus(self) -> int:
         """Get PC value from debug bus."""
-        return self.context.devices[0].read_debug_bus_signal(self.core_loc, self.risc_name.lower() + "_pc")
+        return self.debug_bus_store.read_signal(self.risc_name.lower() + "_pc")
 
     def is_halted(self) -> bool:
         """Check if core is halted."""

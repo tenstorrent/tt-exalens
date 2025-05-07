@@ -10,6 +10,7 @@ from typing import List, Sequence, Tuple
 
 from tabulate import tabulate
 from ttexalens.context import Context
+from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.object import TTObject
 from ttexalens import util as util
 from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
@@ -41,6 +42,9 @@ class TensixRegisterDescription:
         new_instance.address += offset
         return new_instance
 
+    def __str__(self):
+        return f"{type(self).__name__}(address: {self.address:#x}, mask: {self.mask:#x}, shift: {self.shift}, native_data_type: {self.data_type})"
+
 
 @dataclass
 class DebugRegisterDescription(TensixRegisterDescription):
@@ -53,6 +57,10 @@ class ConfigurationRegisterDescription(TensixRegisterDescription):
 
     def __post_init__(self):
         self.address = self.address + self.index * 4
+
+    def __str__(self):
+        base_str = super().__str__()[:-1]
+        return f"{base_str}, index: {self.index})"
 
 
 @dataclass
@@ -68,28 +76,6 @@ class NocConfigurationRegisterDescription(TensixRegisterDescription):
 @dataclass
 class NocControlRegisterDescription(TensixRegisterDescription):
     pass
-
-
-@dataclass
-class DebugBusSignalDescription:
-    rd_sel: int = 0
-    daisy_sel: int = 0
-    sig_sel: int = 0
-    mask: int = 0xFFFFFFFF
-
-    def __post_init__(self):
-        """Validate field values after object creation."""
-        if not (0 <= self.rd_sel <= 3):  # Example range, update if needed
-            raise ValueError(f"rd_sel must be between 0 and 3, got {self.rd_sel}")
-
-        if not (0 <= self.daisy_sel <= 255):  # Example range, update if needed
-            raise ValueError(f"daisy_sel must be between 0 and 255, got {self.daisy_sel}")
-
-        if not (0 <= self.sig_sel <= 65535):  # Example range, update if needed
-            raise ValueError(f"sig_sel must be between 0 and 65535, got {self.sig_sel}")
-
-        if not (0 <= self.mask <= 0xFFFFFFFF):  # Mask should be a valid 32-bit value
-            raise ValueError(f"mask must be a valid 32-bit integer, got {self.mask}")
 
 
 #
@@ -155,35 +141,11 @@ class Device(TTObject):
     def __init__(self, id, arch, cluster_desc, device_desc_path: str, context: Context):
         self._id = id
         self._arch = arch
-        self._has_mmio = False
-        self._has_jtag = False
         self._device_desc_path = device_desc_path
         self._context = context
-        for chip in cluster_desc["chips_with_mmio"]:
-            if id in chip:
-                self._has_mmio = True
-                break
-        if "chips_with_jtag" in cluster_desc:
-            for chip in cluster_desc["chips_with_jtag"]:
-                if id in chip:
-                    self._has_jtag = True
-                    break
-
-        # Check if harvesting_desc is an array and has id+1 entries at the least
-        harvesting_desc = cluster_desc["harvesting"]
-        if isinstance(harvesting_desc, Sequence) and len(harvesting_desc) > id:
-            device_desc = harvesting_desc[id]
-            if id not in device_desc:
-                raise util.TTFatalException(f"Key {id} not found in: {device_desc}")
-            self._harvesting = device_desc[id]
-        elif isinstance(harvesting_desc, dict) or isinstance(harvesting_desc, util.RymlLazyDictionary):
-            if id not in harvesting_desc:
-                raise util.TTFatalException(f"Key {id} not found in: {harvesting_desc}")
-            self._harvesting = harvesting_desc[id]
-        else:
-            raise util.TTFatalException(f"Cluster description is not valid. 'harvesting_desc' reads: {harvesting_desc}")
-        util.DEBUG(
-            "Opened device: id=%d, arch=%s, has_mmio=%s, harvesting=%s" % (id, arch, self._has_mmio, self._harvesting)
+        self._has_mmio = any(id in chip for chip in cluster_desc["chips_with_mmio"])
+        self._has_jtag = (
+            any(id in chip for chip in cluster_desc["chips_with_jtag"]) if "chips_with_jtag" in cluster_desc else False
         )
 
         self._init_coordinate_systems()
@@ -554,40 +516,11 @@ class Device(TTObject):
             }
 
     @abstractmethod
-    def _get_debug_bus_signal_description(self, name) -> DebugBusSignalDescription:
+    def get_debug_bus_signal_store(self, loc: OnChipCoordinate) -> DebugBusSignalStore:
+        """
+        Returns the debug bus signal store for the given location.
+        """
         pass
-
-    def get_debug_bus_signal_names(self) -> List[str]:
-        return []
-
-    def get_debug_bus_signal_description(self, name):
-        debug_bus_signal_description = self._get_debug_bus_signal_description(name)
-        if debug_bus_signal_description is None:
-            raise ValueError(f"Unknown debug bus signal name: {name}")
-        return debug_bus_signal_description
-
-    def read_debug_bus_signal(self, loc: OnChipCoordinate, name: str) -> int:
-        signal = self.get_debug_bus_signal_description(name)
-        return self.read_debug_bus_signal_from_description(loc, signal)
-
-    def read_debug_bus_signal_from_description(self, loc: OnChipCoordinate, signal: DebugBusSignalDescription) -> int:
-        if signal is None:
-            raise ValueError(f"Debug Bus signal description is not defined")
-
-        # Write the configuration
-        en = 1
-        config_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_DBG_BUS_CNTL_REG")
-        config = (en << 29) | (signal.rd_sel << 25) | (signal.daisy_sel << 16) | (signal.sig_sel << 0)
-        write_words_to_device(loc, config_addr, config, self._id)
-
-        # Read the data
-        data_addr = self.get_tensix_register_address("RISCV_DEBUG_REG_DBG_RD_DATA")
-        data = read_word_from_device(loc, data_addr)
-
-        # Disable the signal
-        write_words_to_device(loc, config_addr, 0, self._id)
-
-        return data if signal.mask is None else data & signal.mask
 
     def _is_noc_register_description(self, description: TensixRegisterDescription) -> bool:
         return isinstance(

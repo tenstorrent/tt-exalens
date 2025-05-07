@@ -36,7 +36,7 @@ from ttexalens.uistate import UIState
 
 from ttexalens import command_parser
 from ttexalens import util as util
-from ttexalens.device import DebugBusSignalDescription
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 
 
 def parse_string(input_string):
@@ -104,21 +104,24 @@ def run(cmd_text, context, ui_state: UIState = None):
     )
 
     if dopt.args["list-names"]:
-        device = context.devices[ui_state.current_device_id]
-        print(device.get_debug_bus_signal_names())
+        for device in dopt.for_each("--device", context, ui_state):
+            for loc in dopt.for_each("--loc", context, ui_state, device=device):
+                debug_bus_signal_store = device.get_debug_bus_signal_store(loc)
+                print(debug_bus_signal_store.get_signal_names())
         return []
 
     signals = parse_command_arguments(dopt.args)
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
+            debug_bus_signal_store = device.get_debug_bus_signal_store(loc)
             where = f"device:{device._id} loc:{loc.to_str('logical')} "
             for signal in signals:
                 if isinstance(signal, str):
-                    value = device.read_debug_bus_signal(loc, signal)
+                    value = debug_bus_signal_store.read_signal(signal)
                     print(f"{where} {signal}: 0x{value:x}")
                 else:
-                    value = device.read_debug_bus_signal_from_description(loc, signal)
+                    value = debug_bus_signal_store.read_signal(signal)
                     signal_description = f"Diasy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
                     print(f"{where} Debug Bus Config({signal_description}) = 0x{value:x}")
 
