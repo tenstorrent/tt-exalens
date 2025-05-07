@@ -59,6 +59,8 @@ try:
     from ttexalens.reg_access_json import JsonRegisterMap
     from ttexalens.reg_access_common import set_verbose, DEFAULT_TABLE_FORMAT
     from ttexalens.device import Device
+    from ttexalens.hw.tensix.wormhole.wormhole import WormholeDevice
+    from ttexalens.hw.tensix.blackhole.blackhole import BlackholeDevice
 except ImportError as e:
     print(f"Module '{e}' not found. Please install tt-exalens: {GREEN}", end="")
     print("""
@@ -370,11 +372,15 @@ def main(argv=None):
         for device_id in device_ids:
             title (f"Checking device {device_id}")
             dev = context.devices[device_id]
-            check_ARC(dev)
-            check_NOC(dev)
-            check_L1(dev)
-            check_riscV(dev)
-            dump_running_ops(dev)
+            # Check if dev is Wormhole or Blackhole
+            if type(dev) == WormholeDevice:
+                check_ARC(dev)
+                check_NOC(dev)
+                check_L1(dev)
+                check_riscV(dev)
+                dump_running_ops(dev)
+            else:
+                raiseTTTriageError(f"{dev._arch} devices are not supported yet.")
     except TTTriageError as e:
         print(f"{RED}ERROR: {e}{RST}")
         if args['--halt-on-error']:
