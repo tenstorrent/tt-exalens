@@ -85,9 +85,9 @@ class WormholeDevice(Device):
             context,
         )
         self.instructions = WormholeInstructions()
-        
+
         if Device.ARC is None:
-            regdef_path = util.application_path() + '/../../regdef/data/wormhole/axi-noc.yaml'
+            regdef_path = util.application_path() + '/../../regdef/wormhole/axi-noc.yaml'
             if os.path.exists(regdef_path):
                 WormholeDevice.ARC = YamlRegisterMap(
                     regdef_path,
@@ -96,18 +96,6 @@ class WormholeDevice(Device):
                 )
                 from ttexalens.reg_access_yaml import postprocess_csm
                 postprocess_csm(WormholeDevice.ARC.ARC_CSM)
-
-    def _pci_arc_reg_read(self, addr: int) -> int:
-        """Read ARC register using PCI->NOC->ARC."""
-        arc_core_loc = self.get_arc_block_location()
-        value = read_word_from_device(arc_core_loc, addr)
-        return value
-
-    def _pci_arc_reg_write(self, addr: int, data: int) -> None:
-        """Write ARC register using PCI->NOC->ARC."""
-        masked_data = data & 0xFFFFFFFFFFFFFFFF
-        arc_core_loc = self.get_arc_block_location()
-        write_word_to_device(arc_core_loc, addr, masked_data)
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         return x >= 16 and y >= 16

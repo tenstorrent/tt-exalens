@@ -58,7 +58,7 @@ try:
     from ttexalens.reg_access_yaml import YamlRegisterMap
     from ttexalens.reg_access_json import JsonRegisterMap
     from ttexalens.reg_access_common import set_verbose, DEFAULT_TABLE_FORMAT
-
+    from ttexalens.device import Device
 except ImportError as e:
     print(f"Module '{e}' not found. Please install tt-exalens: {GREEN}", end="")
     print("""
@@ -106,6 +106,30 @@ def check_ARC(dev):
         """Read ARC register using PCI->NOC->ARC."""
         value = read_word_from_device(arc_core_loc, addr)
         return value
+    
+    REG_ADDRESSES = {
+        "postcode": {
+            "wh" : {
+                "path" : "ARC.ARC_RESET.SCRATCH[0]",
+                "addr" : 0x880030060,
+            },
+            "bh" : {
+                "path" : "ARC.ARC_RESET.SCRATCH[0]",
+                "addr" : 0x880030060,
+            },
+        },
+        "heartbeat": {
+            "wh" : {
+                "path" : "ARC.ARC_CSM.DEBUG.heartbeat",
+                "addr" : 0x8100786C4,
+            },
+            "bh" : {
+                "path" : "ARC.reset_unit.DEBUG.heartbeat",
+                "addr" : 0x8100786C4,
+            },
+        },
+    }
+
 
     # Postcode must be correct (C0DE)
     # postcode = dev.ARC.ARC_RESET.SCRATCH[0].read()
@@ -115,7 +139,7 @@ def check_ARC(dev):
         raiseTTTriageError(check_ARC.__doc__)
 
     # Heartbeat must be increasing
-    # heartbeat_0 = dev.ARC.ARC_CSM.DEBUG.heartbeat.read()
+    heartbeat_0 = dev.ARC.reset_unit.DEBUG.heartbeat.read()
     heartbeat_0 = arc_read(0x8100786C4)
     delay_seconds = 0.1
     time.sleep(delay_seconds)
@@ -153,7 +177,7 @@ def check_L1(dev):
 
     # Firmware loaded L1[0] == 0x3800306f
     addr = 0x0
-    expected = 0x3800306f
+    expected = 0x7800306f
     for loc in dev.get_block_locations(block_type="functional_workers"):
         data = read_words_from_device(loc, addr, device_id=dev.id(), word_count=1, context=context)
         if data[0] != expected:
@@ -178,7 +202,7 @@ def check_NOC(dev):
         for loc in all_locs:
             noc_ping(dev, loc, use_noc1=False)
 
-def check_riscV(dev):
+def check_riscV(dev: Device):
     """Checking that the RISC-V cores are running. Dumping PC through debug bus (-v)."""
     title(check_riscV.__doc__)
 
@@ -217,18 +241,133 @@ def check_riscV(dev):
 
     # PC dump through debug bus
     table = []
-    header_row = [ "Loc\PC", *[ sig[:-3].upper() for sig in dev.get_debug_bus_signal_names() ] ]
+    header_row = [ "Loc\PC", "brisc_pc", "trisc0_pc", "trisc1_pc", "trisc2_pc", "ncrisc_pc" ]
     table.append(header_row)
 
     # Dump PC through debug bus
     for loc in dev.get_block_locations(block_type="functional_workers"):
         loc_row = [ f"{loc.to_str('logical')}" ]
-        for sig in dev.get_debug_bus_signal_names():
-            pc = dev.read_debug_bus_signal(loc, sig)
+        store = dev.get_debug_bus_signal_store(loc)
+        for sig in header_row[1:]:
+            pc = store.read_signal(sig)
             loc_row.append(f"0x{pc:x}")
         table.append(loc_row)
 
     verbose(tabulate(table, headers="firstrow", tablefmt=DEFAULT_TABLE_FORMAT))
+
+def dump_running_ops(dev):
+    """Print the running operations on the device."""
+    title(dump_running_ops.__doc__)
+
+    # Get the running operations
+    metal_home = os.environ.get('TT_METAL_HOME')
+    if metal_home is None:
+        raiseTTTriageError("TT_METAL_HOME is not set. Please set it to the path of the metal directory.")
+
+    runtime_yaml = metal_home + "/generated/silicon_debugger/runtime_data.yaml"
+    if not os.path.exists(runtime_yaml):
+        raiseTTTriageError(f"Runtime data file {runtime_yaml} does not exist.")
+
+    with open(runtime_yaml, 'r') as f:
+        runtime_data = yaml.safe_load(f)
+
+    # Get the location of brisc.elf
+    a_kernel_id = list(runtime_data['kernels'].keys())[0]
+    a_kernel_path = runtime_data['kernels'][a_kernel_id]['out']
+    brisc_elf_path = a_kernel_path + "../../../firmware/brisc/brisc.elf"
+    brisc_elf_path = os.path.realpath(brisc_elf_path)
+    fw_elf_path = a_kernel_path + "../../../firmware/trisc1/trisc1.elf"
+    fw_elf_path = os.path.realpath(fw_elf_path)
+
+    if not os.path.exists(brisc_elf_path):
+        raiseTTTriageError(f"BRISC ELF file {brisc_elf_path} does not exist.")
+    if not os.path.exists(fw_elf_path):
+        raiseTTTriageError(f"FW ELF file {fw_elf_path} does not exist.")
+
+    from ttexalens.parse_elf import read_elf, mem_access
+    elf = read_elf(context.server_ifc, brisc_elf_path)
+
+    if not elf:
+        raiseTTTriageError(f"Failed to extract DWARF info from ELF file {brisc_elf_path}")
+        return
+    table = []
+    header_row = ["Location", "RD PTR", "Base", "(hex)", "Text Offset", "Text (hex)", "Kernel ID"]
+    table.append(header_row)
+
+    for loc in dev.get_block_locations(block_type="functional_workers"):
+        def mem_reader(unaligned_addr, size_bytes):
+            # As the unaligned_addr does not need to be aligned to 4 bytes, and size_bytes does not need to be a multiple of 4,
+            # we need to read the memory in chunks of 4 bytes, and combine the results into an array of dwords
+
+            # Calculate aligned start address and number of words needed
+            aligned_addr = (unaligned_addr // 4) * 4
+            start_offset = unaligned_addr - aligned_addr
+            num_words = (size_bytes + start_offset + 3) // 4  # Round up to nearest word
+
+            # Read the aligned words
+            words = read_words_from_device(loc, aligned_addr, device_id=dev.id(), word_count=num_words, context=context)
+            if start_offset == 0:
+                return words
+            else:
+                # Convert words to bytes
+                bytes_data = b''
+                for word in words:
+                    bytes_data += word.to_bytes(4, 'little')
+
+                # Extract the requested range
+                result = bytes_data[start_offset:start_offset + size_bytes]
+
+                # Convert bytes to words
+                words = [int.from_bytes(result[i:i+4], 'little') for i in range(0, len(result), 4)]
+                return words
+
+        launch_msg_rd_ptr = mem_access(elf, 'mailboxes->launch_msg_rd_ptr', mem_reader)[0][0]
+        ProgrammableCoreTypes_TENSIX = elf["enumerator"]['ProgrammableCoreType::TENSIX'].value # This is how to access the value of an enumerator
+
+        # Refer to tt_metal/api/tt-metalium/dev_msgs.h for struct kernel_config_msg_t
+        kernel_config_base = mem_access(elf, f'mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.kernel_config_base[0]', mem_reader)[0][0]  # Indexed with enum ProgrammableCoreType - tt_metal/hw/inc/*/core_config.h
+        kernel_text_offset = mem_access(elf, f'mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.kernel_text_offset[3]', mem_reader)[0][0]  # Size 5 (NUM_PROCESSORS_PER_CORE_TYPE) - seems to be DM0,DM1,MATH0,MATH1,MATH2
+        watcher_kernel_id  = mem_access(elf, f'mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.watcher_kernel_ids[2]', mem_reader)[0][0] & 0xFFFF
+        kernel_name = runtime_data['kernels'][watcher_kernel_id]['src'] if watcher_kernel_id in runtime_data['kernels'] else ""
+
+        row = [
+            loc.to_str('logical'),
+            str(launch_msg_rd_ptr),
+            str(kernel_config_base),
+            f"0x{kernel_config_base:08x}",
+            str(kernel_text_offset),
+            f"0x{kernel_text_offset:08x}",
+            str(watcher_kernel_id),
+            kernel_name
+        ]
+        table.append(row)
+
+        # Print callstack for this location using tt_exalens_lib
+        if kernel_name:
+            kernel_path = runtime_data['kernels'][watcher_kernel_id]['out'] + "trisc1/trisc1.elf"
+            if not os.path.exists(kernel_path):
+                raiseTTTriageError(f"Kernel ELF file {kernel_path} does not exist.")
+            try:
+                from ttexalens.tt_exalens_lib import callstack
+                print(f"Arguments for callstack: {fw_elf_path}, {kernel_path}, {kernel_config_base + kernel_text_offset}, 2, 100, True, False, {dev.id()}, {context}")
+                cs = callstack(loc, [fw_elf_path, kernel_path], [0, kernel_config_base + kernel_text_offset], 2, 100, True, False, dev.id(), context)
+                if cs:
+                    frame_number_width = len(str(len(cs) - 1))
+                    for i, frame in enumerate(cs):
+                        print(f"  #{i:<{frame_number_width}} ", end="")
+                        if frame.pc is not None:
+                            print(f"{BLUE}0x{frame.pc:08X}{RST} in ", end="")
+                        if frame.function_name is not None:
+                            print(f"{ORANGE}{frame.function_name}{RST} () ", end="")
+                        if frame.file is not None:
+                            print(f"at {GREEN}{frame.file} {frame.line}:{frame.column}{RST}", end="")
+                        print()
+                else:
+                    print(f"{ORANGE}No callstack available for location {loc.to_str('logical')}{RST}")
+            except Exception as e:
+                print(f"{RED}Error getting callstack: {e}{RST}")
+
+    print(tabulate(table, headers="firstrow", tablefmt=DEFAULT_TABLE_FORMAT))
 
 def main(argv=None):
     """Main function that runs the triage script."""
@@ -259,6 +398,7 @@ def main(argv=None):
             check_NOC(dev)
             check_L1(dev)
             check_riscV(dev)
+            dump_running_ops(dev)
     except TTTriageError as e:
         print(f"{RED}ERROR: {e}{RST}")
         if args['--halt-on-error']:

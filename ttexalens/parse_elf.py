@@ -420,8 +420,11 @@ class MY_DIE:
                 # Assuming the location's form is a block
                 block = location.value
                 # Check if the first opcode is DW_OP_addr (0x03)
-                if block[0] == 0x03:
+                if isinstance(block, bytes) and len(block) > 0 and block[0] == 0x03:
                     addr = int.from_bytes(block[1:], byteorder="little")
+                elif hasattr(block, '__iter__'):
+                    # If it's a list of operations, we can't determine a single address
+                    addr = None
             else:
                 # Try to find another DIE that defines this variable
                 other_die = self.cu.find_DIE_that_specifies(self)
@@ -739,8 +742,16 @@ def read_elf(file_ifc, elf_file_path, load_address=None):
 
     if not elf.has_dwarf_info():
         print(f"ERROR: {elf_file_path} does not have DWARF info. Source file must be compiled with -g")
-        return
-    text_sh_address = elf.get_section_by_name(".text")["sh_addr"]
+        return None
+
+    text_section = elf.get_section_by_name(".firmware_text")
+    if text_section is None:
+        text_section = elf.get_section_by_name(".text")
+        if text_section is None:
+            print(f"ERROR: {elf_file_path} does not have .firmware_text or .text section. Source file must be compiled with -g")
+            return None
+
+    text_sh_address = text_section["sh_addr"]
     if load_address is None:
         load_address = text_sh_address
 
@@ -964,13 +975,22 @@ def access_logger(addr, size_bytes):
     return words_read
 
 
+class FileInterface:
+    def __init__(self):
+        pass
+
+    def get_binary(self, file_path):
+        return open(file_path, 'rb')
+
+
 if __name__ == "__main__":
     args = docopt(__doc__)
     elf_file_path = args["<elf-file>"]
     access_path = args["<access-path>"]
     debug_enabled = args["--debug"]
 
-    name_dict = read_elf(elf_file_path)
+    file_ifc = FileInterface()
+    name_dict = read_elf(file_ifc, elf_file_path)
     if access_path:
         mem_access(name_dict, access_path, access_logger)
     else:
@@ -991,20 +1011,42 @@ if __name__ == "__main__":
 
         rows = []
         for cat, cat_dict in name_dict.items():
+            if cat in ['dwarf', 'file-line', 'frame-info', 'symbols']:  # Skip non-DIE objects
+                continue
             for key, die in cat_dict.items():
+                if not hasattr(die, 'path'):  # Skip if not a DIE object
+                    continue
                 if key != die.path:
                     print(f"{CLR_RED}ERROR: key {key} != die.get_path() {die.path}{CLR_END}")
                 resolved_type_path = die.resolved_type.path
                 if resolved_type_path:  # Some DIEs are just refences to other DIEs. We skip them.
+                    # Safely handle address display
+                    addr = die.address
+                    addr_hex = ""
+                    if addr is not None:
+                        try:
+                            addr_hex = hex(addr)
+                        except TypeError:
+                            addr_hex = str(addr)  # Fallback to string representation for non-integer addresses
+                    
+                    # Safely handle value display
+                    val = die.value
+                    val_hex = ""
+                    if val is not None:
+                        try:
+                            val_hex = hex(val)
+                        except TypeError:
+                            val_hex = str(val)  # Fallback to string representation for non-integer values
+                    
                     row = [
                         cat,
                         die.path,
                         resolved_type_path,
                         die.size,
-                        die.address,
-                        hex(die.address) if die.address is not None else "",
-                        die.value,
-                        hex(die.value) if die.value is not None else "",
+                        addr,
+                        addr_hex,
+                        val,
+                        val_hex,
                     ]
                     row.append(hex(die.offset))
                     if debug_enabled:

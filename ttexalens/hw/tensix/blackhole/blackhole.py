@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from ttexalens.coordinate import OnChipCoordinate
 import ttexalens.util as util
+import os
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
 from typing import List
@@ -17,7 +18,7 @@ from ttexalens.device import (
     NocControlRegisterDescription,
 )
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
-
+from ttexalens.reg_access_json import JsonRegisterMap
 
 class BlackholeInstructions(TensixInstructions):
     def __init__(self):
@@ -76,6 +77,15 @@ class BlackholeDevice(Device):
             context,
         )
         self.instructions = BlackholeInstructions()
+
+        if Device.ARC is None:
+            regdef_path = util.application_path() + '/../../regdef/blackhole/arc.json'
+            if os.path.exists(regdef_path):
+                BlackholeDevice.ARC = JsonRegisterMap(
+                    regdef_path,
+                    reg_read_func=self._pci_arc_reg_read,
+                    reg_write_func=self._pci_arc_reg_write
+                )
 
     def _get_tensix_register_map_keys(self) -> List[str]:
         return list(BlackholeDevice.__register_map.keys())

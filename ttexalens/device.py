@@ -210,6 +210,17 @@ class Device(TTObject):
             self._to_noc0[(die_location, "die", core_type)] = noc0_location
             self._to_noc0[(die_location, "die", "any")] = noc0_location
 
+    def _pci_arc_reg_read(self, addr: int) -> int:
+        """Read ARC register using PCI->NOC->ARC."""
+        arc_core_loc = self.get_arc_block_location()
+        value = read_word_from_device(arc_core_loc, addr)
+        return value
+
+    def _pci_arc_reg_write(self, addr: int, value: int) -> None:
+        """Write ARC register using PCI->NOC->ARC."""
+        arc_core_loc = self.get_arc_block_location()
+        write_words_to_device(arc_core_loc, addr, value)
+
     def to_noc0(self, coord_tuple: Tuple[int, int], coord_system: str, core_type: str = "any") -> Tuple[int, int]:
         try:
             return self._to_noc0[(coord_tuple, coord_system, core_type)]
