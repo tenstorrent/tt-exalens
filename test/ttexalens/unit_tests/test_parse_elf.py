@@ -289,16 +289,16 @@ class TestParseElf(unittest.TestCase):
 
     def test_firmware_elf(self):
         """Test finding text section in firmware elf"""
-        program_name = "brisc"
-        program_path = os.path.join(TestParseElf.output_dir, program_name)
+        program_name = "firmware_brisc"
+        program_path = os.path.join("/localdev/adjordjevic/work/tt-exalens/test/test_elfs/", program_name)
         name_dict = read_elf(file_ifc, f"{program_path}.elf")
 
         assert name_dict["dwarf"].loaded_offset == 0
 
     def test_decode_symbols(self):
         """Test decode_symbols for object files"""
-        program_name = "brisc"
-        program_path = os.path.join(TestParseElf.output_dir, program_name)
+        program_name = "firmware_brisc"
+        program_path = os.path.join("/localdev/adjordjevic/work/tt-exalens/test/test_elfs/", program_name)
         name_dict = read_elf(file_ifc, f"{program_path}.elf")
 
         assert name_dict["symbols"]["noc_reads_num_issued"] == 4289724472
