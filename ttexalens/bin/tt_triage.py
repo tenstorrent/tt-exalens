@@ -106,30 +106,6 @@ def check_ARC(dev):
         """Read ARC register using PCI->NOC->ARC."""
         value = read_word_from_device(arc_core_loc, addr)
         return value
-    
-    REG_ADDRESSES = {
-        "postcode": {
-            "wh" : {
-                "path" : "ARC.ARC_RESET.SCRATCH[0]",
-                "addr" : 0x880030060,
-            },
-            "bh" : {
-                "path" : "ARC.ARC_RESET.SCRATCH[0]",
-                "addr" : 0x880030060,
-            },
-        },
-        "heartbeat": {
-            "wh" : {
-                "path" : "ARC.ARC_CSM.DEBUG.heartbeat",
-                "addr" : 0x8100786C4,
-            },
-            "bh" : {
-                "path" : "ARC.reset_unit.DEBUG.heartbeat",
-                "addr" : 0x8100786C4,
-            },
-        },
-    }
-
 
     # Postcode must be correct (C0DE)
     # postcode = dev.ARC.ARC_RESET.SCRATCH[0].read()
@@ -139,7 +115,7 @@ def check_ARC(dev):
         raiseTTTriageError(check_ARC.__doc__)
 
     # Heartbeat must be increasing
-    heartbeat_0 = dev.ARC.reset_unit.DEBUG.heartbeat.read()
+    # heartbeat_0 = dev.ARC.reset_unit.DEBUG.heartbeat.read()
     heartbeat_0 = arc_read(0x8100786C4)
     delay_seconds = 0.1
     time.sleep(delay_seconds)
