@@ -88,11 +88,11 @@ def run(cmd_text, context, ui_state: UIState = None):
                 if reg_val != var_val:
                     # If this is the first one to fail print xmark
                     if passed:
-                        print(f"{util.CLR_GREEN}PASSED{util.CLR_END}")
+                        print(f"{util.CLR_ERR}FAILED{util.CLR_END}")
                     passed = False
                     util.ERROR(f"\tMismatch between {reg} and {var} -> {reg_val} != {var_val}")
 
             if passed:
-                print(f"{util.CLR_ERR}FAILED{util.CLR_END}")
+                print(f"{util.CLR_GREEN}PASSED{util.CLR_END}")
 
     return None
