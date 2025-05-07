@@ -53,7 +53,7 @@ except ImportError as e:
 
 try:
     from ttexalens.tt_exalens_init import init_ttexalens
-    from ttexalens.tt_exalens_lib import read_from_device, read_words_from_device, read_word_from_device, write_words_to_device,arc_msg
+    from ttexalens.tt_exalens_lib import read_from_device, read_words_from_device, read_word_from_device, write_words_to_device, arc_msg
     from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.reg_access_yaml import YamlRegisterMap
     from ttexalens.reg_access_json import JsonRegisterMap
@@ -61,6 +61,7 @@ try:
     from ttexalens.device import Device
     from ttexalens.hw.tensix.wormhole.wormhole import WormholeDevice
     from ttexalens.hw.tensix.blackhole.blackhole import BlackholeDevice
+    from ttexalens.parse_elf import read_elf, mem_access
 except ImportError as e:
     print(f"Module '{e}' not found. Please install tt-exalens: {GREEN}", end="")
     print("""
@@ -233,6 +234,73 @@ def check_riscV(dev: Device):
 
     verbose(tabulate(table, headers="firstrow", tablefmt=DEFAULT_TABLE_FORMAT))
 
+    # # Print callstack for this location using tt_exalens_lib
+    # fw_elf_path = a_kernel_path + "../../../firmware/trisc1/trisc1.elf"
+    # fw_elf_path = os.path.realpath(fw_elf_path)
+    # if not os.path.exists(fw_elf_path):
+    #     raiseTTTriageError(f"FW ELF file {fw_elf_path} does not exist.")
+
+    # if kernel_name:
+    #     kernel_path = runtime_data['kernels'][watcher_kernel_id]['out'] + "trisc1/trisc1.elf"
+    #     if not os.path.exists(kernel_path):
+    #         raiseTTTriageError(f"Kernel ELF file {kernel_path} does not exist.")
+    #     try:
+    #         from ttexalens.tt_exalens_lib import callstack
+    #         cs = callstack(loc, [fw_elf_path, kernel_path], [0, kernel_config_base + kernel_text_offset], 2, 100, True, False, dev.id(), context)
+    #         if cs:
+    #             print_callstack(cs)
+    #         else:
+    #             print(f"{ORANGE}No callstack available for location {loc.to_str('logical')}{RST}")
+    #     except Exception as e:
+    #         print(f"{RED}Error getting callstack: {e}{RST}")
+
+def print_callstack(cs):
+    """Print the callstack."""
+    frame_number_width = len(str(len(cs) - 1))
+    for i, frame in enumerate(cs):
+        print(f"  #{i:<{frame_number_width}} ", end="")
+        if frame.pc is not None:
+            print(f"{BLUE}0x{frame.pc:08X}{RST} in ", end="")
+        if frame.function_name is not None:
+            print(f"{ORANGE}{frame.function_name}{RST} () ", end="")
+        if frame.file is not None:
+            print(f"at {GREEN}{frame.file} {frame.line}:{frame.column}{RST}", end="")
+        print()
+
+def mem_reader(loc, dev, unaligned_addr, size_bytes):
+    """Read memory from a device at the specified location.
+
+    Args:
+        loc: Location object for the block to read from
+        dev: Device object to read from
+        unaligned_addr: Address to read from, can be unaligned
+        size_bytes: Number of bytes to read
+
+    Returns:
+        List of word values
+    """
+    # Calculate aligned start address and number of words needed
+    aligned_addr = (unaligned_addr // 4) * 4
+    start_offset = unaligned_addr - aligned_addr
+    num_words = (size_bytes + start_offset + 3) // 4  # Round up to nearest word
+
+    # Read the aligned words
+    words = read_words_from_device(loc, aligned_addr, device_id=dev.id(), word_count=num_words, context=context)
+    if start_offset == 0:
+        return words
+    else:
+        # Convert words to bytes
+        bytes_data = b''
+        for word in words:
+            bytes_data += word.to_bytes(4, 'little')
+
+        # Extract the requested range
+        result = bytes_data[start_offset:start_offset + size_bytes]
+
+        # Convert bytes to words
+        words = [int.from_bytes(result[i:i+4], 'little') for i in range(0, len(result), 4)]
+        return words
+
 def dump_running_ops(dev):
     """Print the running operations on the device."""
     title(dump_running_ops.__doc__)
@@ -245,118 +313,76 @@ def dump_running_ops(dev):
     runtime_yaml = metal_home + "/generated/silicon_debugger/runtime_data.yaml"
     if not os.path.exists(runtime_yaml):
         raiseTTTriageError(f"Runtime data file {runtime_yaml} does not exist.")
-
     with open(runtime_yaml, 'r') as f:
         runtime_data = yaml.safe_load(f)
+    verbose(f"Parsed runtime data file: {runtime_yaml}")
 
-    # Get the location of brisc.elf
+    # Get brisc.elf. We use brisc_elf to get to the important offsets.
     a_kernel_id = list(runtime_data['kernels'].keys())[0]
     a_kernel_path = runtime_data['kernels'][a_kernel_id]['out']
     brisc_elf_path = a_kernel_path + "../../../firmware/brisc/brisc.elf"
     brisc_elf_path = os.path.realpath(brisc_elf_path)
-    fw_elf_path = a_kernel_path + "../../../firmware/trisc1/trisc1.elf"
-    fw_elf_path = os.path.realpath(fw_elf_path)
 
     if not os.path.exists(brisc_elf_path):
         raiseTTTriageError(f"BRISC ELF file {brisc_elf_path} does not exist.")
-    if not os.path.exists(fw_elf_path):
-        raiseTTTriageError(f"FW ELF file {fw_elf_path} does not exist.")
+    brisc_elf = read_elf(context.server_ifc, brisc_elf_path)
 
-    from ttexalens.parse_elf import read_elf, mem_access
-    elf = read_elf(context.server_ifc, brisc_elf_path)
-
-    if not elf:
+    if not brisc_elf:
         raiseTTTriageError(f"Failed to extract DWARF info from ELF file {brisc_elf_path}")
         return
-    table = []
-    header_row = ["Location", "RD PTR", "Base", "(hex)", "Text Offset", "Text (hex)", "Kernel ID"]
-    table.append(header_row)
+
+    printout_table = [ ["Location", "RD PTR", "Base", "(hex)", "Text Offset", "Text (hex)", "Kernel ID", "Compute Kernel"] ]
 
     for loc in dev.get_block_locations(block_type="functional_workers"):
-        def mem_reader(unaligned_addr, size_bytes):
-            # As the unaligned_addr does not need to be aligned to 4 bytes, and size_bytes does not need to be a multiple of 4,
-            # we need to read the memory in chunks of 4 bytes, and combine the results into an array of dwords
+        # Create a local wrapper for mem_reader that captures loc and dev
+        loc_mem_reader = lambda addr, size: mem_reader(loc, dev, addr, size)
 
-            # Calculate aligned start address and number of words needed
-            aligned_addr = (unaligned_addr // 4) * 4
-            start_offset = unaligned_addr - aligned_addr
-            num_words = (size_bytes + start_offset + 3) // 4  # Round up to nearest word
-
-            # Read the aligned words
-            words = read_words_from_device(loc, aligned_addr, device_id=dev.id(), word_count=num_words, context=context)
-            if start_offset == 0:
-                return words
-            else:
-                # Convert words to bytes
-                bytes_data = b''
-                for word in words:
-                    bytes_data += word.to_bytes(4, 'little')
-
-                # Extract the requested range
-                result = bytes_data[start_offset:start_offset + size_bytes]
-
-                # Convert bytes to words
-                words = [int.from_bytes(result[i:i+4], 'little') for i in range(0, len(result), 4)]
-                return words
-
-        launch_msg_rd_ptr = mem_access(elf, 'mailboxes->launch_msg_rd_ptr', mem_reader)[0][0]
-        ProgrammableCoreTypes_TENSIX = elf["enumerator"]['ProgrammableCoreType::TENSIX'].value # This is how to access the value of an enumerator
+        launch_msg_rd_ptr = mem_access(brisc_elf, 'mailboxes->launch_msg_rd_ptr', loc_mem_reader)[0][0]
+        ProgrammableCoreTypes_TENSIX = brisc_elf["enumerator"]['ProgrammableCoreType::TENSIX'].value # This is how to access the value of an enumerator
 
         # Refer to tt_metal/api/tt-metalium/dev_msgs.h for struct kernel_config_msg_t
-        kernel_config_base = mem_access(elf, f'mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.kernel_config_base[0]', mem_reader)[0][0]  # Indexed with enum ProgrammableCoreType - tt_metal/hw/inc/*/core_config.h
-        kernel_text_offset = mem_access(elf, f'mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.kernel_text_offset[3]', mem_reader)[0][0]  # Size 5 (NUM_PROCESSORS_PER_CORE_TYPE) - seems to be DM0,DM1,MATH0,MATH1,MATH2
-        watcher_kernel_id  = mem_access(elf, f'mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.watcher_kernel_ids[2]', mem_reader)[0][0] & 0xFFFF
+        kernel_config_base = mem_access(brisc_elf, f'mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.kernel_config_base[0]', loc_mem_reader)[0][0]          # Indexed with enum ProgrammableCoreType - tt_metal/hw/inc/*/core_config.h
+        kernel_text_offset = mem_access(brisc_elf, f'mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.kernel_text_offset[3]', loc_mem_reader)[0][0]          # Size 5 (NUM_PROCESSORS_PER_CORE_TYPE) - seems to be DM0,DM1,MATH0,MATH1,MATH2
+        watcher_kernel_id  = mem_access(brisc_elf, f'mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.watcher_kernel_ids[2]', loc_mem_reader)[0][0] & 0xFFFF
         kernel_name = runtime_data['kernels'][watcher_kernel_id]['src'] if watcher_kernel_id in runtime_data['kernels'] else ""
 
-        row = [
-            loc.to_str('logical'),
-            str(launch_msg_rd_ptr),
-            str(kernel_config_base),
-            f"0x{kernel_config_base:08x}",
-            str(kernel_text_offset),
-            f"0x{kernel_text_offset:08x}",
-            str(watcher_kernel_id),
-            kernel_name
-        ]
-        table.append(row)
+        row = [ loc.to_str('logical'), str(launch_msg_rd_ptr), str(kernel_config_base), f"0x{kernel_config_base:08x}", str(kernel_text_offset), f"0x{kernel_text_offset:08x}", str(watcher_kernel_id), kernel_name ]
+        if kernel_name or kernel_config_base:
+            printout_table.append(row)
 
-        # Print callstack for this location using tt_exalens_lib
-        if kernel_name:
-            kernel_path = runtime_data['kernels'][watcher_kernel_id]['out'] + "trisc1/trisc1.elf"
-            if not os.path.exists(kernel_path):
-                raiseTTTriageError(f"Kernel ELF file {kernel_path} does not exist.")
-            try:
-                from ttexalens.tt_exalens_lib import callstack
-                print(f"Arguments for callstack: {fw_elf_path}, {kernel_path}, {kernel_config_base + kernel_text_offset}, 2, 100, True, False, {dev.id()}, {context}")
-                cs = callstack(loc, [fw_elf_path, kernel_path], [0, kernel_config_base + kernel_text_offset], 2, 100, True, False, dev.id(), context)
-                if cs:
-                    frame_number_width = len(str(len(cs) - 1))
-                    for i, frame in enumerate(cs):
-                        print(f"  #{i:<{frame_number_width}} ", end="")
-                        if frame.pc is not None:
-                            print(f"{BLUE}0x{frame.pc:08X}{RST} in ", end="")
-                        if frame.function_name is not None:
-                            print(f"{ORANGE}{frame.function_name}{RST} () ", end="")
-                        if frame.file is not None:
-                            print(f"at {GREEN}{frame.file} {frame.line}:{frame.column}{RST}", end="")
-                        print()
-                else:
-                    print(f"{ORANGE}No callstack available for location {loc.to_str('logical')}{RST}")
-            except Exception as e:
-                print(f"{RED}Error getting callstack: {e}{RST}")
+    verbose(tabulate(printout_table, headers="firstrow", tablefmt=DEFAULT_TABLE_FORMAT))
 
-    print(tabulate(table, headers="firstrow", tablefmt=DEFAULT_TABLE_FORMAT))
+    # WIP:
+    # # Print callstack for this location using tt_exalens_lib
+    # fw_elf_path = a_kernel_path + "../../../firmware/trisc1/trisc1.elf"
+    # fw_elf_path = os.path.realpath(fw_elf_path)
+    # if not os.path.exists(fw_elf_path):
+    #     raiseTTTriageError(f"FW ELF file {fw_elf_path} does not exist.")
+
+    # if kernel_name:
+    #     kernel_path = runtime_data['kernels'][watcher_kernel_id]['out'] + "trisc1/trisc1.elf"
+    #     if not os.path.exists(kernel_path):
+    #         raiseTTTriageError(f"Kernel ELF file {kernel_path} does not exist.")
+    #     try:
+    #         from ttexalens.tt_exalens_lib import callstack
+    #         cs = callstack(loc, [fw_elf_path, kernel_path], [0, kernel_config_base + kernel_text_offset], 2, 100, True, False, dev.id(), context)
+    #         if cs:
+    #             print_callstack(cs)
+    #         else:
+    #             print(f"{ORANGE}No callstack available for location {loc.to_str('logical')}{RST}")
+    #     except Exception as e:
+    #         print(f"{RED}Error getting callstack: {e}{RST}")
 
 def main(argv=None):
     """Main function that runs the triage script."""
     global VERBOSE, VVERBOSE, context, HALT_ON_ERROR
-    
+
     args = docopt(__doc__, argv=argv)
     VERBOSE = args['--verbose']
     VVERBOSE = args['--vverbose']
     HALT_ON_ERROR = args['--halt-on-error']
     set_verbose(VVERBOSE)
-    
+
     context = init_ttexalens(use_noc1=False)
     device_ids = list(context.devices.keys())
 
