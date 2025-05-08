@@ -31,7 +31,7 @@ import os
 from ttexalens.uistate import UIState
 from ttexalens import command_parser
 from ttexalens import util
-from ttexalens.parse_elf import read_elf, decode_symbols
+from ttexalens.parse_elf import decode_symbols
 from elftools.elf.elffile import ELFFile
 import ttexalens.tt_exalens_lib as lib
 
