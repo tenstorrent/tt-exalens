@@ -51,7 +51,12 @@ def get_symbols_from_elf(elf_path: str, context: Context) -> dict[str, int]:
     return decode_symbols(elf)
 
 
-def check_noc_status(symbols: dict[str, int], context: Context, risc_id: int = 0, noc_id: int = 0):
+def check_noc_status(symbols: dict[str, int], context: Context, risc_id: int = 0, noc_id: int = 0) -> dict:
+    """
+    Checks for mismatches between variables and registers that store number of NOC transactions
+    and stores them in dictionary creating summary of checking process
+    """
+
     # Dictionary of corresponding variables and registers to check
     VAR_TO_REG_MAP = {
         "noc_reads_num_issued": "NIU_MST_RD_RESP_RECEIVED",
@@ -61,15 +66,17 @@ def check_noc_status(symbols: dict[str, int], context: Context, risc_id: int = 0
         "noc_posted_writes_num_issued": "NIU_MST_POSTED_WR_REQ_SENT",
     }
 
+    summary = {}
+    # Loop through all available devices
     for device_id in context.device_ids:
         device = context.devices[device_id]
+        # Get all functional workers and loop through them
         locations = device.get_block_locations(block_type="functional_workers")
         for loc in locations:
-            summary = {}
             passed = True
             error = False
 
-            # Check if all variables match with corresponding register
+            # Check if variables match with corresponding register
             for var in VAR_TO_REG_MAP:
                 reg = VAR_TO_REG_MAP[var]
                 address = symbols[var]
@@ -91,10 +98,24 @@ def check_noc_status(symbols: dict[str, int], context: Context, risc_id: int = 0
                         summary[(device_id, loc)].append([reg, var, reg_val, var_val])
                     passed = False
 
+            # If core passed the inspection, write passed
             if passed and not error:
                 summary[(device_id, loc)] = f"{util.CLR_GREEN}PASSED{util.CLR_END}"
 
     return summary
+
+
+def print_summary(summary: dict) -> None:
+    """Prints summary of checking NOC transactions status"""
+    for key in summary.keys():
+        device_id, loc = key
+        util.INFO(f"Device: {device_id}, loc: {loc}", end=" ")
+        if isinstance(summary[key], str):
+            print(summary[key])
+        else:
+            for elem in summary[key]:
+                reg, var, reg_val, var_val = elem
+                util.ERROR(f"\tMismatch between {reg} and {var} -> {reg_val} != {var_val}")
 
 
 def main():
@@ -106,24 +127,15 @@ def main():
         util.ERROR(f"File {elf_path} does not exist")
         return
 
-    risc_id = 0  # For now only works on BRISC
-    noc_id = 0  # For now we only use noc0
-
     context = init_ttexalens()
     # Get symbols in order to obtain variable addresses
     symbols = get_symbols_from_elf(elf_path, context)
 
-    summary = check_noc_status(symbols, context, risc_id, noc_id)
+    risc_id = 0  # For now only works on BRISC
+    noc_id = 0  # For now we only use noc0
 
-    for key in summary.keys():
-        device_id, loc = key
-        util.INFO(f"Device: {device_id}, loc: {loc}", end=" ")
-        if isinstance(summary[key], str):
-            print(summary[key])
-        else:
-            for elem in summary[key]:
-                reg, var, reg_val, var_val = elem
-                util.ERROR(f"\tMismatch between {reg} and {var} -> {reg_val} != {var_val}")
+    summary = check_noc_status(symbols, context, risc_id, noc_id)
+    print_summary(summary)
 
 
 if __name__ == "__main__":
