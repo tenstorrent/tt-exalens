@@ -113,6 +113,7 @@ def print_summary(summary: dict) -> None:
         if isinstance(summary[key], str):
             print(summary[key])
         else:
+            util.ERROR("FAILED")
             for elem in summary[key]:
                 reg, var, reg_val, var_val = elem
                 util.ERROR(f"\tMismatch between {reg} and {var} -> {reg_val} != {var_val}")
