@@ -408,10 +408,12 @@ def dump_running_ops(dev):
                 if VVERBOSE:
                     print (f".", end="", flush=True)
 
-                    fw_base_address = 0xffc00000 if (proc_name == "NCRISC" and type(dev) == WormholeDevice) else 0
-                    lookup_key = (fw_elf_path, kernel_path, fw_base_address, kernel_config_base + kernel_text_offset)
+                    if proc_name == "NCRISC" and type(dev) == WormholeDevice:
+                        lookup_key = (fw_elf_path, kernel_path, 0, 0xffc00000)
+                    else:
+                        lookup_key = (fw_elf_path, kernel_path, 0, kernel_config_base + kernel_text_offset)
                     if lookup_key not in elf_cache:
-                        elf_cache[lookup_key] = RiscLoader._read_elfs([fw_elf_path, kernel_path], [fw_base_address, kernel_config_base + kernel_text_offset], context)
+                        elf_cache[lookup_key] = RiscLoader._read_elfs([lookup_key[0], lookup_key[1]], [lookup_key[2], lookup_key[3]], context)
 
                     cs = top_callstack(pc, elf_cache[lookup_key], verbose=False, context=context)
 
