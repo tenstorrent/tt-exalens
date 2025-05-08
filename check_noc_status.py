@@ -1,6 +1,20 @@
 # SPDX-FileCopyrightText: (c) 2025 Tenstorrent AI ULC
 #
 # SPDX-License-Identifier: Apache-2.0
+
+"""
+Script Name: check_noc_status.py
+Description:
+    This script checks if there are any mismatches between values of number of NOC transactions
+    stored in global variables from risc firmware and NOC status registers. Script looks for
+    these mismatches across all available devices and locations.
+
+Arguments:
+    <firmware_elf.elf> Path to firmware elf file
+
+Usage:
+    python3 check_noc_status.py <firwmare_elf.elf>
+"""
 from ttexalens.tt_exalens_init import init_ttexalens
 from ttexalens.tt_exalens_lib import read_riscv_memory, read_tensix_register
 from ttexalens import util
@@ -13,6 +27,7 @@ import os
 
 
 def get_elf_path() -> str:
+    "Gets elf path from command line"
     arg_num = len(sys.argv) - 1
 
     if arg_num == 1:
@@ -21,11 +36,12 @@ def get_elf_path() -> str:
         print("ERROR: No argument detected! Please provide firmware elf path.")
         return None
     else:
-        print("ERROR: Too many arugements! Please just provide firmware elf path.")
+        print("ERROR: Too many arguements! Please just provide firmware elf path.")
         return None
 
 
 def get_symbols_from_elf(elf_path: str, context: Context) -> dict[str, int]:
+    "Gets symbols from symbol table from elf file"
     # Open elf file from given path
     f = context.server_ifc.get_binary(elf_path)
     # Read elf file
