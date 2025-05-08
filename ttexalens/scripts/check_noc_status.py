@@ -51,7 +51,7 @@ def get_symbols_from_elf(elf_path: str, context: Context) -> dict[str, int]:
     return decode_symbols(elf)
 
 
-def main():
+def check_noc_status(symbols: dict[str, int], context: Context, risc_id: int = 0, noc_id: int = 0):
     # Dictionary of corresponding variables and registers to check
     VAR_TO_REG_MAP = {
         "noc_reads_num_issued": "NIU_MST_RD_RESP_RECEIVED",
@@ -61,6 +61,43 @@ def main():
         "noc_posted_writes_num_issued": "NIU_MST_POSTED_WR_REQ_SENT",
     }
 
+    for device_id in context.device_ids:
+        device = context.devices[device_id]
+        locations = device.get_block_locations(block_type="functional_workers")
+        for loc in locations:
+            summary = {}
+            passed = True
+            error = False
+
+            # Check if all variables match with corresponding register
+            for var in VAR_TO_REG_MAP:
+                reg = VAR_TO_REG_MAP[var]
+                address = symbols[var]
+                # If reading fails, write error message and skip to next core
+                try:
+                    reg_val = read_tensix_register(loc, reg, device.id(), context)
+                    var_val = read_riscv_memory(loc, address, noc_id, risc_id, device.id(), context)
+                except Exception as e:
+                    summary[(device_id, loc)] = f"{util.CLR_WARN}{e}{util.CLR_END}"
+                    error = True
+                    break
+
+                if reg_val != var_val:
+                    # Store name of register and variable where mismatch occured along side their values
+                    if passed:
+                        # If this is the first one to fail, init list
+                        summary[(device_id, loc)] = [[reg, var, reg_val, var_val]]
+                    else:
+                        summary[(device_id, loc)].append([reg, var, reg_val, var_val])
+                    passed = False
+
+            if passed and not error:
+                summary[(device_id, loc)] = f"{util.CLR_GREEN}PASSED{util.CLR_END}"
+
+    return summary
+
+
+def main():
     elf_path = get_elf_path()
     if elf_path is None:
         return
@@ -76,36 +113,17 @@ def main():
     # Get symbols in order to obtain variable addresses
     symbols = get_symbols_from_elf(elf_path, context)
 
-    for device_id in context.device_ids:
-        device = context.devices[device_id]
-        locations = device.get_block_locations(block_type="functional_workers")
-        for loc in locations:
-            util.INFO(f"Device: {device.id()}, loc: {loc}", end=" ")
-            passed = True
-            error = False
+    summary = check_noc_status(symbols, context, risc_id, noc_id)
 
-            # Check if all variables match with corresponding register
-            for var in VAR_TO_REG_MAP:
-                reg = VAR_TO_REG_MAP[var]
-                address = symbols[var]
-                # If reading fails, write error message and skip to next core
-                try:
-                    reg_val = read_tensix_register(loc, reg, device.id(), context)
-                    var_val = read_riscv_memory(loc, address, noc_id, risc_id, device.id(), context)
-                except Exception as e:
-                    util.WARN(e)
-                    error = True
-                    break
-
-                if reg_val != var_val:
-                    # If this is the first one to fail print failed
-                    if passed:
-                        print(f"{util.CLR_ERR}FAILED{util.CLR_END}")
-                    passed = False
-                    util.ERROR(f"\tMismatch between {reg} and {var} -> {reg_val} != {var_val}")
-
-            if passed and not error:
-                print(f"{util.CLR_GREEN}PASSED{util.CLR_END}")
+    for key in summary.keys():
+        device_id, loc = key
+        util.INFO(f"Device: {device_id}, loc: {loc}", end=" ")
+        if isinstance(summary[key], str):
+            print(summary[key])
+        else:
+            for elem in summary[key]:
+                reg, var, reg_val, var_val = elem
+                util.ERROR(f"\tMismatch between {reg} and {var} -> {reg_val} != {var_val}")
 
 
 if __name__ == "__main__":
