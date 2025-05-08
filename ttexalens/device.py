@@ -5,12 +5,13 @@
 from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, replace
-from functools import cached_property
+from functools import cache, cached_property
 from typing import List, Sequence, Tuple
 
 from tabulate import tabulate
 from ttexalens.context import Context
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.object import TTObject
 from ttexalens import util as util
 from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
@@ -231,6 +232,23 @@ class Device(TTObject):
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         # Base class doesn't know if it is translated coordinate, but specialized classes do
         return False
+
+    @abstractmethod
+    def get_block(self, location: OnChipCoordinate) -> NocBlock:
+        """
+        Returns the NOC block at the given location
+        """
+        pass
+
+    @cache
+    def get_blocks(self, block_type="functional_workers"):
+        """
+        Returns all blocks of a given type
+        """
+        blocks = []
+        for location in self.get_block_locations(block_type):
+            blocks.append(self.get_block(location))
+        return blocks
 
     def get_block_locations(self, block_type="functional_workers"):
         """

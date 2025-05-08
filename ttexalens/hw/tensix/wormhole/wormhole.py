@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from functools import cache
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.hardware.wormhole.wormhole_functional_worker_block import WormholeFunctionalWorkerBlock
 import ttexalens.util as util
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
@@ -882,20 +884,15 @@ class WormholeDevice(Device):
         "NOC_CLEAR_OUTSTANDING_REQ_CNT": NocControlRegisterDescription(address=0x50),
     }
 
-    def get_debug_bus_signal_store(self, location: OnChipCoordinate) -> DebugBusSignalStore:
+    @cache
+    def get_block(self, location):
         block_type = self.get_block_type(location)
         if block_type == "functional_workers":
-            return DebugBusSignalStore(self.__debug_bus_signal_map, location)
-        raise ValueError(f"Debug bus signal store not available for block type {block_type} at location {location}")
+            return WormholeFunctionalWorkerBlock(location)
+        raise ValueError(f"Unsupported block type: {block_type}")
 
-    __debug_bus_signal_map = {
-        # For the other signals applying the pc_mask.
-        "brisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 5, mask=0x7FFFFFFF),
-        "trisc0_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 6, mask=0x7FFFFFFF),
-        "trisc1_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 7, mask=0x7FFFFFFF),
-        "trisc2_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 8, mask=0x7FFFFFFF),
-        "ncrisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 12, mask=0x7FFFFFFF),
-    }
+    def get_debug_bus_signal_store(self, location: OnChipCoordinate) -> DebugBusSignalStore:
+        return self.get_block(location).debug_bus
 
     def get_alu_config(self) -> List[dict]:
         return [
