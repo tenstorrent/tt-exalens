@@ -10,7 +10,7 @@ Description:
     these mismatches across all available devices and locations.
 
 Arguments:
-    <firmware_elf.elf> Path to firmware elf file
+    <firmware_elf.elf> Path to risc firmware elf file
 
 Usage:
     python3 check_noc_status.py <firwmare_elf.elf>
@@ -27,9 +27,10 @@ import os
 
 
 def get_elf_path() -> str:
-    "Gets elf path from command line"
+    """Gets elf path from command line"""
+    # Number of given arguments
     arg_num = len(sys.argv) - 1
-
+    # Check if number of given arguments is correct
     if arg_num == 1:
         return sys.argv[1]
     elif arg_num == 0:
@@ -41,7 +42,7 @@ def get_elf_path() -> str:
 
 
 def get_symbols_from_elf(elf_path: str, context: Context) -> dict[str, int]:
-    "Gets symbols from symbol table from elf file"
+    """Gets symbols from symbol table from elf file"""
     # Open elf file from given path
     f = context.server_ifc.get_binary(elf_path)
     # Read elf file
@@ -51,7 +52,6 @@ def get_symbols_from_elf(elf_path: str, context: Context) -> dict[str, int]:
 
 
 def main():
-
     # Dictionary of corresponding variables and registers to check
     VAR_TO_REG_MAP = {
         "noc_reads_num_issued": "NIU_MST_RD_RESP_RECEIVED",
@@ -73,7 +73,7 @@ def main():
     noc_id = 0  # For now we only use noc0
 
     context = init_ttexalens()
-
+    # Get symbols in order to obtain variable addresses
     symbols = get_symbols_from_elf(elf_path, context)
 
     for device_id in context.device_ids:
@@ -88,6 +88,7 @@ def main():
             for var in VAR_TO_REG_MAP:
                 reg = VAR_TO_REG_MAP[var]
                 address = symbols[var]
+                # If reading fails, write error message and skip to next core
                 try:
                     reg_val = read_tensix_register(loc, reg, device.id(), context)
                     var_val = read_riscv_memory(loc, address, noc_id, risc_id, device.id(), context)
