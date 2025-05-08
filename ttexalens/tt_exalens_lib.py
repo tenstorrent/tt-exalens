@@ -425,6 +425,30 @@ def write_tensix_register(
 
     TensixDebug(core_loc, device_id, context).write_tensix_register(register, value)
 
+def top_callstack(
+    pc: int,
+    elf_paths_or_elfs: Union[List[str], str, List[dict], dict],
+    offsets: List[int] = None,
+    verbose: bool = False,
+    context: Context = None,
+) -> List:
+    """Retrieves the top callstack of the specified RISC core based on the given PC
+    """
+    from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name
+    context = check_context(context)
+
+    if isinstance(elf_paths_or_elfs, str) or (isinstance(elf_paths_or_elfs, list) and all(isinstance(e, str) for e in elf_paths_or_elfs)):
+        elfs = RiscLoader._read_elfs(elf_paths_or_elfs, offsets, context)
+    elif isinstance(elf_paths_or_elfs, dict):
+        elfs = list(elf_paths_or_elfs.values())
+    elif isinstance(elf_paths_or_elfs, list) and all(isinstance(e, dict) for e in elf_paths_or_elfs):
+        elfs = elf_paths_or_elfs
+    else:
+        raise TTException(f"Invalid type for elf_paths_or_elfs: {type(elf_paths_or_elfs)}")
+    elf, frame_description = RiscLoader._find_elf_and_frame_description(elfs, pc, None)
+    if frame_description is None:
+        return []
+    return RiscLoader.get_callstack_entry(elf, pc, frame_description)[0]
 
 def callstack(
     core_loc: Union[str, OnChipCoordinate],

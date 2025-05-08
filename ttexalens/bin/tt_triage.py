@@ -59,7 +59,7 @@ except ImportError as e:
 
 try:
     from ttexalens.tt_exalens_init import init_ttexalens
-    from ttexalens.tt_exalens_lib import read_from_device, read_words_from_device, read_word_from_device, write_words_to_device, arc_msg
+    from ttexalens.tt_exalens_lib import read_from_device, read_words_from_device, read_word_from_device, write_words_to_device, arc_msg, callstack
     from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.reg_access_yaml import YamlRegisterMap
     from ttexalens.reg_access_json import JsonRegisterMap
@@ -68,6 +68,8 @@ try:
     from ttexalens.hw.tensix.wormhole.wormhole import WormholeDevice
     from ttexalens.hw.tensix.blackhole.blackhole import BlackholeDevice
     from ttexalens.parse_elf import read_elf, mem_access
+    from ttexalens.debug_risc import RiscLoader, get_risc_id
+    from ttexalens.tt_exalens_lib import top_callstack
 except ImportError as e:
     print(f"Module '{e}' not found. Please install tt-exalens: {GREEN}", end="")
     print("""
@@ -199,6 +201,10 @@ def collect_pcs_from_riscv(dev: Device,
         pc_dict = dict()
         for sig in signal_names:
             pc = store.read_signal(sig)
+            if sig == "ncrisc_pc":
+                if pc & 0xf0000000 == 0x70000000:
+                    pc = pc | 0x80000000 # Turn the topmost bit on as it was lost on debug bus
+
             pc_dict[sig] = pc
         pcs[loc] = pc_dict
     return pcs
@@ -250,7 +256,7 @@ def check_riscV(dev: Device):
     table.append(header_row)
 
     # Dump PC through debug bus
-    if VERBOSE:
+    if VERBOSE or VVERBOSE:
         for loc, pc_dict in pcs.items():
             loc_row = [ f"{loc.to_str('logical')}" ]
             for sig in header_row[1:]:
@@ -260,18 +266,20 @@ def check_riscV(dev: Device):
 
     verbose(tabulate(table, headers="firstrow", tablefmt=DEFAULT_TABLE_FORMAT))
 
-def print_callstack(cs):
-    """Print the callstack."""
+def format_callstack(cs):
+    """Return string representation of the callstack."""
     frame_number_width = len(str(len(cs) - 1))
+    result = []
     for i, frame in enumerate(cs):
-        print(f"  #{i:<{frame_number_width}} ", end="")
+        line = f"  #{i:<{frame_number_width}} "
         if frame.pc is not None:
-            print(f"{BLUE}0x{frame.pc:08X}{RST} in ", end="")
+            line += f"{BLUE}0x{frame.pc:08X}{RST} in "
         if frame.function_name is not None:
-            print(f"{ORANGE}{frame.function_name}{RST} () ", end="")
+            line += f"{ORANGE}{frame.function_name}{RST} () "
         if frame.file is not None:
-            print(f"at {GREEN}{frame.file} {frame.line}:{frame.column}{RST}", end="")
-        print()
+            line += f"at {GREEN}{frame.file} {frame.line}:{frame.column}{RST}"
+        result.append(line)
+    return result
 
 def mem_reader(loc, dev, unaligned_addr, size_bytes):
     """Read memory from a device at the specified location.
@@ -359,11 +367,13 @@ def dump_running_ops(dev):
     }
 
     if VVERBOSE:
-        printout_table = [ ["Loc", "Proc", "RD PTR", "Base", "(hex)", "Text Offset", "Text (hex)", "Kernel ID:Name", "PC", "ELF PC"] ]
+        printout_table = [ ["Loc", "Proc", "RD PTR", "Base", "Offset", "Kernel ID:Name", "PC", "Kernel Path"] ]
     elif VERBOSE:
         printout_table = [ ["Loc", *enum_values["TensixProcessorTypes"].keys(), "Kernel ID:Name"] ]
     else:
         return
+
+    elf_cache = dict()
 
     # Get the kernel_config_base for each core
     for loc in dev.get_block_locations(block_type="functional_workers"):
@@ -385,17 +395,42 @@ def dump_running_ops(dev):
             watcher_kernel_id  = mem_access(brisc_elf, f'mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.watcher_kernel_ids[{proc_class}]', loc_mem_reader)[0][0] & 0xFFFF  # enum dispatch_core_processor_classes
             kernel_name = runtime_data['kernels'][watcher_kernel_id]['src'] if watcher_kernel_id in runtime_data['kernels'] else ""
 
+            cs = []
+            if kernel_name:
+                kernel_path = runtime_data['kernels'][watcher_kernel_id]['out'] + f"/{proc_name.lower()}/{proc_name.lower()}.elf"
+                kernel_path = os.path.realpath(kernel_path)
+                fw_elf_path = a_kernel_path + f"../../../firmware/{proc_name.lower()}/{proc_name.lower()}.elf"
+                fw_elf_path = os.path.realpath(fw_elf_path)
+                if not os.path.exists(kernel_path):
+                    raiseTTTriageError(f"Kernel ELF file {kernel_path} does not exist.")
+
+                pc = pcs[loc][proc_name.lower() + "_pc"]
+                if VVERBOSE:
+                    print (f".", end="", flush=True)
+
+                    fw_base_address = 0xffc00000 if (proc_name == "NCRISC" and type(dev) == WormholeDevice) else 0
+                    lookup_key = (fw_elf_path, kernel_path, fw_base_address, kernel_config_base + kernel_text_offset)
+                    if lookup_key not in elf_cache:
+                        elf_cache[lookup_key] = RiscLoader._read_elfs([fw_elf_path, kernel_path], [fw_base_address, kernel_config_base + kernel_text_offset], context)
+
+                    cs = top_callstack(pc, elf_cache[lookup_key], verbose=False, context=context)
+
             if VVERBOSE:
                 pc = pcs[loc][proc_name.lower() + "_pc"]
-                row = [ loc.to_str('logical'), proc_name, str(launch_msg_rd_ptr), str(kernel_config_base), f"0x{kernel_config_base:x}", str(kernel_text_offset), f"0x{kernel_text_offset:x}", f"{watcher_kernel_id}:{kernel_name}", f"0x{pc:x}" ]
+                row = [ loc.to_str('logical'), proc_name, str(launch_msg_rd_ptr), f"0x{kernel_config_base:x}", f"0x{kernel_text_offset:x}", f"{watcher_kernel_id}:{kernel_name}", f"0x{pc:x}", "" ]
 
             elif VERBOSE:
                 row.append(f"{watcher_kernel_id}:{kernel_name}")
 
             if kernel_name or kernel_config_base:
                 printout_table.append(row)
+                if cs:
+                    for line in format_callstack(cs):
+                        printout_table.append(["", "", "", "", "", "", "", line])
 
-    verbose(tabulate(printout_table, headers="firstrow", tablefmt=DEFAULT_TABLE_FORMAT))
+    if VERBOSE or VVERBOSE:
+        print() # Newline after the last PC
+        print(tabulate(printout_table, headers="firstrow", tablefmt=DEFAULT_TABLE_FORMAT))
 
     # WIP:
     # # Print callstack for this location using tt_exalens_lib
