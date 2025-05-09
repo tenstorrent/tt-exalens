@@ -4,49 +4,36 @@
 
 """
 Script Name: check_noc_status.py
+
+Usage:
+    check_noc_status.py <elf-file>
+
+Arguments:
+    <elf-file>    Path to risc firmware elf file
+
 Description:
     This script checks if there are any mismatches between values of number of NOC transactions
     stored in global variables from risc firmware and NOC status registers. Script looks for
     these mismatches across all available devices and locations.
-
-Arguments:
-    <firmware_elf.elf> Path to risc firmware elf file
-
-Usage:
-    python3 check_noc_status.py <firwmare_elf.elf>
 """
+
 from ttexalens.tt_exalens_init import init_ttexalens
 from ttexalens.tt_exalens_lib import read_riscv_memory, read_tensix_register
 from ttexalens import util
 from elftools.elf.elffile import ELFFile
 from ttexalens.parse_elf import decode_symbols
 from ttexalens.context import Context
+from docopt import docopt
 
 import sys
 import os
 
-
-def get_elf_path() -> str:
-    """Gets elf path from command line"""
-    # Number of given arguments
-    arg_num = len(sys.argv) - 1
-    # Check if number of given arguments is correct
-    if arg_num == 1:
-        return sys.argv[1]
-    elif arg_num == 0:
-        print("ERROR: No argument detected! Please provide firmware elf path.")
-        return None
-    else:
-        print("ERROR: Too many arguements! Please just provide firmware elf path.")
-        return None
-
-
 def get_symbols_from_elf(elf_path: str, context: Context) -> dict[str, int]:
     """Gets symbols from symbol table from elf file"""
     # Open elf file from given path
-    f = context.server_ifc.get_binary(elf_path)
-    # Read elf file
-    elf = ELFFile(f)
+    stream = open(elf_path, 'rb')
+    # Read elf
+    elf = ELFFile(stream)
     # Get symbols from elf
     return decode_symbols(elf)
 
@@ -118,11 +105,9 @@ def print_summary(summary: dict) -> None:
                 reg, var, reg_val, var_val = elem
                 util.ERROR(f"\tMismatch between {reg} and {var} -> {reg_val} != {var_val}")
 
-
-def main():
-    elf_path = get_elf_path()
-    if elf_path is None:
-        return
+def main(): 
+    args = docopt(__doc__, argv=sys.argv[1:])
+    elf_path = args["<elf-file>"]
 
     if not os.path.exists(elf_path):
         util.ERROR(f"File {elf_path} does not exist")
