@@ -30,8 +30,8 @@ import os
 import sys
 
 # When packaged with PyInstaller, _MEIPASS is defined and contains the path to the bundled libraries
-bundle_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-os.environ['LD_LIBRARY_PATH'] = bundle_dir + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
+bundle_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+os.environ["LD_LIBRARY_PATH"] = bundle_dir + os.pathsep + os.environ.get("LD_LIBRARY_PATH", "")
 
 import time
 from tabulate import tabulate
@@ -40,11 +40,11 @@ from tabulate import tabulate
 #   pyinstaller tt-triage.spec
 
 RST = "\033[0m"
-BLUE = "\033[34m"   # For good values
-RED = "\033[31m"    # For bad values
+BLUE = "\033[34m"  # For good values
+RED = "\033[31m"  # For bad values
 GREEN = "\033[32m"  # For instructions
-ORANGE = "\033[33m" # For warnings
-VERBOSE_CLR = "\033[94m"   # For verbose output
+ORANGE = "\033[33m"  # For warnings
+VERBOSE_CLR = "\033[94m"  # For verbose output
 
 # Global variables for verbosity settings
 VERBOSE = False
@@ -56,12 +56,21 @@ try:
     import yaml
 except ImportError as e:
     missing_module = str(e).split("'")[1]
-    print(f"Module '{missing_module}' not found. Please install required modules using: {GREEN}pip install docopt, pyyaml{RST}")
+    print(
+        f"Module '{missing_module}' not found. Please install required modules using: {GREEN}pip install docopt, pyyaml{RST}"
+    )
     exit(1)
 
 try:
     from ttexalens.tt_exalens_init import init_ttexalens
-    from ttexalens.tt_exalens_lib import read_from_device, read_words_from_device, read_word_from_device, write_words_to_device, arc_msg, callstack
+    from ttexalens.tt_exalens_lib import (
+        read_from_device,
+        read_words_from_device,
+        read_word_from_device,
+        write_words_to_device,
+        arc_msg,
+        callstack,
+    )
     from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.reg_access_yaml import YamlRegisterMap
     from ttexalens.reg_access_json import JsonRegisterMap
@@ -74,7 +83,8 @@ try:
     from ttexalens.tt_exalens_lib import top_callstack
 except ImportError as e:
     print(f"Module '{e}' not found. Please install tt-exalens: {GREEN}", end="")
-    print("""
+    print(
+        """
   sudo apt update && sudo apt install -y software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libzmq3-dev libgtest-dev libgmock-dev xxd ninja-build ccache
   python3 -m pip install --upgrade pip
   git submodule update --init --recursive
@@ -82,12 +92,16 @@ except ImportError as e:
   make build
   python3 -m pip install .
   export PATH=$PATH:/home/$USER/.local/bin
-    """)
+    """
+    )
     exit(1)
+
 
 class TTTriageError(Exception):
     """Base class for TT Triage errors."""
+
     pass
+
 
 def raiseTTTriageError(msg):
     """Raise a TT Triage error."""
@@ -96,25 +110,30 @@ def raiseTTTriageError(msg):
     else:
         print(f"{RED}ERROR: {msg}{RST}")
 
+
 def verbose(msg):
     """Print message if verbose mode is enabled (-v)"""
     if VERBOSE or VVERBOSE:
         print(f"{VERBOSE_CLR}{msg}{RST}")
+
 
 def vverbose(msg):
     """Print message if verbose mode is enabled (-vv)."""
     if VVERBOSE:
         print(f"{VERBOSE_CLR}{msg}{RST}")
 
+
 def title(msg):
     """Print a title."""
     print(f"{GREEN}= {msg}{RST}")
+
 
 def check_ARC(dev):
     """Checking that ARC heartbeat is running. Estimating ARC uptime (-v)."""
     title(check_ARC.__doc__)
 
     arc_core_loc = dev.get_arc_block_location()
+
     def arc_read(addr: int) -> int:
         """Read ARC register using PCI->NOC->ARC."""
         value = read_word_from_device(arc_core_loc, addr)
@@ -127,38 +146,46 @@ def check_ARC(dev):
         print(f"ARC postcode: {RED}0x{postcode:08x}{RST}. Expected {BLUE}0xc0de____{RST}")
         raiseTTTriageError(check_ARC.__doc__)
 
-    # Heartbeat must be increasing
-    # heartbeat_0 = dev.ARC.reset_unit.DEBUG.heartbeat.read()
-    heartbeat_0 = arc_read(0x8100786C4)
-    delay_seconds = 0.1
-    time.sleep(delay_seconds)
-    # heartbeat_1 = dev.ARC.ARC_CSM.DEBUG.heartbeat.read()
-    heartbeat_1 = arc_read(0x8100786C4)
-    if heartbeat_1 <= heartbeat_0:
-        print(f"ARC heartbeat not increasing: {RED}{heartbeat_1}{RST}.")
-        raiseTTTriageError(check_ARC.__doc__)
+    if type(dev) == WormholeDevice:
+        # Heartbeat must be increasing
+        # heartbeat_0 = dev.ARC.reset_unit.DEBUG.heartbeat.read()
+        heartbeat_0 = arc_read(0x8100786C4)
+        delay_seconds = 0.1
+        time.sleep(delay_seconds)
+        # heartbeat_1 = dev.ARC.ARC_CSM.DEBUG.heartbeat.read()
+        heartbeat_1 = arc_read(0x8100786C4)
+        if heartbeat_1 <= heartbeat_0:
+            print(f"ARC heartbeat not increasing: {RED}{heartbeat_1}{RST}.")
+            raiseTTTriageError(check_ARC.__doc__)
 
-    # Compute uptime
-    # arcclk_mhz = dev.ARC.ARC_CSM.AICLK_PPM.curr_arcclk.read()
-    arcclk_mhz = arc_read(0x8100782AC)
-    heartbeats_per_second = (heartbeat_1 - heartbeat_0) / delay_seconds
-    uptime_seconds = heartbeat_1 / heartbeats_per_second
+        # Compute uptime
+        # arcclk_mhz = dev.ARC.ARC_CSM.AICLK_PPM.curr_arcclk.read()
+        arcclk_mhz = arc_read(0x8100782AC)
+        heartbeats_per_second = (heartbeat_1 - heartbeat_0) / delay_seconds
+        uptime_seconds = heartbeat_1 / heartbeats_per_second
 
-    # Heartbeat must be between 500 and 20000 hb/s
-    if heartbeats_per_second < 500:
-        print(f"ARC heartbeat is too low: {RED}{heartbeats_per_second}{RST}hb/s. Expected at least {BLUE}500{RST}hb/s")
-        raiseTTTriageError(check_ARC.__doc__)  
-    if heartbeats_per_second > 20000:
-        print(f"ARC heartbeat is too high: {RED}{heartbeats_per_second}{RST}hb/s. Expected at most {BLUE}20000{RST}hb/s")
-        raiseTTTriageError(check_ARC.__doc__)
+        # Heartbeat must be between 500 and 20000 hb/s
+        if heartbeats_per_second < 500:
+            print(
+                f"ARC heartbeat is too low: {RED}{heartbeats_per_second}{RST}hb/s. Expected at least {BLUE}500{RST}hb/s"
+            )
+            raiseTTTriageError(check_ARC.__doc__)
+        if heartbeats_per_second > 20000:
+            print(
+                f"ARC heartbeat is too high: {RED}{heartbeats_per_second}{RST}hb/s. Expected at most {BLUE}20000{RST}hb/s"
+            )
+            raiseTTTriageError(check_ARC.__doc__)
 
-    # Print heartbeat and uptime
-    verbose(f"ARC heartbeat: {heartbeat_1} - {heartbeat_0} = {heartbeats_per_second}hb/s, ARCCLK: {arcclk_mhz} MHz")
-    days = int(uptime_seconds // (24 * 3600))
-    hours = int((uptime_seconds % (24 * 3600)) // 3600)
-    minutes = int((uptime_seconds % 3600) // 60)
-    seconds = int(uptime_seconds % 60)
-    verbose(f"Approximate ARC uptime: {GREEN}{days}d {hours:02}:{minutes:02}:{seconds:02}s{RST}")
+        # Print heartbeat and uptime
+        verbose(f"ARC heartbeat: {heartbeat_1} - {heartbeat_0} = {heartbeats_per_second}hb/s, ARCCLK: {arcclk_mhz} MHz")
+        days = int(uptime_seconds // (24 * 3600))
+        hours = int((uptime_seconds % (24 * 3600)) // 3600)
+        minutes = int((uptime_seconds % 3600) // 60)
+        seconds = int(uptime_seconds % 60)
+        verbose(f"Approximate ARC uptime: {GREEN}{days}d {hours:02}:{minutes:02}:{seconds:02}s{RST}")
+    else:
+        print(f"{ORANGE}ARC uptime check is not available on this device.{RST}")
+
 
 def check_L1(dev):
     """Checking location 0x0 of each core's L1 for the presence of FW"""
@@ -166,19 +193,25 @@ def check_L1(dev):
 
     # Firmware loaded L1[0] == 0x3800306f
     addr = 0x0
-    expected = 0x7800306f
+    expected = 0x7800306F if type(dev) == WormholeDevice else 0x7A00306F
     for loc in dev.get_block_locations(block_type="functional_workers"):
         data = read_words_from_device(loc, addr, device_id=dev.id(), word_count=1, context=context)
         if data[0] != expected:
             print(f"L1 @{loc}, addr 0x{addr:08x}: {RED}0x{data[0]:08x}{RST}. Expected {BLUE}{expected:08x}{RST}")
             raiseTTTriageError(check_L1.__doc__)
 
+
 def noc_ping(dev, loc, use_noc1: False):
-    data = read_words_from_device(loc, dev.NOC_CONTROL_REGISTER_BASE + dev.NOC_NODE_ID_OFFSET, device_id=dev.id(), word_count=1)
+    noc_id = 0 if not use_noc1 else 1
+    noc_str = "noc0" if not use_noc1 else "noc1"
+    noc_node_id_address = dev.get_noc_register_address("NOC_NODE_ID", noc_id)
+    data = read_words_from_device(loc, noc_node_id_address, device_id=dev.id(), word_count=1)
     n_x = data[0] & 0x3F
     n_y = (data[0] >> 6) & 0x3F
-    if loc.to('noc0') != (n_x, n_y):
-        print(f"loc {RED}{loc.to('noc0')}{RST} Expected {BLUE}({n_x}, {n_y}){RST} but got {RED}{loc.to('noc0')}{RST}")
+    loc_to_noc = loc.to(noc_str)
+    if loc_to_noc != (n_x, n_y):
+        print(f"loc {RED}{loc_to_noc}{RST} Expected {BLUE}({n_x}, {n_y}){RST} but got {RED}{loc_to_noc}{RST}")
+
 
 def check_NOC(dev):
     """Checking that we can reach all NOC endpoints through NOC0 (TODO: NOC1)"""
@@ -186,17 +219,21 @@ def check_NOC(dev):
 
     # Ping all locations
     for block_type in ["functional_workers", "eth"]:
-        verbose (f"Checking {block_type} locations")
+        verbose(f"Checking {block_type} locations")
         all_locs = dev.get_block_locations(block_type)
         for loc in all_locs:
             noc_ping(dev, loc, use_noc1=False)
+            noc_ping(dev, loc, use_noc1=True)
 
-def collect_pcs_from_riscv(dev: Device,
-                           block_type: str = "functional_workers",
-                           signal_names: list[str] = ["brisc_pc", "trisc0_pc", "trisc1_pc", "trisc2_pc", "ncrisc_pc"]):
+
+def collect_pcs_from_riscv(
+    dev: Device,
+    block_type: str = "functional_workers",
+    signal_names: list[str] = ["brisc_pc", "trisc0_pc", "trisc1_pc", "trisc2_pc", "ncrisc_pc"],
+):
     """Collect PC from RISC-V cores through the debug bus."""
 
-    pcs = dict() # location -> {pc_name -> pc}
+    pcs = dict()  # location -> {pc_name -> pc}
     # Get the PC from the RISC-V cores
     for loc in dev.get_block_locations(block_type=block_type):
         store = dev.get_debug_bus_signal_store(loc)
@@ -204,18 +241,20 @@ def collect_pcs_from_riscv(dev: Device,
         for sig in signal_names:
             pc = store.read_signal(sig)
             if sig == "ncrisc_pc":
-                if pc & 0xf0000000 == 0x70000000:
-                    pc = pc | 0x80000000 # Turn the topmost bit on as it was lost on debug bus
+                if pc & 0xF0000000 == 0x70000000:
+                    pc = pc | 0x80000000  # Turn the topmost bit on as it was lost on debug bus
 
             pc_dict[sig] = pc
         pcs[loc] = pc_dict
     return pcs
 
+
 def check_riscV(dev: Device):
     """Checking that the RISC-V cores are running. Dumping PC through debug bus (-v)."""
     title(check_riscV.__doc__)
 
-    # RISC-V soft resets are released
+    if type(dev) == WormholeDevice:
+        # RISC-V soft resets are released
         # Reference table for RISC-V core states
         # after tt-smi reset  - after metal run
         # - 0: 0x7fdff7fd     - 0x3fcff3fc  # These vary by device
@@ -227,26 +266,31 @@ def check_riscV(dev: Device):
         # - 6: 0xffffffff     - 0x00000000
         # - 7: 0xffffffff     - 0x00000000
 
-    expected_after_metal_run = {
-        0: 0x3fcff3fc,
-        1: 0xcff3fcff,
-        2: 0x0000ff3f,
-        3: 0x00000000,
-        4: 0x00000000,
-        5: 0x00000000,
-        6: 0x00000000,
-        7: 0x00000000
-    }
+        expected_after_metal_run = {
+            0: 0x3FCFF3FC,
+            1: 0xCFF3FCFF,
+            2: 0x0000FF3F,
+            3: 0x00000000,
+            4: 0x00000000,
+            5: 0x00000000,
+            6: 0x00000000,
+            7: 0x00000000,
+        }
 
-    # for i in range(len(dev.ARC.ARC_RESET.RISCV_RESET)):
-    #     read_value = dev.ARC.ARC_RESET.RISCV_RESET[i].read()
-    for i in range(3,8):
-        read_value = read_word_from_device(dev.get_arc_block_location(), 0x880030040 + i * 4)
+        # TODO: Check this code
+        # for i in range(len(dev.ARC.ARC_RESET.RISCV_RESET)):
+        #     read_value = dev.ARC.ARC_RESET.RISCV_RESET[i].read()
+        for i in range(3, 8):
+            read_value = read_word_from_device(dev.get_arc_block_location(), 0x880030040 + i * 4)
 
-        verbose(f"{i}: 0x{read_value:08x}")
-        if read_value != expected_after_metal_run[i]:
-            print(f"Mismatch in RiscV reset register {i}: Expected {BLUE}0x{expected_after_metal_run[i]:08x}{RST}, but got {RED}0x{read_value:08x}{RST}")
-            raiseTTTriageError("RISC-V core state does not match expected 'after metal run' values.")
+            verbose(f"{i}: 0x{read_value:08x}")
+            if read_value != expected_after_metal_run[i]:
+                print(
+                    f"Mismatch in RiscV reset register {i}: Expected {BLUE}0x{expected_after_metal_run[i]:08x}{RST}, but got {RED}0x{read_value:08x}{RST}"
+                )
+                raiseTTTriageError("RISC-V core state does not match expected 'after metal run' values.")
+    else:
+        print(f"{ORANGE}RISC-V soft resets check is not available on this device.{RST}")
 
     # Collect PC from RISC-V cores through debug bus
     signal_names = ["brisc_pc", "trisc0_pc", "trisc1_pc", "trisc2_pc", "ncrisc_pc"]
@@ -254,19 +298,20 @@ def check_riscV(dev: Device):
 
     # PC dump through debug bus
     table = []
-    header_row = [ "Loc", *signal_names ]
+    header_row = ["Loc", *signal_names]
     table.append(header_row)
 
     # Dump PC through debug bus
     if VERBOSE or VVERBOSE:
         for loc, pc_dict in pcs.items():
-            loc_row = [ f"{loc.to_str('logical')}" ]
+            loc_row = [f"{loc.to_str('logical')}"]
             for sig in header_row[1:]:
                 pc = pc_dict[sig]
                 loc_row.append(f"0x{pc:x}")
             table.append(loc_row)
 
     verbose(tabulate(table, headers="firstrow", tablefmt=DEFAULT_TABLE_FORMAT))
+
 
 def format_callstack(cs):
     """Return string representation of the callstack."""
@@ -282,6 +327,7 @@ def format_callstack(cs):
             line += f"at {GREEN}{frame.file} {frame.line}:{frame.column}{RST}"
         result.append(line)
     return result
+
 
 def mem_reader(loc, dev, unaligned_addr, size_bytes):
     """Read memory from a device at the specified location.
@@ -306,22 +352,23 @@ def mem_reader(loc, dev, unaligned_addr, size_bytes):
         return words
     else:
         # Convert words to bytes
-        bytes_data = b''
+        bytes_data = b""
         for word in words:
-            bytes_data += word.to_bytes(4, 'little')
+            bytes_data += word.to_bytes(4, "little")
 
         # Extract the requested range
-        result = bytes_data[start_offset:start_offset + size_bytes]
+        result = bytes_data[start_offset : start_offset + size_bytes]
 
         # Convert bytes to words
-        words = [int.from_bytes(result[i:i+4], 'little') for i in range(0, len(result), 4)]
+        words = [int.from_bytes(result[i : i + 4], "little") for i in range(0, len(result), 4)]
         return words
+
 
 def dump_running_ops(dev):
     """Print the running operations on the device."""
     title(dump_running_ops.__doc__)
 
-    metal_home = os.environ.get('TT_METAL_HOME')
+    metal_home = os.environ.get("TT_METAL_HOME")
     if metal_home is None:
         raiseTTTriageError("TT_METAL_HOME is not set. Please set it to the path of the metal directory.")
         return
@@ -329,13 +376,13 @@ def dump_running_ops(dev):
     runtime_yaml = metal_home + "/generated/silicon_debugger/runtime_data.yaml"
     if not os.path.exists(runtime_yaml):
         raiseTTTriageError(f"Runtime data file {runtime_yaml} does not exist.")
-    with open(runtime_yaml, 'r') as f:
+    with open(runtime_yaml, "r") as f:
         runtime_data = yaml.safe_load(f)
     verbose(f"Parsed runtime data file: {runtime_yaml}")
 
     # Get brisc.elf which we will use to get to the important offsets.
-    a_kernel_id = list(runtime_data['kernels'].keys())[0]
-    a_kernel_path = runtime_data['kernels'][a_kernel_id]['out']
+    a_kernel_id = list(runtime_data["kernels"].keys())[0]
+    a_kernel_path = runtime_data["kernels"][a_kernel_id]["out"]
     brisc_elf_path = a_kernel_path + "../../../firmware/brisc/brisc.elf"
     brisc_elf_path = os.path.realpath(brisc_elf_path)
 
@@ -344,34 +391,38 @@ def dump_running_ops(dev):
     brisc_elf = read_elf(context.server_ifc, brisc_elf_path)
 
     if not brisc_elf:
-        raiseTTTriageError(f"Failed to extract DWARF info from ELF file {brisc_elf_path}.\nRun workload with TT_METAL_RISCV_DEBUG_INFO=1 to enable debug info.")
+        raiseTTTriageError(
+            f"Failed to extract DWARF info from ELF file {brisc_elf_path}.\nRun workload with TT_METAL_RISCV_DEBUG_INFO=1 to enable debug info."
+        )
         return
 
-    ProgrammableCoreTypes_TENSIX = brisc_elf["enumerator"]['ProgrammableCoreType::TENSIX'].value # This is how to access the value of an enumerator
+    ProgrammableCoreTypes_TENSIX = brisc_elf["enumerator"][
+        "ProgrammableCoreType::TENSIX"
+    ].value  # This is how to access the value of an enumerator
 
     pcs = collect_pcs_from_riscv(dev)
 
     enum_values = {
-        "TensixProcessorTypes" : {
-            "BRISC" : brisc_elf["enumerator"]['TensixProcessorTypes::DM0'].value,
-            "NCRISC" : brisc_elf["enumerator"]['TensixProcessorTypes::DM1'].value,
-            "TRISC0" : brisc_elf["enumerator"]['TensixProcessorTypes::MATH0'].value,
-            "TRISC1" : brisc_elf["enumerator"]['TensixProcessorTypes::MATH1'].value,
-            "TRISC2" : brisc_elf["enumerator"]['TensixProcessorTypes::MATH2'].value,
+        "TensixProcessorTypes": {
+            "BRISC": brisc_elf["enumerator"]["TensixProcessorTypes::DM0"].value,
+            "NCRISC": brisc_elf["enumerator"]["TensixProcessorTypes::DM1"].value,
+            "TRISC0": brisc_elf["enumerator"]["TensixProcessorTypes::MATH0"].value,
+            "TRISC1": brisc_elf["enumerator"]["TensixProcessorTypes::MATH1"].value,
+            "TRISC2": brisc_elf["enumerator"]["TensixProcessorTypes::MATH2"].value,
         },
-        "dispatch_core_processor_classes" : {
-            "BRISC" : brisc_elf["enumerator"]['dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_DM0'].value,
-            "NCRISC" : brisc_elf["enumerator"]['dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_DM1'].value,
-            "TRISC0" : brisc_elf["enumerator"]['dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_COMPUTE'].value,
-            "TRISC1" : brisc_elf["enumerator"]['dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_COMPUTE'].value,
-            "TRISC2" : brisc_elf["enumerator"]['dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_COMPUTE'].value,
-        }
+        "dispatch_core_processor_classes": {
+            "BRISC": brisc_elf["enumerator"]["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_DM0"].value,
+            "NCRISC": brisc_elf["enumerator"]["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_DM1"].value,
+            "TRISC0": brisc_elf["enumerator"]["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_COMPUTE"].value,
+            "TRISC1": brisc_elf["enumerator"]["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_COMPUTE"].value,
+            "TRISC2": brisc_elf["enumerator"]["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_COMPUTE"].value,
+        },
     }
 
     if VVERBOSE:
-        printout_table = [ ["Loc", "Proc", "RD PTR", "Base", "Offset", "Kernel ID:Name", "PC", "Kernel Path"] ]
+        printout_table = [["Loc", "Proc", "RD PTR", "Base", "Offset", "Kernel ID:Name", "PC", "Kernel Path"]]
     elif VERBOSE:
-        printout_table = [ ["Loc", *enum_values["TensixProcessorTypes"].keys(), "Kernel ID:Name"] ]
+        printout_table = [["Loc", *enum_values["TensixProcessorTypes"].keys(), "Kernel ID:Name"]]
     else:
         return
 
@@ -380,7 +431,7 @@ def dump_running_ops(dev):
     # Get the kernel_config_base for each core
     for loc in dev.get_block_locations(block_type="functional_workers"):
         if VERBOSE:
-            row = [ loc.to_str('logical') ]
+            row = [loc.to_str("logical")]
 
         for proc_name in enum_values["TensixProcessorTypes"].keys():
             proc_type = enum_values["TensixProcessorTypes"][proc_name]
@@ -389,40 +440,67 @@ def dump_running_ops(dev):
             # Create a local wrapper for mem_reader that captures loc and dev
             loc_mem_reader = lambda addr, size: mem_reader(loc, dev, addr, size)
 
-            launch_msg_rd_ptr = mem_access(brisc_elf, 'mailboxes->launch_msg_rd_ptr', loc_mem_reader)[0][0]
+            launch_msg_rd_ptr = mem_access(brisc_elf, "mailboxes->launch_msg_rd_ptr", loc_mem_reader)[0][0]
 
             # Refer to tt_metal/api/tt-metalium/dev_msgs.h for struct kernel_config_msg_t
-            kernel_config_base = mem_access(brisc_elf, f'mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.kernel_config_base[{ProgrammableCoreTypes_TENSIX}]', loc_mem_reader)[0][0]          # Indexed with enum ProgrammableCoreType - tt_metal/hw/inc/*/core_config.h
-            kernel_text_offset = mem_access(brisc_elf, f'mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.kernel_text_offset[{proc_type}]', loc_mem_reader)[0][0]           # Size 5 (NUM_PROCESSORS_PER_CORE_TYPE) - seems to be DM0,DM1,MATH0,MATH1,MATH2
-            watcher_kernel_id  = mem_access(brisc_elf, f'mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.watcher_kernel_ids[{proc_class}]', loc_mem_reader)[0][0] & 0xFFFF  # enum dispatch_core_processor_classes
-            kernel_name = runtime_data['kernels'][watcher_kernel_id]['src'] if watcher_kernel_id in runtime_data['kernels'] else ""
+            kernel_config_base = mem_access(
+                brisc_elf,
+                f"mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.kernel_config_base[{ProgrammableCoreTypes_TENSIX}]",
+                loc_mem_reader,
+            )[0][
+                0
+            ]  # Indexed with enum ProgrammableCoreType - tt_metal/hw/inc/*/core_config.h
+            kernel_text_offset = mem_access(
+                brisc_elf,
+                f"mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.kernel_text_offset[{proc_type}]",
+                loc_mem_reader,
+            )[0][
+                0
+            ]  # Size 5 (NUM_PROCESSORS_PER_CORE_TYPE) - seems to be DM0,DM1,MATH0,MATH1,MATH2
+            watcher_kernel_id = (
+                mem_access(
+                    brisc_elf,
+                    f"mailboxes->launch[{launch_msg_rd_ptr}].kernel_config.watcher_kernel_ids[{proc_class}]",
+                    loc_mem_reader,
+                )[0][0]
+                & 0xFFFF
+            )  # enum dispatch_core_processor_classes
+            kernel_name = (
+                runtime_data["kernels"][watcher_kernel_id]["src"]
+                if watcher_kernel_id in runtime_data["kernels"]
+                else ""
+            )
 
             cs = []
             fw_elf_path = a_kernel_path + f"../../../firmware/{proc_name.lower()}/{proc_name.lower()}.elf"
             fw_elf_path = os.path.realpath(fw_elf_path)
 
             if kernel_name:
-                kernel_path = runtime_data['kernels'][watcher_kernel_id]['out'] + f"/{proc_name.lower()}/{proc_name.lower()}.elf"
+                kernel_path = (
+                    runtime_data["kernels"][watcher_kernel_id]["out"] + f"/{proc_name.lower()}/{proc_name.lower()}.elf"
+                )
                 kernel_path = os.path.realpath(kernel_path)
                 if not os.path.exists(kernel_path):
                     raiseTTTriageError(f"Kernel ELF file {kernel_path} does not exist.")
 
                 pc = pcs[loc][proc_name.lower() + "_pc"]
                 if VVERBOSE:
-                    print (f".", end="", flush=True)
+                    print(f".", end="", flush=True)
 
                     if proc_name == "NCRISC" and type(dev) == WormholeDevice:
-                        lookup_key = (fw_elf_path, kernel_path, 0, 0xffc00000)
+                        lookup_key = (fw_elf_path, kernel_path, 0, 0xFFC00000)
                     else:
                         lookup_key = (fw_elf_path, kernel_path, 0, kernel_config_base + kernel_text_offset)
                     if lookup_key not in elf_cache:
-                        elf_cache[lookup_key] = RiscLoader._read_elfs([lookup_key[0], lookup_key[1]], [lookup_key[2], lookup_key[3]], context)
+                        elf_cache[lookup_key] = RiscLoader._read_elfs(
+                            [lookup_key[0], lookup_key[1]], [lookup_key[2], lookup_key[3]], context
+                        )
 
                     cs = top_callstack(pc, elf_cache[lookup_key], verbose=False, context=context)
             else:
                 pc = pcs[loc][proc_name.lower() + "_pc"]
                 if VVERBOSE:
-                    print (f".", end="", flush=True)
+                    print(f".", end="", flush=True)
 
                     lookup_key = (fw_elf_path, 0)
                     if lookup_key not in elf_cache:
@@ -432,7 +510,16 @@ def dump_running_ops(dev):
 
             if VVERBOSE:
                 pc = pcs[loc][proc_name.lower() + "_pc"]
-                row = [ loc.to_str('logical'), proc_name, str(launch_msg_rd_ptr), f"0x{kernel_config_base:x}", f"0x{kernel_text_offset:x}", f"{watcher_kernel_id}:{kernel_name}", f"0x{pc:x}", "" ]
+                row = [
+                    loc.to_str("logical"),
+                    proc_name,
+                    str(launch_msg_rd_ptr),
+                    f"0x{kernel_config_base:x}",
+                    f"0x{kernel_text_offset:x}",
+                    f"{watcher_kernel_id}:{kernel_name}",
+                    f"0x{pc:x}",
+                    "",
+                ]
 
             elif VERBOSE:
                 row.append(f"{watcher_kernel_id}:{kernel_name}")
@@ -444,7 +531,7 @@ def dump_running_ops(dev):
                         printout_table.append(["", "", "", "", "", "", "", line])
 
     if VERBOSE or VVERBOSE:
-        print() # Newline after the last PC
+        print()  # Newline after the last PC
         print(tabulate(printout_table, headers="firstrow", tablefmt=DEFAULT_TABLE_FORMAT))
 
     # WIP:
@@ -468,33 +555,34 @@ def dump_running_ops(dev):
     #     except Exception as e:
     #         print(f"{RED}Error getting callstack: {e}{RST}")
 
+
 def main(argv=None):
     """Main function that runs the triage script."""
     global VERBOSE, VVERBOSE, context, HALT_ON_ERROR
 
     args = docopt(__doc__, argv=argv)
-    VERBOSE = args['--verbose']
-    VVERBOSE = args['--vverbose']
-    HALT_ON_ERROR = args['--halt-on-error']
+    VERBOSE = args["--verbose"]
+    VVERBOSE = args["--vverbose"]
+    HALT_ON_ERROR = args["--halt-on-error"]
     set_verbose(VVERBOSE)
 
     context = init_ttexalens(use_noc1=False)
     device_ids = list(context.devices.keys())
 
     # Pupulate integer array with device ids
-    if len(args['--dev']) == 1 and args['--dev'][0].lower() == 'all':
-        device_ids = [ int(id) for id in context.devices.keys() ]
+    if len(args["--dev"]) == 1 and args["--dev"][0].lower() == "all":
+        device_ids = [int(id) for id in context.devices.keys()]
     else:
-        device_ids = [ int(id) for id in args['--dev'] ]
+        device_ids = [int(id) for id in args["--dev"]]
 
     verbose(f"Device IDs: {device_ids}")
 
     try:
         for device_id in device_ids:
-            title (f"Checking device {device_id}")
+            title(f"Checking device {device_id}")
             dev = context.devices[device_id]
             # Check if dev is Wormhole or Blackhole
-            if type(dev) == WormholeDevice:
+            if type(dev) == WormholeDevice or type(dev) == BlackholeDevice:
                 check_ARC(dev)
                 check_NOC(dev)
                 check_L1(dev)
@@ -504,11 +592,12 @@ def main(argv=None):
                 raiseTTTriageError(f"{dev._arch} devices are not supported yet.")
     except TTTriageError as e:
         print(f"{RED}ERROR: {e}{RST}")
-        if args['--halt-on-error']:
+        if args["--halt-on-error"]:
             return 1
 
-    print (f"{GREEN}DONE: OK{RST}")
+    print(f"{GREEN}DONE: OK{RST}")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
