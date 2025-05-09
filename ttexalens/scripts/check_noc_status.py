@@ -28,10 +28,11 @@ from docopt import docopt
 import sys
 import os
 
+
 def get_symbols_from_elf(elf_path: str, context: Context) -> dict[str, int]:
     """Gets symbols from symbol table from elf file"""
     # Open elf file from given path
-    stream = open(elf_path, 'rb')
+    stream = open(elf_path, "rb")
     # Read elf
     elf = ELFFile(stream)
     # Get symbols from elf
@@ -105,7 +106,9 @@ def print_summary(summary: dict) -> None:
                 reg, var, reg_val, var_val = elem
                 util.ERROR(f"\tMismatch between {reg} and {var} -> {reg_val} != {var_val}")
 
-def main(): 
+
+def main():
+
     args = docopt(__doc__, argv=sys.argv[1:])
     elf_path = args["<elf-file>"]
 
