@@ -82,8 +82,8 @@ def check_noc_status(symbols: dict[str, int], context: Context, risc_id: int = 0
                 address = symbols[var]
                 # If reading fails, write error message and skip to next core
                 try:
-                    reg_val = read_tensix_register(loc, reg, device.id(), context)
-                    var_val = read_riscv_memory(loc, address, noc_id, risc_id, device.id(), context)
+                    reg_val = read_tensix_register(loc, reg, device_id, context)
+                    var_val = read_riscv_memory(loc, address, noc_id, risc_id, device_id, context)
                 except Exception as e:
                     summary[(device_id, loc)] = f"{util.CLR_WARN}{e}{util.CLR_END}"
                     error = True
