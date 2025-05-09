@@ -4,11 +4,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 TT Triage:
-  Analyze the device state to determine the cause of failure.
+  Diagnoses Tenstorrent AI hardware by performing comprehensive health checks on ARC processors, NOC connectivity, L1 memory, and RISC-V cores.
+  Identifies running kernels and provides callstack information to troubleshoot failed operations. Use with --verbose for detailed diagnostics
+  or --halt-on-error to stop on first failure.
 
   Example use with tt-metal:
-    export TT_METAL_HOME=/localdev/ihamer/work/tt-metal-main/
-    ./build_metal.sh --export-compile-commands
+    export TT_METAL_HOME=~/work/tt-metal
+    ./build_metal.sh --build-programming-examples
     TT_METAL_RISCV_DEBUG_INFO=1 build/programming_examples/matmul_multi_core
     tt-triage
 
@@ -20,7 +22,7 @@ Options:
   --dev=<device_id> Specify the device id       [default: all]
   -v --verbose      Print verbose output.       [default: False]
   -V --vverbose     Print more verbose output.  [default: False]
-  --halt-on-error   Halt on error.              [default: False]
+  --halt-on-error   Halt on first error.        [default: False]
 """
 
 # Setup library paths first
@@ -342,7 +344,7 @@ def dump_running_ops(dev):
     brisc_elf = read_elf(context.server_ifc, brisc_elf_path)
 
     if not brisc_elf:
-        raiseTTTriageError(f"Failed to extract DWARF info from ELF file {brisc_elf_path}")
+        raiseTTTriageError(f"Failed to extract DWARF info from ELF file {brisc_elf_path}.\nRun workload with TT_METAL_RISCV_DEBUG_INFO=1 to enable debug info.")
         return
 
     ProgrammableCoreTypes_TENSIX = brisc_elf["enumerator"]['ProgrammableCoreType::TENSIX'].value # This is how to access the value of an enumerator
@@ -396,11 +398,12 @@ def dump_running_ops(dev):
             kernel_name = runtime_data['kernels'][watcher_kernel_id]['src'] if watcher_kernel_id in runtime_data['kernels'] else ""
 
             cs = []
+            fw_elf_path = a_kernel_path + f"../../../firmware/{proc_name.lower()}/{proc_name.lower()}.elf"
+            fw_elf_path = os.path.realpath(fw_elf_path)
+
             if kernel_name:
                 kernel_path = runtime_data['kernels'][watcher_kernel_id]['out'] + f"/{proc_name.lower()}/{proc_name.lower()}.elf"
                 kernel_path = os.path.realpath(kernel_path)
-                fw_elf_path = a_kernel_path + f"../../../firmware/{proc_name.lower()}/{proc_name.lower()}.elf"
-                fw_elf_path = os.path.realpath(fw_elf_path)
                 if not os.path.exists(kernel_path):
                     raiseTTTriageError(f"Kernel ELF file {kernel_path} does not exist.")
 
@@ -416,6 +419,16 @@ def dump_running_ops(dev):
                         elf_cache[lookup_key] = RiscLoader._read_elfs([lookup_key[0], lookup_key[1]], [lookup_key[2], lookup_key[3]], context)
 
                     cs = top_callstack(pc, elf_cache[lookup_key], verbose=False, context=context)
+            else:
+                pc = pcs[loc][proc_name.lower() + "_pc"]
+                if VVERBOSE:
+                    print (f".", end="", flush=True)
+
+                    lookup_key = (fw_elf_path, 0)
+                    if lookup_key not in elf_cache:
+                        elf_cache[lookup_key] = RiscLoader._read_elfs([lookup_key[0]], [lookup_key[1]], context)
+
+                    cs = top_callstack(pc, elf_cache[lookup_key], verbose=False, context=context)
 
             if VVERBOSE:
                 pc = pcs[loc][proc_name.lower() + "_pc"]
@@ -424,7 +437,7 @@ def dump_running_ops(dev):
             elif VERBOSE:
                 row.append(f"{watcher_kernel_id}:{kernel_name}")
 
-            if kernel_name or kernel_config_base:
+            if kernel_name or kernel_config_base or VVERBOSE:
                 printout_table.append(row)
                 if cs:
                     for line in format_callstack(cs):
