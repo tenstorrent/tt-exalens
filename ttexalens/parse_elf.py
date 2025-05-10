@@ -974,6 +974,87 @@ def access_logger(addr, size_bytes):
     return words_read
 
 
+class FileInterface:
+    def __init__(self):
+        pass
+
+    def get_binary(self, file_path):
+        return open(file_path, "rb")
+
+
+if __name__ == "__main__":
+    args = docopt(__doc__)
+    elf_file_path = args["<elf-file>"]
+    access_path = args["<access-path>"]
+    debug_enabled = args["--debug"]
+
+    file_ifc = FileInterface()
+    name_dict = read_elf(file_ifc, elf_file_path)
+    if access_path:
+        mem_access(name_dict, access_path, access_logger)
+    else:
+        # Debugging display
+        header = [
+            "Category",
+            "Path",
+            "Resolved Type Path",
+            "Size",
+            "Addr",
+            "Hex Addr",
+            "Value",
+            "Hex Value",
+        ]
+        header.append("DIE offset")
+        if debug_enabled:
+            header.append("DIE")
+
+        rows = []
+        for cat, cat_dict in name_dict.items():
+            if cat in ["dwarf", "file-line", "frame-info", "symbols"]:  # Skip non-DIE objects
+                continue
+            for key, die in cat_dict.items():
+                if not hasattr(die, "path"):  # Skip if not a DIE object
+                    continue
+                if key != die.path:
+                    print(f"{CLR_RED}ERROR: key {key} != die.get_path() {die.path}{CLR_END}")
+                resolved_type_path = die.resolved_type.path
+                if resolved_type_path:  # Some DIEs are just refences to other DIEs. We skip them.
+                    # Safely handle address display
+                    addr = die.address
+                    addr_hex = ""
+                    if addr is not None:
+                        try:
+                            addr_hex = hex(addr)
+                        except TypeError:
+                            addr_hex = str(addr)  # Fallback to string representation for non-integer addresses
+
+                    # Safely handle value display
+                    val = die.value
+                    val_hex = ""
+                    if val is not None:
+                        try:
+                            val_hex = hex(val)
+                        except TypeError:
+                            val_hex = str(val)  # Fallback to string representation for non-integer values
+
+                    row = [
+                        cat,
+                        die.path,
+                        resolved_type_path,
+                        die.size,
+                        addr,
+                        addr_hex,
+                        val,
+                        val_hex,
+                    ]
+                    row.append(hex(die.offset))
+                    if debug_enabled:
+                        row.append(str(die))
+                    rows.append(row)
+
+        print(tabulate(rows, headers=header, showindex=False, disable_numparse=True))
+
+
 # TODO:
 # 2. Integration into TTExaLens:
 #   - Fuzzy search for autocomplete
