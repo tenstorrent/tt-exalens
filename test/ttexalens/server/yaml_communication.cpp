@@ -78,29 +78,31 @@ std::string yaml_communication::serialize(const tt::exalens::request& request) {
 
 std::string yaml_communication::serialize(const tt::exalens::pci_read32_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
-           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  noc_x: " + std::to_string(request.noc_x) +
-           "\n  noc_y: " + std::to_string(request.noc_y) + "\n  address: " + std::to_string(request.address);
+           "\n  noc_id: " + std::to_string(request.noc_id) + "\n  chip_id: " + std::to_string(request.chip_id) +
+           "\n  noc_x: " + std::to_string(request.noc_x) + "\n  noc_y: " + std::to_string(request.noc_y) +
+           "\n  address: " + std::to_string(request.address);
 }
 
 std::string yaml_communication::serialize(const tt::exalens::pci_write32_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
-           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  noc_x: " + std::to_string(request.noc_x) +
-           "\n  noc_y: " + std::to_string(request.noc_y) + "\n  address: " + std::to_string(request.address) +
-           "\n  data: " + std::to_string(request.data);
+           "\n  noc_id: " + std::to_string(request.noc_id) + "\n  chip_id: " + std::to_string(request.chip_id) +
+           "\n  noc_x: " + std::to_string(request.noc_x) + "\n  noc_y: " + std::to_string(request.noc_y) +
+           "\n  address: " + std::to_string(request.address) + "\n  data: " + std::to_string(request.data);
 }
 
 std::string yaml_communication::serialize(const tt::exalens::pci_read_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
-           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  noc_x: " + std::to_string(request.noc_x) +
-           "\n  noc_y: " + std::to_string(request.noc_y) + "\n  address: " + std::to_string(request.address) +
-           "\n  size: " + std::to_string(request.size);
+           "\n  noc_id: " + std::to_string(request.noc_id) + "\n  chip_id: " + std::to_string(request.chip_id) +
+           "\n  noc_x: " + std::to_string(request.noc_x) + "\n  noc_y: " + std::to_string(request.noc_y) +
+           "\n  address: " + std::to_string(request.address) + "\n  size: " + std::to_string(request.size);
 }
 
 std::string yaml_communication::serialize(const tt::exalens::pci_write_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
-           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  noc_x: " + std::to_string(request.noc_x) +
-           "\n  noc_y: " + std::to_string(request.noc_y) + "\n  address: " + std::to_string(request.address) +
-           "\n  size: " + std::to_string(request.size) + "\n  data: " + serialize_bytes(request.data, request.size);
+           "\n  noc_id: " + std::to_string(request.noc_id) + "\n  chip_id: " + std::to_string(request.chip_id) +
+           "\n  noc_x: " + std::to_string(request.noc_x) + "\n  noc_y: " + std::to_string(request.noc_y) +
+           "\n  address: " + std::to_string(request.address) + "\n  size: " + std::to_string(request.size) +
+           "\n  data: " + serialize_bytes(request.data, request.size);
 }
 
 std::string yaml_communication::serialize(const tt::exalens::pci_read32_raw_request& request) {
@@ -122,9 +124,10 @@ std::string yaml_communication::serialize(const tt::exalens::dma_buffer_read32_r
 
 std::string yaml_communication::serialize(const tt::exalens::pci_read_tile_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
-           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  noc_x: " + std::to_string(request.noc_x) +
-           "\n  noc_y: " + std::to_string(request.noc_y) + "\n  address: " + std::to_string(request.address) +
-           "\n  size: " + std::to_string(request.size) + "\n  data_format: " + std::to_string(request.data_format);
+           "\n  noc_id: " + std::to_string(request.noc_id) + "\n  chip_id: " + std::to_string(request.chip_id) +
+           "\n  noc_x: " + std::to_string(request.noc_x) + "\n  noc_y: " + std::to_string(request.noc_y) +
+           "\n  address: " + std::to_string(request.address) + "\n  size: " + std::to_string(request.size) +
+           "\n  data_format: " + std::to_string(request.data_format);
 }
 
 std::string yaml_communication::serialize(const tt::exalens::convert_from_noc0_request& request) {
@@ -153,22 +156,24 @@ std::string yaml_communication::serialize(const tt::exalens::get_file_request& r
 
 std::string yaml_communication::serialize(const tt::exalens::arc_msg_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
-           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  msg_code: " + std::to_string(request.msg_code) +
+           "\n  noc_id: " + std::to_string(request.noc_id) + "\n  chip_id: " + std::to_string(request.chip_id) +
+           "\n  msg_code: " + std::to_string(request.msg_code) +
            "\n  wait_for_done: " + std::to_string(request.wait_for_done) + "\n  arg0: " + std::to_string(request.arg0) +
            "\n  arg1: " + std::to_string(request.arg1) + "\n  timeout: " + std::to_string(request.timeout);
 }
 
 std::string yaml_communication::serialize(const tt::exalens::jtag_read32_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
-           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  noc_x: " + std::to_string(request.noc_x) +
-           "\n  noc_y: " + std::to_string(request.noc_y) + "\n  address: " + std::to_string(request.address);
+           "\n  noc_id: " + std::to_string(request.noc_id) + "\n  chip_id: " + std::to_string(request.chip_id) +
+           "\n  noc_x: " + std::to_string(request.noc_x) + "\n  noc_y: " + std::to_string(request.noc_y) +
+           "\n  address: " + std::to_string(request.address);
 }
 
 std::string yaml_communication::serialize(const tt::exalens::jtag_write32_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
-           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  noc_x: " + std::to_string(request.noc_x) +
-           "\n  noc_y: " + std::to_string(request.noc_y) + "\n  address: " + std::to_string(request.address) +
-           "\n  data: " + std::to_string(request.data);
+           "\n  noc_id: " + std::to_string(request.noc_id) + "\n  chip_id: " + std::to_string(request.chip_id) +
+           "\n  noc_x: " + std::to_string(request.noc_x) + "\n  noc_y: " + std::to_string(request.noc_y) +
+           "\n  address: " + std::to_string(request.address) + "\n  data: " + std::to_string(request.data);
 }
 
 std::string yaml_communication::serialize(const tt::exalens::jtag_read32_axi_request& request) {

@@ -80,11 +80,12 @@ class ttexalens_server_communication:
         self._socket.send(bytes([ttexalens_server_request_type.ping.value]))
         return self._check(self._socket.recv())
 
-    def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+    def pci_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
         self._socket.send(
             struct.pack(
-                "<BBBBQ",
+                "<BBBBBQ",
                 ttexalens_server_request_type.pci_read32.value,
+                noc_id,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -93,11 +94,12 @@ class ttexalens_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def pci_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+    def pci_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
         self._socket.send(
             struct.pack(
-                "<BBBBQI",
+                "<BBBBBQI",
                 ttexalens_server_request_type.pci_write32.value,
+                noc_id,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -107,11 +109,12 @@ class ttexalens_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
+    def pci_read(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
         self._socket.send(
             struct.pack(
-                "<BBBBQI",
+                "<BBBBBQI",
                 ttexalens_server_request_type.pci_read.value,
+                noc_id,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -121,11 +124,12 @@ class ttexalens_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
+    def pci_write(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
         self._socket.send(
             struct.pack(
-                f"<BBBBQI{len(data)}s",
+                f"<BBBBBQI{len(data)}s",
                 ttexalens_server_request_type.pci_write.value,
+                noc_id,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -166,6 +170,7 @@ class ttexalens_server_communication:
 
     def pci_read_tile(
         self,
+        noc_id: int,
         chip_id: int,
         noc_x: int,
         noc_y: int,
@@ -175,8 +180,9 @@ class ttexalens_server_communication:
     ):
         self._socket.send(
             struct.pack(
-                "<BBBBQIB",
+                "<BBBBBQIB",
                 ttexalens_server_request_type.pci_read_tile.value,
+                noc_id,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -248,11 +254,14 @@ class ttexalens_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
+    def arc_msg(
+        self, noc_id: int, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int
+    ):
         self._socket.send(
             struct.pack(
-                "<BBBIIIIB",
+                "<BBBBIIIIB",
                 ttexalens_server_request_type.arc_msg.value,
+                noc_id,
                 device_id,
                 msg_code,
                 wait_for_done,
@@ -263,11 +272,12 @@ class ttexalens_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+    def jtag_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
         self._socket.send(
             struct.pack(
-                "<BBBBQ",
+                "<BBBBBQ",
                 ttexalens_server_request_type.jtag_read32.value,
+                noc_id,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -276,11 +286,12 @@ class ttexalens_server_communication:
         )
         return self._check(self._socket.recv())
 
-    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+    def jtag_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
         self._socket.send(
             struct.pack(
-                "<BBBBQI",
+                "<BBBBBQI",
                 ttexalens_server_request_type.jtag_write32.value,
+                noc_id,
                 chip_id,
                 noc_x,
                 noc_y,
@@ -332,24 +343,24 @@ class ttexalens_client(TTExaLensCommunicator):
     def parse_string(self, buffer: bytes):
         return buffer.decode()
 
-    def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self.parse_uint32_t(self._communication.pci_read32(chip_id, noc_x, noc_y, address))
+    def pci_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
+        return self.parse_uint32_t(self._communication.pci_read32(noc_id, chip_id, noc_x, noc_y, address))
 
-    def pci_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        buffer = self._communication.pci_write32(chip_id, noc_x, noc_y, address, data)
+    def pci_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+        buffer = self._communication.pci_write32(noc_id, chip_id, noc_x, noc_y, address, data)
         bytes_written = self.parse_uint32_t(buffer)
         if bytes_written != 4:
             raise ValueError(f"Expected 4 bytes written, but {bytes_written} were written")
         return bytes_written
 
-    def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
-        buffer = self._communication.pci_read(chip_id, noc_x, noc_y, address, size)
+    def pci_read(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
+        buffer = self._communication.pci_read(noc_id, chip_id, noc_x, noc_y, address, size)
         if len(buffer) != size:
             raise ValueError(f"Expected {size} bytes read, but {len(buffer)} were read")
         return buffer
 
-    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
-        bytes_written = self.parse_uint32_t(self._communication.pci_write(chip_id, noc_x, noc_y, address, data))
+    def pci_write(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
+        bytes_written = self.parse_uint32_t(self._communication.pci_write(noc_id, chip_id, noc_x, noc_y, address, data))
         if bytes_written != len(data):
             raise ValueError(f"Expected {len(data)} bytes written, but {bytes_written} were written")
         return bytes_written
@@ -368,6 +379,7 @@ class ttexalens_client(TTExaLensCommunicator):
 
     def pci_read_tile(
         self,
+        noc_id: int,
         chip_id: int,
         noc_x: int,
         noc_y: int,
@@ -375,7 +387,9 @@ class ttexalens_client(TTExaLensCommunicator):
         size: int,
         data_format: int,
     ):
-        return self.parse_string(self._communication.pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format))
+        return self.parse_string(
+            self._communication.pci_read_tile(noc_id, chip_id, noc_x, noc_y, address, size, data_format)
+        )
 
     def get_cluster_description(self):
         return self.parse_string(self._communication.get_cluster_description())
@@ -399,14 +413,18 @@ class ttexalens_client(TTExaLensCommunicator):
         binary_content = self._communication.get_file(binary_path)
         return io.BytesIO(binary_content)
 
-    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
-        return self.parse_uint32_t(self._communication.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout))
+    def arc_msg(
+        self, noc_id: int, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int
+    ):
+        return self.parse_uint32_t(
+            self._communication.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout)
+        )
 
-    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self.parse_uint32_t(self._communication.jtag_read32(chip_id, noc_x, noc_y, address))
+    def jtag_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
+        return self.parse_uint32_t(self._communication.jtag_read32(noc_id, chip_id, noc_x, noc_y, address))
 
-    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        return self.parse_uint32_t(self._communication.jtag_write32(chip_id, noc_x, noc_y, address, data))
+    def jtag_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+        return self.parse_uint32_t(self._communication.jtag_write32(noc_id, chip_id, noc_x, noc_y, address, data))
 
     def jtag_read32_axi(self, chip_id: int, address: int):
         return self.parse_uint32_t(self._communication.jtag_read32_axi(chip_id, address))
@@ -428,9 +446,9 @@ import ttexalens_pybind
 
 
 class TTExaLensPybind(TTExaLensCommunicator):
-    def __init__(self, wanted_devices: list = [], init_jtag=False, use_noc1=False):
+    def __init__(self, wanted_devices: list = [], init_jtag=False, initialize_with_noc1=False):
         super().__init__()
-        if not ttexalens_pybind.open_device(binary_path, wanted_devices, init_jtag, use_noc1):
+        if not ttexalens_pybind.open_device(binary_path, wanted_devices, init_jtag, initialize_with_noc1):
             raise Exception("Failed to open device using pybind library")
 
     def _check_result(self, result):
@@ -438,17 +456,17 @@ class TTExaLensPybind(TTExaLensCommunicator):
             raise ttexalens_server_not_supported()
         return result
 
-    def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self._check_result(ttexalens_pybind.pci_read32(chip_id, noc_x, noc_y, address))
+    def pci_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
+        return self._check_result(ttexalens_pybind.pci_read32(noc_id, chip_id, noc_x, noc_y, address))
 
-    def pci_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        return self._check_result(ttexalens_pybind.pci_write32(chip_id, noc_x, noc_y, address, data))
+    def pci_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+        return self._check_result(ttexalens_pybind.pci_write32(noc_id, chip_id, noc_x, noc_y, address, data))
 
-    def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
-        return self._check_result(ttexalens_pybind.pci_read(chip_id, noc_x, noc_y, address, size))
+    def pci_read(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
+        return self._check_result(ttexalens_pybind.pci_read(noc_id, chip_id, noc_x, noc_y, address, size))
 
-    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
-        return self._check_result(ttexalens_pybind.pci_write(chip_id, noc_x, noc_y, address, data, len(data)))
+    def pci_write(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
+        return self._check_result(ttexalens_pybind.pci_write(noc_id, chip_id, noc_x, noc_y, address, data, len(data)))
 
     def pci_read32_raw(self, chip_id: int, address: int):
         return self._check_result(ttexalens_pybind.pci_read32_raw(chip_id, address))
@@ -461,6 +479,7 @@ class TTExaLensPybind(TTExaLensCommunicator):
 
     def pci_read_tile(
         self,
+        noc_id: int,
         chip_id: int,
         noc_x: int,
         noc_y: int,
@@ -468,7 +487,9 @@ class TTExaLensPybind(TTExaLensCommunicator):
         size: int,
         data_format: int,
     ):
-        return self._check_result(ttexalens_pybind.pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format))
+        return self._check_result(
+            ttexalens_pybind.pci_read_tile(noc_id, chip_id, noc_x, noc_y, address, size, data_format)
+        )
 
     def get_cluster_description(self):
         return self._check_result(ttexalens_pybind.get_cluster_description())
@@ -485,15 +506,15 @@ class TTExaLensPybind(TTExaLensCommunicator):
     def get_device_soc_description(self, chip_id: int):
         return self._check_result(ttexalens_pybind.get_device_soc_description(chip_id))
 
-    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+    def jtag_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
         if address % 4 != 0:
             raise Exception("Unaligned access in jtag_read32")
-        return self._check_result(ttexalens_pybind.jtag_read32(chip_id, noc_x, noc_y, address))
+        return self._check_result(ttexalens_pybind.jtag_read32(noc_id, chip_id, noc_x, noc_y, address))
 
-    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+    def jtag_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
         if address % 4 != 0:
             raise Exception("Unaligned access in jtag_write32")
-        return self._check_result(ttexalens_pybind.jtag_write32(chip_id, noc_x, noc_y, address, data))
+        return self._check_result(ttexalens_pybind.jtag_write32(noc_id, chip_id, noc_x, noc_y, address, data))
 
     def jtag_read32_axi(self, chip_id: int, address: int):
         if address % 4 != 0:
@@ -514,15 +535,19 @@ class TTExaLensPybind(TTExaLensCommunicator):
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         return open(binary_path, "rb")
 
-    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
-        return self._check_result(ttexalens_pybind.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout))
+    def arc_msg(
+        self, noc_id: int, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int
+    ):
+        return self._check_result(
+            ttexalens_pybind.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout)
+        )
 
 
-def init_pybind(wanted_devices=None, init_jtag=False, use_noc1=False):
+def init_pybind(wanted_devices=None, init_jtag=False, initialize_with_noc1=False):
     if not wanted_devices:
         wanted_devices = []
 
-    communicator = TTExaLensPybind(wanted_devices, init_jtag, use_noc1)
+    communicator = TTExaLensPybind(wanted_devices, init_jtag, initialize_with_noc1)
     util.VERBOSE("Device opened successfully.")
     return communicator
 

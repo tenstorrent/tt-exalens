@@ -18,25 +18,26 @@ void tt::exalens::server::process(const tt::exalens::request& base_request) {
 
         case tt::exalens::request_type::pci_read32: {
             auto& request = static_cast<const tt::exalens::pci_read32_request&>(base_request);
-            respond(implementation->pci_read32(request.chip_id, request.noc_x, request.noc_y, request.address));
+            respond(implementation->pci_read32(request.noc_id, request.chip_id, request.noc_x, request.noc_y,
+                                               request.address));
             break;
         }
         case tt::exalens::request_type::pci_write32: {
             auto& request = static_cast<const tt::exalens::pci_write32_request&>(base_request);
-            respond(implementation->pci_write32(request.chip_id, request.noc_x, request.noc_y, request.address,
-                                                request.data));
+            respond(implementation->pci_write32(request.noc_id, request.chip_id, request.noc_x, request.noc_y,
+                                                request.address, request.data));
             break;
         }
         case tt::exalens::request_type::pci_read: {
             auto& request = static_cast<const tt::exalens::pci_read_request&>(base_request);
-            respond(
-                implementation->pci_read(request.chip_id, request.noc_x, request.noc_y, request.address, request.size));
+            respond(implementation->pci_read(request.noc_id, request.chip_id, request.noc_x, request.noc_y,
+                                             request.address, request.size));
             break;
         }
         case tt::exalens::request_type::pci_write: {
             auto& request = static_cast<const tt::exalens::pci_write_request&>(base_request);
-            respond(implementation->pci_write(request.chip_id, request.noc_x, request.noc_y, request.address,
-                                              request.data, request.size));
+            respond(implementation->pci_write(request.noc_id, request.chip_id, request.noc_x, request.noc_y,
+                                              request.address, request.data, request.size));
             break;
         }
         case tt::exalens::request_type::pci_read32_raw: {
@@ -57,8 +58,8 @@ void tt::exalens::server::process(const tt::exalens::request& base_request) {
 
         case tt::exalens::request_type::pci_read_tile: {
             auto& request = static_cast<const tt::exalens::pci_read_tile_request&>(base_request);
-            respond(implementation->pci_read_tile(request.chip_id, request.noc_x, request.noc_y, request.address,
-                                                  request.size, request.data_format));
+            respond(implementation->pci_read_tile(request.noc_id, request.chip_id, request.noc_x, request.noc_y,
+                                                  request.address, request.size, request.data_format));
             break;
         }
         case tt::exalens::request_type::get_cluster_description:
@@ -95,21 +96,22 @@ void tt::exalens::server::process(const tt::exalens::request& base_request) {
         }
         case tt::exalens::request_type::arc_msg: {
             auto& request = static_cast<const tt::exalens::arc_msg_request&>(base_request);
-            respond(implementation->arc_msg(request.chip_id, request.msg_code, request.wait_for_done, request.arg0,
-                                            request.arg1, request.timeout));
+            respond(implementation->arc_msg(request.noc_id, request.chip_id, request.msg_code, request.wait_for_done,
+                                            request.arg0, request.arg1, request.timeout));
             break;
         }
 
         case tt::exalens::request_type::jtag_read32: {
             auto& request = static_cast<const tt::exalens::jtag_read32_request&>(base_request);
-            respond(implementation->jtag_read32(request.chip_id, request.noc_x, request.noc_y, request.address));
+            respond(implementation->jtag_read32(request.noc_id, request.chip_id, request.noc_x, request.noc_y,
+                                                request.address));
             break;
         }
 
         case tt::exalens::request_type::jtag_write32: {
             auto& request = static_cast<const tt::exalens::jtag_write32_request&>(base_request);
-            respond(implementation->jtag_write32(request.chip_id, request.noc_x, request.noc_y, request.address,
-                                                 request.data));
+            respond(implementation->jtag_write32(request.noc_id, request.chip_id, request.noc_x, request.noc_y,
+                                                 request.address, request.data));
             break;
         }
 

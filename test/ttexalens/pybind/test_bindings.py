@@ -32,9 +32,9 @@ class TestBindings(unittest.TestCase):
         self,
         data: int = 2,
     ):
-        assert pb.pci_read32(0, 1, 0, 0) is None, "Error: pci_read32 should return None before writing."
-        assert pb.pci_write32(0, 1, 0, 0, data) == data, "Error: pci_write32 should return the data written."
-        assert pb.pci_read32(0, 1, 0, 0) == data, "Error: pci_read32 should return the data written."
+        assert pb.pci_read32(0, 0, 1, 0, 0) is None, "Error: pci_read32 should return None before writing."
+        assert pb.pci_write32(0, 0, 1, 0, 0, data) == data, "Error: pci_write32 should return the data written."
+        assert pb.pci_read32(0, 0, 1, 0, 0) == data, "Error: pci_read32 should return the data written."
 
     def test_pci_read_write32_raw(
         self,
@@ -45,19 +45,21 @@ class TestBindings(unittest.TestCase):
         assert pb.pci_read32_raw(1, 1) == data, "Error: pci_read32_raw should return the data written."
 
     def test_pci_read_write(self, data: Union[bytes, bytearray] = bytearray([1, 5, 3]), size=3):
-        assert pb.pci_read(3, 3, 3, 3, size) is None, "Error: pci_read should return None before writing."
-        assert pb.pci_write(3, 3, 3, 3, data, 3) == size, "Error: pci_write should return the size of the data written."
+        assert pb.pci_read(0, 3, 3, 3, 3, size) is None, "Error: pci_read should return None before writing."
+        assert (
+            pb.pci_write(0, 3, 3, 3, 3, data, 3) == size
+        ), "Error: pci_write should return the size of the data written."
 
-        rlist = pb.pci_read(3, 3, 3, 3, 3)
+        rlist = pb.pci_read(0, 3, 3, 3, 3, 3)
         for x, y in zip(data, rlist):
             assert x == y, "Error: pci_read should return the data written."
 
     def pci_write_negative(self, data: list = [1, 2, -3], size=3):
         assert (
-            pb.pci_write(5, 5, 5, 5, data, 3) is None
+            pb.pci_write(0, 5, 5, 5, 5, data, 3) is None
         ), "Error: pci_write should return None if any of the data is negative."
-        pb.pci_write(5, 5, 5, 5, [4, 5, 6], 3)
-        rlist = pb.pci_read(5, 5, 5, 5, 3)
+        pb.pci_write(0, 5, 5, 5, 5, [4, 5, 6], 3)
+        rlist = pb.pci_read(0, 5, 5, 5, 5, 3)
         for x, y in zip(data, rlist):
             assert x == y, "Error: pci_read should return the data written."
 
@@ -72,8 +74,8 @@ class TestBindings(unittest.TestCase):
 
     def test_pci_read_tile(self):
         assert (
-            pb.pci_read_tile(1, 2, 3, 4, 5, 6) == "pci_read_tile(1, 2, 3, 4, 5, 6)"
-        ), "Error: pci_read_tile(1, 2, 3, 4, 5, 6) should return 'pci_read_tile(1, 2, 3, 4, 5, 6)'."
+            pb.pci_read_tile(0, 1, 2, 3, 4, 5, 6) == "pci_read_tile(0, 1, 2, 3, 4, 5, 6)"
+        ), "Error: pci_read_tile(0, 1, 2, 3, 4, 5, 6) should return 'pci_read_tile(0, 1, 2, 3, 4, 5, 6)'."
 
     def test_get_cluster_description(self):
         assert (

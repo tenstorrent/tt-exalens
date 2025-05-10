@@ -37,24 +37,24 @@ def get_device_ids():
 def pci_read32():
     global server_communication
     check_response(
-        server_communication.pci_read32(1, 2, 3, 123456),
-        "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456",
+        server_communication.pci_read32(0, 1, 2, 3, 123456),
+        "- type: 10\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456",
     )
 
 
 def pci_write32():
     global server_communication
     check_response(
-        server_communication.pci_write32(1, 2, 3, 123456, 987654),
-        "- type: 11\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654",
+        server_communication.pci_write32(0, 1, 2, 3, 123456, 987654),
+        "- type: 11\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654",
     )
 
 
 def pci_read():
     global server_communication
     check_response(
-        server_communication.pci_read(1, 2, 3, 123456, 1024),
-        "- type: 12\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024",
+        server_communication.pci_read(0, 1, 2, 3, 123456, 1024),
+        "- type: 12\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024",
     )
 
 
@@ -85,8 +85,8 @@ def dma_buffer_read32():
 def pci_read_tile():
     global server_communication
     check_response(
-        server_communication.pci_read_tile(1, 2, 3, 123456, 1024, 14),
-        "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14",
+        server_communication.pci_read_tile(0, 1, 2, 3, 123456, 1024, 14),
+        "- type: 100\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14",
     )
 
 
@@ -117,8 +117,8 @@ def convert_from_noc0():
 def pci_write():
     global server_communication
     check_response(
-        server_communication.pci_write(1, 2, 3, 123456, bytes([10, 11, 12, 13, 14, 15, 16, 17])),
-        "- type: 13\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, 12, 13, 14, 15, 16, 17]",
+        server_communication.pci_write(0, 1, 2, 3, 123456, bytes([10, 11, 12, 13, 14, 15, 16, 17])),
+        "- type: 13\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, 12, 13, 14, 15, 16, 17]",
     )
 
 
@@ -133,16 +133,16 @@ def get_file():
 def jtag_read32():
     global server_communication
     check_response(
-        server_communication.jtag_read32(1, 2, 3, 123456),
-        "- type: 50\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456",
+        server_communication.jtag_read32(0, 1, 2, 3, 123456),
+        "- type: 50\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456",
     )
 
 
 def jtag_write32():
     global server_communication
     check_response(
-        server_communication.jtag_write32(1, 2, 3, 123456, 987654),
-        "- type: 51\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654",
+        server_communication.jtag_write32(0, 1, 2, 3, 123456, 987654),
+        "- type: 51\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654",
     )
 
 

@@ -60,15 +60,17 @@ TEST(ttexalens_python_communication, get_cluster_description) {
 TEST(ttexalens_python_communication, get_device_ids) { call_python("get_device_ids", "- type: 18\n"); }
 
 TEST(ttexalens_python_communication, pci_read32) {
-    call_python("pci_read32", "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n");
+    call_python("pci_read32", "- type: 10\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n");
 }
 
 TEST(ttexalens_python_communication, pci_write32) {
-    call_python("pci_write32", "- type: 11\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654\n");
+    call_python("pci_write32",
+                "- type: 11\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654\n");
 }
 
 TEST(ttexalens_python_communication, pci_read) {
-    call_python("pci_read", "- type: 12\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n");
+    call_python("pci_read",
+                "- type: 12\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n");
 }
 
 TEST(ttexalens_python_communication, pci_read32_raw) {
@@ -84,9 +86,9 @@ TEST(ttexalens_python_communication, dma_buffer_read32) {
 }
 
 TEST(ttexalens_python_communication, pci_read_tile) {
-    call_python(
-        "pci_read_tile",
-        "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14\n");
+    call_python("pci_read_tile",
+                "- type: 100\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  "
+                "data_format: 14\n");
 }
 
 TEST(ttexalens_python_communication, get_device_arch) { call_python("get_device_arch", "- type: 19\n  chip_id: 1\n"); }
@@ -102,10 +104,10 @@ TEST(ttexalens_python_communication, convert_from_noc0) {
 }
 
 TEST(ttexalens_python_communication, pci_write) {
-    call_python(
-        "pci_write",
-        "- type: 13\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, 12, 13, 14, "
-        "15, 16, 17]\n");
+    call_python("pci_write",
+                "- type: 13\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: "
+                "[10, 11, 12, 13, 14, "
+                "15, 16, 17]\n");
 }
 
 TEST(ttexalens_python_communication, get_file) {
@@ -113,12 +115,12 @@ TEST(ttexalens_python_communication, get_file) {
 }
 
 TEST(ttexalens_python_communication, jtag_read32) {
-    call_python("jtag_read32", "- type: 50\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n");
+    call_python("jtag_read32", "- type: 50\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n");
 }
 
 TEST(ttexalens_python_communication, jtag_write32) {
     call_python("jtag_write32",
-                "- type: 51\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654\n");
+                "- type: 51\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654\n");
 }
 
 TEST(ttexalens_python_communication, jtag_read32_axi) {

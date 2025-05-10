@@ -375,8 +375,12 @@ std::optional<std::string> dump_tile(const std::vector<uint32_t>& mem_vector, Ti
     return ss.str();
 }
 
-std::optional<std::string> read_tile_implementation(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                                    uint32_t size, uint8_t data_format, tt_device* device) {
+std::optional<std::string> read_tile_implementation(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                    uint64_t address, uint32_t size, uint8_t data_format,
+                                                    tt_device* device) {
+    // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
+    umd::TTDevice::use_noc1(noc_id == 1);
+
     TileDataFormat df = to_data_format(data_format);
     std::vector<std::uint32_t> mem_vector;
 
