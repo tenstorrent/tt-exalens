@@ -16,7 +16,7 @@ umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(clus
 std::optional<uint32_t> umd_implementation::pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                        uint64_t address) {
     uint32_t result;
-    tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
+    tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
 
     cluster->read_from_device_reg(&result, chip_id, target, address, sizeof(result));
     return result;
@@ -24,7 +24,7 @@ std::optional<uint32_t> umd_implementation::pci_read32(uint8_t chip_id, uint8_t 
 
 std::optional<uint32_t> umd_implementation::pci_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                                         uint32_t data) {
-    tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
+    tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
 
     cluster->write_to_device_reg(&data, sizeof(data), chip_id, target, address);
     return 4;
@@ -33,7 +33,7 @@ std::optional<uint32_t> umd_implementation::pci_write32(uint8_t chip_id, uint8_t
 std::optional<std::vector<uint8_t>> umd_implementation::pci_read(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                                  uint64_t address, uint32_t size) {
     std::vector<uint8_t> result(size);
-    tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
+    tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
 
     // TODO #124: Mitigation for UMD bug #77
     if (!is_chip_mmio_capable(chip_id)) {
@@ -51,7 +51,7 @@ std::optional<std::vector<uint8_t>> umd_implementation::pci_read(uint8_t chip_id
 
 std::optional<uint32_t> umd_implementation::pci_write(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                                       const uint8_t* data, uint32_t size) {
-    tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
+    tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
 
     // TODO #124: Mitigation for UMD bug #77
     if (!is_chip_mmio_capable(chip_id)) {

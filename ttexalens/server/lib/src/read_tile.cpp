@@ -382,7 +382,7 @@ std::optional<std::string> read_tile_implementation(uint8_t chip_id, uint8_t noc
 
     if (df != TileDataFormat::Invalid) {
         tt::umd::CoreCoord target =
-            cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
+            cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
 
         // TODO #124: Mitigation for UMD bug #77
         auto mmio_targets = cluster->get_target_mmio_device_ids();

@@ -134,13 +134,13 @@ static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::unor
 
 static void write_coord(std::ostream &out, const tt::umd::CoreCoord &input, CoreType core_type,
                         const tt_SocDescriptor &soc_descriptor) {
-    auto output = soc_descriptor.translate_coord_to(input, CoordSystem::PHYSICAL);
+    auto output = soc_descriptor.translate_coord_to(input, CoordSystem::NOC0);
     out << output.x << "-" << output.y << ", ";
 }
 
 static void write_coord(std::ostream &out, const tt_xy_pair &xy, CoreType core_type,
                         const tt_SocDescriptor &soc_descriptor) {
-    write_coord(out, tt::umd::CoreCoord{xy.x, xy.y, core_type, CoordSystem::VIRTUAL}, core_type, soc_descriptor);
+    write_coord(out, tt::umd::CoreCoord{xy.x, xy.y, core_type, CoordSystem::NOC0}, core_type, soc_descriptor);
 }
 
 // Creates SOC descriptor files by serializing tt_SocDescroptor structure to yaml.

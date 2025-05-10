@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import struct
 import unittest
+import os
 
 from functools import wraps
 
@@ -15,10 +16,11 @@ from ttexalens import util
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
+from ttexalens.device import ConfigurationRegisterDescription, DebugRegisterDescription
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name, get_risc_id
 from ttexalens.firmware import ELF
 from ttexalens.object import DataArray
-import os
 
 from ttexalens.hw.arc.arc import load_arc_fw
 from ttexalens.hw.arc.arc_dbg_fw import arc_dbg_fw_check_msg_loop_running, arc_dbg_fw_command, NUM_LOG_CALLS_OFFSET
@@ -239,8 +241,6 @@ class TestReadWrite(unittest.TestCase):
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_to_device(core_loc, address, data, device_id)
 
-    from ttexalens.device import ConfigurationRegisterDescription, DebugRegisterDescription, DebugBusSignalDescription
-
     @parameterized.expand(
         [
             (
@@ -275,6 +275,50 @@ class TestReadWrite(unittest.TestCase):
 
         # Checking if read value is equal to the original value
         self.assertEqual(ret, original_value)
+
+    @parameterized.expand(
+        [
+            (
+                "0,0",
+                ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
+                "ALU_FORMAT_SPEC_REG2_Dstacc",
+            ),
+            ("0,0", DebugRegisterDescription(address=0xFFB12054), "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG"),
+            ("0,0", DebugRegisterDescription(address=0xFFB12060), "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
+            ("0,0", DebugRegisterDescription(address=0xFFB120A0), "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
+        ]
+    )
+    def test_write_read_tensix_register_with_name(self, core_loc, register_description, register_name):
+        "Test writing and reading tensix registers with name"
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull.")
+
+        # Reading original values of registers
+        original_val_desc = lib.read_tensix_register(core_loc, register_description)
+        original_val_name = lib.read_tensix_register(core_loc, register_name)
+
+        # Checking if values are equal
+        self.assertEqual(original_val_desc, original_val_name)
+
+        # Writing a value to the register given by description
+        lib.write_tensix_register(core_loc, register_description, 1)
+
+        # Reading values from both registers
+        val_desc = lib.read_tensix_register(core_loc, register_description)
+        val_name = lib.read_tensix_register(core_loc, register_name)
+
+        # Checking if writing to description register affects the name register (making sure they are the same)
+        self.assertEqual(val_desc, val_name)
+
+        # Wrting original value back
+        lib.write_tensix_register(core_loc, register_name, original_val_name)
+
+        val_desc = lib.read_tensix_register(core_loc, register_description)
+        val_name = lib.read_tensix_register(core_loc, register_name)
+
+        # Checking if original values are restored
+        self.assertEqual(val_name, original_val_name)
+        self.assertEqual(val_desc, original_val_desc)
 
     @parameterized.expand(
         [

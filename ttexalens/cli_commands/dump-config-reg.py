@@ -76,7 +76,7 @@ def config_regs_to_table(config_regs: List[dict], table_name: str, debug_tensix:
             if key in config:
                 value = debug_tensix.read_tensix_register(config[key])
                 reg_desc = device.get_tensix_register_description(config[key])
-                config[key] = convert_int_to_data_type(value, reg_desc.data_type, bin(reg_desc.mask).count("1"))
+                config[key] = convert_int_to_data_type(value, reg_desc.data_type, reg_desc.mask.bit_count())
 
     return dict_list_to_table(config_regs, table_name, create_column_names(len(config_regs)))
 

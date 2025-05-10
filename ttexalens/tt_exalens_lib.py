@@ -537,7 +537,7 @@ def read_riscv_memory(
 
     if addr < base_address or addr >= base_address + size:
         raise ValueError(
-            f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size)}."
+            f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
     location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
@@ -599,7 +599,7 @@ def write_riscv_memory(
 
     if addr < base_address or addr >= base_address + size:
         raise ValueError(
-            f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size)}."
+            f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
     location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
