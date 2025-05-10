@@ -376,25 +376,25 @@ std::optional<std::string> dump_tile(const std::vector<uint32_t>& mem_vector, Ti
 }
 
 std::optional<std::string> read_tile_implementation(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                                    uint32_t size, uint8_t data_format, tt::umd::Cluster* device) {
+                                                    uint32_t size, uint8_t data_format, tt::umd::Cluster* cluster) {
     TileDataFormat df = to_data_format(data_format);
     std::vector<std::uint32_t> mem_vector;
 
     if (df != TileDataFormat::Invalid) {
         tt::umd::CoreCoord target =
-            device->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
+            cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::VIRTUAL);
 
         // TODO #124: Mitigation for UMD bug #77
-        auto mmio_targets = device->get_target_mmio_device_ids();
+        auto mmio_targets = cluster->get_target_mmio_device_ids();
 
         if (mmio_targets.find(chip_id) == mmio_targets.end()) {
             for (uint32_t done = 0; done < size;) {
                 uint32_t block = std::min(size - done, 1024u);
-                device->read_from_device_reg(mem_vector.data() + done, chip_id, target, address + done, block);
+                cluster->read_from_device_reg(mem_vector.data() + done, chip_id, target, address + done, block);
                 done += block;
             }
         } else {
-            device->read_from_device_reg(mem_vector.data(), chip_id, target, address, size);
+            cluster->read_from_device_reg(mem_vector.data(), chip_id, target, address, size);
         }
 
         return dump_tile(mem_vector, df);

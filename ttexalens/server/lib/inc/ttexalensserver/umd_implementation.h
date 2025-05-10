@@ -13,7 +13,7 @@ namespace tt::exalens {
 class umd_implementation : public ttexalens_implementation {
    public:
     typedef tt::umd::Cluster DeviceType;
-    umd_implementation(tt::umd::Cluster* device);
+    umd_implementation(tt::umd::Cluster* cluster);
 
    protected:
     std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override;
@@ -39,7 +39,7 @@ class umd_implementation : public ttexalens_implementation {
    private:
     bool is_chip_mmio_capable(uint8_t chip_id);
 
-    tt::umd::Cluster* device = nullptr;
+    tt::umd::Cluster* cluster = nullptr;
     std::string cluster_descriptor_path;
 };
 
