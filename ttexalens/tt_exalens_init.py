@@ -64,7 +64,7 @@ def init_ttexalens_remote(
     if cache_path:
         lens_ifc = tt_exalens_ifc_cache.init_cache_writer(lens_ifc, cache_path)
 
-    return load_context(lens_ifc, use_noc1=False)  # TODO: Unsupported!
+    return load_context(lens_ifc)
 
 
 def init_ttexalens_cached(
