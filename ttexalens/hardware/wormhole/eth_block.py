@@ -4,7 +4,7 @@
 
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
@@ -18,7 +18,8 @@ from ttexalens.register_store import (
 )
 
 
-debug_bus_signal_map = {}
+# TODO: Once signals are added, we can remove type hint
+debug_bus_signal_map: dict[str, DebugBusSignalDescription] = {}
 
 register_map = {
     "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=157, mask=0x1F),

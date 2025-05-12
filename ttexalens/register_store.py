@@ -337,7 +337,7 @@ class RegisterStore:
     def create_initialization(
         register_offset_maps: dict[str, RegisterDescription] | list[dict[str, RegisterDescription]],
         get_register_base_address: Callable[[RegisterDescription], DeviceAddress],
-    ) -> "RegisterStore":
+    ) -> RegisterStoreInitialization:
         """
         This method creates an initialization object for register store.
         Idea behind it is to create one initialization object per noc block type

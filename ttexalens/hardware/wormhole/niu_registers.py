@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Callable
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.register_store import (
     NocConfigurationRegisterDescription,
@@ -9,6 +10,7 @@ from ttexalens.register_store import (
     NocStatusRegisterDescription,
     RegisterDescription,
     RegisterStore,
+    RegisterStoreInitialization,
 )
 
 
@@ -82,7 +84,9 @@ niu_register_map = {
 }
 
 
-def get_niu_register_base_address_callable(base_address: DeviceAddress) -> DeviceAddress:
+def get_niu_register_base_address_callable(
+    base_address: DeviceAddress,
+) -> Callable[[RegisterDescription], DeviceAddress]:
     def get_register_base_address(register_description: RegisterDescription) -> DeviceAddress:
         if isinstance(register_description, NocControlRegisterDescription):
             return base_address
@@ -110,7 +114,7 @@ def get_niu_register_base_address_callable(base_address: DeviceAddress) -> Devic
     return get_register_base_address
 
 
-def get_niu_register_store_initialization(base_address: DeviceAddress) -> RegisterStore:
+def get_niu_register_store_initialization(base_address: DeviceAddress) -> RegisterStoreInitialization:
     return RegisterStore.create_initialization(niu_register_map, get_niu_register_base_address_callable(base_address))
 
 
