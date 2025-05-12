@@ -37,7 +37,7 @@ def read_word_from_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
-    noc_id = noc_id if noc_id is not None else 1 if context.use_noc1 else 0
+    noc_id = check_noc_id(noc_id, context)
 
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
@@ -73,7 +73,7 @@ def read_words_from_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
-    noc_id = noc_id if noc_id is not None else 1 if context.use_noc1 else 0
+    noc_id = check_noc_id(noc_id, context)
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
@@ -114,7 +114,7 @@ def read_from_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
-    noc_id = noc_id if noc_id is not None else 1 if context.use_noc1 else 0
+    noc_id = check_noc_id(noc_id, context)
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
@@ -155,7 +155,7 @@ def write_words_to_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
-    noc_id = noc_id if noc_id is not None else 1 if context.use_noc1 else 0
+    noc_id = check_noc_id(noc_id, context)
 
     if not isinstance(core_loc, OnChipCoordinate):
         core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
@@ -201,7 +201,7 @@ def write_to_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
-    noc_id = noc_id if noc_id is not None else 1 if context.use_noc1 else 0
+    noc_id = check_noc_id(noc_id, context)
 
     if isinstance(data, list):
         data = bytes(data)
@@ -348,6 +348,12 @@ def check_context(context: Context = None) -> Context:
     return tt_exalens_init.GLOBAL_CONTEXT
 
 
+def check_noc_id(noc_id: int | None, context: Context) -> int:
+    if noc_id is None:
+        return 1 if context.use_noc1 else 0
+    assert noc_id in (0, 1), f"Invalid NOC ID {noc_id}. Expected 0 or 1."
+
+
 def validate_addr(addr: int) -> None:
     if addr < 0:
         raise TTException("addr must be greater than or equal to 0.")
@@ -384,7 +390,7 @@ def arc_msg(
             List[int]: return code, reply0, reply1.
     """
     context = check_context(context)
-    noc_id = noc_id if noc_id is not None else 1 if context.use_noc1 else 0
+    noc_id = check_noc_id(noc_id, context)
 
     validate_device_id(device_id, context)
     if timeout < 0:
