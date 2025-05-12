@@ -525,7 +525,7 @@ def read_riscv_memory(
             int: Data read from the device.
     """
 
-    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader
+    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader, get_risc_name
 
     context = check_context(context)
     validate_device_id(device_id, context)
@@ -550,7 +550,7 @@ def read_riscv_memory(
     debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
 
     if debug_risc.is_in_reset():
-        raise TTException(f"RISC core with id {risc_id} is in reset.")
+        raise TTException(f"{get_risc_name(risc_id)} core is in reset.")
 
     with debug_risc.ensure_halted():
         ret = debug_risc.read_memory(addr)
@@ -582,7 +582,7 @@ def write_riscv_memory(
             verbose (bool): If True, enables verbose output. Default False.
     """
 
-    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader
+    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader, get_risc_name
 
     context = check_context(context)
     validate_device_id(device_id, context)
@@ -610,7 +610,7 @@ def write_riscv_memory(
     debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
 
     if debug_risc.is_in_reset():
-        raise TTException(f"RISC core with id {risc_id} is in reset.")
+        raise TTException(f"{get_risc_name(risc_id)} core is in reset.")
 
     with debug_risc.ensure_halted():
         debug_risc.write_memory(addr, value)
