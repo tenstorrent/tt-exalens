@@ -447,6 +447,8 @@ class Device(TTObject):
     def _get_tensix_register_map_keys(self) -> List[str]:
         pass
 
+    # TODO: This is old API. Create all of these in NocBlock. Change existing API to use get_block and call new API.
+
     @abstractmethod
     def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:
         pass

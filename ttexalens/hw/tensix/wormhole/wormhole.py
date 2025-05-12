@@ -3,7 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 from functools import cache
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.hardware.wormhole.wormhole_functional_worker_block import WormholeFunctionalWorkerBlock
+from ttexalens.hardware.wormhole.arc_block import WormholeArcBlock
+from ttexalens.hardware.wormhole.dram_block import WormholeDramBlock
+from ttexalens.hardware.wormhole.eth_block import WormholeEthBlock
+from ttexalens.hardware.wormhole.functional_worker_block import WormholeFunctionalWorkerBlock
+from ttexalens.hardware.wormhole.harvested_worker_block import WormholeHarvestedWorkerBlock
+from ttexalens.hardware.wormhole.pcie_block import WormholePcieBlock
+from ttexalens.hardware.wormhole.router_only_block import WormholeRouterOnlyBlock
 import ttexalens.util as util
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
@@ -887,8 +893,20 @@ class WormholeDevice(Device):
     @cache
     def get_block(self, location):
         block_type = self.get_block_type(location)
-        if block_type == "functional_workers":
+        if block_type == "arc":
+            return WormholeArcBlock(location)
+        elif block_type == "dram":
+            return WormholeDramBlock(location)
+        elif block_type == "eth":
+            return WormholeEthBlock(location)
+        elif block_type == "functional_workers":
             return WormholeFunctionalWorkerBlock(location)
+        elif block_type == "harvested_workers":
+            return WormholeHarvestedWorkerBlock(location)
+        elif block_type == "pcie":
+            return WormholePcieBlock(location)
+        elif block_type == "router_only":
+            return WormholeRouterOnlyBlock(location)
         raise ValueError(f"Unsupported block type: {block_type}")
 
     def get_debug_bus_signal_store(self, location: OnChipCoordinate) -> DebugBusSignalStore:

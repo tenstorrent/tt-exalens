@@ -11,6 +11,7 @@ from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_devic
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.device import Device
+    from ttexalens.register_store import RegisterStore
 
 
 @dataclass
