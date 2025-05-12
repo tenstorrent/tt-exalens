@@ -5,6 +5,7 @@
 from abc import abstractmethod
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+from ttexalens.device import Device
 from ttexalens.register_store import RegisterStore
 
 
@@ -15,7 +16,7 @@ class NocBlock:
         self.debug_bus = debug_bus
 
     @property
-    def device(self):
+    def device(self) -> Device:
         return self.location._device
 
     @abstractmethod

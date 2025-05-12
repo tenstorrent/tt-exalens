@@ -1,7 +1,15 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from functools import cache
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.hardware.blackhole.arc_block import BlackholeArcBlock
+from ttexalens.hardware.blackhole.dram_block import BlackholeDramBlock
+from ttexalens.hardware.blackhole.eth_block import BlackholeEthBlock
+from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
+from ttexalens.hardware.blackhole.harvested_worker_block import BlackholeHarvestedWorkerBlock
+from ttexalens.hardware.blackhole.pcie_block import BlackholePcieBlock
+from ttexalens.hardware.blackhole.router_only_block import BlackholeRouterOnlyBlock
 import ttexalens.util as util
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
@@ -3855,6 +3863,25 @@ class BlackholeDevice(Device):
             rd_sel=2, daisy_sel=14, sig_sel=4, mask=0x1
         ),
     }
+
+    @cache
+    def get_block(self, location):
+        block_type = self.get_block_type(location)
+        if block_type == "arc":
+            return BlackholeArcBlock(location)
+        elif block_type == "dram":
+            return BlackholeDramBlock(location)
+        elif block_type == "eth":
+            return BlackholeEthBlock(location)
+        elif block_type == "functional_workers":
+            return BlackholeFunctionalWorkerBlock(location)
+        elif block_type == "harvested_workers":
+            return BlackholeHarvestedWorkerBlock(location)
+        elif block_type == "pcie":
+            return BlackholePcieBlock(location)
+        elif block_type == "router_only":
+            return BlackholeRouterOnlyBlock(location)
+        raise ValueError(f"Unsupported block type: {block_type}")
 
     def get_alu_config(self) -> List[dict]:
         return [
