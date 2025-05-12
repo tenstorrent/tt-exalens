@@ -23,6 +23,7 @@ class TTExaLensCache(TTExaLensCommunicator):
 
     def __init__(self):
         super().__init__()
+        self.filepath: str = ""
         self.cache = {}
 
     def save(self):
@@ -50,6 +51,7 @@ class TTExaLensCacheThrough(TTExaLensCache):
     This class uses a decorator wrapped around the regular interface functions to perform caching.
     """
 
+    @staticmethod
     def cache_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
@@ -58,6 +60,7 @@ class TTExaLensCacheThrough(TTExaLensCache):
 
         return wrapper
 
+    @staticmethod
     def cache_binary_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
@@ -68,26 +71,28 @@ class TTExaLensCacheThrough(TTExaLensCache):
         return wrapper
 
     @cache_decorator
-    def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self.communicator.pci_read32(chip_id, noc_x, noc_y, address)
+    def pci_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
+        return self.communicator.pci_read32(noc_id, chip_id, noc_x, noc_y, address)
 
-    def pci_write32(self, chip_id, noc_x, noc_y, reg_addr, data):
-        return self.communicator.pci_write32(chip_id, noc_x, noc_y, reg_addr, data)
+    def pci_write32(self, noc_id: int, chip_id, noc_x, noc_y, address, data):
+        return self.communicator.pci_write32(noc_id, chip_id, noc_x, noc_y, address, data)
 
     @cache_decorator
-    def pci_read(self, chip_id, x, y, noc_id, reg_addr, size):
-        return self.communicator.pci_read(chip_id, x, y, noc_id, reg_addr, size)
+    def pci_read(self, noc_id: int, chip_id, noc_x, noc_y, address, size):
+        return self.communicator.pci_read(noc_id, chip_id, noc_x, noc_y, address, size)
 
-    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
-        return self.communicator.pci_write(chip_id, noc_x, noc_y, address, data)
+    def pci_write(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
+        return self.communicator.pci_write(noc_id, chip_id, noc_x, noc_y, address, data)
 
     @cache_decorator
     def dma_buffer_read32(self, chip_id, dram_addr, dram_chan):
         return self.communicator.dma_buffer_read32(chip_id, dram_addr, dram_chan)
 
     @cache_decorator
-    def pci_read_tile(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int):
-        return self.communicator.pci_read_tile(chip_id, noc_x, noc_y, address, size, data_format)
+    def pci_read_tile(
+        self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int
+    ):
+        return self.communicator.pci_read_tile(noc_id, chip_id, noc_x, noc_y, address, size, data_format)
 
     @cache_decorator
     def pci_read32_raw(self, chip_id, reg_addr):
@@ -125,11 +130,11 @@ class TTExaLensCacheThrough(TTExaLensCache):
         return self.communicator.get_binary(binary_path)
 
     @cache_decorator
-    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self.communicator.jtag_read32(chip_id, noc_x, noc_y, address)
+    def jtag_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
+        return self.communicator.jtag_read32(noc_id, chip_id, noc_x, noc_y, address)
 
-    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        return self.communicator.jtag_write32(chip_id, noc_x, noc_y, address, data)
+    def jtag_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+        return self.communicator.jtag_write32(noc_id, chip_id, noc_x, noc_y, address, data)
 
     @cache_decorator
     def jtag_read32_axi(self, chip_id: int, address: int):
@@ -137,6 +142,10 @@ class TTExaLensCacheThrough(TTExaLensCache):
 
     def jtag_write32_axi(self, chip_id: int, address: int, data: int):
         return self.communicator.jtag_write32_axi(chip_id, address, data)
+
+    @cache_decorator
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
+        return self.communicator.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
 
     def using_cache(self) -> bool:
         return True
@@ -167,6 +176,7 @@ class TTExaLensCacheReader(TTExaLensCache):
     The decorator performs all the work of reading from the cache. The functions just provide the correct interface.
     """
 
+    @staticmethod
     def read_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
@@ -179,6 +189,7 @@ class TTExaLensCacheReader(TTExaLensCache):
 
         return wrapper
 
+    @staticmethod
     def read_cached_binary_decorator(func):
         def wrapper(self, *args, **kwargs):
             key = (func.__name__, args)
@@ -192,17 +203,17 @@ class TTExaLensCacheReader(TTExaLensCache):
         return wrapper
 
     @read_decorator
-    def pci_read32(self, chip_id, noc_x, noc_y, reg_addr):
+    def pci_read32(self, noc_id: int, chip_id, noc_x, noc_y, reg_addr):
         pass
 
-    def pci_write32(self, chip_id, noc_x, noc_y, reg_addr, data):
+    def pci_write32(self, noc_id: int, chip_id, noc_x, noc_y, reg_addr, data):
         raise util.TTException("Device not available, cannot write to cache.")
 
     @read_decorator
-    def pci_read(self, chip_id, noc_x, noc_y, reg_addr, size):
+    def pci_read(self, noc_id: int, chip_id, noc_x, noc_y, reg_addr, size):
         pass
 
-    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
+    def pci_write(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
         raise util.TTException("Device not available, cannot write to cache.")
 
     @read_decorator
@@ -210,7 +221,7 @@ class TTExaLensCacheReader(TTExaLensCache):
         pass
 
     @read_decorator
-    def pci_read_tile(self, chip_id, x, y, z, reg_addr, msg_size, data_format):
+    def pci_read_tile(self, noc_id: int, chip_id, x, y, z, reg_addr, msg_size, data_format):
         pass
 
     @read_decorator
@@ -242,25 +253,29 @@ class TTExaLensCacheReader(TTExaLensCache):
 
     @read_decorator
     def get_file(self, file_path: str) -> str:
-        pass
+        return ""
 
     @read_cached_binary_decorator
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
+        return io.BytesIO()
+
+    @read_decorator
+    def jtag_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
+        pass
+
+    def jtag_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
         pass
 
     @read_decorator
-    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
-        return self.communicator.jtag_read32(chip_id, noc_x, noc_y, address)
-
-    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
-        return self.communicator.jtag_write32(chip_id, noc_x, noc_y, address, data)
-
-    @read_decorator
     def jtag_read32_axi(self, chip_id: int, address: int):
-        return self.communicator.jtag_read32_axi(chip_id, address)
+        pass
 
     def jtag_write32_axi(self, chip_id: int, address: int, data: int):
-        return self.communicator.jtag_write32_axi(chip_id, address, data)
+        pass
+
+    @read_decorator
+    def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
+        pass
 
     def using_cache(self) -> bool:
         return True

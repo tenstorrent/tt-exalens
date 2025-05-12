@@ -49,14 +49,14 @@ class QuasarDevice(Device):
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(id, arch, cluster_desc, device_desc_path, context)
 
-    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
+    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription | None:
         """Overrides the base class method to provide register descriptions for Blackhole device."""
         if register_name in QuasarDevice.__register_map:
             return QuasarDevice.__register_map[register_name]
         else:
             return None
 
-    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:
+    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int | None:
         """Overrides the base class method to provide register base addresses for Blackhole device."""
         if isinstance(register_description, ConfigurationRegisterDescription):
             return QuasarDevice.CONFIGURATION_REGISTER_BASE

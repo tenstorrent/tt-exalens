@@ -232,7 +232,35 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << std::endl;
     outfile << "  ]" << std::endl << std::endl;
 
-    outfile << "router_only:" << std::endl << "  []" << std::endl << std::endl;
+    outfile << "router_only:" << std::endl;
+    outfile << "  [" << std::endl;
+    for (const auto &router_only : soc_descriptor.get_cores(CoreType::ROUTER_ONLY)) {
+        if (router_only.x < soc_descriptor.grid_size.x && router_only.y < soc_descriptor.grid_size.y) {
+            write_coord(outfile, router_only, CoreType::ROUTER_ONLY, soc_descriptor);
+        }
+    }
+    outfile << std::endl;
+    outfile << "  ]" << std::endl << std::endl;
+
+    outfile << "security:" << std::endl;
+    outfile << "  [" << std::endl;
+    for (const auto &security : soc_descriptor.get_cores(CoreType::SECURITY)) {
+        if (security.x < soc_descriptor.grid_size.x && security.y < soc_descriptor.grid_size.y) {
+            write_coord(outfile, security, CoreType::SECURITY, soc_descriptor);
+        }
+    }
+    outfile << std::endl;
+    outfile << "  ]" << std::endl << std::endl;
+
+    outfile << "l2cpu:" << std::endl;
+    outfile << "  [" << std::endl;
+    for (const auto &l2cpu : soc_descriptor.get_cores(CoreType::L2CPU)) {
+        if (l2cpu.x < soc_descriptor.grid_size.x && l2cpu.y < soc_descriptor.grid_size.y) {
+            write_coord(outfile, l2cpu, CoreType::L2CPU, soc_descriptor);
+        }
+    }
+    outfile << std::endl;
+    outfile << "  ]" << std::endl << std::endl;
 
     // Fill in the rest that are static to our device
     outfile << "worker_l1_size:" << std::endl;
@@ -322,8 +350,9 @@ open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> 
 
 template <>
 std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jtag_implementation>::open(
-    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices, bool use_noc1) {
-    // TODO: Use noc1 in JTAG
+    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
+    bool initialize_with_noc1) {
+    // TODO: initialize with noc1 in JTAG
 
     std::vector<uint8_t> device_ids;
     std::unique_ptr<tt::umd::Cluster> cluster;
@@ -368,9 +397,11 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
 
 template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open(
-    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices, bool use_noc1) {
-    // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1
-    umd::TTDevice::use_noc1(use_noc1);
+    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
+    bool initialize_with_noc1) {
+    // TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use
+    // noc1
+    umd::TTDevice::use_noc1(initialize_with_noc1);
 
     auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor();
 
@@ -520,6 +551,10 @@ std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::conv
         core_type_enum = CoreType::ETH;
     } else if (core_type == "worker") {
         core_type_enum = CoreType::WORKER;
+    } else if (core_type == "security") {
+        core_type_enum = CoreType::SECURITY;
+    } else if (core_type == "l2cpu") {
+        core_type_enum = CoreType::L2CPU;
     } else {
         return {};
     }

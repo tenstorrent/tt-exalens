@@ -14,8 +14,32 @@ from ttexalens.context import Context
 from ttexalens.util import TTException
 
 
+def convert_coordinate(
+    core_loc: Union[str, OnChipCoordinate], device_id: int = 0, context: Context = None
+) -> OnChipCoordinate:
+    """Converts a string coordinate to an OnChipCoordinate object.
+
+    Args:
+            core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+            device_id (int, default 0): ID number of device to convert to.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+
+    Returns:
+            OnChipCoordinate: Converted coordinate.
+    """
+    context = check_context(context)
+
+    if not isinstance(core_loc, OnChipCoordinate):
+        return OnChipCoordinate.create(core_loc, device=context.devices[device_id])
+    return core_loc
+
+
 def read_word_from_device(
-    core_loc: Union[str, OnChipCoordinate], addr: int, device_id: int = 0, context: Context = None
+    core_loc: Union[str, OnChipCoordinate],
+    addr: int,
+    device_id: int = 0,
+    context: Context = None,
+    noc_id: int | None = None,
 ) -> "int":
     """Reads one word of data, from address 'addr' at core <x-y>.
 
@@ -24,6 +48,7 @@ def read_word_from_device(
             addr (int): Memory address to read from.
             device_id (int, default 0):	ID number of device to read from.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+            noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
             int: Data read from the device.
@@ -32,18 +57,23 @@ def read_word_from_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, context)
 
-    if not isinstance(core_loc, OnChipCoordinate):
-        core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
+    coordinate = convert_coordinate(core_loc, device_id, context)
     if context.devices[device_id]._has_jtag:
-        word = context.server_ifc.jtag_read32(device_id, *core_loc.to("noc0"), addr)
+        word = context.server_ifc.jtag_read32(noc_id, device_id, *context.convert_loc_to_jtag(coordinate), addr)
     else:
-        word = context.server_ifc.pci_read32(device_id, *context.convert_loc_to_umd(core_loc), addr)
+        word = context.server_ifc.pci_read32(noc_id, device_id, *context.convert_loc_to_umd(coordinate), addr)
     return word
 
 
 def read_words_from_device(
-    core_loc: Union[str, OnChipCoordinate], addr: int, device_id: int = 0, word_count: int = 1, context: Context = None
+    core_loc: Union[str, OnChipCoordinate],
+    addr: int,
+    device_id: int = 0,
+    word_count: int = 1,
+    context: Context = None,
+    noc_id: int | None = None,
 ) -> "List[int]":
     """Reads word_count four-byte words of data, starting from address 'addr' at core <x-y>.
 
@@ -53,6 +83,7 @@ def read_words_from_device(
             device_id (int, default 0):	ID number of device to read from.
             word_count (int, default 1): Number of 4-byte words to read.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+            noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
             List[int]: Data read from the device.
@@ -61,23 +92,32 @@ def read_words_from_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, context)
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
-    if not isinstance(core_loc, OnChipCoordinate):
-        core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
+    coordinate = convert_coordinate(core_loc, device_id, context)
     data = []
     for i in range(word_count):
         if context.devices[device_id]._has_jtag:
-            word = context.server_ifc.jtag_read32(device_id, *core_loc.to("noc0"), addr + 4 * i)
+            word = context.server_ifc.jtag_read32(
+                noc_id, device_id, *context.convert_loc_to_jtag(coordinate), addr + 4 * i
+            )
         else:
-            word = context.server_ifc.pci_read32(device_id, *context.convert_loc_to_umd(core_loc), addr + 4 * i)
+            word = context.server_ifc.pci_read32(
+                noc_id, device_id, *context.convert_loc_to_umd(coordinate), addr + 4 * i
+            )
         data.append(word)
     return data
 
 
 def read_from_device(
-    core_loc: Union[str, OnChipCoordinate], addr: int, device_id: int = 0, num_bytes: int = 4, context: Context = None
+    core_loc: Union[str, OnChipCoordinate],
+    addr: int,
+    device_id: int = 0,
+    num_bytes: int = 4,
+    context: Context = None,
+    noc_id: int | None = None,
 ) -> bytes:
     """Reads num_bytes of data starting from address 'addr' at core <x-y>.
 
@@ -87,6 +127,7 @@ def read_from_device(
             device_id (int, default 0): ID number of device to read from.
             num_bytes (int, default 4): Number of bytes to read.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+            noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
             bytes: Data read from the device.
@@ -95,17 +136,19 @@ def read_from_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, context)
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
-    if not isinstance(core_loc, OnChipCoordinate):
-        core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
+    coordinate = convert_coordinate(core_loc, device_id, context)
 
     if context.devices[device_id]._has_jtag:
-        int_array = read_words_from_device(core_loc, addr, device_id, num_bytes // 4 + (num_bytes % 4 > 0), context)
+        int_array = read_words_from_device(
+            coordinate, addr, device_id, num_bytes // 4 + (num_bytes % 4 > 0), context, noc_id
+        )
         return struct.pack(f"{len(int_array)}I", *int_array)[:num_bytes]
 
-    return context.server_ifc.pci_read(device_id, *context.convert_loc_to_umd(core_loc), addr, num_bytes)
+    return context.server_ifc.pci_read(noc_id, device_id, *context.convert_loc_to_umd(coordinate), addr, num_bytes)
 
 
 def write_words_to_device(
@@ -114,6 +157,7 @@ def write_words_to_device(
     data: Union[int, List[int]],
     device_id: int = 0,
     context: Context = None,
+    noc_id: int | None = None,
 ) -> int:
     """Writes data word to address 'addr' at noc0 location x-y of the current chip.
 
@@ -123,6 +167,7 @@ def write_words_to_device(
             data (int | List[int]): 4-byte integer word to be written, or a list of them.
             device_id (int, default 0): ID number of device to write to.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+            noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
             int: If the execution is successful, return value should be 4 (number of bytes written).
@@ -131,9 +176,9 @@ def write_words_to_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, context)
 
-    if not isinstance(core_loc, OnChipCoordinate):
-        core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
+    coordinate = convert_coordinate(core_loc, device_id, context)
 
     if isinstance(data, int):
         data = [data]
@@ -141,10 +186,12 @@ def write_words_to_device(
     bytes_written = 0
     for i, word in enumerate(data):
         if context.devices[device_id]._has_jtag:
-            bytes_written += context.server_ifc.jtag_write32(device_id, *core_loc.to("noc0"), addr + i * 4, word)
+            bytes_written += context.server_ifc.jtag_write32(
+                noc_id, device_id, *context.convert_loc_to_jtag(coordinate), addr + i * 4, word
+            )
         else:
             bytes_written += context.server_ifc.pci_write32(
-                device_id, *context.convert_loc_to_umd(core_loc), addr + i * 4, word
+                noc_id, device_id, *context.convert_loc_to_umd(coordinate), addr + i * 4, word
             )
     return bytes_written
 
@@ -155,6 +202,7 @@ def write_to_device(
     data: "Union[List[int], bytes]",
     device_id: int = 0,
     context: Context = None,
+    noc_id: int | None = None,
 ) -> int:
     """Writes data to address 'addr' at noc0 location x-y of the current chip.
 
@@ -164,6 +212,7 @@ def write_to_device(
             data (List[int] | bytes): Data to be written. Lists are converted to bytes before writing, each element a byte. Elements must be between 0 and 255.
             device_id (int, default 0):	ID number of device to write to.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+            noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
             int: If the execution is successful, return value should be number of bytes written.
@@ -172,6 +221,7 @@ def write_to_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, context)
 
     if isinstance(data, list):
         data = bytes(data)
@@ -179,22 +229,23 @@ def write_to_device(
     if len(data) == 0:
         raise TTException("Data to write must not be empty.")
 
-    if not isinstance(core_loc, OnChipCoordinate):
-        core_loc = OnChipCoordinate.create(core_loc, device=context.devices[device_id])
+    coordinate = convert_coordinate(core_loc, device_id, context)
 
     if context.devices[device_id]._has_jtag:
         assert (
             len(data) % 4 == 0
         ), "Data length must be a multiple of 4 bytes as JTAG currently does not support unaligned access."
         for i in range(0, len(data), 4):
-            write_words_to_device(core_loc, addr + i, struct.unpack("<I", data[i : i + 4])[0], device_id, context)
+            write_words_to_device(
+                coordinate, addr + i, struct.unpack("<I", data[i : i + 4])[0], device_id, context, noc_id
+            )
         return len(data)
 
-    return context.server_ifc.pci_write(device_id, *context.convert_loc_to_umd(core_loc), addr, data)
+    return context.server_ifc.pci_write(noc_id, device_id, *context.convert_loc_to_umd(coordinate), addr, data)
 
 
 def load_elf(
-    elf_file: os.PathLike,
+    elf_file: str,
     core_loc: Union[str, OnChipCoordinate, List[Union[str, OnChipCoordinate]]],
     risc_id: int = 0,
     device_id: int = 0,
@@ -203,7 +254,7 @@ def load_elf(
     """Loads the given ELF file into the specified RISC core. RISC core must be in reset before loading the ELF.
 
     Args:
-            elf_file (os.PathLike): Path to the ELF file to run.
+            elf_file (str): Path to the ELF file to run.
             core_loc (str | OnChipCoordinate | List[str | OnChipCoordinate]): One of the following:
                     1. "all" to run the ELF on all cores;
                     2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -223,7 +274,7 @@ def load_elf(
 
     device = context.devices[device_id]
 
-    locs = []
+    locs: List[OnChipCoordinate] = []
     if isinstance(core_loc, OnChipCoordinate):
         locs = [core_loc]
     elif isinstance(core_loc, list):
@@ -233,8 +284,8 @@ def load_elf(
             else:
                 locs.append(OnChipCoordinate.create(loc, device))
     elif core_loc == "all":
-        for loc in device.get_block_locations(block_type="functional_workers"):
-            locs.append(loc)
+        for block_loc in device.get_block_locations(block_type="functional_workers"):
+            locs.append(block_loc)
     else:
         locs = [OnChipCoordinate.create(core_loc, device)]
 
@@ -249,7 +300,7 @@ def load_elf(
 
 
 def run_elf(
-    elf_file: os.PathLike,
+    elf_file: str,
     core_loc: Union[str, OnChipCoordinate, List[Union[str, OnChipCoordinate]]],
     risc_id: int = 0,
     device_id: int = 0,
@@ -258,7 +309,7 @@ def run_elf(
     """Loads the given ELF file into the specified RISC core and executes it. Similar to load_elf, but RISC core is taken out of reset after load.
 
     Args:
-            elf_file (os.PathLike): Path to the ELF file to run.
+            elf_file (str): Path to the ELF file to run.
             core_loc (str | OnChipCoordinate | List[str | OnChipCoordinate]): One of the following:
                     1. "all" to run the ELF on all cores;
                     2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -288,8 +339,8 @@ def run_elf(
             else:
                 locs.append(OnChipCoordinate.create(loc, device))
     elif core_loc == "all":
-        for loc in device.get_block_locations(block_type="functional_workers"):
-            locs.append(loc)
+        for block_loc in device.get_block_locations(block_type="functional_workers"):
+            locs.append(block_loc)
     else:
         locs = [OnChipCoordinate.create(core_loc, device)]
 
@@ -316,6 +367,13 @@ def check_context(context: Context = None) -> Context:
     return tt_exalens_init.GLOBAL_CONTEXT
 
 
+def check_noc_id(noc_id: int | None, context: Context) -> int:
+    if noc_id is None:
+        return 1 if context.use_noc1 else 0
+    assert noc_id in (0, 1), f"Invalid NOC ID {noc_id}. Expected 0 or 1."
+    return noc_id
+
+
 def validate_addr(addr: int) -> None:
     if addr < 0:
         raise TTException("addr must be greater than or equal to 0.")
@@ -327,7 +385,14 @@ def validate_device_id(device_id: int, context: Context) -> None:
 
 
 def arc_msg(
-    device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int, context: Context = None
+    device_id: int,
+    msg_code: int,
+    wait_for_done: bool,
+    arg0: int,
+    arg1: int,
+    timeout: int,
+    context: Context = None,
+    noc_id: int | None = None,
 ) -> "List[int]":
     """Sends an ARC message to the device.
 
@@ -339,17 +404,19 @@ def arc_msg(
             arg1 (int): Second argument to the message.
             timeout (int): Timeout in milliseconds.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+            noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
             List[int]: return code, reply0, reply1.
     """
     context = check_context(context)
+    noc_id = check_noc_id(noc_id, context)
 
     validate_device_id(device_id, context)
     if timeout < 0:
         raise TTException("Timeout must be greater than or equal to 0.")
 
-    return context.server_ifc.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
+    return context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout)
 
 
 def read_tensix_register(
@@ -376,17 +443,14 @@ def read_tensix_register(
     context = check_context(context)
     validate_device_id(device_id, context)
 
-    device = context.devices[device_id]
-
-    if not isinstance(core_loc, OnChipCoordinate):
-        core_loc = OnChipCoordinate.create(core_loc, device=device)
+    coordinate = convert_coordinate(core_loc, device_id, context)
 
     if not isinstance(register, TensixRegisterDescription) and not isinstance(register, str):
         raise TTException(
             f"Invalid register type. Must be an str or instance of TensixRegisterDescription or its subclasses, but got {type(register)}"
         )
 
-    return TensixDebug(core_loc, device_id, context).read_tensix_register(register)
+    return TensixDebug(coordinate, device_id, context).read_tensix_register(register)
 
 
 def write_tensix_register(
@@ -413,23 +477,20 @@ def write_tensix_register(
 
     context = check_context(context)
     validate_device_id(device_id, context)
-    device = context.devices[device_id]
-
-    if not isinstance(core_loc, OnChipCoordinate):
-        core_loc = OnChipCoordinate.create(core_loc, device=device)
+    coordinate = convert_coordinate(core_loc, device_id, context)
 
     if not isinstance(register, TensixRegisterDescription) and not isinstance(register, str):
         raise TTException(
             f"Invalid register type. Must be an str or instance of TensixRegisterDescription or its subclasses, but got {type(register)}"
         )
 
-    TensixDebug(core_loc, device_id, context).write_tensix_register(register, value)
+    TensixDebug(coordinate, device_id, context).write_tensix_register(register, value)
 
 
 def callstack(
     core_loc: Union[str, OnChipCoordinate],
     elf_paths: Union[List[str], str],
-    offsets: List[int] = None,
+    offsets: int | List[int | None] = None,
     risc_id: int = 0,
     max_depth: int = 100,
     stop_on_main: bool = True,
@@ -457,10 +518,7 @@ def callstack(
 
     context = check_context(context)
     validate_device_id(device_id, context)
-    device = context.devices[device_id]
-
-    if not isinstance(core_loc, OnChipCoordinate):
-        core_loc = OnChipCoordinate.create(core_loc, device=device)
+    coordinate = convert_coordinate(core_loc, device_id, context)
 
     # If given a single string, convert to list
     if isinstance(elf_paths, str):
@@ -484,9 +542,9 @@ def callstack(
         raise ValueError("Max depth must be greater than 0.")
 
     noc_id = 0
-    risc_debug = RiscDebug(RiscLoc(core_loc, noc_id, risc_id), context, verbose=verbose)
+    risc_debug = RiscDebug(RiscLoc(coordinate, noc_id, risc_id), context, verbose=verbose)
     if risc_debug.is_in_reset():
-        raise TTException(f"RiscV core {get_risc_name(risc_id)} on location {core_loc.to_user_str()} is in reset")
+        raise TTException(f"RiscV core {get_risc_name(risc_id)} on location {coordinate.to_user_str()} is in reset")
     loader = RiscLoader(risc_debug, context, verbose)
 
     return loader.get_callstack(elf_paths, offsets, max_depth, stop_on_main)
@@ -517,14 +575,12 @@ def read_riscv_memory(
             int: Data read from the device.
     """
 
-    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader
+    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader, get_risc_name
 
     context = check_context(context)
     validate_device_id(device_id, context)
     device = context.devices[device_id]
-
-    if not isinstance(core_loc, OnChipCoordinate):
-        core_loc = OnChipCoordinate.create(core_loc, device=device)
+    coordinate = convert_coordinate(core_loc, device_id, context)
 
     if noc_id not in (0, 1):
         raise ValueError("Invalid value for noc_id. Expected 0 or 1.")
@@ -540,11 +596,11 @@ def read_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
+    location = RiscLoc(loc=coordinate, noc_id=noc_id, risc_id=risc_id)
     debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
 
     if debug_risc.is_in_reset():
-        raise TTException(f"RISC core with id {risc_id} is in reset.")
+        raise TTException(f"{get_risc_name(risc_id)} core is in reset.")
 
     with debug_risc.ensure_halted():
         ret = debug_risc.read_memory(addr)
@@ -576,14 +632,12 @@ def write_riscv_memory(
             verbose (bool): If True, enables verbose output. Default False.
     """
 
-    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader
+    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader, get_risc_name
 
     context = check_context(context)
     validate_device_id(device_id, context)
     device = context.devices[device_id]
-
-    if not isinstance(core_loc, OnChipCoordinate):
-        core_loc = OnChipCoordinate.create(core_loc, device=device)
+    coordinate = convert_coordinate(core_loc, device_id, context)
 
     if value < 0 or value > 0xFFFFFFFF:
         raise ValueError(f"Invalid value {value}. Value must be a 32-bit unsigned integer.")
@@ -602,11 +656,11 @@ def write_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    location = RiscLoc(loc=core_loc, noc_id=noc_id, risc_id=risc_id)
+    location = RiscLoc(loc=coordinate, noc_id=noc_id, risc_id=risc_id)
     debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
 
     if debug_risc.is_in_reset():
-        raise TTException(f"RISC core with id {risc_id} is in reset.")
+        raise TTException(f"{get_risc_name(risc_id)} core is in reset.")
 
     with debug_risc.ensure_halted():
         debug_risc.write_memory(addr, value)

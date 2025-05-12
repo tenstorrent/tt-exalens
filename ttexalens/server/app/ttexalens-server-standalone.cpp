@@ -20,7 +20,7 @@ struct server_config {
     std::filesystem::path simulation_directory;
     std::vector<uint8_t> wanted_devices;
     bool init_jtag;
-    bool use_noc1;
+    bool initialize_with_noc1;
 };
 
 // Make sure that the directory exists
@@ -44,10 +44,10 @@ int run_ttexalens_server(const server_config& config) {
             if (config.simulation_directory.empty()) {
                 if (config.init_jtag) {
                     implementation = tt::exalens::open_implementation<tt::exalens::jtag_implementation>::open(
-                        {}, config.wanted_devices, config.use_noc1);
+                        {}, config.wanted_devices, config.initialize_with_noc1);
                 } else {
                     implementation = tt::exalens::open_implementation<tt::exalens::umd_implementation>::open(
-                        {}, config.wanted_devices, config.use_noc1);
+                        {}, config.wanted_devices, config.initialize_with_noc1);
                 }
             } else {
                 ensure_directory("VCS binary", config.simulation_directory);
@@ -105,7 +105,7 @@ server_config parse_args(int argc, char** argv) {
     server_config config = server_config();
     config.port = atoi(argv[1]);
     config.init_jtag = false;
-    config.use_noc1 = false;
+    config.initialize_with_noc1 = false;
 
     int i = 2;
     while (i < argc) {
@@ -141,8 +141,8 @@ server_config parse_args(int argc, char** argv) {
         } else if (strcmp(argv[i], "--jtag") == 0) {
             config.init_jtag = true;
             i++;
-        } else if (strcmp(argv[i], "--use-noc1") == 0) {
-            config.use_noc1 = true;
+        } else if (strcmp(argv[i], "--initialize-with-noc1") == 0) {
+            config.initialize_with_noc1 = true;
             i++;
         } else {
             log_error("Unknown argument: {}", argv[i]);
@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
     if (argc < 2) {
         log_error(
             "Need arguments: <port> [-s <simulation_directory>] [-d <device_id1> [<device_id2> ... "
-            "<device_idN>]] [--jtag] [--background] [--use-noc1]");
+            "<device_idN>]] [--jtag] [--background] [--initialize-with-noc1]");
         return 1;
     }
 

@@ -4,6 +4,7 @@
 # Core utility functions used by tt_exalens_lib and other modules
 from ttexalens import tt_exalens_init
 from ttexalens.context import Context
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.util import TTException
 
 
@@ -30,22 +31,24 @@ def validate_device_id(device_id: int, context: Context) -> None:
         raise TTException(f"Invalid device_id {device_id}.")
 
 
-def arc_read(context: Context, device_id: int, core_loc: tuple, reg_addr: int) -> int:
+def arc_read(context: Context, device_id: int, core_loc: OnChipCoordinate, reg_addr: int) -> int:
     """
     Reads a 32-bit value from an ARC address space.
     """
+    noc_id = 1 if context.use_noc1 else 0
     if context.devices[device_id]._has_mmio:
         read_val = context.server_ifc.pci_read32_raw(device_id, reg_addr)
     else:
-        read_val = context.server_ifc.pci_read32(device_id, *context.convert_loc_to_umd(core_loc), reg_addr)
+        read_val = context.server_ifc.pci_read32(noc_id, device_id, *context.convert_loc_to_umd(core_loc), reg_addr)
     return read_val
 
 
-def arc_write(context: Context, device_id: int, core_loc: tuple, reg_addr: int, value: int) -> None:
+def arc_write(context: Context, device_id: int, core_loc: OnChipCoordinate, reg_addr: int, value: int) -> None:
     """
     Writes a 32-bit value to an ARC address space.
     """
+    noc_id = 1 if context.use_noc1 else 0
     if context.devices[device_id]._has_mmio:
         context.server_ifc.pci_write32_raw(device_id, reg_addr, value)
     else:
-        context.server_ifc.pci_write32(device_id, *context.convert_loc_to_umd(core_loc), reg_addr, value)
+        context.server_ifc.pci_write32(noc_id, device_id, *context.convert_loc_to_umd(core_loc), reg_addr, value)

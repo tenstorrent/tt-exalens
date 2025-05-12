@@ -83,11 +83,11 @@ def arc_dbg_fw_command(
 
     DRAM_REGION_START_ADDR = arc_dbg_fw_get_buffer_start_addr()
 
-    DRAM_REGION_SIZE = os.getenv("TT_METAL_ARC_DEBUG_BUFFER_SIZE")
-    if DRAM_REGION_SIZE is None:
+    DRAM_REGION_SIZE_str = os.getenv("TT_METAL_ARC_DEBUG_BUFFER_SIZE")
+    if DRAM_REGION_SIZE_str is None:
         DRAM_REGION_SIZE = tt_metal_arc_debug_buffer_size
     else:
-        DRAM_REGION_SIZE = int(DRAM_REGION_SIZE)
+        DRAM_REGION_SIZE = int(DRAM_REGION_SIZE_str, 0)
 
     if command == "start":
         arc_dbg_fw_send_message(DFW_MSG_SETUP_LOGGING, DRAM_REGION_START_ADDR, DRAM_REGION_SIZE, device_id, context)

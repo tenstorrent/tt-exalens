@@ -6,7 +6,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, replace
 from functools import cached_property
-from typing import List, Sequence, Tuple
+from typing import Dict, Iterable, Iterator, List, Sequence, Tuple
 
 from tabulate import tabulate
 from ttexalens.context import Context
@@ -22,12 +22,32 @@ from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_devic
 
 
 class TensixInstructions:
-    def __init__(self, ops: __module__):
+    def __init__(self, ops):
         for func_name in dir(ops):
             func = getattr(ops, func_name)
             if callable(func):
                 static_method = staticmethod(func)
                 setattr(self.__class__, func_name, static_method)
+
+    @staticmethod
+    def TT_OP_SFPLOAD(lreg_ind, instr_mod0, sfpu_addr_mode, dest_reg_addr):
+        pass
+
+    @staticmethod
+    def TT_OP_STALLWAIT(stall_res, wait_res):
+        pass
+
+    @staticmethod
+    def TT_OP_MOVDBGA2D(dest_32b_lo, src, addr_mode, instr_mod, dst):
+        pass
+
+    @staticmethod
+    def TT_OP_SFPSTORE(lreg_ind, instr_mod0, sfpu_addr_mode, dest_reg_addr):
+        pass
+
+    @staticmethod
+    def TT_OP_SETRWC(clear_ab_vld, rwc_cr, rwc_d, rwc_b, rwc_a, BitMask):
+        pass
 
 
 @dataclass
@@ -84,6 +104,23 @@ class NocControlRegisterDescription(TensixRegisterDescription):
 # a specific device.
 #
 class Device(TTObject):
+    instructions: TensixInstructions = None
+    DIE_X_TO_NOC_0_X: List[int] = []
+    DIE_Y_TO_NOC_0_Y: List[int] = []
+    DIE_X_TO_NOC_1_X: List[int] = []
+    DIE_Y_TO_NOC_1_Y: List[int] = []
+    NOC_0_X_TO_DIE_X: List[int] = []
+    NOC_0_Y_TO_DIE_Y: List[int] = []
+    NOC_1_X_TO_DIE_X: List[int] = []
+    NOC_1_Y_TO_DIE_Y: List[int] = []
+    PCI_ARC_RESET_BASE_ADDR: int = None
+    NOC_ARC_RESET_BASE_ADDR: int = None
+    PCI_ARC_CSM_DATA_BASE_ADDR: int = None
+    NOC_ARC_CSM_DATA_BASE_ADDR: int = None
+    PCI_ARC_ROM_DATA_BASE_ADDR: int = None
+    NOC_ARC_ROM_DATA_BASE_ADDR: int = None
+    NOC_REGISTER_OFFSET: int = None
+
     # NOC reg type
     class RegType:
         Cmd = 0
@@ -104,39 +141,37 @@ class Device(TTObject):
         return cores
 
     # Class method to create a Device object given device architecture
+    @staticmethod
     def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
         dev = None
         if "wormhole" in arch.lower():
             from ttexalens.hw.tensix.wormhole import wormhole
 
-            dev = wormhole.WormholeDevice(
+            return wormhole.WormholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
         if "blackhole" in arch.lower():
             from ttexalens.hw.tensix.blackhole import blackhole
 
-            dev = blackhole.BlackholeDevice(
+            return blackhole.BlackholeDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
 
         if "quasar" in arch.lower():
             from ttexalens.hw.tensix.quasar import quasar
 
-            dev = quasar.QuasarDevice(
+            return quasar.QuasarDevice(
                 id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
             )
 
-        if dev is None:
-            raise RuntimeError(f"Architecture {arch} is not supported")
-
-        return dev
+        raise RuntimeError(f"Architecture {arch} is not supported")
 
     @cached_property
     def yaml_file(self):
         return util.YamlFile(self._context.server_ifc, self._device_desc_path)
 
-    def __init__(self, id, arch, cluster_desc, device_desc_path: str, context: Context):
-        self._id = id
+    def __init__(self, id: int, arch: str, cluster_desc, device_desc_path: str, context: Context):
+        self._id: int = id
         self._arch = arch
         self._device_desc_path = device_desc_path
         self._context = context
@@ -169,7 +204,7 @@ class Device(TTObject):
 
     def _init_coordinate_systems(self):
         # Fill in coordinates for each block type
-        self._noc0_to_block_type = {}
+        self._noc0_to_block_type: Dict[Tuple[int, int], str] = {}
         for block_type, locations in self._block_locations.items():
             for loc in locations:
                 self._noc0_to_block_type[loc._noc0_coord] = block_type
@@ -232,7 +267,7 @@ class Device(TTObject):
         # Base class doesn't know if it is translated coordinate, but specialized classes do
         return False
 
-    def get_block_locations(self, block_type="functional_workers"):
+    def get_block_locations(self, block_type="functional_workers") -> List[OnChipCoordinate]:
         """
         Returns locations of all blocks of a given type
         """
@@ -253,7 +288,7 @@ class Device(TTObject):
         """
         Returns locations of all blocks as dictionary of tuples (unchanged coordinates from YAML)
         """
-        result = {}
+        result: Dict[str, List[OnChipCoordinate]] = {}
         for block_type in self.block_types:
             locs = []
             dev = self.yaml_file.root
@@ -280,11 +315,13 @@ class Device(TTObject):
         "pcie": {"symbol": "P", "desc": "PCIE", "core_type": "pcie", "color": util.CLR_GREY},
         "router_only": {"symbol": " ", "desc": "Router only", "core_type": "router_only", "color": util.CLR_GREY},
         "harvested_workers": {"symbol": "-", "desc": "Harvested", "core_type": "tensix", "color": util.CLR_RED},
+        "security": {"symbol": "S", "desc": "Security", "core_type": "security", "color": util.CLR_GREY},
+        "l2cpu": {"symbol": "C", "desc": "L2CPU", "core_type": "l2cpu", "color": util.CLR_GREY},
     }
 
     core_types = {v["core_type"] for v in block_types.values()}
 
-    def get_block_type(self, loc: OnChipCoordinate):
+    def get_block_type(self, loc: OnChipCoordinate) -> str:
         """
         Returns the type of block at the given location
         """
@@ -295,7 +332,7 @@ class Device(TTObject):
     # See coordinate.py for valid values of axis_coordinates
     def render(self, axis_coordinate="die", cell_renderer=None, legend=None):
         dev = self.yaml_file.root
-        rows = []
+        rows: List[List[str]] = []
 
         # Retrieve all block locations
         all_block_locs = dict()
@@ -334,6 +371,7 @@ class Device(TTObject):
             ]  # This adds the X-axis labels
             rows.append(row)
 
+        ver_range: Iterable[int]
         if OnChipCoordinate.vertical_axis_increasing_up(axis_coordinate):
             ver_range = reversed(range(ui_ver_range[0], ui_ver_range[1] + 1))
         else:
@@ -375,7 +413,8 @@ class Device(TTObject):
         return f"ID: {self.id()}, Arch: {self._arch}"
 
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
-        return self._context.server_ifc.pci_read_tile(self.id(), x, y, reg_addr, msg_size, data_format)
+        noc_id = 1 if self._context.use_noc1 else 0
+        return self._context.server_ifc.pci_read_tile(noc_id, self.id(), x, y, reg_addr, msg_size, data_format)
 
     def all_riscs_assert_soft_reset(self) -> None:
         """
@@ -430,15 +469,15 @@ class Device(TTObject):
         pass
 
     @abstractmethod
-    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:
+    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int | None:
         pass
 
     @abstractmethod
-    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int:
+    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int | None:
         pass
 
     @abstractmethod
-    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
+    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription | None:
         pass
 
     @abstractmethod
@@ -482,7 +521,7 @@ class Device(TTObject):
             return "----"
         return bt
 
-    REGISTER_ADDRESSES = {}
+    REGISTER_ADDRESSES: Dict[str, int] = {}
 
     def get_arc_register_addr(self, name: str) -> int:
         try:
