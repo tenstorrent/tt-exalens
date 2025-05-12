@@ -47,7 +47,7 @@ TileDataFormat to_data_format(uint8_t i);
 
 std::optional<std::string> read_tile_implementation(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                     uint64_t address, uint32_t size, uint8_t data_format,
-                                                    tt::umd::Cluster* device);
+                                                    tt::umd::Cluster* cluster);
 std::optional<std::string> dump_tile(const std::vector<uint32_t>& mem_vector, TileDataFormat df);
 
 TileDataFormat to_data_format(uint8_t i);
