@@ -13,19 +13,19 @@ class TTExaLensCommunicator(ABC):
     """
 
     @abstractmethod
-    def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int) -> int:
+    def pci_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int) -> int:
         pass
 
     @abstractmethod
-    def pci_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int) -> int:
+    def pci_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int) -> int:
         pass
 
     @abstractmethod
-    def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int) -> bytes:
+    def pci_read(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int) -> bytes:
         pass
 
     @abstractmethod
-    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes) -> int:
+    def pci_write(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes) -> int:
         pass
 
     @abstractmethod
@@ -41,7 +41,9 @@ class TTExaLensCommunicator(ABC):
         pass
 
     @abstractmethod
-    def pci_read_tile(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int) -> str:
+    def pci_read_tile(
+        self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int
+    ) -> str:
         pass
 
     @abstractmethod
@@ -73,11 +75,11 @@ class TTExaLensCommunicator(ABC):
         pass
 
     @abstractmethod
-    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int) -> int:
+    def jtag_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int) -> int:
         pass
 
     @abstractmethod
-    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int) -> int:
+    def jtag_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int) -> int:
         pass
 
     @abstractmethod
@@ -90,7 +92,7 @@ class TTExaLensCommunicator(ABC):
 
     @abstractmethod
     def arc_msg(
-        self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int
+        self, noc_id: int, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int
     ) -> List[int]:
         pass
 

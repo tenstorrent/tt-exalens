@@ -35,10 +35,11 @@ def arc_read(context: Context, device_id: int, core_loc: OnChipCoordinate, reg_a
     """
     Reads a 32-bit value from an ARC address space.
     """
+    noc_id = 1 if context.use_noc1 else 0
     if context.devices[device_id]._has_mmio:
         read_val = context.server_ifc.pci_read32_raw(device_id, reg_addr)
     else:
-        read_val = context.server_ifc.pci_read32(device_id, *context.convert_loc_to_umd(core_loc), reg_addr)
+        read_val = context.server_ifc.pci_read32(noc_id, device_id, *context.convert_loc_to_umd(core_loc), reg_addr)
     return read_val
 
 
@@ -46,7 +47,8 @@ def arc_write(context: Context, device_id: int, core_loc: OnChipCoordinate, reg_
     """
     Writes a 32-bit value to an ARC address space.
     """
+    noc_id = 1 if context.use_noc1 else 0
     if context.devices[device_id]._has_mmio:
         context.server_ifc.pci_write32_raw(device_id, reg_addr, value)
     else:
-        context.server_ifc.pci_write32(device_id, *context.convert_loc_to_umd(core_loc), reg_addr, value)
+        context.server_ifc.pci_write32(noc_id, device_id, *context.convert_loc_to_umd(core_loc), reg_addr, value)

@@ -411,7 +411,8 @@ class Device(TTObject):
         return f"ID: {self.id()}, Arch: {self._arch}"
 
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
-        return self._context.server_ifc.pci_read_tile(self.id(), x, y, reg_addr, msg_size, data_format)
+        noc_id = 1 if self._context.use_noc1 else 0
+        return self._context.server_ifc.pci_read_tile(noc_id, self.id(), x, y, reg_addr, msg_size, data_format)
 
     def all_riscs_assert_soft_reset(self) -> None:
         """

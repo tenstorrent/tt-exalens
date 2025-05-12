@@ -35,7 +35,11 @@ def convert_coordinate(
 
 
 def read_word_from_device(
-    core_loc: Union[str, OnChipCoordinate], addr: int, device_id: int = 0, context: Context = None
+    core_loc: Union[str, OnChipCoordinate],
+    addr: int,
+    device_id: int = 0,
+    context: Context = None,
+    noc_id: int | None = None,
 ) -> "int":
     """Reads one word of data, from address 'addr' at core <x-y>.
 
@@ -44,6 +48,7 @@ def read_word_from_device(
             addr (int): Memory address to read from.
             device_id (int, default 0):	ID number of device to read from.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+            noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
             int: Data read from the device.
@@ -52,17 +57,23 @@ def read_word_from_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, context)
 
     coordinate = convert_coordinate(core_loc, device_id, context)
     if context.devices[device_id]._has_jtag:
-        word = context.server_ifc.jtag_read32(device_id, *context.convert_loc_to_jtag(coordinate), addr)
+        word = context.server_ifc.jtag_read32(noc_id, device_id, *context.convert_loc_to_jtag(coordinate), addr)
     else:
-        word = context.server_ifc.pci_read32(device_id, *context.convert_loc_to_umd(coordinate), addr)
+        word = context.server_ifc.pci_read32(noc_id, device_id, *context.convert_loc_to_umd(coordinate), addr)
     return word
 
 
 def read_words_from_device(
-    core_loc: Union[str, OnChipCoordinate], addr: int, device_id: int = 0, word_count: int = 1, context: Context = None
+    core_loc: Union[str, OnChipCoordinate],
+    addr: int,
+    device_id: int = 0,
+    word_count: int = 1,
+    context: Context = None,
+    noc_id: int | None = None,
 ) -> "List[int]":
     """Reads word_count four-byte words of data, starting from address 'addr' at core <x-y>.
 
@@ -72,6 +83,7 @@ def read_words_from_device(
             device_id (int, default 0):	ID number of device to read from.
             word_count (int, default 1): Number of 4-byte words to read.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+            noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
             List[int]: Data read from the device.
@@ -80,6 +92,7 @@ def read_words_from_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, context)
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
@@ -87,15 +100,24 @@ def read_words_from_device(
     data = []
     for i in range(word_count):
         if context.devices[device_id]._has_jtag:
-            word = context.server_ifc.jtag_read32(device_id, *context.convert_loc_to_jtag(coordinate), addr + 4 * i)
+            word = context.server_ifc.jtag_read32(
+                noc_id, device_id, *context.convert_loc_to_jtag(coordinate), addr + 4 * i
+            )
         else:
-            word = context.server_ifc.pci_read32(device_id, *context.convert_loc_to_umd(coordinate), addr + 4 * i)
+            word = context.server_ifc.pci_read32(
+                noc_id, device_id, *context.convert_loc_to_umd(coordinate), addr + 4 * i
+            )
         data.append(word)
     return data
 
 
 def read_from_device(
-    core_loc: Union[str, OnChipCoordinate], addr: int, device_id: int = 0, num_bytes: int = 4, context: Context = None
+    core_loc: Union[str, OnChipCoordinate],
+    addr: int,
+    device_id: int = 0,
+    num_bytes: int = 4,
+    context: Context = None,
+    noc_id: int | None = None,
 ) -> bytes:
     """Reads num_bytes of data starting from address 'addr' at core <x-y>.
 
@@ -105,6 +127,7 @@ def read_from_device(
             device_id (int, default 0): ID number of device to read from.
             num_bytes (int, default 4): Number of bytes to read.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+            noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
             bytes: Data read from the device.
@@ -113,16 +136,19 @@ def read_from_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, context)
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
     coordinate = convert_coordinate(core_loc, device_id, context)
 
     if context.devices[device_id]._has_jtag:
-        int_array = read_words_from_device(coordinate, addr, device_id, num_bytes // 4 + (num_bytes % 4 > 0), context)
+        int_array = read_words_from_device(
+            coordinate, addr, device_id, num_bytes // 4 + (num_bytes % 4 > 0), context, noc_id
+        )
         return struct.pack(f"{len(int_array)}I", *int_array)[:num_bytes]
 
-    return context.server_ifc.pci_read(device_id, *context.convert_loc_to_umd(coordinate), addr, num_bytes)
+    return context.server_ifc.pci_read(noc_id, device_id, *context.convert_loc_to_umd(coordinate), addr, num_bytes)
 
 
 def write_words_to_device(
@@ -131,6 +157,7 @@ def write_words_to_device(
     data: Union[int, List[int]],
     device_id: int = 0,
     context: Context = None,
+    noc_id: int | None = None,
 ) -> int:
     """Writes data word to address 'addr' at noc0 location x-y of the current chip.
 
@@ -140,6 +167,7 @@ def write_words_to_device(
             data (int | List[int]): 4-byte integer word to be written, or a list of them.
             device_id (int, default 0): ID number of device to write to.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+            noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
             int: If the execution is successful, return value should be 4 (number of bytes written).
@@ -148,6 +176,7 @@ def write_words_to_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, context)
 
     coordinate = convert_coordinate(core_loc, device_id, context)
 
@@ -158,11 +187,11 @@ def write_words_to_device(
     for i, word in enumerate(data):
         if context.devices[device_id]._has_jtag:
             bytes_written += context.server_ifc.jtag_write32(
-                device_id, *context.convert_loc_to_jtag(coordinate), addr + i * 4, word
+                noc_id, device_id, *context.convert_loc_to_jtag(coordinate), addr + i * 4, word
             )
         else:
             bytes_written += context.server_ifc.pci_write32(
-                device_id, *context.convert_loc_to_umd(coordinate), addr + i * 4, word
+                noc_id, device_id, *context.convert_loc_to_umd(coordinate), addr + i * 4, word
             )
     return bytes_written
 
@@ -173,6 +202,7 @@ def write_to_device(
     data: "Union[List[int], bytes]",
     device_id: int = 0,
     context: Context = None,
+    noc_id: int | None = None,
 ) -> int:
     """Writes data to address 'addr' at noc0 location x-y of the current chip.
 
@@ -182,6 +212,7 @@ def write_to_device(
             data (List[int] | bytes): Data to be written. Lists are converted to bytes before writing, each element a byte. Elements must be between 0 and 255.
             device_id (int, default 0):	ID number of device to write to.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+            noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
             int: If the execution is successful, return value should be number of bytes written.
@@ -190,6 +221,7 @@ def write_to_device(
 
     validate_addr(addr)
     validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, context)
 
     if isinstance(data, list):
         data = bytes(data)
@@ -204,10 +236,12 @@ def write_to_device(
             len(data) % 4 == 0
         ), "Data length must be a multiple of 4 bytes as JTAG currently does not support unaligned access."
         for i in range(0, len(data), 4):
-            write_words_to_device(coordinate, addr + i, struct.unpack("<I", data[i : i + 4])[0], device_id, context)
+            write_words_to_device(
+                coordinate, addr + i, struct.unpack("<I", data[i : i + 4])[0], device_id, context, noc_id
+            )
         return len(data)
 
-    return context.server_ifc.pci_write(device_id, *context.convert_loc_to_umd(coordinate), addr, data)
+    return context.server_ifc.pci_write(noc_id, device_id, *context.convert_loc_to_umd(coordinate), addr, data)
 
 
 def load_elf(
@@ -333,6 +367,13 @@ def check_context(context: Context = None) -> Context:
     return tt_exalens_init.GLOBAL_CONTEXT
 
 
+def check_noc_id(noc_id: int | None, context: Context) -> int:
+    if noc_id is None:
+        return 1 if context.use_noc1 else 0
+    assert noc_id in (0, 1), f"Invalid NOC ID {noc_id}. Expected 0 or 1."
+    return noc_id
+
+
 def validate_addr(addr: int) -> None:
     if addr < 0:
         raise TTException("addr must be greater than or equal to 0.")
@@ -344,7 +385,14 @@ def validate_device_id(device_id: int, context: Context) -> None:
 
 
 def arc_msg(
-    device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int, context: Context = None
+    device_id: int,
+    msg_code: int,
+    wait_for_done: bool,
+    arg0: int,
+    arg1: int,
+    timeout: int,
+    context: Context = None,
+    noc_id: int | None = None,
 ) -> "List[int]":
     """Sends an ARC message to the device.
 
@@ -356,17 +404,19 @@ def arc_msg(
             arg1 (int): Second argument to the message.
             timeout (int): Timeout in milliseconds.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+            noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
             List[int]: return code, reply0, reply1.
     """
     context = check_context(context)
+    noc_id = check_noc_id(noc_id, context)
 
     validate_device_id(device_id, context)
     if timeout < 0:
         raise TTException("Timeout must be greater than or equal to 0.")
 
-    return context.server_ifc.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
+    return context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout)
 
 
 def read_tensix_register(
