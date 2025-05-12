@@ -30,17 +30,17 @@ def empty_convert_from_noc0():
 
 def empty_pci_read32():
     global server
-    check_not_implemented_response(lambda: server.pci_read32(1, 2, 3, 123456))
+    check_not_implemented_response(lambda: server.pci_read32(0, 1, 2, 3, 123456))
 
 
 def empty_pci_write32():
     global server
-    check_not_implemented_response(lambda: server.pci_write32(1, 2, 3, 123456, 987654))
+    check_not_implemented_response(lambda: server.pci_write32(0, 1, 2, 3, 123456, 987654))
 
 
 def empty_pci_read():
     global server
-    check_not_implemented_response(lambda: server.pci_read(1, 2, 3, 123456, 1024))
+    check_not_implemented_response(lambda: server.pci_read(0, 1, 2, 3, 123456, 1024))
 
 
 def empty_pci_read32_raw():
@@ -60,22 +60,24 @@ def empty_dma_buffer_read32():
 
 def empty_pci_read_tile():
     global server
-    check_not_implemented_response(lambda: server.pci_read_tile(1, 2, 3, 123456, 1024, 14))
+    check_not_implemented_response(lambda: server.pci_read_tile(0, 1, 2, 3, 123456, 1024, 14))
 
 
 def empty_pci_write():
     global server
-    check_not_implemented_response(lambda: server.pci_write(1, 2, 3, 123456, bytes([10, 11, 12, 13, 14, 15, 16, 17])))
+    check_not_implemented_response(
+        lambda: server.pci_write(0, 1, 2, 3, 123456, bytes([10, 11, 12, 13, 14, 15, 16, 17]))
+    )
 
 
 def empty_jtag_read32():
     global server
-    check_not_implemented_response(lambda: server.jtag_read32(1, 2, 3, 123456))
+    check_not_implemented_response(lambda: server.jtag_read32(0, 1, 2, 3, 123456))
 
 
 def empty_jtag_write32():
     global server
-    check_not_implemented_response(lambda: server.jtag_write32(1, 2, 3, 123456, 987654))
+    check_not_implemented_response(lambda: server.jtag_write32(0, 1, 2, 3, 123456, 987654))
 
 
 def empty_jtag_read32_axi():
@@ -95,15 +97,15 @@ def empty_get_file():
 
 def pci_write32_pci_read32():
     global server
-    server.pci_write32(1, 2, 3, 123456, 987654)
-    read = server.pci_read32(1, 2, 3, 123456)
+    server.pci_write32(0, 1, 2, 3, 123456, 987654)
+    read = server.pci_read32(0, 1, 2, 3, 123456)
     print("pass" if read == 987654 else "fail")
 
 
 def pci_write_pci_read():
     global server
-    server.pci_write(1, 2, 3, 123456, b"987654")
-    read = server.pci_read(1, 2, 3, 123456, 6)
+    server.pci_write(0, 1, 2, 3, 123456, b"987654")
+    read = server.pci_read(0, 1, 2, 3, 123456, 6)
     print("pass" if read == b"987654" else "fail")
 
 
@@ -123,14 +125,14 @@ def dma_buffer_read32():
 
 def pci_read_tile():
     global server
-    read = server.pci_read_tile(1, 2, 3, 123456, 1024, 14)
-    print("pass" if read == "pci_read_tile(1, 2, 3, 123456, 1024, 14)" else "fail")
+    read = server.pci_read_tile(0, 1, 2, 3, 123456, 1024, 14)
+    print("pass" if read == "pci_read_tile(0, 1, 2, 3, 123456, 1024, 14)" else "fail")
 
 
 def jtag_write32_jtag_read32():
     global server
-    server.jtag_write32(1, 2, 3, 123456, 987654)
-    read = server.jtag_read32(1, 2, 3, 123456)
+    server.jtag_write32(0, 1, 2, 3, 123456, 987654)
+    read = server.jtag_read32(0, 1, 2, 3, 123456)
     print("pass" if read == 987654 else "fail")
 
 

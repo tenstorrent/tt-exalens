@@ -12,19 +12,19 @@ class TTExaLensCommunicator(ABC):
     """
 
     @abstractmethod
-    def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+    def pci_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
         pass
 
     @abstractmethod
-    def pci_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+    def pci_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
         pass
 
     @abstractmethod
-    def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
+    def pci_read(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
         pass
 
     @abstractmethod
-    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
+    def pci_write(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
         pass
 
     @abstractmethod
@@ -40,7 +40,9 @@ class TTExaLensCommunicator(ABC):
         pass
 
     @abstractmethod
-    def pci_read_tile(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int):
+    def pci_read_tile(
+        self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int
+    ):
         pass
 
     @abstractmethod
@@ -72,11 +74,11 @@ class TTExaLensCommunicator(ABC):
         pass
 
     @abstractmethod
-    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+    def jtag_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
         pass
 
     @abstractmethod
-    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+    def jtag_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
         pass
 
     @abstractmethod
