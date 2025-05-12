@@ -317,8 +317,9 @@ open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> 
 
 template <>
 std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jtag_implementation>::open(
-    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices, bool use_noc1) {
-    // TODO: Use noc1 in JTAG
+    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
+    bool initialize_with_noc1) {
+    // TODO: initialize with noc1 in JTAG
 
     std::vector<uint8_t> device_ids;
     std::unique_ptr<tt::umd::Cluster> device;
@@ -363,9 +364,11 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
 
 template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open(
-    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices, bool use_noc1) {
-    // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1
-    umd::TTDevice::use_noc1(use_noc1);
+    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
+    bool initialize_with_noc1) {
+    // TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use
+    // noc1
+    umd::TTDevice::use_noc1(initialize_with_noc1);
 
     auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor();
 

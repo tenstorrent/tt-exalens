@@ -14,13 +14,13 @@ def start_server(
     port: int,
     wanted_devices: "List[int]" = None,
     init_jtag=False,
-    use_noc1=False,
+    initialize_with_noc1=False,
     simulation_directory: str = None,
     background=False,
 ) -> subprocess.Popen:
     if util.is_port_available(int(port)):
         ttexalens_server = spawn_standalone_ttexalens_stub(
-            port, wanted_devices, init_jtag, use_noc1, simulation_directory, background
+            port, wanted_devices, init_jtag, initialize_with_noc1, simulation_directory, background
         )
         if ttexalens_server is None:
             raise util.TTFatalException("Could not start ttexalens-server.")
@@ -33,7 +33,7 @@ def spawn_standalone_ttexalens_stub(
     port: int,
     wanted_devices: "List[int]" = None,
     init_jtag=False,
-    use_noc1=False,
+    initialize_with_noc1=False,
     simulation_directory: str = None,
     background=False,
 ) -> subprocess.Popen:
@@ -56,8 +56,8 @@ def spawn_standalone_ttexalens_stub(
         if init_jtag:
             ttexalens_stub_args += ["--jtag"]
 
-        if use_noc1:
-            ttexalens_stub_args += ["--use-noc1"]
+        if initialize_with_noc1:
+            ttexalens_stub_args += ["--initialize-with-noc1"]
 
         if background:
             ttexalens_stub_args += ["--background"]

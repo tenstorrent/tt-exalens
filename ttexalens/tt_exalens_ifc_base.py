@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from abc import ABC, abstractmethod
 import io
+from typing import Iterable, List, Tuple
 
 
 class TTExaLensCommunicator(ABC):
@@ -12,55 +13,57 @@ class TTExaLensCommunicator(ABC):
     """
 
     @abstractmethod
-    def pci_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+    def pci_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int) -> int:
         pass
 
     @abstractmethod
-    def pci_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+    def pci_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int) -> int:
         pass
 
     @abstractmethod
-    def pci_read(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int):
+    def pci_read(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int) -> bytes:
         pass
 
     @abstractmethod
-    def pci_write(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes):
+    def pci_write(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes) -> int:
         pass
 
     @abstractmethod
-    def pci_read32_raw(self, chip_id: int, address: int):
+    def pci_read32_raw(self, chip_id: int, address: int) -> int:
         pass
 
     @abstractmethod
-    def pci_write32_raw(self, chip_id: int, address: int, data: int):
+    def pci_write32_raw(self, chip_id: int, address: int, data: int) -> int:
         pass
 
     @abstractmethod
-    def dma_buffer_read32(self, chip_id: int, address: int, channel: int):
+    def dma_buffer_read32(self, chip_id: int, address: int, channel: int) -> int:
         pass
 
     @abstractmethod
-    def pci_read_tile(self, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int):
+    def pci_read_tile(
+        self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int
+    ) -> str:
         pass
 
     @abstractmethod
-    def get_cluster_description(self):
+    def get_cluster_description(self) -> str:
         pass
 
     @abstractmethod
-    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system):
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system) -> Tuple[int, int]:
         pass
 
     @abstractmethod
-    def get_device_ids(self):
+    def get_device_ids(self) -> Iterable[int]:
         pass
 
     @abstractmethod
-    def get_device_arch(self, chip_id: int):
+    def get_device_arch(self, chip_id: int) -> str:
         pass
 
     @abstractmethod
-    def get_device_soc_description(self, chip_id: int):
+    def get_device_soc_description(self, chip_id: int) -> str:
         pass
 
     @abstractmethod
@@ -72,19 +75,25 @@ class TTExaLensCommunicator(ABC):
         pass
 
     @abstractmethod
-    def jtag_read32(self, chip_id: int, noc_x: int, noc_y: int, address: int):
+    def jtag_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int) -> int:
         pass
 
     @abstractmethod
-    def jtag_write32(self, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
+    def jtag_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int) -> int:
         pass
 
     @abstractmethod
-    def jtag_read32_axi(self, chip_id: int, address: int):
+    def jtag_read32_axi(self, chip_id: int, address: int) -> int:
         pass
 
     @abstractmethod
-    def jtag_write32_axi(self, chip_id: int, address: int, data: int):
+    def jtag_write32_axi(self, chip_id: int, address: int, data: int) -> int:
+        pass
+
+    @abstractmethod
+    def arc_msg(
+        self, noc_id: int, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int
+    ) -> List[int]:
         pass
 
     def using_cache(self) -> bool:

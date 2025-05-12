@@ -54,34 +54,37 @@ class yaml_not_implemented_implementation : public ttexalens_implementation {
    public:
     yaml_not_implemented_implementation(yaml_not_implemented_server *server) : server(server) {}
 
-    std::optional<uint32_t> pci_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override {
+    std::optional<uint32_t> pci_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                       uint64_t address) override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::pci_read32)) +
-                          "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
-                          "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address));
+                          "\n  noc_id: " + std::to_string(noc_id) + "\n  chip_id: " + std::to_string(chip_id) +
+                          "\n  noc_x: " + std::to_string(noc_x) + "\n  noc_y: " + std::to_string(noc_y) +
+                          "\n  address: " + std::to_string(address));
         return {};
     }
-    std::optional<uint32_t> pci_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+    std::optional<uint32_t> pci_write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                         uint32_t data) override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::pci_write32)) +
-                          "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
-                          "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address) +
-                          "\n  data: " + std::to_string(data));
+                          "\n  noc_id: " + std::to_string(noc_id) + "\n  chip_id: " + std::to_string(chip_id) +
+                          "\n  noc_x: " + std::to_string(noc_x) + "\n  noc_y: " + std::to_string(noc_y) +
+                          "\n  address: " + std::to_string(address) + "\n  data: " + std::to_string(data));
         return {};
     }
-    std::optional<std::vector<uint8_t>> pci_read(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                                 uint32_t size) override {
+    std::optional<std::vector<uint8_t>> pci_read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                 uint64_t address, uint32_t size) override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::pci_read)) +
-                          "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
-                          "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address) +
-                          "\n  size: " + std::to_string(size));
+                          "\n  noc_id: " + std::to_string(noc_id) + "\n  chip_id: " + std::to_string(chip_id) +
+                          "\n  noc_x: " + std::to_string(noc_x) + "\n  noc_y: " + std::to_string(noc_y) +
+                          "\n  address: " + std::to_string(address) + "\n  size: " + std::to_string(size));
         return {};
     }
-    std::optional<uint32_t> pci_write(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+    std::optional<uint32_t> pci_write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                       const uint8_t *data, uint32_t size) override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::pci_write)) +
-                          "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
-                          "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address) +
-                          "\n  size: " + std::to_string(size) + "\n  data: " + serialize_bytes(data, size));
+                          "\n  noc_id: " + std::to_string(noc_id) + "\n  chip_id: " + std::to_string(chip_id) +
+                          "\n  noc_x: " + std::to_string(noc_x) + "\n  noc_y: " + std::to_string(noc_y) +
+                          "\n  address: " + std::to_string(address) + "\n  size: " + std::to_string(size) +
+                          "\n  data: " + serialize_bytes(data, size));
         return {};
     }
     std::optional<uint32_t> pci_read32_raw(uint8_t chip_id, uint64_t address) override {
@@ -102,12 +105,13 @@ class yaml_not_implemented_implementation : public ttexalens_implementation {
         return {};
     }
 
-    std::optional<std::string> pci_read_tile(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                             uint32_t size, uint8_t data_format) override {
+    std::optional<std::string> pci_read_tile(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                             uint64_t address, uint32_t size, uint8_t data_format) override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::pci_read_tile)) +
-                          "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
-                          "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address) +
-                          "\n  size: " + std::to_string(size) + "\n  data_format: " + std::to_string(data_format));
+                          "\n  noc_id: " + std::to_string(noc_id) + "\n  chip_id: " + std::to_string(chip_id) +
+                          "\n  noc_x: " + std::to_string(noc_x) + "\n  noc_y: " + std::to_string(noc_y) +
+                          "\n  address: " + std::to_string(address) + "\n  size: " + std::to_string(size) +
+                          "\n  data_format: " + std::to_string(data_format));
         return {};
     }
 
@@ -140,27 +144,31 @@ class yaml_not_implemented_implementation : public ttexalens_implementation {
         return {};
     }
 
-    std::optional<std::tuple<int, uint32_t, uint32_t>> arc_msg(uint8_t chip_id, uint32_t msg_code, bool wait_for_done,
-                                                               uint32_t arg0, uint32_t arg1, int timeout) override {
+    std::optional<std::tuple<int, uint32_t, uint32_t>> arc_msg(uint8_t noc_id, uint8_t chip_id, uint32_t msg_code,
+                                                               bool wait_for_done, uint32_t arg0, uint32_t arg1,
+                                                               int timeout) override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::arc_msg)) +
-                          "\n  chip_id: " + std::to_string(chip_id) + "\n  msg_code: " + std::to_string(msg_code) +
+                          "\n  noc_id: " + std::to_string(noc_id) + "\n  chip_id: " + std::to_string(chip_id) +
+                          "\n  msg_code: " + std::to_string(msg_code) +
                           "\n  wait_for_done: " + std::to_string(wait_for_done) + "\n  arg0: " + std::to_string(arg0) +
                           "\n  arg1: " + std::to_string(arg1) + "\n  timeout: " + std::to_string(timeout));
         return {};
     }
 
-    std::optional<uint32_t> jtag_read32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) override {
+    std::optional<uint32_t> jtag_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                        uint64_t address) override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_read32)) +
-                          "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
-                          "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address));
+                          "\n  noc_id: " + std::to_string(noc_id) + "\n  chip_id: " + std::to_string(chip_id) +
+                          "\n  noc_x: " + std::to_string(noc_x) + "\n  noc_y: " + std::to_string(noc_y) +
+                          "\n  address: " + std::to_string(address));
         return {};
     }
-    std::optional<int> jtag_write32(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+    std::optional<int> jtag_write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                     uint32_t data) override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_write32)) +
-                          "\n  chip_id: " + std::to_string(chip_id) + "\n  noc_x: " + std::to_string(noc_x) +
-                          "\n  noc_y: " + std::to_string(noc_y) + "\n  address: " + std::to_string(address) +
-                          "\n  data: " + std::to_string(data));
+                          "\n  noc_id: " + std::to_string(noc_id) + "\n  chip_id: " + std::to_string(chip_id) +
+                          "\n  noc_x: " + std::to_string(noc_x) + "\n  noc_y: " + std::to_string(noc_y) +
+                          "\n  address: " + std::to_string(address) + "\n  data: " + std::to_string(data));
         return {};
     }
 
@@ -254,20 +262,20 @@ TEST(ttexalens_server, get_device_ids) {
 
 TEST(ttexalens_server, pci_read32) {
     test_not_implemented_request(
-        tt::exalens::pci_read32_request{tt::exalens::request_type::pci_read32, 1, 2, 3, 123456},
-        "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
+        tt::exalens::pci_read32_request{tt::exalens::request_type::pci_read32, 0, 1, 2, 3, 123456},
+        "- type: 10\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
 }
 
 TEST(ttexalens_server, pci_write32) {
     test_not_implemented_request(
-        tt::exalens::pci_write32_request{tt::exalens::request_type::pci_write32, 1, 2, 3, 123456, 987654},
-        "- type: 11\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
+        tt::exalens::pci_write32_request{tt::exalens::request_type::pci_write32, 0, 1, 2, 3, 123456, 987654},
+        "- type: 11\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
 }
 
 TEST(ttexalens_server, pci_read) {
     test_not_implemented_request(
-        tt::exalens::pci_read_request{tt::exalens::request_type::pci_read, 1, 2, 3, 123456, 1024},
-        "- type: 12\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024");
+        tt::exalens::pci_read_request{tt::exalens::request_type::pci_read, 0, 1, 2, 3, 123456, 1024},
+        "- type: 12\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024");
 }
 
 TEST(ttexalens_server, pci_read32_raw) {
@@ -290,8 +298,9 @@ TEST(ttexalens_server, dma_buffer_read32) {
 
 TEST(ttexalens_server, pci_read_tile) {
     test_not_implemented_request(
-        tt::exalens::pci_read_tile_request{tt::exalens::request_type::pci_read_tile, 1, 2, 3, 123456, 1024, 14},
-        "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14");
+        tt::exalens::pci_read_tile_request{tt::exalens::request_type::pci_read_tile, 0, 1, 2, 3, 123456, 1024, 14},
+        "- type: 100\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  "
+        "data_format: 14");
 }
 
 TEST(ttexalens_server, get_device_arch) {
@@ -307,14 +316,14 @@ TEST(ttexalens_server, get_device_soc_description) {
 
 TEST(ttexalens_server, jtag_read32) {
     test_not_implemented_request(
-        tt::exalens::jtag_read32_request{tt::exalens::request_type::jtag_read32, 1, 2, 3, 123456},
-        "- type: 50\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
+        tt::exalens::jtag_read32_request{tt::exalens::request_type::jtag_read32, 0, 1, 2, 3, 123456},
+        "- type: 50\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
 }
 
 TEST(ttexalens_server, jtag_write32) {
     test_not_implemented_request(
-        tt::exalens::jtag_write32_request{tt::exalens::request_type::jtag_write32, 1, 2, 3, 123456, 987654},
-        "- type: 51\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
+        tt::exalens::jtag_write32_request{tt::exalens::request_type::jtag_write32, 0, 1, 2, 3, 123456, 987654},
+        "- type: 51\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
 }
 
 TEST(ttexalens_server, jtag_read32_axi) {
@@ -332,12 +341,14 @@ TEST(ttexalens_server, jtag_write32_axi) {
 TEST(ttexalens_server, pci_write) {
     // This test is different because we are trying to send request that has dynamic structure size
     std::string expected_response =
-        "- type: 13\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, 12, 13, 14, "
+        "- type: 13\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, "
+        "12, 13, 14, "
         "15, 16, 17]";
     constexpr size_t data_size = 8;
     std::array<uint8_t, data_size + sizeof(tt::exalens::pci_write_request)> request_data = {0};
     auto request = reinterpret_cast<tt::exalens::pci_write_request *>(&request_data[0]);
     request->type = tt::exalens::request_type::pci_write;
+    request->noc_id = 0;
     request->chip_id = 1;
     request->noc_x = 2;
     request->noc_y = 3;

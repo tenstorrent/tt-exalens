@@ -7,6 +7,9 @@ from sortedcontainers import SortedSet
 
 # Parent class for all objects
 class TTObject:
+    def __init__(self):
+        self._id = None
+
     def __str__(self):
         return f"{self.id()}:{type(self).__name__}"
 
