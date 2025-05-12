@@ -87,6 +87,11 @@ class RegisterDescription:
             return None
         return self.base_address.raw_address + self.offset
 
+    @property
+    def noc_id(self) -> int | None:
+        assert self.base_address.noc_address is not None
+        return self.base_address.noc_id
+
     def clone(self, base_address: DeviceAddress) -> "RegisterDescription":
         new_instance = deepcopy(self)
         new_instance.base_address = base_address
@@ -260,24 +265,22 @@ class RegisterStore:
                 raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
 
         if register.noc_address is not None:
-            # TODO: Use noc_id when it gets merged.
-            value = read_word_from_device(self.location, register.noc_address, self.device._id, self.context)
+            value = read_word_from_device(
+                self.location, register.noc_address, self.device._id, self.context, register.noc_id
+            )
         elif register.raw_address is not None:
             value = self.context.server_ifc.pci_read32_raw(self.device._id, register.raw_address)
         elif isinstance(register, ConfigurationRegisterDescription):
-            # TODO: Use noc_id when it gets merged.
             write_words_to_device(
                 self.location,
                 self._control_register_address,
                 register.index,
                 self.device._id,
                 self.context,
+                register.noc_id,
             )
             value = read_word_from_device(
-                self.location,
-                self._data_register_address,
-                self.device._id,
-                self.context,
+                self.location, self._data_register_address, self.device._id, self.context, register.noc_id
             )
         else:
             # TODO: Read using RISC core debugging hardware.
@@ -308,11 +311,14 @@ class RegisterStore:
             )
 
         if register.noc_address is not None:
-            # TODO: Use noc_id when it gets merged.
             if register.mask != 0xFFFFFFFF:
-                old_value = read_word_from_device(self.location, register.noc_address, self.device._id, self.context)
+                old_value = read_word_from_device(
+                    self.location, register.noc_address, self.device._id, self.context, register.noc_id
+                )
                 value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            write_words_to_device(self.location, register.noc_address, value, self.device._id, self.context)
+            write_words_to_device(
+                self.location, register.noc_address, value, self.device._id, self.context, register.noc_id
+            )
         elif register.raw_address is not None:
             if register.mask != 0xFFFFFFFF:
                 old_value = self.context.server_ifc.pci_read32_raw(self.device._id, register.raw_address)

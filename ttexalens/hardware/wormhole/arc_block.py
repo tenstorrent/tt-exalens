@@ -54,7 +54,9 @@ def get_register_base_address_callable(noc_id: int, has_mmio: bool) -> Callable[
             )
         else:
             assert noc_id == 1
-            return get_niu_register_base_address_callable(DeviceAddress(noc_address=0xFFFB30000))(register_description)
+            return get_niu_register_base_address_callable(DeviceAddress(noc_address=0xFFFB20000, noc_id=1))(
+                register_description
+            )
 
     return get_register_base_address
 

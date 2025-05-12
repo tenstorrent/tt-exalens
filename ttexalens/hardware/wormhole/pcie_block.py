@@ -12,7 +12,9 @@ from ttexalens.register_store import RegisterStore
 register_store_noc0_initialization = get_niu_register_store_initialization(
     DeviceAddress(noc_address=0xFFFB20000, noc_id=0)
 )
-register_store_noc1_initialization = get_niu_register_store_initialization(DeviceAddress(noc_address=0xFFFB30000))
+register_store_noc1_initialization = get_niu_register_store_initialization(
+    DeviceAddress(noc_address=0xFFFB20000, noc_id=1)
+)
 
 
 class WormholePcieBlock(WormholeNocBlock):
