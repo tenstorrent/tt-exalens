@@ -21,7 +21,9 @@ command_metadata = {
     "context": ["limited", "metal"],
 }
 
+from typing import List, Tuple
 from docopt import docopt
+from ttexalens.context import Context
 
 TEST_ID_SIZE = 48
 
@@ -44,25 +46,26 @@ def decode_test_id(test_id_data):
 # raw pci read, jtag axi read, and arc noc read
 
 
-def read_axi_size(context, device_id, address, size):
+def read_axi_size(context: Context, device_id, address, size):
     data = b""
     for i in range(0, size, 4):
         data += context.server_ifc.jtag_read32_axi(device_id, address + i).to_bytes(4, byteorder="little")
     return data[:size]
 
 
-def read_pci_raw_size(context, device_id, address, size):
+def read_pci_raw_size(context: Context, device_id, address, size):
     data = b""
     for i in range(0, size, 4):
         data += context.server_ifc.pci_read32_raw(device_id, address + i).to_bytes(4, byteorder="little")
     return data[:size]
 
 
-def read_noc_size(context, device_id, nocx, nocy, address, size):
-    return context.server_ifc.pci_read(device_id, nocx, nocy, address, size)
+def read_noc_size(context: Context, device_id, nocx, nocy, address, size):
+    noc_id = 1 if context.use_noc1 else 0
+    return context.server_ifc.pci_read(noc_id, device_id, nocx, nocy, address, size)
 
 
-def run(cmd_text, context, ui_state=None):
+def run(cmd_text, context: Context, ui_state=None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
     device = context.devices[0]
 
@@ -76,6 +79,7 @@ def run(cmd_text, context, ui_state=None):
     devices_list = list(context.devices.keys())
     for device_id in devices_list:
         if not context.devices[device_id]._has_jtag:
+            arc_location: Tuple[int, int] = context.devices[device_id]._block_locations["arc"][0].to("noc0")
             print(
                 f"NOC Device {device_id}: "
                 + str(
@@ -83,7 +87,7 @@ def run(cmd_text, context, ui_state=None):
                         read_noc_size(
                             context,
                             device_id,
-                            *context.devices[device_id]._block_locations["arc"][0].to("noc0"),
+                            *arc_location,
                             efuse_noc,
                             TEST_ID_SIZE,
                         )
@@ -107,5 +111,5 @@ def run(cmd_text, context, ui_state=None):
                 + str(decode_test_id(read_axi_size(context, device_id, efuse_jtag_axi, TEST_ID_SIZE)))
             )
 
-    navigation_suggestions = []
+    navigation_suggestions: List[int] = []
     return navigation_suggestions
