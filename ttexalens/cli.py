@@ -5,7 +5,7 @@
 """
 Usage:
   tt-exalens [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1]
-  tt-exalens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1]
+  tt-exalens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--initialize-with-noc1]
   tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
   tt-exalens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test]
   tt-exalens -h | --help
@@ -23,6 +23,7 @@ Options:
   --cache-path=<path>             If running in --cached mode, this is the path to the cache file. If writing cache, this is the path for output. [default: ttexalens_cache.pkl]
   --devices=<devices>             Comma-separated list of devices to load. If not supplied, all devices will be loaded.
   --background                    Start the server in the background detached from console (doesn't require ENTER button for exit, but exit.server file to be created).
+  --initialize-with-noc1          Initialize the device with NOC1.
   -s=<simulation_directory>       Specifies build output directory of the simulator.
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
@@ -50,11 +51,14 @@ try:
     from docopt import DocoptExit, docopt
     from fastnumbers import try_int
 except ModuleNotFoundError as e:
+    import traceback
+
     traceback.print_exc()
     print(f"Try:\033[31m pip install -r ttexalens/requirements.txt \033[0m")
     exit(1)
 
 
+from typing import List
 from ttexalens import tt_exalens_init
 from ttexalens import tt_exalens_server
 from ttexalens import util as util
@@ -404,12 +408,12 @@ def main():
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
     util.VERBOSE(f"Verbosity level: {Verbosity.get().name} ({Verbosity.get().value})")
 
-    wanted_devices = None
+    wanted_devices: List[int] = None
     if args["--devices"]:
         wanted_devices = args["--devices"].split(",")
         wanted_devices = [int(d) for d in wanted_devices]
 
-    cache_path = None
+    cache_path: str = None
     if args["--write-cache"]:
         cache_path = args["--cache-path"]
 
@@ -420,7 +424,7 @@ def main():
             args["--port"],
             wanted_devices,
             init_jtag=args["--jtag"],
-            use_noc1=args["--use-noc1"],
+            initialize_with_noc1=args["--initialize-with-noc1"],
             simulation_directory=args["-s"],
             background=args["--background"],
         )

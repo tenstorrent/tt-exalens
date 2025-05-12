@@ -78,18 +78,19 @@ TEST(ttexalens_communication, get_device_ids) {
 }
 
 TEST(ttexalens_communication, pci_read32) {
-    test_yaml_request(tt::exalens::pci_read32_request{tt::exalens::request_type::pci_read32, 1, 2, 3, 123456},
-                      "- type: 10\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
+    test_yaml_request(tt::exalens::pci_read32_request{tt::exalens::request_type::pci_read32, 0, 1, 2, 3, 123456},
+                      "- type: 10\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
 }
 
 TEST(ttexalens_communication, pci_write32) {
-    test_yaml_request(tt::exalens::pci_write32_request{tt::exalens::request_type::pci_write32, 1, 2, 3, 123456, 987654},
-                      "- type: 11\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
+    test_yaml_request(
+        tt::exalens::pci_write32_request{tt::exalens::request_type::pci_write32, 0, 1, 2, 3, 123456, 987654},
+        "- type: 11\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
 }
 
 TEST(ttexalens_communication, pci_read) {
-    test_yaml_request(tt::exalens::pci_read_request{tt::exalens::request_type::pci_read, 1, 2, 3, 123456, 1024},
-                      "- type: 12\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024");
+    test_yaml_request(tt::exalens::pci_read_request{tt::exalens::request_type::pci_read, 0, 1, 2, 3, 123456, 1024},
+                      "- type: 12\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024");
 }
 
 TEST(ttexalens_communication, pci_read32_raw) {
@@ -111,8 +112,9 @@ TEST(ttexalens_communication, dma_buffer_read32) {
 
 TEST(ttexalens_communication, pci_read_tile) {
     test_yaml_request(
-        tt::exalens::pci_read_tile_request{tt::exalens::request_type::pci_read_tile, 1, 2, 3, 123456, 1024, 14},
-        "- type: 100\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  data_format: 14");
+        tt::exalens::pci_read_tile_request{tt::exalens::request_type::pci_read_tile, 0, 1, 2, 3, 123456, 1024, 14},
+        "- type: 100\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 1024\n  "
+        "data_format: 14");
 }
 
 TEST(ttexalens_communication, get_device_arch) {
@@ -129,12 +131,14 @@ TEST(ttexalens_communication, get_device_soc_description) {
 TEST(ttexalens_communication, pci_write) {
     // This test is different because we are trying to send request that has dynamic structure size
     std::string expected_response =
-        "- type: 13\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, 12, 13, 14, "
+        "- type: 13\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  size: 8\n  data: [10, 11, "
+        "12, 13, 14, "
         "15, 16, 17]";
     constexpr size_t data_size = 8;
     std::array<uint8_t, data_size + sizeof(tt::exalens::pci_write_request)> request_data = {0};
     auto request = reinterpret_cast<tt::exalens::pci_write_request*>(&request_data[0]);
     request->type = tt::exalens::request_type::pci_write;
+    request->noc_id = 0;
     request->chip_id = 1;
     request->noc_x = 2;
     request->noc_y = 3;
@@ -189,22 +193,24 @@ TEST(ttexalens_communication, convert_from_noc0) {
 }
 
 TEST(ttexalens_communication, arc_msg) {
-    auto req = tt::exalens::arc_msg_request{tt::exalens::request_type::arc_msg, 1, 2, true, 3, 4, 5};
+    auto req = tt::exalens::arc_msg_request{tt::exalens::request_type::arc_msg, 0, 1, 2, true, 3, 4, 5};
 
-    test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::exalens::request_type::arc_msg)) +
-                               "\n  chip_id: 1\n  msg_code: 2\n  wait_for_done: 1\n  arg0: 3\n  arg1: 4\n  timeout: 5");
+    test_yaml_request(
+        req, "- type: " + std::to_string(static_cast<int>(tt::exalens::request_type::arc_msg)) +
+                 "\n  noc_id: 0\n  chip_id: 1\n  msg_code: 2\n  wait_for_done: 1\n  arg0: 3\n  arg1: 4\n  timeout: 5");
 }
 
 TEST(ttexalens_communication, jtag_read32) {
-    auto req = tt::exalens::jtag_read32_request{tt::exalens::request_type::jtag_read32, 1, 2, 3, 123456};
+    auto req = tt::exalens::jtag_read32_request{tt::exalens::request_type::jtag_read32, 0, 1, 2, 3, 123456};
     test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::exalens::request_type::jtag_read32)) +
-                               "\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
+                               "\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456");
 }
 
 TEST(ttexalens_communication, jtag_write32) {
-    auto req = tt::exalens::jtag_write32_request{tt::exalens::request_type::jtag_write32, 1, 2, 3, 123456, 987654};
-    test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::exalens::request_type::jtag_write32)) +
-                               "\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
+    auto req = tt::exalens::jtag_write32_request{tt::exalens::request_type::jtag_write32, 0, 1, 2, 3, 123456, 987654};
+    test_yaml_request(req,
+                      "- type: " + std::to_string(static_cast<int>(tt::exalens::request_type::jtag_write32)) +
+                          "\n  noc_id: 0\n  chip_id: 1\n  noc_x: 2\n  noc_y: 3\n  address: 123456\n  data: 987654");
 }
 
 TEST(ttexalens_communication, jtag_read32_axi) {

@@ -53,6 +53,7 @@ struct request {
 } __attribute__((packed));
 
 struct pci_read32_request : request {
+    uint8_t noc_id;
     uint8_t chip_id;
     uint8_t noc_x;
     uint8_t noc_y;
@@ -60,6 +61,7 @@ struct pci_read32_request : request {
 } __attribute__((packed));
 
 struct pci_write32_request : request {
+    uint8_t noc_id;
     uint8_t chip_id;
     uint8_t noc_x;
     uint8_t noc_y;
@@ -68,6 +70,7 @@ struct pci_write32_request : request {
 } __attribute__((packed));
 
 struct pci_read_request : request {
+    uint8_t noc_id;
     uint8_t chip_id;
     uint8_t noc_x;
     uint8_t noc_y;
@@ -76,6 +79,7 @@ struct pci_read_request : request {
 } __attribute__((packed));
 
 struct pci_write_request : request {
+    uint8_t noc_id;
     uint8_t chip_id;
     uint8_t noc_x;
     uint8_t noc_y;
@@ -102,6 +106,7 @@ struct dma_buffer_read32_request : request {
 } __attribute__((packed));
 
 struct pci_read_tile_request : request {
+    uint8_t noc_id;
     uint8_t chip_id;
     uint8_t noc_x;
     uint8_t noc_y;
@@ -133,6 +138,7 @@ struct convert_from_noc0_request : request {
 } __attribute__((packed));
 
 struct arc_msg_request : request {
+    uint8_t noc_id;
     uint8_t chip_id;
     uint32_t msg_code;
     bool wait_for_done;
@@ -142,6 +148,7 @@ struct arc_msg_request : request {
 } __attribute__((packed));
 
 struct jtag_read32_request : request {
+    uint8_t noc_id;
     uint8_t chip_id;
     uint8_t noc_x;
     uint8_t noc_y;
@@ -149,6 +156,7 @@ struct jtag_read32_request : request {
 } __attribute__((packed));
 
 struct jtag_write32_request : request {
+    uint8_t noc_id;
     uint8_t chip_id;
     uint8_t noc_x;
     uint8_t noc_y;

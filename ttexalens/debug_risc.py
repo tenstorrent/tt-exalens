@@ -860,8 +860,11 @@ class RiscLoader:
         init_section_address = None
 
         try:
-            elf_file = self.context.server_ifc.get_binary(elf_path)
-            elf_file = ELFFile(elf_file)
+            elf_file_io = self.context.server_ifc.get_binary(elf_path)
+            elf_file = ELFFile(elf_file_io)
+            address: int
+            loader_data_address: int = loader_data if isinstance(loader_data, int) else None
+            loader_code_address: int = loader_code if isinstance(loader_code, int) else None
 
             # Try to find address mapping for loader_data and loader_code
             for section in elf_file.iter_sections():
@@ -869,9 +872,9 @@ class RiscLoader:
                     name = section.name
                     address = section.header.sh_addr
                     if name == loader_data:
-                        loader_data = address
+                        loader_data_address = address
                     elif name == loader_code:
-                        loader_code = address
+                        loader_code_address = address
 
             # Load section into memory
             for section in elf_file.iter_sections():
@@ -882,7 +885,7 @@ class RiscLoader:
                         if address % 4 != 0:
                             raise ValueError(f"Section address 0x{address:08x} is not 32-bit aligned")
 
-                        address = self.remap_address(address, loader_data, loader_code)
+                        address = self.remap_address(address, loader_data_address, loader_code_address)
                         data = section.data()
 
                         if name == ".init":
@@ -898,7 +901,7 @@ class RiscLoader:
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
                         data = section.data()
-                        address = self.remap_address(address, loader_data, loader_code)
+                        address = self.remap_address(address, loader_data_address, loader_code_address)
                         read_data = self.read_block(address, len(data))
                         if read_data != data:
                             util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
@@ -954,7 +957,7 @@ class RiscLoader:
             not self.risc_debug.is_halted() or self.risc_debug.read_status().is_ebreak_hit
         ), f"RISC at location {self.risc_debug.location} is still halted, but not because of ebreak."
 
-    def _read_elfs(self, elf_paths: List[str], offsets: List[int]) -> List[dict]:
+    def _read_elfs(self, elf_paths: List[str], offsets: List[int | None]) -> List[dict]:
         if not isinstance(elf_paths, list):
             elf_paths = [elf_paths]
         offsets = [None] * len(elf_paths) if offsets is None else offsets
@@ -976,7 +979,7 @@ class RiscLoader:
         return None, None
 
     def get_callstack(
-        self, elf_paths: List[str], offsets: List[int] = None, limit: int = 100, stop_on_main: bool = True
+        self, elf_paths: List[str], offsets: List[int | None] = None, limit: int = 100, stop_on_main: bool = True
     ):
         callstack = []
         with self.risc_debug.ensure_halted():
