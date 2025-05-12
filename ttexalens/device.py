@@ -280,6 +280,8 @@ class Device(TTObject):
         "pcie": {"symbol": "P", "desc": "PCIE", "core_type": "pcie", "color": util.CLR_GREY},
         "router_only": {"symbol": " ", "desc": "Router only", "core_type": "router_only", "color": util.CLR_GREY},
         "harvested_workers": {"symbol": "-", "desc": "Harvested", "core_type": "tensix", "color": util.CLR_RED},
+        "security": {"symbol": "S", "desc": "Security", "core_type": "security", "color": util.CLR_GREY},
+        "l2cpu": {"symbol": "C", "desc": "L2CPU", "core_type": "l2cpu", "color": util.CLR_GREY},
     }
 
     core_types = {v["core_type"] for v in block_types.values()}
