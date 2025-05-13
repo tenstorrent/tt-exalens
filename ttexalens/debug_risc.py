@@ -457,7 +457,7 @@ class RiscDebug:
             util.INFO(f"  read_gpr({reg_index})")
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_REGISTER)
-        return self.__riscv_read(REG_COMMAND_RETURN_VALUE)
+        return self.__riscv_read(REG_COMMAND_RETURN_VALUE) - 4 * (reg_index == 32)
 
     def write_gpr(self, reg_index, value):
         if self.verbose:
@@ -978,12 +978,15 @@ class RiscLoader:
         return None, None
 
     @staticmethod
-    def get_callstack_entry(elf: dict, pc: int, frame_pointer = None, i=0):
+    def get_callstack_entry(elf: dict, pc: int, frame_pointer=None, i=0):
         callstack = []
         file_line = elf["dwarf"].find_file_line_by_address(pc)
         function_die = elf["dwarf"].find_function_by_address(pc)
-
         # Skipping lexical blocks since we do not print them
+        # abstract_origin = function_die.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
+        # abstract_origin = function_die.cu.dwarf.get_die(abstract_origin)
+        # specification = abstract_origin.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
+        # specification = abstract_origin.cu.dwarf.get_die(specification)
         if function_die is not None and (
             function_die.category == "inlined_function" or function_die.category == "lexical_block"
         ):
@@ -1005,9 +1008,7 @@ class RiscLoader:
                     function_die = function_die.parent
 
                 callstack.append(
-                    CallstackEntry(
-                        None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer
-                    )
+                    CallstackEntry(None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
                 )
                 file_line = function_die.call_file_info
         elif function_die is not None and function_die.category == "subprogram":
@@ -1016,9 +1017,7 @@ class RiscLoader:
             )
         else:
             if file_line is not None:
-                callstack.append(
-                    CallstackEntry(pc, None, file_line[0], file_line[1], file_line[2], frame_pointer)
-                )
+                callstack.append(CallstackEntry(pc, None, file_line[0], file_line[1], file_line[2], frame_pointer))
             else:
                 callstack.append(CallstackEntry(pc, None, None, None, None, frame_pointer))
         return callstack, function_die, i

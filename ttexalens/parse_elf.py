@@ -51,6 +51,7 @@ try:
     from elftools.elf.enums import ENUM_ST_INFO_TYPE
     from docopt import docopt
     from tabulate import tabulate
+    import cxxfilt
 except:
     print(
         "ERROR: Please install dependencies with: pip install tt-pyelftools docopt fuzzywuzzy python-Levenshtein tabulate"
@@ -423,7 +424,7 @@ class MY_DIE:
                 # Check if the first opcode is DW_OP_addr (0x03)
                 if isinstance(block, bytes) and len(block) > 0 and block[0] == 0x03:
                     addr = int.from_bytes(block[1:], byteorder="little")
-                elif hasattr(block, '__iter__'):
+                elif hasattr(block, "__iter__"):
                     # If it's a list of operations, we can't determine a single address
                     addr = None
             else:
@@ -460,16 +461,37 @@ class MY_DIE:
         return None
 
     @cached_property
+    def linkage_name(self):
+        if "DW_AT_linkage_name" in self.attributes:
+            value = self.attributes["DW_AT_linkage_name"].value
+            try:
+                return cxxfilt.demangle(value.decode("utf-8"))
+            except:
+                pass
+
+        return None
+
+    @cached_property
     def name(self):
         """
         Return the name of the DIE
         """
+
         if "DW_AT_name" in self.attributes:
-            name = self.attributes["DW_AT_name"].value.decode("utf-8")
+            name_value = self.attributes["DW_AT_name"].value
+            if name_value is not None:
+                name = name_value.decode("utf-8")
+            else:
+                name = None
         elif "DW_AT_specification" in self.attributes:
             # This is a variable that is defined elsewhere. We'll skip it.
             # IMPROVE: We should probably find the DIE that defines it and use its name.
-            name = None
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
+            die = self.cu.dwarf.get_die(dwarf_die)
+            if die is not None:
+                name = die.name
+            else:
+                name = None
         elif self.tag_is("pointer_type"):
             if self.dereference_type is None:
                 name = "?"
@@ -484,6 +506,10 @@ class MY_DIE:
         else:
             # We can't figure out the name of this variable. Just give it a name based on the ELF offset.
             name = f"{self.tag}-{hex(self.offset)}"
+
+        if self.parent.tag_is("namespace") or self.parent.tag_is("class_type"):
+            name = f"{self.parent.name}::{name}"
+
         return name
 
     @cached_property
@@ -499,6 +525,22 @@ class MY_DIE:
             ranges = self.cu.dwarf.range_lists.get_range_list_at_offset(self.attributes["DW_AT_ranges"].value)
             return [(r.begin_offset, r.end_offset) for r in ranges]
         return []
+
+    @cached_property
+    def decl_file_info(self):
+        file = None
+        line = None
+        column = None
+        if "DW_AT_decl_file" in self.attributes:
+            file_entry = self.cu.line_program["file_entry"][self.attributes["DW_AT_decl_file"].value]
+            directory = self.cu.line_program["include_directory"][file_entry.dir_index].decode("utf-8")
+            file = file_entry.name.decode("utf-8")
+            file = os.path.join(directory, file)
+        if "DW_AT_decl_line" in self.attributes:
+            line = self.attributes["DW_AT_decl_line"].value
+        if "DW_AT_decl_column" in self.attributes:
+            column = self.attributes["DW_AT_decl_column"].value
+        return (file, line, column)
 
     @cached_property
     def call_file_info(self):
@@ -984,7 +1026,7 @@ class FileInterface:
         pass
 
     def get_binary(self, file_path):
-        return open(file_path, 'rb')
+        return open(file_path, "rb")
 
 
 if __name__ == "__main__":
@@ -1015,10 +1057,10 @@ if __name__ == "__main__":
 
         rows = []
         for cat, cat_dict in name_dict.items():
-            if cat in ['dwarf', 'file-line', 'frame-info', 'symbols']:  # Skip non-DIE objects
+            if cat in ["dwarf", "file-line", "frame-info", "symbols"]:  # Skip non-DIE objects
                 continue
             for key, die in cat_dict.items():
-                if not hasattr(die, 'path'):  # Skip if not a DIE object
+                if not hasattr(die, "path"):  # Skip if not a DIE object
                     continue
                 if key != die.path:
                     print(f"{CLR_RED}ERROR: key {key} != die.get_path() {die.path}{CLR_END}")
@@ -1032,7 +1074,7 @@ if __name__ == "__main__":
                             addr_hex = hex(addr)
                         except TypeError:
                             addr_hex = str(addr)  # Fallback to string representation for non-integer addresses
-                    
+
                     # Safely handle value display
                     val = die.value
                     val_hex = ""
@@ -1041,7 +1083,7 @@ if __name__ == "__main__":
                             val_hex = hex(val)
                         except TypeError:
                             val_hex = str(val)  # Fallback to string representation for non-integer values
-                    
+
                     row = [
                         cat,
                         die.path,
