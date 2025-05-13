@@ -569,6 +569,10 @@ std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::conv
         coord_system_enum = CoordSystem::VIRTUAL;
     } else if (coord_system == "translated") {
         coord_system_enum = CoordSystem::TRANSLATED;
+    } else if (coord_system == "noc0") {
+        coord_system_enum = CoordSystem::NOC0;
+    } else if (coord_system == "noc1") {
+        coord_system_enum = CoordSystem::NOC1;
     } else {
         return {};
     }

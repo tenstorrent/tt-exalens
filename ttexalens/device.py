@@ -107,12 +107,8 @@ class Device(TTObject):
     instructions: TensixInstructions = None
     DIE_X_TO_NOC_0_X: List[int] = []
     DIE_Y_TO_NOC_0_Y: List[int] = []
-    DIE_X_TO_NOC_1_X: List[int] = []
-    DIE_Y_TO_NOC_1_Y: List[int] = []
     NOC_0_X_TO_DIE_X: List[int] = []
     NOC_0_Y_TO_DIE_Y: List[int] = []
-    NOC_1_X_TO_DIE_X: List[int] = []
-    NOC_1_Y_TO_DIE_Y: List[int] = []
     PCI_ARC_RESET_BASE_ADDR: int = None
     NOC_ARC_RESET_BASE_ADDR: int = None
     PCI_ARC_CSM_DATA_BASE_ADDR: int = None
@@ -184,23 +180,10 @@ class Device(TTObject):
         self._init_arc_register_adresses()
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
-    def __die_to_noc(self, die_loc, noc_id=0):
-        die_x, die_y = die_loc
-        if noc_id == 0:
-            return (self.DIE_X_TO_NOC_0_X[die_x], self.DIE_Y_TO_NOC_0_Y[die_y])
-        else:
-            return (self.DIE_X_TO_NOC_1_X[die_x], self.DIE_Y_TO_NOC_1_Y[die_y])
-
     def __noc_to_die(self, noc_loc, noc_id=0):
         noc_x, noc_y = noc_loc
-        if noc_id == 0:
-            return (self.NOC_0_X_TO_DIE_X[noc_x], self.NOC_0_Y_TO_DIE_Y[noc_y])
-        else:
-            return (self.NOC_1_X_TO_DIE_X[noc_x], self.NOC_1_Y_TO_DIE_Y[noc_y])
-
-    def __noc0_to_noc1(self, noc0_loc):
-        phys_loc = self.__noc_to_die(noc0_loc, noc_id=0)
-        return self.__die_to_noc(phys_loc, noc_id=1)
+        assert noc_id == 0
+        return (self.NOC_0_X_TO_DIE_X[noc_x], self.NOC_0_Y_TO_DIE_Y[noc_y])
 
     def _init_coordinate_systems(self):
         # Fill in coordinates for each block type
@@ -212,8 +195,8 @@ class Device(TTObject):
         # Fill in coordinate maps from UMD coordinate manager
         self._from_noc0 = {}
         self._to_noc0 = {}
-        umd_supported_coordinates = ["logical", "virtual", "translated"]
-        unique_coordinates = ["virtual", "translated"]
+        umd_supported_coordinates = ["noc1", "logical", "virtual", "translated"]
+        unique_coordinates = ["noc1", "virtual", "translated"]
         for noc0_location, block_type in self._noc0_to_block_type.items():
             core_type = self.block_types[block_type]["core_type"]
             for coord_system in umd_supported_coordinates:
@@ -229,12 +212,6 @@ class Device(TTObject):
                     pass
 
             # Add coordinate systems that UMD does not support
-
-            # Add noc1
-            noc1_location = self.__noc0_to_noc1(noc0_location)
-            self._from_noc0[(noc0_location, "noc1")] = (noc1_location, core_type)
-            self._to_noc0[(noc1_location, "noc1", core_type)] = noc0_location
-            self._to_noc0[(noc1_location, "noc1", "any")] = noc0_location
 
             # Add die
             die_location = self.__noc_to_die(noc0_location)
