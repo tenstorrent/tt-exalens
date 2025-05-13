@@ -2,11 +2,15 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
 from abc import abstractmethod
-from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.debug_bus_signal_store import DebugBusSignalStore
-from ttexalens.device import Device
-from ttexalens.register_store import RegisterStore
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ttexalens.device import Device
+    from ttexalens.coordinate import OnChipCoordinate
+    from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+    from ttexalens.register_store import RegisterStore
 
 
 class NocBlock:
