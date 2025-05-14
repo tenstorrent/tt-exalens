@@ -13,13 +13,9 @@ IRD_IMAGE_NAME=ghcr.io/$REPO/tt-exalens-ird-ubuntu-22-04
 DOCKER_TAG=$(./.github/get-docker-tag.sh)
 echo "Docker tag: $DOCKER_TAG"
 
-# Are we on main branch
-ON_MAIN=$(git branch --show-current | grep -q main && echo "true" || echo "false")
-
 build_and_push() {
     local image_name=$1 # Resulting image name
     local dockerfile=$2 # Dockerfile to build
-    local on_main=$3 # Are we on main branch
     local from_image=$4 # Base image to build from
 
     if docker manifest inspect $image_name:$DOCKER_TAG > /dev/null; then
@@ -38,8 +34,8 @@ build_and_push() {
     fi
 }
 
-build_and_push $CI_IMAGE_NAME .github/Dockerfile.ci $ON_MAIN
-build_and_push $IRD_IMAGE_NAME .github/Dockerfile.ird $ON_MAIN ci
+build_and_push $CI_IMAGE_NAME .github/Dockerfile.ci
+build_and_push $IRD_IMAGE_NAME .github/Dockerfile.ird ci
 
 echo "All images built and pushed successfully"
 echo "CI_IMAGE_NAME:"
