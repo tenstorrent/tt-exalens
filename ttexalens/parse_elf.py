@@ -799,7 +799,7 @@ def read_elf(file_ifc, elf_file_path, load_address=None):
     if load_address is None:
         load_address = text_sh_address
 
-    dwarf = elf.get_dwarf_info()
+    dwarf = elf.get_dwarf_info(relocate_dwarf_sections=False)
 
     recurse_dict = parse_dwarf(dwarf, loaded_offset=text_sh_address - load_address)
 

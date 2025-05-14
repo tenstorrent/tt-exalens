@@ -457,7 +457,7 @@ class RiscDebug:
             util.INFO(f"  read_gpr({reg_index})")
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_REGISTER)
-        return self.__riscv_read(REG_COMMAND_RETURN_VALUE) - 4 * (reg_index == 32)
+        return self.__riscv_read(REG_COMMAND_RETURN_VALUE)
 
     def write_gpr(self, reg_index, value):
         if self.verbose:
