@@ -36,13 +36,6 @@ build_and_push() {
         echo "Pushing image $image_name:$DOCKER_TAG"
         docker push $image_name:$DOCKER_TAG
     fi
-
-    # If we are on main branch update manifest and add latest tag
-    if [ "$on_main" = "true" ]; then
-        echo "Adding latest tag to image $image_name:$DOCKER_TAG"
-        docker manifest create $image_name:latest --amend $image_name:$DOCKER_TAG
-        docker manifest push $image_name:latest
-    fi
 }
 
 build_and_push $CI_IMAGE_NAME .github/Dockerfile.ci $ON_MAIN
