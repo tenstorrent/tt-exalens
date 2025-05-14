@@ -8,8 +8,10 @@ from ttexalens.hardware.blackhole.dram_block import BlackholeDramBlock
 from ttexalens.hardware.blackhole.eth_block import BlackholeEthBlock
 from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
 from ttexalens.hardware.blackhole.harvested_worker_block import BlackholeHarvestedWorkerBlock
+from ttexalens.hardware.blackhole.l2cpu_block import BlackholeL2cpuBlock
 from ttexalens.hardware.blackhole.pcie_block import BlackholePcieBlock
 from ttexalens.hardware.blackhole.router_only_block import BlackholeRouterOnlyBlock
+from ttexalens.hardware.blackhole.security_block import BlackholeSecurityBlock
 import ttexalens.util as util
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
@@ -3877,10 +3879,14 @@ class BlackholeDevice(Device):
             return BlackholeFunctionalWorkerBlock(location)
         elif block_type == "harvested_workers":
             return BlackholeHarvestedWorkerBlock(location)
+        elif block_type == "l2cpu":
+            return BlackholeL2cpuBlock(location)
         elif block_type == "pcie":
             return BlackholePcieBlock(location)
         elif block_type == "router_only":
             return BlackholeRouterOnlyBlock(location)
+        elif block_type == "security":
+            return BlackholeSecurityBlock(location)
         raise ValueError(f"Unsupported block type: {block_type}")
 
     def get_alu_config(self) -> List[dict]:
