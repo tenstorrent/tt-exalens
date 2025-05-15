@@ -88,10 +88,10 @@ def strip_DW_(s):
     return re.sub(r"^DW_[^_]*_", "", s)
 
 
-class MY_DWARF:
+class ElfDwarf:
     def __init__(self, dwarf: DWARFInfo):
         self.dwarf = dwarf
-        self._cus: Dict[int, MY_CU] = {}
+        self._cus: Dict[int, ElfCompileUnit] = {}
 
     @cached_property
     def range_lists(self):
@@ -100,7 +100,7 @@ class MY_DWARF:
     def get_cu(self, dwarf_cu: DWARF_CU):
         cu = self._cus.get(id(dwarf_cu))
         if cu == None:
-            cu = MY_CU(self, dwarf_cu)
+            cu = ElfCompileUnit(self, dwarf_cu)
             self._cus[id(dwarf_cu)] = cu
         return cu
 
@@ -180,8 +180,8 @@ class MY_DWARF:
         return None
 
 
-class MY_DWARFWithOffset(MY_DWARF):
-    def __init__(self, my_dwarf: MY_DWARF, loaded_offset: int):
+class ElfDwarfWithOffset(ElfDwarf):
+    def __init__(self, my_dwarf: ElfDwarf, loaded_offset: int):
         super().__init__(my_dwarf.dwarf)
         self._my_dwarf = my_dwarf
         self.loaded_offset = loaded_offset
@@ -212,17 +212,17 @@ class MY_DWARFWithOffset(MY_DWARF):
         return self._my_dwarf.find_file_line_by_address(address)
 
 
-class MY_CU:
-    def __init__(self, dwarf: MY_DWARF, dwarf_cu: DWARF_CU):
+class ElfCompileUnit:
+    def __init__(self, dwarf: ElfDwarf, dwarf_cu: DWARF_CU):
         self.dwarf = dwarf
         self.dwarf_cu = dwarf_cu
-        self.offsets: Dict[int, MY_DIE] = {}
-        self._dies: Dict[int, MY_DIE] = {}
+        self.offsets: Dict[int, ElfDie] = {}
+        self._dies: Dict[int, ElfDie] = {}
 
     def get_die(self, dwarf_die: DWARF_DIE):
         die = self._dies.get(id(dwarf_die))
         if die == None:
-            die = MY_DIE(self, dwarf_die)
+            die = ElfDie(self, dwarf_die)
             self._dies[id(dwarf_die)] = die
             assert die.offset not in self.offsets
             self.offsets[die.offset] = die
@@ -253,7 +253,7 @@ class MY_CU:
                 return die
         return None
 
-    def find_DIE_that_specifies(self, die: "MY_DIE"):
+    def find_DIE_that_specifies(self, die: "ElfDie"):
         """
         Given a DIE, find another DIE that specifies it. For example, if the DIE is a
         variable, find the DIE that defines the variable.
@@ -282,19 +282,19 @@ IGNORE_TAGS = set(
 )
 
 
-class MY_DIE:
+class ElfDie:
     """
     A wrapper around DIE class from pyelftools that adds some helper functions.
     """
 
-    def __init__(self, cu: MY_CU, dwarf_die: DWARF_DIE):
+    def __init__(self, cu: ElfCompileUnit, dwarf_die: DWARF_DIE):
         self.cu = cu
         self.dwarf_die = dwarf_die
 
         self.tag: str = dwarf_die.tag
         self.attributes = dwarf_die.attributes
         self.offset = dwarf_die.offset
-        self.children_by_name: Dict[str, MY_DIE] = {}
+        self.children_by_name: Dict[str, ElfDie] = {}
 
     def get_child_by_name(self, child_name: str):
         child = self.children_by_name.get(child_name)
@@ -584,7 +584,7 @@ class MY_DIE:
 # end class MY_DIE
 
 
-def process_DIE(die: MY_DIE, recurse_dict, r_depth):
+def process_die(die: ElfDie, recurse_dict, r_depth):
     """
     Processes a DIE, adds it to the recurse_dict if needed, and returns True if we
     should recurse into its children
@@ -612,14 +612,14 @@ def process_DIE(die: MY_DIE, recurse_dict, r_depth):
     return recurse_down
 
 
-def recurse_DIE(DIE: MY_DIE, recurse_dict, r_depth=0):
+def recurse_die(DIE: ElfDie, recurse_dict, r_depth=0):
     """
     This function visits all children recursively and calls process_DIE() on each
     """
     for child in DIE.iter_children():
-        recurse_down = process_DIE(child, recurse_dict, r_depth)
+        recurse_down = process_die(child, recurse_dict, r_depth)
         if recurse_down:
-            recurse_DIE(child, recurse_dict, r_depth + 1)
+            recurse_die(child, recurse_dict, r_depth + 1)
 
 
 def decode_file_line(dwarf: DWARFInfo) -> dict[int, tuple[str, int, int]]:
@@ -738,7 +738,7 @@ def decode_symbols(elf_file) -> dict[str, int]:
     return symbols
 
 
-def recurse_dwarf(dwarf: MY_DWARF) -> dict[str, dict[str, MY_DIE]]:
+def recurse_dwarf(dwarf: ElfDwarf) -> dict[str, dict[str, ElfDie]]:
     """
     Itaretes recursively over all the DIEs in the DWARF info and returns a dictionary
     with the following keys:
@@ -748,7 +748,7 @@ def recurse_dwarf(dwarf: MY_DWARF) -> dict[str, dict[str, MY_DIE]]:
         'enumerator' - all the enumerators in the DWARF info
         'PC' - mappings between PC values and source code locations
     """
-    recurse_dict: dict[str, dict[str, MY_DIE]] = {
+    recurse_dict: dict[str, dict[str, ElfDie]] = {
         "variable": dict(),
         "type": dict(),
         "member": dict(),
@@ -763,7 +763,7 @@ def recurse_dwarf(dwarf: MY_DWARF) -> dict[str, dict[str, MY_DIE]]:
         debug(f"CU: {cu_name}")
 
         # Process the names etc
-        recurse_DIE(top_DIE, recurse_dict)
+        recurse_die(top_DIE, recurse_dict)
 
     return recurse_dict
 
@@ -774,9 +774,9 @@ class ParsedElfFile:
         self.elf_file_path = elf_file_path
 
     @cached_property
-    def _dwarf(self) -> MY_DWARF:
+    def _dwarf(self) -> ElfDwarf:
         dwarf = self.elf.get_dwarf_info()
-        return MY_DWARF(dwarf)
+        return ElfDwarf(dwarf)
 
     @cached_property
     def _recursed_dwarf(self):
@@ -833,8 +833,8 @@ class ParsedElfFileWithOffset(ParsedElfFile):
         self.loaded_offset = parsed_elf.code_load_address - load_address
 
     @cached_property
-    def _dwarf(self) -> MY_DWARF:
-        return MY_DWARFWithOffset(self.parsed_elf._dwarf, self.loaded_offset)
+    def _dwarf(self) -> ElfDwarf:
+        return ElfDwarfWithOffset(self.parsed_elf._dwarf, self.loaded_offset)
 
     @cached_property
     def _recursed_dwarf(self):
@@ -968,7 +968,7 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
     # We also check for pointer dereferences here
     access_path, ptr_dereference_count = get_ptr_dereference_count(access_path)
     name, path_divider, rest_of_path = split_access_path(access_path)
-    die: MY_DIE = elf.variables[name]
+    die: ElfDie = elf.variables[name]
     current_address = die.address
     type_die = die.resolved_type
 
