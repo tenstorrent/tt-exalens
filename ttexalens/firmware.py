@@ -40,14 +40,11 @@ class ELF:
         self.names. For example, if filemap is { "brisc" : "./build/riscv-src/wormhole/sample.brisc.elf" },
         the parsed content of "./build/riscv-src/wormhole/sample.brisc.elf" will be stored in self.names["brisc"].
         """
-        self.names: Dict[str, Dict] = dict()
+        self.names: Dict[str, parse_elf.ParsedElfFile] = dict()
         self.filemap = filemap
         self._file_ifc = file_ifc
         self.name_word_pattern = re.compile(r"[_@.a-zA-Z]+")
         for prefix, filename in filemap.items():
-            if prefix not in self.names:
-                self.names[prefix] = dict()
-
             util.INFO(f"Loading ELF file: '{filename}'", end="")
             start_time = time.time()
             self.names[prefix] = parse_elf.read_elf(self._file_ifc, filename)
@@ -62,16 +59,16 @@ class ELF:
         Given a prefix, inject the variables that are not in the ELF
         """
         for var_name, var in extra_vars.items():
-            if var_name in self.names[prefix]["variable"]:
+            if var_name in self.names[prefix].variables:
                 util.INFO(f"Variable '{var_name}' already in ELF. Skipping")
                 continue
             offset_var = var["offset"]
-            if offset_var not in self.names[prefix]["variable"]:
+            if offset_var not in self.names[prefix].variables:
                 raise util.TTException(f"Variable '{offset_var}' not found in ELF. Cannot add '{var_name}'")
-            ov = self.names[prefix]["variable"][offset_var]
+            ov = self.names[prefix].variables[offset_var]
             addr = addr = ov.value if ov.value else ov.address
-            resolved_type = self.names[prefix]["type"][var["type"]].resolved_type
-            self.names[prefix]["variable"][var_name] = FAKE_DIE(var_name, addr=addr, resolved_type=resolved_type)
+            resolved_type = self.names[prefix].types[var["type"]].resolved_type
+            self.names[prefix].variables[var_name] = FAKE_DIE(var_name, addr=addr, resolved_type=resolved_type)
 
     def _get_prefix_and_suffix(self, path_str) -> Tuple[str, str]:
         dot_pos = path_str.find(".")
@@ -94,7 +91,7 @@ class ELF:
             choices = self.names.keys()
         else:
             elf = self.names[elf_name]
-            choices = elf["variable"].keys()
+            choices = elf.variables.keys()
 
         # Uses Levenshtein distance to find the best match for a query in a list of keys
         matches = process.extract(suffix, choices, scorer=fuzz.QRatio, limit=limit)
@@ -126,7 +123,7 @@ class ELF:
         ret_val = {}
         elf_name, enum_path = self._get_prefix_and_suffix(enum_path)
         names = self.names[elf_name]
-        for name, data in names["enumerator"].items():
+        for name, data in names.enumerators.items():
             if name.startswith(enum_path):
                 val = data.value
 
