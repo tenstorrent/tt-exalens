@@ -1018,13 +1018,13 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
             member_name, path_divider, rest_of_path = split_access_path(rest_of_path)
             assert type_die is not None and member_name is not None
             child_die = type_die.get_child_by_name(member_name)
-            assert child_die is not None
-            die = child_die
-            if not die:
-                die = resolve_unnamed_union_member(type_die, member_name)
-            if not die:
+            if not child_die:
+                child_die = resolve_unnamed_union_member(type_die, member_name)
+            if not child_die:
+                assert type_die.path is not None
                 member_path = type_die.path + "::" + member_name
                 raise Exception(f"ERROR: Cannot find {member_path}")
+            die = child_die
             type_die = die.resolved_type
             assert current_address is not None and die.address is not None
             current_address += die.address
@@ -1041,13 +1041,13 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
             pointer_address = mem_access_function(current_address, 4)[0] if die.value is None else die.value
             assert type_die is not None and member_name is not None
             child_die = type_die.get_child_by_name(member_name)
-            assert child_die is not None
-            die = child_die
-            if not die:
-                die = resolve_unnamed_union_member(type_die, member_name)
-            if not die:
+            if not child_die:
+                child_die = resolve_unnamed_union_member(type_die, member_name)
+            if not child_die:
+                assert type_die.path is not None
                 member_path = type_die.path + "::" + member_name
                 raise Exception(f"ERROR: Cannot find {member_path}")
+            die = child_die
             type_die = die.resolved_type
             current_address = pointer_address + die.address  # Assuming 4 byte pointers
 
