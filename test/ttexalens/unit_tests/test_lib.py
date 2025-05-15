@@ -705,6 +705,10 @@ class TestARC(unittest.TestCase):
     fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
 
     def test_load_arc_fw(self):
+
+        if self.is_blackhole():
+            self.skipTest("Loading ARC firmware is not supported on blackhole")
+
         wait_time = 0.1
         TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024
 
