@@ -423,12 +423,9 @@ class MY_DIE:
                 # Check if the first opcode is DW_OP_addr (0x03)
                 if block[0] == 0x03:
                     addr = int.from_bytes(block[1:], byteorder="little")
-<<<<<<< HEAD
-=======
                 elif hasattr(block, "__iter__"):
                     # If it's a list of operations, we can't determine a single address
                     addr = None
->>>>>>> 8723b089 (Fixing bugs that caused callstack not to find function name)
             else:
                 # Try to find another DIE that defines this variable
                 other_die = self.cu.find_DIE_that_specifies(self)
