@@ -506,8 +506,9 @@ class MY_DIE:
             # We can't figure out the name of this variable. Just give it a name based on the ELF offset.
             name = f"{self.tag}-{hex(self.offset)}"
 
-        if self.parent.tag_is("namespace") or self.parent.tag_is("class_type"):
-            name = f"{self.parent.name}::{name}"
+        if self.category == "subprogram":
+            if self.parent.tag_is("namespace") or self.parent.tag_is("class_type"):
+                name = f"{self.parent.name}::{name}"
 
         return name
 
