@@ -74,8 +74,9 @@ jobs:
     strategy:
       matrix:
         runner-info: [
-          {arch: "wormhole_b0", runs-on: ["in-service", "n150"]},
-          {arch: "wormhole_b0", runs-on: ["in-service", "n300"]},
+          {arch: "blackhole", runs-on: "tt-beta-ubuntu-2204-p150a-large-stable"},
+          {arch: "wormhole_b0", runs-on: "tt-beta-ubuntu-2204-n150-large-stable"},
+          {arch: "wormhole_b0", runs-on: "tt-beta-ubuntu-2204-n300-large-stable"},
         ]
     env:
       ARCH_NAME: ${{ matrix.runner-info.arch }}
@@ -155,8 +156,9 @@ jobs:
     strategy:
       matrix:
         runner-info: [
-          {arch: "wormhole_b0", runs-on: ["in-service", "n150"]},
-          {arch: "wormhole_b0", runs-on: ["in-service", "n300"]},
+          {arch: "blackhole", runs-on: "tt-beta-ubuntu-2204-p150a-large-stable"},
+          {arch: "wormhole_b0", runs-on: "tt-beta-ubuntu-2204-n150-large-stable"},
+          {arch: "wormhole_b0", runs-on: "tt-beta-ubuntu-2204-n300-large-stable"},
         ]
     env:
       ARCH_NAME: ${{ matrix.runner-info.arch }}
