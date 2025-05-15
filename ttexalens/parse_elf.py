@@ -987,7 +987,7 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
 
     num_members_to_read = 1
     while True:
-        if path_divider is None:
+        if path_divider is None or path_divider == "":
             # We reached the end of the path. Call the mem_access_functions, and return the value array.
 
             # If we have leading *s, dereference the pointer
