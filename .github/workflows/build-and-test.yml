@@ -74,9 +74,9 @@ jobs:
     strategy:
       matrix:
         runner-info: [
-          {arch: "blackhole", runs-on: "tt-beta-ubuntu-2204-p150a-large-stable"},
-          {arch: "wormhole_b0", runs-on: "tt-beta-ubuntu-2204-n150-large-stable"},
-          {arch: "wormhole_b0", runs-on: "tt-beta-ubuntu-2204-n300-large-stable"},
+          {arch: "blackhole", board: "p150a", runs-on: "tt-beta-ubuntu-2204-p150a-large-stable"},
+          {arch: "wormhole_b0", board: "n150", runs-on: "tt-beta-ubuntu-2204-n150-large-stable"},
+          {arch: "wormhole_b0", board: "n300", runs-on: "tt-beta-ubuntu-2204-n300-large-stable"},
         ]
     env:
       ARCH_NAME: ${{ matrix.runner-info.arch }}
@@ -93,7 +93,7 @@ jobs:
         - /dev/hugepages-1G:/dev/hugepages-1G
         - /etc/udev/rules.d:/etc/udev/rules.d
         - /lib/modules:/lib/modules
-    name: Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.runs-on[1] }}
+    name: Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }}
     steps:
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
@@ -111,7 +111,7 @@ jobs:
         id: strings
         shell: bash
         env:
-          job-name: "Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.runs-on[1] }}"
+          job-name: "Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }}"
         run: |
           # Github job context unfortunately doesn't contain job_id, this is the workaround how to fetch it using GH API
 
@@ -141,7 +141,7 @@ jobs:
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.runs-on[1] }}
+          name: test-reports-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.board }}
           path: ${{ steps.strings.outputs.test_report_path }}
 
       - name: Run Python tests for TTExaLens app
@@ -156,9 +156,9 @@ jobs:
     strategy:
       matrix:
         runner-info: [
-          {arch: "blackhole", runs-on: "tt-beta-ubuntu-2204-p150a-large-stable"},
-          {arch: "wormhole_b0", runs-on: "tt-beta-ubuntu-2204-n150-large-stable"},
-          {arch: "wormhole_b0", runs-on: "tt-beta-ubuntu-2204-n300-large-stable"},
+          {arch: "blackhole", board: "p150a", runs-on: "tt-beta-ubuntu-2204-p150a-large-stable"},
+          {arch: "wormhole_b0", board: "n150", runs-on: "tt-beta-ubuntu-2204-n150-large-stable"},
+          {arch: "wormhole_b0", board: "n300", runs-on: "tt-beta-ubuntu-2204-n300-large-stable"},
         ]
     env:
       ARCH_NAME: ${{ matrix.runner-info.arch }}
