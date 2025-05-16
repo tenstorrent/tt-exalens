@@ -527,6 +527,22 @@ class MY_DIE:
         elif "DW_AT_ranges" in self.attributes:
             ranges = self.cu.dwarf.range_lists.get_range_list_at_offset(self.attributes["DW_AT_ranges"].value)
             return [(r.begin_offset, r.end_offset) for r in ranges]
+        else:
+            child_ranges = []
+            for child in self.iter_children():
+                child_range = child.address_ranges
+                if child_range:
+                    if isinstance(child_range, tuple):
+                        child_ranges.append(child_range)
+                    elif isinstance(child_range, list):
+                        child_ranges.extend(child_range)
+            
+            if child_ranges:
+                # Compute the overall range
+                min_address = min(r[0] for r in child_ranges)
+                max_address = max(r[1] for r in child_ranges)
+                return [(min_address, max_address)]
+                        
         return []
 
     @cached_property
