@@ -978,7 +978,7 @@ class RiscLoader:
 
         return None, None
     
-    def _get_path_from_attribute(die, attribute: str) -> str:
+    def _get_path_from_attribute(self, die, attribute: str) -> str:
         dwarf_die = die.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
         new_die = die.cu.dwarf.get_die(dwarf_die)
 
