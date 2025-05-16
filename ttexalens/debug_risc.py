@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import List, Union
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.parse_elf import read_elf
+from ttexalens.parse_elf import ParsedElfFile, read_elf
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device, read_from_device, write_to_device
 from ttexalens import util as util
 import os
@@ -860,8 +860,11 @@ class RiscLoader:
         init_section_address = None
 
         try:
-            elf_file = self.context.server_ifc.get_binary(elf_path)
-            elf_file = ELFFile(elf_file)
+            elf_file_io = self.context.server_ifc.get_binary(elf_path)
+            elf_file = ELFFile(elf_file_io)
+            address: int
+            loader_data_address: int = loader_data if isinstance(loader_data, int) else None
+            loader_code_address: int = loader_code if isinstance(loader_code, int) else None
 
             # Try to find address mapping for loader_data and loader_code
             for section in elf_file.iter_sections():
@@ -869,9 +872,9 @@ class RiscLoader:
                     name = section.name
                     address = section.header.sh_addr
                     if name == loader_data:
-                        loader_data = address
+                        loader_data_address = address
                     elif name == loader_code:
-                        loader_code = address
+                        loader_code_address = address
 
             # Load section into memory
             for section in elf_file.iter_sections():
@@ -882,7 +885,7 @@ class RiscLoader:
                         if address % 4 != 0:
                             raise ValueError(f"Section address 0x{address:08x} is not 32-bit aligned")
 
-                        address = self.remap_address(address, loader_data, loader_code)
+                        address = self.remap_address(address, loader_data_address, loader_code_address)
                         data = section.data()
 
                         if name == ".init":
@@ -898,7 +901,7 @@ class RiscLoader:
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
                         data = section.data()
-                        address = self.remap_address(address, loader_data, loader_code)
+                        address = self.remap_address(address, loader_data_address, loader_code_address)
                         read_data = self.read_block(address, len(data))
                         if read_data != data:
                             util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
@@ -955,7 +958,7 @@ class RiscLoader:
         ), f"RISC at location {self.risc_debug.location} is still halted, but not because of ebreak."
 
     @staticmethod
-    def _read_elfs(elf_paths: List[str], offsets: List[int], context: Context) -> List[dict]:
+    def _read_elfs(elf_paths: List[str], offsets: List[int | None], context: Context) -> list[ParsedElfFile]:
         if not isinstance(elf_paths, list):
             elf_paths = [elf_paths]
         offsets = [None] * len(elf_paths) if offsets is None else offsets
@@ -968,9 +971,9 @@ class RiscLoader:
         return elfs
 
     @staticmethod
-    def _find_elf_and_frame_description(elfs: List[dict], pc: int, risc_debug: RiscDebug):
+    def _find_elf_and_frame_description(elfs: list[ParsedElfFile], pc: int, risc_debug: RiscDebug):
         for elf in elfs:
-            frame_description = elf["frame-info"].get_frame_description(pc, risc_debug)
+            frame_description = elf.frame_info.get_frame_description(pc, risc_debug)
             # If we get frame description from elf we return that elf and frame description
             if frame_description is not None:
                 return elf, frame_description
@@ -978,10 +981,10 @@ class RiscLoader:
         return None, None
 
     @staticmethod
-    def get_callstack_entry(elf: dict, pc: int, frame_pointer = None, i=0):
+    def get_callstack_entry(elf: dict, pc: int, frame_pointer=None, i=0):
         callstack = []
-        file_line = elf["dwarf"].find_file_line_by_address(pc)
-        function_die = elf["dwarf"].find_function_by_address(pc)
+        file_line = elf._dwarf.find_file_line_by_address(pc)
+        function_die = elf._dwarf.find_function_by_address(pc)
 
         # Skipping lexical blocks since we do not print them
         if function_die is not None and (
@@ -1005,9 +1008,7 @@ class RiscLoader:
                     function_die = function_die.parent
 
                 callstack.append(
-                    CallstackEntry(
-                        None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer
-                    )
+                    CallstackEntry(None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
                 )
                 file_line = function_die.call_file_info
         elif function_die is not None and function_die.category == "subprogram":
@@ -1016,15 +1017,13 @@ class RiscLoader:
             )
         else:
             if file_line is not None:
-                callstack.append(
-                    CallstackEntry(pc, None, file_line[0], file_line[1], file_line[2], frame_pointer)
-                )
+                callstack.append(CallstackEntry(pc, None, file_line[0], file_line[1], file_line[2], frame_pointer))
             else:
                 callstack.append(CallstackEntry(pc, None, None, None, None, frame_pointer))
         return callstack, function_die, i
 
     def get_callstack(
-        self, elf_paths: List[str], offsets: List[int] = None, limit: int = 100, stop_on_main: bool = True
+        self, elf_paths: List[str], offsets: List[int | None] = None, limit: int = 100, stop_on_main: bool = True
     ):
         callstack = []
         with self.risc_debug.ensure_halted():
@@ -1069,7 +1068,7 @@ class RiscLoader:
                 pc = return_address
                 i = i + 1
 
-                frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
+                frame_description = elf.frame_info.get_frame_description(pc, self.risc_debug)
                 # If we do not get frame description from current elf check in others
                 if frame_description is None:
                     new_elf, frame_description = RiscLoader._find_elf_and_frame_description(elfs, pc, self.risc_debug)

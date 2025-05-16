@@ -28,6 +28,7 @@ class WormholeInstructions(TensixInstructions):
 
         super().__init__(ops)
 
+
 #
 # Device
 #
@@ -35,12 +36,8 @@ class WormholeDevice(Device):
     # Physical location mapping. Physical coordinates are the geografical coordinates on a chip's die.
     DIE_X_TO_NOC_0_X = [0, 9, 1, 8, 2, 7, 3, 6, 4, 5]
     DIE_Y_TO_NOC_0_Y = [0, 11, 1, 10, 2, 9, 3, 8, 4, 7, 5, 6]
-    DIE_X_TO_NOC_1_X = [9, 0, 8, 1, 7, 2, 6, 3, 5, 4]
-    DIE_Y_TO_NOC_1_Y = [11, 0, 10, 1, 9, 2, 8, 3, 7, 4, 6, 5]
     NOC_0_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_0_X)
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
-    NOC_1_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_1_X)
-    NOC_1_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_1_Y)
 
     PCI_ARC_RESET_BASE_ADDR = 0x1FF30000
     PCI_ARC_CSM_DATA_BASE_ADDR = 0x1FE80000
@@ -87,14 +84,13 @@ class WormholeDevice(Device):
         self.instructions = WormholeInstructions()
 
         if Device.ARC is None:
-            regdef_path = util.application_path() + '/../../regdef/wormhole/axi-noc.yaml'
+            regdef_path = util.application_path() + "/../../regdef/wormhole/axi-noc.yaml"
             if os.path.exists(regdef_path):
                 WormholeDevice.ARC = YamlRegisterMap(
-                    regdef_path,
-                    reg_read_func=self._pci_arc_reg_read,
-                    reg_write_func=self._pci_arc_reg_write
+                    regdef_path, reg_read_func=self._pci_arc_reg_read, reg_write_func=self._pci_arc_reg_write
                 )
                 from ttexalens.reg_access_yaml import postprocess_csm
+
                 postprocess_csm(WormholeDevice.ARC.ARC_CSM)
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
@@ -103,13 +99,13 @@ class WormholeDevice(Device):
     def _get_tensix_register_map_keys(self) -> List[str]:
         return list(WormholeDevice.__register_map.keys())
 
-    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
+    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription | None:
         """Overrides the base class method to provide register descriptions for Wormhole device."""
         if register_name in WormholeDevice.__register_map:
             return WormholeDevice.__register_map[register_name]
         return None
 
-    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int:
+    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int | None:
         """Overrides the base class method to provide register base addresses for Wormhole device."""
         if isinstance(register_description, ConfigurationRegisterDescription):
             return WormholeDevice.CONFIGURATION_REGISTER_BASE
@@ -124,7 +120,7 @@ class WormholeDevice(Device):
         else:
             return None
 
-    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int:
+    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int | None:
         """Overrides the base class method to provide register end addresses for Wormhole device."""
         if isinstance(register_description, ConfigurationRegisterDescription):
             return WormholeDevice.CONFIGURATION_REGISTER_END

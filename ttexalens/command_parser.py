@@ -3,6 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 from docopt import DocoptExit, docopt
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.context import Context
+from ttexalens.device import Device
+from ttexalens.uistate import UIState
 
 
 class CommandParsingException(Exception):
@@ -28,7 +31,8 @@ class tt_docopt:
     - Iterating over the values of the common options (for_each)
     """
 
-    def device_id_for_each(device_id, context, ui_state):
+    @staticmethod
+    def device_id_for_each(device_id: int | str | None, context: Context, ui_state: UIState):
         if not device_id:
             device_id = ui_state.current_device_id
             device = context.devices[device_id]
@@ -36,10 +40,14 @@ class tt_docopt:
         elif device_id == "all":
             for device in context.devices.values():
                 yield device
+        elif type(device_id) == int:
+            yield context.devices[device_id]
         else:
+            assert type(device_id) == str
             yield context.devices[int(device_id, 0)]
 
-    def loc_for_each(loc_str, context, ui_state, device):
+    @staticmethod
+    def loc_for_each(loc_str, context: Context, ui_state: UIState, device: Device):
         if not loc_str:
             yield ui_state.current_location.change_device(device)
         elif loc_str == "all":
@@ -51,7 +59,8 @@ class tt_docopt:
         else:
             yield OnChipCoordinate.create(loc_str, device)
 
-    def risc_id_for_each(risc_id, context, ui_state):
+    @staticmethod
+    def risc_id_for_each(risc_id, context: Context, ui_state: UIState):
         if not risc_id or risc_id == "all":
             for risc_id in range(4):
                 yield risc_id
@@ -59,7 +68,7 @@ class tt_docopt:
             yield int(risc_id, 0)
 
     # We define command options that apply to more than one command here
-    OPTIONS = {
+    OPTIONS: dict[str, dict] = {
         "--verbose": {
             "short": "-v",
             "description": "Execute command with verbose output. [default: False]",
@@ -89,6 +98,7 @@ class tt_docopt:
         },
     }
 
+    @staticmethod
     def create_docopt_options_string(option_names):
         """
         Given an argument name or an iterable over names, return an "Options" string for that argument.
@@ -121,7 +131,7 @@ class tt_docopt:
         except (DocoptExit, SystemExit) as e:
             raise CommandParsingException(e)
 
-    def for_each(self, option_name, context, ui_state, **kwargs):
+    def for_each(self, option_name, context: Context, ui_state: UIState, **kwargs):
         option_short_name = tt_docopt.OPTIONS[option_name]["short"]
         opt_value = self.args[option_short_name]
         func = tt_docopt.OPTIONS[option_name]["for_each"]

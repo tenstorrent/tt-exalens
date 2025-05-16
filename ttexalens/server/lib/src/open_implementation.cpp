@@ -108,23 +108,28 @@ static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
     return cluster_descriptor_path;
 }
 
-static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::set<chip_id_t> &target_devices) {
+static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::unordered_set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
 
-    auto device = std::make_unique<tt::umd::Cluster>(target_devices, num_host_mem_ch_per_mmio_device);
-    for (auto chip_id : device->get_target_mmio_device_ids()) {
-        device->configure_active_ethernet_cores_for_mmio_device(chip_id, {});
+    auto cluster = std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{
+        .num_host_mem_ch_per_mmio_device = num_host_mem_ch_per_mmio_device,
+        .target_devices = target_devices,
+    });
+    for (auto chip_id : cluster->get_target_mmio_device_ids()) {
+        cluster->configure_active_ethernet_cores_for_mmio_device(chip_id, {});
     }
 
-    return device;
+    return cluster;
 }
 
-static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::set<chip_id_t> &target_devices) {
+static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::unordered_set<chip_id_t> &target_devices) {
     uint32_t num_host_mem_ch_per_mmio_device = 4;
 
-    auto device = std::make_unique<tt::umd::Cluster>(target_devices, num_host_mem_ch_per_mmio_device);
-
-    return device;
+    auto cluster = std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{
+        .num_host_mem_ch_per_mmio_device = num_host_mem_ch_per_mmio_device,
+        .target_devices = target_devices,
+    });
+    return cluster;
 }
 
 static void write_coord(std::ostream &out, const tt::umd::CoreCoord &input, CoreType core_type,
@@ -227,7 +232,35 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << std::endl;
     outfile << "  ]" << std::endl << std::endl;
 
-    outfile << "router_only:" << std::endl << "  []" << std::endl << std::endl;
+    outfile << "router_only:" << std::endl;
+    outfile << "  [" << std::endl;
+    for (const auto &router_only : soc_descriptor.get_cores(CoreType::ROUTER_ONLY)) {
+        if (router_only.x < soc_descriptor.grid_size.x && router_only.y < soc_descriptor.grid_size.y) {
+            write_coord(outfile, router_only, CoreType::ROUTER_ONLY, soc_descriptor);
+        }
+    }
+    outfile << std::endl;
+    outfile << "  ]" << std::endl << std::endl;
+
+    outfile << "security:" << std::endl;
+    outfile << "  [" << std::endl;
+    for (const auto &security : soc_descriptor.get_cores(CoreType::SECURITY)) {
+        if (security.x < soc_descriptor.grid_size.x && security.y < soc_descriptor.grid_size.y) {
+            write_coord(outfile, security, CoreType::SECURITY, soc_descriptor);
+        }
+    }
+    outfile << std::endl;
+    outfile << "  ]" << std::endl << std::endl;
+
+    outfile << "l2cpu:" << std::endl;
+    outfile << "  [" << std::endl;
+    for (const auto &l2cpu : soc_descriptor.get_cores(CoreType::L2CPU)) {
+        if (l2cpu.x < soc_descriptor.grid_size.x && l2cpu.y < soc_descriptor.grid_size.y) {
+            write_coord(outfile, l2cpu, CoreType::L2CPU, soc_descriptor);
+        }
+    }
+    outfile << std::endl;
+    outfile << "  ]" << std::endl << std::endl;
 
     // Fill in the rest that are static to our device
     outfile << "worker_l1_size:" << std::endl;
@@ -252,12 +285,12 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     outfile << std::endl;
 }
 
-static std::map<uint8_t, std::string> create_device_soc_descriptors(tt_device *device,
+static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Cluster *cluster,
                                                                     const std::vector<uint8_t> &device_ids) {
     std::map<uint8_t, std::string> device_soc_descriptors_yamls;
 
     for (auto device_id : device_ids) {
-        auto &soc_descriptor = device->get_soc_descriptor(device_id);
+        auto &soc_descriptor = cluster->get_soc_descriptor(device_id);
         std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
         write_soc_descriptor(file_name, soc_descriptor);
 
@@ -317,11 +350,12 @@ open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> 
 
 template <>
 std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jtag_implementation>::open(
-    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices, bool use_noc1) {
-    // TODO: Use noc1 in JTAG
+    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
+    bool initialize_with_noc1) {
+    // TODO: initialize with noc1 in JTAG
 
     std::vector<uint8_t> device_ids;
-    std::unique_ptr<tt::umd::Cluster> device;
+    std::unique_ptr<tt::umd::Cluster> cluster;
     std::unique_ptr<JtagDevice> jtag_device;
 
     jtag_device = std::move(init_jtag(binary_directory));
@@ -363,9 +397,11 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
 
 template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open(
-    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices, bool use_noc1) {
-    // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1
-    umd::TTDevice::use_noc1(use_noc1);
+    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
+    bool initialize_with_noc1) {
+    // TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use
+    // noc1
+    umd::TTDevice::use_noc1(initialize_with_noc1);
 
     auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor();
 
@@ -386,10 +422,10 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 
     // Create device
     std::vector<uint8_t> device_ids;
-    std::unique_ptr<tt::umd::Cluster> device;
+    std::unique_ptr<tt::umd::Cluster> cluster;
 
     // Try to read cluster descriptor
-    std::set<chip_id_t> target_devices;
+    std::unordered_set<chip_id_t> target_devices;
 
     for (chip_id_t i : cluster_descriptor->get_all_chips()) {
         device_ids.push_back(i);
@@ -405,23 +441,23 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 
     switch (arch) {
         case tt::ARCH::WORMHOLE_B0:
-            device = create_wormhole_device(target_devices);
+            cluster = create_wormhole_device(target_devices);
             break;
         case tt::ARCH::BLACKHOLE:
-            device = create_blackhole_device(target_devices);
+            cluster = create_blackhole_device(target_devices);
             break;
         default:
             throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");
     }
 
-    auto device_soc_descriptors_yamls = create_device_soc_descriptors(device.get(), device_ids);
+    auto device_soc_descriptors_yamls = create_device_soc_descriptors(cluster.get(), device_ids);
     std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
     for (auto device_id : device_ids) {
-        soc_descriptors[device_id] = device->get_soc_descriptor(device_id);
+        soc_descriptors[device_id] = cluster->get_soc_descriptor(device_id);
     }
 
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
-        new open_implementation<umd_implementation>(std::move(device)));
+        new open_implementation<umd_implementation>(std::move(cluster)));
 
     std::string file_path = temp_working_directory / "cluster_desc.yaml";
     cluster_descriptor->serialize_to_file(file_path);
@@ -435,33 +471,34 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open_simulation(
     const std::filesystem::path &simulation_directory) {
-    std::unique_ptr<tt_SimulationDevice> device = std::make_unique<tt_SimulationDevice>(simulation_directory);
+    std::unique_ptr<tt::umd::Cluster> cluster =
+        std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{.simulator_directory = simulation_directory});
 
     // Initialize simulation device
-    device->start_device({});
+    cluster->start_device({});
 
     // Default behavior is to start brisc on all functional workers.
     // Since it is easier to put brisc in endless loop then to put it in reset, we will do that.
     // Write 0x6f (JAL x0, 0) to address 0 in L1 of all tensix cores.
-    auto &soc_descriptor = device->get_soc_descriptor(0);
+    auto &soc_descriptor = cluster->get_soc_descriptor(0);
 
     for (const auto &worker : soc_descriptor.get_cores(CoreType::TENSIX)) {
         uint32_t data = 0x6f;  // while (true);
 
-        device->write_to_device(&data, sizeof(data), 0, worker, 0);
+        cluster->write_to_device(&data, sizeof(data), 0, worker, 0);
     }
 
-    device->deassert_risc_reset();
+    cluster->deassert_risc_reset();
 
     std::vector<uint8_t> device_ids{0};
-    auto device_soc_descriptors_yamls = create_device_soc_descriptors(device.get(), device_ids);
+    auto device_soc_descriptors_yamls = create_device_soc_descriptors(cluster.get(), device_ids);
     std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
     for (auto device_id : device_ids) {
-        soc_descriptors[device_id] = device->get_soc_descriptor(device_id);
+        soc_descriptors[device_id] = cluster->get_soc_descriptor(device_id);
     }
 
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
-        new open_implementation<umd_implementation>(std::move(device)));
+        new open_implementation<umd_implementation>(std::move(cluster)));
 
     implementation->cluster_descriptor_path = create_simulation_cluster_descriptor_file(soc_descriptor.arch);
     implementation->device_ids = device_ids;
@@ -514,6 +551,10 @@ std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::conv
         core_type_enum = CoreType::ETH;
     } else if (core_type == "worker") {
         core_type_enum = CoreType::WORKER;
+    } else if (core_type == "security") {
+        core_type_enum = CoreType::SECURITY;
+    } else if (core_type == "l2cpu") {
+        core_type_enum = CoreType::L2CPU;
     } else {
         return {};
     }
@@ -528,6 +569,10 @@ std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::conv
         coord_system_enum = CoordSystem::VIRTUAL;
     } else if (coord_system == "translated") {
         coord_system_enum = CoordSystem::TRANSLATED;
+    } else if (coord_system == "noc0") {
+        coord_system_enum = CoordSystem::NOC0;
+    } else if (coord_system == "noc1") {
+        coord_system_enum = CoordSystem::NOC1;
     } else {
         return {};
     }

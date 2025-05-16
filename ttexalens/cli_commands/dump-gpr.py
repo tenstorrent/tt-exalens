@@ -26,6 +26,7 @@ command_metadata = {
     "common_option_names": ["--device", "--loc", "--verbose", "--risc"],
 }
 
+from typing import Dict
 import tabulate
 
 from ttexalens.uistate import UIState
@@ -49,9 +50,9 @@ def get_register_data(device, context, loc, args):
     riscs_to_include = range(0, 4) if "all" in args["-r"] else [int(risc) for risc in riscs_to_include]
     elf_file = args["<elf-file>"] if args["<elf-file>"] else None
     elf = ELF(context.server_ifc, {"elf": elf_file}) if elf_file else None
-    pc_map = elf.names["elf"]["file-line"] if elf else None
+    pc_map = elf.names["elf"].file_line if elf else None
 
-    reg_value = {}
+    reg_value: Dict[int, Dict[int, int]] = {}
     noc_id = 0  # Always use noc 0
 
     halted_state = {}

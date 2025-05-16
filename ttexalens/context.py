@@ -3,14 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 from abc import abstractmethod
 from functools import cached_property
-from typing import Dict, Optional, Set
+from typing import Dict, Iterable, Optional, Set, Tuple
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
 from ttexalens.firmware import ELF
+from sortedcontainers import SortedSet
+
+from ttexalens.tt_exalens_ifc_base import TTExaLensCommunicator
 
 # All-encompassing structure representing a TTExaLens context
 class Context:
-    def __init__(self, server_ifc, cluster_desc, short_name, use_noc1=False):
+    def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc: util.YamlFile, short_name: str, use_noc1=False):
         self.server_ifc = server_ifc
         self._cluster_desc = cluster_desc
         self.short_name = short_name
@@ -45,12 +48,13 @@ class Context:
         return self._cluster_desc
 
     @cached_property
-    def device_ids(self) -> Set[int]:
+    def device_ids(self) -> SortedSet:
+        device_ids: Iterable[int]
         try:
             device_ids = self.server_ifc.get_device_ids()
-            return util.set(d for d in device_ids)
         except:
-            return None
+            device_ids = []
+        return util.set(d for d in device_ids)
 
     @cached_property
     def arch(self):
@@ -71,7 +75,10 @@ class Context:
     def elf_loaded(self, location: OnChipCoordinate, risc_id: int, elf_path: str):
         pass
 
-    def convert_loc_to_umd(self, location: OnChipCoordinate):
+    def convert_loc_to_jtag(self, location: OnChipCoordinate) -> Tuple[int, int]:
+        return location.to("noc0")
+
+    def convert_loc_to_umd(self, location: OnChipCoordinate) -> Tuple[int, int]:
         return location.to("noc0")
 
     def __repr__(self):
@@ -79,9 +86,9 @@ class Context:
 
 
 class LimitedContext(Context):
-    def __init__(self, server_ifc, cluster_desc_yaml, use_noc1=False):
+    def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc_yaml, use_noc1=False):
         super().__init__(server_ifc, cluster_desc_yaml, "limited", use_noc1)
-        self.loaded_elfs = {}  # (OnChipCoordinate, risc_id) => elf_path
+        self.loaded_elfs: Dict[Tuple[OnChipCoordinate, int], str] = {}  # (OnChipCoordinate, risc_id) => elf_path
 
     def get_risc_elf_path(self, location: OnChipCoordinate, risc_id: int) -> Optional[str]:
         return self.loaded_elfs.get((location, risc_id))

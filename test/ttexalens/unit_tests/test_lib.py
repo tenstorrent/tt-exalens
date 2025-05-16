@@ -580,9 +580,9 @@ class TestRunElf(unittest.TestCase):
 
         # Step 5b: Continue and check that the core reached 0xFFB12088. But first set the breakpoint at
         # function "decrement_mailbox"
-        decrement_mailbox_die = elf.names["fw"]["subprogram"]["decrement_mailbox"]
+        decrement_mailbox_die = elf.names["fw"].subprograms["decrement_mailbox"]
         decrement_mailbox_linkage_name = decrement_mailbox_die.attributes["DW_AT_linkage_name"].value.decode("utf-8")
-        decrement_mailbox_address = elf.names["fw"]["symbols"][decrement_mailbox_linkage_name]
+        decrement_mailbox_address = elf.names["fw"].symbols[decrement_mailbox_linkage_name]
 
         # Step 6. Setting breakpoint at decrement_mailbox
         watchpoint_id = 1  # Out of 8
