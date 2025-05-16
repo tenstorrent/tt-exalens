@@ -346,6 +346,7 @@ class ElfDie:
             or self.tag == "DW_TAG_GNU_template_parameter_pack"
             or self.tag == "DW_TAG_GNU_formal_parameter_pack"
             or self.tag == "DW_TAG_inheritance"
+            or self.tag == "DW_TAG_label"
         ):
             return None
         else:
@@ -465,8 +466,11 @@ class ElfDie:
                 # Assuming the location's form is a block
                 block = location.value
                 # Check if the first opcode is DW_OP_addr (0x03)
-                if block[0] == 0x03:
+                if isinstance(block, bytes) and len(block) > 0 and block[0] == 0x03:
                     addr = int.from_bytes(block[1:], byteorder="little")
+                elif hasattr(block, "__iter__"):
+                    # If it's a list of operations, we can't determine a single address
+                    addr = None
             else:
                 # Try to find another DIE that defines this variable
                 other_die = self.cu.find_DIE_that_specifies(self)

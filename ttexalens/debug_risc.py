@@ -957,7 +957,8 @@ class RiscLoader:
             not self.risc_debug.is_halted() or self.risc_debug.read_status().is_ebreak_hit
         ), f"RISC at location {self.risc_debug.location} is still halted, but not because of ebreak."
 
-    def _read_elfs(self, elf_paths: List[str], offsets: List[int | None]) -> list[ParsedElfFile]:
+    @staticmethod
+    def _read_elfs(elf_paths: List[str], offsets: List[int | None], context: Context) -> list[ParsedElfFile]:
         if not isinstance(elf_paths, list):
             elf_paths = [elf_paths]
         offsets = [None] * len(elf_paths) if offsets is None else offsets
@@ -965,18 +966,61 @@ class RiscLoader:
         elfs = []
         for elf_path, offset in zip(elf_paths, offsets):
             offset = None if offset == 0 else offset
-            elfs.append(read_elf(self.context.server_ifc, elf_path, offset))
+            elfs.append(read_elf(context.server_ifc, elf_path, offset))
 
         return elfs
 
-    def _find_elf_and_frame_description(self, elfs: list[ParsedElfFile], pc: int):
+    @staticmethod
+    def _find_elf_and_frame_description(elfs: list[ParsedElfFile], pc: int, risc_debug: RiscDebug):
         for elf in elfs:
-            frame_description = elf.frame_info.get_frame_description(pc, self.risc_debug)
+            frame_description = elf.frame_info.get_frame_description(pc, risc_debug)
             # If we get frame description from elf we return that elf and frame description
             if frame_description is not None:
                 return elf, frame_description
 
         return None, None
+
+    @staticmethod
+    def get_callstack_entry(elf: dict, pc: int, frame_pointer=None, i=0):
+        callstack = []
+        file_line = elf._dwarf.find_file_line_by_address(pc)
+        function_die = elf._dwarf.find_function_by_address(pc)
+
+        # Skipping lexical blocks since we do not print them
+        if function_die is not None and (
+            function_die.category == "inlined_function" or function_die.category == "lexical_block"
+        ):
+            # Returning inlined functions (virtual frames)
+
+            # Skipping lexical blocks since we do not print them
+            while function_die.category == "lexical_block":
+                function_die = function_die.parent
+
+            callstack.append(
+                CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
+            )
+            file_line = function_die.call_file_info
+            while function_die.category == "inlined_function":
+                i = i + 1
+                function_die = function_die.parent
+                # Skipping lexical blocks since we do not print them
+                while function_die.category == "lexical_block":
+                    function_die = function_die.parent
+
+                callstack.append(
+                    CallstackEntry(None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
+                )
+                file_line = function_die.call_file_info
+        elif function_die is not None and function_die.category == "subprogram":
+            callstack.append(
+                CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
+            )
+        else:
+            if file_line is not None:
+                callstack.append(CallstackEntry(pc, None, file_line[0], file_line[1], file_line[2], frame_pointer))
+            else:
+                callstack.append(CallstackEntry(pc, None, None, None, None, frame_pointer))
+        return callstack, function_die, i
 
     def get_callstack(
         self, elf_paths: List[str], offsets: List[int | None] = None, limit: int = 100, stop_on_main: bool = True
@@ -985,13 +1029,13 @@ class RiscLoader:
         with self.risc_debug.ensure_halted():
 
             # Reading the elf files for given paths and offsets
-            elfs = self._read_elfs(elf_paths, offsets)
+            elfs = RiscLoader._read_elfs(elf_paths, offsets, self.context)
 
             # Reading the program counter from risc register
             pc = self.risc_debug.read_gpr(32)
 
             # Choose the elf which is referenced by the program counter
-            elf, frame_description = self._find_elf_and_frame_description(elfs, pc)
+            elf, frame_description = RiscLoader._find_elf_and_frame_description(elfs, pc, self.risc_debug)
 
             # If we do not get frame description from any elf, we cannot proceed
             if frame_description is None:
@@ -1001,47 +1045,8 @@ class RiscLoader:
             frame_pointer = frame_description.read_previous_cfa()
             i = 0
             while i < limit:
-                file_line = elf._dwarf.find_file_line_by_address(pc)
-                function_die = elf._dwarf.find_function_by_address(pc)
-
-                # Skipping lexical blocks since we do not print them
-                if function_die is not None and (
-                    function_die.category == "inlined_function" or function_die.category == "lexical_block"
-                ):
-                    # Returning inlined functions (virtual frames)
-
-                    # Skipping lexical blocks since we do not print them
-                    while function_die.category == "lexical_block":
-                        function_die = function_die.parent
-
-                    callstack.append(
-                        CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
-                    )
-                    file_line = function_die.call_file_info
-                    while function_die.category == "inlined_function":
-                        i = i + 1
-                        function_die = function_die.parent
-                        # Skipping lexical blocks since we do not print them
-                        while function_die.category == "lexical_block":
-                            function_die = function_die.parent
-
-                        callstack.append(
-                            CallstackEntry(
-                                None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer
-                            )
-                        )
-                        file_line = function_die.call_file_info
-                elif function_die is not None and function_die.category == "subprogram":
-                    callstack.append(
-                        CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
-                    )
-                else:
-                    if file_line is not None:
-                        callstack.append(
-                            CallstackEntry(pc, None, file_line[0], file_line[1], file_line[2], frame_pointer)
-                        )
-                    else:
-                        callstack.append(CallstackEntry(pc, None, None, None, None, frame_pointer))
+                cs, function_die, i = RiscLoader.get_callstack_entry(elf, pc, frame_pointer, i)
+                callstack.extend(cs)
 
                 # We want to stop when we print main as frame descriptor might not be correct afterwards
                 if stop_on_main and function_die is not None and function_die.name == "main":
@@ -1066,7 +1071,7 @@ class RiscLoader:
                 frame_description = elf.frame_info.get_frame_description(pc, self.risc_debug)
                 # If we do not get frame description from current elf check in others
                 if frame_description is None:
-                    new_elf, frame_description = self._find_elf_and_frame_description(elfs, pc)
+                    new_elf, frame_description = RiscLoader._find_elf_and_frame_description(elfs, pc, self.risc_debug)
                     if frame_description is not None:
                         elf = new_elf
 

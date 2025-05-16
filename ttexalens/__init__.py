@@ -8,6 +8,7 @@ __all__ = [
     "tt_exalens_init",
     "tt_exalens_lib",
     "coordinate",
+    "reg_access",
 ]
 
 # Setting the verbosity of messages shown
