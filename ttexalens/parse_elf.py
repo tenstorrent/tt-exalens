@@ -325,6 +325,12 @@ class MY_DIE:
         parent = self.parent
         name = self.name
 
+        if self.category == "subprogram" and "DW_AT_specification" in self.attributes:
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
+            die = self.cu.dwarf.get_die(dwarf_die)
+            if die is not None:
+                return die.path
+
         if parent and parent.tag != "DW_TAG_compile_unit":
             parent_path = parent.path
             return f"{parent_path}::{name}"
@@ -506,9 +512,6 @@ class MY_DIE:
             # We can't figure out the name of this variable. Just give it a name based on the ELF offset.
             name = f"{self.tag}-{hex(self.offset)}"
 
-        if self.category == "subprogram":
-            if self.parent.tag_is("namespace") or self.parent.tag_is("class_type"):
-                name = f"{self.parent.name}::{name}"
 
         return name
 

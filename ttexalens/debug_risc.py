@@ -1012,10 +1012,13 @@ class RiscLoader:
 
                     # Skipping lexical blocks since we do not print them
                     while function_die.category == "lexical_block":
-                        function_die = function_die.parent
+                        function_die = function_die.parent    
+
+                    origin_dwarf_die = function_die.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
+                    origin_die = function_die.cu.dwarf.get_die(origin_dwarf_die)
 
                     callstack.append(
-                        CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
+                        CallstackEntry(pc, origin_die.path, file_line[0], file_line[1], file_line[2], frame_pointer)
                     )
                     file_line = function_die.call_file_info
                     while function_die.category == "inlined_function":
@@ -1025,15 +1028,18 @@ class RiscLoader:
                         while function_die.category == "lexical_block":
                             function_die = function_die.parent
 
+                        origin_dwarf_die = function_die.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
+                        origin_die = function_die.cu.dwarf.get_die(origin_dwarf_die)
+
                         callstack.append(
                             CallstackEntry(
-                                None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer
+                                None, origin_die.path, file_line[0], file_line[1], file_line[2], frame_pointer
                             )
                         )
                         file_line = function_die.call_file_info
                 elif function_die is not None and function_die.category == "subprogram":
                     callstack.append(
-                        CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
+                        CallstackEntry(pc, function_die.path, file_line[0], file_line[1], file_line[2], frame_pointer)
                     )
                 else:
                     if file_line is not None:
