@@ -43,19 +43,15 @@ import os
 import re
 from typing import Dict, Optional, TYPE_CHECKING
 
-from ttexalens.tt_exalens_ifc_base import TTExaLensCommunicator
-
 if TYPE_CHECKING:
     from ttexalens.debug_risc import RiscDebug
 
 try:
     from elftools.elf.elffile import ELFFile
-    from elftools.dwarf.callframe import CIE, FDE
+    from elftools.dwarf.callframe import FDE
     from elftools.dwarf.compileunit import CompileUnit as DWARF_CU
     from elftools.dwarf.dwarfinfo import DWARFInfo
-    from elftools.dwarf.lineprogram import LineProgram
     from elftools.dwarf.die import DIE as DWARF_DIE
-    from elftools.elf.enums import ENUM_ST_INFO_TYPE
     from docopt import docopt
     from tabulate import tabulate
 except:
@@ -144,6 +140,8 @@ class ElfDwarf:
         result = dict()
         for cu in self.iter_CUs():
             lineprog = cu.line_program
+            if lineprog is None:
+                continue
             delta = 1 if lineprog.header.version < 5 else 0
             previous_entry = None
             for entry in lineprog.get_entries():
@@ -188,7 +186,7 @@ class ElfDwarfWithOffset(ElfDwarf):
 
     @cached_property
     def range_lists(self):
-        return self._my_dwarf.range_lists()
+        return self._my_dwarf.range_lists
 
     def get_cu(self, dwarf_cu: DWARF_CU):
         return self._my_dwarf.get_cu(dwarf_cu)
@@ -291,15 +289,18 @@ class ElfDie:
         self.cu = cu
         self.dwarf_die = dwarf_die
 
+        assert type(dwarf_die.tag) == str
         self.tag: str = dwarf_die.tag
         self.attributes = dwarf_die.attributes
         self.offset = dwarf_die.offset
-        self.children_by_name: Dict[str, ElfDie] = {}
+        self.children_by_name: dict[str, ElfDie] = {}
 
     def get_child_by_name(self, child_name: str):
         child = self.children_by_name.get(child_name)
         if child == None:
             for die in self.iter_children():
+                if die.name is None:
+                    continue
                 assert die.name not in self.children_by_name or self.children_by_name[die.name] == die
                 self.children_by_name[die.name] = die
                 if die.name == child_name:
@@ -367,7 +368,7 @@ class ElfDie:
         return name
 
     @cached_property
-    def resolved_type(self):
+    def resolved_type(self) -> "ElfDie":
         """
         Resolve to underlying type
         TODO: test typedefs, this looks overly complicated
@@ -385,14 +386,15 @@ class ElfDie:
             if typedef_DIE:  # If typedef, recursivelly do it
                 return typedef_DIE.resolved_type
         elif self.category != "type" and "DW_AT_type" in self.attributes and self.local_offset != None:
-            my_type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
-            if (
-                my_type_die.tag == "DW_TAG_typedef"
-                or my_type_die.tag == "DW_TAG_const_type"
-                or my_type_die.tag == "DW_TAG_volatile_type"
-            ):
-                return my_type_die.resolved_type
-            return my_type_die
+            type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
+            if type_die is not None:
+                if (
+                    type_die.tag == "DW_TAG_typedef"
+                    or type_die.tag == "DW_TAG_const_type"
+                    or type_die.tag == "DW_TAG_volatile_type"
+                ):
+                    return type_die.resolved_type
+                return type_die
         return self
 
     @cached_property
@@ -403,7 +405,9 @@ class ElfDie:
         if self.tag == "DW_TAG_pointer_type" or self.tag == "DW_TAG_reference_type":
             if "DW_AT_type" not in self.attributes:
                 return None
-            return self.cu.find_DIE_at_local_offset(self.local_offset).resolved_type
+            dereference_Type = self.cu.find_DIE_at_local_offset(self.local_offset)
+            if dereference_Type is not None:
+                return dereference_Type.resolved_type
         return None
 
     @cached_property
@@ -412,11 +416,13 @@ class ElfDie:
         Get the type of the elements of an array
         """
         if self.tag == "DW_TAG_array_type":
-            return self.cu.find_DIE_at_local_offset(self.local_offset).resolved_type
+            element_type = self.cu.find_DIE_at_local_offset(self.local_offset)
+            if element_type is not None:
+                return element_type.resolved_type
         return None
 
     @cached_property
-    def size(self):
+    def size(self) -> int | None:
         """
         Return the size in bytes of the DIE
         """
@@ -433,17 +439,20 @@ class ElfDie:
                     upper_bound = child.attributes["DW_AT_upper_bound"].value
                     array_size *= upper_bound + 1
             elem_die = self.cu.find_DIE_at_local_offset(self.local_offset)
-            elem_size = elem_die.size
-            return array_size * elem_size
+            if elem_die is not None:
+                elem_size = elem_die.size
+                if elem_size is not None:
+                    return array_size * elem_size
 
         if "DW_AT_type" in self.attributes:
             type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
-            return type_die.size
+            if type_die is not None:
+                return type_die.size
 
         return None
 
     @cached_property
-    def address(self):
+    def address(self) -> int | None:
         """
         Return the address of the DIE within the parent type
         """
@@ -473,7 +482,7 @@ class ElfDie:
             ):
                 # Then we are not expecting an address
                 pass
-            elif self.parent.tag == "DW_TAG_union_type":
+            elif self.parent is not None and self.parent.tag == "DW_TAG_union_type":
                 return 0  # All members of a union start at the same address
             else:
                 if self.attributes.get("DW_AT_const_value"):
@@ -492,7 +501,7 @@ class ElfDie:
         return None
 
     @cached_property
-    def name(self):
+    def name(self) -> str | None:
         """
         Return the name of the DIE
         """
@@ -508,7 +517,10 @@ class ElfDie:
             else:
                 name = f"{self.dereference_type.name}*"
         elif self.tag_is("reference_type"):
-            name = f"{self.dereference_type.name}&"
+            if self.dereference_type is not None:
+                name = f"{self.dereference_type.name}&"
+            else:
+                name = "?Unknown?&"
         elif "DW_AT_abstract_origin" in self.attributes:
             dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
             die = self.cu.dwarf.get_die(dwarf_die)
@@ -528,6 +540,7 @@ class ElfDie:
                 )
             ]
         elif "DW_AT_ranges" in self.attributes:
+            assert self.cu.dwarf.range_lists is not None
             ranges = self.cu.dwarf.range_lists.get_range_list_at_offset(self.attributes["DW_AT_ranges"].value)
             return [(r.begin_offset, r.end_offset) for r in ranges]
         return []
@@ -537,7 +550,7 @@ class ElfDie:
         file = None
         line = None
         column = None
-        if "DW_AT_call_file" in self.attributes:
+        if "DW_AT_call_file" in self.attributes and self.cu.line_program is not None:
             file_entry = self.cu.line_program["file_entry"][self.attributes["DW_AT_call_file"].value]
             directory = self.cu.line_program["include_directory"][file_entry.dir_index].decode("utf-8")
             file = file_entry.name.decode("utf-8")
@@ -877,7 +890,7 @@ class ParsedElfFileWithOffset(ParsedElfFile):
         return FrameInfoProviderWithOffset(self.frame_info, self.code_load_address)
 
 
-def read_elf(file_ifc: TTExaLensCommunicator, elf_file_path: str, load_address: int | None = None) -> ParsedElfFile:
+def read_elf(file_ifc, elf_file_path: str, load_address: int | None = None) -> ParsedElfFile:
     """
     Reads the ELF file and returns a dictionary with the DWARF info
     """
@@ -912,7 +925,7 @@ def split_access_path(access_path):
     if match:
         return match.group(1), match.group(2), match.group(3)
     else:
-        return access_path, None, None
+        return access_path, "", ""
 
 
 def get_ptr_dereference_count(name):
@@ -926,13 +939,13 @@ def get_ptr_dereference_count(name):
     return name, ptr_dereference_count
 
 
-def get_array_indices(rest_of_path):
+def get_array_indices(rest_of_path: str):
     """
     Given a string that starts with '[', parse the array indices and return them as a list.
     Supports integer indices only. Supports multidimensional arrays (e.g. [1][2] in which
     case it returns [1, 2]).
     """
-    array_indices = []
+    array_indices: list[int] = []
     while rest_of_path.startswith("["):
         closing_bracket_pos = rest_of_path.find("]")
         if closing_bracket_pos == -1:
@@ -943,7 +956,7 @@ def get_array_indices(rest_of_path):
     return array_indices, rest_of_path
 
 
-def resolve_unnamed_union_member(type_die, member_name):
+def resolve_unnamed_union_member(type_die: ElfDie, member_name: str):
     """
     Given a die that contains an unnamed union of type type_die, and a member path
     represening a member of the unnamed union, return the die of the unnamed union.
@@ -974,20 +987,23 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
 
     num_members_to_read = 1
     while True:
-        if path_divider is None:
+        if path_divider is None or path_divider == "":
             # We reached the end of the path. Call the mem_access_functions, and return the value array.
 
             # If we have leading *s, dereference the pointer
             while ptr_dereference_count > 0:
                 ptr_dereference_count -= 1
+                assert type_die is not None
                 type_die = type_die.dereference_type
                 current_address = mem_access_function(current_address, 4)[0]  # Assuming 4 byte pointers
 
             # Check if it is a reference
+            assert type_die is not None
             if type_die.tag_is("reference_type"):
                 type_die = type_die.dereference_type
                 current_address = mem_access_function(current_address, 4)[0]  # Dereference the reference
 
+            assert type_die is not None and type_die.size is not None
             bytes_to_read = type_die.size * num_members_to_read
             return (
                 mem_access_function(current_address, bytes_to_read),
@@ -1000,29 +1016,38 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
             if num_members_to_read > 1:
                 raise Exception(f"ERROR: Cannot access {name} as a single value")
             member_name, path_divider, rest_of_path = split_access_path(rest_of_path)
-            die = type_die.get_child_by_name(member_name)
-            if not die:
-                die = resolve_unnamed_union_member(type_die, member_name)
-            if not die:
+            assert type_die is not None and member_name is not None
+            child_die = type_die.get_child_by_name(member_name)
+            if not child_die:
+                child_die = resolve_unnamed_union_member(type_die, member_name)
+            if not child_die:
+                assert type_die.path is not None
                 member_path = type_die.path + "::" + member_name
                 raise Exception(f"ERROR: Cannot find {member_path}")
+            die = child_die
             type_die = die.resolved_type
+            assert current_address is not None and die.address is not None
             current_address += die.address
 
         elif path_divider == "->":
             if num_members_to_read > 1:
                 raise Exception(f"ERROR: Cannot access {name} as a single value")
             member_name, path_divider, rest_of_path = split_access_path(rest_of_path)
+            assert type_die is not None
             if not type_die.tag_is("pointer_type"):
                 raise Exception(f"ERROR: {type_die.path} is not a pointer")
+            assert type_die.dereference_type is not None
             type_die = type_die.dereference_type.resolved_type
             pointer_address = mem_access_function(current_address, 4)[0] if die.value is None else die.value
-            die = type_die.get_child_by_name(member_name)
-            if not die:
-                die = resolve_unnamed_union_member(type_die, member_name)
-            if not die:
+            assert type_die is not None and member_name is not None
+            child_die = type_die.get_child_by_name(member_name)
+            if not child_die:
+                child_die = resolve_unnamed_union_member(type_die, member_name)
+            if not child_die:
+                assert type_die.path is not None
                 member_path = type_die.path + "::" + member_name
                 raise Exception(f"ERROR: Cannot find {member_path}")
+            die = child_die
             type_die = die.resolved_type
             current_address = pointer_address + die.address  # Assuming 4 byte pointers
 
@@ -1030,10 +1055,12 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
             if num_members_to_read > 1:
                 raise Exception(f"INTERNAL ERROR: An array of arrays should be processed in a single call")
             array_indices, rest_of_path = get_array_indices("[" + rest_of_path)
+            assert type_die is not None
             element_type_die, array_member_offset, num_members_to_read = get_array_member_offset(
                 type_die, array_indices
             )
             element_size = element_type_die.size
+            assert element_size is not None and current_address is not None
             current_address += element_size * array_member_offset
             rest_of_path = "ARRAY" + rest_of_path
             member_name, path_divider, rest_of_path = split_access_path(rest_of_path)
@@ -1042,7 +1069,7 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
             raise Exception(f"ERROR: Unknown divider {path_divider}")
 
 
-def get_array_member_offset(array_type, array_indices):
+def get_array_member_offset(array_type: ElfDie, array_indices: list[int]):
     """
     Given a list of array_indices of a multidimensional array:
      - Return element type with the offset in bytes.
@@ -1062,6 +1089,7 @@ def get_array_member_offset(array_type, array_indices):
             array_element_type = array_type.dereference_type
         else:
             array_element_type = array_type.array_element_type
+        assert array_element_type is not None
 
         # 1. Find array dimensions
         array_dimensions = []
@@ -1101,12 +1129,16 @@ def access_logger(addr, size_bytes):
     return words_read
 
 
-class FileInterface(TTExaLensCommunicator):
+class FileInterface:
     def __init__(self):
         pass
 
     def get_binary(self, file_path):
         return open(file_path, "rb")
+
+    def get_file(self, file_path: str) -> str:
+        with open(file_path, "r") as f:
+            return f.read()
 
 
 if __name__ == "__main__":
