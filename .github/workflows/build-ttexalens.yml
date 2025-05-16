@@ -3,6 +3,10 @@ name: "BUILD TTEXALENS"
 on:
   workflow_call:
     inputs:
+      runs-on:
+        required: false
+        type: string
+        default: tt-beta-ubuntu-2204-large
       os:
         required: false
         type: string
@@ -24,8 +28,7 @@ jobs:
       CONFIG: ${{ inputs.config }}
       # So we can get all the makefile output we want
       VERBOSE: 1
-    # TODO: This will need to change when we get cloud runners
-    runs-on: ${{ inputs.os }}
+    runs-on: ${{ inputs.runs-on }}
     container:
       image: ${{ inputs.docker-image }}
     name: "Build TT-EXALENS."
