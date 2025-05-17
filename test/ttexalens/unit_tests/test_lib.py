@@ -794,6 +794,20 @@ class TestCallStack(unittest.TestCase):
         return f"build/riscv-src/{arch}/{app_name}.{risc}.elf"
 
     @parameterized.expand([1, 10, 50])
+    def test_callstack_with_parsing(self, recursion_count):
+        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        elf_path = self.get_elf_path("callstack")
+        self.loader.run_elf(elf_path)
+        parsed_elf = lib.parse_elf(elf_path, self.context)
+        callstack = lib.callstack(self.core_loc, parsed_elf, None, self.risc_id, 100, True, False, 0, self.context)
+        self.assertEqual(len(callstack), recursion_count + 3)
+        self.assertEqual(callstack[0].function_name, "halt")
+        for i in range(1, recursion_count + 1):
+            self.assertEqual(callstack[i].function_name, "f1")
+        self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
+        self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+
+    @parameterized.expand([1, 10, 50])
     def test_callstack(self, recursion_count):
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack")
@@ -859,5 +873,5 @@ class TestCallStack(unittest.TestCase):
         """Test invalid inputs for callstack function."""
 
         # Check for invalid core_loc
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((util.TTException, ValueError, FileNotFoundError)):
             lib.callstack(core_loc, elf_paths, offsets, risc_id, max_depth, True, False, device_id, self.context)

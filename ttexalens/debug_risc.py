@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import List, Union
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.parse_elf import ParsedElfFile, read_elf
+from ttexalens.parse_elf import ParsedElfFile, ParsedElfFileWithOffset, read_elf
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device, read_from_device, write_to_device
 from ttexalens import util as util
 import os
@@ -957,16 +957,19 @@ class RiscLoader:
             not self.risc_debug.is_halted() or self.risc_debug.read_status().is_ebreak_hit
         ), f"RISC at location {self.risc_debug.location} is still halted, but not because of ebreak."
 
-    def _read_elfs(self, elf_paths: List[str], offsets: List[int | None]) -> list[ParsedElfFile]:
-        if not isinstance(elf_paths, list):
-            elf_paths = [elf_paths]
-        offsets = [None] * len(elf_paths) if offsets is None else offsets
+    @staticmethod
+    def _read_elfs(parsed_elfs: List[ParsedElfFile] | ParsedElfFile, offsets: List[int | None]) -> list[ParsedElfFile]:
+        if not isinstance(parsed_elfs, list):
+            parsed_elfs = [parsed_elfs]
+        offsets = [None] * len(parsed_elfs) if offsets is None else offsets
 
         elfs = []
-        for elf_path, offset in zip(elf_paths, offsets):
+        for parsed_elf, offset in zip(parsed_elfs, offsets):
             offset = None if offset == 0 else offset
-            elfs.append(read_elf(self.context.server_ifc, elf_path, offset))
-
+            if offset is not None:
+                elfs.append(ParsedElfFileWithOffset(parsed_elf, offset))
+            else:
+                elfs.append(parsed_elf)
         return elfs
 
     def _find_elf_and_frame_description(self, elfs: list[ParsedElfFile], pc: int):
@@ -979,13 +982,17 @@ class RiscLoader:
         return None, None
 
     def get_callstack(
-        self, elf_paths: List[str], offsets: List[int | None] = None, limit: int = 100, stop_on_main: bool = True
+        self,
+        parsed_elfs: List[ParsedElfFile],
+        offsets: List[int | None] = None,
+        limit: int = 100,
+        stop_on_main: bool = True,
     ):
         callstack = []
         with self.risc_debug.ensure_halted():
 
             # Reading the elf files for given paths and offsets
-            elfs = self._read_elfs(elf_paths, offsets)
+            elfs = RiscLoader._read_elfs(parsed_elfs, offsets)
 
             # Reading the program counter from risc register
             pc = self.risc_debug.read_gpr(32)
@@ -994,7 +1001,7 @@ class RiscLoader:
             elf, frame_description = self._find_elf_and_frame_description(elfs, pc)
 
             # If we do not get frame description from any elf, we cannot proceed
-            if frame_description is None:
+            if frame_description is None or elf is None:
                 util.WARN("We don't have information on frame and we don't know how to proceed.")
                 return []
 
