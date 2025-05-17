@@ -498,6 +498,52 @@ def parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile:
     return read_elf(context.server_ifc, elf_path)
 
 
+def top_callstack(
+    pc: int,
+    elfs: Union[List[str], str, List[ParsedElfFile], ParsedElfFile],
+    offsets: int | List[int | None] = None,
+    context: Context = None,
+) -> List:
+
+    """Retrieves the top frame of the callstack for the specified PC on the given ELF.
+    There is no stack walking, so the function will return the function at the given PC and all inlined functions on the top frame (if there are any).
+    Args:
+            pc (int): Program counter to be used for the callstack.
+            elfs (List[str] | str | List[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
+            offsets (List[int], optional): List of offsets for each ELF file. Default: None.
+            verbose (bool): If True, enables verbose output. Default: False.
+            device_id (int): ID of the device on which the kernel is run. Default: 0.
+            context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+    Returns:
+            List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
+    """
+
+    from ttexalens.debug_risc import RiscLoader
+
+    context = check_context(context)
+
+    # If given a single string, convert to list
+    if isinstance(elfs, str):
+        elfs = [parse_elf(elfs, context)]
+    elif isinstance(elfs, ParsedElfFile):
+        elfs = [elfs]
+    elif isinstance(elfs, list):
+        elfs = [parse_elf(elf, context) if isinstance(elf, str) else elf for elf in elfs]
+
+    offsets = offsets if offsets is not None else [None for _ in range(len(elfs))]
+    if isinstance(offsets, int):
+        offsets = [offsets]
+
+    if len(offsets) != len(elfs):
+        raise TTException("Number of offsets must match the number of elf files")
+
+    elfs = RiscLoader._read_elfs(elfs, offsets)
+    elf, frame_description = RiscLoader._find_elf_and_frame_description(elfs, pc, None)
+    if frame_description is None or elf is None:
+        return []
+    return RiscLoader.get_frame_callstack(elf, pc)[0]
+
+
 def callstack(
     core_loc: Union[str, OnChipCoordinate],
     elfs: Union[List[str], str, List[ParsedElfFile], ParsedElfFile],
