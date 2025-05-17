@@ -965,7 +965,7 @@ class RiscLoader:
             parsed_elfs = [parsed_elfs]
         offsets = [None] * len(parsed_elfs) if offsets is None else offsets
 
-        elfs = []
+        elfs: list[ParsedElfFile] = []
         for parsed_elf, offset in zip(parsed_elfs, offsets):
             offset = None if offset == 0 else offset
             if offset is not None:
@@ -1029,7 +1029,7 @@ class RiscLoader:
         limit: int = 100,
         stop_on_main: bool = True,
     ):
-        callstack = []
+        callstack: list[CallstackEntry] = []
         with self.risc_debug.ensure_halted():
 
             # Load elfs at spefied offsets
