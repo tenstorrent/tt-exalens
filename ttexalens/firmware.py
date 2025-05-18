@@ -165,8 +165,8 @@ class ELF:
         address, size and type_die of the variable. If the variable is not found, return None.
         """
 
-        def my_mem_reader(addr, size_bytes):
-            pass
+        def my_mem_reader(addr: int, size_bytes: int, elements_to_read: int) -> list[int]:
+            return []
 
         if mem_reader is None:
             mem_reader = my_mem_reader
