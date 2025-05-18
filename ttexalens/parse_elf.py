@@ -41,7 +41,7 @@ from __future__ import annotations
 from functools import cached_property
 import os
 import re
-from typing import Dict, Optional, TYPE_CHECKING
+from typing import Callable, Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ttexalens.debug_risc import RiscDebug
@@ -1033,10 +1033,12 @@ def resolve_unnamed_union_member(type_die: ElfDie, member_name: str):
     return None
 
 
-def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
+def mem_access(elf: ParsedElfFile, access_path: str, mem_access_function: Callable[[int, int, int], list[int]]):
     """
     Given an access path such as "s_ptr->an_int", "s_ptr->an_int[2]", or "s_ptr->an_int[2][3]",
     calls the mem_access_function to read the memory, and returns the value array.
+    mem_access_function should be:
+        def mem_access(address: int, bytes_to_read: int, elements_to_read: int) -> list[int]:
     """
     debug(f"Accessing {CLR_GREEN}{access_path}{CLR_END}")
 
@@ -1058,18 +1060,32 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
                 ptr_dereference_count -= 1
                 assert type_die is not None
                 type_die = type_die.dereference_type
-                current_address = mem_access_function(current_address, 4)[0]  # Assuming 4 byte pointers
+                assert current_address is not None
+                current_address = mem_access_function(current_address, 4, 1)[0]  # Assuming 4 byte pointers
 
             # Check if it is a reference
             assert type_die is not None
             if type_die.tag_is("reference_type"):
                 type_die = type_die.dereference_type
-                current_address = mem_access_function(current_address, 4)[0]  # Dereference the reference
+                assert current_address is not None
+                current_address = mem_access_function(current_address, 4, 1)[0]  # Dereference the reference
 
-            assert type_die is not None and type_die.size is not None
+            assert current_address is not None and type_die is not None and type_die.size is not None
             bytes_to_read = type_die.size * num_members_to_read
+            if type_die.array_element_type is not None and type_die.array_element_type.size is not None:
+                return (
+                    mem_access_function(
+                        current_address,
+                        bytes_to_read,
+                        num_members_to_read * type_die.size // type_die.array_element_type.size,
+                    ),
+                    current_address,
+                    bytes_to_read,
+                    die.value,
+                    type_die,
+                )
             return (
-                mem_access_function(current_address, bytes_to_read),
+                mem_access_function(current_address, bytes_to_read, num_members_to_read),
                 current_address,
                 bytes_to_read,
                 die.value,
@@ -1101,7 +1117,8 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
                 raise Exception(f"ERROR: {type_die.path} is not a pointer")
             assert type_die.dereference_type is not None
             type_die = type_die.dereference_type.resolved_type
-            pointer_address = mem_access_function(current_address, 4)[0] if die.value is None else die.value
+            assert current_address is not None
+            pointer_address = mem_access_function(current_address, 4, 1)[0] if die.value is None else die.value
             assert type_die is not None and member_name is not None
             child_die = type_die.get_child_by_name(member_name)
             if not child_die:
@@ -1112,6 +1129,7 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
                 raise Exception(f"ERROR: Cannot find {member_path}")
             die = child_die
             type_die = die.resolved_type
+            assert die.address is not None
             current_address = pointer_address + die.address  # Assuming 4 byte pointers
 
         elif path_divider == "[":
@@ -1182,7 +1200,7 @@ def get_array_member_offset(array_type: ElfDie, array_indices: list[int]):
         return array_element_type, offset, num_elements_to_read
 
 
-def access_logger(addr, size_bytes):
+def access_logger(addr, size_bytes, num_elements):
     """
     A simple memory reader emulator that prints all memory accesses
     """
