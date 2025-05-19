@@ -492,7 +492,7 @@ def parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile:
     """Reads the ELF file and returns a ParsedElfFile object.
     Args:
             elf_path (str): Path to the ELF file.
-            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. . Default: None
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None
     """
     context = check_context(context)
     return read_elf(context.server_ifc, elf_path)
@@ -510,9 +510,7 @@ def top_callstack(
     Args:
             pc (int): Program counter to be used for the callstack.
             elfs (List[str] | str | List[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
-            offsets (List[int], optional): List of offsets for each ELF file. Default: None.
-            verbose (bool): If True, enables verbose output. Default: False.
-            device_id (int): ID of the device on which the kernel is run. Default: 0.
+            offsets (List[int], int, optional): List of offsets for each ELF file. Default: None.
             context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
     Returns:
             List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
@@ -560,7 +558,7 @@ def callstack(
     Args:
             core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, DRAM channel (e.g., ch3), or OnChipCoordinate object.
             elfs (List[str] | str | List[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
-            offsets (List[int], optional): List of offsets for each ELF file. Default: None.
+            offsets (List[int], int, optional): List of offsets for each ELF file. Default: None.
             risc_id (int): RISC-V ID (0: brisc, 1-3 triscs). Default: 0.
             max_depth (int): Maximum depth of the callstack. Default: 100.
             stop_on_main (bool): If True, stops at the main function. Default: True.
