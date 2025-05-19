@@ -11,6 +11,7 @@ from ttexalens import tt_exalens_init
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
+from ttexalens.parse_elf import ParsedElfFile, read_elf
 from ttexalens.util import TTException
 
 
@@ -487,9 +488,63 @@ def write_tensix_register(
     TensixDebug(coordinate, device_id, context).write_tensix_register(register, value)
 
 
+def parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile:
+    """Reads the ELF file and returns a ParsedElfFile object.
+    Args:
+            elf_path (str): Path to the ELF file.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None
+    """
+    context = check_context(context)
+    return read_elf(context.server_ifc, elf_path)
+
+
+def top_callstack(
+    pc: int,
+    elfs: Union[List[str], str, List[ParsedElfFile], ParsedElfFile],
+    offsets: int | List[int | None] = None,
+    context: Context = None,
+) -> List:
+
+    """Retrieves the top frame of the callstack for the specified PC on the given ELF.
+    There is no stack walking, so the function will return the function at the given PC and all inlined functions on the top frame (if there are any).
+    Args:
+            pc (int): Program counter to be used for the callstack.
+            elfs (List[str] | str | List[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
+            offsets (List[int], int, optional): List of offsets for each ELF file. Default: None.
+            context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+    Returns:
+            List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
+    """
+
+    from ttexalens.debug_risc import RiscLoader
+
+    context = check_context(context)
+
+    # If given a single string, convert to list
+    if isinstance(elfs, str):
+        elfs = [parse_elf(elfs, context)]
+    elif isinstance(elfs, ParsedElfFile):
+        elfs = [elfs]
+    elif isinstance(elfs, list):
+        elfs = [parse_elf(elf, context) if isinstance(elf, str) else elf for elf in elfs]
+
+    offsets = offsets if offsets is not None else [None for _ in range(len(elfs))]
+    if isinstance(offsets, int):
+        offsets = [offsets]
+
+    if len(offsets) != len(elfs):
+        raise TTException("Number of offsets must match the number of elf files")
+
+    elfs = RiscLoader._read_elfs(elfs, offsets)
+    elf, frame_description = RiscLoader._find_elf_and_frame_description(elfs, pc, None)
+    if frame_description is None or elf is None:
+        return []
+    return RiscLoader.get_frame_callstack(elf, pc)[0]
+
+
 def callstack(
     core_loc: Union[str, OnChipCoordinate],
-    elf_paths: Union[List[str], str],
+    elfs: Union[List[str], str, List[ParsedElfFile], ParsedElfFile],
     offsets: int | List[int | None] = None,
     risc_id: int = 0,
     max_depth: int = 100,
@@ -502,8 +557,8 @@ def callstack(
     """Retrieves the callstack of the specified RISC core for a given ELF.
     Args:
             core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, DRAM channel (e.g., ch3), or OnChipCoordinate object.
-            elf_paths (List[str] | str): Paths to the ELF files to be used for the callstack.
-            offsets (List[int], optional): List of offsets for each ELF file. Default: None.
+            elfs (List[str] | str | List[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
+            offsets (List[int], int, optional): List of offsets for each ELF file. Default: None.
             risc_id (int): RISC-V ID (0: brisc, 1-3 triscs). Default: 0.
             max_depth (int): Maximum depth of the callstack. Default: 100.
             stop_on_main (bool): If True, stops at the main function. Default: True.
@@ -521,18 +576,18 @@ def callstack(
     coordinate = convert_coordinate(core_loc, device_id, context)
 
     # If given a single string, convert to list
-    if isinstance(elf_paths, str):
-        elf_paths = [elf_paths]
+    if isinstance(elfs, str):
+        elfs = [parse_elf(elfs, context)]
+    elif isinstance(elfs, ParsedElfFile):
+        elfs = [elfs]
+    elif isinstance(elfs, list):
+        elfs = [parse_elf(elf, context) if isinstance(elf, str) else elf for elf in elfs]
 
-    for elf_path in elf_paths:
-        if not os.path.exists(elf_path):
-            raise TTException(f"File {elf_path} does not exist")
-
-    offsets = offsets if offsets is not None else [None for _ in range(len(elf_paths))]
+    offsets = offsets if offsets is not None else [None for _ in range(len(elfs))]
     if isinstance(offsets, int):
         offsets = [offsets]
 
-    if len(offsets) != len(elf_paths):
+    if len(offsets) != len(elfs):
         raise TTException("Number of offsets must match the number of elf files")
 
     if risc_id < 0 or risc_id > 3:
@@ -547,7 +602,7 @@ def callstack(
         raise TTException(f"RiscV core {get_risc_name(risc_id)} on location {coordinate.to_user_str()} is in reset")
     loader = RiscLoader(risc_debug, context, verbose)
 
-    return loader.get_callstack(elf_paths, offsets, max_depth, stop_on_main)
+    return loader.get_callstack(elfs, offsets, max_depth, stop_on_main)
 
 
 def read_riscv_memory(

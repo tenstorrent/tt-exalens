@@ -798,6 +798,20 @@ class TestCallStack(unittest.TestCase):
         return f"build/riscv-src/{arch}/{app_name}.{risc}.elf"
 
     @parameterized.expand([1, 10, 50])
+    def test_callstack_with_parsing(self, recursion_count):
+        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        elf_path = self.get_elf_path("callstack")
+        self.loader.run_elf(elf_path)
+        parsed_elf = lib.parse_elf(elf_path, self.context)
+        callstack = lib.callstack(self.core_loc, parsed_elf, None, self.risc_id, 100, True, False, 0, self.context)
+        self.assertEqual(len(callstack), recursion_count + 3)
+        self.assertEqual(callstack[0].function_name, "halt")
+        for i in range(1, recursion_count + 1):
+            self.assertEqual(callstack[i].function_name, "f1")
+        self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
+        self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+
+    @parameterized.expand([1, 10, 50])
     def test_callstack(self, recursion_count):
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack")
@@ -809,6 +823,29 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+
+    @parameterized.expand([1, 10, 50])
+    def test_top_callstack_with_parsing(self, recursion_count):
+        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        elf_path = self.get_elf_path("callstack")
+        self.loader.run_elf(elf_path)
+        with self.rdbg.ensure_halted():
+            pc = self.rdbg.read_gpr(32)
+        parsed_elf = lib.parse_elf(elf_path, self.context)
+        callstack = lib.top_callstack(pc, parsed_elf, None, self.context)
+        self.assertEqual(len(callstack), 1)
+        self.assertEqual(callstack[0].function_name, "halt")
+
+    @parameterized.expand([1, 10, 50])
+    def test_top_callstack(self, recursion_count):
+        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        elf_path = self.get_elf_path("callstack")
+        self.loader.run_elf(elf_path)
+        with self.rdbg.ensure_halted():
+            pc = self.rdbg.read_gpr(32)
+        callstack = lib.top_callstack(pc, elf_path, None, self.context)
+        self.assertEqual(len(callstack), 1)
+        self.assertEqual(callstack[0].function_name, "halt")
 
     @parameterized.expand([(1, 1), (10, 9), (50, 49)])
     def test_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
@@ -840,6 +877,30 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
             self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
 
+    @parameterized.expand([(1, 1)])
+    def test_top_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
+        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        elf_path = self.get_elf_path("callstack.optimized")
+        self.loader.run_elf(elf_path)
+        with self.rdbg.ensure_halted():
+            pc = self.rdbg.read_gpr(32)
+        callstack = lib.top_callstack(pc, elf_path, None, self.context)
+
+        # Optimized version for non-blackhole doesn't have halt on callstack
+        if self.is_blackhole():
+            self.assertEqual(len(callstack), expected_f1_on_callstack_count + 3)
+            self.assertEqual(callstack[0].function_name, "halt")
+            for i in range(1, expected_f1_on_callstack_count + 1):
+                self.assertEqual(callstack[i].function_name, "f1")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "recurse")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 2].function_name, "main")
+        else:
+            self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
+            for i in range(0, expected_f1_on_callstack_count):
+                self.assertEqual(callstack[i].function_name, "f1")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
+
     @parameterized.expand(
         [
             ("abcd", "build/riscv-src/blackhole/callstack.brisc.elf"),  # Invalid core_loc string
@@ -863,5 +924,5 @@ class TestCallStack(unittest.TestCase):
         """Test invalid inputs for callstack function."""
 
         # Check for invalid core_loc
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((util.TTException, ValueError, FileNotFoundError)):
             lib.callstack(core_loc, elf_paths, offsets, risc_id, max_depth, True, False, device_id, self.context)
