@@ -367,8 +367,8 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", 0, 1),  # trisc0
             ("0,0", 0, 2),  # trisc1
             ("0,0", 0, 3),  # trisc2
-            ("0,0", 0, 1, 0xFFB007FF),  # last address for trisc for wormhole
-            ("0,0", 0, 0, 0xFFB00FFF),  # last address for brisc for wormhole
+            ("0,0", 0, 1, 0xFFB007FC),  # last address for trisc for wormhole
+            ("0,0", 0, 0, 0xFFB00FFC),  # last address for brisc for wormhole
         ]
     )
     def test_write_read_private_memory(self, core_loc, noc_id, risc_id, addr=0xFFB00000):
@@ -580,9 +580,9 @@ class TestRunElf(unittest.TestCase):
 
         # Step 5b: Continue and check that the core reached 0xFFB12088. But first set the breakpoint at
         # function "decrement_mailbox"
-        decrement_mailbox_die = elf.names["fw"]["subprogram"]["decrement_mailbox"]
+        decrement_mailbox_die = elf.names["fw"].subprograms["decrement_mailbox"]
         decrement_mailbox_linkage_name = decrement_mailbox_die.attributes["DW_AT_linkage_name"].value.decode("utf-8")
-        decrement_mailbox_address = elf.names["fw"]["symbols"][decrement_mailbox_linkage_name]
+        decrement_mailbox_address = elf.names["fw"].symbols[decrement_mailbox_linkage_name]
 
         # Step 6. Setting breakpoint at decrement_mailbox
         watchpoint_id = 1  # Out of 8
@@ -705,6 +705,10 @@ class TestARC(unittest.TestCase):
     fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
 
     def test_load_arc_fw(self):
+
+        if self.is_blackhole():
+            self.skipTest("Loading ARC firmware is not supported on blackhole")
+
         wait_time = 0.1
         TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024
 
