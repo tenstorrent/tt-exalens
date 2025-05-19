@@ -977,7 +977,7 @@ class RiscLoader:
                 return elf, frame_description
 
         return None, None
-    
+
     def get_callstack(
         self, elf_paths: List[str], offsets: List[int | None] = None, limit: int = 100, stop_on_main: bool = True
     ):
@@ -1012,7 +1012,7 @@ class RiscLoader:
 
                     # Skipping lexical blocks since we do not print them
                     while function_die.category == "lexical_block":
-                        function_die = function_die.parent    
+                        function_die = function_die.parent
 
                     callstack.append(
                         CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)

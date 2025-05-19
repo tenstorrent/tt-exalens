@@ -821,7 +821,6 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[1].function_name, "ns::foo")
         self.assertEqual(callstack[2].function_name, "main")
 
-
     @parameterized.expand([(1, 1), (10, 9), (50, 49)])
     def test_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)

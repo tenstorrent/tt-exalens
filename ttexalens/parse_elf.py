@@ -577,13 +577,13 @@ class ElfDie:
             child_ranges = []
             for child in self.iter_children():
                 child_ranges.extend(child.address_ranges)
-            
+
             if child_ranges:
                 # Compute the overall range
                 min_address = min(r[0] for r in child_ranges)
                 max_address = max(r[1] for r in child_ranges)
                 return [(min_address, max_address)]
-                        
+
         return []
 
     @cached_property
@@ -652,6 +652,7 @@ class ElfDie:
 
 
 # end class MY_DIE
+
 
 def process_die(die: ElfDie, recurse_dict, r_depth):
     """
