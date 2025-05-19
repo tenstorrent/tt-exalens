@@ -41,17 +41,20 @@ from __future__ import annotations
 from functools import cached_property
 import os
 import re
-from typing import Dict, Optional, TYPE_CHECKING
+from typing import Callable, Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ttexalens.debug_risc import RiscDebug
 
 try:
     from elftools.elf.elffile import ELFFile
+    from elftools.elf.sections import SymbolTableSection
     from elftools.dwarf.callframe import FDE
     from elftools.dwarf.compileunit import CompileUnit as DWARF_CU
+    from elftools.dwarf.dwarf_expr import DWARFExprParser
     from elftools.dwarf.dwarfinfo import DWARFInfo
     from elftools.dwarf.die import DIE as DWARF_DIE
+    from elftools.dwarf.locationlists import LocationParser, LocationExpr
     from docopt import docopt
     from tabulate import tabulate
 except:
@@ -92,6 +95,14 @@ class ElfDwarf:
     @cached_property
     def range_lists(self):
         return self.dwarf.range_lists()
+
+    @cached_property
+    def location_lists(self):
+        return self.dwarf.location_lists()
+
+    @cached_property
+    def location_parser(self):
+        return LocationParser(self.location_lists)
 
     def get_cu(self, dwarf_cu: DWARF_CU):
         cu = self._cus.get(id(dwarf_cu))
@@ -188,6 +199,14 @@ class ElfDwarfWithOffset(ElfDwarf):
     def range_lists(self):
         return self._my_dwarf.range_lists
 
+    @cached_property
+    def location_lists(self):
+        return self._my_dwarf.location_lists
+
+    @cached_property
+    def location_parser(self):
+        return self._my_dwarf.location_parser
+
     def get_cu(self, dwarf_cu: DWARF_CU):
         return self._my_dwarf.get_cu(dwarf_cu)
 
@@ -234,9 +253,18 @@ class ElfCompileUnit:
     def line_program(self):
         return self.dwarf.dwarf.line_program_for_CU(self.dwarf_cu)
 
+    @cached_property
+    def version(self):
+        return self.dwarf_cu["version"]
+
+    @cached_property
+    def expression_parser(self):
+        return DWARFExprParser(self.dwarf_cu.structs)
+
     def iter_DIEs(self):
         for die in self.dwarf_cu.iter_DIEs():
-            yield self.get_die(die)
+            if die.tag is not None:
+                yield self.get_die(die)
 
     def find_DIE_at_local_offset(self, local_offset):
         """
@@ -258,15 +286,15 @@ class ElfCompileUnit:
 
         IMPROVE: What if there are multiple dies to return?
         """
-        for dwarf_cu in self.dwarf_cu.dwarfinfo.iter_CUs():
-            for DIE in dwarf_cu.iter_DIEs():
-                if "DW_AT_specification" in DIE.attributes:
-                    if DIE.attributes["DW_AT_specification"].value == die.offset:
-                        return self.dwarf.get_die(DIE)
-                if "DW_AT_abstract_origin" in DIE.attributes:
-                    dwarf_die = DIE.get_DIE_from_attribute("DW_AT_abstract_origin")
-                    if dwarf_die == die.dwarf_die and len(DIE.attributes) > 1:
-                        return self.dwarf.get_die(DIE)
+        for cu in self.dwarf.iter_CUs():
+            for iter_die in cu.iter_DIEs():
+                if len(iter_die.attributes) > 1:
+                    if "DW_AT_specification" in iter_die.attributes:
+                        if iter_die.get_DIE_from_attribute("DW_AT_specification") == die:
+                            return iter_die
+                    if "DW_AT_abstract_origin" in iter_die.attributes:
+                        if iter_die.get_DIE_from_attribute("DW_AT_abstract_origin") == die:
+                            return iter_die
         return None
 
 
@@ -456,22 +484,48 @@ class ElfDie:
         """
         Return the address of the DIE within the parent type
         """
+        return self.__get_address_recursed(allow_recursion=True)
+
+    def __get_address_recursed(self, allow_recursion: bool) -> int | None:
         addr = None
         if "DW_AT_data_member_location" in self.attributes:
             addr = self.attributes["DW_AT_data_member_location"].value
         else:
-            location = self.attributes.get("DW_AT_location")
-            if location:
-                # Assuming the location's form is a block
-                block = location.value
-                # Check if the first opcode is DW_OP_addr (0x03)
-                if block[0] == 0x03:
-                    addr = int.from_bytes(block[1:], byteorder="little")
+            location_attribute = self.attributes.get("DW_AT_location")
+            location_parser = self.cu.dwarf.location_parser
+            if location_attribute:
+                location = location_parser.parse_from_attribute(location_attribute, self.cu.version, self.dwarf_die)
+                if isinstance(location, LocationExpr):
+                    parsed = self.cu.expression_parser.parse_expr(location.loc_expr)
+                    if len(parsed) == 1 and parsed[0].op_name == "DW_OP_addr":
+                        assert len(parsed[0].args) == 1
+                        addr = parsed[0].args[0]
+                    elif len(parsed) == 1 and parsed[0].op_name == "DW_OP_addrx":
+                        assert len(parsed[0].args) == 1
+                        index = parsed[0].args[0]
+                        addr = self.cu.dwarf.dwarf.get_addr(self.cu.dwarf_cu, index)
+                    else:
+                        # We have expression that needs to be evaluated and applied in order to get to location value.
+                        # In order for this to work, we need to return expression that needs to be evaluated in mem_access method.
+                        pass
+                elif isinstance(location, list):
+                    # We have list of expressions. All need to be evaluated and applied in order to get to location value.
+                    # In order for this to work, we need to return expression that needs to be evaluated in mem_access method.
+                    # for loc in location:
+                    #     parsed = self.cu.expression_parser.parse_expr(loc.loc_expr)
+                    pass
             else:
-                # Try to find another DIE that defines this variable
-                other_die = self.cu.find_DIE_that_specifies(self)
-                if other_die:
-                    addr = other_die.address
+                if allow_recursion and (
+                    not "DW_AT_artificial" in self.attributes or not self.attributes["DW_AT_artificial"].value
+                ):
+                    if "DW_AT_specification" in self.attributes:
+                        other_die = self.get_DIE_from_attribute("DW_AT_specification")
+                    elif "DW_AT_abstract_origin" in self.attributes:
+                        other_die = self.get_DIE_from_attribute("DW_AT_abstract_origin")
+                    else:
+                        other_die = self.cu.find_DIE_that_specifies(self)
+                    if other_die:
+                        addr = other_die.__get_address_recursed(allow_recursion=False)
 
         if addr is None:
             if (
@@ -522,9 +576,11 @@ class ElfDie:
             else:
                 name = "?Unknown?&"
         elif "DW_AT_abstract_origin" in self.attributes:
-            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
-            die = self.cu.dwarf.get_die(dwarf_die)
-            name = die.name
+            die = self.get_DIE_from_attribute("DW_AT_abstract_origin")
+            if die is not None:
+                name = die.name
+            else:
+                name = None
         else:
             # We can't figure out the name of this variable. Just give it a name based on the ELF offset.
             name = f"{self.tag}-{hex(self.offset)}"
@@ -567,6 +623,12 @@ class ElfDie:
         """
         for child in self.dwarf_die.iter_children():
             yield self.cu.get_die(child)
+
+    def get_DIE_from_attribute(self, attribute_name: str):
+        if attribute_name in self.attributes:
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute(attribute_name)
+            return self.cu.dwarf.get_die(dwarf_die)
+        return None
 
     @cached_property
     def parent(self):
@@ -734,12 +796,13 @@ class FrameInfoProviderWithOffset(FrameInfoProvider):
         return self._frame_info.get_frame_description(pc, risc_debug)
 
 
-def decode_symbols(elf_file) -> dict[str, int]:
+def decode_symbols(elf_file: ELFFile) -> dict[str, int]:
     symbols = {}
     for section in elf_file.iter_sections():
         # Check if it's a symbol table section
         if section.name == ".symtab":
             # Iterate through symbols
+            assert isinstance(section, SymbolTableSection)
             for symbol in section.iter_symbols():
                 # Check if it's a label symbol
                 if symbol["st_info"]["type"] == "STT_NOTYPE" and symbol.name:
@@ -970,10 +1033,12 @@ def resolve_unnamed_union_member(type_die: ElfDie, member_name: str):
     return None
 
 
-def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
+def mem_access(elf: ParsedElfFile, access_path: str, mem_access_function: Callable[[int, int, int], list[int]]):
     """
     Given an access path such as "s_ptr->an_int", "s_ptr->an_int[2]", or "s_ptr->an_int[2][3]",
     calls the mem_access_function to read the memory, and returns the value array.
+    mem_access_function should be:
+        def mem_access(address: int, bytes_to_read: int, elements_to_read: int) -> list[int]:
     """
     debug(f"Accessing {CLR_GREEN}{access_path}{CLR_END}")
 
@@ -995,18 +1060,32 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
                 ptr_dereference_count -= 1
                 assert type_die is not None
                 type_die = type_die.dereference_type
-                current_address = mem_access_function(current_address, 4)[0]  # Assuming 4 byte pointers
+                assert current_address is not None
+                current_address = mem_access_function(current_address, 4, 1)[0]  # Assuming 4 byte pointers
 
             # Check if it is a reference
             assert type_die is not None
             if type_die.tag_is("reference_type"):
                 type_die = type_die.dereference_type
-                current_address = mem_access_function(current_address, 4)[0]  # Dereference the reference
+                assert current_address is not None
+                current_address = mem_access_function(current_address, 4, 1)[0]  # Dereference the reference
 
-            assert type_die is not None and type_die.size is not None
+            assert current_address is not None and type_die is not None and type_die.size is not None
             bytes_to_read = type_die.size * num_members_to_read
+            if type_die.array_element_type is not None and type_die.array_element_type.size is not None:
+                return (
+                    mem_access_function(
+                        current_address,
+                        bytes_to_read,
+                        num_members_to_read * type_die.size // type_die.array_element_type.size,
+                    ),
+                    current_address,
+                    bytes_to_read,
+                    die.value,
+                    type_die,
+                )
             return (
-                mem_access_function(current_address, bytes_to_read),
+                mem_access_function(current_address, bytes_to_read, num_members_to_read),
                 current_address,
                 bytes_to_read,
                 die.value,
@@ -1038,7 +1117,8 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
                 raise Exception(f"ERROR: {type_die.path} is not a pointer")
             assert type_die.dereference_type is not None
             type_die = type_die.dereference_type.resolved_type
-            pointer_address = mem_access_function(current_address, 4)[0] if die.value is None else die.value
+            assert current_address is not None
+            pointer_address = mem_access_function(current_address, 4, 1)[0] if die.value is None else die.value
             assert type_die is not None and member_name is not None
             child_die = type_die.get_child_by_name(member_name)
             if not child_die:
@@ -1049,6 +1129,7 @@ def mem_access(elf: ParsedElfFile, access_path, mem_access_function):
                 raise Exception(f"ERROR: Cannot find {member_path}")
             die = child_die
             type_die = die.resolved_type
+            assert die.address is not None
             current_address = pointer_address + die.address  # Assuming 4 byte pointers
 
         elif path_divider == "[":
@@ -1119,7 +1200,7 @@ def get_array_member_offset(array_type: ElfDie, array_indices: list[int]):
         return array_element_type, offset, num_elements_to_read
 
 
-def access_logger(addr, size_bytes):
+def access_logger(addr, size_bytes, num_elements):
     """
     A simple memory reader emulator that prints all memory accesses
     """

@@ -241,6 +241,83 @@ class TestReadWrite(unittest.TestCase):
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_to_device(core_loc, address, data, device_id)
 
+    def test_unaligned_read(self):
+        for device_id in self.context.device_ids:
+            core_loc = self.context.devices[device_id].get_block_locations()[0]
+            lib.write_words_to_device(core_loc, 0, [0x12345678, 0x90ABCDEF], device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x12345678, 0x90ABCDEF]
+            assert lib.read_from_device(core_loc, 0, device_id, 1, self.context) == bytes([0x78])
+            assert lib.read_from_device(core_loc, 1, device_id, 1, self.context) == bytes([0x56])
+            assert lib.read_from_device(core_loc, 2, device_id, 1, self.context) == bytes([0x34])
+            assert lib.read_from_device(core_loc, 3, device_id, 1, self.context) == bytes([0x12])
+            assert lib.read_from_device(core_loc, 4, device_id, 1, self.context) == bytes([0xEF])
+            assert lib.read_from_device(core_loc, 5, device_id, 1, self.context) == bytes([0xCD])
+            assert lib.read_from_device(core_loc, 6, device_id, 1, self.context) == bytes([0xAB])
+            assert lib.read_from_device(core_loc, 7, device_id, 1, self.context) == bytes([0x90])
+            assert lib.read_from_device(core_loc, 0, device_id, 2, self.context) == bytes([0x78, 0x56])
+            assert lib.read_from_device(core_loc, 2, device_id, 2, self.context) == bytes([0x34, 0x12])
+            assert lib.read_from_device(core_loc, 4, device_id, 2, self.context) == bytes([0xEF, 0xCD])
+            assert lib.read_from_device(core_loc, 6, device_id, 2, self.context) == bytes([0xAB, 0x90])
+            assert lib.read_from_device(core_loc, 0, device_id, 4, self.context) == bytes([0x78, 0x56, 0x34, 0x12])
+            assert lib.read_from_device(core_loc, 4, device_id, 4, self.context) == bytes([0xEF, 0xCD, 0xAB, 0x90])
+            assert lib.read_from_device(core_loc, 0, device_id, 8, self.context) == bytes(
+                [0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90]
+            )
+            assert lib.read_from_device(core_loc, 1, device_id, 2, self.context) == bytes([0x56, 0x34])
+            assert lib.read_from_device(core_loc, 3, device_id, 2, self.context) == bytes([0x12, 0xEF])
+            assert lib.read_from_device(core_loc, 5, device_id, 2, self.context) == bytes([0xCD, 0xAB])
+            assert lib.read_from_device(core_loc, 1, device_id, 4, self.context) == bytes([0x56, 0x34, 0x12, 0xEF])
+            assert lib.read_from_device(core_loc, 2, device_id, 4, self.context) == bytes([0x34, 0x12, 0xEF, 0xCD])
+            assert lib.read_from_device(core_loc, 3, device_id, 4, self.context) == bytes([0x12, 0xEF, 0xCD, 0xAB])
+            assert lib.read_from_device(core_loc, 0, device_id, 8, self.context) == bytes(
+                [0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90]
+            )
+            assert lib.read_from_device(core_loc, 1, device_id, 6, self.context) == bytes(
+                [0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB]
+            )
+
+    def test_unaligned_write(self):
+        for device_id in self.context.device_ids:
+            core_loc = self.context.devices[device_id].get_block_locations()[0]
+            lib.write_words_to_device(core_loc, 0, [0xDEADBEEF, 0xDEADBEEF], device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDEADBEEF, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 0, bytes([0x12]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDEADBE12, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 1, bytes([0x34]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDEAD3412, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 2, bytes([0x56]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDE563412, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 3, bytes([0x78]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 4, bytes([0x90]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDEADBE90]
+            lib.write_to_device(core_loc, 5, bytes([0xAB]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDEADAB90]
+            lib.write_to_device(core_loc, 6, bytes([0xCD]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDECDAB90]
+            lib.write_to_device(core_loc, 7, bytes([0xEF]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xEFCDAB90]
+            lib.write_to_device(core_loc, 0, bytes([0xAA, 0xBB]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x7856BBAA, 0xEFCDAB90]
+            lib.write_to_device(core_loc, 2, bytes([0xCC, 0xDD]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDAB90]
+            lib.write_to_device(core_loc, 4, bytes([0xEE, 0xFF]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDFFEE]
+            lib.write_to_device(core_loc, 6, bytes([0x00, 0x11]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0x1100FFEE]
+            lib.write_to_device(core_loc, 1, bytes([0x22, 0x33]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDD3322AA, 0x1100FFEE]
+            lib.write_to_device(core_loc, 3, bytes([0x44, 0x55]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x443322AA, 0x1100FF55]
+            lib.write_to_device(core_loc, 5, bytes([0x66, 0x77]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x443322AA, 0x11776655]
+            lib.write_to_device(core_loc, 2, bytes([0x88, 0x99, 0xAA]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x998822AA, 0x117766AA]
+            lib.write_to_device(core_loc, 3, bytes([0xBB, 0xCC, 0xDD]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xBB8822AA, 0x1177DDCC]
+            lib.write_to_device(core_loc, 1, bytes([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x332211AA, 0x11665544]
+
     @parameterized.expand(
         [
             (
