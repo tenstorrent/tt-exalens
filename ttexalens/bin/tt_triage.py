@@ -29,6 +29,8 @@ Options:
 import os
 import sys
 
+from ttexalens.firmware import ELF
+
 # When packaged with PyInstaller, _MEIPASS is defined and contains the path to the bundled libraries
 bundle_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 os.environ["LD_LIBRARY_PATH"] = bundle_dir + os.pathsep + os.environ.get("LD_LIBRARY_PATH", "")
@@ -64,23 +66,17 @@ except ImportError as e:
 try:
     from ttexalens.tt_exalens_init import init_ttexalens
     from ttexalens.tt_exalens_lib import (
-        read_from_device,
         read_words_from_device,
         read_word_from_device,
-        write_words_to_device,
-        arc_msg,
-        callstack,
+        top_callstack,
+        parse_elf,
     )
-    from ttexalens.coordinate import OnChipCoordinate
-    from ttexalens.reg_access_yaml import YamlRegisterMap
-    from ttexalens.reg_access_json import JsonRegisterMap
     from ttexalens.reg_access_common import set_verbose, DEFAULT_TABLE_FORMAT
     from ttexalens.device import Device
     from ttexalens.hw.tensix.wormhole.wormhole import WormholeDevice
     from ttexalens.hw.tensix.blackhole.blackhole import BlackholeDevice
-    from ttexalens.parse_elf import read_elf, mem_access
+    from ttexalens.parse_elf import mem_access
     from ttexalens.debug_risc import RiscLoader, get_risc_id
-    from ttexalens.tt_exalens_lib import top_callstack
 except ImportError as e:
     print(f"Module '{e}' not found. Please install tt-exalens: {GREEN}", end="")
     print(
@@ -329,41 +325,6 @@ def format_callstack(cs):
     return result
 
 
-def mem_reader(loc, dev, unaligned_addr, size_bytes):
-    """Read memory from a device at the specified location.
-
-    Args:
-        loc: Location object for the block to read from
-        dev: Device object to read from
-        unaligned_addr: Address to read from, can be unaligned
-        size_bytes: Number of bytes to read
-
-    Returns:
-        List of word values
-    """
-    # Calculate aligned start address and number of words needed
-    aligned_addr = (unaligned_addr // 4) * 4
-    start_offset = unaligned_addr - aligned_addr
-    num_words = (size_bytes + start_offset + 3) // 4  # Round up to nearest word
-
-    # Read the aligned words
-    words = read_words_from_device(loc, aligned_addr, device_id=dev.id(), word_count=num_words, context=context)
-    if start_offset == 0:
-        return words
-    else:
-        # Convert words to bytes
-        bytes_data = b""
-        for word in words:
-            bytes_data += word.to_bytes(4, "little")
-
-        # Extract the requested range
-        result = bytes_data[start_offset : start_offset + size_bytes]
-
-        # Convert bytes to words
-        words = [int.from_bytes(result[i : i + 4], "little") for i in range(0, len(result), 4)]
-        return words
-
-
 def dump_running_ops(dev):
     """Print the running operations on the device."""
     title(dump_running_ops.__doc__)
@@ -388,7 +349,7 @@ def dump_running_ops(dev):
 
     if not os.path.exists(brisc_elf_path):
         raiseTTTriageError(f"BRISC ELF file {brisc_elf_path} does not exist.")
-    brisc_elf = read_elf(context.server_ifc, brisc_elf_path)
+    brisc_elf = parse_elf(brisc_elf_path, context)
 
     if not brisc_elf:
         raiseTTTriageError(
@@ -396,7 +357,7 @@ def dump_running_ops(dev):
         )
         return
 
-    ProgrammableCoreTypes_TENSIX = brisc_elf["enumerator"][
+    ProgrammableCoreTypes_TENSIX = brisc_elf.enumerators[
         "ProgrammableCoreType::TENSIX"
     ].value  # This is how to access the value of an enumerator
 
@@ -404,18 +365,18 @@ def dump_running_ops(dev):
 
     enum_values = {
         "TensixProcessorTypes": {
-            "BRISC": brisc_elf["enumerator"]["TensixProcessorTypes::DM0"].value,
-            "NCRISC": brisc_elf["enumerator"]["TensixProcessorTypes::DM1"].value,
-            "TRISC0": brisc_elf["enumerator"]["TensixProcessorTypes::MATH0"].value,
-            "TRISC1": brisc_elf["enumerator"]["TensixProcessorTypes::MATH1"].value,
-            "TRISC2": brisc_elf["enumerator"]["TensixProcessorTypes::MATH2"].value,
+            "BRISC": brisc_elf.enumerators["TensixProcessorTypes::DM0"].value,
+            "NCRISC": brisc_elf.enumerators["TensixProcessorTypes::DM1"].value,
+            "TRISC0": brisc_elf.enumerators["TensixProcessorTypes::MATH0"].value,
+            "TRISC1": brisc_elf.enumerators["TensixProcessorTypes::MATH1"].value,
+            "TRISC2": brisc_elf.enumerators["TensixProcessorTypes::MATH2"].value,
         },
         "dispatch_core_processor_classes": {
-            "BRISC": brisc_elf["enumerator"]["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_DM0"].value,
-            "NCRISC": brisc_elf["enumerator"]["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_DM1"].value,
-            "TRISC0": brisc_elf["enumerator"]["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_COMPUTE"].value,
-            "TRISC1": brisc_elf["enumerator"]["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_COMPUTE"].value,
-            "TRISC2": brisc_elf["enumerator"]["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_COMPUTE"].value,
+            "BRISC": brisc_elf.enumerators["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_DM0"].value,
+            "NCRISC": brisc_elf.enumerators["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_DM1"].value,
+            "TRISC0": brisc_elf.enumerators["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_COMPUTE"].value,
+            "TRISC1": brisc_elf.enumerators["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_COMPUTE"].value,
+            "TRISC2": brisc_elf.enumerators["dispatch_core_processor_classes::DISPATCH_CLASS_TENSIX_COMPUTE"].value,
         },
     }
 
@@ -438,7 +399,7 @@ def dump_running_ops(dev):
             proc_class = enum_values["dispatch_core_processor_classes"][proc_name]
 
             # Create a local wrapper for mem_reader that captures loc and dev
-            loc_mem_reader = lambda addr, size: mem_reader(loc, dev, addr, size)
+            loc_mem_reader = ELF.get_mem_reader(context, dev.id(), loc)
 
             launch_msg_rd_ptr = mem_access(brisc_elf, "mailboxes->launch_msg_rd_ptr", loc_mem_reader)[0][0]
 
@@ -487,26 +448,27 @@ def dump_running_ops(dev):
                 if VVERBOSE:
                     print(f".", end="", flush=True)
 
+                    if fw_elf_path not in elf_cache:
+                        elf_cache[fw_elf_path] = parse_elf(fw_elf_path, context)
+                    if kernel_path not in elf_cache:
+                        elf_cache[kernel_path] = parse_elf(kernel_path, context)
                     if proc_name == "NCRISC" and type(dev) == WormholeDevice:
-                        lookup_key = (fw_elf_path, kernel_path, 0, 0xFFC00000)
+                        kernel_offset = 0xFFC00000
                     else:
-                        lookup_key = (fw_elf_path, kernel_path, 0, kernel_config_base + kernel_text_offset)
-                    if lookup_key not in elf_cache:
-                        elf_cache[lookup_key] = RiscLoader._read_elfs(
-                            [lookup_key[0], lookup_key[1]], [lookup_key[2], lookup_key[3]], context
-                        )
+                        kernel_offset = kernel_config_base + kernel_text_offset
 
-                    cs = top_callstack(pc, elf_cache[lookup_key], verbose=False, context=context)
+                    cs = top_callstack(
+                        pc, [elf_cache[fw_elf_path], elf_cache[kernel_path]], [None, kernel_offset], context=context
+                    )
             else:
                 pc = pcs[loc][proc_name.lower() + "_pc"]
                 if VVERBOSE:
                     print(f".", end="", flush=True)
 
-                    lookup_key = (fw_elf_path, 0)
-                    if lookup_key not in elf_cache:
-                        elf_cache[lookup_key] = RiscLoader._read_elfs([lookup_key[0]], [lookup_key[1]], context)
+                    if fw_elf_path not in elf_cache:
+                        elf_cache[fw_elf_path] = parse_elf(fw_elf_path, context)
 
-                    cs = top_callstack(pc, elf_cache[lookup_key], verbose=False, context=context)
+                    cs = top_callstack(pc, elf_cache[fw_elf_path], context=context)
 
             if VVERBOSE:
                 pc = pcs[loc][proc_name.lower() + "_pc"]

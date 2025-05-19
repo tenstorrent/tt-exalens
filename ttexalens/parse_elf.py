@@ -951,7 +951,7 @@ class ParsedElfFileWithOffset(ParsedElfFile):
 
     @cached_property
     def frame_info(self) -> FrameInfoProviderWithOffset:
-        return FrameInfoProviderWithOffset(self.frame_info, self.code_load_address)
+        return FrameInfoProviderWithOffset(self.parsed_elf.frame_info, self.code_load_address)
 
 
 def read_elf(file_ifc, elf_file_path: str, load_address: int | None = None) -> ParsedElfFile:
