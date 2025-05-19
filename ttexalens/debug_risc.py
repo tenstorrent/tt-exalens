@@ -978,12 +978,6 @@ class RiscLoader:
 
         return None, None
     
-    def _get_path_from_attribute(self, die, attribute: str) -> str:
-        dwarf_die = die.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
-        new_die = die.cu.dwarf.get_die(dwarf_die)
-
-        return new_die.path
-
     def get_callstack(
         self, elf_paths: List[str], offsets: List[int | None] = None, limit: int = 100, stop_on_main: bool = True
     ):
@@ -1020,13 +1014,8 @@ class RiscLoader:
                     while function_die.category == "lexical_block":
                         function_die = function_die.parent    
 
-                    if "DW_AT_abstract_origin" in function_die.attributes:
-                        name = self._get_path_from_attribute(function_die, "DW_AT_abstract_origin")
-                    else:
-                        name = function_die.name
-
                     callstack.append(
-                        CallstackEntry(pc, name, file_line[0], file_line[1], file_line[2], frame_pointer)
+                        CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
                     )
                     file_line = function_die.call_file_info
                     while function_die.category == "inlined_function":
@@ -1036,14 +1025,9 @@ class RiscLoader:
                         while function_die.category == "lexical_block":
                             function_die = function_die.parent
 
-                        if "DW_AT_abstract_origin" in function_die.attributes:
-                            name = self._get_path_from_attribute(function_die, "DW_AT_abstract_origin")
-                        else:
-                            name = function_die.name
-
                         callstack.append(
                             CallstackEntry(
-                                None, name, file_line[0], file_line[1], file_line[2], frame_pointer
+                                None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer
                             )
                         )
                         file_line = function_die.call_file_info

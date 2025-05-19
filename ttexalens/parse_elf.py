@@ -489,8 +489,6 @@ class MY_DIE:
             else:
                 name = None
         elif "DW_AT_specification" in self.attributes:
-            # This is a variable that is defined elsewhere. We'll skip it.
-            # IMPROVE: We should probably find the DIE that defines it and use its name.
             dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
             die = self.cu.dwarf.get_die(dwarf_die)
             if die is not None:
@@ -507,16 +505,15 @@ class MY_DIE:
         elif "DW_AT_abstract_origin" in self.attributes:
             dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
             die = self.cu.dwarf.get_die(dwarf_die)
-            name = die.name
+            name = die.path if self.category == "inlined_function" else die.name
         else:
             # We can't figure out the name of this variable. Just give it a name based on the ELF offset.
             name = f"{self.tag}-{hex(self.offset)}"
 
-
         return name
 
     @cached_property
-    def address_ranges(self):
+    def address_ranges(self) -> list[tuple]:
         if "DW_AT_low_pc" in self.attributes and "DW_AT_high_pc" in self.attributes:
             return [
                 (
@@ -530,12 +527,7 @@ class MY_DIE:
         else:
             child_ranges = []
             for child in self.iter_children():
-                child_range = child.address_ranges
-                if child_range:
-                    if isinstance(child_range, tuple):
-                        child_ranges.append(child_range)
-                    elif isinstance(child_range, list):
-                        child_ranges.extend(child_range)
+                child_ranges.extend(child.address_ranges)
             
             if child_ranges:
                 # Compute the overall range
@@ -819,6 +811,7 @@ def read_elf(file_ifc, elf_file_path, load_address=None):
     if load_address is None:
         load_address = text_sh_address
 
+    # Disabled relocations due to compiler behaviour
     dwarf = elf.get_dwarf_info(relocate_dwarf_sections=False)
 
     recurse_dict = parse_dwarf(dwarf, loaded_offset=text_sh_address - load_address)
