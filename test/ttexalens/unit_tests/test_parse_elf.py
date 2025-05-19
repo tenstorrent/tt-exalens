@@ -4,7 +4,7 @@
 import unittest
 import os
 
-from ttexalens.parse_elf import ParsedElfFile, read_elf, mem_access
+from ttexalens.parse_elf import read_elf, mem_access
 from ttexalens import util as util
 
 
@@ -284,32 +284,32 @@ class TestParseElf(unittest.TestCase):
         }
         program_path = os.path.join(TestParseElf.output_dir, program_name)
         compile_test_cpp_program(program_path, program_definition["program_text"])
-        elf = read_elf(file_ifc, f"{program_path}.elf")
-        assert mem_access(elf, "my_s.my_union.an_int", mem_reader)[0] == [722360]
-        assert mem_access(elf, "my_s.my_union.a_float", mem_reader)[0] == [722360]
-        assert mem_access(elf, "my_s.an_unnamed_int", mem_reader)[0] == [722320]
-        assert mem_access(elf, "my_s.a_unnamed_float", mem_reader)[0] == [722320]
-        assert mem_access(elf, "my_unnamed_s.x", mem_reader)[0] == [722400]
+        name_dict = read_elf(file_ifc, f"{program_path}.elf")
+        assert mem_access(name_dict, "my_s.my_union.an_int", mem_reader)[0] == [722360]
+        assert mem_access(name_dict, "my_s.my_union.a_float", mem_reader)[0] == [722360]
+        assert mem_access(name_dict, "my_s.an_unnamed_int", mem_reader)[0] == [722320]
+        assert mem_access(name_dict, "my_s.a_unnamed_float", mem_reader)[0] == [722320]
+        assert mem_access(name_dict, "my_unnamed_s.x", mem_reader)[0] == [722400]
 
     def test_firmware_elf(self):
         """Test finding text section in firmware elf"""
         program_name = "firmware_brisc"
         program_path = os.path.join(TestParseElf.elf_dir, program_name)
-        elf = read_elf(file_ifc, f"{program_path}.elf")
+        name_dict = read_elf(file_ifc, f"{program_path}.elf")
 
-        assert type(elf) == ParsedElfFile
+        assert name_dict["dwarf"].loaded_offset == 0
 
     def test_decode_symbols(self):
         """Test decode_symbols for object files"""
         program_name = "firmware_brisc"
         program_path = os.path.join(TestParseElf.elf_dir, program_name)
-        elf = read_elf(file_ifc, f"{program_path}.elf")
+        name_dict = read_elf(file_ifc, f"{program_path}.elf")
 
-        assert elf.symbols["noc_reads_num_issued"] == 4289724472
-        assert elf.symbols["noc_nonposted_writes_num_issued"] == 4289724464
-        assert elf.symbols["noc_nonposted_writes_acked"] == 4289724456
-        assert elf.symbols["noc_nonposted_atomics_acked"] == 4289724448
-        assert elf.symbols["noc_posted_writes_num_issued"] == 4289724440
+        assert name_dict["symbols"]["noc_reads_num_issued"] == 4289724472
+        assert name_dict["symbols"]["noc_nonposted_writes_num_issued"] == 4289724464
+        assert name_dict["symbols"]["noc_nonposted_writes_acked"] == 4289724456
+        assert name_dict["symbols"]["noc_nonposted_atomics_acked"] == 4289724448
+        assert name_dict["symbols"]["noc_posted_writes_num_issued"] == 4289724440
 
     def get_var_addr(self, name_dict, name):
         if name in name_dict:

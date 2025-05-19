@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import List, Union
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.parse_elf import ParsedElfFile, read_elf
+from ttexalens.parse_elf import read_elf
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device, read_from_device, write_to_device
 from ttexalens import util as util
 import os
@@ -957,7 +957,7 @@ class RiscLoader:
             not self.risc_debug.is_halted() or self.risc_debug.read_status().is_ebreak_hit
         ), f"RISC at location {self.risc_debug.location} is still halted, but not because of ebreak."
 
-    def _read_elfs(self, elf_paths: List[str], offsets: List[int | None]) -> list[ParsedElfFile]:
+    def _read_elfs(self, elf_paths: List[str], offsets: List[int | None]) -> List[dict]:
         if not isinstance(elf_paths, list):
             elf_paths = [elf_paths]
         offsets = [None] * len(elf_paths) if offsets is None else offsets
@@ -969,9 +969,9 @@ class RiscLoader:
 
         return elfs
 
-    def _find_elf_and_frame_description(self, elfs: list[ParsedElfFile], pc: int):
+    def _find_elf_and_frame_description(self, elfs: List[dict], pc: int):
         for elf in elfs:
-            frame_description = elf.frame_info.get_frame_description(pc, self.risc_debug)
+            frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
             # If we get frame description from elf we return that elf and frame description
             if frame_description is not None:
                 return elf, frame_description
@@ -1001,8 +1001,8 @@ class RiscLoader:
             frame_pointer = frame_description.read_previous_cfa()
             i = 0
             while i < limit:
-                file_line = elf._dwarf.find_file_line_by_address(pc)
-                function_die = elf._dwarf.find_function_by_address(pc)
+                file_line = elf["dwarf"].find_file_line_by_address(pc)
+                function_die = elf["dwarf"].find_function_by_address(pc)
 
                 # Skipping lexical blocks since we do not print them
                 if function_die is not None and (
@@ -1063,7 +1063,7 @@ class RiscLoader:
                 pc = return_address
                 i = i + 1
 
-                frame_description = elf.frame_info.get_frame_description(pc, self.risc_debug)
+                frame_description = elf["frame-info"].get_frame_description(pc, self.risc_debug)
                 # If we do not get frame description from current elf check in others
                 if frame_description is None:
                     new_elf, frame_description = self._find_elf_and_frame_description(elfs, pc)
