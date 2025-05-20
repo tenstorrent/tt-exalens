@@ -1047,49 +1047,6 @@ class RiscLoader:
                 return []
 
             frame_pointer = frame_description.read_previous_cfa()
-            i = 0
-            while i < limit:
-                file_line = elf._dwarf.find_file_line_by_address(pc)
-                function_die = elf._dwarf.find_function_by_address(pc)
-
-                # Skipping lexical blocks since we do not print them
-                if function_die is not None and (
-                    function_die.category == "inlined_function" or function_die.category == "lexical_block"
-                ):
-                    # Returning inlined functions (virtual frames)
-
-                    # Skipping lexical blocks since we do not print them
-                    while function_die.category == "lexical_block":
-                        function_die = function_die.parent
-
-                    callstack.append(
-                        CallstackEntry(pc, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer)
-                    )
-                    file_line = function_die.call_file_info
-                    while function_die.category == "inlined_function":
-                        i = i + 1
-                        function_die = function_die.parent
-                        # Skipping lexical blocks since we do not print them
-                        while function_die.category == "lexical_block":
-                            function_die = function_die.parent
-
-                        callstack.append(
-                            CallstackEntry(
-                                None, function_die.name, file_line[0], file_line[1], file_line[2], frame_pointer
-                            )
-                        )
-                        file_line = function_die.call_file_info
-                elif function_die is not None and function_die.category == "subprogram":
-                    callstack.append(
-                        CallstackEntry(pc, function_die.path, file_line[0], file_line[1], file_line[2], frame_pointer)
-                    )
-                else:
-                    if file_line is not None:
-                        callstack.append(
-                            CallstackEntry(pc, None, file_line[0], file_line[1], file_line[2], frame_pointer)
-                        )
-                    else:
-                        callstack.append(CallstackEntry(pc, None, None, None, None, frame_pointer))
             while len(callstack) < limit:
                 callstack, function_die = RiscLoader.get_frame_callstack(elf, pc, frame_pointer, callstack)
 
