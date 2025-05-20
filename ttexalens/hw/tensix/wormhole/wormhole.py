@@ -16,6 +16,9 @@ from ttexalens.device import (
     NocConfigurationRegisterDescription,
     NocControlRegisterDescription,
 )
+from ttexalens.reg_access_yaml import YamlRegisterMap
+from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
+import os
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 
 
@@ -68,6 +71,8 @@ class WormholeDevice(Device):
 
     MAX_CFG_REG_INDEX = 2**14 - 1
 
+    NOC_NODE_ID_OFFSET = 0x2C
+
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(
             id,
@@ -77,6 +82,16 @@ class WormholeDevice(Device):
             context,
         )
         self.instructions = WormholeInstructions()
+
+        if Device.ARC is None:
+            regdef_path = util.application_path() + "/../../regdef/wormhole/axi-noc.yaml"
+            if os.path.exists(regdef_path):
+                WormholeDevice.ARC = YamlRegisterMap(
+                    regdef_path, reg_read_func=self._pci_arc_reg_read, reg_write_func=self._pci_arc_reg_write
+                )
+                from ttexalens.reg_access_yaml import postprocess_csm
+
+                postprocess_csm(WormholeDevice.ARC.ARC_CSM)
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         return x >= 16 and y >= 16
