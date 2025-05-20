@@ -1017,7 +1017,7 @@ class RiscLoader:
                 callstack.append(CallstackEntry(None, function_die.name, file, line, column, frame_pointer))
                 file_line = function_die.call_file_info
         elif function_die is not None and function_die.category == "subprogram":
-            callstack.append(CallstackEntry(pc, function_die.name, file, line, column, frame_pointer))
+            callstack.append(CallstackEntry(pc, function_die.path, file, line, column, frame_pointer))
         else:
             callstack.append(CallstackEntry(pc, None, file, line, column, frame_pointer))
         return callstack, function_die
