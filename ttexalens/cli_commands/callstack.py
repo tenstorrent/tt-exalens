@@ -49,8 +49,10 @@ def run(cmd_text, context, ui_state: UIState = None):
     limit = int(dopt.args["-m"])
     noc_id = 0
     elf_paths = dopt.args["<elf-files>"].split(",")
-    offsets: List[int | None] = (
-        list(map(int, dopt.args["-o"].split(","))) if dopt.args["-o"] else [None for _ in range(len(elf_paths))]
+    offsets = (
+        [int(offset, 0) for offset in dopt.args["-o"].split(",")]
+        if dopt.args["-o"]
+        else [None for _ in range(len(elf_paths))]
     )
     if len(offsets) != len(elf_paths):
         util.ERROR("Number of offsets must match the number of elf files")

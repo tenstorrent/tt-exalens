@@ -901,6 +901,17 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
 
+    @parameterized.expand(["callstack", "callstack.optimized"])
+    def test_callstack_namespace(self, elf_name):
+        lib.write_words_to_device(self.core_loc, 0x4000, 0, 0, self.context)
+        elf_path = self.get_elf_path(elf_name)
+        self.loader.run_elf(elf_path)
+        callstack = lib.callstack(self.core_loc, elf_path, None, self.risc_id, 100, True, False, 0, self.context)
+        self.assertEqual(len(callstack), 3)
+        self.assertEqual(callstack[0].function_name, "halt")
+        self.assertEqual(callstack[1].function_name, "ns::foo")
+        self.assertEqual(callstack[2].function_name, "main")
+
     @parameterized.expand([1, 10, 50])
     def test_top_callstack_with_parsing(self, recursion_count):
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
