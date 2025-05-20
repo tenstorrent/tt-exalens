@@ -241,6 +241,83 @@ class TestReadWrite(unittest.TestCase):
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_to_device(core_loc, address, data, device_id)
 
+    def test_unaligned_read(self):
+        for device_id in self.context.device_ids:
+            core_loc = self.context.devices[device_id].get_block_locations()[0]
+            lib.write_words_to_device(core_loc, 0, [0x12345678, 0x90ABCDEF], device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x12345678, 0x90ABCDEF]
+            assert lib.read_from_device(core_loc, 0, device_id, 1, self.context) == bytes([0x78])
+            assert lib.read_from_device(core_loc, 1, device_id, 1, self.context) == bytes([0x56])
+            assert lib.read_from_device(core_loc, 2, device_id, 1, self.context) == bytes([0x34])
+            assert lib.read_from_device(core_loc, 3, device_id, 1, self.context) == bytes([0x12])
+            assert lib.read_from_device(core_loc, 4, device_id, 1, self.context) == bytes([0xEF])
+            assert lib.read_from_device(core_loc, 5, device_id, 1, self.context) == bytes([0xCD])
+            assert lib.read_from_device(core_loc, 6, device_id, 1, self.context) == bytes([0xAB])
+            assert lib.read_from_device(core_loc, 7, device_id, 1, self.context) == bytes([0x90])
+            assert lib.read_from_device(core_loc, 0, device_id, 2, self.context) == bytes([0x78, 0x56])
+            assert lib.read_from_device(core_loc, 2, device_id, 2, self.context) == bytes([0x34, 0x12])
+            assert lib.read_from_device(core_loc, 4, device_id, 2, self.context) == bytes([0xEF, 0xCD])
+            assert lib.read_from_device(core_loc, 6, device_id, 2, self.context) == bytes([0xAB, 0x90])
+            assert lib.read_from_device(core_loc, 0, device_id, 4, self.context) == bytes([0x78, 0x56, 0x34, 0x12])
+            assert lib.read_from_device(core_loc, 4, device_id, 4, self.context) == bytes([0xEF, 0xCD, 0xAB, 0x90])
+            assert lib.read_from_device(core_loc, 0, device_id, 8, self.context) == bytes(
+                [0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90]
+            )
+            assert lib.read_from_device(core_loc, 1, device_id, 2, self.context) == bytes([0x56, 0x34])
+            assert lib.read_from_device(core_loc, 3, device_id, 2, self.context) == bytes([0x12, 0xEF])
+            assert lib.read_from_device(core_loc, 5, device_id, 2, self.context) == bytes([0xCD, 0xAB])
+            assert lib.read_from_device(core_loc, 1, device_id, 4, self.context) == bytes([0x56, 0x34, 0x12, 0xEF])
+            assert lib.read_from_device(core_loc, 2, device_id, 4, self.context) == bytes([0x34, 0x12, 0xEF, 0xCD])
+            assert lib.read_from_device(core_loc, 3, device_id, 4, self.context) == bytes([0x12, 0xEF, 0xCD, 0xAB])
+            assert lib.read_from_device(core_loc, 0, device_id, 8, self.context) == bytes(
+                [0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90]
+            )
+            assert lib.read_from_device(core_loc, 1, device_id, 6, self.context) == bytes(
+                [0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB]
+            )
+
+    def test_unaligned_write(self):
+        for device_id in self.context.device_ids:
+            core_loc = self.context.devices[device_id].get_block_locations()[0]
+            lib.write_words_to_device(core_loc, 0, [0xDEADBEEF, 0xDEADBEEF], device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDEADBEEF, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 0, bytes([0x12]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDEADBE12, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 1, bytes([0x34]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDEAD3412, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 2, bytes([0x56]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDE563412, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 3, bytes([0x78]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 4, bytes([0x90]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDEADBE90]
+            lib.write_to_device(core_loc, 5, bytes([0xAB]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDEADAB90]
+            lib.write_to_device(core_loc, 6, bytes([0xCD]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDECDAB90]
+            lib.write_to_device(core_loc, 7, bytes([0xEF]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xEFCDAB90]
+            lib.write_to_device(core_loc, 0, bytes([0xAA, 0xBB]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x7856BBAA, 0xEFCDAB90]
+            lib.write_to_device(core_loc, 2, bytes([0xCC, 0xDD]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDAB90]
+            lib.write_to_device(core_loc, 4, bytes([0xEE, 0xFF]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDFFEE]
+            lib.write_to_device(core_loc, 6, bytes([0x00, 0x11]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0x1100FFEE]
+            lib.write_to_device(core_loc, 1, bytes([0x22, 0x33]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDD3322AA, 0x1100FFEE]
+            lib.write_to_device(core_loc, 3, bytes([0x44, 0x55]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x443322AA, 0x1100FF55]
+            lib.write_to_device(core_loc, 5, bytes([0x66, 0x77]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x443322AA, 0x11776655]
+            lib.write_to_device(core_loc, 2, bytes([0x88, 0x99, 0xAA]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x998822AA, 0x117766AA]
+            lib.write_to_device(core_loc, 3, bytes([0xBB, 0xCC, 0xDD]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xBB8822AA, 0x1177DDCC]
+            lib.write_to_device(core_loc, 1, bytes([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x332211AA, 0x11665544]
+
     @parameterized.expand(
         [
             (
@@ -798,6 +875,20 @@ class TestCallStack(unittest.TestCase):
         return f"build/riscv-src/{arch}/{app_name}.{risc}.elf"
 
     @parameterized.expand([1, 10, 50])
+    def test_callstack_with_parsing(self, recursion_count):
+        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        elf_path = self.get_elf_path("callstack")
+        self.loader.run_elf(elf_path)
+        parsed_elf = lib.parse_elf(elf_path, self.context)
+        callstack = lib.callstack(self.core_loc, parsed_elf, None, self.risc_id, 100, True, False, 0, self.context)
+        self.assertEqual(len(callstack), recursion_count + 3)
+        self.assertEqual(callstack[0].function_name, "halt")
+        for i in range(1, recursion_count + 1):
+            self.assertEqual(callstack[i].function_name, "f1")
+        self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
+        self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+
+    @parameterized.expand([1, 10, 50])
     def test_callstack(self, recursion_count):
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack")
@@ -820,6 +911,29 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[0].function_name, "halt")
         self.assertEqual(callstack[1].function_name, "ns::foo")
         self.assertEqual(callstack[2].function_name, "main")
+
+    @parameterized.expand([1, 10, 50])
+    def test_top_callstack_with_parsing(self, recursion_count):
+        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        elf_path = self.get_elf_path("callstack")
+        self.loader.run_elf(elf_path)
+        with self.rdbg.ensure_halted():
+            pc = self.rdbg.read_gpr(32)
+        parsed_elf = lib.parse_elf(elf_path, self.context)
+        callstack = lib.top_callstack(pc, parsed_elf, None, self.context)
+        self.assertEqual(len(callstack), 1)
+        self.assertEqual(callstack[0].function_name, "halt")
+
+    @parameterized.expand([1, 10, 50])
+    def test_top_callstack(self, recursion_count):
+        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        elf_path = self.get_elf_path("callstack")
+        self.loader.run_elf(elf_path)
+        with self.rdbg.ensure_halted():
+            pc = self.rdbg.read_gpr(32)
+        callstack = lib.top_callstack(pc, elf_path, None, self.context)
+        self.assertEqual(len(callstack), 1)
+        self.assertEqual(callstack[0].function_name, "halt")
 
     @parameterized.expand([(1, 1), (10, 9), (50, 49)])
     def test_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
@@ -851,6 +965,30 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
             self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
 
+    @parameterized.expand([(1, 1)])
+    def test_top_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
+        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        elf_path = self.get_elf_path("callstack.optimized")
+        self.loader.run_elf(elf_path)
+        with self.rdbg.ensure_halted():
+            pc = self.rdbg.read_gpr(32)
+        callstack = lib.top_callstack(pc, elf_path, None, self.context)
+
+        # Optimized version for non-blackhole doesn't have halt on callstack
+        if self.is_blackhole():
+            self.assertEqual(len(callstack), expected_f1_on_callstack_count + 3)
+            self.assertEqual(callstack[0].function_name, "halt")
+            for i in range(1, expected_f1_on_callstack_count + 1):
+                self.assertEqual(callstack[i].function_name, "f1")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "recurse")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 2].function_name, "main")
+        else:
+            self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
+            for i in range(0, expected_f1_on_callstack_count):
+                self.assertEqual(callstack[i].function_name, "f1")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
+
     @parameterized.expand(
         [
             ("abcd", "build/riscv-src/blackhole/callstack.brisc.elf"),  # Invalid core_loc string
@@ -874,5 +1012,5 @@ class TestCallStack(unittest.TestCase):
         """Test invalid inputs for callstack function."""
 
         # Check for invalid core_loc
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((util.TTException, ValueError, FileNotFoundError)):
             lib.callstack(core_loc, elf_paths, offsets, risc_id, max_depth, True, False, device_id, self.context)

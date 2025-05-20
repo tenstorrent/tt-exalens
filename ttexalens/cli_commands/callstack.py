@@ -64,12 +64,14 @@ def run(cmd_text, context, ui_state: UIState = None):
             util.ERROR(f"File {elf_path} does not exist")
             return
 
+    elfs = [lib.parse_elf(elf_path, context) for elf_path in elf_paths]
+
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             for risc_id in dopt.for_each("--risc", context, ui_state):
                 callstack = lib.callstack(
                     core_loc=loc,
-                    elf_paths=elf_paths,
+                    elfs=elfs,
                     offsets=offsets,
                     risc_id=risc_id,
                     max_depth=limit,

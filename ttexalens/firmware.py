@@ -6,7 +6,7 @@ This module is used to represent the firmware
 """
 
 import time
-from typing import Dict, Tuple
+from typing import Callable, Dict, Tuple
 from ttexalens import parse_elf
 from ttexalens import util as util
 import re
@@ -165,8 +165,8 @@ class ELF:
         address, size and type_die of the variable. If the variable is not found, return None.
         """
 
-        def my_mem_reader(addr, size_bytes):
-            pass
+        def my_mem_reader(addr: int, size_bytes: int, elements_to_read: int) -> list[int]:
+            return []
 
         if mem_reader is None:
             mem_reader = my_mem_reader
@@ -210,13 +210,23 @@ class ELF:
         return data
 
     @staticmethod
-    def get_mem_reader(context, device_id, core_loc):
+    def get_mem_reader(context, device_id, core_loc) -> Callable[[int, int, int], list[int]]:
         """
         Returns a simple memory reader function that reads from a given device and a given core.
         """
-        from ttexalens.tt_exalens_lib import read_word_from_device
+        from ttexalens.tt_exalens_lib import read_from_device
 
-        def mem_reader(context, addr, size_bytes):
-            return [read_word_from_device(core_loc, addr, device_id, context)]
+        def mem_reader(addr: int, size_bytes: int, elements_to_read: int) -> list[int]:
+            if elements_to_read == 0:
+                return []
+            element_size = size_bytes // elements_to_read
+            assert element_size * elements_to_read == size_bytes, "Size must be divisible by number of elements"
+            bytes_data = read_from_device(
+                core_loc=core_loc, device_id=device_id, addr=addr, num_bytes=size_bytes, context=context
+            )
+            return [
+                int.from_bytes(bytes_data[i * element_size : (i + 1) * element_size], byteorder="little")
+                for i in range(elements_to_read)
+            ]
 
         return mem_reader
