@@ -21,3 +21,4 @@ set_target_properties(ttexalens_pybind_unit_tests PROPERTIES
     BUILD_WITH_INSTALL_RPATH true
     INSTALL_RPATH "$ORIGIN:$ORIGIN/../lib"
 )
+add_pybind_stubgen(ttexalens_pybind_unit_tests)
