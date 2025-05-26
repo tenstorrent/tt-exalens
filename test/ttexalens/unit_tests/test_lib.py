@@ -781,6 +781,23 @@ class TestARC(unittest.TestCase):
 
     fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
 
+    def test_read_arc_telemetry_entry(self, device_id = 0):
+        # Check vendor ID
+        vendor_id = lib.read_arc_telemetry_entry(device_id, 1) & 0xFFFF
+        self.assertEqual(vendor_id, 0x1e52)
+ 
+        # Check if heartbeat is increasing
+        import time
+        heartbeat1 = lib.read_arc_telemetry_entry(device_id, 19)
+        time.sleep(0.1)
+        heartbeat2 = lib.read_arc_telemetry_entry(device_id, 19)
+        self.assertGreaterEqual(heartbeat2, heartbeat1)
+
+        # Check ARC Clock   
+        arc_clock = lib.read_arc_telemetry_entry(device_id, 26)
+        self.assertEqual(arc_clock, 540)
+
+
     def test_load_arc_fw(self):
 
         if self.is_blackhole():
