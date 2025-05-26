@@ -96,5 +96,9 @@ class TTExaLensCommunicator(ABC):
     ) -> List[int]:
         pass
 
+    @abstractmethod
+    def read_arc_telemetry_entry(self, device_id: int, telemetry_tag: int) -> int:
+        pass
+
     def using_cache(self) -> bool:
         return False
