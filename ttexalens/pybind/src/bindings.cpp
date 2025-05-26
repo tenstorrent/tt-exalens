@@ -213,6 +213,13 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> arc_msg(uint8_t noc_id, uint8
     return {};
 }
 
+std::optional<uint32_t> read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
+    if (ttexalens_implementation) {
+        return ttexalens_implementation->read_arc_telemetry_entry(chip_id, telemetry_tag);
+    }
+    return {};
+}
+
 PYBIND11_MODULE(ttexalens_pybind, m) {
     m.def("open_device", &open_device, "Opens tt device. Prints error message if failed.",
           pybind11::arg("binary_directory"), pybind11::arg_v("wanted_devices", std::vector<uint8_t>(), "[]"),
@@ -258,4 +265,6 @@ PYBIND11_MODULE(ttexalens_pybind, m) {
     m.def("arc_msg", &arc_msg, "Send ARC message", pybind11::arg("noc_id"), pybind11::arg("chip_id"),
           pybind11::arg("msg_code"), pybind11::arg("wait_for_done"), pybind11::arg("arg0"), pybind11::arg("arg1"),
           pybind11::arg("timeout"));
+    m.def("read_arc_telemetry_entry", &read_arc_telemetry_entry, "Read ARC telemetry entry", pybind11::arg("chip_id"),
+          pybind11::arg("telemetry_tag"));
 }

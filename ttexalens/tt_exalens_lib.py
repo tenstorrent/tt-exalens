@@ -419,6 +419,22 @@ def arc_msg(
 
     return context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout)
 
+def read_arc_telemetry_entry(device_id: int, telemetry_tag: int, context: Context = None) -> int:
+    """Reads an ARC telemetry entry from the device.
+
+    Args:
+            device_id (int): ID number of device to read telemetry from.
+            telemetry_tag (int): Tag for telemetry entry to read.
+            context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+
+    Returns:
+            int: Value of the telemetry entry.
+    """
+    context = check_context(context)
+    validate_device_id(device_id, context)
+
+    return context.server_ifc.read_arc_telemetry_entry(device_id, telemetry_tag)
+
 
 def read_tensix_register(
     core_loc: Union[str, OnChipCoordinate],
