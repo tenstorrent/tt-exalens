@@ -30,6 +30,7 @@ class ttexalens_server_request_type(Enum):
     get_device_arch = 19
     get_device_soc_description = 20
     arc_msg = 21
+    read_arc_telemetry_entry = 22
 
     jtag_read32 = 50
     jtag_write32 = 51
@@ -268,6 +269,17 @@ class ttexalens_server_communication:
                 arg0,
                 arg1,
                 timeout,
+            )
+        )
+        return self._check(self._socket.recv())
+
+    def read_arc_telemetry_entry(self, device_id: int, telemetry_tag: int):
+        self._socket.send(
+            struct.pack(
+                "<BBI",
+                ttexalens_server_request_type.read_arc_telemetry_entry.value,
+                device_id,
+                telemetry_tag,
             )
         )
         return self._check(self._socket.recv())
