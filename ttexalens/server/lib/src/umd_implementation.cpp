@@ -228,7 +228,8 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(u
 std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
     // Speed optimization: cache ArcTelemetryReader to avoid creating it multiple times
     if (!cached_arc_telemetry_reader || cached_arc_telemetry_reader_chip_id != chip_id) {
-        cached_arc_telemetry_reader = std::make_unique<tt::umd::ArcTelemetryReader>(cluster->get_chip(chip_id));
+        cached_arc_telemetry_reader =
+            tt::umd::ArcTelemetryReader::create_arc_telemetry_reader(cluster->get_tt_device(chip_id));
         cached_arc_telemetry_reader_chip_id = chip_id;
     }
     return cached_arc_telemetry_reader->read_entry(telemetry_tag);
