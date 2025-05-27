@@ -842,7 +842,7 @@ class TestARC(unittest.TestCase):
             ("TAG_ASIC_ID", 3),
             ("TAG_AICLK", 14),
             ("TAG_ARCCLK", 16),
-            ("TAG_DDR_SPEED", 23),
+            ("TAG_GDDR_SPEED", 23),
         ]
     )
     def test_read_arc_telemetry_entry_blackhole(self, tag_name, tag_id):
