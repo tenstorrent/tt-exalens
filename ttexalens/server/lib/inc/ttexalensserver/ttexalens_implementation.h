@@ -57,9 +57,7 @@ class ttexalens_implementation {
                                                                        uint32_t arg0, uint32_t arg1, int timeout) {
         return {};
     }
-    virtual std::optional<uint32_t> read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
-        return {};
-    }
+    virtual std::optional<uint32_t> read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) { return {}; }
 
     virtual std::optional<int> jtag_write32_axi(uint8_t chip_id, uint32_t address, uint32_t data) { return {}; }
     virtual std::optional<int> jtag_write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
