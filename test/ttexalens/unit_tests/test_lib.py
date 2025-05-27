@@ -790,72 +790,50 @@ class TestARC(unittest.TestCase):
         device_id = 0
         if self.is_wormhole():
             # Check vendor ID
-            vendor_id_tag = 1
             expected_vendor_id = 0x1E52
-            vendor_id = lib.read_arc_telemetry_entry(device_id, vendor_id_tag) & 0xFFFF
+            vendor_id = lib.read_arc_telemetry_entry(device_id, "TAG_DEVICE_ID") & 0xFFFF
             self.assertEqual(vendor_id, expected_vendor_id)
 
             # Check if heartbeat is increasing
             import time
 
-            heartbeat_tag = 19
-            heartbeat1 = lib.read_arc_telemetry_entry(device_id, heartbeat_tag)
+            heartbeat1 = lib.read_arc_telemetry_entry(device_id, "TAG_ARC0_HEALTH")
             time.sleep(0.1)
-            heartbeat2 = lib.read_arc_telemetry_entry(device_id, heartbeat_tag)
+            heartbeat2 = lib.read_arc_telemetry_entry(device_id, "TAG_ARC0_HEALTH")
             self.assertGreater(heartbeat2, heartbeat1)
         elif self.is_blackhole():
             # Check if heartbeat is increasing
             import time
 
-            heartbeat_tag = 32
-            heartbeat1 = lib.read_arc_telemetry_entry(device_id, heartbeat_tag)
+            heartbeat1 = lib.read_arc_telemetry_entry(device_id, "TAG_TIMER_HEARTBEAT")
             time.sleep(0.1)
-            heartbeat2 = lib.read_arc_telemetry_entry(device_id, heartbeat_tag)
+            heartbeat2 = lib.read_arc_telemetry_entry(device_id, "TAG_TIMER_HEARTBEAT")
             self.assertGreater(heartbeat2, heartbeat1)
         else:
             self.skipTest("ARC telemetry is not supported for this architecture")
 
     @parameterized.expand(
         [
-            ("TAG_ENUM_VERSION", 0),
-            ("TAG_BOARD_ID_HIGH", 4),
-            ("TAG_AICLK", 24),
-            ("TAG_ARCCLK", 26),
+            ("TAG_BOARD_ID_HIGH", (4, 1)),
+            ("TAG_BOARD_ID_LOW", (5, 2)),
+            ("TAG_AICLK", (24, 14)),
+            ("TAG_AXICLK", (25, 15)),
+            ("TAG_ARCCLK", (26, 16)),
         ]
     )
-    def test_read_arc_telemetry_entry_wormhole(self, tag_name, tag_id):
+    def test_read_arc_telemetry_entry(self, tag_name, tag_id):
         """Test reading ARC telemetry entry by tag name or tag ID"""
 
-        if not self.is_wormhole():
-            self.skipTest("This test applies only to wormhole architecture")
+        index = 0 if self.is_wormhole() else 1 if self.is_blackhole() else None
+
+        if index is None:
+            self.skipTest("ARC telemetry is not supported for this architecture")
 
         device_id = 0
 
         # Check if reading by tag name and tag ID gives the same result
         ret_from_name = lib.read_arc_telemetry_entry(device_id, tag_name)
-        ret_from_id = lib.read_arc_telemetry_entry(device_id, tag_id)
-        self.assertEqual(ret_from_name, ret_from_id)
-
-    @parameterized.expand(
-        [
-            ("TAG_BOARD_ID_HIGH", 1),
-            ("TAG_ASIC_ID", 3),
-            ("TAG_AICLK", 14),
-            ("TAG_ARCCLK", 16),
-            ("TAG_GDDR_SPEED", 23),
-        ]
-    )
-    def test_read_arc_telemetry_entry_blackhole(self, tag_name, tag_id):
-        """Test reading ARC telemetry entry by tag name or tag ID"""
-
-        if not self.is_blackhole():
-            self.skipTest("This test applies only to blackhole architecture")
-
-        device_id = 0
-
-        # Check if reading by tag name and tag ID gives the same result
-        ret_from_name = lib.read_arc_telemetry_entry(device_id, tag_name)
-        ret_from_id = lib.read_arc_telemetry_entry(device_id, tag_id)
+        ret_from_id = lib.read_arc_telemetry_entry(device_id, tag_id[index])
         self.assertEqual(ret_from_name, ret_from_id)
 
     def test_load_arc_fw(self):
