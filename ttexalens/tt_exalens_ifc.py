@@ -276,7 +276,7 @@ class ttexalens_server_communication:
     def read_arc_telemetry_entry(self, device_id: int, telemetry_tag: int):
         self._socket.send(
             struct.pack(
-                "<BBI",
+                "<BBB",
                 ttexalens_server_request_type.read_arc_telemetry_entry.value,
                 device_id,
                 telemetry_tag,
