@@ -785,8 +785,9 @@ class TestARC(unittest.TestCase):
 
     fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
 
-    def test_read_arc_telemetry_entry(self, device_id=0):
-
+    def test_read_arc_telemetry(self):
+        """Test reading ARC telemetry entries of known values"""
+        device_id = 0
         if self.is_wormhole():
             # Check vendor ID
             vendor_id_tag = 1
@@ -813,6 +814,49 @@ class TestARC(unittest.TestCase):
             self.assertGreater(heartbeat2, heartbeat1)
         else:
             self.skipTest("ARC telemetry is not supported for this architecture")
+
+    @parameterized.expand(
+        [
+            ("TAG_ENUM_VERSION", 0),
+            ("TAG_BOARD_ID_HIGH", 4),
+            ("TAG_AICLK", 24),
+            ("TAG_ARCCLK", 26),
+        ]
+    )
+    def test_read_arc_telemetry_entry_wormhole(self, tag_name, tag_id):
+        """Test reading ARC telemetry entry by tag name or tag ID"""
+
+        if not self.is_wormhole():
+            self.skipTest("This test applies only to wormhole architecture")
+
+        device_id = 0
+
+        # Check if reading by tag name and tag ID gives the same result
+        ret_from_name = lib.read_arc_telemetry_entry(device_id, tag_name)
+        ret_from_id = lib.read_arc_telemetry_entry(device_id, tag_id)
+        self.assertEqual(ret_from_name, ret_from_id)
+
+    @parameterized.expand(
+        [
+            ("TAG_BOARD_ID_HIGH", 1),
+            ("TAG_ASIC_ID", 3),
+            ("TAG_AICLK", 14),
+            ("TAG_ARCCLK", 16),
+            ("TAG_DDR_SPEED", 23),
+        ]
+    )
+    def test_read_arc_telemetry_entry_blackhole(self, tag_name, tag_id):
+        """Test reading ARC telemetry entry by tag name or tag ID"""
+
+        if not self.is_blackhole():
+            self.skipTest("This test applies only to blackhole architecture")
+
+        device_id = 0
+
+        # Check if reading by tag name and tag ID gives the same result
+        ret_from_name = lib.read_arc_telemetry_entry(device_id, tag_name)
+        ret_from_id = lib.read_arc_telemetry_entry(device_id, tag_id)
+        self.assertEqual(ret_from_name, ret_from_id)
 
     def test_load_arc_fw(self):
 

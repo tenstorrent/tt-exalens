@@ -420,12 +420,12 @@ def arc_msg(
     return context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout)
 
 
-def read_arc_telemetry_entry(device_id: int, telemetry_tag: int, context: Context = None) -> int:
+def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context = None) -> int:
     """Reads an ARC telemetry entry from the device.
 
     Args:
             device_id (int): ID number of device to read telemetry from.
-            telemetry_tag (int): Tag for telemetry entry to read.
+            telemetry_tag (int | str): Name or ID of the tag to read.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 
     Returns:
@@ -433,8 +433,22 @@ def read_arc_telemetry_entry(device_id: int, telemetry_tag: int, context: Contex
     """
     context = check_context(context)
     validate_device_id(device_id, context)
+    device = context.devices[device_id]
 
-    return context.server_ifc.read_arc_telemetry_entry(device_id, telemetry_tag)
+    if isinstance(telemetry_tag, str):
+        telemetry_tag_id = device._get_arc_telemetry_tag_id(telemetry_tag)
+        if telemetry_tag is None:
+            raise TTException(f"Telemetry tag {telemetry_tag} does not exist.")
+    elif isinstance(telemetry_tag, int):
+        if telemetry_tag < 0 or telemetry_tag >= len(device._get_arc_telemetry_tags_map_keys()):
+            raise TTException(
+                f"Telemetry tag ID {telemetry_tag} is out of range. Must be between 0 and {len(device._get_arc_telemetry_tags_map_keys()) - 1}."
+            )
+        telemetry_tag_id = telemetry_tag
+    else:
+        raise TTException(f"Invalid telemetry_tag type. Must be an int or str, but got {type(telemetry_tag)}")
+
+    return context.server_ifc.read_arc_telemetry_entry(device_id, telemetry_tag_id)
 
 
 def read_tensix_register(

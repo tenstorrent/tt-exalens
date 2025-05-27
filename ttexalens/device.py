@@ -458,6 +458,14 @@ class Device(TTObject):
         pass
 
     @abstractmethod
+    def _get_arc_telemetry_tags_map_keys(self) -> List[str] | None:
+        pass
+
+    @abstractmethod
+    def _get_arc_telemetry_tag_id(self, tag_name: str) -> int | None:
+        pass
+
+    @abstractmethod
     def _get_riscv_local_memory_base_address(self) -> int:
         pass
 
