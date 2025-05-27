@@ -100,6 +100,11 @@ void tt::exalens::server::process(const tt::exalens::request& base_request) {
                                             request.arg0, request.arg1, request.timeout));
             break;
         }
+        case tt::exalens::request_type::read_arc_telemetry_entry: {
+            auto& request = static_cast<const tt::exalens::read_arc_telemetry_entry_request&>(base_request);
+            respond(implementation->read_arc_telemetry_entry(request.chip_id, request.telemetry_tag));
+            break;
+        }
 
         case tt::exalens::request_type::jtag_read32: {
             auto& request = static_cast<const tt::exalens::jtag_read32_request&>(base_request);

@@ -54,6 +54,9 @@ void yaml_communication::process(const tt::exalens::request& request) {
         case tt::exalens::request_type::arc_msg:
             respond(serialize(static_cast<const tt::exalens::arc_msg_request&>(request)));
             break;
+        case tt::exalens::request_type::read_arc_telemetry_entry:
+            respond(serialize(static_cast<const tt::exalens::read_arc_telemetry_entry_request&>(request)));
+            break;
         case tt::exalens::request_type::jtag_read32:
             respond(serialize(static_cast<const tt::exalens::jtag_read32_request&>(request)));
             break;
