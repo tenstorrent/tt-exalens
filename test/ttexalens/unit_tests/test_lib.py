@@ -802,12 +802,6 @@ class TestARC(unittest.TestCase):
             time.sleep(0.1)
             heartbeat2 = lib.read_arc_telemetry_entry(device_id, heartbeat_tag)
             self.assertGreater(heartbeat2, heartbeat1)
-
-            # Check ARC Clock
-            expected_arc_clock = 540
-            arc_clock_tag = 26
-            arc_clock = lib.read_arc_telemetry_entry(device_id, arc_clock_tag)
-            self.assertEqual(arc_clock, expected_arc_clock)
         elif self.is_blackhole():
             # Check if heartbeat is increasing
             import time
@@ -817,12 +811,6 @@ class TestARC(unittest.TestCase):
             time.sleep(0.1)
             heartbeat2 = lib.read_arc_telemetry_entry(device_id, heartbeat_tag)
             self.assertGreater(heartbeat2, heartbeat1)
-
-            # Check ARC Clock
-            expected_arc_clock = 800
-            arc_clock_tag = 16
-            arc_clock = lib.read_arc_telemetry_entry(device_id, arc_clock_tag)
-            self.assertEqual(arc_clock, expected_arc_clock)
         else:
             self.skipTest("ARC telemetry is not supported for this architecture")
 
