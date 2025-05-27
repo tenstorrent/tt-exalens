@@ -419,6 +419,7 @@ def arc_msg(
 
     return context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout)
 
+
 def read_arc_telemetry_entry(device_id: int, telemetry_tag: int, context: Context = None) -> int:
     """Reads an ARC telemetry entry from the device.
 
