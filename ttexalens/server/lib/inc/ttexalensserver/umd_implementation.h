@@ -44,6 +44,9 @@ class umd_implementation : public ttexalens_implementation {
 
     tt::umd::Cluster* cluster = nullptr;
     std::string cluster_descriptor_path;
+
+    std::unique_ptr<tt::umd::ArcTelemetryReader> cached_arc_telemetry_reader;
+    uint8_t cached_arc_telemetry_reader_chip_id = UINT8_MAX;
 };
 
 }  // namespace tt::exalens
