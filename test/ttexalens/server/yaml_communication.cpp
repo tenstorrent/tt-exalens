@@ -167,7 +167,8 @@ std::string yaml_communication::serialize(const tt::exalens::arc_msg_request& re
 
 std::string yaml_communication::serialize(const tt::exalens::read_arc_telemetry_entry_request& request) {
     return "- type: " + std::to_string(static_cast<int>(request.type)) +
-           "\n  chip_id: " + std::to_string(request.chip_id) + "\n  entry_id: " + std::to_string(request.telemetry_tag);
+           "\n  chip_id: " + std::to_string(request.chip_id) +
+           "\n  telemetry_tag: " + std::to_string(request.telemetry_tag);
 }
 
 std::string yaml_communication::serialize(const tt::exalens::jtag_read32_request& request) {
