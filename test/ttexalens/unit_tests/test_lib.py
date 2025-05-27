@@ -753,6 +753,10 @@ class TestARC(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.context = tt_exalens_init.init_ttexalens()
 
+    def is_wormhole(self):
+        """Check if the device is wormhole."""
+        return self.context.devices[0]._arch == "wormhole_b0"
+
     def is_blackhole(self):
         """Check if the device is blackhole."""
         return self.context.devices[0]._arch == "blackhole"
@@ -781,28 +785,46 @@ class TestARC(unittest.TestCase):
 
     fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
 
-    def test_read_arc_telemetry_entry(self, device_id = 0):
+    def test_read_arc_telemetry_entry(self, device_id=0):
 
         if self.is_wormhole():
             # Check vendor ID
-            vendor_id = lib.read_arc_telemetry_entry(device_id, 1) & 0xFFFF
-            self.assertEqual(vendor_id, 0x1e52)
-    
+            vendor_id_tag = 1
+            expected_vendor_id = 0x1E52
+            vendor_id = lib.read_arc_telemetry_entry(device_id, vendor_id_tag) & 0xFFFF
+            self.assertEqual(vendor_id, expected_vendor_id)
+
             # Check if heartbeat is increasing
             import time
-            heartbeat1 = lib.read_arc_telemetry_entry(device_id, 19)
-            time.sleep(0.1)
-            heartbeat2 = lib.read_arc_telemetry_entry(device_id, 19)
-            self.assertGreaterEqual(heartbeat2, heartbeat1)
 
-            # Check ARC Clock   
-            arc_clock = lib.read_arc_telemetry_entry(device_id, 26)
-            self.assertEqual(arc_clock, 540)
+            heartbeat_tag = 19
+            heartbeat1 = lib.read_arc_telemetry_entry(device_id, heartbeat_tag)
+            time.sleep(0.1)
+            heartbeat2 = lib.read_arc_telemetry_entry(device_id, heartbeat_tag)
+            self.assertGreater(heartbeat2, heartbeat1)
+
+            # Check ARC Clock
+            expected_arc_clock = 540
+            arc_clock_tag = 26
+            arc_clock = lib.read_arc_telemetry_entry(device_id, arc_clock_tag)
+            self.assertEqual(arc_clock, expected_arc_clock)
         elif self.is_blackhole():
-            pass
+            # Check if heartbeat is increasing
+            import time
+
+            heartbeat_tag = 32
+            heartbeat1 = lib.read_arc_telemetry_entry(device_id, heartbeat_tag)
+            time.sleep(0.1)
+            heartbeat2 = lib.read_arc_telemetry_entry(device_id, heartbeat_tag)
+            self.assertGreater(heartbeat2, heartbeat1)
+
+            # Check ARC Clock
+            expected_arc_clock = 800
+            arc_clock_tag = 16
+            arc_clock = lib.read_arc_telemetry_entry(device_id, arc_clock_tag)
+            self.assertEqual(arc_clock, expected_arc_clock)
         else:
             self.skipTest("ARC telemetry is not supported for this architecture")
-
 
     def test_load_arc_fw(self):
 
