@@ -37,12 +37,16 @@ class umd_implementation : public ttexalens_implementation {
                                                                        uint32_t msg_code, bool wait_for_done,
                                                                        uint32_t arg0, uint32_t arg1,
                                                                        int timeout) override;
+    virtual std::optional<uint32_t> read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) override;
 
    private:
     bool is_chip_mmio_capable(uint8_t chip_id);
 
     tt::umd::Cluster* cluster = nullptr;
     std::string cluster_descriptor_path;
+
+    std::unique_ptr<tt::umd::ArcTelemetryReader> cached_arc_telemetry_reader;
+    uint8_t cached_arc_telemetry_reader_chip_id = UINT8_MAX;
 };
 
 }  // namespace tt::exalens

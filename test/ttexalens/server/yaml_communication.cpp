@@ -54,6 +54,9 @@ void yaml_communication::process(const tt::exalens::request& request) {
         case tt::exalens::request_type::arc_msg:
             respond(serialize(static_cast<const tt::exalens::arc_msg_request&>(request)));
             break;
+        case tt::exalens::request_type::read_arc_telemetry_entry:
+            respond(serialize(static_cast<const tt::exalens::read_arc_telemetry_entry_request&>(request)));
+            break;
         case tt::exalens::request_type::jtag_read32:
             respond(serialize(static_cast<const tt::exalens::jtag_read32_request&>(request)));
             break;
@@ -160,6 +163,12 @@ std::string yaml_communication::serialize(const tt::exalens::arc_msg_request& re
            "\n  msg_code: " + std::to_string(request.msg_code) +
            "\n  wait_for_done: " + std::to_string(request.wait_for_done) + "\n  arg0: " + std::to_string(request.arg0) +
            "\n  arg1: " + std::to_string(request.arg1) + "\n  timeout: " + std::to_string(request.timeout);
+}
+
+std::string yaml_communication::serialize(const tt::exalens::read_arc_telemetry_entry_request& request) {
+    return "- type: " + std::to_string(static_cast<int>(request.type)) +
+           "\n  chip_id: " + std::to_string(request.chip_id) +
+           "\n  telemetry_tag: " + std::to_string(request.telemetry_tag);
 }
 
 std::string yaml_communication::serialize(const tt::exalens::jtag_read32_request& request) {

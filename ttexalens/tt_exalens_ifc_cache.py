@@ -147,6 +147,10 @@ class TTExaLensCacheThrough(TTExaLensCache):
     def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
         return self.communicator.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout)
 
+    @cache_decorator
+    def read_arc_telemetry_entry(self, device_id, telemetry_tag):
+        return self.communicator.read_arc_telemetry_entry(device_id, telemetry_tag)
+
     def using_cache(self) -> bool:
         return True
 
@@ -275,6 +279,10 @@ class TTExaLensCacheReader(TTExaLensCache):
 
     @read_decorator
     def arc_msg(self, device_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int):
+        pass
+
+    @read_decorator
+    def read_arc_telemetry_entry(self, device_id, telemetry_tag):
         pass
 
     def using_cache(self) -> bool:

@@ -7,6 +7,7 @@
 #include <tuple>
 
 #include "ttexalensserver/read_tile.hpp"
+#include "umd/device/arc_telemetry_reader.h"
 #include "umd/device/cluster.h"
 
 namespace tt::exalens {
@@ -222,6 +223,16 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(u
     uint32_t return_4 = 0;
     int return_code = cluster->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout, &return_3, &return_4);
     return std::make_tuple(return_code, return_3, return_4);
+}
+
+std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
+    // Speed optimization: cache ArcTelemetryReader to avoid creating it multiple times
+    if (!cached_arc_telemetry_reader || cached_arc_telemetry_reader_chip_id != chip_id) {
+        cached_arc_telemetry_reader =
+            tt::umd::ArcTelemetryReader::create_arc_telemetry_reader(cluster->get_tt_device(chip_id));
+        cached_arc_telemetry_reader_chip_id = chip_id;
+    }
+    return cached_arc_telemetry_reader->read_entry(telemetry_tag);
 }
 
 }  // namespace tt::exalens

@@ -200,6 +200,13 @@ TEST(ttexalens_communication, arc_msg) {
                  "\n  noc_id: 0\n  chip_id: 1\n  msg_code: 2\n  wait_for_done: 1\n  arg0: 3\n  arg1: 4\n  timeout: 5");
 }
 
+TEST(ttexalens_communication, read_arc_telemetry_entry) {
+    auto req = tt::exalens::read_arc_telemetry_entry_request{tt::exalens::request_type::read_arc_telemetry_entry, 0, 1};
+    test_yaml_request(
+        req, "- type: " + std::to_string(static_cast<int>(tt::exalens::request_type::read_arc_telemetry_entry)) +
+                 "\n  chip_id: 0\n  telemetry_tag: 1");
+}
+
 TEST(ttexalens_communication, jtag_read32) {
     auto req = tt::exalens::jtag_read32_request{tt::exalens::request_type::jtag_read32, 0, 1, 2, 3, 123456};
     test_yaml_request(req, "- type: " + std::to_string(static_cast<int>(tt::exalens::request_type::jtag_read32)) +
