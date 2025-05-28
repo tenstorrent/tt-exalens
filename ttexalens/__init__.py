@@ -20,7 +20,7 @@ class Verbosity(Enum):
     DEBUG = 5
 
     @staticmethod
-    def set(verbosity: Union[int , "Verbosity"]) -> None:
+    def set(verbosity: Union[int, "Verbosity"]) -> None:
         """Set the verbosity level of messages shown.
 
         Args:
