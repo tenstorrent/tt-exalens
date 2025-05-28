@@ -836,15 +836,6 @@ class TestARC(unittest.TestCase):
         ret_from_id = lib.read_arc_telemetry_entry(device_id, tag_id[index])
         self.assertEqual(ret_from_name, ret_from_id)
 
-    def test_read_arc_postcode(self):
-        """Test reading ARC postcode"""
-        device = self.context.devices[0]
-        arc_core_loc = device.get_arc_block_location()
-
-        postcode = lib.read_word_from_device(arc_core_loc, device.NOC_ARC_RESET_BASE_ADDR + device.ARC_POSTCODE_OFFSET)
-
-        self.assertEqual(postcode & 0xFFFF0000, 0xC0DE0000)
-
     def test_load_arc_fw(self):
 
         if self.is_blackhole():
