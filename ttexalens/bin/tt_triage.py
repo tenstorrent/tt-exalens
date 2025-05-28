@@ -70,6 +70,7 @@ try:
         read_word_from_device,
         top_callstack,
         parse_elf,
+        read_arc_telemetry_entry,
     )
     from ttexalens.reg_access_common import set_verbose, DEFAULT_TABLE_FORMAT
     from ttexalens.device import Device
@@ -137,7 +138,8 @@ def check_ARC(dev):
 
     # Postcode must be correct (C0DE)
     # postcode = dev.ARC.ARC_RESET.SCRATCH[0].read()
-    postcode = arc_read(0x880030060)
+
+    postcode = arc_read(dev.NOC_ARC_RESET_BASE_ADDR + dev.ARC_POSTCODE_OFFSET)
     if postcode & 0xFFFF0000 != 0xC0DE0000:
         print(f"ARC postcode: {RED}0x{postcode:08x}{RST}. Expected {BLUE}0xc0de____{RST}")
         raiseTTTriageError(check_ARC.__doc__)
@@ -145,18 +147,55 @@ def check_ARC(dev):
     if type(dev) == WormholeDevice:
         # Heartbeat must be increasing
         # heartbeat_0 = dev.ARC.reset_unit.DEBUG.heartbeat.read()
-        heartbeat_0 = arc_read(0x8100786C4)
+        heartbeat_0 = read_arc_telemetry_entry(dev.id(), "TAG_ARC0_HEALTH")
         delay_seconds = 0.1
         time.sleep(delay_seconds)
         # heartbeat_1 = dev.ARC.ARC_CSM.DEBUG.heartbeat.read()
-        heartbeat_1 = arc_read(0x8100786C4)
+        heartbeat_1 = read_arc_telemetry_entry(dev.id(), "TAG_ARC0_HEALTH")
         if heartbeat_1 <= heartbeat_0:
             print(f"ARC heartbeat not increasing: {RED}{heartbeat_1}{RST}.")
             raiseTTTriageError(check_ARC.__doc__)
 
         # Compute uptime
         # arcclk_mhz = dev.ARC.ARC_CSM.AICLK_PPM.curr_arcclk.read()
-        arcclk_mhz = arc_read(0x8100782AC)
+        arcclk_mhz = read_arc_telemetry_entry(dev.id(), "TAG_ARCCLK")
+        heartbeats_per_second = (heartbeat_1 - heartbeat_0) / delay_seconds
+        uptime_seconds = heartbeat_1 / heartbeats_per_second
+
+        # Heartbeat must be between 500 and 20000 hb/s
+        if heartbeats_per_second < 500:
+            print(
+                f"ARC heartbeat is too low: {RED}{heartbeats_per_second}{RST}hb/s. Expected at least {BLUE}500{RST}hb/s"
+            )
+            raiseTTTriageError(check_ARC.__doc__)
+        if heartbeats_per_second > 20000:
+            print(
+                f"ARC heartbeat is too high: {RED}{heartbeats_per_second}{RST}hb/s. Expected at most {BLUE}20000{RST}hb/s"
+            )
+            raiseTTTriageError(check_ARC.__doc__)
+
+        # Print heartbeat and uptime
+        verbose(f"ARC heartbeat: {heartbeat_1} - {heartbeat_0} = {heartbeats_per_second}hb/s, ARCCLK: {arcclk_mhz} MHz")
+        days = int(uptime_seconds // (24 * 3600))
+        hours = int((uptime_seconds % (24 * 3600)) // 3600)
+        minutes = int((uptime_seconds % 3600) // 60)
+        seconds = int(uptime_seconds % 60)
+        verbose(f"Approximate ARC uptime: {GREEN}{days}d {hours:02}:{minutes:02}:{seconds:02}s{RST}")
+    elif type(dev) == BlackholeDevice:
+        # Heartbeat must be increasing
+        # heartbeat_0 = dev.ARC.reset_unit.DEBUG.heartbeat.read()
+        heartbeat_0 = read_arc_telemetry_entry(dev.id(), "TAG_TIMER_HEARTBEAT")
+        delay_seconds = 0.1
+        time.sleep(delay_seconds)
+        # heartbeat_1 = dev.ARC.ARC_CSM.DEBUG.heartbeat.read()
+        heartbeat_1 = read_arc_telemetry_entry(dev.id(), "TAG_TIMER_HEARTBEAT")
+        if heartbeat_1 <= heartbeat_0:
+            print(f"ARC heartbeat not increasing: {RED}{heartbeat_1}{RST}.")
+            raiseTTTriageError(check_ARC.__doc__)
+
+        # Compute uptime
+        # arcclk_mhz = dev.ARC.ARC_CSM.AICLK_PPM.curr_arcclk.read()
+        arcclk_mhz = read_arc_telemetry_entry(dev.id(), "TAG_ARCCLK")
         heartbeats_per_second = (heartbeat_1 - heartbeat_0) / delay_seconds
         uptime_seconds = heartbeat_1 / heartbeats_per_second
 
@@ -549,7 +588,7 @@ def main(argv=None):
                 check_NOC(dev)
                 check_L1(dev)
                 check_riscV(dev)
-                dump_running_ops(dev)
+                # dump_running_ops(dev)
             else:
                 raiseTTTriageError(f"{dev._arch} devices are not supported yet.")
     except TTTriageError as e:
