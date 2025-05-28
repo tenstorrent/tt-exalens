@@ -58,7 +58,6 @@ except ModuleNotFoundError as e:
     exit(1)
 
 
-from typing import List
 from ttexalens import tt_exalens_init
 from ttexalens import tt_exalens_server
 from ttexalens import util as util
@@ -408,7 +407,7 @@ def main():
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
     util.VERBOSE(f"Verbosity level: {Verbosity.get().name} ({Verbosity.get().value})")
 
-    wanted_devices: List[int] = None
+    wanted_devices: list[int] = None
     if args["--devices"]:
         wanted_devices = args["--devices"].split(",")
         wanted_devices = [int(d) for d in wanted_devices]

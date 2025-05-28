@@ -97,7 +97,7 @@ Examples:
     console.print("[bold red]Warning:[/bold red] Temperature exceeds threshold")
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -196,7 +196,7 @@ class RichFormatter:
         else:
             return str(raw_value)
 
-    def flatten_grouping(self, grouping: List[List[str]]) -> List[List[str]]:
+    def flatten_grouping(self, grouping: list[list[str]]) -> list[list[str]]:
         """
         Flattens the grouping structure for simple print mode.
 
@@ -215,7 +215,7 @@ class RichFormatter:
     def display_grouped_data(
         self,
         data: Dict[str, Dict[str, Any]],
-        grouping: List[List[str]],
+        grouping: list[list[str]],
         simple_print: bool = False,
         empty_text: str = "<No data>",
     ) -> None:

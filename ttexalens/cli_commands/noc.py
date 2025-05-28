@@ -33,7 +33,7 @@ Examples:
 """
 
 # Standard imports first
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 # Third-party imports
 from docopt import docopt
@@ -203,7 +203,7 @@ def display_all_noc_status_registers(loc: OnChipCoordinate, device, simple_print
 
 
 def display_specific_noc_registers(
-    loc: OnChipCoordinate, device, reg_names: List[str], noc_id: int, simple_print: bool = False
+    loc: OnChipCoordinate, device, reg_names: list[str], noc_id: int, simple_print: bool = False
 ) -> None:
     """
     Display one or more specific NOC registers by name.
@@ -255,7 +255,7 @@ def display_specific_noc_registers(
 ###############################################################################
 # Main Command Entry
 ###############################################################################
-def run(cmd_text: str, context: Context, ui_state: UIState) -> List:
+def run(cmd_text: str, context: Context, ui_state: UIState) -> list:
     """
     Main entry point for the NOC command.
 

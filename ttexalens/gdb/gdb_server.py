@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from io import StringIO
 import threading
-from typing import Dict, List, Set
+from typing import Dict, Set
 from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 
 from ttexalens.gdb.gdb_communication import (
@@ -69,7 +69,7 @@ class GdbServer(threading.Thread):
         )  # dictionary of supported gdb client features (key: feature, value: mostly True/False, but can be anything)
         self.paged_thread_list: GdbThreadListPaged = None  # helper class that returns list of threads in paged manner
         self.file_server: GdbFileServer = GdbFileServer(context)  # File server that serves gdb client file operations
-        self.vCont_pending_statuses: List[
+        self.vCont_pending_statuses: list[
             str
         ] = (
             []
@@ -1152,7 +1152,7 @@ class GdbServer(threading.Thread):
         return GdbServer.serialize_to_xml("osdata", "processes", processes)
 
     @staticmethod
-    def serialize_to_xml(name: str, type: str, data: List[Dict[str, str]]):
+    def serialize_to_xml(name: str, type: str, data: list[dict[str, str]]):
         sb = StringIO()
         sb.write(f'<{name} type="{xml_escape(type)}">')
         for item in data:

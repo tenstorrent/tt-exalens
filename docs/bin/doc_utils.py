@@ -39,7 +39,7 @@ class ElementPPrinter:
     def print_code(self, code: str) -> str:
         return f"```\n{code}\n```\n"
 
-    def print_items(self, items: List[str]) -> str:
+    def print_items(self, items: list[str]) -> str:
         result = ""
         for item in items:
             result += f"- {item}\n"

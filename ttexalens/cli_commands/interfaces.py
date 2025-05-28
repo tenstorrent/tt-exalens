@@ -21,7 +21,7 @@ command_metadata = {
     "context": ["limited", "metal"],
 }
 
-from typing import List, Tuple
+from typing import Tuple
 from docopt import docopt
 from ttexalens.context import Context
 
@@ -111,5 +111,5 @@ def run(cmd_text, context: Context, ui_state=None):
                 + str(decode_test_id(read_axi_size(context, device_id, efuse_jtag_axi, TEST_ID_SIZE)))
             )
 
-    navigation_suggestions: List[int] = []
+    navigation_suggestions: list[int] = []
     return navigation_suggestions

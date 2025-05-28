@@ -4,7 +4,6 @@
 from collections import namedtuple
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import List
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.parse_elf import ParsedElfFile, ParsedElfFileWithOffset, read_elf
@@ -1024,8 +1023,8 @@ class RiscLoader:
 
     def get_callstack(
         self,
-        parsed_elfs: List[ParsedElfFile],
-        offsets: List[int | None] | None = None,
+        parsed_elfs: list[ParsedElfFile],
+        offsets: list[int | None] | None = None,
         limit: int = 100,
         stop_on_main: bool = True,
     ):

@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from typing import List
 from enum import Enum
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -354,14 +353,14 @@ class TensixDebug:
         )
         return data
 
-    def read_regfile(self, regfile: int | str | REGFILE) -> List[float | int]:
+    def read_regfile(self, regfile: int | str | REGFILE) -> list[float | int]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
 
         Args:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
 
         Returns:
-                List[float | int]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
+                list[float | int]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
         """
         regfile = convert_regfile(regfile)
         data = self.read_regfile_data(regfile)

@@ -6,7 +6,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, replace
 from functools import cached_property
-from typing import Dict, Iterable, Iterator, List, Sequence, Tuple
+from typing import Dict, Iterable, Iterator, Sequence, Tuple
 
 from tabulate import tabulate
 from ttexalens.context import Context
@@ -105,10 +105,10 @@ class NocControlRegisterDescription(TensixRegisterDescription):
 #
 class Device(TTObject):
     instructions: TensixInstructions = None
-    DIE_X_TO_NOC_0_X: List[int] = []
-    DIE_Y_TO_NOC_0_Y: List[int] = []
-    NOC_0_X_TO_DIE_X: List[int] = []
-    NOC_0_Y_TO_DIE_Y: List[int] = []
+    DIE_X_TO_NOC_0_X: list[int] = []
+    DIE_Y_TO_NOC_0_Y: list[int] = []
+    NOC_0_X_TO_DIE_X: list[int] = []
+    NOC_0_Y_TO_DIE_Y: list[int] = []
     PCI_ARC_RESET_BASE_ADDR: int = None
     NOC_ARC_RESET_BASE_ADDR: int = None
     PCI_ARC_CSM_DATA_BASE_ADDR: int = None
@@ -126,7 +126,7 @@ class Device(TTObject):
     @cached_property
     def debuggable_cores(self):
         # Base implementation for wormhole and blackhole
-        cores: List[RiscDebug] = []
+        cores: list[RiscDebug] = []
         for coord in self.get_block_locations("functional_workers"):
             for risc_id in range(4):  # 4 because we have a hardware bug for debugging ncrisc
                 risc_location = RiscLoc(coord, 0, risc_id)
@@ -244,7 +244,7 @@ class Device(TTObject):
         # Base class doesn't know if it is translated coordinate, but specialized classes do
         return False
 
-    def get_block_locations(self, block_type="functional_workers") -> List[OnChipCoordinate]:
+    def get_block_locations(self, block_type="functional_workers") -> list[OnChipCoordinate]:
         """
         Returns locations of all blocks of a given type
         """
@@ -265,7 +265,7 @@ class Device(TTObject):
         """
         Returns locations of all blocks as dictionary of tuples (unchanged coordinates from YAML)
         """
-        result: Dict[str, List[OnChipCoordinate]] = {}
+        result: Dict[str, list[OnChipCoordinate]] = {}
         for block_type in self.block_types:
             locs = []
             dev = self.yaml_file.root
@@ -309,7 +309,7 @@ class Device(TTObject):
     # See coordinate.py for valid values of axis_coordinates
     def render(self, axis_coordinate="die", cell_renderer=None, legend=None):
         dev = self.yaml_file.root
-        rows: List[List[str]] = []
+        rows: list[list[str]] = []
 
         # Retrieve all block locations
         all_block_locs = dict()
@@ -413,36 +413,36 @@ class Device(TTObject):
                 util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 
     # ALU GETTER
-    def get_alu_config(self) -> List[dict]:
+    def get_alu_config(self) -> list[dict]:
         return []
 
     # UNPACKER GETTERS
 
-    def get_unpack_tile_descriptor(self) -> List[dict]:
+    def get_unpack_tile_descriptor(self) -> list[dict]:
         return []
 
-    def get_unpack_config(self) -> List[dict]:
+    def get_unpack_config(self) -> list[dict]:
         return []
 
     # PACKER GETTERS
 
-    def get_pack_config(self) -> List[dict]:
+    def get_pack_config(self) -> list[dict]:
         return []
 
-    def get_relu_config(self) -> List[dict]:
+    def get_relu_config(self) -> list[dict]:
         return []
 
-    def get_pack_dest_rd_ctrl(self) -> List[dict]:
+    def get_pack_dest_rd_ctrl(self) -> list[dict]:
         return []
 
-    def get_pack_edge_offset(self) -> List[dict]:
+    def get_pack_edge_offset(self) -> list[dict]:
         return []
 
-    def get_pack_counters(self) -> List[dict]:
+    def get_pack_counters(self) -> list[dict]:
         return []
 
     @abstractmethod
-    def _get_tensix_register_map_keys(self) -> List[str]:
+    def _get_tensix_register_map_keys(self) -> list[str]:
         pass
 
     @abstractmethod
@@ -458,7 +458,7 @@ class Device(TTObject):
         pass
 
     @abstractmethod
-    def _get_arc_telemetry_tags_map_keys(self) -> List[str] | None:
+    def _get_arc_telemetry_tags_map_keys(self) -> list[str] | None:
         pass
 
     @abstractmethod
@@ -575,7 +575,7 @@ class Device(TTObject):
         base_addr = description.address
         return base_addr + (noc_id * self.NOC_REGISTER_OFFSET)
 
-    def get_noc_register_names(self) -> List[str]:
+    def get_noc_register_names(self) -> list[str]:
         """
         Get the list of NOC register names.
 
