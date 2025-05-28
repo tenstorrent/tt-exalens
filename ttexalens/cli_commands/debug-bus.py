@@ -123,7 +123,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                     print(f"{where} {signal}: 0x{value:x}")
                 else:
                     value = debug_bus_signal_store.read_signal(signal)
-                    signal_description = f"Diasy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
+                    signal_description = f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
                     print(f"{where} Debug Bus Config({signal_description}) = 0x{value:x}")
 
     return []
