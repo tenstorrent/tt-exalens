@@ -107,7 +107,9 @@ void tt::exalens::communication::request_loop() {
                     case tt::exalens::request_type::arc_msg:
                         invalid_message = message.size() != sizeof(arc_msg_request);
                         break;
-
+                    case tt::exalens::request_type::read_arc_telemetry_entry:
+                        invalid_message = message.size() != sizeof(read_arc_telemetry_entry_request);
+                        break;
                     case request_type::jtag_read32:
                         invalid_message = message.size() != sizeof(jtag_read32_request);
                         break;

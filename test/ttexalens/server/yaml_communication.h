@@ -30,6 +30,7 @@ class yaml_communication : public tt::exalens::communication {
     std::string serialize(const tt::exalens::get_device_soc_description_request& request);
     std::string serialize(const tt::exalens::get_file_request& request);
     std::string serialize(const tt::exalens::arc_msg_request& request);
+    std::string serialize(const tt::exalens::read_arc_telemetry_entry_request& request);
     std::string serialize(const tt::exalens::jtag_read32_request& request);
     std::string serialize(const tt::exalens::jtag_write32_request& request);
     std::string serialize(const tt::exalens::jtag_read32_axi_request& request);

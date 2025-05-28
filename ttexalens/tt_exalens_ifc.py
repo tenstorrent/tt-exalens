@@ -30,6 +30,7 @@ class ttexalens_server_request_type(Enum):
     get_device_arch = 19
     get_device_soc_description = 20
     arc_msg = 21
+    read_arc_telemetry_entry = 22
 
     jtag_read32 = 50
     jtag_write32 = 51
@@ -272,6 +273,17 @@ class ttexalens_server_communication:
         )
         return self._check(self._socket.recv())
 
+    def read_arc_telemetry_entry(self, device_id: int, telemetry_tag: int):
+        self._socket.send(
+            struct.pack(
+                "<BBB",
+                ttexalens_server_request_type.read_arc_telemetry_entry.value,
+                device_id,
+                telemetry_tag,
+            )
+        )
+        return self._check(self._socket.recv())
+
     def jtag_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
         self._socket.send(
             struct.pack(
@@ -420,6 +432,9 @@ class ttexalens_client(TTExaLensCommunicator):
             self._communication.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout)
         )
 
+    def read_arc_telemetry_entry(self, device_id, telemetry_tag):
+        return self.parse_uint32_t(self._communication.read_arc_telemetry_entry(device_id, telemetry_tag))
+
     def jtag_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
         return self.parse_uint32_t(self._communication.jtag_read32(noc_id, chip_id, noc_x, noc_y, address))
 
@@ -541,6 +556,9 @@ class TTExaLensPybind(TTExaLensCommunicator):
         return self._check_result(
             ttexalens_pybind.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout)
         )
+
+    def read_arc_telemetry_entry(self, device_id, telemetry_tag):
+        return self._check_result(ttexalens_pybind.read_arc_telemetry_entry(device_id, telemetry_tag))
 
 
 def init_pybind(wanted_devices=None, init_jtag=False, initialize_with_noc1=False):

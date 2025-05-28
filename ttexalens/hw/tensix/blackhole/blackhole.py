@@ -114,6 +114,16 @@ class BlackholeDevice(Device):
         else:
             return None
 
+    def _get_arc_telemetry_tags_map_keys(self) -> list[str]:
+        """Returns the keys of the ARC telemetry tags map."""
+        return list(BlackholeDevice.__arc_telemetry_tags_map.keys())
+
+    def _get_arc_telemetry_tag_id(self, tag_name) -> int | None:
+        """Returns the telemetry tag ID for a given tag name."""
+        if tag_name in BlackholeDevice.__arc_telemetry_tags_map:
+            return BlackholeDevice.__arc_telemetry_tags_map[tag_name]
+        return None
+
     def _get_riscv_local_memory_base_address(self) -> int:
         return BlackholeDevice.RISC_LOCAL_MEM_BASE
 
@@ -126,6 +136,72 @@ class BlackholeDevice(Device):
             return BlackholeDevice.NCRISC_LOCAL_MEM_SIZE
         else:
             return None
+
+    __arc_telemetry_tags_map = {
+        "TAG_BOARD_ID_HIGH": 1,
+        "TAG_BOARD_ID_LOW": 2,
+        "TAG_ASIC_ID": 3,
+        "TAG_HARVESTING_STATE": 4,
+        "TAG_UPDATE_TELEM_SPEED": 5,
+        "TAG_VCORE": 6,
+        "TAG_TDP": 7,
+        "TAG_TDC": 8,
+        "TAG_VDD_LIMITS": 9,
+        "TAG_THM_LIMIT_SHUTDOWN": 10,
+        "TAG_THM_LIMITS": 10,  # Same as TAG_THM_LIMIT_SHUTDOWN
+        "TAG_ASIC_TEMPERATURE": 11,
+        "TAG_VREG_TEMPERATURE": 12,
+        "TAG_BOARD_TEMPERATURE": 13,
+        "TAG_AICLK": 14,
+        "TAG_AXICLK": 15,
+        "TAG_ARCCLK": 16,
+        "TAG_L2CPUCLK0": 17,
+        "TAG_L2CPUCLK1": 18,
+        "TAG_L2CPUCLK2": 19,
+        "TAG_L2CPUCLK3": 20,
+        "TAG_ETH_LIVE_STATUS": 21,
+        "TAG_GDDR_STATUS": 22,
+        "TAG_GDDR_SPEED": 23,
+        "TAG_ETH_FW_VERSION": 24,
+        "TAG_GDDR_FW_VERSION": 25,
+        "TAG_BM_APP_FW_VERSION": 26,
+        "TAG_BM_BL_FW_VERSION": 27,
+        "TAG_FLASH_BUNDLE_VERSION": 28,
+        "TAG_CM_FW_VERSION": 29,
+        "TAG_L2CPU_FW_VERSION": 30,
+        "TAG_FAN_SPEED": 31,
+        "TAG_TIMER_HEARTBEAT": 32,
+        "TAG_TELEM_ENUM_COUNT": 33,
+        "TAG_ENABLED_TENSIX_COL": 34,
+        "TAG_ENABLED_ETH": 35,
+        "TAG_ENABLED_GDDR": 36,
+        "TAG_ENABLED_L2CPU": 37,
+        "TAG_PCIE_USAGE": 38,
+        "TAG_INPUT_CURRENT": 39,
+        "TAG_NOC_TRANSLATION": 40,
+        "TAG_FAN_RPM": 41,
+        "TAG_GDDR_0_1_TEMP": 42,
+        "TAG_GDDR_2_3_TEMP": 43,
+        "TAG_GDDR_4_5_TEMP": 44,
+        "TAG_GDDR_6_7_TEMP": 45,
+        "TAG_GDDR_0_1_CORR_ERRS": 46,
+        "TAG_GDDR_2_3_CORR_ERRS": 47,
+        "TAG_GDDR_4_5_CORR_ERRS": 48,
+        "TAG_GDDR_6_7_CORR_ERRS": 49,
+        "TAG_GDDR_UNCORR_ERRS": 50,
+        "TAG_MAX_GDDR_TEMP": 51,
+        "TAG_ASIC_LOCATION": 52,
+        "TAG_AICLK_LIMIT_MAX": 53,
+        "TAG_TDP_LIMIT_MAX": 54,
+        "TAG_TDC_LIMIT_MAX": 55,
+        "TAG_THM_LIMIT_THROTTLE": 56,
+        "TAG_FW_BUILD_DATE": 57,
+        "TAG_TT_FLASH_VERSION": 58,
+        "TAG_ENABLED_TENSIX_ROW": 59,
+        "TAG_THERM_TRIP_COUNT": 61,
+        "TAG_ASIC_ID_HIGH": 62,
+        "TAG_ASIC_ID_LOW": 63,
+    }
 
     __register_map = {
         # UNPACK TILE DESCRIPTOR SEC0
