@@ -2,7 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import sys
-from typing import Any, Callable
 
 from ttexalens.tt_exalens_ifc import ttexalens_client, ttexalens_server_not_supported
 
@@ -10,7 +9,7 @@ server_port = 0
 server = None
 
 
-def check_not_implemented_response(server_command: Callable[[], Any]):
+def check_not_implemented_response(server_command: callable[[], any]):
     try:
         server_command()
         print("fail")

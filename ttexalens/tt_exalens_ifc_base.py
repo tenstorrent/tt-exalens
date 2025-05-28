@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from abc import ABC, abstractmethod
 import io
-from typing import Iterable, Tuple
+from typing import Iterable
 
 
 class TTExaLensCommunicator(ABC):
@@ -51,7 +51,7 @@ class TTExaLensCommunicator(ABC):
         pass
 
     @abstractmethod
-    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system) -> Tuple[int, int]:
+    def convert_from_noc0(self, chip_id, noc_x, noc_y, core_type, coord_system) -> tuple[int, int]:
         pass
 
     @abstractmethod

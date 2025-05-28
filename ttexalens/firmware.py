@@ -6,7 +6,6 @@ This module is used to represent the firmware
 """
 
 import time
-from typing import Callable, Dict, Tuple
 from ttexalens import parse_elf
 from ttexalens import util as util
 import re
@@ -40,7 +39,7 @@ class ELF:
         self.names. For example, if filemap is { "brisc" : "./build/riscv-src/wormhole/sample.brisc.elf" },
         the parsed content of "./build/riscv-src/wormhole/sample.brisc.elf" will be stored in self.names["brisc"].
         """
-        self.names: Dict[str, parse_elf.ParsedElfFile] = dict()
+        self.names: dict[str, parse_elf.ParsedElfFile] = dict()
         self.filemap = filemap
         self._file_ifc = file_ifc
         self.name_word_pattern = re.compile(r"[_@.a-zA-Z]+")
@@ -70,7 +69,7 @@ class ELF:
             resolved_type = self.names[prefix].types[var["type"]].resolved_type
             self.names[prefix].variables[var_name] = FAKE_DIE(var_name, addr=addr, resolved_type=resolved_type)
 
-    def _get_prefix_and_suffix(self, path_str) -> Tuple[str, str]:
+    def _get_prefix_and_suffix(self, path_str) -> tuple[str, str]:
         dot_pos = path_str.find(".")
         if dot_pos == -1:
             return "", path_str  # just the suffix
@@ -210,7 +209,7 @@ class ELF:
         return data
 
     @staticmethod
-    def get_mem_reader(context, device_id, core_loc) -> Callable[[int, int, int], list[int]]:
+    def get_mem_reader(context, device_id, core_loc) -> callable[[int, int, int], list[int]]:
         """
         Returns a simple memory reader function that reads from a given device and a given core.
         """

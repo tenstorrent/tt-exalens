@@ -6,7 +6,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, replace
 from functools import cached_property
-from typing import Dict, Iterable, Iterator, Sequence, Tuple
+from typing import Iterable, Sequence
 
 from tabulate import tabulate
 from ttexalens.context import Context
@@ -187,7 +187,7 @@ class Device(TTObject):
 
     def _init_coordinate_systems(self):
         # Fill in coordinates for each block type
-        self._noc0_to_block_type: Dict[Tuple[int, int], str] = {}
+        self._noc0_to_block_type: dict[tuple[int, int], str] = {}
         for block_type, locations in self._block_locations.items():
             for loc in locations:
                 self._noc0_to_block_type[loc._noc0_coord] = block_type
@@ -219,7 +219,7 @@ class Device(TTObject):
             self._to_noc0[(die_location, "die", core_type)] = noc0_location
             self._to_noc0[(die_location, "die", "any")] = noc0_location
 
-    def to_noc0(self, coord_tuple: Tuple[int, int], coord_system: str, core_type: str = "any") -> Tuple[int, int]:
+    def to_noc0(self, coord_tuple: tuple[int, int], coord_system: str, core_type: str = "any") -> tuple[int, int]:
         try:
             return self._to_noc0[(coord_tuple, coord_system, core_type)]
         except:
@@ -227,7 +227,7 @@ class Device(TTObject):
                 f"to_noc0(coord_tuple={coord_tuple}, coord_system={coord_system}, core_type={core_type})"
             )
 
-    def from_noc0(self, noc0_tuple: Tuple[int, int], coord_system: str) -> Tuple[Tuple[int, int], str]:
+    def from_noc0(self, noc0_tuple: tuple[int, int], coord_system: str) -> tuple[tuple[int, int], str]:
         try:
             return self._from_noc0[(noc0_tuple, coord_system)]
         except:
@@ -265,7 +265,7 @@ class Device(TTObject):
         """
         Returns locations of all blocks as dictionary of tuples (unchanged coordinates from YAML)
         """
-        result: Dict[str, list[OnChipCoordinate]] = {}
+        result: dict[str, list[OnChipCoordinate]] = {}
         for block_type in self.block_types:
             locs = []
             dev = self.yaml_file.root
@@ -506,7 +506,7 @@ class Device(TTObject):
             return "----"
         return bt
 
-    REGISTER_ADDRESSES: Dict[str, int] = {}
+    REGISTER_ADDRESSES: dict[str, int] = {}
 
     def get_arc_register_addr(self, name: str) -> int:
         try:

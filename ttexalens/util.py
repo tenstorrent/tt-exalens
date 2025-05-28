@@ -7,7 +7,6 @@ from tabulate import tabulate
 from sortedcontainers import SortedSet
 import traceback, socket
 import ryml, yaml
-from typing import Dict
 from ttexalens import Verbosity
 import re
 
@@ -440,7 +439,7 @@ def ryml_load_all(yaml_string):
 # Container for YAML
 class YamlContainer:
     def __init__(self, yaml_string, source="N/A"):
-        self.root: Dict = dict()
+        self.root: dict = dict()
         parsed_documents = ryml_load_all(yaml_string)
         for d in parsed_documents:
             # Merge the documents
@@ -458,7 +457,7 @@ class YamlContainer:
 # Includes a cache in case a file is loaded multiple times
 class YamlFile:
     # Cache
-    file_cache: Dict = {}
+    file_cache: dict = {}
 
     def __init__(self, file_ifc, filepath, post_process_yaml=None, content=None):
         self.filepath = filepath
