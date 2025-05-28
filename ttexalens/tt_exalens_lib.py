@@ -151,8 +151,7 @@ def read_from_device(
 
 
 def write_words_to_device(
-    core_loc: str,
-    OnChipCoordinate,
+    core_loc: str | OnChipCoordinate,
     addr: int,
     data: int | list[int],
     device_id: int = 0,

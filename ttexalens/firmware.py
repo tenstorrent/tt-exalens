@@ -6,6 +6,7 @@ This module is used to represent the firmware
 """
 
 import time
+from typing import Callable
 from ttexalens import parse_elf
 from ttexalens import util as util
 import re
@@ -209,7 +210,7 @@ class ELF:
         return data
 
     @staticmethod
-    def get_mem_reader(context, device_id, core_loc) -> callable[[int, int, int], list[int]]:
+    def get_mem_reader(context, device_id, core_loc) -> Callable[[int, int, int], list[int]]:
         """
         Returns a simple memory reader function that reads from a given device and a given core.
         """
