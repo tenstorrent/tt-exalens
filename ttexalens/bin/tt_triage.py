@@ -199,13 +199,13 @@ def check_ARC(dev):
         heartbeats_per_second = (heartbeat_1 - heartbeat_0) / delay_seconds
         uptime_seconds = heartbeat_1 / heartbeats_per_second
 
-        # Heartbeat must be between 500 and 20000 hb/s
-        if heartbeats_per_second < 500:
+        # Heartbeat must be between 100 and 1000
+        if heartbeats_per_second < 100:
             print(
                 f"ARC heartbeat is too low: {RED}{heartbeats_per_second}{RST}hb/s. Expected at least {BLUE}500{RST}hb/s"
             )
             raiseTTTriageError(check_ARC.__doc__)
-        if heartbeats_per_second > 20000:
+        if heartbeats_per_second > 1000:
             print(
                 f"ARC heartbeat is too high: {RED}{heartbeats_per_second}{RST}hb/s. Expected at most {BLUE}20000{RST}hb/s"
             )
