@@ -38,10 +38,10 @@ from docopt import docopt
 from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_tensix import TensixDebug
-from typing import List, Union
+from typing import List
 
 
-def print_regfile(data: List[Union[int, float]]):
+def print_regfile(data: List[int | float]):
     for i in range(len(data)):
         print(data[i], end="\t")
         if i % 32 == 31:

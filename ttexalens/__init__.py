@@ -2,7 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from enum import Enum
-from typing import Union
 
 __all__ = [
     "tt_exalens_init",
@@ -20,7 +19,7 @@ class Verbosity(Enum):
     DEBUG = 5
 
     @staticmethod
-    def set(verbosity: Union[int, "Verbosity"]) -> None:
+    def set(verbosity: int | "Verbosity") -> None:
         """Set the verbosity level of messages shown.
 
         Args:

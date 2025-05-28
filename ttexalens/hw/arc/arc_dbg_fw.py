@@ -4,7 +4,7 @@
 # This code is used to interact with the ARC debug firmware on the device.
 import os
 import time
-from typing import Union, List
+from typing import List
 from ttexalens.context import Context
 from ttexalens.util import TTException
 from ttexalens.tt_exalens_lib_utils import check_context, arc_read, arc_write

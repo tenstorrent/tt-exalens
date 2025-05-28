@@ -5,7 +5,7 @@ import os
 import re
 import struct
 
-from typing import Union, List
+from typing import List
 
 from ttexalens import tt_exalens_init
 
@@ -16,7 +16,7 @@ from ttexalens.util import TTException
 
 
 def convert_coordinate(
-    core_loc: Union[str, OnChipCoordinate], device_id: int = 0, context: Context = None
+    core_loc: str | OnChipCoordinate, device_id: int = 0, context: Context = None
 ) -> OnChipCoordinate:
     """Converts a string coordinate to an OnChipCoordinate object.
 
@@ -36,7 +36,7 @@ def convert_coordinate(
 
 
 def read_word_from_device(
-    core_loc: Union[str, OnChipCoordinate],
+    core_loc: str | OnChipCoordinate,
     addr: int,
     device_id: int = 0,
     context: Context = None,
@@ -69,7 +69,7 @@ def read_word_from_device(
 
 
 def read_words_from_device(
-    core_loc: Union[str, OnChipCoordinate],
+    core_loc: str | OnChipCoordinate,
     addr: int,
     device_id: int = 0,
     word_count: int = 1,
@@ -113,7 +113,7 @@ def read_words_from_device(
 
 
 def read_from_device(
-    core_loc: Union[str, OnChipCoordinate],
+    core_loc: str | OnChipCoordinate,
     addr: int,
     device_id: int = 0,
     num_bytes: int = 4,
@@ -153,9 +153,10 @@ def read_from_device(
 
 
 def write_words_to_device(
-    core_loc: Union[str, OnChipCoordinate],
+    core_loc: str,
+    OnChipCoordinate,
     addr: int,
-    data: Union[int, List[int]],
+    data: int | List[int],
     device_id: int = 0,
     context: Context = None,
     noc_id: int | None = None,
@@ -198,9 +199,9 @@ def write_words_to_device(
 
 
 def write_to_device(
-    core_loc: Union[str, OnChipCoordinate],
+    core_loc: str | OnChipCoordinate,
     addr: int,
-    data: "Union[List[int], bytes]",
+    data: "List[int] | bytes",
     device_id: int = 0,
     context: Context = None,
     noc_id: int | None = None,
@@ -247,7 +248,7 @@ def write_to_device(
 
 def load_elf(
     elf_file: str,
-    core_loc: Union[str, OnChipCoordinate, List[Union[str, OnChipCoordinate]]],
+    core_loc: str | OnChipCoordinate | List[str | OnChipCoordinate],
     risc_id: int = 0,
     device_id: int = 0,
     context: Context = None,
@@ -302,7 +303,7 @@ def load_elf(
 
 def run_elf(
     elf_file: str,
-    core_loc: Union[str, OnChipCoordinate, List[Union[str, OnChipCoordinate]]],
+    core_loc: str | OnChipCoordinate | List[str | OnChipCoordinate],
     risc_id: int = 0,
     device_id: int = 0,
     context: Context = None,
@@ -452,7 +453,7 @@ def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: 
 
 
 def read_tensix_register(
-    core_loc: Union[str, OnChipCoordinate],
+    core_loc: str | OnChipCoordinate,
     register,
     device_id: int = 0,
     context: Context = None,
@@ -486,7 +487,7 @@ def read_tensix_register(
 
 
 def write_tensix_register(
-    core_loc: Union[str, OnChipCoordinate],
+    core_loc: str | OnChipCoordinate,
     register,
     value: int,
     device_id: int = 0,
@@ -531,7 +532,7 @@ def parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile:
 
 def top_callstack(
     pc: int,
-    elfs: Union[List[str], str, List[ParsedElfFile], ParsedElfFile],
+    elfs: List[str] | str | List[ParsedElfFile] | ParsedElfFile,
     offsets: int | List[int | None] = None,
     context: Context = None,
 ) -> List:
@@ -574,8 +575,8 @@ def top_callstack(
 
 
 def callstack(
-    core_loc: Union[str, OnChipCoordinate],
-    elfs: Union[List[str], str, List[ParsedElfFile], ParsedElfFile],
+    core_loc: str | OnChipCoordinate,
+    elfs: List[str] | str | List[ParsedElfFile] | ParsedElfFile,
     offsets: int | List[int | None] = None,
     risc_id: int = 0,
     max_depth: int = 100,
@@ -637,7 +638,7 @@ def callstack(
 
 
 def read_riscv_memory(
-    core_loc: Union[str, OnChipCoordinate],
+    core_loc: str | OnChipCoordinate,
     addr: int,
     noc_id: int = 0,
     risc_id: int = 0,
@@ -695,7 +696,7 @@ def read_riscv_memory(
 
 
 def write_riscv_memory(
-    core_loc: Union[str, OnChipCoordinate],
+    core_loc: str | OnChipCoordinate,
     addr: int,
     value: int,
     noc_id: int = 0,

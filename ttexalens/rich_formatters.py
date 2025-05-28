@@ -97,7 +97,7 @@ Examples:
     console.print("[bold red]Warning:[/bold red] Temperature exceeds threshold")
 """
 
-from typing import Dict, List, Union, Any, Optional
+from typing import Dict, List, Any, Optional
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
