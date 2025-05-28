@@ -116,6 +116,7 @@ class Device(TTObject):
     PCI_ARC_ROM_DATA_BASE_ADDR: int = None
     NOC_ARC_ROM_DATA_BASE_ADDR: int = None
     NOC_REGISTER_OFFSET: int = None
+    ARC_POSTCODE_OFFSET: int = None
 
     # NOC reg type
     class RegType:
