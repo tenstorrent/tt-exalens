@@ -354,7 +354,9 @@ class RiscDebug:
 
     def cont(self, verify=True):
         if not self.is_halted():
-            util.WARN(f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is already running")
+            util.WARN(
+                f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is already running"
+            )
             return
         if self.verbose:
             util.INFO("  cont()")
@@ -377,7 +379,9 @@ class RiscDebug:
             - May log debug information if verbose mode is enabled
         """
         if not self.is_halted():
-            util.WARN(f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is already running")
+            util.WARN(
+                f"Continue: {get_risc_name(self.location.risc_id)} core at {self.location.loc} is already running"
+            )
             return
         if self.verbose:
             util.INFO("  cont()")
