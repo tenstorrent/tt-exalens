@@ -2,7 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import os
-from typing import Union
 
 from ttexalens import tt_exalens_ifc
 from ttexalens import tt_exalens_ifc_cache
@@ -123,7 +122,7 @@ def set_active_context(context: Context) -> None:
     GLOBAL_CONTEXT = context
 
 
-def locate_most_recent_build_output_dir() -> Union[str, None]:
+def locate_most_recent_build_output_dir() -> str | None:
     """Try to find a default output directory."""
     most_recent_modification_time = None
     try:

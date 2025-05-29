@@ -4,7 +4,6 @@
 from collections import namedtuple
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import List, Union
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.parse_elf import ParsedElfFile, ParsedElfFileWithOffset, read_elf
@@ -847,7 +846,7 @@ class RiscLoader:
             return address
         return address
 
-    def load_elf_sections(self, elf_path, loader_data: Union[str, int], loader_code: Union[str, int]):
+    def load_elf_sections(self, elf_path, loader_data: str | int, loader_code: str | int):
         """
         Given an ELF file, this function loads the sections specified in SECTIONS_TO_LOAD to the
         memory of the RISC-V core. It also loads (into location 0) the jump instruction to the
@@ -1024,8 +1023,8 @@ class RiscLoader:
 
     def get_callstack(
         self,
-        parsed_elfs: List[ParsedElfFile],
-        offsets: List[int | None] | None = None,
+        parsed_elfs: list[ParsedElfFile],
+        offsets: list[int | None] | None = None,
         limit: int = 100,
         stop_on_main: bool = True,
     ):

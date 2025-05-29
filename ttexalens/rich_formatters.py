@@ -97,13 +97,14 @@ Examples:
     console.print("[bold red]Warning:[/bold red] Temperature exceeds threshold")
 """
 
-from typing import Dict, List, Union, Any, Optional
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.columns import Columns
 from rich import box
 from rich.rule import Rule
+
+from typing import Any
 
 # Shared console instance that commands can use
 console = Console()
@@ -121,7 +122,7 @@ class RichFormatter:
     def create_data_table(
         self,
         group_name: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         simple_print: bool = False,
         title_style: str = "bold magenta",
         key_style: str = "cyan",
@@ -166,7 +167,7 @@ class RichFormatter:
             table.add_row(str(key), formatted_value)
         return table
 
-    def format_value(self, value_info: Dict[str, Any]) -> str:
+    def format_value(self, value_info: dict[str, Any]) -> str:
         """
         Format a value based on its format specification.
 
@@ -196,7 +197,7 @@ class RichFormatter:
         else:
             return str(raw_value)
 
-    def flatten_grouping(self, grouping: List[List[str]]) -> List[List[str]]:
+    def flatten_grouping(self, grouping: list[list[str]]) -> list[list[str]]:
         """
         Flattens the grouping structure for simple print mode.
 
@@ -214,8 +215,8 @@ class RichFormatter:
 
     def display_grouped_data(
         self,
-        data: Dict[str, Dict[str, Any]],
-        grouping: List[List[str]],
+        data: dict[str, dict[str, Any]],
+        grouping: list[list[str]],
         simple_print: bool = False,
         empty_text: str = "<No data>",
     ) -> None:
@@ -245,7 +246,7 @@ class RichFormatter:
     def display_key_value_table(
         self,
         title: str,
-        key_values: Dict[str, Any],
+        key_values: dict[str, Any],
         simple_print: bool = False,
         key_col_name: str = "Parameter",
         value_col_name: str = "Value",

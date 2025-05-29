@@ -6,7 +6,6 @@ A module containing utility functions and classes for documentation generation.
 """
 
 from abc import abstractmethod
-from typing import List, Dict
 
 
 def INFO(text: str) -> None:
@@ -39,7 +38,7 @@ class ElementPPrinter:
     def print_code(self, code: str) -> str:
         return f"```\n{code}\n```\n"
 
-    def print_items(self, items: List[str]) -> str:
+    def print_items(self, items: list[str]) -> str:
         result = ""
         for item in items:
             result += f"- {item}\n"
@@ -140,14 +139,14 @@ class SectionPPrinter:
         self.eprinter = element_printer
 
     @abstractmethod
-    def print_docs(self, docstring: Dict) -> str:
+    def print_docs(self, docstring: dict) -> str:
         """
         This abstract method should be implemented in the child class to print the documentation.
         All printing should be done through element_printer to guarantee consistent formatting.
         """
         pass
 
-    def print_usage(self, usage: Dict) -> str:
+    def print_usage(self, usage: dict) -> str:
         return self.eprinter.print_code(usage["code"])
 
     def print_description(self, description: dict) -> str:
@@ -167,7 +166,7 @@ class SectionPPrinter:
 
         return self.eprinter.print_items(argstrings)
 
-    def print_examples(self, examples: Dict) -> str:
+    def print_examples(self, examples: dict) -> str:
         result = ""
         for cmd in examples["commands"]:
             result += self.eprinter.print_text(cmd["text"])  # Command description

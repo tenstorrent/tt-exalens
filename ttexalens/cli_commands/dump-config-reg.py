@@ -43,7 +43,6 @@ from ttexalens.util import (
     CLR_END,
     dict_list_to_table,
 )
-from typing import List
 from tabulate import tabulate
 
 possible_registers = ["all", "alu", "pack", "unpack"]
@@ -57,7 +56,7 @@ def create_column_names(num_of_columns):
 
 
 # Converts list of configuration registers to table
-def config_regs_to_table(config_regs: List[dict], table_name: str, debug_tensix: TensixDebug, device: Device):
+def config_regs_to_table(config_regs: list[dict], table_name: str, debug_tensix: TensixDebug, device: Device):
     keys = list(config_regs[0].keys())
 
     if "blobs_y_start_lo" in keys and "blobs_y_start_hi" in keys:
