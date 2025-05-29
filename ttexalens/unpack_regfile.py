@@ -4,7 +4,6 @@
 
 import struct
 from enum import Enum
-from typing import Union
 
 
 class TensixDataFormat(Enum):
@@ -111,7 +110,7 @@ def unpack_bfp8_b(data):
     return bfloat16_values
 
 
-def unpack_data(data, df: Union[int, TensixDataFormat]):
+def unpack_data(data, df: int | TensixDataFormat):
     if isinstance(df, int):
         df = TensixDataFormat(df)
 

@@ -21,7 +21,6 @@ command_metadata = {
     "context": ["limited", "metal"],
 }
 
-from typing import List, Tuple
 from docopt import docopt
 from ttexalens.context import Context
 
@@ -79,7 +78,7 @@ def run(cmd_text, context: Context, ui_state=None):
     devices_list = list(context.devices.keys())
     for device_id in devices_list:
         if not context.devices[device_id]._has_jtag:
-            arc_location: Tuple[int, int] = context.devices[device_id]._block_locations["arc"][0].to("noc0")
+            arc_location: tuple[int, int] = context.devices[device_id]._block_locations["arc"][0].to("noc0")
             print(
                 f"NOC Device {device_id}: "
                 + str(
@@ -111,5 +110,5 @@ def run(cmd_text, context: Context, ui_state=None):
                 + str(decode_test_id(read_axi_size(context, device_id, efuse_jtag_axi, TEST_ID_SIZE)))
             )
 
-    navigation_suggestions: List[int] = []
+    navigation_suggestions: list[int] = []
     return navigation_suggestions

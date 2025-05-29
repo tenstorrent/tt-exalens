@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 from io import StringIO
 import threading
-from typing import Dict, List, Set
 from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 
 from ttexalens.gdb.gdb_communication import (
@@ -24,7 +23,7 @@ from ttexalens import util as util
 
 # Helper class returns currently debugging list of threads to gdb client in paged manner
 class GdbThreadListPaged:
-    def __init__(self, threads: Dict[int, GdbThreadId]):
+    def __init__(self, threads: dict[int, GdbThreadId]):
         self.threads = [thread for thread in threads.values() if isinstance(thread, GdbThreadId)]
         self.returned = 0
 
@@ -61,35 +60,35 @@ class GdbServer(threading.Thread):
         self.should_ack = True  # flag that indicates if we should send ack after each message
         self.stop_event = threading.Event()  # event that indicates that server should stop
 
-        self.prepared_responses_for_paging: Dict[str, str] = {}  # prepared responses for paged messages
-        self.client_features: Dict[
+        self.prepared_responses_for_paging: dict[str, str] = {}  # prepared responses for paged messages
+        self.client_features: dict[
             str, object
         ] = (
             {}
         )  # dictionary of supported gdb client features (key: feature, value: mostly True/False, but can be anything)
         self.paged_thread_list: GdbThreadListPaged = None  # helper class that returns list of threads in paged manner
         self.file_server: GdbFileServer = GdbFileServer(context)  # File server that serves gdb client file operations
-        self.vCont_pending_statuses: List[
+        self.vCont_pending_statuses: list[
             str
         ] = (
             []
         )  # List of status reports that should be returned to gdb client (it is stored in reversed order, so we can pop it from the end of the list)
 
         self.current_process: GdbProcess = None  # currently debugging process (core/thread - all in one)
-        self.debugging_threads: Dict[
+        self.debugging_threads: dict[
             int, GdbThreadId
         ] = {}  # Dictionary of threads that are currently being debugged (key: pid)
         self.next_pid = 1
-        self._last_available_processes: Dict[
+        self._last_available_processes: dict[
             RiscLoc, GdbProcess
         ] = {}  # Dictionary of last executed available processes that can be debugged (key: pid)
 
     @property
     def available_processes(self):
-        available_processes: Dict[
+        available_processes: dict[
             int, GdbProcess
         ] = {}  # Dictionary of available processes that can be debugged (key: pid)
-        last_available_processes: Dict[RiscLoc, GdbProcess] = {}
+        last_available_processes: dict[RiscLoc, GdbProcess] = {}
         for device in self.context.devices.values():
             for risc_debug in device.debuggable_cores:
                 if not risc_debug.is_in_reset():
@@ -618,7 +617,7 @@ class GdbServer(threading.Thread):
             # ‘vCont[;action[:thread-id]]…’
 
             # Create dictionary per thread that will contain actions that should be executed on that thread
-            thread_actions: Dict[int, str] = {}
+            thread_actions: dict[int, str] = {}
             for pid in self.debugging_threads.keys():
                 thread_actions[pid] = None
 
@@ -697,7 +696,7 @@ class GdbServer(threading.Thread):
                     return True
 
             # Apply actions
-            processes_to_watch: Set[GdbProcess] = set()
+            processes_to_watch: set[GdbProcess] = set()
             for pid in thread_actions.keys():
                 # NOTE: The server must ignore ‘c’, ‘C’, ‘s’, ‘S’, and ‘r’ actions for threads that are already running. Conversely, the server must ignore ‘t’ actions for threads that are already stopped.
                 process = available_processes.get(pid)
@@ -1152,7 +1151,7 @@ class GdbServer(threading.Thread):
         return GdbServer.serialize_to_xml("osdata", "processes", processes)
 
     @staticmethod
-    def serialize_to_xml(name: str, type: str, data: List[Dict[str, str]]):
+    def serialize_to_xml(name: str, type: str, data: list[dict[str, str]]):
         sb = StringIO()
         sb.write(f'<{name} type="{xml_escape(type)}">')
         for item in data:
