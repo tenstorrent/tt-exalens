@@ -4,12 +4,13 @@
 import sys
 
 from ttexalens.tt_exalens_ifc import ttexalens_client, ttexalens_server_not_supported
+from typing import Callable
 
 server_port = 0
 server = None
 
 
-def check_not_implemented_response(server_command: callable[[], any]):
+def check_not_implemented_response(server_command: Callable[[], any]):
     try:
         server_command()
         print("fail")
