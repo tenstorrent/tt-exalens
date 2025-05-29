@@ -526,6 +526,8 @@ class Device(TTObject):
                 "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
                 "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
                 "ARC_RESET_ARC_UDMIAXI_REGION": base_addr + 0x10C,
+                # Scratch register info:
+                # https://tenstorrent.atlassian.net/wiki/spaces/syseng/pages/1039663279/Wormhole+Scratch+Registers
                 "ARC_RESET_SCRATCH0": base_addr + 0x060,  # Postcode
                 "ARC_RESET_SCRATCH1": base_addr + 0x064,  # SPI boost code
                 "ARC_RESET_SCRATCH2": base_addr + 0x068,  # Msg ID for secondary msg queue
