@@ -104,6 +104,8 @@ from rich.columns import Columns
 from rich import box
 from rich.rule import Rule
 
+from typing import Any
+
 # Shared console instance that commands can use
 console = Console()
 
@@ -120,7 +122,7 @@ class RichFormatter:
     def create_data_table(
         self,
         group_name: str,
-        data: dict[str, any],
+        data: dict[str, Any],
         simple_print: bool = False,
         title_style: str = "bold magenta",
         key_style: str = "cyan",
@@ -165,7 +167,7 @@ class RichFormatter:
             table.add_row(str(key), formatted_value)
         return table
 
-    def format_value(self, value_info: dict[str, any]) -> str:
+    def format_value(self, value_info: dict[str, Any]) -> str:
         """
         Format a value based on its format specification.
 
@@ -213,7 +215,7 @@ class RichFormatter:
 
     def display_grouped_data(
         self,
-        data: dict[str, dict[str, any]],
+        data: dict[str, dict[str, Any]],
         grouping: list[list[str]],
         simple_print: bool = False,
         empty_text: str = "<No data>",
@@ -244,7 +246,7 @@ class RichFormatter:
     def display_key_value_table(
         self,
         title: str,
-        key_values: dict[str, any],
+        key_values: dict[str, Any],
         simple_print: bool = False,
         key_col_name: str = "Parameter",
         value_col_name: str = "Value",

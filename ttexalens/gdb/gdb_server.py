@@ -696,7 +696,7 @@ class GdbServer(threading.Thread):
                     return True
 
             # Apply actions
-            processes_to_watch: Set[GdbProcess] = set()
+            processes_to_watch: set[GdbProcess] = set()
             for pid in thread_actions.keys():
                 # NOTE: The server must ignore ‘c’, ‘C’, ‘s’, ‘S’, and ‘r’ actions for threads that are already running. Conversely, the server must ignore ‘t’ actions for threads that are already stopped.
                 process = available_processes.get(pid)

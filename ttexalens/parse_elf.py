@@ -41,7 +41,7 @@ from __future__ import annotations
 from functools import cached_property
 import os
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from ttexalens.debug_risc import RiscDebug
@@ -1087,7 +1087,7 @@ def resolve_unnamed_union_member(type_die: ElfDie, member_name: str):
     return None
 
 
-def mem_access(elf: ParsedElfFile, access_path: str, mem_access_function: callable[[int, int, int], list[int]]):
+def mem_access(elf: ParsedElfFile, access_path: str, mem_access_function: Callable[[int, int, int], list[int]]):
     """
     Given an access path such as "s_ptr->an_int", "s_ptr->an_int[2]", or "s_ptr->an_int[2][3]",
     calls the mem_access_function to read the memory, and returns the value array.
