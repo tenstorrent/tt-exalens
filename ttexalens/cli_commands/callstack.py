@@ -29,7 +29,6 @@ command_metadata = {
 }
 
 import os
-from typing import List
 from ttexalens.uistate import UIState
 
 from ttexalens import command_parser

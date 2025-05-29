@@ -7,7 +7,6 @@ from tabulate import tabulate
 from sortedcontainers import SortedSet
 import traceback, socket
 import ryml, yaml
-from typing import Dict, List
 from ttexalens import Verbosity
 import re
 
@@ -175,7 +174,7 @@ def dict_to_table(dct):
 
 
 # Converts list of dictionaries with same keys to a table where every column is one dictionary.
-def dict_list_to_table(dicts: List[dict], table_name: str, column_names: List[str]) -> str:
+def dict_list_to_table(dicts: list[dict], table_name: str, column_names: list[str]) -> str:
     keys = dicts[0].keys()
     data = []
     for key in keys:
@@ -198,7 +197,7 @@ def merge_tables_side_by_side(a, b):
     width_b = len(b[0])
     t = []
     for i in range(max(len(a), len(b))):
-        row: List[str | None] = [None] * (width_a + width_b)
+        row: list[str | None] = [None] * (width_a + width_b)
 
         for j in range(width_a):
             row[j] = "" if i >= len(a) else a[i][j]
@@ -211,7 +210,7 @@ def merge_tables_side_by_side(a, b):
 
 
 # Puts tables from the list side by side.
-def put_table_list_side_by_side(tables: List[str]) -> str:
+def put_table_list_side_by_side(tables: list[str]) -> str:
     # Split each table into rows by lines
     split_tables = [table.split("\n") for table in tables]
 
@@ -440,7 +439,7 @@ def ryml_load_all(yaml_string):
 # Container for YAML
 class YamlContainer:
     def __init__(self, yaml_string, source="N/A"):
-        self.root: Dict = dict()
+        self.root: dict = dict()
         parsed_documents = ryml_load_all(yaml_string)
         for d in parsed_documents:
             # Merge the documents
@@ -458,7 +457,7 @@ class YamlContainer:
 # Includes a cache in case a file is loaded multiple times
 class YamlFile:
     # Cache
-    file_cache: Dict = {}
+    file_cache: dict = {}
 
     def __init__(self, file_ifc, filepath, post_process_yaml=None, content=None):
         self.filepath = filepath
