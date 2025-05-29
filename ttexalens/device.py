@@ -116,7 +116,6 @@ class Device(TTObject):
     PCI_ARC_ROM_DATA_BASE_ADDR: int = None
     NOC_ARC_ROM_DATA_BASE_ADDR: int = None
     NOC_REGISTER_OFFSET: int = None
-    ARC_POSTCODE_OFFSET: int = None
 
     # NOC reg type
     class RegType:
@@ -527,12 +526,14 @@ class Device(TTObject):
                 "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
                 "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
                 "ARC_RESET_ARC_UDMIAXI_REGION": base_addr + 0x10C,
-                "ARC_RESET_SCRATCH0": base_addr + 0x060,
-                "ARC_RESET_SCRATCH1": base_addr + 0x064,
-                "ARC_RESET_SCRATCH2": base_addr + 0x068,
-                "ARC_RESET_SCRATCH3": base_addr + 0x06C,
-                "ARC_RESET_SCRATCH4": base_addr + 0x070,
-                "ARC_RESET_SCRATCH5": base_addr + 0x074,
+                "ARC_RESET_SCRATCH0": base_addr + 0x060,  # Postcode
+                "ARC_RESET_SCRATCH1": base_addr + 0x064,  # SPI boost code
+                "ARC_RESET_SCRATCH2": base_addr + 0x068,  # Msg ID for secondary msg queue
+                "ARC_RESET_SCRATCH3": base_addr + 0x06C,  # Argument value for primary msg queue
+                "ARC_RESET_SCRATCH4": base_addr + 0x070,  # Argument value for secondary msg queue
+                "ARC_RESET_SCRATCH5": base_addr + 0x074,  # Msg ID for primary msg queue
+                "ARC_RESET_SCRATCH6": base_addr + 0x078,  # Drives armisc_info to PCIE controller
+                "ARC_RESET_SCRATCH7": base_addr + 0x07C,  # Drives awmisc_info to PCIE controller
                 "ARC_CSM_DATA": csm_data_base_addr,
                 "ARC_ROM_DATA": rom_data_base_addr,
             }
