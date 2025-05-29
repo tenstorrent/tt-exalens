@@ -6,7 +6,7 @@ Usage:
   interfaces
 
 Description:
-  Shows uinique wafer information for devices connected via each interface. Used
+  Shows unique wafer information for devices connected via each interface. Used
   to establish a mapping between the same device on different interfaces.
 
 Examples:
