@@ -822,7 +822,7 @@ class TestARC(unittest.TestCase):
         ]
     )
     def test_read_arc_telemetry_entry(self, tag_name, tag_id):
-        """Test reading ARC telemetry entry by tag name or tag ID"""
+        """Test reading ARC telemetry entry by tag name and tag ID"""
 
         index = 0 if self.is_wormhole() else 1 if self.is_blackhole() else None
 
