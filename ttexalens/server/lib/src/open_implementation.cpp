@@ -314,7 +314,7 @@ std::unique_ptr<JtagDevice> init_jtag(std::filesystem::path binary_directory) {
 
 static std::string jtag_create_temp_network_descriptor_file(JtagDevice *jtag_device) {
     // In python we only need chips_with_mmio, harvesting and chips_with_jtag, other fields are not needed
-    // We are doing this beacause we are reusing this file in python which was originaly created for UMD initailization
+    // We are doing this beacause we are reusing this file in python which was originaly created for UMD initialization
     std::string cluster_descriptor_path = temp_working_directory / "cluster_desc.yaml";
     std::ofstream outfile(cluster_descriptor_path);
     outfile << "chips_with_mmio: [\n]\n\n";

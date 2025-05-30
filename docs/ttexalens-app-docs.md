@@ -203,7 +203,7 @@ debug-bus [7,0,12,0x3ffffff],trisc2_pc
 ```
 Output:
 ```
-device:0 loc:0,0  Debug Bus Config(Diasy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff) = 0x308c6a1
+device:0 loc:0,0  Debug Bus Config(Daisy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff) = 0x308c6a1
 device:0 loc:0,0  trisc2_pc: 0x4bcbca3f
 ```
 

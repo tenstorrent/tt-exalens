@@ -27,7 +27,7 @@ Examples:
   reg dbg(0x54)                                       # Prints debug register with address 0x54
   reg --search PACK*                                  # Prints names of first 10 registers that start with PACK
   reg --search ALU* --max 5                           # Prints names of first 5 registers that start with ALU
-  reg --search *format* --max all                     # Prints names of all reigsters that include word format
+  reg --search *format* --max all                     # Prints names of all registers that include word format
   reg UNPACK_CONFIG0_out_data_format                  # Prints register with name UNPACK_CONFIG0_out_data_format
   reg cfg(1,0x1E000000,25) --type TENSIX_DATA_FORMAT  # Prints configuration register with index 60, mask 0xf, shift 0 in tensix data format
   reg dbg(0x54) --type INT_VALUE                      # Prints debug register with address 0x54 in integer format
@@ -114,7 +114,7 @@ def parse_register_argument(register: str):
         return register
 
 
-# Print strings that match wildcard pattern. Maximum max_prints, negaitve values enable print all.
+# Print strings that match wildcard pattern. Maximum max_prints, negative values enable print all.
 def print_matches(pattern: str, strings: list[str], max_prints: int) -> None:
     pattern = pattern.lower()
     for s in strings:
@@ -188,7 +188,7 @@ def run(cmd_text, context, ui_state: UIState = None):
             else:
                 reg_value = debug_tensix.read_tensix_register(register)
 
-                # Overwritting data type of register if user specified it
+                # Overwriting data type of register if user specified it
                 if dopt.args["--type"]:
                     data_type = DATA_TYPE[data_type]
                 else:

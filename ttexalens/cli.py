@@ -375,7 +375,7 @@ def main_loop(args, context):
                 if args["--test"]:  # Always raise in test mode
                     raise
             elif e.is_help_message():
-                # help is automatically printed by command parserr
+                # help is automatically printed by command parser
                 pass
             else:
                 raise

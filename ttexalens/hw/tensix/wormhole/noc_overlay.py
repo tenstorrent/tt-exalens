@@ -25,7 +25,7 @@ def unpack_int(buffer: memoryview) -> int:
 
 class Noc_STREAM_REMOTE_SRC:
     """
-    Properties of the remote source stream (coorindates, stream ID, and this streams destination index).
+    Properties of the remote source stream (coordinates, stream ID, and this streams destination index).
     Dont-care unless REMOTE_SOURCE == 1.
     """
 
@@ -64,7 +64,7 @@ class Noc_STREAM_REMOTE_SRC_PHASE(LittleEndianStructure):
 
 class Noc_STREAM_REMOTE_DEST(LittleEndianStructure):
     """
-    Properties of the remote destination stream (coorindates, stream ID).  Dont-care unless REMOTE_RECEIVER == 1.
+    Properties of the remote destination stream (coordinates, stream ID).  Dont-care unless REMOTE_RECEIVER == 1.
     If destination is multicast, this register specifies the starting coordinates of the destination
     multicast group/rectangle. (The end coordinates are in STREAM_MCAST_DEST below.)
     """
@@ -169,7 +169,7 @@ class Noc_STREAM_MISC_CFG(LittleEndianStructure):
 
     REMOTE_SRC_IS_MCAST: int
     """
-    set if REMOTE_SOURCE==1 and has mulicast enabled (i.e. this stream is part of a multicast group)
+    set if REMOTE_SOURCE==1 and has multicast enabled (i.e. this stream is part of a multicast group)
     """
 
     NO_PREV_PHASE_OUTGOING_DATA_FLUSH: int
@@ -428,7 +428,7 @@ class Noc_STREAM_PERF_CONFIG(LittleEndianStructure):
     CLOCK_GATING_HYST: int
     PARTIAL_SEND_WORDS_THR: int
     """
-    PARTIAL_SEND_WORDS_THR contols the minimum number of 16-byte words of a tile to accumulate in a relay stream before sending it off to the destination.
+    PARTIAL_SEND_WORDS_THR controls the minimum number of 16-byte words of a tile to accumulate in a relay stream before sending it off to the destination.
     If the size of the tile is less than or equal to PARTIAL_SEND_WORDS_THR, then this feild is ignored.
     Default is 16 words
     """
@@ -652,7 +652,7 @@ class NocOverlayRegistersState:
     @cached_property
     def STREAM_REMOTE_SRC(self) -> Noc_STREAM_REMOTE_SRC:
         """
-        Properties of the remote source stream (coorindates, stream ID, and this streams destination index).
+        Properties of the remote source stream (coordinates, stream ID, and this streams destination index).
         Dont-care unless REMOTE_SOURCE == 1.
         """
         return Noc_STREAM_REMOTE_SRC.from_buffer_copy(self.__buffer[0:])
@@ -697,7 +697,7 @@ class NocOverlayRegistersState:
     @cached_property
     def STREAM_REMOTE_DEST(self) -> Noc_STREAM_REMOTE_DEST:
         """
-        Properties of the remote destination stream (coorindates, stream ID).  Dont-care unless REMOTE_RECEIVER == 1.
+        Properties of the remote destination stream (coordinates, stream ID).  Dont-care unless REMOTE_RECEIVER == 1.
         If destination is multicast, this register specifies the starting coordinates of the destination
         multicast group/rectangle. (The end coordinates are in STREAM_MCAST_DEST below.)
         """
@@ -910,7 +910,7 @@ class NocOverlayRegistersState:
     @cached_property
     def REMOTE_SRC_IS_MCAST(self) -> int:
         """
-        set if REMOTE_SOURCE==1 and has mulicast enabled (i.e. this stream is part of a multicast group)
+        set if REMOTE_SOURCE==1 and has multicast enabled (i.e. this stream is part of a multicast group)
         """
         return self.STREAM_MISC_CFG.REMOTE_SRC_IS_MCAST
 
@@ -1333,7 +1333,7 @@ class NocOverlayRegistersState:
     @cached_property
     def PARTIAL_SEND_WORDS_THR(self) -> int:
         """
-        PARTIAL_SEND_WORDS_THR contols the minimum number of 16-byte words of a tile to accumulate in a relay stream before sending it off to the destination.
+        PARTIAL_SEND_WORDS_THR controls the minimum number of 16-byte words of a tile to accumulate in a relay stream before sending it off to the destination.
         If the size of the tile is less than or equal to PARTIAL_SEND_WORDS_THR, then this feild is ignored.
         Default is 16 words
         """
