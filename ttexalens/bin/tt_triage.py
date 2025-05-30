@@ -588,7 +588,7 @@ def main(argv=None):
                 check_NOC(dev)
                 check_L1(dev)
                 check_riscV(dev)
-                # dump_running_ops(dev)
+                dump_running_ops(dev)
             else:
                 raiseTTTriageError(f"{dev._arch} devices are not supported yet.")
     except TTTriageError as e:
