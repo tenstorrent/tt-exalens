@@ -185,7 +185,7 @@ def check_ARC(dev):
         # Heartbeat must be increasing
         # heartbeat_0 = dev.ARC.reset_unit.DEBUG.heartbeat.read()
         heartbeat_0 = read_arc_telemetry_entry(dev.id(), "TAG_TIMER_HEARTBEAT")
-        delay_seconds = 0.1
+        delay_seconds = 0.2
         time.sleep(delay_seconds)
         # heartbeat_1 = dev.ARC.ARC_CSM.DEBUG.heartbeat.read()
         heartbeat_1 = read_arc_telemetry_entry(dev.id(), "TAG_TIMER_HEARTBEAT")
@@ -199,13 +199,13 @@ def check_ARC(dev):
         heartbeats_per_second = (heartbeat_1 - heartbeat_0) / delay_seconds
         uptime_seconds = heartbeat_1 / heartbeats_per_second
 
-        # Heartbeat must be between 100 and 1000
-        if heartbeats_per_second < 100:
+        # Heartbeat must be between 10 and 50
+        if heartbeats_per_second < 10:
             print(
                 f"ARC heartbeat is too low: {RED}{heartbeats_per_second}{RST}hb/s. Expected at least {BLUE}500{RST}hb/s"
             )
             raiseTTTriageError(check_ARC.__doc__)
-        if heartbeats_per_second > 1000:
+        if heartbeats_per_second > 50:
             print(
                 f"ARC heartbeat is too high: {RED}{heartbeats_per_second}{RST}hb/s. Expected at most {BLUE}20000{RST}hb/s"
             )
