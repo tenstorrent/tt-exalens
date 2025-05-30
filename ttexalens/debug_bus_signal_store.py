@@ -4,7 +4,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Dict, Iterable, TYPE_CHECKING
+from typing import Iterable, TYPE_CHECKING
 
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 
@@ -24,7 +24,7 @@ class DebugBusSignalDescription:
 
 class DebugBusSignalStore:
     def __init__(
-        self, signals: Dict[str, DebugBusSignalDescription], location: OnChipCoordinate, neo_id: int | None = None
+        self, signals: dict[str, DebugBusSignalDescription], location: OnChipCoordinate, neo_id: int | None = None
     ):
         self.signals = signals
         self.location = location

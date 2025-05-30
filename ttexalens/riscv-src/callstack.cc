@@ -36,13 +36,22 @@ void infloop() {
     }
 }
 
+namespace ns {
+int ns_int;
+void foo() { halt(); }
+}  // namespace ns
+
 int main() {
-    if (*g_MAILBOX <= 0 || *g_MAILBOX > 1000) {
+    if (*g_MAILBOX < 0 || *g_MAILBOX > 1000) {
         *g_MAILBOX = 10;
     }
-    int sum = recurse(*g_MAILBOX);
 
-    *g_MAILBOX = sum;
+    if (*g_MAILBOX == 0) {
+        ns::foo();
+    } else {
+        int sum = recurse(*g_MAILBOX);
+        *g_MAILBOX = sum;
+    }
     infloop();
     return 0;
 }

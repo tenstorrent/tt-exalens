@@ -241,6 +241,83 @@ class TestReadWrite(unittest.TestCase):
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_to_device(core_loc, address, data, device_id)
 
+    def test_unaligned_read(self):
+        for device_id in self.context.device_ids:
+            core_loc = self.context.devices[device_id].get_block_locations()[0]
+            lib.write_words_to_device(core_loc, 0, [0x12345678, 0x90ABCDEF], device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x12345678, 0x90ABCDEF]
+            assert lib.read_from_device(core_loc, 0, device_id, 1, self.context) == bytes([0x78])
+            assert lib.read_from_device(core_loc, 1, device_id, 1, self.context) == bytes([0x56])
+            assert lib.read_from_device(core_loc, 2, device_id, 1, self.context) == bytes([0x34])
+            assert lib.read_from_device(core_loc, 3, device_id, 1, self.context) == bytes([0x12])
+            assert lib.read_from_device(core_loc, 4, device_id, 1, self.context) == bytes([0xEF])
+            assert lib.read_from_device(core_loc, 5, device_id, 1, self.context) == bytes([0xCD])
+            assert lib.read_from_device(core_loc, 6, device_id, 1, self.context) == bytes([0xAB])
+            assert lib.read_from_device(core_loc, 7, device_id, 1, self.context) == bytes([0x90])
+            assert lib.read_from_device(core_loc, 0, device_id, 2, self.context) == bytes([0x78, 0x56])
+            assert lib.read_from_device(core_loc, 2, device_id, 2, self.context) == bytes([0x34, 0x12])
+            assert lib.read_from_device(core_loc, 4, device_id, 2, self.context) == bytes([0xEF, 0xCD])
+            assert lib.read_from_device(core_loc, 6, device_id, 2, self.context) == bytes([0xAB, 0x90])
+            assert lib.read_from_device(core_loc, 0, device_id, 4, self.context) == bytes([0x78, 0x56, 0x34, 0x12])
+            assert lib.read_from_device(core_loc, 4, device_id, 4, self.context) == bytes([0xEF, 0xCD, 0xAB, 0x90])
+            assert lib.read_from_device(core_loc, 0, device_id, 8, self.context) == bytes(
+                [0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90]
+            )
+            assert lib.read_from_device(core_loc, 1, device_id, 2, self.context) == bytes([0x56, 0x34])
+            assert lib.read_from_device(core_loc, 3, device_id, 2, self.context) == bytes([0x12, 0xEF])
+            assert lib.read_from_device(core_loc, 5, device_id, 2, self.context) == bytes([0xCD, 0xAB])
+            assert lib.read_from_device(core_loc, 1, device_id, 4, self.context) == bytes([0x56, 0x34, 0x12, 0xEF])
+            assert lib.read_from_device(core_loc, 2, device_id, 4, self.context) == bytes([0x34, 0x12, 0xEF, 0xCD])
+            assert lib.read_from_device(core_loc, 3, device_id, 4, self.context) == bytes([0x12, 0xEF, 0xCD, 0xAB])
+            assert lib.read_from_device(core_loc, 0, device_id, 8, self.context) == bytes(
+                [0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90]
+            )
+            assert lib.read_from_device(core_loc, 1, device_id, 6, self.context) == bytes(
+                [0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB]
+            )
+
+    def test_unaligned_write(self):
+        for device_id in self.context.device_ids:
+            core_loc = self.context.devices[device_id].get_block_locations()[0]
+            lib.write_words_to_device(core_loc, 0, [0xDEADBEEF, 0xDEADBEEF], device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDEADBEEF, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 0, bytes([0x12]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDEADBE12, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 1, bytes([0x34]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDEAD3412, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 2, bytes([0x56]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDE563412, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 3, bytes([0x78]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDEADBEEF]
+            lib.write_to_device(core_loc, 4, bytes([0x90]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDEADBE90]
+            lib.write_to_device(core_loc, 5, bytes([0xAB]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDEADAB90]
+            lib.write_to_device(core_loc, 6, bytes([0xCD]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDECDAB90]
+            lib.write_to_device(core_loc, 7, bytes([0xEF]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xEFCDAB90]
+            lib.write_to_device(core_loc, 0, bytes([0xAA, 0xBB]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x7856BBAA, 0xEFCDAB90]
+            lib.write_to_device(core_loc, 2, bytes([0xCC, 0xDD]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDAB90]
+            lib.write_to_device(core_loc, 4, bytes([0xEE, 0xFF]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDFFEE]
+            lib.write_to_device(core_loc, 6, bytes([0x00, 0x11]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0x1100FFEE]
+            lib.write_to_device(core_loc, 1, bytes([0x22, 0x33]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDD3322AA, 0x1100FFEE]
+            lib.write_to_device(core_loc, 3, bytes([0x44, 0x55]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x443322AA, 0x1100FF55]
+            lib.write_to_device(core_loc, 5, bytes([0x66, 0x77]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x443322AA, 0x11776655]
+            lib.write_to_device(core_loc, 2, bytes([0x88, 0x99, 0xAA]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x998822AA, 0x117766AA]
+            lib.write_to_device(core_loc, 3, bytes([0xBB, 0xCC, 0xDD]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xBB8822AA, 0x1177DDCC]
+            lib.write_to_device(core_loc, 1, bytes([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]), device_id, self.context)
+            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x332211AA, 0x11665544]
+
     @parameterized.expand(
         [
             (
@@ -367,8 +444,8 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", 0, 1),  # trisc0
             ("0,0", 0, 2),  # trisc1
             ("0,0", 0, 3),  # trisc2
-            ("0,0", 0, 1, 0xFFB007FF),  # last address for trisc for wormhole
-            ("0,0", 0, 0, 0xFFB00FFF),  # last address for brisc for wormhole
+            ("0,0", 0, 1, 0xFFB007FC),  # last address for trisc for wormhole
+            ("0,0", 0, 0, 0xFFB00FFC),  # last address for brisc for wormhole
         ]
     )
     def test_write_read_private_memory(self, core_loc, noc_id, risc_id, addr=0xFFB00000):
@@ -580,9 +657,9 @@ class TestRunElf(unittest.TestCase):
 
         # Step 5b: Continue and check that the core reached 0xFFB12088. But first set the breakpoint at
         # function "decrement_mailbox"
-        decrement_mailbox_die = elf.names["fw"]["subprogram"]["decrement_mailbox"]
+        decrement_mailbox_die = elf.names["fw"].subprograms["decrement_mailbox"]
         decrement_mailbox_linkage_name = decrement_mailbox_die.attributes["DW_AT_linkage_name"].value.decode("utf-8")
-        decrement_mailbox_address = elf.names["fw"]["symbols"][decrement_mailbox_linkage_name]
+        decrement_mailbox_address = elf.names["fw"].symbols[decrement_mailbox_linkage_name]
 
         # Step 6. Setting breakpoint at decrement_mailbox
         watchpoint_id = 1  # Out of 8
@@ -676,6 +753,10 @@ class TestARC(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.context = tt_exalens_init.init_ttexalens()
 
+    def is_wormhole(self):
+        """Check if the device is wormhole."""
+        return self.context.devices[0]._arch == "wormhole_b0"
+
     def is_blackhole(self):
         """Check if the device is blackhole."""
         return self.context.devices[0]._arch == "blackhole"
@@ -704,7 +785,62 @@ class TestARC(unittest.TestCase):
 
     fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
 
+    def test_read_arc_telemetry(self):
+        """Test reading ARC telemetry entries of known values"""
+        device_id = 0
+        if self.is_wormhole():
+            # Check vendor ID
+            expected_vendor_id = 0x1E52
+            vendor_id = lib.read_arc_telemetry_entry(device_id, "TAG_DEVICE_ID") & 0xFFFF
+            self.assertEqual(vendor_id, expected_vendor_id)
+
+            # Check if heartbeat is increasing
+            import time
+
+            heartbeat1 = lib.read_arc_telemetry_entry(device_id, "TAG_ARC0_HEALTH")
+            time.sleep(0.1)
+            heartbeat2 = lib.read_arc_telemetry_entry(device_id, "TAG_ARC0_HEALTH")
+            self.assertGreater(heartbeat2, heartbeat1)
+        elif self.is_blackhole():
+            # Check if heartbeat is increasing
+            import time
+
+            heartbeat1 = lib.read_arc_telemetry_entry(device_id, "TAG_TIMER_HEARTBEAT")
+            time.sleep(0.1)
+            heartbeat2 = lib.read_arc_telemetry_entry(device_id, "TAG_TIMER_HEARTBEAT")
+            self.assertGreater(heartbeat2, heartbeat1)
+        else:
+            self.skipTest("ARC telemetry is not supported for this architecture")
+
+    @parameterized.expand(
+        [
+            ("TAG_BOARD_ID_HIGH", (4, 1)),
+            ("TAG_BOARD_ID_LOW", (5, 2)),
+            ("TAG_AICLK", (24, 14)),
+            ("TAG_AXICLK", (25, 15)),
+            ("TAG_ARCCLK", (26, 16)),
+        ]
+    )
+    def test_read_arc_telemetry_entry(self, tag_name, tag_id):
+        """Test reading ARC telemetry entry by tag name and tag ID"""
+
+        index = 0 if self.is_wormhole() else 1 if self.is_blackhole() else None
+
+        if index is None:
+            self.skipTest("ARC telemetry is not supported for this architecture")
+
+        device_id = 0
+
+        # Check if reading by tag name and tag ID gives the same result
+        ret_from_name = lib.read_arc_telemetry_entry(device_id, tag_name)
+        ret_from_id = lib.read_arc_telemetry_entry(device_id, tag_id[index])
+        self.assertEqual(ret_from_name, ret_from_id)
+
     def test_load_arc_fw(self):
+
+        if self.is_blackhole():
+            self.skipTest("Loading ARC firmware is not supported on blackhole")
+
         wait_time = 0.1
         TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024
 
@@ -794,6 +930,20 @@ class TestCallStack(unittest.TestCase):
         return f"build/riscv-src/{arch}/{app_name}.{risc}.elf"
 
     @parameterized.expand([1, 10, 50])
+    def test_callstack_with_parsing(self, recursion_count):
+        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        elf_path = self.get_elf_path("callstack")
+        self.loader.run_elf(elf_path)
+        parsed_elf = lib.parse_elf(elf_path, self.context)
+        callstack = lib.callstack(self.core_loc, parsed_elf, None, self.risc_id, 100, True, False, 0, self.context)
+        self.assertEqual(len(callstack), recursion_count + 3)
+        self.assertEqual(callstack[0].function_name, "halt")
+        for i in range(1, recursion_count + 1):
+            self.assertEqual(callstack[i].function_name, "f1")
+        self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
+        self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+
+    @parameterized.expand([1, 10, 50])
     def test_callstack(self, recursion_count):
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack")
@@ -805,6 +955,40 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+
+    @parameterized.expand(["callstack", "callstack.optimized"])
+    def test_callstack_namespace(self, elf_name):
+        lib.write_words_to_device(self.core_loc, 0x4000, 0, 0, self.context)
+        elf_path = self.get_elf_path(elf_name)
+        self.loader.run_elf(elf_path)
+        callstack = lib.callstack(self.core_loc, elf_path, None, self.risc_id, 100, True, False, 0, self.context)
+        self.assertEqual(len(callstack), 3)
+        self.assertEqual(callstack[0].function_name, "halt")
+        self.assertEqual(callstack[1].function_name, "ns::foo")
+        self.assertEqual(callstack[2].function_name, "main")
+
+    @parameterized.expand([1, 10, 50])
+    def test_top_callstack_with_parsing(self, recursion_count):
+        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        elf_path = self.get_elf_path("callstack")
+        self.loader.run_elf(elf_path)
+        with self.rdbg.ensure_halted():
+            pc = self.rdbg.read_gpr(32)
+        parsed_elf = lib.parse_elf(elf_path, self.context)
+        callstack = lib.top_callstack(pc, parsed_elf, None, self.context)
+        self.assertEqual(len(callstack), 1)
+        self.assertEqual(callstack[0].function_name, "halt")
+
+    @parameterized.expand([1, 10, 50])
+    def test_top_callstack(self, recursion_count):
+        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        elf_path = self.get_elf_path("callstack")
+        self.loader.run_elf(elf_path)
+        with self.rdbg.ensure_halted():
+            pc = self.rdbg.read_gpr(32)
+        callstack = lib.top_callstack(pc, elf_path, None, self.context)
+        self.assertEqual(len(callstack), 1)
+        self.assertEqual(callstack[0].function_name, "halt")
 
     @parameterized.expand([(1, 1), (10, 9), (50, 49)])
     def test_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
@@ -836,6 +1020,30 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
             self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
 
+    @parameterized.expand([(1, 1)])
+    def test_top_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
+        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        elf_path = self.get_elf_path("callstack.optimized")
+        self.loader.run_elf(elf_path)
+        with self.rdbg.ensure_halted():
+            pc = self.rdbg.read_gpr(32)
+        callstack = lib.top_callstack(pc, elf_path, None, self.context)
+
+        # Optimized version for non-blackhole doesn't have halt on callstack
+        if self.is_blackhole():
+            self.assertEqual(len(callstack), expected_f1_on_callstack_count + 3)
+            self.assertEqual(callstack[0].function_name, "halt")
+            for i in range(1, expected_f1_on_callstack_count + 1):
+                self.assertEqual(callstack[i].function_name, "f1")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "recurse")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 2].function_name, "main")
+        else:
+            self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
+            for i in range(0, expected_f1_on_callstack_count):
+                self.assertEqual(callstack[i].function_name, "f1")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
+
     @parameterized.expand(
         [
             ("abcd", "build/riscv-src/blackhole/callstack.brisc.elf"),  # Invalid core_loc string
@@ -859,5 +1067,5 @@ class TestCallStack(unittest.TestCase):
         """Test invalid inputs for callstack function."""
 
         # Check for invalid core_loc
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((util.TTException, ValueError, FileNotFoundError)):
             lib.callstack(core_loc, elf_paths, offsets, risc_id, max_depth, True, False, device_id, self.context)

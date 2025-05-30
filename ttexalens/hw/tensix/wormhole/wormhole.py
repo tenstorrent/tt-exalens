@@ -13,7 +13,6 @@ from ttexalens.hardware.wormhole.router_only_block import WormholeRouterOnlyBloc
 import ttexalens.util as util
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
-from typing import List
 from ttexalens.device import (
     TensixInstructions,
     Device,
@@ -41,12 +40,8 @@ class WormholeDevice(Device):
     # Physical location mapping. Physical coordinates are the geografical coordinates on a chip's die.
     DIE_X_TO_NOC_0_X = [0, 9, 1, 8, 2, 7, 3, 6, 4, 5]
     DIE_Y_TO_NOC_0_Y = [0, 11, 1, 10, 2, 9, 3, 8, 4, 7, 5, 6]
-    DIE_X_TO_NOC_1_X = [9, 0, 8, 1, 7, 2, 6, 3, 5, 4]
-    DIE_Y_TO_NOC_1_Y = [11, 0, 10, 1, 9, 2, 8, 3, 7, 4, 6, 5]
     NOC_0_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_0_X)
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
-    NOC_1_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_1_X)
-    NOC_1_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_1_Y)
 
     PCI_ARC_RESET_BASE_ADDR = 0x1FF30000
     PCI_ARC_CSM_DATA_BASE_ADDR = 0x1FE80000
@@ -93,7 +88,7 @@ class WormholeDevice(Device):
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         return x >= 16 and y >= 16
 
-    def _get_tensix_register_map_keys(self) -> List[str]:
+    def _get_tensix_register_map_keys(self) -> list[str]:
         return list(WormholeDevice.__register_map.keys())
 
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription | None:
@@ -124,6 +119,16 @@ class WormholeDevice(Device):
         else:
             return None
 
+    def _get_arc_telemetry_tags_map_keys(self) -> list[str]:
+        """Returns the keys of the ARC telemetry tags map."""
+        return list(WormholeDevice.__arc_telemetry_tags_map.keys())
+
+    def _get_arc_telemetry_tag_id(self, tag_name) -> int | None:
+        """Returns the telemetry tag ID for a given tag name."""
+        if tag_name in WormholeDevice.__arc_telemetry_tags_map:
+            return WormholeDevice.__arc_telemetry_tags_map[tag_name]
+        return None
+
     def _get_riscv_local_memory_base_address(self) -> int:
         return WormholeDevice.RISC_LOCAL_MEM_BASE
 
@@ -136,6 +141,59 @@ class WormholeDevice(Device):
             return WormholeDevice.NCRISC_LOCAL_MEM_SIZE
         else:
             return None
+
+    __arc_telemetry_tags_map: dict[str, int] = {
+        "TAG_ENUM_VERSION": 0,
+        "TAG_DEVICE_ID": 1,
+        "TAG_ASIC_RO": 2,
+        "TAG_ASIC_IDD": 3,
+        "TAG_BOARD_ID_HIGH": 4,
+        "TAG_BOARD_ID_LOW": 5,
+        "TAG_ARC0_FW_VERSION": 6,
+        "TAG_ARC1_FW_VERSION": 7,
+        "TAG_ARC2_FW_VERSION": 8,
+        "TAG_ARC3_FW_VERSION": 9,
+        "TAG_SPIBOOTROM_FW_VERSION": 10,
+        "TAG_ETH_FW_VERSION": 11,
+        "TAG_M3_BL_FW_VERSION": 12,
+        "TAG_M3_APP_FW_VERSION": 13,
+        "TAG_DDR_STATUS": 14,
+        "TAG_ETH_STATUS0": 15,
+        "TAG_ETH_STATUS1": 16,
+        "TAG_PCIE_STATUS": 17,
+        "TAG_FAULTS": 18,
+        "TAG_ARC0_HEALTH": 19,
+        "TAG_ARC1_HEALTH": 20,
+        "TAG_ARC2_HEALTH": 21,
+        "TAG_ARC3_HEALTH": 22,
+        "TAG_FAN_SPEED": 23,
+        "TAG_AICLK": 24,
+        "TAG_AXICLK": 25,
+        "TAG_ARCCLK": 26,
+        "TAG_THROTTLER": 27,
+        "TAG_VCORE": 28,
+        "TAG_ASIC_TEMPERATURE": 29,
+        "TAG_VREG_TEMPERATURE": 30,
+        "TAG_BOARD_TEMPERATURE": 31,
+        "TAG_TDP": 32,
+        "TAG_TDC": 33,
+        "TAG_VDD_LIMITS": 34,
+        "TAG_THM_LIMITS": 35,
+        "TAG_WH_FW_DATE": 36,
+        "TAG_ASIC_TMON0": 37,
+        "TAG_ASIC_TMON1": 38,
+        "TAG_MVDDQ_POWER": 39,
+        "TAG_GDDR_TRAIN_TEMP0": 40,
+        "TAG_GDDR_TRAIN_TEMP1": 41,
+        "TAG_BOOT_DATE": 42,
+        "TAG_RT_SECONDS": 43,
+        "TAG_ETH_DEBUG_STATUS0": 44,
+        "TAG_ETH_DEBUG_STATUS1": 45,
+        "TAG_TT_FLASH_VERSION": 46,
+        "TAG_ETH_LOOPBACK_STATUS": 47,
+        "TAG_ETH_LIVE_STATUS": 48,
+        "TAG_FW_BUNDLE_VERSION": 49,
+    }
 
     __register_map = {
         # UNPACK TILE DESCRIPTOR SEC 0
@@ -912,7 +970,7 @@ class WormholeDevice(Device):
     def get_debug_bus_signal_store(self, location: OnChipCoordinate) -> DebugBusSignalStore:
         return self.get_block(location).debug_bus
 
-    def get_alu_config(self) -> List[dict]:
+    def get_alu_config(self) -> list[dict]:
         return [
             {
                 "Fpu_srnd_en": "ALU_ROUNDING_MODE_Fpu_srnd_en",
@@ -934,7 +992,7 @@ class WormholeDevice(Device):
 
     # UNPACKER GETTERS
 
-    def get_unpack_tile_descriptor(self) -> List[dict]:
+    def get_unpack_tile_descriptor(self) -> list[dict]:
         struct_name = "UNPACK_TILE_DESCRIPTOR"
         fields = [
             "in_data_format",
@@ -954,7 +1012,7 @@ class WormholeDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
-    def get_unpack_config(self) -> List[dict]:
+    def get_unpack_config(self) -> list[dict]:
         struct_name = "UNPACK_CONFIG"
         fields = [
             "out_data_format",
@@ -983,7 +1041,7 @@ class WormholeDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
-    def get_pack_config(self) -> List[dict]:
+    def get_pack_config(self) -> list[dict]:
         struct_name = "PACK_CONFIG"
 
         fields = [
@@ -1009,7 +1067,7 @@ class WormholeDevice(Device):
 
         return [{field: f"{struct_name}{i}{j}_{field}" for field in fields} for i in [0, 1] for j in [1, 8]]
 
-    def get_relu_config(self) -> List[dict]:
+    def get_relu_config(self) -> list[dict]:
 
         return [
             {
@@ -1026,7 +1084,7 @@ class WormholeDevice(Device):
             }
         ]
 
-    def get_pack_dest_rd_ctrl(self) -> List[dict]:
+    def get_pack_dest_rd_ctrl(self) -> list[dict]:
         return [
             {
                 "read_32b_data": "PACK_DEST_RD_CTRL_Read_32b_data",
@@ -1037,7 +1095,7 @@ class WormholeDevice(Device):
             }
         ]
 
-    def get_pack_edge_offset(self) -> List[dict]:
+    def get_pack_edge_offset(self) -> list[dict]:
         struct_name = "PACK_EDGE_OFFSET"
         fields = [
             "mask",
@@ -1053,7 +1111,7 @@ class WormholeDevice(Device):
             for i in range(self.NUM_PACKERS)
         ]
 
-    def get_pack_counters(self) -> List[dict]:
+    def get_pack_counters(self) -> list[dict]:
         struct_name = "PACK_COUNTERS"
         fields = [
             "pack_per_xy_plane",
@@ -1065,7 +1123,7 @@ class WormholeDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_PACKERS)]
 
-    def get_pack_strides(self) -> List[dict]:
+    def get_pack_strides(self) -> list[dict]:
         struct_name = "PACK_STRIDES"
         fields = ["x_stride", "y_stride", "z_stride", "w_stride"]
 

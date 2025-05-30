@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from typing import List
 from ttexalens import util as util
 
 import os
@@ -12,7 +11,7 @@ import time
 
 def start_server(
     port: int,
-    wanted_devices: "List[int]" = None,
+    wanted_devices: "list[int]" = None,
     init_jtag=False,
     initialize_with_noc1=False,
     simulation_directory: str = None,
@@ -31,7 +30,7 @@ def start_server(
 
 def spawn_standalone_ttexalens_stub(
     port: int,
-    wanted_devices: "List[int]" = None,
+    wanted_devices: "list[int]" = None,
     init_jtag=False,
     initialize_with_noc1=False,
     simulation_directory: str = None,

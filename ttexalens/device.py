@@ -6,7 +6,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, replace
 from functools import cache, cached_property
-from typing import Dict, Iterable, Iterator, List, Sequence, Tuple
+from typing import Iterable, Sequence
 
 from tabulate import tabulate
 from ttexalens.context import Context
@@ -106,14 +106,10 @@ class NocControlRegisterDescription(TensixRegisterDescription):
 #
 class Device(TTObject):
     instructions: TensixInstructions = None
-    DIE_X_TO_NOC_0_X: List[int] = []
-    DIE_Y_TO_NOC_0_Y: List[int] = []
-    DIE_X_TO_NOC_1_X: List[int] = []
-    DIE_Y_TO_NOC_1_Y: List[int] = []
-    NOC_0_X_TO_DIE_X: List[int] = []
-    NOC_0_Y_TO_DIE_Y: List[int] = []
-    NOC_1_X_TO_DIE_X: List[int] = []
-    NOC_1_Y_TO_DIE_Y: List[int] = []
+    DIE_X_TO_NOC_0_X: list[int] = []
+    DIE_Y_TO_NOC_0_Y: list[int] = []
+    NOC_0_X_TO_DIE_X: list[int] = []
+    NOC_0_Y_TO_DIE_Y: list[int] = []
     PCI_ARC_RESET_BASE_ADDR: int = None
     NOC_ARC_RESET_BASE_ADDR: int = None
     PCI_ARC_CSM_DATA_BASE_ADDR: int = None
@@ -131,7 +127,7 @@ class Device(TTObject):
     @cached_property
     def debuggable_cores(self):
         # Base implementation for wormhole and blackhole
-        cores: List[RiscDebug] = []
+        cores: list[RiscDebug] = []
         for coord in self.get_block_locations("functional_workers"):
             for risc_id in range(4):  # 4 because we have a hardware bug for debugging ncrisc
                 risc_location = RiscLoc(coord, 0, risc_id)
@@ -185,27 +181,14 @@ class Device(TTObject):
         self._init_arc_register_adresses()
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
-    def __die_to_noc(self, die_loc, noc_id=0):
-        die_x, die_y = die_loc
-        if noc_id == 0:
-            return (self.DIE_X_TO_NOC_0_X[die_x], self.DIE_Y_TO_NOC_0_Y[die_y])
-        else:
-            return (self.DIE_X_TO_NOC_1_X[die_x], self.DIE_Y_TO_NOC_1_Y[die_y])
-
     def __noc_to_die(self, noc_loc, noc_id=0):
         noc_x, noc_y = noc_loc
-        if noc_id == 0:
-            return (self.NOC_0_X_TO_DIE_X[noc_x], self.NOC_0_Y_TO_DIE_Y[noc_y])
-        else:
-            return (self.NOC_1_X_TO_DIE_X[noc_x], self.NOC_1_Y_TO_DIE_Y[noc_y])
-
-    def __noc0_to_noc1(self, noc0_loc):
-        phys_loc = self.__noc_to_die(noc0_loc, noc_id=0)
-        return self.__die_to_noc(phys_loc, noc_id=1)
+        assert noc_id == 0
+        return (self.NOC_0_X_TO_DIE_X[noc_x], self.NOC_0_Y_TO_DIE_Y[noc_y])
 
     def _init_coordinate_systems(self):
         # Fill in coordinates for each block type
-        self._noc0_to_block_type: Dict[Tuple[int, int], str] = {}
+        self._noc0_to_block_type: dict[tuple[int, int], str] = {}
         for block_type, locations in self._block_locations.items():
             for loc in locations:
                 self._noc0_to_block_type[loc._noc0_coord] = block_type
@@ -213,8 +196,8 @@ class Device(TTObject):
         # Fill in coordinate maps from UMD coordinate manager
         self._from_noc0 = {}
         self._to_noc0 = {}
-        umd_supported_coordinates = ["logical", "virtual", "translated"]
-        unique_coordinates = ["virtual", "translated"]
+        umd_supported_coordinates = ["noc1", "logical", "virtual", "translated"]
+        unique_coordinates = ["noc1", "virtual", "translated"]
         for noc0_location, block_type in self._noc0_to_block_type.items():
             core_type = self.block_types[block_type]["core_type"]
             for coord_system in umd_supported_coordinates:
@@ -231,19 +214,13 @@ class Device(TTObject):
 
             # Add coordinate systems that UMD does not support
 
-            # Add noc1
-            noc1_location = self.__noc0_to_noc1(noc0_location)
-            self._from_noc0[(noc0_location, "noc1")] = (noc1_location, core_type)
-            self._to_noc0[(noc1_location, "noc1", core_type)] = noc0_location
-            self._to_noc0[(noc1_location, "noc1", "any")] = noc0_location
-
             # Add die
             die_location = self.__noc_to_die(noc0_location)
             self._from_noc0[(noc0_location, "die")] = (die_location, core_type)
             self._to_noc0[(die_location, "die", core_type)] = noc0_location
             self._to_noc0[(die_location, "die", "any")] = noc0_location
 
-    def to_noc0(self, coord_tuple: Tuple[int, int], coord_system: str, core_type: str = "any") -> Tuple[int, int]:
+    def to_noc0(self, coord_tuple: tuple[int, int], coord_system: str, core_type: str = "any") -> tuple[int, int]:
         try:
             return self._to_noc0[(coord_tuple, coord_system, core_type)]
         except:
@@ -251,7 +228,7 @@ class Device(TTObject):
                 f"to_noc0(coord_tuple={coord_tuple}, coord_system={coord_system}, core_type={core_type})"
             )
 
-    def from_noc0(self, noc0_tuple: Tuple[int, int], coord_system: str) -> Tuple[Tuple[int, int], str]:
+    def from_noc0(self, noc0_tuple: tuple[int, int], coord_system: str) -> tuple[tuple[int, int], str]:
         try:
             return self._from_noc0[(noc0_tuple, coord_system)]
         except:
@@ -285,7 +262,7 @@ class Device(TTObject):
             blocks.append(self.get_block(location))
         return blocks
 
-    def get_block_locations(self, block_type="functional_workers") -> List[OnChipCoordinate]:
+    def get_block_locations(self, block_type="functional_workers") -> list[OnChipCoordinate]:
         """
         Returns locations of all blocks of a given type
         """
@@ -306,7 +283,7 @@ class Device(TTObject):
         """
         Returns locations of all blocks as dictionary of tuples (unchanged coordinates from YAML)
         """
-        result: Dict[str, List[OnChipCoordinate]] = {}
+        result: dict[str, list[OnChipCoordinate]] = {}
         for block_type in self.block_types:
             locs = []
             dev = self.yaml_file.root
@@ -350,7 +327,7 @@ class Device(TTObject):
     # See coordinate.py for valid values of axis_coordinates
     def render(self, axis_coordinate="die", cell_renderer=None, legend=None):
         dev = self.yaml_file.root
-        rows: List[List[str]] = []
+        rows: list[list[str]] = []
 
         # Retrieve all block locations
         all_block_locs = dict()
@@ -454,36 +431,36 @@ class Device(TTObject):
                 util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 
     # ALU GETTER
-    def get_alu_config(self) -> List[dict]:
+    def get_alu_config(self) -> list[dict]:
         return []
 
     # UNPACKER GETTERS
 
-    def get_unpack_tile_descriptor(self) -> List[dict]:
+    def get_unpack_tile_descriptor(self) -> list[dict]:
         return []
 
-    def get_unpack_config(self) -> List[dict]:
+    def get_unpack_config(self) -> list[dict]:
         return []
 
     # PACKER GETTERS
 
-    def get_pack_config(self) -> List[dict]:
+    def get_pack_config(self) -> list[dict]:
         return []
 
-    def get_relu_config(self) -> List[dict]:
+    def get_relu_config(self) -> list[dict]:
         return []
 
-    def get_pack_dest_rd_ctrl(self) -> List[dict]:
+    def get_pack_dest_rd_ctrl(self) -> list[dict]:
         return []
 
-    def get_pack_edge_offset(self) -> List[dict]:
+    def get_pack_edge_offset(self) -> list[dict]:
         return []
 
-    def get_pack_counters(self) -> List[dict]:
+    def get_pack_counters(self) -> list[dict]:
         return []
 
     @abstractmethod
-    def _get_tensix_register_map_keys(self) -> List[str]:
+    def _get_tensix_register_map_keys(self) -> list[str]:
         pass
 
     # TODO: This is old API. Create all of these in NocBlock. Change existing API to use get_block and call new API.
@@ -498,6 +475,14 @@ class Device(TTObject):
 
     @abstractmethod
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription | None:
+        pass
+
+    @abstractmethod
+    def _get_arc_telemetry_tags_map_keys(self) -> list[str] | None:
+        pass
+
+    @abstractmethod
+    def _get_arc_telemetry_tag_id(self, tag_name: str) -> int | None:
         pass
 
     @abstractmethod
@@ -541,7 +526,7 @@ class Device(TTObject):
             return "----"
         return bt
 
-    REGISTER_ADDRESSES: Dict[str, int] = {}
+    REGISTER_ADDRESSES: dict[str, int] = {}
 
     def get_arc_register_addr(self, name: str) -> int:
         try:
@@ -561,12 +546,16 @@ class Device(TTObject):
                 "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
                 "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
                 "ARC_RESET_ARC_UDMIAXI_REGION": base_addr + 0x10C,
-                "ARC_RESET_SCRATCH0": base_addr + 0x060,
-                "ARC_RESET_SCRATCH1": base_addr + 0x064,
-                "ARC_RESET_SCRATCH2": base_addr + 0x068,
-                "ARC_RESET_SCRATCH3": base_addr + 0x06C,
-                "ARC_RESET_SCRATCH4": base_addr + 0x070,
-                "ARC_RESET_SCRATCH5": base_addr + 0x074,
+                # Scratch register info:
+                # https://tenstorrent.atlassian.net/wiki/spaces/syseng/pages/1039663279/Wormhole+Scratch+Registers
+                "ARC_RESET_SCRATCH0": base_addr + 0x060,  # Postcode
+                "ARC_RESET_SCRATCH1": base_addr + 0x064,  # SPI boost code
+                "ARC_RESET_SCRATCH2": base_addr + 0x068,  # Msg ID for secondary msg queue
+                "ARC_RESET_SCRATCH3": base_addr + 0x06C,  # Argument value for primary msg queue
+                "ARC_RESET_SCRATCH4": base_addr + 0x070,  # Argument value for secondary msg queue
+                "ARC_RESET_SCRATCH5": base_addr + 0x074,  # Msg ID for primary msg queue
+                "ARC_RESET_SCRATCH6": base_addr + 0x078,  # Drives armisc_info to PCIE controller
+                "ARC_RESET_SCRATCH7": base_addr + 0x07C,  # Drives awmisc_info to PCIE controller
                 "ARC_CSM_DATA": csm_data_base_addr,
                 "ARC_ROM_DATA": rom_data_base_addr,
             }
@@ -610,7 +599,7 @@ class Device(TTObject):
         base_addr = description.address
         return base_addr + (noc_id * self.NOC_REGISTER_OFFSET)
 
-    def get_noc_register_names(self) -> List[str]:
+    def get_noc_register_names(self) -> list[str]:
         """
         Get the list of NOC register names.
 

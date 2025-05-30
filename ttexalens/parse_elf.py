@@ -37,20 +37,27 @@ Examples:
   Options:
   -h --help      Show this screen.
 """
+from __future__ import annotations
 from functools import cached_property
 import os
 import re
-from typing import Dict, Optional
+from typing import TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from ttexalens.debug_risc import RiscDebug
 
 try:
     from elftools.elf.elffile import ELFFile
-    from elftools.dwarf.callframe import CIE, FDE
+    from elftools.elf.sections import SymbolTableSection
+    from elftools.dwarf.callframe import FDE
     from elftools.dwarf.compileunit import CompileUnit as DWARF_CU
+    from elftools.dwarf.dwarf_expr import DWARFExprParser
     from elftools.dwarf.dwarfinfo import DWARFInfo
     from elftools.dwarf.die import DIE as DWARF_DIE
-    from elftools.elf.enums import ENUM_ST_INFO_TYPE
+    from elftools.dwarf.locationlists import LocationParser, LocationExpr
     from docopt import docopt
     from tabulate import tabulate
+    import cxxfilt
 except:
     print(
         "ERROR: Please install dependencies with: pip install tt-pyelftools docopt fuzzywuzzy python-Levenshtein tabulate"
@@ -81,20 +88,27 @@ def strip_DW_(s):
     return re.sub(r"^DW_[^_]*_", "", s)
 
 
-class MY_DWARF:
-    def __init__(self, dwarf: DWARFInfo, loaded_offset=0):
+class ElfDwarf:
+    def __init__(self, dwarf: DWARFInfo):
         self.dwarf = dwarf
-        self.loaded_offset = loaded_offset
-        self._cus: Dict[int, MY_CU] = {}
+        self._cus: dict[int, ElfCompileUnit] = {}
 
     @cached_property
     def range_lists(self):
         return self.dwarf.range_lists()
 
+    @cached_property
+    def location_lists(self):
+        return self.dwarf.location_lists()
+
+    @cached_property
+    def location_parser(self):
+        return LocationParser(self.location_lists)
+
     def get_cu(self, dwarf_cu: DWARF_CU):
         cu = self._cus.get(id(dwarf_cu))
         if cu == None:
-            cu = MY_CU(self, dwarf_cu)
+            cu = ElfCompileUnit(self, dwarf_cu)
             self._cus[id(dwarf_cu)] = cu
         return cu
 
@@ -111,7 +125,6 @@ class MY_DWARF:
         """
         Given an address, find the function that contains that address. Goes through all CUs and all DIEs and all inlined functions.
         """
-        address += self.loaded_offset
         # Try to find CU that contains this address
         for cu in self.iter_CUs():
             # Top DIE should contain the address
@@ -139,6 +152,8 @@ class MY_DWARF:
         result = dict()
         for cu in self.iter_CUs():
             lineprog = cu.line_program
+            if lineprog is None:
+                continue
             delta = 1 if lineprog.header.version < 5 else 0
             previous_entry = None
             for entry in lineprog.get_entries():
@@ -168,7 +183,6 @@ class MY_DWARF:
         return result
 
     def find_file_line_by_address(self, address):
-        address += self.loaded_offset
         ranges = self.file_lines_ranges
         for (start, end), info in ranges.items():
             if start <= address < end:
@@ -176,17 +190,57 @@ class MY_DWARF:
         return None
 
 
-class MY_CU:
-    def __init__(self, dwarf: MY_DWARF, dwarf_cu: DWARF_CU):
+class ElfDwarfWithOffset(ElfDwarf):
+    def __init__(self, my_dwarf: ElfDwarf, loaded_offset: int):
+        super().__init__(my_dwarf.dwarf)
+        self._my_dwarf = my_dwarf
+        self.loaded_offset = loaded_offset
+
+    @cached_property
+    def range_lists(self):
+        return self._my_dwarf.range_lists
+
+    @cached_property
+    def location_lists(self):
+        return self._my_dwarf.location_lists
+
+    @cached_property
+    def location_parser(self):
+        return self._my_dwarf.location_parser
+
+    def get_cu(self, dwarf_cu: DWARF_CU):
+        return self._my_dwarf.get_cu(dwarf_cu)
+
+    def get_die(self, dwarf_die: DWARF_DIE):
+        return self._my_dwarf.get_die(dwarf_die)
+
+    def iter_CUs(self):
+        return self._my_dwarf.iter_CUs()
+
+    def find_function_by_address(self, address):
+        address += self.loaded_offset
+        return self._my_dwarf.find_function_by_address(address)
+
+    @cached_property
+    def file_lines_ranges(self):
+        return self._my_dwarf.file_lines_ranges
+
+    def find_file_line_by_address(self, address):
+        address += self.loaded_offset
+        return self._my_dwarf.find_file_line_by_address(address)
+
+
+class ElfCompileUnit:
+    def __init__(self, dwarf: ElfDwarf, dwarf_cu: DWARF_CU):
         self.dwarf = dwarf
         self.dwarf_cu = dwarf_cu
-        self.offsets: Dict[int, MY_DIE] = {}
-        self._dies: Dict[int, MY_DIE] = {}
+        self.offsets: dict[int, ElfDie] = {}
+        self._dies: dict[int, ElfDie] = {}
 
     def get_die(self, dwarf_die: DWARF_DIE):
         die = self._dies.get(id(dwarf_die))
         if die == None:
-            die = MY_DIE(self, dwarf_die)
+            die = ElfDie(self, dwarf_die)
             self._dies[id(dwarf_die)] = die
             assert die.offset not in self.offsets
             self.offsets[die.offset] = die
@@ -200,9 +254,18 @@ class MY_CU:
     def line_program(self):
         return self.dwarf.dwarf.line_program_for_CU(self.dwarf_cu)
 
+    @cached_property
+    def version(self):
+        return self.dwarf_cu["version"]
+
+    @cached_property
+    def expression_parser(self):
+        return DWARFExprParser(self.dwarf_cu.structs)
+
     def iter_DIEs(self):
         for die in self.dwarf_cu.iter_DIEs():
-            yield self.get_die(die)
+            if die.tag is not None:
+                yield self.get_die(die)
 
     def find_DIE_at_local_offset(self, local_offset):
         """
@@ -217,22 +280,22 @@ class MY_CU:
                 return die
         return None
 
-    def find_DIE_that_specifies(self, die: "MY_DIE"):
+    def find_DIE_that_specifies(self, die: "ElfDie"):
         """
         Given a DIE, find another DIE that specifies it. For example, if the DIE is a
         variable, find the DIE that defines the variable.
 
         IMPROVE: What if there are multiple dies to return?
         """
-        for dwarf_cu in self.dwarf_cu.dwarfinfo.iter_CUs():
-            for DIE in dwarf_cu.iter_DIEs():
-                if "DW_AT_specification" in DIE.attributes:
-                    if DIE.attributes["DW_AT_specification"].value == die.offset:
-                        return self.dwarf.get_die(DIE)
-                if "DW_AT_abstract_origin" in DIE.attributes:
-                    dwarf_die = DIE.get_DIE_from_attribute("DW_AT_abstract_origin")
-                    if dwarf_die == die.dwarf_die and len(DIE.attributes) > 1:
-                        return self.dwarf.get_die(DIE)
+        for cu in self.dwarf.iter_CUs():
+            for iter_die in cu.iter_DIEs():
+                if len(iter_die.attributes) > 1:
+                    if "DW_AT_specification" in iter_die.attributes:
+                        if iter_die.get_DIE_from_attribute("DW_AT_specification") == die:
+                            return iter_die
+                    if "DW_AT_abstract_origin" in iter_die.attributes:
+                        if iter_die.get_DIE_from_attribute("DW_AT_abstract_origin") == die:
+                            return iter_die
         return None
 
 
@@ -246,24 +309,27 @@ IGNORE_TAGS = set(
 )
 
 
-class MY_DIE:
+class ElfDie:
     """
     A wrapper around DIE class from pyelftools that adds some helper functions.
     """
 
-    def __init__(self, cu: MY_CU, dwarf_die: DWARF_DIE):
+    def __init__(self, cu: ElfCompileUnit, dwarf_die: DWARF_DIE):
         self.cu = cu
         self.dwarf_die = dwarf_die
 
+        assert type(dwarf_die.tag) == str
         self.tag: str = dwarf_die.tag
         self.attributes = dwarf_die.attributes
         self.offset = dwarf_die.offset
-        self.children_by_name: Dict[str, MY_DIE] = {}
+        self.children_by_name: dict[str, ElfDie] = {}
 
     def get_child_by_name(self, child_name: str):
         child = self.children_by_name.get(child_name)
         if child == None:
             for die in self.iter_children():
+                if die.name is None:
+                    continue
                 assert die.name not in self.children_by_name or self.children_by_name[die.name] == die
                 self.children_by_name[die.name] = die
                 if die.name == child_name:
@@ -324,6 +390,12 @@ class MY_DIE:
         parent = self.parent
         name = self.name
 
+        if self.category == "subprogram" and "DW_AT_specification" in self.attributes:
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
+            die = self.cu.dwarf.get_die(dwarf_die)
+            if die is not None:
+                return die.path
+
         if parent and parent.tag != "DW_TAG_compile_unit":
             parent_path = parent.path
             return f"{parent_path}::{name}"
@@ -331,7 +403,7 @@ class MY_DIE:
         return name
 
     @cached_property
-    def resolved_type(self):
+    def resolved_type(self) -> "ElfDie":
         """
         Resolve to underlying type
         TODO: test typedefs, this looks overly complicated
@@ -349,14 +421,15 @@ class MY_DIE:
             if typedef_DIE:  # If typedef, recursivelly do it
                 return typedef_DIE.resolved_type
         elif self.category != "type" and "DW_AT_type" in self.attributes and self.local_offset != None:
-            my_type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
-            if (
-                my_type_die.tag == "DW_TAG_typedef"
-                or my_type_die.tag == "DW_TAG_const_type"
-                or my_type_die.tag == "DW_TAG_volatile_type"
-            ):
-                return my_type_die.resolved_type
-            return my_type_die
+            type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
+            if type_die is not None:
+                if (
+                    type_die.tag == "DW_TAG_typedef"
+                    or type_die.tag == "DW_TAG_const_type"
+                    or type_die.tag == "DW_TAG_volatile_type"
+                ):
+                    return type_die.resolved_type
+                return type_die
         return self
 
     @cached_property
@@ -367,7 +440,9 @@ class MY_DIE:
         if self.tag == "DW_TAG_pointer_type" or self.tag == "DW_TAG_reference_type":
             if "DW_AT_type" not in self.attributes:
                 return None
-            return self.cu.find_DIE_at_local_offset(self.local_offset).resolved_type
+            dereference_Type = self.cu.find_DIE_at_local_offset(self.local_offset)
+            if dereference_Type is not None:
+                return dereference_Type.resolved_type
         return None
 
     @cached_property
@@ -376,11 +451,13 @@ class MY_DIE:
         Get the type of the elements of an array
         """
         if self.tag == "DW_TAG_array_type":
-            return self.cu.find_DIE_at_local_offset(self.local_offset).resolved_type
+            element_type = self.cu.find_DIE_at_local_offset(self.local_offset)
+            if element_type is not None:
+                return element_type.resolved_type
         return None
 
     @cached_property
-    def size(self):
+    def size(self) -> int | None:
         """
         Return the size in bytes of the DIE
         """
@@ -397,36 +474,65 @@ class MY_DIE:
                     upper_bound = child.attributes["DW_AT_upper_bound"].value
                     array_size *= upper_bound + 1
             elem_die = self.cu.find_DIE_at_local_offset(self.local_offset)
-            elem_size = elem_die.size
-            return array_size * elem_size
+            if elem_die is not None:
+                elem_size = elem_die.size
+                if elem_size is not None:
+                    return array_size * elem_size
 
         if "DW_AT_type" in self.attributes:
             type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
-            return type_die.size
+            if type_die is not None:
+                return type_die.size
 
         return None
 
     @cached_property
-    def address(self):
+    def address(self) -> int | None:
         """
         Return the address of the DIE within the parent type
         """
+        return self.__get_address_recursed(allow_recursion=True)
+
+    def __get_address_recursed(self, allow_recursion: bool) -> int | None:
         addr = None
         if "DW_AT_data_member_location" in self.attributes:
             addr = self.attributes["DW_AT_data_member_location"].value
         else:
-            location = self.attributes.get("DW_AT_location")
-            if location:
-                # Assuming the location's form is a block
-                block = location.value
-                # Check if the first opcode is DW_OP_addr (0x03)
-                if block[0] == 0x03:
-                    addr = int.from_bytes(block[1:], byteorder="little")
+            location_attribute = self.attributes.get("DW_AT_location")
+            location_parser = self.cu.dwarf.location_parser
+            if location_attribute:
+                location = location_parser.parse_from_attribute(location_attribute, self.cu.version, self.dwarf_die)
+                if isinstance(location, LocationExpr):
+                    parsed = self.cu.expression_parser.parse_expr(location.loc_expr)
+                    if len(parsed) == 1 and parsed[0].op_name == "DW_OP_addr":
+                        assert len(parsed[0].args) == 1
+                        addr = parsed[0].args[0]
+                    elif len(parsed) == 1 and parsed[0].op_name == "DW_OP_addrx":
+                        assert len(parsed[0].args) == 1
+                        index = parsed[0].args[0]
+                        addr = self.cu.dwarf.dwarf.get_addr(self.cu.dwarf_cu, index)
+                    else:
+                        # We have expression that needs to be evaluated and applied in order to get to location value.
+                        # In order for this to work, we need to return expression that needs to be evaluated in mem_access method.
+                        pass
+                elif isinstance(location, list):
+                    # We have list of expressions. All need to be evaluated and applied in order to get to location value.
+                    # In order for this to work, we need to return expression that needs to be evaluated in mem_access method.
+                    # for loc in location:
+                    #     parsed = self.cu.expression_parser.parse_expr(loc.loc_expr)
+                    pass
             else:
-                # Try to find another DIE that defines this variable
-                other_die = self.cu.find_DIE_that_specifies(self)
-                if other_die:
-                    addr = other_die.address
+                if allow_recursion and (
+                    not "DW_AT_artificial" in self.attributes or not self.attributes["DW_AT_artificial"].value
+                ):
+                    if "DW_AT_specification" in self.attributes:
+                        other_die = self.get_DIE_from_attribute("DW_AT_specification")
+                    elif "DW_AT_abstract_origin" in self.attributes:
+                        other_die = self.get_DIE_from_attribute("DW_AT_abstract_origin")
+                    else:
+                        other_die = self.cu.find_DIE_that_specifies(self)
+                    if other_die:
+                        addr = other_die.__get_address_recursed(allow_recursion=False)
 
         if addr is None:
             if (
@@ -437,7 +543,7 @@ class MY_DIE:
             ):
                 # Then we are not expecting an address
                 pass
-            elif self.parent.tag == "DW_TAG_union_type":
+            elif self.parent is not None and self.parent.tag == "DW_TAG_union_type":
                 return 0  # All members of a union start at the same address
             else:
                 if self.attributes.get("DW_AT_const_value"):
@@ -456,34 +562,59 @@ class MY_DIE:
         return None
 
     @cached_property
+    def linkage_name(self):
+        if "DW_AT_linkage_name" in self.attributes:
+            value = self.attributes["DW_AT_linkage_name"].value
+            try:
+                return cxxfilt.demangle(value.decode("utf-8"))
+            except:
+                pass
+
+        return None
+
+    @cached_property
     def name(self):
         """
         Return the name of the DIE
         """
+
         if "DW_AT_name" in self.attributes:
-            name = self.attributes["DW_AT_name"].value.decode("utf-8")
+            name_value = self.attributes["DW_AT_name"].value
+            if name_value is not None:
+                name = name_value.decode("utf-8")
+            else:
+                name = None
         elif "DW_AT_specification" in self.attributes:
-            # This is a variable that is defined elsewhere. We'll skip it.
-            # IMPROVE: We should probably find the DIE that defines it and use its name.
-            name = None
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
+            die = self.cu.dwarf.get_die(dwarf_die)
+            if die is not None:
+                name = die.name
+            else:
+                name = None
         elif self.tag_is("pointer_type"):
             if self.dereference_type is None:
                 name = "?"
             else:
                 name = f"{self.dereference_type.name}*"
         elif self.tag_is("reference_type"):
-            name = f"{self.dereference_type.name}&"
+            if self.dereference_type is not None:
+                name = f"{self.dereference_type.name}&"
+            else:
+                name = "?Unknown?&"
         elif "DW_AT_abstract_origin" in self.attributes:
-            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
-            die = self.cu.dwarf.get_die(dwarf_die)
-            name = die.name
+            die = self.get_DIE_from_attribute("DW_AT_abstract_origin")
+            if die is not None:
+                name = die.path if self.category == "inlined_function" else die.name
+            else:
+                name = None
         else:
             # We can't figure out the name of this variable. Just give it a name based on the ELF offset.
             name = f"{self.tag}-{hex(self.offset)}"
+
         return name
 
     @cached_property
-    def address_ranges(self):
+    def address_ranges(self) -> list[tuple]:
         if "DW_AT_low_pc" in self.attributes and "DW_AT_high_pc" in self.attributes:
             return [
                 (
@@ -492,16 +623,44 @@ class MY_DIE:
                 )
             ]
         elif "DW_AT_ranges" in self.attributes:
+            assert self.cu.dwarf.range_lists is not None
             ranges = self.cu.dwarf.range_lists.get_range_list_at_offset(self.attributes["DW_AT_ranges"].value)
             return [(r.begin_offset, r.end_offset) for r in ranges]
+        else:
+            child_ranges = []
+            for child in self.iter_children():
+                child_ranges.extend(child.address_ranges)
+
+            if child_ranges:
+                # Compute the overall range
+                min_address = min(r[0] for r in child_ranges)
+                max_address = max(r[1] for r in child_ranges)
+                return [(min_address, max_address)]
+
         return []
+
+    @cached_property
+    def decl_file_info(self):
+        file = None
+        line = None
+        column = None
+        if "DW_AT_decl_file" in self.attributes:
+            file_entry = self.cu.line_program["file_entry"][self.attributes["DW_AT_decl_file"].value]
+            directory = self.cu.line_program["include_directory"][file_entry.dir_index].decode("utf-8")
+            file = file_entry.name.decode("utf-8")
+            file = os.path.join(directory, file)
+        if "DW_AT_decl_line" in self.attributes:
+            line = self.attributes["DW_AT_decl_line"].value
+        if "DW_AT_decl_column" in self.attributes:
+            column = self.attributes["DW_AT_decl_column"].value
+        return (file, line, column)
 
     @cached_property
     def call_file_info(self):
         file = None
         line = None
         column = None
-        if "DW_AT_call_file" in self.attributes:
+        if "DW_AT_call_file" in self.attributes and self.cu.line_program is not None:
             file_entry = self.cu.line_program["file_entry"][self.attributes["DW_AT_call_file"].value]
             directory = self.cu.line_program["include_directory"][file_entry.dir_index].decode("utf-8")
             file = file_entry.name.decode("utf-8")
@@ -518,6 +677,12 @@ class MY_DIE:
         """
         for child in self.dwarf_die.iter_children():
             yield self.cu.get_die(child)
+
+    def get_DIE_from_attribute(self, attribute_name: str):
+        if attribute_name in self.attributes:
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute(attribute_name)
+            return self.cu.dwarf.get_die(dwarf_die)
+        return None
 
     @cached_property
     def parent(self):
@@ -548,7 +713,7 @@ class MY_DIE:
 # end class MY_DIE
 
 
-def process_DIE(die: MY_DIE, recurse_dict, r_depth):
+def process_die(die: ElfDie, recurse_dict, r_depth):
     """
     Processes a DIE, adds it to the recurse_dict if needed, and returns True if we
     should recurse into its children
@@ -576,22 +741,23 @@ def process_DIE(die: MY_DIE, recurse_dict, r_depth):
     return recurse_down
 
 
-def recurse_DIE(DIE: MY_DIE, recurse_dict, r_depth=0):
+def recurse_die(DIE: ElfDie, recurse_dict, r_depth=0):
     """
     This function visits all children recursively and calls process_DIE() on each
     """
     for child in DIE.iter_children():
-        recurse_down = process_DIE(child, recurse_dict, r_depth)
+        recurse_down = process_die(child, recurse_dict, r_depth)
         if recurse_down:
-            recurse_DIE(child, recurse_dict, r_depth + 1)
+            recurse_die(child, recurse_dict, r_depth + 1)
 
 
-def decode_file_line(dwarfinfo):
+def decode_file_line(dwarf: DWARFInfo) -> dict[int, tuple[str, int, int]]:
     PC_to_fileline_map = {}
-    for CU in dwarfinfo.iter_CUs():
-        lineprog = dwarfinfo.line_program_for_CU(CU)
+    for CU in dwarf.iter_CUs():
+        lineprog = dwarf.line_program_for_CU(CU)
+        if lineprog is None:
+            continue
         delta = 1 if lineprog.header.version < 5 else 0
-        prevstate = None
         for entry in lineprog.get_entries():
             if entry.state is None:
                 continue
@@ -607,7 +773,7 @@ def decode_file_line(dwarfinfo):
 
 
 class FrameDescription:
-    def __init__(self, pc: int, fde: FDE, risc_debug):
+    def __init__(self, pc: int, fde: FDE, risc_debug: RiscDebug):
         self.pc = pc
         self.fde = fde
         self.risc_debug = risc_debug
@@ -630,7 +796,7 @@ class FrameDescription:
                 return self.risc_debug.read_memory(address)
         return self.risc_debug.read_gpr(register_index)
 
-    def read_previous_cfa(self, current_cfa: Optional[int] = None):
+    def read_previous_cfa(self, current_cfa: int | None = None) -> int | None:
         if self.current_fde_entry is not None and self.fde.cie is not None:
             cfa_location = self.current_fde_entry["cfa"]
             register_index = cfa_location.reg
@@ -648,13 +814,12 @@ class FrameDescription:
                 return self.read_register(register_index, current_cfa)
 
         # We don't know how to calculate CFA, return 0 which will stop callstack evaluation
-        return 0
+        return None
 
 
 class FrameInfoProvider:
-    def __init__(self, dwarf_info, loaded_offset):
+    def __init__(self, dwarf_info):
         self.dwarf_info = dwarf_info
-        self.loaded_offset = loaded_offset
         self.fdes = []
 
         # Check if we have dwarf_frame CFI section
@@ -667,19 +832,31 @@ class FrameInfoProvider:
                 self.fdes.append((start_address, end_address, entry))
 
     def get_frame_description(self, pc, risc_debug) -> FrameDescription | None:
-        pc = pc + self.loaded_offset
         for start_address, end_address, fde in self.fdes:
             if start_address <= pc < end_address:
                 return FrameDescription(pc, fde, risc_debug)
         return None
 
 
-def decode_symbols(elf_file):
+class FrameInfoProviderWithOffset(FrameInfoProvider):
+    def __init__(self, frame_info: FrameInfoProvider, loaded_offset: int):
+        self.dwarf_info = frame_info.dwarf_info
+        self.fdes = frame_info.fdes
+        self._frame_info = frame_info
+        self.loaded_offset = loaded_offset
+
+    def get_frame_description(self, pc, risc_debug) -> FrameDescription | None:
+        pc = pc + self.loaded_offset
+        return self._frame_info.get_frame_description(pc, risc_debug)
+
+
+def decode_symbols(elf_file: ELFFile) -> dict[str, int]:
     symbols = {}
     for section in elf_file.iter_sections():
         # Check if it's a symbol table section
         if section.name == ".symtab":
             # Iterate through symbols
+            assert isinstance(section, SymbolTableSection)
             for symbol in section.iter_symbols():
                 # Check if it's a label symbol
                 if symbol["st_info"]["type"] == "STT_NOTYPE" and symbol.name:
@@ -691,7 +868,7 @@ def decode_symbols(elf_file):
     return symbols
 
 
-def parse_dwarf(dwarf: DWARFInfo, loaded_offset=0):
+def recurse_dwarf(dwarf: ElfDwarf) -> dict[str, dict[str, ElfDie]]:
     """
     Itaretes recursively over all the DIEs in the DWARF info and returns a dictionary
     with the following keys:
@@ -701,16 +878,14 @@ def parse_dwarf(dwarf: DWARFInfo, loaded_offset=0):
         'enumerator' - all the enumerators in the DWARF info
         'PC' - mappings between PC values and source code locations
     """
-    my_dwarf = MY_DWARF(dwarf)
-    recurse_dict = {
+    recurse_dict: dict[str, dict[str, ElfDie]] = {
         "variable": dict(),
         "type": dict(),
         "member": dict(),
         "enumerator": dict(),
-        "dwarf": my_dwarf,
     }
 
-    for cu in my_dwarf.iter_CUs():
+    for cu in dwarf.iter_CUs():
         top_DIE = cu.top_DIE
         cu_name = "N/A"
         if "DW_AT_name" in top_DIE.attributes:
@@ -718,51 +893,134 @@ def parse_dwarf(dwarf: DWARFInfo, loaded_offset=0):
         debug(f"CU: {cu_name}")
 
         # Process the names etc
-        recurse_DIE(top_DIE, recurse_dict)
-
-    # Process the PC (program counter) values so we can map them to source code
-    recurse_dict["file-line"] = decode_file_line(dwarf)
-
-    # Process frame info
-    recurse_dict["frame-info"] = FrameInfoProvider(dwarf, loaded_offset)
+        recurse_die(top_DIE, recurse_dict)
 
     return recurse_dict
 
 
-def read_elf(file_ifc, elf_file_path, load_address=None):
+class ParsedElfFile:
+    def __init__(self, elf: ELFFile, elf_file_path: str):
+        self.elf = elf
+        self.elf_file_path = elf_file_path
+
+    @cached_property
+    def _dwarf(self) -> ElfDwarf:
+        dwarf = self.elf.get_dwarf_info(relocate_dwarf_sections=False)
+        return ElfDwarf(dwarf)
+
+    @cached_property
+    def _recursed_dwarf(self):
+        return recurse_dwarf(self._dwarf)
+
+    @cached_property
+    def variables(self):
+        return self._recursed_dwarf["variable"]
+
+    @cached_property
+    def types(self):
+        return self._recursed_dwarf["type"]
+
+    @cached_property
+    def members(self):
+        return self._recursed_dwarf["member"]
+
+    @cached_property
+    def enumerators(self):
+        return self._recursed_dwarf["enumerator"]
+
+    @cached_property
+    def subprograms(self):
+        return self._recursed_dwarf["subprogram"]
+
+    @cached_property
+    def code_load_address(self) -> int:
+        # TODO: Figure out how GDB knows the load address
+        text_sh = self.elf.get_section_by_name(".text")
+        if text_sh is None:
+            text_sh = self.elf.get_section_by_name(".firmware_text")
+        if text_sh is None:
+            raise ValueError(f"Could not locate text section in {self.elf_file_path}.")
+        return text_sh["sh_addr"]
+
+    @cached_property
+    def symbols(self):
+        return decode_symbols(self.elf)
+
+    @cached_property
+    def file_line(self):
+        return decode_file_line(self._dwarf.dwarf)
+
+    @cached_property
+    def frame_info(self) -> FrameInfoProvider:
+        return FrameInfoProvider(self._dwarf.dwarf)
+
+
+class ParsedElfFileWithOffset(ParsedElfFile):
+    def __init__(self, parsed_elf: ParsedElfFile, load_address: int):
+        super().__init__(parsed_elf.elf, parsed_elf.elf_file_path)
+        self.parsed_elf = parsed_elf
+        self.load_address = load_address
+        self.loaded_offset = parsed_elf.code_load_address - load_address
+
+    @cached_property
+    def _dwarf(self) -> ElfDwarf:
+        return ElfDwarfWithOffset(self.parsed_elf._dwarf, self.loaded_offset)
+
+    @cached_property
+    def _recursed_dwarf(self):
+        return self.parsed_elf._recursed_dwarf
+
+    @cached_property
+    def variables(self):
+        return self.parsed_elf.variables
+
+    @cached_property
+    def types(self):
+        return self.parsed_elf.types
+
+    @cached_property
+    def members(self):
+        return self.parsed_elf.members
+
+    @cached_property
+    def enumerators(self):
+        return self.parsed_elf.enumerators
+
+    @cached_property
+    def subprograms(self):
+        return self.parsed_elf.subprograms
+
+    @cached_property
+    def code_load_address(self) -> int:
+        return self.loaded_offset
+
+    @cached_property
+    def symbols(self):
+        return self.parsed_elf.symbols
+
+    @cached_property
+    def file_line(self):
+        return self.parsed_elf.file_line
+
+    @cached_property
+    def frame_info(self) -> FrameInfoProviderWithOffset:
+        return FrameInfoProviderWithOffset(self.parsed_elf.frame_info, self.code_load_address)
+
+
+def read_elf(file_ifc, elf_file_path: str, load_address: int | None = None) -> ParsedElfFile:
     """
     Reads the ELF file and returns a dictionary with the DWARF info
     """
     # This is redirected to read from tmp folder in case of remote runs.
     f = file_ifc.get_binary(elf_file_path)
-
     elf = ELFFile(f)
 
     if not elf.has_dwarf_info():
-        print(f"ERROR: {elf_file_path} does not have DWARF info. Source file must be compiled with -g")
-        return
-
-    text_sh = elf.get_section_by_name(".text")
-    if text_sh is None:
-        text_sh = elf.get_section_by_name(".firmware_text")
-    if text_sh is None:
-        print(f"ERROR: Could not locate text section in {elf_file_path}.")
-        return
-
-    text_sh_address = text_sh["sh_addr"]
-
+        raise ValueError(f"{elf_file_path} does not have DWARF info. Source file must be compiled with -g")
+    parsed_elf = ParsedElfFile(elf, elf_file_path)
     if load_address is None:
-        load_address = text_sh_address
-
-    dwarf = elf.get_dwarf_info()
-
-    recurse_dict = parse_dwarf(dwarf, loaded_offset=text_sh_address - load_address)
-
-    recurse_dict["symbols"] = decode_symbols(elf)
-
-    recurse_dict["dwarf"].loaded_offset = text_sh_address - load_address
-
-    return recurse_dict
+        return parsed_elf
+    return ParsedElfFileWithOffset(parsed_elf, load_address)
 
 
 #
@@ -784,7 +1042,7 @@ def split_access_path(access_path):
     if match:
         return match.group(1), match.group(2), match.group(3)
     else:
-        return access_path, None, None
+        return access_path, "", ""
 
 
 def get_ptr_dereference_count(name):
@@ -798,13 +1056,13 @@ def get_ptr_dereference_count(name):
     return name, ptr_dereference_count
 
 
-def get_array_indices(rest_of_path):
+def get_array_indices(rest_of_path: str):
     """
     Given a string that starts with '[', parse the array indices and return them as a list.
     Supports integer indices only. Supports multidimensional arrays (e.g. [1][2] in which
     case it returns [1, 2]).
     """
-    array_indices = []
+    array_indices: list[int] = []
     while rest_of_path.startswith("["):
         closing_bracket_pos = rest_of_path.find("]")
         if closing_bracket_pos == -1:
@@ -815,7 +1073,7 @@ def get_array_indices(rest_of_path):
     return array_indices, rest_of_path
 
 
-def resolve_unnamed_union_member(type_die, member_name):
+def resolve_unnamed_union_member(type_die: ElfDie, member_name: str):
     """
     Given a die that contains an unnamed union of type type_die, and a member path
     represening a member of the unnamed union, return the die of the unnamed union.
@@ -829,41 +1087,59 @@ def resolve_unnamed_union_member(type_die, member_name):
     return None
 
 
-def mem_access(name_dict, access_path, mem_access_function):
+def mem_access(elf: ParsedElfFile, access_path: str, mem_access_function: Callable[[int, int, int], list[int]]):
     """
     Given an access path such as "s_ptr->an_int", "s_ptr->an_int[2]", or "s_ptr->an_int[2][3]",
     calls the mem_access_function to read the memory, and returns the value array.
+    mem_access_function should be:
+        def mem_access(address: int, bytes_to_read: int, elements_to_read: int) -> list[int]:
     """
     debug(f"Accessing {CLR_GREEN}{access_path}{CLR_END}")
 
-    # At the top level, the next name should be found in the 'variable'
-    # section of the name dict: name_dict["variable"]
+    # At the top level, the next name should be found in the elf.variables
     # We also check for pointer dereferences here
     access_path, ptr_dereference_count = get_ptr_dereference_count(access_path)
     name, path_divider, rest_of_path = split_access_path(access_path)
-    die: MY_DIE = name_dict["variable"][name]
+    die: ElfDie = elf.variables[name]
     current_address = die.address
     type_die = die.resolved_type
 
     num_members_to_read = 1
     while True:
-        if path_divider is None:
+        if path_divider is None or path_divider == "":
             # We reached the end of the path. Call the mem_access_functions, and return the value array.
 
             # If we have leading *s, dereference the pointer
             while ptr_dereference_count > 0:
                 ptr_dereference_count -= 1
+                assert type_die is not None
                 type_die = type_die.dereference_type
-                current_address = mem_access_function(current_address, 4)[0]  # Assuming 4 byte pointers
+                assert current_address is not None
+                current_address = mem_access_function(current_address, 4, 1)[0]  # Assuming 4 byte pointers
 
             # Check if it is a reference
+            assert type_die is not None
             if type_die.tag_is("reference_type"):
                 type_die = type_die.dereference_type
-                current_address = mem_access_function(current_address, 4)[0]  # Dereference the reference
+                assert current_address is not None
+                current_address = mem_access_function(current_address, 4, 1)[0]  # Dereference the reference
 
+            assert current_address is not None and type_die is not None and type_die.size is not None
             bytes_to_read = type_die.size * num_members_to_read
+            if type_die.array_element_type is not None and type_die.array_element_type.size is not None:
+                return (
+                    mem_access_function(
+                        current_address,
+                        bytes_to_read,
+                        num_members_to_read * type_die.size // type_die.array_element_type.size,
+                    ),
+                    current_address,
+                    bytes_to_read,
+                    die.value,
+                    type_die,
+                )
             return (
-                mem_access_function(current_address, bytes_to_read),
+                mem_access_function(current_address, bytes_to_read, num_members_to_read),
                 current_address,
                 bytes_to_read,
                 die.value,
@@ -873,40 +1149,53 @@ def mem_access(name_dict, access_path, mem_access_function):
             if num_members_to_read > 1:
                 raise Exception(f"ERROR: Cannot access {name} as a single value")
             member_name, path_divider, rest_of_path = split_access_path(rest_of_path)
-            die = type_die.get_child_by_name(member_name)
-            if not die:
-                die = resolve_unnamed_union_member(type_die, member_name)
-            if not die:
+            assert type_die is not None and member_name is not None
+            child_die = type_die.get_child_by_name(member_name)
+            if not child_die:
+                child_die = resolve_unnamed_union_member(type_die, member_name)
+            if not child_die:
+                assert type_die.path is not None
                 member_path = type_die.path + "::" + member_name
                 raise Exception(f"ERROR: Cannot find {member_path}")
+            die = child_die
             type_die = die.resolved_type
+            assert current_address is not None and die.address is not None
             current_address += die.address
 
         elif path_divider == "->":
             if num_members_to_read > 1:
                 raise Exception(f"ERROR: Cannot access {name} as a single value")
             member_name, path_divider, rest_of_path = split_access_path(rest_of_path)
+            assert type_die is not None
             if not type_die.tag_is("pointer_type"):
                 raise Exception(f"ERROR: {type_die.path} is not a pointer")
+            assert type_die.dereference_type is not None
             type_die = type_die.dereference_type.resolved_type
-            pointer_address = mem_access_function(current_address, 4)[0] if die.value is None else die.value
-            die = type_die.get_child_by_name(member_name)
-            if not die:
-                die = resolve_unnamed_union_member(type_die, member_name)
-            if not die:
+            assert current_address is not None
+            pointer_address = mem_access_function(current_address, 4, 1)[0] if die.value is None else die.value
+            assert type_die is not None and member_name is not None
+            child_die = type_die.get_child_by_name(member_name)
+            if not child_die:
+                child_die = resolve_unnamed_union_member(type_die, member_name)
+            if not child_die:
+                assert type_die.path is not None
                 member_path = type_die.path + "::" + member_name
                 raise Exception(f"ERROR: Cannot find {member_path}")
+            die = child_die
             type_die = die.resolved_type
+            assert die.address is not None
             current_address = pointer_address + die.address  # Assuming 4 byte pointers
 
         elif path_divider == "[":
             if num_members_to_read > 1:
                 raise Exception(f"INTERNAL ERROR: An array of arrays should be processed in a single call")
             array_indices, rest_of_path = get_array_indices("[" + rest_of_path)
+            assert type_die is not None
             element_type_die, array_member_offset, num_members_to_read = get_array_member_offset(
                 type_die, array_indices
             )
             element_size = element_type_die.size
+            assert element_size is not None and current_address is not None
             current_address += element_size * array_member_offset
             rest_of_path = "ARRAY" + rest_of_path
             member_name, path_divider, rest_of_path = split_access_path(rest_of_path)
@@ -915,7 +1204,7 @@ def mem_access(name_dict, access_path, mem_access_function):
             raise Exception(f"ERROR: Unknown divider {path_divider}")
 
 
-def get_array_member_offset(array_type, array_indices):
+def get_array_member_offset(array_type: ElfDie, array_indices: list[int]):
     """
     Given a list of array_indices of a multidimensional array:
      - Return element type with the offset in bytes.
@@ -935,6 +1224,7 @@ def get_array_member_offset(array_type, array_indices):
             array_element_type = array_type.dereference_type
         else:
             array_element_type = array_type.array_element_type
+        assert array_element_type is not None
 
         # 1. Find array dimensions
         array_dimensions = []
@@ -964,7 +1254,7 @@ def get_array_member_offset(array_type, array_indices):
         return array_element_type, offset, num_elements_to_read
 
 
-def access_logger(addr, size_bytes):
+def access_logger(addr, size_bytes, num_elements):
     """
     A simple memory reader emulator that prints all memory accesses
     """
@@ -981,6 +1271,10 @@ class FileInterface:
     def get_binary(self, file_path):
         return open(file_path, "rb")
 
+    def get_file(self, file_path: str) -> str:
+        with open(file_path, "r") as f:
+            return f.read()
+
 
 if __name__ == "__main__":
     args = docopt(__doc__)
@@ -989,9 +1283,9 @@ if __name__ == "__main__":
     debug_enabled = args["--debug"]
 
     file_ifc = FileInterface()
-    name_dict = read_elf(file_ifc, elf_file_path)
+    elf = read_elf(file_ifc, elf_file_path)
     if access_path:
-        mem_access(name_dict, access_path, access_logger)
+        mem_access(elf, access_path, access_logger)
     else:
         # Debugging display
         header = [
@@ -1009,9 +1303,7 @@ if __name__ == "__main__":
             header.append("DIE")
 
         rows = []
-        for cat, cat_dict in name_dict.items():
-            if cat in ["dwarf", "file-line", "frame-info", "symbols"]:  # Skip non-DIE objects
-                continue
+        for cat, cat_dict in elf._recursed_dwarf.items():
             for key, die in cat_dict.items():
                 if not hasattr(die, "path"):  # Skip if not a DIE object
                     continue

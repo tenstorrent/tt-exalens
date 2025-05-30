@@ -27,6 +27,7 @@ enum class request_type : uint8_t {
     get_device_arch,
     get_device_soc_description,
     arc_msg,
+    read_arc_telemetry_entry,
 
     // Device requests over jtag
     jtag_read32 = 50,
@@ -145,6 +146,11 @@ struct arc_msg_request : request {
     uint32_t arg0;
     uint32_t arg1;
     int timeout;
+} __attribute__((packed));
+
+struct read_arc_telemetry_entry_request : request {
+    uint8_t chip_id;
+    uint8_t telemetry_tag;
 } __attribute__((packed));
 
 struct jtag_read32_request : request {

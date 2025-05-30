@@ -15,7 +15,6 @@ from ttexalens.hardware.blackhole.security_block import BlackholeSecurityBlock
 import ttexalens.util as util
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
-from typing import List
 from ttexalens.device import (
     TensixInstructions,
     Device,
@@ -43,12 +42,8 @@ class BlackholeDevice(Device):
     # Physical location mapping. Physical coordinates are the geografical coordinates on a chip's die.
     DIE_X_TO_NOC_0_X = [0, 1, 16, 2, 15, 3, 14, 4, 13, 5, 12, 6, 11, 7, 10, 8, 9]
     DIE_Y_TO_NOC_0_Y = [0, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6]
-    DIE_X_TO_NOC_1_X = [16, 15, 0, 14, 1, 13, 2, 12, 3, 11, 4, 10, 5, 9, 6, 8, 7]
-    DIE_Y_TO_NOC_1_Y = [11, 10, 0, 9, 1, 8, 2, 7, 3, 6, 4, 5]
     NOC_0_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_0_X)
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
-    NOC_1_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_1_X)
-    NOC_1_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_1_Y)
 
     PCI_ARC_RESET_BASE_ADDR = 0x1FF30000
     PCI_ARC_CSM_DATA_BASE_ADDR = 0x1FE80000
@@ -87,7 +82,7 @@ class BlackholeDevice(Device):
         )
         self.instructions = BlackholeInstructions()
 
-    def _get_tensix_register_map_keys(self) -> List[str]:
+    def _get_tensix_register_map_keys(self) -> list[str]:
         return list(BlackholeDevice.__register_map.keys())
 
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription | None:
@@ -119,6 +114,16 @@ class BlackholeDevice(Device):
         else:
             return None
 
+    def _get_arc_telemetry_tags_map_keys(self) -> list[str]:
+        """Returns the keys of the ARC telemetry tags map."""
+        return list(BlackholeDevice.__arc_telemetry_tags_map.keys())
+
+    def _get_arc_telemetry_tag_id(self, tag_name) -> int | None:
+        """Returns the telemetry tag ID for a given tag name."""
+        if tag_name in BlackholeDevice.__arc_telemetry_tags_map:
+            return BlackholeDevice.__arc_telemetry_tags_map[tag_name]
+        return None
+
     def _get_riscv_local_memory_base_address(self) -> int:
         return BlackholeDevice.RISC_LOCAL_MEM_BASE
 
@@ -131,6 +136,72 @@ class BlackholeDevice(Device):
             return BlackholeDevice.NCRISC_LOCAL_MEM_SIZE
         else:
             return None
+
+    __arc_telemetry_tags_map = {
+        "TAG_BOARD_ID_HIGH": 1,
+        "TAG_BOARD_ID_LOW": 2,
+        "TAG_ASIC_ID": 3,
+        "TAG_HARVESTING_STATE": 4,
+        "TAG_UPDATE_TELEM_SPEED": 5,
+        "TAG_VCORE": 6,
+        "TAG_TDP": 7,
+        "TAG_TDC": 8,
+        "TAG_VDD_LIMITS": 9,
+        "TAG_THM_LIMIT_SHUTDOWN": 10,
+        "TAG_THM_LIMITS": 10,  # Same as TAG_THM_LIMIT_SHUTDOWN
+        "TAG_ASIC_TEMPERATURE": 11,
+        "TAG_VREG_TEMPERATURE": 12,
+        "TAG_BOARD_TEMPERATURE": 13,
+        "TAG_AICLK": 14,
+        "TAG_AXICLK": 15,
+        "TAG_ARCCLK": 16,
+        "TAG_L2CPUCLK0": 17,
+        "TAG_L2CPUCLK1": 18,
+        "TAG_L2CPUCLK2": 19,
+        "TAG_L2CPUCLK3": 20,
+        "TAG_ETH_LIVE_STATUS": 21,
+        "TAG_GDDR_STATUS": 22,
+        "TAG_GDDR_SPEED": 23,
+        "TAG_ETH_FW_VERSION": 24,
+        "TAG_GDDR_FW_VERSION": 25,
+        "TAG_BM_APP_FW_VERSION": 26,
+        "TAG_BM_BL_FW_VERSION": 27,
+        "TAG_FLASH_BUNDLE_VERSION": 28,
+        "TAG_CM_FW_VERSION": 29,
+        "TAG_L2CPU_FW_VERSION": 30,
+        "TAG_FAN_SPEED": 31,
+        "TAG_TIMER_HEARTBEAT": 32,
+        "TAG_TELEM_ENUM_COUNT": 33,
+        "TAG_ENABLED_TENSIX_COL": 34,
+        "TAG_ENABLED_ETH": 35,
+        "TAG_ENABLED_GDDR": 36,
+        "TAG_ENABLED_L2CPU": 37,
+        "TAG_PCIE_USAGE": 38,
+        "TAG_INPUT_CURRENT": 39,
+        "TAG_NOC_TRANSLATION": 40,
+        "TAG_FAN_RPM": 41,
+        "TAG_GDDR_0_1_TEMP": 42,
+        "TAG_GDDR_2_3_TEMP": 43,
+        "TAG_GDDR_4_5_TEMP": 44,
+        "TAG_GDDR_6_7_TEMP": 45,
+        "TAG_GDDR_0_1_CORR_ERRS": 46,
+        "TAG_GDDR_2_3_CORR_ERRS": 47,
+        "TAG_GDDR_4_5_CORR_ERRS": 48,
+        "TAG_GDDR_6_7_CORR_ERRS": 49,
+        "TAG_GDDR_UNCORR_ERRS": 50,
+        "TAG_MAX_GDDR_TEMP": 51,
+        "TAG_ASIC_LOCATION": 52,
+        "TAG_AICLK_LIMIT_MAX": 53,
+        "TAG_TDP_LIMIT_MAX": 54,
+        "TAG_TDC_LIMIT_MAX": 55,
+        "TAG_THM_LIMIT_THROTTLE": 56,
+        "TAG_FW_BUILD_DATE": 57,
+        "TAG_TT_FLASH_VERSION": 58,
+        "TAG_ENABLED_TENSIX_ROW": 59,
+        "TAG_THERM_TRIP_COUNT": 61,
+        "TAG_ASIC_ID_HIGH": 62,
+        "TAG_ASIC_ID_LOW": 63,
+    }
 
     __register_map = {
         # UNPACK TILE DESCRIPTOR SEC0
@@ -3889,7 +3960,7 @@ class BlackholeDevice(Device):
             return BlackholeSecurityBlock(location)
         raise ValueError(f"Unsupported block type: {block_type}")
 
-    def get_alu_config(self) -> List[dict]:
+    def get_alu_config(self) -> list[dict]:
         return [
             {
                 "Fpu_srnd_en": "ALU_ROUNDING_MODE_Fpu_srnd_en",
@@ -3911,7 +3982,7 @@ class BlackholeDevice(Device):
 
     # UNPACKER GETTERS
 
-    def get_unpack_tile_descriptor(self) -> List[dict]:
+    def get_unpack_tile_descriptor(self) -> list[dict]:
         struct_name = "UNPACK_TILE_DESCRIPTOR"
         fields = [
             "in_data_format",
@@ -3931,7 +4002,7 @@ class BlackholeDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
-    def get_unpack_config(self) -> List[dict]:
+    def get_unpack_config(self) -> list[dict]:
         struct_name = "UNPACK_CONFIG"
         fields = [
             "out_data_format",
@@ -3960,7 +4031,7 @@ class BlackholeDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
-    def get_pack_config(self) -> List[dict]:
+    def get_pack_config(self) -> list[dict]:
         struct_name = "PACK_CONFIG"
 
         fields = [
@@ -3987,7 +4058,7 @@ class BlackholeDevice(Device):
 
         return [{field: f"{struct_name}{i}{j}_{field}" for field in fields} for i in [0] for j in [1]]
 
-    def get_relu_config(self) -> List[dict]:
+    def get_relu_config(self) -> list[dict]:
 
         return [
             {
@@ -4004,7 +4075,7 @@ class BlackholeDevice(Device):
             }
         ]
 
-    def get_pack_dest_rd_ctrl(self) -> List[dict]:
+    def get_pack_dest_rd_ctrl(self) -> list[dict]:
         return [
             {
                 "read_32b_data": "PACK_DEST_RD_CTRL_Read_32b_data",
@@ -4015,7 +4086,7 @@ class BlackholeDevice(Device):
             }
         ]
 
-    def get_pack_edge_offset(self) -> List[dict]:
+    def get_pack_edge_offset(self) -> list[dict]:
         struct_name = "PACK_EDGE_OFFSET"
         fields = [
             "mask",
@@ -4031,7 +4102,7 @@ class BlackholeDevice(Device):
             for i in range(self.NUM_PACKERS)
         ]
 
-    def get_pack_counters(self) -> List[dict]:
+    def get_pack_counters(self) -> list[dict]:
         struct_name = "PACK_COUNTERS"
         fields = [
             "pack_per_xy_plane",
@@ -4043,7 +4114,7 @@ class BlackholeDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_PACKERS)]
 
-    def get_pack_strides(self) -> List[dict]:
+    def get_pack_strides(self) -> list[dict]:
         struct_name = "PACK_STRIDES"
         fields = ["x_stride", "y_stride", "z_stride", "w_stride"]
 

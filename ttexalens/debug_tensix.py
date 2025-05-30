@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from typing import Union, List
 from enum import Enum
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -29,7 +28,7 @@ class REGFILE(Enum):
     DSTACC = 2
 
 
-def convert_regfile(regfile: Union[int, str, REGFILE]) -> REGFILE:
+def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
     if isinstance(regfile, REGFILE):
         return regfile
 
@@ -55,7 +54,7 @@ class TensixDebug:
 
     def __init__(
         self,
-        core_loc: Union[str, OnChipCoordinate],
+        core_loc: str | OnChipCoordinate,
         device_id: int,
         context: Context = None,
     ) -> None:
@@ -145,7 +144,7 @@ class TensixDebug:
         while (self.dbg_buff_status() & 0x10) == 0:
             pass
 
-    def read_tensix_register(self, register: Union[str, TensixRegisterDescription]) -> int:
+    def read_tensix_register(self, register: str | TensixRegisterDescription) -> int:
         """Reads the value of a configuration or debug register from the tensix core.
 
         Args:
@@ -204,7 +203,7 @@ class TensixDebug:
             )
             return (a & register.mask) >> register.shift
 
-    def write_tensix_register(self, register: Union[str, TensixRegisterDescription], value: int) -> None:
+    def write_tensix_register(self, register: str | TensixRegisterDescription, value: int) -> None:
         """Writes value to the configuration or debug register on the tensix core.
 
         Args:
@@ -263,14 +262,14 @@ class TensixDebug:
 
     def read_regfile_data(
         self,
-        regfile: Union[int, str, REGFILE],
+        regfile: int | str | REGFILE,
     ) -> list[int]:
         """Dumps SRCA/DSTACC register file from the specified core.
             Due to the architecture of SRCA, you can see only see last two faces written.
             SRCB is currently not supported.
 
         Args:
-                regfile (Union[int, str, REGFILE]): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
+                regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
 
         Returns:
                 bytearray: 64x32 bytes of register file data (64 rows, 32 bytes per row).
@@ -354,14 +353,14 @@ class TensixDebug:
         )
         return data
 
-    def read_regfile(self, regfile: Union[int, str, REGFILE]) -> List[Union[float, int]]:
+    def read_regfile(self, regfile: int | str | REGFILE) -> list[float | int]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
 
         Args:
-                regfile (Union[int, str, REGFILE]): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
+                regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
 
         Returns:
-                List[Union[float, int]]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
+                list[float | int]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
         """
         regfile = convert_regfile(regfile)
         data = self.read_regfile_data(regfile)

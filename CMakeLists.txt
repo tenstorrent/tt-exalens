@@ -66,6 +66,9 @@ include(${PROJECT_SOURCE_DIR}/cmake/ZeroMQ.cmake)
 # Including private repository
 include(${PROJECT_SOURCE_DIR}/cmake/ttexalens_private.cmake)
 
+# Include pybind custom functions
+include(${PROJECT_SOURCE_DIR}/cmake/pybind.cmake)
+
 # Add subdirectories
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens)
 add_subdirectory(${PROJECT_SOURCE_DIR}/utils)

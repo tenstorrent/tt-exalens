@@ -155,6 +155,13 @@ class yaml_not_implemented_implementation : public ttexalens_implementation {
         return {};
     }
 
+    std::optional<uint32_t> read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) override {
+        server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::read_arc_telemetry_entry)) +
+                          "\n  chip_id: " + std::to_string(chip_id) +
+                          "\n  telemetry_tag: " + std::to_string(telemetry_tag));
+        return {};
+    }
+
     std::optional<uint32_t> jtag_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                         uint64_t address) override {
         server->send_yaml("- type: " + std::to_string(static_cast<int>(request_type::jtag_read32)) +

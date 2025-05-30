@@ -6,7 +6,7 @@ This module is used to represent the firmware
 """
 
 import time
-from typing import Dict, Tuple
+from typing import Callable
 from ttexalens import parse_elf
 from ttexalens import util as util
 import re
@@ -40,14 +40,11 @@ class ELF:
         self.names. For example, if filemap is { "brisc" : "./build/riscv-src/wormhole/sample.brisc.elf" },
         the parsed content of "./build/riscv-src/wormhole/sample.brisc.elf" will be stored in self.names["brisc"].
         """
-        self.names: Dict[str, Dict] = dict()
+        self.names: dict[str, parse_elf.ParsedElfFile] = dict()
         self.filemap = filemap
         self._file_ifc = file_ifc
         self.name_word_pattern = re.compile(r"[_@.a-zA-Z]+")
         for prefix, filename in filemap.items():
-            if prefix not in self.names:
-                self.names[prefix] = dict()
-
             util.INFO(f"Loading ELF file: '{filename}'", end="")
             start_time = time.time()
             self.names[prefix] = parse_elf.read_elf(self._file_ifc, filename)
@@ -62,18 +59,18 @@ class ELF:
         Given a prefix, inject the variables that are not in the ELF
         """
         for var_name, var in extra_vars.items():
-            if var_name in self.names[prefix]["variable"]:
+            if var_name in self.names[prefix].variables:
                 util.INFO(f"Variable '{var_name}' already in ELF. Skipping")
                 continue
             offset_var = var["offset"]
-            if offset_var not in self.names[prefix]["variable"]:
+            if offset_var not in self.names[prefix].variables:
                 raise util.TTException(f"Variable '{offset_var}' not found in ELF. Cannot add '{var_name}'")
-            ov = self.names[prefix]["variable"][offset_var]
+            ov = self.names[prefix].variables[offset_var]
             addr = addr = ov.value if ov.value else ov.address
-            resolved_type = self.names[prefix]["type"][var["type"]].resolved_type
-            self.names[prefix]["variable"][var_name] = FAKE_DIE(var_name, addr=addr, resolved_type=resolved_type)
+            resolved_type = self.names[prefix].types[var["type"]].resolved_type
+            self.names[prefix].variables[var_name] = FAKE_DIE(var_name, addr=addr, resolved_type=resolved_type)
 
-    def _get_prefix_and_suffix(self, path_str) -> Tuple[str, str]:
+    def _get_prefix_and_suffix(self, path_str) -> tuple[str, str]:
         dot_pos = path_str.find(".")
         if dot_pos == -1:
             return "", path_str  # just the suffix
@@ -94,7 +91,7 @@ class ELF:
             choices = self.names.keys()
         else:
             elf = self.names[elf_name]
-            choices = elf["variable"].keys()
+            choices = elf.variables.keys()
 
         # Uses Levenshtein distance to find the best match for a query in a list of keys
         matches = process.extract(suffix, choices, scorer=fuzz.QRatio, limit=limit)
@@ -126,7 +123,7 @@ class ELF:
         ret_val = {}
         elf_name, enum_path = self._get_prefix_and_suffix(enum_path)
         names = self.names[elf_name]
-        for name, data in names["enumerator"].items():
+        for name, data in names.enumerators.items():
             if name.startswith(enum_path):
                 val = data.value
 
@@ -168,8 +165,8 @@ class ELF:
         address, size and type_die of the variable. If the variable is not found, return None.
         """
 
-        def my_mem_reader(addr, size_bytes):
-            pass
+        def my_mem_reader(addr: int, size_bytes: int, elements_to_read: int) -> list[int]:
+            return []
 
         if mem_reader is None:
             mem_reader = my_mem_reader
@@ -213,13 +210,23 @@ class ELF:
         return data
 
     @staticmethod
-    def get_mem_reader(context, device_id, core_loc):
+    def get_mem_reader(context, device_id, core_loc) -> Callable[[int, int, int], list[int]]:
         """
         Returns a simple memory reader function that reads from a given device and a given core.
         """
-        from ttexalens.tt_exalens_lib import read_word_from_device
+        from ttexalens.tt_exalens_lib import read_from_device
 
-        def mem_reader(context, addr, size_bytes):
-            return [read_word_from_device(core_loc, addr, device_id, context)]
+        def mem_reader(addr: int, size_bytes: int, elements_to_read: int) -> list[int]:
+            if elements_to_read == 0:
+                return []
+            element_size = size_bytes // elements_to_read
+            assert element_size * elements_to_read == size_bytes, "Size must be divisible by number of elements"
+            bytes_data = read_from_device(
+                core_loc=core_loc, device_id=device_id, addr=addr, num_bytes=size_bytes, context=context
+            )
+            return [
+                int.from_bytes(bytes_data[i * element_size : (i + 1) * element_size], byteorder="little")
+                for i in range(elements_to_read)
+            ]
 
         return mem_reader

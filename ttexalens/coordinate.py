@@ -45,7 +45,6 @@ The following coordinate systems are available to represent a grid location on t
                     grid. It is used by the NOC hardware and it is programmable ahead of time. Notation: X-Y
 """
 
-from typing import Tuple
 from ttexalens.util import TTException
 
 VALID_COORDINATE_TYPES = [
@@ -81,7 +80,7 @@ class OnChipCoordinate:
     coordinate systems we use.
     """
 
-    _noc0_coord: Tuple[int, int] = (None, None)  # This uses noc0 coordinates: (X,Y)
+    _noc0_coord: tuple[int, int] = (None, None)  # This uses noc0 coordinates: (X,Y)
     _device = None  # Used for conversions
 
     def __init__(self, x: int, y: int, input_type: str, device, core_type="any"):

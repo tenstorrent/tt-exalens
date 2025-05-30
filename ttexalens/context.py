@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from abc import abstractmethod
 from functools import cached_property
-from typing import Dict, Iterable, Optional, Set, Tuple
+from typing import Iterable
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
 from ttexalens.firmware import ELF
@@ -30,7 +30,7 @@ class Context:
         from ttexalens import device
 
         device_ids = self.device_ids
-        devices: Dict[int, device.Device] = dict()
+        devices: dict[int, device.Device] = dict()
         for device_id in device_ids:
             device_desc_path = self.server_ifc.get_device_soc_description(device_id)
             util.DEBUG(f"Loading device {device_id} from {device_desc_path}")
@@ -69,16 +69,16 @@ class Context:
         raise util.TTException(f"We are running with limited functionality, elf files are not available.")
 
     @abstractmethod
-    def get_risc_elf_path(self, location: OnChipCoordinate, risc_id: int) -> Optional[str]:
+    def get_risc_elf_path(self, location: OnChipCoordinate, risc_id: int) -> str | None:
         pass
 
     def elf_loaded(self, location: OnChipCoordinate, risc_id: int, elf_path: str):
         pass
 
-    def convert_loc_to_jtag(self, location: OnChipCoordinate) -> Tuple[int, int]:
+    def convert_loc_to_jtag(self, location: OnChipCoordinate) -> tuple[int, int]:
         return location.to("noc0")
 
-    def convert_loc_to_umd(self, location: OnChipCoordinate) -> Tuple[int, int]:
+    def convert_loc_to_umd(self, location: OnChipCoordinate) -> tuple[int, int]:
         return location.to("noc0")
 
     def __repr__(self):
@@ -88,9 +88,9 @@ class Context:
 class LimitedContext(Context):
     def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc_yaml, use_noc1=False):
         super().__init__(server_ifc, cluster_desc_yaml, "limited", use_noc1)
-        self.loaded_elfs: Dict[Tuple[OnChipCoordinate, int], str] = {}  # (OnChipCoordinate, risc_id) => elf_path
+        self.loaded_elfs: dict[tuple[OnChipCoordinate, int], str] = {}  # (OnChipCoordinate, risc_id) => elf_path
 
-    def get_risc_elf_path(self, location: OnChipCoordinate, risc_id: int) -> Optional[str]:
+    def get_risc_elf_path(self, location: OnChipCoordinate, risc_id: int) -> str | None:
         return self.loaded_elfs.get((location, risc_id))
 
     def elf_loaded(self, location: OnChipCoordinate, risc_id: int, elf_path: str):

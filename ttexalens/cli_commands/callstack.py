@@ -29,7 +29,6 @@ command_metadata = {
 }
 
 import os
-from typing import List
 from ttexalens.uistate import UIState
 
 from ttexalens import command_parser
@@ -49,8 +48,10 @@ def run(cmd_text, context, ui_state: UIState = None):
     limit = int(dopt.args["-m"])
     noc_id = 0
     elf_paths = dopt.args["<elf-files>"].split(",")
-    offsets: List[int | None] = (
-        list(map(int, dopt.args["-o"].split(","))) if dopt.args["-o"] else [None for _ in range(len(elf_paths))]
+    offsets = (
+        [int(offset, 0) for offset in dopt.args["-o"].split(",")]
+        if dopt.args["-o"]
+        else [None for _ in range(len(elf_paths))]
     )
     if len(offsets) != len(elf_paths):
         util.ERROR("Number of offsets must match the number of elf files")
@@ -62,12 +63,14 @@ def run(cmd_text, context, ui_state: UIState = None):
             util.ERROR(f"File {elf_path} does not exist")
             return
 
+    elfs = [lib.parse_elf(elf_path, context) for elf_path in elf_paths]
+
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             for risc_id in dopt.for_each("--risc", context, ui_state):
                 callstack = lib.callstack(
                     core_loc=loc,
-                    elf_paths=elf_paths,
+                    elfs=elfs,
                     offsets=offsets,
                     risc_id=risc_id,
                     max_depth=limit,
