@@ -41,7 +41,7 @@ from __future__ import annotations
 from functools import cached_property
 import os
 import re
-from typing import Callable, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from ttexalens.debug_risc import RiscDebug
@@ -91,7 +91,7 @@ def strip_DW_(s):
 class ElfDwarf:
     def __init__(self, dwarf: DWARFInfo):
         self.dwarf = dwarf
-        self._cus: Dict[int, ElfCompileUnit] = {}
+        self._cus: dict[int, ElfCompileUnit] = {}
 
     @cached_property
     def range_lists(self):
@@ -234,8 +234,8 @@ class ElfCompileUnit:
     def __init__(self, dwarf: ElfDwarf, dwarf_cu: DWARF_CU):
         self.dwarf = dwarf
         self.dwarf_cu = dwarf_cu
-        self.offsets: Dict[int, ElfDie] = {}
-        self._dies: Dict[int, ElfDie] = {}
+        self.offsets: dict[int, ElfDie] = {}
+        self._dies: dict[int, ElfDie] = {}
 
     def get_die(self, dwarf_die: DWARF_DIE):
         die = self._dies.get(id(dwarf_die))
@@ -797,7 +797,7 @@ class FrameDescription:
                 return self.risc_debug.read_memory(address)
         return self.risc_debug.read_gpr(register_index)
 
-    def read_previous_cfa(self, current_cfa: Optional[int] = None) -> int | None:
+    def read_previous_cfa(self, current_cfa: int | None = None) -> int | None:
         if self.current_fde_entry is not None and self.fde.cie is not None:
             cfa_location = self.current_fde_entry["cfa"]
             register_index = cfa_location.reg

@@ -37,7 +37,6 @@ command_metadata = {
     "common_option_names": ["--device"],
 }
 
-from typing import List
 from docopt import docopt
 
 from ttexalens import command_parser, util as util
@@ -147,5 +146,5 @@ def run(cmd_text, context, ui_state=None):
             )
         )
 
-    navigation_suggestions: List[int] = []
+    navigation_suggestions: list[int] = []
     return navigation_suggestions

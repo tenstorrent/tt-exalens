@@ -5,7 +5,6 @@ from ttexalens.coordinate import OnChipCoordinate
 import ttexalens.util as util
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
-from typing import List
 from ttexalens.device import (
     TensixInstructions,
     Device,
@@ -98,7 +97,7 @@ class WormholeDevice(Device):
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         return x >= 16 and y >= 16
 
-    def _get_tensix_register_map_keys(self) -> List[str]:
+    def _get_tensix_register_map_keys(self) -> list[str]:
         return list(WormholeDevice.__register_map.keys())
 
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription | None:
@@ -973,7 +972,7 @@ class WormholeDevice(Device):
         "ncrisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 12, mask=0x7FFFFFFF),
     }
 
-    def get_alu_config(self) -> List[dict]:
+    def get_alu_config(self) -> list[dict]:
         return [
             {
                 "Fpu_srnd_en": "ALU_ROUNDING_MODE_Fpu_srnd_en",
@@ -995,7 +994,7 @@ class WormholeDevice(Device):
 
     # UNPACKER GETTERS
 
-    def get_unpack_tile_descriptor(self) -> List[dict]:
+    def get_unpack_tile_descriptor(self) -> list[dict]:
         struct_name = "UNPACK_TILE_DESCRIPTOR"
         fields = [
             "in_data_format",
@@ -1015,7 +1014,7 @@ class WormholeDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
-    def get_unpack_config(self) -> List[dict]:
+    def get_unpack_config(self) -> list[dict]:
         struct_name = "UNPACK_CONFIG"
         fields = [
             "out_data_format",
@@ -1044,7 +1043,7 @@ class WormholeDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
 
-    def get_pack_config(self) -> List[dict]:
+    def get_pack_config(self) -> list[dict]:
         struct_name = "PACK_CONFIG"
 
         fields = [
@@ -1070,7 +1069,7 @@ class WormholeDevice(Device):
 
         return [{field: f"{struct_name}{i}{j}_{field}" for field in fields} for i in [0, 1] for j in [1, 8]]
 
-    def get_relu_config(self) -> List[dict]:
+    def get_relu_config(self) -> list[dict]:
 
         return [
             {
@@ -1087,7 +1086,7 @@ class WormholeDevice(Device):
             }
         ]
 
-    def get_pack_dest_rd_ctrl(self) -> List[dict]:
+    def get_pack_dest_rd_ctrl(self) -> list[dict]:
         return [
             {
                 "read_32b_data": "PACK_DEST_RD_CTRL_Read_32b_data",
@@ -1098,7 +1097,7 @@ class WormholeDevice(Device):
             }
         ]
 
-    def get_pack_edge_offset(self) -> List[dict]:
+    def get_pack_edge_offset(self) -> list[dict]:
         struct_name = "PACK_EDGE_OFFSET"
         fields = [
             "mask",
@@ -1114,7 +1113,7 @@ class WormholeDevice(Device):
             for i in range(self.NUM_PACKERS)
         ]
 
-    def get_pack_counters(self) -> List[dict]:
+    def get_pack_counters(self) -> list[dict]:
         struct_name = "PACK_COUNTERS"
         fields = [
             "pack_per_xy_plane",
@@ -1126,7 +1125,7 @@ class WormholeDevice(Device):
 
         return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_PACKERS)]
 
-    def get_pack_strides(self) -> List[dict]:
+    def get_pack_strides(self) -> list[dict]:
         struct_name = "PACK_STRIDES"
         fields = ["x_stride", "y_stride", "z_stride", "w_stride"]
 
