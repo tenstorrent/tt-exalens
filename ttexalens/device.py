@@ -116,12 +116,16 @@ class Device(TTObject):
     PCI_ARC_ROM_DATA_BASE_ADDR: int = None
     NOC_ARC_ROM_DATA_BASE_ADDR: int = None
     NOC_REGISTER_OFFSET: int = None
+    ARC_POSTCODE_OFFSET: int = None
 
     # NOC reg type
     class RegType:
         Cmd = 0
         Config = 1
         Status = 2
+
+    # Static class member for ARC
+    ARC = None
 
     @cached_property
     def debuggable_cores(self):
@@ -218,6 +222,17 @@ class Device(TTObject):
             self._from_noc0[(noc0_location, "die")] = (die_location, core_type)
             self._to_noc0[(die_location, "die", core_type)] = noc0_location
             self._to_noc0[(die_location, "die", "any")] = noc0_location
+
+    def _pci_arc_reg_read(self, addr: int) -> int:
+        """Read ARC register using PCI->NOC->ARC."""
+        arc_core_loc = self.get_arc_block_location()
+        value = read_word_from_device(arc_core_loc, addr)
+        return value
+
+    def _pci_arc_reg_write(self, addr: int, value: int) -> None:
+        """Write ARC register using PCI->NOC->ARC."""
+        arc_core_loc = self.get_arc_block_location()
+        write_words_to_device(arc_core_loc, addr, value)
 
     def to_noc0(self, coord_tuple: tuple[int, int], coord_system: str, core_type: str = "any") -> tuple[int, int]:
         try:
