@@ -16,9 +16,10 @@
 #include "ttexalensserver/jtag_implementation.h"
 #include "ttexalensserver/umd_implementation.h"
 #include "umd/device/cluster.h"
+#include "umd/device/logging/config.h"
 #include "umd/device/tt_cluster_descriptor.h"
 #include "umd/device/tt_core_coordinates.h"
-#include "umd/device/tt_simulation_device.h"
+#include "umd/device/tt_device/tt_device.h"
 #include "umd/device/tt_soc_descriptor.h"
 #include "umd/device/tt_xy_pair.h"
 #include "umd/device/types/arch.h"
@@ -393,15 +394,16 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
     return std::move(implementation);
 }
 
-#include "umd/device/tt_device/tt_device.h"
-
 template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open(
     const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
     bool initialize_with_noc1) {
+    // Disable UMD logging
+    tt::umd::logging::set_level(tt::umd::logging::level::error);
+
     // TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use
     // noc1
-    umd::TTDevice::use_noc1(initialize_with_noc1);
+    tt::umd::TTDevice::use_noc1(initialize_with_noc1);
 
     auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor();
 
