@@ -1,7 +1,15 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from functools import cache
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.hardware.wormhole.arc_block import WormholeArcBlock
+from ttexalens.hardware.wormhole.dram_block import WormholeDramBlock
+from ttexalens.hardware.wormhole.eth_block import WormholeEthBlock
+from ttexalens.hardware.wormhole.functional_worker_block import WormholeFunctionalWorkerBlock
+from ttexalens.hardware.wormhole.harvested_worker_block import WormholeHarvestedWorkerBlock
+from ttexalens.hardware.wormhole.pcie_block import WormholePcieBlock
+from ttexalens.hardware.wormhole.router_only_block import WormholeRouterOnlyBlock
 import ttexalens.util as util
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
@@ -940,20 +948,27 @@ class WormholeDevice(Device):
         "NOC_CLEAR_OUTSTANDING_REQ_CNT": NocControlRegisterDescription(address=0x50),
     }
 
-    def get_debug_bus_signal_store(self, location: OnChipCoordinate) -> DebugBusSignalStore:
+    @cache
+    def get_block(self, location):
         block_type = self.get_block_type(location)
-        if block_type == "functional_workers":
-            return DebugBusSignalStore(self.__debug_bus_signal_map, location)
-        raise ValueError(f"Debug bus signal store not available for block type {block_type} at location {location}")
+        if block_type == "arc":
+            return WormholeArcBlock(location)
+        elif block_type == "dram":
+            return WormholeDramBlock(location)
+        elif block_type == "eth":
+            return WormholeEthBlock(location)
+        elif block_type == "functional_workers":
+            return WormholeFunctionalWorkerBlock(location)
+        elif block_type == "harvested_workers":
+            return WormholeHarvestedWorkerBlock(location)
+        elif block_type == "pcie":
+            return WormholePcieBlock(location)
+        elif block_type == "router_only":
+            return WormholeRouterOnlyBlock(location)
+        raise ValueError(f"Unsupported block type: {block_type}")
 
-    __debug_bus_signal_map = {
-        # For the other signals applying the pc_mask.
-        "brisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 5, mask=0x7FFFFFFF),
-        "trisc0_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 6, mask=0x7FFFFFFF),
-        "trisc1_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 7, mask=0x7FFFFFFF),
-        "trisc2_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 8, mask=0x7FFFFFFF),
-        "ncrisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 12, mask=0x7FFFFFFF),
-    }
+    def get_debug_bus_signal_store(self, location: OnChipCoordinate) -> DebugBusSignalStore:
+        return self.get_block(location).debug_bus
 
     def get_alu_config(self) -> list[dict]:
         return [
