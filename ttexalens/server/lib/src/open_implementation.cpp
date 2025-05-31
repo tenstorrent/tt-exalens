@@ -16,9 +16,10 @@
 #include "ttexalensserver/jtag_implementation.h"
 #include "ttexalensserver/umd_implementation.h"
 #include "umd/device/cluster.h"
+#include "umd/device/logging/config.h"
 #include "umd/device/tt_cluster_descriptor.h"
 #include "umd/device/tt_core_coordinates.h"
-#include "umd/device/tt_simulation_device.h"
+#include "umd/device/tt_device/tt_device.h"
 #include "umd/device/tt_soc_descriptor.h"
 #include "umd/device/tt_xy_pair.h"
 #include "umd/device/types/arch.h"
@@ -106,30 +107,6 @@ static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
     cluster_descriptor << "}" << std::endl;
 
     return cluster_descriptor_path;
-}
-
-static std::unique_ptr<tt::umd::Cluster> create_wormhole_device(const std::unordered_set<chip_id_t> &target_devices) {
-    uint32_t num_host_mem_ch_per_mmio_device = 4;
-
-    auto cluster = std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{
-        .num_host_mem_ch_per_mmio_device = num_host_mem_ch_per_mmio_device,
-        .target_devices = target_devices,
-    });
-    for (auto chip_id : cluster->get_target_mmio_device_ids()) {
-        cluster->configure_active_ethernet_cores_for_mmio_device(chip_id, {});
-    }
-
-    return cluster;
-}
-
-static std::unique_ptr<tt::umd::Cluster> create_blackhole_device(const std::unordered_set<chip_id_t> &target_devices) {
-    uint32_t num_host_mem_ch_per_mmio_device = 4;
-
-    auto cluster = std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{
-        .num_host_mem_ch_per_mmio_device = num_host_mem_ch_per_mmio_device,
-        .target_devices = target_devices,
-    });
-    return cluster;
 }
 
 static void write_coord(std::ostream &out, const tt::umd::CoreCoord &input, CoreType core_type,
@@ -393,15 +370,16 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
     return std::move(implementation);
 }
 
-#include "umd/device/tt_device/tt_device.h"
-
 template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open(
     const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
     bool initialize_with_noc1) {
+    // Disable UMD logging
+    tt::umd::logging::set_level(tt::umd::logging::level::error);
+
     // TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use
     // noc1
-    umd::TTDevice::use_noc1(initialize_with_noc1);
+    tt::umd::TTDevice::use_noc1(initialize_with_noc1);
 
     auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor();
 
@@ -441,10 +419,10 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 
     switch (arch) {
         case tt::ARCH::WORMHOLE_B0:
-            cluster = create_wormhole_device(target_devices);
-            break;
         case tt::ARCH::BLACKHOLE:
-            cluster = create_blackhole_device(target_devices);
+            cluster = std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{
+                .target_devices = target_devices,
+            });
             break;
         default:
             throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");
