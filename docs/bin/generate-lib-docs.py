@@ -170,6 +170,21 @@ class FileParser:
         """A class to parse library files and extract docstrings from functions and variables."""
         self.docstring_parser = docstring_parser
 
+    operator_symbols = {
+        ast.Add: "+",
+        ast.Sub: "-",
+        ast.Mult: "*",
+        ast.Div: "/",
+        ast.Mod: "%",
+        ast.Pow: "**",
+        ast.LShift: "<<",
+        ast.RShift: ">>",
+        ast.BitOr: "|",
+        ast.BitXor: "^",
+        ast.BitAnd: "&",
+        ast.FloorDiv: "//",
+    }
+
     def parse(self, file: os.PathLike):
         if not os.path.exists(file):
             ERROR(f"File {file} not found.")
@@ -255,20 +270,13 @@ class FileParser:
 
         return {"name": name, "docstring": docstring, "annotation": annotation, "value": value}
 
-    def parse_function(self, node: ast.FunctionDef):
-        """Parses a function definition and its docstring."""
-        name = node.name
-        args = node.args.args
-        defaults = node.args.defaults
-        docstring = ast.get_docstring(node)
-
-        returns = ""
-        if type(node.returns) == ast.Name:
-            returns = node.returns.id
-        elif type(node.returns) == ast.Constant:
-            returns = node.returns.value
-        elif type(node.returns) == ast.Subscript:
-            slice_obj = node.returns.slice
+    def _node_returns_to_string(self, node_returns) -> str:
+        if type(node_returns) == ast.Name:
+            return node_returns.id
+        elif type(node_returns) == ast.Constant:
+            return node_returns.value
+        elif type(node_returns) == ast.Subscript:
+            slice_obj = node_returns.slice
             if isinstance(slice_obj, ast.Tuple):
                 # Each element is in slice_obj.elts
                 returns = []
@@ -279,19 +287,33 @@ class FileParser:
                         returns.append(str(elt.value))
                     else:
                         returns.append("Unknown")
-                returns = " | ".join(returns)
+                return " | ".join(returns)
             else:
                 # For non-tuple slices, check if it’s a Name or Constant
                 if isinstance(slice_obj, ast.Name):
-                    returns = slice_obj.id
+                    return slice_obj.id
                 elif isinstance(slice_obj, ast.Constant):
-                    returns = str(slice_obj.value)
+                    return str(slice_obj.value)
                 else:
-                    returns = "Unknown"
-        elif node.returns is None:
-            returns = "None"
+                    return "Unknown"
+        elif type(node_returns) == ast.Attribute:
+            return f"{self._node_returns_to_string(node_returns.value)}.{node_returns.attr}"
+        elif type(node_returns) == ast.BinOp:
+            operator = self.operator_symbols.get(type(node_returns.op), "(Unknown operator)")
+            return f"{self._node_returns_to_string(node_returns.left)} {operator} {self._node_returns_to_string(node_returns.right)}"
+        elif node_returns is None:
+            return "None"
         else:
-            raise TypeError(f"Parsing for type {type(node.returns)} not implemented.")
+            raise TypeError(f"Parsing for type {type(node_returns)} not implemented.")
+
+    def parse_function(self, node: ast.FunctionDef):
+        """Parses a function definition and its docstring."""
+        name = node.name
+        args = node.args.args
+        defaults = node.args.defaults
+        docstring = ast.get_docstring(node)
+
+        returns_string = self._node_returns_to_string(node.returns)
 
         argstring = ""
         # going backwards, first parse arguments with default values...
@@ -301,7 +323,7 @@ class FileParser:
         for i in range(-len(defaults) - 1, -len(args) - 1, -1):
             argstring = f"{args[i].arg}, " + argstring
 
-        return {"name": f"{name}", "call": f"{name}({argstring[:-2]}) -> {returns}", "docstring": docstring}
+        return {"name": f"{name}", "call": f"{name}({argstring[:-2]}) -> {returns_string}", "docstring": docstring}
         # remove trailing ", "
 
 
