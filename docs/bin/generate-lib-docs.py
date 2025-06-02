@@ -270,7 +270,7 @@ class FileParser:
 
         return {"name": name, "docstring": docstring, "annotation": annotation, "value": value}
 
-    def _node_returns_to_string(self, node_returns) -> str:
+    def _resolve_node_returns(self, node_returns: ast.expr | None) -> str:
         if type(node_returns) == ast.Name:
             return node_returns.id
         elif type(node_returns) == ast.Constant:
@@ -289,18 +289,12 @@ class FileParser:
                         returns.append("Unknown")
                 return " | ".join(returns)
             else:
-                # For non-tuple slices, check if it’s a Name or Constant
-                if isinstance(slice_obj, ast.Name):
-                    return slice_obj.id
-                elif isinstance(slice_obj, ast.Constant):
-                    return str(slice_obj.value)
-                else:
-                    return "Unknown"
+                return self._resolve_node_returns(slice_obj)
         elif type(node_returns) == ast.Attribute:
-            return f"{self._node_returns_to_string(node_returns.value)}.{node_returns.attr}"
+            return f"{self._resolve_node_returns(node_returns.value)}.{node_returns.attr}"
         elif type(node_returns) == ast.BinOp:
             operator = self.operator_symbols.get(type(node_returns.op), "(Unknown operator)")
-            return f"{self._node_returns_to_string(node_returns.left)} {operator} {self._node_returns_to_string(node_returns.right)}"
+            return f"{self._resolve_node_returns(node_returns.left)} {operator} {self._resolve_node_returns(node_returns.right)}"
         elif node_returns is None:
             return "None"
         else:
@@ -313,7 +307,7 @@ class FileParser:
         defaults = node.args.defaults
         docstring = ast.get_docstring(node)
 
-        returns_string = self._node_returns_to_string(node.returns)
+        returns_string = self._resolve_node_returns(node.returns)
 
         argstring = ""
         # going backwards, first parse arguments with default values...
