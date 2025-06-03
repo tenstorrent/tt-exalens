@@ -15,7 +15,7 @@ Description:
 
 Examples:
   cfg              # Prints all configuration registers for current device and core
-  cfg -d 0         # Prints all configuration reigsters for device with id 0 and current core
+  cfg -d 0         # Prints all configuration registers for device with id 0 and current core
   cfg -l 0,0       # Pirnts all configuration registers for current device and core at location 0,0
   cfg all          # Prints all configuration registers for current device and core
   cfg alu          # Prints alu configuration registers for current device and core

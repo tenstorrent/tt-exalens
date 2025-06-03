@@ -178,7 +178,7 @@ class Device(TTObject):
         )
 
         self._init_coordinate_systems()
-        self._init_arc_register_adresses()
+        self._init_arc_register_addresses()
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
     def __noc_to_die(self, noc_loc, noc_id=0):
@@ -536,7 +536,7 @@ class Device(TTObject):
 
         return addr
 
-    def _init_arc_register_adresses(self):
+    def _init_arc_register_addresses(self):
         if len(self.get_block_locations("arc")) > 0:
             base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
             csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR

@@ -18,7 +18,7 @@ class FAKE_DIE(object):
     """
     Some pointers are hard-coded in the source with #defines. These names do not make
     it to the DWARF info. We add them here. To keep the rest of code consistent, we create
-    fake DIEs for these names, whith minimal required configuration.
+    fake DIEs for these names, with minimal required configuration.
     """
 
     def __init__(self, var_name, addr, resolved_type):

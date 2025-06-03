@@ -36,7 +36,7 @@ brxy 0,0 0x0 1
 Output:
 ```
 0,0 (L1) : 0x00000000 (4 bytes)
-0x00000000:  2010006f
+0x00000000:  00001234
 ```
 Read 16 words from address 0
 ```
@@ -45,10 +45,10 @@ brxy 0,0 0x0 16
 Output:
 ```
 0,0 (L1) : 0x00000000 (64 bytes)
-0x00000000:  2010006f  00001234  00001234  00001234
+0x00000000:  00001234  00001234  00001234  00001234
 0x00000010:  00001234  00001234  00001234  00001234
-0x00000020:  00001234  00001234  11e10076  06294070
-0x00000030:  e38381ac  66100780  738926a0  490a9608
+0x00000020:  00001234  00001234  8e2e7c10  f70aa1b3
+0x00000030:  00cab470  93d30160  6e8eb36c  abfb37a1
 ```
 Prints 32 bytes in i8 format
 ```
@@ -57,14 +57,14 @@ brxy 0,0 0x0 32 --format i8
 Output:
 ```
 0,0 (L1) : 0x00000000 (128 bytes)
-0x00000000:  111  0    16   32   52   18   0    0    52   18   0    0    52   18   0    0
-0x00000010:  52   18   0    0    52   18   0    0    52   18   0    0    52   18   0    0
-0x00000020:  52   18   0    0    52   18   0    0    118  0    225  17   112  64   41   6
-0x00000030:  172  129  131  227  128  7    16   102  160  38   137  115  8    150  10   73
-0x00000040:  85   32   208  60   80   64   132  132  0    161  131  233  9    6    128  75
-0x00000050:  140  201  11   3    18   0    0    0    40   70   91   134  179  223  66   133
-0x00000060:  194  28   2    124  138  26   137  225  243  22   83   193  206  7    203  204
-0x00000070:  218  0    9    192  1    245  84   72   15   75   213  23   181  171  192  136
+0x00000000:  52   18   0    0    52  18   0    0    52   18   0    0    52   18   0    0
+0x00000010:  52   18   0    0    52  18   0    0    52   18   0    0    52   18   0    0
+0x00000020:  52   18   0    0    52  18   0    0    16   124  46   142  179  161  10   247
+0x00000030:  112  180  202  0    96  1    211  147  108  179  142  110  161  55   251  171
+0x00000040:  107  22   160  255  17  242  88   92   22   116  148  228  28   19   45   73
+0x00000050:  82   15   140  152  18  0    0    0    201  139  253  216  184  109  120  125
+0x00000060:  74   6    0    228  94  148  44   192  239  149  113  107  0    230  123  216
+0x00000070:  79   7    6    34   21  132  10   117  49   209  223  244  194  238  251  6
 ```
 Sample for 5 seconds
 ```
@@ -73,25 +73,25 @@ brxy 0,0 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000000 (0) => 0x2010006f (537919599) - 14394 times
+0,0 (L1) : 0x00000000 (0) => 0x00001234 (4660) - 22308 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000004 (4) => 0x2010006f (537919599) - 14639 times
+0,0 (L1) : 0x00000004 (4) => 0x00001234 (4660) - 22588 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000008 (8) => 0x2010006f (537919599) - 14660 times
+0,0 (L1) : 0x00000008 (8) => 0x00001234 (4660) - 22598 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x0000000c (12) => 0x2010006f (537919599) - 14488 times
+0,0 (L1) : 0x0000000c (12) => 0x00001234 (4660) - 22582 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000010 (16) => 0x2010006f (537919599) - 14553 times
+0,0 (L1) : 0x00000010 (16) => 0x00001234 (4660) - 22604 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000014 (20) => 0x2010006f (537919599) - 14538 times
+0,0 (L1) : 0x00000014 (20) => 0x00001234 (4660) - 22622 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000018 (24) => 0x2010006f (537919599) - 14589 times
+0,0 (L1) : 0x00000018 (24) => 0x00001234 (4660) - 22656 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x0000001c (28) => 0x2010006f (537919599) - 14722 times
+0,0 (L1) : 0x0000001c (28) => 0x00001234 (4660) - 22588 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000020 (32) => 0x2010006f (537919599) - 14642 times
+0,0 (L1) : 0x00000020 (32) => 0x00001234 (4660) - 22610 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000024 (36) => 0x2010006f (537919599) - 14501 times
+0,0 (L1) : 0x00000024 (36) => 0x00001234 (4660) - 22577 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -101,10 +101,10 @@ brxy ch0 0x0 16
 Output:
 ```
 ch0 (DRAM) : 0x00000000 (64 bytes)
-0x00000000:  545000bf  55555555  55555555  55555555
-0x00000010:  55555555  55555555  55555555  55555555
-0x00000020:  fff5fd65  ff557f75  77773d55  9efff555
-0x00000030:  5566be55  f595ff55  bf77feff  ff9575f5
+0x00000000:  404000b9  55555555  55555555  55555555
+0x00000010:  5555dd55  55555555  51555555  d5557555
+0x00000020:  45704554  51755175  55455575  55404140
+0x00000030:  51515175  55555554  55705554  51745570
 ```
 
 
@@ -117,7 +117,7 @@ ch0 (DRAM) : 0x00000000 (64 bytes)
 ### Usage
 
 ```
-callstack <elf-file> [-r <risc>] [-m <max-depth>] [-v] [-d <device>] [-l <loc>]
+callstack <elf-files> [-o <offsets>] [-r <risc>] [-m <max-depth>] [-v] [-d <device>] [-l <loc>]
 ```
 
 
@@ -126,8 +126,14 @@ callstack <elf-file> [-r <risc>] [-m <max-depth>] [-v] [-d <device>] [-l <loc>]
 Prints callstack using provided elf for a given RiscV core.
 
 
+### Arguments
+
+- `<elf-files>`: Paths to the elf files to be used for callstack, comma separated.
+
+
 ### Options
 
+- `-o` = **\<offsets\>**: List of offsets for each elf file, comma separated.
 - `-r` = **\<risc\>**: RiscV ID (0: brisc, 1-3 triscs). [Default: 0]
 - `-m` = **\<max-depth\>**: Maximum depth of callstack. [Default: 100]
 
@@ -141,7 +147,7 @@ callstack build/riscv-src/wormhole/sample.brisc.elf -r 0
 Output:
 ```
 Location: 1-1 (0,0), core: BRISC
-  #0 0x00000C54 in main () at /localdev/macimovic/work/tt-exalens/ttexalens/riscv-src/sample.cc 46:22
+  #0 0x00000C4C in main () at /localdev/adjordjevic/work/tt-exalens/ttexalens/riscv-src/sample.cc 46:22
 ```
 
 
@@ -186,7 +192,7 @@ debug-bus list-names
 ```
 Output:
 ```
-['brisc_pc', 'trisc0_pc', 'trisc1_pc', 'trisc2_pc', 'ncrisc_pc']
+dict_keys(['brisc_pc', 'trisc0_pc', 'trisc1_pc', 'trisc2_pc', 'ncrisc_pc'])
 ```
 Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
 ```
@@ -194,8 +200,8 @@ debug-bus trisc0_pc,trisc1_pc
 ```
 Output:
 ```
-device:0 loc:0,0  trisc0_pc: 0xb08c6a1
-device:0 loc:0,0  trisc1_pc: 0x5e7534b0
+device:0 loc:0,0  trisc0_pc: 0xc491c5c
+device:0 loc:0,0  trisc1_pc: 0x33b76695
 ```
 Prints custom debug bus signal and trisc2_pc
 ```
@@ -203,8 +209,8 @@ debug-bus [7,0,12,0x3ffffff],trisc2_pc
 ```
 Output:
 ```
-device:0 loc:0,0  Debug Bus Config(Diasy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff) = 0x308c6a1
-device:0 loc:0,0  trisc2_pc: 0x4bcbca3f
+device:0 loc:0,0  Debug Bus Config(Daisy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff) = 0x491c5c
+device:0 loc:0,0  trisc2_pc: 0x227903b8
 ```
 
 
@@ -266,9 +272,7 @@ Legend:
 05  ----  ----  ----  ----  ----  ----  ----  ----
 06  ----  ----  ----  ----  ----  ----  ----  ----
 07  ----  ----  ----  ----  ----  ----  ----  ----
-==== Device 1
-    00    01    02    03    04    05    06    07
-...
+08  ----  ----  ----  ----  ----  ----  ----  ----
 ```
 Shows the status of the RISC-V on noc0 axis for all devices
 ```
@@ -289,13 +293,13 @@ Legend:
     pcie
     router_only
     harvested_workers
+    security
+    l2cpu
 
 ==== Device 0
-    00    01    02    03    04    05    06    07    08    09
-00  dram  eth   eth   eth   eth   dram  eth   eth   eth   eth
-01  dram  R---  ----  ----  ----  dram  ----  ----  ----  ----
-02        ----  ----  ----  ----  dram  ----  ----  ----  ----
-03  pcie  ----  ----  ----  ----  dram  ----  ----  ----  ----
+    00           01    02    03    04    05    06    07    08    09
+00  dram         eth   eth   eth   eth   dram  eth   eth   eth   eth
+01  dram         R---  ----  ----  ----  dram  ----  ----  ----  ----
 ...
 ```
 Shows noc0 coordinates on logical tensix axis for all devices
@@ -314,17 +318,14 @@ Legend:
 ==== Device 0
     00    01    02    03    04    05    06    07
 00  1-1   2-1   3-1   4-1   6-1   7-1   8-1   9-1
-01  1-3   2-3   3-3   4-3   6-3   7-3   8-3   9-3
-02  1-4   2-4   3-4   4-4   6-4   7-4   8-4   9-4
-03  1-5   2-5   3-5   4-5   6-5   7-5   8-5   9-5
-04  1-7   2-7   3-7   4-7   6-7   7-7   8-7   9-7
-05  1-8   2-8   3-8   4-8   6-8   7-8   8-8   9-8
-06  1-9   2-9   3-9   4-9   6-9   7-9   8-9   9-9
-07  1-10  2-10  3-10  4-10  6-10  7-10  8-10  9-10
-==== Device 1
-    00    01    02    03    04    05    06    07
-00  1-1   2-1   3-1   4-1   6-1   7-1   8-1   9-1
-...
+01  1-2   2-2   3-2   4-2   6-2   7-2   8-2   9-2
+02  1-3   2-3   3-3   4-3   6-3   7-3   8-3   9-3
+03  1-4   2-4   3-4   4-4   6-4   7-4   8-4   9-4
+04  1-5   2-5   3-5   4-5   6-5   7-5   8-5   9-5
+05  1-7   2-7   3-7   4-7   6-7   7-7   8-7   9-7
+06  1-8   2-8   3-8   4-8   6-8   7-8   8-8   9-8
+07  1-9   2-9   3-9   4-9   6-9   7-9   8-9   9-9
+08  1-10  2-10  3-10  4-10  6-10  7-10  8-10  9-10
 ```
 Shows the block type in noc0 axis for all devices without legend
 ```
@@ -333,26 +334,19 @@ device noc0 block --no-legend
 Output:
 ```
 ==== Device 0
-    00    01                  02                  03                  04                  05    06                  07            ...
-00  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
-01  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-02        harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvested_work...
-03  pcie  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-04        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-05  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-06  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
-07  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-08        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-09        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-10  arc   functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-11  dram  harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvested_work...
-==== Device 1
-    00    01                  02                  03                  04                  05    06                  07            ...
-00  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
-01  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-02        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-03  pcie  harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvested_work...
-...
+    00           01                  02                  03                  04                  05    06                  07     ...
+00  dram         eth                 eth                 eth                 eth                 dram  eth                 eth    ...
+01  dram         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+02  router_only  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+03  pcie         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+04  router_only  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+05  dram         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+06  dram         eth                 eth                 eth                 eth                 dram  eth                 eth    ...
+07  dram         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+08  router_only  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+09  router_only  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+10  arc          functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+11  dram         harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvest...
 ```
 Shows the status of the RISC-V on die axis for device 0
 ```
@@ -373,13 +367,13 @@ Legend:
     pcie
     router_only
     harvested_workers
+    security
+    l2cpu
 
 ==== Device 0
-    00    01    02    03    04    05    06    07    08    09
-00  dram  eth   eth   eth   eth   eth   eth   eth   eth   dram
-01  dram  ----  ----  ----  ----  ----  ----  ----  ----  dram
-02  dram  ----  R---  ----  ----  ----  ----  ----  ----  dram
-03  arc   ----  ----  ----  ----  ----  ----  ----  ----  dram
+    00           01    02    03    04    05    06    07    08    09
+00  dram         eth   eth   eth   eth   eth   eth   eth   eth   dram
+01  dram         ----  ----  ----  ----  ----  ----  ----  ----  dram
 ...
 ```
 Shows noc0 coordinates on logical dram axis for device 0
@@ -408,19 +402,19 @@ device -d 0 noc0 block --no-legend
 Output:
 ```
 ==== Device 0
-    00    01                  02                  03                  04                  05    06                  07            ...
-00  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
-01  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-02        harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvested_work...
-03  pcie  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-04        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-05  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-06  dram  eth                 eth                 eth                 eth                 dram  eth                 eth           ...
-07  dram  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-08        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-09        functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-10  arc   functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functional_wor...
-11  dram  harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvested_work...
+    00           01                  02                  03                  04                  05    06                  07     ...
+00  dram         eth                 eth                 eth                 eth                 dram  eth                 eth    ...
+01  dram         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+02  router_only  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+03  pcie         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+04  router_only  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+05  dram         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+06  dram         eth                 eth                 eth                 eth                 dram  eth                 eth    ...
+07  dram         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+08  router_only  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+09  router_only  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+10  arc          functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+11  dram         harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvest...
 ```
 
 
@@ -484,7 +478,7 @@ ALU
 └───────────────────┴──────────────────────────┘
 ...
 ```
-Prints all configuration reigsters for device with id 0 and current core
+Prints all configuration registers for device with id 0 and current core
 ```
 cfg -d 0
 ```
@@ -807,7 +801,8 @@ go -d 0 -l 0,0
 
 ```
 noc status [-d <device>] [--noc <noc-id>] [-l <loc>] [-s]
-noc dump [-d <device>] [-l <loc>] [-s]
+noc all [-d <device>] [-l <loc>] [-s]
+noc register <reg-names> [-d <device>] [--noc <noc-id>] [-l <loc>] [-s]
 ```
 
 
@@ -815,6 +810,8 @@ noc dump [-d <device>] [-l <loc>] [-s]
 
 Displays NOC (Network on Chip) registers.
 • "noc status" prints status registers for transaction counters.
+• "noc all" prints all registers.
+• "noc register <reg-names>" prints specific register(s) by name.
 
 
 ### Arguments
@@ -822,6 +819,7 @@ Displays NOC (Network on Chip) registers.
 - `device-id`: ID of the device [default: current active]
 - `noc-id`: Identifier for the NOC (e.g. 0, 1) [default: both noc0 and noc1]
 - `loc`: Location identifier (e.g. 0-0) [default: current active]
+- `reg-names`: Name of specific NOC register(s) to display, can be comma-separated
 
 
 ### Options
@@ -838,22 +836,22 @@ noc status -d 0 -l 0,0
 Output:
 ```
 ==== Device 0 - Location: 1-1
-NOC0 Registers
-          Transaction Counters (Sent)                       Transaction Counters (Received)
-╭────────────────────────────┬────────────────╮ ╭────────────────────────────────┬─────────────────────╮
-│ Description                │ Value          │ │ Description                    │ Value               │
-├────────────────────────────┼────────────────┤ ├────────────────────────────────┼─────────────────────┤
-│ nonposted write reqs sent  │ 0x00000000 (0) │ │ nonposted write reqs received  │ 0x00000a69 (2665)   │
-│ posted write reqs sent     │ 0x00000000 (0) │ │ posted write reqs received     │ 0x00000000 (0)      │
-│ nonposted write words sent │ 0x00000000 (0) │ │ nonposted write words received │ 0x00000a9f (2719)   │
-│ posted write words sent    │ 0x00000000 (0) │ │ posted write words received    │ 0x00000000 (0)      │
-│ write acks received        │ 0x00000000 (0) │ │ write acks sent                │ 0x00000a69 (2665)   │
-│ read reqs sent             │ 0x00000000 (0) │ │ read reqs received             │ 0x000e53b0 (938928) │
-│ read words received        │ 0x00000000 (0) │ │ read words sent                │ 0x000e53b0 (938928) │
-│ read resps received        │ 0x00000000 (0) │ │ read resps sent                │ 0x000e53b1 (938929) │
-╰────────────────────────────┴────────────────╯ ╰────────────────────────────────┴─────────────────────╯
+NOC0 Status Registers
+          Transaction Counters (Sent)                        Transaction Counters (Received)
+╭────────────────────────────┬────────────────╮ ╭────────────────────────────────┬───────────────────────╮
+│ Description                │ Value          │ │ Description                    │ Value                 │
+├────────────────────────────┼────────────────┤ ├────────────────────────────────┼───────────────────────┤
+│ nonposted write reqs sent  │ 0x00000000 (0) │ │ nonposted write reqs received  │ 0x00008c3a (35898)    │
+│ posted write reqs sent     │ 0x00000000 (0) │ │ posted write reqs received     │ 0x00000000 (0)        │
+│ nonposted write words sent │ 0x00000000 (0) │ │ nonposted write words received │ 0x00008c3a (35898)    │
+│ posted write words sent    │ 0x00000000 (0) │ │ posted write words received    │ 0x00000000 (0)        │
+│ write acks received        │ 0x00000000 (0) │ │ write acks sent                │ 0x00008c3a (35898)    │
+│ read reqs sent             │ 0x00000000 (0) │ │ read reqs received             │ 0x00a40208 (10748424) │
+│ read words received        │ 0x00000000 (0) │ │ read words sent                │ 0x00a40208 (10748424) │
+│ read resps received        │ 0x00000000 (0) │ │ read resps sent                │ 0x00a40209 (10748425) │
+╰────────────────────────────┴────────────────╯ ╰────────────────────────────────┴───────────────────────╯
 
-NOC1 Registers
+NOC1 Status Registers
           Transaction Counters (Sent)                     Transaction Counters (Received)
 ╭────────────────────────────┬────────────────╮ ╭────────────────────────────────┬─────────────────╮
 │ Description                │ Value          │ │ Description                    │ Value           │
@@ -866,7 +864,7 @@ noc status -s
 Output:
 ```
 ==== Device 0 - Location: 1-1
-NOC0 Registers
+NOC0 Status Registers
           Transaction Counters (Sent)
 
   nonposted write reqs sent    0x00000000 (0)
@@ -879,13 +877,59 @@ NOC0 Registers
   read resps received          0x00000000 (0)
 
 
-            Transaction Counters (Received)
+             Transaction Counters (Received)
 
-  nonposted write reqs received    0x00000a69 (2665)
+  nonposted write reqs received    0x00008c3a (35898)
   posted write reqs received       0x00000000 (0)
-  nonposted write words received   0x00000a9f (2719)
+  nonposted write words received   0x00008c3a (35898)
   posted write words received      0x00000000 (0)
 ...
+```
+Prints a specific register value
+```
+noc register NIU_MST_RD_REQ_SENT
+```
+Output:
+```
+==== Device 0 - Location: 1-1
+             NOC0 Registers
+╭─────────────────────┬────────────────╮
+│ Description         │ Value          │
+├─────────────────────┼────────────────┤
+│ NIU_MST_RD_REQ_SENT │ 0x00000000 (0) │
+╰─────────────────────┴────────────────╯
+
+             NOC1 Registers
+╭─────────────────────┬────────────────╮
+│ Description         │ Value          │
+├─────────────────────┼────────────────┤
+│ NIU_MST_RD_REQ_SENT │ 0x00000000 (0) │
+╰─────────────────────┴────────────────╯
+
+```
+Prints multiple registers
+```
+noc register NIU_MST_RD_REQ_SENT,NIU_MST_RD_DATA_WORD_RECEIVED
+```
+Output:
+```
+==== Device 0 - Location: 1-1
+                  NOC0 Registers
+╭───────────────────────────────┬────────────────╮
+│ Description                   │ Value          │
+├───────────────────────────────┼────────────────┤
+│ NIU_MST_RD_REQ_SENT           │ 0x00000000 (0) │
+│ NIU_MST_RD_DATA_WORD_RECEIVED │ 0x00000000 (0) │
+╰───────────────────────────────┴────────────────╯
+
+                  NOC1 Registers
+╭───────────────────────────────┬────────────────╮
+│ Description                   │ Value          │
+├───────────────────────────────┼────────────────┤
+│ NIU_MST_RD_REQ_SENT           │ 0x00000000 (0) │
+│ NIU_MST_RD_DATA_WORD_RECEIVED │ 0x00000000 (0) │
+╰───────────────────────────────┴────────────────╯
+
 ```
 
 
@@ -948,7 +992,7 @@ riscv status
 ```
 Output:
 ```
-  HALTED PC=0x00000c4c - BRISC 0,0 [0]
+  HALTED PC=0x00000c50 - BRISC 0,0 [0]
   IN RESET - TRISC0 0,0 [0]
   IN RESET - TRISC1 0,0 [0]
   IN RESET - TRISC2 0,0 [0]
@@ -1083,7 +1127,7 @@ reg cfg(1,0x1E000000,25)
 ```
 Output:
 ```
-Value of register ConfigurationRegisterDescription(address=4, mask=503316480, shift=25, data_type=<DATA_TYPE.INT_VALUE: 0>, index=...
+Value of register ConfigurationRegisterDescription(address: 0x4, mask: 0x1e000000, shift: 25, native_data_type: DATA_TYPE.INT_VALU...
 0
 ```
 Prints debug register with address 0x54
@@ -1092,7 +1136,7 @@ reg dbg(0x54)
 ```
 Output:
 ```
-Value of register DebugRegisterDescription(address=84, mask=4294967295, shift=0, data_type=<DATA_TYPE.INT_VALUE: 0>) on device 0 a...
+Value of register DebugRegisterDescription(address: 0x54, mask: 0xffffffff, shift: 0, native_data_type: DATA_TYPE.INT_VALUE) on de...
 18
 ```
 Prints names of first 10 registers that start with PACK
@@ -1128,7 +1172,7 @@ ALU_ROUNDING_MODE_Padding
 ALU_ROUNDING_MODE_GS_LF
 Hit printing limit. To see more results, increase the --max value.
 ```
-Prints names of all reigsters that include word format
+Prints names of all registers that include word format
 ```
 reg --search *format* --max all
 ```
@@ -1159,7 +1203,7 @@ reg UNPACK_CONFIG0_out_data_format
 ```
 Output:
 ```
-Value of register ConfigurationRegisterDescription(address=240, mask=15, shift=0, data_type=<DATA_TYPE.TENSIX_DATA_FORMAT: 4>, ind...
+Value of register ConfigurationRegisterDescription(address: 0xffef00f0, mask: 0xf, shift: 0, native_data_type: DATA_TYPE.TENSIX_DA...
 TensixDataFormat.Float32
 ```
 Prints configuration register with index 60, mask 0xf, shift 0 in tensix data format
@@ -1168,7 +1212,7 @@ reg cfg(1,0x1E000000,25) --type TENSIX_DATA_FORMAT
 ```
 Output:
 ```
-Value of register ConfigurationRegisterDescription(address=4, mask=503316480, shift=25, data_type=<DATA_TYPE.TENSIX_DATA_FORMAT: 4...
+Value of register ConfigurationRegisterDescription(address: 0x4, mask: 0x1e000000, shift: 25, native_data_type: DATA_TYPE.TENSIX_D...
 TensixDataFormat.Float32
 ```
 Prints debug register with address 0x54 in integer format
@@ -1177,7 +1221,7 @@ reg dbg(0x54) --type INT_VALUE
 ```
 Output:
 ```
-Value of register DebugRegisterDescription(address=84, mask=4294967295, shift=0, data_type=<DATA_TYPE.INT_VALUE: 0>) on device 0 a...
+Value of register DebugRegisterDescription(address: 0x54, mask: 0xffffffff, shift: 0, native_data_type: DATA_TYPE.INT_VALUE) on de...
 18
 ```
 Writes 18 to debug register with address 0x54
@@ -1186,7 +1230,7 @@ reg dbg(0x54) --write 18
 ```
 Output:
 ```
-Register DebugRegisterDescription(address=84, mask=4294967295, shift=0, data_type=<DATA_TYPE.INT_VALUE: 0>) on device 0 and locati...
+Register DebugRegisterDescription(address: 0x54, mask: 0xffffffff, shift: 0, native_data_type: DATA_TYPE.INT_VALUE) on device 0 an...
 ```
 Writes 0 to configuration register with index 1, mask 0x1E000000, shift 25
 ```
@@ -1194,7 +1238,7 @@ reg cfg(1,0x1E000000,25) --write 0x0
 ```
 Output:
 ```
-Register ConfigurationRegisterDescription(address=4, mask=503316480, shift=25, data_type=<DATA_TYPE.INT_VALUE: 0>, index=1) on dev...
+Register ConfigurationRegisterDescription(address: 0x4, mask: 0x1e000000, shift: 25, native_data_type: DATA_TYPE.INT_VALUE, index:...
 ```
 Prints debug register with address 0x54 for device 0 and core at location 0,0
 ```
@@ -1202,7 +1246,7 @@ reg dbg(0x54) -d 0 -l 0,0
 ```
 Output:
 ```
-Value of register DebugRegisterDescription(address=84, mask=4294967295, shift=0, data_type=<DATA_TYPE.INT_VALUE: 0>) on device 0 a...
+Value of register DebugRegisterDescription(address: 0x54, mask: 0xffffffff, shift: 0, native_data_type: DATA_TYPE.INT_VALUE) on de...
 18
 ```
 Prints debug register with address 0x54 for core at location 0,0
@@ -1211,7 +1255,7 @@ reg dbg(0x54) -l 0,0
 ```
 Output:
 ```
-Value of register DebugRegisterDescription(address=84, mask=4294967295, shift=0, data_type=<DATA_TYPE.INT_VALUE: 0>) on device 0 a...
+Value of register DebugRegisterDescription(address: 0x54, mask: 0xffffffff, shift: 0, native_data_type: DATA_TYPE.INT_VALUE) on de...
 18
 ```
 Prints debug register with address 0x54 for device 0
@@ -1220,7 +1264,7 @@ reg dbg(0x54) -d 0
 ```
 Output:
 ```
-Value of register DebugRegisterDescription(address=84, mask=4294967295, shift=0, data_type=<DATA_TYPE.INT_VALUE: 0>) on device 0 a...
+Value of register DebugRegisterDescription(address: 0x54, mask: 0xffffffff, shift: 0, native_data_type: DATA_TYPE.INT_VALUE) on de...
 18
 ```
 

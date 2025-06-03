@@ -52,7 +52,7 @@ class GdbThreadListPaged:
 # Gdb remote protocol documentation: https://sourceware.org/gdb/current/onlinedocs/gdb.html/Remote-Protocol.html
 class GdbServer(threading.Thread):
     def __init__(self, context: Context, server: ServerSocket):
-        super().__init__(daemon=True)  # Spawn as deamon, so we don't block exit
+        super().__init__(daemon=True)  # Spawn as daemon, so we don't block exit
         self.context = context  # TTExaLens context
         self.server = server  # server socket used for listening to incoming connections
         self.is_connected = False  # flag that indicates if gdb client is connected
@@ -577,7 +577,7 @@ class GdbServer(threading.Thread):
             # ‘vAttach;pid’
             if parser.parse(b";"):
                 pid = parser.parse_hex()
-                # Check if pid is in the list of available processes and repond with error if it is not
+                # Check if pid is in the list of available processes and respond with error if it is not
                 process = self.available_processes.get(pid)
             else:
                 process = None
