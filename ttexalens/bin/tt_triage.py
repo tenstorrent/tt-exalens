@@ -30,6 +30,7 @@ import os
 import sys
 
 from ttexalens.firmware import ELF
+from ttexalens.tt_exalens_lib_utils import arc_read
 
 # When packaged with PyInstaller, _MEIPASS is defined and contains the path to the bundled libraries
 bundle_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
@@ -129,17 +130,10 @@ def check_ARC(dev):
     """Checking that ARC heartbeat is running. Estimating ARC uptime (-v)."""
     title(check_ARC.__doc__)
 
-    arc_core_loc = dev.get_arc_block_location()
-
-    def arc_read(addr: int) -> int:
-        """Read ARC register using PCI->NOC->ARC."""
-        value = read_word_from_device(arc_core_loc, addr)
-        return value
-
     # Postcode must be correct (C0DE)
     # postcode = dev.ARC.ARC_RESET.SCRATCH[0].read()
-
-    postcode = arc_read(dev.NOC_ARC_RESET_BASE_ADDR + dev.ARC_POSTCODE_OFFSET)
+    arc_core_loc = dev.get_arc_block_location()
+    postcode = arc_read(dev._context, dev.id(), arc_core_loc, dev.REGISTER_ADDRESSES["ARC_RESET_SCRATCH0"])
     if postcode & 0xFFFF0000 != 0xC0DE0000:
         print(f"ARC postcode: {RED}0x{postcode:08x}{RST}. Expected {BLUE}0xc0de____{RST}")
         raiseTTTriageError(check_ARC.__doc__)
