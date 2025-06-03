@@ -14,6 +14,8 @@ Arguments:
                          riscv - show the status of the RISC-V ('R': running, '-': in reset)
                          block - show the type of the block at that coordinate
                          logical, noc0, noc1, translated, virtual, die - show coordinate
+                         noc0_id - show the NOC0 node ID (x-y) for the block
+                         noc1_id - show the NOC1 node ID (x-y) for the block
 
 Description:
   Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
@@ -101,6 +103,7 @@ def run(cmd_text, context, ui_state=None):
                 print_legend(f"    {color_block(block_type, block_type)}")
         print_legend("")
 
+    device: Device
     for device in dopt.for_each("--device", context, ui_state):
         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
         util.INFO(f"==== Device {jtag_prompt}{device.id()}")
@@ -119,14 +122,16 @@ def run(cmd_text, context, ui_state=None):
                 elif ct == "riscv":
                     text = device.get_riscv_run_status(loc)
                     cell_contents_str.append(color_block(text, block_type))
-                elif ct == "noc_id":
-                    if block_type is not None and block_type != "pcie":
-                        noc_node_id_address = device.get_tensix_register_address("NOC_NODE_ID")
-                        data = read_words_from_device(loc, noc_node_id_address, device._id, 1, context)[0]
+                elif ct == "noc0_id" or ct == "noc1_id":
+                    try:
+                        noc_id = 0 if ct == "noc0_id" else 1
+                        block = device.get_block(loc)
+                        register_store = block.get_register_store(noc_id=noc_id)
+                        data = register_store.read_register("NOC_NODE_ID")
                         x = data & 0x3F
                         y = (data >> 6) & 0x3F
-                        cell_contents_str.append(f"{x:02}-{y:02}")
-                    else:
+                        cell_contents_str.append(color_block(f"{x:02}-{y:02}", block_type))
+                    except:
                         cell_contents_str.append("")
                 elif ct in VALID_COORDINATE_TYPES:
                     try:
