@@ -37,6 +37,8 @@ class WormholeDramBlock(WormholeNocBlock):
             size=2 * 1024 * 1024 * 1024, address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000)
         )
 
+        # Each DRAM block has three NOC blocks. We need to determine which NOC block to use based on the
+        # location coordinate.
         if location._noc0_coord[1] % 3 == 1:
             self.register_store_noc0 = RegisterStore(register_store_location0_noc0_initialization, self.location)
             self.register_store_noc1 = RegisterStore(register_store_location0_noc1_initialization, self.location)
