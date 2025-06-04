@@ -178,7 +178,6 @@ class Device(TTObject):
         )
 
         self._init_coordinate_systems()
-        self._init_arc_register_addresses()
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
     def __noc_to_die(self, noc_loc, noc_id=0):
@@ -262,21 +261,19 @@ class Device(TTObject):
             blocks.append(self.get_block(location))
         return blocks
 
+    @cached_property
+    def arc_block(self) -> NocBlock:
+        arc_blocks = self.get_blocks(block_type="arc")
+
+        assert len(arc_blocks) == 1
+
+        return arc_blocks[0]
+
     def get_block_locations(self, block_type="functional_workers") -> list[OnChipCoordinate]:
         """
         Returns locations of all blocks of a given type
         """
         return self._block_locations[block_type]
-
-    def get_arc_block_location(self) -> OnChipCoordinate:
-        """
-        Returns OnChipCoordinate of the ARC block
-        """
-        arc_locations = self.get_block_locations(block_type="arc")
-
-        assert len(arc_locations) == 1
-
-        return arc_locations[0]
 
     @cached_property
     def _block_locations(self):
@@ -525,40 +522,6 @@ class Device(TTObject):
         if bt == "harvested_workers":
             return "----"
         return bt
-
-    REGISTER_ADDRESSES: dict[str, int] = {}
-
-    def get_arc_register_addr(self, name: str) -> int:
-        try:
-            addr = self.REGISTER_ADDRESSES[name]
-        except KeyError:
-            raise ValueError(f"Unknown register name: {name}. Available registers: {self.REGISTER_ADDRESSES.keys()}")
-
-        return addr
-
-    def _init_arc_register_addresses(self):
-        if len(self.get_block_locations("arc")) > 0:
-            base_addr = self.PCI_ARC_RESET_BASE_ADDR if self._has_mmio else self.NOC_ARC_RESET_BASE_ADDR
-            csm_data_base_addr = self.PCI_ARC_CSM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_CSM_DATA_BASE_ADDR
-            rom_data_base_addr = self.PCI_ARC_ROM_DATA_BASE_ADDR if self._has_mmio else self.NOC_ARC_ROM_DATA_BASE_ADDR
-
-            self.REGISTER_ADDRESSES = {
-                "ARC_RESET_ARC_MISC_CNTL": base_addr + 0x100,
-                "ARC_RESET_ARC_MISC_STATUS": base_addr + 0x104,
-                "ARC_RESET_ARC_UDMIAXI_REGION": base_addr + 0x10C,
-                # Scratch register info:
-                # https://tenstorrent.atlassian.net/wiki/spaces/syseng/pages/1039663279/Wormhole+Scratch+Registers
-                "ARC_RESET_SCRATCH0": base_addr + 0x060,  # Postcode
-                "ARC_RESET_SCRATCH1": base_addr + 0x064,  # SPI boost code
-                "ARC_RESET_SCRATCH2": base_addr + 0x068,  # Msg ID for secondary msg queue
-                "ARC_RESET_SCRATCH3": base_addr + 0x06C,  # Argument value for primary msg queue
-                "ARC_RESET_SCRATCH4": base_addr + 0x070,  # Argument value for secondary msg queue
-                "ARC_RESET_SCRATCH5": base_addr + 0x074,  # Msg ID for primary msg queue
-                "ARC_RESET_SCRATCH6": base_addr + 0x078,  # Drives armisc_info to PCIE controller
-                "ARC_RESET_SCRATCH7": base_addr + 0x07C,  # Drives awmisc_info to PCIE controller
-                "ARC_CSM_DATA": csm_data_base_addr,
-                "ARC_ROM_DATA": rom_data_base_addr,
-            }
 
     @abstractmethod
     def get_debug_bus_signal_store(self, loc: OnChipCoordinate) -> DebugBusSignalStore:

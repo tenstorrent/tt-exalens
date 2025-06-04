@@ -1,12 +1,13 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+
 # This code is used to interact with the ARC debug firmware on the device.
 import os
 import time
 from ttexalens.context import Context
 from ttexalens.util import TTException
-from ttexalens.tt_exalens_lib_utils import check_context, arc_read, arc_write
+from ttexalens.tt_exalens_lib_utils import check_context
 
 
 def arc_dbg_fw_get_buffer_start_addr():
@@ -42,14 +43,12 @@ def arc_dbg_fw_send_message(message, arg0: int = 0, arg1: int = 0, device_id: in
     context = check_context(context)
 
     device = context.devices[device_id]
-    arc_core_loc = device.get_arc_block_location()
+    arc_register_store = device.arc_block.get_register_store()
 
-    arc_write(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_SCRATCH3"), arg0)
-    arc_write(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_SCRATCH4"), arg1)
+    arc_register_store.write_register("ARC_RESET_SCRATCH3", arg0)
+    arc_register_store.write_register("ARC_RESET_SCRATCH4", arg1)
     assert message & 0xFFFFFF00 == 0  # "Message must be in the lower 8 bits"
-    arc_write(
-        context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_SCRATCH2"), message | 0xABCDEF00
-    )
+    arc_register_store.write_register("ARC_RESET_SCRATCH2", message | 0xABCDEF00)
 
 
 def arc_dbg_fw_check_msg_loop_running(device_id: int = 0, context: Context = None):
@@ -59,12 +58,12 @@ def arc_dbg_fw_check_msg_loop_running(device_id: int = 0, context: Context = Non
     context = check_context(context)
 
     device = context.devices[device_id]
-    arc_core_loc = device.get_arc_block_location()
+    arc_register_store = device.arc_block.get_register_store()
 
     arc_dbg_fw_send_message(0x88, 0, 0, device_id, context)
     time.sleep(0.01)  # Allow time for reply
 
-    reply = arc_read(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_SCRATCH2"))
+    reply = arc_register_store.read_register("ARC_RESET_SCRATCH2")
 
     if (reply >> 16) != 0x99 or (reply & 0xFF00) != 0x8800:
         return False

@@ -6,7 +6,7 @@ from ttexalens.util import TTException
 import re
 import os
 
-from ttexalens.tt_exalens_lib_utils import check_context, arc_read, arc_write
+from ttexalens.tt_exalens_lib_utils import check_context
 from time import sleep
 
 
@@ -21,26 +21,25 @@ def run_arc_core(mask: int, device_id: int = 0, context: Context = None):
     context = check_context(context)
 
     device = context.devices[device_id]
-    arc_core_loc = device.get_arc_block_location()
+    arc_register_store = device.arc_block.get_register_store()
 
     # Write to bits 0-3
-    reg_addr = device.get_arc_register_addr("ARC_RESET_ARC_MISC_CNTL")
 
     # Read current value
-    current = arc_read(context, device_id, arc_core_loc, reg_addr)
+    current = arc_register_store.read_register("ARC_RESET_ARC_MISC_CNTL")
     # Clear bits 0-3 and set new value
     new_value = (current & ~0xF) | (mask & 0xF)
-    arc_write(context, device_id, arc_core_loc, reg_addr, new_value)
+    arc_register_store.write_register("ARC_RESET_ARC_MISC_CNTL", new_value)
 
     # Wait for acknowledgment
     core_run_ack = 0
     while core_run_ack & mask != mask:
-        status = arc_read(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_ARC_MISC_STATUS"))
+        status = arc_register_store.read_register("ARC_RESET_ARC_MISC_STATUS")
         core_run_ack = status & 0xF  # Read bits 0-3
 
     # Clear control bits
-    current = arc_read(context, device_id, arc_core_loc, reg_addr)
-    arc_write(context, device_id, arc_core_loc, reg_addr, current & ~0xF)
+    current = arc_register_store.read_register("ARC_RESET_ARC_MISC_CNTL")
+    arc_register_store.write_register("ARC_RESET_ARC_MISC_CNTL", current & ~0xF)
 
 
 def halt_arc_core(mask: int, device_id: int = 0, context: Context = None):
@@ -54,25 +53,23 @@ def halt_arc_core(mask: int, device_id: int = 0, context: Context = None):
     context = check_context(context)
 
     device = context.devices[device_id]
-    arc_core_loc = device.get_arc_block_location()
-
-    reg_addr = device.get_arc_register_addr("ARC_RESET_ARC_MISC_CNTL")
+    arc_register_store = device.arc_block.get_register_store()
 
     # Read current value
-    current = arc_read(context, device_id, arc_core_loc, reg_addr)
+    current = arc_register_store.read_register("ARC_RESET_ARC_MISC_CNTL")
     # Set bits 4-7 with mask
     new_value = (current & ~0xF0) | ((mask & 0xF) << 4)
-    arc_write(context, device_id, arc_core_loc, reg_addr, new_value)
+    arc_register_store.write_register("ARC_RESET_ARC_MISC_CNTL", new_value)
 
     # Wait for acknowledgment
     core_halt_ack = 0
     while core_halt_ack != mask:
-        status = arc_read(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_ARC_MISC_STATUS"))
+        status = arc_register_store.read_register("ARC_RESET_ARC_MISC_STATUS")
         core_halt_ack = (status >> 4) & 0xF  # Read bits 4-7
 
     # Clear halt bits
-    current = arc_read(context, device_id, arc_core_loc, reg_addr)
-    arc_write(context, device_id, arc_core_loc, reg_addr, current & ~0xF0)
+    current = arc_register_store.read_register("ARC_RESET_ARC_MISC_CNTL")
+    arc_register_store.write_register("ARC_RESET_ARC_MISC_CNTL", current & ~0xF0)
 
 
 def set_udmiaxi_region(mem_type: str, device_id: int = 0, context: Context = None):
@@ -86,7 +83,7 @@ def set_udmiaxi_region(mem_type: str, device_id: int = 0, context: Context = Non
     context = check_context(context)
 
     device = context.devices[device_id]
-    arc_core_loc = device.get_arc_block_location()
+    arc_register_store = device.arc_block.get_register_store()
 
     iccm_id = re.findall("\d", mem_type)
     if len(iccm_id) == 0:
@@ -102,7 +99,7 @@ def set_udmiaxi_region(mem_type: str, device_id: int = 0, context: Context = Non
     if context.devices[device_id]._arch == "blackhole":
         base_addr |= 0x100
 
-    arc_write(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_ARC_UDMIAXI_REGION"), base_addr)
+    arc_register_store.write_register("ARC_RESET_ARC_UDMIAXI_REGION", base_addr)
 
 
 def trigger_fw_int(device_id: int = 0, context: Context = None) -> bool:
@@ -117,15 +114,15 @@ def trigger_fw_int(device_id: int = 0, context: Context = None) -> bool:
     """
     context = check_context(context)
     device = context.devices[device_id]
-    arc_core_loc = device.get_arc_block_location()
+    arc_register_store = device.arc_block.get_register_store()
 
-    misc = arc_read(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_ARC_MISC_CNTL"))
+    misc = arc_register_store.read_register("ARC_RESET_ARC_MISC_CNTL")
 
     if misc & (1 << 16):
         return False
 
     misc_bit16_set = misc | (1 << 16)
-    arc_write(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET.ARC_MISC_CNTL"), misc_bit16_set)
+    arc_register_store.write_register("ARC_RESET.ARC_MISC_CNTL", misc_bit16_set)
 
     return True
 
@@ -150,30 +147,23 @@ def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context =
     context = check_context(context)
 
     device = context.devices[device_id]
-    arc_core_loc = device.get_arc_block_location()
+    arc_register_store = device.arc_block.get_register_store()
 
     mem_type = f"iccm{iccm_id}"
 
     halt_arc_core(1 << iccm_id, device_id, context)
 
     if iccm_id == 0:
-        # Same for womhole and grayskull
         MSG_TYPE_ARC_GO_TO_SLEEP = 0x55
 
-        arc_write(
-            context,
-            device_id,
-            arc_core_loc,
-            device.get_arc_register_addr("ARC_RESET_SCRATCH5"),
-            0xAA00 | MSG_TYPE_ARC_GO_TO_SLEEP,
-        )
+        arc_register_store.write_register("ARC_RESET_SCRATCH5", 0xAA00 | MSG_TYPE_ARC_GO_TO_SLEEP)
 
         trigger_fw_int()
         sleep(0.01)  # Wait a bit for ARC to process this
 
     set_udmiaxi_region(mem_type, device_id, context)
 
-    base_addr = device.get_arc_register_addr("ARC_CSM_DATA")
+    arc_csm_data = arc_register_store.get_register_description("ARC_CSM_DATA")
 
     def read_contiguous_hex_chunks(f):
         chunk_start_address = 0
@@ -201,12 +191,13 @@ def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context =
         for offset, data in read_contiguous_hex_chunks(f):
             if first_chunk:  # Load reset vector
                 word = int.from_bytes(data[0:4], "little")
-                arc_write(context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_ROM_DATA"), word)
+                arc_register_store.write_register("ARC_ROM_DATA", word)
                 first_chunk = False
 
             for i in range(len(data) // 4):
                 word = int.from_bytes(data[i * 4 : i * 4 + 4], "little")
-                arc_write(context, device_id, arc_core_loc, base_addr + i * 4, word)
+                offset_csm_data = arc_csm_data.change_offset(i * 4)
+                arc_register_store.write_register(offset_csm_data, word)
 
     set_udmiaxi_region("csm", device_id, context)
     run_arc_core(1 << iccm_id, device_id, context)
