@@ -154,7 +154,6 @@ def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context =
     halt_arc_core(1 << iccm_id, device_id, context)
 
     if iccm_id == 0:
-        # Same for womhole and grayskull
         MSG_TYPE_ARC_GO_TO_SLEEP = 0x55
 
         arc_register_store.write_register("ARC_RESET_SCRATCH5", 0xAA00 | MSG_TYPE_ARC_GO_TO_SLEEP)
