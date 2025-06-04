@@ -24,7 +24,6 @@ from ttexalens.object import DataArray
 
 from ttexalens.hw.arc.arc import load_arc_fw
 from ttexalens.hw.arc.arc_dbg_fw import arc_dbg_fw_check_msg_loop_running, arc_dbg_fw_command, NUM_LOG_CALLS_OFFSET
-from ttexalens.tt_exalens_lib_utils import arc_read
 
 
 def invalid_argument_decorator(func):
@@ -847,12 +846,8 @@ class TestARC(unittest.TestCase):
         for device_id in self.context.device_ids:
             load_arc_fw(self.fw_file_path, 2, device_id, context=self.context)
             device = self.context.devices[device_id]
-            arc_core_loc = device.get_arc_block_location()
-
-            scratch2 = arc_read(
-                self.context, device_id, arc_core_loc, device.get_arc_register_addr("ARC_RESET_SCRATCH2")
-            )
-
+            arc = device.arc_block
+            scratch2 = arc.get_register_store().read_register("ARC_RESET_SCRATCH2")
             assert scratch2 == 0xBEBACECA
 
 

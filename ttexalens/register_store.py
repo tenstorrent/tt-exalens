@@ -89,12 +89,17 @@ class RegisterDescription:
 
     @property
     def noc_id(self) -> int | None:
-        assert self.base_address.noc_address is not None
+        assert self.base_address is not None and self.base_address.noc_address is not None
         return self.base_address.noc_id
 
     def clone(self, base_address: DeviceAddress) -> "RegisterDescription":
         new_instance = deepcopy(self)
         new_instance.base_address = base_address
+        return new_instance
+
+    def change_offset(self, offset: int) -> "RegisterDescription":
+        new_instance = deepcopy(self)
+        new_instance.offset = self.offset + offset
         return new_instance
 
 
