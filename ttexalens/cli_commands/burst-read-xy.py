@@ -43,11 +43,16 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import read_words_from_device, read_from_device
 from ttexalens.firmware import ELF
 from ttexalens.object import DataArray
-from ttexalens import util as util
+from ttexalens import command_parser, util as util
 
 
 def run(cmd_text, context, ui_state: UIState = None):
-    args = docopt(command_metadata["description"], argv=cmd_text.split()[1:])
+    dopt = command_parser.tt_docopt(
+        command_metadata["description"],
+        argv=cmd_text.split()[1:],
+        common_option_names=command_metadata["common_option_names"],
+    )
+    args = dopt.args
 
     core_loc_str = args["<core-loc>"]
     current_device_id = ui_state.current_device_id
