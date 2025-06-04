@@ -13,7 +13,7 @@ from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_in
 
 @parameterized_class(
     [
-        # { "core_desc": "ETH0", "risc_name": "BRISC" },
+        {"core_desc": "ETH0", "risc_name": "BRISC"},
         {"core_desc": "FW0", "risc_name": "BRISC"},
         {"core_desc": "FW0", "risc_name": "TRISC0"},
         {"core_desc": "FW0", "risc_name": "TRISC1"},
@@ -52,13 +52,13 @@ class TestDebugging(unittest.TestCase):
                 self.skipTest("ETH core is not available on this platform")
         elif self.core_desc.startswith("FW"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.context.devices[0].get_block_locations(block_type="functional_workers")
+            fw_cores = self.context.devices[0].get_block_locations(block_type="functional_workers")
             core_index = int(self.core_desc[2:])
-            if len(eth_cores) > core_index:
-                self.core_loc = eth_cores[core_index].to_str()
+            if len(fw_cores) > core_index:
+                self.core_loc = fw_cores[core_index].to_str()
             else:
                 # If not found, we should skip the test
-                self.skipTest("ETH core is not available on this platform")
+                self.skipTest("FW core is not available on this platform")
         else:
             self.fail(f"Unknown core description {self.core_desc}")
 
@@ -110,7 +110,7 @@ class TestDebugging(unittest.TestCase):
 
     def assertPcEquals(self, expected):
         """Assert PC register equals to expected value."""
-        if self.is_wormhole() or self.is_blackhole():
+        if (self.is_wormhole() or self.is_blackhole()) and not self.core_desc.startswith("ETH"):
             # checks pc over debug bus
             self.assertEqual(
                 self.get_pc_from_debug_bus(),
@@ -651,6 +651,10 @@ class TestDebugging(unittest.TestCase):
 
     def test_invalidate_cache_with_nops_and_long_jump(self):
         """Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation by having NOPs block and jump back. All that is done on brisc."""
+
+        if self.core_desc.startswith("ETH"):
+            self.skipTest("This test is not applicable for ETH cores.")
+
         break_addr = 0x950
         jump_addr = 0x2000
         addr = 0x10000
@@ -1147,6 +1151,9 @@ class TestDebugging(unittest.TestCase):
     def test_bne_with_debug_fail(self):
         """Test running 48 bytes of generated code that confirms problem with BNE when debugging hardware is enabled."""
 
+        if self.core_desc.startswith("ETH"):
+            self.skipTest("This test is not applicable for ETH cores.")
+
         if self.is_blackhole():
             self.skipTest("BNE instruction with debug hardware enabled is fixed in blackhole.")
 
@@ -1217,6 +1224,9 @@ class TestDebugging(unittest.TestCase):
 
     def test_bne_without_debug(self):
         """Test running 48 bytes of generated code that confirms that there is no problem with BNE when debugging hardware is disabled."""
+
+        if self.core_desc.startswith("ETH"):
+            self.skipTest("This test is not applicable for ETH cores.")
 
         # Enable branch prediction
         loader = RiscLoader(self.rdbg, self.context)
@@ -1289,6 +1299,9 @@ class TestDebugging(unittest.TestCase):
 
     def test_bne_with_debug_without_bp(self):
         """Test running 48 bytes of generated code that confirms that there is no problem with BNE when debugging hardware is enabled and branch prediction is disabled."""
+
+        if self.core_desc.startswith("ETH"):
+            self.skipTest("This test is not applicable for ETH cores.")
 
         # Enable branch prediction
         loader = RiscLoader(self.rdbg, self.context)
