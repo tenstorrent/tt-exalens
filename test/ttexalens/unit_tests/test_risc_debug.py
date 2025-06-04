@@ -68,7 +68,9 @@ class TestDebugging(unittest.TestCase):
         self.rdbg = RiscDebug(rloc, self.context)
         loader = RiscLoader(self.rdbg, self.context)
         self.program_base_address = loader.get_risc_start_address()
-        self.debug_bus_store = self.context.devices[0].get_debug_bus_signal_store(loc)
+        self.debug_bus_store = (
+            self.context.devices[0].get_debug_bus_signal_store(loc) if self.core_desc.startswith("FW") else None
+        )
 
         # If address wasn't set before, we want to set it to something that is not 0 for testing purposes
         if self.program_base_address == None:
