@@ -42,6 +42,7 @@ RUN pip install --upgrade pip
 
 # Copy the requirements files for pip
 COPY ttexalens/requirements.txt .
+COPY ttexalens/dev-requirements.txt .
 COPY test/test_requirements.txt .
 
 # Install Python dependencies
