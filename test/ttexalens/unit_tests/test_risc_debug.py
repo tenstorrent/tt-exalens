@@ -85,7 +85,8 @@ class TestDebugging(unittest.TestCase):
         if self.is_eth_block() and self.is_blackhole():
             self.rdbg.set_reset_signal(False)
             self.assertFalse(self.rdbg.is_in_reset())
-            self.program_base_address = lib.read_riscv_memory(self.core_loc, 0xFFB14000, context=self.context)
+            with self.rdbg.ensure_halted():
+                self.program_base_address = self.rdbg.read_memory(0xFFB14000)
 
         # Stop risc with reset
         self.rdbg.set_reset_signal(True)
