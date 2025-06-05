@@ -19,8 +19,7 @@ RUN apt-get update && apt-get install -y \
     sudo \
     wget \
 	xxd \
-    curl \
-    jq
+    curl jq
 
 # Install test dependencies
 RUN apt-get update && apt-get install -y \
