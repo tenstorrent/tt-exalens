@@ -82,7 +82,7 @@ class TestDebugging(unittest.TestCase):
             self.program_base_address = loader.get_risc_start_address()
             self.assertEqual(self.program_base_address, 0xD000)
 
-        if self.is_eth_block():
+        if self.is_eth_block() and self.is_blackhole():
             self.rdbg.set_reset_signal(False)
             self.assertFalse(self.rdbg.is_in_reset())
             self.program_base_address = lib.read_riscv_memory(self.core_loc, 0xFFB14000, context=self.context)
