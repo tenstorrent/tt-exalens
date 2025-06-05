@@ -675,10 +675,10 @@ def read_riscv_memory(
     base_address = device._get_riscv_local_memory_base_address()
     size = device._get_riscv_local_memory_size(risc_id)
 
-    if addr < base_address or addr >= base_address + size:
-        raise ValueError(
-            f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
-        )
+    # if addr < base_address or addr >= base_address + size:
+    #     raise ValueError(
+    #         f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
+    #     )
 
     location = RiscLoc(loc=coordinate, noc_id=noc_id, risc_id=risc_id)
     debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
