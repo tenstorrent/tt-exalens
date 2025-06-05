@@ -23,7 +23,6 @@ from ttexalens.device import (
     NocConfigurationRegisterDescription,
     NocControlRegisterDescription,
 )
-from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 
 
 class WormholeInstructions(TensixInstructions):
@@ -966,9 +965,6 @@ class WormholeDevice(Device):
         elif block_type == "router_only":
             return WormholeRouterOnlyBlock(location)
         raise ValueError(f"Unsupported block type: {block_type}")
-
-    def get_debug_bus_signal_store(self, location: OnChipCoordinate) -> DebugBusSignalStore:
-        return self.get_block(location).debug_bus
 
     def get_alu_config(self) -> list[dict]:
         return [
