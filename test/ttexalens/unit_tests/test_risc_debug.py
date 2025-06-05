@@ -188,7 +188,9 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.rdbg.read_gpr(get_register_index("zero")), 0, "zero should always be 0.")
         if not (self.is_blackhole() and self.is_eth_block()):
             # PC is not readable on blackhole ETH core for now
-            self.assertEqual(self.rdbg.read_gpr(get_register_index("pc")), self.program_base_address + 4, "PC should be 4.")
+            self.assertEqual(
+                self.rdbg.read_gpr(get_register_index("pc")), self.program_base_address + 4, "PC should be 4."
+            )
 
         # Test write then read for all other registers
         for i in range(1, 31):
@@ -317,7 +319,7 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.read_data(addr), 0x12345678)
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
         self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
-        
+
         if not (self.is_blackhole() and self.is_eth_block()):
             # PC is not readable on blackhole ETH core for now
             self.assertPcEquals(4)
@@ -371,7 +373,7 @@ class TestDebugging(unittest.TestCase):
         for i in range(10):
             # Step and verify that pc is 16 and value has changed
             self.rdbg.step()
-            #self.assertPcEquals(16)
+            # self.assertPcEquals(16)
 
     def test_continue(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
@@ -715,7 +717,7 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.read_data(addr), 0x12345678)
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
         self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
-        #self.assertPcEquals(break_addr + 4)
+        # self.assertPcEquals(break_addr + 4)
 
         # Write new code for brisc core at address 0
         # C++:
@@ -790,7 +792,7 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
         self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
         self.assertFalse(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
-        #self.assertPcEquals(4)
+        # self.assertPcEquals(4)
 
         # Set watchpoint on address 12 and 32
         self.rdbg.set_watchpoint_on_pc_address(0, self.program_base_address + 12)
@@ -805,7 +807,7 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.rdbg.read_status().is_watchpoint0_hit, "Watchpoint 0 should be hit.")
         self.assertFalse(self.rdbg.read_status().is_watchpoint1_hit, "Watchpoint 1 should not be hit.")
 
-        #self.assertPcLess(28)
+        # self.assertPcLess(28)
         self.assertEqual(self.read_data(addr), 0x12345678)
 
         # Continue and verify that we hit first watchpoint
@@ -816,7 +818,7 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.rdbg.read_status().is_memory_watchpoint_hit, "Memory watchpoint should not be the cause.")
         self.assertFalse(self.rdbg.read_status().is_watchpoint0_hit, "Watchpoint 0 should not be hit.")
         self.assertTrue(self.rdbg.read_status().is_watchpoint1_hit, "Watchpoint 1 should be hit.")
-        #self.assertPcEquals(32)
+        # self.assertPcEquals(32)
         self.assertEqual(self.read_data(addr), 0x87654000)
 
     def test_watchpoint_address(self):
