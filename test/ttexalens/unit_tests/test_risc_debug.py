@@ -30,6 +30,7 @@ class TestDebugging(unittest.TestCase):
     context: Context = None  # TTExaLens context
     core_desc: str = None  # Core description ETH0, FW0, FW1 - being parametrized
     core_loc: str = None  # Core location
+    location: OnChipCoordinate = None  # On-chip coordinate
     rdbg: RiscDebug = None  # RiscDebug object
     pc_register_index: int = None  # PC register index
     program_base_address: int = None  # Base address for program code
@@ -62,14 +63,16 @@ class TestDebugging(unittest.TestCase):
         else:
             self.fail(f"Unknown core description {self.core_desc}")
 
-        loc = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
+        self.location = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
         self.risc_id = get_risc_id(self.risc_name)
-        rloc = RiscLoc(loc, 0, self.risc_id)
+        rloc = RiscLoc(self.location, 0, self.risc_id)
         self.rdbg = RiscDebug(rloc, self.context)
         loader = RiscLoader(self.rdbg, self.context)
         self.program_base_address = loader.get_risc_start_address()
         self.debug_bus_store = (
-            self.context.devices[0].get_debug_bus_signal_store(loc) if self.core_desc.startswith("FW") else None
+            self.context.devices[0].get_debug_bus_signal_store(self.location)
+            if self.core_desc.startswith("FW")
+            else None
         )
 
         # If address wasn't set before, we want to set it to something that is not 0 for testing purposes
@@ -95,10 +98,10 @@ class TestDebugging(unittest.TestCase):
     def is_wormhole(self):
         """Check if the device is wormhole_b0."""
         return self.context.devices[0]._arch == "wormhole_b0"
-    
+
     def is_eth_block(self):
         """Check if the core is ETH."""
-        return self.context.devices[0].get_block_type(self.core_loc) == "eth"
+        return self.context.devices[0].get_block_type(self.location) == "eth"
 
     def read_data(self, addr):
         """Read data from memory."""
