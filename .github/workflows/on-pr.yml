@@ -5,6 +5,9 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  packages: write
+
 jobs:
   pre-commit:
     uses: ./.github/workflows/pre-commit.yml
