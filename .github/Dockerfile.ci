@@ -9,23 +9,23 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install run dependencies
 RUN apt-get update && apt-get install -y \
-	software-properties-common \
-	build-essential \
+    software-properties-common \
+    build-essential \
     git \
-	libyaml-cpp-dev \
-	libhwloc-dev \
-	libzmq3-dev \
+    libyaml-cpp-dev \
+    libhwloc-dev \
+    libzmq3-dev \
     libnsl2 \
     sudo \
     wget \
-	xxd \
+    xxd \
     curl \
     jq
 
 # Install test dependencies
 RUN apt-get update && apt-get install -y \
-	libgtest-dev \
-	libgmock-dev
+    libgtest-dev \
+    libgmock-dev
 
 # Install minimal dependencies for Python environment, pip, and wheel builds
 RUN apt-get update && apt-get install -y \

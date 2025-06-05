@@ -14,7 +14,7 @@ RUN mkdir -p ${TT_EXALENS_INFRA_DIR}
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
-	docker \
+    docker \
     gh \
     git-lfs \
     libgmp-dev \
