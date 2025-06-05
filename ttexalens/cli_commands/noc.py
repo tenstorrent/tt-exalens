@@ -39,9 +39,16 @@ from docopt import docopt
 from ttexalens import command_parser, util
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.tt_exalens_lib import read_words_from_device
+from ttexalens.device import Device
+from ttexalens.register_store import (
+    NocConfigurationRegisterDescription,
+    NocControlRegisterDescription,
+    NocStatusRegisterDescription,
+    RegisterDescription,
+    RegisterStore,
+)
 from ttexalens.uistate import UIState
-from ttexalens.rich_formatters import formatter, console
+from ttexalens.rich_formatters import formatter
 
 # Command metadata
 command_metadata = {
@@ -53,36 +60,35 @@ command_metadata = {
     "common_option_names": ["--device", "--loc"],
 }
 
-###############################################################################
-# Reading registers
-###############################################################################
-def read_noc_register(loc: OnChipCoordinate, device, noc_id: int, reg_name: str) -> int:
+
+def is_noc_register_description(description: RegisterDescription) -> bool:
+    return isinstance(
+        description,
+        (NocStatusRegisterDescription, NocConfigurationRegisterDescription, NocControlRegisterDescription),
+    )
+
+
+def get_noc_register_names(register_store: RegisterStore) -> list[str]:
     """
-    Read a NOC register value from the device.
+    Get the names of all NOC registers from the register store.
 
     Args:
-        loc: On-chip coordinate
-        device: Device object
-        noc_id: NOC identifier (0 or 1)
-        reg_name: Register name
+        register_store: The register store to query.
 
     Returns:
-        Register value as integer
+        A list of NOC register names.
     """
-    try:
-        # Use device's method to get NOC register address
-        reg_addr = device.get_noc_register_address(reg_name, noc_id)
-        val = read_words_from_device(loc, reg_addr, device.id())[0]
-        return val
-    except Exception as e:
-        util.ERROR(f"Failed to read register {reg_name} from NOC{noc_id}: {str(e)}")
-        return 0
+    return [
+        name
+        for name in register_store.get_register_names()
+        if is_noc_register_description(register_store.get_register_description(name))
+    ]
 
 
 ###############################################################################
 # Register Definitions and Extraction
 ###############################################################################
-def get_noc_status_registers(loc: OnChipCoordinate, device, noc_id: int) -> dict[str, dict[str, int]]:
+def get_noc_status_registers(loc: OnChipCoordinate, device: Device, noc_id: int) -> dict[str, dict[str, int]]:
     """
     Get all NOC status registers organized by groups.
 
@@ -117,14 +123,15 @@ def get_noc_status_registers(loc: OnChipCoordinate, device, noc_id: int) -> dict
         },
     }
 
+    register_store = device.get_block(loc).get_register_store(noc_id)
     noc_registers: dict[str, dict[str, int]] = {group_name: {} for group_name in register_groups.keys()}
     for group_name, registers in register_groups.items():
         for register_desc, reg_name in registers.items():
-            noc_registers[group_name][register_desc] = read_noc_register(loc, device, noc_id, reg_name)
+            noc_registers[group_name][register_desc] = register_store.read_register(reg_name)
     return noc_registers
 
 
-def get_all_noc_registers(loc: OnChipCoordinate, device) -> dict[str, dict[str, int]]:
+def get_all_noc_registers(loc: OnChipCoordinate, device: Device) -> dict[str, dict[str, int]]:
     """
     Get all NOC registers for both NOC0 and NOC1.
 
@@ -136,17 +143,21 @@ def get_all_noc_registers(loc: OnChipCoordinate, device) -> dict[str, dict[str, 
         Dictionary of all register values for both NOCs
     """
     noc_registers: dict[str, dict[str, int]] = {"Noc0 Registers": {}, "Noc1 Registers": {}}
-    register_names = device.get_noc_register_names()
+    register_store_noc0 = device.get_block(loc).get_register_store(0)
+    register_store_noc1 = device.get_block(loc).get_register_store(1)
+    register_names = get_noc_register_names(register_store_noc0)  # We will get the same names for both NOCs
     for reg_name in register_names:
-        noc_registers["Noc0 Registers"][reg_name] = read_noc_register(loc, device, 0, reg_name)
-        noc_registers["Noc1 Registers"][reg_name] = read_noc_register(loc, device, 1, reg_name)
+        noc_registers["Noc0 Registers"][reg_name] = register_store_noc0.read_register(reg_name)
+        noc_registers["Noc1 Registers"][reg_name] = register_store_noc1.read_register(reg_name)
     return noc_registers
 
 
 ###############################################################################
 # NOC Register Display Functions
 ###############################################################################
-def display_noc_status_registers(loc: OnChipCoordinate, device, noc_id: int, simple_print: bool = False) -> None:
+def display_noc_status_registers(
+    loc: OnChipCoordinate, device: Device, noc_id: int, simple_print: bool = False
+) -> None:
     """
     Display status registers for a specific NOC.
 
@@ -166,7 +177,7 @@ def display_noc_status_registers(loc: OnChipCoordinate, device, noc_id: int, sim
     formatter.display_grouped_data(noc_registers, grouping, simple_print)
 
 
-def display_all_noc_registers(loc: OnChipCoordinate, device, simple_print: bool = False) -> None:
+def display_all_noc_registers(loc: OnChipCoordinate, device: Device, simple_print: bool = False) -> None:
     """
     Display all registers for both NOCs.
 
@@ -186,7 +197,7 @@ def display_all_noc_registers(loc: OnChipCoordinate, device, simple_print: bool 
     formatter.display_grouped_data(noc_registers, grouping, simple_print)
 
 
-def display_all_noc_status_registers(loc: OnChipCoordinate, device, simple_print: bool = False) -> None:
+def display_all_noc_status_registers(loc: OnChipCoordinate, device: Device, simple_print: bool = False) -> None:
     """
     Display status registers for both NOCs.
 
@@ -200,7 +211,7 @@ def display_all_noc_status_registers(loc: OnChipCoordinate, device, simple_print
 
 
 def display_specific_noc_registers(
-    loc: OnChipCoordinate, device, reg_names: list[str], noc_id: int, simple_print: bool = False
+    loc: OnChipCoordinate, device: Device, reg_names: list[str], noc_id: int, simple_print: bool = False
 ) -> None:
     """
     Display one or more specific NOC registers by name.
@@ -213,7 +224,8 @@ def display_specific_noc_registers(
         simple_print: Whether to use simplified output format
     """
     # Get the list of valid register names
-    valid_register_names = device.get_noc_register_names()
+    register_store = device.get_block(loc).get_register_store(noc_id)
+    valid_register_names = get_noc_register_names(register_store)
 
     # Create a data structure to hold register values
     register_data: dict[str, dict[str, int]] = {f"NOC{noc_id} Registers": {}}
@@ -231,7 +243,7 @@ def display_specific_noc_registers(
         if reg_name in valid_register_names:
             valid_registers_found = True
             # Read the register value
-            value = read_noc_register(loc, device, noc_id, reg_name)
+            value = register_store.read_register(reg_name)
             register_data[f"NOC{noc_id} Registers"][reg_name] = value
         else:
             invalid_registers.append(reg_name)
@@ -314,7 +326,5 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list:
                     # Otherwise, display for both NOCs
                     for noc_id in [0, 1]:
                         display_specific_noc_registers(loc, device, reg_names, noc_id, simple_print)
-
-    return []
 
     return []
