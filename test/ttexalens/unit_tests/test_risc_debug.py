@@ -95,6 +95,10 @@ class TestDebugging(unittest.TestCase):
     def is_wormhole(self):
         """Check if the device is wormhole_b0."""
         return self.context.devices[0]._arch == "wormhole_b0"
+    
+    def is_eth_block(self):
+        """Check if the core is ETH."""
+        return self.context.devices[0].get_block_type(self.core_loc) == "eth"
 
     def read_data(self, addr):
         """Read data from memory."""
@@ -112,7 +116,7 @@ class TestDebugging(unittest.TestCase):
 
     def assertPcEquals(self, expected):
         """Assert PC register equals to expected value."""
-        if (self.is_wormhole() or self.is_blackhole()) and not self.core_desc.startswith("ETH"):
+        if (self.is_wormhole() or self.is_blackhole()) and not self.is_eth_block():
             # checks pc over debug bus
             self.assertEqual(
                 self.get_pc_from_debug_bus(),
@@ -139,7 +143,7 @@ class TestDebugging(unittest.TestCase):
 
     def test_reset_all_functional_workers(self):
         """Reset all functional workers."""
-        if self.core_desc.startswith("ETH"):
+        if self.is_eth_block():
             self.skipTest(
                 "Playing with ETH core moves device into unknown state after we should warm reset it. This test cannot be run at that moment."
             )
@@ -654,7 +658,7 @@ class TestDebugging(unittest.TestCase):
     def test_invalidate_cache_with_nops_and_long_jump(self):
         """Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation by having NOPs block and jump back. All that is done on brisc."""
 
-        if self.core_desc.startswith("ETH"):
+        if self.is_eth_block():
             self.skipTest("This test is not applicable for ETH cores.")
 
         break_addr = 0x950
@@ -1153,7 +1157,7 @@ class TestDebugging(unittest.TestCase):
     def test_bne_with_debug_fail(self):
         """Test running 48 bytes of generated code that confirms problem with BNE when debugging hardware is enabled."""
 
-        if self.core_desc.startswith("ETH"):
+        if self.is_eth_block():
             self.skipTest("This test is not applicable for ETH cores.")
 
         if self.is_blackhole():
@@ -1227,7 +1231,7 @@ class TestDebugging(unittest.TestCase):
     def test_bne_without_debug(self):
         """Test running 48 bytes of generated code that confirms that there is no problem with BNE when debugging hardware is disabled."""
 
-        if self.core_desc.startswith("ETH"):
+        if self.is_eth_block():
             self.skipTest("This test is not applicable for ETH cores.")
 
         # Enable branch prediction
@@ -1302,7 +1306,7 @@ class TestDebugging(unittest.TestCase):
     def test_bne_with_debug_without_bp(self):
         """Test running 48 bytes of generated code that confirms that there is no problem with BNE when debugging hardware is enabled and branch prediction is disabled."""
 
-        if self.core_desc.startswith("ETH"):
+        if self.is_eth_block():
             self.skipTest("This test is not applicable for ETH cores.")
 
         # Enable branch prediction
