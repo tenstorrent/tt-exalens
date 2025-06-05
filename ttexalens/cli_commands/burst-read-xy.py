@@ -32,6 +32,7 @@ command_metadata = {
     "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],
+    "common_option_names": ["--device", "--loc", "--verbose"],
 }
 
 import time
@@ -50,7 +51,6 @@ def run(cmd_text, context, ui_state: UIState = None):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
     )
     args = dopt.args
 
