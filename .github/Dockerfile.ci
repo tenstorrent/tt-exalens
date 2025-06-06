@@ -9,23 +9,23 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install run dependencies
 RUN apt-get update && apt-get install -y \
-	software-properties-common \
-	build-essential \
+    software-properties-common \
+    build-essential \
     git \
-	libyaml-cpp-dev \
-	libhwloc-dev \
-	libzmq3-dev \
+    libyaml-cpp-dev \
+    libhwloc-dev \
+    libzmq3-dev \
     libnsl2 \
     sudo \
     wget \
-	xxd \
+    xxd \
     curl \
     jq
 
 # Install test dependencies
 RUN apt-get update && apt-get install -y \
-	libgtest-dev \
-	libgmock-dev
+    libgtest-dev \
+    libgmock-dev
 
 # Install minimal dependencies for Python environment, pip, and wheel builds
 RUN apt-get update && apt-get install -y \
@@ -42,10 +42,12 @@ RUN pip install --upgrade pip
 
 # Copy the requirements files for pip
 COPY ttexalens/requirements.txt .
+COPY ttexalens/dev-requirements.txt .
 COPY test/test_requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r dev-requirements.txt
 RUN pip install --no-cache-dir -r test_requirements.txt
 RUN pip install wheel build setuptools
 

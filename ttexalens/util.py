@@ -683,7 +683,7 @@ def array_to_str(
     skip_border_rows = 4 if condense else 0
     skip_rows_rendered = False
 
-    header = list(range(num_cols))
+    header = list(map(str, range(num_cols)))
     rows = []
     for r in range(start_row, end_row):
         if skip_border_rows and (r >= skip_border_rows and r < end_row - skip_border_rows):
