@@ -414,7 +414,9 @@ def dump_running_ops(dev):
     }
 
     if VVERBOSE:
-        printout_table = [["Loc", "Proc", "RD PTR", "Base", "Offset", "Kernel ID:Name", "PC", "Kernel Path"]]
+        printout_table = [
+            ["Loc", "Proc", "RD PTR", "Base", "Offset", "Kernel ID:Name", "PC", "Kernel Callstack", "Kernel Path"]
+        ]
     elif VERBOSE:
         printout_table = [["Loc", *enum_values["TensixProcessorTypes"].keys(), "Kernel ID:Name"]]
     else:
@@ -514,6 +516,7 @@ def dump_running_ops(dev):
                     f"{watcher_kernel_id}:{kernel_name}",
                     f"0x{pc:x}",
                     "",
+                    f"{kernel_path}",
                 ]
 
             elif VERBOSE:
