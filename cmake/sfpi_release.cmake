@@ -8,8 +8,9 @@ if(NOT EXISTS "${SFPI_RELEASE_PATH}")
         sfpi
         URL https://github.com/tenstorrent/sfpi/releases/download/v6.11.1/sfpi-x86_64_Linux.txz
         URL_HASH MD5=14ade50b3fdf3fff5078195332edc15a
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         SOURCE_DIR ${SFPI_RELEASE_PATH}
+        # Uncomment once we move to CMake after 3.24.1
+        # DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
     FetchContent_MakeAvailable(sfpi)
 else()
