@@ -1005,7 +1005,7 @@ class RiscLoader:
                 function_die = function_die.parent
 
             callstack.append(CallstackEntry(pc, function_die.name, file, line, column, frame_pointer))
-            file_line = function_die.call_file_info
+            file, line, column = function_die.call_file_info
             while function_die.category == "inlined_function":
                 assert function_die.parent is not None
                 function_die = function_die.parent
@@ -1014,7 +1014,7 @@ class RiscLoader:
                     function_die = function_die.parent
 
                 callstack.append(CallstackEntry(None, function_die.name, file, line, column, frame_pointer))
-                file_line = function_die.call_file_info
+                file, line, column = function_die.call_file_info
         elif function_die is not None and function_die.category == "subprogram":
             callstack.append(CallstackEntry(pc, function_die.path, file, line, column, frame_pointer))
         else:
