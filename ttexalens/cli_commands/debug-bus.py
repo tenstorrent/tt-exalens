@@ -32,11 +32,11 @@ command_metadata = {
 
 import re
 
-from ttexalens.uistate import UIState
-
 from ttexalens import command_parser
 from ttexalens import util as util
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
+from ttexalens.device import Device
+from ttexalens.uistate import UIState
 
 
 def parse_string(input_string):
@@ -103,10 +103,18 @@ def run(cmd_text, context, ui_state: UIState = None):
         common_option_names=command_metadata["common_option_names"],
     )
 
+    device: Device
     if dopt.args["list-names"]:
         for device in dopt.for_each("--device", context, ui_state):
             for loc in dopt.for_each("--loc", context, ui_state, device=device):
-                debug_bus_signal_store = device.get_block(loc).debug_bus
+                noc_block = device.get_block(loc)
+                if not noc_block:
+                    util.ERROR(f"Device {device._id} at location {loc.to_str('logical')} does not have a NOC block.")
+                    continue
+                debug_bus_signal_store = noc_block.debug_bus
+                if not debug_bus_signal_store:
+                    util.ERROR(f"Device {device._id} at location {loc.to_str('logical')} does not have a debug bus.")
+                    continue
                 print(debug_bus_signal_store.get_signal_names())
         return []
 
@@ -114,7 +122,14 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            debug_bus_signal_store = device.get_block(loc).debug_bus
+            noc_block = device.get_block(loc)
+            if not noc_block:
+                util.ERROR(f"Device {device._id} at location {loc.to_str('logical')} does not have a NOC block.")
+                continue
+            debug_bus_signal_store = noc_block.debug_bus
+            if not debug_bus_signal_store:
+                util.ERROR(f"Device {device._id} at location {loc.to_str('logical')} does not have a debug bus.")
+                continue
             where = f"device:{device._id} loc:{loc.to_str('logical')} "
             for signal in signals:
                 if isinstance(signal, str):
