@@ -13,7 +13,7 @@ from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_in
 
 @parameterized_class(
     [
-        # { "core_desc": "ETH0", "risc_name": "BRISC" },
+        {"core_desc": "ETH0", "risc_name": "BRISC"},
         {"core_desc": "FW0", "risc_name": "BRISC"},
         {"core_desc": "FW0", "risc_name": "TRISC0"},
         {"core_desc": "FW0", "risc_name": "TRISC1"},
@@ -30,6 +30,7 @@ class TestDebugging(unittest.TestCase):
     context: Context = None  # TTExaLens context
     core_desc: str = None  # Core description ETH0, FW0, FW1 - being parametrized
     core_loc: str = None  # Core location
+    location: OnChipCoordinate = None  # On-chip coordinate
     rdbg: RiscDebug = None  # RiscDebug object
     pc_register_index: int = None  # PC register index
     program_base_address: int = None  # Base address for program code
@@ -52,23 +53,27 @@ class TestDebugging(unittest.TestCase):
                 self.skipTest("ETH core is not available on this platform")
         elif self.core_desc.startswith("FW"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.context.devices[0].get_block_locations(block_type="functional_workers")
+            fw_cores = self.context.devices[0].get_block_locations(block_type="functional_workers")
             core_index = int(self.core_desc[2:])
-            if len(eth_cores) > core_index:
-                self.core_loc = eth_cores[core_index].to_str()
+            if len(fw_cores) > core_index:
+                self.core_loc = fw_cores[core_index].to_str()
             else:
                 # If not found, we should skip the test
-                self.skipTest("ETH core is not available on this platform")
+                self.skipTest("FW core is not available on this platform")
         else:
             self.fail(f"Unknown core description {self.core_desc}")
 
-        loc = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
+        self.location = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
         self.risc_id = get_risc_id(self.risc_name)
-        rloc = RiscLoc(loc, 0, self.risc_id)
+        rloc = RiscLoc(self.location, 0, self.risc_id)
         self.rdbg = RiscDebug(rloc, self.context)
         loader = RiscLoader(self.rdbg, self.context)
         self.program_base_address = loader.get_risc_start_address()
-        self.debug_bus_store = self.context.devices[0].get_debug_bus_signal_store(loc)
+        self.debug_bus_store = (
+            self.context.devices[0].get_debug_bus_signal_store(self.location)
+            if self.core_desc.startswith("FW")
+            else None
+        )
 
         # If address wasn't set before, we want to set it to something that is not 0 for testing purposes
         if self.program_base_address == None:
@@ -76,6 +81,13 @@ class TestDebugging(unittest.TestCase):
             loader.set_risc_start_address(0xD000)
             self.program_base_address = loader.get_risc_start_address()
             self.assertEqual(self.program_base_address, 0xD000)
+
+        # For ETH block on blackhole we need to read program base address from memory
+        if self.is_eth_block() and self.is_blackhole():
+            self.rdbg.set_reset_signal(False)
+            self.assertFalse(self.rdbg.is_in_reset())
+            with self.rdbg.ensure_halted():
+                self.program_base_address = self.rdbg.read_memory(0xFFB14000)
 
         # Stop risc with reset
         self.rdbg.set_reset_signal(True)
@@ -94,6 +106,10 @@ class TestDebugging(unittest.TestCase):
         """Check if the device is wormhole_b0."""
         return self.context.devices[0]._arch == "wormhole_b0"
 
+    def is_eth_block(self):
+        """Check if the core is ETH."""
+        return self.context.devices[0].get_block_type(self.location) == "eth"
+
     def read_data(self, addr):
         """Read data from memory."""
         ret = lib.read_words_from_device(self.core_loc, addr, context=self.context)
@@ -110,7 +126,10 @@ class TestDebugging(unittest.TestCase):
 
     def assertPcEquals(self, expected):
         """Assert PC register equals to expected value."""
-        if self.is_wormhole() or self.is_blackhole():
+        if self.is_eth_block() and self.is_blackhole():
+            # PC is not readable on blackhole ETH core for now
+            return
+        elif (self.is_wormhole() or self.is_blackhole()) and not self.is_eth_block():
             # checks pc over debug bus
             self.assertEqual(
                 self.get_pc_from_debug_bus(),
@@ -129,15 +148,26 @@ class TestDebugging(unittest.TestCase):
 
     def assertPcLess(self, expected):
         """Assert PC register is less than expected value."""
-        self.assertLess(
-            self.rdbg.read_gpr(self.pc_register_index),
-            self.program_base_address + expected,
-            f"Pc should be less than {expected} + program_base_addres ({self.program_base_address + expected}).",
-        )
+        if self.is_eth_block() and self.is_blackhole():
+            # PC is not readable on blackhole ETH core for now
+            return
+        elif (self.is_wormhole() or self.is_blackhole()) and not self.is_eth_block():
+            # checks pc over debug bus
+            self.assertLess(
+                self.get_pc_from_debug_bus(),
+                self.program_base_address + expected,
+                f"Pc should be less than {expected} + program_base_addres ({self.program_base_address + expected}).",
+            )
+        else:
+            self.assertLess(
+                self.rdbg.read_gpr(self.pc_register_index),
+                self.program_base_address + expected,
+                f"Pc should be less than {expected} + program_base_addres ({self.program_base_address + expected}).",
+            )
 
     def test_reset_all_functional_workers(self):
         """Reset all functional workers."""
-        if self.core_desc.startswith("ETH"):
+        if self.is_eth_block():
             self.skipTest(
                 "Playing with ETH core moves device into unknown state after we should warm reset it. This test cannot be run at that moment."
             )
@@ -172,7 +202,11 @@ class TestDebugging(unittest.TestCase):
 
         # Test readonly registers
         self.assertEqual(self.rdbg.read_gpr(get_register_index("zero")), 0, "zero should always be 0.")
-        self.assertEqual(self.rdbg.read_gpr(get_register_index("pc")), self.program_base_address + 4, "PC should be 4.")
+        if not (self.is_blackhole() and self.is_eth_block()):
+            # PC is not readable on blackhole ETH core for now
+            self.assertEqual(
+                self.rdbg.read_gpr(get_register_index("pc")), self.program_base_address + 4, "PC should be 4."
+            )
 
         # Test write then read for all other registers
         for i in range(1, 31):
@@ -530,6 +564,9 @@ class TestDebugging(unittest.TestCase):
         if not self.is_blackhole():
             self.skipTest("Invalidate cache is not reliable on wormhole.")
 
+        if self.is_eth_block():
+            self.skipTest("This test is not applicable for ETH cores.")
+
         """Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation. All that is done on brisc."""
         addr = 0x10000
 
@@ -651,6 +688,10 @@ class TestDebugging(unittest.TestCase):
 
     def test_invalidate_cache_with_nops_and_long_jump(self):
         """Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation by having NOPs block and jump back. All that is done on brisc."""
+
+        if self.is_eth_block() and self.is_wormhole():
+            self.skipTest("This test is not applicable for ETH cores.")
+
         break_addr = 0x950
         jump_addr = 0x2000
         addr = 0x10000
@@ -1016,6 +1057,10 @@ class TestDebugging(unittest.TestCase):
 
     def test_memory_watchpoint(self):
         """Test running 64 bytes of generated code that just write data on memory and tests memory watchpoints. All that is done on brisc."""
+
+        if self.is_eth_block():
+            self.skipTest("This test is not applicable for ETH cores.")
+
         addr1 = 0x10000
         addr2 = 0x20000
         addr3 = 0x30000
@@ -1147,6 +1192,9 @@ class TestDebugging(unittest.TestCase):
     def test_bne_with_debug_fail(self):
         """Test running 48 bytes of generated code that confirms problem with BNE when debugging hardware is enabled."""
 
+        if self.is_eth_block():
+            self.skipTest("This test is not applicable for ETH cores.")
+
         if self.is_blackhole():
             self.skipTest("BNE instruction with debug hardware enabled is fixed in blackhole.")
 
@@ -1217,6 +1265,9 @@ class TestDebugging(unittest.TestCase):
 
     def test_bne_without_debug(self):
         """Test running 48 bytes of generated code that confirms that there is no problem with BNE when debugging hardware is disabled."""
+
+        if self.is_eth_block():
+            self.skipTest("This test is not applicable for ETH cores.")
 
         # Enable branch prediction
         loader = RiscLoader(self.rdbg, self.context)
@@ -1289,6 +1340,9 @@ class TestDebugging(unittest.TestCase):
 
     def test_bne_with_debug_without_bp(self):
         """Test running 48 bytes of generated code that confirms that there is no problem with BNE when debugging hardware is enabled and branch prediction is disabled."""
+
+        if self.is_eth_block():
+            self.skipTest("This test is not applicable for ETH cores.")
 
         # Enable branch prediction
         loader = RiscLoader(self.rdbg, self.context)
