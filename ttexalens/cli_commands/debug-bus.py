@@ -34,6 +34,7 @@ import re
 
 from ttexalens import command_parser
 from ttexalens import util as util
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
@@ -104,16 +105,17 @@ def run(cmd_text, context, ui_state: UIState = None):
     )
 
     device: Device
+    loc: OnChipCoordinate
     if dopt.args["list-names"]:
         for device in dopt.for_each("--device", context, ui_state):
             for loc in dopt.for_each("--loc", context, ui_state, device=device):
                 noc_block = device.get_block(loc)
                 if not noc_block:
-                    util.ERROR(f"Device {device._id} at location {loc.to_str('logical')} does not have a NOC block.")
+                    util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a NOC block.")
                     continue
                 debug_bus_signal_store = noc_block.debug_bus
                 if not debug_bus_signal_store:
-                    util.ERROR(f"Device {device._id} at location {loc.to_str('logical')} does not have a debug bus.")
+                    util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
                     continue
                 print(debug_bus_signal_store.get_signal_names())
         return []
@@ -124,20 +126,24 @@ def run(cmd_text, context, ui_state: UIState = None):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             noc_block = device.get_block(loc)
             if not noc_block:
-                util.ERROR(f"Device {device._id} at location {loc.to_str('logical')} does not have a NOC block.")
+                util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a NOC block.")
                 continue
             debug_bus_signal_store = noc_block.debug_bus
             if not debug_bus_signal_store:
-                util.ERROR(f"Device {device._id} at location {loc.to_str('logical')} does not have a debug bus.")
+                util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
                 continue
-            where = f"device:{device._id} loc:{loc.to_str('logical')} "
+            where = f"device:{device._id} loc:{loc.to_user_str()} "
             for signal in signals:
-                if isinstance(signal, str):
-                    value = debug_bus_signal_store.read_signal(signal)
-                    print(f"{where} {signal}: 0x{value:x}")
-                else:
-                    value = debug_bus_signal_store.read_signal(signal)
-                    signal_description = f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
-                    print(f"{where} Debug Bus Config({signal_description}) = 0x{value:x}")
+                try:
+                    if isinstance(signal, str):
+                        value = debug_bus_signal_store.read_signal(signal)
+                        print(f"{where} {signal}: 0x{value:x}")
+                    else:
+                        value = debug_bus_signal_store.read_signal(signal)
+                        signal_description = f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
+                        print(f"{where} Debug Bus Config({signal_description}) = 0x{value:x}")
+                except ValueError as e:
+                    util.ERROR(f"Error reading signal '{signal}': {e}")
+                    continue
 
     return []
