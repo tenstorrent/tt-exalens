@@ -26,12 +26,13 @@ class RiscvCoreSimulator:
 
         # Initialize core components
         self.device = self.context.devices[0]
-        loc = OnChipCoordinate.create(self.core_loc, device=self.device)
+        self.location = OnChipCoordinate.create(self.core_loc, device=self.device)
+        self.noc_block = self.device.get_block(self.location)
         self.risc_id = get_risc_id(self.risc_name)
-        rloc = RiscLoc(loc, 0, self.risc_id)
+        rloc = RiscLoc(self.location, 0, self.risc_id)
         self.rdbg = RiscDebug(rloc, self.context)
         self.loader = RiscLoader(self.rdbg, self.context)
-        self.debug_bus_store = self.device.get_debug_bus_signal_store(loc)
+        self.debug_bus_store = self.noc_block.debug_bus
 
         # Initialize core in reset state
         self.set_reset(True)

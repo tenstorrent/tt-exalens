@@ -523,12 +523,5 @@ class Device(TTObject):
             return "----"
         return bt
 
-    @abstractmethod
-    def get_debug_bus_signal_store(self, loc: OnChipCoordinate) -> DebugBusSignalStore:
-        """
-        Returns the debug bus signal store for the given location.
-        """
-        pass
-
 
 # end of class Device

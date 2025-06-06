@@ -41,10 +41,11 @@ class TestDebugging(unittest.TestCase):
         cls.pc_register_index = get_register_index("pc")
 
     def setUp(self):
+        self.device = self.context.devices[0]
         # Convert core_desc to core_loc
         if self.core_desc.startswith("ETH"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.context.devices[0].get_block_locations(block_type="eth")
+            eth_cores = self.device.get_block_locations(block_type="eth")
             core_index = int(self.core_desc[3:])
             if len(eth_cores) > core_index:
                 self.core_loc = eth_cores[core_index].to_str()
@@ -53,7 +54,7 @@ class TestDebugging(unittest.TestCase):
                 self.skipTest("ETH core is not available on this platform")
         elif self.core_desc.startswith("FW"):
             # Ask device for all ETH cores and get first one
-            fw_cores = self.context.devices[0].get_block_locations(block_type="functional_workers")
+            fw_cores = self.device.get_block_locations(block_type="functional_workers")
             core_index = int(self.core_desc[2:])
             if len(fw_cores) > core_index:
                 self.core_loc = fw_cores[core_index].to_str()
@@ -63,17 +64,14 @@ class TestDebugging(unittest.TestCase):
         else:
             self.fail(f"Unknown core description {self.core_desc}")
 
-        self.location = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
+        self.location = OnChipCoordinate.create(self.core_loc, device=self.device)
+        self.noc_block = self.device.get_block(self.location)
         self.risc_id = get_risc_id(self.risc_name)
         rloc = RiscLoc(self.location, 0, self.risc_id)
         self.rdbg = RiscDebug(rloc, self.context)
         loader = RiscLoader(self.rdbg, self.context)
         self.program_base_address = loader.get_risc_start_address()
-        self.debug_bus_store = (
-            self.context.devices[0].get_debug_bus_signal_store(self.location)
-            if self.core_desc.startswith("FW")
-            else None
-        )
+        self.debug_bus_store = self.noc_block.debug_bus
 
         # If address wasn't set before, we want to set it to something that is not 0 for testing purposes
         if self.program_base_address == None:
