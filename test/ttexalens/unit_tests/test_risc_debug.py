@@ -82,6 +82,7 @@ class TestDebugging(unittest.TestCase):
             self.program_base_address = loader.get_risc_start_address()
             self.assertEqual(self.program_base_address, 0xD000)
 
+        # For ETH block on blackhole we need to read program base address from memory
         if self.is_eth_block() and self.is_blackhole():
             self.rdbg.set_reset_signal(False)
             self.assertFalse(self.rdbg.is_in_reset())
@@ -125,7 +126,10 @@ class TestDebugging(unittest.TestCase):
 
     def assertPcEquals(self, expected):
         """Assert PC register equals to expected value."""
-        if (self.is_wormhole() or self.is_blackhole()) and not self.is_eth_block():
+        if self.is_eth_block() and self.is_blackhole():
+            # PC is not readable on blackhole ETH core for now
+            return
+        elif (self.is_wormhole() or self.is_blackhole()) and not self.is_eth_block():
             # checks pc over debug bus
             self.assertEqual(
                 self.get_pc_from_debug_bus(),
@@ -144,11 +148,22 @@ class TestDebugging(unittest.TestCase):
 
     def assertPcLess(self, expected):
         """Assert PC register is less than expected value."""
-        self.assertLess(
-            self.rdbg.read_gpr(self.pc_register_index),
-            self.program_base_address + expected,
-            f"Pc should be less than {expected} + program_base_addres ({self.program_base_address + expected}).",
-        )
+        if self.is_eth_block() and self.is_blackhole():
+            # PC is not readable on blackhole ETH core for now
+            return
+        elif (self.is_wormhole() or self.is_blackhole()) and not self.is_eth_block():
+            # checks pc over debug bus
+            self.assertLess(
+                self.get_pc_from_debug_bus(),
+                self.program_base_address + expected,
+                f"Pc should be less than {expected} + program_base_addres ({self.program_base_address + expected}).",
+            )
+        else:
+            self.assertLess(
+                self.rdbg.read_gpr(self.pc_register_index),
+                self.program_base_address + expected,
+                f"Pc should be less than {expected} + program_base_addres ({self.program_base_address + expected}).",
+            )
 
     def test_reset_all_functional_workers(self):
         """Reset all functional workers."""
@@ -320,10 +335,7 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.read_data(addr), 0x12345678)
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
         self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
-
-        if not (self.is_blackhole() and self.is_eth_block()):
-            # PC is not readable on blackhole ETH core for now
-            self.assertPcEquals(4)
+        self.assertPcEquals(4)
 
     def test_ebreak_and_step(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
@@ -356,25 +368,22 @@ class TestDebugging(unittest.TestCase):
 
         # Verify value at address, value should not be changed and should stay the same since core is in halt
         self.assertEqual(self.read_data(addr), 0x12345678)
-        if not (self.is_blackhole() and self.is_eth_block()):
-            self.assertPcEquals(4)
+        self.assertPcEquals(4)
         # Step and verify that pc is 8 and value is not changed
         self.rdbg.step()
         self.assertEqual(self.read_data(addr), 0x12345678)
-        if not (self.is_blackhole() and self.is_eth_block()):
-            self.assertPcEquals(8)
+        self.assertPcEquals(8)
         # Adding two steps since logic in hw automatically updates register and memory values
         self.rdbg.step()
         self.rdbg.step()
         # Verify that pc is 16 and value has changed
         self.assertEqual(self.read_data(addr), 0x87654000)
-        if not (self.is_blackhole() and self.is_eth_block()):
-            self.assertPcEquals(16)
+        self.assertPcEquals(16)
         # Since we are on endless loop, we should never go past 16
         for i in range(10):
             # Step and verify that pc is 16 and value has changed
             self.rdbg.step()
-            # self.assertPcEquals(16)
+            self.assertPcEquals(16)
 
     def test_continue(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
@@ -585,8 +594,7 @@ class TestDebugging(unittest.TestCase):
         # Value should not be changed and should stay the same since core is in halt
         self.assertEqual(self.read_data(addr), 0x12345678)
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        if not (self.is_blackhole() and self.is_eth_block()):
-            self.assertPcEquals(0)
+        self.assertPcEquals(0)
 
         # Write new code for brisc core at address 0
         # C++:
@@ -648,8 +656,7 @@ class TestDebugging(unittest.TestCase):
         # Value should not be changed and should stay the same since core is in halt
         self.assertEqual(self.read_data(addr), 0x12345678)
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        if not (self.is_blackhole() and self.is_eth_block()):
-            self.assertPcEquals(0)
+        self.assertPcEquals(0)
 
         # Write new code for brisc core at address 0
         # C++:
@@ -674,8 +681,7 @@ class TestDebugging(unittest.TestCase):
         # Halt to verify PC
         self.rdbg.halt()
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should not be halted.")
-        if not (self.is_blackhole() and self.is_eth_block()):
-            self.assertPcEquals(12)
+        self.assertPcEquals(12)
 
         # Verify value at address
         self.assertEqual(self.read_data(addr), 0x87654000)
@@ -718,7 +724,7 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.read_data(addr), 0x12345678)
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
         self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
-        # self.assertPcEquals(break_addr + 4)
+        self.assertPcEquals(break_addr + 4)
 
         # Write new code for brisc core at address 0
         # C++:
@@ -742,8 +748,7 @@ class TestDebugging(unittest.TestCase):
         # Halt to verify PC
         self.rdbg.halt()
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
-        if not (self.is_blackhole() and self.is_eth_block()):
-            self.assertPcEquals(12)
+        self.assertPcEquals(12)
 
         # Verify value at address
         self.assertEqual(self.read_data(addr), 0x87654000)
@@ -793,7 +798,7 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.rdbg.read_status().is_halted, "Core should be halted.")
         self.assertTrue(self.rdbg.read_status().is_ebreak_hit, "ebreak should be the cause.")
         self.assertFalse(self.rdbg.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
-        # self.assertPcEquals(4)
+        self.assertPcEquals(4)
 
         # Set watchpoint on address 12 and 32
         self.rdbg.set_watchpoint_on_pc_address(0, self.program_base_address + 12)
@@ -808,7 +813,7 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.rdbg.read_status().is_watchpoint0_hit, "Watchpoint 0 should be hit.")
         self.assertFalse(self.rdbg.read_status().is_watchpoint1_hit, "Watchpoint 1 should not be hit.")
 
-        # self.assertPcLess(28)
+        self.assertPcLess(28)
         self.assertEqual(self.read_data(addr), 0x12345678)
 
         # Continue and verify that we hit first watchpoint
@@ -819,7 +824,7 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.rdbg.read_status().is_memory_watchpoint_hit, "Memory watchpoint should not be the cause.")
         self.assertFalse(self.rdbg.read_status().is_watchpoint0_hit, "Watchpoint 0 should not be hit.")
         self.assertTrue(self.rdbg.read_status().is_watchpoint1_hit, "Watchpoint 1 should be hit.")
-        # self.assertPcEquals(32)
+        self.assertPcEquals(32)
         self.assertEqual(self.read_data(addr), 0x87654000)
 
     def test_watchpoint_address(self):
