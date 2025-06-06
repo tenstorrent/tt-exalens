@@ -13,6 +13,7 @@ from ttexalens.hardware.blackhole.pcie_block import BlackholePcieBlock
 from ttexalens.hardware.blackhole.router_only_block import BlackholeRouterOnlyBlock
 from ttexalens.hardware.blackhole.security_block import BlackholeSecurityBlock
 import ttexalens.util as util
+import os
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
 from ttexalens.device import (
@@ -26,6 +27,7 @@ from ttexalens.device import (
     NocControlRegisterDescription,
 )
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
+from ttexalens.reg_access_json import JsonRegisterMap
 
 
 class BlackholeInstructions(TensixInstructions):
@@ -54,6 +56,8 @@ class BlackholeDevice(Device):
     NOC_ARC_ROM_DATA_BASE_ADDR = 0x80000000
     NOC_REGISTER_OFFSET = 0x10000
 
+    ARC_POSTCODE_OFFSET = 0x60
+
     # Register base addresses
     CONFIGURATION_REGISTER_BASE = 0xFFEF0000
     DEBUG_REGISTER_BASE = 0xFFB12000
@@ -81,6 +85,13 @@ class BlackholeDevice(Device):
             context,
         )
         self.instructions = BlackholeInstructions()
+
+        if Device.ARC is None:
+            regdef_path = util.application_path() + "/../../regdef/blackhole/arc.json"
+            if os.path.exists(regdef_path):
+                BlackholeDevice.ARC = JsonRegisterMap(
+                    regdef_path, reg_read_func=self._pci_arc_reg_read, reg_write_func=self._pci_arc_reg_write
+                )
 
     def _get_tensix_register_map_keys(self) -> list[str]:
         return list(BlackholeDevice.__register_map.keys())
