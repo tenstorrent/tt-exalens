@@ -15,9 +15,7 @@ After starting gdb server, you can stop it with `gdb` command. Run `gdb stop`.
 
 ## Connecting gdb client
 
-- Start gdb client (`./sfpi/compiler/bin/riscv32-unknown-elf-gdb` in TT-ExaLens repository).
-***Note:*** Currently gdb client is not part of sfpi library.
-You will need to clone it from https://github.com/tenstorrent-metal/sfpi-rel.
+- Start gdb client (`./build/sfpi/compiler/bin/riscv32-tt-elf-gdb` in TT-ExaLens repository - this file is downloaded during build).
 - If you want to debug client/server communication execute `set debug remote 1` in GDB client
 - Connect GDB client to TT-ExaLens: `target extended-remote localhost:<gdb_port>` where `<gdb_port>` is port used in TT-ExaLens when starting gdb server.
 
