@@ -10,10 +10,10 @@ endif()
 
 # Set toolchain and tools
 set(TOOL_PATH "${SFPI_RELEASE_PATH}/compiler/bin")
-set(GXX "${TOOL_PATH}/riscv32-unknown-elf-g++")
-set(OBJDUMP "${TOOL_PATH}/riscv32-unknown-elf-objdump")
-set(OBJCOPY "${TOOL_PATH}/riscv32-unknown-elf-objcopy")
-set(READELF "${TOOL_PATH}/riscv32-unknown-elf-readelf")
+set(GXX "${TOOL_PATH}/riscv32-tt-elf-g++")
+set(OBJDUMP "${TOOL_PATH}/riscv32-tt-elf-objdump")
+set(OBJCOPY "${TOOL_PATH}/riscv32-tt-elf-objcopy")
+set(READELF "${TOOL_PATH}/riscv32-tt-elf-readelf")
 
 # Compiler options for optimized builds
 set(OPTIMIZED_OPTIONS_ALL -O3 -mabi=ilp32 -std=c++17 -g -ffast-math -flto)
