@@ -382,7 +382,7 @@ class ElfDie:
             return None
 
     @cached_property
-    def path(self):
+    def path(self) -> str | None:
         """
         Returns full path of the DIE, including the parent DIEs
             e.g. <parent.get_path()...>::<self.get_name()>
@@ -573,7 +573,7 @@ class ElfDie:
         return None
 
     @cached_property
-    def name(self):
+    def name(self) -> str | None:
         """
         Return the name of the DIE
         """
