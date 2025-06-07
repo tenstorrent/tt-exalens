@@ -7,15 +7,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Generator
 from ttexalens import util
-from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.parse_elf import ParsedElfFile, ParsedElfFileWithOffset
-
-
-@dataclass
-class RiscLocation:
-    coord: OnChipCoordinate
-    risc_name: str = ""
-    noc_id: int = 0
 
 
 @dataclass

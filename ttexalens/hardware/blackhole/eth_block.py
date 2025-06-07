@@ -98,13 +98,23 @@ class BlackholeEthBlock(BlackholeNocBlock):
             risc_name="erisc",
             risc_id=0,
             noc_block=self,
+            neo_id=None,  # NEO ID is not applicable for Blackhole
             l1=self.l1,
+            max_watchpoints=8,
+            reset_flag_shift=11,
+            branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO: Check if we have branch prediction register on erisc
+            branch_prediction_mask=0x1,
+            default_code_start_address=0x00000000,
+            code_start_address_register="",
+            code_start_address_enable_register="",
+            code_start_address_enable_bit=0,
             data_private_memory=MemoryBlock(
                 size=8 * 1024,  # TODO: Check if this is correct
                 address=DeviceAddress(private_address=0xFFB00000),
             ),
             code_private_memory=None,
             debug_hardware_present=True,
+            can_change_code_start_address=False,
         )
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
