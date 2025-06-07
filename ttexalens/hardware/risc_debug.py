@@ -141,7 +141,7 @@ class RiscDebug:
         return elfs
 
     @staticmethod
-    def _find_elf_and_frame_description(elfs: list[ParsedElfFile], pc: int, risc_debug: "RiscDebug" | None):
+    def _find_elf_and_frame_description(elfs: list[ParsedElfFile], pc: int, risc_debug: "RiscDebug | None"):
         for elf in elfs:
             frame_description = elf.frame_info.get_frame_description(pc, risc_debug)
             # If we get frame description from elf we return that elf and frame description
