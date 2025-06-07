@@ -86,7 +86,7 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 
 class BlackholeEthBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
-        super().__init__(location, block_type="eth", debug_bus=DebugBusSignalStore(debug_bus_signal_map, location))
+        super().__init__(location, block_type="eth", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self))
 
         self.l1 = MemoryBlock(
             # TODO: Check if this size is correct

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import Iterable, TYPE_CHECKING
 
+from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 
 if TYPE_CHECKING:
@@ -23,26 +24,34 @@ class DebugBusSignalDescription:
 
 
 class DebugBusSignalStore:
-    def __init__(
-        self, signals: dict[str, DebugBusSignalDescription], location: OnChipCoordinate, neo_id: int | None = None
-    ):
+    def __init__(self, signals: dict[str, DebugBusSignalDescription], noc_block: NocBlock, neo_id: int | None = None):
         self.signals = signals
-        self.location = location
+        self.noc_block = noc_block
         self.neo_id = neo_id
 
-    @property
+    @cached_property
     def device(self) -> Device:
-        return self.location._device
+        return self.noc_block.device
+
+    @cached_property
+    def location(self) -> OnChipCoordinate:
+        return self.noc_block.location
+
+    @cached_property
+    def _register_store(self) -> RegisterStore:
+        return self.noc_block.get_register_store(neo_id=self.neo_id)
 
     @cached_property
     def _control_register_address(self) -> int:
-        # TODO: This should be read from register store (once we have it). Register store should be argument to the constructor.
-        return self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_BUS_CNTL_REG")
+        address = self._register_store.get_register_noc_address("RISCV_DEBUG_REG_DBG_BUS_CNTL_REG")
+        assert address is not None, "Control register address not found in register store."
+        return address
 
     @cached_property
     def _data_register_address(self) -> int:
-        # TODO: This should be read from register store (once we have it). Register store should be argument to the constructor.
-        return self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_RD_DATA")
+        address = self._register_store.get_register_noc_address("RISCV_DEBUG_REG_DBG_RD_DATA")
+        assert address is not None, "Data register address not found in register store."
+        return address
 
     def get_signal_names(self) -> Iterable[str]:
         return self.signals.keys()

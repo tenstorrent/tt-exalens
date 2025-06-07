@@ -76,7 +76,7 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 
 class WormholeEthBlock(WormholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
-        super().__init__(location, block_type="eth", debug_bus=DebugBusSignalStore(debug_bus_signal_map, location))
+        super().__init__(location, block_type="eth", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self))
 
         self.l1 = MemoryBlock(
             size=256 * 1024, address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000)
