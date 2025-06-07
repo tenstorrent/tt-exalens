@@ -2,12 +2,15 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from functools import cache
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.hardware.risc_debug import RiscDebug
+from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.wormhole.noc_block import WormholeNocBlock
 from ttexalens.register_store import (
@@ -868,3 +871,23 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
+
+    @cache
+    def get_default_risc_debug(self) -> RiscDebug:
+        return self.get_risc_debug(self.brisc.risc_name, self.brisc.neo_id)
+
+    @cache
+    def get_risc_debug(self, risc_name: str, neo_id: int | None = None) -> RiscDebug:
+        assert neo_id is None, "NEO ID is not applicable for Wormhole device."
+        risc_name = risc_name.lower()
+        if risc_name == self.brisc.risc_name:
+            return WormholeBabyRiscDebug(risc_info=self.brisc)
+        elif risc_name == self.trisc0.risc_name:
+            return WormholeBabyRiscDebug(risc_info=self.trisc0)
+        elif risc_name == self.trisc1.risc_name:
+            return WormholeBabyRiscDebug(risc_info=self.trisc1)
+        elif risc_name == self.trisc2.risc_name:
+            return WormholeBabyRiscDebug(risc_info=self.trisc2)
+        elif risc_name == self.ncrisc.risc_name:
+            return WormholeBabyRiscDebug(risc_info=self.ncrisc)
+        raise ValueError(f"RISC debug for {risc_name} is not supported in Wormhole functional worker block.")
