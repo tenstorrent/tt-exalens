@@ -140,9 +140,10 @@ class RiscDebug:
                 elfs.append(parsed_elf)
         return elfs
 
-    def _find_elf_and_frame_description(self, elfs: list[ParsedElfFile], pc: int):
+    @staticmethod
+    def _find_elf_and_frame_description(elfs: list[ParsedElfFile], pc: int, risc_debug: "RiscDebug" | None):
         for elf in elfs:
-            frame_description = elf.frame_info.get_frame_description(pc, self)
+            frame_description = elf.frame_info.get_frame_description(pc, risc_debug)
             # If we get frame description from elf we return that elf and frame description
             if frame_description is not None:
                 return elf, frame_description
@@ -204,7 +205,7 @@ class RiscDebug:
             pc = self.read_gpr(32)
 
             # Choose the elf which is referenced by the program counter
-            elf, frame_description = self._find_elf_and_frame_description(elfs, pc)
+            elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, self)
 
             # If we do not get frame description from any elf, we cannot proceed
             if frame_description is None or elf is None:
@@ -237,7 +238,7 @@ class RiscDebug:
                 frame_description = elf.frame_info.get_frame_description(pc, self)
                 # If we do not get frame description from current elf check in others
                 if frame_description is None:
-                    new_elf, frame_description = self._find_elf_and_frame_description(elfs, pc)
+                    new_elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, self)
                     if frame_description is not None and new_elf is not None:
                         elf = new_elf
 
