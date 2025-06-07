@@ -432,16 +432,15 @@ def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: 
     context = check_context(context)
     validate_device_id(device_id, context)
     device = context.devices[device_id]
+    arc = device.arc_block
 
     if isinstance(telemetry_tag, str):
-        telemetry_tag_id = device._get_arc_telemetry_tag_id(telemetry_tag)
-        if telemetry_tag is None:
+        telemetry_tag_id = arc.get_telemetry_tag_id(telemetry_tag)
+        if telemetry_tag_id is None:
             raise TTException(f"Telemetry tag {telemetry_tag} does not exist.")
     elif isinstance(telemetry_tag, int):
-        if telemetry_tag < 0 or telemetry_tag >= len(device._get_arc_telemetry_tags_map_keys()):
-            raise TTException(
-                f"Telemetry tag ID {telemetry_tag} is out of range. Must be between 0 and {len(device._get_arc_telemetry_tags_map_keys()) - 1}."
-            )
+        if not arc.has_telemetry_tag_id(telemetry_tag):
+            raise TTException(f"Telemetry tag ID {telemetry_tag} does not exist.")
         telemetry_tag_id = telemetry_tag
     else:
         raise TTException(f"Invalid telemetry_tag type. Must be an int or str, but got {type(telemetry_tag)}")
