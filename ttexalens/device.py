@@ -11,6 +11,7 @@ from typing import Iterable, Sequence
 from tabulate import tabulate
 from ttexalens.context import Context
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.object import TTObject
 from ttexalens import util as util
@@ -262,10 +263,11 @@ class Device(TTObject):
         return blocks
 
     @cached_property
-    def arc_block(self) -> NocBlock:
+    def arc_block(self) -> ArcBlock:
         arc_blocks = self.get_blocks(block_type="arc")
 
-        assert len(arc_blocks) == 1
+        assert len(arc_blocks) == 1, "Expected a single ARC block"
+        assert isinstance(arc_blocks[0], ArcBlock), "Expected a single ARC block"
 
         return arc_blocks[0]
 
@@ -472,14 +474,6 @@ class Device(TTObject):
 
     @abstractmethod
     def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription | None:
-        pass
-
-    @abstractmethod
-    def _get_arc_telemetry_tags_map_keys(self) -> list[str] | None:
-        pass
-
-    @abstractmethod
-    def _get_arc_telemetry_tag_id(self, tag_name: str) -> int | None:
         pass
 
     @abstractmethod
