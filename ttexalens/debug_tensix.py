@@ -217,7 +217,8 @@ class TensixDebug:
         elif isinstance(register, ConfigurationRegisterDescription):
             base_address = device._get_tensix_register_base_address(register)
             if base_address != None:
-                register = register.clone(base_address)
+                if register.address < base_address:
+                    register = register.clone(base_address)
             else:
                 raise ValueError(f"Unknown tensix register base address for given register")
 
