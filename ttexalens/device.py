@@ -10,7 +10,6 @@ from typing import Iterable, Sequence
 
 from tabulate import tabulate
 from ttexalens.context import Context
-from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.object import TTObject
 from ttexalens import util as util
