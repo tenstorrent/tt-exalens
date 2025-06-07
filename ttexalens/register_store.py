@@ -207,10 +207,10 @@ class RegisterStore:
         assert register.mask == 0xFFFFFFFF
         return register.raw_address
 
-    def parse_register_description(self, input_string: str) -> RegisterDescription:
+    def parse_register_description(self, input_string: str) -> tuple[RegisterDescription, str]:
         # Check if the input string is a register name
         if input_string in self.registers:
-            return self.registers[input_string]
+            return self.registers[input_string], input_string
 
         # Try to parse the input string as a register description
         match = re.match(r"(\w+)\((.*?)\)", input_string)
@@ -258,7 +258,7 @@ class RegisterStore:
         #             f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
         #         )
 
-        return register
+        return register, register.__str__()
 
     def read_register(self, register: str | RegisterDescription) -> int:
         if isinstance(register, str):
@@ -282,14 +282,13 @@ class RegisterStore:
                 register.index,
                 self.device._id,
                 self.context,
-                register.noc_id,
             )
-            value = read_word_from_device(
-                self.location, self._data_register_address, self.device._id, self.context, register.noc_id
-            )
+            value = read_word_from_device(self.location, self._data_register_address, self.device._id, self.context)
         else:
             # TODO: Read using RISC core debugging hardware.
-            value = read_word_from_device(self.location, register.private_address, self.device._id, self.context)
+            raise NotImplementedError(
+                f"Reading register {register} is not implemented. It should be done using RISC core debugging hardware."
+            )
             # risc_names = self.device.get_risc_names_for_location(self.location, self.neo_id)
             # if len(risc_names) < 1:
             #     raise ValueError(
@@ -330,8 +329,10 @@ class RegisterStore:
                 value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
             self.context.server_ifc.pci_write32_raw(self.device._id, register.raw_address, value)
         else:
-            pass
             # TODO: Write using RISC core debugging hardware.
+            raise NotImplementedError(
+                f"Writing register {register} is not implemented. It should be done using RISC core debugging hardware."
+            )
             # risc_names = self.device.get_risc_names_for_location(self.location, self.neo_id)
             # if len(risc_names) < 1:
             #     raise ValueError(

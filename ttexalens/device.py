@@ -456,10 +456,6 @@ class Device(TTObject):
     def get_pack_counters(self) -> list[dict]:
         return []
 
-    @abstractmethod
-    def _get_tensix_register_map_keys(self) -> list[str]:
-        pass
-
     # TODO: This is old API. Create all of these in NocBlock. Change existing API to use get_block and call new API.
 
     @abstractmethod
