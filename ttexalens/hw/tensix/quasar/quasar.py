@@ -4,13 +4,17 @@
 
 
 # TODO: This is plain copy of blackhole.py. Need to update this file with Quasar specific details
+from functools import cache
 from ttexalens import util
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import (
     Device,
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
     TensixRegisterDescription,
 )
+from ttexalens.hardware.noc_block import NocBlock
+from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
 
 #
 # Device
@@ -94,3 +98,10 @@ class QuasarDevice(Device):
         # 'NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en': tt_device.TensixRegisterDescription(address=0x23c, mask=0x1, shift=0), # Old name from configuration register
         # 'RISCV_DEBUG_REG_NCRISC_RESET_PC_OVERRIDE': tt_device.TensixRegisterDescription(address=0x23c, mask=0x1, shift=0), # New name
     }
+
+    @cache
+    def get_block(self, location: OnChipCoordinate) -> NocBlock:
+        block_type = self.get_block_type(location)
+        if block_type == "functional_workers":
+            return QuasarFunctionalWorkerBlock(location)
+        raise ValueError(f"Unsupported block type: {block_type}")
