@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  debug-bus list-names [-v] [-d <device>] [-l <loc>]
+  debug-bus list-names [-v] [-d <device>] [-l <loc>] [--search <pattern>] [-s]
   debug-bus [<signals>] [-v] [-d <device>] [-l <loc>]
 
 Description:
@@ -18,6 +18,7 @@ Description:
 
 Examples:
   debug-bus list-names                       # List predefined debug bus signals
+  debug-bus list-names --search *pc*         # List only signals whose names contain pc
   debug-bus trisc0_pc,trisc1_pc              # Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
   debug-bus {7,0,12,0x3ffffff},trisc2_pc     # Prints custom debug bus signal and trisc2_pc
 """
@@ -35,6 +36,8 @@ import re
 from ttexalens import command_parser
 from ttexalens import util as util
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.util import search
+from ttexalens.rich_formatters import formatter
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
@@ -107,6 +110,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     device: Device
     loc: OnChipCoordinate
     if dopt.args["list-names"]:
+        # Fetch all signal names, optionally search by pattern, and pretty-print.
         for device in dopt.for_each("--device", context, ui_state):
             for loc in dopt.for_each("--loc", context, ui_state, device=device):
                 noc_block = device.get_block(loc)
@@ -117,7 +121,20 @@ def run(cmd_text, context, ui_state: UIState = None):
                 if not debug_bus_signal_store:
                     util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
                     continue
-                print(debug_bus_signal_store.get_signal_names())
+                names = debug_bus_signal_store.get_signal_names()
+                # Filter if requested
+                names = search(list(names), dopt.args["<pattern>"]) if dopt.args["--search"] else names
+                # Read signal values
+                signal_map: dict[str, str] = {}
+                for name in names:
+                    value = debug_bus_signal_store.read_signal(name)
+                    signal_map[name] = f"0x{value:x}"
+                # And pretty-print.
+                formatter.print_header(f"=== Device {device._id} - location {loc.to_str('logical')})", style='bold')
+                formatter.display_grouped_data({"Signals": signal_map},
+                                               [["Signals"]],
+                                               simple_print=dopt.args["-s"])
+
         return []
 
     signals = parse_command_arguments(dopt.args)
