@@ -48,19 +48,11 @@ which can be installed by running
 sudo apt install software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libzmq3-dev libgtest-dev libgmock-dev xxd ninja-build
 ```
 
-Both python 3.8 and 3.10 are actively supported, so you can use either
-
-```bash
-sudo apt install python3.8-venv
-```
-
-or
+Python 3.10 is the only supported version at the moment. Install it with the following command:
 
 ```bash
 sudo apt install python3.10-venv
 ```
-
-depending on Python version available on your system.
 
 Additional Python dependencies are listed in `ttexalens/requirements.txt` file, and can be installed via `pip`:
 
