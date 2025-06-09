@@ -18,10 +18,6 @@ from ttexalens.register_store import (
     RegisterStore,
 )
 
-
-# TODO: Once signals are added, we can remove type hint
-# debug_bus_signal_map: dict[str, DebugBusSignalDescription] = {}
-
 register_map = {
     "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=185, mask=0x1F),
     "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG": DebugRegisterDescription(offset=0x54),
