@@ -171,11 +171,15 @@ class RegisterStore:
 
     @cached_property
     def _control_register_address(self) -> int:
-        return self.get_register_noc_address("RISCV_DEBUG_REG_CFGREG_RD_CNTL")
+        address = self.get_register_noc_address("RISCV_DEBUG_REG_CFGREG_RD_CNTL")
+        assert address is not None, "Control register address must be defined."
+        return address
 
     @cached_property
     def _data_register_address(self) -> int:
-        return self.get_register_noc_address("RISCV_DEBUG_REG_CFGREG_RDDATA")
+        address = self.get_register_noc_address("RISCV_DEBUG_REG_CFGREG_RDDATA")
+        assert address is not None, "Data register address must be defined."
+        return address
 
     def get_register_names(self) -> list[str]:
         return list(self.registers.keys())

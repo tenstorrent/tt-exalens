@@ -10,8 +10,8 @@ from typing import Iterable, Sequence
 
 from tabulate import tabulate
 from ttexalens.context import Context
-from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.noc_block import NocBlock
+from ttexalens.hardware.tensix_configuration_registers_description import TensixConfigurationRegistersDescription
 from ttexalens.object import TTObject
 from ttexalens import util as util
 from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
@@ -110,12 +110,6 @@ class Device(TTObject):
     DIE_Y_TO_NOC_0_Y: list[int] = []
     NOC_0_X_TO_DIE_X: list[int] = []
     NOC_0_Y_TO_DIE_Y: list[int] = []
-    PCI_ARC_RESET_BASE_ADDR: int = None
-    NOC_ARC_RESET_BASE_ADDR: int = None
-    PCI_ARC_CSM_DATA_BASE_ADDR: int = None
-    NOC_ARC_CSM_DATA_BASE_ADDR: int = None
-    PCI_ARC_ROM_DATA_BASE_ADDR: int = None
-    NOC_ARC_ROM_DATA_BASE_ADDR: int = None
     NOC_REGISTER_OFFSET: int = None
 
     # NOC reg type
@@ -245,6 +239,7 @@ class Device(TTObject):
         return False
 
     @abstractmethod
+    @cache
     def get_block(self, location: OnChipCoordinate) -> NocBlock:
         """
         Returns the NOC block at the given location
@@ -268,6 +263,10 @@ class Device(TTObject):
         assert len(arc_blocks) == 1
 
         return arc_blocks[0]
+
+    @abstractmethod
+    def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
+        pass
 
     def get_block_locations(self, block_type="functional_workers") -> list[OnChipCoordinate]:
         """
@@ -426,35 +425,6 @@ class Device(TTObject):
             rst_reg = read_word_from_device(loc, RISC_SOFT_RESET_0_ADDR, self.id(), self._context)
             if rst_reg != ALL_SOFT_RESET:
                 util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
-
-    # ALU GETTER
-    def get_alu_config(self) -> list[dict]:
-        return []
-
-    # UNPACKER GETTERS
-
-    def get_unpack_tile_descriptor(self) -> list[dict]:
-        return []
-
-    def get_unpack_config(self) -> list[dict]:
-        return []
-
-    # PACKER GETTERS
-
-    def get_pack_config(self) -> list[dict]:
-        return []
-
-    def get_relu_config(self) -> list[dict]:
-        return []
-
-    def get_pack_dest_rd_ctrl(self) -> list[dict]:
-        return []
-
-    def get_pack_edge_offset(self) -> list[dict]:
-        return []
-
-    def get_pack_counters(self) -> list[dict]:
-        return []
 
     # TODO: This is old API. Create all of these in NocBlock. Change existing API to use get_block and call new API.
 
