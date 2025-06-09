@@ -2,16 +2,17 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from functools import cache
-from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.blackhole.arc_block import BlackholeArcBlock
 from ttexalens.hardware.blackhole.dram_block import BlackholeDramBlock
 from ttexalens.hardware.blackhole.eth_block import BlackholeEthBlock
+from ttexalens.hardware.blackhole.functional_worker_registers import configuration_registers_descriptions
 from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
 from ttexalens.hardware.blackhole.harvested_worker_block import BlackholeHarvestedWorkerBlock
 from ttexalens.hardware.blackhole.l2cpu_block import BlackholeL2cpuBlock
 from ttexalens.hardware.blackhole.pcie_block import BlackholePcieBlock
 from ttexalens.hardware.blackhole.router_only_block import BlackholeRouterOnlyBlock
 from ttexalens.hardware.blackhole.security_block import BlackholeSecurityBlock
+from ttexalens.hardware.tensix_configuration_registers_description import TensixConfigurationRegistersDescription
 import ttexalens.util as util
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
@@ -44,13 +45,6 @@ class BlackholeDevice(Device):
     NOC_0_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_0_X)
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
 
-    PCI_ARC_RESET_BASE_ADDR = 0x1FF30000
-    PCI_ARC_CSM_DATA_BASE_ADDR = 0x1FE80000
-    PCI_ARC_ROM_DATA_BASE_ADDR = 0x1FF00000
-
-    NOC_ARC_RESET_BASE_ADDR = 0x80030000
-    NOC_ARC_CSM_DATA_BASE_ADDR = 0x10000000
-    NOC_ARC_ROM_DATA_BASE_ADDR = 0x80000000
     NOC_REGISTER_OFFSET = 0x10000
 
     # Register base addresses
@@ -67,9 +61,6 @@ class BlackholeDevice(Device):
     BRISC_LOCAL_MEM_SIZE = 8 * 1024  # 8KB
     NCRISC_LOCAL_MEM_SIZE = 8 * 1024  # 8KB
     TRISC_LOCAL_MEM_SIZE = 4 * 1024  # 4KB
-
-    NUM_UNPACKERS = 2
-    NUM_PACKERS = 1
 
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(
@@ -113,16 +104,6 @@ class BlackholeDevice(Device):
         else:
             return None
 
-    def _get_arc_telemetry_tags_map_keys(self) -> list[str]:
-        """Returns the keys of the ARC telemetry tags map."""
-        return list(BlackholeDevice.__arc_telemetry_tags_map.keys())
-
-    def _get_arc_telemetry_tag_id(self, tag_name) -> int | None:
-        """Returns the telemetry tag ID for a given tag name."""
-        if tag_name in BlackholeDevice.__arc_telemetry_tags_map:
-            return BlackholeDevice.__arc_telemetry_tags_map[tag_name]
-        return None
-
     def _get_riscv_local_memory_base_address(self) -> int:
         return BlackholeDevice.RISC_LOCAL_MEM_BASE
 
@@ -135,72 +116,6 @@ class BlackholeDevice(Device):
             return BlackholeDevice.NCRISC_LOCAL_MEM_SIZE
         else:
             return None
-
-    __arc_telemetry_tags_map = {
-        "TAG_BOARD_ID_HIGH": 1,
-        "TAG_BOARD_ID_LOW": 2,
-        "TAG_ASIC_ID": 3,
-        "TAG_HARVESTING_STATE": 4,
-        "TAG_UPDATE_TELEM_SPEED": 5,
-        "TAG_VCORE": 6,
-        "TAG_TDP": 7,
-        "TAG_TDC": 8,
-        "TAG_VDD_LIMITS": 9,
-        "TAG_THM_LIMIT_SHUTDOWN": 10,
-        "TAG_THM_LIMITS": 10,  # Same as TAG_THM_LIMIT_SHUTDOWN
-        "TAG_ASIC_TEMPERATURE": 11,
-        "TAG_VREG_TEMPERATURE": 12,
-        "TAG_BOARD_TEMPERATURE": 13,
-        "TAG_AICLK": 14,
-        "TAG_AXICLK": 15,
-        "TAG_ARCCLK": 16,
-        "TAG_L2CPUCLK0": 17,
-        "TAG_L2CPUCLK1": 18,
-        "TAG_L2CPUCLK2": 19,
-        "TAG_L2CPUCLK3": 20,
-        "TAG_ETH_LIVE_STATUS": 21,
-        "TAG_GDDR_STATUS": 22,
-        "TAG_GDDR_SPEED": 23,
-        "TAG_ETH_FW_VERSION": 24,
-        "TAG_GDDR_FW_VERSION": 25,
-        "TAG_BM_APP_FW_VERSION": 26,
-        "TAG_BM_BL_FW_VERSION": 27,
-        "TAG_FLASH_BUNDLE_VERSION": 28,
-        "TAG_CM_FW_VERSION": 29,
-        "TAG_L2CPU_FW_VERSION": 30,
-        "TAG_FAN_SPEED": 31,
-        "TAG_TIMER_HEARTBEAT": 32,
-        "TAG_TELEM_ENUM_COUNT": 33,
-        "TAG_ENABLED_TENSIX_COL": 34,
-        "TAG_ENABLED_ETH": 35,
-        "TAG_ENABLED_GDDR": 36,
-        "TAG_ENABLED_L2CPU": 37,
-        "TAG_PCIE_USAGE": 38,
-        "TAG_INPUT_CURRENT": 39,
-        "TAG_NOC_TRANSLATION": 40,
-        "TAG_FAN_RPM": 41,
-        "TAG_GDDR_0_1_TEMP": 42,
-        "TAG_GDDR_2_3_TEMP": 43,
-        "TAG_GDDR_4_5_TEMP": 44,
-        "TAG_GDDR_6_7_TEMP": 45,
-        "TAG_GDDR_0_1_CORR_ERRS": 46,
-        "TAG_GDDR_2_3_CORR_ERRS": 47,
-        "TAG_GDDR_4_5_CORR_ERRS": 48,
-        "TAG_GDDR_6_7_CORR_ERRS": 49,
-        "TAG_GDDR_UNCORR_ERRS": 50,
-        "TAG_MAX_GDDR_TEMP": 51,
-        "TAG_ASIC_LOCATION": 52,
-        "TAG_AICLK_LIMIT_MAX": 53,
-        "TAG_TDP_LIMIT_MAX": 54,
-        "TAG_TDC_LIMIT_MAX": 55,
-        "TAG_THM_LIMIT_THROTTLE": 56,
-        "TAG_FW_BUILD_DATE": 57,
-        "TAG_TT_FLASH_VERSION": 58,
-        "TAG_ENABLED_TENSIX_ROW": 59,
-        "TAG_THERM_TRIP_COUNT": 61,
-        "TAG_ASIC_ID_HIGH": 62,
-        "TAG_ASIC_ID_LOW": 63,
-    }
 
     __register_map = {
         # UNPACK TILE DESCRIPTOR SEC0
@@ -783,162 +698,5 @@ class BlackholeDevice(Device):
             return BlackholeSecurityBlock(location)
         raise ValueError(f"Unsupported block type: {block_type}")
 
-    def get_alu_config(self) -> list[dict]:
-        return [
-            {
-                "Fpu_srnd_en": "ALU_ROUNDING_MODE_Fpu_srnd_en",
-                "Gasket_srnd_en": "ALU_ROUNDING_MODE_Gasket_srnd_en",
-                "Packer_srnd_en": "ALU_ROUNDING_MODE_Packer_srnd_en",
-                "Padding": "ALU_ROUNDING_MODE_Padding",
-                "GS_LF": "ALU_ROUNDING_MODE_GS_LF",
-                "Bfp8_HF": "ALU_ROUNDING_MODE_Bfp8_HF",
-                "SrcAUnsigned": "ALU_FORMAT_SPEC_REG0_SrcAUnsigned",
-                "SrcBUnsigned": "ALU_FORMAT_SPEC_REG0_SrcBUnsigned",
-                "Format_SrcA": "ALU_FORMAT_SPEC_REG0_SrcA",
-                "Format_SrcB": "ALU_FORMAT_SPEC_REG1_SrcB",
-                "Format_Dstacc": "ALU_FORMAT_SPEC_REG2_Dstacc",
-                "Fp32_enabled": "ALU_ACC_CTRL_Fp32_enabled",
-                "SFPU_Fp32_enabled": "ALU_ACC_CTRL_SFPU_Fp32_enabled",
-                "INT8_math_enabled": "ALU_ACC_CTRL_INT8_math_enabled",
-            }
-        ]
-
-    # UNPACKER GETTERS
-
-    def get_unpack_tile_descriptor(self) -> list[dict]:
-        struct_name = "UNPACK_TILE_DESCRIPTOR"
-        fields = [
-            "in_data_format",
-            "uncompressed",
-            "reserved_0",
-            "blobs_per_xy_plane",
-            "reserved_1",
-            "x_dim",
-            "y_dim",
-            "z_dim",
-            "w_dim",
-            "blobs_y_start_lo",
-            "blobs_y_start_hi",
-            "digest_type",
-            "digest_size",
-        ]
-
-        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
-
-    def get_unpack_config(self) -> list[dict]:
-        struct_name = "UNPACK_CONFIG"
-        fields = [
-            "out_data_format",
-            "throttle_mode",
-            "context_count",
-            "haloize_mode",
-            "tileize_mode",
-            "unpack_src_reg_set_upd",
-            "unpack_if_sel",
-            "upsample_rate",
-            "reserved_1",
-            "upsample_and_interleave",
-            "shift_amount",
-            "uncompress_cntx0_3",
-            "unpack_if_sel_cntx0_3",
-            "force_shared_exp",
-            "reserved_2",
-            "uncompress_cntx4_7",
-            "unpack_if_sel_cntx4_7",
-            "reserved_3",
-            "limit_addr",
-            "reserved_4",
-            "fifo_size",
-            "reserved_5",
-        ]
-
-        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_UNPACKERS)]
-
-    def get_pack_config(self) -> list[dict]:
-        struct_name = "PACK_CONFIG"
-
-        fields = [
-            "row_ptr_section_size",
-            "exp_section_size",
-            "l1_dest_addr",
-            "uncompress",
-            "add_l1_dest_addr_offset",
-            "disable_pack_zero_flag",
-            "reserved_0",
-            "out_data_format",
-            "in_data_format",
-            "dis_shared_exp_assembler",
-            "auto_set_last_pacr_intf_sel",
-            "enable_out_fifo",
-            "sub_l1_tile_header_size",
-            "src_if_sel",
-            "pack_start_intf_pos",
-            "all_pack_disable_zero_compress_ovrd",
-            "add_tile_header_size",
-            "pack_dis_y_pos_start_offset",
-            "l1_src_addr",
-        ]
-
-        return [{field: f"{struct_name}{i}{j}_{field}" for field in fields} for i in [0] for j in [1]]
-
-    def get_relu_config(self) -> list[dict]:
-
-        return [
-            {
-                "disabled_src": "ALU_ACC_CTRL_Zero_Flag_disabled_src",
-                "disabled_dst": "ALU_ACC_CTRL_Zero_Flag_disabled_dst",
-                "apply_relu": "STACC_RELU_ApplyRelu",
-                "relu_threshold": "STACC_RELU_ReluThreshold",
-                "disable_main": "DISABLE_RISC_BP_Disable_main",
-                "disable_trisc": "DISABLE_RISC_BP_Disable_trisc",
-                "disable_ncrisc": "DISABLE_RISC_BP_Disable_ncrisc",
-                "disable_bmp_clear_main": "DISABLE_RISC_BP_Disable_bmp_clear_main",
-                "disable_bmp_clear_trisc": "DISABLE_RISC_BP_Disable_bmp_clear_trisc",
-                "disable_bmp_clear_ncrisc": "DISABLE_RISC_BP_Disable_bmp_clear_ncrisc",
-            }
-        ]
-
-    def get_pack_dest_rd_ctrl(self) -> list[dict]:
-        return [
-            {
-                "read_32b_data": "PACK_DEST_RD_CTRL_Read_32b_data",
-                "read_unsigned": "PACK_DEST_RD_CTRL_Read_unsigned",
-                "read_int8": "PACK_DEST_RD_CTRL_Read_int8",
-                "round_10b_mant": "PACK_DEST_RD_CTRL_Round_10b_mant",
-                "reserved": "PACK_DEST_RD_CTRL_Reserved",
-            }
-        ]
-
-    def get_pack_edge_offset(self) -> list[dict]:
-        struct_name = "PACK_EDGE_OFFSET"
-        fields = [
-            "mask",
-            "mode",
-            "tile_row_set_select_pack0",
-            "tile_row_set_select_pack1",
-            "tile_row_set_select_pack2",
-            "tile_row_set_select_pack3",
-        ]
-
-        return [
-            {field: f"{struct_name}{i}_{field}" for field in (fields if i == 0 else fields[:1])}
-            for i in range(self.NUM_PACKERS)
-        ]
-
-    def get_pack_counters(self) -> list[dict]:
-        struct_name = "PACK_COUNTERS"
-        fields = [
-            "pack_per_xy_plane",
-            "pack_reads_per_xy_plane",
-            "pack_xys_per_til",
-            "pack_yz_transposed",
-            "pack_per_xy_plane_offset",
-        ]
-
-        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(self.NUM_PACKERS)]
-
-    def get_pack_strides(self) -> list[dict]:
-        struct_name = "PACK_STRIDES"
-        fields = ["x_stride", "y_stride", "z_stride", "w_stride"]
-
-        return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(2)]
+    def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
+        return configuration_registers_descriptions

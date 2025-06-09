@@ -54,7 +54,7 @@ class QuasarFunctionalNeoBlock:
 
         self.noc_block = noc_block
         self.neo_id = neo_id
-        self.debug_bus = DebugBusSignalStore(debug_bus_signal_map, noc_block.location, neo_id)
+        self.debug_bus = DebugBusSignalStore(debug_bus_signal_map, noc_block, neo_id)
         # TODO: This register initialization should be moved to global scope to avoid its calculation every time object is created
         # TODO: It should be done once Quasar is finalized and we know all about its hardware. For simulator we create only few of these blocks
         register_store_initialization = RegisterStore.create_initialization(
