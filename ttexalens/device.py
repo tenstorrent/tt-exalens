@@ -245,6 +245,7 @@ class Device(TTObject):
         return False
 
     @abstractmethod
+    @cache
     def get_block(self, location: OnChipCoordinate) -> NocBlock:
         """
         Returns the NOC block at the given location
