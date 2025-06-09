@@ -30,7 +30,11 @@ class RiscvCoreSimulator:
         # Initialize core components
         self.location = OnChipCoordinate.create(self.core_loc, device=self.device)
         self.noc_block = self.device.get_block(self.location)
-        self.risc_id = get_risc_id(self.risc_name)
+        self.risc_id = (
+            get_risc_id(self.risc_name)
+            if self.device.get_block_type(self.location) == "functional_workers"
+            else int(self.risc_name[5])
+        )
         rloc = RiscLoc(self.location, 0, self.risc_id)
         self.rdbg = RiscDebug(rloc, self.context)
         self.loader = RiscLoader(self.rdbg, self.context)

@@ -14,7 +14,7 @@ from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_in
 
 @parameterized_class(
     [
-        {"core_desc": "ETH0", "risc_name": "BRISC"},
+        {"core_desc": "ETH0", "risc_name": "ERISC0"},
         {"core_desc": "FW0", "risc_name": "BRISC"},
         {"core_desc": "FW0", "risc_name": "TRISC0"},
         {"core_desc": "FW0", "risc_name": "TRISC1"},
@@ -52,40 +52,34 @@ class TestDebugging(unittest.TestCase):
 
     def assertPcEquals(self, expected):
         """Assert PC register equals to expected value."""
-        if self.core_sim.is_eth_block() and self.core_sim.is_blackhole():
-            # PC is not readable on blackhole ETH core for now
-            return
-        elif (self.core_sim.is_wormhole() or self.core_sim.is_blackhole()) and not self.core_sim.is_eth_block():
-            # checks pc over debug bus
+        if self.core_sim.is_wormhole() and self.core_sim.is_eth_block():
             self.assertEqual(
-                self.core_sim.get_pc_from_debug_bus(),
+                self.core_sim.read_gpr(self.pc_register_index),
                 self.core_sim.program_base_address + expected,
                 f"Pc should be {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
             )
         else:
+            # checks pc over debug bus
             self.assertEqual(
-                self.core_sim.read_gpr(self.pc_register_index),
+                self.core_sim.get_pc_from_debug_bus(),
                 self.core_sim.program_base_address + expected,
                 f"Pc should be {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
             )
 
     def assertPcLess(self, expected):
         """Assert PC register is less than expected value."""
-        if self.core_sim.is_eth_block() and self.core_sim.is_blackhole():
-            # PC is not readable on blackhole ETH core for now
-            return
-        elif (self.core_sim.is_wormhole() or self.core_sim.is_blackhole()) and not self.core_sim.is_eth_block():
+        if self.core_sim.is_wormhole() and self.core_sim.is_eth_block():
+            self.assertLess(
+                self.core_sim.read_gpr(self.pc_register_index),
+                self.core_sim.program_base_address + expected,
+                f"Pc should be {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
+            )
+        else:
             # checks pc over debug bus
             self.assertLess(
                 self.core_sim.get_pc_from_debug_bus(),
                 self.core_sim.program_base_address + expected,
-                f"Pc should be less than {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
-            )
-        else:
-            self.assertLess(
-                self.core_sim.read_gpr(self.pc_register_index),
-                self.core_sim.program_base_address + expected,
-                f"Pc should be less than {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
+                f"Pc should be {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
             )
 
     def test_reset_all_functional_workers(self):
