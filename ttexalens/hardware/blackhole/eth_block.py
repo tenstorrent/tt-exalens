@@ -8,7 +8,6 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBus
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.hardware.blackhole.eth_debug_bus_signals import debug_bus_signal_map
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.register_store import (
@@ -17,6 +16,11 @@ from ttexalens.register_store import (
     RegisterDescription,
     RegisterStore,
 )
+
+debug_bus_signal_map = {
+    "erisc0_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 9 + 1, mask=0x3FFFFFFF),
+    "erisc1_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 10 + 1, mask=0x3FFFFFFF),
+}
 
 register_map = {
     "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=185, mask=0x1F),
