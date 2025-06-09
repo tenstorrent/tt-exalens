@@ -11,6 +11,8 @@ import time
 class RiscvCoreSimulator:
     """Class to simulate and control a RISC-V core for testing purposes."""
 
+    program_base_address: int = 0
+
     def __init__(self, context: Context, core_desc: str, risc_name: str):
         """Initialize RISC-V core simulator.
 
@@ -20,12 +22,12 @@ class RiscvCoreSimulator:
             risc_name: RISC name (e.g. "BRISC", "TRISC0")
         """
         self.context = context
+        self.device = self.context.devices[0]
         self.core_desc = core_desc
         self.risc_name = risc_name
         self.core_loc = self._get_core_location()
 
         # Initialize core components
-        self.device = self.context.devices[0]
         self.location = OnChipCoordinate.create(self.core_loc, device=self.device)
         self.noc_block = self.device.get_block(self.location)
         self.risc_id = get_risc_id(self.risc_name)
@@ -38,22 +40,30 @@ class RiscvCoreSimulator:
         self.set_reset(True)
 
         # Set program base address if not already set
-        self.program_base_address = self.loader.get_risc_start_address()
-        if self.program_base_address is None:
+        program_base_address = self.loader.get_risc_start_address()
+        if program_base_address is None:
             self.loader.set_risc_start_address(0xD000)
-            self.program_base_address = self.loader.get_risc_start_address()
+            program_base_address = self.loader.get_risc_start_address()
+
+        # For ETH block on blackhole we need to read program base address from memory
+        if self.is_eth_block() and self.is_blackhole():
+            self.set_reset(False)
+            with self.rdbg.ensure_halted():
+                program_base_address = self.rdbg.read_memory(0xFFB14000)
+        assert isinstance(program_base_address, int), f"Invalid program base address: {program_base_address}"
+        self.program_base_address = program_base_address
 
     def _get_core_location(self) -> str:
         """Convert core_desc to core location string."""
         if self.core_desc.startswith("ETH"):
-            eth_cores = self.context.devices[0].get_block_locations(block_type="eth")
+            eth_cores = self.device.get_block_locations(block_type="eth")
             core_index = int(self.core_desc[3:])
             if len(eth_cores) > core_index:
                 return eth_cores[core_index].to_str()
             raise ValueError(f"ETH core {core_index} not available on this platform")
 
         elif self.core_desc.startswith("FW"):
-            fw_cores = self.context.devices[0].get_block_locations(block_type="functional_workers")
+            fw_cores = self.device.get_block_locations(block_type="functional_workers")
             core_index = int(self.core_desc[2:])
             if len(fw_cores) > core_index:
                 return fw_cores[core_index].to_str()
@@ -115,13 +125,21 @@ class RiscvCoreSimulator:
         """Check if core is halted."""
         return self.rdbg.read_status().is_halted
 
+    def is_ebreak_hit(self) -> bool:
+        """Check if ebreak instruction was hit."""
+        return self.rdbg.read_status().is_ebreak_hit
+
     def is_blackhole(self) -> bool:
         """Check if device is blackhole."""
-        return self.context.devices[0]._arch == "blackhole"
+        return self.device._arch == "blackhole"
 
     def is_wormhole(self) -> bool:
         """Check if device is wormhole_b0."""
-        return self.context.devices[0]._arch == "wormhole_b0"
+        return self.device._arch == "wormhole_b0"
+
+    def is_eth_block(self):
+        """Check if the core is ETH."""
+        return self.device.get_block_type(self.location) == "eth"
 
     def set_branch_prediction(self, enabled: bool):
         """Enable or disable branch prediction."""
@@ -157,6 +175,20 @@ class RiscvCoreSimulator:
         if not 0 <= reg_num <= 32:
             raise ValueError(f"Invalid register number {reg_num}. Must be between 0 and 32.")
         return self.rdbg.read_gpr(reg_num)
+
+    def write_gpr(self, reg_num: int, value: int):
+        """Write general purpose register value.
+
+        Args:
+            reg_num: Register number (0-32)
+            value: Value to write to the register
+
+        Raises:
+            ValueError: If register number is invalid
+        """
+        if not 0 <= reg_num <= 32:
+            raise ValueError(f"Invalid register number {reg_num}. Must be between 0 and 32.")
+        self.rdbg.write_gpr(reg_num, value)
 
     def get_reg_num(self, reg_name: str) -> int:
         """Get register number from name.
