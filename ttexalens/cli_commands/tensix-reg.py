@@ -132,4 +132,4 @@ def run(cmd_text, context, ui_state: UIState):
                     reg_data_type = register.data_type if data_type is None else data_type
 
                     INFO(f"Value of register {reg_name} on device {device.id()} and location {loc}:")
-                    print(format_register_value(reg_value, reg_data_type, bin(register.mask).count("1")))
+                    print(format_register_value(reg_value, reg_data_type, register.mask.bit_count()))
