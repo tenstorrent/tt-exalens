@@ -282,11 +282,8 @@ class RegisterStore:
                 register.index,
                 self.device._id,
                 self.context,
-                register.noc_id,
             )
-            value = read_word_from_device(
-                self.location, self._data_register_address, self.device._id, self.context, register.noc_id
-            )
+            value = read_word_from_device(self.location, self._data_register_address, self.device._id, self.context)
         else:
             # TODO: Read using RISC core debugging hardware.
             value = read_word_from_device(self.location, register.private_address, self.device._id, self.context)
