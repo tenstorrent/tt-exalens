@@ -325,7 +325,8 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list:
                 if dopt.args["--search"]:
                     noc0_reg_store = device.get_block(loc).get_register_store(0)
                     all_reg_names = get_noc_register_names(noc0_reg_store)
-                    reg_names = search(all_reg_names, dopt.args["<reg-pattern>"], dopt.args["<max-regs>"])
+                    max = dopt.args["<max-regs>"] if dopt.args["--max"] else 10
+                    reg_names = search(all_reg_names, dopt.args["<reg-pattern>"], max)
                     if len(reg_names) == 0:
                         print("No matches found.")
                         return []

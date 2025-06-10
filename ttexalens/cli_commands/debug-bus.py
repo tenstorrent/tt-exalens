@@ -130,7 +130,8 @@ def run(cmd_text, context, ui_state: UIState = None):
                 names = debug_bus_signal_store.get_signal_names()
 
                 if dopt.args["--search"]:
-                    names = search(list(names), dopt.args["--search"], dopt.args["--max"])
+                    max = dopt.args["--max"] if dopt.args["--max"] else 10
+                    names = search(list(names), dopt.args["--search"], max)
                     if len(names) == 0:
                         print("No matches found.")
                         return []

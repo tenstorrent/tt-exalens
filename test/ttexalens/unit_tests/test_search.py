@@ -72,10 +72,6 @@ class TestSearch(unittest.TestCase):
         result = search(self.data, "*re*", "2")  # 4 matches in total, limited to 2
         self.assertEqual(len(result), 2)
 
-    def test_null_n(self):
-        result = search(self.data, "*", None)
-        self.assertEqual(result, self.data[:10])
-
     def test_special_chars(self):
         result = search(self.data, "<*", "all")
         self.assertEqual(result, ["<thing>"])

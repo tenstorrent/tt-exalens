@@ -148,7 +148,8 @@ def run(cmd_text, context, ui_state: UIState = None):
 
         # Do this only if search is enabled
         if register_pattern != None:
-            results = search(device._get_tensix_register_map_keys(), register_pattern, dopt.args["--max"])
+            max = dopt.args["--max"] if dopt.args["--max"] else 10
+            results = search(device._get_tensix_register_map_keys(), register_pattern, max)
             if len(results) == 0:
                 print("No matches found.")
                 return []
