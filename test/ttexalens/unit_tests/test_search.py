@@ -11,7 +11,7 @@ class TestSearch(unittest.TestCase):
     def setUp(self):
         self.data = ["test", "testing", "tested", "Tenstorrent", "Tensix", 
                      "status", "step", "read", "reset", "terminal emulator", 
-                     "technology", "tech", "tender", "text", "team", "[string]", 
+                     "technology", "tech", "tender", "text", "team", "[/string,]", 
                      "O_RDWR", "__builtin_unreachable", "BLACKHOLE", "<thing>"]
 
     def test_default_n(self):
@@ -37,6 +37,14 @@ class TestSearch(unittest.TestCase):
     def test_null_n(self):
         result = search(self.data, "*", None)
         self.assertEqual(result, self.data[:10])
+
+    def test_special_chars(self):
+        result = search(self.data, "<*", "all")
+        self.assertEqual(result, ["<thing>"])
+        result = search(self.data, "*_*", "all")
+        self.assertEqual(len(result), 2)
+        result = search(self.data, "*,]", "all")
+        self.assertEqual(result, ["[/string,]"])
 
 if __name__ == "__main__":
     unittest.main()
