@@ -41,10 +41,10 @@ class TestSearch(unittest.TestCase):
     def test_special_chars(self):
         result = search(self.data, "<*", "all")
         self.assertEqual(result, ["<thing>"])
-        result = search(self.data, "*_*", "all")
-        self.assertEqual(len(result), 2)
         result = search(self.data, "*,]", "all")
         self.assertEqual(result, ["[/string,]"])
+        result = search(self.data, "*_*", n = "all")
+        self.assertEqual(result, ["O_RDWR", "__builtin_unreachable"])
 
 if __name__ == "__main__":
     unittest.main()
