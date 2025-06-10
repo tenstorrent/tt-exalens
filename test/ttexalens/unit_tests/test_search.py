@@ -31,6 +31,7 @@ class TestSearch(unittest.TestCase):
             "__builtin_unreachable",
             "BLACKHOLE",
             "<thing>",
+            "42"
         ]
 
     def test_default_n(self):
@@ -59,6 +60,8 @@ class TestSearch(unittest.TestCase):
     def test_exact_match(self):
         result = search(["idk", "man"], "idk")
         self.assertEqual(result, ["idk"])
+        result = search(self.data, "42")
+        self.assertEqual(result, ["42"])
 
     def test_zero_results(self):
         result = search(["idk"], "man")
