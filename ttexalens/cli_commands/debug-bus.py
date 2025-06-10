@@ -3,12 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  debug-bus list-names [-v] [-d <device>] [-l <loc>]
+  debug-bus list-names [-v] [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s]
   debug-bus [<signals>] [-v] [-d <device>] [-l <loc>]
+
+Options:
+    -s, --simple            Print simple output
+    --search <pattern>      Search for signals by pattern (in wildcard format)
+    --max <max-sigs>        Limit --search output (default: 10, use --max "all" to print all matches)
 
 Description:
   Commands for RISC-V debugging:
     - list-names:    List all predefined debug bus signal names.
+        --search:
     - [<signals>]:   List of signals described by signal name or signal description.
         <signal-description>: {DaisyId,RDSel,SigSel,Mask}
             -DaisyId - daisy chain identifier
@@ -17,9 +23,10 @@ Description:
             -Mask    - 32bit number to show only significant bits (optional)
 
 Examples:
-  debug-bus list-names                       # List predefined debug bus signals
-  debug-bus trisc0_pc,trisc1_pc              # Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
-  debug-bus {7,0,12,0x3ffffff},trisc2_pc     # Prints custom debug bus signal and trisc2_pc
+  debug-bus list-names                        # List predefined debug bus signals
+  debug-bus list-names --search *pc* --max 5  # List up to 5 signals whose names contain pc
+  debug-bus trisc0_pc,trisc1_pc               # Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
+  debug-bus {7,0,12,0x3ffffff},trisc2_pc      # Prints custom debug bus signal and trisc2_pc
 """
 
 command_metadata = {
@@ -35,6 +42,8 @@ import re
 from ttexalens import command_parser
 from ttexalens import util as util
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.util import search
+from ttexalens.rich_formatters import formatter
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
@@ -107,6 +116,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     device: Device
     loc: OnChipCoordinate
     if dopt.args["list-names"]:
+        # Fetch all signal names, optionally search by pattern, and pretty-print.
         for device in dopt.for_each("--device", context, ui_state):
             for loc in dopt.for_each("--loc", context, ui_state, device=device):
                 noc_block = device.get_block(loc)
@@ -117,7 +127,26 @@ def run(cmd_text, context, ui_state: UIState = None):
                 if not debug_bus_signal_store:
                     util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
                     continue
-                print(debug_bus_signal_store.get_signal_names())
+                names = debug_bus_signal_store.get_signal_names()
+
+                if dopt.args["--search"]:
+                    max = dopt.args["--max"] if dopt.args["--max"] else 10
+                    names = search(list(names), dopt.args["--search"], max)
+                    if len(names) == 0:
+                        print("No matches found.")
+                        return []
+
+                # Read signal values
+                signal_map: dict[str, str] = {}
+                for name in names:
+                    value = debug_bus_signal_store.read_signal(name)
+                    signal_map[name] = f"0x{value:x}"
+                # And pretty-print.
+                formatter.print_header(f"=== Device {device._id} - location {loc.to_str('logical')})", style="bold")
+                formatter.display_grouped_data(
+                    {"Signals": signal_map}, [["Signals"]], simple_print=dopt.args["--simple"]
+                )
+
         return []
 
     signals = parse_command_arguments(dopt.args)

@@ -8,8 +8,8 @@ Usage:
 
 Arguments:
   <register>            Register to dump/write to. Format: <reg-type>(<reg-parameters>) or register name.
-                        <reg-type> Register type. Options: [cfg, dbg].
-                        <reg-parameters> Register parameters, comma separated integers. For cfg: index,mask,shift. For dbg: address.
+  <reg-type>            Register type. Options: [cfg, dbg].
+  <reg-parameters>      Register parameters, comma separated integers. For cfg: index,mask,shift. For dbg: address.
   <register-pattern>    Register pattern used to print register names that match it. Format: wildcard.
 
 Options:
@@ -55,10 +55,17 @@ from ttexalens.device import (
     DebugRegisterDescription,
 )
 from ttexalens import command_parser
-from ttexalens.util import TTException, INFO, WARN, DATA_TYPE, convert_int_to_data_type, convert_data_type_to_int
+from ttexalens.util import (
+    TTException,
+    INFO,
+    WARN,
+    DATA_TYPE,
+    convert_int_to_data_type,
+    convert_data_type_to_int,
+    search,
+)
 from ttexalens.unpack_regfile import TensixDataFormat
 import re
-from fnmatch import fnmatch
 
 # Possible values
 reg_types = ["cfg", "dbg"]
@@ -114,19 +121,6 @@ def parse_register_argument(register: str):
         return register
 
 
-# Print strings that match wildcard pattern. Maximum max_prints, negative values enable print all.
-def print_matches(pattern: str, strings: list[str], max_prints: int) -> None:
-    pattern = pattern.lower()
-    for s in strings:
-        if max_prints == 0:
-            WARN("Hit printing limit. To see more results, increase the --max value.")
-            break
-
-        if fnmatch(s.lower(), pattern):
-            print(s)
-            max_prints -= 1
-
-
 def run(cmd_text, context, ui_state: UIState = None):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
@@ -154,20 +148,15 @@ def run(cmd_text, context, ui_state: UIState = None):
 
         # Do this only if search is enabled
         if register_pattern != None:
-            register_names = device._get_tensix_register_map_keys()
-            max_regs = dopt.args["--max"] if dopt.args["--max"] else 10
-            try:
-                if max_regs != "all":
-                    max_regs = int(max_regs)
-                    if max_regs <= 0:
-                        raise ValueError(f"Invalid value for max-regs. Expected positive integer, but got {max_regs}")
-                else:
-                    max_regs = len(register_names)
-            except:
-                raise ValueError(f"Invalid value for max-regs. Expected an integer, but got {max_regs}")
+            max = dopt.args["--max"] if dopt.args["--max"] else 10
+            results = search(device._get_tensix_register_map_keys(), register_pattern, max)
+            if len(results) == 0:
+                print("No matches found.")
+                return []
 
-            INFO(f"Register names that match pattern on device {device.id()}")
-            print_matches(register_pattern, register_names, max_regs)
+            INFO(f"Register names that match pattern on device {device.id()}:")
+            for s in results:
+                print(s)
 
             continue
 
