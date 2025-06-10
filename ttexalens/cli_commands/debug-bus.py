@@ -3,12 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  debug-bus list-names [-v] [-d <device>] [-l <loc>] [--search <pattern>] [-s]
+  debug-bus list-names [-v] [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s]
   debug-bus [<signals>] [-v] [-d <device>] [-l <loc>]
+
+Options:
+    -s, --simple            Print simple output
+    --search <pattern>      Search for signals by pattern (in wildcard format)
+    --max <max-sigs>        Limit --search output (default: 10, use --max "all" to print all matches)
 
 Description:
   Commands for RISC-V debugging:
     - list-names:    List all predefined debug bus signal names.
+        --search:    
     - [<signals>]:   List of signals described by signal name or signal description.
         <signal-description>: {DaisyId,RDSel,SigSel,Mask}
             -DaisyId - daisy chain identifier
@@ -17,10 +23,10 @@ Description:
             -Mask    - 32bit number to show only significant bits (optional)
 
 Examples:
-  debug-bus list-names                       # List predefined debug bus signals
-  debug-bus list-names --search *pc*         # List only signals whose names contain pc
-  debug-bus trisc0_pc,trisc1_pc              # Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
-  debug-bus {7,0,12,0x3ffffff},trisc2_pc     # Prints custom debug bus signal and trisc2_pc
+  debug-bus list-names                        # List predefined debug bus signals
+  debug-bus list-names --search *pc* --max 5  # List up to 5 signals whose names contain pc
+  debug-bus trisc0_pc,trisc1_pc               # Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
+  debug-bus {7,0,12,0x3ffffff},trisc2_pc      # Prints custom debug bus signal and trisc2_pc
 """
 
 command_metadata = {
@@ -122,8 +128,13 @@ def run(cmd_text, context, ui_state: UIState = None):
                     util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
                     continue
                 names = debug_bus_signal_store.get_signal_names()
-                # Filter if requested
-                names = search(list(names), dopt.args["<pattern>"]) if dopt.args["--search"] else names
+
+                if dopt.args["--search"]:
+                    names = search(list(names), dopt.args["--search"], dopt.args["--max"])
+                    if len(names) == 0:
+                        print("No matches found.")
+                        return []
+                    
                 # Read signal values
                 signal_map: dict[str, str] = {}
                 for name in names:
@@ -133,7 +144,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                 formatter.print_header(f"=== Device {device._id} - location {loc.to_str('logical')})", style='bold')
                 formatter.display_grouped_data({"Signals": signal_map},
                                                [["Signals"]],
-                                               simple_print=dopt.args["-s"])
+                                               simple_print=dopt.args["--simple"])
 
         return []
 

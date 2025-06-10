@@ -8,8 +8,8 @@ Usage:
 
 Arguments:
   <register>            Register to dump/write to. Format: <reg-type>(<reg-parameters>) or register name.
-                        <reg-type> Register type. Options: [cfg, dbg].
-                        <reg-parameters> Register parameters, comma separated integers. For cfg: index,mask,shift. For dbg: address.
+  <reg-type>            Register type. Options: [cfg, dbg].
+  <reg-parameters>      Register parameters, comma separated integers. For cfg: index,mask,shift. For dbg: address.
   <register-pattern>    Register pattern used to print register names that match it. Format: wildcard.
 
 Options:
@@ -140,17 +140,11 @@ def run(cmd_text, context, ui_state: UIState = None):
 
         # Do this only if search is enabled
         if register_pattern != None:
-            max_regs = dopt.args["--max"]
-            # Check input; max_regs > 0 or "all" is allowed
-            try:
-                if max_regs != "all" and max_regs != None:
-                    max_regs = int(max_regs)
-                    if max_regs <= 0:
-                        raise ValueError(f"Invalid value for max-regs. Expected positive integer, but got {max_regs}")
-            except:
-                raise ValueError(f"Invalid value for max-regs. Expected an integer, but got {max_regs}")
-
-            results = search(device._get_tensix_register_map_keys(), register_pattern, max_regs)
+            results = search(device._get_tensix_register_map_keys(), register_pattern, dopt.args["--max"])
+            if len(results) == 0:
+                print("No matches found.")
+                return []
+            
             INFO(f"Register names that match pattern on device {device.id()}:")
             for s in results:
                 print(s)
