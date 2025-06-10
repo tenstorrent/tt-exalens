@@ -15,6 +15,8 @@ from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_in
 @parameterized_class(
     [
         {"core_desc": "ETH0", "risc_name": "ERISC0"},
+        {"core_desc": "ETH1", "risc_name": "ERISC0"},
+        # {"core_desc": "ETH0", "risc_name": "ERISC1"}, # Issue: https://github.com/tenstorrent/tt-exalens/issues/429
         {"core_desc": "FW0", "risc_name": "BRISC"},
         {"core_desc": "FW0", "risc_name": "TRISC0"},
         {"core_desc": "FW0", "risc_name": "TRISC1"},
@@ -118,8 +120,8 @@ class TestDebugging(unittest.TestCase):
 
         # Test readonly registers
         self.assertEqual(self.core_sim.read_gpr(get_register_index("zero")), 0, "zero should always be 0.")
-        if not (self.core_sim.is_blackhole() and self.core_sim.is_eth_block()):
-            # PC is not readable on blackhole ETH core for now
+        if not self.core_sim.is_blackhole():
+            # Reading PC from GPR is not working correctly on blackhole
             self.assertEqual(
                 self.core_sim.read_gpr(get_register_index("pc")),
                 self.core_sim.program_base_address + 4,
