@@ -242,7 +242,6 @@ class BabyRiscDebugHardware:
         self.RISC_DBG_CNTL1 = register_store.get_register_noc_address("RISCV_DEBUG_REG_RISC_DBG_CNTL_1")
         self.RISC_DBG_STATUS0 = register_store.get_register_noc_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_0")
         self.RISC_DBG_STATUS1 = register_store.get_register_noc_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_1")
-        self.DEBUG_READ_VALID_BIT = 1 << 30
 
     @property
     def device(self) -> Device:
@@ -298,7 +297,7 @@ class BabyRiscDebugHardware:
         if self.verbose:
             util.INFO("  __is_read_valid()")
         status0 = self.__read(self.RISC_DBG_STATUS0)
-        return (status0 & self.DEBUG_READ_VALID_BIT) == self.DEBUG_READ_VALID_BIT
+        return (status0 & self.risc_info.status_read_valid_mask) == self.risc_info.status_read_valid_mask
 
     def __riscv_read(self, reg_addr):
         if self.verbose:

@@ -26,6 +26,7 @@ class BabyRiscInfo(RiscInfo):
         code_start_address_enable_bit: int,
         data_private_memory: MemoryBlock | None = None,
         code_private_memory: MemoryBlock | None = None,
+        status_read_valid_mask: int = 1 << 30,
         debug_hardware_present: bool = False,
         can_change_code_start_address: bool = True,
     ):
@@ -40,6 +41,7 @@ class BabyRiscInfo(RiscInfo):
         self.code_start_address_enable_bit = code_start_address_enable_bit
         self.data_private_memory = data_private_memory
         self.code_private_memory = code_private_memory
+        self.status_read_valid_mask = status_read_valid_mask
         self.debug_hardware_present = debug_hardware_present
         self.can_change_code_start_address = can_change_code_start_address
 
