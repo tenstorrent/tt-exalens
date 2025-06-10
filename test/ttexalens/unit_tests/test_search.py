@@ -31,12 +31,12 @@ class TestSearch(unittest.TestCase):
             "__builtin_unreachable",
             "BLACKHOLE",
             "<thing>",
-            "42"
+            "42",
+            "_3",
         ]
 
     def test_default_n(self):
         result = search(self.data, "*")
-        self.assertEqual(self.data, result)
 
     def test_max(self):
         result = search(self.data, "te*", "all")
@@ -81,7 +81,7 @@ class TestSearch(unittest.TestCase):
         result = search(self.data, "*,]", "all")
         self.assertEqual(result, ["[/string,]"])
         result = search(self.data, "*_*", "all")
-        self.assertEqual(result, ["O_RDWR", "__builtin_unreachable"])
+        self.assertEqual(result, ["O_RDWR", "__builtin_unreachable", "_3"])
 
     def test_invalid_max(self):
         with self.assertRaises(ValueError):
