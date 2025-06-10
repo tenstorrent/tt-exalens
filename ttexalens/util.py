@@ -901,9 +901,9 @@ def search(strings: list[str], pattern: str, max: str | int = "all") -> list[str
         if max != "all":
             n = int(max)
             if n <= 0:
-                raise ValueError(f'Invalid argument for --max. Expected positive integer, "all" or None, but got {max}')
+                raise ValueError(f'Invalid argument for --max. Expected positive integer or "all", but got {max}')
     except:
-        raise ValueError(f'Invalid argument for --max. Expected positive integer, "all" or None, but got {max}')
+        raise ValueError(f'Invalid argument for --max. Expected positive integer or "all", but got {max}')
     if max is None:
         n = 10
     elif max == "all":
