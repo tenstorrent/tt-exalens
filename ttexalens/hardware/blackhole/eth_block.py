@@ -92,13 +92,12 @@ class BlackholeEthBlock(BlackholeNocBlock):
         super().__init__(location, block_type="eth", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self))
 
         self.l1 = MemoryBlock(
-            # TODO: Check if this size is correct
             size=512 * 1024,
             address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000),
         )
 
-        self.erisc = BabyRiscInfo(
-            risc_name="erisc",
+        self.erisc0 = BabyRiscInfo(
+            risc_name="erisc0",
             risc_id=0,
             noc_block=self,
             neo_id=None,  # NEO ID is not applicable for Blackhole
@@ -107,17 +106,40 @@ class BlackholeEthBlock(BlackholeNocBlock):
             reset_flag_shift=11,
             branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO: Check if we have branch prediction register on erisc
             branch_prediction_mask=0x1,
-            default_code_start_address=0x00000000,
-            code_start_address_register="",
+            default_code_start_address=0x00000000,  # TODO: What is the default code start address for Blackhole?
+            code_start_address_register="",  # TODO: How do we change start address in Blackhole?
             code_start_address_enable_register="",
             code_start_address_enable_bit=0,
             data_private_memory=MemoryBlock(
-                size=8 * 1024,  # TODO: Check if this is correct
+                size=8 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
             ),
             code_private_memory=None,
             debug_hardware_present=True,
-            can_change_code_start_address=False,
+            can_change_code_start_address=False,  # TODO: Check if we can change code start address in Blackhole
+        )
+
+        self.erisc1 = BabyRiscInfo(
+            risc_name="erisc1",
+            risc_id=1,
+            noc_block=self,
+            neo_id=None,  # NEO ID is not applicable for Blackhole
+            l1=self.l1,
+            max_watchpoints=8,
+            reset_flag_shift=12,
+            branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO: Check if we have branch prediction register on erisc
+            branch_prediction_mask=0x1,
+            default_code_start_address=0x00000000,  # TODO: What is the default code start address for Blackhole?
+            code_start_address_register="",  # TODO: How do we change start address in Blackhole?
+            code_start_address_enable_register="",
+            code_start_address_enable_bit=0,
+            data_private_memory=MemoryBlock(
+                size=8 * 1024,
+                address=DeviceAddress(private_address=0xFFB00000),
+            ),
+            code_private_memory=None,
+            debug_hardware_present=True,
+            can_change_code_start_address=False,  # TODO: Check if we can change code start address in Blackhole
         )
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
@@ -125,12 +147,14 @@ class BlackholeEthBlock(BlackholeNocBlock):
 
     @cache
     def get_default_risc_debug(self) -> RiscDebug:
-        return self.get_risc_debug(self.erisc.risc_name, self.erisc.neo_id)
+        return self.get_risc_debug(self.erisc0.risc_name, self.erisc0.neo_id)
 
     @cache
     def get_risc_debug(self, risc_name: str, neo_id: int | None = None) -> RiscDebug:
         assert neo_id is None, "NEO ID is not applicable for Blackhole device."
         risc_name = risc_name.lower()
-        if risc_name == self.erisc.risc_name:
-            return BlackholeBabyRiscDebug(risc_info=self.erisc)
+        if risc_name == self.erisc0.risc_name:
+            return BlackholeBabyRiscDebug(risc_info=self.erisc0)
+        elif risc_name == self.erisc1.risc_name:
+            return BlackholeBabyRiscDebug(risc_info=self.erisc1)
         raise ValueError(f"RISC debug for {risc_name} is not supported in Blackhole eth block.")

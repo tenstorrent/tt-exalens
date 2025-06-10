@@ -100,7 +100,7 @@ class WormholeEthBlock(WormholeNocBlock):
             code_start_address_enable_register="",
             code_start_address_enable_bit=0,
             data_private_memory=MemoryBlock(
-                size=4 * 1024,  # TODO: Check if this is correct
+                size=4 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
             ),
             code_private_memory=None,
