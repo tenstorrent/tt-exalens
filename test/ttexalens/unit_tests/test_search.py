@@ -35,6 +35,10 @@ class TestSearch(unittest.TestCase):
             "_3",
         ]
 
+    def test_default(self):
+        result = search(self.data, "*")
+        self.assertEqual(self.data, result)
+
     def test_max(self):
         result = search(self.data, "te*", "all")
         self.assertEqual(
