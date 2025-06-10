@@ -55,7 +55,15 @@ from ttexalens.device import (
     DebugRegisterDescription,
 )
 from ttexalens import command_parser
-from ttexalens.util import TTException, INFO, WARN, DATA_TYPE, convert_int_to_data_type, convert_data_type_to_int, search
+from ttexalens.util import (
+    TTException,
+    INFO,
+    WARN,
+    DATA_TYPE,
+    convert_int_to_data_type,
+    convert_data_type_to_int,
+    search,
+)
 from ttexalens.unpack_regfile import TensixDataFormat
 import re
 
@@ -144,7 +152,7 @@ def run(cmd_text, context, ui_state: UIState = None):
             if len(results) == 0:
                 print("No matches found.")
                 return []
-            
+
             INFO(f"Register names that match pattern on device {device.id()}:")
             for s in results:
                 print(s)

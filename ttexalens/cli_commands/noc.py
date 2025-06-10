@@ -34,7 +34,7 @@ Examples:
     noc status -s                               # Prints status registers with simple output
     noc register NIU_MST_RD_REQ_SENT            # Prints a specific register value
     noc register NIU_MST_RD_REQ_SENT,NIU_MST_RD_DATA_WORD_RECEIVED  # Prints multiple registers
-    noc register --search *_RD* --max all       # Show all registers that have "_RD" in their name 
+    noc register --search *_RD* --max all       # Show all registers that have "_RD" in their name
 """
 
 # Third-party imports

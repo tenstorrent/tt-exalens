@@ -14,7 +14,7 @@ Options:
 Description:
   Commands for RISC-V debugging:
     - list-names:    List all predefined debug bus signal names.
-        --search:    
+        --search:
     - [<signals>]:   List of signals described by signal name or signal description.
         <signal-description>: {DaisyId,RDSel,SigSel,Mask}
             -DaisyId - daisy chain identifier
@@ -134,17 +134,17 @@ def run(cmd_text, context, ui_state: UIState = None):
                     if len(names) == 0:
                         print("No matches found.")
                         return []
-                    
+
                 # Read signal values
                 signal_map: dict[str, str] = {}
                 for name in names:
                     value = debug_bus_signal_store.read_signal(name)
                     signal_map[name] = f"0x{value:x}"
                 # And pretty-print.
-                formatter.print_header(f"=== Device {device._id} - location {loc.to_str('logical')})", style='bold')
-                formatter.display_grouped_data({"Signals": signal_map},
-                                               [["Signals"]],
-                                               simple_print=dopt.args["--simple"])
+                formatter.print_header(f"=== Device {device._id} - location {loc.to_str('logical')})", style="bold")
+                formatter.display_grouped_data(
+                    {"Signals": signal_map}, [["Signals"]], simple_print=dopt.args["--simple"]
+                )
 
         return []
 
