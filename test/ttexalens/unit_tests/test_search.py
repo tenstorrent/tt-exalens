@@ -85,6 +85,8 @@ class TestSearch(unittest.TestCase):
             search([], "", "-1")
         with self.assertRaises(ValueError):
             search([], "", "0")
+        with self.assertRaises(ValueError):
+            search([], "", "huh")
 
 
 if __name__ == "__main__":
