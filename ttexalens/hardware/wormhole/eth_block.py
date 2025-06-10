@@ -17,6 +17,7 @@ from ttexalens.register_store import (
     RegisterStore,
 )
 
+# TODO: Once signals are added, we can remove type hint
 debug_bus_signal_map: dict[str, DebugBusSignalDescription] = {}
 
 register_map = {
