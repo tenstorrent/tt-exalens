@@ -80,6 +80,12 @@ class TestSearch(unittest.TestCase):
         result = search(self.data, "*_*", "all")
         self.assertEqual(result, ["O_RDWR", "__builtin_unreachable"])
 
+    def test_invalid_max(self):
+        with self.assertRaises(ValueError):
+            search([], "", "-1")
+        with self.assertRaises(ValueError):
+            search([], "", "0")
+
 
 if __name__ == "__main__":
     unittest.main()
