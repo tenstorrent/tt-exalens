@@ -19,7 +19,7 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(self.data, result)
 
     def test_max(self):
-        result = search(self.data, "te*", n = "all")
+        result = search(self.data, "te*", "all")
         self.assertEqual(len(result), 11)
     
     def test_exact_match(self):
@@ -43,7 +43,7 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(result, ["<thing>"])
         result = search(self.data, "*,]", "all")
         self.assertEqual(result, ["[/string,]"])
-        result = search(self.data, "*_*", n = "all")
+        result = search(self.data, "*_*", "all")
         self.assertEqual(result, ["O_RDWR", "__builtin_unreachable"])
 
 if __name__ == "__main__":

@@ -895,18 +895,18 @@ def color_text_by_index(text, color_index):
 
 
 # Return a list of up to n elements from strings that match the given wildcard pattern. 
-# Defaults to 10 elements, negative values of n or "all" mean all.
-def search(strings: list[str], pattern: str, n: str | int | None = "all") -> list[str]:
+# Defaults to 10 elements, negative values of max or "all" mean all.
+def search(strings: list[str], pattern: str, max: str | int | None = "all") -> list[str]:
     try:
-        if n != "all" and n != None:
-            n = int(n)
+        if max != "all" and max != None:
+            n = int(max)
             if n <= 0:
-                raise ValueError(f"Invalid argument for --max. Expected positive integer, but got {n}")
+                raise ValueError(f"Invalid argument for --max. Expected positive integer, but got {max}")
     except:
-        raise ValueError(f"Invalid argument for --max. Expected an integer, but got {n}")
-    if n is None:
+        raise ValueError(f"Invalid argument for --max. Expected an integer, but got {max}")
+    if max is None:
         n = 10
-    elif n == "all":
+    elif max == "all":
         n = -1
 
     pattern = pattern.lower()
