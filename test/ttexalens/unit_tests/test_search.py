@@ -39,7 +39,22 @@ class TestSearch(unittest.TestCase):
 
     def test_max(self):
         result = search(self.data, "te*", "all")
-        self.assertEqual(len(result), 11)
+        self.assertEqual(
+            result,
+            [
+                "test",
+                "testing",
+                "tested",
+                "Tenstorrent",
+                "Tensix",
+                "terminal emulator",
+                "technology",
+                "tech",
+                "tender",
+                "text",
+                "team",
+            ],
+        )
 
     def test_exact_match(self):
         result = search(["idk", "man"], "idk")
