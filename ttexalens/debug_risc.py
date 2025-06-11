@@ -577,6 +577,8 @@ def blackhole_read_pc(location: RiscLoc) -> int:
         value = debug_bus_signal_store.read_signal("trisc1_pc")
     elif location.risc_id == 3:
         value = debug_bus_signal_store.read_signal("trisc2_pc")
+    elif location.risc_id == 4:
+        value = debug_bus_signal_store.read_signal("ncrisc_pc")
     else:
         util.ERROR(f"Could not read PC for RISC ID {location.risc_id}")
     return value
