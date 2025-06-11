@@ -4,12 +4,14 @@
 
 from __future__ import annotations
 from abc import abstractmethod
+from functools import cache, cached_property
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ttexalens.device import Device
     from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+    from ttexalens.hardware.risc_debug import RiscDebug
     from ttexalens.register_store import RegisterStore
 
 
@@ -26,3 +28,27 @@ class NocBlock:
     @abstractmethod
     def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
         pass
+
+    @cached_property
+    def has_risc_cores(self) -> bool:
+        try:
+            self.get_default_risc_debug()
+            return True
+        except NotImplementedError:
+            return False
+
+    @cache
+    def get_default_risc_debug(self) -> RiscDebug:
+        """
+        Returns a default RiscDebug instance for the NocBlock. It is meant to be used by RegisterStore to read/write configuration regusters.
+        This method should be overridden in subclasses to provide a specific implementation.
+        """
+        raise NotImplementedError(f"Noc block on location {self.location.to_user_str()} doesn't have RISC cores.")
+
+    @cache
+    def get_risc_debug(self, risc_name: str, neo_id: int | None = None) -> RiscDebug:
+        """
+        Returns a RiscDebug instance for the specified RISC core.
+        This method should be overridden in subclasses to provide a specific implementation.
+        """
+        raise NotImplementedError(f"Noc block on location {self.location.to_user_str()} doesn't have RISC cores.")

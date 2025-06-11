@@ -2,12 +2,15 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from functools import cache
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.hardware.risc_debug import RiscDebug
+from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.wormhole.noc_block import WormholeNocBlock
 from ttexalens.register_store import (
@@ -86,14 +89,36 @@ class WormholeEthBlock(WormholeNocBlock):
             risc_name="erisc",
             risc_id=0,
             noc_block=self,
+            neo_id=None,  # NEO ID is not applicable for Wormhole
             l1=self.l1,
+            max_watchpoints=8,
+            reset_flag_shift=11,
+            branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO: Check if we have branch prediction register on erisc
+            branch_prediction_mask=1,
+            default_code_start_address=0,
+            code_start_address_register="",
+            code_start_address_enable_register="",
+            code_start_address_enable_bit=0,
             data_private_memory=MemoryBlock(
-                size=4 * 1024,  # TODO: Check if this is correct
+                size=4 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
             ),
             code_private_memory=None,
             debug_hardware_present=True,
+            can_change_code_start_address=False,
         )
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
+
+    @cache
+    def get_default_risc_debug(self) -> RiscDebug:
+        return self.get_risc_debug(self.erisc.risc_name, self.erisc.neo_id)
+
+    @cache
+    def get_risc_debug(self, risc_name: str, neo_id: int | None = None) -> RiscDebug:
+        assert neo_id is None, "NEO ID is not applicable for Wormhole device."
+        risc_name = risc_name.lower()
+        if risc_name == self.erisc.risc_name:
+            return WormholeBabyRiscDebug(risc_info=self.erisc)
+        raise ValueError(f"RISC debug for {risc_name} is not supported in Wormhole eth block.")
