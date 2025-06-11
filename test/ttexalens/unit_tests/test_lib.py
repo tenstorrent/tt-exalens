@@ -992,28 +992,11 @@ class TestCallStack(unittest.TestCase):
         self.loader.run_elf(elf_path)
         callstack = lib.callstack(self.core_loc, elf_path, None, self.risc_id, 100, True, False, 0, self.context)
 
-        # Optimized version for non-blackhole doesn't have halt on callstack
-        if self.is_blackhole():
-            if recursion_count == 1:
-                self.assertEqual(len(callstack), expected_f1_on_callstack_count + 3)
-                self.assertEqual(callstack[0].function_name, "halt")
-                for i in range(1, expected_f1_on_callstack_count + 1):
-                    self.assertEqual(callstack[i].function_name, "f1")
-                self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "recurse")
-                self.assertEqual(callstack[expected_f1_on_callstack_count + 2].function_name, "main")
-            else:
-                self.assertEqual(len(callstack), expected_f1_on_callstack_count + 4)
-                self.assertEqual(callstack[0].function_name, "halt")
-                for i in range(1, expected_f1_on_callstack_count + 2):
-                    self.assertEqual(callstack[i].function_name, "f1")
-                self.assertEqual(callstack[expected_f1_on_callstack_count + 2].function_name, "recurse")
-                self.assertEqual(callstack[expected_f1_on_callstack_count + 3].function_name, "main")
-        else:
-            self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
-            for i in range(0, expected_f1_on_callstack_count):
-                self.assertEqual(callstack[i].function_name, "f1")
-            self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
-            self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
+        self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
+        for i in range(0, expected_f1_on_callstack_count):
+            self.assertEqual(callstack[i].function_name, "f1")
+        self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
+        self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
 
     @parameterized.expand([(1, 1)])
     def test_top_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
@@ -1024,20 +1007,11 @@ class TestCallStack(unittest.TestCase):
             pc = self.rdbg.read_gpr(32)
         callstack = lib.top_callstack(pc, elf_path, None, self.context)
 
-        # Optimized version for non-blackhole doesn't have halt on callstack
-        if self.is_blackhole():
-            self.assertEqual(len(callstack), expected_f1_on_callstack_count + 3)
-            self.assertEqual(callstack[0].function_name, "halt")
-            for i in range(1, expected_f1_on_callstack_count + 1):
-                self.assertEqual(callstack[i].function_name, "f1")
-            self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "recurse")
-            self.assertEqual(callstack[expected_f1_on_callstack_count + 2].function_name, "main")
-        else:
-            self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
-            for i in range(0, expected_f1_on_callstack_count):
-                self.assertEqual(callstack[i].function_name, "f1")
-            self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
-            self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
+        self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
+        for i in range(0, expected_f1_on_callstack_count):
+            self.assertEqual(callstack[i].function_name, "f1")
+        self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
+        self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
 
     @parameterized.expand(
         [
