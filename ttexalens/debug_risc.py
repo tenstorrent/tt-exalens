@@ -458,6 +458,10 @@ class RiscDebug:
     def read_gpr(self, reg_index):
         if self.verbose:
             util.INFO(f"  read_gpr({reg_index})")
+        if reg_index == 32 and self.location.loc._device._arch == "blackhole":
+            # Fall back to debug signals when reading pc on blackhole
+            return blackhole_read_pc(self.location)
+
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_REGISTER)
         return self.__riscv_read(REG_COMMAND_RETURN_VALUE)
@@ -554,6 +558,28 @@ class RiscDebug:
             old_value = self.read_memory(register.address)
             new_value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
             self.write_memory(register.address, new_value)
+
+
+def blackhole_read_pc(location: RiscLoc) -> int:
+    loc = location.loc
+    device = loc._device
+    debug_bus_signal_store = device.get_block(loc).debug_bus
+    if not debug_bus_signal_store:
+        util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
+        return 0
+
+    value: int = 0
+    if location.risc_id == 0:
+        value = debug_bus_signal_store.read_signal("brisc_pc")
+    elif location.risc_id == 1:
+        value = debug_bus_signal_store.read_signal("trisc0_pc")
+    elif location.risc_id == 2:
+        value = debug_bus_signal_store.read_signal("trisc1_pc")
+    elif location.risc_id == 3:
+        value = debug_bus_signal_store.read_signal("trisc2_pc")
+    else:
+        util.ERROR(f"Could not read PC for RISC ID {location.risc_id}")
+    return value
 
 
 from elftools.elf.elffile import ELFFile
