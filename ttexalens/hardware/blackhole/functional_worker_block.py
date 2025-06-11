@@ -164,11 +164,11 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             code_start_address_enable_register="NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b1,
             data_private_memory=MemoryBlock(
-                size=4 * 1024,  # TODO: Check if this is correct
+                size=4 * 1024,  # TODO #432: Check if this is correct
                 address=DeviceAddress(private_address=0xFFB00000),
             ),
             code_private_memory=MemoryBlock(
-                size=4 * 1024,  # TODO: This memory is removed on blackhole?!?
+                size=4 * 1024,  # TODO #432: This memory is removed on blackhole?!?
                 address=DeviceAddress(private_address=0xFFC00000),
             ),
             debug_hardware_present=False,

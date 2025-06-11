@@ -21,7 +21,7 @@ from ttexalens.register_store import (
 )
 
 
-# TODO: Once signals are added, we can remove type hint
+# TODO #432: Once signals are added, we can remove type hint
 debug_bus_signal_map: dict[str, DebugBusSignalDescription] = {}
 
 register_map = {
@@ -104,10 +104,10 @@ class BlackholeEthBlock(BlackholeNocBlock):
             l1=self.l1,
             max_watchpoints=8,
             reset_flag_shift=11,
-            branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO: Check if we have branch prediction register on erisc
+            branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO #432: Check if we have branch prediction register on erisc
             branch_prediction_mask=0x1,
-            default_code_start_address=0x00000000,  # TODO: What is the default code start address for Blackhole?
-            code_start_address_register="",  # TODO: How do we change start address in Blackhole?
+            default_code_start_address=0x00000000,  # TODO #432: What is the default code start address for Blackhole?
+            code_start_address_register="",  # TODO #432: How do we change start address in Blackhole?
             code_start_address_enable_register="",
             code_start_address_enable_bit=0,
             data_private_memory=MemoryBlock(
@@ -116,7 +116,7 @@ class BlackholeEthBlock(BlackholeNocBlock):
             ),
             code_private_memory=None,
             debug_hardware_present=True,
-            can_change_code_start_address=False,  # TODO: Check if we can change code start address in Blackhole
+            can_change_code_start_address=False,  # TODO #432: Check if we can change code start address in Blackhole
         )
 
         self.erisc1 = BabyRiscInfo(
@@ -127,10 +127,10 @@ class BlackholeEthBlock(BlackholeNocBlock):
             l1=self.l1,
             max_watchpoints=8,
             reset_flag_shift=12,
-            branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO: Check if we have branch prediction register on erisc
+            branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO #432: Check if we have branch prediction register on erisc
             branch_prediction_mask=0x1,
-            default_code_start_address=0x00000000,  # TODO: What is the default code start address for Blackhole?
-            code_start_address_register="",  # TODO: How do we change start address in Blackhole?
+            default_code_start_address=0x00000000,  # TODO #432: What is the default code start address for Blackhole?
+            code_start_address_register="",  # TODO #432: How do we change start address in Blackhole?
             code_start_address_enable_register="",
             code_start_address_enable_bit=0,
             data_private_memory=MemoryBlock(
@@ -139,7 +139,7 @@ class BlackholeEthBlock(BlackholeNocBlock):
             ),
             code_private_memory=None,
             debug_hardware_present=True,
-            can_change_code_start_address=False,  # TODO: Check if we can change code start address in Blackhole
+            can_change_code_start_address=False,  # TODO #432: Check if we can change code start address in Blackhole
         )
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)

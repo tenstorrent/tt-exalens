@@ -19,12 +19,12 @@ class BlackholeDramBlock(BlackholeNocBlock):
         super().__init__(location, block_type="dram")
 
         self.dram_bank = MemoryBlock(
-            # TODO: Check if this size is correct
+            # TODO #432: Check if this size is correct
             size=2 * 1024 * 1024 * 1024,
             address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000),
         )
 
-        # TODO: Check if there is risc core on DRAM block and if we can debug it.
+        # TODO #432: Check if there is risc core on DRAM block and if we can debug it.
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
