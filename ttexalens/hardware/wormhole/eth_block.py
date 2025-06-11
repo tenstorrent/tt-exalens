@@ -6,6 +6,7 @@ from functools import cache
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
+from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
@@ -120,5 +121,7 @@ class WormholeEthBlock(WormholeNocBlock):
         assert neo_id is None, "NEO ID is not applicable for Wormhole device."
         risc_name = risc_name.lower()
         if risc_name == self.erisc.risc_name:
-            return WormholeBabyRiscDebug(risc_info=self.erisc)
+            return BabyRiscDebug(
+                risc_info=self.erisc
+            )  # TODO: Once we have debug bus signals, we will create WormholeBabyRiscDebug instance
         raise ValueError(f"RISC debug for {risc_name} is not supported in Wormhole eth block.")

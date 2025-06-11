@@ -4,8 +4,8 @@
 from ttexalens import tt_exalens_lib as lib
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index, get_risc_id
-import time
+from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+from ttexalens.hardware.baby_risc_debug import BabyRiscDebug, get_register_index
 
 
 class RiscvCoreSimulator:
@@ -30,28 +30,17 @@ class RiscvCoreSimulator:
         # Initialize core components
         self.location = OnChipCoordinate.create(self.core_loc, device=self.device)
         self.noc_block = self.device.get_block(self.location)
-        self.risc_id = get_risc_id(self.risc_name)
-        rloc = RiscLoc(self.location, 0, self.risc_id)
-        self.rdbg = RiscDebug(rloc, self.context)
-        self.loader = RiscLoader(self.rdbg, self.context)
-        self.debug_bus_store = self.noc_block.debug_bus
+        risc_debug = self.noc_block.get_risc_debug(self.risc_name)
+        assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug instance, got {type(risc_debug)}"
+        self.risc_debug: BabyRiscDebug = risc_debug
+        assert self.risc_debug.debug_hardware is not None
+        self.debug_hardware = self.risc_debug.debug_hardware
+        assert self.noc_block.debug_bus is not None
+        self.debug_bus_store: DebugBusSignalStore = self.noc_block.debug_bus
+        self.program_base_address = self.risc_debug.risc_info.get_code_start_address(self.risc_debug.register_store)
 
         # Initialize core in reset state
         self.set_reset(True)
-
-        # Set program base address if not already set
-        program_base_address = self.loader.get_risc_start_address()
-        if program_base_address is None:
-            self.loader.set_risc_start_address(0xD000)
-            program_base_address = self.loader.get_risc_start_address()
-
-        # For ETH block on blackhole we need to read program base address from memory
-        if self.is_eth_block() and self.is_blackhole():
-            self.set_reset(False)
-            with self.rdbg.ensure_halted():
-                program_base_address = self.rdbg.read_memory(0xFFB14000)
-        assert isinstance(program_base_address, int), f"Invalid program base address: {program_base_address}"
-        self.program_base_address = program_base_address
 
     def _get_core_location(self) -> str:
         """Convert core_desc to core location string."""
@@ -86,32 +75,33 @@ class RiscvCoreSimulator:
 
     def set_reset(self, reset: bool):
         """Set or clear reset signal."""
-        self.rdbg.set_reset_signal(reset)
+        self.risc_debug.set_reset_signal(reset)
 
     def is_in_reset(self) -> bool:
         """Check if core is in reset state."""
-        return self.rdbg.is_in_reset()
+        return self.risc_debug.is_in_reset()
 
     def halt(self):
         """Halt core execution."""
-        # self.rdbg.enable_debug()
-        self.rdbg.halt()
+        self.risc_debug.halt()
 
-    def continue_execution(self, enable_debug: bool = True):
+    def continue_execution(self, enable_debug: bool = True, verify: bool = True):
         """Continue core execution.
 
         Args:
             enable_debug: Whether to enable debug mode when continuing
         """
         if enable_debug:
-            # self.rdbg.enable_debug()
-            self.rdbg.cont()
+            if verify:
+                self.risc_debug.cont()
+            else:
+                self.debug_hardware.cont(verify=False)
         else:
-            self.rdbg.continue_without_debug()
+            self.debug_hardware.continue_without_debug()
 
     def step(self):
         """Execute single instruction."""
-        self.rdbg.step()
+        self.risc_debug.step()
 
     def get_pc(self) -> int:
         """Get current program counter value from debug bus."""
@@ -123,11 +113,11 @@ class RiscvCoreSimulator:
 
     def is_halted(self) -> bool:
         """Check if core is halted."""
-        return self.rdbg.read_status().is_halted
+        return self.risc_debug.is_halted()
 
     def is_ebreak_hit(self) -> bool:
         """Check if ebreak instruction was hit."""
-        return self.rdbg.read_status().is_ebreak_hit
+        return self.read_status().is_ebreak_hit
 
     def is_blackhole(self) -> bool:
         """Check if device is blackhole."""
@@ -143,16 +133,15 @@ class RiscvCoreSimulator:
 
     def set_branch_prediction(self, enabled: bool):
         """Enable or disable branch prediction."""
-        self.loader.set_branch_prediction(enabled)
+        self.risc_debug.set_branch_prediction(enabled)
 
     def invalidate_instruction_cache(self):
         """Invalidate instruction cache."""
-        self.rdbg.invalidate_instruction_cache()
+        self.risc_debug.invalidate_instruction_cache()
 
     def get_pc_relative(self) -> int:
         """Get PC value relative to program base address."""
-        absolute_pc = self.get_pc()
-        return absolute_pc - self.program_base_address if absolute_pc is not None else None
+        return self.get_pc() - self.program_base_address
 
     def get_pc_and_print(self) -> int:
         """Get PC value and print it for debugging."""
@@ -174,7 +163,7 @@ class RiscvCoreSimulator:
         """
         if not 0 <= reg_num <= 32:
             raise ValueError(f"Invalid register number {reg_num}. Must be between 0 and 32.")
-        return self.rdbg.read_gpr(reg_num)
+        return self.risc_debug.read_gpr(reg_num)
 
     def write_gpr(self, reg_num: int, value: int):
         """Write general purpose register value.
@@ -188,7 +177,7 @@ class RiscvCoreSimulator:
         """
         if not 0 <= reg_num <= 32:
             raise ValueError(f"Invalid register number {reg_num}. Must be between 0 and 32.")
-        self.rdbg.write_gpr(reg_num, value)
+        self.risc_debug.write_gpr(reg_num, value)
 
     def get_reg_num(self, reg_name: str) -> int:
         """Get register number from name.
@@ -200,3 +189,6 @@ class RiscvCoreSimulator:
             int: Register number
         """
         return get_register_index(reg_name)
+
+    def read_status(self):
+        return self.debug_hardware.read_status()
