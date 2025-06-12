@@ -109,6 +109,11 @@ class DebugRegisterDescription(RegisterDescription):
 
 
 @dataclass
+class RiscControlRegisterDescription(RegisterDescription):
+    pass
+
+
+@dataclass
 class ConfigurationRegisterDescription(RegisterDescription):
     index: int = 0
 
