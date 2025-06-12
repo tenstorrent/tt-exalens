@@ -5,7 +5,7 @@
 from functools import cache
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
@@ -140,7 +140,7 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 
 class BlackholeDramBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
-        super().__init__(location, block_type="dram")
+        super().__init__(location, block_type="dram", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self))
 
         self.dram_bank = MemoryBlock(
             # TODO #432: Check if this size is correct

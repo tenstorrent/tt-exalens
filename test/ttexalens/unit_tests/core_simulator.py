@@ -37,6 +37,8 @@ class RiscvCoreSimulator:
         self.debug_hardware = self.risc_debug.debug_hardware
         assert self.noc_block.debug_bus is not None
         self.debug_bus_store: DebugBusSignalStore = self.noc_block.debug_bus
+        if self.risc_debug.risc_info.can_change_code_start_address:
+            self.risc_debug.risc_info.set_code_start_address(self.risc_debug.register_store, 0xD000)
         self.program_base_address = self.risc_debug.risc_info.get_code_start_address(self.risc_debug.register_store)
 
         # Initialize core in reset state
@@ -57,6 +59,12 @@ class RiscvCoreSimulator:
             if len(fw_cores) > core_index:
                 return fw_cores[core_index].to_str()
             raise ValueError(f"FW core {core_index} not available on this platform")
+        elif self.core_desc.startswith("DRAM"):
+            dram_cores = self.device.get_block_locations(block_type="dram")
+            core_index = int(self.core_desc[4:])
+            if len(dram_cores) > core_index:
+                return dram_cores[core_index].to_str()
+            raise ValueError(f"DRAM core {core_index} not available on this platform")
 
         raise ValueError(f"Unknown core description {self.core_desc}")
 

@@ -27,19 +27,18 @@ from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_in
         {"core_desc": "FW1", "risc_name": "TRISC1"},
         {"core_desc": "FW1", "risc_name": "TRISC2"},
         {"core_desc": "FW1", "risc_name": "TRISC3"},
+        # {"core_desc": "DRAM0", "risc_name": "DRISC"},
     ]
 )
 class TestDebugging(unittest.TestCase):
     risc_name: str  # Risc name
     context: Context  # TTExaLens context
     core_desc: str  # Core description ETH0, FW0, FW1 - being parametrized
-    pc_register_index: int  # PC register index
     core_sim: RiscvCoreSimulator  # RISC-V core simulator instance
 
     @classmethod
     def setUpClass(cls):
         cls.context = init_default_test_context()
-        cls.pc_register_index = get_register_index("pc")
 
     def setUp(self):
         try:
@@ -62,41 +61,19 @@ class TestDebugging(unittest.TestCase):
 
     def assertPcEquals(self, expected):
         """Assert PC register equals to expected value."""
-        if self.core_sim.is_eth_block() and self.core_sim.is_blackhole():
-            # PC is not readable on blackhole ETH core for now
-            return
-        elif (self.core_sim.is_wormhole() or self.core_sim.is_blackhole()) and not self.core_sim.is_eth_block():
-            # checks pc over debug bus
-            self.assertEqual(
-                self.core_sim.get_pc_from_debug_bus(),
-                self.core_sim.program_base_address + expected,
-                f"Pc should be {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
-            )
-        else:
-            self.assertEqual(
-                self.core_sim.read_gpr(self.pc_register_index),
-                self.core_sim.program_base_address + expected,
-                f"Pc should be {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
-            )
+        self.assertEqual(
+            self.core_sim.get_pc(),
+            self.core_sim.program_base_address + expected,
+            f"Pc should be {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
+        )
 
     def assertPcLess(self, expected):
         """Assert PC register is less than expected value."""
-        if self.core_sim.is_eth_block() and self.core_sim.is_blackhole():
-            # PC is not readable on blackhole ETH core for now
-            return
-        elif (self.core_sim.is_wormhole() or self.core_sim.is_blackhole()) and not self.core_sim.is_eth_block():
-            # checks pc over debug bus
-            self.assertLess(
-                self.core_sim.get_pc_from_debug_bus(),
-                self.core_sim.program_base_address + expected,
-                f"Pc should be less than {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
-            )
-        else:
-            self.assertLess(
-                self.core_sim.read_gpr(self.pc_register_index),
-                self.core_sim.program_base_address + expected,
-                f"Pc should be less than {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
-            )
+        self.assertLess(
+            self.core_sim.get_pc(),
+            self.core_sim.program_base_address + expected,
+            f"Pc should be less than {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
+        )
 
     def test_reset_all_functional_workers(self):
         """Reset all functional workers."""
@@ -135,7 +112,7 @@ class TestDebugging(unittest.TestCase):
         # Test readonly registers
         self.assertEqual(self.core_sim.read_gpr(get_register_index("zero")), 0, "zero should always be 0.")
         if not (self.core_sim.is_blackhole() and self.core_sim.is_eth_block()):
-            # PC is not readable on blackhole ETH core for now
+            # PC is not readable through GPR on blackhole ETH core for now
             self.assertEqual(
                 self.core_sim.read_gpr(get_register_index("pc")),
                 self.core_sim.program_base_address + 4,
