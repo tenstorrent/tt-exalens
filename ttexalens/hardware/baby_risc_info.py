@@ -20,15 +20,14 @@ class BabyRiscInfo(RiscInfo):
         reset_flag_shift: int,
         branch_prediction_register: str,
         branch_prediction_mask: int,
-        default_code_start_address: int,
-        code_start_address_register: str,
-        code_start_address_enable_register: str,
-        code_start_address_enable_bit: int,
+        default_code_start_address: int | None,
+        code_start_address_register: str | None,
+        code_start_address_enable_register: str | None = None,
+        code_start_address_enable_bit: int | None = None,
         data_private_memory: MemoryBlock | None = None,
         code_private_memory: MemoryBlock | None = None,
         status_read_valid_mask: int = 1 << 30,
         debug_hardware_present: bool = False,
-        can_change_code_start_address: bool = True,
     ):
         super().__init__(risc_name, risc_id, noc_block, neo_id, l1)
         self.max_watchpoints = max_watchpoints
@@ -43,15 +42,23 @@ class BabyRiscInfo(RiscInfo):
         self.code_private_memory = code_private_memory
         self.status_read_valid_mask = status_read_valid_mask
         self.debug_hardware_present = debug_hardware_present
-        self.can_change_code_start_address = can_change_code_start_address
+        self.can_change_code_start_address = self.code_start_address_register is not None
 
     def get_code_start_address(self, register_store: RegisterStore) -> int:
-        if not self.can_change_code_start_address:
+        override_enabled = self.can_change_code_start_address
+        if override_enabled and (
+            self.code_start_address_enable_register is not None and self.code_start_address_enable_bit is not None
+        ):
+            enabled_register_value = register_store.read_register(self.code_start_address_enable_register)
+            if (enabled_register_value & self.code_start_address_enable_bit) == 0:
+                override_enabled = True
+
+        if not override_enabled:
+            assert self.default_code_start_address is not None
             return self.default_code_start_address
-        enabled_register_value = register_store.read_register(self.code_start_address_enable_register)
-        if (enabled_register_value & self.code_start_address_enable_bit) == 0:
-            return self.default_code_start_address
-        return register_store.read_register(self.code_start_address_register)
+        else:
+            assert self.code_start_address_register is not None
+            return register_store.read_register(self.code_start_address_register)
 
     def set_code_start_address(self, register_store: RegisterStore, address: int | None):
         if not self.can_change_code_start_address:
@@ -61,12 +68,17 @@ class BabyRiscInfo(RiscInfo):
                 f"Cannot change code start address for {self.risc_name} on {self.noc_block.location.to_user_str()}"
             )
         if address is not None:
-            enabled_register_value = register_store.read_register(self.code_start_address_enable_register)
-            register_store.write_register(
-                self.code_start_address_enable_register, enabled_register_value | self.code_start_address_enable_bit
-            )
+            if self.code_start_address_enable_register is not None and self.code_start_address_enable_bit is not None:
+                enabled_register_value = register_store.read_register(self.code_start_address_enable_register)
+                register_store.write_register(
+                    self.code_start_address_enable_register, enabled_register_value | self.code_start_address_enable_bit
+                )
+            assert self.code_start_address_register is not None
             register_store.write_register(self.code_start_address_register, address)
         else:
+            assert (
+                self.code_start_address_enable_register is not None and self.code_start_address_enable_bit is not None
+            )
             enabled_register_value = register_store.read_register(self.code_start_address_enable_register)
             register_store.write_register(
                 self.code_start_address_enable_register, enabled_register_value & ~self.code_start_address_enable_bit

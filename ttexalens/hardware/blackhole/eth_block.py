@@ -108,17 +108,15 @@ class BlackholeEthBlock(BlackholeNocBlock):
             reset_flag_shift=11,
             branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO #432: Check if we have branch prediction register on erisc
             branch_prediction_mask=0x1,
-            default_code_start_address=0x00000000,  # TODO #432: What is the default code start address for Blackhole?
-            code_start_address_register="RISC_CTRL_REG_RESET_PC_0",  # TODO #432: How do we change start address in Blackhole?
-            code_start_address_enable_register="",
-            code_start_address_enable_bit=0,
+            default_code_start_address=None,  # Since we don't have a register to disable code start address override in DRAM block, we cannot have a default code start address
+            code_start_address_register="RISC_CTRL_REG_RESET_PC_0",
+            code_start_address_enable_register=None,  # We don't have a register to enable code start address override in DRAM block
             data_private_memory=MemoryBlock(
                 size=8 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
             ),
             code_private_memory=None,
             debug_hardware_present=True,
-            can_change_code_start_address=False,  # TODO #432: Check if we can change code start address in Blackhole
         )
 
         self.erisc1 = BabyRiscInfo(
@@ -131,17 +129,15 @@ class BlackholeEthBlock(BlackholeNocBlock):
             reset_flag_shift=12,
             branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO #432: Check if we have branch prediction register on erisc
             branch_prediction_mask=0x1,
-            default_code_start_address=0x00000000,  # TODO #432: What is the default code start address for Blackhole?
-            code_start_address_register="RISC_CTRL_REG_RESET_PC_1",  # TODO #432: How do we change start address in Blackhole?
-            code_start_address_enable_register="",
-            code_start_address_enable_bit=0,
+            default_code_start_address=None,  # Since we don't have a register to disable code start address override in DRAM block, we cannot have a default code start address
+            code_start_address_register="RISC_CTRL_REG_RESET_PC_1",
+            code_start_address_enable_register=None,  # We don't have a register to enable code start address override in DRAM block
             data_private_memory=MemoryBlock(
                 size=8 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
             ),
             code_private_memory=None,
             debug_hardware_present=True,
-            can_change_code_start_address=False,  # TODO #432: Check if we can change code start address in Blackhole
         )
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
