@@ -624,6 +624,9 @@ class BabyRiscDebug(RiscDebug):
     def set_branch_prediction(self, enable: bool):
         assert enable in [0, 1]
         value = 0 if enable else 1
+        assert (
+            self.risc_info.branch_prediction_register is not None and self.risc_info.branch_prediction_mask is not None
+        )
         register_name = self.risc_info.branch_prediction_register
         bp_mask = self.risc_info.branch_prediction_mask
         previous_value = self.register_store.read_register(register_name)

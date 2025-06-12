@@ -94,8 +94,7 @@ class WormholeEthBlock(WormholeNocBlock):
             l1=self.l1,
             max_watchpoints=8,
             reset_flag_shift=11,
-            branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO: Check if we have branch prediction register on erisc
-            branch_prediction_mask=1,
+            branch_prediction_register=None,  # We don't have a branch prediction register on erisc
             default_code_start_address=0,
             code_start_address_register=None,  # We don't have a regsiter to override code start address
             data_private_memory=MemoryBlock(

@@ -158,8 +158,7 @@ class BlackholeDramBlock(BlackholeNocBlock):
             l1=self.l1,
             max_watchpoints=8,
             reset_flag_shift=11,
-            branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO #432: Check if we have branch prediction register on erisc
-            branch_prediction_mask=0x1,
+            branch_prediction_register=None,  # We don't have a branch prediction register on DRAM block
             default_code_start_address=None,  # Since we don't have a register to disable code start address override in DRAM block, we cannot have a default code start address
             code_start_address_register="RISC_CTRL_REG_RESET_PC_0",
             code_start_address_enable_register=None,  # We don't have a register to enable code start address override in DRAM block
