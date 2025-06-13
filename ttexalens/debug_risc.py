@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.parse_elf import ParsedElfFile, ParsedElfFileWithOffset, read_elf
+from ttexalens.parse_elf import ParsedElfFile, ParsedElfFileWithOffset
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device, read_from_device, write_to_device
 from ttexalens import util as util
 import os

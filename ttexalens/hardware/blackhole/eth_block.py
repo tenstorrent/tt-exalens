@@ -16,13 +16,16 @@ from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
+    RiscControlRegisterDescription,
     RegisterDescription,
     RegisterStore,
 )
 
 
-# TODO #432: Once signals are added, we can remove type hint
-debug_bus_signal_map: dict[str, DebugBusSignalDescription] = {}
+debug_bus_signal_map = {
+    "erisc0_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 9 + 1, mask=0x3FFFFFFF),
+    "erisc1_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 10 + 1, mask=0x3FFFFFFF),
+}
 
 register_map = {
     "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=185, mask=0x1F),
@@ -41,22 +44,21 @@ register_map = {
     "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1": DebugRegisterDescription(offset=0xA4),
     "RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS": DebugRegisterDescription(offset=0xA8),
     "RISCV_DEBUG_REG_SOFT_RESET_0": DebugRegisterDescription(offset=0x1B0),
-    "TRISC_RESET_PC_SEC0_PC": DebugRegisterDescription(offset=0x228),  # Old name from configuration register
-    "RISCV_DEBUG_REG_TRISC0_RESET_PC": DebugRegisterDescription(offset=0x228),  # New name
-    "TRISC_RESET_PC_SEC1_PC": DebugRegisterDescription(offset=0x22C),  # Old name from configuration register
-    "RISCV_DEBUG_REG_TRISC1_RESET_PC": DebugRegisterDescription(offset=0x22C),  # New name
-    "TRISC_RESET_PC_SEC2_PC": DebugRegisterDescription(offset=0x230),  # Old name from configuration register
-    "RISCV_DEBUG_REG_TRISC2_RESET_PC": DebugRegisterDescription(offset=0x230),  # New name
-    "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": DebugRegisterDescription(
-        offset=0x234, mask=0x7
-    ),  # Old name from configuration register
-    "RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE": DebugRegisterDescription(offset=0x234, mask=0x7),  # New name
-    "NCRISC_RESET_PC_PC": DebugRegisterDescription(offset=0x238),  # Old name from configuration register
-    "RISCV_DEBUG_REG_NCRISC_RESET_PC": DebugRegisterDescription(offset=0x238),  # New name
-    "NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": DebugRegisterDescription(
-        offset=0x23C, mask=0x1
-    ),  # Old name from configuration register
-    "RISCV_DEBUG_REG_NCRISC_RESET_PC_OVERRIDE": DebugRegisterDescription(offset=0x23C, mask=0x1),  # New name
+    "RISC_CTRL_REG_RESET_PC_0": RiscControlRegisterDescription(offset=0x000),
+    "RISC_CTRL_REG_END_PC_0": RiscControlRegisterDescription(offset=0x004),
+    "RISC_CTRL_REG_RESET_PC_1": RiscControlRegisterDescription(offset=0x008),
+    "RISC_CTRL_REG_END_PC_1": RiscControlRegisterDescription(offset=0x00C),
+    "RISC_CTRL_REG_INTERRUPT_MODE[0]": RiscControlRegisterDescription(offset=0x020),
+    "RISC_CTRL_REG_INTERRUPT_MODE[1]": RiscControlRegisterDescription(offset=0x024),
+    "RISC_CTRL_REG_INTERRUPT_MODE[2]": RiscControlRegisterDescription(offset=0x028),
+    "RISC_CTRL_REG_INTERRUPT_MODE[3]": RiscControlRegisterDescription(offset=0x02C),
+    "RISC_CTRL_REG_INTERRUPT_MODE[4]": RiscControlRegisterDescription(offset=0x030),
+    "RISC_CTRL_REG_INTERRUPT_VECTOR[0]": RiscControlRegisterDescription(offset=0x040),
+    "RISC_CTRL_REG_INTERRUPT_VECTOR[1]": RiscControlRegisterDescription(offset=0x044),
+    "RISC_CTRL_REG_INTERRUPT_VECTOR[2]": RiscControlRegisterDescription(offset=0x048),
+    "RISC_CTRL_REG_INTERRUPT_VECTOR[3]": RiscControlRegisterDescription(offset=0x04C),
+    "RISC_CTRL_REG_INTERRUPT_VECTOR[4]": RiscControlRegisterDescription(offset=0x050),
+    "RISC_CTRL_REG_INTERRUPT_ROUTE": RiscControlRegisterDescription(offset=0x060),
 }
 
 
@@ -66,6 +68,8 @@ def get_register_base_address_callable(noc_id: int) -> Callable[[RegisterDescrip
             return DeviceAddress(private_address=0xFFEF0000)
         elif isinstance(register_description, DebugRegisterDescription):
             return DeviceAddress(private_address=0xFFB12000, noc_address=0xFFB12000)
+        elif isinstance(register_description, RiscControlRegisterDescription):
+            return DeviceAddress(private_address=0xFFB14000, noc_address=0xFFB14000)
         elif noc_id == 0:
             return get_niu_register_base_address_callable(
                 DeviceAddress(private_address=0xFFB20000, noc_address=0xFFB20000)
@@ -104,19 +108,16 @@ class BlackholeEthBlock(BlackholeNocBlock):
             l1=self.l1,
             max_watchpoints=8,
             reset_flag_shift=11,
-            branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO #432: Check if we have branch prediction register on erisc
-            branch_prediction_mask=0x1,
-            default_code_start_address=0x00000000,  # TODO #432: What is the default code start address for Blackhole?
-            code_start_address_register="",  # TODO #432: How do we change start address in Blackhole?
-            code_start_address_enable_register="",
-            code_start_address_enable_bit=0,
+            branch_prediction_register=None,  # We don't have a branch prediction register on erisc0
+            default_code_start_address=None,  # Since we don't have a register to disable code start address override in DRAM block, we cannot have a default code start address
+            code_start_address_register="RISC_CTRL_REG_RESET_PC_0",
+            code_start_address_enable_register=None,  # We don't have a register to enable code start address override in DRAM block
             data_private_memory=MemoryBlock(
                 size=8 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
             ),
             code_private_memory=None,
             debug_hardware_present=True,
-            can_change_code_start_address=False,  # TODO #432: Check if we can change code start address in Blackhole
         )
 
         self.erisc1 = BabyRiscInfo(
@@ -127,19 +128,16 @@ class BlackholeEthBlock(BlackholeNocBlock):
             l1=self.l1,
             max_watchpoints=8,
             reset_flag_shift=12,
-            branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO #432: Check if we have branch prediction register on erisc
-            branch_prediction_mask=0x1,
-            default_code_start_address=0x00000000,  # TODO #432: What is the default code start address for Blackhole?
-            code_start_address_register="",  # TODO #432: How do we change start address in Blackhole?
-            code_start_address_enable_register="",
-            code_start_address_enable_bit=0,
+            branch_prediction_register=None,  # We don't have a branch prediction register on erisc1
+            default_code_start_address=None,  # Since we don't have a register to disable code start address override in DRAM block, we cannot have a default code start address
+            code_start_address_register="RISC_CTRL_REG_RESET_PC_1",
+            code_start_address_enable_register=None,  # We don't have a register to enable code start address override in DRAM block
             data_private_memory=MemoryBlock(
                 size=8 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
             ),
             code_private_memory=None,
             debug_hardware_present=True,
-            can_change_code_start_address=False,  # TODO #432: Check if we can change code start address in Blackhole
         )
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)

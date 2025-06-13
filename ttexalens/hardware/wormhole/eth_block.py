@@ -6,6 +6,7 @@ from functools import cache
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
+from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
@@ -93,19 +94,15 @@ class WormholeEthBlock(WormholeNocBlock):
             l1=self.l1,
             max_watchpoints=8,
             reset_flag_shift=11,
-            branch_prediction_register="DISABLE_RISC_BP_Disable_main",  # TODO: Check if we have branch prediction register on erisc
-            branch_prediction_mask=1,
+            branch_prediction_register=None,  # We don't have a branch prediction register on erisc
             default_code_start_address=0,
-            code_start_address_register="",
-            code_start_address_enable_register="",
-            code_start_address_enable_bit=0,
+            code_start_address_register=None,  # We don't have a regsiter to override code start address
             data_private_memory=MemoryBlock(
                 size=4 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
             ),
             code_private_memory=None,
             debug_hardware_present=True,
-            can_change_code_start_address=False,
         )
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
@@ -120,5 +117,7 @@ class WormholeEthBlock(WormholeNocBlock):
         assert neo_id is None, "NEO ID is not applicable for Wormhole device."
         risc_name = risc_name.lower()
         if risc_name == self.erisc.risc_name:
-            return WormholeBabyRiscDebug(risc_info=self.erisc)
+            return BabyRiscDebug(
+                risc_info=self.erisc
+            )  # TODO: Once we have debug bus signals, we will create WormholeBabyRiscDebug instance
         raise ValueError(f"RISC debug for {risc_name} is not supported in Wormhole eth block.")
