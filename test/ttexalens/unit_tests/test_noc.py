@@ -7,10 +7,11 @@ from test.ttexalens.unit_tests.test_base import init_test_context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import write_words_to_device
 
+
 class TestNOC(unittest.TestCase):
     def setUp(self):
         return
-    
+
     def init_context(self, use_noc1: bool = False):
         self.context = init_test_context(use_noc1)
         self.device = self.context.devices[0]
@@ -29,7 +30,7 @@ class TestNOC(unittest.TestCase):
         # Read again
         noc0_wr_req_after = self.noc0_register_store.read_register("NIU_SLV_NONPOSTED_WR_REQ_RECEIVED")
         noc1_wr_req_after = self.noc1_register_store.read_register("NIU_SLV_NONPOSTED_WR_REQ_RECEIVED")
-        
+
         # NOC0 and NOC1 counters should've increased by at least 6 and 2, respectively
         self.assertGreaterEqual(noc0_wr_req_after, noc0_wr_req_before + 6)
         self.assertGreaterEqual(noc1_wr_req_after, noc1_wr_req_before + 2)
@@ -42,6 +43,6 @@ class TestNOC(unittest.TestCase):
         write_words_to_device(self.loc, 0x111, 3, noc_id=1)
         noc0_wr_req_after = self.noc0_register_store.read_register("NIU_SLV_NONPOSTED_WR_REQ_RECEIVED")
         noc1_wr_req_after = self.noc1_register_store.read_register("NIU_SLV_NONPOSTED_WR_REQ_RECEIVED")
-        
+
         self.assertGreaterEqual(noc0_wr_req_after, noc0_wr_req_before + 6)
         self.assertGreaterEqual(noc1_wr_req_after, noc1_wr_req_before + 2)
