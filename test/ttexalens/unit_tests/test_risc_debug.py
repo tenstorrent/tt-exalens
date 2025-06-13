@@ -6,10 +6,8 @@ from parameterized import parameterized_class
 
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
-from ttexalens import tt_exalens_lib as lib
-from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_register_index, get_risc_id
+from ttexalens.debug_risc import RiscLoader, get_register_index
 
 
 @parameterized_class(
