@@ -109,6 +109,11 @@ class DebugRegisterDescription(RegisterDescription):
 
 
 @dataclass
+class RiscControlRegisterDescription(RegisterDescription):
+    pass
+
+
+@dataclass
 class ConfigurationRegisterDescription(RegisterDescription):
     index: int = 0
 
@@ -289,18 +294,11 @@ class RegisterStore:
             )
             value = read_word_from_device(self.location, self._data_register_address, self.device._id, self.context)
         else:
-            # TODO: Read using RISC core debugging hardware.
-            raise NotImplementedError(
-                f"Reading register {register} is not implemented. It should be done using RISC core debugging hardware."
-            )
-            # risc_names = self.device.get_risc_names_for_location(self.location, self.neo_id)
-            # if len(risc_names) < 1:
-            #     raise ValueError(
-            #         f"We don't know how to read this register from the device since it doesn't have a RISC core at {self.location.to_user_str()}."
-            #     )
-            # risc_debug = self.device.get_risc_debug(self.location, risc_names[0], self.neo_id)
-            # with risc_debug.ensure_private_memory_access():
-            #     value = risc_debug.read_memory(register.address)
+            # Read using RISC core debugging hardware.
+            risc_debug = self.device.get_block(self.location).get_default_risc_debug()
+            assert register.private_address is not None, "Register must have a private address for writing."
+            with risc_debug.ensure_private_memory_access():
+                value = risc_debug.read_memory(register.private_address)
         return (value & register.mask) >> register.shift
 
     def write_register(self, register: str | RegisterDescription, value: int) -> None:
@@ -313,7 +311,7 @@ class RegisterStore:
                 raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
             if register.shift < 0 or register.shift > 31:
                 raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
-        if value < 0 or (value & ~register.mask) != 0:
+        if value < 0 or ((value << register.shift) & ~register.mask) != 0:
             raise ValueError(
                 f"Value must be greater than 0 and inside the mask 0x{register.mask:x}, but got {value} (0x{value:x})"
             )
@@ -333,21 +331,14 @@ class RegisterStore:
                 value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
             self.context.server_ifc.pci_write32_raw(self.device._id, register.raw_address, value)
         else:
-            # TODO: Write using RISC core debugging hardware.
-            raise NotImplementedError(
-                f"Writing register {register} is not implemented. It should be done using RISC core debugging hardware."
-            )
-            # risc_names = self.device.get_risc_names_for_location(self.location, self.neo_id)
-            # if len(risc_names) < 1:
-            #     raise ValueError(
-            #         f"We don't know how to read this register from the device since it doesn't have a RISC core at {self.location.to_user_str()}."
-            #     )
-            # risc_debug = self.device.get_risc_debug(self.location, risc_names[0], self.neo_id)
-            # with risc_debug.ensure_private_memory_access():
-            #     if register.mask != 0xFFFFFFFF:
-            #         old_value = risc_debug.read_memory(register.address)
-            #         value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            #     risc_debug.write_memory(register.address, value)
+            # Write using RISC core debugging hardware.
+            risc_debug = self.device.get_block(self.location).get_default_risc_debug()
+            assert register.private_address is not None, "Register must have a private address for writing."
+            with risc_debug.ensure_private_memory_access():
+                if register.mask != 0xFFFFFFFF:
+                    old_value = risc_debug.read_memory(register.private_address)
+                    value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
+                risc_debug.write_memory(register.private_address, value)
 
     @staticmethod
     def create_initialization(

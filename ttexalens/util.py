@@ -9,6 +9,7 @@ import traceback, socket
 import ryml, yaml
 from ttexalens import Verbosity
 import re
+from fnmatch import fnmatch
 
 # Pretty print exceptions (traceback)
 def notify_exception(exc_type, exc_value, tb):
@@ -876,3 +877,32 @@ def clr_by_index(idx):
 
 def color_text_by_index(text, color_index):
     return f"{clr_by_index(color_index)}{text}{CLR_END}"
+
+
+# Return a list of up to n elements from strings that match the given wildcard pattern.
+# Defaults to 10 elements, negative values of max or "all" mean all.
+def search(strings: list[str], pattern: str, max: str | int = "all") -> list[str]:
+    try:
+        if max != "all":
+            n = int(max)
+            if n <= 0:
+                raise ValueError(f'Invalid argument for --max. Expected positive integer or "all", but got {max}')
+    except:
+        raise ValueError(f'Invalid argument for --max. Expected positive integer or "all", but got {max}')
+    if max is None:
+        n = 10
+    elif max == "all":
+        n = -1
+
+    pattern = pattern.lower()
+    results = []
+
+    for s in strings:
+        if n == 0:
+            print(f"There are matches remaining. To see more results, increase the --max value.")
+            break
+        if fnmatch(s.lower(), pattern):
+            results.append(s)
+            n -= 1
+
+    return results

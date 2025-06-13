@@ -8,8 +8,8 @@ Usage:
 
 Arguments:
   <register>            Register to dump/write to. Format: <reg-type>(<reg-parameters>) or register name.
-                        <reg-type> Register type. Options: [cfg, dbg].
-                        <reg-parameters> Register parameters, comma separated integers. For cfg: index,mask,shift. For dbg: address.
+  <reg-type>            Register type. Options: [cfg, dbg].
+  <reg-parameters>      Register parameters, comma separated integers. For cfg: index,mask,shift. For dbg: address.
   <register-pattern>    Register pattern used to print register names that match it. Format: wildcard.
 
 Options:

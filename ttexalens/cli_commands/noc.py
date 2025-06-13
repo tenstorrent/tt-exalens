@@ -5,7 +5,7 @@
 Usage:
     noc status [-d <device>] [--noc <noc-id>] [-l <loc>] [-s]
     noc all [-d <device>] [-l <loc>] [-s]
-    noc register <reg-names> [-d <device>] [--noc <noc-id>] [-l <loc>] [-s]
+    noc register (<reg-names> | --search <reg-pattern> [--max <max-regs>]) [-d <device>] [--noc <noc-id>] [-l <loc>] [-s]
 
 
 Arguments:
@@ -13,16 +13,20 @@ Arguments:
     noc-id            Identifier for the NOC (e.g. 0, 1) [default: both noc0 and noc1]
     loc               Location identifier (e.g. 0-0) [default: current active]
     reg-names         Name of specific NOC register(s) to display, can be comma-separated
+    reg-pattern       Pattern in wildcard format for finding registers (mutually exclusive with <reg-names>)
+    max-regs          Limit --search output (default: 10, use --max "all" to print all matches)
 
 
 Options:
-    -s, --simple     Print simple output
+    -s, --simple            Print simple output
+
 
 Description:
     Displays NOC (Network on Chip) registers.
         • "noc status" prints status registers for transaction counters.
         • "noc all" prints all registers.
         • "noc register <reg-names>" prints specific register(s) by name.
+        • "noc register --search <reg-pattern>" searches through all registers with the given wildcard pattern.
 
 
 Examples:
@@ -30,6 +34,7 @@ Examples:
     noc status -s                               # Prints status registers with simple output
     noc register NIU_MST_RD_REQ_SENT            # Prints a specific register value
     noc register NIU_MST_RD_REQ_SENT,NIU_MST_RD_DATA_WORD_RECEIVED  # Prints multiple registers
+    noc register --search *_RD* --max all       # Show all registers that have "_RD" in their name
 """
 
 # Third-party imports
@@ -37,6 +42,7 @@ from docopt import docopt
 
 # Local imports
 from ttexalens import command_parser, util
+from ttexalens.util import search
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
@@ -314,9 +320,21 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list:
                 # Display all registers for both NOCs
                 display_all_noc_registers(loc, device, simple_print)
             elif dopt.args["register"]:
-                # Parse the comma-separated register names
-                reg_names_str = dopt.args["<reg-names>"]
-                reg_names = [name.strip() for name in reg_names_str.split(",")]
+                reg_names = []
+                # Populate reg_names from either <reg-names> or <reg-pattern>, depending on the presence of --search
+                if dopt.args["--search"]:
+                    noc0_reg_store = device.get_block(loc).get_register_store(0)
+                    all_reg_names = get_noc_register_names(noc0_reg_store)
+                    max = dopt.args["<max-regs>"] if dopt.args["--max"] else 10
+                    reg_names = search(all_reg_names, dopt.args["<reg-pattern>"], max)
+                    if len(reg_names) == 0:
+                        print("No matches found.")
+                        return []
+
+                else:
+                    # Parse the comma-separated register names
+                    reg_names_str = dopt.args["<reg-names>"]
+                    reg_names = [name.strip() for name in reg_names_str.split(",")]
 
                 if dopt.args["--noc"]:
                     # If a specific NOC ID was specified, only display for that one

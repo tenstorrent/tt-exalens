@@ -2,16 +2,19 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from functools import cache
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
+from ttexalens.hardware.blackhole.baby_risc_debug import BlackholeBabyRiscDebug
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import debug_bus_signal_map
 from ttexalens.hardware.blackhole.functional_worker_registers import register_map
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
+from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
@@ -61,7 +64,14 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             risc_name="brisc",
             risc_id=0,
             noc_block=self,
+            neo_id=None,  # NEO ID is not applicable for Blackhole
             l1=self.l1,
+            max_watchpoints=8,
+            reset_flag_shift=11,
+            branch_prediction_register="DISABLE_RISC_BP_Disable_main",
+            branch_prediction_mask=1,
+            default_code_start_address=0,
+            code_start_address_register=None,  # We don't have a regsiter to override code start address
             data_private_memory=MemoryBlock(
                 size=8 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
@@ -74,7 +84,16 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             risc_name="trisc0",
             risc_id=1,
             noc_block=self,
+            neo_id=None,  # NEO ID is not applicable for Blackhole
             l1=self.l1,
+            max_watchpoints=8,
+            reset_flag_shift=12,
+            branch_prediction_register="DISABLE_RISC_BP_Disable_trisc",
+            branch_prediction_mask=0b001,
+            default_code_start_address=0x6000,
+            code_start_address_register="TRISC_RESET_PC_SEC0_PC",
+            code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
+            code_start_address_enable_bit=0b001,
             data_private_memory=MemoryBlock(
                 size=4 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
@@ -87,7 +106,16 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             risc_name="trisc1",
             risc_id=2,
             noc_block=self,
+            neo_id=None,  # NEO ID is not applicable for Blackhole
             l1=self.l1,
+            max_watchpoints=8,
+            reset_flag_shift=13,
+            branch_prediction_register="DISABLE_RISC_BP_Disable_trisc",
+            branch_prediction_mask=0b010,
+            default_code_start_address=0xA000,
+            code_start_address_register="TRISC_RESET_PC_SEC1_PC",
+            code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
+            code_start_address_enable_bit=0b010,
             data_private_memory=MemoryBlock(
                 size=4 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
@@ -100,7 +128,16 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             risc_name="trisc2",
             risc_id=3,
             noc_block=self,
+            neo_id=None,  # NEO ID is not applicable for Blackhole
             l1=self.l1,
+            max_watchpoints=8,
+            reset_flag_shift=14,
+            branch_prediction_register="DISABLE_RISC_BP_Disable_trisc",
+            branch_prediction_mask=0b100,
+            default_code_start_address=0xE000,
+            code_start_address_register="TRISC_RESET_PC_SEC2_PC",
+            code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
+            code_start_address_enable_bit=0b100,
             data_private_memory=MemoryBlock(
                 size=4 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
@@ -113,13 +150,22 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             risc_name="ncrisc",
             risc_id=4,
             noc_block=self,
+            neo_id=None,  # NEO ID is not applicable for Blackhole
             l1=self.l1,
+            max_watchpoints=8,
+            reset_flag_shift=18,
+            branch_prediction_register="DISABLE_RISC_BP_Disable_ncrisc",
+            branch_prediction_mask=0x1,
+            default_code_start_address=0xFFC00000,
+            code_start_address_register="NCRISC_RESET_PC_PC",
+            code_start_address_enable_register="NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
+            code_start_address_enable_bit=0b1,
             data_private_memory=MemoryBlock(
-                size=4 * 1024,  # TODO: Check if this is correct
+                size=4 * 1024,  # TODO #432: Check if this is correct
                 address=DeviceAddress(private_address=0xFFB00000),
             ),
             code_private_memory=MemoryBlock(
-                size=4 * 1024,  # TODO: This memory is removed on blackhole?!?
+                size=4 * 1024,  # TODO #432: This memory is removed on blackhole?!?
                 address=DeviceAddress(private_address=0xFFC00000),
             ),
             debug_hardware_present=False,
@@ -127,3 +173,23 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
+
+    @cache
+    def get_default_risc_debug(self) -> RiscDebug:
+        return self.get_risc_debug(self.brisc.risc_name, self.brisc.neo_id)
+
+    @cache
+    def get_risc_debug(self, risc_name: str, neo_id: int | None = None) -> RiscDebug:
+        assert neo_id is None, "NEO ID is not applicable for Blackhole device."
+        risc_name = risc_name.lower()
+        if risc_name == self.brisc.risc_name:
+            return BlackholeBabyRiscDebug(risc_info=self.brisc)
+        elif risc_name == self.trisc0.risc_name:
+            return BlackholeBabyRiscDebug(risc_info=self.trisc0)
+        elif risc_name == self.trisc1.risc_name:
+            return BlackholeBabyRiscDebug(risc_info=self.trisc1)
+        elif risc_name == self.trisc2.risc_name:
+            return BlackholeBabyRiscDebug(risc_info=self.trisc2)
+        elif risc_name == self.ncrisc.risc_name:
+            return BlackholeBabyRiscDebug(risc_info=self.ncrisc)
+        raise ValueError(f"RISC debug for {risc_name} is not supported in Blackhole functional worker block.")
