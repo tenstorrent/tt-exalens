@@ -25,7 +25,7 @@ from ttexalens.debug_risc import RiscLoader, get_register_index
         {"core_desc": "FW1", "risc_name": "TRISC1"},
         {"core_desc": "FW1", "risc_name": "TRISC2"},
         {"core_desc": "FW1", "risc_name": "TRISC3"},
-        # {"core_desc": "DRAM0", "risc_name": "DRISC"},
+        {"core_desc": "DRAM0", "risc_name": "DRISC"},
     ]
 )
 class TestDebugging(unittest.TestCase):
@@ -46,6 +46,8 @@ class TestDebugging(unittest.TestCase):
                 self.skipTest(f"Core {self.risc_name} not available on this platform: {e}")
             else:
                 raise e
+        except NotImplementedError as e:
+            self.skipTest(e)
         self.device = self.context.devices[0]
 
         # Stop risc with reset
