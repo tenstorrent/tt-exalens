@@ -28,7 +28,7 @@ to ensure all submodules are properly initialized.
 
 ### Requirements
 
-Debugger has been tested on Ubuntu 22.04 and 20.04.
+Debugger has been tested on Ubuntu 22.04.
 
 To build it, you need the following dependencies:
 
