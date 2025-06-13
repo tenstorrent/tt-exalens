@@ -13,6 +13,7 @@ def init_default_test_context():
     else:
         return tt_exalens_init.init_ttexalens()
 
+
 def init_test_context(use_noc1: bool = True):
     if use_noc1:
         assert not os.getenv("TTEXALENS_TESTS_REMOTE"), "Remote testing for NOC1 not supported"

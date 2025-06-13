@@ -7,9 +7,10 @@ from test.ttexalens.unit_tests.test_base import init_test_context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import write_words_to_device
 
+
 class TestNOC1(unittest.TestCase):
     def setUp(self):
-        self.context = init_test_context() # Use NOC1
+        self.context = init_test_context()  # Use NOC1
         self.device = self.context.devices[0]
         self.loc = OnChipCoordinate(1, 0, "logical", self.device, core_type="tensix")
         self.noc0_register_store = self.device.get_block(self.loc).get_register_store(0)
