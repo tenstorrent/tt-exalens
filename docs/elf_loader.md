@@ -1,4 +1,4 @@
-# ELF loader in TT-ExaLens
+# ELF loader
 
 ## Goal and problems
 Goal of the ELF loader is to load provided ELF file to specified RISC-V core.

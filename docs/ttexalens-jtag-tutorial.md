@@ -1,4 +1,4 @@
-# TTExaLens JTAG Tutorial
+# JTAG Tutorial
 This tutorial shows you how to set up and use JTAG.
 
 ## Licensing
