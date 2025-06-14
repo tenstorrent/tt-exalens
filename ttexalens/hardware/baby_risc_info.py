@@ -6,6 +6,8 @@ from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_info import RiscInfo
 from ttexalens.register_store import RegisterStore
+from ttexalens.risc_loader import RiscLoader
+from ttexalens.tt_exalens_lib import write_words_to_device
 
 
 class BabyRiscInfo(RiscInfo):
@@ -64,10 +66,17 @@ class BabyRiscInfo(RiscInfo):
         if not self.can_change_code_start_address:
             if address is None or address == self.default_code_start_address:
                 return
-            raise RuntimeError(
-                f"Cannot change code start address for {self.risc_name} on {self.noc_block.location.to_user_str()}"
+
+            # If we cannot change the code start address, we write a jump instruction to the specified address
+            jump_instruction = RiscLoader.get_jump_to_offset_instruction(address)
+            write_words_to_device(
+                register_store.location,
+                0,
+                jump_instruction,
+                register_store.location._device._id,
+                register_store.location._device._context,
             )
-        if address is not None:
+        elif address is not None:
             if self.code_start_address_enable_register is not None and self.code_start_address_enable_bit is not None:
                 enabled_register_value = register_store.read_register(self.code_start_address_enable_register)
                 register_store.write_register(

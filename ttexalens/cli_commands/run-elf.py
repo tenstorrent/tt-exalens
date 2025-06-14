@@ -17,6 +17,7 @@ Examples:
 
 from ttexalens import util as util
 from ttexalens import command_parser
+from ttexalens.debug_risc import get_risc_name
 from ttexalens.tt_exalens_lib import run_elf
 
 command_metadata = {
@@ -61,4 +62,5 @@ def run(cmd_text, context, ui_state=None):
         loc = dopt.args["-l"]
 
     for device in dopt.for_each("--device", context, ui_state):
-        run_elf(dopt.args["<elf-file>"], loc, risc_id, device.id(), context)
+        risc_name = get_risc_name(risc_id)
+        run_elf(dopt.args["<elf-file>"], loc, risc_name, None, device.id(), context)

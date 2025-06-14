@@ -14,7 +14,6 @@ from ttexalens.hardware.blackhole.router_only_block import BlackholeRouterOnlyBl
 from ttexalens.hardware.blackhole.security_block import BlackholeSecurityBlock
 from ttexalens.hardware.tensix_configuration_registers_description import TensixConfigurationRegistersDescription
 import ttexalens.util as util
-from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
 from ttexalens.device import (
     TensixInstructions,

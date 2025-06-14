@@ -7,7 +7,8 @@ from parameterized import parameterized_class
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from ttexalens.context import Context
-from ttexalens.debug_risc import RiscLoader, get_register_index
+from ttexalens.hardware.baby_risc_debug import get_register_index
+from ttexalens.risc_loader import RiscLoader
 
 
 @parameterized_class(
@@ -112,7 +113,7 @@ class TestDebugging(unittest.TestCase):
         if not (self.core_sim.is_blackhole() and self.core_sim.is_eth_block()):
             # PC is not readable through GPR on blackhole ETH core for now
             self.assertEqual(
-                self.core_sim.read_gpr(get_register_index("pc")),
+                self.core_sim.get_pc(),
                 self.core_sim.program_base_address + 4,
                 "PC should be 4.",
             )
