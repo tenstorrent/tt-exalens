@@ -2,14 +2,17 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from functools import cache, cached_property
 from typing import Callable
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.quasar.functional_neo_debug_bus_signals import debug_bus_signal_map
 from ttexalens.hardware.quasar.functional_neo_registers import register_map
 from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
+from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
@@ -161,3 +164,25 @@ class QuasarFunctionalNeoBlock:
             code_private_memory=None,
             debug_hardware_present=True,
         )
+
+    @cached_property
+    def all_riscs(self) -> list[RiscDebug]:
+        return [
+            self.get_risc_debug(self.trisc0.risc_name),
+            self.get_risc_debug(self.trisc1.risc_name),
+            self.get_risc_debug(self.trisc2.risc_name),
+            self.get_risc_debug(self.trisc3.risc_name),
+        ]
+
+    @cache
+    def get_risc_debug(self, risc_name: str) -> RiscDebug:
+        risc_name = risc_name.lower()
+        if risc_name == self.trisc0.risc_name:
+            return BabyRiscDebug(self.trisc0)
+        elif risc_name == self.trisc1.risc_name:
+            return BabyRiscDebug(self.trisc1)
+        elif risc_name == self.trisc2.risc_name:
+            return BabyRiscDebug(self.trisc2)
+        elif risc_name == self.trisc3.risc_name:
+            return BabyRiscDebug(self.trisc3)
+        raise ValueError(f"RISC with name {risc_name} not found in NEO {self.neo_id}.")

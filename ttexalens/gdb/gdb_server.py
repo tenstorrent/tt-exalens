@@ -18,8 +18,8 @@ from ttexalens.gdb.gdb_communication import (
 from ttexalens.gdb.gdb_data import GdbProcess, GdbThreadId
 from ttexalens.gdb.gdb_file_server import GdbFileServer
 from ttexalens.context import Context
-from ttexalens.debug_risc import RiscLoc, get_risc_name
 from ttexalens import util as util
+from ttexalens.hardware.risc_debug import RiscLocation
 
 # Helper class returns currently debugging list of threads to gdb client in paged manner
 class GdbThreadListPaged:
@@ -66,7 +66,9 @@ class GdbServer(threading.Thread):
         ] = (
             {}
         )  # dictionary of supported gdb client features (key: feature, value: mostly True/False, but can be anything)
-        self.paged_thread_list: GdbThreadListPaged = None  # helper class that returns list of threads in paged manner
+        self.paged_thread_list: GdbThreadListPaged | None = (
+            None  # helper class that returns list of threads in paged manner
+        )
         self.file_server: GdbFileServer = GdbFileServer(context)  # File server that serves gdb client file operations
         self.vCont_pending_statuses: list[
             str
@@ -74,13 +76,13 @@ class GdbServer(threading.Thread):
             []
         )  # List of status reports that should be returned to gdb client (it is stored in reversed order, so we can pop it from the end of the list)
 
-        self.current_process: GdbProcess = None  # currently debugging process (core/thread - all in one)
+        self.current_process: GdbProcess | None = None  # currently debugging process (core/thread - all in one)
         self.debugging_threads: dict[
             int, GdbThreadId
         ] = {}  # Dictionary of threads that are currently being debugged (key: pid)
         self.next_pid = 1
         self._last_available_processes: dict[
-            RiscLoc, GdbProcess
+            RiscLocation, GdbProcess
         ] = {}  # Dictionary of last executed available processes that can be debugged (key: pid)
 
     @property
@@ -88,19 +90,19 @@ class GdbServer(threading.Thread):
         available_processes: dict[
             int, GdbProcess
         ] = {}  # Dictionary of available processes that can be debugged (key: pid)
-        last_available_processes: dict[RiscLoc, GdbProcess] = {}
+        last_available_processes: dict[RiscLocation, GdbProcess] = {}
         for device in self.context.devices.values():
             for risc_debug in device.debuggable_cores:
                 if not risc_debug.is_in_reset():
                     try:
-                        elf_path = self.context.get_risc_elf_path(risc_debug.location.loc, risc_debug.location.risc_id)
+                        elf_path = self.context.get_risc_elf_path(risc_debug.risc_location)
                     except:
                         # If we are running without full functionality, we will not have elf files available
                         elf_path = None
 
                     # Check if process is in self._last_available_processes and reuse it if it is
                     # TODO: In ideal world, we would have "start time" for a core (time when core was taken out of reset) and use that as a key for reusing process id; for now, we can just check if elf path is the same
-                    last_process = self._last_available_processes.get(risc_debug.location)
+                    last_process = self._last_available_processes.get(risc_debug.risc_location)
                     if last_process is None or last_process.elf_path != elf_path:
                         core_type = "worker"  # TODO: once we add support for ETH cores, we should update this
                         pid = self.next_pid
@@ -112,7 +114,7 @@ class GdbServer(threading.Thread):
                     else:
                         process = last_process
                     available_processes[process.process_id] = process
-                    last_available_processes[risc_debug.location] = process
+                    last_available_processes[risc_debug.risc_location] = process
         self._last_available_processes = last_available_processes
         return available_processes
 
@@ -230,7 +232,8 @@ class GdbServer(threading.Thread):
                     process = self.available_processes.get(pid)
                     if process is not None:
                         # Remove all break points from the process
-                        for bid in range(0, process.risc_debug.max_watchpoints):
+                        watchpoints_state = process.risc_debug.read_watchpoints_state()
+                        for bid in range(0, len(watchpoints_state)):
                             process.risc_debug.disable_watchpoint(bid)
 
                         # Continue process if it is halted
@@ -245,7 +248,8 @@ class GdbServer(threading.Thread):
                     process = self.available_processes.get(pid)
                     if process is not None:
                         # Remove all break points from the process
-                        for bid in range(0, process.risc_debug.max_watchpoints):
+                        watchpoints_state = process.risc_debug.read_watchpoints_state()
+                        for bid in range(0, len(watchpoints_state)):
                             process.risc_debug.disable_watchpoint(bid)
 
                         # Continue process if it is halted
@@ -258,6 +262,7 @@ class GdbServer(threading.Thread):
             # Register definitions: https://github.com/riscvarchive/riscv-binutils-gdb/blob/5da071ef0965b8054310d8dde9975037b0467311/gdb/features/riscv/32bit-cpu.c
             # TODO: Use arc to read registers faster
             for j in range(0, GdbServer.REGISTER_COUNT):
+                assert self.current_process is not None, "Current process should not be None when reading registers"
                 value = self.current_process.risc_debug.read_gpr(j)
                 writer.append_register_hex(value)
         elif parser.parse(b"G"):  # Write general registers.
@@ -272,13 +277,14 @@ class GdbServer(threading.Thread):
                     if value is None:
                         writer.append(b"E01")
                         return True
+                    assert self.current_process is not None, "Current process should not be None when writing registers"
                     self.current_process.risc_debug.write_gpr(j, value)
             writer.append(b"OK")
         elif parser.parse(b"H"):  # Set thread for subsequent operations (‘m’, ‘M’, ‘g’, ‘G’, et.al.).
             # ‘H op thread-id’
             op = parser.read_char()
             thread_id = parser.parse_thread_id()
-            util.VERBOSE(f"GDB: Set thread {thread_id} and prepare for op '{chr(op)}'")
+            util.VERBOSE(f"GDB: Set thread {thread_id} and prepare for op '{chr(op) if op else '[EOM]'}'")
             if self.current_process is None or thread_id is None:
                 # Respond that we are not debugging anything at the moment
                 writer.append(b"E01")
@@ -327,7 +333,7 @@ class GdbServer(threading.Thread):
             if self.current_process is None:
                 # Return error if we are not debugging any process
                 writer.append(b"E02")
-            elif length <= 0:
+            elif address is None or length is None or length <= 0:
                 writer.append(b"E01")
             else:
                 # Read first 4 bytes of unaligned data
@@ -362,7 +368,7 @@ class GdbServer(threading.Thread):
             length = parser.parse_hex()
             parser.parse(b":")
             data = parser.read_rest()
-            if len(data) != 2 * length or length <= 0:
+            if data is None or length is None or address is None or len(data) != 2 * length or length <= 0:
                 # Return error if we didn't get all data
                 writer.append(b"E01")
             elif self.current_process is None:
@@ -380,7 +386,11 @@ class GdbServer(threading.Thread):
                     new_value = value
                     for i in range(first_offset, first_offset + used_bytes):
                         mask = 0xFF << (8 * i)
-                        new_value = (new_value & mask) + parser.read_hex(2)
+                        digit = parser.read_hex(2)
+                        if digit is None:
+                            writer.append(b"E03")
+                            return True
+                        new_value = (new_value & mask) + digit
 
                     # Write bytes
                     self.current_process.risc_debug.write_memory(address - first_offset, new_value)
@@ -403,7 +413,11 @@ class GdbServer(threading.Thread):
                     new_value = value
                     for i in range(0, length):
                         mask = 0xFF << (8 * i)
-                        new_value = (new_value & mask) + parser.read_hex(2)
+                        digit = parser.read_hex(2)
+                        if digit is None:
+                            writer.append(b"E04")
+                            return True
+                        new_value = (new_value & mask) + digit
 
                     # Write bytes
                     self.current_process.risc_debug.write_memory(address, new_value)
@@ -411,9 +425,10 @@ class GdbServer(threading.Thread):
         elif parser.parse(b"p"):  # Read the value of register n; n is in hex.
             # ‘p n’
             register = parser.parse_hex()
-            if register < 0 or register > GdbServer.REGISTER_COUNT:
+            if register is None or register < 0 or register > GdbServer.REGISTER_COUNT:
                 writer.append(b"E01")
             else:
+                assert self.current_process is not None, "Current process should not be None when reading registers"
                 value = self.current_process.risc_debug.read_gpr(register)
                 writer.append_hex(value, 8)
         elif parser.parse(b"P"):  # Write register n… with value r….
@@ -421,9 +436,10 @@ class GdbServer(threading.Thread):
             register = parser.parse_hex()
             parser.parse(b"=")
             value = parser.read_hex(8)
-            if register < 0 or register > GdbServer.REGISTER_COUNT:
+            if register is None or value is None or register < 0 or register > GdbServer.REGISTER_COUNT:
                 writer.append(b"E01")
             else:
+                assert self.current_process is not None, "Current process should not be None when writing registers"
                 self.current_process.risc_debug.write_gpr(register, value)
                 writer.append(b"OK")
         elif parser.parse(
@@ -492,15 +508,21 @@ class GdbServer(threading.Thread):
         elif parser.parse(
             b"qXfer:"
         ):  # Read uninterpreted bytes from the target’s special data area identified by the keyword object.
-            object = parser.read_until(GDB_ASCII_COLON).decode()
+            object = parser.read_until(GDB_ASCII_COLON)
             operation = parser.read_until(GDB_ASCII_COLON)
-            annex = parser.read_until(GDB_ASCII_COLON).decode()
+            annex = parser.read_until(GDB_ASCII_COLON)
             offset = parser.parse_hex()
-            if not parser.parse(b","):
+            if offset is None or not parser.parse(b","):
                 util.ERROR(f"GDB: Something wrong with offset and length: {parser.data!r}")
                 writer.append(b"E01")
                 return True
             length = parser.parse_hex()
+            if object is None or annex is None or length is None:
+                util.ERROR(f"GDB: Something wrong with arguments of qXfer: {parser.data!r}")
+                writer.append(b"E01")
+                return True
+            object = object.decode()
+            annex = annex.decode()
             paging_key = f"{object}_{annex}"
             if operation == b"read" and offset > 0:
                 # We prepared string that should be returned with this command, just continue paging it...
@@ -524,7 +546,9 @@ class GdbServer(threading.Thread):
                     util.ERROR(f"GDB: bad process id: {pid} ({annex})")
                     writer.append(b"E01")
                 else:
-                    self.prepared_responses_for_paging[paging_key] = process.elf_path
+                    self.prepared_responses_for_paging[paging_key] = (
+                        process.elf_path if process.elf_path else "[unknown_elf_file_path]"
+                    )
                     self.write_paged_message(self.prepared_responses_for_paging[paging_key], offset, length, writer)
             else:
                 # We don't support this message
@@ -578,6 +602,10 @@ class GdbServer(threading.Thread):
             if parser.parse(b";"):
                 pid = parser.parse_hex()
                 # Check if pid is in the list of available processes and respond with error if it is not
+                if pid is None or pid not in self.available_processes:
+                    util.ERROR(f"GDB: client tried to attach to unknown process id: {pid}")
+                    writer.append(b"E01")
+                    return True
                 process = self.available_processes.get(pid)
             else:
                 process = None
@@ -589,7 +617,6 @@ class GdbServer(threading.Thread):
             else:
                 try:
                     # We should halt selected core
-                    process.risc_debug.enable_debug()
                     if not process.risc_debug.is_halted():
                         process.risc_debug.halt()
                     self.debugging_threads[process.process_id] = process.thread_id
@@ -617,7 +644,7 @@ class GdbServer(threading.Thread):
             # ‘vCont[;action[:thread-id]]…’
 
             # Create dictionary per thread that will contain actions that should be executed on that thread
-            thread_actions: dict[int, str] = {}
+            thread_actions: dict[int, str | None] = {}
             for pid in self.debugging_threads.keys():
                 thread_actions[pid] = None
 
@@ -651,7 +678,7 @@ class GdbServer(threading.Thread):
                     thread_action = "t"
                 else:
                     # Unsupported action
-                    util.WARN(f"GDB: unsupported continue action: {chr(action)}")
+                    util.WARN(f"GDB: unsupported continue action: {chr(action) if action else '[EOM]'}")
                     writer.append(b"E01")
                     return True
 
@@ -700,11 +727,14 @@ class GdbServer(threading.Thread):
             for pid in thread_actions.keys():
                 # NOTE: The server must ignore ‘c’, ‘C’, ‘s’, ‘S’, and ‘r’ actions for threads that are already running. Conversely, the server must ignore ‘t’ actions for threads that are already stopped.
                 process = available_processes.get(pid)
+                if process is None:
+                    util.ERROR(f"GDB: process with id {pid} is not available")
+                    continue
                 action = thread_actions[pid]
                 if action == "c":  # Continue
                     # Continue only if we are not already running.
                     if process.risc_debug.is_halted():
-                        process.risc_debug.cont(verify=False)
+                        process.risc_debug.cont()
                         processes_to_watch.add(process)
                 elif action == "s":  # Step
                     # Step only if we are not already running.
@@ -744,17 +774,18 @@ class GdbServer(threading.Thread):
                         # Check if core is not in reset
                         if process.risc_debug.is_in_reset():
                             # Report that process exited
-                            self.vCont_pending_statuses.append(f"W00;process:{pid:x}")
+                            self.vCont_pending_statuses.append(f"W00;process:{process.process_id:x}")
                             stop_watching = True
 
                         # Check if core hit watchpoint
                         risc_debug_status = process.risc_debug.read_status()
                         if risc_debug_status.is_halted:
                             # Report that process is halted
+                            detected_signal = ""
                             if risc_debug_status.is_memory_watchpoint_hit:
                                 watchpoints = process.risc_debug.read_watchpoints_state()
                                 watchpoints_hit = risc_debug_status.watchpoints_hit
-                                for i in range(0, process.risc_debug.max_watchpoints):
+                                for i in range(0, min(len(watchpoints), len(watchpoints_hit))):
                                     if watchpoints_hit[i]:
                                         assert watchpoints[i].is_enabled
 
@@ -801,7 +832,7 @@ class GdbServer(threading.Thread):
             # If pid is nonzero, select the filesystem as seen by process pid. If pid is zero, select the filesystem as seen by the remote stub.
             # Return 0 on success, or -1 if an error occurs.
             pid = parser.parse_hex()
-            if pid != 0 and self.available_processes.get(pid) is None:
+            if pid and self.available_processes.get(pid) is None:
                 writer.append(b"F-1")
             else:
                 # We don't have different file system per process, so we just respond with OK
@@ -810,11 +841,20 @@ class GdbServer(threading.Thread):
             b"vFile:open:"
         ):  # Open a file at filename and return a file descriptor for it, or return -1 if an error occurs.
             # ‘vFile:open: filename, flags, mode’
-            filename = parser.read_until(GDB_ASCII_COMMA).decode()
+            filename = parser.read_until(GDB_ASCII_COMMA)
+            if filename is None:
+                util.ERROR(f"GDB: Something wrong with filename of vFile:open: {parser.data!r}")
+                writer.append(b"F-1")
+                return True
+            filename = filename.decode()
             filename = bytes.fromhex(filename).decode()
             flags = parser.parse_hex()
             parser.parse(b",")
             mode = parser.parse_hex()
+            if flags is None or mode is None:
+                util.ERROR(f"GDB: Something wrong with flags or mode of vFile:open: {parser.data!r}")
+                writer.append(b"F-1")
+                return True
             result = self.file_server.open(filename, flags, mode)
             writer.append(b"F")
             if type(result) is str:
@@ -827,7 +867,7 @@ class GdbServer(threading.Thread):
         ):  # Close the open file corresponding to fd and return 0, or -1 if an error occurs.
             # ‘vFile:close: fd’
             fd = parser.parse_hex()
-            if self.file_server.close(fd):
+            if fd is not None and self.file_server.close(fd):
                 writer.append(b"F0")
             else:
                 writer.append(b"F-1")
@@ -838,6 +878,10 @@ class GdbServer(threading.Thread):
             count = parser.parse_hex()
             parser.parse(b",")
             offset = parser.parse_hex()
+            if fd is None or count is None or offset is None:
+                util.ERROR(f"GDB: Something wrong with fd, count or offset of vFile:pread: {parser.data!r}")
+                writer.append(b"F-1")
+                return True
             pread_result = self.file_server.pread(fd, count, offset)
             if type(pread_result) is str:
                 writer.append(b"F")
@@ -857,6 +901,10 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             data = parser.read_rest()
             writer.append(b"F-1")
+            if fd is None or data is None or offset is None:
+                util.ERROR(f"GDB: Something wrong with fd, data or offset of vFile:pwrite: {parser.data!r}")
+                writer.append(b"F-1")
+                return True
             pwrite_result = self.file_server.pwrite(fd, offset, data)
             if type(pwrite_result) is str:
                 writer.append(b"F")
@@ -876,7 +924,7 @@ class GdbServer(threading.Thread):
                 data = parser.read_rest()
 
                 # Check if we are debugging something
-                if len(data) != length or length <= 0:
+                if data is None or length is None or address is None or len(data) != length or length <= 0:
                     # Return error if we didn't get all data
                     writer.append(b"E01")
                 elif self.current_process is None:
@@ -933,8 +981,9 @@ class GdbServer(threading.Thread):
             addr = parser.parse_hex()
             parser.parse(b",")
             kind = parser.parse_hex()  # We ignore kind for now
+            assert self.current_process is not None, "Current process should not be None when removing breakpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and not watchpoints[i].is_memory:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -952,8 +1001,9 @@ class GdbServer(threading.Thread):
             addr = parser.parse_hex()
             parser.parse(b",")
             kind = parser.parse_hex()
+            assert self.current_process is not None, "Current process should not be None when removing watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_write:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -965,8 +1015,9 @@ class GdbServer(threading.Thread):
             addr = parser.parse_hex()
             parser.parse(b",")
             kind = parser.parse_hex()
+            assert self.current_process is not None, "Current process should not be None when removing watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_read:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -978,8 +1029,9 @@ class GdbServer(threading.Thread):
             addr = parser.parse_hex()
             parser.parse(b",")
             kind = parser.parse_hex()
+            assert self.current_process is not None, "Current process should not be None when removing watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_access:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -991,12 +1043,17 @@ class GdbServer(threading.Thread):
             addr = parser.parse_hex()
             parser.parse(b",")
             kind = parser.parse_hex()
+            if addr is None:
+                util.ERROR(f"GDB: Something wrong with address of Z0: {parser.data!r}")
+                writer.append(b"E01")
+                return True
             # TODO: Add support for conditional break point
             # TODO: Add support for optional command list that should be executed when breakpoint is hit
 
             # Check if we already have watchpoint at this address
+            assert self.current_process is not None, "Current process should not be None when setting breakpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and not watchpoints[i].is_memory:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -1004,7 +1061,7 @@ class GdbServer(threading.Thread):
                         return True
 
             # Find empty slot to add watchpoint
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if not watchpoints[i].is_enabled:
                     self.current_process.risc_debug.set_watchpoint_on_pc_address(i, addr)
                     writer.append(b"OK")
@@ -1026,12 +1083,17 @@ class GdbServer(threading.Thread):
             addr = parser.parse_hex()
             parser.parse(b",")
             kind = parser.parse_hex()
+            if addr is None:
+                util.ERROR(f"GDB: Something wrong with address of Z2: {parser.data!r}")
+                writer.append(b"E01")
+                return True
 
             # TODO: we are not using range for memory watchpoints, but we should at least inform user about that
 
             # Check if we already have watchpoint at this address
+            assert self.current_process is not None, "Current process should not be None when setting watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_write:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -1039,7 +1101,7 @@ class GdbServer(threading.Thread):
                         return True
 
             # Find empty slot to add watchpoint
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if not watchpoints[i].is_enabled:
                     self.current_process.risc_debug.set_watchpoint_on_memory_write(i, addr)
                     writer.append(b"OK")
@@ -1055,12 +1117,17 @@ class GdbServer(threading.Thread):
             addr = parser.parse_hex()
             parser.parse(b",")
             kind = parser.parse_hex()
+            if addr is None:
+                util.ERROR(f"GDB: Something wrong with address of Z3: {parser.data!r}")
+                writer.append(b"E01")
+                return True
 
             # TODO: we are not using range for memory watchpoints, but we should at least inform user about that
 
             # Check if we already have watchpoint at this address
+            assert self.current_process is not None, "Current process should not be None when setting watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_read:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -1068,7 +1135,7 @@ class GdbServer(threading.Thread):
                         return True
 
             # Find empty slot to add watchpoint
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if not watchpoints[i].is_enabled:
                     self.current_process.risc_debug.set_watchpoint_on_memory_read(i, addr)
                     writer.append(b"OK")
@@ -1084,12 +1151,17 @@ class GdbServer(threading.Thread):
             addr = parser.parse_hex()
             parser.parse(b",")
             kind = parser.parse_hex()
+            if addr is None:
+                util.ERROR(f"GDB: Something wrong with address of Z4: {parser.data!r}")
+                writer.append(b"E01")
+                return True
 
             # TODO: we are not using range for memory watchpoints, but we should at least inform user about that
 
             # Check if we already have watchpoint at this address
+            assert self.current_process is not None, "Current process should not be None when setting watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_access:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -1097,7 +1169,7 @@ class GdbServer(threading.Thread):
                         return True
 
             # Find empty slot to add watchpoint
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if not watchpoints[i].is_enabled:
                     self.current_process.risc_debug.set_watchpoint_on_memory_access(i, addr)
                     writer.append(b"OK")
@@ -1137,12 +1209,10 @@ class GdbServer(threading.Thread):
                     "pid": pid,
                     "user": self.context.short_name,
                     "cores": process.virtual_core_id,
-                    "device": process.risc_debug.location.loc._device._id,
+                    "device": process.risc_debug.risc_location.location._device._id,
                     "core_type": process.core_type,
-                    "core_location": process.risc_debug.location.loc.to_user_str(),
-                    "risc": get_risc_name(
-                        process.risc_debug.location.risc_id
-                    ),  # TODO: Once we add support for ETH cores, we should update this -> method should be part of device class and it also needs coordinate as well
+                    "core_location": process.risc_debug.risc_location.location.to_user_str(),
+                    "risc": process.risc_debug.risc_location.risc_name,
                     "command": process.elf_path,
                     "vscode_fix": 1,
                 }
