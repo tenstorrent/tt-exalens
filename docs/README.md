@@ -1,11 +1,11 @@
-## Documentation files
+## Documentation Files
 
-- [*ttexalens-lib-tutorial.md*](ttexalens-lib-tutorial.md): How to use TTExaLens library
-- [*ttexalens-lib-docs.md*](ttexalens-lib-docs.md): TTExaLens library documentation API (automatically generated)
-- [*ttexalens-app-tutorial.md*](ttexalens-app-tutorial.md): How to use TTExaLens application
-- [*ttexalens-app-docs.md*](ttexalens-app-docs.md): TTExaLens application documentation, all commands with examples (automatically generated)
-- [*elf_loader.md*](elf_loader.md): Explains how elf loader works in TTExaLens
-- [*gdb.md*](gdb.md): Explains how to use gdb to debug riscv cores
-- [*coordinates.md*](coordinates.md): Explains how to use coordinates in TTExaLens
+- [*ttexalens-lib-tutorial.md*](ttexalens-lib-tutorial.md): How to use the Python library
+- [*ttexalens-lib-docs.md*](ttexalens-lib-docs.md): Library API documentation (automatically generated)
+- [*ttexalens-app-tutorial.md*](ttexalens-app-tutorial.md): How to use the command-line application
+- [*ttexalens-app-docs.md*](ttexalens-app-docs.md): Application command reference with examples (automatically generated)
+- [*elf_loader.md*](elf_loader.md): How the ELF loader works
+- [*gdb.md*](gdb.md): How to use GDB to debug RISC-V cores
+- [*coordinates.md*](coordinates.md): How to use coordinates for device targeting
 
-Non `.md` files are used to generate automatic documentation files.
+Non-`.md` files are used to generate the automatic documentation.
