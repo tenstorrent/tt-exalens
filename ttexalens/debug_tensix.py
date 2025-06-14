@@ -5,11 +5,11 @@ from enum import Enum
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
+from ttexalens.register_store import RegisterDescription
 from ttexalens.tt_exalens_lib import check_context, validate_device_id, read_word_from_device, write_words_to_device
 from ttexalens.util import TTException
-from ttexalens.device import Device, ConfigurationRegisterDescription, TensixRegisterDescription
+from ttexalens.device import Device
 from ttexalens.unpack_regfile import unpack_data
-from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader
 
 
 def validate_trisc_id(trisc_id: int, context: Context) -> None:
@@ -144,7 +144,7 @@ class TensixDebug:
         while (self.dbg_buff_status() & 0x10) == 0:
             pass
 
-    def read_tensix_register(self, register: str | TensixRegisterDescription) -> int:
+    def read_tensix_register(self, register: str | RegisterDescription) -> int:
         """Reads the value of a configuration or debug register from the tensix core.
 
         Args:
@@ -154,112 +154,21 @@ class TensixDebug:
                 int: Value of the configuration or debug register specified.
         """
         device = self.context.devices[self.device_id]
+        noc_block = device.get_block(self.core_loc)
+        register_store = noc_block.get_register_store()
+        return register_store.read_register(register)
 
-        if isinstance(register, str):
-            register = device.get_tensix_register_description(register)
-
-        if isinstance(register, ConfigurationRegisterDescription):
-            max_index = int(
-                (
-                    device._get_tensix_register_end_address(register)
-                    - device._get_tensix_register_base_address(register)
-                    + 1
-                )
-                / 4
-                - 1
-            )
-            if register.index < 0 or register.index > max_index:
-                raise ValueError(
-                    f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
-                )
-        assert isinstance(register, TensixRegisterDescription)
-        if register.mask < 0 or register.mask > 0xFFFFFFFF:
-            raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
-
-        if register.shift < 0 or register.shift > 31:
-            raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
-
-        if isinstance(register, ConfigurationRegisterDescription):
-            write_words_to_device(
-                self.core_loc,
-                device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RD_CNTL"),
-                register.index,
-                self.device_id,
-                self.context,
-            )
-            a = read_word_from_device(
-                self.core_loc,
-                device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RDDATA"),
-                self.device_id,
-                self.context,
-            )
-            return (a & register.mask) >> register.shift
-        else:
-            a = read_word_from_device(
-                self.core_loc,
-                register.address,
-                self.device_id,
-                self.context,
-            )
-            return (a & register.mask) >> register.shift
-
-    def write_tensix_register(self, register: str | TensixRegisterDescription, value: int) -> None:
+    def write_tensix_register(self, register: str | RegisterDescription, value: int) -> None:
         """Writes value to the configuration or debug register on the tensix core.
 
         Args:
-                register (str | TensixRegisterDescription): Name of the configuration or debug register or instance of ConfigurationRegisterDescription or DebugRegisterDescription.
+                register (str | RegisterDescription): Name of the configuration or debug register or instance of ConfigurationRegisterDescription or DebugRegisterDescription.
                 val (int): Value to write
         """
         device = self.context.devices[self.device_id]
-
-        if isinstance(register, str):
-            register = device.get_tensix_register_description(register)
-        elif isinstance(register, ConfigurationRegisterDescription):
-            base_address = device._get_tensix_register_base_address(register)
-            if base_address != None:
-                if register.address < base_address:
-                    register = register.clone(base_address)
-            else:
-                raise ValueError(f"Unknown tensix register base address for given register")
-
-        assert isinstance(register, TensixRegisterDescription)
-        if value < 0 or value > 2 ** register.mask.bit_count() - 1:
-            raise ValueError(f"Value must be between 0 and {2 ** register.mask.bit_count() - 1}, but got {value}")
-
-        if isinstance(register, ConfigurationRegisterDescription):
-            max_index = int(
-                (
-                    device._get_tensix_register_end_address(register)
-                    - device._get_tensix_register_base_address(register)
-                    + 1
-                )
-                / 4
-                - 1
-            )
-            if register.index < 0 or register.index > max_index:
-                raise ValueError(
-                    f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
-                )
-
-        if register.mask < 0 or register.mask > 0xFFFFFFFF:
-            raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
-
-        if register.shift < 0 or register.shift > 31:
-            raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
-
-        if isinstance(register, ConfigurationRegisterDescription):
-            rdbg = RiscDebug(RiscLoc(self.core_loc), self.context)
-            rldr = RiscLoader(rdbg, self.context)
-            with rldr.ensure_reading_configuration_register() as rdbg:
-                rdbg.write_configuration_register(register, value)
-        else:
-            write_words_to_device(
-                self.core_loc,
-                register.address,
-                value,
-                self.device_id,
-                self.context,
-            )
+        noc_block = device.get_block(self.core_loc)
+        register_store = noc_block.get_register_store()
+        register_store.write_register(register, value)
 
     def read_regfile_data(
         self,

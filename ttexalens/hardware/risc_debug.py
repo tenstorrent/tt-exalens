@@ -7,7 +7,22 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Generator
 from ttexalens import util
+from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.parse_elf import ParsedElfFile, ParsedElfFileWithOffset
+
+
+@dataclass
+class RiscLocation:
+    location: OnChipCoordinate
+    neo_id: int | None
+    risc_name: str
+
+    def __hash__(self) -> int:
+        return hash((self.location, self.neo_id, self.risc_name))
+
+    def __str__(self) -> str:
+        return f"{self.location.to_user_str()} [neo: {self.neo_id}, risc: {self.risc_name}]"
 
 
 @dataclass
@@ -26,6 +41,14 @@ class RiscDebug:
     This class defines the interface for interacting with a RISC core for debugging purposes.
     """
 
+    def __init__(self, risc_location: RiscLocation):
+        self.risc_location = risc_location
+
+    @staticmethod
+    def get_instance(risc_location: RiscLocation) -> "RiscDebug":
+        noc_block = risc_location.location._device.get_block(risc_location.location)
+        return noc_block.get_risc_debug(risc_location.risc_name, risc_location.neo_id)
+
     @abstractmethod
     def is_in_reset(self) -> bool:
         """Check if the RISC core is in reset."""
@@ -43,6 +66,11 @@ class RiscDebug:
     @abstractmethod
     def is_halted(self) -> bool:
         """Check if the RISC core is halted."""
+        pass
+
+    @abstractmethod
+    def is_ebreak_hit(self) -> bool:
+        """Check if an ebreak instruction was hit and RISC got halted."""
         pass
 
     @abstractmethod
@@ -119,6 +147,43 @@ class RiscDebug:
         Set the branch prediction.
         Args:
             enable (bool): True to enable branch prediction, False to disable.
+        """
+        pass
+
+    @abstractmethod
+    def can_debug(self) -> bool:
+        """
+        Check if the RISC core supports debugging.
+        Returns:
+            bool: True if debugging is supported, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    def set_code_start_address(self, address: int | None) -> None:
+        """
+        Set the start address for the RISC core when taken out of reset.
+        Args:
+            address (int | None): Address to set as the start address, or None to put it to its default value.
+        """
+        pass
+
+    @abstractmethod
+    def get_data_private_memory(self) -> MemoryBlock | None:
+        """
+        Get the data private memory block for the RISC core.
+        Returns:
+            MemoryBlock | None: Data private memory block, or None if not available.
+        """
+        pass
+
+    @abstractmethod
+    def get_code_private_memory(self) -> MemoryBlock | None:
+        """
+        Get the code private memory block for the RISC core.
+        This was used on older architectures and is replaced by instruction cache on newer ones.
+        Returns:
+            MemoryBlock | None: Code private memory block, or None if not available.
         """
         pass
 

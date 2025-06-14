@@ -9,7 +9,8 @@ from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
-from ttexalens.hardware.risc_debug import RiscDebug
+from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.hardware.risc_debug import RiscDebug, RiscLocation
 from ttexalens.register_store import RegisterDescription, RegisterStore
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 
@@ -492,6 +493,7 @@ class BabyRiscDebugHardware:
 
 class BabyRiscDebug(RiscDebug):
     def __init__(self, risc_info: BabyRiscInfo, verbose: bool = False, enable_asserts: bool = True):
+        super().__init__(RiscLocation(risc_info.noc_block.location, risc_info.neo_id, risc_info.risc_name))
         register_store = risc_info.noc_block.get_register_store(neo_id=risc_info.neo_id)
         self.risc_info = risc_info
         self.register_store = register_store
@@ -640,6 +642,13 @@ class BabyRiscDebug(RiscDebug):
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
         return self.debug_hardware.is_halted()
 
+    def is_ebreak_hit(self) -> bool:
+        if self.enable_asserts:
+            self.assert_not_in_reset()
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+        return self.debug_hardware.read_status().is_ebreak_hit
+
     def halt(self):
         if self.enable_asserts:
             self.assert_not_in_reset()
@@ -697,3 +706,15 @@ class BabyRiscDebug(RiscDebug):
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
         self.debug_hardware.write_memory(address, value)
+
+    def can_debug(self) -> bool:
+        return self.risc_info.debug_hardware_present
+
+    def get_data_private_memory(self) -> MemoryBlock | None:
+        return self.risc_info.data_private_memory
+
+    def get_code_private_memory(self) -> MemoryBlock | None:
+        return self.risc_info.code_private_memory
+
+    def set_code_start_address(self, address: int | None) -> None:
+        self.risc_info.set_code_start_address(self.register_store, address)

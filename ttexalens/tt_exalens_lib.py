@@ -301,7 +301,8 @@ def load_elf(
 def run_elf(
     elf_file: str,
     core_loc: str | OnChipCoordinate | list[str | OnChipCoordinate],
-    risc_id: int = 0,
+    risc_name: str,
+    neo_id: int | None = None,
     device_id: int = 0,
     context: Context = None,
 ) -> None:
@@ -314,18 +315,16 @@ def run_elf(
                     2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
                     3. a list of X-Y (noc0/translated), X,Y (logical) or OnChipCoordinate locations of cores, possibly mixed;
                     4. an OnChipCoordinate object.
-            risc_id (int, default 0): RiscV ID (0: brisc, 1-3 triscs).
+            risc_name (str): RiscV name (e.g. "brisc", "trisc0", "trisc1", "trisc2", "ncrisc").
+            neo_id (int | None, optional): NEO ID of the RISC-V core.
             device_id (int, default 0):	ID number of device to run ELF on.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
-    from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc
+    from ttexalens.risc_loader import RiscLoader
 
     context = check_context(context)
 
     validate_device_id(device_id, context)
-    if (risc_id < 0) or (risc_id > 4):
-        raise TTException("Invalid RiscV ID. Must be between 0 and 4.")
-
     device = context.devices[device_id]
 
     locs = []
@@ -348,14 +347,15 @@ def run_elf(
 
     assert locs, "No valid core locations provided."
     for loc in locs:
-        rdbg = RiscDebug(RiscLoc(loc, 0, risc_id), context, False)
-        rloader = RiscLoader(rdbg, context, False)
-        rloader.run_elf(elf_file)
+        noc_block = device.get_block(loc)
+        risc_debug = noc_block.get_risc_debug(risc_name, neo_id)
+        risc_loader = RiscLoader(risc_debug)
+        risc_loader.run_elf(elf_file)
 
 
-def check_context(context: Context = None) -> Context:
+def check_context(context: Context | None = None) -> Context:
     """Function to initialize context if not provided. By default, it starts a local
-    TTExaLens session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
+    TTExaLens session with no output folder and caching disabled and sets GLOBAL_CONTEXT variable so
     that the context can be reused in calls to other functions.
     """
     if context is not None:
@@ -451,43 +451,49 @@ def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: 
 def read_tensix_register(
     core_loc: str | OnChipCoordinate,
     register,
+    noc_id: int = 0,
+    neo_id: int | None = None,
     device_id: int = 0,
-    context: Context = None,
+    context: Context | None = None,
 ) -> int:
     """Reads the value of a register from the tensix core.
 
     Args:
             core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-            register (str | TensixRegisterDescription): Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
-                                                        ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
+            register (str | RegisterDescription): Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
+                                                  ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
+            noc_id (int, default 0): NOC ID to use.
+            neo_id (int | None, optional): NEO ID of the register store.
             device_id (int, default 0):	ID number of device to read from.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 
     Returns:
             int: Value of the configuration or debug register specified.
     """
-    from ttexalens.device import TensixRegisterDescription
-    from ttexalens.debug_tensix import TensixDebug
+    from ttexalens.register_store import RegisterDescription
 
     context = check_context(context)
     validate_device_id(device_id, context)
-
+    device = context.devices[device_id]
     coordinate = convert_coordinate(core_loc, device_id, context)
 
-    if not isinstance(register, TensixRegisterDescription) and not isinstance(register, str):
+    if not isinstance(register, RegisterDescription) and not isinstance(register, str):
         raise TTException(
-            f"Invalid register type. Must be an str or instance of TensixRegisterDescription or its subclasses, but got {type(register)}"
+            f"Invalid register type. Must be an str or instance of RegisterDescription or its subclasses, but got {type(register)}"
         )
-
-    return TensixDebug(coordinate, device_id, context).read_tensix_register(register)
+    noc_block = device.get_block(coordinate)
+    register_store = noc_block.get_register_store(noc_id, neo_id)
+    return register_store.read_register(register)
 
 
 def write_tensix_register(
     core_loc: str | OnChipCoordinate,
     register,
     value: int,
+    noc_id: int = 0,
+    neo_id: int | None = None,
     device_id: int = 0,
-    context: Context = None,
+    context: Context | None = None,
 ) -> None:
 
     """Writes value to a register on the tensix core.
@@ -497,23 +503,27 @@ def write_tensix_register(
             register (str | TensixRegisterDescription): Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
                                                         ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
             value (int): Value to write to the register.
+            noc_id (int, default 0): NOC ID to use.
+            neo_id (int | None, optional): NEO ID of the register store.
             device_id (int, default 0):	ID number of device to read from.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
     """
 
-    from ttexalens.device import TensixRegisterDescription
-    from ttexalens.debug_tensix import TensixDebug
+    from ttexalens.register_store import RegisterDescription
 
     context = check_context(context)
     validate_device_id(device_id, context)
+    device = context.devices[device_id]
     coordinate = convert_coordinate(core_loc, device_id, context)
 
-    if not isinstance(register, TensixRegisterDescription) and not isinstance(register, str):
+    if not isinstance(register, RegisterDescription) and not isinstance(register, str):
         raise TTException(
-            f"Invalid register type. Must be an str or instance of TensixRegisterDescription or its subclasses, but got {type(register)}"
+            f"Invalid register type. Must be an str or instance of RegisterDescription or its subclasses, but got {type(register)}"
         )
 
-    TensixDebug(coordinate, device_id, context).write_tensix_register(register, value)
+    noc_block = device.get_block(coordinate)
+    register_store = noc_block.get_register_store(noc_id, neo_id)
+    register_store.write_register(register, value)
 
 
 def parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile:
@@ -529,7 +539,7 @@ def parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile:
 def top_callstack(
     pc: int,
     elfs: list[str] | str | list[ParsedElfFile] | ParsedElfFile,
-    offsets: int | list[int | None] = None,
+    offsets: int | None | list[int | None] = None,
     context: Context = None,
 ) -> list:
 
@@ -544,7 +554,7 @@ def top_callstack(
             List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
     """
 
-    from ttexalens.debug_risc import RiscLoader
+    from ttexalens.hardware.risc_debug import RiscDebug
 
     context = check_context(context)
 
@@ -563,18 +573,19 @@ def top_callstack(
     if len(offsets) != len(elfs):
         raise TTException("Number of offsets must match the number of elf files")
 
-    elfs = RiscLoader._read_elfs(elfs, offsets)
-    elf, frame_description = RiscLoader._find_elf_and_frame_description(elfs, pc, None)
+    elfs = RiscDebug._read_elfs(elfs, offsets)
+    elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, None)
     if frame_description is None or elf is None:
         return []
-    return RiscLoader.get_frame_callstack(elf, pc)[0]
+    return RiscDebug.get_frame_callstack(elf, pc)[0]
 
 
 def callstack(
     core_loc: str | OnChipCoordinate,
     elfs: list[str] | str | list[ParsedElfFile] | ParsedElfFile,
-    offsets: int | list[int | None] = None,
-    risc_id: int = 0,
+    offsets: int | None | list[int | None] = None,
+    risc_name: str = "brisc",
+    neo_id: int | None = None,
     max_depth: int = 100,
     stop_on_main: bool = True,
     verbose: bool = False,
@@ -587,7 +598,8 @@ def callstack(
             core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, DRAM channel (e.g., ch3), or OnChipCoordinate object.
             elfs (list[str] | str | list[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
             offsets (list[int], int, optional): List of offsets for each ELF file. Default: None.
-            risc_id (int): RISC-V ID (0: brisc, 1-3 triscs). Default: 0.
+            risc_name (str): RISC-V core name (e.g. "brisc", "trisc0", etc.).
+            neo_id (int | None, optional): NEO ID of the RISC-V core.
             max_depth (int): Maximum depth of the callstack. Default: 100.
             stop_on_main (bool): If True, stops at the main function. Default: True.
             verbose (bool): If True, enables verbose output. Default: False.
@@ -597,10 +609,9 @@ def callstack(
             List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
     """
 
-    from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name
-
     context = check_context(context)
     validate_device_id(device_id, context)
+    device = context.devices[device_id]
     coordinate = convert_coordinate(core_loc, device_id, context)
 
     # If given a single string, convert to list
@@ -618,29 +629,23 @@ def callstack(
     if len(offsets) != len(elfs):
         raise TTException("Number of offsets must match the number of elf files")
 
-    if risc_id < 0 or risc_id > 3:
-        raise ValueError("Invalid RiscV ID. Must be between 0 and 3.")
-
     if max_depth <= 0:
         raise ValueError("Max depth must be greater than 0.")
 
-    noc_id = 0
-    risc_debug = RiscDebug(RiscLoc(coordinate, noc_id, risc_id), context, verbose=verbose)
+    noc_block = device.get_block(coordinate)
+    risc_debug = noc_block.get_risc_debug(risc_name, neo_id)
     if risc_debug.is_in_reset():
-        raise TTException(f"RiscV core {get_risc_name(risc_id)} on location {coordinate.to_user_str()} is in reset")
-    loader = RiscLoader(risc_debug, context, verbose)
-
-    return loader.get_callstack(elfs, offsets, max_depth, stop_on_main)
+        raise TTException(f"RiscV core {risc_debug.risc_location} is in reset")
+    return risc_debug.get_callstack(elfs, offsets, max_depth, stop_on_main)
 
 
 def read_riscv_memory(
     core_loc: str | OnChipCoordinate,
     addr: int,
-    noc_id: int = 0,
-    risc_id: int = 0,
+    risc_name: str,
+    neo_id: int | None = None,
     device_id: int = 0,
     context: Context = None,
-    verbose: bool = False,
 ) -> int:
 
     """Reads a 32-bit word from the specified RISC-V core's private memory.
@@ -648,58 +653,48 @@ def read_riscv_memory(
     Args:
             core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
             addr (int): Memory address to read from.
-            noc_id (int): What noc to use. Options [0,1]. Default 0.
-            risc_id (int): RiscV ID (0: brisc, 1-3 triscs). Default 0.
+            risc_name (str): RISC-V core name (e.g. "brisc", "trisc0", etc.).
+            neo_id (int | None, optional): NEO ID of the RISC-V core.
             device_id (int): ID number of device to read from. Default 0.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-            verbose (bool): If True, enables verbose output. Default False.
 
     Returns:
             int: Data read from the device.
     """
-
-    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader, get_risc_name
 
     context = check_context(context)
     validate_device_id(device_id, context)
     device = context.devices[device_id]
     coordinate = convert_coordinate(core_loc, device_id, context)
 
-    if noc_id not in (0, 1):
-        raise ValueError("Invalid value for noc_id. Expected 0 or 1.")
+    noc_block = device.get_block(coordinate)
+    risc_debug = noc_block.get_risc_debug(risc_name, neo_id)
+    private_memory = risc_debug.get_data_private_memory()
+    if private_memory is None:
+        raise TTException(f"RISC-V core {risc_debug.risc_location} does not have private memory.")
+    if private_memory.address.private_address is None:
+        raise TTException(f"RISC-V core {risc_debug.risc_location} does not have private memory address.")
 
-    if risc_id < 0 or risc_id > 3:
-        raise ValueError("Invalid value for risc_id. Expected value between 0 and 3.")
-
-    base_address = device._get_riscv_local_memory_base_address()
-    size = device._get_riscv_local_memory_size(risc_id)
+    base_address = private_memory.address.private_address
+    size = private_memory.size
 
     if addr < base_address or addr >= base_address + size:
         raise ValueError(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    location = RiscLoc(loc=coordinate, noc_id=noc_id, risc_id=risc_id)
-    debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
-
-    if debug_risc.is_in_reset():
-        raise TTException(f"{get_risc_name(risc_id)} core is in reset.")
-
-    with debug_risc.ensure_halted():
-        ret = debug_risc.read_memory(addr)
-
-    return ret
+    with risc_debug.ensure_private_memory_access():
+        return risc_debug.read_memory(addr)
 
 
 def write_riscv_memory(
     core_loc: str | OnChipCoordinate,
     addr: int,
     value: int,
-    noc_id: int = 0,
-    risc_id: int = 0,
+    risc_name: str,
+    neo_id: int | None = None,
     device_id: int = 0,
     context: Context = None,
-    verbose: bool = False,
 ) -> None:
 
     """Writes a 32-bit word to the specified RISC-V core's private memory.
@@ -708,42 +703,35 @@ def write_riscv_memory(
             core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
             addr (int): Memory address to read from.
             value (int): Value to write.
-            noc_id (int): What noc to use. Options [0,1]. Default 0.
-            risc_id (int): RiscV ID (0: brisc, 1-3 triscs). Default 0.
+            risc_name (str): RISC-V core name (e.g. "brisc", "trisc0", etc.).
+            neo_id (int | None, optional): NEO ID of the RISC-V core.
             device_id (int): ID number of device to read from. Default 0.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-            verbose (bool): If True, enables verbose output. Default False.
     """
-
-    from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader, get_risc_name
 
     context = check_context(context)
     validate_device_id(device_id, context)
     device = context.devices[device_id]
     coordinate = convert_coordinate(core_loc, device_id, context)
 
+    noc_block = device.get_block(coordinate)
+    risc_debug = noc_block.get_risc_debug(risc_name, neo_id)
+    private_memory = risc_debug.get_data_private_memory()
+
     if value < 0 or value > 0xFFFFFFFF:
         raise ValueError(f"Invalid value {value}. Value must be a 32-bit unsigned integer.")
+    if private_memory is None:
+        raise TTException(f"RISC-V core {risc_debug.risc_location} does not have private memory.")
+    if private_memory.address.private_address is None:
+        raise TTException(f"RISC-V core {risc_debug.risc_location} does not have private memory address.")
 
-    if noc_id not in (0, 1):
-        raise ValueError(f"Invalid value for noc_id {noc_id}. Expected 0 or 1.")
-
-    if risc_id < 0 or risc_id > 3:
-        raise ValueError(f"Invalid value for risc_id {risc_id}. Expected value between 0 and 3.")
-
-    base_address = device._get_riscv_local_memory_base_address()
-    size = device._get_riscv_local_memory_size(risc_id)
+    base_address = private_memory.address.private_address
+    size = private_memory.size
 
     if addr < base_address or addr >= base_address + size:
         raise ValueError(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    location = RiscLoc(loc=coordinate, noc_id=noc_id, risc_id=risc_id)
-    debug_risc = RiscDebug(location=location, context=context, verbose=verbose)
-
-    if debug_risc.is_in_reset():
-        raise TTException(f"{get_risc_name(risc_id)} core is in reset.")
-
-    with debug_risc.ensure_halted():
-        debug_risc.write_memory(addr, value)
+    with risc_debug.ensure_private_memory_access():
+        risc_debug.write_memory(addr, value)

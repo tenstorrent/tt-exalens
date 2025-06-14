@@ -13,7 +13,6 @@ from ttexalens.hardware.wormhole.harvested_worker_block import WormholeHarvested
 from ttexalens.hardware.wormhole.pcie_block import WormholePcieBlock
 from ttexalens.hardware.wormhole.router_only_block import WormholeRouterOnlyBlock
 import ttexalens.util as util
-from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import DATA_TYPE
 from ttexalens.device import (
     TensixInstructions,
