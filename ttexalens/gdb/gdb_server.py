@@ -232,7 +232,8 @@ class GdbServer(threading.Thread):
                     process = self.available_processes.get(pid)
                     if process is not None:
                         # Remove all break points from the process
-                        for bid in range(0, process.risc_debug.max_watchpoints):
+                        watchpoints_state = process.risc_debug.read_watchpoints_state()
+                        for bid in range(0, len(watchpoints_state)):
                             process.risc_debug.disable_watchpoint(bid)
 
                         # Continue process if it is halted
@@ -247,7 +248,8 @@ class GdbServer(threading.Thread):
                     process = self.available_processes.get(pid)
                     if process is not None:
                         # Remove all break points from the process
-                        for bid in range(0, process.risc_debug.max_watchpoints):
+                        watchpoints_state = process.risc_debug.read_watchpoints_state()
+                        for bid in range(0, len(watchpoints_state)):
                             process.risc_debug.disable_watchpoint(bid)
 
                         # Continue process if it is halted
@@ -783,7 +785,7 @@ class GdbServer(threading.Thread):
                             if risc_debug_status.is_memory_watchpoint_hit:
                                 watchpoints = process.risc_debug.read_watchpoints_state()
                                 watchpoints_hit = risc_debug_status.watchpoints_hit
-                                for i in range(0, process.risc_debug.max_watchpoints):
+                                for i in range(0, min(len(watchpoints), len(watchpoints_hit))):
                                     if watchpoints_hit[i]:
                                         assert watchpoints[i].is_enabled
 
@@ -981,7 +983,7 @@ class GdbServer(threading.Thread):
             kind = parser.parse_hex()  # We ignore kind for now
             assert self.current_process is not None, "Current process should not be None when removing breakpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and not watchpoints[i].is_memory:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -1001,7 +1003,7 @@ class GdbServer(threading.Thread):
             kind = parser.parse_hex()
             assert self.current_process is not None, "Current process should not be None when removing watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_write:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -1015,7 +1017,7 @@ class GdbServer(threading.Thread):
             kind = parser.parse_hex()
             assert self.current_process is not None, "Current process should not be None when removing watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_read:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -1029,7 +1031,7 @@ class GdbServer(threading.Thread):
             kind = parser.parse_hex()
             assert self.current_process is not None, "Current process should not be None when removing watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_access:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -1041,13 +1043,17 @@ class GdbServer(threading.Thread):
             addr = parser.parse_hex()
             parser.parse(b",")
             kind = parser.parse_hex()
+            if addr is None:
+                util.ERROR(f"GDB: Something wrong with address of Z0: {parser.data!r}")
+                writer.append(b"E01")
+                return True
             # TODO: Add support for conditional break point
             # TODO: Add support for optional command list that should be executed when breakpoint is hit
 
             # Check if we already have watchpoint at this address
             assert self.current_process is not None, "Current process should not be None when setting breakpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and not watchpoints[i].is_memory:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -1055,7 +1061,7 @@ class GdbServer(threading.Thread):
                         return True
 
             # Find empty slot to add watchpoint
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if not watchpoints[i].is_enabled:
                     self.current_process.risc_debug.set_watchpoint_on_pc_address(i, addr)
                     writer.append(b"OK")
@@ -1077,13 +1083,17 @@ class GdbServer(threading.Thread):
             addr = parser.parse_hex()
             parser.parse(b",")
             kind = parser.parse_hex()
+            if addr is None:
+                util.ERROR(f"GDB: Something wrong with address of Z2: {parser.data!r}")
+                writer.append(b"E01")
+                return True
 
             # TODO: we are not using range for memory watchpoints, but we should at least inform user about that
 
             # Check if we already have watchpoint at this address
             assert self.current_process is not None, "Current process should not be None when setting watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_write:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -1091,7 +1101,7 @@ class GdbServer(threading.Thread):
                         return True
 
             # Find empty slot to add watchpoint
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if not watchpoints[i].is_enabled:
                     self.current_process.risc_debug.set_watchpoint_on_memory_write(i, addr)
                     writer.append(b"OK")
@@ -1107,13 +1117,17 @@ class GdbServer(threading.Thread):
             addr = parser.parse_hex()
             parser.parse(b",")
             kind = parser.parse_hex()
+            if addr is None:
+                util.ERROR(f"GDB: Something wrong with address of Z3: {parser.data!r}")
+                writer.append(b"E01")
+                return True
 
             # TODO: we are not using range for memory watchpoints, but we should at least inform user about that
 
             # Check if we already have watchpoint at this address
             assert self.current_process is not None, "Current process should not be None when setting watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_read:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -1121,7 +1135,7 @@ class GdbServer(threading.Thread):
                         return True
 
             # Find empty slot to add watchpoint
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if not watchpoints[i].is_enabled:
                     self.current_process.risc_debug.set_watchpoint_on_memory_read(i, addr)
                     writer.append(b"OK")
@@ -1137,13 +1151,17 @@ class GdbServer(threading.Thread):
             addr = parser.parse_hex()
             parser.parse(b",")
             kind = parser.parse_hex()
+            if addr is None:
+                util.ERROR(f"GDB: Something wrong with address of Z4: {parser.data!r}")
+                writer.append(b"E01")
+                return True
 
             # TODO: we are not using range for memory watchpoints, but we should at least inform user about that
 
             # Check if we already have watchpoint at this address
             assert self.current_process is not None, "Current process should not be None when setting watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_access:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
@@ -1151,7 +1169,7 @@ class GdbServer(threading.Thread):
                         return True
 
             # Find empty slot to add watchpoint
-            for i in range(0, self.current_process.risc_debug.max_watchpoints):
+            for i in range(0, len(watchpoints)):
                 if not watchpoints[i].is_enabled:
                     self.current_process.risc_debug.set_watchpoint_on_memory_access(i, addr)
                     writer.append(b"OK")
