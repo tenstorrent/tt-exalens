@@ -945,8 +945,11 @@ class RiscLoader:
             util.ERROR(e)
             raise util.TTException(f"Error loading elf file {elf_path}")
 
-        # TODO: This will be removed with PR that moves RiscLoader to new API
-        # self.context.elf_loaded(self.risc_debug.location.loc, self.risc_debug.location.risc_id, elf_path)
+        from ttexalens.hardware.risc_debug import RiscLocation
+
+        self.context.elf_loaded(
+            RiscLocation(self.risc_debug.location.loc, None, get_risc_name(self.risc_debug.location.risc_id)), elf_path
+        )
         return init_section_address
 
     def load_elf(self, elf_path: str):
