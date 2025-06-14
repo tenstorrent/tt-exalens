@@ -7,7 +7,21 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Generator
 from ttexalens import util
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.parse_elf import ParsedElfFile, ParsedElfFileWithOffset
+
+
+@dataclass
+class RiscLocation:
+    location: OnChipCoordinate
+    neo_id: int | None
+    risc_name: str
+
+    def __hash__(self) -> int:
+        return hash((self.location, self.neo_id, self.risc_name))
+
+    def __str__(self) -> str:
+        return f"{self.location.to_user_str()} [neo: {self.neo_id}, risc: {self.risc_name}]"
 
 
 @dataclass
@@ -25,6 +39,14 @@ class RiscDebug:
     Abstract base class for RISC debug interface.
     This class defines the interface for interacting with a RISC core for debugging purposes.
     """
+
+    def __init__(self, risc_location: RiscLocation):
+        self.risc_location = risc_location
+
+    @staticmethod
+    def get_instance(risc_location: RiscLocation) -> "RiscDebug":
+        noc_block = risc_location.location._device.get_block(risc_location.location)
+        return noc_block.get_risc_debug(risc_location.risc_name, risc_location.neo_id)
 
     @abstractmethod
     def is_in_reset(self) -> bool:
@@ -119,6 +141,15 @@ class RiscDebug:
         Set the branch prediction.
         Args:
             enable (bool): True to enable branch prediction, False to disable.
+        """
+        pass
+
+    @abstractmethod
+    def can_debug(self) -> bool:
+        """
+        Check if the RISC core supports debugging.
+        Returns:
+            bool: True if debugging is supported, False otherwise.
         """
         pass
 

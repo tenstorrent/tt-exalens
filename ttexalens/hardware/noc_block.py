@@ -37,6 +37,15 @@ class NocBlock:
         except NotImplementedError:
             return False
 
+    @cached_property
+    def debuggable_riscs(self) -> list[RiscDebug]:
+        return [risc_debug for risc_debug in self.all_riscs if risc_debug.can_debug]
+
+    @cached_property
+    @abstractmethod
+    def all_riscs(self) -> list[RiscDebug]:
+        pass
+
     @cache
     def get_default_risc_debug(self) -> RiscDebug:
         """
