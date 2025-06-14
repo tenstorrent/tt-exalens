@@ -768,21 +768,6 @@ def convert_int_to_data_type(value: int, data_type: DATA_TYPE, number_of_bits: i
         raise ValueError(f"Invalid value for data_type: {data_type}")
 
 
-def convert_data_type_to_int(value: str) -> int:
-    if re.match(r"^0x[0-9a-fA-F]+$", value):
-        return int(value, 16)
-    elif re.match(r"^[0-9]+$", value):
-        return int(value)
-    elif re.match(r"^(True|False)(,(True|False))*$", value):
-        return int("".join(["1" if v == "True" else "0" for v in value.split(",")]), 2)
-    elif value in TensixDataFormat.__members__:
-        return TensixDataFormat[value].value
-    else:
-        raise ValueError(
-            f"Invalid value {value}. Expected a hexadecimal or decimal integer, boolean list or TensixDataFormat."
-        )
-
-
 def word_to_byte_array(A):
     byte_array = []
     for i in A:

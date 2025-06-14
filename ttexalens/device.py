@@ -428,10 +428,6 @@ class Device(TTObject):
             if rst_reg != ALL_SOFT_RESET:
                 util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
 
-    @abstractmethod
-    def _get_tensix_register_map_keys(self) -> list[str]:
-        pass
-
     # TODO: This is old API. Create all of these in NocBlock. Change existing API to use get_block and call new API.
 
     @abstractmethod
