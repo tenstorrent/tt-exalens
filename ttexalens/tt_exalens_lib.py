@@ -246,9 +246,10 @@ def write_to_device(
 def load_elf(
     elf_file: str,
     core_loc: str | OnChipCoordinate | list[str | OnChipCoordinate],
-    risc_id: int = 0,
+    risc_name: str,
+    neo_id: int | None = None,
     device_id: int = 0,
-    context: Context = None,
+    context: Context | None = None,
 ) -> None:
     """Loads the given ELF file into the specified RISC core. RISC core must be in reset before loading the ELF.
 
@@ -259,18 +260,16 @@ def load_elf(
                     2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
                     3. a list of X-Y (noc0/translated), X,Y (logical) or OnChipCoordinate locations of cores, possibly mixed;
                     4. an OnChipCoordinate object.
-            risc_id (int, default 0): RiscV ID (0: brisc, 1-3 triscs).
+            risc_name (str): RiscV name (e.g. "brisc", "trisc0", "trisc1", "trisc2", "ncrisc").
+            neo_id (int | None, optional): NEO ID of the RISC-V core.
             device_id (int, default 0):	ID number of device to run ELF on.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
-    from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc
+
+    from ttexalens.risc_loader import RiscLoader
 
     context = check_context(context)
-
     validate_device_id(device_id, context)
-    if (risc_id < 0) or (risc_id > 4):
-        raise TTException("Invalid RiscV ID. Must be between 0 and 4.")
-
     device = context.devices[device_id]
 
     locs: list[OnChipCoordinate] = []
@@ -293,9 +292,10 @@ def load_elf(
 
     assert locs, "No valid core locations provided."
     for loc in locs:
-        rdbg = RiscDebug(RiscLoc(loc, 0, risc_id), context, False)
-        rloader = RiscLoader(rdbg, context, False)
-        rloader.load_elf(elf_file)
+        noc_block = device.get_block(loc)
+        risc_debug = noc_block.get_risc_debug(risc_name, neo_id)
+        risc_loader = RiscLoader(risc_debug)
+        risc_loader.load_elf(elf_file)
 
 
 def run_elf(
