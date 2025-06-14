@@ -31,11 +31,7 @@ class NocBlock:
 
     @cached_property
     def has_risc_cores(self) -> bool:
-        try:
-            self.get_default_risc_debug()
-            return True
-        except NotImplementedError:
-            return False
+        return len(self.debuggable_riscs) > 0
 
     @cached_property
     def debuggable_riscs(self) -> list[RiscDebug]:
@@ -45,6 +41,14 @@ class NocBlock:
     @abstractmethod
     def all_riscs(self) -> list[RiscDebug]:
         pass
+
+    @cached_property
+    def risc_names(self) -> list[str]:
+        """
+        Returns a list of RISC core names available in the NocBlock.
+        This method should be overridden in subclasses to provide a specific implementation.
+        """
+        return [risc.risc_location.risc_name for risc in self.all_riscs]
 
     @cache
     def get_default_risc_debug(self) -> RiscDebug:
