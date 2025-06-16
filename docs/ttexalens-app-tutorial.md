@@ -1,25 +1,51 @@
-# TTExaLens Application Tutorial
+# Command-Line Application Tutorial
 
-This tutorial shows how to use the TTExaLens application.
-It gives examples of basic commands, as well as how to run TTExaLens on remote machine and from cache.
+This tutorial explains how to use the ttexalens command-line application.
+It includes examples of basic commands, remote usage, and running from cache.
 
-To follow this tutorial, you should either [build TTExaLens from source](./../README.md#building-ttexalens) and run it through the python script with `./tt-exalens.py`, or [install from wheel](./../README.md#building-and-installing-wheel) and run with `tt-exalens.py`.
+To follow this tutorial, you can either:
+
+- [Build from source](./../README.md#building-the-library-and-the-application) and run the script with `./tt-exalens.py`, or
+- [Install from wheel](./../README.md#building-and-installing-wheel) and run it using the `tt-exalens` command.
 
 ## Basic Usage
 
-Running TTExaLens application should give the following output:
+To start the application, run:
+
+```bash
+./tt-exalens.py
+```
+
+If installed via wheel, you can also run:
+```bash
+ttexalens
+```
+
+Running the application should produce the following prompt:
 
 ```bash
 gdb:None device:0 loc:1-1 (0, 0) >
 ```
 
-The last line is the command prompt.
-It shows the basic information, such as status of the gdb server, currently selected device id and targeted core location.
-Some commands, such as `re`, use the currently-selected device and location if parameters are not provided.
-For example, running `re build/riscv-src/wormhole/run_elf_test.brisc.elf` will load elf on currently selected core and device (at start, core 0,0 of device 0 will be selected).
+This is the command prompt. It displays key information such as:
+- GDB server status (gdb:None)
+- Currently selected device ID (device:0)
+- Targeted core location (loc:1-1 (0, 0))
 
-Typing `h` or `help` into the prompt lists the available commands and gives a short explanation for each of them.
-It is also possible to type `help <command-name>` to get more detailed help for each of available commands.
+Some commands (like ```re```) use the currently selected device and location if no parameters are provided.
+
+For example, running:
+```
+re build/riscv-src/wormhole/run_elf_test.brisc.elf
+```
+will load the ELF file onto the currently selected core and device (initially, core (0, 0) of device 0).
+
+Typing `h` or `help` at the prompt to list available commands with brief descriptions.
+
+For detailed help on a specific command, use:
+```
+help <command-name>
+```
 
 ```
 Full Name        Short    Description
@@ -198,18 +224,18 @@ Register     BRISC    TRISC0    TRISC1    TRISC2
 We can see that the core that `gpr` acts on has changed.
 
 
-## Using TTExaLens Server
+## Using the Server
 
-TTExaLens can be started in client-server mode, which allows debugging on the remote machine.
-The server can be started as standalone program.
-To start TTExaLens server, simply call
+The debugger can be started in client-server mode, enabling remote debugging.
+
+To start the server as a standalone program, simply run:
 ```
 ./tt-exalens.py --server
 ```
 You can optionally set the port to be used by specifying `--port=<port>`, but the default value of 5555 is fine for the purpose of this tutorial.
 The server can be exited by simply pressing enter key in the terminal.
 
-To attach to the server, you can spin up a TTExaLens client with
+To attach to the server, start the client with:
 ```
 ./tt-exalens.py --remote --remote-address=<ip:port>
 ```
@@ -226,14 +252,15 @@ will try to connect to server on port 5555 running on localhost.
 From there on, you can use TTExaLens the same way you would use it in local mode.
 
 
-## Using TTExaLens's caching Mechanism
+## Using the Caching Mechanism
 
-TTExaLens has a built-in caching mechanism which allows you to save the results of commands you run and reuse them later, or on a different machine.
-The caching can be turned on using `--write-cache` flag in either local or client mode.
-The cache is saved as a pickle file and can be read by running TTExaLens in cached mode.
+The debugger includes a built-in caching mechanism that allows you to save the results of executed commands and reuse them later, even on a different machine.
 
-Let's say that you need to save the results of some commands to take another look at them on another machine which does not have TT hardware.
-You can run TTExaLens with cache writing turned on:
+Caching can be enabled using the `--write-cache` flag in both local and client modes.
+The results are saved as a `.pkl` (pickle) file, which can later be used in cached mode.
+
+For example, to save results for later inspection on a machine without Tenstorrent hardware, run:
+
 ```
 ./tt-exalens.py --write-cache --cache-path=tutorial_cache.pkl
 ```
@@ -249,18 +276,18 @@ gdb:None Current epoch:None(None) device:0 loc:1-1 (0,0) > brxy 0,0 0x100 4
 0,0 (L1) : 0x00000100 (16 bytes)
 0x00000100:  00001234  00000000  00000000  00000000
 ```
-Finally, by exiting TTExaLens, cache is automatically written to the specified file:
+Finally, the cache is automatically written to the specified file upon exit:
 ```
 gdb:None Current epoch:None(None) device:0 loc:1-1 (0,0) > x
 Saving server cache to file tutorial_cache.pkl
   Saved 11 entries
 ```
 
-We can now open this cache in TTExaLens by calling
+We can now open this cache by running:
 ```
 ./tt-exalens.py --cached --cache-path=tutorial_cache.pkl
 ```
-which gives
+This will produce output like:
 ```
 Starting TTExaLens from cache.
 Loading server cache from file tutorial_cache.pkl
@@ -304,19 +331,26 @@ ttexalens/tt_exalens_ifc_cache.py:174               wrapper                 TTEx
 --------------------------------------------  ----------------------  ---------------------------------------------------------------------------------
 ```
 
-For more details of inner workings of TTExaLens refer to [the `ttexalens` library tutorial](./ttexalens-lib-tutorial.md#ttexalens-internal-structure-and-initialization).
+For more details refer to  [the `ttexalens` library tutorial](./ttexalens-lib-tutorial.md#ttexalens-internal-structure-and-initialization).
 
 
 ## Scripting and Development
 
 ### Simple scripting with --commands CLI argument
 
-When starting TTExaLens, you can specify a list of commands to run. For example:
+When starting the application, you can specify a list of commands to run. For example:
 ```
 tt-exalens --commands "go -l 2,2; gpr; x"
 ```
-The above command will run `go -l 2,2`, changing active location to 2,2, followed by `gpr` and then exit. The output can then be redirected to a file for further processing.
+This will:
+- Set the active location to (2,2) using go -l 2,2
+- Run gpr to print general-purpose registers
+- Exit the application with x
 
+The output can be redirected to a file for further processing:
+```
+tt-exalens --commands "go -l 2,2; gpr; x" > output.txt
+```
 
 ### Developing new commands (`ttexalens/cli_commands/` folder)
 
