@@ -2,11 +2,13 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from functools import cache, cached_property
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.quasar.functional_neo_block import QuasarFunctionalNeoBlock
 from ttexalens.hardware.quasar.noc_block import QuasarNocBlock
+from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import RegisterStore
 
 
@@ -56,3 +58,26 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
         elif neo_id == 3:
             return self.neo3.register_store
         return super().get_register_store(noc_id, neo_id)
+
+    @cached_property
+    def all_riscs(self) -> list[RiscDebug]:
+        riscs = []
+        riscs.extend(self.neo0.all_riscs)
+        riscs.extend(self.neo1.all_riscs)
+        riscs.extend(self.neo2.all_riscs)
+        riscs.extend(self.neo3.all_riscs)
+        return riscs
+
+    @cache
+    def get_risc_debug(self, risc_name: str, neo_id: int | None = None) -> RiscDebug:
+        if neo_id == self.neo0.neo_id:
+            return self.neo0.get_risc_debug(risc_name)
+        elif neo_id == self.neo1.neo_id:
+            return self.neo1.get_risc_debug(risc_name)
+        elif neo_id == self.neo2.neo_id:
+            return self.neo2.get_risc_debug(risc_name)
+        elif neo_id == self.neo3.neo_id:
+            return self.neo3.get_risc_debug(risc_name)
+        raise ValueError(
+            f"RISC debug for {risc_name} [neo: {neo_id}] is not supported in Quasar functional worker block."
+        )

@@ -216,10 +216,10 @@ class RegisterStore:
         assert register.mask == 0xFFFFFFFF
         return register.raw_address
 
-    def parse_register_description(self, input_string: str) -> RegisterDescription:
+    def parse_register_description(self, input_string: str) -> tuple[RegisterDescription, str]:
         # Check if the input string is a register name
         if input_string in self.registers:
-            return self.registers[input_string]
+            return self.registers[input_string], input_string
 
         # Try to parse the input string as a register description
         match = re.match(r"(\w+)\((.*?)\)", input_string)
@@ -267,7 +267,7 @@ class RegisterStore:
         #             f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
         #         )
 
-        return register
+        return register, register.__str__()
 
     def read_register(self, register: str | RegisterDescription) -> int:
         if isinstance(register, str):
