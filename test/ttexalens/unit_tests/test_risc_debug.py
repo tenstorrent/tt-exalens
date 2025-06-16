@@ -82,8 +82,9 @@ class TestDebugging(unittest.TestCase):
             )
         for device in self.context.devices.values():
             device.all_riscs_assert_soft_reset()
-            for rdbg in device.debuggable_cores:
-                self.assertTrue(rdbg.is_in_reset())
+            for noc_block in device.get_blocks("functional_workers"):
+                for rdbg in noc_block.debuggable_riscs:
+                    self.assertTrue(rdbg.is_in_reset())
 
     def test_read_write_gpr(self):
         """Write then read value in all registers (except zero and pc)."""

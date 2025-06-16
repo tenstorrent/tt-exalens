@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from dataclasses import dataclass
 from functools import cached_property
-from ttexalens.debug_risc import RiscDebug
+from ttexalens.hardware.risc_debug import RiscDebug
 
 
 @dataclass
@@ -18,7 +18,7 @@ class GdbThreadId:
 @dataclass
 class GdbProcess:
     process_id: int
-    elf_path: str
+    elf_path: str | None
     risc_debug: RiscDebug
     virtual_core_id: int
     core_type: str

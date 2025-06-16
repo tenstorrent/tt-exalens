@@ -10,6 +10,7 @@ from ttexalens.firmware import ELF
 from sortedcontainers import SortedSet
 
 from ttexalens.hardware.risc_debug import RiscLocation
+from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.tt_exalens_ifc_base import TTExaLensCommunicator
 
 # All-encompassing structure representing a TTExaLens context
@@ -89,7 +90,7 @@ class Context:
 class LimitedContext(Context):
     def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc_yaml, use_noc1=False):
         super().__init__(server_ifc, cluster_desc_yaml, "limited", use_noc1)
-        self.loaded_elfs: dict[RiscLocation, str] = {}  # (OnChipCoordinate, risc_id) => elf_path
+        self.loaded_elfs: dict[RiscLocation, str] = {}
 
     def get_risc_elf_path(self, risc_location: RiscLocation) -> str | None:
         return self.loaded_elfs.get(risc_location)

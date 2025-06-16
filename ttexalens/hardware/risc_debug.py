@@ -26,6 +26,31 @@ class RiscLocation:
 
 
 @dataclass
+class RiscDebugStatus:
+    is_halted: bool
+    is_pc_watchpoint_hit: bool
+    is_memory_watchpoint_hit: bool
+    is_ebreak_hit: bool
+    watchpoints_hit: list[bool]
+
+
+@dataclass
+class RiscDebugWatchpointState:
+    is_enabled: bool
+    is_memory: bool
+    is_read: bool
+    is_write: bool
+
+    @property
+    def is_access(self):
+        return self.is_memory and self.is_read and self.is_write
+
+    @property
+    def is_breakpoint(self):
+        return not self.is_memory
+
+
+@dataclass
 class CallstackEntry:
     pc: int | None = None
     function_name: str | None = None
@@ -138,6 +163,84 @@ class RiscDebug:
             address (int): Memory address to read.
         Returns:
             int: Value at the memory address.
+        """
+        pass
+
+    @abstractmethod
+    def read_status(self) -> RiscDebugStatus:
+        """
+        Read the debugging status of the RISC core.
+        Returns:
+            RiscDebugStatus: Debugging status of the RISC core.
+        """
+        pass
+
+    @abstractmethod
+    def read_watchpoints_state(self) -> list[RiscDebugWatchpointState]:
+        """
+        Read the state of all watchpoints.
+        Returns:
+            list[RiscDebugWatchpointState]: List of watchpoint states.
+        """
+        pass
+
+    @abstractmethod
+    def read_watchpoint_address(self, watchpoint_index: int) -> int:
+        """
+        Read the address of a watchpoint.
+        Args:
+            watchpoint_index (int): Index of the watchpoint to read.
+        Returns:
+            int: Address of the watchpoint.
+        """
+        pass
+
+    @abstractmethod
+    def disable_watchpoint(self, watchpoint_index: int) -> None:
+        """
+        Disable a watchpoint.
+        Args:
+            watchpoint_index (int): Index of the watchpoint to disable.
+        """
+        pass
+
+    @abstractmethod
+    def set_watchpoint_on_pc_address(self, watchpoint_index: int, address: int) -> None:
+        """
+        Set a watchpoint on the program counter address.
+        Args:
+            watchpoint_index (int): Index of the watchpoint to set.
+            address (int): Address to set the watchpoint on.
+        """
+        pass
+
+    @abstractmethod
+    def set_watchpoint_on_memory_read(self, watchpoint_index: int, address: int) -> None:
+        """
+        Set a watchpoint on memory read.
+        Args:
+            watchpoint_index (int): Index of the watchpoint to set.
+            address (int): Address to set the watchpoint on.
+        """
+        pass
+
+    @abstractmethod
+    def set_watchpoint_on_memory_write(self, watchpoint_index: int, address: int) -> None:
+        """
+        Set a watchpoint on memory write.
+        Args:
+            watchpoint_index (int): Index of the watchpoint to set.
+            address (int): Address to set the watchpoint on.
+        """
+        pass
+
+    @abstractmethod
+    def set_watchpoint_on_memory_access(self, watchpoint_index: int, address: int) -> None:
+        """
+        Set a watchpoint on memory access.
+        Args:
+            watchpoint_index (int): Index of the watchpoint to set.
+            address (int): Address to set the watchpoint on.
         """
         pass
 
