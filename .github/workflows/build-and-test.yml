@@ -4,10 +4,13 @@ on:
   workflow_dispatch:
   workflow_call:
 
+env:
+  runner_name: tt-beta-ubuntu-2204-large
+
 jobs:
 
   build-image:
-    runs-on: tt-beta-ubuntu-2204-large
+    runs-on: ${{ env.runner_name }}
     outputs:
       docker-image: ${{ steps.build.outputs.docker-image }}
     steps:
@@ -35,6 +38,15 @@ jobs:
           set pipefail
           .github/build-docker-images.sh | tee docker.log
           DOCKER_CI_IMAGE=$(tail -n 1 docker.log)
+          
+          # Replace ghcr.io with harbor.ci.tenstorrent.net if running on tt-beta-ubuntu-2204-large
+          if [[ "${{ env.runner_name }}" == "tt-beta-ubuntu-2204-large" ]]; then
+            # Extract the part after ghcr.io/ and add it to harbor.ci.tenstorrent.net/
+            IMAGE_PATH=$(echo "$DOCKER_CI_IMAGE" | sed 's|^ghcr.io/||')
+            DOCKER_CI_IMAGE="harbor.ci.tenstorrent.net/$IMAGE_PATH"
+            echo "Replaced registry in Docker image name for tt-beta-ubuntu-2204-large"
+          fi
+          
           echo "DOCKER_CI_IMAGE $DOCKER_CI_IMAGE"
           echo "docker-image=$DOCKER_CI_IMAGE" >> "$GITHUB_OUTPUT"
 
