@@ -110,10 +110,47 @@ def unpack_bfp8_b(data):
     return bfloat16_values
 
 
+def unpack_fp32(data) -> list[float]:
+    # 64x32 bytes
+    # Each row can be grabbed as 16x uint16_t
+    # Swizzle and remap aren't accounted for
+    row_size = 32
+    total_rows = len(data) // row_size
+    print(f"total_rows: {total_rows}")
+    assert total_rows % 2 == 0
+    half = total_rows // 2
+
+    floats: list[float] = []
+    for r in range(half):
+        base_hi = r * row_size
+        base_lo = (r + half)
+        # for each of the 16 uint16_t slots in the row
+        for i in range(16):
+            hi_bytes = data[base_hi + 2 * i : base_hi + 2 * i + 2]
+            lo_bytes = data[base_lo + 2 * i : base_lo + 2 * i + 2]
+            hi = int.from_bytes(hi_bytes, byteorder="big")
+            lo = int.from_bytes(lo_bytes, byteorder="big")
+
+            # reconstruct an IEEE 32-bit float
+            # hi: s m m m m m m m e e e e e e e e
+            # lo: m m m m m m m m m m m m m m m m
+            # should become: s 8e 23m
+            sign = (hi & 0x8000) << 16
+            exponent = (hi & 0x00FF) << 23
+            mantissa = ((hi & 0x7F00) << 8) | lo
+            result = sign | exponent | mantissa
+
+            floats.append(struct.unpack(">f", result.to_bytes(4, "big"))[0])
+    
+    return floats
+
+
 def unpack_data(data, df: int | TensixDataFormat):
     if isinstance(df, int):
         df = TensixDataFormat(df)
 
+    if df == TensixDataFormat.Float32:
+        return unpack_fp32(data)
     if df == TensixDataFormat.Float16:
         return unpack_fp16(data)
     elif df == TensixDataFormat.Float16_b:
