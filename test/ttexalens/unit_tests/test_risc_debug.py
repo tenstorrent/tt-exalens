@@ -111,13 +111,7 @@ class TestDebugging(unittest.TestCase):
 
         # Test readonly registers
         self.assertEqual(self.core_sim.read_gpr(get_register_index("zero")), 0, "zero should always be 0.")
-        if not (self.core_sim.is_blackhole() and self.core_sim.is_eth_block()):
-            # PC is not readable through GPR on blackhole ETH core for now
-            self.assertEqual(
-                self.core_sim.get_pc(),
-                self.core_sim.program_base_address + 4,
-                "PC should be 4.",
-            )
+        self.assertPcEquals(4)
 
         # Test write then read for all other registers
         for i in range(1, 31):
