@@ -994,6 +994,9 @@ class TestDebugging(unittest.TestCase):
     def test_memory_watchpoint(self):
         """Test running 64 bytes of generated code that just write data on memory and tests memory watchpoints. All that is done on brisc."""
 
+        if self.core_sim.is_eth_block():
+            self.skipTest("This test sometimes fails on ETH cores. Issue: #452")
+
         addr1 = 0x10000
         addr2 = 0x20000
         addr3 = 0x30000
