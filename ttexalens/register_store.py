@@ -11,12 +11,12 @@ from typing import TYPE_CHECKING, Callable
 
 from ttexalens.context import Context
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
+from ttexalens.unpack_regfile import TensixDataFormat
 
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.device import Device
     from ttexalens.hardware.device_address import DeviceAddress
-    from ttexalens.unpack_regfile import TensixDataFormat
 
 # An enumeration of different data types in registers.
 class REGISTER_DATA_TYPE(Enum):
