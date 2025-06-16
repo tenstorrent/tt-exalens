@@ -95,7 +95,7 @@ To build the wheel from source, run:
 ```
 make wheel
 ```
-in the root directory. Then install it using: 
+in the root directory. Then install it using:
 ```
 pip install build/ttexalens_wheel/<ttexalens_wheel>.whl
 ```
@@ -107,7 +107,7 @@ The CLI application can be run via the `tt-exalens.py` script or by invoking `tt
 It currently operates in *Limited* mode by default, with plans to support additional modes in the future.
 Limited mode allows basic communication with the device, such as reading/writing registers and memory, and running `.elf` files on RISC cores.
 
-The CLI application can target local or remote devices.  
+The CLI application can target local or remote devices.
 For remote runs, a server instance is required and can be started using the same application.
 
 It’s also possible to cache session results and replay commands on a machine without Tenstorrent hardware.
@@ -120,7 +120,7 @@ For more usage information, refer to [the tutorial](./docs/ttexalens-app-tutoria
 
 The application functionalities can also be accessed through the `ttexalens` Python library to create scripts that interact with Tenstorrent hardware.
 
-For a quick start with the library, check out [the tutorial](docs/ttexalens-lib-tutorial.md).  
+For a quick start with the library, check out [the tutorial](docs/ttexalens-lib-tutorial.md).
 Full documentation is also available [here](docs/ttexalens-lib-docs.md).
 
 ## Development

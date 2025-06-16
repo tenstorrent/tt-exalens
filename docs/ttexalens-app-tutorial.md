@@ -1,11 +1,11 @@
 # Command-Line Application Tutorial
 
-This tutorial explains how to use the ttexalens command-line application.  
+This tutorial explains how to use the ttexalens command-line application.
 It includes examples of basic commands, remote usage, and running from cache.
 
 To follow this tutorial, you can either:
 
-- [Build from source](./../README.md#building-the-library-and-the-application) and run the script with `./tt-exalens.py`, or  
+- [Build from source](./../README.md#building-the-library-and-the-application) and run the script with `./tt-exalens.py`, or
 - [Install from wheel](./../README.md#building-and-installing-wheel) and run it using the `tt-exalens` command.
 
 ## Basic Usage
@@ -256,7 +256,7 @@ From there on, you can use TTExaLens the same way you would use it in local mode
 
 The debugger includes a built-in caching mechanism that allows you to save the results of executed commands and reuse them later, even on a different machine.
 
-Caching can be enabled using the `--write-cache` flag in both local and client modes.  
+Caching can be enabled using the `--write-cache` flag in both local and client modes.
 The results are saved as a `.pkl` (pickle) file, which can later be used in cached mode.
 
 For example, to save results for later inspection on a machine without Tenstorrent hardware, run:
