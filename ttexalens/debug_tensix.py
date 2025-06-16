@@ -260,11 +260,76 @@ class TensixDebug:
                 self.device_id,
                 self.context,
             )
+    
+    def _inject_row_prologue(self, regfile: REGFILE, row: int) -> None:
+        ops = self.device.instructions
+        trisc_id = 2
+        row_addr = row if regfile != REGFILE.SRCA else 0
 
-    def read_regfile_data(
-        self,
-        regfile: int | str | REGFILE,
-    ) -> list[int]:
+        if regfile == REGFILE.SRCA:
+            self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), trisc_id)
+            self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), trisc_id)
+            self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), trisc_id)
+            self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), trisc_id)
+        elif regfile == REGFILE.SRCB:
+            # Not supported
+            self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), trisc_id)
+
+            self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
+            self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
+
+            self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
+            self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), trisc_id)
+            self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
+    
+    def _inject_row_epilogue(self, regfile: REGFILE, row: int) -> None:
+        ops = self.device.instructions
+        trisc_id = 2
+        if regfile == REGFILE.SRCA:
+            self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), trisc_id)
+            self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), trisc_id)
+            if row % 16 == 15:
+                self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), trisc_id)
+
+    def _set_debug_read_enabled(self, enabled: bool) -> None:
+        value = 0x1 if enabled else 0x0
+        write_words_to_device(
+            self.core_loc,
+            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
+            value,
+            self.device_id,
+            self.context,
+        )
+
+    def read_regfile_row(self, regfile: REGFILE, row: int) -> list[int]:
+        data: list[int] = []
+        row_addr = row if regfile != REGFILE.SRCA else 0
+        regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
+
+        self._inject_row_prologue(regfile, row)
+
+        for i in range(8):
+            dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
+            write_words_to_device(
+                self.core_loc,
+                self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
+                dbg_array_rd_cmd,
+                self.device_id,
+                self.context,
+            )
+            rd_data = read_word_from_device(
+                self.core_loc,
+                self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA"),
+                self.device_id,
+                self.context,
+            )
+            data += list(int.to_bytes(rd_data, 4, byteorder="big"))
+
+        self._inject_row_epilogue(regfile, row)
+
+        return data
+
+    def read_regfile_data(self, regfile: int | str | REGFILE) -> list[int]:
         """Dumps SRCA/DSTACC register file from the specified core.
             Due to the architecture of SRCA, you can see only see last two faces written.
             SRCB is currently not supported.
@@ -275,76 +340,20 @@ class TensixDebug:
         Returns:
                 bytearray: 64x32 bytes of register file data (64 rows, 32 bytes per row).
         """
-        trisc_id = 2
         regfile = convert_regfile(regfile)
 
         if regfile == REGFILE.SRCB:
             raise TTException("SRCB is currently not supported.")
-
-        ops = self.device.instructions
         if self.device._arch != "wormhole_b0" and self.device._arch != "blackhole":
             raise TTException("Not supported for this architecture: ")
 
-        write_words_to_device(
-            self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
-            0x1,
-            self.device_id,
-            self.context,
-        )
+        self._set_debug_read_enabled(True)
         data = []
 
         for row in range(64):
-            row_addr = row if regfile != REGFILE.SRCA else 0
-            regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
+            data += self.read_regfile_row(regfile, row)
 
-            if regfile == REGFILE.SRCA:
-                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), trisc_id)
-                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), trisc_id)
-
-                self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), trisc_id)
-
-                self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), trisc_id)
-            elif regfile == REGFILE.SRCB:
-                self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), trisc_id)
-
-                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
-                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
-
-                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
-                self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), trisc_id)
-                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
-
-            for i in range(8):
-                dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
-                write_words_to_device(
-                    self.core_loc,
-                    self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
-                    dbg_array_rd_cmd,
-                    self.device_id,
-                    self.context,
-                )
-                rd_data = read_word_from_device(
-                    self.core_loc,
-                    self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA"),
-                    self.device_id,
-                    self.context,
-                )
-                data += list(int.to_bytes(rd_data, 4, byteorder="big"))
-
-            if regfile == REGFILE.SRCA:
-                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), trisc_id)
-                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), trisc_id)
-                if row % 16 == 15:
-                    self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), trisc_id)
-
-        write_words_to_device(
-            self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
-            0x0,
-            self.device_id,
-            self.context,
-        )
+        self._set_debug_read_enabled(False)
         write_words_to_device(
             self.core_loc,
             self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
