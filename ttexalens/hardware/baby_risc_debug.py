@@ -9,7 +9,7 @@ from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
-from ttexalens.hardware.risc_debug import RiscDebug
+from ttexalens.hardware.risc_debug import RiscDebug, RiscDebugStatus, RiscDebugWatchpointState, RiscLocation
 from ttexalens.register_store import RegisterDescription, RegisterStore
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 
@@ -178,13 +178,7 @@ def get_register_name(reg_index_or_name):
 
 
 @dataclass
-class BabyRiscDebugStatus:
-    is_halted: bool
-    is_pc_watchpoint_hit: bool
-    is_memory_watchpoint_hit: bool
-    is_ebreak_hit: bool
-    watchpoints_hit: list[bool]
-
+class BabyRiscDebugStatus(RiscDebugStatus):
     @staticmethod
     def from_register(value: int, max_watchpoints: int):
         return BabyRiscDebugStatus(
@@ -197,20 +191,7 @@ class BabyRiscDebugStatus:
 
 
 @dataclass
-class BabyRiscDebugWatchpointState:
-    is_enabled: bool
-    is_memory: bool
-    is_read: bool
-    is_write: bool
-
-    @property
-    def is_access(self):
-        return self.is_memory and self.is_read and self.is_write
-
-    @property
-    def is_breakpoint(self):
-        return not self.is_memory
-
+class BabyRiscDebugWatchpointState(RiscDebugWatchpointState):
     @staticmethod
     def from_value(value: int):
         assert value & HW_WATCHPOINT_MASK == value, f"Invalid watchpoint value {value:08x}"
@@ -492,6 +473,7 @@ class BabyRiscDebugHardware:
 
 class BabyRiscDebug(RiscDebug):
     def __init__(self, risc_info: BabyRiscInfo, verbose: bool = False, enable_asserts: bool = True):
+        super().__init__(RiscLocation(risc_info.noc_block.location, risc_info.neo_id, risc_info.risc_name))
         register_store = risc_info.noc_block.get_register_store(neo_id=risc_info.neo_id)
         self.risc_info = risc_info
         self.register_store = register_store
@@ -697,3 +679,46 @@ class BabyRiscDebug(RiscDebug):
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
         self.debug_hardware.write_memory(address, value)
+
+    def read_status(self) -> RiscDebugStatus:
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+        return self.debug_hardware.read_status()
+
+    def read_watchpoints_state(self) -> list[RiscDebugWatchpointState]:
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+        return self.debug_hardware.read_watchpoints_state()
+
+    def read_watchpoint_address(self, watchpoint_index: int) -> int:
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+        return self.debug_hardware.read_watchpoint_address(watchpoint_index)
+
+    def disable_watchpoint(self, watchpoint_index: int) -> None:
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+        self.debug_hardware.disable_watchpoint(watchpoint_index)
+
+    def set_watchpoint_on_pc_address(self, watchpoint_index: int, address: int) -> None:
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+        self.debug_hardware.set_watchpoint_on_pc_address(watchpoint_index, address)
+
+    def set_watchpoint_on_memory_read(self, watchpoint_index: int, address: int) -> None:
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+        self.debug_hardware.set_watchpoint_on_memory_read(watchpoint_index, address)
+
+    def set_watchpoint_on_memory_write(self, watchpoint_index: int, address: int) -> None:
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+        self.debug_hardware.set_watchpoint_on_memory_write(watchpoint_index, address)
+
+    def set_watchpoint_on_memory_access(self, watchpoint_index: int, address: int) -> None:
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+        self.debug_hardware.set_watchpoint_on_memory_access(watchpoint_index, address)
+
+    def can_debug(self) -> bool:
+        return self.risc_info.debug_hardware_present

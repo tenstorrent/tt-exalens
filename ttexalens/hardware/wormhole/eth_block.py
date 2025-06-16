@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-from functools import cache
+from functools import cache, cached_property
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
@@ -107,6 +107,10 @@ class WormholeEthBlock(WormholeNocBlock):
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
+
+    @cached_property
+    def all_riscs(self) -> list[RiscDebug]:
+        return [self.get_risc_debug(self.erisc.risc_name, self.erisc.neo_id)]
 
     @cache
     def get_default_risc_debug(self) -> RiscDebug:

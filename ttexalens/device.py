@@ -12,6 +12,7 @@ from tabulate import tabulate
 from ttexalens.context import Context
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
+from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.tensix_configuration_registers_description import TensixConfigurationRegistersDescription
 from ttexalens.object import TTObject
 from ttexalens import util as util
@@ -19,7 +20,6 @@ from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
 from abc import abstractmethod
 
 from ttexalens.util import DATA_TYPE
-from ttexalens.debug_risc import get_risc_reset_shift, RiscDebug, RiscLoc
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 
 
@@ -121,15 +121,11 @@ class Device(TTObject):
 
     @cached_property
     def debuggable_cores(self):
-        # Base implementation for wormhole and blackhole
+        block_types_with_cores = ["functional_workers", "eth"]
         cores: list[RiscDebug] = []
-        for coord in self.get_block_locations("functional_workers"):
-            for risc_id in range(4):  # 4 because we have a hardware bug for debugging ncrisc
-                risc_location = RiscLoc(coord, 0, risc_id)
-                risc_debug = RiscDebug(risc_location, self._context)
-                cores.append(risc_debug)
-
-        # TODO: Can we debug eth cores?
+        for block_type in block_types_with_cores:
+            for noc_block in self.get_blocks(block_type):
+                cores.extend(noc_block.debuggable_riscs)
         return cores
 
     # Class method to create a Device object given device architecture
@@ -252,7 +248,7 @@ class Device(TTObject):
         """
         Returns all blocks of a given type
         """
-        blocks = []
+        blocks: list[NocBlock] = []
         for location in self.get_block_locations(block_type):
             blocks.append(self.get_block(location))
         return blocks
@@ -413,6 +409,8 @@ class Device(TTObject):
         """
         Put all risc cores under reset. Nothing will run until the reset is deasserted.
         """
+        from ttexalens.debug_risc import get_risc_reset_shift
+
         RISC_SOFT_RESET_0_ADDR = self.get_tensix_register_address("RISCV_DEBUG_REG_SOFT_RESET_0")
 
         ALL_SOFT_RESET = 0
@@ -471,6 +469,8 @@ class Device(TTObject):
         Returns the riscv soft reset status as a string of 4 characters one for each riscv core.
         '-' means the core is in reset, 'R' means the core is running.
         """
+        from ttexalens.debug_risc import RiscDebug, RiscLoc
+
         status_str = ""
         bt = self.get_block_type(loc)
         if bt == "functional_workers":

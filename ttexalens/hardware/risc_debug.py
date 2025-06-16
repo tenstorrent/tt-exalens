@@ -7,7 +7,46 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Generator
 from ttexalens import util
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.parse_elf import ParsedElfFile, ParsedElfFileWithOffset
+
+
+@dataclass
+class RiscLocation:
+    location: OnChipCoordinate
+    neo_id: int | None
+    risc_name: str
+
+    def __hash__(self) -> int:
+        return hash((self.location, self.neo_id, self.risc_name))
+
+    def __str__(self) -> str:
+        return f"{self.location.to_user_str()} [neo: {self.neo_id}, risc: {self.risc_name}]"
+
+
+@dataclass
+class RiscDebugStatus:
+    is_halted: bool
+    is_pc_watchpoint_hit: bool
+    is_memory_watchpoint_hit: bool
+    is_ebreak_hit: bool
+    watchpoints_hit: list[bool]
+
+
+@dataclass
+class RiscDebugWatchpointState:
+    is_enabled: bool
+    is_memory: bool
+    is_read: bool
+    is_write: bool
+
+    @property
+    def is_access(self):
+        return self.is_memory and self.is_read and self.is_write
+
+    @property
+    def is_breakpoint(self):
+        return not self.is_memory
 
 
 @dataclass
@@ -25,6 +64,14 @@ class RiscDebug:
     Abstract base class for RISC debug interface.
     This class defines the interface for interacting with a RISC core for debugging purposes.
     """
+
+    def __init__(self, risc_location: RiscLocation):
+        self.risc_location = risc_location
+
+    @staticmethod
+    def get_instance(risc_location: RiscLocation) -> "RiscDebug":
+        noc_block = risc_location.location._device.get_block(risc_location.location)
+        return noc_block.get_risc_debug(risc_location.risc_name, risc_location.neo_id)
 
     @abstractmethod
     def is_in_reset(self) -> bool:
@@ -114,11 +161,98 @@ class RiscDebug:
         pass
 
     @abstractmethod
+    def read_status(self) -> RiscDebugStatus:
+        """
+        Read the debugging status of the RISC core.
+        Returns:
+            RiscDebugStatus: Debugging status of the RISC core.
+        """
+        pass
+
+    @abstractmethod
+    def read_watchpoints_state(self) -> list[RiscDebugWatchpointState]:
+        """
+        Read the state of all watchpoints.
+        Returns:
+            list[RiscDebugWatchpointState]: List of watchpoint states.
+        """
+        pass
+
+    @abstractmethod
+    def read_watchpoint_address(self, watchpoint_index: int) -> int:
+        """
+        Read the address of a watchpoint.
+        Args:
+            watchpoint_index (int): Index of the watchpoint to read.
+        Returns:
+            int: Address of the watchpoint.
+        """
+        pass
+
+    @abstractmethod
+    def disable_watchpoint(self, watchpoint_index: int) -> None:
+        """
+        Disable a watchpoint.
+        Args:
+            watchpoint_index (int): Index of the watchpoint to disable.
+        """
+        pass
+
+    @abstractmethod
+    def set_watchpoint_on_pc_address(self, watchpoint_index: int, address: int) -> None:
+        """
+        Set a watchpoint on the program counter address.
+        Args:
+            watchpoint_index (int): Index of the watchpoint to set.
+            address (int): Address to set the watchpoint on.
+        """
+        pass
+
+    @abstractmethod
+    def set_watchpoint_on_memory_read(self, watchpoint_index: int, address: int) -> None:
+        """
+        Set a watchpoint on memory read.
+        Args:
+            watchpoint_index (int): Index of the watchpoint to set.
+            address (int): Address to set the watchpoint on.
+        """
+        pass
+
+    @abstractmethod
+    def set_watchpoint_on_memory_write(self, watchpoint_index: int, address: int) -> None:
+        """
+        Set a watchpoint on memory write.
+        Args:
+            watchpoint_index (int): Index of the watchpoint to set.
+            address (int): Address to set the watchpoint on.
+        """
+        pass
+
+    @abstractmethod
+    def set_watchpoint_on_memory_access(self, watchpoint_index: int, address: int) -> None:
+        """
+        Set a watchpoint on memory access.
+        Args:
+            watchpoint_index (int): Index of the watchpoint to set.
+            address (int): Address to set the watchpoint on.
+        """
+        pass
+
+    @abstractmethod
     def set_branch_prediction(self, enable: bool) -> None:
         """
         Set the branch prediction.
         Args:
             enable (bool): True to enable branch prediction, False to disable.
+        """
+        pass
+
+    @abstractmethod
+    def can_debug(self) -> bool:
+        """
+        Check if the RISC core supports debugging.
+        Returns:
+            bool: True if debugging is supported, False otherwise.
         """
         pass
 
