@@ -9,7 +9,7 @@ ttexalens application is hosting gdb server. You should use gdb client to connec
 You can start gdb server with ttexalens application:
 
 - With command line argument: Start ttexalens with `--start-gdb=<gdb_port>` where `<gdb_port>` is integer number for port that will be used for gdb server.
-- With `gdb` command: After you start ttexalens, you can use `gdb` command to start gdb server. Run `gdb start --port <port>` where `<port>` is integer number fo port that will be used for gdb server.
+- With `gdb` command: After you start ttexalens, you can use `gdb` command to start gdb server. Run `gdb start --port <port>` where `<port>` is integer number of port that will be used for gdb server.
 
 After starting gdb server, you can stop it with `gdb` command. Run `gdb stop`.
 

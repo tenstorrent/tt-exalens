@@ -10,7 +10,7 @@ A low level hardware debugger
 
 This is a low-level debugging tool for Tenstorrent hardware.
 It enables access to and communication with the device.
-Currently, it supports Wormhole and Blackhole devices.
+It supports Wormhole and Blackhole devices.
 
 ---
 
@@ -28,7 +28,7 @@ to ensure all submodules are properly initialized.
 
 ### Requirements
 
-Debugger has been tested on Ubuntu 22.04.
+Project has been tested on Ubuntu 22.04.
 
 To build it, you need the following dependencies:
 
@@ -101,13 +101,13 @@ pip install build/ttexalens_wheel/<ttexalens_wheel>.whl
 ```
 where `<ttexalens_wheel>` is an automatically generated filename for the build.
 
-## Running the Debugger
+## Running the CLI application
 
-The debugger can be run via the `tt-exalens.py` script or by invoking `ttexalens` command after installing the wheel.
+The CLI application can be run via the `tt-exalens.py` script or by invoking `ttexalens` command after installing the wheel.
 It currently operates in *Limited* mode by default, with plans to support additional modes in the future.
 Limited mode allows basic communication with the device, such as reading/writing registers and memory, and running `.elf` files on RISC cores.
 
-The debugger can run either locally or remotely.  
+The CLI application can target local or remote devices.  
 For remote runs, a server instance is required and can be started using the same application.
 
 It’s also possible to cache session results and replay commands on a machine without Tenstorrent hardware.
@@ -118,7 +118,7 @@ For more usage information, refer to [the tutorial](./docs/ttexalens-app-tutoria
 
 ## Using library
 
-The debugger's functionalities can also be accessed through the `ttexalens` Python library to create scripts that interact with Tenstorrent hardware.
+The application functionalities can also be accessed through the `ttexalens` Python library to create scripts that interact with Tenstorrent hardware.
 
 For a quick start with the library, check out [the tutorial](docs/ttexalens-lib-tutorial.md).  
 Full documentation is also available [here](docs/ttexalens-lib-docs.md).
