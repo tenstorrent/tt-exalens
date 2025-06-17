@@ -80,7 +80,7 @@ jobs:
     strategy:
       matrix:
         runner-info: [
-          {arch: "blackhole", board: "p150a", runs-on: "tt-beta-ubuntu-2204-p150a-large-stable"},
+          {arch: "blackhole", board: "p150b", runs-on: "tt-beta-ubuntu-2204-p150b-large-stable"},
           {arch: "wormhole_b0", board: "n150", runs-on: "tt-beta-ubuntu-2204-n150-large-stable"},
           {arch: "wormhole_b0", board: "n300", runs-on: "tt-beta-ubuntu-2204-n300-large-stable"},
         ]

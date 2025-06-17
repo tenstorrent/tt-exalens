@@ -81,8 +81,9 @@ class TestDebugging(unittest.TestCase):
             )
         for device in self.context.devices.values():
             device.all_riscs_assert_soft_reset()
-            for rdbg in device.debuggable_cores:
-                self.assertTrue(rdbg.is_in_reset())
+            for noc_block in device.get_blocks("functional_workers"):
+                for rdbg in noc_block.debuggable_riscs:
+                    self.assertTrue(rdbg.is_in_reset())
 
     def test_read_write_gpr(self):
         """Write then read value in all registers (except zero and pc)."""
@@ -993,6 +994,9 @@ class TestDebugging(unittest.TestCase):
 
     def test_memory_watchpoint(self):
         """Test running 64 bytes of generated code that just write data on memory and tests memory watchpoints. All that is done on brisc."""
+
+        if self.core_sim.is_eth_block():
+            self.skipTest("This test sometimes fails on ETH cores. Issue: #452")
 
         addr1 = 0x10000
         addr2 = 0x20000

@@ -1,5 +1,5 @@
 <div align="center">
-<h1> TTExaLens </h1>
+<h1> TT-Lensium </h1>
 
 A low level hardware debugger
 
@@ -8,30 +8,29 @@ A low level hardware debugger
 </div>
 <br/>
 
-TTExaLens is a low level debugging tool for Tenstorrent's hardware.
-It can be used to access and communicate with the device.
-At the moment, Wormhole and Blackhole devices are supported.
+This is a low-level debugging tool for Tenstorrent hardware.
+It enables access to and communication with the device.
+It supports Wormhole and Blackhole devices.
 
 ---
 
-## Building TTExaLens
+## Building
 
 ### Cloning repository and setting up the environment
 
-After cloning the TTExaLens repository, be sure to run
+After cloning the repository, run:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-so that all the submodules are properly loaded.
+to ensure all submodules are properly initialized.
 
 ### Requirements
 
-TTExaLens has been tested on Ubuntu versions 22.04 and 20.04.
+Project has been tested on Ubuntu 22.04.
 
-[//]: # (TODO: We should check this on vanilla system and also separate test, build and run dependencies, as per #)
-To build TTExaLens, you need the following dependencies:
+To build it, you need the following dependencies:
 
 - software-properties-common,
 - build-essential,
@@ -42,19 +41,19 @@ To build TTExaLens, you need the following dependencies:
 - xxd,
 - ninja-build
 
-which can be installed by running
+Install them with:
 
 ```bash
 sudo apt install software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libzmq3-dev libgtest-dev libgmock-dev xxd ninja-build
 ```
 
-Python 3.10 is the only supported version at the moment. Install it with the following command:
+Python 3.10 is the only supported version. Install it with:
 
 ```bash
 sudo apt install python3.10-venv
 ```
 
-Additional Python dependencies are listed in `ttexalens/requirements.txt` file, and can be installed via `pip`:
+Additional Python dependencies are listed in `ttexalens/requirements.txt` and can be installed with:
 
 ```bash
 pip install -r ttexalens/requirements.txt
@@ -62,14 +61,15 @@ pip install -r ttexalens/requirements.txt
 
 ### Building the library and the application
 
-Once the dependencies are installed, building TTExaLens should be straightforward, and is done simply by running
+Once the dependencies are installed, building the project is straightforward and can be done by running:
 
 ```
 make build
 ```
 
-in TTExaLens home directory.
-To be sure that the build was succesful, try running
+from the project's root directory.
+
+To verify that the build was successful, try running:
 
 ```bash
 python tt-exalens.py
@@ -81,58 +81,66 @@ or
 ./tt-exalens.py
 ```
 
-in the root directory.
+from the root directory.
 
 
 ## Building and Installing Wheel
 
-Wheel can be installed either from the [GitHub release](https://github.com/tenstorrent/tt-exalens/releases), built from source, or installed directly from GitHub with
+The wheel can be installed from the [GitHub release](https://github.com/tenstorrent/tt-exalens/releases), built from source, or installed directly from GitHub with
 ```
 pip install git+https://github.com/tenstorrent/tt-exalens.git
 ```
 
-To build TTExaLens wheel from source, simply run `make wheel` in the root directory. The installation is then done by running `pip install build/ttexalens_wheel/<ttexalens_wheel>.whl`, where `<ttexalens_wheel>` is an automatically generated name unique for each build.
+To build the wheel from source, run:
+```
+make wheel
+```
+in the root directory. Then install it using:
+```
+pip install build/ttexalens_wheel/<ttexalens_wheel>.whl
+```
+where `<ttexalens_wheel>` is an automatically generated filename for the build.
 
-## Running TTExaLens
+## Running the CLI application
 
-TTExaLens can be run through `tt-exalens.py` script or by invoking `ttexalens` command after wheel installation.
-TTExaLens currently operates in Limited mode, with plans to extend functionality to include other modes in the future..
-Limited mode is entered by default, and it enables basic communication with the device, like writing to and reading from registers or device memory and running .elf files on RISC cores.
+The CLI application can be run via the `tt-exalens.py` script or by invoking `ttexalens` command after installing the wheel.
+It currently operates in *Limited* mode by default, with plans to support additional modes in the future.
+Limited mode allows basic communication with the device, such as reading/writing registers and memory, and running `.elf` files on RISC cores.
 
-TTExaLens can run locally or remotely.
-For remote runs, a TTExaLens server is needed.
-It can be started either through TTExaLens application.
+The CLI application can target local or remote devices.
+For remote runs, a server instance is required and can be started using the same application.
 
-It is also possible to write all the results from TTExaLens session to cache, and use them to run TTExaLens commands again on a system that does not have Tenstorrent hardware.
+It’s also possible to cache session results and replay commands on a machine without Tenstorrent hardware.
 
-GDB server can be started from TTExaLens, allowing features like stepping through code and breakpoints to be used through GDB client.
+A GDB server can be launched, enabling stepping, breakpoints, and other debugging features via a GDB client.
 
-For more information about how to use the TTExaLens application, refer to [the tutorial](./docs/ttexalens-app-tutorial.md), or [the documentation](./docs/ttexalens-app-docs.md).
+For more usage information, refer to [the tutorial](./docs/ttexalens-app-tutorial.md) or [the documentation](./docs/ttexalens-app-docs.md).
 
-## Using TTExaLens library
+## Using library
 
-TTExaLens's functionalities can also be used through ttexalens library to create Python scripts that interact with Tenstorrent's hardware.
-For a quick start with ttexalens library, check out [the tutorial](docs/ttexalens-lib-tutorial.md).
+The application functionalities can also be accessed through the `ttexalens` Python library to create scripts that interact with Tenstorrent hardware.
+
+For a quick start with the library, check out [the tutorial](docs/ttexalens-lib-tutorial.md).
 Full documentation is also available [here](docs/ttexalens-lib-docs.md).
 
 ## Development
 
-### Testing TTExaLens
+### Testing
 
 #### Test dependencies
 
-Apart from the base TTExaLens dependencies, tests require additional python packages:
+Apart from the base dependencies, running tests requires additional Python packages:
 
-- pytest,
-- coverage,
-- parameterized,
+- `pytest`
+- `coverage`
+- `parameterized`
 
 and system libraries:
 
-- libgtest-dev,
-- libgmock-dev,
+- `libgtest-dev`
+- `libgmock-dev`
 
-which can be installed by running
+Install the Python packages with:
 
 ```bash
 pip install -r test/test_requirements.txt
