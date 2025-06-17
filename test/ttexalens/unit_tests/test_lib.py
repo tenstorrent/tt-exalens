@@ -16,14 +16,16 @@ from ttexalens import util
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.device import ConfigurationRegisterDescription, DebugRegisterDescription
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
-from ttexalens.debug_risc import RiscLoader, RiscDebug, RiscLoc, get_risc_name, get_risc_id
 from ttexalens.firmware import ELF
+from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
+from ttexalens.hardware.risc_debug import CallstackEntry, RiscDebug
 from ttexalens.object import DataArray
 
 from ttexalens.hw.arc.arc import load_arc_fw
 from ttexalens.hw.arc.arc_dbg_fw import arc_dbg_fw_check_msg_loop_running, arc_dbg_fw_command, NUM_LOG_CALLS_OFFSET
+from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
+from ttexalens.risc_loader import RiscLoader
 
 
 def invalid_argument_decorator(func):
@@ -324,7 +326,7 @@ class TestReadWrite(unittest.TestCase):
                 ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
                 2,
             ),  # ALU_FORMAT_SPEC_REG2_Dstacc
-            ("0,0", DebugRegisterDescription(address=0x54), 18),  # RISCV_DEBUG_REG_DBG_BUS_CNTL_REG
+            ("0,0", DebugRegisterDescription(offset=0x54), 18),  # RISCV_DEBUG_REG_DBG_BUS_CNTL_REG
             ("0,0", "UNPACK_CONFIG0_out_data_format", 6),
             ("0,0", "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1),
             ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 9),
@@ -359,9 +361,9 @@ class TestReadWrite(unittest.TestCase):
                 ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
                 "ALU_FORMAT_SPEC_REG2_Dstacc",
             ),
-            ("0,0", DebugRegisterDescription(address=0xFFB12054), "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG"),
-            ("0,0", DebugRegisterDescription(address=0xFFB12060), "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
-            ("0,0", DebugRegisterDescription(address=0xFFB120A0), "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
+            ("0,0", DebugRegisterDescription(offset=0x54), "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG"),
+            ("0,0", DebugRegisterDescription(offset=0x60), "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
+            ("0,0", DebugRegisterDescription(offset=0xA0), "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
         ]
     )
     def test_write_read_tensix_register_with_name(self, core_loc, register_description, register_name):
@@ -433,57 +435,52 @@ class TestReadWrite(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("0,0", 0, 0),
-            ("1,0", 0, 0),
-            ("1,0", 1, 0),
-            ("1,0", 0, 1),
-            ("0,1", 0, 0),
-            ("1,1", 0, 0),
-            ("0,0", 1, 0),  # noc_id = 1
-            ("0,0", 0, 1),  # trisc0
-            ("0,0", 0, 2),  # trisc1
-            ("0,0", 0, 3),  # trisc2
-            ("0,0", 0, 1, 0xFFB007FC),  # last address for trisc for wormhole
-            ("0,0", 0, 0, 0xFFB00FFC),  # last address for brisc for wormhole
+            ("0,0", "brisc"),
+            ("1,0", "brisc"),
+            ("1,0", "brisc"),
+            ("1,0", "trisc0"),
+            ("0,1", "brisc"),
+            ("1,1", "brisc"),
+            ("0,0", "brisc"),  # noc_id = 1
+            ("0,0", "trisc0"),
+            ("0,0", "trisc1"),
+            ("0,0", "trisc2"),
+            ("0,0", "trisc0", -1),  # last address for trisc for wormhole
+            ("0,0", "brisc", -1),  # last address for brisc for wormhole
         ]
     )
-    def test_write_read_private_memory(self, core_loc, noc_id, risc_id, addr=0xFFB00000):
+    def test_write_read_private_memory(self, core_loc: str, risc_name: str, addr: int | None = None):
         """Testing read_memory and write_memory through debugging interface on private core memory range."""
 
         loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
-        rloc = RiscLoc(loc, noc_id, risc_id)
-        rdbg = RiscDebug(rloc, self.context)
-        loader = RiscLoader(rdbg, self.context)
-        program_base_address = loader.get_risc_start_address()
+        risc_debug = loc._device.get_block(loc).get_risc_debug(risc_name)
 
-        # If address wasn't set before, we want to set it to something that is not 0 for testing purposes
-        if program_base_address is None:
-            loader.set_risc_start_address(0xD000)
-            program_base_address = loader.get_risc_start_address()
-            self.assertEqual(program_base_address, 0xD000)
+        if risc_debug.risc_info.can_change_code_start_address:
+            risc_debug.risc_info.set_code_start_address(risc_debug.register_store, 0xD000)
 
-        self.write_program(loc, program_base_address, RiscLoader.get_jump_to_offset_instruction(0))
+        if addr is None or addr < 0:
+            private_memory = risc_debug.get_data_private_memory()
+            assert private_memory is not None, "Private memory is not available."
+            assert private_memory.address.private_address is not None, "Private memory address is not set."
+            if addr is None:
+                addr = private_memory.address.private_address
+            else:
+                addr = private_memory.address.private_address + private_memory.size - 4
 
-        was_in_reset = rdbg.is_in_reset()
+        with risc_debug.ensure_private_memory_access():
+            self.assertFalse(risc_debug.is_in_reset())
 
-        if was_in_reset:
-            rdbg.set_reset_signal(False)
-        self.assertFalse(rdbg.is_in_reset())
+            original_value = lib.read_riscv_memory(loc, addr, risc_name)
 
-        original_value = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
-
-        # Writing a value to the memory and reading it back
-        value = 0x12345678
-        lib.write_riscv_memory(loc, addr, value, noc_id, risc_id)
-        ret = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
-        self.assertEqual(ret, value)
-        # Writing the original value back to the memory
-        lib.write_riscv_memory(loc, addr, original_value, noc_id, risc_id)
-        ret = lib.read_riscv_memory(loc, addr, noc_id, risc_id)
-        self.assertEqual(ret, original_value)
-
-        if was_in_reset:
-            rdbg.set_reset_signal(True)
+            # Writing a value to the memory and reading it back
+            value = 0x12345678
+            lib.write_riscv_memory(loc, addr, value, risc_name)
+            ret = lib.read_riscv_memory(loc, addr, risc_name)
+            self.assertEqual(ret, value)
+            # Writing the original value back to the memory
+            lib.write_riscv_memory(loc, addr, original_value, risc_name)
+            ret = lib.read_riscv_memory(loc, addr, risc_name)
+            self.assertEqual(ret, original_value)
 
     @parameterized.expand(
         [
@@ -491,22 +488,18 @@ class TestReadWrite(unittest.TestCase):
             ("-10", 0xFFB00000, 0),  # Invalid core_loc string
             ("0,0", 0xFFA00000, 0),  # Invalid address (too low)
             ("0,0", 0xFFC00000, 0),  # Invalid address (too high)
-            ("0,0", 0xFFB00000, 0, -1),  # Invalid noc_id (too low)
-            ("0,0", 0xFFB00000, 0, 2),  # Invalid noc_id (too high)
-            ("0,0", 0xFFB00000, 0, 0, -1),  # Invalid risc_id (too low)
-            ("0,0", 0xFFB00000, 0, 0, 4),  # Invalid risc_id (too high)
-            ("0,0", 0xFFB00000, 0, 0, 0, -1),  # Invalid device_id
-            ("0,0", 0xFFB00000, -1),  # Invalid value (too low)
-            ("0,0", 0xFFB00000, 2**32),  # Invalid value (too high)
+            ("0,0", 0xFFB00000, 0, "invalid"),  # Invalid risc_name
+            ("0,0", 0xFFB00000, 0, "brisc", -1),  # Invalid device_id
+            ("0,0", 0xFFB00000, 0, "brisc", 2**32),  # Invalid device_id
         ]
     )
-    def test_invalid_read_private_memory(self, core_loc, address, value, noc_id=0, risc_id=0, device_id=0):
+    def test_invalid_read_private_memory(self, core_loc: str, address: int, value: int, risc_name="brisc", device_id=0):
         """Test invalid inputs for reading private memory."""
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
             with self.assertRaises((util.TTException, ValueError)):
-                lib.read_riscv_memory(core_loc, address, noc_id, risc_id, device_id)
+                lib.read_riscv_memory(core_loc, address, risc_name, None, device_id)
         with self.assertRaises((util.TTException, ValueError)):
-            lib.write_riscv_memory(core_loc, address, value, noc_id, risc_id, device_id)
+            lib.write_riscv_memory(core_loc, address, value, risc_name, None, device_id)
 
 
 class TestRunElf(unittest.TestCase):
@@ -518,24 +511,24 @@ class TestRunElf(unittest.TestCase):
         """Check if the device is blackhole."""
         return self.context.devices[0]._arch == "blackhole"
 
-    def get_elf_path(self, app_name, risc_id):
+    def get_elf_path(self, app_name: str, risc_name: str):
         """Get the path to the ELF file."""
         arch = self.context.devices[0]._arch.lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
-        risc = get_risc_name(risc_id).lower()
+        risc = risc_name.lower()
         return f"build/riscv-src/{arch}/{app_name}.{risc}.elf"
 
     @parameterized.expand(
         [
-            (0),  # Load private sections on BRISC
-            (1),  # Load private sections on TRISC0
-            (2),  # Load private sections on TRISC1
-            (3),  # Load private sections on TRISC2
-            (4),  # Load private sections on NCRISC
+            ("brisc"),
+            ("trisc0"),
+            ("trisc1"),
+            ("trisc2"),
+            ("ncrisc"),
         ]
     )
-    def test_run_elf(self, risc_id: int):
+    def test_run_elf(self, risc_name: str):
         """Test running an ELF file."""
         core_loc = "0,0"
         addr = 0x0
@@ -546,49 +539,47 @@ class TestRunElf(unittest.TestCase):
         self.assertEqual(ret[0], 0)
 
         # Run an ELF that writes to the addr and check if it executed correctly
-        elf_path = self.get_elf_path("run_elf_test", risc_id)
-        lib.run_elf(elf_path, core_loc, risc_id, context=self.context)
+        elf_path = self.get_elf_path("run_elf_test", risc_name)
+        lib.run_elf(elf_path, core_loc, risc_name, context=self.context)
         ret = lib.read_words_from_device(core_loc, addr, context=self.context)
         self.assertEqual(ret[0], 0x12345678)
 
     @parameterized.expand(
         [
-            ("", "0,0", 0, 0),  # Invalid ELF path
-            ("/sbin/non_existing_elf", "0,0", 0, 0),  # Invalid ELF path
-            (None, "abcd", 0, 0),  # Invalid core_loc
-            (None, "-10", 0, 0),  # Invalid core_loc
-            (None, "0,0/", 0, 0),  # Invalid core_loc
-            (None, "0,0/00b", 0, 0),  # Invalid core_loc
-            (None, "0,0", -1, 0),  # Invalid risc_id
-            (None, "0,0", 5, 0),  # Invalid risc_id
-            (None, "0,0", 0, -1),  # Invalid device_id
-            (None, "0,0", 0, 112),  # Invalid device_id (too high)
+            ("", "0,0", "brisc", 0),  # Invalid ELF path
+            ("/sbin/non_existing_elf", "0,0", "brisc", 0),  # Invalid ELF path
+            (None, "abcd", "brisc", 0),  # Invalid core_loc
+            (None, "-10", "brisc", 0),  # Invalid core_loc
+            (None, "0,0/", "brisc", 0),  # Invalid core_loc
+            (None, "0,0/00b", "brisc", 0),  # Invalid core_loc
+            (None, "0,0", "invalid", 0),  # Invalid risc_name
+            (None, "0,0", "brisc", -1),  # Invalid device_id
+            (None, "0,0", "brisc", 112),  # Invalid device_id (too high)
         ]
     )
-    def test_run_elf_invalid(self, elf_file, core_loc, risc_id, device_id):
+    def test_run_elf_invalid(self, elf_file, core_loc, risc_name, device_id):
         if elf_file is None:
-            elf_file = self.get_elf_path("run_elf_test", 0)
+            elf_file = self.get_elf_path("run_elf_test", "brisc")
         with self.assertRaises((util.TTException, ValueError)):
-            lib.run_elf(elf_file, core_loc, risc_id, device_id, context=self.context)
+            lib.run_elf(elf_file, core_loc, risc_name, None, device_id, context=self.context)
 
-    # TODO: This test should be restructured (Issue #70)
     @parameterized.expand(
         [
-            (0),  # Load private sections on BRISC
-            (1),  # Load private sections on TRISC0
-            (2),  # Load private sections on TRISC1
-            (3),  # Load private sections on TRISC2
+            ("brisc"),
+            ("trisc0"),
+            ("trisc1"),
+            ("trisc2"),
         ]
     )
-    def test_old_elf_test(self, risc_id: int):
+    def test_old_elf_test(self, risc_name: str):
         if self.is_blackhole():
             self.skipTest("This test doesn't work as expected on blackhole. Disabling it until bug #120 is fixed.")
 
         """ Running old elf test, formerly done with -t option. """
         core_loc = "0,0"
-        elf_path = self.get_elf_path("sample", risc_id)
+        elf_path = self.get_elf_path("sample", risc_name)
 
-        lib.run_elf(elf_path, core_loc, context=self.context)
+        lib.run_elf(elf_path, core_loc, risc_name, context=self.context)
 
         # Testing
         elf = ELF(self.context.server_ifc, {"fw": elf_path})
@@ -596,13 +587,16 @@ class TestRunElf(unittest.TestCase):
         TESTBYTEACCESS_ADDR, _, _, _ = elf.parse_addr_size_value_type("fw.g_TESTBYTEACCESS")
 
         loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
-        rdbg = RiscDebug(RiscLoc(loc, 0, 0), self.context, False)
-        rloader = RiscLoader(rdbg, self.context, False)
-        loc = rloader.risc_debug.location.loc
         device = loc._device
+        noc_block = device.get_block(loc)
+        risc_debug = noc_block.get_risc_debug(risc_name)
+        assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug, got {type(risc_debug)}"
+        rdbg: BabyRiscDebug = risc_debug
+        assert rdbg.debug_hardware is not None, "Debug hardware is not available."
+        rloader = RiscLoader(rdbg)
 
         # Disable branch rediction due to bne instruction in the elf
-        rloader.set_branch_prediction(False)
+        rdbg.set_branch_prediction(False)
 
         # Step 0: halt and continue a couple of times.
         def halt_cont_test():
@@ -643,7 +637,7 @@ class TestRunElf(unittest.TestCase):
         self.assertEqual(mbox_val, 0xFFB12080, f"RISC at location {loc} did not set the mailbox value to 0xFFB12080.")
 
         # Step 4: Check that the RISC at location {loc} is halted.
-        status = rdbg.read_status()
+        status = rdbg.debug_hardware.read_status()
         # print_PC_and_source(rdbg.read_gpr(32), elf)
         self.assertTrue(status.is_halted, f"Step 4: RISC at location {loc} is not halted.")
         self.assertTrue(status.is_ebreak_hit, f"Step 4: RISC at location {loc} is not halted with ebreak.")
@@ -662,17 +656,19 @@ class TestRunElf(unittest.TestCase):
 
         # Step 6. Setting breakpoint at decrement_mailbox
         watchpoint_id = 1  # Out of 8
-        rdbg.set_watchpoint_on_pc_address(watchpoint_id, decrement_mailbox_address)
-        rdbg.set_watchpoint_on_memory_write(0, TESTBYTEACCESS_ADDR)  # Set memory watchpoint on TESTBYTEACCESS
-        rdbg.set_watchpoint_on_memory_write(3, TESTBYTEACCESS_ADDR + 3)
-        rdbg.set_watchpoint_on_memory_write(4, TESTBYTEACCESS_ADDR + 4)
-        rdbg.set_watchpoint_on_memory_write(5, TESTBYTEACCESS_ADDR + 5)
+        rdbg.debug_hardware.set_watchpoint_on_pc_address(watchpoint_id, decrement_mailbox_address)
+        rdbg.debug_hardware.set_watchpoint_on_memory_write(
+            0, TESTBYTEACCESS_ADDR
+        )  # Set memory watchpoint on TESTBYTEACCESS
+        rdbg.debug_hardware.set_watchpoint_on_memory_write(3, TESTBYTEACCESS_ADDR + 3)
+        rdbg.debug_hardware.set_watchpoint_on_memory_write(4, TESTBYTEACCESS_ADDR + 4)
+        rdbg.debug_hardware.set_watchpoint_on_memory_write(5, TESTBYTEACCESS_ADDR + 5)
 
         mbox_val = 1
         timeout_retries = 20
         while mbox_val >= 0 and mbox_val < 0xFF000000 and timeout_retries > 0:
             if rdbg.is_halted():
-                if rdbg.is_pc_watchpoint_hit():
+                if rdbg.debug_hardware.is_pc_watchpoint_hit():
                     pass  # util.INFO (f"Breakpoint hit.")
 
             try:
@@ -692,7 +688,8 @@ class TestRunElf(unittest.TestCase):
         if timeout_retries == 0 and mbox_val != 0:
             raise util.TTFatalException(f"RISC at location {loc} did not get past step 6.")
         self.assertFalse(
-            rdbg.is_pc_watchpoint_hit(), f"RISC at location {loc} hit the breakpoint but it should not have."
+            rdbg.debug_hardware.is_pc_watchpoint_hit(),
+            f"RISC at location {loc} hit the breakpoint but it should not have.",
         )
 
         # STEP 7: Testing byte access memory watchpoints")
@@ -700,42 +697,42 @@ class TestRunElf(unittest.TestCase):
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertEqual(mbox_val, 0xFF000003, f"RISC at location {loc} did not set the mailbox value to 0xff000003.")
-        status = rdbg.read_status()
+        status = rdbg.debug_hardware.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
-        if not status.is_memory_watchpoint_hit or not status.is_watchpoint3_hit:
+        if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[3]:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 3.")
-        rdbg.cont(verify=False)
+        rdbg.debug_hardware.cont(verify=False)
 
         mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertEqual(mbox_val, 0xFF000005, f"RISC at location {loc} did not set the mailbox value to 0xff000005.")
-        status = rdbg.read_status()
+        status = rdbg.debug_hardware.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
-        if not status.is_memory_watchpoint_hit or not status.is_watchpoint5_hit:
+        if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[5]:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 5.")
-        rdbg.cont(verify=False)
+        rdbg.debug_hardware.cont(verify=False)
 
         mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertEqual(mbox_val, 0xFF000000, f"RISC at location {loc} did not set the mailbox value to 0xff000000.")
-        status = rdbg.read_status()
+        status = rdbg.debug_hardware.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
-        if not status.is_memory_watchpoint_hit or not status.is_watchpoint0_hit:
+        if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[0]:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 0.")
             return False
-        rdbg.cont(verify=False)
+        rdbg.debug_hardware.cont(verify=False)
 
         mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertEqual(mbox_val, 0xFF000004, f"RISC at location {loc} did not set the mailbox value to 0xff000004.")
-        status = rdbg.read_status()
+        status = rdbg.debug_hardware.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
-        if not status.is_memory_watchpoint_hit or not status.is_watchpoint4_hit:
+        if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[4]:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 4.")
-        rdbg.cont(verify=False)
+        rdbg.debug_hardware.cont(verify=False)
 
         # STEP END:
         mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
@@ -744,7 +741,7 @@ class TestRunElf(unittest.TestCase):
         self.assertEqual(mbox_val, 0xFFB12088, f"RISC at location {loc} did not reach step STEP END.")
 
         # Enable branch prediction
-        rloader.set_branch_prediction(True)
+        rdbg.set_branch_prediction(True)
 
 
 class TestARC(unittest.TestCase):
@@ -861,14 +858,14 @@ class TestARC(unittest.TestCase):
     ]
 )
 class TestCallStack(unittest.TestCase):
-    risc_name: str = None  # Risc name
-    risc_id: int = None  # Risc ID - being parametrized
-    context: Context = None  # TTExaLens context
-    core_desc: str = None  # Core description ETH0, FW0, FW1 - being parametrized
-    core_loc: str = None  # Core location
-    rdbg: RiscDebug = None  # RiscDebug object
-    loader: RiscLoader = None  # RiscLoader object
-    pc_register_index: int = None  # PC register index
+    risc_name: str  # Risc name
+    risc_id: int  # Risc ID - being parametrized
+    context: Context  # TTExaLens context
+    core_desc: str  # Core description ETH0, FW0, FW1 - being parametrized
+    core_loc: str  # Core location
+    risc_debug: RiscDebug  # RiscDebug object
+    loader: RiscLoader  # RiscLoader object
+    pc_register_index: int  # PC register index
 
     @classmethod
     def setUpClass(cls):
@@ -898,19 +895,18 @@ class TestCallStack(unittest.TestCase):
             self.fail(f"Unknown core description {self.core_desc}")
 
         loc = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
-        self.risc_id = get_risc_id(self.risc_name)
-        rloc = RiscLoc(loc, 0, self.risc_id)
-        self.rdbg = RiscDebug(rloc, self.context)
-        self.loader = RiscLoader(self.rdbg, self.context)
+        noc_block = loc._device.get_block(loc)
+        self.risc_debug = noc_block.get_risc_debug(self.risc_name)
+        self.loader = RiscLoader(self.risc_debug)
 
         # Stop risc with reset
-        self.rdbg.set_reset_signal(True)
-        self.assertTrue(self.rdbg.is_in_reset())
+        self.risc_debug.set_reset_signal(True)
+        self.assertTrue(self.risc_debug.is_in_reset())
 
     def tearDown(self):
         # Stop risc with reset
-        self.rdbg.set_reset_signal(True)
-        self.assertTrue(self.rdbg.is_in_reset())
+        self.risc_debug.set_reset_signal(True)
+        self.assertTrue(self.risc_debug.is_in_reset())
 
     def is_blackhole(self):
         """Check if the device is blackhole."""
@@ -921,8 +917,7 @@ class TestCallStack(unittest.TestCase):
         arch = self.context.devices[0]._arch.lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
-        risc = get_risc_name(self.risc_id).lower()
-        return f"build/riscv-src/{arch}/{app_name}.{risc}.elf"
+        return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
 
     @parameterized.expand([1, 10, 50])
     def test_callstack_with_parsing(self, recursion_count):
@@ -930,7 +925,9 @@ class TestCallStack(unittest.TestCase):
         elf_path = self.get_elf_path("callstack")
         self.loader.run_elf(elf_path)
         parsed_elf = lib.parse_elf(elf_path, self.context)
-        callstack = lib.callstack(self.core_loc, parsed_elf, None, self.risc_id, 100, True, False, 0, self.context)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.core_loc, parsed_elf, None, self.risc_name, None, 100, True, False, 0, self.context
+        )
         self.assertEqual(len(callstack), recursion_count + 3)
         self.assertEqual(callstack[0].function_name, "halt")
         for i in range(1, recursion_count + 1):
@@ -939,11 +936,13 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
 
     @parameterized.expand([1, 10, 50])
-    def test_callstack(self, recursion_count):
+    def test_callstack(self, recursion_count: int):
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack")
         self.loader.run_elf(elf_path)
-        callstack = lib.callstack(self.core_loc, elf_path, None, self.risc_id, 100, True, False, 0, self.context)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.core_loc, elf_path, None, self.risc_name, None, 100, True, False, 0, self.context
+        )
         self.assertEqual(len(callstack), recursion_count + 3)
         self.assertEqual(callstack[0].function_name, "halt")
         for i in range(1, recursion_count + 1):
@@ -956,21 +955,23 @@ class TestCallStack(unittest.TestCase):
         lib.write_words_to_device(self.core_loc, 0x4000, 0, 0, self.context)
         elf_path = self.get_elf_path(elf_name)
         self.loader.run_elf(elf_path)
-        callstack = lib.callstack(self.core_loc, elf_path, None, self.risc_id, 100, True, False, 0, self.context)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.core_loc, elf_path, None, self.risc_name, None, 100, True, False, 0, self.context
+        )
         self.assertEqual(len(callstack), 3)
         self.assertEqual(callstack[0].function_name, "halt")
         self.assertEqual(callstack[1].function_name, "ns::foo")
         self.assertEqual(callstack[2].function_name, "main")
 
     @parameterized.expand([1, 10, 50])
-    def test_top_callstack_with_parsing(self, recursion_count):
+    def test_top_callstack_with_parsing(self, recursion_count: int):
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack")
         self.loader.run_elf(elf_path)
-        with self.rdbg.ensure_halted():
-            pc = self.rdbg.read_gpr(32)
+        with self.risc_debug.ensure_halted():
+            pc = self.risc_debug.read_gpr(32)
         parsed_elf = lib.parse_elf(elf_path, self.context)
-        callstack = lib.top_callstack(pc, parsed_elf, None, self.context)
+        callstack: list[CallstackEntry] = lib.top_callstack(pc, parsed_elf, None, self.context)
         self.assertEqual(len(callstack), 1)
         self.assertEqual(callstack[0].function_name, "halt")
 
@@ -979,9 +980,9 @@ class TestCallStack(unittest.TestCase):
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack")
         self.loader.run_elf(elf_path)
-        with self.rdbg.ensure_halted():
-            pc = self.rdbg.read_gpr(32)
-        callstack = lib.top_callstack(pc, elf_path, None, self.context)
+        with self.risc_debug.ensure_halted():
+            pc = self.risc_debug.read_gpr(32)
+        callstack: list[CallstackEntry] = lib.top_callstack(pc, elf_path, None, self.context)
         self.assertEqual(len(callstack), 1)
         self.assertEqual(callstack[0].function_name, "halt")
 
@@ -990,7 +991,9 @@ class TestCallStack(unittest.TestCase):
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack.optimized")
         self.loader.run_elf(elf_path)
-        callstack = lib.callstack(self.core_loc, elf_path, None, self.risc_id, 100, True, False, 0, self.context)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.core_loc, elf_path, None, self.risc_name, None, 100, True, False, 0, self.context
+        )
 
         self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
         for i in range(0, expected_f1_on_callstack_count):
@@ -999,13 +1002,13 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
 
     @parameterized.expand([(1, 1)])
-    def test_top_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
+    def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack.optimized")
         self.loader.run_elf(elf_path)
-        with self.rdbg.ensure_halted():
-            pc = self.rdbg.read_gpr(32)
-        callstack = lib.top_callstack(pc, elf_path, None, self.context)
+        with self.risc_debug.ensure_halted():
+            pc = self.risc_debug.read_gpr(32)
+        callstack: list[CallstackEntry] = lib.top_callstack(pc, elf_path, None, self.context)
 
         self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
         for i in range(0, expected_f1_on_callstack_count):
@@ -1026,15 +1029,16 @@ class TestCallStack(unittest.TestCase):
                 ["build/riscv-src/blackhole/callstack.brisc.elf"],
                 [0, 1],
             ),  # Length of elf_paths and offsets is different
-            ("0,0", "build/riscv-src/blackhole/callstack.brisc.elf", 0, -1),  # Invalid risc_id (too low)
-            ("0,0", "build/riscv-src/blackhole/callstack.brisc.elf", 0, 4),  # Invalid risc_id (too high)
-            ("0,0", "build/riscv-src/blackhole/callstack.brisc.elf", 0, 0, -1),  # Invalid max_depth (too low)
-            ("0,0", "build/riscv-src/blackhole/callstack.brisc.elf", 0, 0, 1, -1),  # Invalid device_id
+            ("0,0", "build/riscv-src/blackhole/callstack.brisc.elf", 0, "invalid"),  # Invalid risc_name
+            ("0,0", "build/riscv-src/blackhole/callstack.brisc.elf", 0, "brisc", -1),  # Invalid max_depth (too low)
+            ("0,0", "build/riscv-src/blackhole/callstack.brisc.elf", 0, "brisc", 1, -1),  # Invalid device_id
         ]
     )
-    def test_callstack_invalid(self, core_loc, elf_paths, offsets=None, risc_id=0, max_depth=100, device_id=0):
+    def test_callstack_invalid(self, core_loc, elf_paths, offsets=None, risc_name="brisc", max_depth=100, device_id=0):
         """Test invalid inputs for callstack function."""
 
         # Check for invalid core_loc
         with self.assertRaises((util.TTException, ValueError, FileNotFoundError)):
-            lib.callstack(core_loc, elf_paths, offsets, risc_id, max_depth, True, False, device_id, self.context)
+            lib.callstack(
+                core_loc, elf_paths, offsets, risc_name, None, max_depth, True, False, device_id, self.context
+            )

@@ -29,11 +29,11 @@ command_metadata = {
 }
 
 import os
+from ttexalens.debug_risc import get_risc_name
 from ttexalens.uistate import UIState
 
 from ttexalens import command_parser
 from ttexalens import util
-from ttexalens.debug_risc import RiscDebug, RiscLoc, get_risc_name, RiscLoader
 import ttexalens.tt_exalens_lib as lib
 
 
@@ -46,7 +46,6 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     verbose = dopt.args["-v"]
     limit = int(dopt.args["-m"])
-    noc_id = 0
     elf_paths = dopt.args["<elf-files>"].split(",")
     offsets = (
         [int(offset, 0) for offset in dopt.args["-o"].split(",")]
@@ -68,11 +67,12 @@ def run(cmd_text, context, ui_state: UIState = None):
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             for risc_id in dopt.for_each("--risc", context, ui_state):
+                risc_name = get_risc_name(risc_id)
                 callstack = lib.callstack(
                     core_loc=loc,
                     elfs=elfs,
                     offsets=offsets,
-                    risc_id=risc_id,
+                    risc_name=risc_name,
                     max_depth=limit,
                     stop_on_main=stop_on_main,
                     verbose=verbose,
@@ -80,7 +80,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                     context=context,
                 )
                 print(
-                    f"Location: {util.CLR_INFO}{loc.to_user_str()}{util.CLR_END}, core: {util.CLR_WHITE}{get_risc_name(risc_id)}{util.CLR_END}"
+                    f"Location: {util.CLR_INFO}{loc.to_user_str()}{util.CLR_END}, core: {util.CLR_WHITE}{risc_name}{util.CLR_END}"
                 )
 
                 frame_number_width = len(str(len(callstack) - 1))
