@@ -464,24 +464,5 @@ class Device(TTObject):
         assert description.mask == 0xFFFFFFFF and description.shift == 0
         return description.address
 
-    def get_riscv_run_status(self, loc: OnChipCoordinate) -> str:
-        """
-        Returns the riscv soft reset status as a string of 4 characters one for each riscv core.
-        '-' means the core is in reset, 'R' means the core is running.
-        """
-        from ttexalens.debug_risc import RiscDebug, RiscLoc
-
-        status_str = ""
-        bt = self.get_block_type(loc)
-        if bt == "functional_workers":
-            for risc_id in range(4):
-                risc_location = RiscLoc(loc, 0, risc_id)
-                risc_debug = RiscDebug(risc_location, self._context)
-                status_str += "-" if risc_debug.is_in_reset() else "R"
-            return status_str
-        if bt == "harvested_workers":
-            return "----"
-        return bt
-
 
 # end of class Device
