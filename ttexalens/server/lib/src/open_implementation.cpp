@@ -450,7 +450,8 @@ template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open_simulation(
     const std::filesystem::path &simulation_directory) {
     std::unique_ptr<tt::umd::Cluster> cluster =
-        std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{.simulator_directory = simulation_directory});
+        std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{.chip_type = tt::umd::ChipType::SIMULATION,
+            .target_devices = {0}, .simulator_directory = simulation_directory});
 
     // Initialize simulation device
     cluster->start_device({});
