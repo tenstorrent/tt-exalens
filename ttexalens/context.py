@@ -10,6 +10,7 @@ from ttexalens.firmware import ELF
 from sortedcontainers import SortedSet
 
 from ttexalens.hardware.risc_debug import RiscLocation
+from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.tt_exalens_ifc_base import TTExaLensCommunicator
 
 # All-encompassing structure representing a TTExaLens context
