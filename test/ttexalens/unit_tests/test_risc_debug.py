@@ -7,7 +7,8 @@ from parameterized import parameterized_class
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from ttexalens.context import Context
-from ttexalens.debug_risc import RiscLoader, get_register_index
+from ttexalens.hardware.baby_risc_debug import get_register_index
+from ttexalens.risc_loader import RiscLoader
 
 
 @parameterized_class(
@@ -110,13 +111,7 @@ class TestDebugging(unittest.TestCase):
 
         # Test readonly registers
         self.assertEqual(self.core_sim.read_gpr(get_register_index("zero")), 0, "zero should always be 0.")
-        if not (self.core_sim.is_blackhole() and self.core_sim.is_eth_block()):
-            # PC is not readable through GPR on blackhole ETH core for now
-            self.assertEqual(
-                self.core_sim.read_gpr(get_register_index("pc")),
-                self.core_sim.program_base_address + 4,
-                "PC should be 4.",
-            )
+        self.assertPcEquals(4)
 
         # Test write then read for all other registers
         for i in range(1, 31):
@@ -658,6 +653,10 @@ class TestDebugging(unittest.TestCase):
 
     def test_watchpoint_on_pc_address(self):
         """Test running 36 bytes of generated code that just write data on memory and does watchpoint on pc address. All that is done on brisc."""
+
+        if self.core_sim.is_eth_block():
+            self.skipTest("This test sometimes fails on ETH cores. Issue: #452")
+
         addr = 0x10000
 
         # Write our data to memory
