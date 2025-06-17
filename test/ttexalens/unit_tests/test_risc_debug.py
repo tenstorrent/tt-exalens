@@ -653,6 +653,10 @@ class TestDebugging(unittest.TestCase):
 
     def test_watchpoint_on_pc_address(self):
         """Test running 36 bytes of generated code that just write data on memory and does watchpoint on pc address. All that is done on brisc."""
+
+        if self.core_sim.is_eth_block():
+            self.skipTest("This test sometimes fails on ETH cores. Issue: #452")
+
         addr = 0x10000
 
         # Write our data to memory
