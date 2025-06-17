@@ -35,11 +35,11 @@ jobs:
           set pipefail
           .github/build-docker-images.sh | tee docker.log
           DOCKER_CI_IMAGE=$(tail -n 1 docker.log)
-          
+
           # Replace use harbor.ci.tenstorrent.net if running on shared runner (tt-beta-ubuntu-2204-large)
           DOCKER_CI_IMAGE="harbor.ci.tenstorrent.net/$DOCKER_CI_IMAGE"
           echo "Replaced registry in Docker image name to use harbor cache"
-          
+
           echo "DOCKER_CI_IMAGE $DOCKER_CI_IMAGE"
           echo "docker-image=$DOCKER_CI_IMAGE" >> "$GITHUB_OUTPUT"
 
