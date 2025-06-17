@@ -370,7 +370,7 @@ class RiscDebug:
             elfs = RiscDebug._read_elfs(parsed_elfs, offsets)
 
             # Reading the program counter from risc register
-            pc = self.read_gpr(32)
+            pc = self.read_gpr(32) - 4
 
             # Choose the elf which is referenced by the program counter
             elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, self)
