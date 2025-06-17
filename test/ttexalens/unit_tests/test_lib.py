@@ -361,9 +361,9 @@ class TestReadWrite(unittest.TestCase):
                 ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
                 "ALU_FORMAT_SPEC_REG2_Dstacc",
             ),
-            ("0,0", DebugRegisterDescription(offset=0xFFB12054), "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG"),
-            ("0,0", DebugRegisterDescription(offset=0xFFB12060), "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
-            ("0,0", DebugRegisterDescription(offset=0xFFB120A0), "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
+            ("0,0", DebugRegisterDescription(offset=0x54), "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG"),
+            ("0,0", DebugRegisterDescription(offset=0x60), "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
+            ("0,0", DebugRegisterDescription(offset=0xA0), "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
         ]
     )
     def test_write_read_tensix_register_with_name(self, core_loc, register_description, register_name):
