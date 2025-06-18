@@ -72,8 +72,8 @@ class tt_docopt:
             except:
                 pass
         else:
-            for risc in risc_name.split(","):
-                yield risc
+            for name in risc_name.split(","):
+                yield name
 
     # We define command options that apply to more than one command here
     OPTIONS: dict[str, dict] = {

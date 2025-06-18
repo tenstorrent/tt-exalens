@@ -69,7 +69,7 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
             continue  # We cannot read registers from a core that doesn't have debug hardware
 
         already_halted = risc.is_halted()
-        halted_state[risc_name] = already_halted
+        halted_state[risc_name] = str(already_halted)
 
         if not already_halted:
             risc.halt()  # We must halt the core to read the registers
@@ -110,7 +110,7 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
     # Print soft reset status
     row = ["Soft reset"]
     for j in riscs_to_include:
-        row.append(reset_state[j])
+        row.append(str(reset_state[j]))
     table.append(row)
 
     # Print halted status
