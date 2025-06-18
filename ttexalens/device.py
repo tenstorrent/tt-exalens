@@ -299,6 +299,8 @@ class Device(TTObject):
             "color": util.CLR_GREEN,
         },
         "eth": {"symbol": "E", "desc": "Ethernet", "core_type": "eth", "color": util.CLR_YELLOW},
+        "idle_eth": {"symbol": "E", "desc": "Idle Ethernet", "core_type": "eth", "color": util.CLR_YELLOW},
+        "active_eth": {"symbol": "E", "desc": "Active Ethernet", "core_type": "eth", "color": util.CLR_YELLOW},
         "arc": {"symbol": "A", "desc": "ARC", "core_type": "arc", "color": util.CLR_GREY},
         "dram": {"symbol": "D", "desc": "DRAM", "core_type": "dram", "color": util.CLR_TEAL},
         "pcie": {"symbol": "P", "desc": "PCIE", "core_type": "pcie", "color": util.CLR_GREY},

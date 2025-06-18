@@ -680,6 +680,10 @@ class BlackholeDevice(Device):
             return BlackholeDramBlock(location)
         elif block_type == "eth":
             return BlackholeEthBlock(location)
+        elif block_type == "idle_eth":
+            return BlackholeEthBlock(location)
+        elif block_type == "active_eth":
+            return BlackholeEthBlock(location)
         elif block_type == "functional_workers":
             return BlackholeFunctionalWorkerBlock(location)
         elif block_type == "harvested_workers":
