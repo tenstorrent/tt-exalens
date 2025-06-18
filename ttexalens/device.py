@@ -405,27 +405,6 @@ class Device(TTObject):
         noc_id = 1 if self._context.use_noc1 else 0
         return self._context.server_ifc.pci_read_tile(noc_id, self.id(), x, y, reg_addr, msg_size, data_format)
 
-    def all_riscs_assert_soft_reset(self) -> None:
-        """
-        Put all risc cores under reset. Nothing will run until the reset is deasserted.
-        """
-        from ttexalens.debug_risc import get_risc_reset_shift
-
-        RISC_SOFT_RESET_0_ADDR = self.get_tensix_register_address("RISCV_DEBUG_REG_SOFT_RESET_0")
-
-        ALL_SOFT_RESET = 0
-        for risc_id in range(5):
-            ALL_SOFT_RESET = ALL_SOFT_RESET | (1 << get_risc_reset_shift(risc_id))
-        noc_id = 0
-
-        for loc in self.get_block_locations(block_type="functional_workers"):
-            write_words_to_device(loc, RISC_SOFT_RESET_0_ADDR, ALL_SOFT_RESET, self.id(), self._context)
-
-            # Check what we wrote
-            rst_reg = read_word_from_device(loc, RISC_SOFT_RESET_0_ADDR, self.id(), self._context)
-            if rst_reg != ALL_SOFT_RESET:
-                util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
-
     # TODO: This is old API. Create all of these in NocBlock. Change existing API to use get_block and call new API.
 
     @abstractmethod
