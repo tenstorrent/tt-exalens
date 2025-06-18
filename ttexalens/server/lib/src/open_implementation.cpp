@@ -123,8 +123,10 @@ static void write_coord(std::ostream &out, const tt_xy_pair &xy, CoreType core_t
 // Creates SOC descriptor files by serializing tt_SocDescroptor structure to yaml.
 // TODO: Current copied from runtime/runtime_utils.cpp: print_device_description. It should be moved to UMD and reused
 // on both places.
-static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &soc_descriptor) {
+static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &soc_descriptor, uint8_t device_id) {
     std::ofstream outfile(file_name);
+
+    auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor();
 
     outfile << "grid:" << std::endl;
     outfile << "  x_size: " << soc_descriptor.grid_size.x << std::endl;
@@ -179,14 +181,37 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
     }
     outfile << std::endl << "]" << std::endl << std::endl;
 
+    const auto ethernet_cores = soc_descriptor.get_cores(CoreType::ETH);
     outfile << "eth:" << std::endl << "  [" << std::endl;
-    for (const auto &ethernet_core : soc_descriptor.get_cores(CoreType::ETH)) {
+    for (const auto &ethernet_core : ethernet_cores) {
         // Insert the eth core if it's within the given grid
         if (ethernet_core.x < soc_descriptor.grid_size.x && ethernet_core.y < soc_descriptor.grid_size.y) {
             write_coord(outfile, ethernet_core, CoreType::ETH, soc_descriptor);
         }
     }
     outfile << std::endl << "]" << std::endl << std::endl;
+
+    outfile << "idle_eth:" << std::endl << "  [" << std::endl;
+    for (const uint32_t idx : cluster_descriptor->get_idle_eth_channels(device_id)) {
+        const auto idle_ethernet_core = ethernet_cores[idx];
+        // Insert the idle eth core if it's within the given grid
+        if (idle_ethernet_core.x < soc_descriptor.grid_size.x && idle_ethernet_core.y < soc_descriptor.grid_size.y) {
+            write_coord(outfile, idle_ethernet_core, CoreType::ETH, soc_descriptor);
+        }
+    }
+    outfile << std::endl << "]" << std::endl << std::endl;
+
+    outfile << "active_eth:" << std::endl << "  [" << std::endl;
+    for (const uint32_t idx : cluster_descriptor->get_active_eth_channels(device_id)) {
+        const auto active_ethernet_core = ethernet_cores[idx];
+        // Insert the active eth core if it's within the given grid
+        if (active_ethernet_core.x < soc_descriptor.grid_size.x &&
+            active_ethernet_core.y < soc_descriptor.grid_size.y) {
+            write_coord(outfile, active_ethernet_core, CoreType::ETH, soc_descriptor);
+        }
+    }
+    outfile << std::endl << "]" << std::endl << std::endl;
+
     // Insert worker cores that are within the given grid
     outfile << "harvested_workers:" << std::endl;
     outfile << "  [" << std::endl;
@@ -269,7 +294,7 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Clu
     for (auto device_id : device_ids) {
         auto &soc_descriptor = cluster->get_soc_descriptor(device_id);
         std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
-        write_soc_descriptor(file_name, soc_descriptor);
+        write_soc_descriptor(file_name, soc_descriptor, device_id);
 
         device_soc_descriptors_yamls[device_id] = file_name;
     }
@@ -315,7 +340,7 @@ static std::string jtag_create_temp_network_descriptor_file(JtagDevice *jtag_dev
 
 static std::string jtag_create_device_soc_descriptor(const tt_SocDescriptor &soc_descriptor, uint32_t device_id) {
     std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
-    write_soc_descriptor(file_name, soc_descriptor);
+    write_soc_descriptor(file_name, soc_descriptor, device_id);
     return file_name;
 }
 
