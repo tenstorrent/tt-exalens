@@ -365,10 +365,28 @@ class TensixDebug:
 
 
     def _shift_fp32_lower2upper(self) -> None:
-	ops = self.device.instructions
-	self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 12, 3))
-	self.inject_instruction(ops.TT_OP_SFPLOADI(8, -1, 2))
-	
+	trisc_id = 2
+	self.inject_instruction(0xC0330001, trisc_id) # sfpload  L0, 0, 12, 13
+	self.inject_instruction(0xC48BFFFD, trisc_id) # sfploadi L2, -1, 2
+	self.inject_instruction(0xC463FFFD, trisc_id) # sfploadi L1, -1, 8
+	self.inject_instruction(0xC4680001, trisc_id) # sfploadi L1, 0, 10
+	self.inject_instruction(0xF8000081, trisc_id) # sfpand   L2, L0
+	self.inject_instruction(0xC8B30101, trisc_id) # sfpstore 64, L2, 12, 13
+	self.inject_instruction(0xF8000401, trisc_id) # sfpand   L0, L1
+	self.inject_instruction(0xC8330201, trisc_id) # sfpstore 128, L0, 12, 3
+	self.inject_instruction(0xE0020000, trisc_id) # ttincrwc 0, 2, 0, 0
+	self.inject_instruction(0x01F00793, trisc_id) # li       a5, 31
+	self.inject_instruction(0xC0330001, trisc_id) # sfpload  L0, 0, 12, 3
+	self.inject_instruction(0xC48BFFFD, trisc_id) # sfploadi L2, -1, 2
+	self.inject_instruction(0xC463FFFD, trisc_id) # sfploadi L1, -1, 8
+	self.inject_instruction(0xC4680001, trisc_id) # sfploadi L1, 0, 10
+	self.inject_instruction(0xF8000081, trisc_id) # sfpand   L2, L0
+	self.inject_instruction(0xC8B30101, trisc_id) # sfpstore 64, L2, 12, 3
+	self.inject_instruction(0xE0020000, trisc_id) # ttincrwc 0, 2, 0, 0
+	self.inject_instruction(0xFFF78793, trisc_id) # addi     a5, a5, -1
+	self.inject_instruction(0xFC079CE3, trisc_id) # bnez     a5, run_kernel
+	self.inject_instruction(0xDC000010, trisc_id) # ttsetrwc 0, 0, 0, 0, 0, 4
+	self.inject_instruction(0x
 
 
     def read_regfile(self, regfile: int | str | REGFILE) -> list[float | int]:
