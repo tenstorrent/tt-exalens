@@ -363,6 +363,14 @@ class TensixDebug:
         )
         return data
 
+
+    def _shift_fp32_lower2upper(self) -> None:
+	ops = self.device.instructions
+	self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 12, 3))
+	self.inject_instruction(ops.TT_OP_SFPLOADI(8, -1, 2))
+	
+
+
     def read_regfile(self, regfile: int | str | REGFILE) -> list[float | int]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
 
@@ -373,6 +381,12 @@ class TensixDebug:
                 list[float | int]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
         """
         regfile = convert_regfile(regfile)
+	df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+	if df == 0:
+		# fp32 workaround
+		upper = self.read_regfile_data(regfile)
+		# inject tensix assembly
+
         data = self.read_regfile_data(regfile)
         df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
         unpacked_data = unpack_data(data, df)
