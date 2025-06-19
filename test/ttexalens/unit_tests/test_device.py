@@ -27,10 +27,10 @@ class TestDevice(unittest.TestCase):
         cls.context = init_default_test_context()
 
     def setUp(self):
-        try:
-            self.device = self.context.devices[self.device_id]
-        except:
+        if self.device_id >= len(self.context.device_ids):
             self.skipTest(f"Device {self.device_id} not found!")
+
+        self.device = self.context.devices[self.device_id]
 
     def test_get_active_idle_eth_blocks(self):
         set_eth = set(self.device.get_blocks(block_type="eth"))
