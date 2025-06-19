@@ -123,7 +123,7 @@ static void write_coord(std::ostream &out, const tt_xy_pair &xy, CoreType core_t
 // Creates SOC descriptor files by serializing tt_SocDescroptor structure to yaml.
 // TODO: Current copied from runtime/runtime_utils.cpp: print_device_description. It should be moved to UMD and reused
 // on both places.
-static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &soc_descriptor, uint8_t device_id) {
+static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &soc_descriptor) {
     std::ofstream outfile(file_name);
 
     outfile << "grid:" << std::endl;
@@ -270,7 +270,7 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Clu
     for (auto device_id : device_ids) {
         auto &soc_descriptor = cluster->get_soc_descriptor(device_id);
         std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
-        write_soc_descriptor(file_name, soc_descriptor, device_id);
+        write_soc_descriptor(file_name, soc_descriptor);
 
         device_soc_descriptors_yamls[device_id] = file_name;
     }
@@ -316,7 +316,7 @@ static std::string jtag_create_temp_network_descriptor_file(JtagDevice *jtag_dev
 
 static std::string jtag_create_device_soc_descriptor(const tt_SocDescriptor &soc_descriptor, uint32_t device_id) {
     std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
-    write_soc_descriptor(file_name, soc_descriptor, device_id);
+    write_soc_descriptor(file_name, soc_descriptor);
     return file_name;
 }
 
