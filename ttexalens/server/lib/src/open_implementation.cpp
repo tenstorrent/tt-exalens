@@ -187,7 +187,6 @@ static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &
         }
     }
     outfile << std::endl << "]" << std::endl << std::endl;
-
     // Insert worker cores that are within the given grid
     outfile << "harvested_workers:" << std::endl;
     outfile << "  [" << std::endl;
