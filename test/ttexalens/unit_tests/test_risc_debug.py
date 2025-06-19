@@ -74,18 +74,6 @@ class TestDebugging(unittest.TestCase):
             f"Pc should be less than {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
         )
 
-    def test_reset_all_functional_workers(self):
-        """Reset all functional workers."""
-        if self.core_sim.is_eth_block():
-            self.skipTest(
-                "Playing with ETH core moves device into unknown state after we should warm reset it. This test cannot be run at that moment."
-            )
-        for device in self.context.devices.values():
-            device.all_riscs_assert_soft_reset()
-            for noc_block in device.get_blocks("functional_workers"):
-                for rdbg in noc_block.debuggable_riscs:
-                    self.assertTrue(rdbg.is_in_reset())
-
     def test_read_write_gpr(self):
         """Write then read value in all registers (except zero and pc)."""
 

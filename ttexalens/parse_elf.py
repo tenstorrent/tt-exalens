@@ -44,7 +44,7 @@ import re
 from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
-    from ttexalens.debug_risc import RiscDebug
+    from ttexalens.hardware.risc_debug import RiscDebug
 
 try:
     from elftools.elf.elffile import ELFFile

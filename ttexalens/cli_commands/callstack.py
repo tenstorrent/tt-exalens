@@ -13,11 +13,11 @@ Arguments:
 
 Options:
   -o <offsets>        List of offsets for each elf file, comma separated.
-  -r <risc>           RiscV ID (0: brisc, 1-3 triscs). [Default: 0]
+  -r <risc>           RiscV name (e.g. brisc, triscs0, triscs1, triscs2, erisc). [default: first risc]
   -m <max-depth>      Maximum depth of callstack. [Default: 100]
 
 Examples:
-  callstack build/riscv-src/wormhole/sample.brisc.elf -r 0
+  callstack build/riscv-src/wormhole/sample.brisc.elf -r brisc
 """
 
 command_metadata = {
@@ -29,7 +29,7 @@ command_metadata = {
 }
 
 import os
-from ttexalens.debug_risc import get_risc_name
+from ttexalens.device import Device
 from ttexalens.uistate import UIState
 
 from ttexalens import command_parser
@@ -37,7 +37,7 @@ from ttexalens import util
 import ttexalens.tt_exalens_lib as lib
 
 
-def run(cmd_text, context, ui_state: UIState = None):
+def run(cmd_text, context, ui_state: UIState):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
@@ -64,10 +64,18 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     elfs = [lib.parse_elf(elf_path, context) for elf_path in elf_paths]
 
+    device: Device
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            for risc_id in dopt.for_each("--risc", context, ui_state):
-                risc_name = get_risc_name(risc_id)
+            for risc_name in dopt.for_each("--risc", context, ui_state, device=device, location=loc):
+                if risc_name == "first risc":
+                    noc_block = device.get_block(loc)
+                    riscs = noc_block.all_riscs
+                    if len(riscs) > 0:
+                        risc_name = riscs[0].risc_location.risc_name
+                    else:
+                        util.ERROR(f"No RISC-V cores found at location {loc}")
+                        return
                 callstack = lib.callstack(
                     core_loc=loc,
                     elfs=elfs,

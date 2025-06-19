@@ -68,10 +68,11 @@ class BabyRiscInfo(RiscInfo):
                 return
 
             # If we cannot change the code start address, we write a jump instruction to the specified address
+            assert self.default_code_start_address is not None
             jump_instruction = RiscLoader.get_jump_to_offset_instruction(address)
             write_words_to_device(
                 register_store.location,
-                0,
+                self.default_code_start_address,
                 jump_instruction,
                 register_store.location._device._id,
                 register_store.location._device._context,

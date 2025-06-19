@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  riscv (halt | step | cont | status)                                             [-v] [-d <device>] [-r <risc>] [-l <loc>]
-  riscv rd [<address>]                                                            [-v] [-d <device>] [-r <risc>] [-l <loc>]
-  riscv rreg [<index>]                                                            [-v] [-d <device>] [-r <risc>] [-l <loc>]
-  riscv wr [<address>] [<data>]                                                   [-v] [-d <device>] [-r <risc>] [-l <loc>]
-  riscv wreg [<index>] [<data>]                                                   [-v] [-d <device>] [-r <risc>] [-l <loc>]
-  riscv bkpt (set | del) [<address>]                                              [-v] [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
-  riscv wchpt (setr | setw | setrw | del) [<address>] [<data>]                    [-v] [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
-  riscv reset [1 | 0]                                                             [-v] [-d <device>] [-r <risc>] [-l <loc>]
+  riscv (halt | step | cont | status)                                             [-d <device>] [-r <risc>] [-l <loc>]
+  riscv rd [<address>]                                                            [-d <device>] [-r <risc>] [-l <loc>]
+  riscv rreg [<index>]                                                            [-d <device>] [-r <risc>] [-l <loc>]
+  riscv wr [<address>] [<data>]                                                   [-d <device>] [-r <risc>] [-l <loc>]
+  riscv wreg [<index>] [<data>]                                                   [-d <device>] [-r <risc>] [-l <loc>]
+  riscv bkpt (set | del) [<address>]                                              [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
+  riscv wchpt (setr | setw | setrw | del) [<address>] [<data>]                    [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
+  riscv reset [1 | 0]                                                             [-d <device>] [-r <risc>] [-l <loc>]
 
 Options:
   -pt <point>     Index of the breakpoint or watchpoint register. 8 points are supported (0-7).
@@ -49,28 +49,32 @@ command_metadata = {
     "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],
-    "common_option_names": ["--device", "--loc", "--risc", "--verbose"],
+    "common_option_names": ["--device", "--loc", "--risc"],
 }
 
+from ttexalens.context import Context
+from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.device import Device
 from ttexalens.uistate import UIState
 
 from ttexalens import command_parser
 from ttexalens import util as util
-from ttexalens.debug_risc import RiscDebug, RiscLoc, get_risc_name
 
 
-def run_riscv_command(context, device, loc, risc_id, args):
+def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, risc_name: str, args, was_all: bool):
     """
     Given a command trough args, run the corresponding RISC-V command
     """
-    verbose = args["-v"]
-    where = f"{get_risc_name(risc_id)} {loc.to_str('logical')} [{device._id}]"
+    where = f"{risc_name} {loc.to_str('logical')} [{device._id}]"
 
-    noc_id = 0
-    risc = RiscDebug(RiscLoc(loc, noc_id, risc_id), context, verbose=verbose)
+    noc_block = device.get_block(loc)
+    risc = noc_block.get_risc_debug(risc_name)
+    if not risc.can_debug():
+        if not was_all:
+            util.ERROR(f"Cannot debug {where}, debug hardware is not available.")
+        return
 
     if args["halt"]:
-        risc.enable_debug()
         util.INFO(f"Halting {where}")
         risc.halt()
 
@@ -80,7 +84,7 @@ def run_riscv_command(context, device, loc, risc_id, args):
 
     elif args["cont"]:
         util.INFO(f"Continuing {where}")
-        risc.continue_without_debug()
+        risc.cont()
 
     elif args["rd"]:
         if args["<address>"] is None:
@@ -165,14 +169,14 @@ def run_riscv_command(context, device, loc, risc_id, args):
     elif args["reset"]:
         if args["1"]:
             util.INFO(f"Setting reset for {where}")
-            risc.set_reset_signal(1)
+            risc.set_reset_signal(True)
         elif args["0"]:
             util.INFO(f"Clearing reset for {where}")
-            risc.set_reset_signal(0)
+            risc.set_reset_signal(False)
         else:
             util.INFO(f"Setting and clearing reset for {where}")
-            risc.set_reset_signal(1)
-            risc.set_reset_signal(0)
+            risc.set_reset_signal(True)
+            risc.set_reset_signal(False)
 
 
 def run(cmd_text, context, ui_state: UIState = None):
@@ -183,6 +187,6 @@ def run(cmd_text, context, ui_state: UIState = None):
     )
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            for risc_id in dopt.for_each("--risc", context, ui_state):
-                run_riscv_command(context, device, loc, risc_id, dopt.args)
+            for risc_name in dopt.for_each("--risc", context, ui_state, device=device, location=loc):
+                run_riscv_command(context, device, loc, risc_name, dopt.args, was_all=dopt.args["-r"] == "all")
     return None
