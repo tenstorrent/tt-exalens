@@ -880,10 +880,6 @@ class WormholeDevice(Device):
             return WormholeDramBlock(location)
         elif block_type == "eth":
             return WormholeEthBlock(location)
-        elif block_type == "idle_eth":
-            return WormholeEthBlock(location)
-        elif block_type == "active_eth":
-            return WormholeEthBlock(location)
         elif block_type == "functional_workers":
             return WormholeFunctionalWorkerBlock(location)
         elif block_type == "harvested_workers":
