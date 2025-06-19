@@ -3,8 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from abc import abstractmethod
-from copy import deepcopy
-from dataclasses import dataclass, replace
 from functools import cache, cached_property
 from typing import Iterable, Sequence
 
@@ -18,9 +16,6 @@ from ttexalens.object import TTObject
 from ttexalens import util as util
 from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
 from abc import abstractmethod
-
-from ttexalens.util import DATA_TYPE
-from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 
 
 class TensixInstructions:
@@ -52,54 +47,6 @@ class TensixInstructions:
         pass
 
 
-@dataclass
-class TensixRegisterDescription:
-    address: int = 0
-    mask: int = 0xFFFFFFFF
-    shift: int = 0
-    data_type: DATA_TYPE = DATA_TYPE.INT_VALUE
-
-    def clone(self, offset: int = 0):
-        new_instance = deepcopy(self)
-        new_instance.address += offset
-        return new_instance
-
-    def __str__(self):
-        return f"{type(self).__name__}(address: {self.address:#x}, mask: {self.mask:#x}, shift: {self.shift}, native_data_type: {self.data_type})"
-
-
-@dataclass
-class DebugRegisterDescription(TensixRegisterDescription):
-    pass
-
-
-@dataclass
-class ConfigurationRegisterDescription(TensixRegisterDescription):
-    index: int = 0
-
-    def __post_init__(self):
-        self.address = self.address + self.index * 4
-
-    def __str__(self):
-        base_str = super().__str__()[:-1]
-        return f"{base_str}, index: {self.index})"
-
-
-@dataclass
-class NocStatusRegisterDescription(TensixRegisterDescription):
-    pass
-
-
-@dataclass
-class NocConfigurationRegisterDescription(TensixRegisterDescription):
-    pass
-
-
-@dataclass
-class NocControlRegisterDescription(TensixRegisterDescription):
-    pass
-
-
 #
 # Device class: generic API for talking to specific devices. This class is the parent of specific
 # device classes (e.g. WormholeDevice, BlackholeDevice). The create class method is used to create
@@ -111,7 +58,6 @@ class Device(TTObject):
     DIE_Y_TO_NOC_0_Y: list[int] = []
     NOC_0_X_TO_DIE_X: list[int] = []
     NOC_0_Y_TO_DIE_Y: list[int] = []
-    NOC_REGISTER_OFFSET: int = None
 
     # NOC reg type
     class RegType:
@@ -404,44 +350,6 @@ class Device(TTObject):
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         noc_id = 1 if self._context.use_noc1 else 0
         return self._context.server_ifc.pci_read_tile(noc_id, self.id(), x, y, reg_addr, msg_size, data_format)
-
-    # TODO: This is old API. Create all of these in NocBlock. Change existing API to use get_block and call new API.
-
-    @abstractmethod
-    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int | None:
-        pass
-
-    @abstractmethod
-    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int | None:
-        pass
-
-    @abstractmethod
-    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription | None:
-        pass
-
-    @abstractmethod
-    def _get_riscv_local_memory_base_address(self) -> int:
-        pass
-
-    @abstractmethod
-    def _get_riscv_local_memory_size(self, risc_id: int) -> int:
-        pass
-
-    def get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
-        register_description = self._get_tensix_register_description(register_name)
-        if register_description != None:
-            base_address = self._get_tensix_register_base_address(register_description)
-            if base_address != None:
-                return register_description.clone(base_address)
-            else:
-                raise ValueError(f"Unknown tensix register base address for register: {register_name}")
-        else:
-            raise ValueError(f"Unknown tensix register name: {register_name}")
-
-    def get_tensix_register_address(self, register_name: str) -> int:
-        description = self.get_tensix_register_description(register_name)
-        assert description.mask == 0xFFFFFFFF and description.shift == 0
-        return description.address
 
 
 # end of class Device
