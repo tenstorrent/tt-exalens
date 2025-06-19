@@ -158,23 +158,6 @@ class Device(TTObject):
     def yaml_file(self):
         return util.YamlFile(self._context.server_ifc, self._device_desc_path)
 
-    def get_active_eth_channels(self, cluster_desc):
-        active_eth_channels = []
-        for connection in cluster_desc["ethernet_connections"]:
-            for block in connection:
-                if block["chip"] == self._id:
-                    active_eth_channels.append(block["chan"])
-
-        return active_eth_channels
-
-    def get_idle_eth_channels(self):
-        idle_eth_channels = []
-        for i in range(len(self.get_block_locations("eth"))):
-            if i not in self.active_eth_channels:
-                idle_eth_channels.append(i)
-
-        return idle_eth_channels
-
     def __init__(self, id: int, arch: str, cluster_desc, device_desc_path: str, context: Context):
         self._id: int = id
         self._arch = arch
@@ -184,9 +167,7 @@ class Device(TTObject):
         self._has_jtag = (
             any(id in chip for chip in cluster_desc["chips_with_jtag"]) if "chips_with_jtag" in cluster_desc else False
         )
-        self.active_eth_channels = self.get_active_eth_channels(cluster_desc)
-        self.idle_eth_channels = self.get_idle_eth_channels()
-
+        self.cluster_desc = cluster_desc
         self._init_coordinate_systems()
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
@@ -280,6 +261,25 @@ class Device(TTObject):
         assert isinstance(arc_blocks[0], ArcBlock), "Expected a single ARC block"
 
         return arc_blocks[0]
+
+    @cached_property
+    def active_eth_blocks(self) -> list[NocBlock]:
+        active_channels = []
+        for connection in self.cluster_desc["ethernet_connections"]:
+            for endpoint in connection:
+                if endpoint["chip"] == self._id:
+                    active_channels.append(endpoint["chan"])
+
+        return [self.get_blocks(block_type="eth")[chan] for chan in active_channels]
+
+    @cached_property
+    def idle_eth_blocks(self) -> list[NocBlock]:
+        idle_blocks = []
+        for block in self.get_blocks(block_type="eth"):
+            if not block in self.active_eth_blocks:
+                idle_blocks.append(block)
+
+        return idle_blocks
 
     @abstractmethod
     def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
