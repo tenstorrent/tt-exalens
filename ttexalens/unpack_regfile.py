@@ -110,6 +110,31 @@ def unpack_bfp8_b(data):
     return bfloat16_values
 
 
+def flip_int8_bits(value) -> int:
+    sign = (value & 0x8000) >> 15
+    mag = (value & 0x0FE0) >> 5
+    return sign, mag
+
+
+def unpack_int8(data):
+    result = []
+    for datum in data:
+        sign, mag = flip_int8_bits(datum)
+        result.append((1 - 2 * sign) * mag)
+
+
+def unpack_uint8(data):
+    pass
+
+
+def unpack_uint16(data):
+    pass
+
+
+def unpack_int32(data):
+    pass
+
+
 def unpack_data(data, df: int | TensixDataFormat):
     if isinstance(df, int):
         df = TensixDataFormat(df)
@@ -120,5 +145,13 @@ def unpack_data(data, df: int | TensixDataFormat):
         return unpack_bfp16(data)
     elif df == TensixDataFormat.Bfp8_b:
         return unpack_bfp8_b(data)
+    elif df == TensixDataFormat.Int8:
+        return unpack_int8(data)
+    elif df == TensixDataFormat.UInt8:
+        return unpack_uint8(data)
+    elif df == TensixDataFormat.UInt16:
+        return unpack_uint16(data)
+    elif df == TensixDataFormat.Int32:
+        return unpack_int32(data)
     else:
         raise ValueError(f"Unknown or unsupported data format {df}")
