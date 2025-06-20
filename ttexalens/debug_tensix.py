@@ -291,4 +291,4 @@ class TensixDebug:
             # If format is unsupported we reutrn raw data in hex format
             WARN(e)
             WARN("Printing raw data...")
-            return [hex(data[i]) for i in range(len(data))]
+            return [hex(datum) for datum in data]
