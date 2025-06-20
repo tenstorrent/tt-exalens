@@ -62,15 +62,25 @@ class TensixDebug:
         validate_device_id(device_id, self.context)
         self.device_id = device_id
         self.device = self.context.devices[self.device_id]
+        self.noc_block = self.device.get_block(core_loc)
+        self.register_store = self.noc_block.get_register_store()
         if not isinstance(core_loc, OnChipCoordinate):
             self.core_loc = OnChipCoordinate.create(core_loc, device=self.device)
         else:
             self.core_loc = core_loc
 
+    def __get_regsiter_address(self, register_name: str) -> int:
+        """Helper method to get the address of a register."""
+        address = self.register_store.get_register_noc_address(register_name)
+        assert (
+            address is not None
+        ), f"Register {register_name} doesn't have noc address on {self.register_store.location.to_user_str()}."
+        return address
+
     def dbg_buff_status(self):
         return read_word_from_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS"),
             self.device_id,
             self.context,
         )
@@ -100,7 +110,7 @@ class TensixDebug:
 
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
             0x07,
             self.device_id,
             self.context,
@@ -109,7 +119,7 @@ class TensixDebug:
         # 2. Assemble 32-bit instruction and write it to DBG_INSTRN_BUF_CTRL1
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1"),
             int.from_bytes(instruction_bytes, byteorder="little"),
             self.device_id,
             self.context,
@@ -118,7 +128,7 @@ class TensixDebug:
         # 3. Set bit 0(trigger) and bit 4 (override en) to 1 in DBG_INSTRN_BUF_CTRL0 to inject instruction.
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
             0x7 | (0x10 << trisc_id),
             self.device_id,
             self.context,
@@ -127,14 +137,14 @@ class TensixDebug:
         # 4. Clear DBG_INSTRN_BUF_CTRL0 register
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
             0x07,
             self.device_id,
             self.context,
         )
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
             0x00,
             self.device_id,
             self.context,
@@ -196,7 +206,7 @@ class TensixDebug:
 
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
             0x1,
             self.device_id,
             self.context,
@@ -228,14 +238,14 @@ class TensixDebug:
                 dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
                 write_words_to_device(
                     self.core_loc,
-                    self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
+                    self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
                     dbg_array_rd_cmd,
                     self.device_id,
                     self.context,
                 )
                 rd_data = read_word_from_device(
                     self.core_loc,
-                    self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA"),
+                    self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA"),
                     self.device_id,
                     self.context,
                 )
@@ -249,14 +259,14 @@ class TensixDebug:
 
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
             0x0,
             self.device_id,
             self.context,
         )
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
             0x0,
             self.device_id,
             self.context,
