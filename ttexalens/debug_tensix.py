@@ -7,7 +7,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.register_store import RegisterDescription
 from ttexalens.tt_exalens_lib import check_context, validate_device_id, read_word_from_device, write_words_to_device
-from ttexalens.util import TTException
+from ttexalens.util import WARN, TTException
 from ttexalens.device import Device
 from ttexalens.unpack_regfile import unpack_data
 
@@ -273,17 +273,22 @@ class TensixDebug:
         )
         return data
 
-    def read_regfile(self, regfile: int | str | REGFILE) -> list[float | int]:
+    def read_regfile(self, regfile: int | str | REGFILE) -> list[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
 
         Args:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
 
         Returns:
-                list[float | int]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
+                list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
         """
         regfile = convert_regfile(regfile)
         data = self.read_regfile_data(regfile)
         df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
-        unpacked_data = unpack_data(data, df)
-        return unpacked_data
+        try:
+            return unpack_data(data, df)
+        except ValueError as e:
+            # If format is unsupported we reutrn raw data in hex format
+            WARN(e)
+            WARN("Printing raw data...")
+            return [hex(data[i]) for i in range(len(data))]
