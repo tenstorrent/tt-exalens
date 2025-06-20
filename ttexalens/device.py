@@ -113,7 +113,7 @@ class Device(TTObject):
         self._has_jtag = (
             any(id in chip for chip in cluster_desc["chips_with_jtag"]) if "chips_with_jtag" in cluster_desc else False
         )
-
+        self.cluster_desc = cluster_desc
         self._init_coordinate_systems()
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
@@ -207,6 +207,25 @@ class Device(TTObject):
         assert isinstance(arc_blocks[0], ArcBlock), "Expected a single ARC block"
 
         return arc_blocks[0]
+
+    @cached_property
+    def active_eth_blocks(self) -> list[NocBlock]:
+        active_channels = []
+        for connection in self.cluster_desc["ethernet_connections"]:
+            for endpoint in connection:
+                if endpoint["chip"] == self._id:
+                    active_channels.append(endpoint["chan"])
+
+        return [self.get_blocks(block_type="eth")[chan] for chan in active_channels]
+
+    @cached_property
+    def idle_eth_blocks(self) -> list[NocBlock]:
+        idle_blocks = []
+        for block in self.get_blocks(block_type="eth"):
+            if not block in self.active_eth_blocks:
+                idle_blocks.append(block)
+
+        return idle_blocks
 
     @abstractmethod
     def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
