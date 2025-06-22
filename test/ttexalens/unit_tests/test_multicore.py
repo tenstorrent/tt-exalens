@@ -5,7 +5,7 @@ import unittest
 import time
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
-from ttexalens.risc_loader import RiscLoader
+from ttexalens.elf_loader import ElfLoader
 
 
 class TestMulticore(unittest.TestCase):
@@ -66,7 +66,7 @@ class TestMulticore(unittest.TestCase):
             0x00000E37,  # lui t3, 0x0    - Load upper immediate: t3 = 0 (initialize counter)
             0x001E0E13,  # addi t3, t3, 1 - Add immediate: t3 += 1 (increment counter)
             0x0002A303,  # lw t1, 0(t0)   - Load word: t1 = MEM[t0 + 0] (read from mailbox)
-            RiscLoader.get_jump_to_offset_instruction(-8),  # Jump back 8 bytes (2 instructions) to addi
+            ElfLoader.get_jump_to_offset_instruction(-8),  # Jump back 8 bytes (2 instructions) to addi
         ]
         self._write_program_sequence(self.brisc, brisc_program)
 
@@ -78,7 +78,7 @@ class TestMulticore(unittest.TestCase):
             0x014E1313,  # slli t1, t3, 20 - Shift left logical immediate: t1 = t3 << 20 (delay write frequency)
             0xFE031CE3,  # bne t1, x0, -8  - Branch if not equal: if(t1 != 0) goto t0_loop (branch to addi)
             0x01C2A023,  # sw t3, 0(t0)    - Store word: MEM[t0 + 0] = t3 (write counter to mailbox)
-            RiscLoader.get_jump_to_offset_instruction(-16),  # Jump and link: jump back to addi (loop)
+            ElfLoader.get_jump_to_offset_instruction(-16),  # Jump and link: jump back to addi (loop)
         ]
         self._write_program_sequence(self.trisc0, trisc0_program)
 

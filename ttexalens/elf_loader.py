@@ -13,7 +13,7 @@ from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.tt_exalens_lib import read_from_device, write_to_device
 
 
-class RiscLoader:
+class ElfLoader:
     """
     This class is used to load elf file to a RISC-V core.
     """
