@@ -332,7 +332,7 @@ class BabyRiscDebugHardware:
         if self.device._arch == "blackhole":
             self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_STEP)
 
-    def cont(self, verify=True):
+    def cont(self):
         if not self.is_halted():
             util.WARN(
                 f"Continue: {self.risc_info.risc_name} core at {self.risc_info.noc_block.location} is already running"
@@ -341,9 +341,6 @@ class BabyRiscDebugHardware:
         if self.verbose:
             util.INFO("  cont()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_CONTINUE)
-        assert (
-            not verify or not self.is_halted()
-        ), f"Failed to continue {self.risc_info.risc_name} core at {self.risc_info.noc_block.location}"
 
     def continue_without_debug(self):
         """
@@ -649,7 +646,7 @@ class BabyRiscDebug(RiscDebug):
             self.assert_not_in_reset()
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
-        return self.debug_hardware.cont(verify=False)
+        return self.debug_hardware.cont()
 
     @contextmanager
     def ensure_halted(self):

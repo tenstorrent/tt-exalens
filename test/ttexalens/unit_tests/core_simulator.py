@@ -93,17 +93,14 @@ class RiscvCoreSimulator:
         """Halt core execution."""
         self.risc_debug.halt()
 
-    def continue_execution(self, enable_debug: bool = True, verify: bool = True):
+    def continue_execution(self, enable_debug: bool = True):
         """Continue core execution.
 
         Args:
             enable_debug: Whether to enable debug mode when continuing
         """
         if enable_debug:
-            if verify:
-                self.risc_debug.cont()
-            else:
-                self.debug_hardware.cont(verify=False)
+            self.risc_debug.cont()
         else:
             self.debug_hardware.continue_without_debug()
 
