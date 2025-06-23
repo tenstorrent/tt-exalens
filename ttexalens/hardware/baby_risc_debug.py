@@ -328,9 +328,6 @@ class BabyRiscDebugHardware:
         if self.verbose:
             util.INFO("  step()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_STEP)
-        # There is bug in hardware and for blackhole step should be executed twice
-        if self.device._arch == "blackhole":
-            self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_STEP)
 
     def cont(self):
         if not self.is_halted():

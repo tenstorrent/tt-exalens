@@ -1173,7 +1173,7 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
         # Continue to proceed with bne test
-        self.core_sim.continue_execution()
+        self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
         # Confirm failure
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
@@ -1242,14 +1242,14 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
         # Continue to proceed with bne test
-        self.core_sim.continue_execution(enable_debug=False)
+        self.core_sim.debug_hardware.continue_without_debug()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
         # We should pass for loop very fast and should be halted here already
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
         # Verify value at address
-        self.core_sim.continue_execution()
+        self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
 
@@ -1320,14 +1320,14 @@ class TestDebugging(unittest.TestCase):
             self.core_sim.set_branch_prediction(False)
 
         # Continue to proceed with bne test
-        self.core_sim.continue_execution()
+        self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
         # We should pass for loop very fast and should be halted here already
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
         # Verify value at address
-        self.core_sim.continue_execution()
+        self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
 
