@@ -159,8 +159,8 @@ def unpack_int32(data):
     return [
         (1 - 2 * sign) * ((msb << 16) | lsb)
         for i in range(0, len(data), 2)
-        for sign, msb, lsb in [
-            flip_int32_msb(int.from_bytes(data[i : i + 2], byteorder="big")),
+        for (sign, msb), lsb in [
+            (flip_int32_msb(int.from_bytes(data[i : i + 2], byteorder="big"))),
             int.from_bytes(data[i + delta : i + delta + 2], byteorder="big"),
         ]
     ]
