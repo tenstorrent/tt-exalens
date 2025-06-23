@@ -111,37 +111,11 @@ def unpack_bfp8_b(data):
 
 
 def unpack_fp32(data) -> list[float]:
-    # 64x32 bytes
-    # Each row can be grabbed as 16x uint16_t
-    # Swizzle and remap aren't accounted for
-    row_size = 32
-    total_rows = len(data) // row_size
-    print(f"total_rows: {total_rows}")
-    assert total_rows % 2 == 0
-    half = total_rows // 2
-
     floats: list[float] = []
-    for r in range(half):
-        base_hi = r * row_size
-        base_lo = (r + half)
-        # for each of the 16 uint16_t slots in the row
-        for i in range(16):
-            hi_bytes = data[base_hi + 2 * i : base_hi + 2 * i + 2]
-            lo_bytes = data[base_lo + 2 * i : base_lo + 2 * i + 2]
-            hi = int.from_bytes(hi_bytes, byteorder="big")
-            lo = int.from_bytes(lo_bytes, byteorder="big")
 
-            # reconstruct an IEEE 32-bit float
-            # hi: s m m m m m m m e e e e e e e e
-            # lo: m m m m m m m m m m m m m m m m
-            # should become: s 8e 23m
-            sign = (hi & 0x8000) << 16
-            exponent = (hi & 0x00FF) << 23
-            mantissa = ((hi & 0x7F00) << 8) | lo
-            result = sign | exponent | mantissa
+    for i in range(0, len(data) // 2):
+        floats += data[i] | data[len(data) // 2 + i]
 
-            floats.append(struct.unpack(">f", result.to_bytes(4, "big"))[0])
-    
     return floats
 
 
