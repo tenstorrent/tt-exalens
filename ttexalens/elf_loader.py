@@ -13,7 +13,7 @@ from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.tt_exalens_lib import read_from_device, write_to_device
 
 
-class RiscLoader:
+class ElfLoader:
     """
     This class is used to load elf file to a RISC-V core.
     """
@@ -116,10 +116,10 @@ class RiscLoader:
         the debug interface to write them.
         """
         if (
-            RiscLoader.__inside_private_memory(self.risc_debug.get_data_private_memory(), address)
+            ElfLoader.__inside_private_memory(self.risc_debug.get_data_private_memory(), address)
             and self.risc_debug.get_data_private_memory().address.noc_address is None
         ) or (
-            RiscLoader.__inside_private_memory(self.risc_debug.get_code_private_memory(), address)
+            ElfLoader.__inside_private_memory(self.risc_debug.get_code_private_memory(), address)
             and self.risc_debug.get_code_private_memory().address.noc_address is None
         ):
             # Use debug interface
@@ -133,10 +133,10 @@ class RiscLoader:
         the debug interface to read them.
         """
         if (
-            RiscLoader.__inside_private_memory(self.risc_debug.get_data_private_memory(), address)
+            ElfLoader.__inside_private_memory(self.risc_debug.get_data_private_memory(), address)
             and self.risc_debug.get_data_private_memory().address.noc_address is None
         ) or (
-            RiscLoader.__inside_private_memory(self.risc_debug.get_code_private_memory(), address)
+            ElfLoader.__inside_private_memory(self.risc_debug.get_code_private_memory(), address)
             and self.risc_debug.get_code_private_memory().address.noc_address is None
         ):
             # Use debug interface
@@ -146,7 +146,7 @@ class RiscLoader:
 
     def remap_address(self, address: int, loader_data: int | None, loader_code: int | None):
         data_private_memory = self.risc_debug.get_data_private_memory()
-        if RiscLoader.__inside_private_memory(data_private_memory, address):
+        if ElfLoader.__inside_private_memory(data_private_memory, address):
             if loader_data is not None and isinstance(loader_data, int):
                 assert data_private_memory is not None
                 assert data_private_memory.address is not None
@@ -154,7 +154,7 @@ class RiscLoader:
                 return address - data_private_memory.address.private_address + loader_data
             return address
         code_private_memory = self.risc_debug.get_code_private_memory()
-        if RiscLoader.__inside_private_memory(code_private_memory, address):
+        if ElfLoader.__inside_private_memory(code_private_memory, address):
             if loader_code is not None and isinstance(loader_code, int):
                 assert code_private_memory is not None
                 assert code_private_memory.address is not None

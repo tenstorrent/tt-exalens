@@ -25,7 +25,7 @@ from ttexalens.object import DataArray
 from ttexalens.hw.arc.arc import load_arc_fw
 from ttexalens.hw.arc.arc_dbg_fw import arc_dbg_fw_check_msg_loop_running, arc_dbg_fw_command, NUM_LOG_CALLS_OFFSET
 from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
-from ttexalens.risc_loader import RiscLoader
+from ttexalens.elf_loader import ElfLoader
 
 
 def invalid_argument_decorator(func):
@@ -593,7 +593,7 @@ class TestRunElf(unittest.TestCase):
         assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug, got {type(risc_debug)}"
         rdbg: BabyRiscDebug = risc_debug
         assert rdbg.debug_hardware is not None, "Debug hardware is not available."
-        rloader = RiscLoader(rdbg)
+        rloader = ElfLoader(rdbg)
 
         # Disable branch rediction due to bne instruction in the elf
         rdbg.set_branch_prediction(False)
@@ -864,7 +864,7 @@ class TestCallStack(unittest.TestCase):
     core_desc: str  # Core description ETH0, FW0, FW1 - being parametrized
     core_loc: str  # Core location
     risc_debug: RiscDebug  # RiscDebug object
-    loader: RiscLoader  # RiscLoader object
+    loader: ElfLoader  # ElfLoader object
     pc_register_index: int  # PC register index
 
     @classmethod
@@ -897,7 +897,7 @@ class TestCallStack(unittest.TestCase):
         loc = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
         noc_block = loc._device.get_block(loc)
         self.risc_debug = noc_block.get_risc_debug(self.risc_name)
-        self.loader = RiscLoader(self.risc_debug)
+        self.loader = ElfLoader(self.risc_debug)
 
         # Stop risc with reset
         self.risc_debug.set_reset_signal(True)
