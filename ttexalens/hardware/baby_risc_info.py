@@ -6,7 +6,7 @@ from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_info import RiscInfo
 from ttexalens.register_store import RegisterStore
-from ttexalens.risc_loader import RiscLoader
+from ttexalens.elf_loader import ElfLoader
 from ttexalens.tt_exalens_lib import write_words_to_device
 
 
@@ -69,7 +69,7 @@ class BabyRiscInfo(RiscInfo):
 
             # If we cannot change the code start address, we write a jump instruction to the specified address
             assert self.default_code_start_address is not None
-            jump_instruction = RiscLoader.get_jump_to_offset_instruction(address)
+            jump_instruction = ElfLoader.get_jump_to_offset_instruction(address)
             write_words_to_device(
                 register_store.location,
                 self.default_code_start_address,

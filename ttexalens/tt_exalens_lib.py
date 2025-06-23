@@ -266,7 +266,7 @@ def load_elf(
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
 
-    from ttexalens.risc_loader import RiscLoader
+    from ttexalens.elf_loader import ElfLoader
 
     context = check_context(context)
     validate_device_id(device_id, context)
@@ -294,8 +294,8 @@ def load_elf(
     for loc in locs:
         noc_block = device.get_block(loc)
         risc_debug = noc_block.get_risc_debug(risc_name, neo_id)
-        risc_loader = RiscLoader(risc_debug)
-        risc_loader.load_elf(elf_file)
+        elf_loader = ElfLoader(risc_debug)
+        elf_loader.load_elf(elf_file)
 
 
 def run_elf(
@@ -320,7 +320,7 @@ def run_elf(
             device_id (int, default 0):	ID number of device to run ELF on.
             context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
-    from ttexalens.risc_loader import RiscLoader
+    from ttexalens.elf_loader import ElfLoader
 
     context = check_context(context)
 
@@ -349,8 +349,8 @@ def run_elf(
     for loc in locs:
         noc_block = device.get_block(loc)
         risc_debug = noc_block.get_risc_debug(risc_name, neo_id)
-        risc_loader = RiscLoader(risc_debug)
-        risc_loader.run_elf(elf_file)
+        elf_loader = ElfLoader(risc_debug)
+        elf_loader.run_elf(elf_file)
 
 
 def check_context(context: Context | None = None) -> Context:
