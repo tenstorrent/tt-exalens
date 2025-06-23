@@ -146,13 +146,31 @@ def unpack_uint16(data):
     ]
 
 
+def flip_int32_msb(value):
+    sign = (value & 0x8000) >> 15
+    mag_low = (value & 0x7F00) >> 8
+    mag_high = value & 0x00FF
+
+    return sign, (mag_high << 7) | mag_low
+
+
 def unpack_int32(data):
-    pass
+    delta = len(data) / 2
+    return [
+        (1 - 2 * sign) * ((msb << 16) | lsb)
+        for i in range(0, len(data), 2)
+        for sign, msb, lsb in [
+            flip_int32_msb(int.from_bytes(data[i : i + 2], byteorder="big")),
+            int.from_bytes(data[i + delta : i + delta + 2], byteorder="big"),
+        ]
+    ]
 
 
 def unpack_data(data, df: int | TensixDataFormat):
     if isinstance(df, int):
         df = TensixDataFormat(df)
+
+    print(len(data))
 
     if df == TensixDataFormat.Float16:
         return unpack_fp16(data)
@@ -166,7 +184,7 @@ def unpack_data(data, df: int | TensixDataFormat):
         return unpack_uint8(data)
     elif df == TensixDataFormat.UInt16:
         return unpack_uint16(data)
-    elif df == TensixDataFormat.Int32:
-        return unpack_int32(data)
+    # elif df == TensixDataFormat.Int32:
+    #     return unpack_int32(data)
     else:
         raise ValueError(f"Unknown or unsupported data format {df}")
