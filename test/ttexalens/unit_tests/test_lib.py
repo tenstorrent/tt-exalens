@@ -850,7 +850,9 @@ class TestARC(unittest.TestCase):
 
 @parameterized_class(
     [
-        # { "core_desc": "ETH0", "risc_name": "BRISC" },
+        {"core_desc": "ETH0", "risc_name": "ERISC"},
+        {"core_desc": "ETH0", "risc_name": "ERISC0"},
+        {"core_desc": "ETH0", "risc_name": "ERISC1"},
         {"core_desc": "FW0", "risc_name": "BRISC"},
         {"core_desc": "FW0", "risc_name": "TRISC0"},
         {"core_desc": "FW0", "risc_name": "TRISC1"},
@@ -896,7 +898,11 @@ class TestCallStack(unittest.TestCase):
 
         loc = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
         noc_block = loc._device.get_block(loc)
-        self.risc_debug = noc_block.get_risc_debug(self.risc_name)
+        try:
+            self.risc_debug = noc_block.get_risc_debug(self.risc_name)
+        except ValueError as e:
+            self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
+
         self.loader = ElfLoader(self.risc_debug)
 
         # Stop risc with reset
@@ -917,7 +923,11 @@ class TestCallStack(unittest.TestCase):
         arch = self.context.devices[0]._arch.lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
-        return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
+        if self.risc_name.lower().startswith("erisc"):
+            # For eriscs we can use brisc elf
+            return f"build/riscv-src/{arch}/{app_name}.brisc.elf"
+        else:
+            return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
 
     @parameterized.expand([1, 10, 50])
     def test_callstack_with_parsing(self, recursion_count):
