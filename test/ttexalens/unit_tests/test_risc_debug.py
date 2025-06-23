@@ -332,7 +332,7 @@ class TestDebugging(unittest.TestCase):
         while True:
             try:
                 self.core_sim.halt()
-                self.core_sim.continue_execution(False)
+                self.core_sim.continue_execution(enable_debug=False)
                 iteration = iteration + 1
                 if iteration > 1000:
                     break
@@ -695,7 +695,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.debug_hardware.set_watchpoint_on_pc_address(1, self.core_sim.program_base_address + 32)
 
         # Continue and verify that we hit first watchpoint
-        self.core_sim.continue_execution(verify=False)
+        self.core_sim.continue_execution()
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
         self.assertTrue(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should be the cause.")
@@ -709,7 +709,7 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
 
         # Continue and verify that we hit first watchpoint
-        self.core_sim.continue_execution(verify=False)
+        self.core_sim.continue_execution()
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
         self.assertTrue(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should be the cause.")
@@ -1173,7 +1173,7 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
         # Continue to proceed with bne test
-        self.core_sim.continue_execution(verify=False)
+        self.core_sim.continue_execution()
 
         # Confirm failure
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
@@ -1242,7 +1242,7 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
         # Continue to proceed with bne test
-        self.core_sim.continue_execution(False)
+        self.core_sim.continue_execution(enable_debug=False)
 
         # We should pass for loop very fast and should be halted here already
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
@@ -1320,7 +1320,7 @@ class TestDebugging(unittest.TestCase):
             self.core_sim.set_branch_prediction(False)
 
         # Continue to proceed with bne test
-        self.core_sim.continue_execution(verify=False)
+        self.core_sim.continue_execution()
 
         # We should pass for loop very fast and should be halted here already
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")

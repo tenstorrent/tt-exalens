@@ -701,7 +701,7 @@ class TestRunElf(unittest.TestCase):
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[3]:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 3.")
-        rdbg.debug_hardware.cont(verify=False)
+        rdbg.cont()
 
         mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
@@ -711,7 +711,7 @@ class TestRunElf(unittest.TestCase):
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[5]:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 5.")
-        rdbg.debug_hardware.cont(verify=False)
+        rdbg.cont()
 
         mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
@@ -722,7 +722,7 @@ class TestRunElf(unittest.TestCase):
         if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[0]:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 0.")
             return False
-        rdbg.debug_hardware.cont(verify=False)
+        rdbg.cont()
 
         mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
@@ -732,7 +732,7 @@ class TestRunElf(unittest.TestCase):
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[4]:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 4.")
-        rdbg.debug_hardware.cont(verify=False)
+        rdbg.cont()
 
         # STEP END:
         mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
