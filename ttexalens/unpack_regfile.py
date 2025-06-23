@@ -110,25 +110,40 @@ def unpack_bfp8_b(data):
     return bfloat16_values
 
 
-def flip_int8_bits(value) -> int:
+def flip_int8_bits(value):
     sign = (value & 0x8000) >> 15
     mag = (value & 0x0FE0) >> 5
     return sign, mag
 
 
 def unpack_int8(data):
-    result = []
-    for datum in data:
-        sign, mag = flip_int8_bits(datum)
-        result.append((1 - 2 * sign) * mag)
+    return [
+        (1 - 2 * sign) * mag
+        for i in range(0, len(data), 2)
+        for sign, mag in [flip_int8_bits(int.from_bytes(data[i : i + 2], byteorder="big"))]
+    ]
+
+
+def flip_uint8_bits(value):
+    return (value & 0x1FE0) >> 5
 
 
 def unpack_uint8(data):
-    pass
+    return [flip_uint8_bits(int.from_bytes(data[i : i + 2]), byteorder="big") for i in range(0, len(data), 2)]
+
+
+def flip_uint16_bits(value):
+    sign = (value & 0x8000) >> 15
+    mag = value & 0x7FFF
+    return sign, mag
 
 
 def unpack_uint16(data):
-    pass
+    return [
+        (1 - 2 * sign) * mag
+        for i in range(0, len(data), 2)
+        for sign, mag in [flip_uint16_bits(int.from_bytes(data[i : i + 2], byteorder="big"))]
+    ]
 
 
 def unpack_int32(data):
