@@ -16,6 +16,7 @@ from ttexalens import util
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
+from ttexalens.device import Device
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.firmware import ELF
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
@@ -850,7 +851,9 @@ class TestARC(unittest.TestCase):
 
 @parameterized_class(
     [
-        # { "core_desc": "ETH0", "risc_name": "BRISC" },
+        {"core_desc": "ETH0", "risc_name": "ERISC"},
+        {"core_desc": "ETH0", "risc_name": "ERISC0"},
+        {"core_desc": "ETH0", "risc_name": "ERISC1"},
         {"core_desc": "FW0", "risc_name": "BRISC"},
         {"core_desc": "FW0", "risc_name": "TRISC0"},
         {"core_desc": "FW0", "risc_name": "TRISC1"},
@@ -863,19 +866,22 @@ class TestCallStack(unittest.TestCase):
     context: Context  # TTExaLens context
     core_desc: str  # Core description ETH0, FW0, FW1 - being parametrized
     core_loc: str  # Core location
+    location: OnChipCoordinate  # Core location
     risc_debug: RiscDebug  # RiscDebug object
     loader: ElfLoader  # ElfLoader object
     pc_register_index: int  # PC register index
+    device: Device  # Device
 
     @classmethod
     def setUpClass(cls):
         cls.context = tt_exalens_init.init_ttexalens()
 
     def setUp(self):
+        self.device = self.context.devices[0]
         # Convert core_desc to core_loc
         if self.core_desc.startswith("ETH"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.context.devices[0].get_block_locations(block_type="eth")
+            eth_cores = self.device.get_block_locations(block_type="eth")
             core_index = int(self.core_desc[3:])
             if len(eth_cores) > core_index:
                 self.core_loc = eth_cores[core_index].to_str()
@@ -884,7 +890,7 @@ class TestCallStack(unittest.TestCase):
                 self.skipTest("ETH core is not available on this platform")
         elif self.core_desc.startswith("FW"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.context.devices[0].get_block_locations(block_type="functional_workers")
+            eth_cores = self.device.get_block_locations(block_type="functional_workers")
             core_index = int(self.core_desc[2:])
             if len(eth_cores) > core_index:
                 self.core_loc = eth_cores[core_index].to_str()
@@ -894,9 +900,13 @@ class TestCallStack(unittest.TestCase):
         else:
             self.fail(f"Unknown core description {self.core_desc}")
 
-        loc = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
-        noc_block = loc._device.get_block(loc)
-        self.risc_debug = noc_block.get_risc_debug(self.risc_name)
+        self.location = OnChipCoordinate.create(self.core_loc, device=self.device)
+        noc_block = self.location._device.get_block(self.location)
+        try:
+            self.risc_debug = noc_block.get_risc_debug(self.risc_name)
+        except ValueError as e:
+            self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
+
         self.loader = ElfLoader(self.risc_debug)
 
         # Stop risc with reset
@@ -908,19 +918,32 @@ class TestCallStack(unittest.TestCase):
         self.risc_debug.set_reset_signal(True)
         self.assertTrue(self.risc_debug.is_in_reset())
 
+    def is_wormhole(self):
+        """Check if the device is wormhole"""
+        return self.device._arch == "wormhole_b0"
+
     def is_blackhole(self):
         """Check if the device is blackhole."""
-        return self.context.devices[0]._arch == "blackhole"
+        return self.device._arch == "blackhole"
+
+    def is_eth_block(self):
+        """Check if the core is ETH."""
+        return self.device.get_block_type(self.location) == "eth"
 
     def get_elf_path(self, app_name):
         """Get the path to the ELF file."""
-        arch = self.context.devices[0]._arch.lower()
+        arch = self.device._arch.lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
-        return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
+        if self.risc_name.lower().startswith("erisc"):
+            # For eriscs we can use brisc elf
+            return f"build/riscv-src/{arch}/{app_name}.brisc.elf"
+        else:
+            return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
 
     @parameterized.expand([1, 10, 50])
     def test_callstack_with_parsing(self, recursion_count):
+        self.is_wormhole()
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack")
         self.loader.run_elf(elf_path)
@@ -952,6 +975,10 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(["callstack", "callstack.optimized"])
     def test_callstack_namespace(self, elf_name):
+
+        if self.is_wormhole() and self.is_eth_block() and elf_name == "callstack.optimized":
+            self.skipTest("Callstack optimized tests break on ETH blocks")
+
         lib.write_words_to_device(self.core_loc, 0x4000, 0, 0, self.context)
         elf_path = self.get_elf_path(elf_name)
         self.loader.run_elf(elf_path)
@@ -988,6 +1015,10 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand([(1, 1), (10, 9), (50, 49)])
     def test_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
+
+        if self.is_wormhole() and self.is_eth_block():
+            self.skipTest("Callstack optimized tests break on ETH blocks")
+
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack.optimized")
         self.loader.run_elf(elf_path)
@@ -1003,6 +1034,10 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand([(1, 1)])
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):
+
+        if self.is_wormhole() and self.is_eth_block():
+            self.skipTest("Callstack optimized tests break on ETH blocks")
+
         lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack.optimized")
         self.loader.run_elf(elf_path)
