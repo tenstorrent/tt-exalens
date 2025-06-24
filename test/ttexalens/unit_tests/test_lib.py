@@ -16,6 +16,7 @@ from ttexalens import util
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
+from ttexalens.device import Device
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.firmware import ELF
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
@@ -869,16 +870,18 @@ class TestCallStack(unittest.TestCase):
     risc_debug: RiscDebug  # RiscDebug object
     loader: ElfLoader  # ElfLoader object
     pc_register_index: int  # PC register index
+    device: Device  # Device
 
     @classmethod
     def setUpClass(cls):
         cls.context = tt_exalens_init.init_ttexalens()
 
     def setUp(self):
+        self.device = self.context.devices[0]
         # Convert core_desc to core_loc
         if self.core_desc.startswith("ETH"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.context.devices[0].get_block_locations(block_type="eth")
+            eth_cores = self.device.get_block_locations(block_type="eth")
             core_index = int(self.core_desc[3:])
             if len(eth_cores) > core_index:
                 self.core_loc = eth_cores[core_index].to_str()
@@ -887,7 +890,7 @@ class TestCallStack(unittest.TestCase):
                 self.skipTest("ETH core is not available on this platform")
         elif self.core_desc.startswith("FW"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.context.devices[0].get_block_locations(block_type="functional_workers")
+            eth_cores = self.device.get_block_locations(block_type="functional_workers")
             core_index = int(self.core_desc[2:])
             if len(eth_cores) > core_index:
                 self.core_loc = eth_cores[core_index].to_str()
@@ -897,7 +900,7 @@ class TestCallStack(unittest.TestCase):
         else:
             self.fail(f"Unknown core description {self.core_desc}")
 
-        self.location = OnChipCoordinate.create(self.core_loc, device=self.context.devices[0])
+        self.location = OnChipCoordinate.create(self.core_loc, device=self.device)
         noc_block = self.location._device.get_block(self.location)
         try:
             self.risc_debug = noc_block.get_risc_debug(self.risc_name)
@@ -917,20 +920,19 @@ class TestCallStack(unittest.TestCase):
 
     def is_wormhole(self):
         """Check if the device is wormhole"""
-        a = self.context.devices[0]._arch
-        return self.context.devices[0]._arch == "wormhole_b0"
+        return self.device._arch == "wormhole_b0"
 
     def is_blackhole(self):
         """Check if the device is blackhole."""
-        return self.context.devices[0]._arch == "blackhole"
+        return self.device._arch == "blackhole"
 
     def is_eth_block(self):
         """Check if the core is ETH."""
-        return self.context.devices[0].get_block_type(self.location) == "eth"
+        return self.device.get_block_type(self.location) == "eth"
 
     def get_elf_path(self, app_name):
         """Get the path to the ELF file."""
-        arch = self.context.devices[0]._arch.lower()
+        arch = self.device._arch.lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
         if self.risc_name.lower().startswith("erisc"):
