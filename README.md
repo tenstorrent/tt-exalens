@@ -1,5 +1,5 @@
 <div align="center">
-<h1> TT-Lensium </h1>
+<h1> TT-Lensium :tm: </h1>
 
 A low level hardware debugger
 
