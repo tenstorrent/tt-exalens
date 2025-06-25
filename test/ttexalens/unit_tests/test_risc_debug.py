@@ -78,19 +78,24 @@ class TestDebugging(unittest.TestCase):
     def test_default_start_address(self):
         risc_info = self.core_sim.risc_debug.risc_info
 
-        # Fill L1 with 0x6f (infinite loop)
+        if risc_info.default_code_start_address is None:
+            self.skipTest("Default code start address doesn'tg exist for this RISC. Start address is always controlled by register.")
+
+        # Fill L1 with 0x00100073 (ebreak)
         l1_start = risc_info.l1.address.noc_address
-        assert l1_start is not None, "L1 start address should not be None."
-        word_bytes = 0x6F.to_bytes(4, byteorder="little")
+        assert l1_start is not None, "L1 address should not be None."
+        word_bytes = 0x00100073.to_bytes(4, byteorder="little")
         bytes = word_bytes * (risc_info.l1.size // 4)
         lib.write_to_device(self.core_sim.location, l1_start, bytes, self.core_sim.device._id, self.core_sim.context)
 
         # Take risc out of reset
-        self.core_sim.risc_debug.set_code_start_address(None)
+        if risc_info.can_change_code_start_address:
+            self.core_sim.risc_debug.set_code_start_address(None)
         self.core_sim.set_reset(False)
 
         # Verify that PC is what we expect
-        self.assertEqual(self.core_sim.get_pc(), risc_info.default_code_start_address)
+        # We take into account that ebreak instruction has completed and that the PC is now at the next instruction
+        self.assertEqual(self.core_sim.get_pc() - 4, risc_info.default_code_start_address)
         self.core_sim.set_reset(True)
 
     def test_read_write_gpr(self):
