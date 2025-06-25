@@ -79,7 +79,9 @@ class TestDebugging(unittest.TestCase):
         risc_info = self.core_sim.risc_debug.risc_info
 
         if risc_info.default_code_start_address is None:
-            self.skipTest("Default code start address doesn'tg exist for this RISC. Start address is always controlled by register.")
+            self.skipTest(
+                "Default code start address doesn'tg exist for this RISC. Start address is always controlled by register."
+            )
 
         # Fill L1 with 0x00100073 (ebreak)
         l1_start = risc_info.l1.address.noc_address
