@@ -4,6 +4,7 @@
 import unittest
 from parameterized import parameterized_class
 
+from ttexalens import tt_exalens_lib as lib
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from ttexalens.context import Context
@@ -73,6 +74,33 @@ class TestDebugging(unittest.TestCase):
             self.core_sim.program_base_address + expected,
             f"Pc should be less than {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
         )
+
+    def test_default_start_address(self):
+        risc_info = self.core_sim.risc_debug.risc_info
+
+        if risc_info.default_code_start_address is None:
+            self.skipTest(
+                "Default code start address doesn't exist for this RISC. Start address is always controlled by register."
+            )
+        if self.core_sim.is_eth_block():
+            self.skipTest("Skipping ETH test since UMD doesn't support destroying ETH L1 memory.")
+
+        # Fill L1 with 0x00100073 (ebreak)
+        l1_start = risc_info.l1.address.noc_address
+        assert l1_start is not None, "L1 address should not be None."
+        word_bytes = 0x00100073.to_bytes(4, byteorder="little")
+        bytes = word_bytes * (risc_info.l1.size // 4)
+        lib.write_to_device(self.core_sim.location, l1_start, bytes, self.core_sim.device._id, self.core_sim.context)
+
+        # Take risc out of reset
+        if risc_info.can_change_code_start_address:
+            self.core_sim.risc_debug.set_code_start_address(None)
+        self.core_sim.set_reset(False)
+
+        # Verify that PC is what we expect
+        # We take into account that ebreak instruction has completed and that the PC is now at the next instruction
+        self.assertEqual(self.core_sim.get_pc() - 4, risc_info.default_code_start_address)
+        self.core_sim.set_reset(True)
 
     def test_read_write_gpr(self):
         """Write then read value in all registers (except zero and pc)."""
