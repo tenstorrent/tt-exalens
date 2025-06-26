@@ -516,9 +516,6 @@ class BabyRiscDebug(RiscDebug):
         reset_reg = self.__read(self.RISC_DBG_SOFT_RESET0)
         reset_reg = (reset_reg & ~(1 << self.risc_info.reset_flag_shift)) | (value << self.risc_info.reset_flag_shift)
         self.__write(self.RISC_DBG_SOFT_RESET0, reset_reg)
-        new_reset_reg = self.__read(self.RISC_DBG_SOFT_RESET0)
-        if new_reset_reg != reset_reg:
-            util.ERROR(f"Error writing reset signal. Expected 0x{reset_reg:08x}, got 0x{new_reset_reg:08x}")
 
     def assert_not_in_reset(self, message=""):
         """
