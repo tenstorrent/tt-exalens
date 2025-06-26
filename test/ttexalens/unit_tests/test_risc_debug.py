@@ -82,6 +82,8 @@ class TestDebugging(unittest.TestCase):
             self.skipTest(
                 "Default code start address doesn't exist for this RISC. Start address is always controlled by register."
             )
+        if self.core_sim.is_eth_block():
+            self.skipTest("Skipping ETH test since UMD doesn't support destroying ETH L1 memory.")
 
         # Fill L1 with 0x00100073 (ebreak)
         l1_start = risc_info.l1.address.noc_address
