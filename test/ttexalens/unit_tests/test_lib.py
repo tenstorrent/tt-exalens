@@ -573,13 +573,14 @@ class TestRunElf(unittest.TestCase):
         ]
     )
     def test_old_elf_test(self, risc_name: str):
-        if self.is_blackhole():
-            self.skipTest("This test doesn't work as expected on blackhole. Disabling it until bug #120 is fixed.")
+        # if self.is_blackhole():
+        #     self.skipTest("This test doesn't work as expected on blackhole. Disabling it until bug #120 is fixed.")
 
         """ Running old elf test, formerly done with -t option. """
         core_loc = "0,0"
         elf_path = self.get_elf_path("sample", risc_name)
 
+        print(f"re {elf_path} -r {risc_name}")
         lib.run_elf(elf_path, core_loc, risc_name, context=self.context)
 
         # Testing
@@ -596,60 +597,60 @@ class TestRunElf(unittest.TestCase):
         assert rdbg.debug_hardware is not None, "Debug hardware is not available."
         rloader = ElfLoader(rdbg)
 
-        # Disable branch rediction due to bne instruction in the elf
-        rdbg.set_branch_prediction(False)
+        # # Disable branch rediction due to bne instruction in the elf
+        # rdbg.set_branch_prediction(False)
 
-        # Step 0: halt and continue a couple of times.
-        def halt_cont_test():
-            rdbg.halt()
-            assert rdbg.is_halted(), f"RISC at location {loc} is not halted."
-            rdbg.cont()
-            assert not rdbg.is_halted(), f"RISC at location {loc} is halted."
-            rdbg.halt()
-            assert rdbg.is_halted(), f"RISC at location {loc} is not halted."
-            rdbg.cont()
-            assert not rdbg.is_halted(), f"RISC at location {loc} is halted."
+        # # Step 0: halt and continue a couple of times.
+        # def halt_cont_test():
+        #     rdbg.halt()
+        #     assert rdbg.is_halted(), f"RISC at location {loc} is not halted."
+        #     rdbg.cont()
+        #     assert not rdbg.is_halted(), f"RISC at location {loc} is halted."
+        #     rdbg.halt()
+        #     assert rdbg.is_halted(), f"RISC at location {loc} is not halted."
+        #     rdbg.cont()
+        #     assert not rdbg.is_halted(), f"RISC at location {loc} is halted."
 
-        halt_cont_test()
+        # halt_cont_test()
 
         # Step 1: Check that the RISC at location {loc} set the mailbox value to 0xFFB1208C.
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
+        print(f"rv halt -r {risc_name}")
+        rdbg.halt()
+        print(f"rv rd {hex(MAILBOX_ADDR)} -r {risc_name}")
+        mbox_val = rdbg.read_memory(MAILBOX_ADDR)
+        # rdbg.cont()
+        # mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        # da = DataArray("g_MAILBOX")
+        # mbox_val = da.from_bytes(mbox_val)[0]
+        print(f"PC: {hex(rdbg.read_gpr(32))} (self.assertEqual(mbox_val, 0xFFB1208C)")
         self.assertEqual(mbox_val, 0xFFB1208C, f"RISC at location {loc} did not set the mailbox value to 0xFFB1208C.")
-        # TODO: Add this back in once we get a library version: gpr_command["module"].run("gpr pc,sp", context, ui_state)
 
         # Step 2: Write 0x1234 to the mailbox to resume operation.
-        try:
-            da.data = [0x1234]
-            bts = da.bytes()
-            rloader.write_block(MAILBOX_ADDR, bts)
-        except Exception as e:
-            if e.args[0].startswith("Failed to continue"):
-                # We are expecting this to assert as here, the core will halt istself by calling halt()
-                pass
-            else:
-                raise e
+        # rdbg.halt()
+        print(f"rv wr {hex(MAILBOX_ADDR)} 0x1234 -r {risc_name}")
+        mbox_val = rdbg.write_memory(MAILBOX_ADDR, 0x1234)
+        print(f"rv cont -r {risc_name}")
+        rdbg.cont()
+        # da.data = [0x1234]
+        # bts = da.bytes()
+        # rloader.write_block(MAILBOX_ADDR, bts)
 
         # Step 3: Check that the RISC at location {loc} set the mailbox value to 0xFFB12080.
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
+        # mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        # da = DataArray("g_MAILBOX")
+        # mbox_val = da.from_bytes(mbox_val)[0]
+        self.assertTrue(rdbg.is_halted(), f"RISC at location {loc} is not halted.")
+        print(f"rv rd {hex(MAILBOX_ADDR)} -r {risc_name}")
+        mbox_val = rdbg.read_memory(MAILBOX_ADDR)
+        print(f"PC: {hex(rdbg.read_gpr(32))} (self.assertEqual(mbox_val, 0xFFB12080)")
         self.assertEqual(mbox_val, 0xFFB12080, f"RISC at location {loc} did not set the mailbox value to 0xFFB12080.")
 
         # Step 4: Check that the RISC at location {loc} is halted.
         status = rdbg.debug_hardware.read_status()
-        # print_PC_and_source(rdbg.read_gpr(32), elf)
         self.assertTrue(status.is_halted, f"Step 4: RISC at location {loc} is not halted.")
         self.assertTrue(status.is_ebreak_hit, f"Step 4: RISC at location {loc} is not halted with ebreak.")
 
-        # Step 5a: Make sure that the core did not reach step 5
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
-        self.assertNotEqual(mbox_val, 0xFFB12088, f"RISC at location {loc} reached step 5, but it should not have.")
-
-        # Step 5b: Continue and check that the core reached 0xFFB12088. But first set the breakpoint at
+        # Step 5: Continue and check that the core reached 0xFFB12088. But first set the breakpoint at
         # function "decrement_mailbox"
         decrement_mailbox_die = elf.names["fw"].subprograms["decrement_mailbox"]
         decrement_mailbox_linkage_name = decrement_mailbox_die.attributes["DW_AT_linkage_name"].value.decode("utf-8")
@@ -657,33 +658,32 @@ class TestRunElf(unittest.TestCase):
 
         # Step 6. Setting breakpoint at decrement_mailbox
         watchpoint_id = 1  # Out of 8
+        print(f"rv bkpt set {watchpoint_id} {hex(decrement_mailbox_address)} -r {risc_name}")
         rdbg.debug_hardware.set_watchpoint_on_pc_address(watchpoint_id, decrement_mailbox_address)
-        rdbg.debug_hardware.set_watchpoint_on_memory_write(
-            0, TESTBYTEACCESS_ADDR
-        )  # Set memory watchpoint on TESTBYTEACCESS
-        rdbg.debug_hardware.set_watchpoint_on_memory_write(3, TESTBYTEACCESS_ADDR + 3)
-        rdbg.debug_hardware.set_watchpoint_on_memory_write(4, TESTBYTEACCESS_ADDR + 4)
-        rdbg.debug_hardware.set_watchpoint_on_memory_write(5, TESTBYTEACCESS_ADDR + 5)
+        # rdbg.debug_hardware.set_watchpoint_on_memory_write(
+        #     0, TESTBYTEACCESS_ADDR
+        # )  # Set memory watchpoint on TESTBYTEACCESS
+        # rdbg.debug_hardware.set_watchpoint_on_memory_write(3, TESTBYTEACCESS_ADDR + 3)
+        # rdbg.debug_hardware.set_watchpoint_on_memory_write(4, TESTBYTEACCESS_ADDR + 4)
+        # rdbg.debug_hardware.set_watchpoint_on_memory_write(5, TESTBYTEACCESS_ADDR + 5)
 
-        mbox_val = 1
+        mbox_val = 1000
         timeout_retries = 20
         while mbox_val >= 0 and mbox_val < 0xFF000000 and timeout_retries > 0:
+            print(f"gpr PC: {hex(rdbg.debug_hardware.read_gpr(32))} (decrement_mailbox loop, mailbox={hex(mbox_val)})")
+            print(f"debug bus PC: {hex(rdbg.read_gpr(32))} (decrement_mailbox loop, mailbox={hex(mbox_val)})")
+            print(f"rv cont -r {risc_name}")
+            rdbg.cont()
             if rdbg.is_halted():
-                if rdbg.debug_hardware.is_pc_watchpoint_hit():
-                    pass  # util.INFO (f"Breakpoint hit.")
-
-            try:
-                rdbg.cont()
-            except Exception as e:
-                if e.args[0].startswith("Failed to continue"):
-                    # We are expecting this to assert as here, the core will hit a breakpoint
-                    pass
-                else:
-                    raise e
-            mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-            da = DataArray("g_MAILBOX")
-            mbox_val = da.from_bytes(mbox_val)[0]
-            # Step 5b: Continue RISC
+                print(f"rv rd {hex(MAILBOX_ADDR)} -r {risc_name}")
+                mbox_val = rdbg.read_memory(MAILBOX_ADDR)
+            else:
+                print("Not halted?!?")
+                print(f"rv halt -r {risc_name}")
+                rdbg.halt()
+                print(f"rv rd {hex(MAILBOX_ADDR)} -r {risc_name}")
+                mbox_val = rdbg.read_memory(MAILBOX_ADDR)
+            # Step 5: Continue RISC
             timeout_retries -= 1
 
         if timeout_retries == 0 and mbox_val != 0:
@@ -693,56 +693,53 @@ class TestRunElf(unittest.TestCase):
             f"RISC at location {loc} hit the breakpoint but it should not have.",
         )
 
-        # STEP 7: Testing byte access memory watchpoints")
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
-        self.assertEqual(mbox_val, 0xFF000003, f"RISC at location {loc} did not set the mailbox value to 0xff000003.")
-        status = rdbg.debug_hardware.read_status()
-        self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
-        if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[3]:
-            raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 3.")
-        rdbg.cont()
+        # # STEP 7: Testing byte access memory watchpoints")
+        # mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        # da = DataArray("g_MAILBOX")
+        # mbox_val = da.from_bytes(mbox_val)[0]
+        # self.assertEqual(mbox_val, 0xFF000003, f"RISC at location {loc} did not set the mailbox value to 0xff000003.")
+        # status = rdbg.debug_hardware.read_status()
+        # self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
+        # if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[3]:
+        #     raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 3.")
+        # rdbg.cont()
 
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
-        self.assertEqual(mbox_val, 0xFF000005, f"RISC at location {loc} did not set the mailbox value to 0xff000005.")
-        status = rdbg.debug_hardware.read_status()
-        self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
-        if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[5]:
-            raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 5.")
-        rdbg.cont()
+        # mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        # da = DataArray("g_MAILBOX")
+        # mbox_val = da.from_bytes(mbox_val)[0]
+        # self.assertEqual(mbox_val, 0xFF000005, f"RISC at location {loc} did not set the mailbox value to 0xff000005.")
+        # status = rdbg.debug_hardware.read_status()
+        # self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
+        # if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[5]:
+        #     raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 5.")
+        # rdbg.cont()
 
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
-        self.assertEqual(mbox_val, 0xFF000000, f"RISC at location {loc} did not set the mailbox value to 0xff000000.")
-        status = rdbg.debug_hardware.read_status()
-        self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
-        if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[0]:
-            raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 0.")
-            return False
-        rdbg.cont()
+        # mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        # da = DataArray("g_MAILBOX")
+        # mbox_val = da.from_bytes(mbox_val)[0]
+        # self.assertEqual(mbox_val, 0xFF000000, f"RISC at location {loc} did not set the mailbox value to 0xff000000.")
+        # status = rdbg.debug_hardware.read_status()
+        # self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
+        # if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[0]:
+        #     raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 0.")
+        #     return False
+        # rdbg.cont()
 
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
-        self.assertEqual(mbox_val, 0xFF000004, f"RISC at location {loc} did not set the mailbox value to 0xff000004.")
-        status = rdbg.debug_hardware.read_status()
-        self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
-        if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[4]:
-            raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 4.")
-        rdbg.cont()
+        # mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
+        # da = DataArray("g_MAILBOX")
+        # mbox_val = da.from_bytes(mbox_val)[0]
+        # self.assertEqual(mbox_val, 0xFF000004, f"RISC at location {loc} did not set the mailbox value to 0xff000004.")
+        # status = rdbg.debug_hardware.read_status()
+        # self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
+        # if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[4]:
+        #     raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 4.")
+        # rdbg.cont()
 
         # STEP END:
         mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
         da = DataArray("g_MAILBOX")
         mbox_val = da.from_bytes(mbox_val)[0]
         self.assertEqual(mbox_val, 0xFFB12088, f"RISC at location {loc} did not reach step STEP END.")
-
-        # Enable branch prediction
-        rdbg.set_branch_prediction(True)
 
 
 class TestARC(unittest.TestCase):

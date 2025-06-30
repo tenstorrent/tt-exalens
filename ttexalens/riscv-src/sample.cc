@@ -17,7 +17,7 @@
 #define RISCV_DEBUG_REG_WALL_CLOCK_L (RISCV_DEBUG_REGS_START_ADDR | 0x1F0)
 #define RISCV_DEBUG_REG_WALL_CLOCK_H (RISCV_DEBUG_REGS_START_ADDR | 0x1F8)
 
-volatile uint32_t g_MAILBOX;
+volatile uint32_t g_MAILBOX; //__attribute__((section("l1_data")));
 volatile union {
     uint64_t all_bytes;
     struct {

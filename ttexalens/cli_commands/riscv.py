@@ -8,7 +8,8 @@ Usage:
   riscv rreg [<index>]                                                            [-d <device>] [-r <risc>] [-l <loc>]
   riscv wr [<address>] [<data>]                                                   [-d <device>] [-r <risc>] [-l <loc>]
   riscv wreg [<index>] [<data>]                                                   [-d <device>] [-r <risc>] [-l <loc>]
-  riscv bkpt (set | del) [<address>]                                              [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
+  riscv bkpt set <point> <address>                                                [-d <device>] [-r <risc>] [-l <loc>]
+  riscv bkpt del <point>                                                          [-d <device>] [-r <risc>] [-l <loc>]
   riscv wchpt (setr | setw | setrw | del) [<address>] [<data>]                    [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
   riscv reset [1 | 0]                                                             [-d <device>] [-r <risc>] [-l <loc>]
 
@@ -125,11 +126,11 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
     elif args["bkpt"]:
         if "set" in args and args["set"]:
             util.INFO(f"Setting breakpoint at address {args['<address>']} for {where}")
-            bkpt_index = int(args.get("-pt", "0"), 0)
+            bkpt_index = int(args.get("<point>", "0"), 0)
             risc.set_watchpoint_on_pc_address(bkpt_index, int(args["<address>"], 0))
         elif "del" in args and args["del"]:
             # Handle 'bkpt del' case
-            bkpt_index = int(args.get("-pt", "0"), 0)
+            bkpt_index = int(args.get("<point>", "0"), 0)
             util.INFO(f"Deleting breakpoint {bkpt_index} for {where}")
             risc.disable_watchpoint(bkpt_index)
         else:
