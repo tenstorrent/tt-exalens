@@ -364,81 +364,14 @@ class TensixDebug:
         return data
 
     def _shift_fp32_lower2upper(self) -> None:
-        self.inject_instruction(0xC00C000D, 2)  # sfpload  L0, 0, 12, 3
-        self.inject_instruction(0xC4A80009, 2)  # sfploadi L2, -1 (10), 2
-        self.inject_instruction(0xC4680021, 2)  # sfploadi L1, -1 (10), 8
-        self.inject_instruction(0xC4400029, 2)  # sfploadi L1, 0, 10
-        self.inject_instruction(0xF8000801, 2)  # sfpand   L2, L0
-        self.inject_instruction(0xD814000D, 2)  # sfpstore 64, L2, 12, 3
-        self.inject_instruction(0xF8000041, 2)  # sfpand   L0, L1
-        self.inject_instruction(0xE80C000D, 2)  # sfpstore 128, L0, 12, 3
-        self.inject_instruction(0xE0020000, 2)  # incrwc   0, 2, 0, 0
-
         for i in range(0, 32):
-            self.inject_instruction(0xC00C000D, 2)  # sfpload  L0, 0, 12, 3
-            self.inject_instruction(0xC4A80009, 2)  # sfploadi L2, -1 (10), 2
-            self.inject_instruction(0xC4680021, 2)  # sfploadi L1, -1 (10), 8
-            self.inject_instruction(0xC4400029, 2)  # sfploadi L1, 0, 10
-            self.inject_instruction(0xF8000801, 2)  # sfpand   L2, L0
-            self.inject_instruction(0xD814000D, 2)  # sfpstore 64, L2, 12, 3
-            self.inject_instruction(0xF8000041, 2)  # sfpand   L0, L1
-            self.inject_instruction(0xE80C000D, 2)  # sfpstore 128, L0, 12, 3
-            self.inject_instruction(0xE0020000, 2)  # incrwc 0, 2, 0, 0
-
-        self.inject_instruction(0xDC000010, 2)  # setrwc   0, 0, 0, 0, 0, 4
-        self.inject_instruction(0xC8080002, 2)  # setc16   2, 0
-        self.inject_instruction(0xC4000029, 2)  # sfploadi L0, 0, 10
-        self.inject_instruction(0xC4000021, 2)  # sfploadi L0, 0, 8
-        self.inject_instruction(0x44003C02, 2)  # sfpconfig 15, 0, 0
-
-        for i in range(0, 32):
-            self.inject_instruction(0xC20C000D, 2)  # sfpload  L0, 128, 12, 3
-            self.inject_instruction(0xC80C000D, 2)  # sfpstore 0, L0, 12, 3
-            self.inject_instruction(0xE0020000, 2)  # incrwc   0, 2, 0, 0
-
-        self.inject_instruction(0xDC000010, 2)  # setrwc   0, 0, 0, 0, 0, 4
-        self.inject_instruction(0xC8080002, 2)  # setc16   2, 0
-        self.inject_instruction(0xC4000029, 2)  # sfploadi L0, 0, 10
-        self.inject_instruction(0xC4000021, 2)  # sfploadi L0, 0, 8
-        self.inject_instruction(0x44003C02, 2)  # sfpconfig 15, 0, 0
-
-        for i in range(0, 32):
-            self.inject_instruction(0xC18C000D, 2)  # sfpload  L2, 64, 12, 3
-            self.inject_instruction(0xC00C000D, 2)  # sfpload  L0, 0, 12, 3
-            self.inject_instruction(0xC4800011, 2)  # sfploadi L1, 16, 4
-            self.inject_instruction(0x48000082, 2)  # sfpswap  L0, L2, 0
-            self.inject_instruction(0x3C000002, 2)  # sfpnop
-            self.inject_instruction(0xE8000401, 2)  # sfpshft  L0, L1, 0, 0
-            self.inject_instruction(0xC80C000D, 2)  # sfpstore 0, L0, 12, 3
-            self.inject_instruction(0xE0020000, 2)  # incrwc   0, 2, 0, 0
-
-        self.inject_instruction(0xDC000010, 2)  # setrwc   0, 0, 0, 0, 0, 4
-        self.inject_instruction(0xC8080002, 2)  # setc16   2, 0
-
-        for i in range(0, 32):
-            self.inject_instruction(0xC20C000D, 2)  # sfpload  L0, 128, 12, 3
-            self.inject_instruction(0xC14C000D, 2)  # sfpload  L1, 64, 12, 3
-            self.inject_instruction(0xFC000041, 2)  # sfpor    L0, L1
-            self.inject_instruction(0xC80C000D, 2)  # sfpstore 0, L0, 12, 3
-            self.inject_instruction(0xE0020000, 2)  # incrwc   0, 2, 0, 0
-
-        # potentially unneeded, this is probably some kind of kernel epilogue
-        self.inject_instruction(0x88050202, 2)  # stallwait 2, 16512
-        self.inject_instruction(0x90000022, 2)  # sempost   2
-        self.inject_instruction(0xC601A703, 2)  # lw a4, -928(gp) (dest_offset_id)
-        self.inject_instruction(0x00100793, 2)  # li a5, 1
-        self.inject_instruction(0x40E787B3, 2)  # sub a5, a5, a4
-        self.inject_instruction(0xC601A423, 2)  # sw zero, -920(gp) (math_sync_tile_dst_index)
-        self.inject_instruction(0xC6F1A023, 2)  # sw a5, -928(gp)
-        self.inject_instruction(0x89010202, 2)  # stallwait 128, 16512
-        self.inject_instruction(0x00F037B3, 2)  # snez a5, a5
-        self.inject_instruction(0x80C1A703, 2)  # lw a4, -2036(gp) (instrn_buffer)
-        self.inject_instruction(0x00979793, 2)  # slli a5, a5, 9
-        self.inject_instruction(0xB20106B7, 2)  # lui a3, 0xB2010
-        self.inject_instruction(0x00D787B3, 2)  # add a5, a5, a3
-        self.inject_instruction(0x00F72023, 2)  # sw a5, 0(a4)
-        self.inject_instruction(0x01010113, 2)  # addi sp, sp, 16
-        self.inject_instruction(0x00008067, 2)  # ret'''
+            self.inject_instruction(0xC04C000D, 2) # sfpload  L1, 0, 12, 3
+            self.inject_instruction(0xC4280009, 2) # sfploadi L0, -1 (10), 2
+            self.inject_instruction(0xF8000041, 2) # sfpand   L0, L1
+            self.inject_instruction(0xE8000405, 2) # sfpshft  L0, L0, 16, 1
+            self.inject_instruction(0xC80C000D, 2) # sfpstore 0, L0, 12, 3
+            self.inject_instruction(0xC810000D, 2) # sfpstore 0, L1, 12, 3
+            self.inject_instruction(0xE0020000, 2) # incrwc   0, 2, 0, 0
         return
 
     def read_regfile(self, regfile: int | str | REGFILE) -> list[float | int]:
@@ -458,13 +391,13 @@ class TensixDebug:
             # Machine code needs to be injected manually to extract the rest of DST
             self._shift_fp32_lower2upper()
             lower = self.read_regfile_data(regfile)
-            print('UPPER')
-            for whatever in upper:
-                print(f'{whatever} ', end="")
-            print('\n\nLOWER')
-            for whatever in lower:
-                print(f'{whatever} ', end="")
-            assert False
+            #print('UPPER')
+            #for whatever in upper:
+            #    print(f'{whatever} ', end="")
+            #print('\n\nLOWER')
+            #for whatever in lower:
+            #    print(f'{whatever} ', end="")
+            #assert False
             return unpack_data(upper + lower, 0)
 
         data = self.read_regfile_data(regfile)

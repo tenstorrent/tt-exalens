@@ -115,7 +115,7 @@ def unpack_fp32(data) -> list[float]:
     for v in data:
         if v == 0:
             zeros += 1
-    print(f'========= ZEROS: {zeros}')
+    #print(f'========= ZEROS: {zeros}')
     floats: list[float] = []
     half = len(data) // 2
     hi_bytes = data[:half]
@@ -130,7 +130,7 @@ def unpack_fp32(data) -> list[float]:
         mantissa = ((hi_word & 0x7F00) << 8) | lo_word
         result = sign | exponent | mantissa
         #result = hi_word << 16 | lo_word
-        print(f"{result} ", end="")
+        #print(f"{result} ", end="")
         floats.append(struct.unpack(">f", result.to_bytes(4, "big"))[0])
 
     return floats
