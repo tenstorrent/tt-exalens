@@ -21,6 +21,12 @@ After starting gdb server, you can stop it with `gdb` command. Run `gdb stop`.
 
 After connection has been established, you can use `info os processes` to list all available processes that you can debug with GDB. Use `attach <pid>` to start debugging selested riscv core.
 
+## Loading elf and getting call stack
+
+Once attached to the process, you can load the ELF file using the `add-symbol-file <path-to-elf> [<offset>]` command. The `<path-to-elf>` is a required argument specifying the path to the ELF file of the program you want to debug. The `<offset>` is an optional argument indicating the address where the program is loaded in memory.
+
+After the symbols are loaded, you can display the call stack using the `bt` (backtrace) command.
+
 ## Sample app debugging script:
 
 Once you started gdb server, you can use run-elf command to execute `ttexalens/riscv-src/sample.cc` application on chip. For wormhole, you can execute `re build/riscv-src/wormhole/sample.brisc.elf` to run application on brisc core.
