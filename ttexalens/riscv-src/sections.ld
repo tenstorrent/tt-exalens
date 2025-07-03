@@ -138,6 +138,13 @@ SECTIONS
    . += __firmware_stack_size;
     __stack_top = .;
   } > REGION_STACK
+  /* Section for coverage data, used by GCC's -fprofile-info-section.
+  .gcov_data :
+  {
+    __gcov_data_start = .; // start and end symbols tell the host where to pull from
+    KEEP(*(SORT(.gcov_data.*))) // put all per-object file counters in there
+    __gcov_data_end = .;
+  } > REGION_GCOV_DATA // put this into the reserved DRAM
   .stab 0 : { *(.stab) }
   .stabstr 0 : { *(.stabstr) }
   .stab.excl 0 : { *(.stab.excl) }
