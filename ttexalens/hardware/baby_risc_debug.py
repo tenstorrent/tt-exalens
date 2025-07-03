@@ -414,7 +414,6 @@ class BabyRiscDebugHardware:
             return None
 
     def get_pc(self) -> int:
-
         if self.debug_bus_pc_signal is not None:
             pc = self.noc_block.debug_bus.read_signal(self.debug_bus_pc_signal)
             if self.risc_info.risc_name == "ncrisc" and pc & 0xF0000000 == 0x70000000:
