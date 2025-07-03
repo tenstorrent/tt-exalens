@@ -407,7 +407,7 @@ class BabyRiscDebugHardware:
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_REGISTER)
 
-    def debug_bus_pc_signal(self) -> DebugBusSignalDescription | None:
+    def debug_bus_pc_signal(self) -> DebugBusSignalDescription | str | None:
         try:
             return self.risc_info.noc_block.debug_bus.get_signal_description(self.risc_info.risc_name + "_pc")
         except:
