@@ -364,14 +364,12 @@ class TensixDebug:
         return data
 
     def _shift_fp32_lower2upper(self) -> None:
-        for i in range(0, 32):
-            self.inject_instruction(0xC04C000D, 2) # sfpload  L1, 0, 12, 3
-            self.inject_instruction(0xC4280009, 2) # sfploadi L0, -1 (10), 2
-            self.inject_instruction(0xF8000041, 2) # sfpand   L0, L1
-            self.inject_instruction(0xE8000405, 2) # sfpshft  L0, L0, 16, 1
-            self.inject_instruction(0xC80C000D, 2) # sfpstore 0, L0, 12, 3
-            self.inject_instruction(0xC810000D, 2) # sfpstore 0, L1, 12, 3
-            self.inject_instruction(0xE0020000, 2) # incrwc   0, 2, 0, 0
+        self.inject_instruction(0xC04C000D, 2) # sfpload  L1, 0, 12, 3
+        self.inject_instruction(0xC4280009, 2) # sfploadi L0, -1 (10), 2
+        self.inject_instruction(0xF8000041, 2) # sfpand   L0, L1
+        self.inject_instruction(0xE8000405, 2) # sfpshft  L0, L0, 16, 1
+        self.inject_instruction(0xC80C000D, 2) # sfpstore 0, L0, 12, 3
+        self.inject_instruction(0xC810000D, 2) # sfpstore 0, L1, 12, 3
         return
 
     def read_regfile(self, regfile: int | str | REGFILE) -> list[float | int]:
