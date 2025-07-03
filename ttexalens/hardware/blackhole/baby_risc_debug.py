@@ -21,3 +21,10 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         else:
             assert self.noc_block.debug_bus is not None, "Debug bus is not initialized."
             return self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc")
+
+    def get_pc(self) -> int:
+        try:
+            return self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc")
+        except:
+            with self.ensure_halted():
+                return self.read_gpr(32)
