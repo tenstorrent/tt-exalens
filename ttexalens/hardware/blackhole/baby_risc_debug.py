@@ -27,7 +27,9 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             pc = self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc")
             if self.risc_info.risc_name == "ncrisc":
                 if pc & 0xF0000000 == 0x70000000:
-                    return pc | 0x80000000  # Turn the topmost bit on as it was lost on debug bus
+                    pc = pc | 0x80000000  # Turn the topmost bit on as it was lost on debug bus
         except:
             with self.ensure_halted():
-                return self.read_gpr(32)
+                pc = self.read_gpr(32)
+
+        return pc
