@@ -364,34 +364,36 @@ class TensixDebug:
         return data
 
     def _halt(self) -> None:
-        self.inject_instruction(0xff010113, 2)
-        self.inject_instruction(0x00012623, 2)
-        self.inject_instruction(0x00c12783, 2)
-        self.inject_instruction(0x8101a703, 2)
-        self.inject_instruction(0x00f72223, 2)
-        self.inject_instruction(0x00472683, 2)
-        self.inject_instruction(0x81c1a783, 2)
-        self.inject_instruction(0x00d12623, 2)
-        self.inject_instruction(0x0007a783, 2)
-        self.inject_instruction(0x00f12423, 2)
-        self.inject_instruction(0x02472783, 2)
+        self.inject_instruction(0xff010113, 2) # addi sp, sp, -16: prologue
+        self.inject_instruction(0x00012623, 2) # sw   zero, 12(sp)
+        self.inject_instruction(0x00c12783, 2) # lw   a5, 12(sp)
+        self.inject_instruction(0x8101a703, 2) # sw   a4, -2032(gp) (kernel_pc_buf_base)
+        self.inject_instruction(0x00f72223, 2) # sw   a5, 4(a4)
+        self.inject_instruction(0x00472683, 2) # lw   a3, 4(a4)
+        self.inject_instruction(0x81c1a783, 2) # lw   a5, -2020(gp) (kernel_mailbox_base)
+        self.inject_instruction(0x00d12623, 2) # sw   a3, 12(sp)
+        self.inject_instruction(0x0007a783, 2) # lw   a5, 0(a5)
+        self.inject_instruction(0x00f12423, 2) # sw   a5, 8(sp)
+        # busy wait:
+        self.inject_instruction(0x02472783, 2) # lw   a5, 36(a4): load semaphore status
+        self.inject_instruction(0x0ff7f793, 2) # zext a5, a5
+        self.inject_instruction(0xfe079ce3, 2) # bnez to the lw
+        self.inject_instruction(0x01010113, 2) # addi sp, sp, 16: epilogue
         return
 
     def _shift_fp32_lower2upper(self) -> None:
-        for i in range(0, 2):
-            self.inject_instruction(0xC04C000D, 2) # sfpload  L1, 0, 12, 3
-            self.inject_instruction(0xC4280009, 2) # sfploadi L0, -1 (10), 2
-            self.inject_instruction(0xF8000041, 2) # sfpand   L0, L1
-            self.inject_instruction(0xE8000405, 2) # sfpshft  L0, L0, 16, 1
-            self.inject_instruction(0xC80C000D, 2) # sfpstore 0, L0, 12, 3
-            # halt, read lower 16 (located in place of the top 16)
-            self._halt()
-            # unhalt
-            self.inject_instruction(0xC810000D, 2) # sfpstore 0, L1, 12, 3
-            self._halt()
-            # halt, read high 16
-            # unhalt also
-
+        self.inject_instruction(0xC04C000D, 2) # sfpload  L1, 0, 12, 3
+        self.inject_instruction(0xC4280009, 2) # sfploadi L0, -1 (10), 2
+        self.inject_instruction(0xF8000041, 2) # sfpand   L0, L1
+        self.inject_instruction(0xE8000405, 2) # sfpshft  L0, L0, 16, 1
+        self.inject_instruction(0xC80C000D, 2) # sfpstore 0, L0, 12, 3
+        # halt, read lower 16 (located in place of the upper 16)
+        self._halt()
+        # unhalt after reading, get the upper 16 and halt again
+        self.inject_instruction(0xC810000D, 2) # sfpstore 0, L1, 12, 3
+        self._halt()
+        # read high 16
+        # unhalt again
         return
 
     def read_regfile(self, regfile: int | str | REGFILE) -> list[float | int]:
