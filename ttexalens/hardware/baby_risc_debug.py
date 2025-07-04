@@ -408,6 +408,23 @@ class BabyRiscDebugHardware:
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_REGISTER)
 
+    def debug_bus_pc_signal(self) -> DebugBusSignalDescription | None:
+        try:
+            return self.risc_info.noc_block.debug_bus.get_signal_description(self.risc_info.risc_name + "_pc")
+        except:
+            return None
+
+    def get_pc(self) -> int:
+        debug_bus_pc_signal = self.debug_bus_pc_signal()
+        if debug_bus_pc_signal is not None:
+            pc = self.risc_info.noc_block.debug_bus.read_signal(debug_bus_pc_signal)
+            if self.risc_info.risc_name == "ncrisc" and pc & 0xF0000000 == 0x70000000:
+                pc = pc | 0x80000000  # Turn the topmost bit on as it was lost on debug bus
+            return pc
+
+        with self.ensure_halted():
+            return self.read_gpr(32)
+
     def read_memory(self, addr):
         if self.enable_asserts:
             self.assert_halted()
