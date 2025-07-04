@@ -13,13 +13,20 @@ You can start gdb server with ttexalens application:
 
 After starting gdb server, you can stop it with `gdb` command. Run `gdb stop`.
 
+## Getting gdb client
+
+There are three ways to obtain the GDB client:
+- Use the version that is automatically downloaded and extracted during the build process at `build/sfpi/compiler/bin/riscv32-tt-elf-gdb`.
+- Use `tt-exalens --gdb` as a wrapper to start the GDB client (this uses the same binary as above). This is also available in the wheel.
+- Download your preferred version manually from https://github.com/tenstorrent/sfpi or build it yourself from source.
+
 ## Connecting gdb client
 
-- Start the GDB client (`./build/sfpi/compiler/bin/riscv32-tt-elf-gdb`, downloaded during the build process).
+- Start the GDB client.
 - To debug client/server communication, run `set debug remote 1` in the GDB client.
 - Connect the GDB client to the debugger using: `target extended-remote localhost:<gdb_port>`.
 
-After connection has been established, you can use `info os processes` to list all available processes that you can debug with GDB. Use `attach <pid>` to start debugging selested riscv core.
+After connection has been established, you can use `info os processes` to list all available processes that you can debug with GDB. Use `attach <pid>` to start debugging selected riscv core.
 
 ## Loading elf and getting call stack
 
