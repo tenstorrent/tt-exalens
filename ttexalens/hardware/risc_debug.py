@@ -145,6 +145,14 @@ class RiscDebug:
         pass
 
     @abstractmethod
+    def get_pc(self) -> int:
+        """
+        Get PC through debug bus if available,
+        otherwise pause risc and read PC from GPR.
+        """
+        pass
+
+    @abstractmethod
     def read_memory(self, address: int) -> int:
         """
         Read a memory address.
