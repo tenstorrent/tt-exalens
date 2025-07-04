@@ -363,13 +363,35 @@ class TensixDebug:
         )
         return data
 
+    def _halt(self) -> None:
+        self.inject_instruction(0xff010113, 2)
+        self.inject_instruction(0x00012623, 2)
+        self.inject_instruction(0x00c12783, 2)
+        self.inject_instruction(0x8101a703, 2)
+        self.inject_instruction(0x00f72223, 2)
+        self.inject_instruction(0x00472683, 2)
+        self.inject_instruction(0x81c1a783, 2)
+        self.inject_instruction(0x00d12623, 2)
+        self.inject_instruction(0x0007a783, 2)
+        self.inject_instruction(0x00f12423, 2)
+        self.inject_instruction(0x02472783, 2)
+        return
+
     def _shift_fp32_lower2upper(self) -> None:
-        self.inject_instruction(0xC04C000D, 2) # sfpload  L1, 0, 12, 3
-        self.inject_instruction(0xC4280009, 2) # sfploadi L0, -1 (10), 2
-        self.inject_instruction(0xF8000041, 2) # sfpand   L0, L1
-        self.inject_instruction(0xE8000405, 2) # sfpshft  L0, L0, 16, 1
-        self.inject_instruction(0xC80C000D, 2) # sfpstore 0, L0, 12, 3
-        self.inject_instruction(0xC810000D, 2) # sfpstore 0, L1, 12, 3
+        for i in range(0, 2):
+            self.inject_instruction(0xC04C000D, 2) # sfpload  L1, 0, 12, 3
+            self.inject_instruction(0xC4280009, 2) # sfploadi L0, -1 (10), 2
+            self.inject_instruction(0xF8000041, 2) # sfpand   L0, L1
+            self.inject_instruction(0xE8000405, 2) # sfpshft  L0, L0, 16, 1
+            self.inject_instruction(0xC80C000D, 2) # sfpstore 0, L0, 12, 3
+            # halt, read lower 16 (located in place of the top 16)
+            self._halt()
+            # unhalt
+            self.inject_instruction(0xC810000D, 2) # sfpstore 0, L1, 12, 3
+            self._halt()
+            # halt, read high 16
+            # unhalt also
+
         return
 
     def read_regfile(self, regfile: int | str | REGFILE) -> list[float | int]:
