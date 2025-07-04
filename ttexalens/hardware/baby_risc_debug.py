@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from contextlib import contextmanager
 from dataclasses import dataclass
+from functools import cached_property
 
 from ttexalens import util
 from ttexalens.context import Context
@@ -666,6 +667,7 @@ class BabyRiscDebug(RiscDebug):
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
         self.debug_hardware.write_gpr(register_index, value)
 
+    @cached_property
     def debug_bus_pc_signal(self) -> DebugBusSignalDescription | None:
         try:
             return self.risc_info.noc_block.debug_bus.get_signal_description(self.risc_info.risc_name + "_pc")
