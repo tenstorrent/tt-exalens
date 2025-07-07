@@ -93,17 +93,14 @@ class RiscvCoreSimulator:
         """Halt core execution."""
         self.risc_debug.halt()
 
-    def continue_execution(self, enable_debug: bool = True, verify: bool = True):
+    def continue_execution(self, enable_debug: bool = True):
         """Continue core execution.
 
         Args:
             enable_debug: Whether to enable debug mode when continuing
         """
         if enable_debug:
-            if verify:
-                self.risc_debug.cont()
-            else:
-                self.debug_hardware.cont(verify=False)
+            self.risc_debug.cont()
         else:
             self.debug_hardware.continue_without_debug()
 
@@ -113,7 +110,7 @@ class RiscvCoreSimulator:
 
     def get_pc(self) -> int:
         """Get current program counter value from debug bus."""
-        return self.get_pc_from_debug_bus() if not (self.is_wormhole() and self.is_eth_block()) else self.read_gpr(32)
+        return self.risc_debug.read_gpr(get_register_index("pc"))
 
     def get_pc_from_debug_bus(self) -> int:
         """Get PC value from debug bus."""

@@ -35,6 +35,11 @@ jobs:
           set pipefail
           .github/build-docker-images.sh | tee docker.log
           DOCKER_CI_IMAGE=$(tail -n 1 docker.log)
+
+          # Replace use harbor.ci.tenstorrent.net if running on shared runner (tt-beta-ubuntu-2204-large)
+          DOCKER_CI_IMAGE="harbor.ci.tenstorrent.net/$DOCKER_CI_IMAGE"
+          echo "Replaced registry in Docker image name to use harbor cache"
+
           echo "DOCKER_CI_IMAGE $DOCKER_CI_IMAGE"
           echo "docker-image=$DOCKER_CI_IMAGE" >> "$GITHUB_OUTPUT"
 
@@ -151,7 +156,7 @@ jobs:
     strategy:
       matrix:
         runner-info: [
-          {arch: "blackhole", board: "p150a", runs-on: "tt-beta-ubuntu-2204-p150a-large-stable"},
+          {arch: "blackhole", board: "p150b", runs-on: "tt-beta-ubuntu-2204-p150b-large-stable"},
           {arch: "wormhole_b0", board: "n150", runs-on: "tt-beta-ubuntu-2204-n150-large-stable"},
           {arch: "wormhole_b0", board: "n300", runs-on: "tt-beta-ubuntu-2204-n300-large-stable"},
         ]

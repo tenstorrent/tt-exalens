@@ -3,8 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from abc import abstractmethod
-from copy import deepcopy
-from dataclasses import dataclass, replace
 from functools import cache, cached_property
 from typing import Iterable, Sequence
 
@@ -18,9 +16,6 @@ from ttexalens.object import TTObject
 from ttexalens import util as util
 from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
 from abc import abstractmethod
-
-from ttexalens.util import DATA_TYPE
-from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 
 
 class TensixInstructions:
@@ -52,54 +47,6 @@ class TensixInstructions:
         pass
 
 
-@dataclass
-class TensixRegisterDescription:
-    address: int = 0
-    mask: int = 0xFFFFFFFF
-    shift: int = 0
-    data_type: DATA_TYPE = DATA_TYPE.INT_VALUE
-
-    def clone(self, offset: int = 0):
-        new_instance = deepcopy(self)
-        new_instance.address += offset
-        return new_instance
-
-    def __str__(self):
-        return f"{type(self).__name__}(address: {self.address:#x}, mask: {self.mask:#x}, shift: {self.shift}, native_data_type: {self.data_type})"
-
-
-@dataclass
-class DebugRegisterDescription(TensixRegisterDescription):
-    pass
-
-
-@dataclass
-class ConfigurationRegisterDescription(TensixRegisterDescription):
-    index: int = 0
-
-    def __post_init__(self):
-        self.address = self.address + self.index * 4
-
-    def __str__(self):
-        base_str = super().__str__()[:-1]
-        return f"{base_str}, index: {self.index})"
-
-
-@dataclass
-class NocStatusRegisterDescription(TensixRegisterDescription):
-    pass
-
-
-@dataclass
-class NocConfigurationRegisterDescription(TensixRegisterDescription):
-    pass
-
-
-@dataclass
-class NocControlRegisterDescription(TensixRegisterDescription):
-    pass
-
-
 #
 # Device class: generic API for talking to specific devices. This class is the parent of specific
 # device classes (e.g. WormholeDevice, BlackholeDevice). The create class method is used to create
@@ -111,7 +58,6 @@ class Device(TTObject):
     DIE_Y_TO_NOC_0_Y: list[int] = []
     NOC_0_X_TO_DIE_X: list[int] = []
     NOC_0_Y_TO_DIE_Y: list[int] = []
-    NOC_REGISTER_OFFSET: int = None
 
     # NOC reg type
     class RegType:
@@ -167,7 +113,7 @@ class Device(TTObject):
         self._has_jtag = (
             any(id in chip for chip in cluster_desc["chips_with_jtag"]) if "chips_with_jtag" in cluster_desc else False
         )
-
+        self.cluster_desc = cluster_desc
         self._init_coordinate_systems()
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
@@ -261,6 +207,25 @@ class Device(TTObject):
         assert isinstance(arc_blocks[0], ArcBlock), "Expected a single ARC block"
 
         return arc_blocks[0]
+
+    @cached_property
+    def active_eth_blocks(self) -> list[NocBlock]:
+        active_channels = []
+        for connection in self.cluster_desc["ethernet_connections"]:
+            for endpoint in connection:
+                if endpoint["chip"] == self._id:
+                    active_channels.append(endpoint["chan"])
+
+        return [self.get_blocks(block_type="eth")[chan] for chan in active_channels]
+
+    @cached_property
+    def idle_eth_blocks(self) -> list[NocBlock]:
+        idle_blocks = []
+        for block in self.get_blocks(block_type="eth"):
+            if not block in self.active_eth_blocks:
+                idle_blocks.append(block)
+
+        return idle_blocks
 
     @abstractmethod
     def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
@@ -404,84 +369,6 @@ class Device(TTObject):
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         noc_id = 1 if self._context.use_noc1 else 0
         return self._context.server_ifc.pci_read_tile(noc_id, self.id(), x, y, reg_addr, msg_size, data_format)
-
-    def all_riscs_assert_soft_reset(self) -> None:
-        """
-        Put all risc cores under reset. Nothing will run until the reset is deasserted.
-        """
-        from ttexalens.debug_risc import get_risc_reset_shift
-
-        RISC_SOFT_RESET_0_ADDR = self.get_tensix_register_address("RISCV_DEBUG_REG_SOFT_RESET_0")
-
-        ALL_SOFT_RESET = 0
-        for risc_id in range(5):
-            ALL_SOFT_RESET = ALL_SOFT_RESET | (1 << get_risc_reset_shift(risc_id))
-        noc_id = 0
-
-        for loc in self.get_block_locations(block_type="functional_workers"):
-            write_words_to_device(loc, RISC_SOFT_RESET_0_ADDR, ALL_SOFT_RESET, self.id(), self._context)
-
-            # Check what we wrote
-            rst_reg = read_word_from_device(loc, RISC_SOFT_RESET_0_ADDR, self.id(), self._context)
-            if rst_reg != ALL_SOFT_RESET:
-                util.ERROR(f"Expected to write {ALL_SOFT_RESET:x} to {loc.to_str()} but read {rst_reg:x}")
-
-    # TODO: This is old API. Create all of these in NocBlock. Change existing API to use get_block and call new API.
-
-    @abstractmethod
-    def _get_tensix_register_base_address(self, register_description: TensixRegisterDescription) -> int | None:
-        pass
-
-    @abstractmethod
-    def _get_tensix_register_end_address(self, register_description: TensixRegisterDescription) -> int | None:
-        pass
-
-    @abstractmethod
-    def _get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription | None:
-        pass
-
-    @abstractmethod
-    def _get_riscv_local_memory_base_address(self) -> int:
-        pass
-
-    @abstractmethod
-    def _get_riscv_local_memory_size(self, risc_id: int) -> int:
-        pass
-
-    def get_tensix_register_description(self, register_name: str) -> TensixRegisterDescription:
-        register_description = self._get_tensix_register_description(register_name)
-        if register_description != None:
-            base_address = self._get_tensix_register_base_address(register_description)
-            if base_address != None:
-                return register_description.clone(base_address)
-            else:
-                raise ValueError(f"Unknown tensix register base address for register: {register_name}")
-        else:
-            raise ValueError(f"Unknown tensix register name: {register_name}")
-
-    def get_tensix_register_address(self, register_name: str) -> int:
-        description = self.get_tensix_register_description(register_name)
-        assert description.mask == 0xFFFFFFFF and description.shift == 0
-        return description.address
-
-    def get_riscv_run_status(self, loc: OnChipCoordinate) -> str:
-        """
-        Returns the riscv soft reset status as a string of 4 characters one for each riscv core.
-        '-' means the core is in reset, 'R' means the core is running.
-        """
-        from ttexalens.debug_risc import RiscDebug, RiscLoc
-
-        status_str = ""
-        bt = self.get_block_type(loc)
-        if bt == "functional_workers":
-            for risc_id in range(4):
-                risc_location = RiscLoc(loc, 0, risc_id)
-                risc_debug = RiscDebug(risc_location, self._context)
-                status_str += "-" if risc_debug.is_in_reset() else "R"
-            return status_str
-        if bt == "harvested_workers":
-            return "----"
-        return bt
 
 
 # end of class Device

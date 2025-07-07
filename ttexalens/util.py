@@ -738,36 +738,6 @@ PRINT_FORMATS = {
 }
 
 
-from enum import Enum
-from ttexalens.unpack_regfile import TensixDataFormat
-
-# An enumeration of different data types in registers.
-class DATA_TYPE(Enum):
-    INT_VALUE = 0
-    ADDRESS = 1
-    MASK = 2
-    FLAGS = 3
-    TENSIX_DATA_FORMAT = 4
-
-
-# Convert value to specified data type
-def convert_int_to_data_type(value: int, data_type: DATA_TYPE, number_of_bits: int):
-    if data_type == DATA_TYPE.INT_VALUE:
-        return value
-    elif data_type == DATA_TYPE.ADDRESS or data_type == DATA_TYPE.MASK:
-        return hex(value)
-    elif data_type == DATA_TYPE.FLAGS:
-        bin_repr = f"{value:0{number_of_bits}b}"
-        return ",".join("True" if bit == "1" else "False" for bit in bin_repr)
-    elif data_type == DATA_TYPE.TENSIX_DATA_FORMAT:
-        try:
-            return f"TensixDataFormat.{TensixDataFormat(value).name}"
-        except:
-            return f"{value} -> INVALID VALUE"
-    else:
-        raise ValueError(f"Invalid value for data_type: {data_type}")
-
-
 def word_to_byte_array(A):
     byte_array = []
     for i in A:

@@ -1,5 +1,5 @@
 <div align="center">
-<h1> TT-Lensium </h1>
+<h1> TT-Lensium :tm: </h1>
 
 A low level hardware debugger
 
@@ -13,6 +13,15 @@ It enables access to and communication with the device.
 It supports Wormhole and Blackhole devices.
 
 ---
+
+## Quickstart
+
+The wheel can be installed directly from GitHub with:
+```
+pip install git+https://github.com/tenstorrent/tt-exalens.git
+```
+
+The CLI application can be run by invoking `tt-exalens` command after installing the wheel.
 
 ## Building
 
@@ -91,7 +100,7 @@ The wheel can be installed from the [GitHub release](https://github.com/tenstorr
 pip install git+https://github.com/tenstorrent/tt-exalens.git
 ```
 
-To build the wheel from source, run:
+Another option is to build the wheel from local source, run:
 ```
 make wheel
 ```
@@ -103,7 +112,7 @@ where `<ttexalens_wheel>` is an automatically generated filename for the build.
 
 ## Running the CLI application
 
-The CLI application can be run via the `tt-exalens.py` script or by invoking `ttexalens` command after installing the wheel.
+The CLI application can be run via the `tt-exalens.py` script or by invoking `tt-exalens` command after installing the wheel.
 It currently operates in *Limited* mode by default, with plans to support additional modes in the future.
 Limited mode allows basic communication with the device, such as reading/writing registers and memory, and running `.elf` files on RISC cores.
 

@@ -326,7 +326,7 @@ Writes data to address 'addr' at noc0 location x-y of the current chip.
 ## load_elf
 
 ```
-load_elf(elf_file, core_loc, risc_id=0, device_id=0, context=None) -> None
+load_elf(elf_file, core_loc, risc_name, neo_id=None, device_id=0, context=None) -> None
 ```
 
 
@@ -343,7 +343,8 @@ Loads the given ELF file into the specified RISC core. RISC core must be in rese
 2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
 3. a list of X-Y (noc0/translated), X,Y (logical) or OnChipCoordinate locations of cores, possibly mixed;
 4. an OnChipCoordinate object.
-- `risc_id` *(int, default 0)*: RiscV ID (0: brisc, 1-3 triscs).
+- `risc_name` *(str)*: RiscV name (e.g. "brisc", "trisc0", "trisc1", "trisc2", "ncrisc").
+- `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
 - `device_id` *(int, default 0)*: ID number of device to run ELF on.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 
@@ -353,7 +354,7 @@ Loads the given ELF file into the specified RISC core. RISC core must be in rese
 ## run_elf
 
 ```
-run_elf(elf_file, core_loc, risc_id=0, device_id=0, context=None) -> None
+run_elf(elf_file, core_loc, risc_name, neo_id=None, device_id=0, context=None) -> None
 ```
 
 
@@ -370,7 +371,8 @@ Loads the given ELF file into the specified RISC core and executes it. Similar t
 2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
 3. a list of X-Y (noc0/translated), X,Y (logical) or OnChipCoordinate locations of cores, possibly mixed;
 4. an OnChipCoordinate object.
-- `risc_id` *(int, default 0)*: RiscV ID (0: brisc, 1-3 triscs).
+- `risc_name` *(str)*: RiscV name (e.g. "brisc", "trisc0", "trisc1", "trisc2", "ncrisc").
+- `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
 - `device_id` *(int, default 0)*: ID number of device to run ELF on.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 
@@ -387,7 +389,7 @@ check_context(context=None) -> Context
 ### Description
 
 Function to initialize context if not provided. By default, it starts a local
-TTExaLens session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
+TTExaLens session with no output folder and caching disabled and sets GLOBAL_CONTEXT variable so
 that the context can be reused in calls to other functions.
 
 
@@ -451,7 +453,7 @@ Reads an ARC telemetry entry from the device.
 ## read_tensix_register
 
 ```
-read_tensix_register(core_loc, register, device_id=0, context=None) -> int
+read_tensix_register(core_loc, register, noc_id=0, neo_id=None, device_id=0, context=None) -> int
 ```
 
 
@@ -463,8 +465,10 @@ Reads the value of a register from the tensix core.
 ### Args
 
 - `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-- `register` *(str | TensixRegisterDescription)*: Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
+- `register` *(str | RegisterDescription)*: Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
 ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
+- `noc_id` *(int, default 0)*: NOC ID to use.
+- `neo_id` *(int | None, optional)*: NEO ID of the register store.
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 
@@ -478,7 +482,7 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 ## write_tensix_register
 
 ```
-write_tensix_register(core_loc, register, value, device_id=0, context=None) -> None
+write_tensix_register(core_loc, register, value, noc_id=0, neo_id=None, device_id=0, context=None) -> None
 ```
 
 
@@ -493,6 +497,8 @@ Writes value to a register on the tensix core.
 - `register` *(str | TensixRegisterDescription)*: Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
 ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
 - `value` *(int)*: Value to write to the register.
+- `noc_id` *(int, default 0)*: NOC ID to use.
+- `neo_id` *(int | None, optional)*: NEO ID of the register store.
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 
@@ -541,7 +547,7 @@ List: Callstack (list of functions and information about them) of the specified 
 ## callstack
 
 ```
-callstack(core_loc, elfs, offsets=None, risc_id=0, max_depth=100, stop_on_main=True, verbose=False, device_id=0, context=None) -> list
+callstack(core_loc, elfs, offsets=None, risc_name=brisc, neo_id=None, max_depth=100, stop_on_main=True, verbose=False, device_id=0, context=None) -> list
 ```
 
 
@@ -552,7 +558,8 @@ Args:
 core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, DRAM channel (e.g., ch3), or OnChipCoordinate object.
 elfs (list[str] | str | list[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
 offsets (list[int], int, optional): List of offsets for each ELF file. Default: None.
-risc_id (int): RISC-V ID (0: brisc, 1-3 triscs). Default: 0.
+risc_name (str): RISC-V core name (e.g. "brisc", "trisc0", etc.).
+neo_id (int | None, optional): NEO ID of the RISC-V core.
 max_depth (int): Maximum depth of the callstack. Default: 100.
 stop_on_main (bool): If True, stops at the main function. Default: True.
 verbose (bool): If True, enables verbose output. Default: False.
@@ -567,7 +574,7 @@ List: Callstack (list of functions and information about them) of the specified 
 ## read_riscv_memory
 
 ```
-read_riscv_memory(core_loc, addr, noc_id=0, risc_id=0, device_id=0, context=None, verbose=False) -> int
+read_riscv_memory(core_loc, addr, risc_name, neo_id=None, device_id=0, context=None) -> int
 ```
 
 
@@ -580,11 +587,10 @@ Reads a 32-bit word from the specified RISC-V core's private memory.
 
 - `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
 - `addr` *(int)*: Memory address to read from.
-- `noc_id` *(int)*: What noc to use. Options [0,1]. Default 0.
-- `risc_id` *(int)*: RiscV ID (0: brisc, 1-3 triscs). Default 0.
+- `risc_name` *(str)*: RISC-V core name (e.g. "brisc", "trisc0", etc.).
+- `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
 - `device_id` *(int)*: ID number of device to read from. Default 0.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-- `verbose` *(bool)*: If True, enables verbose output. Default False.
 
 
 ### Returns
@@ -596,7 +602,7 @@ Reads a 32-bit word from the specified RISC-V core's private memory.
 ## write_riscv_memory
 
 ```
-write_riscv_memory(core_loc, addr, value, noc_id=0, risc_id=0, device_id=0, context=None, verbose=False) -> None
+write_riscv_memory(core_loc, addr, value, risc_name, neo_id=None, device_id=0, context=None) -> None
 ```
 
 
@@ -610,11 +616,10 @@ Writes a 32-bit word to the specified RISC-V core's private memory.
 - `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
 - `addr` *(int)*: Memory address to read from.
 - `value` *(int)*: Value to write.
-- `noc_id` *(int)*: What noc to use. Options [0,1]. Default 0.
-- `risc_id` *(int)*: RiscV ID (0: brisc, 1-3 triscs). Default 0.
+- `risc_name` *(str)*: RISC-V core name (e.g. "brisc", "trisc0", etc.).
+- `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
 - `device_id` *(int)*: ID number of device to read from. Default 0.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-- `verbose` *(bool)*: If True, enables verbose output. Default False.
 
 
 

@@ -9,7 +9,6 @@ from ttexalens import tt_exalens_lib as lib
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.debug_tensix import TensixDebug
-from ttexalens.debug_risc import get_risc_id
 
 
 @parameterized_class(

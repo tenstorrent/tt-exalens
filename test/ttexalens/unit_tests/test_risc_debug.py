@@ -4,10 +4,12 @@
 import unittest
 from parameterized import parameterized_class
 
+from ttexalens import tt_exalens_lib as lib
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from ttexalens.context import Context
-from ttexalens.debug_risc import RiscLoader, get_register_index
+from ttexalens.hardware.baby_risc_debug import get_register_index
+from ttexalens.elf_loader import ElfLoader
 
 
 @parameterized_class(
@@ -73,17 +75,32 @@ class TestDebugging(unittest.TestCase):
             f"Pc should be less than {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
         )
 
-    def test_reset_all_functional_workers(self):
-        """Reset all functional workers."""
-        if self.core_sim.is_eth_block():
+    def test_default_start_address(self):
+        risc_info = self.core_sim.risc_debug.risc_info
+
+        if risc_info.default_code_start_address is None:
             self.skipTest(
-                "Playing with ETH core moves device into unknown state after we should warm reset it. This test cannot be run at that moment."
+                "Default code start address doesn't exist for this RISC. Start address is always controlled by register."
             )
-        for device in self.context.devices.values():
-            device.all_riscs_assert_soft_reset()
-            for noc_block in device.get_blocks("functional_workers"):
-                for rdbg in noc_block.debuggable_riscs:
-                    self.assertTrue(rdbg.is_in_reset())
+        if self.core_sim.is_eth_block():
+            self.skipTest("Skipping ETH test since UMD doesn't support destroying ETH L1 memory.")
+
+        # Fill L1 with 0x00100073 (ebreak)
+        l1_start = risc_info.l1.address.noc_address
+        assert l1_start is not None, "L1 address should not be None."
+        word_bytes = 0x00100073.to_bytes(4, byteorder="little")
+        bytes = word_bytes * (risc_info.l1.size // 4)
+        lib.write_to_device(self.core_sim.location, l1_start, bytes, self.core_sim.device._id, self.core_sim.context)
+
+        # Take risc out of reset
+        if risc_info.can_change_code_start_address:
+            self.core_sim.risc_debug.set_code_start_address(None)
+        self.core_sim.set_reset(False)
+
+        # Verify that PC is what we expect
+        # We take into account that ebreak instruction has completed and that the PC is now at the next instruction
+        self.assertEqual(self.core_sim.get_pc() - 4, risc_info.default_code_start_address)
+        self.core_sim.set_reset(True)
 
     def test_read_write_gpr(self):
         """Write then read value in all registers (except zero and pc)."""
@@ -96,7 +113,7 @@ class TestDebugging(unittest.TestCase):
         # NOP
         self.core_sim.write_program(0, 0x00000013)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(4, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -110,13 +127,7 @@ class TestDebugging(unittest.TestCase):
 
         # Test readonly registers
         self.assertEqual(self.core_sim.read_gpr(get_register_index("zero")), 0, "zero should always be 0.")
-        if not (self.core_sim.is_blackhole() and self.core_sim.is_eth_block()):
-            # PC is not readable through GPR on blackhole ETH core for now
-            self.assertEqual(
-                self.core_sim.read_gpr(get_register_index("pc")),
-                self.core_sim.program_base_address + 4,
-                "PC should be 4.",
-            )
+        self.assertPcEquals(4)
 
         # Test write then read for all other registers
         for i in range(1, 31):
@@ -137,7 +148,7 @@ class TestDebugging(unittest.TestCase):
         #   while (true);
 
         # Infinite loop (jal 0)
-        self.core_sim.write_program(0, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(0, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -164,7 +175,7 @@ class TestDebugging(unittest.TestCase):
         #   while (true);
 
         # Infinite loop (jal 0)
-        self.core_sim.write_program(0, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(0, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -202,7 +213,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.core_sim.write_program(8, 0x00B52023)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(12, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -234,7 +245,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.core_sim.write_program(12, 0x00B52023)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -268,7 +279,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.core_sim.write_program(12, 0x00B52023)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(0))
 
         self.core_sim.set_reset(False)
 
@@ -316,7 +327,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.core_sim.write_program(12, 0x00B52023)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -342,14 +353,14 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.write_program(4, 0x001E0E13)
         self.core_sim.write_program(8, 0x00002303)
         self.core_sim.write_program(12, 0x00002383)
-        self.core_sim.write_program(16, RiscLoader.get_jump_to_offset_instruction(-12))
+        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(-12))
 
         self.core_sim.set_reset(False)
         iteration = 0
         while True:
             try:
                 self.core_sim.halt()
-                self.core_sim.continue_execution(False)
+                self.core_sim.continue_execution(enable_debug=False)
                 iteration = iteration + 1
                 if iteration > 1000:
                     break
@@ -389,7 +400,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.core_sim.write_program(20, 0x00B52023)
         # Infinite loop (jal -8)
-        self.core_sim.write_program(24, RiscLoader.get_jump_to_offset_instruction(-8))
+        self.core_sim.write_program(24, ElfLoader.get_jump_to_offset_instruction(-8))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -443,7 +454,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.core_sim.write_program(12, 0x00B52023)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(16, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -484,10 +495,10 @@ class TestDebugging(unittest.TestCase):
         #   while (true);
         #   while (true);
         #   while (true);
-        self.core_sim.write_program(0, RiscLoader.get_jump_to_offset_instruction(0))
-        self.core_sim.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
-        self.core_sim.write_program(8, RiscLoader.get_jump_to_offset_instruction(0))
-        self.core_sim.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(0, ElfLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(4, ElfLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(8, ElfLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(12, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -513,7 +524,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.core_sim.write_program(8, 0x00B52023)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(12, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Invalidate instruction cache
         self.core_sim.invalidate_instruction_cache()
@@ -545,10 +556,10 @@ class TestDebugging(unittest.TestCase):
         #   while (true);
         #   while (true);
         #   while (true);
-        self.core_sim.write_program(0, RiscLoader.get_jump_to_offset_instruction(0))
-        self.core_sim.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
-        self.core_sim.write_program(8, RiscLoader.get_jump_to_offset_instruction(0))
-        self.core_sim.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(0, ElfLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(4, ElfLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(8, ElfLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(12, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -574,7 +585,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.core_sim.write_program(8, 0x00B52023)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(12, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Invalidate instruction cache with reset
         self.core_sim.set_reset(True)
@@ -618,7 +629,7 @@ class TestDebugging(unittest.TestCase):
         for i in range(jump_addr // 4):
             self.core_sim.write_program(i * 4, 0x00000013)
         self.core_sim.write_program(break_addr, 0x00100073)
-        self.core_sim.write_program(jump_addr, RiscLoader.get_jump_to_offset_instruction(-jump_addr))
+        self.core_sim.write_program(jump_addr, ElfLoader.get_jump_to_offset_instruction(-jump_addr))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -642,7 +653,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.core_sim.write_program(8, 0x00B52023)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(12, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(12, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Continue execution
         self.core_sim.continue_execution()
@@ -658,6 +669,10 @@ class TestDebugging(unittest.TestCase):
 
     def test_watchpoint_on_pc_address(self):
         """Test running 36 bytes of generated code that just write data on memory and does watchpoint on pc address. All that is done on brisc."""
+
+        if self.core_sim.is_eth_block():
+            self.skipTest("This test sometimes fails on ETH cores. Issue: #452")
+
         addr = 0x10000
 
         # Write our data to memory
@@ -691,7 +706,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.core_sim.write_program(28, 0x00B52023)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(32, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(32, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -708,7 +723,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.debug_hardware.set_watchpoint_on_pc_address(1, self.core_sim.program_base_address + 32)
 
         # Continue and verify that we hit first watchpoint
-        self.core_sim.continue_execution(verify=False)
+        self.core_sim.continue_execution()
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
         self.assertTrue(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should be the cause.")
@@ -722,7 +737,7 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
 
         # Continue and verify that we hit first watchpoint
-        self.core_sim.continue_execution(verify=False)
+        self.core_sim.continue_execution()
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
         self.assertTrue(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should be the cause.")
@@ -745,7 +760,7 @@ class TestDebugging(unittest.TestCase):
         # ebreak
         self.core_sim.write_program(0, 0x00100073)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(4, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -896,7 +911,7 @@ class TestDebugging(unittest.TestCase):
         # ebreak
         self.core_sim.write_program(0, 0x00100073)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(4, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(4, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -1065,7 +1080,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.write_program(56, 0x00052603)
 
         # Infinite loop (jal 0)
-        self.core_sim.write_program(60, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(60, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -1161,11 +1176,11 @@ class TestDebugging(unittest.TestCase):
         # See if they are equal (bne x1, x2, 8)
         self.core_sim.write_program(12, 0x00209463)
         # Jump to ebreak
-        self.core_sim.write_program(16, RiscLoader.get_jump_to_offset_instruction(12))
+        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(12))
         # Increase value in x1 (addi x1, x1, 1)
         self.core_sim.write_program(20, 0x00108093)
         # Jump to bne
-        self.core_sim.write_program(24, RiscLoader.get_jump_to_offset_instruction(-12))
+        self.core_sim.write_program(24, ElfLoader.get_jump_to_offset_instruction(-12))
         # ebreak
         self.core_sim.write_program(28, 0x00100073)
         # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
@@ -1175,7 +1190,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.core_sim.write_program(40, 0x00B52023)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(44, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(44, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -1186,7 +1201,7 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
         # Continue to proceed with bne test
-        self.core_sim.continue_execution(verify=False)
+        self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
         # Confirm failure
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
@@ -1230,11 +1245,11 @@ class TestDebugging(unittest.TestCase):
         # See if they are equal (bne x1, x2, 8)
         self.core_sim.write_program(12, 0x00209463)
         # Jump to ebreak
-        self.core_sim.write_program(16, RiscLoader.get_jump_to_offset_instruction(12))
+        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(12))
         # Increase value in x1 (addi x1, x1, 1)
         self.core_sim.write_program(20, 0x00108093)
         # Jump to bne
-        self.core_sim.write_program(24, RiscLoader.get_jump_to_offset_instruction(-12))
+        self.core_sim.write_program(24, ElfLoader.get_jump_to_offset_instruction(-12))
         # ebreak
         self.core_sim.write_program(28, 0x00100073)
         # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
@@ -1244,7 +1259,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.core_sim.write_program(40, 0x00B52023)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(44, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(44, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -1255,14 +1270,14 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
         # Continue to proceed with bne test
-        self.core_sim.continue_execution(False)
+        self.core_sim.debug_hardware.continue_without_debug()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
         # We should pass for loop very fast and should be halted here already
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
         # Verify value at address
-        self.core_sim.continue_execution()
+        self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
 
@@ -1303,11 +1318,11 @@ class TestDebugging(unittest.TestCase):
         # See if they are equal (bne x1, x2, 8)
         self.core_sim.write_program(12, 0x00209463)
         # Jump to ebreak
-        self.core_sim.write_program(16, RiscLoader.get_jump_to_offset_instruction(12))
+        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(12))
         # Increase value in x1 (addi x1, x1, 1)
         self.core_sim.write_program(20, 0x00108093)
         # Jump to bne
-        self.core_sim.write_program(24, RiscLoader.get_jump_to_offset_instruction(-12))
+        self.core_sim.write_program(24, ElfLoader.get_jump_to_offset_instruction(-12))
         # ebreak
         self.core_sim.write_program(28, 0x00100073)
         # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
@@ -1317,7 +1332,7 @@ class TestDebugging(unittest.TestCase):
         # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
         self.core_sim.write_program(40, 0x00B52023)
         # Infinite loop (jal 0)
-        self.core_sim.write_program(44, RiscLoader.get_jump_to_offset_instruction(0))
+        self.core_sim.write_program(44, ElfLoader.get_jump_to_offset_instruction(0))
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -1333,14 +1348,14 @@ class TestDebugging(unittest.TestCase):
             self.core_sim.set_branch_prediction(False)
 
         # Continue to proceed with bne test
-        self.core_sim.continue_execution(verify=False)
+        self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
         # We should pass for loop very fast and should be halted here already
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
         # Verify value at address
-        self.core_sim.continue_execution()
+        self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
 

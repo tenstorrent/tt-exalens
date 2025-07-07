@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any, Generator
 from ttexalens import util
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.parse_elf import ParsedElfFile, ParsedElfFileWithOffset
 
 
@@ -93,6 +94,11 @@ class RiscDebug:
         pass
 
     @abstractmethod
+    def is_ebreak_hit(self) -> bool:
+        """Check if an ebreak instruction was hit and RISC got halted."""
+        pass
+
+    @abstractmethod
     def halt(self) -> None:
         """Halt the RISC core."""
         pass
@@ -135,6 +141,14 @@ class RiscDebug:
         Args:
             register_index (int): Register index to write.
             value (int): Value to write to the register.
+        """
+        pass
+
+    @abstractmethod
+    def get_pc(self) -> int:
+        """
+        Get PC through debug bus if available,
+        otherwise pause risc and read PC from GPR.
         """
         pass
 
@@ -253,6 +267,34 @@ class RiscDebug:
         Check if the RISC core supports debugging.
         Returns:
             bool: True if debugging is supported, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    def set_code_start_address(self, address: int | None) -> None:
+        """
+        Set the start address for the RISC core when taken out of reset.
+        Args:
+            address (int | None): Address to set as the start address, or None to put it to its default value.
+        """
+        pass
+
+    @abstractmethod
+    def get_data_private_memory(self) -> MemoryBlock | None:
+        """
+        Get the data private memory block for the RISC core.
+        Returns:
+            MemoryBlock | None: Data private memory block, or None if not available.
+        """
+        pass
+
+    @abstractmethod
+    def get_code_private_memory(self) -> MemoryBlock | None:
+        """
+        Get the code private memory block for the RISC core.
+        This was used on older architectures and is replaced by instruction cache on newer ones.
+        Returns:
+            MemoryBlock | None: Code private memory block, or None if not available.
         """
         pass
 

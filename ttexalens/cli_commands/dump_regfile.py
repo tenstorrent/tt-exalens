@@ -40,7 +40,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_tensix import TensixDebug
 
 
-def print_regfile(data: list[int | float]):
+def print_regfile(data: list[int | float | str]):
     for i in range(len(data)):
         print(data[i], end="\t")
         if i % 32 == 31:
