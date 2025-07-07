@@ -12,23 +12,29 @@ ELF=$3
 OFFSET=$4
 
 # Start the GDB server in the background
-./tt-exalens.py --start-gdb=$PORT
+#./tt-exalens.py --start-gdb=$PORT
 
-# Wait until port is open
-echo "Waiting for GDB server on port $PORT..."
-while ! nc -z localhost "$PORT"; do
-    sleep 0.2
-done
-echo "GDB server ready."
+# # Wait until port is open
+# echo "Waiting for GDB server on port $PORT..."
+# while ! nc -z localhost "$PORT"; do
+#     sleep 0.2
+# done
+# echo "GDB server ready."
 
 # Generate a temporary GDB script
 GDB_SCRIPT=$(mktemp /tmp/gdbscript.XXXX.gdb)
 
 cat > "$GDB_SCRIPT" <<EOF
+set pagination off
+set confirm off
+set logging file gdb.output
+
 target extended-remote localhost:$PORT
 attach $PID
 add-symbol-file $ELF $OFFSET
+set logging enabled on
 bt
+set logging enabled off
 detach
 q
 EOF
