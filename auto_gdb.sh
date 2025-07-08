@@ -26,9 +26,13 @@ set confirm off
 
 # Logging for callstack results
 set logging file callstack.output
+# Clear previous output
 shell > callstack.output
 
+# Connect to the GDB server
 target extended-remote localhost:$PORT
+
+# Attach to the process
 python
 try:
     gdb.execute("attach $PID")
@@ -39,6 +43,7 @@ except gdb.error as e:
         print(e)
 end
 
+# Add elf file
 python
 try:
     gdb.execute("add-symbol-file $ELF $OFFSET")
@@ -46,10 +51,12 @@ except gdb.error as e:
     print(e)
 end
 
+# Get callstack and log it
 set logging enabled on
-bt
+backtrace
 set logging enabled off
 
+# Detach from the process
 python
 try:
     gdb.execute("detach")
@@ -57,7 +64,8 @@ except gdb.error as e:
     print("Detach failed:", e)
 end
 
-q
+# Exit GDB
+quit
 EOF
 
 # Run GDB with the generated script
