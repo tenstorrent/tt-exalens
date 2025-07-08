@@ -3,6 +3,8 @@ cmake_policy(VERSION 3.16)
 
 project(RISCVProject LANGUAGES CXX ASM)
 
+option(COVERAGE "Enable gcov instrumentation for test coverage analysis" ON)
+
 # Check if TTEXALENS_HOME is set, if not set it to ../../ from the directory that contains this file
 if(NOT TTEXALENS_HOME)
     set(TTEXALENS_HOME "${CMAKE_CURRENT_LIST_DIR}/../..")
@@ -25,6 +27,8 @@ set(OPTIONS_ALL -O0 -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math)
 set(OPTIONS_COMPILE -fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable)
 set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
+set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section=REGION_GCOV_DATA)
+
 # Define project paths
 set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")
 set(RISCV_OUTPUT "${CMAKE_BINARY_DIR}/riscv-src")
@@ -39,6 +43,7 @@ set(RISCV_OPTIMIZED_APPS "callstack")
 # Create output directories
 file(MAKE_DIRECTORY ${RISCV_OBJECT})
 file(MAKE_DIRECTORY ${RISCV_OUTPUT})
+
 # Helper function to add object files for each source
 function(add_riscv_object OBJECT_NAME SOURCE_FILE OPTIMIZED)
     if(OPTIMIZED)
@@ -46,6 +51,11 @@ function(add_riscv_object OBJECT_NAME SOURCE_FILE OPTIMIZED)
     else()
         set(COMPILE_OPTIONS ${OPTIONS_ALL} ${OPTIONS_COMPILE})
     endif()
+    
+    if(COVERAGE)
+        list(APPEND COMPILE_OPTIONS ${GCOV_FLAGS})
+    endif()
+
     add_custom_command(
         OUTPUT ${OBJECT_NAME}
         COMMAND ${GXX} ${COMPILE_OPTIONS} -c -o ${OBJECT_NAME} ${SOURCE_FILE}
@@ -75,6 +85,11 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
         set(COMPILE_OPTIONS ${OPTIONS_ALL} ${OPTIONS_LINK})
         set(OPTIMIZED_EXTENSION "")
     endif()
+
+    if(COVERAGE)
+        list(APPEND COMPILE_OPTIONS ${GCOV_FLAGS})
+    endif()
+
     set(OUTPUT_ELF "${RISCV_OUTPUT}/${ARCH}/${APP}${OPTIMIZED_EXTENSION}.${CORE}.elf")
     set(OUTPUT_DUMP "${RISCV_OUTPUT}/${ARCH}/${APP}${OPTIMIZED_EXTENSION}.${CORE}.dump")
     set(OUTPUT_DIS "${RISCV_OUTPUT}/${ARCH}/${APP}${OPTIMIZED_EXTENSION}.${CORE}.dis")
