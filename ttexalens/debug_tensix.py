@@ -217,21 +217,22 @@ class TensixDebug:
             row_addr = row if regfile != REGFILE.SRCA else 0
             regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
 
-        if regfile == REGFILE.SRCA:
-            self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), trisc_id)
-            self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), trisc_id)
-            self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), trisc_id)
-            self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), trisc_id)
-        elif regfile == REGFILE.SRCB:
-            # Not supported
-            self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), trisc_id)
+            if regfile == REGFILE.SRCA:
+                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), trisc_id)
+                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), trisc_id)
 
-            self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
-            self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
+                self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), trisc_id)
 
-            self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
-            self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), trisc_id)
-            self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
+                self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), trisc_id)
+            elif regfile == REGFILE.SRCB:
+                self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), trisc_id)
+
+                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
+                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
+
+                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
+                self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), trisc_id)
+                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
 
             for i in range(8):
                 dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
@@ -282,8 +283,8 @@ class TensixDebug:
                 list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
         """
         regfile = convert_regfile(regfile)
-        df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
         data = self.read_regfile_data(regfile)
+        df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
         try:
             return unpack_data(data, df)
         except ValueError as e:
