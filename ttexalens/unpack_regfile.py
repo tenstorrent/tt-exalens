@@ -166,6 +166,7 @@ def unpack_data(data, df: int | TensixDataFormat):
         df = TensixDataFormat(df)
 
     if df == TensixDataFormat.Float32:
+        raise ValueError
         return unpack_fp32(data)
     elif df == TensixDataFormat.Float16:
         return unpack_fp16(data)

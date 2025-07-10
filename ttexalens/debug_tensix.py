@@ -283,6 +283,7 @@ class TensixDebug:
         """
         regfile = convert_regfile(regfile)
         df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        data = self.read_regfile_data(regfile)
         try:
             return unpack_data(data, df)
         except ValueError as e:
