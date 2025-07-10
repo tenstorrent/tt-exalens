@@ -47,14 +47,19 @@ SECTIONS
   {
     KEEP (*(SORT_NONE(.init)))
   } > REGION_CODE
-  /* GCOV instrumentation metadata */
-  .gcov_info_section : ALIGN(8)
-  {
-      PROVIDE(__gcov_info_start = .);
-      KEEP(*(.gcov_info_section))
-      KEEP(*(.gcov_info_section.*))
-      PROVIDE(__gcov_info_end = .);
-  } > REGION_GCOV_DATA
+/*---- GCOV metadata ----*/
+.gcov_data :
+{
+  __gcov_data_start = .;
+  KEEP(*(.gcov*))
+  KEEP(*(.gcda*))
+  KEEP(*(.gcno*))
+  KEEP(*(__gcov_info*))
+  KEEP(*(.data.*gcov*))
+  KEEP(*(.rodata.*gcov*))
+  __gcov_data_end = .;
+} > REGION_GCOV_DATA
+
   .text :
   {
     *(.text.unlikely .text.*_unlikely .text.unlikely.*)
