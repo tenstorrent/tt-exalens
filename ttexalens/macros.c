@@ -28,6 +28,8 @@
   TT_OP(0xa2, (((stall_res) << 15) + ((wait_res) << 0)))
 #define TT_OP_SEMPOST(sem_sel) \
   TT_OP(0xa4, (((sem_sel) << 2)))
+#define TT_OP_ZEROACC(clear_mode, AddrMode, dst) \
+  TT_OP(0x10, (((clear_mode) << 19) + ((AddrMode) << 15) + ((dst) << 0)))
 
 
 
@@ -43,6 +45,7 @@ const int sfpswap = TRISC_OP_SWIZZLE(TT_OP_SFPSWAP(0, 0, 2, 0));
 const int sfpnop = TRISC_OP_SWIZZLE(TT_OP_SFPNOP);
 const int sfpshft = TRISC_OP_SWIZZLE(TT_OP_SFPSHFT(0, 0, 0x10, 1));
 const int sfpor = TRISC_OP_SWIZZLE(TT_OP_SFPOR(0, 0, 1, 0));
+const int zeroacc = TRISC_OP_SWIZZLE(TT_OP_ZEROACC(3, 0, 0));
 
 // do I need this?
 const int stallwait = TRISC_OP_SWIZZLE(TT_OP_STALLWAIT(128, 16512));

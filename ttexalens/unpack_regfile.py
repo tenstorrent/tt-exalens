@@ -111,11 +111,6 @@ def unpack_bfp8_b(data):
 
 
 def unpack_fp32(data) -> list[float]:
-    zeros = 0
-    for v in data:
-        if v == 0:
-            zeros += 1
-    #print(f'========= ZEROS: {zeros}')
     floats: list[float] = []
     half = len(data) // 2
     hi_bytes = data[:half]
@@ -129,34 +124,7 @@ def unpack_fp32(data) -> list[float]:
         exponent = (hi_word & 0x00FF) << 23
         mantissa = ((hi_word & 0x7F00) << 8) | lo_word
         result = sign | exponent | mantissa
-        #result = hi_word << 16 | lo_word
-        #print(f"{result} ", end="")
         floats.append(struct.unpack(">f", result.to_bytes(4, "big"))[0])
-
-    return floats
-
-    row_size = 32
-    total_rows = len(data) // row_size
-    half = total_rows // 2
-    floats: list[float] = []
-    for r in range(half):
-        base_hi = r * row_size
-        base_lo = (r + half)
-        # for each of the 16 uint16_t slots in the row
-        for i in range(16):
-            hi_bytes = data[base_hi + 2 * i : base_hi + 2 * i + 2]
-            lo_bytes = data[base_lo + 2 * i : base_lo + 2 * i + 2]
-            hi = int.from_bytes(hi_bytes, byteorder="big")
-            lo = int.from_bytes(lo_bytes, byteorder="big")
-            # reconstruct an IEEE 32-bit float
-            # hi: s m m m m m m m e e e e e e e e
-            # lo: m m m m m m m m m m m m m m m m
-            # should become: s 8e 23m
-            sign = (hi & 0x8000) << 16
-            exponent = (hi & 0x00FF) << 23
-            mantissa = ((hi & 0x7F00) << 8) | lo
-            result = sign | exponent | mantissa
-            floats.append(struct.unpack(">f", result.to_bytes(4, "big"))[0])
 
     return floats
 
@@ -166,9 +134,9 @@ def unpack_data(data, df: int | TensixDataFormat):
         df = TensixDataFormat(df)
 
     if df == TensixDataFormat.Float32:
-        #raise ValueError
+        raise ValueError
         return unpack_fp32(data)
-    elif df == TensixDataFormat.Float16:
+    if df == TensixDataFormat.Float16:
         return unpack_fp16(data)
     elif df == TensixDataFormat.Float16_b:
         return unpack_bfp16(data)

@@ -273,7 +273,7 @@ class TensixDebug:
         )
         return data
 
-    def read_regfile(self, regfile: int | str | REGFILE) -> list[int | float | str]:
+    def read_regfile(self, regfile: int | str | REGFILE, _state={'n': 0, 'list': []}) -> list[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
 
         Args:
@@ -283,12 +283,29 @@ class TensixDebug:
                 list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
         """
         regfile = convert_regfile(regfile)
-        data = self.read_regfile_data(regfile)
+        data = _state['list']#self.read_regfile_data(regfile)
         df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        if _state['n'] == 0:
+            self.inject_instruction(0xC04C000D, 2) # sfpload  L1, 0, 12, 3
+            self.inject_instruction(0xC4280009, 2) # sfploadi L0, -1 (10), 2
+            self.inject_instruction(0xF8000041, 2) # sfpand   L0, L1
+            self.inject_instruction(0xE8000405, 2) # sfpshft  L0, L0, 16, 1
+            self.inject_instruction(0xC80C000D, 2) # sfpstore 0, L0, 12, 3
+            _state['n'] += 1
+            return []
+        if _state['n'] == 1:
+            _state['list'] = self.read_regfile_data(regfile)
+            self.inject_instruction(0xC810000D, 2) # sfpstore 0, L1, 12, 3
+            self.inject_instruction(0x40600000, 2) # TTZEROACC 3, 0, 0; THIS SHOULD NUKE DEST
+            _state['n'] += 1
+            return []
+        if _state['n'] == 2:
+            _state['list'] += self.read_regfile_data(regfile)
+
         try:
             return unpack_data(data, df)
         except ValueError as e:
             # If format is unsupported we reutrn raw data in hex format
             WARN(e)
             WARN("Printing raw data...")
-            return [hex(datum) for datum in data]
+            return [hex(datum) for datum in data]        
