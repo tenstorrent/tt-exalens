@@ -3,13 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 from contextlib import contextmanager
 from dataclasses import dataclass
+from functools import cached_property
 
 from ttexalens import util
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
-from ttexalens.hardware.risc_debug import RiscDebug, RiscDebugStatus, RiscDebugWatchpointState, RiscLocation
+from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.hardware.risc_debug import RiscDebug, RiscLocation, RiscDebugStatus, RiscDebugWatchpointState
 from ttexalens.register_store import RegisterDescription, RegisterStore
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 
@@ -327,11 +330,8 @@ class BabyRiscDebugHardware:
         if self.verbose:
             util.INFO("  step()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_STEP)
-        # There is bug in hardware and for blackhole step should be executed twice
-        if self.device._arch == "blackhole":
-            self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_STEP)
 
-    def cont(self, verify=True):
+    def cont(self):
         if not self.is_halted():
             util.WARN(
                 f"Continue: {self.risc_info.risc_name} core at {self.risc_info.noc_block.location} is already running"
@@ -340,9 +340,6 @@ class BabyRiscDebugHardware:
         if self.verbose:
             util.INFO("  cont()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_CONTINUE)
-        assert (
-            not verify or not self.is_halted()
-        ), f"Failed to continue {self.risc_info.risc_name} core at {self.risc_info.noc_block.location}"
 
     def continue_without_debug(self):
         """
@@ -521,9 +518,6 @@ class BabyRiscDebug(RiscDebug):
         reset_reg = self.__read(self.RISC_DBG_SOFT_RESET0)
         reset_reg = (reset_reg & ~(1 << self.risc_info.reset_flag_shift)) | (value << self.risc_info.reset_flag_shift)
         self.__write(self.RISC_DBG_SOFT_RESET0, reset_reg)
-        new_reset_reg = self.__read(self.RISC_DBG_SOFT_RESET0)
-        if new_reset_reg != reset_reg:
-            util.ERROR(f"Error writing reset signal. Expected 0x{reset_reg:08x}, got 0x{new_reset_reg:08x}")
 
     def assert_not_in_reset(self, message=""):
         """
@@ -622,6 +616,13 @@ class BabyRiscDebug(RiscDebug):
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
         return self.debug_hardware.is_halted()
 
+    def is_ebreak_hit(self) -> bool:
+        if self.enable_asserts:
+            self.assert_not_in_reset()
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+        return self.debug_hardware.read_status().is_ebreak_hit
+
     def halt(self):
         if self.enable_asserts:
             self.assert_not_in_reset()
@@ -641,7 +642,7 @@ class BabyRiscDebug(RiscDebug):
             self.assert_not_in_reset()
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
-        return self.debug_hardware.cont(verify=False)
+        return self.debug_hardware.cont()
 
     @contextmanager
     def ensure_halted(self):
@@ -665,6 +666,24 @@ class BabyRiscDebug(RiscDebug):
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
         self.debug_hardware.write_gpr(register_index, value)
+
+    @cached_property
+    def debug_bus_pc_signal(self) -> DebugBusSignalDescription | None:
+        try:
+            return self.risc_info.noc_block.debug_bus.get_signal_description(self.risc_info.risc_name + "_pc")
+        except:
+            return None
+
+    def get_pc(self) -> int:
+        debug_bus_pc_signal = self.debug_bus_pc_signal
+        if debug_bus_pc_signal is not None:
+            pc = self.risc_info.noc_block.debug_bus.read_signal(debug_bus_pc_signal)
+            if self.risc_info.risc_name == "ncrisc" and pc & 0xF0000000 == 0x70000000:
+                pc = pc | 0x80000000  # Turn the topmost bit on as it was lost on debug bus
+            return pc
+
+        with self.ensure_halted():
+            return self.read_gpr(32)
 
     def read_memory(self, address: int) -> int:
         if self.enable_asserts:
@@ -722,3 +741,12 @@ class BabyRiscDebug(RiscDebug):
 
     def can_debug(self) -> bool:
         return self.risc_info.debug_hardware_present
+
+    def get_data_private_memory(self) -> MemoryBlock | None:
+        return self.risc_info.data_private_memory
+
+    def get_code_private_memory(self) -> MemoryBlock | None:
+        return self.risc_info.code_private_memory
+
+    def set_code_start_address(self, address: int | None) -> None:
+        self.risc_info.set_code_start_address(self.register_store, address)

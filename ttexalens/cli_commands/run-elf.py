@@ -9,7 +9,7 @@ Description:
   Loads an elf file into a brisc and runs it.
 
 Options:
-  -r <risc>           RiscV ID (0: brisc, 1-3 triscs). [default: 0]
+  -r <risc>           RiscV name (brisc, triscs0, triscs1, triscs2, ncrisc, erisc). [default: first risc]
 
 Examples:
   run-elf build/riscv-src/wormhole/sample.brisc.elf
@@ -17,7 +17,9 @@ Examples:
 
 from ttexalens import util as util
 from ttexalens import command_parser
+from ttexalens.device import Device
 from ttexalens.tt_exalens_lib import run_elf
+from ttexalens.uistate import UIState
 
 command_metadata = {
     "short": "re",
@@ -47,18 +49,24 @@ def print_PC_and_source(PC, elf):
 # - Run on all riscs
 
 
-def run(cmd_text, context, ui_state=None):
+def run(cmd_text, context, ui_state: UIState):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
         common_option_names=command_metadata["common_option_names"],
     )
-    risc_id = int(dopt.args["-r"])
-
-    if not dopt.args["-l"]:
-        loc = ui_state.current_location
-    else:
-        loc = dopt.args["-l"]
-
+    risc = dopt.args["-r"]
+    device: Device
     for device in dopt.for_each("--device", context, ui_state):
-        run_elf(dopt.args["<elf-file>"], loc, risc_id, device.id(), context)
+        for loc in dopt.for_each("--loc", context, ui_state, device=device):
+            if not risc or risc == "first risc":
+                noc_block = device.get_block(loc)
+                riscs = noc_block.all_riscs
+                if len(riscs) > 0:
+                    risc_name = riscs[0].risc_location.risc_name
+                else:
+                    util.ERROR(f"No RISC-V cores found at location {loc}")
+                    return
+            else:
+                risc_name = risc
+            run_elf(dopt.args["<elf-file>"], loc, risc_name, None, device.id(), context)

@@ -11,12 +11,12 @@ from typing import TYPE_CHECKING, Callable
 
 from ttexalens.context import Context
 from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
+from ttexalens.unpack_regfile import TensixDataFormat
 
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.device import Device
     from ttexalens.hardware.device_address import DeviceAddress
-    from ttexalens.unpack_regfile import TensixDataFormat
 
 # An enumeration of different data types in registers.
 class REGISTER_DATA_TYPE(Enum):
@@ -186,6 +186,11 @@ class RegisterStore:
         assert address is not None, "Data register address must be defined."
         return address
 
+    @cached_property
+    def _max_config_register_index(self) -> int:
+        # TODO: This should be determined by the device's memory map.
+        return 1000
+
     def get_register_names(self) -> list[str]:
         return list(self.registers.keys())
 
@@ -251,21 +256,12 @@ class RegisterStore:
             raise ValueError(f"Unknown register type: {name}. Possible values: [cfg,dbg]")
         register = register.clone(self._get_register_base_address(register))
 
-        # TODO: This verification should be done by asking noc block memory map info.
-        # if isinstance(register, ConfigurationRegisterDescription):
-        #     max_index = int(
-        #         (
-        #             device._get_tensix_register_end_address(register)
-        #             - device._get_tensix_register_base_address(register)
-        #             + 1
-        #         )
-        #         / 4
-        #         - 1
-        #     )
-        #     if register.index < 0 or register.index > max_index:
-        #         raise ValueError(
-        #             f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
-        #         )
+        if isinstance(register, ConfigurationRegisterDescription):
+            max_index = self._max_config_register_index
+            if register.index < 0 or register.index > max_index:
+                raise ValueError(
+                    f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
+                )
 
         return register, register.__str__()
 
@@ -277,6 +273,15 @@ class RegisterStore:
                 raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
             if register.shift < 0 or register.shift > 31:
                 raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
+            if isinstance(register, ConfigurationRegisterDescription):
+                if register.index < 0:
+                    raise ValueError(f"Register index must be positive, but got {register.index}.")
+                if register.index > self._max_config_register_index:
+                    raise ValueError(
+                        f"Register index must be less than or equal to {self._max_config_register_index}, but got {register.index}."
+                    )
+            if register.base_address is None:
+                register = register.clone(self._get_register_base_address(register))
 
         if register.noc_address is not None:
             value = read_word_from_device(
@@ -311,6 +316,15 @@ class RegisterStore:
                 raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
             if register.shift < 0 or register.shift > 31:
                 raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
+            if isinstance(register, ConfigurationRegisterDescription):
+                if register.index < 0:
+                    raise ValueError(f"Register index must be positive, but got {register.index}.")
+                if register.index > self._max_config_register_index:
+                    raise ValueError(
+                        f"Register index must be less than or equal to {self._max_config_register_index}, but got {register.index}."
+                    )
+            if register.base_address is None:
+                register = register.clone(self._get_register_base_address(register))
         if value < 0 or ((value << register.shift) & ~register.mask) != 0:
             raise ValueError(
                 f"Value must be greater than 0 and inside the mask 0x{register.mask:x}, but got {value} (0x{value:x})"

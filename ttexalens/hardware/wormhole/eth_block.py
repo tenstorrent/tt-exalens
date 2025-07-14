@@ -97,6 +97,7 @@ class WormholeEthBlock(WormholeNocBlock):
             branch_prediction_register=None,  # We don't have a branch prediction register on erisc
             default_code_start_address=0,
             code_start_address_register=None,  # We don't have a regsiter to override code start address
+            status_read_valid_mask=1 << 27,
             data_private_memory=MemoryBlock(
                 size=4 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),

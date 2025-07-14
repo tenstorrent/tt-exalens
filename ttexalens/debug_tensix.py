@@ -5,11 +5,11 @@ from enum import Enum
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
+from ttexalens.register_store import RegisterDescription
 from ttexalens.tt_exalens_lib import check_context, validate_device_id, read_word_from_device, write_words_to_device
-from ttexalens.util import TTException
-from ttexalens.device import Device, ConfigurationRegisterDescription, TensixRegisterDescription
+from ttexalens.util import WARN, TTException
+from ttexalens.device import Device
 from ttexalens.unpack_regfile import unpack_data
-from ttexalens.debug_risc import RiscDebug, RiscLoc, RiscLoader
 
 
 def validate_trisc_id(trisc_id: int, context: Context) -> None:
@@ -62,15 +62,25 @@ class TensixDebug:
         validate_device_id(device_id, self.context)
         self.device_id = device_id
         self.device = self.context.devices[self.device_id]
+        self.noc_block = self.device.get_block(core_loc)
+        self.register_store = self.noc_block.get_register_store()
         if not isinstance(core_loc, OnChipCoordinate):
             self.core_loc = OnChipCoordinate.create(core_loc, device=self.device)
         else:
             self.core_loc = core_loc
 
+    def __get_regsiter_address(self, register_name: str) -> int:
+        """Helper method to get the address of a register."""
+        address = self.register_store.get_register_noc_address(register_name)
+        assert (
+            address is not None
+        ), f"Register {register_name} doesn't have noc address on {self.register_store.location.to_user_str()}."
+        return address
+
     def dbg_buff_status(self):
         return read_word_from_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS"),
             self.device_id,
             self.context,
         )
@@ -100,7 +110,7 @@ class TensixDebug:
 
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
             0x07,
             self.device_id,
             self.context,
@@ -109,7 +119,7 @@ class TensixDebug:
         # 2. Assemble 32-bit instruction and write it to DBG_INSTRN_BUF_CTRL1
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1"),
             int.from_bytes(instruction_bytes, byteorder="little"),
             self.device_id,
             self.context,
@@ -118,7 +128,7 @@ class TensixDebug:
         # 3. Set bit 0(trigger) and bit 4 (override en) to 1 in DBG_INSTRN_BUF_CTRL0 to inject instruction.
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
             0x7 | (0x10 << trisc_id),
             self.device_id,
             self.context,
@@ -127,14 +137,14 @@ class TensixDebug:
         # 4. Clear DBG_INSTRN_BUF_CTRL0 register
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
             0x07,
             self.device_id,
             self.context,
         )
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
             0x00,
             self.device_id,
             self.context,
@@ -144,7 +154,7 @@ class TensixDebug:
         while (self.dbg_buff_status() & 0x10) == 0:
             pass
 
-    def read_tensix_register(self, register: str | TensixRegisterDescription) -> int:
+    def read_tensix_register(self, register: str | RegisterDescription) -> int:
         """Reads the value of a configuration or debug register from the tensix core.
 
         Args:
@@ -154,182 +164,26 @@ class TensixDebug:
                 int: Value of the configuration or debug register specified.
         """
         device = self.context.devices[self.device_id]
+        noc_block = device.get_block(self.core_loc)
+        register_store = noc_block.get_register_store()
+        return register_store.read_register(register)
 
-        if isinstance(register, str):
-            register = device.get_tensix_register_description(register)
-
-        if isinstance(register, ConfigurationRegisterDescription):
-            max_index = int(
-                (
-                    device._get_tensix_register_end_address(register)
-                    - device._get_tensix_register_base_address(register)
-                    + 1
-                )
-                / 4
-                - 1
-            )
-            if register.index < 0 or register.index > max_index:
-                raise ValueError(
-                    f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
-                )
-        assert isinstance(register, TensixRegisterDescription)
-        if register.mask < 0 or register.mask > 0xFFFFFFFF:
-            raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
-
-        if register.shift < 0 or register.shift > 31:
-            raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
-
-        if isinstance(register, ConfigurationRegisterDescription):
-            write_words_to_device(
-                self.core_loc,
-                device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RD_CNTL"),
-                register.index,
-                self.device_id,
-                self.context,
-            )
-            a = read_word_from_device(
-                self.core_loc,
-                device.get_tensix_register_address("RISCV_DEBUG_REG_CFGREG_RDDATA"),
-                self.device_id,
-                self.context,
-            )
-            return (a & register.mask) >> register.shift
-        else:
-            a = read_word_from_device(
-                self.core_loc,
-                register.address,
-                self.device_id,
-                self.context,
-            )
-            return (a & register.mask) >> register.shift
-
-    def write_tensix_register(self, register: str | TensixRegisterDescription, value: int) -> None:
+    def write_tensix_register(self, register: str | RegisterDescription, value: int) -> None:
         """Writes value to the configuration or debug register on the tensix core.
 
         Args:
-                register (str | TensixRegisterDescription): Name of the configuration or debug register or instance of ConfigurationRegisterDescription or DebugRegisterDescription.
+                register (str | RegisterDescription): Name of the configuration or debug register or instance of ConfigurationRegisterDescription or DebugRegisterDescription.
                 val (int): Value to write
         """
         device = self.context.devices[self.device_id]
+        noc_block = device.get_block(self.core_loc)
+        register_store = noc_block.get_register_store()
+        register_store.write_register(register, value)
 
-        if isinstance(register, str):
-            register = device.get_tensix_register_description(register)
-        elif isinstance(register, ConfigurationRegisterDescription):
-            base_address = device._get_tensix_register_base_address(register)
-            if base_address != None:
-                if register.address < base_address:
-                    register = register.clone(base_address)
-            else:
-                raise ValueError(f"Unknown tensix register base address for given register")
-
-        assert isinstance(register, TensixRegisterDescription)
-        if value < 0 or value > 2 ** register.mask.bit_count() - 1:
-            raise ValueError(f"Value must be between 0 and {2 ** register.mask.bit_count() - 1}, but got {value}")
-
-        if isinstance(register, ConfigurationRegisterDescription):
-            max_index = int(
-                (
-                    device._get_tensix_register_end_address(register)
-                    - device._get_tensix_register_base_address(register)
-                    + 1
-                )
-                / 4
-                - 1
-            )
-            if register.index < 0 or register.index > max_index:
-                raise ValueError(
-                    f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
-                )
-
-        if register.mask < 0 or register.mask > 0xFFFFFFFF:
-            raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
-
-        if register.shift < 0 or register.shift > 31:
-            raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
-
-        if isinstance(register, ConfigurationRegisterDescription):
-            rdbg = RiscDebug(RiscLoc(self.core_loc), self.context)
-            rldr = RiscLoader(rdbg, self.context)
-            with rldr.ensure_reading_configuration_register() as rdbg:
-                rdbg.write_configuration_register(register, value)
-        else:
-            write_words_to_device(
-                self.core_loc,
-                register.address,
-                value,
-                self.device_id,
-                self.context,
-            )
-
-    def _inject_row_prologue(self, regfile: REGFILE, row: int) -> None:
-        ops = self.device.instructions
-        trisc_id = 2
-        row_addr = row if regfile != REGFILE.SRCA else 0
-
-        if regfile == REGFILE.SRCA:
-            self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), trisc_id)
-            self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), trisc_id)
-            self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), trisc_id)
-            self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), trisc_id)
-        elif regfile == REGFILE.SRCB:
-            # Not supported
-            self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), trisc_id)
-
-            self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
-            self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
-
-            self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
-            self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), trisc_id)
-            self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
-
-    def _inject_row_epilogue(self, regfile: REGFILE, row: int) -> None:
-        ops = self.device.instructions
-        trisc_id = 2
-        if regfile == REGFILE.SRCA:
-            self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), trisc_id)
-            self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), trisc_id)
-            if row % 16 == 15:
-                self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), trisc_id)
-
-    def _set_debug_read_enabled(self, enabled: bool) -> None:
-        value = 0x1 if enabled else 0x0
-        write_words_to_device(
-            self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
-            value,
-            self.device_id,
-            self.context,
-        )
-
-    def read_regfile_row(self, regfile: REGFILE, row: int) -> list[int]:
-        data: list[int] = []
-        row_addr = row if regfile != REGFILE.SRCA else 0
-        regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
-
-        self._inject_row_prologue(regfile, row)
-
-        for i in range(8):
-            dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
-            write_words_to_device(
-                self.core_loc,
-                self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
-                dbg_array_rd_cmd,
-                self.device_id,
-                self.context,
-            )
-            rd_data = read_word_from_device(
-                self.core_loc,
-                self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA"),
-                self.device_id,
-                self.context,
-            )
-            data += list(int.to_bytes(rd_data, 4, byteorder="big"))
-
-        self._inject_row_epilogue(regfile, row)
-
-        return data
-
-    def read_regfile_data(self, regfile: int | str | REGFILE) -> list[int]:
+    def read_regfile_data(
+        self,
+        regfile: int | str | REGFILE,
+    ) -> list[int]:
         """Dumps SRCA/DSTACC register file from the specified core.
             Due to the architecture of SRCA, you can see only see last two faces written.
             SRCB is currently not supported.
@@ -340,133 +194,100 @@ class TensixDebug:
         Returns:
                 bytearray: 64x32 bytes of register file data (64 rows, 32 bytes per row).
         """
+        trisc_id = 2
         regfile = convert_regfile(regfile)
 
         if regfile == REGFILE.SRCB:
             raise TTException("SRCB is currently not supported.")
+
+        ops = self.device.instructions
         if self.device._arch != "wormhole_b0" and self.device._arch != "blackhole":
             raise TTException("Not supported for this architecture: ")
 
-        self._set_debug_read_enabled(True)
+        write_words_to_device(
+            self.core_loc,
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
+            0x1,
+            self.device_id,
+            self.context,
+        )
         data = []
 
         for row in range(64):
-            data += self.read_regfile_row(regfile, row)
+            row_addr = row if regfile != REGFILE.SRCA else 0
+            regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
 
-        self._set_debug_read_enabled(False)
+            if regfile == REGFILE.SRCA:
+                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), trisc_id)
+                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), trisc_id)
+
+                self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), trisc_id)
+
+                self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), trisc_id)
+            elif regfile == REGFILE.SRCB:
+                self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), trisc_id)
+
+                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
+                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
+
+                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
+                self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), trisc_id)
+                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
+
+            for i in range(8):
+                dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
+                write_words_to_device(
+                    self.core_loc,
+                    self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
+                    dbg_array_rd_cmd,
+                    self.device_id,
+                    self.context,
+                )
+                rd_data = read_word_from_device(
+                    self.core_loc,
+                    self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA"),
+                    self.device_id,
+                    self.context,
+                )
+                data += list(int.to_bytes(rd_data, 4, byteorder="big"))
+
+            if regfile == REGFILE.SRCA:
+                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), trisc_id)
+                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), trisc_id)
+                if row % 16 == 15:
+                    self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), trisc_id)
+
         write_words_to_device(
             self.core_loc,
-            self.device.get_tensix_register_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
+            0x0,
+            self.device_id,
+            self.context,
+        )
+        write_words_to_device(
+            self.core_loc,
+            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
             0x0,
             self.device_id,
             self.context,
         )
         return data
 
-    def _shift_fp32_lower2upper(self) -> None:
-        self.inject_instruction(0xC00C000D, 2)  # sfpload  L0, 0, 12, 3
-        self.inject_instruction(0xC4A80009, 2)  # sfploadi L2, -1 (10), 2
-        self.inject_instruction(0xC4680021, 2)  # sfploadi L1, -1 (10), 8
-        self.inject_instruction(0xC4400029, 2)  # sfploadi L1, 0, 10
-        self.inject_instruction(0xF8000801, 2)  # sfpand   L2, L0
-        self.inject_instruction(0xD814000D, 2)  # sfpstore 64, L2, 12, 3
-        self.inject_instruction(0xF8000041, 2)  # sfpand   L0, L1
-        self.inject_instruction(0xE80C000D, 2)  # sfpstore 128, L0, 12, 3
-        self.inject_instruction(0xE0020000, 2)  # incrwc   0, 2, 0, 0
-
-        for i in range(0, 32):
-            self.inject_instruction(0xC00C000D, 2)  # sfpload  L0, 0, 12, 3
-            self.inject_instruction(0xC4A80009, 2)  # sfploadi L2, -1 (10), 2
-            self.inject_instruction(0xC4680021, 2)  # sfploadi L1, -1 (10), 8
-            self.inject_instruction(0xC4400029, 2)  # sfploadi L1, 0, 10
-            self.inject_instruction(0xF8000801, 2)  # sfpand   L2, L0
-            self.inject_instruction(0xD814000D, 2)  # sfpstore 64, L2, 12, 3
-            self.inject_instruction(0xF8000041, 2)  # sfpand   L0, L1
-            self.inject_instruction(0xE80C000D, 2)  # sfpstore 128, L0, 12, 3
-            self.inject_instruction(0xE0020000, 2)  # incrwc 0, 2, 0, 0
-
-        self.inject_instruction(0xDC000010, 2)  # setrwc   0, 0, 0, 0, 0, 4
-        self.inject_instruction(0xC8080002, 2)  # setc16   2, 0
-        self.inject_instruction(0xC4000029, 2)  # sfploadi L0, 0, 10
-        self.inject_instruction(0xC4000021, 2)  # sfploadi L0, 0, 8
-        self.inject_instruction(0x44003C02, 2)  # sfpconfig 15, 0, 0
-
-        for i in range(0, 32):
-            self.inject_instruction(0xC20C000D, 2)  # sfpload  L0, 128, 12, 3
-            self.inject_instruction(0xC80C000D, 2)  # sfpstore 0, L0, 12, 3
-            self.inject_instruction(0xE0020000, 2)  # incrwc   0, 2, 0, 0
-
-        self.inject_instruction(0xDC000010, 2)  # setrwc   0, 0, 0, 0, 0, 4
-        self.inject_instruction(0xC8080002, 2)  # setc16   2, 0
-        self.inject_instruction(0xC4000029, 2)  # sfploadi L0, 0, 10
-        self.inject_instruction(0xC4000021, 2)  # sfploadi L0, 0, 8
-        self.inject_instruction(0x44003C02, 2)  # sfpconfig 15, 0, 0
-
-        for i in range(0, 32):
-            self.inject_instruction(0xC18C000D, 2)  # sfpload  L2, 64, 12, 3
-            self.inject_instruction(0xC00C000D, 2)  # sfpload  L0, 0, 12, 3
-            self.inject_instruction(0xC4800011, 2)  # sfploadi L1, 16, 4
-            self.inject_instruction(0x48000082, 2)  # sfpswap  L0, L2, 0
-            self.inject_instruction(0x3C000002, 2)  # sfpnop
-            self.inject_instruction(0xE8000401, 2)  # sfpshft  L0, L1, 0, 0
-            self.inject_instruction(0xC80C000D, 2)  # sfpstore 0, L0, 12, 3
-            self.inject_instruction(0xE0020000, 2)  # incrwc   0, 2, 0, 0
-
-        self.inject_instruction(0xDC000010, 2)  # setrwc   0, 0, 0, 0, 0, 4
-        self.inject_instruction(0xC8080002, 2)  # setc16   2, 0
-
-        for i in range(0, 32):
-            self.inject_instruction(0xC20C000D, 2)  # sfpload  L0, 128, 12, 3
-            self.inject_instruction(0xC14C000D, 2)  # sfpload  L1, 64, 12, 3
-            self.inject_instruction(0xFC000041, 2)  # sfpor    L0, L1
-            self.inject_instruction(0xC80C000D, 2)  # sfpstore 0, L0, 12, 3
-            self.inject_instruction(0xE0020000, 2)  # incrwc   0, 2, 0, 0
-
-        # potentially unneeded, this is probably some kind of kernel epilogue
-        self.inject_instruction(0x88050202, 2)  # stallwait 2, 16512
-        self.inject_instruction(0x90000022, 2)  # sempost   2
-        self.inject_instruction(0xC601A703, 2)  # lw a4, -928(gp) (dest_offset_id)
-        self.inject_instruction(0x00100793, 2)  # li a5, 1
-        self.inject_instruction(0x40E787B3, 2)  # sub a5, a5, a4
-        self.inject_instruction(0xC601A423, 2)  # sw zero, -920(gp) (math_sync_tile_dst_index)
-        self.inject_instruction(0xC6F1A023, 2)  # sw a5, -928(gp)
-        self.inject_instruction(0x89010202, 2)  # stallwait 128, 16512
-        self.inject_instruction(0x00F037B3, 2)  # snez a5, a5
-        self.inject_instruction(0x80C1A703, 2)  # lw a4, -2036(gp) (instrn_buffer)
-        self.inject_instruction(0x00979793, 2)  # slli a5, a5, 9
-        self.inject_instruction(0xB20106B7, 2)  # lui a3, 0xB2010
-        self.inject_instruction(0x00D787B3, 2)  # add a5, a5, a3
-        self.inject_instruction(0x00F72023, 2)  # sw a5, 0(a4)
-        self.inject_instruction(0x01010113, 2)  # addi sp, sp, 16
-        self.inject_instruction(0x00008067, 2)  # ret'''
-        return
-
-    def read_regfile(self, regfile: int | str | REGFILE) -> list[float | int]:
+    def read_regfile(self, regfile: int | str | REGFILE) -> list[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
 
         Args:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
 
         Returns:
-                list[float | int]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
+                list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
         """
         regfile = convert_regfile(regfile)
         df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
-        if df == 0:
-            # This is a workaround for the FP32 data format
-            upper = self.read_regfile_data(regfile)
-            # Machine code needs to be injected manually to extract the rest of DST
-            self._shift_fp32_lower2upper()
-            lower = self.read_regfile_data(regfile)
-            print('UPPER')
-            for whatever in upper:
-                print(f'{whatever} ', end="")
-            print('\n\nLOWER')
-            for whatever in lower:
-                print(f'{whatever} ', end="")
-            assert False
-            return unpack_data(upper + lower, 0)
-
-        data = self.read_regfile_data(regfile)
-        unpacked_data = unpack_data(data, df)
-        return unpacked_data
+        try:
+            return unpack_data(data, df)
+        except ValueError as e:
+            # If format is unsupported we reutrn raw data in hex format
+            WARN(e)
+            WARN("Printing raw data...")
+            return [hex(datum) for datum in data]

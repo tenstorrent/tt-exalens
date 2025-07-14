@@ -8,6 +8,7 @@ Usage:
   tt-exalens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--initialize-with-noc1]
   tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
   tt-exalens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test]
+  tt-exalens --gdb [gdb_args...]
   tt-exalens -h | --help
 
 Options:
@@ -29,6 +30,7 @@ Options:
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
   --use-noc1                      Use NOC1 for communication with the device.
+  --gdb                           Start RISC-V gdb client with the specified arguments.
 
 Description:
   TTExaLens parses the build output files and reads the device state to provide a debugging interface for the user.
@@ -39,6 +41,7 @@ Description:
     3. Cached mode: The user can use a cache file from previous TTExaLens run. This is useful for debugging without a connection to the device. Writing is disabled in this mode.
 
   Passing the --server flag will start a TTExaLens server. The server will listen on the specified port (default 5555) for incoming connections.
+  Passing the --gdb flag will start a RISC-V gdb client. The gdb client can be used to connect to gdb server that can be start from another TTExaLens instance.
 """
 
 try:
@@ -397,6 +400,17 @@ def main_loop(args, context):
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--gdb":
+        gdb_client_path = os.path.abspath(util.application_path() + "/../build/sfpi/compiler/bin/riscv32-tt-elf-gdb")
+        gdb_client_args = sys.argv[2:]
+
+        # Start gdb client with the specified arguments
+        import subprocess
+
+        subprocess.run([gdb_client_path] + gdb_client_args)
+
+        sys.exit(0)
+
     args = docopt(__doc__)
 
     # SETTING VERBOSITY

@@ -60,12 +60,20 @@ class tt_docopt:
             yield OnChipCoordinate.create(loc_str, device)
 
     @staticmethod
-    def risc_id_for_each(risc_id, context: Context, ui_state: UIState):
-        if not risc_id or risc_id == "all":
-            for risc_id in range(4):
-                yield risc_id
+    def risc_name_for_each(
+        risc_name: str | None, context: Context, ui_state: UIState, device: Device, location: OnChipCoordinate
+    ):
+        if not risc_name or risc_name == "all":
+            try:
+                noc_block = device.get_block(location)
+                riscs = noc_block.all_riscs
+                for risc in riscs:
+                    yield risc.risc_location.risc_name
+            except:
+                pass
         else:
-            yield int(risc_id, 0)
+            for name in risc_name.split(","):
+                yield name
 
     # We define command options that apply to more than one command here
     OPTIONS: dict[str, dict] = {
@@ -92,9 +100,9 @@ class tt_docopt:
         },
         "--risc": {
             "short": "-r",
-            "arg": "<risc-id>",
-            "description": "RiscV ID (0: brisc, 1-3 triscs, all). [default: all]",
-            "for_each": risc_id_for_each,
+            "arg": "<risc-name>",
+            "description": "RiscV name (e.g. brisc, triscs0, trisc1, trisc2, ncrisc, erisc). [default: all]",
+            "for_each": risc_name_for_each,
         },
     }
 

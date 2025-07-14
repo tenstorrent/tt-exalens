@@ -13,11 +13,11 @@ Arguments:
 
 Options:
   -o <offsets>        List of offsets for each elf file, comma separated.
-  -r <risc>           RiscV ID (0: brisc, 1-3 triscs). [Default: 0]
+  -r <risc>           RiscV name (e.g. brisc, triscs0, triscs1, triscs2, erisc). [default: first risc]
   -m <max-depth>      Maximum depth of callstack. [Default: 100]
 
 Examples:
-  callstack build/riscv-src/wormhole/sample.brisc.elf -r 0
+  callstack build/riscv-src/wormhole/sample.brisc.elf -r brisc
 """
 
 command_metadata = {
@@ -29,15 +29,15 @@ command_metadata = {
 }
 
 import os
+from ttexalens.device import Device
 from ttexalens.uistate import UIState
 
 from ttexalens import command_parser
 from ttexalens import util
-from ttexalens.debug_risc import RiscDebug, RiscLoc, get_risc_name, RiscLoader
 import ttexalens.tt_exalens_lib as lib
 
 
-def run(cmd_text, context, ui_state: UIState = None):
+def run(cmd_text, context, ui_state: UIState):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
@@ -46,7 +46,6 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     verbose = dopt.args["-v"]
     limit = int(dopt.args["-m"])
-    noc_id = 0
     elf_paths = dopt.args["<elf-files>"].split(",")
     offsets = (
         [int(offset, 0) for offset in dopt.args["-o"].split(",")]
@@ -65,14 +64,23 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     elfs = [lib.parse_elf(elf_path, context) for elf_path in elf_paths]
 
+    device: Device
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            for risc_id in dopt.for_each("--risc", context, ui_state):
+            for risc_name in dopt.for_each("--risc", context, ui_state, device=device, location=loc):
+                if risc_name == "first risc":
+                    noc_block = device.get_block(loc)
+                    riscs = noc_block.all_riscs
+                    if len(riscs) > 0:
+                        risc_name = riscs[0].risc_location.risc_name
+                    else:
+                        util.ERROR(f"No RISC-V cores found at location {loc}")
+                        return
                 callstack = lib.callstack(
                     core_loc=loc,
                     elfs=elfs,
                     offsets=offsets,
-                    risc_id=risc_id,
+                    risc_name=risc_name,
                     max_depth=limit,
                     stop_on_main=stop_on_main,
                     verbose=verbose,
@@ -80,7 +88,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                     context=context,
                 )
                 print(
-                    f"Location: {util.CLR_INFO}{loc.to_user_str()}{util.CLR_END}, core: {util.CLR_WHITE}{get_risc_name(risc_id)}{util.CLR_END}"
+                    f"Location: {util.CLR_INFO}{loc.to_user_str()}{util.CLR_END}, core: {util.CLR_WHITE}{risc_name}{util.CLR_END}"
                 )
 
                 frame_number_width = len(str(len(callstack) - 1))

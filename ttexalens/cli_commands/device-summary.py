@@ -9,9 +9,9 @@ Arguments:
   device-id            ID of the device [default: all]
   axis-coordinate      Coordinate system for the axis [default: logical-tensix]
                        Supported: noc0, noc1, translated, virtual, die, logical-tensix, logical-eth, logical-dram
-  cell-contents        A comma separated list of the cell contents [default: block]
+  cell-contents        A comma separated list of the cell contents [default: riscv]
                        Supported:
-                         riscv - show the status of the RISC-V ('R': running, '-': in reset)
+                         riscv - show the status of the RISC-V ('R': running, '-': in reset), or block type if there are no RISC-V cores
                          block - show the type of the block at that coordinate
                          logical, noc0, noc1, translated, virtual, die - show coordinate
                          noc0_id - show the NOC0 node ID (x-y) for the block
@@ -43,9 +43,10 @@ from docopt import docopt
 
 from ttexalens import command_parser, util as util
 from ttexalens.device import Device
-from ttexalens.coordinate import VALID_COORDINATE_TYPES
+from ttexalens.coordinate import VALID_COORDINATE_TYPES, OnChipCoordinate
 from ttexalens.context import LimitedContext
 from ttexalens.tt_exalens_lib import read_words_from_device
+from ttexalens.uistate import UIState
 
 
 def color_block(text: str, block_type: str):
@@ -53,7 +54,29 @@ def color_block(text: str, block_type: str):
     return f"{color}{text}{util.CLR_END}"
 
 
-def run(cmd_text, context, ui_state=None):
+def get_riscv_run_status(device: Device, loc: OnChipCoordinate) -> str:
+    """
+    Returns the riscv soft reset status as a string of n characters one for each riscv core.
+    '-' means the core is in reset, 'R' means the core is running.
+    """
+
+    try:
+        noc_block = device.get_block(loc)
+        if noc_block.block_type == "harvested_workers":
+            # Harvested workers do not have functional RISC-V cores
+            return "-----"
+        riscs = noc_block.all_riscs
+        if len(riscs) > 0:
+            status_str = ""
+            for risc in riscs:
+                status_str += "-" if risc.is_in_reset() else "R"
+            return status_str
+    except:
+        pass
+    return device.get_block_type(loc)
+
+
+def run(cmd_text, context, ui_state: UIState):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
@@ -120,7 +143,7 @@ def run(cmd_text, context, ui_state=None):
                 if ct == "block":
                     cell_contents_str.append(color_block(block_type, block_type))
                 elif ct == "riscv":
-                    text = device.get_riscv_run_status(loc)
+                    text = get_riscv_run_status(device, loc)
                     cell_contents_str.append(color_block(text, block_type))
                 elif ct == "noc0_id" or ct == "noc1_id":
                     try:

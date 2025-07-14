@@ -28,11 +28,14 @@ command_metadata = {
 
 import tabulate
 
+from ttexalens.context import Context
+from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.device import Device
+from ttexalens.hardware.baby_risc_debug import get_register_index, get_register_name
 from ttexalens.uistate import UIState
 
 from ttexalens import command_parser
 from ttexalens import util as util
-from ttexalens.debug_risc import RiscDebug, RiscLoc, RISCV_REGS, get_risc_name, get_register_index
 from ttexalens.firmware import ELF
 
 
@@ -42,47 +45,46 @@ def reg_included(reg_index, regs_to_include):
     return True
 
 
-def get_register_data(device, context, loc, args):
+def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, args, riscs_to_include):
     regs_to_include = args["<reg-list>"].split(",") if args["<reg-list>"] else []
     regs_to_include = [get_register_index(reg) for reg in regs_to_include]
-    riscs_to_include = args["-r"].split(",") if args["-r"] else range(0, 4)
-    riscs_to_include = range(0, 4) if "all" in args["-r"] else [int(risc) for risc in riscs_to_include]
     elf_file = args["<elf-file>"] if args["<elf-file>"] else None
     elf = ELF(context.server_ifc, {"elf": elf_file}) if elf_file else None
     pc_map = elf.names["elf"].file_line if elf else None
 
     reg_value: dict[int, dict[int, int]] = {}
-    noc_id = 0  # Always use noc 0
 
     halted_state = {}
     reset_state = {}
 
     # Read the registers
-    for risc_id in riscs_to_include:
-        risc = RiscDebug(RiscLoc(loc, noc_id, risc_id), context=context, verbose=args["-v"])
-        reset_state[risc_id] = risc.is_in_reset()
-        if reset_state[risc_id]:
+    noc_block = device.get_block(loc)
+    for risc_name in riscs_to_include:
+        risc = noc_block.get_risc_debug(risc_name)
+        reset_state[risc_name] = risc.is_in_reset()
+        if reset_state[risc_name]:
             continue  # We cannot read registers from a core in reset
-
-        risc.enable_debug()
+        if not risc.can_debug():
+            halted_state[risc_name] = "?"
+            continue  # We cannot read registers from a core that doesn't have debug hardware
 
         already_halted = risc.is_halted()
-        halted_state[risc_id] = already_halted
+        halted_state[risc_name] = str(already_halted)
 
         if not already_halted:
             risc.halt()  # We must halt the core to read the registers
 
         if risc.is_halted():
-            reg_value[risc_id] = {}
+            reg_value[risc_name] = {}
             for reg_id in range(0, 33):
                 if regs_to_include and reg_id not in regs_to_include:
                     continue
                 reg_val = risc.read_gpr(reg_id)
-                reg_value[risc_id][reg_id] = reg_val
+                reg_value[risc_name][reg_id] = reg_val
             if not already_halted:
                 risc.cont()  # Resume the core if it was not found halted
         else:
-            util.ERROR(f"Core {risc_id} cannot be halted.")
+            util.ERROR(f"Core {risc_name} cannot be halted.")
 
     # Construct the table to print
     table = []
@@ -90,7 +92,7 @@ def get_register_data(device, context, loc, args):
         if regs_to_include and reg_id not in regs_to_include:
             continue
 
-        row = [f"{reg_id} - {RISCV_REGS[reg_id]}"]
+        row = [f"{reg_id} - {get_register_name(reg_id)}"]
         for risc_id in riscs_to_include:
             if risc_id not in reg_value:
                 row.append("")
@@ -108,7 +110,7 @@ def get_register_data(device, context, loc, args):
     # Print soft reset status
     row = ["Soft reset"]
     for j in riscs_to_include:
-        row.append(reset_state[j])
+        row.append(str(reset_state[j]))
     table.append(row)
 
     # Print halted status
@@ -120,8 +122,8 @@ def get_register_data(device, context, loc, args):
     # Print the table
     if len(table) > 0:
         headers = ["Register"]
-        for risc_id in riscs_to_include:
-            headers.append(get_risc_name(risc_id))
+        for risc_name in riscs_to_include:
+            headers.append(risc_name)
         return tabulate.tabulate(table, headers=headers, disable_numparse=True)
     return None
 
@@ -135,7 +137,8 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            table = get_register_data(device, context, loc, dopt.args)
+            riscs_to_include = list(dopt.for_each("--risc", context, ui_state, device=device, location=loc))
+            table = get_register_data(device, context, loc, dopt.args, riscs_to_include)
             if table:
                 util.INFO(f"RISC-V registers for location {loc} on device {device.id()}")
                 print(table)
