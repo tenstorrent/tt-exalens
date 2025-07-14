@@ -12,12 +12,12 @@ from ttexalens.device import Device
 from ttexalens.unpack_regfile import unpack_data
 
 
-def validate_trisc_id(trisc_id: int, context: Context) -> None:
-    if trisc_id not in [0, 1, 2]:
-        raise TTException(f"Invalid trisc_id {trisc_id}.")
+def validate_thread_id(thread_id: int) -> None:
+    if thread_id not in [0, 1, 2]:
+        raise TTException(f"Invalid thread_id {thread_id}.")
 
 
-def validate_instruction(instruction: bytearray | bytes, context: Context) -> None:
+def validate_instruction(instruction: bytearray | bytes) -> None:
     if len(bytearray(instruction)) != 4:
         raise TTException("Instruction must be 4 bytes long.")
 
@@ -69,7 +69,7 @@ class TensixDebug:
         else:
             self.core_loc = core_loc
 
-    def __get_regsiter_address(self, register_name: str) -> int:
+    def __get_register_address(self, register_name: str) -> int:
         """Helper method to get the address of a register."""
         address = self.register_store.get_register_noc_address(register_name)
         assert (
@@ -77,81 +77,97 @@ class TensixDebug:
         ), f"Register {register_name} doesn't have noc address on {self.register_store.location.to_user_str()}."
         return address
 
+    # add a command for this later
     def dbg_buff_status(self):
-        return read_word_from_device(
-            self.core_loc,
-            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS"),
-            self.device_id,
-            self.context,
-        )
+        return self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS")
+
+    def start_insn_push(self, thread_id: int) -> None:
+        """Take control of thread_id's Tensix FIFO over the 
+        debug bus to prepare to push instructions into it."""
+        # Relevant documentation: 
+        # https://github.com/tenstorrent/tt-isa-documentation/blob/ac3215a86ffa22a89b49df195a38338b66ab4dbc/WormholeB0/TensixTile/BabyRISCV/PushTensixInstruction.md
+        validate_thread_id(thread_id)
+
+        # 1. Wait for buffer ready signal (poll bit 0/1/2, depending on thread, of DBG_INSTRN_BUF_STATUS until it’s 1).
+        while (self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS") & (1 << thread_id)) == 0:
+            pass
+
+        # Take control of thread n's FIFO through the debug bus by setting bit n of INSTRN_BUF_CTRL0.
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 1 << thread_id)
+
+    def insn_push(self, insn: bytes | bytearray | int, thread_id: int) -> None:
+        """Push one Tensix instruction through the previously claimed FIFO.
+        Each instruction pushed this way is guaranteed to be executed sequentially on the given thread."""
+        validate_thread_id(thread_id)
+        if isinstance(insn, int):
+            insn_bytes = insn.to_bytes(4, byteorder="little")
+        else:
+            insn_bytes = insn
+        validate_instruction(insn_bytes)
+
+        # Check if the buffer is ready. This must be done before every instruction push.
+        while (self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS") & (1 << thread_id)) == 0:
+            pass
+
+        # Write the insn to DBG_INSTRN_BUF_CTRL1.
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1",
+                            int.from_bytes(insn_bytes, byteorder="little"))
+        
+        # Trigger the insn push: set the push bit in CTRL0 for this thread.
+        push = 1 << (4 + thread_id)
+        control = 1 << thread_id # keep control of the pipe
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", push | control)
+
+        # Wait for the instruction to drain.
+        while (self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS") & (1 << (4 + thread_id))) == 0:
+            pass
+    
+    def end_insn_push(self, thread_id: int) -> None:
+        """Relinquish control over thread_id's FIFO."""
+        validate_thread_id(thread_id)
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 0) # simply clear the register.
 
     def inject_instruction(
         self,
         instruction: bytes | bytearray | int,
-        trisc_id: int,
+        thread_id: int,
     ) -> None:
-        """Injects instruction into Tensix pipe for TRISC specified by trisc_id.
+        """Take control over the Tensix thread specified by thread_id,
+        push a single instruction into its FIFO, and relinquish control.
+        For sending multiple instructions, the insn_push API is preferred.
 
         Args:
                 instruction (bytearray): 32-bit instruction to inject.
-                trisc_id (int): TRISC ID (0-2).
+                thread_id (int): Tensix thread ID (0-2).
         """
-        validate_trisc_id(trisc_id, self.context)
 
         if isinstance(instruction, int):
             instruction_bytes = instruction.to_bytes(4, byteorder="little")
         else:
             instruction_bytes = instruction
-        validate_instruction(instruction_bytes, self.context)
+        validate_instruction(instruction_bytes)
+        validate_thread_id(thread_id)
 
-        # 1. Wait for buffer ready signal (poll bit 0 of DBG_INSTRN_BUF_STATUS until it’s 1)
-        while (self.dbg_buff_status() & 1) == 0:
+        # Relevant documentation: 
+        # https://github.com/tenstorrent/tt-isa-documentation/blob/ac3215a86ffa22a89b49df195a38338b66ab4dbc/WormholeB0/TensixTile/BabyRISCV/PushTensixInstruction.md
+
+        # 1. Wait for buffer ready signal (poll bit 0/1/2, depending on thread, of DBG_INSTRN_BUF_STATUS until it’s 1).
+        while (self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS") & (1 << thread_id)) == 0:
             pass
+        
+        # Setting bit 0 <= n <= 2 of INSTRN_BUF_CTRL0 means taking control of thread n's FIFO through the debug bus.
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 1 << thread_id)
 
-        write_words_to_device(
-            self.core_loc,
-            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
-            0x07,
-            self.device_id,
-            self.context,
-        )
+        # Write the instruction into CTRL1.
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1",
+                            int.from_bytes(instruction_bytes, byteorder="little"))
 
-        # 2. Assemble 32-bit instruction and write it to DBG_INSTRN_BUF_CTRL1
-        write_words_to_device(
-            self.core_loc,
-            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1"),
-            int.from_bytes(instruction_bytes, byteorder="little"),
-            self.device_id,
-            self.context,
-        )
+        # Trigger the insn push: set the push bit in CTRL0 for this thread.
+        # As this will leave only the push bit set, control is relinquished.
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 1 << (4 + thread_id))
 
-        # 3. Set bit 0(trigger) and bit 4 (override en) to 1 in DBG_INSTRN_BUF_CTRL0 to inject instruction.
-        write_words_to_device(
-            self.core_loc,
-            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
-            0x7 | (0x10 << trisc_id),
-            self.device_id,
-            self.context,
-        )
-
-        # 4. Clear DBG_INSTRN_BUF_CTRL0 register
-        write_words_to_device(
-            self.core_loc,
-            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
-            0x07,
-            self.device_id,
-            self.context,
-        )
-        write_words_to_device(
-            self.core_loc,
-            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
-            0x00,
-            self.device_id,
-            self.context,
-        )
-
-        # 5. Wait for buffer empty signal to make sure instruction completed (poll bit 4 of DBG_INSTRN_BUF_STATUS until it’s 1)
-        while (self.dbg_buff_status() & 0x10) == 0:
+        # Wait for the thread's buffer to empty: poll bit (4 + thread_id) of STATUS until it’s 1.
+        while (self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS") & (1 << (4 + thread_id))) == 0:
             pass
 
     def read_tensix_register(self, register: str | RegisterDescription) -> int:
@@ -194,7 +210,7 @@ class TensixDebug:
         Returns:
                 bytearray: 64x32 bytes of register file data (64 rows, 32 bytes per row).
         """
-        trisc_id = 2
+        thread_id = 2
         regfile = convert_regfile(regfile)
 
         if regfile == REGFILE.SRCB:
@@ -204,13 +220,7 @@ class TensixDebug:
         if self.device._arch != "wormhole_b0" and self.device._arch != "blackhole":
             raise TTException("Not supported for this architecture: ")
 
-        write_words_to_device(
-            self.core_loc,
-            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
-            0x1,
-            self.device_id,
-            self.context,
-        )
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
         data = []
 
         for row in range(64):
@@ -218,62 +228,41 @@ class TensixDebug:
             regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
 
             if regfile == REGFILE.SRCA:
-                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), trisc_id)
-                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), trisc_id)
-
-                self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), trisc_id)
-
-                self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), trisc_id)
+                self.start_insn_push(thread_id)
+                self.insn_push(ops.TT_OP_SFPLOAD(3, 0, 0, 0), thread_id)
+                self.insn_push(ops.TT_OP_SFPLOAD(3, 0, 0, 2), thread_id)
+                self.insn_push(ops.TT_OP_STALLWAIT(0x40, 0x4000), thread_id)
+                self.insn_push(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), thread_id)
+                self.end_insn_push(thread_id)
             elif regfile == REGFILE.SRCB:
-                self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), trisc_id)
-
-                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
-                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
-
-                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), trisc_id)
-                self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), trisc_id)
-                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), trisc_id)
+                self.start_insn_push(thread_id)
+                self.insn_push(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
+                self.insn_push(ops.TT_OP_SETDVALID(0b10), thread_id)
+                self.insn_push(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
+                self.insn_push(ops.TT_OP_SETDVALID(0b10), thread_id)
+                self.insn_push(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
+                self.insn_push(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
+                self.end_insn_push(thread_id)
 
             for i in range(8):
                 dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
-                write_words_to_device(
-                    self.core_loc,
-                    self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
-                    dbg_array_rd_cmd,
-                    self.device_id,
-                    self.context,
-                )
-                rd_data = read_word_from_device(
-                    self.core_loc,
-                    self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA"),
-                    self.device_id,
-                    self.context,
-                )
+                self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", dbg_array_rd_cmd)
+                rd_data = self.register_store.read_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA")
                 data += list(int.to_bytes(rd_data, 4, byteorder="big"))
 
             if regfile == REGFILE.SRCA:
-                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), trisc_id)
-                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), trisc_id)
+                self.start_insn_push(thread_id)
+                self.insn_push(ops.TT_OP_SFPSTORE(3, 0, 0, 0), thread_id)
+                self.insn_push(ops.TT_OP_SFPSTORE(3, 0, 0, 2), thread_id)
                 if row % 16 == 15:
-                    self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), trisc_id)
+                    self.insn_push(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), thread_id)
+                self.end_insn_push(thread_id)
 
-        write_words_to_device(
-            self.core_loc,
-            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN"),
-            0x0,
-            self.device_id,
-            self.context,
-        )
-        write_words_to_device(
-            self.core_loc,
-            self.__get_regsiter_address("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD"),
-            0x0,
-            self.device_id,
-            self.context,
-        )
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 0)
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", 0)
         return data
 
-    def read_regfile(self, regfile: int | str | REGFILE, _state={'n': 0, 'list': []}) -> list[int | float | str]:
+    def read_regfile(self, regfile: int | str | REGFILE) -> list[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
 
         Args:
@@ -283,29 +272,52 @@ class TensixDebug:
                 list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
         """
         regfile = convert_regfile(regfile)
-        data = _state['list']#self.read_regfile_data(regfile)
         df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
-        if _state['n'] == 0:
-            self.inject_instruction(0xC04C000D, 2) # sfpload  L1, 0, 12, 3
-            self.inject_instruction(0xC4280009, 2) # sfploadi L0, -1 (10), 2
-            self.inject_instruction(0xF8000041, 2) # sfpand   L0, L1
-            self.inject_instruction(0xE8000405, 2) # sfpshft  L0, L0, 16, 1
-            self.inject_instruction(0xC80C000D, 2) # sfpstore 0, L0, 12, 3
-            _state['n'] += 1
-            return []
-        if _state['n'] == 1:
-            _state['list'] = self.read_regfile_data(regfile)
-            self.inject_instruction(0xC810000D, 2) # sfpstore 0, L1, 12, 3
-            self.inject_instruction(0x40600000, 2) # TTZEROACC 3, 0, 0; THIS SHOULD NUKE DEST
-            _state['n'] += 1
-            return []
-        if _state['n'] == 2:
-            _state['list'] += self.read_regfile_data(regfile)
+        #df = 5
+        if df == 0:
+            ops = self.device.instructions
+            upper = self.read_regfile_data(2)
+            self.start_insn_push(1)
+            '''self.insn_push(ops.TT_OP_SFPLOAD(1, 0, 12, 3), 0) # sfpload  L1, 0, 12, 3
+            self.insn_push(ops.TT_OP_SFPLOADI(0, -1, 2), 0) # sfploadi L0, -1 (10), 2
+            self.insn_push(ops.TT_OP_SFPAND(0, 0, 1, 0), 0) # sfpand   L0, L1
+            self.insn_push(ops.TT_OP_SFPSHFT(0, 0, 16, 1), 0) # sfpshft  L0, L0, 16, 1
+            self.insn_push(ops.TT_OP_SFPSTORE(0, 0, 12, 3), 0) # sfpstore 0, L0, 12, 3'''
+            zeros = 0
+            for d in upper:
+                if d == 0:
+                    zeros += 1
+            print(f"{zeros}/{len(upper)} zeros")
+            zeros = 0
+            self.insn_push(ops.TT_OP_SFPLOAD(0, 0, 12, 3), 1) # odd?
+            self.insn_push(ops.TT_OP_SFPLOAD(1, 0, 12, 1), 1) # even?
+            self.insn_push(ops.TT_OP_SFPSTORE(1, 0, 12, 3), 1)
+            self.insn_push(ops.TT_OP_SFPSTORE(0, 0, 12, 1), 1)
+            self.end_insn_push(1)
+            lower = self.read_regfile_data(regfile)
+            zeros = 0
+            for d in lower:
+                if d == 0:
+                    zeros += 1
+            print(f"{zeros}/{len(lower)} zeros")
+            '''zeros = 0
+            self.start_insn_push(0)
+            self.insn_push(ops.TT_OP_SFPSTORE(0, 1, 12, 3), 0) # sfpstore 0, L1, 12, 3
+            #self.insn_push(self.device.instructions.TT_OP_ZEROACC(3, 0, 0), 0)
+            self.end_insn_push(0)
+            upper = self.read_regfile_data(regfile)
+            for d in upper:
+                if d == 0:
+                    zeros += 1
+            print(f"zeros in upper: {zeros}")'''
+            data = upper + lower
+        else:
+            data = self.read_regfile_data(regfile)
 
         try:
             return unpack_data(data, df)
         except ValueError as e:
-            # If format is unsupported we reutrn raw data in hex format
+            # If the data format is unsupported, return the raw data.
             WARN(e)
             WARN("Printing raw data...")
             return [hex(datum) for datum in data]        

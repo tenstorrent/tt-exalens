@@ -46,6 +46,10 @@ class TensixInstructions:
     def TT_OP_SETRWC(clear_ab_vld, rwc_cr, rwc_d, rwc_b, rwc_a, BitMask):
         pass
 
+    @staticmethod
+    def TT_OP_ZEROACC(clear_mode, AddrMode, dst):
+        pass
+
 
 #
 # Device class: generic API for talking to specific devices. This class is the parent of specific
