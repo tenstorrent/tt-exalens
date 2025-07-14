@@ -12,7 +12,7 @@ class GdbThreadId:
     thread_id: int
 
     def to_gdb_string(self):
-        return f"p{hex(self.process_id)[2:]}.{hex(self.thread_id)[2:]}"
+        return f"p{self.process_id:X}.{self.thread_id:X}"
 
 
 @dataclass
