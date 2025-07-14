@@ -297,6 +297,11 @@ class GdbServer(threading.Thread):
                     # We are not changing current process
                     thread_id = self.current_process.thread_id
                 else:
+                    # This is expected behavior
+                    if thread_id.process_id == 0 and thread_id.thread_id == 0:
+                        writer.append(b"E01")
+                        return True
+
                     # Since our processes have only 1 thread, we will pick this up from the cache
                     t = self.debugging_threads.get(thread_id.process_id)
                     if t is None:
