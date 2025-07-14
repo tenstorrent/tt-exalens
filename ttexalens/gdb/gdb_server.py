@@ -105,7 +105,7 @@ class GdbServer(threading.Thread):
                     last_process = self._last_available_processes.get(risc_debug.risc_location)
                     if last_process is None or last_process.elf_path != elf_path:
                         core_type = risc_debug.get_block_type(risc_debug.risc_location)
-                        # Shoren long core type for cleaner output
+                        # Shorten long core type for cleaner output
                         if core_type == "functional_workers":
                             core_type = "worker"
                         pid = self.next_pid
