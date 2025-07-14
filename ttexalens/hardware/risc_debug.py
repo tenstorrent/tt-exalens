@@ -74,11 +74,6 @@ class RiscDebug:
         noc_block = risc_location.location._device.get_block(risc_location.location)
         return noc_block.get_risc_debug(risc_location.risc_name, risc_location.neo_id)
 
-    @staticmethod
-    def get_block_type(risc_location: RiscLocation) -> str:
-        noc_block = risc_location.location._device.get_block(risc_location.location)
-        return noc_block.block_type
-
     @abstractmethod
     def is_in_reset(self) -> bool:
         """Check if the RISC core is in reset."""
