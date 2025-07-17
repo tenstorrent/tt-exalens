@@ -17,6 +17,9 @@
 #define RISCV_DEBUG_REG_WALL_CLOCK_L (RISCV_DEBUG_REGS_START_ADDR | 0x1F0)
 #define RISCV_DEBUG_REG_WALL_CLOCK_H (RISCV_DEBUG_REGS_START_ADDR | 0x1F8)
 
+__attribute__((section(".gcov_info")))
+const uint8_t __gcov_info_mem[1] = {0};
+
 volatile uint32_t g_MAILBOX;
 volatile union {
     uint64_t all_bytes;

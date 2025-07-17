@@ -3,7 +3,7 @@ cmake_policy(VERSION 3.16)
 
 project(RISCVProject LANGUAGES CXX ASM)
 
-option(COVERAGE "Enable gcov instrumentation for test coverage analysis" ON)
+option(COVERAGE "Enable instrumentation for test coverage analysis with gcov" ON)
 
 # Check if TTEXALENS_HOME is set, if not set it to ../../ from the directory that contains this file
 if(NOT TTEXALENS_HOME)
@@ -27,7 +27,7 @@ set(OPTIONS_ALL -O0 -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math)
 set(OPTIONS_COMPILE -fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable)
 set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
-set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section=REGION_GCOV_DATA)
+set(GCOV_FLAGS -fprofile-arcs -ftest-coverage)
 
 # Define project paths
 set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")

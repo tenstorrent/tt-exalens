@@ -6,6 +6,8 @@
 __firmware_stack_size = LENGTH(REGION_STACK);
 __firmware_start = DEFINED(__fw_export_end_text) ? __fw_export_end_text : ORIGIN(REGION_CODE);
 __ldm_start = DEFINED(__fw_export_ldm_end) ? __fw_export_ldm_end : ORIGIN(REGION_DATA);
+__gcov_info_start = ORIGIN(REGION_GCOV);
+__gcov_info_size = LENGTH(REGION_GCOV);
 
 OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv",
        "elf32-littleriscv")
@@ -47,19 +49,6 @@ SECTIONS
   {
     KEEP (*(SORT_NONE(.init)))
   } > REGION_CODE
-/*---- GCOV metadata ----*/
-.gcov_data :
-{
-  __gcov_data_start = .;
-  KEEP(*(.gcov*))
-  KEEP(*(.gcda*))
-  KEEP(*(.gcno*))
-  KEEP(*(__gcov_info*))
-  KEEP(*(.data.*gcov*))
-  KEEP(*(.rodata.*gcov*))
-  __gcov_data_end = .;
-} > REGION_GCOV_DATA
-
   .text :
   {
     *(.text.unlikely .text.*_unlikely .text.unlikely.*)
@@ -151,6 +140,13 @@ SECTIONS
    . += __firmware_stack_size;
     __stack_top = .;
   } > REGION_STACK
+  .gcov_info : AT(ORIGIN(REGION_GCOV))
+  {
+    KEEP(*(.gcov_info))
+    __gcov_info_start = .;
+    . += __gcov_info_size;
+    __gcov_info_end = .;
+  } > REGION_GCOV
   .stab 0 : { *(.stab) }
   .stabstr 0 : { *(.stabstr) }
   .stab.excl 0 : { *(.stab.excl) }
