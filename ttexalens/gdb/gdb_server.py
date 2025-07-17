@@ -300,8 +300,11 @@ class GdbServer(threading.Thread):
                     # Since our processes have only 1 thread, we will pick this up from the cache
                     t = self.debugging_threads.get(thread_id.process_id)
                     if t is None:
-                        # Unknown process!!!
-                        util.ERROR(f"GDB: Unknown process id in self.debugging_threads: {thread_id.process_id}")
+                        # Process and thread ids equal to 0 is expected behaivour so we should not print error
+                        # Every time before sending message with actual pid/thread id gdb sends Hgp0.0
+                        if not (thread_id.process_id == 0 and thread_id.thread_id == 0):
+                            # Unknown process!!!
+                            util.ERROR(f"GDB: Unknown process id in self.debugging_threads: {thread_id.process_id}")
                         writer.append(b"E01")
                         return True
                     thread_id = t
