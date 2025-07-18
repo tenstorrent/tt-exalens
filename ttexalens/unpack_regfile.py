@@ -110,8 +110,11 @@ def unpack_bfp8_b(data):
     return bfloat16_values
 
 
-# Reorders the bits of a given raw datum according to DST's encoding scheme.
+# Reorders the bits of a given raw datum according to DST's storage scheme.
 def reorder_fp32(datum: int) -> int:
+    # Low eight bits go right next to the high bit,
+    # the seven bits after the high bit become the lowest,
+    # and the high bit stays in place.
     return (datum & 0x8000) | ((datum & 0x7f00) >> 8) | ((datum & 0xff) << 7)
 
 def unpack_fp32(data) -> list[float]:
@@ -123,6 +126,7 @@ def unpack_fp32(data) -> list[float]:
     for i in range(0, half, 2):
         upper = int.from_bytes(hi_bytes[i : i + 2], byteorder="big")
         lower = int.from_bytes(lo_bytes[i : i + 2], byteorder="big")
+        # Both parts are shuffled.
         upper_reordered = reorder_fp32(upper)
         lower_reordered = reorder_fp32(lower)
         result = (upper_reordered << 16) | lower_reordered

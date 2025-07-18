@@ -6,7 +6,7 @@ from enum import Enum
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.register_store import RegisterDescription
-from ttexalens.tt_exalens_lib import check_context, validate_device_id, read_word_from_device, write_words_to_device
+from ttexalens.tt_exalens_lib import check_context, validate_device_id
 from ttexalens.util import WARN, TTException
 from ttexalens.device import Device
 from ttexalens.unpack_regfile import unpack_data
@@ -132,8 +132,8 @@ class TensixDebug:
         instruction: bytes | bytearray | int,
         thread_id: int,
     ) -> None:
-        """Inject a single instruction into a given Tensix thread.
-        The instruction is passed directly to Tensix, it doesn't pass through the baby RISCs.
+        """Inject a single instruction into the given Tensix thread.
+        The instruction doesn't go through the baby RISCs, it's passed directly to Tensix.
         Thus, do not attempt to use this API to execute arbitrary RISC-V instructions.
 
         Args:
