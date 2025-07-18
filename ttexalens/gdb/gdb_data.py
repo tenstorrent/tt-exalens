@@ -12,7 +12,7 @@ class GdbThreadId:
     thread_id: int
 
     def to_gdb_string(self):
-        return f"p{self.process_id}.{self.thread_id}"
+        return f"p{self.process_id:X}.{self.thread_id:X}"
 
 
 @dataclass
