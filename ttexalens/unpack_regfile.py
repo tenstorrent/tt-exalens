@@ -110,22 +110,23 @@ def unpack_bfp8_b(data):
     return bfloat16_values
 
 
+# Reorders the bits of a given raw datum according to DST's encoding scheme.
+def reorder_fp32(datum: int) -> int:
+    return (datum & 0x8000) | ((datum & 0x7f00) >> 8) | ((datum & 0xff) << 7)
+
 def unpack_fp32(data) -> list[float]:
     floats: list[float] = []
     half = len(data) // 2
     hi_bytes = data[:half]
     lo_bytes = data[half:]
 
-    # Process each 4-byte float
     for i in range(0, half, 2):
-        hi_word = int.from_bytes(hi_bytes[i : i + 2], byteorder="big")
-        lo_word = int.from_bytes(lo_bytes[i : i + 2], byteorder="big")
-        sign = (hi_word & 0x8000) << 16
-        exponent = (hi_word & 0x00FF) << 23
-        mantissa = ((hi_word & 0x7F00) << 8) | lo_word
-        result = sign | exponent | mantissa
+        upper = int.from_bytes(hi_bytes[i : i + 2], byteorder="big")
+        lower = int.from_bytes(lo_bytes[i : i + 2], byteorder="big")
+        upper_reordered = reorder_fp32(upper)
+        lower_reordered = reorder_fp32(lower)
+        result = (upper_reordered << 16) | lower_reordered
         floats.append(struct.unpack(">f", result.to_bytes(4, "big"))[0])
-
     return floats
 
 
@@ -134,7 +135,6 @@ def unpack_data(data, df: int | TensixDataFormat):
         df = TensixDataFormat(df)
 
     if df == TensixDataFormat.Float32:
-        raise ValueError
         return unpack_fp32(data)
     if df == TensixDataFormat.Float16:
         return unpack_fp16(data)

@@ -77,27 +77,27 @@ class TensixDebug:
         ), f"Register {register_name} doesn't have noc address on {self.register_store.location.to_user_str()}."
         return address
 
-    # add a command for this later
     def dbg_buff_status(self):
         return self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS")
 
-    def start_insn_push(self, thread_id: int) -> None:
+    def _start_insn_push(self, thread_id: int) -> None:
         """Take control of thread_id's Tensix FIFO over the 
         debug bus to prepare to push instructions into it."""
         # Relevant documentation: 
         # https://github.com/tenstorrent/tt-isa-documentation/blob/ac3215a86ffa22a89b49df195a38338b66ab4dbc/WormholeB0/TensixTile/BabyRISCV/PushTensixInstruction.md
         validate_thread_id(thread_id)
 
-        # 1. Wait for buffer ready signal (poll bit 0/1/2, depending on thread, of DBG_INSTRN_BUF_STATUS until it’s 1).
+        # Wait for buffer ready signal (poll bit 0/1/2, depending on thread, of DBG_INSTRN_BUF_STATUS until it’s 1).
         while (self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS") & (1 << thread_id)) == 0:
             pass
 
         # Take control of thread n's FIFO through the debug bus by setting bit n of INSTRN_BUF_CTRL0.
         self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 1 << thread_id)
 
-    def insn_push(self, insn: bytes | bytearray | int, thread_id: int) -> None:
+    def _insn_push(self, insn: bytes | bytearray | int, thread_id: int) -> None:
         """Push one Tensix instruction through the previously claimed FIFO.
-        Each instruction pushed this way is guaranteed to be executed sequentially on the given thread."""
+        Each instruction pushed this way is guaranteed to be executed sequentially on the given thread.
+        It is not recommended to push more than one instruction during a single FIFO claim."""
         validate_thread_id(thread_id)
         if isinstance(insn, int):
             insn_bytes = insn.to_bytes(4, byteorder="little")
@@ -115,14 +115,14 @@ class TensixDebug:
         
         # Trigger the insn push: set the push bit in CTRL0 for this thread.
         push = 1 << (4 + thread_id)
-        control = 1 << thread_id # keep control of the pipe
+        control = 1 << thread_id
         self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", push | control)
 
         # Wait for the instruction to drain.
         while (self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS") & (1 << (4 + thread_id))) == 0:
             pass
     
-    def end_insn_push(self, thread_id: int) -> None:
+    def _end_insn_push(self, thread_id: int) -> None:
         """Relinquish control over thread_id's FIFO."""
         validate_thread_id(thread_id)
         self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 0) # simply clear the register.
@@ -132,9 +132,9 @@ class TensixDebug:
         instruction: bytes | bytearray | int,
         thread_id: int,
     ) -> None:
-        """Take control over the Tensix thread specified by thread_id,
-        push a single instruction into its FIFO, and relinquish control.
-        For sending multiple instructions, the insn_push API is preferred.
+        """Inject a single instruction into a given Tensix thread.
+        The instruction is passed directly to Tensix, it doesn't pass through the baby RISCs.
+        Thus, do not attempt to use this API to execute arbitrary RISC-V instructions.
 
         Args:
                 instruction (bytearray): 32-bit instruction to inject.
@@ -145,30 +145,9 @@ class TensixDebug:
             instruction_bytes = instruction.to_bytes(4, byteorder="little")
         else:
             instruction_bytes = instruction
-        validate_instruction(instruction_bytes)
-        validate_thread_id(thread_id)
-
-        # Relevant documentation: 
-        # https://github.com/tenstorrent/tt-isa-documentation/blob/ac3215a86ffa22a89b49df195a38338b66ab4dbc/WormholeB0/TensixTile/BabyRISCV/PushTensixInstruction.md
-
-        # 1. Wait for buffer ready signal (poll bit 0/1/2, depending on thread, of DBG_INSTRN_BUF_STATUS until it’s 1).
-        while (self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS") & (1 << thread_id)) == 0:
-            pass
-        
-        # Setting bit 0 <= n <= 2 of INSTRN_BUF_CTRL0 means taking control of thread n's FIFO through the debug bus.
-        self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 1 << thread_id)
-
-        # Write the instruction into CTRL1.
-        self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1",
-                            int.from_bytes(instruction_bytes, byteorder="little"))
-
-        # Trigger the insn push: set the push bit in CTRL0 for this thread.
-        # As this will leave only the push bit set, control is relinquished.
-        self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 1 << (4 + thread_id))
-
-        # Wait for the thread's buffer to empty: poll bit (4 + thread_id) of STATUS until it’s 1.
-        while (self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS") & (1 << (4 + thread_id))) == 0:
-            pass
+        self._start_insn_push(thread_id)
+        self._insn_push(instruction_bytes, thread_id)
+        self._end_insn_push(thread_id)
 
     def read_tensix_register(self, register: str | RegisterDescription) -> int:
         """Reads the value of a configuration or debug register from the tensix core.
@@ -228,21 +207,17 @@ class TensixDebug:
             regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
 
             if regfile == REGFILE.SRCA:
-                self.start_insn_push(thread_id)
-                self.insn_push(ops.TT_OP_SFPLOAD(3, 0, 0, 0), thread_id)
-                self.insn_push(ops.TT_OP_SFPLOAD(3, 0, 0, 2), thread_id)
-                self.insn_push(ops.TT_OP_STALLWAIT(0x40, 0x4000), thread_id)
-                self.insn_push(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), thread_id)
-                self.end_insn_push(thread_id)
+                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), thread_id)
+                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), thread_id)
+                self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), thread_id)
+                self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), thread_id)
             elif regfile == REGFILE.SRCB:
-                self.start_insn_push(thread_id)
-                self.insn_push(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
-                self.insn_push(ops.TT_OP_SETDVALID(0b10), thread_id)
-                self.insn_push(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
-                self.insn_push(ops.TT_OP_SETDVALID(0b10), thread_id)
-                self.insn_push(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
-                self.insn_push(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
-                self.end_insn_push(thread_id)
+                self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
+                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
+                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
+                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
+                self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
+                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
 
             for i in range(8):
                 dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
@@ -251,12 +226,10 @@ class TensixDebug:
                 data += list(int.to_bytes(rd_data, 4, byteorder="big"))
 
             if regfile == REGFILE.SRCA:
-                self.start_insn_push(thread_id)
-                self.insn_push(ops.TT_OP_SFPSTORE(3, 0, 0, 0), thread_id)
-                self.insn_push(ops.TT_OP_SFPSTORE(3, 0, 0, 2), thread_id)
+                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), thread_id)
+                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), thread_id)
                 if row % 16 == 15:
-                    self.insn_push(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), thread_id)
-                self.end_insn_push(thread_id)
+                    self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), thread_id)
 
         self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 0)
         self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", 0)
@@ -273,43 +246,25 @@ class TensixDebug:
         """
         regfile = convert_regfile(regfile)
         df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
-        #df = 5
         if df == 0:
             ops = self.device.instructions
-            upper = self.read_regfile_data(2)
-            self.start_insn_push(1)
-            '''self.insn_push(ops.TT_OP_SFPLOAD(1, 0, 12, 3), 0) # sfpload  L1, 0, 12, 3
-            self.insn_push(ops.TT_OP_SFPLOADI(0, -1, 2), 0) # sfploadi L0, -1 (10), 2
-            self.insn_push(ops.TT_OP_SFPAND(0, 0, 1, 0), 0) # sfpand   L0, L1
-            self.insn_push(ops.TT_OP_SFPSHFT(0, 0, 16, 1), 0) # sfpshft  L0, L0, 16, 1
-            self.insn_push(ops.TT_OP_SFPSTORE(0, 0, 12, 3), 0) # sfpstore 0, L0, 12, 3'''
-            zeros = 0
-            for d in upper:
-                if d == 0:
-                    zeros += 1
-            print(f"{zeros}/{len(upper)} zeros")
-            zeros = 0
-            self.insn_push(ops.TT_OP_SFPLOAD(0, 0, 12, 3), 1) # odd?
-            self.insn_push(ops.TT_OP_SFPLOAD(1, 0, 12, 1), 1) # even?
-            self.insn_push(ops.TT_OP_SFPSTORE(1, 0, 12, 3), 1)
-            self.insn_push(ops.TT_OP_SFPSTORE(0, 0, 12, 1), 1)
-            self.end_insn_push(1)
-            lower = self.read_regfile_data(regfile)
-            zeros = 0
-            for d in lower:
-                if d == 0:
-                    zeros += 1
-            print(f"{zeros}/{len(lower)} zeros")
-            '''zeros = 0
-            self.start_insn_push(0)
-            self.insn_push(ops.TT_OP_SFPSTORE(0, 1, 12, 3), 0) # sfpstore 0, L1, 12, 3
-            #self.insn_push(self.device.instructions.TT_OP_ZEROACC(3, 0, 0), 0)
-            self.end_insn_push(0)
             upper = self.read_regfile_data(regfile)
-            for d in upper:
-                if d == 0:
-                    zeros += 1
-            print(f"zeros in upper: {zeros}")'''
+            # First, read the upper 16 bits of each value.
+            # Half of the values read are zeros, shave them off.
+            upper = upper[0:256] + upper[512:768] + upper[1024:1280] + upper[1536:1792]
+            
+            # Pass a simple kernel directly to Tensix that exposes the lower 16 bits
+            # in place of the upper while saving state in LRegs to avoid corrupting DST.
+            for _ in range(0, 64):
+                self.inject_instruction(ops.TT_OP_SFPLOAD(2, 3, 0, 0), 1)
+                self.inject_instruction(ops.TT_OP_SFPSHFT(0x010, 2, 2, 1), 1)
+                self.inject_instruction(ops.TT_OP_SFPSTORE(2, 3, 0, 0), 1)
+                self.inject_instruction(ops.TT_OP_INCRWC(0, 16, 0, 0), 1)
+            
+            # Read the lower 16 bits from the upper bits' position.
+            # Prune the zeros again, same as previously.
+            lower = self.read_regfile_data(regfile)
+            lower = lower[0:256] + lower[512:768] + lower[1024:1280] + lower[1536:1792]
             data = upper + lower
         else:
             data = self.read_regfile_data(regfile)
@@ -320,4 +275,5 @@ class TensixDebug:
             # If the data format is unsupported, return the raw data.
             WARN(e)
             WARN("Printing raw data...")
-            return [hex(datum) for datum in data]        
+            return [hex(datum) for datum in data]
+
