@@ -255,17 +255,54 @@ class TensixDebug:
             
             # Pass a simple kernel directly to Tensix that exposes the lower 16 bits
             # in place of the upper while saving state in LRegs to avoid corrupting DST.
-            for _ in range(0, 64):
-                self.inject_instruction(ops.TT_OP_SFPLOAD(2, 3, 0, 0), 1)
+            lower = []
+
+            self.inject_instruction(ops.TT_OP_SETC16(21, 0), 1)
+            self.inject_instruction(ops.TT_OP_SETC16(30, 0), 1)
+            self.inject_instruction(ops.TT_OP_SETC16(55, 0), 1)
+
+            for i in range(0, 8):
+                self.inject_instruction(ops.TT_OP_SFPLOAD(2, 3, 7, 0), 1)
+                self.inject_instruction(ops.TT_OP_SFPMOV(0, 2, 3, 2), 1)
                 self.inject_instruction(ops.TT_OP_SFPSHFT(0x010, 2, 2, 1), 1)
-                self.inject_instruction(ops.TT_OP_SFPSTORE(2, 3, 0, 0), 1)
-                self.inject_instruction(ops.TT_OP_INCRWC(0, 16, 0, 0), 1)
-            
-            # Read the lower 16 bits from the upper bits' position.
-            # Prune the zeros again, same as previously.
-            lower = self.read_regfile_data(regfile)
-            lower = lower[0:256] + lower[512:768] + lower[1024:1280] + lower[1536:1792]
+                self.inject_instruction(ops.TT_OP_SFPSTORE(2, 3, 7, 0), 1)
+                
+                # Read the register, prune the zeros,
+                # and take only the part relevant for this iteration.
+                lower_chunk = self.read_regfile_data(regfile)
+                lower_chunk = lower_chunk[0:256] + lower_chunk[512:768] + lower_chunk[1024:1280] + lower_chunk[1536:1792]
+                lower_chunk = lower_chunk[i*128:i*128 + 128]
+
+                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 3, 7, 0), 1)
+                self.inject_instruction(ops.TT_OP_INCRWC(0, 2, 0, 0), 1)
+                
+                # We consider 128 numbers per iteration.
+                # Divide those into blocks of four numbers, let's call them [a, b, c, d].
+                # To get all the lower bits, we alternate the numbers we read.
+                # First read c and d, then do another round of insns, and then read a and b.
+                # Rinse and repeat until the whole register is covered.
+                for j in range(0, 128):
+                    if j % 4 == 2 or j % 4 == 3:
+                        lower += [lower_chunk[j]]
+                
+                self.inject_instruction(ops.TT_OP_SFPLOAD(2, 3, 7, 0), 1)
+                self.inject_instruction(ops.TT_OP_SFPMOV(0, 2, 3, 2), 1)
+                self.inject_instruction(ops.TT_OP_SFPSHFT(0x010, 2, 2, 1), 1)
+                self.inject_instruction(ops.TT_OP_SFPSTORE(2, 3, 7, 0), 1)
+                
+                lower_chunk = self.read_regfile_data(regfile)
+                lower_chunk = lower_chunk[0:256] + lower_chunk[512:768] + lower_chunk[1024:1280] + lower_chunk[1536:1792]
+                lower_chunk = lower_chunk[i*128:i*128 + 128]
+
+                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 3, 7, 0), 1)
+                self.inject_instruction(ops.TT_OP_INCRWC(0, 2, 0, 0), 1)
+                
+                for j in range(0, 128):
+                    if j % 4 == 0 or j % 4 == 1:
+                        lower += [lower_chunk[j]]
+                        
             data = upper + lower
+            
         else:
             data = self.read_regfile_data(regfile)
 
@@ -275,5 +312,5 @@ class TensixDebug:
             # If the data format is unsupported, return the raw data.
             WARN(e)
             WARN("Printing raw data...")
-            return [hex(datum) for datum in data]
+            return data#return [hex(datum) for datum in data]
 
