@@ -115,7 +115,8 @@ def reorder_fp32(datum: int) -> int:
     # Low eight bits go right next to the high bit,
     # the seven bits after the high bit become the lowest,
     # and the high bit stays in place.
-    return (datum & 0x8000) | ((datum & 0x7f00) >> 8) | ((datum & 0xff) << 7)
+    return (datum & 0x8000) | ((datum & 0x7F00) >> 8) | ((datum & 0xFF) << 7)
+
 
 def unpack_fp32(data) -> list[float]:
     floats: list[float] = []

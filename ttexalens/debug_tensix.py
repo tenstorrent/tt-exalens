@@ -81,9 +81,9 @@ class TensixDebug:
         return self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS")
 
     def _start_insn_push(self, thread_id: int) -> None:
-        """Take control of thread_id's Tensix FIFO over the 
+        """Take control of thread_id's Tensix FIFO over the
         debug bus to prepare to push instructions into it."""
-        # Relevant documentation: 
+        # Relevant documentation:
         # https://github.com/tenstorrent/tt-isa-documentation/blob/ac3215a86ffa22a89b49df195a38338b66ab4dbc/WormholeB0/TensixTile/BabyRISCV/PushTensixInstruction.md
         validate_thread_id(thread_id)
 
@@ -110,22 +110,25 @@ class TensixDebug:
             pass
 
         # Write the insn to DBG_INSTRN_BUF_CTRL1.
-        self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1",
-                            int.from_bytes(insn_bytes, byteorder="little"))
-        
+        self.register_store.write_register(
+            "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1", int.from_bytes(insn_bytes, byteorder="little")
+        )
+
         # Trigger the insn push: set the push bit in CTRL0 for this thread.
         push = 1 << (4 + thread_id)
         control = 1 << thread_id
         self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", push | control)
 
         # Wait for the instruction to drain.
-        while (self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS") & (1 << (4 + thread_id))) == 0:
+        while (
+            self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS") & (1 << (4 + thread_id))
+        ) == 0:
             pass
-    
+
     def _end_insn_push(self, thread_id: int) -> None:
         """Relinquish control over thread_id's FIFO."""
         validate_thread_id(thread_id)
-        self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 0) # simply clear the register.
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 0)  # simply clear the register.
 
     def inject_instruction(
         self,
@@ -238,7 +241,7 @@ class TensixDebug:
     def read_regfile(self, regfile: int | str | REGFILE) -> list[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
-        
+
         Args:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
 
@@ -247,13 +250,13 @@ class TensixDebug:
         """
         regfile = convert_regfile(regfile)
         df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
-        if regfile == REGFILE.DSTACC and df == 0 and self.device._arch == 'wormhole_b0':
+        if regfile == REGFILE.DSTACC and df == 0 and self.device._arch == "wormhole_b0":
             ops = self.device.instructions
             upper = self.read_regfile_data(regfile)
             # First, read the upper 16 bits of each value.
             # Half of the values read are zeros, shave them off.
             upper = upper[0:256] + upper[512:768] + upper[1024:1280] + upper[1536:1792]
-            
+
             # Pass a simple kernel directly to Tensix that exposes the lower 16 bits
             # in place of the upper. This unfortunately clobbers dest.
             for _ in range(0, 64):
@@ -261,7 +264,7 @@ class TensixDebug:
                 self.inject_instruction(ops.TT_OP_SFPSHFT(0x010, 2, 2, 1), 1)
                 self.inject_instruction(ops.TT_OP_SFPSTORE(2, 3, 0, 0), 1)
                 self.inject_instruction(ops.TT_OP_INCRWC(0, 16, 0, 0), 1)
-            
+
             # Read the lower 16 bits from the upper bits' position.
             # Prune the zeros again, same as previously.
             lower = self.read_regfile_data(regfile)
@@ -277,4 +280,3 @@ class TensixDebug:
             WARN(e)
             WARN("Printing raw data...")
             return [hex(datum) for datum in data]
-
