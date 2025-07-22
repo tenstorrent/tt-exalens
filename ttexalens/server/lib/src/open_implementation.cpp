@@ -543,8 +543,6 @@ std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::conv
 
     if (coord_system == "logical") {
         coord_system_enum = CoordSystem::LOGICAL;
-    } else if (coord_system == "physical") {
-        coord_system_enum = CoordSystem::NOC0;
     } else if (coord_system == "virtual") {
         coord_system_enum = CoordSystem::VIRTUAL;
     } else if (coord_system == "translated") {
