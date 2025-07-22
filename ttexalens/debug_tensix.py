@@ -237,7 +237,8 @@ class TensixDebug:
 
     def read_regfile(self, regfile: int | str | REGFILE) -> list[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
-
+        Dumping DSTACC on Wormhole as FP32 clobbers the register.
+        
         Args:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
 
@@ -246,7 +247,7 @@ class TensixDebug:
         """
         regfile = convert_regfile(regfile)
         df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
-        if df == 0:
+        if regfile == REGFILE.DSTACC and df == 0 and self.device._arch == 'wormhole_b0':
             ops = self.device.instructions
             upper = self.read_regfile_data(regfile)
             # First, read the upper 16 bits of each value.
@@ -254,7 +255,7 @@ class TensixDebug:
             upper = upper[0:256] + upper[512:768] + upper[1024:1280] + upper[1536:1792]
             
             # Pass a simple kernel directly to Tensix that exposes the lower 16 bits
-            # in place of the upper while saving state in LRegs to avoid corrupting DST.
+            # in place of the upper. This unfortunately clobbers dest.
             for _ in range(0, 64):
                 self.inject_instruction(ops.TT_OP_SFPLOAD(2, 3, 0, 0), 1)
                 self.inject_instruction(ops.TT_OP_SFPSHFT(0x010, 2, 2, 1), 1)
