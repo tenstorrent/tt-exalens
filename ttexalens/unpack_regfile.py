@@ -132,6 +132,10 @@ def unpack_fp32(data) -> list[float]:
         lower_reordered = reorder_fp32(lower)
         result = (upper_reordered << 16) | lower_reordered
         floats.append(struct.unpack(">f", result.to_bytes(4, "big"))[0])
+
+    for i in range(0, len(floats) - 1, 2):
+        floats[i], floats[i + 1] = floats[i + 1], floats[i]
+
     return floats
 
 
