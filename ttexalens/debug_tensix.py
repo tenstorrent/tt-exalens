@@ -270,6 +270,7 @@ class TensixDebug:
             lower = self.read_regfile_data(regfile)
             lower = lower[0:256] + lower[512:768] + lower[1024:1280] + lower[1536:1792]
             data = upper + lower
+            WARN("The previous contents of DSTACC have been lost and should not be relied upon.")
         else:
             data = self.read_regfile_data(regfile)
 
