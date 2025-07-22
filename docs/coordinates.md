@@ -7,7 +7,7 @@ This document explains how we handle different coordinate systems on a chip. The
 1. **die**
    - Represents a “geographic” location on the die grid. Used mainly for diagrams or marketing visuals.
 
-2. **noc0** (also called “physical”)
+2. **noc0**
    - The main routing coordinate for NOC 0 (X-Y notation). One hop is one clock cycle on the network.
 
 3. **noc1**
