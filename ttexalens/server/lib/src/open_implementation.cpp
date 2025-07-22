@@ -109,159 +109,6 @@ static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
     return cluster_descriptor_path;
 }
 
-static void write_coord(std::ostream &out, const tt::umd::CoreCoord &input, CoreType core_type,
-                        const tt_SocDescriptor &soc_descriptor) {
-    auto output = soc_descriptor.translate_coord_to(input, CoordSystem::NOC0);
-    out << output.x << "-" << output.y << ", ";
-}
-
-static void write_coord(std::ostream &out, const tt_xy_pair &xy, CoreType core_type,
-                        const tt_SocDescriptor &soc_descriptor) {
-    write_coord(out, tt::umd::CoreCoord{xy.x, xy.y, core_type, CoordSystem::NOC0}, core_type, soc_descriptor);
-}
-
-// Creates SOC descriptor files by serializing tt_SocDescroptor structure to yaml.
-// TODO: Current copied from runtime/runtime_utils.cpp: print_device_description. It should be moved to UMD and reused
-// on both places.
-static void write_soc_descriptor(std::string file_name, const tt_SocDescriptor &soc_descriptor) {
-    std::ofstream outfile(file_name);
-
-    outfile << "grid:" << std::endl;
-    outfile << "  x_size: " << soc_descriptor.grid_size.x << std::endl;
-    outfile << "  y_size: " << soc_descriptor.grid_size.y << std::endl << std::endl;
-
-    outfile << "arc:" << std::endl;
-    outfile << "  [" << std::endl;
-
-    for (const auto &arc : soc_descriptor.get_cores(CoreType::ARC)) {
-        if (arc.x < soc_descriptor.grid_size.x && arc.y < soc_descriptor.grid_size.y) {
-            write_coord(outfile, arc, CoreType::ARC, soc_descriptor);
-        }
-    }
-    outfile << std::endl;
-    outfile << "  ]" << std::endl << std::endl;
-
-    outfile << "pcie:" << std::endl;
-    outfile << "  [" << std::endl;
-
-    for (const auto &pcie : soc_descriptor.get_cores(CoreType::PCIE)) {
-        if (pcie.x < soc_descriptor.grid_size.x && pcie.y < soc_descriptor.grid_size.y) {
-            write_coord(outfile, pcie, CoreType::PCIE, soc_descriptor);
-        }
-    }
-    outfile << std::endl;
-    outfile << "  ]" << std::endl << std::endl;
-
-    // List of available dram cores in full grid
-    outfile << "dram:" << std::endl;
-    outfile << "  [" << std::endl;
-
-    for (const auto &dram_cores : soc_descriptor.get_dram_cores()) {
-        // Insert the dram core if it's within the given grid
-        bool has_data = false;
-
-        for (const auto &dram_core : dram_cores) {
-            if ((dram_core.x < soc_descriptor.grid_size.x) and (dram_core.y < soc_descriptor.grid_size.y)) {
-                has_data = true;
-            }
-        }
-        if (has_data) {
-            outfile << "[";
-
-            for (const auto &dram_core : dram_cores) {
-                if ((dram_core.x < soc_descriptor.grid_size.x) and (dram_core.y < soc_descriptor.grid_size.y)) {
-                    write_coord(outfile, dram_core, CoreType::DRAM, soc_descriptor);
-                }
-            }
-
-            outfile << "]," << std::endl;
-        }
-    }
-    outfile << std::endl << "]" << std::endl << std::endl;
-
-    outfile << "eth:" << std::endl << "  [" << std::endl;
-    for (const auto &ethernet_core : soc_descriptor.get_cores(CoreType::ETH)) {
-        // Insert the eth core if it's within the given grid
-        if (ethernet_core.x < soc_descriptor.grid_size.x && ethernet_core.y < soc_descriptor.grid_size.y) {
-            write_coord(outfile, ethernet_core, CoreType::ETH, soc_descriptor);
-        }
-    }
-    outfile << std::endl << "]" << std::endl << std::endl;
-    // Insert worker cores that are within the given grid
-    outfile << "harvested_workers:" << std::endl;
-    outfile << "  [" << std::endl;
-
-    for (const auto &worker : soc_descriptor.get_harvested_cores(CoreType::TENSIX)) {
-        if (worker.x < soc_descriptor.grid_size.x && worker.y < soc_descriptor.grid_size.y) {
-            write_coord(outfile, worker, CoreType::TENSIX, soc_descriptor);
-        }
-    }
-    outfile << std::endl;
-    outfile << "  ]" << std::endl << std::endl;
-
-    outfile << "functional_workers:" << std::endl;
-    outfile << "  [" << std::endl;
-    for (const auto &worker : soc_descriptor.get_cores(CoreType::TENSIX)) {
-        if (worker.x < soc_descriptor.grid_size.x && worker.y < soc_descriptor.grid_size.y) {
-            write_coord(outfile, worker, CoreType::TENSIX, soc_descriptor);
-        }
-    }
-    outfile << std::endl;
-    outfile << "  ]" << std::endl << std::endl;
-
-    outfile << "router_only:" << std::endl;
-    outfile << "  [" << std::endl;
-    for (const auto &router_only : soc_descriptor.get_cores(CoreType::ROUTER_ONLY)) {
-        if (router_only.x < soc_descriptor.grid_size.x && router_only.y < soc_descriptor.grid_size.y) {
-            write_coord(outfile, router_only, CoreType::ROUTER_ONLY, soc_descriptor);
-        }
-    }
-    outfile << std::endl;
-    outfile << "  ]" << std::endl << std::endl;
-
-    outfile << "security:" << std::endl;
-    outfile << "  [" << std::endl;
-    for (const auto &security : soc_descriptor.get_cores(CoreType::SECURITY)) {
-        if (security.x < soc_descriptor.grid_size.x && security.y < soc_descriptor.grid_size.y) {
-            write_coord(outfile, security, CoreType::SECURITY, soc_descriptor);
-        }
-    }
-    outfile << std::endl;
-    outfile << "  ]" << std::endl << std::endl;
-
-    outfile << "l2cpu:" << std::endl;
-    outfile << "  [" << std::endl;
-    for (const auto &l2cpu : soc_descriptor.get_cores(CoreType::L2CPU)) {
-        if (l2cpu.x < soc_descriptor.grid_size.x && l2cpu.y < soc_descriptor.grid_size.y) {
-            write_coord(outfile, l2cpu, CoreType::L2CPU, soc_descriptor);
-        }
-    }
-    outfile << std::endl;
-    outfile << "  ]" << std::endl << std::endl;
-
-    // Fill in the rest that are static to our device
-    outfile << "worker_l1_size:" << std::endl;
-    outfile << "  " << soc_descriptor.worker_l1_size << std::endl << std::endl;
-    outfile << "dram_bank_size:" << std::endl;
-    outfile << "  " << soc_descriptor.dram_bank_size << std::endl << std::endl;
-    outfile << "eth_l1_size:" << std::endl;
-    outfile << "  " << soc_descriptor.eth_l1_size << std::endl << std::endl;
-    outfile << "arch_name: " << tt::arch_to_str(soc_descriptor.arch) << std::endl << std::endl;
-    outfile << "features:" << std::endl;
-    outfile << "  noc:" << std::endl;
-    outfile << "    translation_id_enabled: True" << std::endl;
-    outfile << "  unpacker:" << std::endl;
-    outfile << "    version: " << soc_descriptor.unpacker_version << std::endl;
-    outfile << "    inline_srca_trans_without_srca_trans_instr: False" << std::endl;
-    outfile << "  math:" << std::endl;
-    outfile << "    dst_size_alignment: " << soc_descriptor.dst_size_alignment << std::endl;
-    outfile << "  packer:" << std::endl;
-    outfile << "    version: " << soc_descriptor.packer_version << std::endl;
-    outfile << "  overlay:" << std::endl;
-    outfile << "    version: " << soc_descriptor.overlay_version << std::endl;
-    outfile << std::endl;
-}
-
 static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Cluster *cluster,
                                                                     const std::vector<uint8_t> &device_ids) {
     std::map<uint8_t, std::string> device_soc_descriptors_yamls;
@@ -269,7 +116,7 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Clu
     for (auto device_id : device_ids) {
         auto &soc_descriptor = cluster->get_soc_descriptor(device_id);
         std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
-        write_soc_descriptor(file_name, soc_descriptor);
+        soc_descriptor.serialize_to_file(file_name);
 
         device_soc_descriptors_yamls[device_id] = file_name;
     }
@@ -315,7 +162,7 @@ static std::string jtag_create_temp_network_descriptor_file(JtagDevice *jtag_dev
 
 static std::string jtag_create_device_soc_descriptor(const tt_SocDescriptor &soc_descriptor, uint32_t device_id) {
     std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
-    write_soc_descriptor(file_name, soc_descriptor);
+    soc_descriptor.serialize_to_file(file_name);
     return file_name;
 }
 
