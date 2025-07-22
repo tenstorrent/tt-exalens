@@ -544,7 +544,7 @@ std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::conv
     if (coord_system == "logical") {
         coord_system_enum = CoordSystem::LOGICAL;
     } else if (coord_system == "physical") {
-        coord_system_enum = CoordSystem::PHYSICAL;
+        coord_system_enum = CoordSystem::NOC0;
     } else if (coord_system == "virtual") {
         coord_system_enum = CoordSystem::VIRTUAL;
     } else if (coord_system == "translated") {
@@ -559,7 +559,7 @@ std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::conv
 
     try {
         auto &soc_descriptor = soc_descriptors.at(chip_id);
-        tt::umd::CoreCoord core_coord{noc_x, noc_y, core_type_enum, CoordSystem::PHYSICAL};
+        tt::umd::CoreCoord core_coord{noc_x, noc_y, core_type_enum, CoordSystem::NOC0};
         auto output = soc_descriptor.translate_coord_to(core_coord, coord_system_enum);
 
         return std::make_tuple(static_cast<uint8_t>(output.x), static_cast<uint8_t>(output.y));
