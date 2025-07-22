@@ -70,14 +70,6 @@ class TensixDebug:
         else:
             self.core_loc = core_loc
 
-    def __get_register_address(self, register_name: str) -> int:
-        """Helper method to get the address of a register."""
-        address = self.register_store.get_register_noc_address(register_name)
-        assert (
-            address is not None
-        ), f"Register {register_name} doesn't have noc address on {self.register_store.location.to_user_str()}."
-        return address
-
     def dbg_buff_status(self):
         return self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS")
 
@@ -86,7 +78,6 @@ class TensixDebug:
         debug bus to prepare to push instructions into it."""
         # Relevant documentation:
         # https://github.com/tenstorrent/tt-isa-documentation/blob/ac3215a86ffa22a89b49df195a38338b66ab4dbc/WormholeB0/TensixTile/BabyRISCV/PushTensixInstruction.md
-        validate_thread_id(thread_id)
 
         # Wait for buffer ready signal (poll bit 0/1/2, depending on thread, of DBG_INSTRN_BUF_STATUS until it’s 1).
         while (self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS") & (1 << thread_id)) == 0:
@@ -95,24 +86,17 @@ class TensixDebug:
         # Take control of thread n's FIFO through the debug bus by setting bit n of INSTRN_BUF_CTRL0.
         self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 1 << thread_id)
 
-    def _insn_push(self, insn: bytes | bytearray | int, thread_id: int) -> None:
+    def _insn_push(self, insn: bytes | bytearray, thread_id: int) -> None:
         """Push one Tensix instruction through the previously claimed FIFO.
         Each instruction pushed this way is guaranteed to be executed sequentially on the given thread.
         It is not recommended to push more than one instruction during a single FIFO claim."""
-        validate_thread_id(thread_id)
-        if isinstance(insn, int):
-            insn_bytes = insn.to_bytes(4, byteorder="little")
-        else:
-            insn_bytes = insn
-        validate_instruction(insn_bytes)
-
         # Check if the buffer is ready. This must be done before every instruction push.
         while (self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS") & (1 << thread_id)) == 0:
             pass
 
         # Write the insn to DBG_INSTRN_BUF_CTRL1.
         self.register_store.write_register(
-            "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1", int.from_bytes(insn_bytes, byteorder="little")
+            "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL1", int.from_bytes(insn, byteorder="little")
         )
 
         # Trigger the insn push: set the push bit in CTRL0 for this thread.
@@ -144,11 +128,12 @@ class TensixDebug:
                 instruction (bytearray): 32-bit instruction to inject.
                 thread_id (int): Tensix thread ID (0-2).
         """
-
+        validate_thread_id(thread_id)
         if isinstance(instruction, int):
             instruction_bytes = instruction.to_bytes(4, byteorder="little")
         else:
             instruction_bytes = instruction
+        validate_instruction(instruction_bytes)
         self._start_insn_push(thread_id)
         self._insn_push(instruction_bytes, thread_id)
         self._end_insn_push(thread_id)
@@ -251,6 +236,9 @@ class TensixDebug:
         """
         regfile = convert_regfile(regfile)
         df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+
+        # Workaround for an architectural quirk of Wormhole: reading DST as INT32 or FP32
+        # returns zeros on the lower 16 bits of each datum. This handles the FP32 case.
         if regfile == REGFILE.DSTACC and df == 0 and type(self.device) == WormholeDevice:
             ops = self.device.instructions
             upper = self.read_regfile_data(regfile)
