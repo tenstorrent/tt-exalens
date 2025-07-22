@@ -5,6 +5,7 @@ from enum import Enum
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
+from ttexalens.hw.tensix.wormhole.wormhole import WormholeDevice
 from ttexalens.register_store import RegisterDescription
 from ttexalens.tt_exalens_lib import check_context, validate_device_id
 from ttexalens.util import WARN, TTException
@@ -250,7 +251,7 @@ class TensixDebug:
         """
         regfile = convert_regfile(regfile)
         df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
-        if regfile == REGFILE.DSTACC and df == 0 and self.device._arch == "wormhole_b0":
+        if regfile == REGFILE.DSTACC and df == 0 and type(self.device) == WormholeDevice:
             ops = self.device.instructions
             upper = self.read_regfile_data(regfile)
             # First, read the upper 16 bits of each value.
