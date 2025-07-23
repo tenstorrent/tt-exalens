@@ -9,6 +9,7 @@ import time
 from typing import Callable
 from ttexalens import parse_elf
 from ttexalens import util as util
+from ttexalens.tt_exalens_lib import read_riscv_memory
 import re
 from fuzzywuzzy import process, fuzz
 from sys import getsizeof
@@ -210,7 +211,7 @@ class ELF:
         return data
 
     @staticmethod
-    def get_mem_reader(context, device_id, core_loc) -> Callable[[int, int, int], list[int]]:
+    def get_mem_reader(context, device_id, core_loc, risc_name=None) -> Callable[[int, int, int], list[int]]:
         """
         Returns a simple memory reader function that reads from a given device and a given core.
         """
@@ -221,12 +222,17 @@ class ELF:
                 return []
             element_size = size_bytes // elements_to_read
             assert element_size * elements_to_read == size_bytes, "Size must be divisible by number of elements"
-            bytes_data = read_from_device(
-                core_loc=core_loc, device_id=device_id, addr=addr, num_bytes=size_bytes, context=context
-            )
-            return [
-                int.from_bytes(bytes_data[i * element_size : (i + 1) * element_size], byteorder="little")
-                for i in range(elements_to_read)
-            ]
+            if risc_name is not None:
+                return read_riscv_memory(
+                    core_loc=core_loc, addr=addr, risc_name=risc_name, device_id=device_id, context=context
+                )
+            else:
+                bytes_data = read_from_device(
+                    core_loc=core_loc, device_id=device_id, addr=addr, num_bytes=size_bytes, context=context
+                )
+                return [
+                    int.from_bytes(bytes_data[i * element_size : (i + 1) * element_size], byteorder="little")
+                    for i in range(elements_to_read)
+                ]
 
         return mem_reader
