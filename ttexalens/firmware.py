@@ -235,25 +235,13 @@ class ELF:
 
                 # Check if address is in private memory
                 if base_address <= addr < base_address + size:
-                    # If we are reading risc private memory we need to specify which risc
-                    if risc_name is None:
-                        raise util.TTException(
-                            f"Address {addr} is in risc private memory range. Please provide risc name."
-                        )
-
                     word_size = 4
                     # If number of bytes we want to read is not divisible by word size, we round that up to read 1 extra word
                     words_to_read = (size_bytes + word_size - 1) // word_size
-                    words = [
-                        read_riscv_memory(
-                            core_loc=core_loc,
-                            addr=addr + i * word_size,
-                            risc_name=risc_name,
-                            device_id=device_id,
-                            context=context,
-                        )
-                        for i in range(words_to_read)
-                    ]
+
+                    with risc_debug.ensure_private_memory_access():
+                        words = [risc_debug.read_memory(addr + i * word_size) for i in range(words_to_read)]
+
                     # Convert words to bytes and remove extra bytes
                     bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in words)[:size_bytes]
 
