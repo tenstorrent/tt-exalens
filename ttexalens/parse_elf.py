@@ -485,6 +485,9 @@ class ElfDie:
             if type_die is not None:
                 return type_die.size
 
+        if self.name in self.cu.dwarf.parsed_elf.symbols:
+            return self.cu.dwarf.parsed_elf.symbols[self.name][1]
+
         return None
 
     @cached_property
@@ -551,7 +554,7 @@ class ElfDie:
                     return self.attributes["DW_AT_const_value"].value
                 else:
                     if self.name in self.cu.dwarf.parsed_elf.symbols:
-                        return self.cu.dwarf.parsed_elf.symbols[self.name]
+                        return self.cu.dwarf.parsed_elf.symbols[self.name][0]
                     else:
                         print(f"{CLR_RED}ERROR: Cannot find address for {self}{CLR_END}")
         return addr
@@ -864,11 +867,11 @@ def decode_symbols(elf_file: ELFFile) -> dict[str, int]:
             for symbol in section.iter_symbols():
                 # Check if it's a label symbol
                 if symbol["st_info"]["type"] == "STT_NOTYPE" and symbol.name:
-                    symbols[symbol.name] = symbol["st_value"]
+                    symbols[symbol.name] = [symbol["st_value"], symbol["st_size"]]
                 elif symbol["st_info"]["type"] == "STT_FUNC":
-                    symbols[symbol.name] = symbol["st_value"]
+                    symbols[symbol.name] = [symbol["st_value"], symbol["st_size"]]
                 elif symbol["st_info"]["type"] == "STT_OBJECT":
-                    symbols[symbol.name] = symbol["st_value"]
+                    symbols[symbol.name] = [symbol["st_value"], symbol["st_size"]]
     return symbols
 
 
