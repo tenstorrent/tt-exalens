@@ -485,10 +485,6 @@ class ElfDie:
             if type_die is not None:
                 return type_die.size
 
-        # Try to find size from symbol table
-        if self.name in self.cu.dwarf.parsed_elf.symbols:
-            return self.cu.dwarf.parsed_elf.symbols[self.name]["size"]
-
         return None
 
     @cached_property
@@ -554,9 +550,8 @@ class ElfDie:
                 if self.attributes.get("DW_AT_const_value"):
                     return self.attributes["DW_AT_const_value"].value
                 else:
-                    # Try to find address from symbol table
-                    if self.name in self.cu.dwarf.parsed_elf.symbols:
-                        return self.cu.dwarf.parsed_elf.symbols[self.name]["value"]
+                    if self.name in self.cu.dwarf.elf.symbols:
+                        return self.cu.dwarf.elf.symbols[self.name]
                     else:
                         print(f"{CLR_RED}ERROR: Cannot find address for {self}{CLR_END}")
         return addr
@@ -869,11 +864,11 @@ def decode_symbols(elf_file: ELFFile) -> dict[str, int]:
             for symbol in section.iter_symbols():
                 # Check if it's a label symbol
                 if symbol["st_info"]["type"] == "STT_NOTYPE" and symbol.name:
-                    symbols[symbol.name] = {"value": symbol["st_value"], "size": symbol["st_size"]}
+                    symbols[symbol.name] = symbol["st_value"]
                 elif symbol["st_info"]["type"] == "STT_FUNC":
-                    symbols[symbol.name] = {"value": symbol["st_value"], "size": symbol["st_size"]}
+                    symbols[symbol.name] = symbol["st_value"]
                 elif symbol["st_info"]["type"] == "STT_OBJECT":
-                    symbols[symbol.name] = {"value": symbol["st_value"], "size": symbol["st_size"]}
+                    symbols[symbol.name] = symbol["st_value"]
     return symbols
 
 
@@ -915,7 +910,7 @@ class ParsedElfFile:
     @cached_property
     def _dwarf(self) -> ElfDwarf:
         dwarf = self.elf.get_dwarf_info(relocate_dwarf_sections=False)
-        return ElfDwarf(dwarf, self)
+        return ElfDwarf(dwarf)
 
     @cached_property
     def _recursed_dwarf(self):
