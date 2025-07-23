@@ -550,8 +550,8 @@ class ElfDie:
                 if self.attributes.get("DW_AT_const_value"):
                     return self.attributes["DW_AT_const_value"].value
                 else:
-                    if self.name in self.cu.dwarf.elf.symbols:
-                        return self.cu.dwarf.elf.symbols[self.name]
+                    if self.name in self.cu.dwarf.parsed_elf.symbols:
+                        return self.cu.dwarf.parsed_elf.symbols[self.name]
                     else:
                         print(f"{CLR_RED}ERROR: Cannot find address for {self}{CLR_END}")
         return addr
