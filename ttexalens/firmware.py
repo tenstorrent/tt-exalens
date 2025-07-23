@@ -10,7 +10,6 @@ from typing import Callable
 from ttexalens import parse_elf
 from ttexalens import util as util
 
-# from ttexalens.tt_exalens_lib import read_riscv_memory
 import re
 from fuzzywuzzy import process, fuzz
 from sys import getsizeof
@@ -230,16 +229,18 @@ class ELF:
             noc_block = device.get_block(core_loc)
             risc_debug = noc_block.get_risc_debug(risc_name, neo_id)
             private_memory = risc_debug.get_data_private_memory()
-
             base_address = private_memory.address.private_address
             size = private_memory.size
 
+            # Check if address is in private memory
             if base_address <= addr < base_address + size:
+                # If we are reading risc private memory we need to specify which risc
                 if risc_name is None:
                     raise util.TTException(f"Address {addr} is in risc private memory range. Please provide risc name.")
 
                 word_size = 4
-                words_to_read = (size_bytes + word_size - 1) // word_size  # rounding up
+                # If number of bytes we want to read is not divisible by word size, we round that up to read 1 extra word
+                words_to_read = (size_bytes + word_size - 1) // word_size
                 words = [
                     read_riscv_memory(
                         core_loc=core_loc,
@@ -250,6 +251,7 @@ class ELF:
                     )
                     for i in range(words_to_read)
                 ]
+                # Convert words to bytes and remove extra bytes
                 bytes_data = "".join(word.to_bytes(4, byteorder="little") for word in words)[:size_bytes]
             else:
                 bytes_data = read_from_device(
