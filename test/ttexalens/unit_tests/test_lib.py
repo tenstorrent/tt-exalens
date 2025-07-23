@@ -653,7 +653,7 @@ class TestRunElf(unittest.TestCase):
         # function "decrement_mailbox"
         decrement_mailbox_die = elf.names["fw"].subprograms["decrement_mailbox"]
         decrement_mailbox_linkage_name = decrement_mailbox_die.attributes["DW_AT_linkage_name"].value.decode("utf-8")
-        decrement_mailbox_address = elf.names["fw"].symbols[decrement_mailbox_linkage_name]
+        decrement_mailbox_address = elf.names["fw"].symbols[decrement_mailbox_linkage_name]["value"]
 
         # Step 6. Setting breakpoint at decrement_mailbox
         watchpoint_id = 1  # Out of 8

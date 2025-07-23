@@ -313,11 +313,17 @@ class TestParseElf(unittest.TestCase):
         program_path = os.path.join(TestParseElf.elf_dir, program_name)
         elf = read_elf(file_ifc, f"{program_path}.elf")
 
-        assert elf.symbols["noc_reads_num_issued"] == 4289724472
-        assert elf.symbols["noc_nonposted_writes_num_issued"] == 4289724464
-        assert elf.symbols["noc_nonposted_writes_acked"] == 4289724456
-        assert elf.symbols["noc_nonposted_atomics_acked"] == 4289724448
-        assert elf.symbols["noc_posted_writes_num_issued"] == 4289724440
+        assert elf.symbols["noc_reads_num_issued"]["value"] == 4289724472
+        assert elf.symbols["noc_nonposted_writes_num_issued"]["value"] == 4289724464
+        assert elf.symbols["noc_nonposted_writes_acked"]["value"] == 4289724456
+        assert elf.symbols["noc_nonposted_atomics_acked"]["value"] == 4289724448
+        assert elf.symbols["noc_posted_writes_num_issued"]["value"] == 4289724440
+
+        assert elf.symbols["noc_reads_num_issued"]["size"] == 8
+        assert elf.symbols["noc_nonposted_writes_num_issued"]["size"] == 8
+        assert elf.symbols["noc_nonposted_writes_acked"]["size"] == 8
+        assert elf.symbols["noc_nonposted_atomics_acked"]["size"] == 8
+        assert elf.symbols["noc_posted_writes_num_issued"]["size"] == 8
 
     def get_var_addr(self, name_dict, name):
         if name in name_dict:
