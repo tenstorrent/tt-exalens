@@ -9,7 +9,8 @@ import time
 from typing import Callable
 from ttexalens import parse_elf
 from ttexalens import util as util
-from ttexalens.tt_exalens_lib import read_riscv_memory
+
+# from ttexalens.tt_exalens_lib import read_riscv_memory
 import re
 from fuzzywuzzy import process, fuzz
 from sys import getsizeof
@@ -223,9 +224,10 @@ class ELF:
             element_size = size_bytes // elements_to_read
             assert element_size * elements_to_read == size_bytes, "Size must be divisible by number of elements"
             if risc_name is not None:
-                return read_riscv_memory(
-                    core_loc=core_loc, addr=addr, risc_name=risc_name, device_id=device_id, context=context
-                )
+                # return read_riscv_memory(
+                #     core_loc=core_loc, addr=addr, risc_name=risc_name, device_id=device_id, context=context
+                # )
+                return addr
             else:
                 bytes_data = read_from_device(
                     core_loc=core_loc, device_id=device_id, addr=addr, num_bytes=size_bytes, context=context
