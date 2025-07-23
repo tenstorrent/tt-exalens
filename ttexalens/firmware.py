@@ -252,7 +252,7 @@ class ELF:
                     for i in range(words_to_read)
                 ]
                 # Convert words to bytes and remove extra bytes
-                bytes_data = "".join(word.to_bytes(4, byteorder="little") for word in words)[:size_bytes]
+                bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in words)[:size_bytes]
             else:
                 bytes_data = read_from_device(
                     core_loc=core_loc, device_id=device_id, addr=addr, num_bytes=size_bytes, context=context
