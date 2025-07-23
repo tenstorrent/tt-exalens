@@ -910,7 +910,7 @@ class ParsedElfFile:
     @cached_property
     def _dwarf(self) -> ElfDwarf:
         dwarf = self.elf.get_dwarf_info(relocate_dwarf_sections=False)
-        return ElfDwarf(dwarf)
+        return ElfDwarf(dwarf, self)
 
     @cached_property
     def _recursed_dwarf(self):
