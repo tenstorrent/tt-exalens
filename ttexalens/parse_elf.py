@@ -89,10 +89,9 @@ def strip_DW_(s):
 
 
 class ElfDwarf:
-    def __init__(self, dwarf: DWARFInfo, parsed_elf: ParsedElfFile | ParsedElfFileWithOffset):
+    def __init__(self, dwarf: DWARFInfo):
         self.dwarf = dwarf
         self._cus: dict[int, ElfCompileUnit] = {}
-        self.parsed_elf = parsed_elf
 
     @cached_property
     def range_lists(self):
@@ -550,10 +549,7 @@ class ElfDie:
                 if self.attributes.get("DW_AT_const_value"):
                     return self.attributes["DW_AT_const_value"].value
                 else:
-                    if self.name in self.cu.dwarf.elf.symbols:
-                        return self.cu.dwarf.elf.symbols[self.name]
-                    else:
-                        print(f"{CLR_RED}ERROR: Cannot find address for {self}{CLR_END}")
+                    print(f"{CLR_RED}ERROR: Cannot find address for {self}{CLR_END}")
         return addr
 
     @cached_property
