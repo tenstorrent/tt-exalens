@@ -495,7 +495,7 @@ class ElfDie:
 
         # Try to find size from symbol table
         if self.name in self.cu.dwarf.parsed_elf.symbols:
-            return self.cu.dwarf.parsed_elf.symbols[self.name]["size"]
+            return self.cu.dwarf.parsed_elf.symbols[self.name].size
 
         return None
 
@@ -564,7 +564,7 @@ class ElfDie:
                 else:
                     # Try to find address from symbol table
                     if self.name in self.cu.dwarf.parsed_elf.symbols:
-                        return self.cu.dwarf.parsed_elf.symbols[self.name]["value"]
+                        return self.cu.dwarf.parsed_elf.symbols[self.name].value
                     else:
                         print(f"{CLR_RED}ERROR: Cannot find address for {self}{CLR_END}")
         return addr
