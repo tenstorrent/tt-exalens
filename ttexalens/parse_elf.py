@@ -38,6 +38,7 @@ Examples:
   -h --help      Show this screen.
 """
 from __future__ import annotations
+from dataclasses import dataclass
 from functools import cached_property
 import os
 import re
@@ -88,10 +89,18 @@ def strip_DW_(s):
     return re.sub(r"^DW_[^_]*_", "", s)
 
 
+# Class representing symbol from symbol table
+@dataclass
+class ElfDwarfSymbol:
+    value: int | None
+    size: int | None
+
+
 class ElfDwarf:
-    def __init__(self, dwarf: DWARFInfo):
+    def __init__(self, dwarf: DWARFInfo, parsed_elf: ParsedElfFile | ParsedElfFileWithOffset):
         self.dwarf = dwarf
         self._cus: dict[int, ElfCompileUnit] = {}
+        self.parsed_elf = parsed_elf
 
     @cached_property
     def range_lists(self):
@@ -192,7 +201,7 @@ class ElfDwarf:
 
 class ElfDwarfWithOffset(ElfDwarf):
     def __init__(self, my_dwarf: ElfDwarf, loaded_offset: int):
-        super().__init__(my_dwarf.dwarf)
+        super().__init__(my_dwarf.dwarf, my_dwarf.parsed_elf)
         self._my_dwarf = my_dwarf
         self.loaded_offset = loaded_offset
 
@@ -484,6 +493,10 @@ class ElfDie:
             if type_die is not None:
                 return type_die.size
 
+        # Try to find size from symbol table
+        if self.name in self.cu.dwarf.parsed_elf.symbols:
+            return self.cu.dwarf.parsed_elf.symbols[self.name].size
+
         return None
 
     @cached_property
@@ -549,7 +562,11 @@ class ElfDie:
                 if self.attributes.get("DW_AT_const_value"):
                     return self.attributes["DW_AT_const_value"].value
                 else:
-                    print(f"{CLR_RED}ERROR: Cannot find address for {self}{CLR_END}")
+                    # Try to find address from symbol table
+                    if self.name in self.cu.dwarf.parsed_elf.symbols:
+                        return self.cu.dwarf.parsed_elf.symbols[self.name].value
+                    else:
+                        print(f"{CLR_RED}ERROR: Cannot find address for {self}{CLR_END}")
         return addr
 
     @cached_property
@@ -850,7 +867,7 @@ class FrameInfoProviderWithOffset(FrameInfoProvider):
         return self._frame_info.get_frame_description(pc, risc_debug)
 
 
-def decode_symbols(elf_file: ELFFile) -> dict[str, int]:
+def decode_symbols(elf_file: ELFFile) -> dict[str, ElfDwarfSymbol]:
     symbols = {}
     for section in elf_file.iter_sections():
         # Check if it's a symbol table section
@@ -860,11 +877,11 @@ def decode_symbols(elf_file: ELFFile) -> dict[str, int]:
             for symbol in section.iter_symbols():
                 # Check if it's a label symbol
                 if symbol["st_info"]["type"] == "STT_NOTYPE" and symbol.name:
-                    symbols[symbol.name] = symbol["st_value"]
+                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
                 elif symbol["st_info"]["type"] == "STT_FUNC":
-                    symbols[symbol.name] = symbol["st_value"]
+                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
                 elif symbol["st_info"]["type"] == "STT_OBJECT":
-                    symbols[symbol.name] = symbol["st_value"]
+                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
     return symbols
 
 
@@ -906,7 +923,7 @@ class ParsedElfFile:
     @cached_property
     def _dwarf(self) -> ElfDwarf:
         dwarf = self.elf.get_dwarf_info(relocate_dwarf_sections=False)
-        return ElfDwarf(dwarf)
+        return ElfDwarf(dwarf, self)
 
     @cached_property
     def _recursed_dwarf(self):
