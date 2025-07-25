@@ -18,6 +18,7 @@ Description:
   Note:
   Due to the architecture of SRCA, you can see only see last two faces written.
   SRCB is currently not supported.
+  Reading DSTACC on Wormhole as FP32 clobbers the register.
 
 Examples:
   dr 0,0 0
