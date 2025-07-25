@@ -38,6 +38,7 @@ Examples:
   -h --help      Show this screen.
 """
 from __future__ import annotations
+from dataclasses import dataclass
 from functools import cached_property
 import os
 import re
@@ -86,6 +87,13 @@ def strip_DW_(s):
     Removes DW_AT_, DW_TAG_ and other DW_* prefixes from the string
     """
     return re.sub(r"^DW_[^_]*_", "", s)
+
+
+# Class representing symbol from symbol table
+@dataclass
+class ElfDwarfSymbol:
+    value: int
+    size: int
 
 
 class ElfDwarf:
@@ -193,7 +201,7 @@ class ElfDwarf:
 
 class ElfDwarfWithOffset(ElfDwarf):
     def __init__(self, my_dwarf: ElfDwarf, loaded_offset: int):
-        super().__init__(my_dwarf.dwarf)
+        super().__init__(my_dwarf.dwarf, my_dwarf.parsed_elf)
         self._my_dwarf = my_dwarf
         self.loaded_offset = loaded_offset
 
@@ -859,7 +867,7 @@ class FrameInfoProviderWithOffset(FrameInfoProvider):
         return self._frame_info.get_frame_description(pc, risc_debug)
 
 
-def decode_symbols(elf_file: ELFFile) -> dict[str, int]:
+def decode_symbols(elf_file: ELFFile) -> dict[str, ElfDwarfSymbol]:
     symbols = {}
     for section in elf_file.iter_sections():
         # Check if it's a symbol table section
@@ -869,11 +877,11 @@ def decode_symbols(elf_file: ELFFile) -> dict[str, int]:
             for symbol in section.iter_symbols():
                 # Check if it's a label symbol
                 if symbol["st_info"]["type"] == "STT_NOTYPE" and symbol.name:
-                    symbols[symbol.name] = {"value": symbol["st_value"], "size": symbol["st_size"]}
+                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
                 elif symbol["st_info"]["type"] == "STT_FUNC":
-                    symbols[symbol.name] = {"value": symbol["st_value"], "size": symbol["st_size"]}
+                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
                 elif symbol["st_info"]["type"] == "STT_OBJECT":
-                    symbols[symbol.name] = {"value": symbol["st_value"], "size": symbol["st_size"]}
+                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
     return symbols
 
 
