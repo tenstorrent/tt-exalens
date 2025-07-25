@@ -92,8 +92,8 @@ def strip_DW_(s):
 # Class representing symbol from symbol table
 @dataclass
 class ElfDwarfSymbol:
-    value: int
-    size: int
+    value: int | None
+    size: int | None
 
 
 class ElfDwarf:
