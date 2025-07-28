@@ -23,7 +23,6 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             return self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc")
 
     def read_memory(self, address: int):
-
         # TODO: Implement workaround for unalighned read
         if address % 4 != 0:
             raise Exception("Unaligned read not supported for blackhole")
@@ -33,4 +32,3 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
         return self.debug_hardware.read_memory(address)
-

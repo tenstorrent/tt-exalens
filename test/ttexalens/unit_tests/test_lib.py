@@ -475,7 +475,7 @@ class TestReadWrite(unittest.TestCase):
                 addr = private_memory.address.private_address + private_memory.size - 4
 
         if self.context.devices[0]._arch == "blackhole":
-            self.skipTest("Unaligned read not supported on blackhole.")        
+            self.skipTest("Unaligned read not supported on blackhole.")
 
         with risc_debug.ensure_private_memory_access():
             self.assertFalse(risc_debug.is_in_reset())
