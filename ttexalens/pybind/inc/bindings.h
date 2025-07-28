@@ -4,12 +4,16 @@
 
 #pragma once
 
-#include <pybind11/complex.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-#include <ttexalensserver/ttexalens_implementation.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/optional.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/tuple.h>
+#include <nanobind/stl/unique_ptr.h>
+#include <nanobind/stl/vector.h>
 
-#include <memory>
+namespace tt::exalens {
+class ttexalens_implementation;
+}
 
 bool open_device(const std::string& binary_directory, const std::vector<uint8_t>& wanted_devices = {},
                  bool init_jtag = false, bool initialize_with_noc1 = false);
@@ -19,10 +23,10 @@ std::optional<uint32_t> pci_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_
 std::optional<uint32_t> pci_write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
                                     uint32_t data);
 
-std::optional<pybind11::object> pci_read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+std::optional<nanobind::object> pci_read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                          uint64_t address, uint32_t size);
 std::optional<uint32_t> pci_write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                  pybind11::buffer data, uint32_t size);
+                                  nanobind::bytes data, uint32_t size);
 
 std::optional<uint32_t> pci_read32_raw(uint8_t chip_id, uint64_t address);
 std::optional<uint32_t> pci_write32_raw(uint8_t chip_id, uint64_t address, uint32_t data);

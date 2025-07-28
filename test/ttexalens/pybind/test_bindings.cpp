@@ -2,6 +2,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include <ttexalensserver/ttexalens_implementation.h>
+
+#include <map>
+
 #include "bindings.h"
 
 class bindings_implementation : public tt::exalens::ttexalens_implementation {
@@ -91,6 +95,6 @@ void set_ttexalens_test_implementation() {
     set_ttexalens_implementation(std::move(std::make_unique<bindings_implementation>()));
 }
 
-PYBIND11_MODULE(ttexalens_pybind_unit_tests, n) {
+NB_MODULE(ttexalens_pybind_unit_tests, n) {
     n.def("set_ttexalens_test_implementation", &set_ttexalens_test_implementation);
 }

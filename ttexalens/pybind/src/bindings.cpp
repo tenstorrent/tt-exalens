@@ -11,6 +11,8 @@
 #include <fstream>
 #include <optional>
 
+using namespace nanobind::literals;
+
 static std::unique_ptr<tt::exalens::ttexalens_implementation> ttexalens_implementation;
 
 class scoped_null_stdout {
@@ -70,41 +72,26 @@ std::optional<uint32_t> pci_write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc
     return {};
 }
 
-std::optional<pybind11::object> pci_read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+std::optional<nanobind::object> pci_read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                          uint64_t address, uint32_t size) {
     if (ttexalens_implementation) {
         auto data = ttexalens_implementation->pci_read(noc_id, chip_id, noc_x, noc_y, address, size);
 
         if (data) {
-            // This is a hacky way to create a bytes object for Python so that we avoid multiple
-            // copying. Pyobject is created manually and then passed to pybind11::reinterpret_steal
-            // to prevent memory leak.
-            // See https://github.com/pybind/pybind11/issues/1236
-            PyBytesObject *bytesObject = nullptr;
-
-            bytesObject = (PyBytesObject *)PyObject_Malloc(offsetof(PyBytesObject, ob_sval) + size + 1);
-
-            PyObject_INIT_VAR(bytesObject, &PyBytes_Type, size);
-            bytesObject->ob_shash = -1;
-            bytesObject->ob_sval[size] = '\0';
-
-            for (size_t i = 0; i < size; i++) {
-                bytesObject->ob_sval[i] = data.value()[i];
-            }
-
-            return pybind11::reinterpret_steal<pybind11::object>((PyObject *)bytesObject);
+            // For nanobind, we can use nanobind::bytes directly
+            return nanobind::bytes(reinterpret_cast<const char *>(data.value().data()), size);
         }
     }
     return {};
 }
 
 std::optional<uint32_t> pci_write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                  pybind11::buffer data, uint32_t size) {
+                                  nanobind::bytes data, uint32_t size) {
     if (ttexalens_implementation) {
-        pybind11::buffer_info info = data.request();
-        uint8_t *data_ptr = static_cast<uint8_t *>(info.ptr);
+        const char *data_ptr = data.c_str();
 
-        return ttexalens_implementation->pci_write(noc_id, chip_id, noc_x, noc_y, address, data_ptr, size);
+        return ttexalens_implementation->pci_write(noc_id, chip_id, noc_x, noc_y, address,
+                                                   reinterpret_cast<const uint8_t *>(data_ptr), size);
     }
     return {};
 }
@@ -220,51 +207,40 @@ std::optional<uint32_t> read_arc_telemetry_entry(uint8_t chip_id, uint8_t teleme
     return {};
 }
 
-PYBIND11_MODULE(ttexalens_pybind, m) {
-    m.def("open_device", &open_device, "Opens tt device. Prints error message if failed.",
-          pybind11::arg("binary_directory"), pybind11::arg_v("wanted_devices", std::vector<uint8_t>(), "[]"),
-          pybind11::arg("init_jtag") = false, pybind11::arg("initialize_with_noc1") = false);
-    m.def("pci_read32", &pci_read32, "Reads 4 bytes from PCI address", pybind11::arg("noc_id"),
-          pybind11::arg("chip_id"), pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"));
-    m.def("pci_write32", &pci_write32, "Writes 4 bytes to PCI address", pybind11::arg("noc_id"),
-          pybind11::arg("chip_id"), pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"),
-          pybind11::arg("data"));
-    m.def("pci_read", &pci_read, "Reads data from PCI address", pybind11::arg("noc_id"), pybind11::arg("chip_id"),
-          pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"), pybind11::arg("size"));
-    m.def("pci_write", &pci_write, "Writes data to PCI address", pybind11::arg("noc_id"), pybind11::arg("chip_id"),
-          pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"), pybind11::arg("data"),
-          pybind11::arg("size"));
-    m.def("pci_read32_raw", &pci_read32_raw, "Reads 4 bytes from PCI address", pybind11::arg("chip_id"),
-          pybind11::arg("address"));
-    m.def("pci_write32_raw", &pci_write32_raw, "Writes 4 bytes to PCI address", pybind11::arg("chip_id"),
-          pybind11::arg("address"), pybind11::arg("data"));
-    m.def("dma_buffer_read32", &dma_buffer_read32, "Reads 4 bytes from DMA buffer", pybind11::arg("chip_id"),
-          pybind11::arg("address"), pybind11::arg("channel"));
-    m.def("pci_read_tile", &pci_read_tile, "Reads tile from PCI address", pybind11::arg("noc_id"),
-          pybind11::arg("chip_id"), pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"),
-          pybind11::arg("size"), pybind11::arg("data_format"));
+NB_MODULE(ttexalens_pybind, m) {
+    m.def("open_device", &open_device, "Opens tt device. Prints error message if failed.", "binary_directory"_a,
+          "wanted_devices"_a = std::vector<uint8_t>(), "init_jtag"_a = false, "initialize_with_noc1"_a = false);
+    m.def("pci_read32", &pci_read32, "Reads 4 bytes from PCI address", "noc_id"_a, "chip_id"_a, "noc_x"_a, "noc_y"_a,
+          "address"_a);
+    m.def("pci_write32", &pci_write32, "Writes 4 bytes to PCI address", "noc_id"_a, "chip_id"_a, "noc_x"_a, "noc_y"_a,
+          "address"_a, "data"_a);
+    m.def("pci_read", &pci_read, "Reads data from PCI address", "noc_id"_a, "chip_id"_a, "noc_x"_a, "noc_y"_a,
+          "address"_a, "size"_a);
+    m.def("pci_write", &pci_write, "Writes data to PCI address", "noc_id"_a, "chip_id"_a, "noc_x"_a, "noc_y"_a,
+          "address"_a, "data"_a, "size"_a);
+    m.def("pci_read32_raw", &pci_read32_raw, "Reads 4 bytes from PCI address", "chip_id"_a, "address"_a);
+    m.def("pci_write32_raw", &pci_write32_raw, "Writes 4 bytes to PCI address", "chip_id"_a, "address"_a, "data"_a);
+    m.def("dma_buffer_read32", &dma_buffer_read32, "Reads 4 bytes from DMA buffer", "chip_id"_a, "address"_a,
+          "channel"_a);
+    m.def("pci_read_tile", &pci_read_tile, "Reads tile from PCI address", "noc_id"_a, "chip_id"_a, "noc_x"_a, "noc_y"_a,
+          "address"_a, "size"_a, "data_format"_a);
     m.def("get_cluster_description", &get_cluster_description, "Returns cluster description");
     m.def("convert_from_noc0", &convert_from_noc0, "Convert noc0 coordinate into specified coordinate system",
-          pybind11::arg("chip_id"), pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("core_type"),
-          pybind11::arg("coord_system"));
+          "chip_id"_a, "noc_x"_a, "noc_y"_a, "core_type"_a, "coord_system"_a);
     m.def("get_device_ids", &get_device_ids, "Returns device ids");
-    m.def("get_device_arch", &get_device_arch, "Returns device architecture", pybind11::arg("chip_id"));
-    m.def("get_device_soc_description", &get_device_soc_description, "Returns device SoC description",
-          pybind11::arg("chip_id"));
-    m.def("jtag_read32", &jtag_read32, "Reads 4 bytes from NOC address using JTAG", pybind11::arg("noc_id"),
-          pybind11::arg("chip_id"), pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"));
-    m.def("jtag_write32", &jtag_write32, "Writes 4 bytes to NOC address using JTAG", pybind11::arg("noc_id"),
-          pybind11::arg("chip_id"), pybind11::arg("noc_x"), pybind11::arg("noc_y"), pybind11::arg("address"),
-          pybind11::arg("data"));
-    m.def("jtag_read32_axi", &jtag_read32_axi, "Reads 4 bytes from AXI address using JTAG", pybind11::arg("chip_id"),
-          pybind11::arg("address"));
-    m.def("jtag_write32_axi", &jtag_write32_axi, "Writes 4 bytes to AXI address using JTAG", pybind11::arg("chip_id"),
-          pybind11::arg("address"), pybind11::arg("data"));
+    m.def("get_device_arch", &get_device_arch, "Returns device architecture", "chip_id"_a);
+    m.def("get_device_soc_description", &get_device_soc_description, "Returns device SoC description", "chip_id"_a);
+    m.def("jtag_read32", &jtag_read32, "Reads 4 bytes from NOC address using JTAG", "noc_id"_a, "chip_id"_a, "noc_x"_a,
+          "noc_y"_a, "address"_a);
+    m.def("jtag_write32", &jtag_write32, "Writes 4 bytes to NOC address using JTAG", "noc_id"_a, "chip_id"_a, "noc_x"_a,
+          "noc_y"_a, "address"_a, "data"_a);
+    m.def("jtag_read32_axi", &jtag_read32_axi, "Reads 4 bytes from AXI address using JTAG", "chip_id"_a, "address"_a);
+    m.def("jtag_write32_axi", &jtag_write32_axi, "Writes 4 bytes to AXI address using JTAG", "chip_id"_a, "address"_a,
+          "data"_a);
 
-    // Bind arc_msg with explicit lambda to ensure type resolution
-    m.def("arc_msg", &arc_msg, "Send ARC message", pybind11::arg("noc_id"), pybind11::arg("chip_id"),
-          pybind11::arg("msg_code"), pybind11::arg("wait_for_done"), pybind11::arg("arg0"), pybind11::arg("arg1"),
-          pybind11::arg("timeout"));
-    m.def("read_arc_telemetry_entry", &read_arc_telemetry_entry, "Read ARC telemetry entry", pybind11::arg("chip_id"),
-          pybind11::arg("telemetry_tag"));
+    // Bind arc_msg
+    m.def("arc_msg", &arc_msg, "Send ARC message", "noc_id"_a, "chip_id"_a, "msg_code"_a, "wait_for_done"_a, "arg0"_a,
+          "arg1"_a, "timeout"_a);
+    m.def("read_arc_telemetry_entry", &read_arc_telemetry_entry, "Read ARC telemetry entry", "chip_id"_a,
+          "telemetry_tag"_a);
 }
