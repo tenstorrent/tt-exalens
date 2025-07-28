@@ -41,7 +41,7 @@ ttexalens_files = {
     "ttexalens_lib": {"path": "ttexalens", "files": get_ttexalens_py_files(), "output": "ttexalens"},
     "libs": {
         "path": "build/lib",
-        "files": ["libdevice.so", "ttexalens_pybind.so"] + get_libjtag(),
+        "files": ["libdevice.so", "ttexalens_pybind.cpython-310-x86_64-linux-gnu.so"] + get_libjtag(),
         "output": "build/lib",
         "strip": True,
     },
