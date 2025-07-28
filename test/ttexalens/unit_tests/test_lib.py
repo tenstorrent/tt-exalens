@@ -448,6 +448,12 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", "trisc2"),
             ("0,0", "trisc0", -1),  # last address for trisc for wormhole
             ("0,0", "brisc", -1),  # last address for brisc for wormhole
+            # Testing unaligned read/write
+            ("0,0", "brisc", 0xFFB00002),
+            ("0,0", "trisc0", 0xFFB00001),
+            ("0,0", "trisc1", 0xFFB00007),
+            ("0,0", "trisc2", 0xFFB00006),
+            ("1,0", "brisc", 0xFFB00002),
         ]
     )
     def test_write_read_private_memory(self, core_loc: str, risc_name: str, addr: int | None = None):
@@ -467,6 +473,9 @@ class TestReadWrite(unittest.TestCase):
                 addr = private_memory.address.private_address
             else:
                 addr = private_memory.address.private_address + private_memory.size - 4
+
+        if self.context.devices[0]._arch == "blackhole" and addr % 4 != 0:
+            self.skipTest("Unaligned read not supported on blackhole.")
 
         with risc_debug.ensure_private_memory_access():
             self.assertFalse(risc_debug.is_in_reset())

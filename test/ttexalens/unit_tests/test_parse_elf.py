@@ -335,7 +335,7 @@ class TestParseElf(unittest.TestCase):
         context = lib.check_context()
         for device_id in context.device_ids:
             core_loc = context.devices[device_id].get_block_locations()[0]
-            mem_reader = ELF.get_mem_reader(context, device_id, core_loc)
+            mem_reader = ELF.get_mem_reader(core_loc)
             lib.write_words_to_device(core_loc, 0, [0x12345678, 0x90ABCDEF], device_id, context)
             assert lib.read_words_from_device(core_loc, 0, device_id, 2, context) == [0x12345678, 0x90ABCDEF]
             assert mem_reader(0, 1, 1)[0] == 0x78
