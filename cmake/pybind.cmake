@@ -1,28 +1,22 @@
-# Check if pybind11_stubgen is available in the Python environment
-set(PYBIND11_STUBGEN_AVAILABLE OFF)
-execute_process(
-    COMMAND ${Python3_EXECUTABLE} -m pybind11_stubgen --help
-    RESULT_VARIABLE _pybind11_stubgen_found
-    OUTPUT_QUIET
-    ERROR_QUIET
-)
-if(_pybind11_stubgen_found EQUAL 0)
-    set(PYBIND11_STUBGEN_AVAILABLE ON)
-else()
-    message(WARNING "pybind11_stubgen is not available in the Python environment. Skipping stub generation.")
+# Find python package
+find_package(Python REQUIRED COMPONENTS Development)
+
+# Add nanobind CPM
+CPMAddPackage(NAME nanobind GITHUB_REPOSITORY wjakob/nanobind VERSION 2.7.0 OPTIONS "CMAKE_MESSAGE_LOG_LEVEL NOTICE")
+
+# Fix variable that nanobind uses to find Python
+if(NOT Python_EXECUTABLE AND Python3_EXECUTABLE)
+    set(Python_EXECUTABLE ${Python3_EXECUTABLE})
 endif()
-
-option(GENERATE_PYBIND_STUBS "Generate pybind11 stub files (.pyi)" ${PYBIND11_STUBGEN_AVAILABLE})
-
 
 function(add_pybind_stubgen TARGET)
     set(options)
     set(oneValueArgs OUTPUT_DIR)
     set(multiValueArgs)
-    cmake_parse_arguments(PYBIND_STUBGEN "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    cmake_parse_arguments(NANOBIND_STUBGEN "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    if(NOT PYBIND_STUBGEN_OUTPUT_DIR)
-        set(PYBIND_STUBGEN_OUTPUT_DIR "${CMAKE_BINARY_DIR}/stubs")
+    if(NOT NANOBIND_STUBGEN_OUTPUT_DIR)
+        set(NANOBIND_STUBGEN_OUTPUT_DIR "${CMAKE_BINARY_DIR}/stubs")
     endif()
 
     get_target_property(MODULE_NAME ${TARGET} OUTPUT_NAME)
@@ -32,14 +26,13 @@ function(add_pybind_stubgen TARGET)
 
     get_target_property(WORKING_DIRECTORY ${TARGET} LIBRARY_OUTPUT_DIRECTORY)
     if(NOT WORKING_DIRECTORY)
-        set(WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+        set(WORKING_DIRECTORY $<TARGET_FILE_DIR:ttexalens_pybind>)
     endif()
 
-    if(GENERATE_PYBIND_STUBS)
-        add_custom_command(TARGET ${TARGET} POST_BUILD
-            COMMAND ${Python3_EXECUTABLE} -m pybind11_stubgen ${MODULE_NAME} --output-dir ${PYBIND_STUBGEN_OUTPUT_DIR}
-            WORKING_DIRECTORY ${WORKING_DIRECTORY}
-            COMMENT "Generating .pyi file for ${MODULE_NAME} using pybind11-stubgen"
-        )
-    endif()
+    nanobind_add_stub(
+        "${TARGET}_stub"
+        MODULE ${TARGET}
+        OUTPUT "${CMAKE_BINARY_DIR}/stubs/${TARGET}.pyi"
+        PYTHON_PATH ${WORKING_DIRECTORY}
+        DEPENDS ${TARGET})
 endfunction()
