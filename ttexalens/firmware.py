@@ -240,7 +240,7 @@ class ELF:
             bytes_data: bytes | None = None
             if risc_name is not None:
                 # Check if address is in private memory
-                if private_memory.contains_private_address():
+                if private_memory.contains_private_address(addr):
                     # If number of bytes we want to read is not divisible by word size, we round that up to read 1 extra word
                     words_to_read = (size_bytes + word_size - 1) // word_size
 

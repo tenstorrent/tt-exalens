@@ -10,6 +10,6 @@ class MemoryBlock:
         self.size = size
         self.address = address
 
-    def contains_private_address(self) -> bool:
+    def contains_private_address(self, address: int) -> bool:
         assert self.address.private_address is not None
-        return self.address >= self.address.private_address and self.address < self.address.private_address + self.size
+        return address >= self.address.private_address and address < self.address.private_address + self.size
