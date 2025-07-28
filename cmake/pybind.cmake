@@ -1,27 +1,13 @@
+# Find python package
 find_package(Python REQUIRED COMPONENTS Development)
 
-####################################################################################################################
-# nanobind
-####################################################################################################################
+# Add nanobind CPM
 CPMAddPackage(NAME nanobind GITHUB_REPOSITORY wjakob/nanobind VERSION 2.7.0 OPTIONS "CMAKE_MESSAGE_LOG_LEVEL NOTICE")
 
-
-# Check if nanobind_stubgen is available in the Python environment
-set(NANOBIND_STUBGEN_AVAILABLE OFF)
-execute_process(
-    COMMAND ${Python3_EXECUTABLE} -m nanobind_stubgen --help
-    RESULT_VARIABLE _nanobind_stubgen_found
-    OUTPUT_QUIET
-    ERROR_QUIET
-)
-if(_nanobind_stubgen_found EQUAL 0)
-    set(NANOBIND_STUBGEN_AVAILABLE ON)
-else()
-    message(WARNING "nanobind_stubgen is not available in the Python environment. Skipping stub generation.")
+# Fix variable that nanobind uses to find Python
+if(NOT Python_EXECUTABLE AND Python3_EXECUTABLE)
+    set(Python_EXECUTABLE ${Python3_EXECUTABLE})
 endif()
-
-option(GENERATE_NANOBIND_STUBS "Generate nanobind stub files (.pyi)" ${NANOBIND_STUBGEN_AVAILABLE})
-
 
 function(add_pybind_stubgen TARGET)
     set(options)
@@ -40,17 +26,13 @@ function(add_pybind_stubgen TARGET)
 
     get_target_property(WORKING_DIRECTORY ${TARGET} LIBRARY_OUTPUT_DIRECTORY)
     if(NOT WORKING_DIRECTORY)
-        set(WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+        set(WORKING_DIRECTORY $<TARGET_FILE_DIR:ttexalens_pybind>)
     endif()
 
-    if(GENERATE_NANOBIND_STUBS)
-        if(NOT EXISTS ${NANOBIND_STUBGEN_OUTPUT_DIR})
-            file(MAKE_DIRECTORY ${NANOBIND_STUBGEN_OUTPUT_DIR})
-        endif()
-        add_custom_command(TARGET ${TARGET} POST_BUILD
-            COMMAND ${Python3_EXECUTABLE} -m nanobind_stubgen ${MODULE_NAME} --out ${NANOBIND_STUBGEN_OUTPUT_DIR}
-            WORKING_DIRECTORY ${WORKING_DIRECTORY}
-            COMMENT "Generating .pyi file for ${MODULE_NAME} using nanobind-stubgen"
-        )
-    endif()
+    nanobind_add_stub(
+        "${TARGET}_stub"
+        MODULE ${TARGET}
+        OUTPUT "${CMAKE_BINARY_DIR}/stubs/${TARGET}.pyi"
+        PYTHON_PATH ${WORKING_DIRECTORY}
+        DEPENDS ${TARGET})
 endfunction()

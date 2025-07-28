@@ -32,7 +32,6 @@ jobs:
           pip3 install --upgrade build
           pip3 install --upgrade setuptools
           pip3 install wheel
-          pip3 install nanobind-stubgen
       - name: "Build wheel"
         run: |
           make wheel
