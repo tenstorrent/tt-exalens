@@ -2,11 +2,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include <dlfcn.h>
+#include <nanobind/stl/string.h>
 #include <ttexalensserver/ttexalens_implementation.h>
 
 #include <map>
+#include <memory>
 
-#include "bindings.h"
+using namespace nanobind::literals;
 
 class bindings_implementation : public tt::exalens::ttexalens_implementation {
    private:
@@ -91,10 +94,24 @@ class bindings_implementation : public tt::exalens::ttexalens_implementation {
     }
 };
 
-void set_ttexalens_test_implementation() {
-    set_ttexalens_implementation(std::move(std::make_unique<bindings_implementation>()));
+void set_ttexalens_test_implementation(const std::string &ttexalens_pybind_path) {
+    void *handle = dlopen(ttexalens_pybind_path.c_str(), RTLD_LAZY);
+    if (!handle) {
+        throw std::runtime_error("Failed to open library: " + ttexalens_pybind_path);
+    }
+
+    using set_impl_fn_t = void (*)(std::unique_ptr<tt::exalens::ttexalens_implementation>);
+    set_impl_fn_t set_impl_fn = reinterpret_cast<set_impl_fn_t>(dlsym(handle, "set_ttexalens_implementation"));
+    if (!set_impl_fn) {
+        dlclose(handle);
+        throw std::runtime_error("Failed to find symbol: set_ttexalens_implementation");
+    }
+
+    set_impl_fn(std::make_unique<bindings_implementation>());
+    dlclose(handle);
 }
 
 NB_MODULE(ttexalens_pybind_unit_tests, n) {
-    n.def("set_ttexalens_test_implementation", &set_ttexalens_test_implementation);
+    n.def("set_ttexalens_test_implementation", &set_ttexalens_test_implementation,
+          "Sets the ttexalens test implementation based on the provided path", "ttexalens_pybind_path"_a);
 }

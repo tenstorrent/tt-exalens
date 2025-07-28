@@ -30,7 +30,7 @@ class scoped_null_stdout {
     ~scoped_null_stdout() { std::cout.rdbuf(original_stdout); }
 };
 
-void set_ttexalens_implementation(std::unique_ptr<tt::exalens::ttexalens_implementation> imp) {
+extern "C" void set_ttexalens_implementation(std::unique_ptr<tt::exalens::ttexalens_implementation> imp) {
     ttexalens_implementation = std::move(imp);
 }
 

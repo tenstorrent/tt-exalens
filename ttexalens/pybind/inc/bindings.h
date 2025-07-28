@@ -17,7 +17,8 @@ class ttexalens_implementation;
 
 bool open_device(const std::string& binary_directory, const std::vector<uint8_t>& wanted_devices = {},
                  bool init_jtag = false, bool initialize_with_noc1 = false);
-void set_ttexalens_implementation(std::unique_ptr<tt::exalens::ttexalens_implementation> imp);
+extern "C" void __attribute__((visibility("default"))) set_ttexalens_implementation(
+    std::unique_ptr<tt::exalens::ttexalens_implementation> imp);
 
 std::optional<uint32_t> pci_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address);
 std::optional<uint32_t> pci_write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
