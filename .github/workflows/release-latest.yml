@@ -32,6 +32,7 @@ jobs:
           pip3 install --upgrade build
           pip3 install --upgrade setuptools
           pip3 install wheel
+          pip3 install typing-extensions
       - name: "Build wheel"
         run: |
           make wheel
