@@ -22,6 +22,7 @@ echo -e "Installing wheel ..."
 pip3 install --upgrade pip
 pip3 install --upgrade build
 pip3 install --upgrade setuptools
+pip3 install typing-extensions
 pip3 install wheel
 
 echo -e "Building TTExaLens ..."
