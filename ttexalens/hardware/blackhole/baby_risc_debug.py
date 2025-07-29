@@ -27,7 +27,9 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             self.assert_not_in_reset()
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
-        bytes_shifted = address % 4
+        word_size_bytes = 4
+        word_size_bits = word_size_bytes * 8
+        bytes_shifted = address % word_size_bytes
         # We have to treat unaligned write separately due to blackhole bug
         if bytes_shifted == 0:
             # aligned write
@@ -37,16 +39,18 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             bits_shifted = bytes_shifted * 8
             word1 = value >> bits_shifted
             mask = (1 << bits_shifted) - 1
-            word2 = (value & mask) << (32 - bits_shifted)
+            word2 = (value & mask) << (word_size_bits - bits_shifted)
             self.debug_hardware.write_memory(address - bytes_shifted, word1)
-            self.debug_hardware.write_memory(address + 4 - bytes_shifted, word2)
+            self.debug_hardware.write_memory(address + word_size_bytes - bytes_shifted, word2)
 
     def read_memory(self, address: int):
         if self.enable_asserts:
             self.assert_not_in_reset()
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
-        bytes_shifted = address % 4
+        word_size_bytes = 4
+        word_size_bits = word_size_bytes * 8
+        bytes_shifted = address % word_size_bytes
         # We have to treat unaligned read separately due to blackhole bug
         if bytes_shifted == 0:
             # aligned read
@@ -55,6 +59,6 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             # unaligned read
             bits_shifted = bytes_shifted * 8
             word1 = self.debug_hardware.read_memory(address - bytes_shifted)
-            word2 = self.debug_hardware.read_memory(address + 4 - bytes_shifted)
-            mask = (1 << (32 - bits_shifted)) - 1
-            return ((word1 & mask) << bits_shifted) | (word2 >> (32 - bits_shifted))
+            word2 = self.debug_hardware.read_memory(address + word_size_bytes - bytes_shifted)
+            mask = (1 << (word_size_bits - bits_shifted)) - 1
+            return ((word1 & mask) << bits_shifted) | (word2 >> (word_size_bits - bits_shifted))
