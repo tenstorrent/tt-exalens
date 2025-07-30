@@ -446,17 +446,17 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", "trisc0"),
             ("0,0", "trisc1"),
             ("0,0", "trisc2"),
-            ("0,0", "trisc0", -1),  # last address for trisc for wormhole
-            ("0,0", "brisc", -1),  # last address for brisc for wormhole
+            ("0,0", "trisc0", -4),  # last address for trisc for wormhole
+            ("0,0", "brisc", -4),  # last address for brisc for wormhole
             # Testing unaligned read/write
-            ("0,0", "brisc", 0xFFB00001),
-            ("0,0", "trisc0", 0xFFB00002),
-            ("0,0", "trisc1", 0xFFB00003),
-            ("0,0", "trisc2", 0xFFB00011),
-            ("1,0", "brisc", 0xFFB00012),
+            ("0,0", "brisc", 1),
+            ("0,0", "trisc0", 2),
+            ("0,0", "trisc1", 3),
+            ("0,0", "trisc2", 1),
+            ("1,0", "brisc", -5),
         ]
     )
-    def test_write_read_private_memory(self, core_loc: str, risc_name: str, addr: int | None = None):
+    def test_write_read_private_memory(self, core_loc: str, risc_name: str, offset: int = 0):
         """Testing read_memory and write_memory through debugging interface on private core memory range."""
 
         loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
@@ -465,14 +465,14 @@ class TestReadWrite(unittest.TestCase):
         if risc_debug.risc_info.can_change_code_start_address:
             risc_debug.risc_info.set_code_start_address(risc_debug.register_store, 0xD000)
 
-        if addr is None or addr < 0:
-            private_memory = risc_debug.get_data_private_memory()
-            assert private_memory is not None, "Private memory is not available."
-            assert private_memory.address.private_address is not None, "Private memory address is not set."
-            if addr is None:
-                addr = private_memory.address.private_address
-            else:
-                addr = private_memory.address.private_address + private_memory.size - 4
+        private_memory = risc_debug.get_data_private_memory()
+        assert private_memory is not None, "Private memory is not available."
+        assert private_memory.address.private_address is not None, "Private memory address is not set."
+        addr = (
+            private_memory.address.private_address + offset
+            if offset >= 0
+            else private_memory.address.private_address + private_memory.size + offset
+        )
 
         with risc_debug.ensure_private_memory_access():
             self.assertFalse(risc_debug.is_in_reset())
