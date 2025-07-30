@@ -7,10 +7,10 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.hw.tensix.wormhole.wormhole import WormholeDevice
 from ttexalens.register_store import RegisterDescription
-from ttexalens.tt_exalens_lib import check_context, validate_device_id
+from ttexalens.tt_exalens_lib import check_context, validate_device_id, read_word_from_device
 from ttexalens.util import WARN, TTException
 from ttexalens.device import Device
-from ttexalens.unpack_regfile import unpack_data
+from ttexalens.unpack_regfile import unpack_data, TensixDataFormat
 
 
 def validate_thread_id(thread_id: int) -> None:
@@ -147,10 +147,7 @@ class TensixDebug:
         Returns:
                 int: Value of the configuration or debug register specified.
         """
-        device = self.context.devices[self.device_id]
-        noc_block = device.get_block(self.core_loc)
-        register_store = noc_block.get_register_store()
-        return register_store.read_register(register)
+        return self.register_store.read_register(register)
 
     def write_tensix_register(self, register: str | RegisterDescription, value: int) -> None:
         """Writes value to the configuration or debug register on the tensix core.
@@ -159,10 +156,7 @@ class TensixDebug:
                 register (str | RegisterDescription): Name of the configuration or debug register or instance of ConfigurationRegisterDescription or DebugRegisterDescription.
                 val (int): Value to write
         """
-        device = self.context.devices[self.device_id]
-        noc_block = device.get_block(self.core_loc)
-        register_store = noc_block.get_register_store()
-        register_store.write_register(register, value)
+        self.register_store.write_register(register, value)
 
     def read_regfile_data(
         self,
@@ -188,40 +182,48 @@ class TensixDebug:
         if self.device._arch != "wormhole_b0" and self.device._arch != "blackhole":
             raise TTException("Not supported for this architecture: ")
 
-        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
         data = []
 
-        for row in range(64):
-            row_addr = row if regfile != REGFILE.SRCA else 0
-            regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
+        if type(self.device) == WormholeDevice:
+            self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
+            for row in range(64):  # ROWS_PER_TILE
+                row_addr = row if regfile != REGFILE.SRCA else 0
+                regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
 
-            if regfile == REGFILE.SRCA:
-                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), thread_id)
-                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), thread_id)
-                self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), thread_id)
-                self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), thread_id)
-            elif regfile == REGFILE.SRCB:
-                self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
-                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
-                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
-                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
-                self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
-                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
+                if regfile == REGFILE.SRCA:
+                    self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), thread_id)
+                    self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), thread_id)
+                    self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), thread_id)
+                    self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), thread_id)
+                elif regfile == REGFILE.SRCB:
+                    self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
+                    self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
+                    self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
+                    self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
+                    self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
+                    self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
 
-            for i in range(8):
-                dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
-                self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", dbg_array_rd_cmd)
-                rd_data = self.register_store.read_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA")
-                data += list(int.to_bytes(rd_data, 4, byteorder="big"))
+                for i in range(8):
+                    dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
+                    self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", dbg_array_rd_cmd)
+                    rd_data = self.register_store.read_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA")
+                    data += list(int.to_bytes(rd_data, 4, byteorder="big"))
 
-            if regfile == REGFILE.SRCA:
-                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), thread_id)
-                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), thread_id)
-                if row % 16 == 15:
-                    self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), thread_id)
+                if regfile == REGFILE.SRCA:
+                    self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), thread_id)
+                    self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), thread_id)
+                    if row % 16 == 15:
+                        self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), thread_id)
 
-        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 0)
-        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", 0)
+            self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 0)
+            self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", 0)
+        else:
+            dest_start_address = 0xFFBD8000
+            risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
+            for i in range(8 * 1024):
+                address = dest_start_address + 4 * i
+                risc_debug.set_reset_signal(False)
+                data.append(read_word_from_device(self.core_loc, address))
         return data
 
     def read_regfile(self, regfile: int | str | REGFILE) -> list[int | float | str]:
@@ -239,7 +241,7 @@ class TensixDebug:
 
         # Workaround for an architectural quirk of Wormhole: reading DST as INT32 or FP32
         # returns zeros on the lower 16 bits of each datum. This handles the FP32 case.
-        if regfile == REGFILE.DSTACC and df == 0 and type(self.device) == WormholeDevice:
+        if regfile == REGFILE.DSTACC and df == TensixDataFormat.Float32 and type(self.device) == WormholeDevice:
             ops = self.device.instructions
             upper = self.read_regfile_data(regfile)
             # First, read the upper 16 bits of each value.
