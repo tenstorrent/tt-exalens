@@ -6,8 +6,6 @@
 __firmware_stack_size = LENGTH(REGION_STACK);
 __firmware_start = DEFINED(__fw_export_end_text) ? __fw_export_end_text : ORIGIN(REGION_CODE);
 __ldm_start = DEFINED(__fw_export_ldm_end) ? __fw_export_ldm_end : ORIGIN(REGION_DATA);
-__gcov_info_start = ORIGIN(REGION_GCOV);
-__gcov_info_size = LENGTH(REGION_GCOV);
 
 OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv",
        "elf32-littleriscv")
@@ -80,6 +78,7 @@ SECTIONS
   {
     . = ALIGN(4);
      __ldm_data_start = .;
+
      *(.rodata .rodata.* .gnu.linkonce.r.*)
      *(.rodata1)
     PROVIDE_HIDDEN (__preinit_array_start = .);
@@ -140,13 +139,13 @@ SECTIONS
    . += __firmware_stack_size;
     __stack_top = .;
   } > REGION_STACK
-  .gcov_info : AT(ORIGIN(REGION_GCOV))
+  .gcov_info :
   {
-    KEEP(*(.gcov_info))
     __gcov_info_start = .;
-    . += __gcov_info_size;
+    KEEP(*(.gcov_info))
+    KEEP(*(.gcov_info.*))
     __gcov_info_end = .;
-  } > REGION_GCOV
+  } > REGION_GCOV_INFO
   .stab 0 : { *(.stab) }
   .stabstr 0 : { *(.stabstr) }
   .stab.excl 0 : { *(.stab.excl) }
@@ -176,6 +175,17 @@ SECTIONS
   .debug_macro 0 : { *(.debug_macro) }
   .debug_addr 0 : { *(.debug_addr) }
   .gnu.attributes 0 : { KEEP (*(.gnu.attributes)) }
+  __gcov_brisc_start = ORIGIN(BRISC_GCOV_MEM);
+  __gcov_brisc_size  = LENGTH(BRISC_GCOV_MEM);
+  __gcov_trisc0_start = ORIGIN(TRISC0_GCOV_MEM);
+  __gcov_trisc0_size  = LENGTH(TRISC0_GCOV_MEM);
+  __gcov_trisc1_start = ORIGIN(TRISC1_GCOV_MEM);
+  __gcov_trisc1_size  = LENGTH(TRISC1_GCOV_MEM);
+  __gcov_trisc2_start = ORIGIN(TRISC2_GCOV_MEM);
+  __gcov_trisc2_size  = LENGTH(TRISC2_GCOV_MEM);
+  __gcov_ncrisc_start = ORIGIN(NCRISC_GCOV_MEM);
+  __gcov_ncrisc_size  = LENGTH(NCRISC_GCOV_MEM);
+
   /DISCARD/ : { *(.note.GNU-stack) *(.gnu_debuglink) *(.gnu.lto_*) }
   /DISCARD/ : {
         *(.interp)
