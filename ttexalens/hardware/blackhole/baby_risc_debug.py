@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from ttexalens import util
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 
@@ -27,6 +28,10 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             self.assert_not_in_reset()
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
+
+        if self.risc_info.risc_name == "trisc2" and address % 16 > 4:
+            util.WARN(f"Writing to private memory address {address} may not work properly. See issue #528")
+
         word_size_bytes = 4
         word_size_bits = word_size_bytes * 8
         bytes_shifted = address % word_size_bytes
@@ -48,6 +53,10 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             self.assert_not_in_reset()
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
+
+        if self.risc_info.risc_name == "trisc2" and address % 16 > 4:
+            util.WARN(f"Reading private memory address {address} may not work properly. See issue #528")
+
         word_size_bytes = 4
         word_size_bits = word_size_bytes * 8
         bytes_shifted = address % word_size_bytes
