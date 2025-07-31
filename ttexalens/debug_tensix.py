@@ -2,10 +2,12 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from enum import Enum
+import struct
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.hw.tensix.wormhole.wormhole import WormholeDevice
+from ttexalens.hw.tensix.blackhole.blackhole import BlackholeDevice
 from ttexalens.register_store import RegisterDescription
 from ttexalens.tt_exalens_lib import check_context, validate_device_id, read_word_from_device
 from ttexalens.util import WARN, TTException
@@ -161,6 +163,7 @@ class TensixDebug:
     def read_regfile_data(
         self,
         regfile: int | str | REGFILE,
+        df: TensixDataFormat,
     ) -> list[int]:
         """Dumps SRCA/DSTACC register file from the specified core.
             Due to the architecture of SRCA, you can see only see last two faces written.
@@ -184,9 +187,19 @@ class TensixDebug:
 
         data = []
 
-        if type(self.device) == WormholeDevice:
+        if type(self.device) == BlackholeDevice and (df == TensixDataFormat.Float32 or df == TensixDataFormat.Int32):
+            dest_start_address = 0xFFBD8000
+            risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
+            for i in range(16 * 512):
+                address = dest_start_address + 4 * i
+                with risc_debug.ensure_halted():
+                    rd_data = risc_debug.read_memory(address)
+                if df == TensixDataFormat.Float32:
+                    rd_data = struct.unpack(">f", rd_data.to_bytes(4, "big"))[0]
+                data.append(rd_data)
+        else:
             self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
-            for row in range(64):  # ROWS_PER_TILE
+            for row in range(64):
                 row_addr = row if regfile != REGFILE.SRCA else 0
                 regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
 
@@ -217,13 +230,7 @@ class TensixDebug:
 
             self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 0)
             self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", 0)
-        else:
-            dest_start_address = 0xFFBD8000
-            risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
-            for i in range(8 * 1024):
-                address = dest_start_address + 4 * i
-                risc_debug.set_reset_signal(False)
-                data.append(read_word_from_device(self.core_loc, address))
+
         return data
 
     def read_regfile(self, regfile: int | str | REGFILE) -> list[int | float | str]:
@@ -237,7 +244,7 @@ class TensixDebug:
                 list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
         """
         regfile = convert_regfile(regfile)
-        df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        df = TensixDataFormat(self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc"))
 
         # Workaround for an architectural quirk of Wormhole: reading DST as INT32 or FP32
         # returns zeros on the lower 16 bits of each datum. This handles the FP32 case.
@@ -263,10 +270,15 @@ class TensixDebug:
             data = upper + lower
             WARN("The previous contents of DSTACC have been lost and should not be relied upon.")
         else:
-            data = self.read_regfile_data(regfile)
+            data = self.read_regfile_data(regfile, df)
 
         try:
-            return unpack_data(data, df)
+            if type(self.device) == BlackholeDevice and (
+                df == TensixDataFormat.Float32 or df == TensixDataFormat.Int32
+            ):
+                return data
+            else:
+                return unpack_data(data, df)
         except ValueError as e:
             # If the data format is unsupported, return the raw data.
             WARN(e)
