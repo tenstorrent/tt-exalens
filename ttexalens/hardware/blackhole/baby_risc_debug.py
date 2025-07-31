@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from ttexalens import util
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 
@@ -22,13 +23,51 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             assert self.noc_block.debug_bus is not None, "Debug bus is not initialized."
             return self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc")
 
-    def read_memory(self, address: int):
-        # TODO: Implement workaround for unalighned read
-        if address % 4 != 0:
-            raise Exception("Unaligned read not supported for blackhole")
-
+    def write_memory(self, address: int, value: int):
         if self.enable_asserts:
             self.assert_not_in_reset()
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
-        return self.debug_hardware.read_memory(address)
+
+        if self.risc_info.risc_name == "trisc2" and address % 16 > 4:
+            util.WARN(f"Writing to private memory address {address} may not work properly. See issue #528")
+
+        word_size_bytes = 4
+        word_size_bits = word_size_bytes * 8
+        bytes_shifted = address % word_size_bytes
+        # We have to treat unaligned write separately due to blackhole bug
+        if bytes_shifted == 0:
+            # aligned write
+            self.debug_hardware.write_memory(address, value)
+        else:
+            # unaligned write
+            bits_shifted = bytes_shifted * 8
+            word1 = value >> bits_shifted
+            mask = (1 << bits_shifted) - 1
+            word2 = (value & mask) << (word_size_bits - bits_shifted)
+            self.debug_hardware.write_memory(address - bytes_shifted, word1)
+            self.debug_hardware.write_memory(address + word_size_bytes - bytes_shifted, word2)
+
+    def read_memory(self, address: int):
+        if self.enable_asserts:
+            self.assert_not_in_reset()
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+
+        if self.risc_info.risc_name == "trisc2" and address % 16 > 4:
+            util.WARN(f"Reading private memory address {address} may not work properly. See issue #528")
+
+        word_size_bytes = 4
+        word_size_bits = word_size_bytes * 8
+        bytes_shifted = address % word_size_bytes
+        # We have to treat unaligned read separately due to blackhole bug
+        if bytes_shifted == 0:
+            # aligned read
+            return self.debug_hardware.read_memory(address)
+        else:
+            # unaligned read
+            bits_shifted = bytes_shifted * 8
+            word1 = self.debug_hardware.read_memory(address - bytes_shifted)
+            word2 = self.debug_hardware.read_memory(address + word_size_bytes - bytes_shifted)
+            mask = (1 << (word_size_bits - bits_shifted)) - 1
+            return ((word1 & mask) << bits_shifted) | (word2 >> (word_size_bits - bits_shifted))
