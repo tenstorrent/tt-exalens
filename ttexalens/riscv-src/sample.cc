@@ -4,12 +4,7 @@
 
 // An example of a simple C++ program that can be compiled with the RISC-V GCC toolchain.
 #include <stdint.h>
-//#include "tt-gcov.h"
-
-// re build/riscv-src/wormhole/sample.trisc0.elf -r trisc0
-
-//extern const volatile struct gcov_info *volatile const __gcov_info_start[];
-//extern const volatile struct gcov_info *volatile const __gcov_info_end[];
+#include "ttgcov-runtime.h"
 
 // Registers for debug register access
 
@@ -40,54 +35,18 @@ void decrement_mailbox() { g_MAILBOX--; }
 
 extern "C" void infloop() { for (;;); }
 
-//extern uint8_t __gcov_trisc0_start[];
-//extern const unsigned long int __gcov_trisc0_size;
-
-void l1_write(const void* data, unsigned int length, void* arg)
-{
-    static unsigned int l1_written = 0;
-    //uint8_t* new_gcov_data = (uint8_t*) data;
-    //uint8_t volatile* l1_gcov_base = (uint8_t volatile*) __gcov_trisc0_start;
-    
-    //for(unsigned int i = 0; i < length; i++) {
-    //    l1_gcov_base[l1_written++] = new_gcov_data[i];
-    //}
-    
-    void* volatile* ptr = (void* volatile*) 200000;
-    for(int i = 1; i < 128; i++) ptr[i] = (void*) 0xdeadbeef;
-    //ptr[0] = (void*) l1_gcov_base;
-    asm volatile("fence rw, rw" ::: "memory");
-}
-
-void fname_callback(const char* fname, void* arg)
-{
-    //__gcov_filename_to_gcfn(fname, l1_write, nullptr);
-}
-
-void* alloc(unsigned idk, void* arg)
-{
-    (void) idk;
-    (void) arg;
-    return nullptr;
-}
-
 int main() {
-    l1_write(nullptr, 0, nullptr);
+    __asm__ volatile("ebreak\n" ::: "memory");
     g_TESTBYTEACCESS.all_bytes = 0x0102030405060708;
 
     // STEP 1: Set the mailbox to RISC_DBG_STATUS1
     g_MAILBOX = RISC_DBG_STATUS1;
 
-    // STEP 2: Wait for mailbox to become 0x1234
-    while (g_MAILBOX != 0x1234) {
-        // wait for mailbox to be set to 0x1234
-    }
-
     // STEP 3: Set the mailbox to RISC_DBG_CNTL0
     g_MAILBOX = RISC_DBG_CNTL0;
 
     // STEP 4: Put the core in halted state
-    halt();
+    //halt();
 
     // STEP 5: Set the mailbox to 3
     g_MAILBOX = 3;
@@ -109,18 +68,15 @@ int main() {
     g_TESTBYTEACCESS.high_32 = 0x55667788;
 
     if(g_MAILBOX > 0x20) decrement_mailbox();
+    else {
+        g_MAILBOX++;
+    }
 
     // STEP END: Set the mailbox to RISC_DBG_STATUS0
     g_MAILBOX = (uint32_t)RISC_DBG_STATUS0;
-    //const volatile struct gcov_info *volatile const *info = __gcov_info_start;
-    //const volatile struct gcov_info *volatile const *end = __gcov_info_end;
-    //__asm__ volatile ("" : "+r" (info));
-
-        //while(info != end) {
-        //__gcov_info_to_gcda(*((const struct gcov_info *const *) info), fname_callback, l1_write, alloc, nullptr);
-        //info++;
-    //}
     
+    gcov_dump();
+    __asm__ volatile("ebreak\n");
     infloop();
     return 0;
 }

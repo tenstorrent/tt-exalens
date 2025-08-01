@@ -3,7 +3,7 @@ cmake_policy(VERSION 3.16)
 
 project(RISCVProject LANGUAGES CXX ASM)
 
-option(COVERAGE "Enable instrumentation for test coverage analysis with gcov" OFF)
+option(COVERAGE "Enable instrumentation for test coverage analysis with gcov" ON)
 if(COVERAGE)
     message(STATUS "Coverage instrumentation is ENABLED")
 endif()
@@ -26,13 +26,11 @@ set(OPTIMIZED_OPTIONS_COMPILE -fno-use-cxa-atexit -Wall -fno-exceptions -fno-rtt
 set(OPTIMIZED_OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
 # Compiler options
-set(OPTIONS_ALL -O0 -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -ggdb3 -flto -ffast-math)
+set(OPTIONS_ALL -O0 -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -flto -g -ffast-math)
 set(OPTIONS_COMPILE -fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable)
 set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
-set(GCOV_COMPILE_FLAGS
-  -fprofile-arcs -ftest-coverage -fprofile-info-section
-)
+set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section)
 
 # Define project paths
 set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")
@@ -50,15 +48,16 @@ file(MAKE_DIRECTORY ${RISCV_OBJECT})
 file(MAKE_DIRECTORY ${RISCV_OUTPUT})
 
 # Helper function to add object files for each source
-function(add_riscv_object OBJECT_NAME SOURCE_FILE OPTIMIZED)
+# WITH_COVERAGE is given as an argument to allow the coverage runtime libraries themselves to be compiled without instrumentation
+function(add_riscv_object OBJECT_NAME SOURCE_FILE OPTIMIZED WITH_COVERAGE)
     if(OPTIMIZED)
         set(COMPILE_OPTIONS ${OPTIMIZED_OPTIONS_ALL} ${OPTIMIZED_OPTIONS_COMPILE})
     else()
         set(COMPILE_OPTIONS ${OPTIONS_ALL} ${OPTIONS_COMPILE})
     endif()
     
-    if(COVERAGE)
-        list(APPEND COMPILE_OPTIONS ${GCOV_COMPILE_FLAGS})
+    if(WITH_COVERAGE)
+        list(APPEND COMPILE_OPTIONS ${GCOV_FLAGS})
     endif()
 
     add_custom_command(
@@ -69,43 +68,47 @@ function(add_riscv_object OBJECT_NAME SOURCE_FILE OPTIMIZED)
     )
 endfunction()
 
-# Compile the runtime coverage library
+# Compile the coverage-related runtime libraries
 if(COVERAGE)
     set(TT_GCOV_SRC "${RISCV_SOURCE}/tt-gcov.c")
     set(TT_GCOV_OBJ "${RISCV_OBJECT}/tt-gcov.o")
     set(LIB_TTGCOV "${RISCV_OUTPUT}/libttgcov.a")
+    
+    set(TTGCOV_RUNTIME_SRC "${RISCV_SOURCE}/ttgcov-runtime.c")
+    set(TTGCOV_RUNTIME_OBJ "${RISCV_OBJECT}/ttgcov-runtime.o")
+    set(LIB_TTGCOV_RUNTIME "${RISCV_OUTPUT}/libttgcovruntime.a")
 
-    add_riscv_object(
-        "${TT_GCOV_OBJ}"
-        "${TT_GCOV_SRC}"
-        ON
-    )
+    add_riscv_object("${TT_GCOV_OBJ}" "${TT_GCOV_SRC}" ON OFF)
+    add_riscv_object("${TTGCOV_RUNTIME_OBJ}" "${TTGCOV_RUNTIME_SRC}" ON OFF)
 
     add_custom_command(
         OUTPUT ${LIB_TTGCOV}
         COMMAND ${TOOL_PATH}/riscv32-tt-elf-gcc-ar rcs ${LIB_TTGCOV} ${TT_GCOV_OBJ}
         DEPENDS ${TT_GCOV_OBJ}
-        COMMENT "Creating the coverage runtime library ${LIB_TTGCOV}"
+        COMMENT "Building the coverage runtime libraries..."
+    )
+
+    add_custom_command(
+        OUTPUT ${LIB_TTGCOV_RUNTIME}
+        COMMAND ${TOOL_PATH}/riscv32-tt-elf-gcc-ar rcs ${LIB_TTGCOV_RUNTIME} ${TTGCOV_RUNTIME_OBJ}
+        DEPENDS ${TTGCOV_RUNTIME_OBJ}
     )
 
     add_custom_target(ttgcov_lib ALL
-        DEPENDS ${LIB_TTGCOV}
+        DEPENDS ${LIB_TTGCOV} ${LIB_TTGCOV_RUNTIME}
     )
 endif()
 
 # Add the CRT object (assembly file)
-add_riscv_object("${RISCV_OBJECT}/tmu-crt0.o" "${RISCV_SOURCE}/tmu-crt0.S" OFF)
-add_riscv_object("${RISCV_OBJECT}/tmu-crt0.optimized.o" "${RISCV_SOURCE}/tmu-crt0.S" ON)
-
-# Add the reentrancy stubs
-add_riscv_object("${RISCV_OBJECT}/reent_stubs.o" "${RISCV_SOURCE}/reent_stubs.c" OFF)
+add_riscv_object("${RISCV_OBJECT}/tmu-crt0.o" "${RISCV_SOURCE}/tmu-crt0.S" OFF OFF)
+add_riscv_object("${RISCV_OBJECT}/tmu-crt0.optimized.o" "${RISCV_SOURCE}/tmu-crt0.S" ON OFF)
 
 # Add C++ compile target
 foreach(app ${RISCV_APPS})
-    add_riscv_object("${RISCV_OBJECT}/${app}.o" "${RISCV_SOURCE}/${app}.cc" OFF)
+    add_riscv_object("${RISCV_OBJECT}/${app}.o" "${RISCV_SOURCE}/${app}.cc" OFF COVERAGE)
 endforeach()
 foreach(app ${RISCV_OPTIMIZED_APPS})
-    add_riscv_object("${RISCV_OBJECT}/${app}.optimized.o" "${RISCV_SOURCE}/${app}.cc" ON)
+    add_riscv_object("${RISCV_OBJECT}/${app}.optimized.o" "${RISCV_SOURCE}/${app}.cc" ON COVERAGE)
 endforeach()
 
 # Define function to create targets for a specific architecture, application, and core
@@ -130,7 +133,7 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
 
     if(COVERAGE)
         list(APPEND LINK_OBJECTS ${LIB_TTGCOV})
-        list(APPEND LINK_OBJECTS ${RISCV_OBJECT}/reent_stubs.o)
+        list(APPEND LINK_OBJECTS ${LIB_TTGCOV_RUNTIME})
     endif()
 
     add_custom_command(
@@ -142,6 +145,8 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
             -T${RISCV_SOURCE}/sections.ld
             -Wl,-Map=${OUTPUT_MAP}
             -Wl,--print-memory-usage
+            #-Wl,-M
+            #-Wl,--cref
             -o ${OUTPUT_ELF}
         DEPENDS ${LINK_OBJECTS} ${RISCV_SOURCE}/memory.${ARCH}.ld ${RISCV_SOURCE}/${CORE}.ld ${RISCV_SOURCE}/sections.ld
         COMMENT "Linking ${OUTPUT_ELF}"

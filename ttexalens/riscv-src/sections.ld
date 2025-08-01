@@ -74,6 +74,16 @@ SECTIONS
   PROVIDE (etext = .);
   __fw_export_end_text = DEFINED(__fw_export_end_text) ? __fw_export_end_text : .;
   PROVIDE(__global_pointer$ = ORIGIN(REGION_DATA) + 0x800);
+  .data.impure_data :
+  {
+    *(.data.impure_data)
+  } > REGION_IMPURE_DATA
+  .bss :
+  {
+    *(.bss)
+  } > REGION_BSS
+  __bss_free = ALIGN(., 4);
+  ASSERT(__bss_free <= ORIGIN(REGION_BSS) + LENGTH(REGION_BSS), "error: .bss has overflowed (coverage data resides there)")
   .ldm_data __ldm_start :
   {
     . = ALIGN(4);
@@ -81,6 +91,7 @@ SECTIONS
 
      *(.rodata .rodata.* .gnu.linkonce.r.*)
      *(.rodata1)
+    . = ALIGN(4);
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array))
     PROVIDE_HIDDEN (__preinit_array_end = .);
@@ -175,16 +186,11 @@ SECTIONS
   .debug_macro 0 : { *(.debug_macro) }
   .debug_addr 0 : { *(.debug_addr) }
   .gnu.attributes 0 : { KEEP (*(.gnu.attributes)) }
-  __gcov_brisc_start = ORIGIN(BRISC_GCOV_MEM);
-  __gcov_brisc_size  = LENGTH(BRISC_GCOV_MEM);
-  __gcov_trisc0_start = ORIGIN(TRISC0_GCOV_MEM);
-  __gcov_trisc0_size  = LENGTH(TRISC0_GCOV_MEM);
-  __gcov_trisc1_start = ORIGIN(TRISC1_GCOV_MEM);
-  __gcov_trisc1_size  = LENGTH(TRISC1_GCOV_MEM);
-  __gcov_trisc2_start = ORIGIN(TRISC2_GCOV_MEM);
-  __gcov_trisc2_size  = LENGTH(TRISC2_GCOV_MEM);
-  __gcov_ncrisc_start = ORIGIN(NCRISC_GCOV_MEM);
-  __gcov_ncrisc_size  = LENGTH(NCRISC_GCOV_MEM);
+
+  __coverage_start = ORIGIN(REGION_GCOV);
+  __coverage_length = LENGTH(REGION_GCOV);
+  __bss_start = ORIGIN(REGION_BSS);
+  __bss_end = ORIGIN(REGION_BSS) + LENGTH(REGION_BSS);
 
   /DISCARD/ : { *(.note.GNU-stack) *(.gnu_debuglink) *(.gnu.lto_*) }
   /DISCARD/ : {
