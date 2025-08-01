@@ -3,14 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump_regfile <core-loc> <regfile> [-d <D>...]
+  dump_regfile <core-loc> <regfile> [-d <D>...] [-t <num-tiles>] [-a <dest-accumulation>]
 
 Arguments:
   core-loc     Either X-Y or R,C location of a core
   regfile      Register file to read from (0: SRCA, 1: SRCB, 2: DSTACC)
 
 Options:
-  -d <D>       Device ID. Optional and repeatable. Default: current device
+  -d <D>                    Device ID. Optional and repeatable. Default: current device
+  -t <num-tiles>            Number of tiles to read. Only effective for 32 bit formats on blackhole.
+  -a <dest-accumulation> Flag for whether dest accumulation is turned on. Determines maximum number of tiles.
 
 Description:
   Prints specified regfile (SRCA/DSTACC) at core-loc location of the current chip.
@@ -51,8 +53,12 @@ def print_regfile(data: list[int | float | str]):
 def run(cmd_text, context, ui_state: UIState = None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
 
+    print(args)
+
     core_loc_str = args["<core-loc>"]
     regfile = args["<regfile>"]
+    num_tiles = int(args["-t"]) if args["-t"] else None
+    dest_accumulation = bool(args["-a"]) if args["-a"] else False
 
     current_device_id = ui_state.current_device_id
     device_ids = args["-d"] if args["-d"] else [f"{current_device_id}"]
@@ -65,7 +71,7 @@ def run(cmd_text, context, ui_state: UIState = None):
         core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
 
         debug_tensix = TensixDebug(core_loc, device_id, context)
-        data = debug_tensix.read_regfile(regfile)
+        data = debug_tensix.read_regfile(regfile, num_tiles, dest_accumulation)
         print_regfile(data)
 
     return None
