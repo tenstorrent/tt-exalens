@@ -40,10 +40,16 @@ from docopt import docopt
 from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_tensix import TensixDebug
+from ttexalens.util import INFO
+from ttexalens.debug_tensix import TILE_SIZE
 
 
 def print_regfile(data: list[int | float | str]):
+    tile_id = 0
     for i in range(len(data)):
+        if i % TILE_SIZE == 0:
+            INFO(f"TILE ID: {tile_id}")
+            tile_id += 1
         print(data[i], end="\t")
         if i % 32 == 31:
             print()

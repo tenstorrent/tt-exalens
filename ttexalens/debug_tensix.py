@@ -176,7 +176,7 @@ class TensixDebug:
         return num_tiles
 
     def _is_32_bit_format(self, df: TensixDataFormat) -> bool:
-        return df in [TensixDataFormat.Float32, TensixDataFormat.Int32]
+        return df in (TensixDataFormat.Float32, TensixDataFormat.Int32)
 
     def _direct_dest_read_enabled(self, df: TensixDataFormat) -> bool:
         return type(self.device) == BlackholeDevice and self._is_32_bit_format(df)
