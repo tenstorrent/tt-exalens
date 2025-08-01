@@ -165,8 +165,8 @@ class TensixDebug:
         """
         self.register_store.write_register(register, value)
 
-    def _validate_number_of_tiles(self, num_tiles: int, dest_accumulation: bool) -> int:
-        max_num_tiles = 16 if dest_accumulation else 8
+    def _validate_number_of_tiles(self, num_tiles: int) -> int:
+        max_num_tiles = 8  # maximum number of tiles in dest for 32 bit formats
         if num_tiles is None or num_tiles > max_num_tiles or num_tiles <= 0:
             WARN(
                 f"Number of tiles given {num_tiles} is not valid, defaulting to maximum number of tiles {max_num_tiles}"
@@ -260,17 +260,13 @@ class TensixDebug:
 
         return data
 
-    def read_regfile(
-        self, regfile: int | str | REGFILE, num_tiles: int | None = None, dest_accumulation: bool = False
-    ) -> list[int | float | str]:
+    def read_regfile(self, regfile: int | str | REGFILE, num_tiles: int | None = None) -> list[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
 
         Args:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
                 num_tiles (int | None): Number of tiles to print. Only available for direct dest read on blackhole. Default: None
-                dest_accumulation (bool): Whether dest accumulation is turned on. Determines maximum number of tiles to print. Default: False
-
         Returns:
                 list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data) or num_tiles * TILE_SIZE for direct read.
         """
@@ -282,7 +278,7 @@ class TensixDebug:
 
         # Directly reading dest does not require complex unpacking so we return it right away
         if regfile == REGFILE.DSTACC and self._direct_dest_read_enabled(df):
-            num_tiles = self._validate_number_of_tiles(num_tiles, dest_accumulation)
+            num_tiles = self._validate_number_of_tiles(num_tiles)
             return self.direct_dest_read(df, num_tiles)
         # Workaround for an architectural quirk of Wormhole: reading DST as INT32 or FP32
         # returns zeros on the lower 16 bits of each datum. This handles the FP32 case.
