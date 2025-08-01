@@ -273,7 +273,7 @@ class TensixDebug:
         regfile = convert_regfile(regfile)
         df = TensixDataFormat(self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc"))
 
-        if not self._direct_dest_read_enabled(df) and num_tiles is not None:
+        if regfile == REGFILE.DSTACC and not self._direct_dest_read_enabled(df) and num_tiles is not None:
             WARN("num_tiles argument only has effect for 32 bit formats on blackhole.")
 
         # Directly reading dest does not require complex unpacking so we return it right away
@@ -304,7 +304,7 @@ class TensixDebug:
             data = upper + lower
             WARN("The previous contents of DSTACC have been lost and should not be relied upon.")
         else:
-            data = self.read_regfile_data(regfile, df)
+            data = self.read_regfile_data(regfile)
 
         try:
             return unpack_data(data, df)
