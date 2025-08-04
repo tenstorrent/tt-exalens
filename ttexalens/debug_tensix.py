@@ -57,7 +57,6 @@ class TensixDebug:
     device_id: int
     context: Context
     device: Device
-    dest_start_address: int
 
     def __init__(
         self,
@@ -75,7 +74,6 @@ class TensixDebug:
             self.core_loc = OnChipCoordinate.create(core_loc, device=self.device)
         else:
             self.core_loc = core_loc
-        self.dest_start_address = 0xFFBD8000 if type(self.device) == BlackholeDevice else None
 
     def dbg_buff_status(self):
         return self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS")
@@ -165,7 +163,8 @@ class TensixDebug:
         """
         self.register_store.write_register(register, value)
 
-    def _validate_number_of_tiles(self, num_tiles: int) -> int:
+    @staticmethod
+    def _validate_number_of_tiles(num_tiles: int | None) -> int:
         max_num_tiles = 8  # maximum number of tiles in dest for 32 bit formats
         if num_tiles is None or num_tiles > max_num_tiles or num_tiles <= 0:
             WARN(
@@ -175,7 +174,8 @@ class TensixDebug:
 
         return num_tiles
 
-    def _is_32_bit_format(self, df: TensixDataFormat) -> bool:
+    @staticmethod
+    def _is_32_bit_format(df: TensixDataFormat) -> bool:
         return df in (TensixDataFormat.Float32, TensixDataFormat.Int32)
 
     def _direct_dest_read_enabled(self, df: TensixDataFormat) -> bool:
@@ -189,7 +189,7 @@ class TensixDebug:
         # Using TRISC0 debug hardware to read memory
         risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
         for i in range(num_tiles * TILE_SIZE):
-            address = self.dest_start_address + 4 * i
+            address = self.noc_block.dest_start_address.private_address + 4 * i
             with risc_debug.ensure_halted():
                 rd_data = risc_debug.read_memory(address)
             # Interpreting data as float32
@@ -201,9 +201,8 @@ class TensixDebug:
         return data
 
     def read_regfile_data(
-        self,
-        regfile: int | str | REGFILE,
-    ) -> list[int]:
+        self, regfile: int | str | REGFILE, df: TensixDataFormat, num_tiles: int | None = None
+    ) -> list[int | float]:
         """Dumps SRCA/DSTACC register file from the specified core.
             Due to the architecture of SRCA, you can see only see last two faces written.
             SRCB is currently not supported.
@@ -212,7 +211,7 @@ class TensixDebug:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
 
         Returns:
-                bytearray: 64x32 bytes of register file data (64 rows, 32 bytes per row).
+                list[int | float]: 64x32 bytes of register file data (64 rows, 32 bytes per row). Also returns num_tiles * TILE_SIZE of unpacked data if using direct dest reading.
         """
         thread_id = 2
         regfile = convert_regfile(regfile)
@@ -224,39 +223,44 @@ class TensixDebug:
         if self.device._arch != "wormhole_b0" and self.device._arch != "blackhole":
             raise TTException("Not supported for this architecture: ")
 
-        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
-        data = []
-        for row in range(64):
-            row_addr = row if regfile != REGFILE.SRCA else 0
-            regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
+        # Directly reading dest does not require complex unpacking so we return it right away
+        if regfile == REGFILE.DSTACC and self._direct_dest_read_enabled(df):
+            num_tiles = self._validate_number_of_tiles(num_tiles)
+            return self.direct_dest_read(df, num_tiles)
+        else:
+            self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
+            data = []
+            for row in range(64):
+                row_addr = row if regfile != REGFILE.SRCA else 0
+                regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
 
-            if regfile == REGFILE.SRCA:
-                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), thread_id)
-                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), thread_id)
-                self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), thread_id)
-                self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), thread_id)
-            elif regfile == REGFILE.SRCB:
-                self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
-                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
-                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
-                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
-                self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
-                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
+                if regfile == REGFILE.SRCA:
+                    self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), thread_id)
+                    self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), thread_id)
+                    self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), thread_id)
+                    self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), thread_id)
+                elif regfile == REGFILE.SRCB:
+                    self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
+                    self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
+                    self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
+                    self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
+                    self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
+                    self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
 
-            for i in range(8):
-                dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
-                self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", dbg_array_rd_cmd)
-                rd_data = self.register_store.read_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA")
-                data += list(int.to_bytes(rd_data, 4, byteorder="big"))
+                for i in range(8):
+                    dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
+                    self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", dbg_array_rd_cmd)
+                    rd_data = self.register_store.read_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA")
+                    data += list(int.to_bytes(rd_data, 4, byteorder="big"))
 
-            if regfile == REGFILE.SRCA:
-                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), thread_id)
-                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), thread_id)
-                if row % 16 == 15:
-                    self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), thread_id)
+                if regfile == REGFILE.SRCA:
+                    self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), thread_id)
+                    self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), thread_id)
+                    if row % 16 == 15:
+                        self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), thread_id)
 
-        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 0)
-        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", 0)
+            self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 0)
+            self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", 0)
 
         return data
 
@@ -276,13 +280,9 @@ class TensixDebug:
         if regfile == REGFILE.DSTACC and not self._direct_dest_read_enabled(df) and num_tiles is not None:
             WARN("num_tiles argument only has effect for 32 bit formats on blackhole.")
 
-        # Directly reading dest does not require complex unpacking so we return it right away
-        if regfile == REGFILE.DSTACC and self._direct_dest_read_enabled(df):
-            num_tiles = self._validate_number_of_tiles(num_tiles)
-            return self.direct_dest_read(df, num_tiles)
         # Workaround for an architectural quirk of Wormhole: reading DST as INT32 or FP32
         # returns zeros on the lower 16 bits of each datum. This handles the FP32 case.
-        elif regfile == REGFILE.DSTACC and df == TensixDataFormat.Float32 and type(self.device) == WormholeDevice:
+        if regfile == REGFILE.DSTACC and df == TensixDataFormat.Float32 and type(self.device) == WormholeDevice:
             ops = self.device.instructions
             upper = self.read_regfile_data(regfile)
             # First, read the upper 16 bits of each value.
@@ -304,10 +304,13 @@ class TensixDebug:
             data = upper + lower
             WARN("The previous contents of DSTACC have been lost and should not be relied upon.")
         else:
-            data = self.read_regfile_data(regfile)
-
+            data = self.read_regfile_data(regfile, df, num_tiles)
         try:
-            return unpack_data(data, df)
+            if regfile == REGFILE.DSTACC and self._direct_dest_read_enabled(df):
+                # If we use dircet read data is already unpacked
+                return data
+            else:
+                return unpack_data(data, df)
         except ValueError as e:
             # If the data format is unsupported, return the raw data.
             WARN(e)

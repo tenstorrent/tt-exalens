@@ -59,6 +59,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
         self.l1 = MemoryBlock(
             size=1536 * 1024, address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000)
         )
+        self.dest_start_address: DeviceAddress = DeviceAddress(private_address=0xFFBD8000)
 
         self.brisc = BabyRiscInfo(
             risc_name="brisc",
