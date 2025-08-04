@@ -308,7 +308,7 @@ class TensixDebug:
             data = upper + lower
             WARN("The previous contents of DSTACC have been lost and should not be relied upon.")
         else:
-            data: list[int] | list[float] = self.read_regfile_data(regfile, df, num_tiles)
+            data = self.read_regfile_data(regfile, df, num_tiles)
         try:
             if regfile == REGFILE.DSTACC and self._direct_dest_read_enabled(df):
                 # If we use dircet read data is already unpacked
@@ -318,5 +318,8 @@ class TensixDebug:
         except ValueError as e:
             # If the data format is unsupported, return the raw data.
             WARN(e)
-            WARN("Printing raw data...")
-            return [hex(datum) for datum in data]
+            if isinstance(data[0], int):
+                WARN("Printing raw data...")
+                return [hex(datum) for datum in data]
+            else:
+                raise TTException("Stopping execution, unsupported data format encountered.")
