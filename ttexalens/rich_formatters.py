@@ -122,6 +122,7 @@ class RichFormatter:
     def create_data_table(
         self,
         group_name: str,
+        columns: list[tuple[str, Any]],
         data: dict[str, Any],
         simple_print: bool = False,
         title_style: str = "bold magenta",
@@ -150,21 +151,14 @@ class RichFormatter:
             table.box = box.ROUNDED
             table.show_header = True
 
-        table.add_column("Description", style=key_style, no_wrap=True)
-        table.add_column("Value", style=value_style)
+        for column in columns:
+            table.add_column(column[0], style=column[1], no_wrap=True)
+            
+        for row in data:
+            # Convert all values to strings to ensure Rich can render them
+            row_str = [str(item) for item in row]
+            table.add_row(*row_str)
 
-        for key, value in data.items():
-            if isinstance(value, dict):
-                # For structured values
-                formatted_value = self.format_value(value)
-            elif isinstance(value, int):
-                # For integer values, show both hex and decimal
-                formatted_value = f"0x{value:08x} ({value:d})"
-            else:
-                # For other types
-                formatted_value = str(value)
-
-            table.add_row(str(key), formatted_value)
         return table
 
     def format_value(self, value_info: dict[str, Any]) -> str:
@@ -215,7 +209,8 @@ class RichFormatter:
 
     def display_grouped_data(
         self,
-        data: dict[str, dict[str, Any]],
+        data: dict[str, list[tuple[Any,...]]],
+        columns: list[tuple[str, Any]],
         grouping: list[list[str]],
         simple_print: bool = False,
         empty_text: str = "<No data>",
@@ -237,7 +232,7 @@ class RichFormatter:
             tables: list = []
             for group_name in group_row:
                 if group_name in data:
-                    tables.append(self.create_data_table(group_name, data[group_name], simple_print))
+                    tables.append(self.create_data_table(group_name, columns, data[group_name], simple_print))
                 else:
                     tables.append(Panel(empty_text, title=group_name))
             console.print(Columns(tables, equal=True, expand=False))

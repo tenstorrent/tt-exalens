@@ -136,15 +136,15 @@ def run(cmd_text, context, ui_state: UIState = None):
                         print("No matches found.")
                         return []
 
-                # Read signal values
-                signal_map: dict[str, str] = {}
+                # Read signal values and convert to list of tuples
+                signal_data = []
                 for name in names:
                     value = debug_bus_signal_store.read_signal(name)
-                    signal_map[name] = f"0x{value:x}"
+                    signal_data.append((name, f"0x{value:08x}"))
                 # And pretty-print.
                 formatter.print_header(f"=== Device {device._id} - location {loc.to_str('logical')})", style="bold")
                 formatter.display_grouped_data(
-                    {"Signals": signal_map}, [["Signals"]], simple_print=dopt.args["--simple"]
+                    {"Signals": signal_data}, [("Name", ""), ("Value", "")], [["Signals"]], simple_print=dopt.args["--simple"]
                 )
 
         return []

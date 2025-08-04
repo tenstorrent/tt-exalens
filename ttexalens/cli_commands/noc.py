@@ -155,7 +155,34 @@ def get_all_noc_registers(loc: OnChipCoordinate, device: Device) -> dict[str, di
     for reg_name in register_names:
         noc_registers["Noc0 Registers"][reg_name] = register_store_noc0.read_register(reg_name)
         noc_registers["Noc1 Registers"][reg_name] = register_store_noc1.read_register(reg_name)
-    return noc_registers
+    
+    registers = {}
+    registers["Noc0 Registers"] = get_noc_registers(device, loc, 0, register_names)
+    registers["Noc1 Registers"] = get_noc_registers(device, loc, 1, register_names)
+
+    return registers
+
+def get_noc_registers(device: Device, loc: OnChipCoordinate, noc_id: int, register_names: list[str]) -> list[tuple[str, int, int]]:
+    """
+    Get NOC register values with their addresses.
+    
+    Args:
+        device: Device object
+        loc: On-chip coordinate
+        noc_id: NOC identifier (0 or 1)
+        register_names: List of register names to read
+        
+    Returns:
+        List of tuples containing (name, address, value)
+    """
+    register_store = device.get_block(loc).get_register_store(noc_id)
+    result = []
+    for name in register_names:
+        desc = register_store.get_register_description(name)
+        address = desc.noc_address if desc.noc_address is not None else 0
+        value = register_store.read_register(name)
+        result.append((name, address, value))
+    return result
 
 
 ###############################################################################
@@ -180,7 +207,7 @@ def display_noc_status_registers(
     ]
 
     # Use the shared formatter API
-    formatter.display_grouped_data(noc_registers, grouping, simple_print)
+    display_grouped_data(noc_registers, grouping, simple_print)
 
 
 def display_all_noc_registers(loc: OnChipCoordinate, device: Device, simple_print: bool = False) -> None:
@@ -200,7 +227,7 @@ def display_all_noc_registers(loc: OnChipCoordinate, device: Device, simple_prin
     grouping = [group_names]
 
     # Use the shared formatter API
-    formatter.display_grouped_data(noc_registers, grouping, simple_print)
+    display_grouped_data(noc_registers, grouping, simple_print)
 
 
 def display_all_noc_status_registers(loc: OnChipCoordinate, device: Device, simple_print: bool = False) -> None:
@@ -261,11 +288,37 @@ def display_specific_noc_registers(
     # Only display if we found at least one valid register
     if valid_registers_found:
         # Display the registers
-        formatter.display_grouped_data(register_data, [[f"NOC{noc_id} Registers"]], simple_print)
+        display_grouped_data(register_data, [[f"NOC{noc_id} Registers"]], simple_print)
     elif not invalid_registers:
         # If no registers were found but none were invalid, it's likely an empty list
         util.ERROR(f"No register names provided for NOC{noc_id}")
 
+def display_grouped_data(data: dict[str, list[tuple[str, int, int]]], grouping: list[list[str]], simple_print: bool = False) -> None:
+    """
+    Display grouped data in a formatted way.
+    
+    Args:
+        data: Dictionary containing the data to display
+        grouping: List of groups for display organization
+        simple_print: Whether to use simplified output format
+    """
+    columns = [("Name", ""), ("Address", ""), ("Value", "")]
+    
+    # Transform the data to convert integers to hex strings and sort by address
+    transformed_data = {}
+    for group_name, rows in data.items():
+        # Sort by address first (using original int values)
+        sorted_rows = sorted(rows, key=lambda x: x[1])  # Sort by address (second element)
+        
+        transformed_rows = []
+        for row in sorted_rows:
+            # Convert each tuple (str, int, int) to (str, str, str) with hex values
+            name, addr, value = row
+            transformed_row = (name, f"0x{addr:08x}", f"0x{value:08x}")
+            transformed_rows.append(transformed_row)
+        transformed_data[group_name] = transformed_rows
+    
+    formatter.display_grouped_data(transformed_data, columns, grouping=grouping, simple_print=simple_print)
 
 ###############################################################################
 # Main Command Entry
