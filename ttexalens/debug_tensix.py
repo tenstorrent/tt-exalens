@@ -6,6 +6,7 @@ import struct
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
+from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
 from ttexalens.hw.tensix.wormhole.wormhole import WormholeDevice
 from ttexalens.hw.tensix.blackhole.blackhole import BlackholeDevice
 from ttexalens.register_store import RegisterDescription
@@ -181,15 +182,16 @@ class TensixDebug:
     def _direct_dest_read_enabled(self, df: TensixDataFormat) -> bool:
         return type(self.device) == BlackholeDevice and self._is_32_bit_format(df)
 
-    def direct_dest_read(self, df: TensixDataFormat, num_tiles: int) -> list[int | float]:
+    def direct_dest_read(self, df: TensixDataFormat, num_tiles: int) -> list[int] | list[float]:
         if not self._direct_dest_read_enabled(df):
             raise TTException("Direct dest reading not supported for this architecture or data format.")
 
-        data = []
+        data: list[int] | list[float] = []
         # Using TRISC0 debug hardware to read memory
         risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
         for i in range(num_tiles * TILE_SIZE):
-            address = self.noc_block.dest_start_address.private_address + 4 * i
+            if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
+                address = self.noc_block.dest_start_address.private_address + 4 * i
             with risc_debug.ensure_halted():
                 rd_data = risc_debug.read_memory(address)
             # Interpreting data as float32
@@ -202,7 +204,7 @@ class TensixDebug:
 
     def read_regfile_data(
         self, regfile: int | str | REGFILE, df: TensixDataFormat, num_tiles: int | None = None
-    ) -> list[int | float]:
+    ) -> list[int] | list[float]:
         """Dumps SRCA/DSTACC register file from the specified core.
             Due to the architecture of SRCA, you can see only see last two faces written.
             SRCB is currently not supported.
@@ -229,7 +231,7 @@ class TensixDebug:
             return self.direct_dest_read(df, num_tiles)
         else:
             self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
-            data = []
+            data: list[int] = []
             for row in range(64):
                 row_addr = row if regfile != REGFILE.SRCA else 0
                 regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
@@ -264,7 +266,9 @@ class TensixDebug:
 
         return data
 
-    def read_regfile(self, regfile: int | str | REGFILE, num_tiles: int | None = None) -> list[int | float | str]:
+    def read_regfile(
+        self, regfile: int | str | REGFILE, num_tiles: int | None = None
+    ) -> list[int] | list[float] | list[str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
 
@@ -284,7 +288,7 @@ class TensixDebug:
         # returns zeros on the lower 16 bits of each datum. This handles the FP32 case.
         if regfile == REGFILE.DSTACC and df == TensixDataFormat.Float32 and type(self.device) == WormholeDevice:
             ops = self.device.instructions
-            upper = self.read_regfile_data(regfile)
+            upper = self.read_regfile_data(regfile, df)
             # First, read the upper 16 bits of each value.
             # Half of the values read are zeros, shave them off.
             upper = upper[0:256] + upper[512:768] + upper[1024:1280] + upper[1536:1792]
@@ -299,12 +303,12 @@ class TensixDebug:
 
             # Read the lower 16 bits from the upper bits' position.
             # Prune the zeros again, same as previously.
-            lower = self.read_regfile_data(regfile)
+            lower = self.read_regfile_data(regfile, df)
             lower = lower[0:256] + lower[512:768] + lower[1024:1280] + lower[1536:1792]
             data = upper + lower
             WARN("The previous contents of DSTACC have been lost and should not be relied upon.")
         else:
-            data = self.read_regfile_data(regfile, df, num_tiles)
+            data: list[int] | list[float] = self.read_regfile_data(regfile, df, num_tiles)
         try:
             if regfile == REGFILE.DSTACC and self._direct_dest_read_enabled(df):
                 # If we use dircet read data is already unpacked
