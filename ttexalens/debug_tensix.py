@@ -318,8 +318,9 @@ class TensixDebug:
         except ValueError as e:
             # If the data format is unsupported, return the raw data.
             WARN(e)
-            if isinstance(data, list) and all(isinstance(d, int) for d in data):
-                WARN("Printing raw data...")
-                return [hex(datum) for datum in data]
-            else:
-                raise TTException("Stopping execution, unsupported data format encountered.")
+            raw_data: list[str] = []
+            for datum in data:
+                if isinstance(datum, int):
+                    raw_data.append(hex(datum))
+
+            return raw_data
