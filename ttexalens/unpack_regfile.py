@@ -29,6 +29,12 @@ class TensixDataFormat(Enum):
     Invalid = 0xFF
 
 
+def swap_neighbours(data):
+    for i in range(0, len(data), 2):
+        data[i], data[i + 1] = data[i + 1], data[i]
+    return data
+
+
 def flip_bfp16_bits(value):
     sign = (value & 0x8000) >> 15
     mantisa = (value & 0x7F00) >> 8
@@ -132,18 +138,23 @@ def unpack_uint8(data):
     return [flip_uint8_bits(int.from_bytes(data[i : i + 2]), byteorder="big") for i in range(0, len(data), 2)]
 
 
-def flip_uint16_bits(value):
+def flip_int16_bits(value):
     sign = (value & 0x8000) >> 15
     mag = value & 0x7FFF
     return sign, mag
 
 
-def unpack_uint16(data):
+def unpack_int16(data):
     return [
         (1 - 2 * sign) * mag
         for i in range(0, len(data), 2)
-        for sign, mag in [flip_uint16_bits(int.from_bytes(data[i : i + 2], byteorder="big"))]
+        for sign, mag in [flip_int16_bits(int.from_bytes(data[i : i + 2], byteorder="big"))]
     ]
+
+
+def unpack_uint16(data):
+    data = [int.from_bytes(data[i : i + 2], byteorder="big") for i in range(0, len(data), 2)]
+    return swap_neighbours(data)
 
 
 def flip_int32_msb(value):
@@ -169,8 +180,6 @@ def unpack_int32(data):
 def unpack_data(data, df: int | TensixDataFormat):
     if isinstance(df, int):
         df = TensixDataFormat(df)
-
-    print(len(data))
 
     if df == TensixDataFormat.Float16:
         return unpack_fp16(data)
