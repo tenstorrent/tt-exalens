@@ -179,8 +179,13 @@ class TensixDebug:
     def _is_32_bit_format(df: TensixDataFormat) -> bool:
         return df in (TensixDataFormat.Float32, TensixDataFormat.Int32)
 
+    @staticmethod
+    def _is_8_bit_int_format(df: TensixDataFormat) -> bool:
+        return df in (TensixDataFormat.Int8, TensixDataFormat.UInt8)
+
     def _direct_dest_read_enabled(self, df: TensixDataFormat) -> bool:
-        return type(self.device) == BlackholeDevice and self._is_32_bit_format(df)
+        # 8 bit integer formats are written in 32 bit mode so we can read them directly
+        return type(self.device) == BlackholeDevice and (self._is_32_bit_format(df) or self._is_8_bit_int_format(df))
 
     def direct_dest_read(self, df: TensixDataFormat, num_tiles: int) -> list[int] | list[float]:
         if not self._direct_dest_read_enabled(df):

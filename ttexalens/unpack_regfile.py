@@ -139,6 +139,17 @@ def unpack_fp32(data) -> list[float]:
     return floats
 
 
+def reorder_uint16(data: list[int]) -> list[int]:
+    for i in range(0, len(data), 2):
+        data[i], data[i + 1] = data[i + 1], data[i]
+    return data
+
+
+def unpack_uint16(data: list[int]) -> list[int]:
+    data = [int.from_bytes(data[i : i + 2], byteorder="big") for i in range(0, len(data), 2)]
+    return reorder_uint16(data)
+
+
 def unpack_data(data, df: int | TensixDataFormat):
     if isinstance(df, int):
         df = TensixDataFormat(df)
@@ -151,5 +162,7 @@ def unpack_data(data, df: int | TensixDataFormat):
         return unpack_bfp16(data)
     elif df == TensixDataFormat.Bfp8_b:
         return unpack_bfp8_b(data)
+    elif df == TensixDataFormat.UInt16:
+        return unpack_uint16(data)
     else:
         raise ValueError(f"Unknown or unsupported data format {df}")
