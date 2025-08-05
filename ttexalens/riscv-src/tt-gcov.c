@@ -304,7 +304,7 @@ dump_string (const char *string,
 }
 
 
-void
+__attribute__((noinline)) __attribute__((noipa)) void
 __gcov_info_to_gcda (const struct gcov_info *gi_ptr,
                      void (*filename_fn) (const char *, void *),
                      void (*dump_fn) (const void *, unsigned, void *),
@@ -315,7 +315,7 @@ __gcov_info_to_gcda (const struct gcov_info *gi_ptr,
   write_one_data (gi_ptr, NULL, dump_fn, allocate_fn, arg);
 }
 
-void
+__attribute__((noinline)) __attribute__((noipa)) void
 __gcov_filename_to_gcfn (const char *filename,
 			 void (*dump_fn) (const void *, unsigned, void *),
 			 void *arg)

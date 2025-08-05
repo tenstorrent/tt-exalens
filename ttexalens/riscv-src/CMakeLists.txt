@@ -105,10 +105,10 @@ add_riscv_object("${RISCV_OBJECT}/tmu-crt0.optimized.o" "${RISCV_SOURCE}/tmu-crt
 
 # Add C++ compile target
 foreach(app ${RISCV_APPS})
-    add_riscv_object("${RISCV_OBJECT}/${app}.o" "${RISCV_SOURCE}/${app}.cc" OFF COVERAGE)
+    add_riscv_object("${RISCV_OBJECT}/${app}.o" "${RISCV_SOURCE}/${app}.cc" OFF ${COVERAGE})
 endforeach()
 foreach(app ${RISCV_OPTIMIZED_APPS})
-    add_riscv_object("${RISCV_OBJECT}/${app}.optimized.o" "${RISCV_SOURCE}/${app}.cc" ON COVERAGE)
+    add_riscv_object("${RISCV_OBJECT}/${app}.optimized.o" "${RISCV_SOURCE}/${app}.cc" ON ${COVERAGE})
 endforeach()
 
 # Define function to create targets for a specific architecture, application, and core

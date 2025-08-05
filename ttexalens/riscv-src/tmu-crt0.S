@@ -101,7 +101,6 @@ address_fix:
   la sp, __stack_top
 
   # Clear the bss segment
-  ebreak
   la      t0, __ldm_bss_start          # Load the address of __ldm_bss_start into t0
   la      t1, __ldm_bss_end            # Load the address of __ldm_bss_end into t1
 4:beq     t0, t1, 5f                   # If t0 == t1, break out of loop

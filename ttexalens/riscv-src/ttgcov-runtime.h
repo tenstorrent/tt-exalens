@@ -10,12 +10,12 @@ extern "C" {
 #endif
 
 // Symbols pointing to per-TU coverage data from -fprofile-info-section.
-extern const volatile struct gcov_info* const volatile __gcov_info_start[];
-extern const volatile struct gcov_info* const volatile __gcov_info_end[];
+extern const struct gcov_info* __gcov_info_start[];
+extern const struct gcov_info* __gcov_info_end[];
 
 // Start address and region length of per-RISC REGION_GCOV.
 // Data in the gcda format is written into this region from the raw per-TU counters.
-extern const uint8_t __coverage_start[];
+extern uint8_t __coverage_start[];
 extern const uint32_t __coverage_length;
 
 // The remaining portion of bss is currently used as a makeshift heap.
