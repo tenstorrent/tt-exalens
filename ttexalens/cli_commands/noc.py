@@ -94,7 +94,7 @@ def get_noc_register_names(register_store: RegisterStore) -> list[str]:
 ###############################################################################
 # Register Definitions and Extraction
 ###############################################################################
-def get_noc_status_registers(loc: OnChipCoordinate, device: Device, noc_id: int) -> dict[str, dict[str, int]]:
+def get_noc_status_registers(loc: OnChipCoordinate, device: Device, noc_id: int) -> dict[str, list[tuple[str, int, int]]]:
     """
     Get all NOC status registers organized by groups.
 
@@ -104,7 +104,7 @@ def get_noc_status_registers(loc: OnChipCoordinate, device: Device, noc_id: int)
         noc_id: NOC identifier (0 or 1)
 
     Returns:
-        Dictionary of register groups, each containing register values
+        Dictionary of register groups, each containing list of (name, address, value) tuples
     """
     register_groups = {
         "Transaction Counters (Sent)": {
@@ -130,14 +130,17 @@ def get_noc_status_registers(loc: OnChipCoordinate, device: Device, noc_id: int)
     }
 
     register_store = device.get_block(loc).get_register_store(noc_id)
-    noc_registers: dict[str, dict[str, int]] = {group_name: {} for group_name in register_groups.keys()}
+    noc_registers: dict[str, list[tuple[str, int, int]]] = {group_name: [] for group_name in register_groups.keys()}
     for group_name, registers in register_groups.items():
         for register_desc, reg_name in registers.items():
-            noc_registers[group_name][register_desc] = register_store.read_register(reg_name)
+            value = register_store.read_register(reg_name)
+            desc = register_store.get_register_description(reg_name)
+            address = desc.noc_address if desc.noc_address is not None else 0
+            noc_registers[group_name].append((register_desc, address, value))
     return noc_registers
 
 
-def get_all_noc_registers(loc: OnChipCoordinate, device: Device) -> dict[str, dict[str, int]]:
+def get_all_noc_registers(loc: OnChipCoordinate, device: Device) -> dict[str, list[tuple[str, int, int]]]:
     """
     Get all NOC registers for both NOC0 and NOC1.
 
@@ -148,13 +151,8 @@ def get_all_noc_registers(loc: OnChipCoordinate, device: Device) -> dict[str, di
     Returns:
         Dictionary of all register values for both NOCs
     """
-    noc_registers: dict[str, dict[str, int]] = {"Noc0 Registers": {}, "Noc1 Registers": {}}
     register_store_noc0 = device.get_block(loc).get_register_store(0)
-    register_store_noc1 = device.get_block(loc).get_register_store(1)
     register_names = get_noc_register_names(register_store_noc0)  # We will get the same names for both NOCs
-    for reg_name in register_names:
-        noc_registers["Noc0 Registers"][reg_name] = register_store_noc0.read_register(reg_name)
-        noc_registers["Noc1 Registers"][reg_name] = register_store_noc1.read_register(reg_name)
     
     registers = {}
     registers["Noc0 Registers"] = get_noc_registers(device, loc, 0, register_names)
@@ -261,7 +259,7 @@ def display_specific_noc_registers(
     valid_register_names = get_noc_register_names(register_store)
 
     # Create a data structure to hold register values
-    register_data: dict[str, dict[str, int]] = {f"NOC{noc_id} Registers": {}}
+    register_data: dict[str, list[tuple[str, int, int]]] = {f"NOC{noc_id} Registers": []}
 
     # Check if we have valid registers to display
     valid_registers_found = False
@@ -275,9 +273,11 @@ def display_specific_noc_registers(
 
         if reg_name in valid_register_names:
             valid_registers_found = True
-            # Read the register value
+            # Read the register value and address
             value = register_store.read_register(reg_name)
-            register_data[f"NOC{noc_id} Registers"][reg_name] = value
+            desc = register_store.get_register_description(reg_name)
+            address = desc.noc_address if desc.noc_address is not None else 0
+            register_data[f"NOC{noc_id} Registers"].append((reg_name, address, value))
         else:
             invalid_registers.append(reg_name)
 
