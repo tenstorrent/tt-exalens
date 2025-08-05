@@ -123,7 +123,7 @@ class RichFormatter:
         self,
         group_name: str,
         columns: list[tuple[str, Any]],
-        data: dict[str, Any],
+        data: list[tuple[Any, ...]],
         simple_print: bool = False,
         title_style: str = "bold magenta",
         key_style: str = "cyan",
@@ -153,7 +153,7 @@ class RichFormatter:
 
         for column in columns:
             table.add_column(column[0], style=column[1], no_wrap=True)
-            
+
         for row in data:
             # Convert all values to strings to ensure Rich can render them
             row_str = [str(item) for item in row]
@@ -209,7 +209,7 @@ class RichFormatter:
 
     def display_grouped_data(
         self,
-        data: dict[str, list[tuple[Any,...]]],
+        data: dict[str, list[tuple[Any, ...]]],
         columns: list[tuple[str, Any]],
         grouping: list[list[str]],
         simple_print: bool = False,

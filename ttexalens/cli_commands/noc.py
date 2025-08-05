@@ -97,11 +97,11 @@ def get_noc_register_names(register_store: RegisterStore) -> list[str]:
 def read_register_with_address(register_store: RegisterStore, reg_name: str) -> tuple[str, int, int]:
     """
     Read a register and return its name, address, and value.
-    
+
     Args:
         register_store: The register store to read from
         reg_name: Name of the register to read
-        
+
     Returns:
         Tuple containing (name, address, value)
     """
@@ -111,7 +111,9 @@ def read_register_with_address(register_store: RegisterStore, reg_name: str) -> 
     return (reg_name, address, value)
 
 
-def get_noc_status_registers(loc: OnChipCoordinate, device: Device, noc_id: int) -> dict[str, list[tuple[str, int, int]]]:
+def get_noc_status_registers(
+    loc: OnChipCoordinate, device: Device, noc_id: int
+) -> dict[str, list[tuple[str, int, int]]]:
     """
     Get all NOC status registers organized by groups.
 
@@ -168,23 +170,26 @@ def get_all_noc_registers(loc: OnChipCoordinate, device: Device) -> dict[str, li
     """
     register_store_noc0 = device.get_block(loc).get_register_store(0)
     register_names = get_noc_register_names(register_store_noc0)  # We will get the same names for both NOCs
-    
+
     registers = {}
     registers["Noc0 Registers"] = get_noc_registers(device, loc, 0, register_names)
     registers["Noc1 Registers"] = get_noc_registers(device, loc, 1, register_names)
 
     return registers
 
-def get_noc_registers(device: Device, loc: OnChipCoordinate, noc_id: int, register_names: list[str]) -> list[tuple[str, int, int]]:
+
+def get_noc_registers(
+    device: Device, loc: OnChipCoordinate, noc_id: int, register_names: list[str]
+) -> list[tuple[str, int, int]]:
     """
     Get NOC register values with their addresses.
-    
+
     Args:
         device: Device object
         loc: On-chip coordinate
         noc_id: NOC identifier (0 or 1)
         register_names: List of register names to read
-        
+
     Returns:
         List of tuples containing (name, address, value)
     """
@@ -273,12 +278,12 @@ def display_specific_noc_registers(
     # Filter and validate register names
     valid_registers = []
     invalid_registers = []
-    
+
     for reg_name in reg_names:
         reg_name = reg_name.strip()  # Remove any whitespace
         if not reg_name:  # Skip empty names
             continue
-            
+
         if reg_name in valid_register_names:
             valid_registers.append(reg_name)
         else:
@@ -296,23 +301,26 @@ def display_specific_noc_registers(
         # If no registers were found but none were invalid, it's likely an empty list
         util.ERROR(f"No register names provided for NOC{noc_id}")
 
-def display_grouped_data(data: dict[str, list[tuple[str, int, int]]], grouping: list[list[str]], simple_print: bool = False) -> None:
+
+def display_grouped_data(
+    data: dict[str, list[tuple[str, int, int]]], grouping: list[list[str]], simple_print: bool = False
+) -> None:
     """
     Display grouped data in a formatted way.
-    
+
     Args:
         data: Dictionary containing the data to display
         grouping: List of groups for display organization
         simple_print: Whether to use simplified output format
     """
     columns = [("Name", ""), ("Address", ""), ("Value", "")]
-    
+
     # Transform the data to convert integers to hex strings and sort by address
     transformed_data = {}
     for group_name, rows in data.items():
         # Sort by address first (using original int values)
         sorted_rows = sorted(rows, key=lambda x: x[1])  # Sort by address (second element)
-        
+
         transformed_rows = []
         for row in sorted_rows:
             # Convert each tuple (str, int, int) to (str, str, str) with hex values
@@ -320,8 +328,9 @@ def display_grouped_data(data: dict[str, list[tuple[str, int, int]]], grouping: 
             transformed_row = (name, f"0x{addr:08x}", f"0x{value:08x}")
             transformed_rows.append(transformed_row)
         transformed_data[group_name] = transformed_rows
-    
+
     formatter.display_grouped_data(transformed_data, columns, grouping=grouping, simple_print=simple_print)
+
 
 ###############################################################################
 # Main Command Entry

@@ -144,7 +144,10 @@ def run(cmd_text, context, ui_state: UIState = None):
                 # And pretty-print.
                 formatter.print_header(f"=== Device {device._id} - location {loc.to_str('logical')})", style="bold")
                 formatter.display_grouped_data(
-                    {"Signals": signal_data}, [("Name", ""), ("Value", "")], [["Signals"]], simple_print=dopt.args["--simple"]
+                    {"Signals": signal_data},
+                    [("Name", ""), ("Value", "")],
+                    [["Signals"]],
+                    simple_print=dopt.args["--simple"],
                 )
 
         return []

@@ -79,7 +79,6 @@ niu_register_map = {
     "DEBUG_COUNTER_RESET": NocConfigurationRegisterDescription(offset=0x74),
     "NIU_TRANS_COUNT_RTZ_CFG": NocConfigurationRegisterDescription(offset=0x78),
     "NIU_TRANS_COUNT_RTZ_CLR": NocConfigurationRegisterDescription(offset=0x7C),
-
     # Command buffer 0 registers (base offset 0x0)
     "NOC_TARG_ADDR_LO_CB0": NocControlRegisterDescription(offset=0x0),
     "NOC_TARG_ADDR_MID_CB0": NocControlRegisterDescription(offset=0x4),
@@ -98,7 +97,6 @@ niu_register_map = {
     "NOC_CMD_CTRL_CB0": NocControlRegisterDescription(offset=0x40),
     "NOC_NODE_ID_CB0": NocControlRegisterDescription(offset=0x44),
     "NOC_ENDPOINT_ID_CB0": NocControlRegisterDescription(offset=0x48),
-    
     # Command buffer 1 registers (base offset 0x800)
     "NOC_TARG_ADDR_LO_CB1": NocControlRegisterDescription(offset=0x800),
     "NOC_TARG_ADDR_MID_CB1": NocControlRegisterDescription(offset=0x804),
@@ -117,7 +115,6 @@ niu_register_map = {
     "NOC_CMD_CTRL_CB1": NocControlRegisterDescription(offset=0x840),
     "NOC_NODE_ID_CB1": NocControlRegisterDescription(offset=0x844),
     "NOC_ENDPOINT_ID_CB1": NocControlRegisterDescription(offset=0x848),
-    
     # Command buffer 2 registers (base offset 0x1000)
     "NOC_TARG_ADDR_LO_CB2": NocControlRegisterDescription(offset=0x1000),
     "NOC_TARG_ADDR_MID_CB2": NocControlRegisterDescription(offset=0x1004),
@@ -136,7 +133,6 @@ niu_register_map = {
     "NOC_CMD_CTRL_CB2": NocControlRegisterDescription(offset=0x1040),
     "NOC_NODE_ID_CB2": NocControlRegisterDescription(offset=0x1044),
     "NOC_ENDPOINT_ID_CB2": NocControlRegisterDescription(offset=0x1048),
-    
     # Command buffer 3 registers (base offset 0x1800)
     "NOC_TARG_ADDR_LO_CB3": NocControlRegisterDescription(offset=0x1800),
     "NOC_TARG_ADDR_MID_CB3": NocControlRegisterDescription(offset=0x1804),
@@ -155,7 +151,6 @@ niu_register_map = {
     "NOC_CMD_CTRL_CB3": NocControlRegisterDescription(offset=0x1840),
     "NOC_NODE_ID_CB3": NocControlRegisterDescription(offset=0x1844),
     "NOC_ENDPOINT_ID_CB3": NocControlRegisterDescription(offset=0x1848),
-    
     "NUM_MEM_PARITY_ERR": NocControlRegisterDescription(offset=0x50),
     "NUM_HEADER_1B_ERR": NocControlRegisterDescription(offset=0x54),
     "NUM_HEADER_2B_ERR": NocControlRegisterDescription(offset=0x58),
