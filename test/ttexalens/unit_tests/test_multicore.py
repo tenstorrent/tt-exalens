@@ -114,7 +114,7 @@ class ProgramWriter:
 
     def write_program(self, core: RiscvCoreSimulator):
         for i, instruction in enumerate(self.instructions):
-            core.write_program(self.start_address + i * 4, instruction)
+            core.write_program(i * 4, instruction)
 
     def append_ebreak(self):
         self.append(0x00100073)
@@ -271,11 +271,13 @@ class ProgramWriter:
         assert 0 <= len_bytes < 2**32, "Length in bytes must be a 32-bit unsigned integer"
         assert address_register in range(32), "Address register must be between 0 and 31"
         assert constant_register in range(32), "Constant register must be between 0 and 31"
+        # Maybe not needed to repeat in test
         self.append_noc_cmd_buf_write_reg(noc, cmd_buf, ProgramWriter.NOC_RET_ADDR_LO, dest_addr, address_register, constant_register)
         self.append_noc_cmd_buf_write_reg(noc, cmd_buf, ProgramWriter.NOC_TARG_ADDR_LO, src_addr & 0xFFFFFFFF, address_register, constant_register)
         self.append_noc_cmd_buf_write_reg(noc, cmd_buf, ProgramWriter.NOC_TARG_ADDR_MID, (src_addr >> 32) & 0x1000000F, address_register, constant_register)
         self.append_noc_cmd_buf_write_reg(noc, cmd_buf, ProgramWriter.NOC_TARG_ADDR_COORDINATE, (src_addr >> ProgramWriter.NOC_ADDR_COORD_SHIFT) & ProgramWriter.NOC_COORDINATE_MASK, address_register, constant_register)
         self.append_noc_cmd_buf_write_reg(noc, cmd_buf, ProgramWriter.NOC_AT_LEN_BE, len_bytes, address_register, constant_register)
+
         self.append_noc_cmd_buf_write_reg(noc, cmd_buf, ProgramWriter.NOC_CMD_CTRL, ProgramWriter.NOC_CTRL_SEND_REQ, address_register, constant_register)
 
     def append_noc_cmd_buf_read_reg(self, noc: int, cmd_buf: int, addr: int, address_register: int = 10, value_register: int = 11):
@@ -354,6 +356,72 @@ class TestMulticoreNoc(unittest.TestCase):
         self.device = self.context.devices[0]
         self.dram_location = self.device.get_block_locations("dram")[0]
         self.brisc = RiscvCoreSimulator(self.context, "FW0", "BRISC")
+        self.trisc0 = RiscvCoreSimulator(self.context, "FW0", "TRISC0")
+
+    def test_break_dram(self):
+        input_words = [0xBEBACECA] * 512  # Example data to write
+        input_bytes = bytearray()
+        for word in input_words:
+            input_bytes.extend(word.to_bytes(4, 'little'))
+
+        input_words2 = [0xBEBAFAFA] * 512  # Example data to write
+        input_bytes2 = bytearray()
+        for word in input_words2:
+            input_bytes2.extend(word.to_bytes(4, 'little'))
+
+        clear_words = [0xBABADEDA] * 512  # Example data to write
+        clear_bytes = bytearray()
+        for word in clear_words:
+            clear_bytes.extend(word.to_bytes(4, 'little'))
+
+        dram_l1 = 0x20_0000_0000  # 128kb
+        dram_registers = 0x100_0000_0000
+
+
+        noc_id1 = 0
+        noc_id2 = 1
+        dram_address1 = 0  # Example DRAM address to write to
+        dram_address2 = 2048  # Example DRAM address to write to
+        l1_address1 = 0x10000  # Example L1 address to read from
+        l1_address2 = 0x10000 + 2048  # Example L1 address to read from
+        # source_x: int = self.dram_location.to(f"noc{noc_id}")[0]
+        # source_y: int = self.dram_location.to(f"noc{noc_id}")[1]
+        source_x: int = self.dram_location.to(f"noc0")[0]
+        source_y: int = self.dram_location.to(f"noc0")[1]
+        source_address1 = (source_x << 36) + (source_y << 42) + dram_address1
+        source_address2 = (source_x << 36) + (source_y << 42) + dram_address2
+
+        lib.write_to_device(self.dram_location, dram_address1, bytes(input_bytes), self.device._id, self.context)
+        lib.write_to_device(self.dram_location, dram_address2, bytes(input_bytes2), self.device._id, self.context)
+        lib.write_to_device(self.brisc.core_loc, l1_address1, bytes(clear_bytes), self.device._id, self.context)
+        lib.write_to_device(self.trisc0.core_loc, l1_address2, bytes(clear_bytes), self.device._id, self.context)
+        program_writer1 = ProgramWriter(self.brisc.program_base_address)
+        program_writer1.append_noc_init(self.brisc.noc_block.get_register_store(noc_id1).read_register("NOC_ID_LOGICAL"), noc_id1)
+        loop_address1 = program_writer1.current_address
+        program_writer1.append_wait_noc_cmd_buf_ready(noc_id1, 0)
+        program_writer1.append_noc_fast_read(noc_id1, 0, source_address1, l1_address1, len(input_bytes))
+        program_writer1.append_jal(loop_address1 - program_writer1.current_address)
+        program_writer1.write_program(self.brisc)
+
+        program_writer2 = ProgramWriter(self.trisc0.program_base_address)
+        program_writer2.append_noc_init(self.trisc0.noc_block.get_register_store(noc_id2).read_register("NOC_ID_LOGICAL"), noc_id2)
+        loop_address2 = program_writer2.current_address
+        program_writer2.append_wait_noc_cmd_buf_ready(noc_id2, 0)
+        program_writer2.append_noc_fast_read(noc_id2, 0, source_address2, l1_address2, len(input_bytes2))
+        program_writer2.append_jal(loop_address2 - program_writer2.current_address)
+        program_writer2.write_program(self.trisc0)
+
+        self.brisc.set_reset(False)
+        self.trisc0.set_reset(False)
+
+        #time.sleep(1)  # Allow time for the program to execute
+        #print(self.brisc.get_pc_and_print())
+        #self.assertEqual(self.brisc.get_pc_relative(), (len(program_writer.instructions) - 2) * 4)
+        l1_bytes = lib.read_from_device(self.brisc.core_loc, l1_address1, self.device._id, len(input_bytes), self.context)
+        self.assertEqual(l1_bytes, input_bytes, "Data read from L1 does not match written data")
+        l1_bytes = lib.read_from_device(self.trisc0.core_loc, l1_address2, self.device._id, len(input_bytes2), self.context)
+        self.assertEqual(l1_bytes, input_bytes2, "Data read from L1 does not match written data")
+
 
     def test_dram_read(self):
         input_words = [0xBEBACECA] * 512  # Example data to write
@@ -370,15 +438,17 @@ class TestMulticoreNoc(unittest.TestCase):
         noc_id = 1
         dram_address = 0  # Example DRAM address to write to
         l1_address = 0x10000  # Example L1 address to read from
-        source_x: int = self.dram_location.to(f"noc{noc_id}")[0]
-        source_y: int = self.dram_location.to(f"noc{noc_id}")[1]
+        # source_x: int = self.dram_location.to(f"noc{noc_id}")[0]
+        # source_y: int = self.dram_location.to(f"noc{noc_id}")[1]
+        source_x: int = self.dram_location.to(f"noc0")[0]
+        source_y: int = self.dram_location.to(f"noc0")[1]
         source_address = (source_x << 36) + (source_y << 42) + dram_address
 
         lib.write_to_device(self.dram_location, dram_address, bytes(input_bytes), self.device._id, self.context)
         lib.write_to_device(self.brisc.core_loc, l1_address, bytes(clear_bytes), self.device._id, self.context)
         program_writer = ProgramWriter(self.brisc.program_base_address)
-        program_writer.append_ebreak()
-        program_writer.append_noc_init(self.brisc.noc_block.get_register_store(noc_id).read_register("NOC_NODE_ID"), noc_id)
+        #program_writer.append_ebreak()
+        program_writer.append_noc_init(self.brisc.noc_block.get_register_store(noc_id).read_register("NOC_ID_LOGICAL"), noc_id)
         program_writer.append_wait_noc_cmd_buf_ready(noc_id, 0)
         program_writer.append_noc_fast_read(noc_id, 0, source_address, l1_address, len(input_bytes))
         program_writer.append_wait_noc_reads_received(noc_id, 1)
