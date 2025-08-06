@@ -177,7 +177,7 @@ class TensixDebug:
 
     @staticmethod
     def _is_32_bit_format(df: TensixDataFormat) -> bool:
-        return df in (TensixDataFormat.Float32, TensixDataFormat.Int32)
+        return df in (TensixDataFormat.Float32, TensixDataFormat.Int32, TensixDataFormat.UInt32)
 
     @staticmethod
     def _is_8_bit_int_format(df: TensixDataFormat) -> bool:
@@ -193,14 +193,14 @@ class TensixDebug:
             return struct.unpack(">f", value.to_bytes(4, "big"))[0]
         # Because in ALU register format for dest is INT32 for both INT32 and UINT32 we need to check sign bit
         elif df == TensixDataFormat.Int32:
-            if (value & 0x80000000) == 0x80000000:
+            if value & 0x80000000:
                 return struct.unpack(">i", value.to_bytes(4, "big"))[0]
             else:
                 # UINT32 case
                 return value
         # Same as for INT32/UINT32
         elif df == TensixDataFormat.Int8:
-            if (value & 0x80000000) == 0x80000000:
+            if value & 0x80000000:
                 return (value & 0x000000FF) - 128
             else:
                 # UINT8 case
@@ -208,11 +208,11 @@ class TensixDebug:
         else:
             raise TTException(f"Unsupported data format {df} for unpacking.")
 
-    def direct_dest_read(self, df: TensixDataFormat, num_tiles: int) -> list[int] | list[float]:
+    def direct_dest_read(self, df: TensixDataFormat, num_tiles: int) -> list[int | float]:
         if not self._direct_dest_read_enabled(df):
             raise TTException("Direct dest reading not supported for this architecture or data format.")
 
-        data: list[int] | list[float] = []
+        data: list[int | float] = []
         # Using TRISC0 debug hardware to read memory
         risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
         for i in range(num_tiles * TILE_SIZE):
@@ -227,7 +227,7 @@ class TensixDebug:
 
     def read_regfile_data(
         self, regfile: int | str | REGFILE, df: TensixDataFormat, num_tiles: int | None = None
-    ) -> list[int] | list[float]:
+    ) -> list[int | float]:
         """Dumps SRCA/DSTACC register file from the specified core.
             Due to the architecture of SRCA, you can see only see last two faces written.
             SRCB is currently not supported.
@@ -289,9 +289,7 @@ class TensixDebug:
 
         return data
 
-    def read_regfile(
-        self, regfile: int | str | REGFILE, num_tiles: int | None = None
-    ) -> list[int] | list[float] | list[str]:
+    def read_regfile(self, regfile: int | str | REGFILE, num_tiles: int | None = None) -> list[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
 
