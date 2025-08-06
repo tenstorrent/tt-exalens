@@ -289,7 +289,7 @@ class TensixDebug:
 
         return data
 
-    def read_regfile(self, regfile: int | str | REGFILE, num_tiles: int | None = None) -> list[int | float | str]:
+    def read_regfile(self, regfile: int | str | REGFILE, num_tiles: int | None = None) -> list[int | float] | list[str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
 

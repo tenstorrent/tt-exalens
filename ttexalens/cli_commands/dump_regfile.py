@@ -44,7 +44,7 @@ from ttexalens.util import INFO
 from ttexalens.debug_tensix import TILE_SIZE
 
 
-def print_regfile(data: list[int | float | str]) -> None:
+def print_regfile(data: list[int | float] | list[str]) -> None:
     for i in range(len(data)):
         if i % TILE_SIZE == 0:
             INFO(f"TILE ID: {i // TILE_SIZE}")
