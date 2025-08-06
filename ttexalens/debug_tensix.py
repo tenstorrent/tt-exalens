@@ -248,13 +248,13 @@ class TensixDebug:
         if self.device._arch != "wormhole_b0" and self.device._arch != "blackhole":
             raise TTException("Not supported for this architecture: ")
 
+        data: list[int | float] = []
         # Directly reading dest does not require complex unpacking so we return it right away
         if regfile == REGFILE.DSTACC and self._direct_dest_read_enabled(df):
             num_tiles = self._validate_number_of_tiles(num_tiles)
-            return self.direct_dest_read(df, num_tiles)
+            data = self.direct_dest_read(df, num_tiles)
         else:
             self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
-            data: list[int] = []
             for row in range(64):
                 row_addr = row if regfile != REGFILE.SRCA else 0
                 regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
@@ -305,6 +305,7 @@ class TensixDebug:
         if regfile == REGFILE.DSTACC and not self._direct_dest_read_enabled(df) and num_tiles is not None:
             WARN("num_tiles argument only has effect for 32 bit formats on blackhole.")
 
+        data: list[int | float | str] = []
         # Workaround for an architectural quirk of Wormhole: reading DST as INT32 or FP32
         # returns zeros on the lower 16 bits of each datum. This handles the FP32 case.
         if regfile == REGFILE.DSTACC and df == TensixDataFormat.Float32 and type(self.device) == WormholeDevice:
