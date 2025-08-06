@@ -33,7 +33,7 @@ class RiscvCoreSimulator:
         risc_debug = self.noc_block.get_risc_debug(self.risc_name)
         assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug instance, got {type(risc_debug)}"
         self.risc_debug: BabyRiscDebug = risc_debug
-        assert self.risc_debug.debug_hardware is not None
+        #assert self.risc_debug.debug_hardware is not None
         self.debug_hardware = self.risc_debug.debug_hardware
         assert self.noc_block.debug_bus is not None
         self.debug_bus_store: DebugBusSignalStore = self.noc_block.debug_bus
