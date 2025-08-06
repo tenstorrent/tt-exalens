@@ -202,9 +202,11 @@ class TensixDebug:
             # Interpreting data
             if df == TensixDataFormat.Float32:
                 rd_data = struct.unpack(">f", rd_data.to_bytes(4, "big"))[0]
-            elif df == TensixDataFormat.Int32:
+            # Because in ALU register format for dest is INT32 for both INT32 and UINT32 we need to check sign bit
+            elif df == TensixDataFormat.Int32 and ((rd_data & 0x80000000) == 0x80000000):
                 rd_data = struct.unpack(">i", rd_data.to_bytes(4, "big"))[0]
-            elif df == TensixDataFormat.Int8 and (rd_data & 0x80000000):
+            # Same as for INT32/UINT32
+            elif df == TensixDataFormat.Int8 and ((rd_data & 0x80000000) == 0x80000000):
                 rd_data = (rd_data & 0x000000FF) - 128
 
             data.append(rd_data)
