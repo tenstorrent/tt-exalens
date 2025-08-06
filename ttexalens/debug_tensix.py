@@ -305,7 +305,7 @@ class TensixDebug:
         if regfile == REGFILE.DSTACC and not self._direct_dest_read_enabled(df) and num_tiles is not None:
             WARN("num_tiles argument only has effect for 32 bit formats on blackhole.")
 
-        data: list[int | float | str] = []
+        data: list[int | float] = []
         # Workaround for an architectural quirk of Wormhole: reading DST as INT32 or FP32
         # returns zeros on the lower 16 bits of each datum. This handles the FP32 case.
         if regfile == REGFILE.DSTACC and df == TensixDataFormat.Float32 and type(self.device) == WormholeDevice:
@@ -340,4 +340,5 @@ class TensixDebug:
         except ValueError as e:
             # If the data format is unsupported, return the raw data.
             WARN(e)
-            return [hex(datum) for datum in data if isinstance(datum, int)]
+            raw_data: list[str] = [hex(datum) for datum in data if isinstance(datum, int)]
+            return raw_data
