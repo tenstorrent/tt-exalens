@@ -187,6 +187,27 @@ class TensixDebug:
         # 8 bit integer formats are written in 32 bit mode so we can read them directly
         return type(self.device) == BlackholeDevice and (self._is_32_bit_format(df) or self._is_8_bit_int_format(df))
 
+    @staticmethod
+    def _unpack_value(value: int, df: TensixDataFormat) -> int | float:
+        if df == TensixDataFormat.Float32:
+            return struct.unpack(">f", value.to_bytes(4, "big"))[0]
+        # Because in ALU register format for dest is INT32 for both INT32 and UINT32 we need to check sign bit
+        elif df == TensixDataFormat.Int32:
+            if (value & 0x80000000) == 0x80000000:
+                return struct.unpack(">i", value.to_bytes(4, "big"))[0]
+            else:
+                # UINT32 case
+                return value
+        # Same as for INT32/UINT32
+        elif df == TensixDataFormat.Int8:
+            if (value & 0x80000000) == 0x80000000:
+                return (value & 0x000000FF) - 128
+            else:
+                # UINT8 case
+                return value
+        else:
+            raise TTException(f"Unsupported data format {df} for unpacking.")
+
     def direct_dest_read(self, df: TensixDataFormat, num_tiles: int) -> list[int] | list[float]:
         if not self._direct_dest_read_enabled(df):
             raise TTException("Direct dest reading not supported for this architecture or data format.")
@@ -199,17 +220,8 @@ class TensixDebug:
                 address = self.noc_block.dest_start_address.private_address + 4 * i
             with risc_debug.ensure_halted():
                 rd_data = risc_debug.read_memory(address)
-            # Interpreting data
-            if df == TensixDataFormat.Float32:
-                rd_data = struct.unpack(">f", rd_data.to_bytes(4, "big"))[0]
-            # Because in ALU register format for dest is INT32 for both INT32 and UINT32 we need to check sign bit
-            elif df == TensixDataFormat.Int32 and ((rd_data & 0x80000000) == 0x80000000):
-                rd_data = struct.unpack(">i", rd_data.to_bytes(4, "big"))[0]
-            # Same as for INT32/UINT32
-            elif df == TensixDataFormat.Int8 and ((rd_data & 0x80000000) == 0x80000000):
-                rd_data = (rd_data & 0x000000FF) - 128
 
-            data.append(rd_data)
+            data.append(self._unpack_value(rd_data, df))
 
         return data
 
