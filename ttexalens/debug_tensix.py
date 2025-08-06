@@ -199,9 +199,13 @@ class TensixDebug:
                 address = self.noc_block.dest_start_address.private_address + 4 * i
             with risc_debug.ensure_halted():
                 rd_data = risc_debug.read_memory(address)
-            # Interpreting data as float32
+            # Interpreting data
             if df == TensixDataFormat.Float32:
                 rd_data = struct.unpack(">f", rd_data.to_bytes(4, "big"))[0]
+            elif df == TensixDataFormat.Int32:
+                rd_data = struct.unpack(">i", rd_data.to_bytes(4, "big"))[0]
+            elif df == TensixDataFormat.Int8 and (rd_data & 0x80000000):
+                rd_data = (rd_data & 0x000000FF) - 128
 
             data.append(rd_data)
 
@@ -323,9 +327,4 @@ class TensixDebug:
         except ValueError as e:
             # If the data format is unsupported, return the raw data.
             WARN(e)
-            raw_data: list[str] = []
-            for datum in data:
-                if isinstance(datum, int):
-                    raw_data.append(hex(datum))
-
-            return raw_data
+            return [hex(datum) for datum in data if isinstance(datum, int)]
