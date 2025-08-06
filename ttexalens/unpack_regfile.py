@@ -140,15 +140,20 @@ def unpack_fp32(data) -> list[float]:
     return floats
 
 
-def reorder_uint16(data: list[int]) -> list[int]:
-    for i in range(0, len(data), 2):
-        data[i], data[i + 1] = data[i + 1], data[i]
-    return data
-
-
 def unpack_uint16(data: list[int]) -> list[int]:
-    data = [int.from_bytes(data[i : i + 2], byteorder="big") for i in range(0, len(data), 2)]
-    return reorder_uint16(data)
+    byte_data = bytes(data)
+    unpacked_data = struct.unpack(f">{len(byte_data)//2}H", byte_data)
+
+    # Reorder in pairs
+    result = []
+    for i in range(0, len(unpacked_data), 2):
+        if i + 1 < len(unpacked_data):
+            # Here we swap values in pair
+            result.extend([unpacked_data[i + 1], unpacked_data[i]])
+        else:
+            result.append(unpacked_data[i])
+
+    return result
 
 
 def unpack_data(data, df: int | TensixDataFormat):

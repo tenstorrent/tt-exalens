@@ -193,18 +193,12 @@ class TensixDebug:
             return struct.unpack(">f", value.to_bytes(4, "big"))[0]
         # Because in ALU register format for dest is INT32 for both INT32 and UINT32 we need to check sign bit
         elif df == TensixDataFormat.Int32:
-            if value & 0x80000000:
-                return struct.unpack(">i", value.to_bytes(4, "big"))[0]
-            else:
-                # UINT32 case
-                return value
+            # If the sign bit is set, we need to convert it to a signed integer
+            return value - 0x100000000 if value & 0x80000000 else value
         # Same as for INT32/UINT32
         elif df == TensixDataFormat.Int8:
-            if value & 0x80000000:
-                return (value & 0x000000FF) - 128
-            else:
-                # UINT8 case
-                return value
+            # Since 1-byte integers are stored in 32-bit mode sign bit is in MSB, bytes look like this: 0x80 0x00 0x00 value
+            return (value & 0x000000FF) - 0x80 if value & 0x80000000 else value
         else:
             raise TTException(f"Unsupported data format {df} for unpacking.")
 
