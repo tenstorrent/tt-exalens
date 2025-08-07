@@ -302,7 +302,7 @@ class TensixDebug:
         data: list[int | float] = []
         # Workaround for an architectural quirk of Wormhole: reading DST as INT32 or FP32
         # returns zeros on the lower 16 bits of each datum. This handles the FP32 case.
-        if regfile == REGFILE.DSTACC and df == TensixDataFormat.Float32 and type(self.device) == WormholeDevice:
+        if regfile == REGFILE.DSTACC and df == TensixDataFormat.Float32 and isinstance(self.device, WormholeDevice):
             ops = self.device.instructions
             upper = self.read_regfile_data(regfile, df)
             # First, read the upper 16 bits of each value.
