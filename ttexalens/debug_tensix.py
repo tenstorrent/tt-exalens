@@ -209,11 +209,11 @@ class TensixDebug:
         data: list[int | float] = []
         # Using TRISC0 debug hardware to read memory
         risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
-        base_address = self.noc_block.dest_start_address.private_address
+        if self.device == BlackholeFunctionalWorkerBlock:
+            base_address = self.noc_block.dest_start_address.private_address
         with risc_debug.ensure_halted():
             for i in range(num_tiles * TILE_SIZE):
-                if self.noc_block == BlackholeFunctionalWorkerBlock:
-                    address = base_address + 4 * i
+                address = base_address + 4 * i
 
                 rd_data = risc_debug.read_memory(address)
                 data.append(self._unpack_value(rd_data, df))
@@ -243,12 +243,12 @@ class TensixDebug:
         if self.device._arch != "wormhole_b0" and self.device._arch != "blackhole":
             raise TTException("Not supported for this architecture: ")
 
-        data: list[int | float] = []
         # Directly reading dest does not require complex unpacking so we return it right away
         if regfile == REGFILE.DSTACC and self._direct_dest_read_enabled(df):
             num_tiles = self._validate_number_of_tiles(num_tiles)
             return self.direct_dest_read(df, num_tiles)
 
+        data: list[int | float] = []
         self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
         for row in range(64):
             row_addr = row if regfile != REGFILE.SRCA else 0
