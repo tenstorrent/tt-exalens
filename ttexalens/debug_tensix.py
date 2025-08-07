@@ -185,7 +185,7 @@ class TensixDebug:
 
     def _direct_dest_read_enabled(self, df: TensixDataFormat) -> bool:
         # 8 bit integer formats are written in 32 bit mode so we can read them directly
-        return type(self.device) == BlackholeDevice and (self._is_32_bit_format(df) or self._is_8_bit_int_format(df))
+        return isinstance(self.device, BlackholeDevice) and (self._is_32_bit_format(df) or self._is_8_bit_int_format(df))
 
     @staticmethod
     def _unpack_value(value: int, df: TensixDataFormat) -> int | float:
