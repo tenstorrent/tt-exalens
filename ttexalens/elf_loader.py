@@ -41,7 +41,7 @@ class ElfLoader:
         """
         return self.device._context
 
-    SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".stack", ".gcov_info"]
+    SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".stack", ".gcov_info", ".init_array"]
 
     @staticmethod
     def get_jump_to_offset_instruction(offset, rd=0):

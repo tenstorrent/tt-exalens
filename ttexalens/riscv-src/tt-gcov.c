@@ -31,7 +31,7 @@ typedef void (*gcov_merge_fn) (gcov_type *, gcov_unsigned_t);
 #define GCOV_TOPN_MEM_COUNTERS 3
 #define GCOV_TOPN_DISK_COUNTERS 2
 #define GCOV_TAG_FUNCTION_LENGTH (3 * GCOV_WORD_SIZE)
-#define GCOV_VERSION 0x0C0400
+#define GCOV_VERSION 0x4232342A // for GCC 12.4.0
 #ifndef __INTPTR_TYPE__
 #define __INTPTR_TYPE__ intptr_t
 #endif

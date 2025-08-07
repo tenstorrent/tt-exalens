@@ -16,7 +16,7 @@ extern const struct gcov_info* __gcov_info_end[];
 // Start address and region length of per-RISC REGION_GCOV.
 // Data in the gcda format is written into this region from the raw per-TU counters.
 extern uint8_t __coverage_start[];
-extern const uint32_t __coverage_length;
+extern uint8_t __coverage_end[];
 
 // The remaining portion of bss is currently used as a makeshift heap.
 // This is needed for __gcov_info_to_gcda, as it may allocate. 

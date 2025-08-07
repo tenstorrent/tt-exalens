@@ -8,6 +8,7 @@
 _start:
 
 CRT_START:
+ebreak
   # Since NCRISC has to load itself into address space that our loader cannot do, we need to do following magic:
   # - First we load bits on specific location in loader (to .loader_code section)
   # - Then we copy code from .loader_code to .init section

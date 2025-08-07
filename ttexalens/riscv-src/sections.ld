@@ -80,7 +80,18 @@ SECTIONS
   } > REGION_IMPURE_DATA
   .bss :
   {
-    *(.bss)
+    __ldm_bss_start = .;
+    *(.sbss2 .sbss2.* .gnu.linkonce.sb2.*)
+    *(.dynsbss)
+    *(.sbss .sbss.* .gnu.linkonce.sb.*)
+    *(.scommon)
+    . = ALIGN(4);
+    *(.dynbss)
+    *(.bss .bss.* .gnu.linkonce.b.*)
+    *(COMMON)
+    . = ALIGN(4);
+    __ldm_bss_end = .;
+
   } > REGION_BSS
   __bss_free = ALIGN(., 4);
   ASSERT(__bss_free <= ORIGIN(REGION_BSS) + LENGTH(REGION_BSS), "error: .bss has overflowed (coverage data resides there)")
@@ -124,17 +135,6 @@ SECTIONS
     *(.got.plt) *(.igot.plt) *(.got) *(.igot)
     . = ALIGN(4);
     __ldm_data_end = .;
-    __ldm_bss_start = .;
-    *(.sbss2 .sbss2.* .gnu.linkonce.sb2.*)
-    *(.dynsbss)
-    *(.sbss .sbss.* .gnu.linkonce.sb.*)
-    *(.scommon)
-    . = ALIGN(4);
-    *(.dynbss)
-    *(.bss .bss.* .gnu.linkonce.b.*)
-    *(COMMON)
-    . = ALIGN(4);
-    __ldm_bss_end = .;
   } > REGION_DATA
   local_data_noinit __ldm_bss_end (NOLOAD) :
   {
@@ -188,7 +188,7 @@ SECTIONS
   .gnu.attributes 0 : { KEEP (*(.gnu.attributes)) }
 
   __coverage_start = ORIGIN(REGION_GCOV);
-  __coverage_length = LENGTH(REGION_GCOV);
+  __coverage_end = ORIGIN(REGION_GCOV) + LENGTH(REGION_GCOV);
   __bss_start = ORIGIN(REGION_BSS);
   __bss_end = ORIGIN(REGION_BSS) + LENGTH(REGION_BSS);
 

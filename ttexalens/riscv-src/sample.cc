@@ -36,7 +36,7 @@ void decrement_mailbox() { g_MAILBOX--; }
 extern "C" void infloop() { for (;;); }
 
 int main() {
-    
+    halt();
     g_TESTBYTEACCESS.all_bytes = 0x0102030405060708;
 
     // STEP 1: Set the mailbox to RISC_DBG_STATUS1
@@ -75,8 +75,9 @@ int main() {
     // STEP END: Set the mailbox to RISC_DBG_STATUS0
     g_MAILBOX = (uint32_t)RISC_DBG_STATUS0;
     
-    //__asm__ volatile("ebreak");
+    __asm__ volatile("ebreak");
     gcov_dump();
+    halt();
     infloop();
     return 0;
 }
