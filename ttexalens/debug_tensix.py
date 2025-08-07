@@ -164,9 +164,12 @@ class TensixDebug:
         """
         self.register_store.write_register(register, value)
 
-    @staticmethod
-    def _validate_number_of_tiles(num_tiles: int | None) -> int:
-        max_num_tiles = 8  # maximum number of tiles in dest for 32 bit formats
+    def _validate_number_of_tiles(self, num_tiles: int | None) -> int:
+        max_num_tiles = (
+            self.noc_block.dest.size // TILE_SIZE // 4
+            if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock)
+            else None
+        )
         if num_tiles is None or num_tiles > max_num_tiles or num_tiles <= 0:
             WARN(
                 f"Number of tiles given {num_tiles} is not valid, defaulting to maximum number of tiles {max_num_tiles}"
@@ -210,11 +213,13 @@ class TensixDebug:
         # Using TRISC0 debug hardware to read memory
         risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
         if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
-            base_address = self.noc_block.dest_start_address.private_address
+            base_address = self.noc_block.dest.address.private_address
+            dest_size = self.noc_block.dest.size
         with risc_debug.ensure_halted():
             for i in range(num_tiles * TILE_SIZE):
                 address = base_address + 4 * i
-
+                if address >= base_address + dest_size:
+                    raise TTException(f"Address {hex(address)} is out of bounds for destination memory block.")
                 rd_data = risc_debug.read_memory(address)
                 data.append(self._unpack_value(rd_data, df))
 
@@ -231,7 +236,7 @@ class TensixDebug:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
 
         Returns:
-                list[int | float]: 64x32 bytes of register file data (64 rows, 32 bytes per row). Also returns num_tiles * TILE_SIZE of unpacked data if using direct dest reading.
+                list[int | float]:  Returns num_tiles * TILE_SIZE of unpacked data if using direct dest reading or list of int values containing bytes if using non-direct reading.
         """
         thread_id = 2
         regfile = convert_regfile(regfile)
