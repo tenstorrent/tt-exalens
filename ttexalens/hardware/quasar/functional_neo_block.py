@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
 from functools import cache, cached_property
 from typing import Callable
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
@@ -11,7 +12,8 @@ from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.quasar.functional_neo_debug_bus_signals import debug_bus_signal_map
 from ttexalens.hardware.quasar.functional_neo_registers import register_map
-from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
+from typing import TYPE_CHECKING
+
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
@@ -19,6 +21,9 @@ from ttexalens.register_store import (
     RegisterDescription,
     RegisterStore,
 )
+
+if TYPE_CHECKING:
+    from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
 
 
 def get_register_base_address_callable(
@@ -78,7 +83,7 @@ class QuasarFunctionalNeoBlock:
             default_code_start_address=risc_base_start_address + 0x00006000,
             code_start_address_register="RISCV_DEBUG_REG_TRISC0_RESET_PC",
             code_start_address_enable_register="RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE",
-            code_start_address_enable_bit=0,
+            code_start_address_enable_bit=0b0001,
             data_private_memory=MemoryBlock(
                 size=8 * 1024,
                 address=DeviceAddress(
@@ -103,7 +108,7 @@ class QuasarFunctionalNeoBlock:
             default_code_start_address=risc_base_start_address + 0x0000A000,
             code_start_address_register="RISCV_DEBUG_REG_TRISC1_RESET_PC",
             code_start_address_enable_register="RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE",
-            code_start_address_enable_bit=1,
+            code_start_address_enable_bit=0b0010,
             data_private_memory=MemoryBlock(
                 size=8 * 1024,
                 address=DeviceAddress(
@@ -128,7 +133,7 @@ class QuasarFunctionalNeoBlock:
             default_code_start_address=risc_base_start_address + 0x0000E000,
             code_start_address_register="RISCV_DEBUG_REG_TRISC2_RESET_PC",
             code_start_address_enable_register="RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE",
-            code_start_address_enable_bit=2,
+            code_start_address_enable_bit=0b0100,
             data_private_memory=MemoryBlock(
                 size=8 * 1024,
                 address=DeviceAddress(
@@ -153,7 +158,7 @@ class QuasarFunctionalNeoBlock:
             default_code_start_address=risc_base_start_address + 0x00012000,
             code_start_address_register="RISCV_DEBUG_REG_TRISC3_RESET_PC",
             code_start_address_enable_register="RISCV_DEBUG_REG_TRISC_RESET_PC_OVERRIDE",
-            code_start_address_enable_bit=3,
+            code_start_address_enable_bit=0b1000,
             data_private_memory=MemoryBlock(
                 size=8 * 1024,
                 address=DeviceAddress(

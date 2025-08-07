@@ -14,24 +14,39 @@ from ttexalens.elf_loader import ElfLoader
 
 @parameterized_class(
     [
-        {"core_desc": "ETH0", "risc_name": "ERISC"},
-        {"core_desc": "ETH0", "risc_name": "ERISC0"},
-        {"core_desc": "ETH0", "risc_name": "ERISC1"},
-        {"core_desc": "FW0", "risc_name": "BRISC"},
-        {"core_desc": "FW0", "risc_name": "TRISC0"},
-        {"core_desc": "FW0", "risc_name": "TRISC1"},
-        {"core_desc": "FW0", "risc_name": "TRISC2"},
-        {"core_desc": "FW0", "risc_name": "TRISC3"},
-        {"core_desc": "FW1", "risc_name": "BRISC"},
-        {"core_desc": "FW1", "risc_name": "TRISC0"},
-        {"core_desc": "FW1", "risc_name": "TRISC1"},
-        {"core_desc": "FW1", "risc_name": "TRISC2"},
-        {"core_desc": "FW1", "risc_name": "TRISC3"},
-        # {"core_desc": "DRAM0", "risc_name": "DRISC"},
+        {"core_desc": "ETH0", "risc_name": "ERISC", "neo_id": None},
+        {"core_desc": "ETH0", "risc_name": "ERISC0", "neo_id": None},
+        {"core_desc": "ETH0", "risc_name": "ERISC1", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "BRISC", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "TRISC0", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "TRISC2", "neo_id": None},
+        {"core_desc": "FW1", "risc_name": "BRISC", "neo_id": None},
+        {"core_desc": "FW1", "risc_name": "TRISC0", "neo_id": None},
+        {"core_desc": "FW1", "risc_name": "TRISC1", "neo_id": None},
+        {"core_desc": "FW1", "risc_name": "TRISC2", "neo_id": None},
+        # {"core_desc": "DRAM0", "risc_name": "DRISC", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "TRISC0", "neo_id": 0},
+        {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": 0},
+        {"core_desc": "FW0", "risc_name": "TRISC2", "neo_id": 0},
+        {"core_desc": "FW0", "risc_name": "TRISC3", "neo_id": 0},
+        {"core_desc": "FW0", "risc_name": "TRISC0", "neo_id": 1},
+        {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": 1},
+        {"core_desc": "FW0", "risc_name": "TRISC2", "neo_id": 1},
+        {"core_desc": "FW0", "risc_name": "TRISC3", "neo_id": 1},
+        {"core_desc": "FW0", "risc_name": "TRISC0", "neo_id": 2},
+        {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": 2},
+        {"core_desc": "FW0", "risc_name": "TRISC2", "neo_id": 2},
+        {"core_desc": "FW0", "risc_name": "TRISC3", "neo_id": 2},
+        {"core_desc": "FW0", "risc_name": "TRISC0", "neo_id": 3},
+        {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": 3},
+        {"core_desc": "FW0", "risc_name": "TRISC2", "neo_id": 3},
+        {"core_desc": "FW0", "risc_name": "TRISC3", "neo_id": 3},
     ]
 )
 class TestDebugging(unittest.TestCase):
     risc_name: str  # Risc name
+    neo_id: int | None # NEO ID
     context: Context  # TTExaLens context
     core_desc: str  # Core description ETH0, FW0, FW1 - being parametrized
     core_sim: RiscvCoreSimulator  # RISC-V core simulator instance
@@ -42,7 +57,7 @@ class TestDebugging(unittest.TestCase):
 
     def setUp(self):
         try:
-            self.core_sim = RiscvCoreSimulator(self.context, self.core_desc, self.risc_name)
+            self.core_sim = RiscvCoreSimulator(self.context, self.core_desc, self.risc_name, self.neo_id)
         except ValueError as e:
             if self.risc_name.lower() in e.__str__().lower():
                 self.skipTest(f"Core {self.risc_name} not available on this platform: {e}")
