@@ -1019,8 +1019,8 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(len(callstack), 1)
         self.assertEqual(callstack[0].function_name, "halt")
 
-    @parameterized.expand([(1, 1), (10, 10), (50, 50)])
-    def test_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
+    @parameterized.expand([1, 10, 50])
+    def test_callstack_optimized(self, recursion_count):
 
         if self.is_wormhole() and self.is_eth_block():
             self.skipTest("Callstack optimized tests break on ETH blocks")
@@ -1032,12 +1032,12 @@ class TestCallStack(unittest.TestCase):
             self.core_loc, elf_path, None, self.risc_name, None, 100, True, False, 0, self.context
         )
 
-        self.assertEqual(len(callstack), expected_f1_on_callstack_count + 3)
+        self.assertEqual(len(callstack), recursion_count + 3)
         self.assertEqual(callstack[0].function_name, "halt")
-        for i in range(1, expected_f1_on_callstack_count):
+        for i in range(1, recursion_count):
             self.assertEqual(callstack[i].function_name, "f1")
-        self.assertEqual(callstack[1 + expected_f1_on_callstack_count + 0].function_name, "recurse")
-        self.assertEqual(callstack[1 + expected_f1_on_callstack_count + 1].function_name, "main")
+        self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
+        self.assertEqual(callstack[recursion_count + 2].function_name, "main")
 
     @parameterized.expand([(1, 1)])
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):
