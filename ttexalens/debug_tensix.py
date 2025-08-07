@@ -209,7 +209,7 @@ class TensixDebug:
         data: list[int | float] = []
         # Using TRISC0 debug hardware to read memory
         risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
-        if self.device == BlackholeFunctionalWorkerBlock:
+        if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
             base_address = self.noc_block.dest_start_address.private_address
         with risc_debug.ensure_halted():
             for i in range(num_tiles * TILE_SIZE):
