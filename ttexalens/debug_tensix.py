@@ -209,13 +209,14 @@ class TensixDebug:
         data: list[int | float] = []
         # Using TRISC0 debug hardware to read memory
         risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
-        for i in range(num_tiles * TILE_SIZE):
-            if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
-                address = self.noc_block.dest_start_address.private_address + 4 * i
-            with risc_debug.ensure_halted():
-                rd_data = risc_debug.read_memory(address)
+        base_address = self.noc_block.dest_start_address.private_address
+        with risc_debug.ensure_halted():
+            for i in range(num_tiles * TILE_SIZE):
+                if self.noc_block == BlackholeFunctionalWorkerBlock:
+                    address = base_address + 4 * i
 
-            data.append(self._unpack_value(rd_data, df))
+                rd_data = risc_debug.read_memory(address)
+                data.append(self._unpack_value(rd_data, df))
 
         return data
 
@@ -246,40 +247,41 @@ class TensixDebug:
         # Directly reading dest does not require complex unpacking so we return it right away
         if regfile == REGFILE.DSTACC and self._direct_dest_read_enabled(df):
             num_tiles = self._validate_number_of_tiles(num_tiles)
-            data = self.direct_dest_read(df, num_tiles)
-        else:
-            self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
-            for row in range(64):
-                row_addr = row if regfile != REGFILE.SRCA else 0
-                regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
+            return self.direct_dest_read(df, num_tiles)
 
-                if regfile == REGFILE.SRCA:
-                    self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), thread_id)
-                    self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), thread_id)
-                    self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), thread_id)
-                    self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), thread_id)
-                elif regfile == REGFILE.SRCB:
-                    self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
-                    self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
-                    self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
-                    self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
-                    self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
-                    self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
+        for row in range(64):
+            row_addr = row if regfile != REGFILE.SRCA else 0
+            regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
 
-                for i in range(8):
-                    dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
-                    self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", dbg_array_rd_cmd)
-                    rd_data = self.register_store.read_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA")
-                    data += list(int.to_bytes(rd_data, 4, byteorder="big"))
+            if regfile == REGFILE.SRCA:
+                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), thread_id)
+                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), thread_id)
+                self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), thread_id)
+                self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), thread_id)
+            elif regfile == REGFILE.SRCB:
+                self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
+                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
+                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
+                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
+                self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
+                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
 
-                if regfile == REGFILE.SRCA:
-                    self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), thread_id)
-                    self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), thread_id)
-                    if row % 16 == 15:
-                        self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), thread_id)
+            base_cmd = row_addr + (regfile_id << 16)
+            for i in range(8):
+                dbg_array_rd_cmd = base_cmd + (i << 12)
+                self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", dbg_array_rd_cmd)
+                rd_data = self.register_store.read_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA")
+                data += list(int.to_bytes(rd_data, 4, byteorder="big"))
 
-            self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 0)
-            self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", 0)
+            if regfile == REGFILE.SRCA:
+                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), thread_id)
+                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), thread_id)
+                if row % 16 == 15:
+                    self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), thread_id)
+
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 0)
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", 0)
 
         return data
 
