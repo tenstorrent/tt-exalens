@@ -14,24 +14,39 @@ from ttexalens.elf_loader import ElfLoader
 
 @parameterized_class(
     [
-        {"core_desc": "ETH0", "risc_name": "ERISC"},
-        {"core_desc": "ETH0", "risc_name": "ERISC0"},
-        {"core_desc": "ETH0", "risc_name": "ERISC1"},
-        {"core_desc": "FW0", "risc_name": "BRISC"},
-        {"core_desc": "FW0", "risc_name": "TRISC0"},
-        {"core_desc": "FW0", "risc_name": "TRISC1"},
-        {"core_desc": "FW0", "risc_name": "TRISC2"},
-        {"core_desc": "FW0", "risc_name": "TRISC3"},
-        {"core_desc": "FW1", "risc_name": "BRISC"},
-        {"core_desc": "FW1", "risc_name": "TRISC0"},
-        {"core_desc": "FW1", "risc_name": "TRISC1"},
-        {"core_desc": "FW1", "risc_name": "TRISC2"},
-        {"core_desc": "FW1", "risc_name": "TRISC3"},
-        # {"core_desc": "DRAM0", "risc_name": "DRISC"},
+        {"core_desc": "ETH0", "risc_name": "ERISC", "neo_id": None},
+        {"core_desc": "ETH0", "risc_name": "ERISC0", "neo_id": None},
+        {"core_desc": "ETH0", "risc_name": "ERISC1", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "BRISC", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "TRISC0", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "TRISC2", "neo_id": None},
+        {"core_desc": "FW1", "risc_name": "BRISC", "neo_id": None},
+        {"core_desc": "FW1", "risc_name": "TRISC0", "neo_id": None},
+        {"core_desc": "FW1", "risc_name": "TRISC1", "neo_id": None},
+        {"core_desc": "FW1", "risc_name": "TRISC2", "neo_id": None},
+        # {"core_desc": "DRAM0", "risc_name": "DRISC", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "TRISC0", "neo_id": 0},
+        {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": 0},
+        {"core_desc": "FW0", "risc_name": "TRISC2", "neo_id": 0},
+        {"core_desc": "FW0", "risc_name": "TRISC3", "neo_id": 0},
+        {"core_desc": "FW0", "risc_name": "TRISC0", "neo_id": 1},
+        {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": 1},
+        {"core_desc": "FW0", "risc_name": "TRISC2", "neo_id": 1},
+        {"core_desc": "FW0", "risc_name": "TRISC3", "neo_id": 1},
+        {"core_desc": "FW0", "risc_name": "TRISC0", "neo_id": 2},
+        {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": 2},
+        {"core_desc": "FW0", "risc_name": "TRISC2", "neo_id": 2},
+        {"core_desc": "FW0", "risc_name": "TRISC3", "neo_id": 2},
+        {"core_desc": "FW0", "risc_name": "TRISC0", "neo_id": 3},
+        {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": 3},
+        {"core_desc": "FW0", "risc_name": "TRISC2", "neo_id": 3},
+        {"core_desc": "FW0", "risc_name": "TRISC3", "neo_id": 3},
     ]
 )
 class TestDebugging(unittest.TestCase):
     risc_name: str  # Risc name
+    neo_id: int | None  # NEO ID
     context: Context  # TTExaLens context
     core_desc: str  # Core description ETH0, FW0, FW1 - being parametrized
     core_sim: RiscvCoreSimulator  # RISC-V core simulator instance
@@ -42,12 +57,18 @@ class TestDebugging(unittest.TestCase):
 
     def setUp(self):
         try:
-            self.core_sim = RiscvCoreSimulator(self.context, self.core_desc, self.risc_name)
+            self.core_sim = RiscvCoreSimulator(self.context, self.core_desc, self.risc_name, self.neo_id)
         except ValueError as e:
             if self.risc_name.lower() in e.__str__().lower():
                 self.skipTest(f"Core {self.risc_name} not available on this platform: {e}")
             else:
                 raise e
+        except AssertionError as e:
+            if self.neo_id is not None and "NEO ID" in e.__str__():
+                self.skipTest(f"Test requires NEO ID, but is not supported on this platform: {e}")
+            else:
+                raise e
+
         self.device = self.context.devices[0]
 
         # Stop risc with reset
@@ -168,7 +189,12 @@ class TestDebugging(unittest.TestCase):
 
     def test_read_write_private_memory(self):
         """Testing read_memory and write_memory through debugging interface on private core memory range."""
-        addr = 0xFFB00000
+        data_private = self.core_sim.risc_debug.get_data_private_memory()
+        assert data_private is not None, "Data private memory should not be None."
+        assert data_private.address.private_address is not None, "Private address should not be None."
+
+        addr = data_private.address.private_address
+        noc_addr = data_private.address.noc_address
 
         # Write code for brisc core at address 0
         # C++:
@@ -190,8 +216,16 @@ class TestDebugging(unittest.TestCase):
         # Test write and read memory
         self.core_sim.risc_debug.write_memory(addr, 0x12345678)
         self.assertEqual(self.core_sim.risc_debug.read_memory(addr), 0x12345678, "Memory value should be 0x12345678.")
+        if noc_addr is not None:
+            self.assertEqual(
+                self.core_sim.read_data(noc_addr), 0x12345678, "Memory value read over NOC should be 0x12345678."
+            )
         self.core_sim.risc_debug.write_memory(addr, 0x87654321)
         self.assertEqual(self.core_sim.risc_debug.read_memory(addr), 0x87654321, "Memory value should be 0x87654321.")
+        if noc_addr is not None:
+            self.assertEqual(
+                self.core_sim.read_data(noc_addr), 0x87654321, "Memory value read over NOC should be 0x87654321."
+            )
 
     def test_minimal_run_generated_code(self):
         """Test running 16 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
@@ -477,7 +511,7 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
 
     def test_invalidate_cache(self):
-        if not self.core_sim.is_blackhole():
+        if self.core_sim.is_wormhole():
             self.skipTest("Invalidate cache is not reliable on wormhole.")
 
         if self.core_sim.is_eth_block():
@@ -1149,6 +1183,9 @@ class TestDebugging(unittest.TestCase):
 
         if self.core_sim.is_blackhole():
             self.skipTest("BNE instruction with debug hardware enabled is fixed in blackhole.")
+
+        if self.core_sim.is_quasar():
+            self.skipTest("BNE instruction with debug hardware enabled is fixed in quasar.")
 
         # Enable branch prediction
         self.core_sim.set_branch_prediction(True)

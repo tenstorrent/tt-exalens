@@ -29,6 +29,11 @@ class NocBlock:
     def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
         pass
 
+    def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
+        if neo_id is None:
+            return self.debug_bus
+        return None
+
     @cached_property
     def has_risc_cores(self) -> bool:
         return len(self.debuggable_riscs) > 0
