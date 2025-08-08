@@ -46,7 +46,7 @@ from ttexalens.elf_loader import ElfLoader
 )
 class TestDebugging(unittest.TestCase):
     risc_name: str  # Risc name
-    neo_id: int | None # NEO ID
+    neo_id: int | None  # NEO ID
     context: Context  # TTExaLens context
     core_desc: str  # Core description ETH0, FW0, FW1 - being parametrized
     core_sim: RiscvCoreSimulator  # RISC-V core simulator instance
@@ -63,6 +63,12 @@ class TestDebugging(unittest.TestCase):
                 self.skipTest(f"Core {self.risc_name} not available on this platform: {e}")
             else:
                 raise e
+        except AssertionError as e:
+            if self.neo_id is not None and "NEO ID" in e.__str__():
+                self.skipTest(f"Test requires NEO ID, but is not supported on this platform: {e}")
+            else:
+                raise e
+
         self.device = self.context.devices[0]
 
         # Stop risc with reset
