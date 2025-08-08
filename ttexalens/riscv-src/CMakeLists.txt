@@ -23,12 +23,12 @@ set(READELF "${TOOL_PATH}/riscv32-tt-elf-readelf")
 # Compiler options for optimized builds
 set(OPTIMIZED_OPTIONS_ALL -O3 -mabi=ilp32 -std=c++17 -g -ffast-math -flto)
 set(OPTIMIZED_OPTIONS_COMPILE -fno-use-cxa-atexit -Wall -fno-exceptions -fno-rtti -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -DTENSIX_FIRMWARE)
-set(OPTIMIZED_OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostdlib -Lttexalens/riscv-src)
+set(OPTIMIZED_OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
 # Compiler options
 set(OPTIONS_ALL -O0 -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -flto -g -ffast-math)
 set(OPTIONS_COMPILE -fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable)
-set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostdlib -Lttexalens/riscv-src)
+set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
 set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section)
 
@@ -140,8 +140,6 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
         OUTPUT ${OUTPUT_ELF}
         COMMAND ${GXX} ${COMPILE_OPTIONS}
             ${LINK_OBJECTS}
-            -L${TOOL_PATH}/../lib/gcc/riscv32-tt-elf/12.4.0
-            -lgcc
             -T${RISCV_SOURCE}/memory.${ARCH}.ld
             -T${RISCV_SOURCE}/${CORE}.ld
             -T${RISCV_SOURCE}/sections.ld
