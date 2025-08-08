@@ -469,6 +469,7 @@ register_map: dict[str, RegisterDescription] = {
         offset=0x23C, mask=0x1
     ),  # Old name from configuration register
     "RISCV_DEBUG_REG_NCRISC_RESET_PC_OVERRIDE": DebugRegisterDescription(offset=0x23C, mask=0x1),  # New name
+    "RISCV_DEBUG_REG_DEST_CG_CTRL": DebugRegisterDescription(offset=0x240),
 }
 
 
