@@ -40,7 +40,13 @@ typedef void (*gcov_merge_fn) (gcov_type *, gcov_unsigned_t);
 #define GCOV_DATA_MAGIC ((gcov_unsigned_t)0x67636461)
 #define GCOV_FILENAME_MAGIC ((gcov_unsigned_t)0x6763666e)
 
-size_t strlen(const char*);
+static inline size_t strlen(const char* s)
+{
+    size_t i = 0;
+    for(; s[i]; i++);
+    return i;
+}
+
 void __gcov_merge_add (gcov_type* counters, unsigned n_counters) {}
 
 struct gcov_summary

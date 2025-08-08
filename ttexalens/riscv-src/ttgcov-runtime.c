@@ -5,21 +5,6 @@ extern "C" {
 #endif
 
 #define COV_OVERFLOW 0xDEADBEEF
-#define ever ;;
-
-void __wrap__exit(int status)
-{
-    (void) status;
-    gcov_dump();
-    for(ever);
-}
-
-size_t strlen(const char* s)
-{
-    size_t i = 0;
-    for(; s[i]; i++);
-    return i;
-}
 
 // This variable indexes into the coverage segment.
 // The first value in it is the total bytes written.
