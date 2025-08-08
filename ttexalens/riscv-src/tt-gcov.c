@@ -40,9 +40,8 @@ typedef void (*gcov_merge_fn) (gcov_type *, gcov_unsigned_t);
 #define GCOV_DATA_MAGIC ((gcov_unsigned_t)0x67636461)
 #define GCOV_FILENAME_MAGIC ((gcov_unsigned_t)0x6763666e)
 
-void __gcov_merge_add (gcov_type* counters, unsigned n_counters) {
-    __asm__ volatile("nop");
-}
+size_t strlen(const char*);
+void __gcov_merge_add (gcov_type* counters, unsigned n_counters) {}
 
 struct gcov_summary
 {
@@ -279,13 +278,6 @@ write_one_data (const struct gcov_info *gi_ptr,
     }
 
   dump_unsigned (0, dump_fn, arg);
-}
-
-static inline size_t strlen(const char* s)
-{
-  size_t i = 0;
-  for(; s[i]; i++);
-  return i;
 }
 
 static inline void

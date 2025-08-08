@@ -5,7 +5,7 @@ covdump.py
 
 Given the currently running ELF and the output path, dump the coverage data from the device into the output file.
 Note that the only thing the ELF is used for is getting the address at which coverage data begins.
-This is uniform across all ELFs on the same baby RISC core (granted they're compiled with the same linker scripts),
+This is uniform across all ELFs for a given baby RISC core (granted they're compiled with the same linker scripts),
 but the most future-proof way to design this is to ask for the exact ELF and read its symbol table.
 
 Usage:
@@ -23,13 +23,15 @@ def get_symbol_address(elf_path, symbol_name):
         elf = ELFFile(f)
         symtab = elf.get_section_by_name('.symtab')
         if not symtab:
-            raise RuntimeError(f"covdump: {f}: no symbol table")
+            print(f"covdump: {f}: no symbol table")
+            return None
 
         for symbol in symtab.iter_symbols():
             if symbol.name == symbol_name:
                 return symbol.entry['st_value']
 
-    raise RuntimeError(f"covdump: {f}: symbol {symbol_name} not found")
+    print(f"covdump: {f}: symbol {symbol_name} not found")
+    return None
 
 def main():
     parser = argparse.ArgumentParser(
@@ -39,9 +41,8 @@ def main():
     parser.add_argument("outfile", help="File to dump the coverage data into.")
     args = parser.parse_args()
 
-    try:
-        length_addr = get_symbol_address(args.elf, "__coverage_start")
-    except ValueError:
+    length_addr = get_symbol_address(args.elf, "__coverage_start")
+    if length_addr == None:
         exit(1)
 
     data_addr = length_addr + 4
@@ -56,6 +57,10 @@ def main():
         context=context
     )
     n = length[0]
+
+    if n == 0xdeadbeef:
+        print(f"covdump: {args.elf}: coverage region overflowed")
+        exit(1)
 
     data = read_from_device(
         core_loc,
