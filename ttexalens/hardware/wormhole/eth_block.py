@@ -22,8 +22,9 @@ from ttexalens.register_store import (
 )
 
 
-# TODO: Once signals are added, we can remove type hint
-debug_bus_signal_map: dict[str, DebugBusSignalDescription] = {}
+debug_bus_signal_map = {
+    "erisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 9, mask=0x7FFFFFFF),
+}
 
 register_map = {
     "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=157, mask=0x1F),
@@ -122,7 +123,5 @@ class WormholeEthBlock(WormholeNocBlock):
         assert neo_id is None, "NEO ID is not applicable for Wormhole device."
         risc_name = risc_name.lower()
         if risc_name == self.erisc.risc_name:
-            return BabyRiscDebug(
-                risc_info=self.erisc
-            )  # TODO: Once we have debug bus signals, we will create WormholeBabyRiscDebug instance
+            return WormholeBabyRiscDebug(risc_info=self.erisc)
         raise ValueError(f"RISC debug for {risc_name} is not supported in Wormhole eth block.")

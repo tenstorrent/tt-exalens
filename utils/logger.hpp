@@ -15,7 +15,7 @@
 #include <thread>
 #include <type_traits>
 #if defined(UTILS_LOGGER_PYTHON_OSTREAM_REDIRECT) && (UTILS_LOGGER_PYTHON_OSTREAM_REDIRECT == 1)
-#include <pybind11/iostream.h>
+#include <nanobind/iostream.h>
 #endif
 
 #include "backtrace.hpp"
@@ -117,7 +117,7 @@ class Logger {
     inline void log_level_type(Level level, LogType type, char const* fmt, Args&&... args) {
         if ((1 << type) & mask) {
 #if defined(UTILS_LOGGER_PYTHON_OSTREAM_REDIRECT) && (UTILS_LOGGER_PYTHON_OSTREAM_REDIRECT == 1)
-            pybind11::scoped_ostream_redirect stream(*fd);
+            nanobind::scoped_ostream_redirect stream(*fd);
 #endif
             std::string timestamp_str = get_current_time();
             fmt::terminal_color timestamp_color = fmt::terminal_color::green;

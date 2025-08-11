@@ -104,7 +104,10 @@ class GdbServer(threading.Thread):
                     # TODO: In ideal world, we would have "start time" for a core (time when core was taken out of reset) and use that as a key for reusing process id; for now, we can just check if elf path is the same
                     last_process = self._last_available_processes.get(risc_debug.risc_location)
                     if last_process is None or last_process.elf_path != elf_path:
-                        core_type = "worker"  # TODO: once we add support for ETH cores, we should update this
+                        core_type = device.get_block_type(risc_debug.risc_location.location)
+                        # Shorten long core type for cleaner output
+                        if core_type == "functional_workers":
+                            core_type = "worker"
                         pid = self.next_pid
                         self.next_pid += 1
                         virtual_core = (
@@ -297,8 +300,11 @@ class GdbServer(threading.Thread):
                     # Since our processes have only 1 thread, we will pick this up from the cache
                     t = self.debugging_threads.get(thread_id.process_id)
                     if t is None:
-                        # Unknown process!!!
-                        util.ERROR(f"GDB: Unknown process id in self.debugging_threads: {thread_id.process_id}")
+                        # Process and thread ids equal to 0 is expected behaivour so we should not print error
+                        # Every time before sending message with actual pid/thread id gdb sends Hgp0.0
+                        if not (thread_id.process_id == 0 and thread_id.thread_id == 0):
+                            # Unknown process!!!
+                            util.ERROR(f"GDB: Unknown process id in self.debugging_threads: {thread_id.process_id}")
                         writer.append(b"E01")
                         return True
                     thread_id = t

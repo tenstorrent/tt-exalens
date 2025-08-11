@@ -9,9 +9,12 @@ import time
 from typing import Callable
 from ttexalens import parse_elf
 from ttexalens import util as util
+
 import re
 from fuzzywuzzy import process, fuzz
 from sys import getsizeof
+
+from ttexalens.coordinate import OnChipCoordinate
 
 
 class FAKE_DIE(object):
@@ -210,20 +213,48 @@ class ELF:
         return data
 
     @staticmethod
-    def get_mem_reader(context, device_id, core_loc) -> Callable[[int, int, int], list[int]]:
+    def get_mem_reader(
+        location: OnChipCoordinate, risc_name: str | None = None, neo_id: int | None = None
+    ) -> Callable[[int, int, int], list[int]]:
         """
         Returns a simple memory reader function that reads from a given device and a given core.
         """
         from ttexalens.tt_exalens_lib import read_from_device
+
+        # Initialization
+        device = location._device
+        context = device._context
+        device_id = device._id
+        if risc_name is not None:
+            noc_block = device.get_block(location)
+            risc_debug = noc_block.get_risc_debug(risc_name, neo_id)
+            private_memory = risc_debug.get_data_private_memory()
+            word_size = 4
 
         def mem_reader(addr: int, size_bytes: int, elements_to_read: int) -> list[int]:
             if elements_to_read == 0:
                 return []
             element_size = size_bytes // elements_to_read
             assert element_size * elements_to_read == size_bytes, "Size must be divisible by number of elements"
-            bytes_data = read_from_device(
-                core_loc=core_loc, device_id=device_id, addr=addr, num_bytes=size_bytes, context=context
-            )
+
+            bytes_data: bytes | None = None
+            if risc_name is not None:
+                # Check if address is in private memory
+                if private_memory.contains_private_address(addr):
+                    # If number of bytes we want to read is not divisible by word size, we round that up to read 1 extra word
+                    words_to_read = (size_bytes + word_size - 1) // word_size
+
+                    with risc_debug.ensure_private_memory_access():
+                        words = [risc_debug.read_memory(addr + i * word_size) for i in range(words_to_read)]
+
+                    # Convert words to bytes and remove extra bytes
+                    bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in words)[:size_bytes]
+
+            if bytes_data is None:
+                bytes_data = read_from_device(
+                    core_loc=location, device_id=device_id, addr=addr, num_bytes=size_bytes, context=context
+                )
+
             return [
                 int.from_bytes(bytes_data[i * element_size : (i + 1) * element_size], byteorder="little")
                 for i in range(elements_to_read)

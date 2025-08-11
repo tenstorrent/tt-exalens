@@ -650,7 +650,7 @@ Constructor for the Coordinate class.
 - `x` *(int)*: The x-coordinate value.
 - `y` *(int)*: The y-coordinate value.
 - `input_type` *(str)*: The input coordinate system type. One of the following:
-- `- noc0`: NOC routing coordinate for NOC 0. (X-Y). Also known as "physical" coordinate.
+- `- noc0`: NOC routing coordinate for NOC 0. (X-Y).
 - `- noc1`: NOC routing coordinate for NOC 1. (X-Y)
 - `- die`: Die coordinate, a location on the die grid. (X,Y)
 - `- logical`: Logical grid coordinate. Notation: qX,Y, where q represents first letter of the core type. If q is not present, it is considered as tensix core.

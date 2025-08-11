@@ -26,7 +26,7 @@ set(OPTIMIZED_OPTIONS_COMPILE -fno-use-cxa-atexit -Wall -fno-exceptions -fno-rtt
 set(OPTIMIZED_OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
 # Compiler options
-set(OPTIONS_ALL -O0 -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -flto -g -ffast-math)
+set(OPTIONS_ALL -O0 -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math)
 set(OPTIONS_COMPILE -fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable)
 set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
@@ -124,7 +124,6 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
     set(OUTPUT_ELF "${RISCV_OUTPUT}/${ARCH}/${APP}${OPTIMIZED_EXTENSION}.${CORE}.elf")
     set(OUTPUT_DUMP "${RISCV_OUTPUT}/${ARCH}/${APP}${OPTIMIZED_EXTENSION}.${CORE}.dump")
     set(OUTPUT_DIS "${RISCV_OUTPUT}/${ARCH}/${APP}${OPTIMIZED_EXTENSION}.${CORE}.dis")
-    set(OUTPUT_MAP "${RISCV_OUTPUT}/${ARCH}/${APP}${OPTIMIZED_EXTENSION}.${CORE}.map")
 
     set(LINK_OBJECTS
         ${RISCV_OBJECT}/tmu-crt0${OPTIMIZED_EXTENSION}.o
@@ -143,10 +142,6 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
             -T${RISCV_SOURCE}/memory.${ARCH}.ld
             -T${RISCV_SOURCE}/${CORE}.ld
             -T${RISCV_SOURCE}/sections.ld
-            -Wl,-Map=${OUTPUT_MAP}
-            -Wl,--print-memory-usage
-            #-Wl,-M
-            #-Wl,--cref
             -o ${OUTPUT_ELF}
         DEPENDS ${LINK_OBJECTS} ${RISCV_SOURCE}/memory.${ARCH}.ld ${RISCV_SOURCE}/${CORE}.ld ${RISCV_SOURCE}/sections.ld
         COMMENT "Linking ${OUTPUT_ELF}"

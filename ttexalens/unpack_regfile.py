@@ -110,53 +110,31 @@ def unpack_bfp8_b(data):
     return bfloat16_values
 
 
+# Reorders the bits of a given raw datum according to DST's storage scheme.
+def reorder_fp32(datum: int) -> int:
+    # Low eight bits go right next to the high bit,
+    # the seven bits after the high bit become the lowest,
+    # and the high bit stays in place.
+    return (datum & 0x8000) | ((datum & 0x7F00) >> 8) | ((datum & 0xFF) << 7)
+
+
 def unpack_fp32(data) -> list[float]:
-    zeros = 0
-    for v in data:
-        if v == 0:
-            zeros += 1
-    print(f'========= ZEROS: {zeros}')
     floats: list[float] = []
     half = len(data) // 2
     hi_bytes = data[:half]
     lo_bytes = data[half:]
 
-    # Process each 4-byte float
     for i in range(0, half, 2):
-        hi_word = int.from_bytes(hi_bytes[i : i + 2], byteorder="big")
-        lo_word = int.from_bytes(lo_bytes[i : i + 2], byteorder="big")
-        sign = (hi_word & 0x8000) << 16
-        exponent = (hi_word & 0x00FF) << 23
-        mantissa = ((hi_word & 0x7F00) << 8) | lo_word
-        result = sign | exponent | mantissa
-        #result = hi_word << 16 | lo_word
-        print(f"{result} ", end="")
+        upper = int.from_bytes(hi_bytes[i : i + 2], byteorder="big")
+        lower = int.from_bytes(lo_bytes[i : i + 2], byteorder="big")
+        # Both parts are shuffled.
+        upper_reordered = reorder_fp32(upper)
+        lower_reordered = reorder_fp32(lower)
+        result = (upper_reordered << 16) | lower_reordered
         floats.append(struct.unpack(">f", result.to_bytes(4, "big"))[0])
 
-    return floats
-
-    row_size = 32
-    total_rows = len(data) // row_size
-    half = total_rows // 2
-    floats: list[float] = []
-    for r in range(half):
-        base_hi = r * row_size
-        base_lo = (r + half)
-        # for each of the 16 uint16_t slots in the row
-        for i in range(16):
-            hi_bytes = data[base_hi + 2 * i : base_hi + 2 * i + 2]
-            lo_bytes = data[base_lo + 2 * i : base_lo + 2 * i + 2]
-            hi = int.from_bytes(hi_bytes, byteorder="big")
-            lo = int.from_bytes(lo_bytes, byteorder="big")
-            # reconstruct an IEEE 32-bit float
-            # hi: s m m m m m m m e e e e e e e e
-            # lo: m m m m m m m m m m m m m m m m
-            # should become: s 8e 23m
-            sign = (hi & 0x8000) << 16
-            exponent = (hi & 0x00FF) << 23
-            mantissa = ((hi & 0x7F00) << 8) | lo
-            result = sign | exponent | mantissa
-            floats.append(struct.unpack(">f", result.to_bytes(4, "big"))[0])
+    for i in range(0, len(floats) - 1, 2):
+        floats[i], floats[i + 1] = floats[i + 1], floats[i]
 
     return floats
 
@@ -167,7 +145,7 @@ def unpack_data(data, df: int | TensixDataFormat):
 
     if df == TensixDataFormat.Float32:
         return unpack_fp32(data)
-    elif df == TensixDataFormat.Float16:
+    if df == TensixDataFormat.Float16:
         return unpack_fp16(data)
     elif df == TensixDataFormat.Float16_b:
         return unpack_bfp16(data)

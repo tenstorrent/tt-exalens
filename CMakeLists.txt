@@ -54,7 +54,6 @@ set(TTEXALENS_HOME "${PROJECT_SOURCE_DIR}")
 set(UMD_HOME "${PROJECT_SOURCE_DIR}/third_party/umd")
 
 # Third party dependencies
-add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/pybind11)
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/umd)
 
 # Check for SFPI release

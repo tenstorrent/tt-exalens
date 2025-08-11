@@ -147,6 +147,7 @@ address_fix:
   mv      a2, zero
 
   call    main
+  tail    exit
   .size  _start, .-_start
 
   .global _init
