@@ -75,6 +75,7 @@ niu_register_map = {
     "NOC_AT_LEN_BE_CB0": NocControlRegisterDescription(offset=0x20),
     "NOC_AT_DATA_CB0": NocControlRegisterDescription(offset=0x24),
     "NOC_CMD_CTRL_CB0": NocControlRegisterDescription(offset=0x28),
+    "NOC_NODE_ID": NocControlRegisterDescription(offset=0x2C),
     "NOC_NODE_ID_CB0": NocControlRegisterDescription(offset=0x2C),
     "NOC_ENDPOINT_ID_CB0": NocControlRegisterDescription(offset=0x30),
     # Command buffer 1 registers (base offset 0x400)
