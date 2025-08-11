@@ -7,8 +7,9 @@ extern "C" {
 #define COV_OVERFLOW 0xDEADBEEF
 
 // This variable indexes into the coverage segment.
-// The first value in it is the total bytes written.
-// Hence, skip the first 4 bytes when dumping the segment.
+// The first value in the segment is the number of bytes written.
+// Hence, skip the first 4 bytes when dumping it.
+// The covdump.py script handles this.
 uint32_t written = 4;
 
 void write_data(const void* _data, unsigned int length, void* arg)
@@ -16,8 +17,7 @@ void write_data(const void* _data, unsigned int length, void* arg)
     uint8_t* data = (uint8_t*) _data;
 
     if(__coverage_start + written + length >= __coverage_end) {
-        // Not enough space in the segment.
-        // Write overflow sentinel and return.
+        // Not enough space in the segment, write overflow sentinel and return.
         *(uint32_t*) __coverage_start = COV_OVERFLOW;
         return;
     }
@@ -29,15 +29,25 @@ void write_data(const void* _data, unsigned int length, void* arg)
 
 void fname_nop(const char* fname, void* arg)
 {
+    // As we're only extracting data for one TU, writing the filename is not
+    // necessary, and in fact would complicate things.
+    // This can call __gcov_filename_to_gcfn from gcc/libgcc/libgcov-driver.c
+    // (also found in tt-gcov.c) should it be necessary to merge data from
+    // multiple TUs, in which case gcov-tool's merge-stream subcommand would 
+    // be used to facilitate that. However, if only one TU is relevant,
+    // serializing the data into gcda format is fairly straightforward.
+
     return;
 }
 
 void* alloc(unsigned int size, void* arg)
 {
-    // The heap starts from the unused part of bss and spans to the end of the segment.
-    // The linker ensures it's 4-byte aligned.
+    // The heap starts from the unused part of bss and spans to the end of
+    // the segment. The linker ensures it's 4-byte aligned.
+    
     static uint8_t* heap_ptr = &__bss_free;
-    size = (size + 3) & ~3; // Ensure the heap pointer remains aligned after bumping.
+    // Ensure the heap pointer remains aligned after bumping.
+    size = (size + 3) & ~3;
     if((heap_ptr + size) >= &__bss_end) return NULL;
 
     void* allocated = heap_ptr;
@@ -47,8 +57,11 @@ void* alloc(unsigned int size, void* arg)
 
 void gcov_dump(void)
 {
-    // Mind that this function extracts coverage info of only one TU.
-    // This was built with LLK tests in mind.
+    // Mind that this function extracts coverage info of only one TU, as this
+    // was built with LLK tests in mind. It is possible to extend this to
+    // multiple TUs by iterating from __gcov_info_start to __gcov_info_end
+    // and calling __gcov_info_to_gcda on each of them with an implemented
+    // filename callback; refer to the comment in fname_nop.
 
     const struct gcov_info* const* info = __gcov_info_start;
     __asm__ volatile("" : "+r" (info)); // Prevent optimizations.

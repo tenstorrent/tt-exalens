@@ -40,12 +40,12 @@ typedef void (*gcov_merge_fn) (gcov_type *, gcov_unsigned_t);
 #define GCOV_DATA_MAGIC ((gcov_unsigned_t)0x67636461)
 #define GCOV_FILENAME_MAGIC ((gcov_unsigned_t)0x6763666e)
 
-static inline size_t strlen(const char* s)
+/* static inline size_t strlen(const char* s)
 {
     size_t i = 0;
     for(; s[i]; i++);
     return i;
-}
+} */
 
 void __gcov_merge_add (gcov_type* counters, unsigned n_counters) {}
 
@@ -286,7 +286,7 @@ write_one_data (const struct gcov_info *gi_ptr,
   dump_unsigned (0, dump_fn, arg);
 }
 
-static inline void
+/* static inline void
 dump_string (const char *string,
 	     void (*dump_fn) (const void *, unsigned, void *),
 	     void *arg)
@@ -299,10 +299,10 @@ dump_string (const char *string,
   dump_unsigned (length, dump_fn, arg);
   if (string)
     (*dump_fn) (string, length, arg);
-}
+} */
 
 
-__attribute__((noinline)) __attribute__((noipa)) void
+void
 __gcov_info_to_gcda (const struct gcov_info *gi_ptr,
                      void (*filename_fn) (const char *, void *),
                      void (*dump_fn) (const void *, unsigned, void *),
@@ -313,7 +313,11 @@ __gcov_info_to_gcda (const struct gcov_info *gi_ptr,
   write_one_data (gi_ptr, NULL, dump_fn, allocate_fn, arg);
 }
 
-__attribute__((noinline)) __attribute__((noipa)) void
+// This function is not needed if only one TU is instrumented.
+// If the runtime is to be extended to support coverage analysis on binaries
+// built from multiple TUs, merely uncomment all commented code in this file,
+// and you'll get all of this function's dependencies.
+/* void
 __gcov_filename_to_gcfn (const char *filename,
 			 void (*dump_fn) (const void *, unsigned, void *),
 			 void *arg)
@@ -321,7 +325,7 @@ __gcov_filename_to_gcfn (const char *filename,
   dump_unsigned (GCOV_FILENAME_MAGIC, dump_fn, arg);
   dump_unsigned (GCOV_VERSION, dump_fn, arg);
   dump_string (filename, dump_fn, arg);
-}
+} */
 
 #ifdef __cplusplus
 }

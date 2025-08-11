@@ -10,11 +10,13 @@ extern "C" {
 #endif
 
 // Symbols pointing to per-TU coverage data from -fprofile-info-section.
+// Only __gcov_info_start is used currently.
 extern const struct gcov_info* __gcov_info_start[];
 extern const struct gcov_info* __gcov_info_end[];
 
 // Start address and region length of per-RISC REGION_GCOV.
-// Data in the gcda format is written into this region from the raw per-TU counters.
+// This region stores the actual gcda, and the host reads it
+// and dumps it into a file.
 extern uint8_t __coverage_start[];
 extern uint8_t __coverage_end[];
 
@@ -24,16 +26,13 @@ extern uint8_t __coverage_end[];
 extern uint8_t __bss_free;
 extern uint8_t __bss_end;
 
-// Write the given data with the given length into the coverage region in L1. Called repeatedly per TU.
+// Write length bytes of data into the coverage region in L1.
 void write_data(const void* data, unsigned int length, void* arg);
-
-// Write a filename for the purpose of the gcda format. Called once per TU.
-void write_fname(const char* fname, void* arg);
 
 // Simple bump allocator. Not thread-safe.
 void* alloc(unsigned int size, void* arg);
 
-// Run this at the end of a kernel if you wish to enable profiling and coverage analysis.
+// Run this at the end of a kernel if you wish to do coverage analysis.
 void gcov_dump(void);
 
 #ifdef __cplusplus

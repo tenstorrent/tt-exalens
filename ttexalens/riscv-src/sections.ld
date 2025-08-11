@@ -74,6 +74,8 @@ SECTIONS
   PROVIDE (etext = .);
   __fw_export_end_text = DEFINED(__fw_export_end_text) ? __fw_export_end_text : .;
   PROVIDE(__global_pointer$ = ORIGIN(REGION_DATA) + 0x800);
+  
+  /* This was necessary to avoid bloating L0. */
   .data.impure_data :
   {
     *(.data.impure_data)
@@ -93,6 +95,7 @@ SECTIONS
     __ldm_bss_end = .;
 
   } > REGION_BSS
+  /* A pointer to the unused portion of .bss is provided for use as a small heap to conform to __gcov_info_to_gcda's interface. */
   __bss_free = ALIGN(., 4);
   ASSERT(__bss_free <= ORIGIN(REGION_BSS) + LENGTH(REGION_BSS), "error: .bss has overflowed (coverage data resides there)")
   .ldm_data __ldm_start :
@@ -102,6 +105,7 @@ SECTIONS
 
      *(.rodata .rodata.* .gnu.linkonce.r.*)
      *(.rodata1)
+    /* There were obscure runtime issues well beyond the scope of a linker script comment without this ALIGN directive. */
     . = ALIGN(4);
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array))
@@ -150,13 +154,19 @@ SECTIONS
    . += __firmware_stack_size;
     __stack_top = .;
   } > REGION_STACK
+
+  /* This performs the necessary configuration for using GCC's -fprofile-info-section
+   * which facilitates profiling and test coverage analysis in freestanding environments.
+   * Read more at: https://gcc.gnu.org/onlinedocs/gcc-15.1.0/gcc/Freestanding-Environments.html */
   .gcov_info :
   {
     __gcov_info_start = .;
+    /* The KEEP directives tell the linker to not garbage-collect the sections. */
     KEEP(*(.gcov_info))
     KEEP(*(.gcov_info.*))
     __gcov_info_end = .;
   } > REGION_GCOV_INFO
+
   .stab 0 : { *(.stab) }
   .stabstr 0 : { *(.stabstr) }
   .stab.excl 0 : { *(.stab.excl) }
@@ -187,6 +197,8 @@ SECTIONS
   .debug_addr 0 : { *(.debug_addr) }
   .gnu.attributes 0 : { KEEP (*(.gnu.attributes)) }
 
+  /* The first two symbols here tell the runtime coverage library where to write the gcda. */
+  /* __bss_end (along with __bss_free) provide the heap region. */
   __coverage_start = ORIGIN(REGION_GCOV);
   __coverage_end = ORIGIN(REGION_GCOV) + LENGTH(REGION_GCOV);
   __bss_start = ORIGIN(REGION_BSS);

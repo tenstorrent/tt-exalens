@@ -28,7 +28,7 @@ def run_cmd(cmd):
 
 def main():
     if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <gcov_dir> [html_dir] [info_path]")
+        print(f"Usage: {sys.argv[0]} <gcov_dir> [html_dir] [info_path]\n")
         sys.exit(1)
 
     gcov_dir = Path(sys.argv[1]).resolve()

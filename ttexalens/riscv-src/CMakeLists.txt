@@ -30,6 +30,8 @@ set(OPTIONS_ALL -O0 -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math)
 set(OPTIONS_COMPILE -fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable)
 set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
+# Note that -fprofile-info-section must be specified so as to not rely on runtime support (libc, complete crt, etc),
+# but instead have GCC provide us with a pointer to the raw coverage data and let us extract it ourselves.
 set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section)
 
 # Define project paths
