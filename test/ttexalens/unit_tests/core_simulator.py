@@ -70,14 +70,20 @@ class RiscvCoreSimulator:
 
         raise ValueError(f"Unknown core description {self.core_desc}")
 
-    def write_program(self, addr: int, data: int):
+    def write_program(self, addr: int, data: int | list[int]):
         """Write program code data at specified address offset."""
         self.write_data_checked(self.program_base_address + addr, data)
 
-    def write_data_checked(self, addr: int, data: int):
+    def write_data_checked(self, addr: int, data: int | list[int]):
         """Write data to memory and verify it was written correctly."""
-        lib.write_words_to_device(self.core_loc, addr, data, context=self.context)
-        assert self.read_data(addr) == data, f"Data verification failed at address {addr:x}"
+        if isinstance(data, int):
+            lib.write_words_to_device(self.core_loc, addr, data, context=self.context)
+            assert self.read_data(addr) == data, f"Data verification failed at address {addr:x}"
+        else:
+            byte_data = b''.join(x.to_bytes(4, 'little') for x in data)
+            lib.write_to_device(self.core_loc, self.program_base_address + addr, byte_data, context=self.context)
+            read_data = lib.read_from_device(self.core_loc, self.program_base_address + addr, num_bytes=len(byte_data), context=self.context)
+            assert read_data == byte_data, f"Data verification failed at address {addr:x}"
 
     def read_data(self, addr: int) -> int:
         """Read data from memory at specified address."""
