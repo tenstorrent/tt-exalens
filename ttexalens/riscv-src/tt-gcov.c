@@ -31,7 +31,7 @@ typedef void (*gcov_merge_fn) (gcov_type *, gcov_unsigned_t);
 #define GCOV_TOPN_MEM_COUNTERS 3
 #define GCOV_TOPN_DISK_COUNTERS 2
 #define GCOV_TAG_FUNCTION_LENGTH (3 * GCOV_WORD_SIZE)
-#define GCOV_VERSION 0x4232342A // for GCC 12.4.0
+#define GCOV_VERSION 0x4232342a // for GCC 12.4.0
 #ifndef __INTPTR_TYPE__
 #define __INTPTR_TYPE__ intptr_t
 #endif
@@ -151,10 +151,10 @@ write_topn_counters (const struct gcov_ctr_info *ci_ptr,
 #endif
 
       /* Malloc fallback.  */
-      if (list_sizes == NULL)
-        list_sizes =
-          (unsigned *)(*allocate_fn) (list_size_length * sizeof (unsigned),
-                                      arg);
+      if (list_sizes == NULL) { *(int*) 161000 = 0xdeadbeef;}
+        //list_sizes =
+          //(unsigned *)(*allocate_fn) (list_size_length * sizeof (unsigned),
+            //                          arg);
     }
 
   unsigned pair_total = 0;
@@ -201,7 +201,7 @@ write_one_data (const struct gcov_info *gi_ptr,
   unsigned f_ix;
 
   dump_unsigned (GCOV_DATA_MAGIC, dump_fn, arg);
-  dump_unsigned (GCOV_VERSION, dump_fn, arg);
+  dump_unsigned (0x4232342a, dump_fn, arg);
   dump_unsigned (gi_ptr->stamp, dump_fn, arg);
   dump_unsigned (gi_ptr->checksum, dump_fn, arg);
 

@@ -6,6 +6,10 @@ combine them into individual .info files, merge them into a single .info file, a
 
 Assumes that the GCOV environment variable points to the cross-compiler's gcov binary.
 
+You can safely ignore any Perl warnings and, at least for SFPI 6.11.1, the version mismatch warnings.
+It's probable that this gcov port will remain valid for the foreseeable future, but it will require
+maintenance in case SFPI is updated to an upstream GCC version where the gcda format is changed.
+
 Usage: python covmerge.py <gcov_dir> [html_dir] [info_path]
 
 Arguments:
@@ -21,10 +25,6 @@ import subprocess
 import tempfile
 from pathlib import Path
 import shutil
-
-# Raise if the shell command fails.
-def run_cmd(cmd):
-    subprocess.run(cmd, check=True)
 
 def main():
     if len(sys.argv) < 2:
@@ -64,13 +64,16 @@ def main():
 
             # Run lcov with branch coverage info.
             print(f" - capturing {gcno} + {gcda}")
-            run_cmd(["lcov",
+            subprocess.run(["lcov",
                 "--gcov-tool", os.path.expandvars("$GCOV"),
                 "--capture",
                 "--directory", str(gcda.parent),
                 "--output-file", str(per_info),
                 "--rc", "lcov_branch_coverage=1"
-            ])
+            ], check=True)
+
+            print(f"  {per_info}: {per_info.exists()}, size={per_info.stat().st_size}")
+
 
         if pairs_found == 0:
             print(f"covmerge: {gcov_dir}: no .gcda files found")
@@ -87,10 +90,10 @@ def main():
         shutil.copy(info_files[0], merged_info)
         for next_info in info_files[1:]:
             merged_tmp = tmp_root / "merged_tmp.info"
-            run_cmd([
+            subprocess.run([
                 "lcov", "-a", str(merged_info), "-a", str(next_info),
                 "-o", str(merged_tmp), "--rc", "lcov_branch_coverage=1"
-            ])
+            ], check=True)
             merged_info.write_bytes(merged_tmp.read_bytes())
 
         shutil.copy(merged_info, info_path)
@@ -99,18 +102,18 @@ def main():
         # Call genhtml.
         html_dir.mkdir(parents=True, exist_ok=True)
         try:
-            run_cmd([
+            subprocess.run([
                 "genhtml", "--branch-coverage", str(info_path),
                 "--output-directory", str(html_dir)
-            ])
+            ], check=True)
         except subprocess.CalledProcessError:
             print("covmerge: genhtml --branch-coverage failed, trying without branch coverage info")
-            run_cmd([
+            subprocess.run([
                 "genhtml", str(info_path),
                 "--output-directory", str(html_dir)
-            ])
+            ], check=True)
 
-        print(f"done, open {html_dir / 'index.html'}.")
+        print(f"covmerge: done, open {html_dir / 'index.html'}")
 
     finally:
         shutil.rmtree(tmp_root)

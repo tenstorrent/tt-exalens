@@ -29,7 +29,7 @@ extern uint8_t __bss_end;
 // Write length bytes of data into the coverage region in L1.
 void write_data(const void* data, unsigned int length, void* arg);
 
-// Simple bump allocator. Not thread-safe.
+// Simple bump allocator using bss memory.
 void* alloc(unsigned int size, void* arg);
 
 // Run this at the end of a kernel if you wish to do coverage analysis.

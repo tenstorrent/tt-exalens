@@ -4,6 +4,7 @@
 
 // Simple program to test call stack printing
 #include <stdint.h>
+#include "ttgcov-runtime.h"
 
 volatile uint32_t* g_MAILBOX = (volatile uint32_t*)0x4000;
 
@@ -16,7 +17,7 @@ void halt() {
 
 int f1(int a) {
     if (a <= 1) {
-        halt();
+        //halt();
         return a;
     } else
         return f1(a - 1) + f1(a - 2);
@@ -26,7 +27,7 @@ int recurse(int depth) {
     if (depth > 0) {
         return f1(depth) + recurse(depth - 1);
     } else {
-        halt();
+        //halt();
         return 0;
     }
 }
@@ -38,7 +39,7 @@ void infloop() {
 
 namespace ns {
 int ns_int;
-void foo() { halt(); }
+void foo() { return; }
 }  // namespace ns
 
 int main() {
@@ -52,6 +53,7 @@ int main() {
         int sum = recurse(*g_MAILBOX);
         *g_MAILBOX = sum;
     }
+    gcov_dump();
     infloop();
     return 0;
 }
