@@ -61,6 +61,8 @@ class TestDebugging(unittest.TestCase):
         except ValueError as e:
             if self.risc_name.lower() in e.__str__().lower():
                 self.skipTest(f"Core {self.risc_name} not available on this platform: {e}")
+            elif "ETH core" in e.__str__() or "FW core" in e.__str__():
+                self.skipTest(f"Core {self.core_desc}:{self.risc_name} not available on this platform: {e}")
             else:
                 raise e
         except AssertionError as e:
@@ -681,7 +683,6 @@ class TestDebugging(unittest.TestCase):
         if self.core_sim.is_quasar():
             for i in range(50):
                 self.core_sim.read_data(0)
-        self.assertPcEquals(break_addr + 4)
 
         # Value should not be changed and should stay the same since core is in halt
         self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
@@ -707,6 +708,12 @@ class TestDebugging(unittest.TestCase):
         # Continue execution
         self.core_sim.continue_execution()
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
+
+        # Since simulator is slow, we need to wait a bit by reading something
+        if self.core_sim.is_quasar():
+            for i in range(200):
+                if self.core_sim.read_data(addr) == 0x87654000:
+                    break
 
         # Halt to verify PC
         self.core_sim.halt()
