@@ -3,7 +3,8 @@
 ## Tutorial
 
 If you wish to get coverage info for your kernels:
-- Make the build adjustments as demonstrated in [my branch](https://github.com/tenstorrent/tt-exalens/compare/iklikovac/coverage) (compiler flags and ld script changes), include `ttgcov-runtime.h`, and call `gcov_dump` at the end of each kernel, just before the infinite loop.
+- Make the build adjustments as demonstrated in [my branch](https://github.com/tenstorrent/tt-exalens/compare/iklikovac/coverage) (compiler flags and ld script changes).
+- Include `ttgcov-runtime.h`, and call `gcov_dump` at the end of each kernel, just before the infinite loop.
 - After the kernel runs, pull its gathered coverage data with `covdump.py`: specify the running ELF itself, the gcno file (typically in the same directory as the kernel's object file), and the directory into which it should be written.
 - Once you've done that for all kernels, run `covmerge.py` and open `index.html` located in the directory you specified.
   
@@ -23,10 +24,12 @@ In the shell:
 python covdump.py build/riscv-src/wormhole/sample.trisc0.elf build/obj/riscv-src/sample.gcno coverage_dir
 python covdump.py build/riscv-src/wormhole/callstac.trisc1.elf build/obj/riscv-src/callstack.gcno coverage_dir
 python covdump.py build/riscv-src/wormhole/cov_test.trisc2.elf build/obj/riscv-src/cov_test.gcno coverage_dir
-python covmerge.py coverage_dir coverage_results coverage_dir/final.info
+python covmerge.py coverage_dir cov_report
 ```
   
-Then just open `coverage_results/index.html`.
+Then just open `cov_report/index.html`.
+
+As each RISC has its own coverage region, it's fine to run instrumented kernels in parallel and grab data from each one.
 
 Mind that running `covdump.py` on a currently halted RISC might mess up the board state so bad you need to restart the whole machine.
 
@@ -40,25 +43,37 @@ However, GNU gentlemen had a usecase such as this in mind, so they provided the 
   
 The compiler accomplishes this by essentially cramming the coverage counters into .bss, turning off the global ctors and dtors (in `.init`/`.init_array`, `.fini`/`.fini_array`) for gcov stuff and exposing a pair of iterators (`__gcov_info_start` and `__gcov_info_end`) which point to per-TU data.
   
-Making gcov work on our hardware involved several things:
+Making gcov work on our hardware involved a few things:
 1. Compiling with `-fprofile-arcs -ftest-coverage -fprofile-info-section`
-2. Linking against the GCC-provided routines for raw counter -> gcda conversion
-3. Writing a small runtime library that exposes the gcda in L1
-4. Extracting the data from the host system
-5. Processing it
+2. Exposing the data in L1
+3. Extracting the data from the host system
+
+---
   
 ### 1. Compiling
 
-This involved a lot more beyond mechanically adding the compiler flags and typing `make`.
+This involved quite a lot more beyond mechanically adding the compiler flags and typing `make`.
   
-Just telling GCC to compile with `-fprofile-arcs -ftest-coverage -fprofile-info-section` will pull in libgcov, which then pulls in the entirety of the C standard library (through newlib), which made my first attempt at compiling fail spectacularly.
+Just telling GCC to compile with `-fprofile-arcs -ftest-coverage -fprofile-info-section` will pull in libgcov, which then pulls in the entirety of the C standard library I/O (from newlib), which made my first attempt at compiling fail spectacularly.
   
-Linker script adjustments were immediately necessary. Much of the things that would end up in the private memory region (or L0 if you will; the 0xFFB... region) were pulled out of there, chiefly the whole .bss segment, where the (implicitly) zero-initialized counters ended up in. Further, it turns out that something in the build process in the exalens repo (from which I was doing this) pulls in `errno` (I've confirmed this is the case without my changes), and our linker scripts allow that, which in turn pulls in loads of reentrancy machinery from newlib and bloats L0. That was extracted out of there and placed in L1 - the IMPURE_DATA ld script entries. Linking against libgcov directly was thus infeasible; the exact plan for that is laid out in 2.
+Linker script adjustments were immediately necessary. Much of the things that would end up in the private memory region (or L0 if you will; the `0xFFB...` region) were pulled out of there, chiefly the whole .bss segment, where the (implicitly) zero-initialized counters ended up in. Further, it turns out that something in the build process in the exalens repo (from which I was doing this) pulls in `errno` (I've confirmed this is the case without my changes), and our linker scripts allow that, which in turn pulls in loads of reentrancy machinery from newlib and bloats L0. That was extracted out of there and placed in L1 - the `REGION_IMPURE_DATA` ld script entries (it'd be safe to just kick it out entirely, but that was outside the scope of this project). Linking against libgcov directly was thus infeasible; the exact plan for that is laid out in 2.
   
-If you skim through the tutorial provided in the GCC docs linked above, you may notice the linker script adjustments they talk about for use with `-fprofile-info-section`. I have noticed that the `PROVIDE` directive does not get the job done for us, so I exposed the symbol with the plain `__gcov_info_start = .` construct. Mind that the `KEEP` directives are necessary.
+If you skim through the tutorial provided in the GCC docs linked above, you may notice the linker script adjustments they talk about for use with `-fprofile-info-section`. I have noticed that the `PROVIDE` directive does not get the job done for us, so I exposed the symbol with the plain `__gcov_info_start = .` statement. Mind that the `KEEP` directives are necessary.
   
-More linker script adjustments may be necessary depending on the nature of the instrumented kernels. In case there's an overflow in .text or some other such problem, simply expanding the segment should get the job done. The numbers present in my scripts are more than sufficient for anything I've tested with (and they're quite generous; they could be significantly trimmed down if L1 turns out to be scarce.)
+More linker script adjustments may be necessary depending on the nature of the instrumented kernels. In case there's an overflow in `.text` or some other such problem, simply expanding the segment should get the job done. The numbers present in my scripts are more than sufficient for anything I've tested with (and they're quite generous; they could be significantly trimmed down if L1 turns out to be scarce).
 
-### 2. gcda conversion
+---
 
-libgcov provides __gcov_info_to_gcda (found in gcc/libgcc/libgcov-driver.c) which converts raw counter info into the gcda format that can later be used by tools like gcov and lcov. However, linking against libgcov turned out to be a problem (we don't want all of newlib). That function itself does not have any libc dependencies, so I did the simplest thing and rather unceremoniously carved it out along with its dependencies out of the source file and compiled it as a separate static library (found in tt-gcov.c).
+### 2. Converting counters into gcda and exposing it
+
+libgcov provides `__gcov_info_to_gcda` (found in `gcc/libgcc/libgcov-driver.c`) which converts raw counter info into the gcda format that can later be used by tools like `gcov` and `lcov`. However, linking against libgcov turned out to be a problem (as we don't want all of newlib). That function itself does not have any libc dependencies, so I did the simplest thing and just carved it out, rather unceremoniously, along with its dependencies out of GCC's codebase and compiled it as a separate static library (found in `tt-gcov.c`).
+  
+The counters for each kernel are in its `.bss`, and the pointer to the `struct gcov_info` is in `REGION_GCOV_INFO`. Those two are passed to `__gcov_info_to_gcda`, which then gives us a data stream in gcda format. The linker scripts also define `REGION_GCOV` (as well as two symbols to access it: `__coverage_start` and `__coverage_end`), and we write the data stream as a length-prefixed byte array into that region. Another symbol is exposed: `__bss_free`, which facilitates the use of free space in `.bss` (known at link time) as a heap spanning to `__bss_end`. It's managed by the bump allocator in `ttgcov-runtime.c:alloc`, and its only potential user is `__gcov_info_to_gcda`, as it may allocate under certain conditions. It does not allocate under the code I tested it with, but I left it there in case it's needed.
+  
+Note that (what did I want to say here?)
+
+---
+
+### 3. Storing the data on the host
+
+

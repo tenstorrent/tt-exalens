@@ -6,24 +6,27 @@ extern "C" {
 
 #define COV_OVERFLOW 0xDEADBEEF
 
-// This variable indexes into the coverage segment. The first value in the
-// segment is the number of bytes written. Note, in gcov_dump, that it gets
-// set to 4 - that is to accomodate for this value itself.
-// The covdump.py script uses this to know how much data to extract.
-uint32_t written;
+// The first value in the coverage segment is the number of bytes written.
+// Note, in gcov_dump, that it gets set to 4 - that is to accomodate for the
+// value itself. The covdump.py script uses it to know how much data to
+// extract.
 
 void write_data(const void* _data, unsigned int length, void* arg)
 {
     uint8_t* data = (uint8_t*) _data;
+    uint32_t* written = (uint32_t*) __coverage_start;
 
-    if(__coverage_start + written + length >= __coverage_end) {
+    if(*written == COV_OVERFLOW) return;
+
+    if(__coverage_start + *written + length >= __coverage_end) {
         // Not enough space in the segment, write overflow sentinel and return.
-        *(uint32_t*) __coverage_start = COV_OVERFLOW;
+        *written = COV_OVERFLOW;
         return;
     }
     
     for(unsigned int i = 0; i < length; i++) {
-        __coverage_start[written++] = data[i];
+        __coverage_start[*written] = data[i];
+        (*written)++; // Mind the operator precedence.
     }
 }
 
@@ -70,16 +73,11 @@ void gcov_dump(void)
         *p = 0;
 
     // First 4 bytes are reserved for written itself, start writing past that.
-    written = 4;
+    *(uint32_t*) __coverage_start = 4;
 
     const struct gcov_info* const* info = __gcov_info_start;
     __asm__ volatile("" : "+r" (info)); // Prevent optimizations.
     __gcov_info_to_gcda(*info, fname_nop, write_data, alloc, NULL);
-
-    // The total number of bytes written is stored at the start of the segment.
-    // If an overflow took place while writing, avoid clobbering the sentinel.
-    if(*(uint32_t*) __coverage_start != COV_OVERFLOW) 
-        *(uint32_t*) __coverage_start = written;
 }
 
 #ifdef __cplusplus
