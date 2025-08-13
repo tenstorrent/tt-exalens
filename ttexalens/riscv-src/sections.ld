@@ -95,9 +95,6 @@ SECTIONS
     __ldm_bss_end = .;
 
   } > REGION_BSS
-  /* A pointer to the unused portion of .bss is provided for use as a small heap to conform to __gcov_info_to_gcda's interface. */
-  __bss_free = ALIGN(., 4);
-  ASSERT(__bss_free <= ORIGIN(REGION_BSS) + LENGTH(REGION_BSS), "error: .bss has overflowed (coverage data resides there)")
   .ldm_data __ldm_start :
   {
     . = ALIGN(4);
@@ -198,7 +195,6 @@ SECTIONS
   .gnu.attributes 0 : { KEEP (*(.gnu.attributes)) }
 
   /* The first two symbols here tell the runtime coverage library where to write the gcda. */
-  /* __bss_end (along with __bss_free) provide the heap region. */
   __coverage_start = ORIGIN(REGION_GCOV);
   __coverage_end = ORIGIN(REGION_GCOV) + LENGTH(REGION_GCOV);
   __bss_start = ORIGIN(REGION_BSS);

@@ -20,17 +20,8 @@ extern const struct gcov_info* __gcov_info_end[];
 extern uint8_t __coverage_start[];
 extern uint8_t __coverage_end[];
 
-// The remaining portion of bss is currently used as a makeshift heap.
-// This is needed for __gcov_info_to_gcda, as it may allocate. 
-// I may get rid of this upon testing if it turns out to be unnecessary.
-extern uint8_t __bss_free;
-extern uint8_t __bss_end;
-
 // Write length bytes of data into the coverage region in L1.
 void write_data(const void* data, unsigned int length, void* arg);
-
-// Simple bump allocator using bss memory.
-void* alloc(unsigned int size, void* arg);
 
 // Run this at the end of a kernel if you wish to do coverage analysis.
 void gcov_dump(void);

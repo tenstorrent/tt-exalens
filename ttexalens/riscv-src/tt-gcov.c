@@ -133,6 +133,7 @@ write_topn_counters (const struct gcov_ctr_info *ci_ptr,
                      void *(*allocate_fn)(unsigned, void *),
                      void *arg)
 {
+  return;
   unsigned counters = n_counts / GCOV_TOPN_MEM_COUNTERS;
 
   /* It can happen in a multi-threaded environment that number of counters is
@@ -152,9 +153,9 @@ write_topn_counters (const struct gcov_ctr_info *ci_ptr,
 
       /* Malloc fallback.  */
       if (list_sizes == NULL) { *(int*) 161000 = 0xdeadbeef;}
-        //list_sizes =
-          //(unsigned *)(*allocate_fn) (list_size_length * sizeof (unsigned),
-            //                          arg);
+        list_sizes =
+          (unsigned *)(*allocate_fn) (list_size_length * sizeof (unsigned),
+                                      arg);
     }
 
   unsigned pair_total = 0;

@@ -44,21 +44,6 @@ void fname_nop(const char* fname, void* arg)
     return;
 }
 
-void* alloc(unsigned int size, void* arg)
-{
-    // The heap starts from the unused part of bss and spans to the end of
-    // the segment. The linker ensures it's 4-byte aligned.
-    
-    static uint8_t* heap_ptr = &__bss_free;
-    // Ensure the heap pointer remains aligned after bumping.
-    size = (size + 3) & ~3;
-    if((heap_ptr + size) >= &__bss_end) return NULL;
-
-    void* allocated = heap_ptr;
-    heap_ptr += size;
-    return allocated;
-}
-
 void gcov_dump(void)
 {
     // Mind that this function extracts coverage info of only one TU, as this
@@ -77,7 +62,7 @@ void gcov_dump(void)
 
     const struct gcov_info* const* info = __gcov_info_start;
     __asm__ volatile("" : "+r" (info)); // Prevent optimizations.
-    __gcov_info_to_gcda(*info, fname_nop, write_data, alloc, NULL);
+    __gcov_info_to_gcda(*info, fname_nop, write_data, NULL, NULL);
 }
 
 #ifdef __cplusplus
