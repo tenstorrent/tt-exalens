@@ -17,16 +17,17 @@ class TensixDataFormat(Enum):
     Bfp4_b = 7
     Bfp2_b = 15
     Lf8 = 10
-    Fp8_e4m3 = 0x1A
-    UInt16 = 9
+    Fp8_e4m3 = 26  # 0x1A in decimal
     Int8 = 14
-    UInt8 = 30
     Tf32 = 4
+    UInt8 = 30
+    UInt16 = 9
     Int32 = 8
-    RawUInt8 = 0xF0
-    RawUInt16 = 0xF1
-    RawUInt32 = 0xF2
-    Invalid = 0xFF
+    UInt32 = 24
+    RawUInt8 = 240  # 0xf0 in decimal
+    RawUInt16 = 241  # 0xf1 in decimal
+    RawUInt32 = 242  # 0xf2 in decimal
+    Invalid = 255
 
 
 def flip_bfp16_bits(value):
@@ -139,6 +140,22 @@ def unpack_fp32(data) -> list[float]:
     return floats
 
 
+def unpack_uint16(data: list[int]) -> list[int]:
+    byte_data = bytes(data)
+    unpacked_data = struct.unpack(f">{len(byte_data)//2}H", byte_data)
+
+    # Reorder in pairs
+    result = []
+    for i in range(0, len(unpacked_data), 2):
+        if i + 1 < len(unpacked_data):
+            # Here we swap values in pair
+            result.extend([unpacked_data[i + 1], unpacked_data[i]])
+        else:
+            result.append(unpacked_data[i])
+
+    return result
+
+
 def unpack_data(data, df: int | TensixDataFormat):
     if isinstance(df, int):
         df = TensixDataFormat(df)
@@ -151,5 +168,7 @@ def unpack_data(data, df: int | TensixDataFormat):
         return unpack_bfp16(data)
     elif df == TensixDataFormat.Bfp8_b:
         return unpack_bfp8_b(data)
+    elif df == TensixDataFormat.UInt16:
+        return unpack_uint16(data)
     else:
         raise ValueError(f"Unknown or unsupported data format {df}")
