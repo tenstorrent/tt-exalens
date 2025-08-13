@@ -161,7 +161,7 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
         else:
             halted = risc.is_halted()
             if halted:
-                PC = risc.read_gpr(33)
+                PC = risc.get_pc()
                 util.INFO(f"  HALTED PC=0x{PC:08x} - {where}")
             else:
                 util.INFO(f"  RUNNING - {where}")
