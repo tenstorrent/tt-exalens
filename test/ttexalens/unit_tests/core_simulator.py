@@ -80,7 +80,7 @@ class RiscvCoreSimulator:
             lib.write_words_to_device(self.core_loc, addr, data, context=self.context)
             assert self.read_data(addr) == data, f"Data verification failed at address {addr:x}"
         else:
-            byte_data = b''.join(x.to_bytes(4, 'little') for x in data)
+            byte_data = b"".join(x.to_bytes(4, "little") for x in data)
             lib.write_to_device(self.core_loc, addr, byte_data, context=self.context)
             read_data = lib.read_from_device(self.core_loc, addr, num_bytes=len(byte_data), context=self.context)
             assert read_data == byte_data, f"Data verification failed at address {addr:x}"

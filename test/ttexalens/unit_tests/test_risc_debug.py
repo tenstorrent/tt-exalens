@@ -222,8 +222,10 @@ class TestDebugging(unittest.TestCase):
 
         # Test read if noc address exists
         if noc_addr is not None:
-            self.core_sim.write_data_checked(noc_addr, 0xaabbccdd)
-            self.assertEqual(self.core_sim.risc_debug.read_memory(addr), 0xaabbccdd, "Memory value should be 0xaabbccdd.")
+            self.core_sim.write_data_checked(noc_addr, 0xAABBCCDD)
+            self.assertEqual(
+                self.core_sim.risc_debug.read_memory(addr), 0xAABBCCDD, "Memory value should be 0xaabbccdd."
+            )
 
         # Test write and read memory
         self.core_sim.risc_debug.write_memory(addr, 0x12345678)
