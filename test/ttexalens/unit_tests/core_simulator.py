@@ -49,10 +49,10 @@ class RiscvCoreSimulator:
     def _get_core_location(self) -> str:
         """Convert core_desc to core location string."""
         if self.core_desc.startswith("ETH"):
-            eth_cores = self.device.get_block_locations(block_type="eth")
+            eth_blocks = self.device.idle_eth_blocks
             core_index = int(self.core_desc[3:])
-            if len(eth_cores) > core_index:
-                return eth_cores[core_index].to_str()
+            if len(eth_blocks) > core_index:
+                return eth_blocks[core_index].location.to_str()
             raise ValueError(f"ETH core {core_index} not available on this platform")
 
         elif self.core_desc.startswith("FW"):

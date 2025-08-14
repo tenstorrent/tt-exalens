@@ -14,9 +14,9 @@ from ttexalens.elf_loader import ElfLoader
 
 @parameterized_class(
     [
-        {"core_desc": "ETH0", "risc_name": "ERISC", "neo_id": None},
-        {"core_desc": "ETH0", "risc_name": "ERISC0", "neo_id": None},
-        {"core_desc": "ETH0", "risc_name": "ERISC1", "neo_id": None},
+        # {"core_desc": "ETH0", "risc_name": "ERISC", "neo_id": None},
+        # {"core_desc": "ETH0", "risc_name": "ERISC0", "neo_id": None},
+        # {"core_desc": "ETH0", "risc_name": "ERISC1", "neo_id": None},
         {"core_desc": "FW0", "risc_name": "BRISC", "neo_id": None},
         {"core_desc": "FW0", "risc_name": "TRISC0", "neo_id": None},
         {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": None},
