@@ -1,4 +1,5 @@
 #include "coverage/coverage.h"
+#include <cstdint>
 
 #define ever ;;
 

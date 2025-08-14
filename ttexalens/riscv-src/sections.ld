@@ -5,7 +5,7 @@
  */
 __firmware_stack_size = LENGTH(REGION_STACK);
 __firmware_start = DEFINED(__fw_export_end_text) ? __fw_export_end_text : ORIGIN(REGION_CODE);
-__ldm_start = DEFINED(__fw_export_ldm_end) ? __fw_export_ldm_end : ORIGIN(REGION_LOCAL_DATA);
+__ldm_start = DEFINED(__fw_export_ldm_end) ? __fw_export_ldm_end : ORIGIN(REGION_DATA);
 
 OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv",
        "elf32-littleriscv")
@@ -27,7 +27,7 @@ SECTIONS
   } > REGION_LOADER_INIT
   /*
    * This section is used to transfer .init section into private code memory (IRAM = 0xffc00000).
-   * IRAM exists only on NCRISC on some architectures. On all others, this section is created as empty.
+   * IRAM exists only on NCRICS on some architectures. On all others, this section is created as empty.
    * Since loader cannot access IRAM from NOC, it copies .init section into .loader_code section,
    * and we embed code into CRT library that copies .loader_code section into .init section before rest of the CRT starts.
    */
@@ -74,32 +74,12 @@ SECTIONS
   PROVIDE (etext = .);
   __fw_export_end_text = DEFINED(__fw_export_end_text) ? __fw_export_end_text : .;
   PROVIDE(__global_pointer$ = ORIGIN(REGION_DATA) + 0x800);
-  
-  /* This was necessary to avoid bloating L0. */
-  .data.impure_data :
-  {
-    *(.data.impure_data)
-  } > REGION_IMPURE_DATA
-  .bss :
-  {
-    __ldm_bss_start = .;
-    *(.sbss2 .sbss2.* .gnu.linkonce.sb2.*)
-    *(.dynsbss)
-    *(.sbss .sbss.* .gnu.linkonce.sb.*)
-    *(.scommon)
-    . = ALIGN(4);
-    *(.dynbss)
-    *(.bss .bss.* .gnu.linkonce.b.*)
-    *(COMMON)
-    . = ALIGN(4);
-    __ldm_bss_end = .;
-
-  } > REGION_BSS
-  /* Only pointers to global constructors are placed into L0. This tends to take up just four bytes. */
   .ldm_data __ldm_start :
   {
     . = ALIGN(4);
      __ldm_data_start = .;
+     *(.rodata .rodata.* .gnu.linkonce.r.*)
+     *(.rodata1)
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array))
     PROVIDE_HIDDEN (__preinit_array_end = .);
@@ -121,14 +101,33 @@ SECTIONS
     KEEP (*(EXCLUDE_FILE (*crtend.o *crtend?.o ) .dtors))
     KEEP (*(SORT(.dtors.*)))
     KEEP (*(.dtors))
+    *(.dynamic)
+    *(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*) *(.data.rel.ro .data.rel.ro.* .gnu.linkonce.d.rel.ro.*)
+    *(.srodata.cst16) *(.srodata.cst8) *(.srodata.cst4) *(.srodata.cst2) *(.srodata .srodata.*)
+    *(.sdata .sdata.* .gnu.linkonce.s.*)
+    *(.sdata2 .sdata2.* .gnu.linkonce.s2.*)
+    *(.data .data.* .gnu.linkonce.d.*)
     SORT(CONSTRUCTORS)
+    *(.data1)
+    *(.got.plt) *(.igot.plt) *(.got) *(.igot)
     . = ALIGN(4);
     __ldm_data_end = .;
-  } > REGION_LOCAL_DATA
+    __ldm_bss_start = .;
+    *(.sbss2 .sbss2.* .gnu.linkonce.sb2.*)
+    *(.dynsbss)
+    *(.sbss .sbss.* .gnu.linkonce.sb.*)
+    *(.scommon)
+    . = ALIGN(4);
+    *(.dynbss)
+    *(.bss .bss.* .gnu.linkonce.b.*)
+    *(COMMON)
+    . = ALIGN(4);
+    __ldm_bss_end = .;
+  } > REGION_DATA
   local_data_noinit __ldm_bss_end (NOLOAD) :
   {
     *(local_data_noinit)
-  } > REGION_LOCAL_DATA
+  } > REGION_DATA
   . = ALIGN(16);
   _edata = .; PROVIDE (edata = .);
   _end = .; PROVIDE (end = .);
@@ -139,31 +138,6 @@ SECTIONS
    . += __firmware_stack_size;
     __stack_top = .;
   } > REGION_STACK
-
-  /* https://gcc.gnu.org/onlinedocs/gcc-15.1.0/gcc/Freestanding-Environments.html */
-  .gcov_info :
-  {
-    __gcov_info_start = .;
-    /* The KEEP directives tell the linker to not garbage-collect the segments. */
-    KEEP(*(.gcov_info))
-    KEEP(*(.gcov_info.*))
-    __gcov_info_end = .;
-  } > REGION_GCOV_PTR
-
-  .data :
-  {
-    *(.rodata .rodata.* .gnu.linkonce.r.*)
-    *(.rodata1)
-    *(.dynamic)
-    *(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*) *(.data.rel.ro .data.rel.ro.* .gnu.linkonce.d.rel.ro.*)
-    *(.srodata.cst16) *(.srodata.cst8) *(.srodata.cst4) *(.srodata.cst2) *(.srodata .srodata.*)
-    *(.sdata .sdata.* .gnu.linkonce.s.*)
-    *(.sdata2 .sdata2.* .gnu.linkonce.s2.*)
-    *(.data .data.* .gnu.linkonce.d.*)
-    *(.data1)
-    *(.got.plt) *(.igot.plt) *(.got) *(.igot)
-  } > REGION_DATA
-
   .stab 0 : { *(.stab) }
   .stabstr 0 : { *(.stabstr) }
   .stab.excl 0 : { *(.stab.excl) }
@@ -193,11 +167,6 @@ SECTIONS
   .debug_macro 0 : { *(.debug_macro) }
   .debug_addr 0 : { *(.debug_addr) }
   .gnu.attributes 0 : { KEEP (*(.gnu.attributes)) }
-
-  /* The first two symbols here tell the coverage library where to write the gcda. */
-  __coverage_start = ORIGIN(REGION_GCOV);
-  __coverage_end = ORIGIN(REGION_GCOV) + LENGTH(REGION_GCOV);
-
   /DISCARD/ : { *(.note.GNU-stack) *(.gnu_debuglink) *(.gnu.lto_*) }
   /DISCARD/ : {
         *(.interp)

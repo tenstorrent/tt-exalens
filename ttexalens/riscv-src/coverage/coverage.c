@@ -1,10 +1,18 @@
-#include "coverage.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#include <stdint.h>
+#include <stddef.h>
+#include "gcov.h"
+
 #define COV_OVERFLOW 0xDEADBEEF
+
+extern const struct gcov_info* __gcov_info_start[];
+extern const struct gcov_info* __gcov_info_end[];
+
+extern uint8_t __coverage_start[];
+extern uint8_t __coverage_end[];
 
 // The first value in the coverage segment is the number of bytes written.
 // Note, in gcov_dump, that it gets set to 4 - that is to accomodate for the

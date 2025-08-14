@@ -1,4 +1,11 @@
-// All the code in this file, aside from struct definitions, is taken from gcc/libgcc/libgcov-driver.c
+// All the functions in this file are taken from gcc/libgcc/libgcov-driver.c
+
+// Note to whomever reviews my PR: GCC is licensed under GPL with the linking
+// exception. That exception applies to this code, so statically linking
+// against the library compiled from this does not force one to license the
+// rest of the code under GPL; all that is necessary is to release just this
+// file under GPL. However, I don't know what kind of license comment I should
+// put at the top of this file.
 
 #include <stdint.h>
 #include <stddef.h>
@@ -202,7 +209,7 @@ write_one_data (const struct gcov_info *gi_ptr,
   unsigned f_ix;
 
   dump_unsigned (GCOV_DATA_MAGIC, dump_fn, arg);
-  dump_unsigned (0x4232342a, dump_fn, arg);
+  dump_unsigned (GCOV_VERSION, dump_fn, arg);
   dump_unsigned (gi_ptr->stamp, dump_fn, arg);
   dump_unsigned (gi_ptr->checksum, dump_fn, arg);
 
@@ -314,10 +321,10 @@ __gcov_info_to_gcda (const struct gcov_info *gi_ptr,
   write_one_data (gi_ptr, NULL, dump_fn, allocate_fn, arg);
 }
 
-// This function is not needed if only one TU is instrumented.
-// If the runtime is to be extended to support coverage analysis on binaries
-// built from multiple TUs, merely uncomment all commented code in this file,
-// and you'll get all of this function's dependencies.
+// This function is not needed if only one TU is instrumented. If the runtime
+// is to be extended to support binaries built from multiple TUs, merely
+// uncomment all commented code in this file, and you'll get all of this
+// function's dependencies.
 /* void
 __gcov_filename_to_gcfn (const char *filename,
 			 void (*dump_fn) (const void *, unsigned, void *),

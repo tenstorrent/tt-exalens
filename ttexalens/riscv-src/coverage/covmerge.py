@@ -20,7 +20,7 @@ import subprocess
 def main():
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} <gcov_dir> [html_dir]\n")
-        sys.exit(1)
+        exit(1)
 
     gcov_dir = Path(sys.argv[1]).resolve()
     html_dir = Path(sys.argv[2] if len(sys.argv) > 2 else "cov_html").resolve()
@@ -28,11 +28,16 @@ def main():
 
     if not gcov_dir.is_dir():
         print(f"covmerge: {gcov_dir}: not a directory")
-        sys.exit(1)
+        exit(1)
 
     gcov_tool = os.path.expandvars("$GCOV")
-    if shutil.which(gcov_tool) is None:
+    if not shutil.which(gcov_tool):
         print(f"covmerge: {gcov_tool} not found, ensure GCOV environment variable is set to the cross-compiler gcov")
+        exit(1)
+    
+    if not shutil.which("lcov"):
+        print(f"covmerge: lcov is not installed")
+        exit(1)
 
     print(f"covmerge: capturing coverage in {gcov_dir}")
     try:
@@ -46,11 +51,11 @@ def main():
         ], check=True)
     except subprocess.CalledProcessError as e:
         print(f"covmerge: lcov --capture failed: {e}")
-        sys.exit(1)
+        exit(1)
 
     if not info_path.exists():
         print(f"covmerge: expected info file {info_path} not created")
-        sys.exit(1)
+        exit(1)
 
     print(f"covmerge: info written to {info_path}")
 
@@ -69,7 +74,7 @@ def main():
             ], check=True)
         except subprocess.CalledProcessError as e:
             print(f"covmerge: genhtml failed: {e}")
-            sys.exit(1)
+            exit(1)
 
     print(f"covmerge: done: open {html_dir / 'index.html'}")
 

@@ -6,8 +6,6 @@ project(RISCVProject LANGUAGES CXX ASM)
 option(COVERAGE "Enable instrumentation for test coverage analysis with gcov" OFF)
 if(COVERAGE)
     message(STATUS "Coverage instrumentation is ENABLED")
-    add_compile_definitions(COVERAGE=1)
-
 endif()
 
 # Check if TTEXALENS_HOME is set, if not set it to ../../ from the directory that contains this file
@@ -34,7 +32,7 @@ set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size
 
 # Note that -fprofile-info-section must be specified so as to not rely on unavailable runtime support (libc, complete crt, etc),
 # but instead have GCC provide us with a pointer to the raw coverage data and let us extract it ourselves.
-set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section)
+set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section -DCOVERAGE)
 
 # Define project paths
 set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")
@@ -81,32 +79,32 @@ endfunction()
 
 # Compile the coverage-related runtime libraries
 if(COVERAGE)
-    set(TT_GCOV_SRC "${RISCV_SOURCE}/coverage/tt-gcov.c")
-    set(TT_GCOV_OBJ "${RISCV_OBJECT}/tt-gcov.o")
-    set(LIB_TTGCOV "${RISCV_OUTPUT}/libttgcov.a")
+    set(GCOV_SRC "${RISCV_SOURCE}/coverage/gcov.c")
+    set(GCOV_OBJ "${RISCV_OBJECT}/gcov.o")
+    set(LIBGCOV "${RISCV_OUTPUT}/libgcov.a")
     
-    set(TTGCOV_RUNTIME_SRC "${RISCV_SOURCE}/coverage/ttgcov-runtime.c")
-    set(TTGCOV_RUNTIME_OBJ "${RISCV_OBJECT}/ttgcov-runtime.o")
-    set(LIB_TTGCOV_RUNTIME "${RISCV_OUTPUT}/libttgcovruntime.a")
+    set(COVERAGE_SRC "${RISCV_SOURCE}/coverage/coverage.c")
+    set(COVERAGE_OBJ "${RISCV_OBJECT}/coverage.o")
+    set(LIBCOVERAGE "${RISCV_OUTPUT}/libcoverage.a")
 
-    add_riscv_object("${TT_GCOV_OBJ}" "${TT_GCOV_SRC}" ON OFF)
-    add_riscv_object("${TTGCOV_RUNTIME_OBJ}" "${TTGCOV_RUNTIME_SRC}" ON OFF)
+    add_riscv_object("${GCOV_OBJ}" "${GCOV_SRC}" ON OFF)
+    add_riscv_object("${COVERAGE_OBJ}" "${COVERAGE_SRC}" ON OFF)
 
     add_custom_command(
-        OUTPUT ${LIB_TTGCOV}
-        COMMAND ${TOOL_PATH}/riscv32-tt-elf-gcc-ar rcs ${LIB_TTGCOV} ${TT_GCOV_OBJ}
-        DEPENDS ${TT_GCOV_OBJ}
-        COMMENT "Building the coverage runtime libraries..."
+        OUTPUT ${LIBGCOV}
+        COMMAND ${TOOL_PATH}/riscv32-tt-elf-gcc-ar rcs ${LIBGCOV} ${GCOV_OBJ}
+        DEPENDS ${GCOV_OBJ}
+        COMMENT "Building coverage libraries..."
     )
 
     add_custom_command(
-        OUTPUT ${LIB_TTGCOV_RUNTIME}
-        COMMAND ${TOOL_PATH}/riscv32-tt-elf-gcc-ar rcs ${LIB_TTGCOV_RUNTIME} ${TTGCOV_RUNTIME_OBJ}
-        DEPENDS ${TTGCOV_RUNTIME_OBJ}
+        OUTPUT ${LIBCOVERAGE}
+        COMMAND ${TOOL_PATH}/riscv32-tt-elf-gcc-ar rcs ${LIBCOVERAGE} ${COVERAGE_OBJ}
+        DEPENDS ${COVERAGE_OBJ}
     )
 
-    add_custom_target(ttgcov_lib ALL
-        DEPENDS ${LIB_TTGCOV} ${LIB_TTGCOV_RUNTIME}
+    add_custom_target(libgcov ALL
+        DEPENDS ${LIBGCOV} ${LIBCOVERAGE}
     )
 endif()
 
@@ -142,8 +140,8 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
     )
 
     if(COVERAGE)
-        list(APPEND LINK_OBJECTS ${LIB_TTGCOV})
-        list(APPEND LINK_OBJECTS ${LIB_TTGCOV_RUNTIME})
+        list(APPEND LINK_OBJECTS ${LIBGCOV})
+        list(APPEND LINK_OBJECTS ${LIBCOVERAGE})
     endif()
 
     add_custom_command(
@@ -166,7 +164,7 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
 
     # If enabled, ensure the coverage runtime library is built before the ELFs.
     if(COVERAGE)
-        add_dependencies("${ARCH}_${APP}_${CORE}_${OPTIMIZED}_target" ttgcov_lib)
+        add_dependencies("${ARCH}_${APP}_${CORE}_${OPTIMIZED}_target" libgcov)
     endif()
 
     add_custom_command(

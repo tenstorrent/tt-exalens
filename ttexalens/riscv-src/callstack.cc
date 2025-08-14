@@ -46,13 +46,6 @@ int main() {
     if (*g_MAILBOX < 0 || *g_MAILBOX > 1000) {
         *g_MAILBOX = 10;
     }
-
-    /*if (*g_MAILBOX == 0) {
-        ns::foo();
-    } else {
-        int sum = recurse(*g_MAILBOX);
-        *g_MAILBOX = sum;
-    }*/
     *g_MAILBOX = recurse(10);
     gcov_dump();
     infloop();
