@@ -3,11 +3,6 @@ cmake_policy(VERSION 3.16)
 
 project(RISCVProject LANGUAGES CXX ASM)
 
-option(COVERAGE "Enable instrumentation for test coverage analysis with gcov" OFF)
-if(COVERAGE)
-    message(STATUS "Coverage instrumentation is ENABLED")
-endif()
-
 # Check if TTEXALENS_HOME is set, if not set it to ../../ from the directory that contains this file
 if(NOT TTEXALENS_HOME)
     set(TTEXALENS_HOME "${CMAKE_CURRENT_LIST_DIR}/../..")

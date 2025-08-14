@@ -22,7 +22,8 @@ extern uint8_t __coverage_end[];
 void gcov_dump(void);
 
 #else // !COVERAGE
-void gcov_dump(void) {}
+[[gnu::always_inline]]
+static inline void gcov_dump(void) {}
 #endif // COVERAGE
 
 #ifdef __cplusplus
