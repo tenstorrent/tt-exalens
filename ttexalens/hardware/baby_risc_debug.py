@@ -312,6 +312,22 @@ class BabyRiscDebugHardware:
             self.is_halted()
         ), f"Failed to halt {self.risc_info.risc_name} core at {self.risc_info.noc_block.location}"
 
+    def flush(self, pc_address: int):
+        """
+        Flush the pipeline and reset PC to the specified address.
+
+        Args:
+            pc_address (int): The address to set the PC to after flushing
+        """
+        if self.verbose:
+            util.INFO(f"  flush(0x{pc_address:08x})")
+
+        # Set the PC address in COMMAND_ARG_1
+        self.__riscv_write(REG_COMMAND_ARG_1, pc_address)
+
+        # Execute the flush command
+        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_FLUSH)
+
     @contextmanager
     def ensure_halted(self):
         """

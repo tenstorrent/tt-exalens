@@ -40,11 +40,11 @@ mypy:
 
 .PHONY: wheel_develop
 wheel_develop:
-	CONFIG=Debug python3 setup.py bdist_wheel -d build/ttexalens_wheel
+	CONFIG=Debug pip wheel --no-deps --no-cache-dir . --wheel-dir build/ttexalens_wheel
 
 .PHONY: wheel
 wheel:
-	STRIP_SYMBOLS=1 CONFIG=Release python3 setup.py bdist_wheel -d build/ttexalens_wheel
+	STRIP_SYMBOLS=1 CONFIG=Release pip wheel --no-deps --no-cache-dir . --wheel-dir build/ttexalens_wheel
 
 .PHONY: ttexalens_server_unit_tests_run_only
 ttexalens_server_unit_tests_run_only:
