@@ -152,17 +152,16 @@ SECTIONS
     __stack_top = .;
   } > REGION_STACK
 
-  /* This performs the necessary configuration for using GCC's -fprofile-info-section
-   * which facilitates profiling and test coverage analysis in freestanding environments.
+  /* This performs the necessary configuration for using GCC's -fprofile-info-section.
    * Read more at: https://gcc.gnu.org/onlinedocs/gcc-15.1.0/gcc/Freestanding-Environments.html */
   .gcov_info :
   {
     __gcov_info_start = .;
-    /* The KEEP directives tell the linker to not garbage-collect the sections. */
+    /* The KEEP directives tell the linker to not garbage-collect the segments. */
     KEEP(*(.gcov_info))
     KEEP(*(.gcov_info.*))
     __gcov_info_end = .;
-  } > REGION_GCOV_INFO
+  } > REGION_GCOV_PTR
 
   .stab 0 : { *(.stab) }
   .stabstr 0 : { *(.stabstr) }
@@ -194,7 +193,7 @@ SECTIONS
   .debug_addr 0 : { *(.debug_addr) }
   .gnu.attributes 0 : { KEEP (*(.gnu.attributes)) }
 
-  /* The first two symbols here tell the runtime coverage library where to write the gcda. */
+  /* The first two symbols here tell the coverage library where to write the gcda. */
   __coverage_start = ORIGIN(REGION_GCOV);
   __coverage_end = ORIGIN(REGION_GCOV) + LENGTH(REGION_GCOV);
   __bss_start = ORIGIN(REGION_BSS);

@@ -69,10 +69,8 @@ More linker script adjustments may be necessary depending on the nature of the i
 
 libgcov provides `__gcov_info_to_gcda` (found in `gcc/libgcc/libgcov-driver.c`) which converts raw counter info into the gcda format that can later be used by tools like `gcov` and `lcov`. However, linking against libgcov turned out to be a problem (as we don't want all of newlib). That function itself does not have any libc dependencies, so I did the simplest thing and just carved it out, rather unceremoniously, along with its dependencies out of GCC's codebase and compiled it as a separate static library (found in `tt-gcov.c`).
   
-The counters for each kernel are in its `.bss`, and the pointer to the `struct gcov_info` is in `REGION_GCOV_INFO`. Those two are passed to `__gcov_info_to_gcda`, which then gives us a data stream in gcda format. The linker scripts also define `REGION_GCOV` (as well as two symbols to access it: `__coverage_start` and `__coverage_end`), and we write the data stream as a length-prefixed byte array into that region. 
+The counters for each kernel are in its `.bss`, and the pointer to the `struct gcov_info` is in `REGION_GCOV_INFO` (the struct itself lives in `.data`). Those two are passed to `__gcov_info_to_gcda`, which then gives us a data stream in gcda format. The linker scripts also define `REGION_GCOV` (as well as two symbols to access it: `__coverage_start` and `__coverage_end`), and we write the data stream as a length-prefixed byte array into that region. 
   
-Note that (what did I want to say here?)
-
 ---
 
 ### 3. Storing the data on the host

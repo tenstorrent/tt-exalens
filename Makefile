@@ -13,6 +13,18 @@ build:
 	fi
 	@ninja -C build
 
+.PHONY: debug
+debug:
+	@echo "Building (debug build)"
+	@if [ ! -f build/build.ninja ] || ! grep -iq "COVERAGE:BOOL=ON" build/CMakeCache.txt || ! grep -iq "CMAKE_BUILD_TE:STRING=Debug" build/CMakeCache.txt; then \
+		if which ccache > /dev/null; then \
+			cmake -B build -G Ninja -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DDOWNLOAD_TTEXALENS_PRIVATE=$(JTAG) -DCOVERAGE=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5; \
+		else \
+			cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DDOWNLOAD_TTEXALENS_PRIVATE=$(JTAG) -DCOVERAGE=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5; \
+		fi \
+	fi
+	@ninja -C build
+
 .PHONY: clean
 clean:
 	@rm -rf build/

@@ -3,9 +3,11 @@ cmake_policy(VERSION 3.16)
 
 project(RISCVProject LANGUAGES CXX ASM)
 
-option(COVERAGE "Enable instrumentation for test coverage analysis with gcov" ON)
+option(COVERAGE "Enable instrumentation for test coverage analysis with gcov" OFF)
 if(COVERAGE)
     message(STATUS "Coverage instrumentation is ENABLED")
+    add_compile_definitions(COVERAGE=1)
+
 endif()
 
 # Check if TTEXALENS_HOME is set, if not set it to ../../ from the directory that contains this file
@@ -30,7 +32,7 @@ set(OPTIONS_ALL -O0 -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math)
 set(OPTIONS_COMPILE -fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable)
 set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
-# Note that -fprofile-info-section must be specified so as to not rely on runtime support (libc, complete crt, etc),
+# Note that -fprofile-info-section must be specified so as to not rely on unavailable runtime support (libc, complete crt, etc),
 # but instead have GCC provide us with a pointer to the raw coverage data and let us extract it ourselves.
 set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section)
 
@@ -38,6 +40,13 @@ set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section)
 set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")
 set(RISCV_OUTPUT "${CMAKE_BINARY_DIR}/riscv-src")
 set(RISCV_OBJECT "${CMAKE_BINARY_DIR}/obj/riscv-src")
+
+# Choose linker script directory
+if(COVERAGE)
+    set(LD_SCRIPTS "${RISCV_SOURCE}/coverage")
+else()
+    set(LD_SCRIPTS "${RISCV_SOURCE}")
+endif()
 
 # Define architectures, applications, and cores
 set(RISCV_ARCHITECTURES "wormhole" "blackhole")
@@ -72,11 +81,11 @@ endfunction()
 
 # Compile the coverage-related runtime libraries
 if(COVERAGE)
-    set(TT_GCOV_SRC "${RISCV_SOURCE}/tt-gcov.c")
+    set(TT_GCOV_SRC "${RISCV_SOURCE}/coverage/tt-gcov.c")
     set(TT_GCOV_OBJ "${RISCV_OBJECT}/tt-gcov.o")
     set(LIB_TTGCOV "${RISCV_OUTPUT}/libttgcov.a")
     
-    set(TTGCOV_RUNTIME_SRC "${RISCV_SOURCE}/ttgcov-runtime.c")
+    set(TTGCOV_RUNTIME_SRC "${RISCV_SOURCE}/coverage/ttgcov-runtime.c")
     set(TTGCOV_RUNTIME_OBJ "${RISCV_OBJECT}/ttgcov-runtime.o")
     set(LIB_TTGCOV_RUNTIME "${RISCV_OUTPUT}/libttgcovruntime.a")
 
@@ -141,11 +150,14 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
         OUTPUT ${OUTPUT_ELF}
         COMMAND ${GXX} ${COMPILE_OPTIONS}
             ${LINK_OBJECTS}
-            -T${RISCV_SOURCE}/memory.${ARCH}.ld
-            -T${RISCV_SOURCE}/${CORE}.ld
-            -T${RISCV_SOURCE}/sections.ld
+            -T${LD_SCRIPTS}/memory.${ARCH}.ld
+            -T${LD_SCRIPTS}/${CORE}.ld
+            -T${LD_SCRIPTS}/sections.ld
             -o ${OUTPUT_ELF}
-        DEPENDS ${LINK_OBJECTS} ${RISCV_SOURCE}/memory.${ARCH}.ld ${RISCV_SOURCE}/${CORE}.ld ${RISCV_SOURCE}/sections.ld
+        DEPENDS ${LINK_OBJECTS} 
+                ${LD_SCRIPTS}/memory.${ARCH}.ld 
+                ${LD_SCRIPTS}/${CORE}.ld 
+                ${LD_SCRIPTS}/sections.ld
         COMMENT "Linking ${OUTPUT_ELF}"
     )
 

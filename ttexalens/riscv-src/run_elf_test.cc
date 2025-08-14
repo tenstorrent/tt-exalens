@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 #include <cstdint>
-#include "ttgcov-runtime.h"
+#include "coverage/coverage.h"
 
 #define RISCV_L1_REG_START_ADDR 0x00000000
 

@@ -1,5 +1,4 @@
-#include "ttgcov-runtime.h"
-#include "param.h"
+#include "coverage/coverage.h"
 
 #define ever ;;
 
@@ -46,7 +45,7 @@ int main(void)
         ptr[1] = 0xDEADC0DE;
         ptr[2] = factorial<0>::value;
         ptr[3] = fib<1>();
-        ptr[4] = something<PARAM>();
+        ptr[4] = something<'C'>();
     }
     else {
         ptr[1] = 0xB1E55ED;
@@ -54,5 +53,5 @@ int main(void)
         ptr[3] = fib<3>();
     }
     gcov_dump();
-
+    infloop();
 }

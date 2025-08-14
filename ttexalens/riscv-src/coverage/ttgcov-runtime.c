@@ -1,4 +1,4 @@
-#include "ttgcov-runtime.h"
+#include "coverage.h"
 
 #ifdef __cplusplus
 extern "C" {
