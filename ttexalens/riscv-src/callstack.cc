@@ -17,7 +17,7 @@ void halt() {
 
 int f1(int a) {
     if (a <= 1) {
-        //halt();
+        halt();
         return a;
     } else
         return f1(a - 1) + f1(a - 2);
@@ -27,7 +27,7 @@ int recurse(int depth) {
     if (depth > 0) {
         return f1(depth) + recurse(depth - 1);
     } else {
-        //halt();
+        halt();
         return 0;
     }
 }
@@ -39,14 +39,20 @@ void infloop() {
 
 namespace ns {
 int ns_int;
-void foo() { return; }
+void foo() { halt(); }
 }  // namespace ns
 
 int main() {
     if (*g_MAILBOX < 0 || *g_MAILBOX > 1000) {
         *g_MAILBOX = 10;
     }
-    *g_MAILBOX = recurse(10);
+
+    if (*g_MAILBOX == 0) {
+        ns::foo();
+    } else {
+        int sum = recurse(*g_MAILBOX);
+        *g_MAILBOX = sum;
+    }
     gcov_dump();
     infloop();
     return 0;

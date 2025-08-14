@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // An example of a simple C++ program that can be compiled with the RISC-V GCC toolchain.
-#include <stdint.h>
+#include <cstdint>
 #include "coverage/coverage.h"
 
 // Registers for debug register access
@@ -36,17 +36,21 @@ void decrement_mailbox() { g_MAILBOX--; }
 extern "C" void infloop() { for (;;); }
 
 int main() {
-    halt();
     g_TESTBYTEACCESS.all_bytes = 0x0102030405060708;
 
     // STEP 1: Set the mailbox to RISC_DBG_STATUS1
     g_MAILBOX = RISC_DBG_STATUS1;
 
+    // STEP 2: Wait for mailbox to become 0x1234
+    while (g_MAILBOX != 0x1234) {
+        // wait for mailbox to be set to 0x1234
+    }
+
     // STEP 3: Set the mailbox to RISC_DBG_CNTL0
     g_MAILBOX = RISC_DBG_CNTL0;
 
     // STEP 4: Put the core in halted state
-    //halt();
+    halt();
 
     // STEP 5: Set the mailbox to 3
     g_MAILBOX = 3;
@@ -67,17 +71,9 @@ int main() {
     g_MAILBOX = 0xff000004;
     g_TESTBYTEACCESS.high_32 = 0x55667788;
 
-    if(g_MAILBOX > 0x20) decrement_mailbox();
-    else {
-        g_MAILBOX++;
-    }
-
     // STEP END: Set the mailbox to RISC_DBG_STATUS0
     g_MAILBOX = (uint32_t)RISC_DBG_STATUS0;
-    
-    __asm__ volatile("ebreak");
     gcov_dump();
-    halt();
     infloop();
     return 0;
 }

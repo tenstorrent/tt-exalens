@@ -157,7 +157,7 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
     add_custom_target("${ARCH}_${APP}_${CORE}_${OPTIMIZED}_target" ALL
         DEPENDS ${OUTPUT_ELF})
 
-    # If enabled, ensure the coverage runtime library is built before the ELFs.
+    # If enabled, ensure the coverage library is built before the ELFs.
     if(COVERAGE)
         add_dependencies("${ARCH}_${APP}_${CORE}_${OPTIMIZED}_target" libgcov)
     endif()
