@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: (c) 2025 Tenstorrent AI ULC
+#
+# SPDX-License-Identifier: Apache-2.0
 """
 covdump.py
 
@@ -25,20 +28,21 @@ from elftools.elf.elffile import ELFFile
 from ttexalens.tt_exalens_init import init_ttexalens
 from ttexalens.tt_exalens_lib import read_words_from_device, read_from_device
 
+
 def get_symbol_address(elf_path: Path, symbol_name: str) -> int:
     """
     Return the address of an ELF symbol if it exists, otherwise exit.
     """
-    with open(elf_path, 'rb') as f:
+    with open(elf_path, "rb") as f:
         elf = ELFFile(f)
-        symtab = elf.get_section_by_name('.symtab')
+        symtab = elf.get_section_by_name(".symtab")
         if not symtab:
             print(f"covdump: {f}: no symbol table")
             exit(1)
 
         for symbol in symtab.iter_symbols():
             if symbol.name == symbol_name:
-                return symbol.entry['st_value']
+                return symbol.entry["st_value"]
 
     print(f"covdump: {f}: symbol {symbol_name} not found")
     exit(1)
@@ -61,32 +65,24 @@ def find_gcno(elf_path: Path) -> Path:
     Call strings and skim through its output for a .gcda path.
     """
     try:
-        res = subprocess.run(
-            ["strings", str(elf_path)],
-            capture_output=True,
-            text = True,
-            check = True
-        )
+        res = subprocess.run(["strings", str(elf_path)], capture_output=True, text=True, check=True)
     except Exception as e:
         print(f"covdump: strings: {e}")
         exit(1)
-    
-    gcda_paths = [line.strip() for line in res.stdout.splitlines()
-                  if line.strip().endswith(".gcda")]
-    
+
+    gcda_paths = [line.strip() for line in res.stdout.splitlines() if line.strip().endswith(".gcda")]
+
     for gcda in gcda_paths:
         gcno = Path(gcda[:-5] + ".gcno")
         if gcno.exists():
             return gcno
-    
+
     print("covdump: could not find gcno from debuginfo")
     exit(1)
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Extract coverage data given the currently running ELF."
-    )
+    parser = argparse.ArgumentParser(description="Extract coverage data given the currently running ELF.")
     parser.add_argument("elf", help="Currently running ELF you wish to get the coverage data for.")
     parser.add_argument("gcno", nargs="?", help="(optional) Path to the corresponding .gcno file.")
     parser.add_argument("outdir", help="Directory to dump the coverage data and notes into.")
@@ -113,24 +109,14 @@ def main():
     context = init_ttexalens()
     core_loc = "0,0"
 
-    length = read_words_from_device(
-        core_loc,
-        addr=length_addr,
-        word_count=1,
-        context=context
-    )
+    length = read_words_from_device(core_loc, addr=length_addr, word_count=1, context=context)
     n = length[0]
 
-    if n == 0xdeadbeef:
+    if n == 0xDEADBEEF:
         print(f"covdump: {args.elf}: coverage region overflowed")
         exit(1)
 
-    data = read_from_device(
-        core_loc,
-        data_addr,
-        num_bytes=n,
-        context=context
-    )
+    data = read_from_device(core_loc, data_addr, num_bytes=n, context=context)
 
     outdir.mkdir(parents=True, exist_ok=True)
     basename = elf_path.stem
@@ -149,8 +135,9 @@ def main():
     except Exception as e:
         print(f"covdump: while writing gcda: {e}")
         exit(1)
-    
+
     exit(0)
+
 
 if __name__ == "__main__":
     main()

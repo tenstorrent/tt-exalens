@@ -56,7 +56,7 @@ function(add_riscv_object OBJECT_NAME SOURCE_FILE OPTIMIZED WITH_COVERAGE)
     else()
         set(COMPILE_OPTIONS ${OPTIONS_ALL} ${OPTIONS_COMPILE})
     endif()
-    
+
     if(WITH_COVERAGE)
         list(APPEND COMPILE_OPTIONS ${GCOV_FLAGS})
     endif()
@@ -74,7 +74,7 @@ if(COVERAGE)
     set(GCOV_SRC "${RISCV_SOURCE}/coverage/gcov.c")
     set(GCOV_OBJ "${RISCV_OBJECT}/gcov.o")
     set(LIBGCOV "${RISCV_OUTPUT}/libgcov.a")
-    
+
     set(COVERAGE_SRC "${RISCV_SOURCE}/coverage/coverage.c")
     set(COVERAGE_OBJ "${RISCV_OBJECT}/coverage.o")
     set(LIBCOVERAGE "${RISCV_OUTPUT}/libcoverage.a")
@@ -145,7 +145,7 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
             -T${RISCV_SOURCE}/${CORE}.ld
             -T${RISCV_SOURCE}/sections.ld
             -o ${OUTPUT_ELF}
-        DEPENDS ${LINK_OBJECTS} 
+        DEPENDS ${LINK_OBJECTS}
                 ${RISCV_SOURCE}/memory.${ARCH}.${BUILD_TYPE_EXTENSION}.ld
                 ${RISCV_SOURCE}/${CORE}.ld
                 ${RISCV_SOURCE}/sections.ld

@@ -4,6 +4,7 @@
 
 // Simple program to test call stack printing
 #include <stdint.h>
+
 #include "coverage/coverage.h"
 
 volatile uint32_t* g_MAILBOX = (volatile uint32_t*)0x4000;

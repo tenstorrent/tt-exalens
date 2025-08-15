@@ -4,6 +4,7 @@
 
 // An example of a simple C++ program that can be compiled with the RISC-V GCC toolchain.
 #include <cstdint>
+
 #include "coverage/coverage.h"
 
 // Registers for debug register access

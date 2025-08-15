@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2025 Tenstorrent AI ULC
+//
+// SPDX-License-Identifier: Apache-2.0
 #pragma once
 
 #ifdef __cplusplus
@@ -21,10 +24,10 @@ extern uint8_t __coverage_end[];
 // Run this at the end of a kernel if you wish to do coverage analysis.
 void gcov_dump(void);
 
-#else // !COVERAGE
+#else   // !COVERAGE
 [[gnu::always_inline]]
 static inline void gcov_dump(void) {}
-#endif // COVERAGE
+#endif  // COVERAGE
 
 #ifdef __cplusplus
 }

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: (c) 2025 Tenstorrent AI ULC
+#
+# SPDX-License-Identifier: Apache-2.0
 """
 covmerge.py
 
@@ -17,6 +20,7 @@ import sys
 import shutil
 import subprocess
 
+
 def main():
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} <gcov_dir> [html_dir]\n")
@@ -34,21 +38,28 @@ def main():
     if not shutil.which(gcov_tool):
         print(f"covmerge: {gcov_tool} not found, ensure GCOV environment variable is set to the cross-compiler gcov")
         exit(1)
-    
+
     if not shutil.which("lcov"):
         print(f"covmerge: lcov is not installed")
         exit(1)
 
     print(f"covmerge: capturing coverage in {gcov_dir}")
     try:
-        subprocess.run([
-            "lcov",
-            "--gcov-tool", gcov_tool,
-            "--capture",
-            "--directory", str(gcov_dir),
-            "--output-file", str(info_path),
-            "--rc", "lcov_branch_coverage=1"
-        ], check=True)
+        subprocess.run(
+            [
+                "lcov",
+                "--gcov-tool",
+                gcov_tool,
+                "--capture",
+                "--directory",
+                str(gcov_dir),
+                "--output-file",
+                str(info_path),
+                "--rc",
+                "lcov_branch_coverage=1",
+            ],
+            check=True,
+        )
     except subprocess.CalledProcessError as e:
         print(f"covmerge: lcov --capture failed: {e}")
         exit(1)
@@ -61,17 +72,13 @@ def main():
 
     html_dir.mkdir(parents=True, exist_ok=True)
     try:
-        subprocess.run([
-            "genhtml", "--branch-coverage", str(info_path),
-            "--output-directory", str(html_dir)
-        ], check=True)
+        subprocess.run(
+            ["genhtml", "--branch-coverage", str(info_path), "--output-directory", str(html_dir)], check=True
+        )
     except subprocess.CalledProcessError:
         print("covmerge: genhtml --branch-coverage failed, trying without branch coverage flag...")
         try:
-            subprocess.run([
-                "genhtml", str(info_path),
-                "--output-directory", str(html_dir)
-            ], check=True)
+            subprocess.run(["genhtml", str(info_path), "--output-directory", str(html_dir)], check=True)
         except subprocess.CalledProcessError as e:
             print(f"covmerge: genhtml failed: {e}")
             exit(1)
@@ -83,6 +90,7 @@ def main():
         print(f"covmerge: deleted {info_path}")
     except Exception as e:
         print(f"covmerge: failed to delete {info_path}: {e}")
+
 
 if __name__ == "__main__":
     main()

@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <stdint.h>
+
 #include <cstdint>
+
 #include "coverage/coverage.h"
 
 #define RISCV_L1_REG_START_ADDR 0x00000000
