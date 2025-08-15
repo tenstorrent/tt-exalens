@@ -34,7 +34,8 @@ constexpr char something() {
         return 0;
 }
 
-__attribute__((noreturn)) void infloop(void) {
+[[gnu::noreturn]]
+void infloop(void) {
     for (ever);
     __builtin_unreachable();
 }
