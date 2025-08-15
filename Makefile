@@ -13,6 +13,14 @@ build:
 	fi
 	@ninja -C build
 
+.PHONY: debug
+debug: CONFIG=Debug
+debug: build
+
+.PHONY: release
+release: CONFIG=Release
+release: build
+
 .PHONY: clean
 clean:
 	@rm -rf build/
