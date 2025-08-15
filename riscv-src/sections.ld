@@ -136,6 +136,8 @@ SECTIONS
     KEEP(*(.gcov_info.*))
     __gcov_info_end = .;
   } > REGION_DATA
+  __coverage_start = ORIGIN(REGION_GCOV);
+  __coverage_end = ORIGIN(REGION_GCOV) + LENGTH(REGION_GCOV);
   . = ALIGN(16);
   _edata = .; PROVIDE (edata = .);
   _end = .; PROVIDE (end = .);
