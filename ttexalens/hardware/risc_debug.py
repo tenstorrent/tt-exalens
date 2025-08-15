@@ -380,6 +380,11 @@ class RiscDebug:
             # Reading the program counter from risc register
             pc = self.read_gpr(32)
 
+            # If ebreak was hit, pc will point to the instruction after it
+            if self.is_ebreak_hit():
+                # Rewind pc to unwind callstack from the ebreak instruction
+                pc -= 4
+
             # Choose the elf which is referenced by the program counter
             elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, self)
 

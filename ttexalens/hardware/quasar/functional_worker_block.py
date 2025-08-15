@@ -4,6 +4,7 @@
 
 from functools import cache, cached_property
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.quasar.functional_neo_block import QuasarFunctionalNeoBlock
@@ -30,23 +31,34 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
         self.neo1 = QuasarFunctionalNeoBlock(
             noc_block=self,
             neo_id=1,
-            neo_base_address=DeviceAddress(private_address=0x00810000, noc_address=0x01810000),
+            neo_base_address=DeviceAddress(private_address=0x00800000, noc_address=0x01810000),
             risc_base_start_address=0x00010000,
         )
 
         self.neo2 = QuasarFunctionalNeoBlock(
             noc_block=self,
             neo_id=2,
-            neo_base_address=DeviceAddress(private_address=0x00820000, noc_address=0x01820000),
+            neo_base_address=DeviceAddress(private_address=0x00800000, noc_address=0x01820000),
             risc_base_start_address=0x00020000,
         )
 
         self.neo3 = QuasarFunctionalNeoBlock(
             noc_block=self,
             neo_id=3,
-            neo_base_address=DeviceAddress(private_address=0x00830000, noc_address=0x01830000),
+            neo_base_address=DeviceAddress(private_address=0x00800000, noc_address=0x01830000),
             risc_base_start_address=0x00030000,
         )
+
+    def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
+        if neo_id == 0:
+            return self.neo0.debug_bus
+        elif neo_id == 1:
+            return self.neo1.debug_bus
+        elif neo_id == 2:
+            return self.neo2.debug_bus
+        elif neo_id == 3:
+            return self.neo3.debug_bus
+        return super().get_debug_bus(neo_id)
 
     def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
         if neo_id == 0:

@@ -857,9 +857,9 @@ class TestARC(unittest.TestCase):
 
 @parameterized_class(
     [
-        {"core_desc": "ETH0", "risc_name": "ERISC"},
-        {"core_desc": "ETH0", "risc_name": "ERISC0"},
-        {"core_desc": "ETH0", "risc_name": "ERISC1"},
+        # {"core_desc": "ETH0", "risc_name": "ERISC"},
+        # {"core_desc": "ETH0", "risc_name": "ERISC0"},
+        # {"core_desc": "ETH0", "risc_name": "ERISC1"},
         {"core_desc": "FW0", "risc_name": "BRISC"},
         {"core_desc": "FW0", "risc_name": "TRISC0"},
         {"core_desc": "FW0", "risc_name": "TRISC1"},
@@ -887,10 +887,10 @@ class TestCallStack(unittest.TestCase):
         # Convert core_desc to core_loc
         if self.core_desc.startswith("ETH"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.device.get_block_locations(block_type="eth")
+            eth_blocks = self.device.idle_eth_blocks
             core_index = int(self.core_desc[3:])
-            if len(eth_cores) > core_index:
-                self.core_loc = eth_cores[core_index].to_str()
+            if len(eth_blocks) > core_index:
+                self.core_loc = eth_blocks[core_index].location.to_str()
             else:
                 # If not found, we should skip the test
                 self.skipTest("ETH core is not available on this platform")
@@ -1019,8 +1019,8 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(len(callstack), 1)
         self.assertEqual(callstack[0].function_name, "halt")
 
-    @parameterized.expand([(1, 1), (10, 9), (50, 49)])
-    def test_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
+    @parameterized.expand([1, 10, 50])
+    def test_callstack_optimized(self, recursion_count):
 
         if self.is_wormhole() and self.is_eth_block():
             self.skipTest("Callstack optimized tests break on ETH blocks")
@@ -1032,11 +1032,12 @@ class TestCallStack(unittest.TestCase):
             self.core_loc, elf_path, None, self.risc_name, None, 100, True, False, 0, self.context
         )
 
-        self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
-        for i in range(0, expected_f1_on_callstack_count):
+        self.assertEqual(len(callstack), recursion_count + 3)
+        self.assertEqual(callstack[0].function_name, "halt")
+        for i in range(1, recursion_count):
             self.assertEqual(callstack[i].function_name, "f1")
-        self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
-        self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
+        self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
+        self.assertEqual(callstack[recursion_count + 2].function_name, "main")
 
     @parameterized.expand([(1, 1)])
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):

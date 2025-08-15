@@ -2,15 +2,18 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from enum import Enum
+import struct
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
+from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
 from ttexalens.hw.tensix.wormhole.wormhole import WormholeDevice
+from ttexalens.hw.tensix.blackhole.blackhole import BlackholeDevice
 from ttexalens.register_store import RegisterDescription
 from ttexalens.tt_exalens_lib import check_context, validate_device_id
 from ttexalens.util import WARN, TTException
 from ttexalens.device import Device
-from ttexalens.unpack_regfile import unpack_data
+from ttexalens.unpack_regfile import unpack_data, TensixDataFormat
 
 
 def validate_thread_id(thread_id: int) -> None:
@@ -27,6 +30,9 @@ class REGFILE(Enum):
     SRCA = 0
     SRCB = 1
     DSTACC = 2
+
+
+TILE_SIZE = 32 * 32
 
 
 def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
@@ -147,10 +153,7 @@ class TensixDebug:
         Returns:
                 int: Value of the configuration or debug register specified.
         """
-        device = self.context.devices[self.device_id]
-        noc_block = device.get_block(self.core_loc)
-        register_store = noc_block.get_register_store()
-        return register_store.read_register(register)
+        return self.register_store.read_register(register)
 
     def write_tensix_register(self, register: str | RegisterDescription, value: int) -> None:
         """Writes value to the configuration or debug register on the tensix core.
@@ -159,15 +162,74 @@ class TensixDebug:
                 register (str | RegisterDescription): Name of the configuration or debug register or instance of ConfigurationRegisterDescription or DebugRegisterDescription.
                 val (int): Value to write
         """
-        device = self.context.devices[self.device_id]
-        noc_block = device.get_block(self.core_loc)
-        register_store = noc_block.get_register_store()
-        register_store.write_register(register, value)
+        self.register_store.write_register(register, value)
+
+    def _validate_number_of_tiles(self, num_tiles: int | None) -> int:
+        max_num_tiles = (
+            self.noc_block.dest.size // TILE_SIZE // 4
+            if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock)
+            else None
+        )
+        if num_tiles is None or num_tiles > max_num_tiles or num_tiles <= 0:
+            WARN(
+                f"Number of tiles given {num_tiles} is not valid, defaulting to maximum number of tiles {max_num_tiles}"
+            )
+            return max_num_tiles
+
+        return num_tiles
+
+    @staticmethod
+    def _is_32_bit_format(df: TensixDataFormat) -> bool:
+        return df in (TensixDataFormat.Float32, TensixDataFormat.Int32, TensixDataFormat.UInt32)
+
+    @staticmethod
+    def _is_8_bit_int_format(df: TensixDataFormat) -> bool:
+        return df in (TensixDataFormat.Int8, TensixDataFormat.UInt8)
+
+    def _direct_dest_read_enabled(self, df: TensixDataFormat) -> bool:
+        # 8 bit integer formats are written in 32 bit mode so we can read them directly
+        return isinstance(self.device, BlackholeDevice) and (
+            self._is_32_bit_format(df) or self._is_8_bit_int_format(df)
+        )
+
+    @staticmethod
+    def _unpack_value(value: int, df: TensixDataFormat) -> int | float:
+        if df == TensixDataFormat.Float32:
+            return struct.unpack(">f", value.to_bytes(4, "big"))[0]
+        # Because in ALU register format for dest is INT32 for both INT32 and UINT32 we need to check sign bit
+        elif df == TensixDataFormat.Int32:
+            # If the sign bit is set, we need to convert it to a signed integer
+            return value - 0x100000000 if value & 0x80000000 else value
+        # Same as for INT32/UINT32
+        elif df == TensixDataFormat.Int8:
+            # Since 1-byte integers are stored in 32-bit mode sign bit is in MSB, bytes look like this: 0x80 0x00 0x00 value
+            return (value & 0x000000FF) - 0x80 if value & 0x80000000 else value
+        else:
+            raise TTException(f"Unsupported data format {df} for unpacking.")
+
+    def direct_dest_read(self, df: TensixDataFormat, num_tiles: int) -> list[int | float]:
+        if not self._direct_dest_read_enabled(df):
+            raise TTException("Direct dest reading not supported for this architecture or data format.")
+
+        data: list[int | float] = []
+        # Using TRISC0 debug hardware to read memory
+        risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
+        if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
+            base_address = self.noc_block.dest.address.private_address
+            dest_size = self.noc_block.dest.size
+        with risc_debug.ensure_halted():
+            for i in range(num_tiles * TILE_SIZE):
+                address = base_address + 4 * i
+                if address >= base_address + dest_size:
+                    raise TTException(f"Address {hex(address)} is out of bounds for destination memory block.")
+                rd_data = risc_debug.read_memory(address)
+                data.append(self._unpack_value(rd_data, df))
+
+        return data
 
     def read_regfile_data(
-        self,
-        regfile: int | str | REGFILE,
-    ) -> list[int]:
+        self, regfile: int | str | REGFILE, df: TensixDataFormat, num_tiles: int | None = None
+    ) -> list[int | float]:
         """Dumps SRCA/DSTACC register file from the specified core.
             Due to the architecture of SRCA, you can see only see last two faces written.
             SRCB is currently not supported.
@@ -176,7 +238,7 @@ class TensixDebug:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
 
         Returns:
-                bytearray: 64x32 bytes of register file data (64 rows, 32 bytes per row).
+                list[int | float]:  Returns num_tiles * TILE_SIZE of unpacked data if using direct dest reading or list of int values containing bytes if using non-direct reading.
         """
         thread_id = 2
         regfile = convert_regfile(regfile)
@@ -188,9 +250,13 @@ class TensixDebug:
         if self.device._arch != "wormhole_b0" and self.device._arch != "blackhole":
             raise TTException("Not supported for this architecture: ")
 
-        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
-        data = []
+        # Directly reading dest does not require complex unpacking so we return it right away
+        if regfile == REGFILE.DSTACC and self._direct_dest_read_enabled(df):
+            num_tiles = self._validate_number_of_tiles(num_tiles)
+            return self.direct_dest_read(df, num_tiles)
 
+        data: list[int | float] = []
+        self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
         for row in range(64):
             row_addr = row if regfile != REGFILE.SRCA else 0
             regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
@@ -208,8 +274,9 @@ class TensixDebug:
                 self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
                 self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
 
+            base_cmd = row_addr + (regfile_id << 16)
             for i in range(8):
-                dbg_array_rd_cmd = (row_addr) + (i << 12) + (regfile_id << 16)
+                dbg_array_rd_cmd = base_cmd + (i << 12)
                 self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", dbg_array_rd_cmd)
                 rd_data = self.register_store.read_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_DATA")
                 data += list(int.to_bytes(rd_data, 4, byteorder="big"))
@@ -222,26 +289,31 @@ class TensixDebug:
 
         self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 0)
         self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_CMD", 0)
+
         return data
 
-    def read_regfile(self, regfile: int | str | REGFILE) -> list[int | float | str]:
+    def read_regfile(self, regfile: int | str | REGFILE, num_tiles: int | None = None) -> list[int | float] | list[str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
 
         Args:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
-
+                num_tiles (int | None): Number of tiles to print. Only available for direct dest read on blackhole. Default: None
         Returns:
-                list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data).
+                list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data) or num_tiles * TILE_SIZE for direct read.
         """
         regfile = convert_regfile(regfile)
-        df = self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        df = TensixDataFormat(self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc"))
 
+        if regfile == REGFILE.DSTACC and not self._direct_dest_read_enabled(df) and num_tiles is not None:
+            WARN("num_tiles argument only has effect for 32 bit formats on blackhole.")
+
+        data: list[int | float] = []
         # Workaround for an architectural quirk of Wormhole: reading DST as INT32 or FP32
         # returns zeros on the lower 16 bits of each datum. This handles the FP32 case.
-        if regfile == REGFILE.DSTACC and df == 0 and type(self.device) == WormholeDevice:
+        if regfile == REGFILE.DSTACC and df == TensixDataFormat.Float32 and isinstance(self.device, WormholeDevice):
             ops = self.device.instructions
-            upper = self.read_regfile_data(regfile)
+            upper = self.read_regfile_data(regfile, df)
             # First, read the upper 16 bits of each value.
             # Half of the values read are zeros, shave them off.
             upper = upper[0:256] + upper[512:768] + upper[1024:1280] + upper[1536:1792]
@@ -256,17 +328,20 @@ class TensixDebug:
 
             # Read the lower 16 bits from the upper bits' position.
             # Prune the zeros again, same as previously.
-            lower = self.read_regfile_data(regfile)
+            lower = self.read_regfile_data(regfile, df)
             lower = lower[0:256] + lower[512:768] + lower[1024:1280] + lower[1536:1792]
             data = upper + lower
             WARN("The previous contents of DSTACC have been lost and should not be relied upon.")
         else:
-            data = self.read_regfile_data(regfile)
-
+            data = self.read_regfile_data(regfile, df, num_tiles)
         try:
-            return unpack_data(data, df)
+            if regfile == REGFILE.DSTACC and self._direct_dest_read_enabled(df):
+                # If we use dircet read data is already unpacked
+                return data
+            else:
+                return unpack_data(data, df)
         except ValueError as e:
             # If the data format is unsupported, return the raw data.
             WARN(e)
-            WARN("Printing raw data...")
-            return [hex(datum) for datum in data]
+            raw_data: list[str] = [hex(datum) for datum in data if isinstance(datum, int)]
+            return raw_data

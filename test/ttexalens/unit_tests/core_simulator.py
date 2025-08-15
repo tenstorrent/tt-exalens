@@ -13,7 +13,7 @@ class RiscvCoreSimulator:
 
     program_base_address: int = 0
 
-    def __init__(self, context: Context, core_desc: str, risc_name: str):
+    def __init__(self, context: Context, core_desc: str, risc_name: str, neo_id: int | None = None):
         """Initialize RISC-V core simulator.
 
         Args:
@@ -25,18 +25,20 @@ class RiscvCoreSimulator:
         self.device = self.context.devices[0]
         self.core_desc = core_desc
         self.risc_name = risc_name
+        self.neo_id = neo_id
         self.core_loc = self._get_core_location()
 
         # Initialize core components
         self.location = OnChipCoordinate.create(self.core_loc, device=self.device)
         self.noc_block = self.device.get_block(self.location)
-        risc_debug = self.noc_block.get_risc_debug(self.risc_name)
+        risc_debug = self.noc_block.get_risc_debug(self.risc_name, self.neo_id)
         assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug instance, got {type(risc_debug)}"
         self.risc_debug: BabyRiscDebug = risc_debug
         assert self.risc_debug.debug_hardware is not None
         self.debug_hardware = self.risc_debug.debug_hardware
-        assert self.noc_block.debug_bus is not None
-        self.debug_bus_store: DebugBusSignalStore = self.noc_block.debug_bus
+        debug_bus = self.noc_block.get_debug_bus(self.neo_id)
+        assert debug_bus is not None
+        self.debug_bus_store: DebugBusSignalStore = debug_bus
         if self.risc_debug.risc_info.can_change_code_start_address:
             self.risc_debug.risc_info.set_code_start_address(self.risc_debug.register_store, 0xD000)
         self.program_base_address = self.risc_debug.risc_info.get_code_start_address(self.risc_debug.register_store)
@@ -47,10 +49,10 @@ class RiscvCoreSimulator:
     def _get_core_location(self) -> str:
         """Convert core_desc to core location string."""
         if self.core_desc.startswith("ETH"):
-            eth_cores = self.device.get_block_locations(block_type="eth")
+            eth_blocks = self.device.idle_eth_blocks
             core_index = int(self.core_desc[3:])
-            if len(eth_cores) > core_index:
-                return eth_cores[core_index].to_str()
+            if len(eth_blocks) > core_index:
+                return eth_blocks[core_index].location.to_str()
             raise ValueError(f"ETH core {core_index} not available on this platform")
 
         elif self.core_desc.startswith("FW"):
@@ -68,14 +70,20 @@ class RiscvCoreSimulator:
 
         raise ValueError(f"Unknown core description {self.core_desc}")
 
-    def write_program(self, addr: int, data: int):
+    def write_program(self, addr: int, data: int | list[int]):
         """Write program code data at specified address offset."""
         self.write_data_checked(self.program_base_address + addr, data)
 
-    def write_data_checked(self, addr: int, data: int):
+    def write_data_checked(self, addr: int, data: int | list[int]):
         """Write data to memory and verify it was written correctly."""
-        lib.write_words_to_device(self.core_loc, addr, data, context=self.context)
-        assert self.read_data(addr) == data, f"Data verification failed at address {addr:x}"
+        if isinstance(data, int):
+            lib.write_words_to_device(self.core_loc, addr, data, context=self.context)
+            assert self.read_data(addr) == data, f"Data verification failed at address {addr:x}"
+        else:
+            byte_data = b"".join(x.to_bytes(4, "little") for x in data)
+            lib.write_to_device(self.core_loc, addr, byte_data, context=self.context)
+            read_data = lib.read_from_device(self.core_loc, addr, num_bytes=len(byte_data), context=self.context)
+            assert read_data == byte_data, f"Data verification failed at address {addr:x}"
 
     def read_data(self, addr: int) -> int:
         """Read data from memory at specified address."""
@@ -131,6 +139,10 @@ class RiscvCoreSimulator:
     def is_wormhole(self) -> bool:
         """Check if device is wormhole_b0."""
         return self.device._arch == "wormhole_b0"
+
+    def is_quasar(self):
+        """Check if device is quasar."""
+        return self.device._arch == "quasar"
 
     def is_eth_block(self):
         """Check if the core is ETH."""
