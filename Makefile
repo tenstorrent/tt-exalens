@@ -1,5 +1,5 @@
 CONFIG ?= Debug
-JTAG ?= OFF
+JTAG ?= ON
 
 .PHONY: build
 build:

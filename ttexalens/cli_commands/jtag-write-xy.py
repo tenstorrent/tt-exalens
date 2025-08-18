@@ -57,7 +57,7 @@ def run(cmd_text, context, ui_state: UIState = None):
         current_device = context.devices[device_id]
         core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
 
-        context.server_ifc.jtag_write32(device_id, *core_loc.to("noc0"), addr, data)
+        context.server_ifc.jtag_write32(device_id, 0, *core_loc.to("noc0"), addr, data)
         core_loc_str_print = (
             f"{core_loc_str} (L1) :" if not core_loc_str.startswith("ch") else f"{core_loc_str} (DRAM): "
         )

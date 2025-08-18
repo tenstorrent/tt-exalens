@@ -522,9 +522,17 @@ class TTExaLensPybind(TTExaLensCommunicator):
         return self._check_result(ttexalens_pybind.get_device_soc_description(chip_id))
 
     def jtag_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
+        # print("noc_id ", noc_id)
+        # print("chip_id ", chip_id)
+        # print("noc_x ", noc_x)
+        # print("noc_y ", noc_y)
+        # print("address ", address)
         if address % 4 != 0:
             raise Exception("Unaligned access in jtag_read32")
-        return self._check_result(ttexalens_pybind.jtag_read32(noc_id, chip_id, noc_x, noc_y, address))
+        val =  self._check_result(ttexalens_pybind.jtag_read32(noc_id, chip_id, noc_x, noc_y, address))
+        print("x = ", val & 0x3F )
+        print("y = ", (val >> 6) & 0x3F )
+        return val
 
     def jtag_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):
         if address % 4 != 0:

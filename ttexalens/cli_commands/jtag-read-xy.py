@@ -33,6 +33,7 @@ from ttexalens.uistate import UIState
 
 from ttexalens.coordinate import OnChipCoordinate
 
+#import pdb
 
 # A helper to print the result of a single JTAG read
 def print_a_jtag_read(device_id, core_loc_str, addr, val, comment=""):
@@ -44,7 +45,7 @@ def run(cmd_text, context, ui_state: UIState = None):
 
     core_loc_str = args["<core-loc>"]
     addr = int(args["<addr>"], 0)
-
+    #pdb.set_trace()
     current_device_id = ui_state.current_device_id
     device_ids = args["-d"] if args["-d"] else [f"{current_device_id}"]
     device_array = []
@@ -55,7 +56,14 @@ def run(cmd_text, context, ui_state: UIState = None):
         current_device = context.devices[device_id]
         core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
 
-        val = context.server_ifc.jtag_read32(device_id, *core_loc.to("noc0"), addr)
+        print(core_loc)
+        print(core_loc.to("noc0"))
+        print(*core_loc.to("noc0"))
+        print(addr)
+
+        val = context.server_ifc.jtag_read32(device_id, 0, *core_loc.to("noc0"), addr)
+        print("x = ", val & 0x3F )
+        print("y = ", (val >> 6) & 0x3F )
         core_loc_str_print = (
             f"{core_loc_str} (L1) :" if not core_loc_str.startswith("ch") else f"{core_loc_str} (DRAM): "
         )

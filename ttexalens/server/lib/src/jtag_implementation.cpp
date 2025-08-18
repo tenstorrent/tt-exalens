@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "ttexalensserver/jtag_implementation.h"
 
-#include "ttexalensserver/jtag_device.h"
 #include "umd/device/tt_soc_descriptor.h"
 #include "umd/device/types/arch.h"
 
