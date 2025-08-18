@@ -187,7 +187,7 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
     // Check that all chips are of the same type
     tt::ARCH arch = jtag_device->get_jtag_arch(0);
     for (size_t i = 1; i < jtag_device->get_device_cnt(); i++) {
-        auto newArch = *jtag_device->get_jtag_arch(i);
+        auto newArch = jtag_device->get_jtag_arch(i);
 
         if (arch != newArch) {
             throw std::runtime_error("Not all devices have the same architecture.");
