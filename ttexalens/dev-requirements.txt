@@ -1,6 +1,5 @@
 mypy>=1.16.0
 pre-commit
-pybind11-stubgen
 types-docopt
 types-PyYAML
 types-tabulate

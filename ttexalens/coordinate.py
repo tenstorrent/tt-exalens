@@ -4,21 +4,19 @@
 """
 This file contains the class for the coordinate object. As we use a number of coordinate systems, this class
 is used to uniquely represent one grid location on a chip. Note that not all coordinate systems have a 1:1
-mapping to the physical location on the chip. For example, not all noc0 coordinates have a valid netlist
-coordinate. This is due to the fact that some locations contain non-Tensix tiles, and also since some Tensix
-rows may be disabled due to harvesting.
+mapping to the physical location on the chip. For example, not all noc0 coordinates have a valid logical
+coordinate. This is due to the fact that logical coordinates don't include harvested locations.
 
 The following coordinate systems are available to represent a grid location on the chip:
 
   - die:            represents a location on the die grid. This is a "geographic" coordinate and is
                     not really used in software. It is often shown in martketing materials, and shows the
                     layout in as in <arch>-Noc-Coordinates.xls spreadsheet, and on some T-shirts.
-  - noc0:           NOC routing coordinate for NOC 0. Notation: X-Y. Also known as "physical" coordinate.
-                    Represents the chip location on the NOC grid. A difference of 1 in NOC coordinate
-                    represents a distance of 1 hop on the NOC. In other words, it takes one clock cycle
-                    for the data to cross 1 hop on the NOC. Furthermore, the NOC 'wraps around' so that
-                    the distance between 0 and NOC_DIM_SIZE-1 is also 1 hop. As we have 2 NOCs, we have
-                    2 NOC coordinate systems: noc0 and noc1.
+  - noc0:           NOC routing coordinate for NOC 0. Notation: X-Y. Represents the chip location on the
+                    NOC grid. A difference of 1 in NOC coordinate represents a distance of 1 hop on the NOC.
+                    In other words, it takes one clock cycle for the data to cross 1 hop on the NOC.
+                    Furthermore, the NOC 'wraps around' so that the distance between 0 and NOC_DIM_SIZE-1
+                    is also 1 hop. As we have 2 NOCs, we have 2 NOC coordinate systems: noc0 and noc1.
   - noc1:           NOC routing coordinate for NOC 1. Notation: X-Y
                     Same as noc0, but using the second NOC (which goes in the opposite direction).
 
@@ -55,7 +53,6 @@ if TYPE_CHECKING:
 VALID_COORDINATE_TYPES = [
     "die",
     "noc0",
-    "physical",
     "noc1",
     "logical",
     "logical-tensix",

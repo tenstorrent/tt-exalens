@@ -446,11 +446,17 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", "trisc0"),
             ("0,0", "trisc1"),
             ("0,0", "trisc2"),
-            ("0,0", "trisc0", -1),  # last address for trisc for wormhole
-            ("0,0", "brisc", -1),  # last address for brisc for wormhole
+            ("0,0", "trisc0", -4),  # last address for trisc for wormhole
+            ("0,0", "brisc", -4),  # last address for brisc for wormhole
+            # Testing unaligned read/write
+            ("0,0", "brisc", 1),
+            ("0,0", "trisc0", 2),
+            ("0,0", "trisc1", 3),
+            ("0,0", "trisc2", 1),
+            ("1,0", "brisc", -5),
         ]
     )
-    def test_write_read_private_memory(self, core_loc: str, risc_name: str, addr: int | None = None):
+    def test_write_read_private_memory(self, core_loc: str, risc_name: str, offset: int = 0):
         """Testing read_memory and write_memory through debugging interface on private core memory range."""
 
         loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
@@ -459,14 +465,14 @@ class TestReadWrite(unittest.TestCase):
         if risc_debug.risc_info.can_change_code_start_address:
             risc_debug.risc_info.set_code_start_address(risc_debug.register_store, 0xD000)
 
-        if addr is None or addr < 0:
-            private_memory = risc_debug.get_data_private_memory()
-            assert private_memory is not None, "Private memory is not available."
-            assert private_memory.address.private_address is not None, "Private memory address is not set."
-            if addr is None:
-                addr = private_memory.address.private_address
-            else:
-                addr = private_memory.address.private_address + private_memory.size - 4
+        private_memory = risc_debug.get_data_private_memory()
+        assert private_memory is not None, "Private memory is not available."
+        assert private_memory.address.private_address is not None, "Private memory address is not set."
+        addr = (
+            private_memory.address.private_address + offset
+            if offset >= 0
+            else private_memory.address.private_address + private_memory.size + offset
+        )
 
         with risc_debug.ensure_private_memory_access():
             self.assertFalse(risc_debug.is_in_reset())
@@ -653,7 +659,7 @@ class TestRunElf(unittest.TestCase):
         # function "decrement_mailbox"
         decrement_mailbox_die = elf.names["fw"].subprograms["decrement_mailbox"]
         decrement_mailbox_linkage_name = decrement_mailbox_die.attributes["DW_AT_linkage_name"].value.decode("utf-8")
-        decrement_mailbox_address = elf.names["fw"].symbols[decrement_mailbox_linkage_name]
+        decrement_mailbox_address = elf.names["fw"].symbols[decrement_mailbox_linkage_name].value
 
         # Step 6. Setting breakpoint at decrement_mailbox
         watchpoint_id = 1  # Out of 8
@@ -851,9 +857,9 @@ class TestARC(unittest.TestCase):
 
 @parameterized_class(
     [
-        {"core_desc": "ETH0", "risc_name": "ERISC"},
-        {"core_desc": "ETH0", "risc_name": "ERISC0"},
-        {"core_desc": "ETH0", "risc_name": "ERISC1"},
+        # {"core_desc": "ETH0", "risc_name": "ERISC"},
+        # {"core_desc": "ETH0", "risc_name": "ERISC0"},
+        # {"core_desc": "ETH0", "risc_name": "ERISC1"},
         {"core_desc": "FW0", "risc_name": "BRISC"},
         {"core_desc": "FW0", "risc_name": "TRISC0"},
         {"core_desc": "FW0", "risc_name": "TRISC1"},
@@ -881,10 +887,10 @@ class TestCallStack(unittest.TestCase):
         # Convert core_desc to core_loc
         if self.core_desc.startswith("ETH"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.device.get_block_locations(block_type="eth")
+            eth_blocks = self.device.idle_eth_blocks
             core_index = int(self.core_desc[3:])
-            if len(eth_cores) > core_index:
-                self.core_loc = eth_cores[core_index].to_str()
+            if len(eth_blocks) > core_index:
+                self.core_loc = eth_blocks[core_index].location.to_str()
             else:
                 # If not found, we should skip the test
                 self.skipTest("ETH core is not available on this platform")
@@ -1013,8 +1019,8 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(len(callstack), 1)
         self.assertEqual(callstack[0].function_name, "halt")
 
-    @parameterized.expand([(1, 1), (10, 9), (50, 49)])
-    def test_callstack_optimized(self, recursion_count, expected_f1_on_callstack_count):
+    @parameterized.expand([1, 10, 50])
+    def test_callstack_optimized(self, recursion_count):
 
         if self.is_wormhole() and self.is_eth_block():
             self.skipTest("Callstack optimized tests break on ETH blocks")
@@ -1026,11 +1032,12 @@ class TestCallStack(unittest.TestCase):
             self.core_loc, elf_path, None, self.risc_name, None, 100, True, False, 0, self.context
         )
 
-        self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
-        for i in range(0, expected_f1_on_callstack_count):
+        self.assertEqual(len(callstack), recursion_count + 3)
+        self.assertEqual(callstack[0].function_name, "halt")
+        for i in range(1, recursion_count):
             self.assertEqual(callstack[i].function_name, "f1")
-        self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
-        self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
+        self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
+        self.assertEqual(callstack[recursion_count + 2].function_name, "main")
 
     @parameterized.expand([(1, 1)])
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):

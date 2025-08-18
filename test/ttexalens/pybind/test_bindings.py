@@ -9,21 +9,23 @@ import os
 ttexalens_pybind_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../build/lib"))
 sys.path.append(ttexalens_pybind_path)
 
-if not os.path.isfile(os.path.join(ttexalens_pybind_path, "ttexalens_pybind.so")):
-    print(f"Error: 'ttexalens_pybind.so' not found in {ttexalens_pybind_path}. Try: make build")
-    sys.exit(1)
+try:
+    import ttexalens_pybind as pb
+    from ttexalens_pybind_unit_tests import set_ttexalens_test_implementation
+except:
+    if not os.path.isfile(os.path.join(ttexalens_pybind_path, "ttexalens_pybind.so")):
+        print(f"Error: 'ttexalens_pybind.so' not found in {ttexalens_pybind_path}. Try: make build")
+        sys.exit(1)
 
-if not os.path.isfile(os.path.join(ttexalens_pybind_path, "ttexalens_pybind_unit_tests.so")):
-    print(f"Error: 'ttexalens_pybind_unit_tests.so' not found in {ttexalens_pybind_path}. Try: make build")
-    sys.exit(1)
-
-import ttexalens_pybind as pb
-from ttexalens_pybind_unit_tests import set_ttexalens_test_implementation
+    if not os.path.isfile(os.path.join(ttexalens_pybind_path, "ttexalens_pybind_unit_tests.so")):
+        print(f"Error: 'ttexalens_pybind_unit_tests.so' not found in {ttexalens_pybind_path}. Try: make build")
+        sys.exit(1)
 
 
 class TestBindings(unittest.TestCase):
     def __init__(self, methodName: str = "runTest") -> None:
-        set_ttexalens_test_implementation()
+        ttexalens_pybind_so_path = pb.__file__
+        set_ttexalens_test_implementation(ttexalens_pybind_so_path)
         super().__init__(methodName)
 
     def test_pci_read_write32(
@@ -45,7 +47,7 @@ class TestBindings(unittest.TestCase):
     def test_pci_read_write(self, data: bytes | bytearray = bytearray([1, 5, 3]), size=3):
         assert pb.pci_read(0, 3, 3, 3, 3, size) is None, "Error: pci_read should return None before writing."
         assert (
-            pb.pci_write(0, 3, 3, 3, 3, data, 3) == size
+            pb.pci_write(0, 3, 3, 3, 3, bytes(data), 3) == size
         ), "Error: pci_write should return the size of the data written."
 
         rlist = pb.pci_read(0, 3, 3, 3, 3, 3)

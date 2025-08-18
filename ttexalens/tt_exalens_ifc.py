@@ -452,12 +452,13 @@ ttexalens_pybind_path = util.application_path() + "/../build/lib"
 binary_path = util.application_path() + "/../build/bin"
 sys.path.append(ttexalens_pybind_path)
 
-if not os.path.isfile(os.path.join(ttexalens_pybind_path, "ttexalens_pybind.so")):
-    print(f"Error: 'ttexalens_pybind.so' not found in {ttexalens_pybind_path}. Try: make build")
-    sys.exit(1)
-
-# This is a pybind module so we don't need from .
-import ttexalens_pybind
+try:
+    # This is a pybind module so we don't need from .
+    import ttexalens_pybind
+except ImportError:
+    if not os.path.isfile(os.path.join(ttexalens_pybind_path, "ttexalens_pybind.so")):
+        print(f"Error: 'ttexalens_pybind.so' not found in {ttexalens_pybind_path}. Try: make build")
+        sys.exit(1)
 
 
 class TTExaLensPybind(TTExaLensCommunicator):

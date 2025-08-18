@@ -58,7 +58,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     current_device_id = ui_state.current_device_id
     current_device = context.devices[current_device_id]
     core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
-    mem_reader = ELF.get_mem_reader(context, current_device_id, core_loc)
+    mem_reader = ELF.get_mem_reader(core_loc)
 
     # If we can parse the address as a number, do it. Otherwise, it's a variable name.
     try:
