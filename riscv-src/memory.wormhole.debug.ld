@@ -9,7 +9,7 @@ BRISC_L0_LENGTH = 4K;
 TRISC_L0_LENGTH = 2K;
 NCRISC_L0_LENGTH = 4K;
 
-L1_BASE = 0x4;
+L1_BASE = 0xA00;
 UNDEFINED = 0;
 
 /* The address space layout goes as follows:
@@ -65,5 +65,3 @@ MEMORY
     NCRISC_LOADER_INIT_MEM  : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
     NCRISC_LOADER_CODE_MEM  : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
 }
-
-/* find the flag that folds constexprs on -O1 */

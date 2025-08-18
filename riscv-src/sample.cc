@@ -5,8 +5,6 @@
 // An example of a simple C++ program that can be compiled with the RISC-V GCC toolchain.
 #include <cstdint>
 
-#include "coverage/coverage.h"
-
 // Registers for debug register access
 
 #define RISC_DBG_CNTL0 0xFFB12080
@@ -74,7 +72,6 @@ int main() {
 
     // STEP END: Set the mailbox to RISC_DBG_STATUS0
     g_MAILBOX = (uint32_t)RISC_DBG_STATUS0;
-    gcov_dump();
     infloop();
     return 0;
 }

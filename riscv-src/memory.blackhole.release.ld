@@ -9,7 +9,7 @@ BRISC_L0_LENGTH = 8K;
 TRISC_L0_LENGTH = 4K;
 NCRISC_L0_LENGTH = 8K;
 
-L1_BASE = 0x4;
+L1_BASE = 0xA00;
 UNDEFINED = 0;
 
 /* The address space layout goes as follows:

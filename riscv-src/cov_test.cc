@@ -1,11 +1,5 @@
 #include <cstdint>
 
-#include "coverage/coverage.h"
-
-#define ever \
-    ;        \
-    ;
-
 template <uint32_t N>
 struct factorial {
     static constexpr uint32_t value = N * factorial<N - 1>::value;
@@ -36,7 +30,7 @@ constexpr char something() {
 
 [[gnu::noreturn]]
 void infloop(void) {
-    for (ever);
+    for (;;);
     __builtin_unreachable();
 }
 
@@ -52,6 +46,5 @@ int main(void) {
         ptr[2] = factorial<3 * factorial<1>::value>::value;
         ptr[3] = fib<3>();
     }
-    gcov_dump();
     infloop();
 }

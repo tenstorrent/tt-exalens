@@ -147,7 +147,13 @@ address_fix:
   mv      a2, zero
 
   call    main
-  tail    exit
+  
+  #ifdef COVERAGE
+  call gcov_dump
+  #endif
+  
+  10: j 10b
+
   .size  _start, .-_start
 
   .global _init

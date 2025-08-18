@@ -73,36 +73,17 @@ endfunction()
 if(COVERAGE)
     set(GCOV_SRC "${RISCV_SOURCE}/coverage/gcov.c")
     set(GCOV_OBJ "${RISCV_OBJECT}/gcov.o")
-    set(LIBGCOV "${RISCV_OUTPUT}/libgcov.a")
-
     set(COVERAGE_SRC "${RISCV_SOURCE}/coverage/coverage.c")
     set(COVERAGE_OBJ "${RISCV_OBJECT}/coverage.o")
-    set(LIBCOVERAGE "${RISCV_OUTPUT}/libcoverage.a")
 
     add_riscv_object("${GCOV_OBJ}" "${GCOV_SRC}" ON OFF)
     add_riscv_object("${COVERAGE_OBJ}" "${COVERAGE_SRC}" ON OFF)
-
-    add_custom_command(
-        OUTPUT ${LIBGCOV}
-        COMMAND ${TOOL_PATH}/riscv32-tt-elf-gcc-ar rcs ${LIBGCOV} ${GCOV_OBJ}
-        DEPENDS ${GCOV_OBJ}
-        COMMENT "Building coverage libraries..."
-    )
-
-    add_custom_command(
-        OUTPUT ${LIBCOVERAGE}
-        COMMAND ${TOOL_PATH}/riscv32-tt-elf-gcc-ar rcs ${LIBCOVERAGE} ${COVERAGE_OBJ}
-        DEPENDS ${COVERAGE_OBJ}
-    )
-
-    add_custom_target(libgcov ALL
-        DEPENDS ${LIBGCOV} ${LIBCOVERAGE}
-    )
 endif()
 
 # Add the CRT object (assembly file)
-add_riscv_object("${RISCV_OBJECT}/tmu-crt0.o" "${RISCV_SOURCE}/tmu-crt0.S" OFF OFF)
-add_riscv_object("${RISCV_OBJECT}/tmu-crt0.optimized.o" "${RISCV_SOURCE}/tmu-crt0.S" ON OFF)
+# Pass COVERAGE as there is conditional compilation depending on the COVERAGE macro.
+add_riscv_object("${RISCV_OBJECT}/tmu-crt0.o" "${RISCV_SOURCE}/tmu-crt0.S" OFF ${COVERAGE})
+add_riscv_object("${RISCV_OBJECT}/tmu-crt0.optimized.o" "${RISCV_SOURCE}/tmu-crt0.S" ON ${COVERAGE})
 
 # Add C++ compile target
 foreach(app ${RISCV_APPS})
@@ -132,8 +113,8 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
     )
 
     if(COVERAGE)
-        list(APPEND LINK_OBJECTS ${LIBGCOV})
-        list(APPEND LINK_OBJECTS ${LIBCOVERAGE})
+        list(APPEND LINK_OBJECTS ${GCOV_OBJ})
+        list(APPEND LINK_OBJECTS ${COVERAGE_OBJ})
     endif()
 
     add_custom_command(
@@ -154,11 +135,6 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
 
     add_custom_target("${ARCH}_${APP}_${CORE}_${OPTIMIZED}_target" ALL
         DEPENDS ${OUTPUT_ELF})
-
-    # If enabled, ensure the coverage library is built before the ELFs.
-    if(COVERAGE)
-        add_dependencies("${ARCH}_${APP}_${CORE}_${OPTIMIZED}_target" libgcov)
-    endif()
 
     add_custom_command(
         OUTPUT ${OUTPUT_DUMP} ${OUTPUT_DIS}

@@ -5,8 +5,6 @@
 // Simple program to test call stack printing
 #include <stdint.h>
 
-#include "coverage/coverage.h"
-
 volatile uint32_t* g_MAILBOX = (volatile uint32_t*)0x4000;
 
 // Registers for debug register access
@@ -54,7 +52,6 @@ int main() {
         int sum = recurse(*g_MAILBOX);
         *g_MAILBOX = sum;
     }
-    gcov_dump();
     infloop();
     return 0;
 }

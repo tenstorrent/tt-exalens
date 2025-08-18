@@ -12,9 +12,13 @@ extern "C" {
 
 #define COV_OVERFLOW 0xDEADBEEF
 
+// Symbols pointing to per-TU coverage data from -fprofile-info-section.
 extern const struct gcov_info* __gcov_info_start[];
 extern const struct gcov_info* __gcov_info_end[];
 
+// Start address and region length of per-RISC REGION_GCOV.
+// This region stores the actual gcda, and the host reads it
+// and dumps it into a file.
 extern uint8_t __coverage_start[];
 extern uint8_t __coverage_end[];
 
@@ -23,7 +27,7 @@ extern uint8_t __coverage_end[];
 // value itself. The covdump.py script uses it to know how much data to
 // extract.
 
-void write_data(const void* _data, unsigned int length, void* arg) {
+static void write_data(const void* _data, unsigned int length, void* arg) {
     uint8_t* data = (uint8_t*)_data;
     uint32_t* written = (uint32_t*)__coverage_start;
 
@@ -41,7 +45,7 @@ void write_data(const void* _data, unsigned int length, void* arg) {
     }
 }
 
-void fname_nop(const char* fname, void* arg) {
+static void fname_nop(const char* fname, void* arg) {
     // As we're only extracting data for one TU, writing the filename is not
     // necessary, and in fact would complicate things.
     // One could call __gcov_filename_to_gcfn from gcc/libgcc/libgcov-driver.c
@@ -65,7 +69,7 @@ void gcov_dump(void) {
     // which I don't want anyone else to have to deal with.
     for (int* p = (int*)__coverage_start; p != (int*)__coverage_end; p++) *p = 0;
 
-    // First 4 bytes are reserved for written itself, start writing past that.
+    // First 4 bytes are reserved for the counter, start writing past that.
     *(uint32_t*)__coverage_start = 4;
 
     const struct gcov_info* const* info = __gcov_info_start;
