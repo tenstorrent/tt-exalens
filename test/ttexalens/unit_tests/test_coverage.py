@@ -31,7 +31,7 @@ class TestCoverage(unittest.TestCase):
         else:
             self.skipTest(f"Unsupported architecture: {self.context.arch}")
         
-        self.elf_root = Path("../../../../build/riscv-src/") / arch
+        self.elf_root = Path("build/riscv-src/") / arch
 
     def test_coverage(self):
         tested = False
