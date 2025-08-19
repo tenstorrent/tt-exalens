@@ -46,5 +46,4 @@ int main(void) {
         ptr[2] = factorial<3 * factorial<1>::value>::value;
         ptr[3] = fib<3>();
     }
-    infloop();
 }

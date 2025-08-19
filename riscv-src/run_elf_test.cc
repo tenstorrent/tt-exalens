@@ -9,6 +9,4 @@
 int main() {
     volatile uint32_t *MAILBOX = reinterpret_cast<volatile uint32_t *>(RISCV_L1_REG_START_ADDR);
     *MAILBOX = 0x12345678;
-
-    for (;;);
 }

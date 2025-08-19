@@ -5,14 +5,14 @@
 // Simple program to test call stack printing
 #include <stdint.h>
 
-volatile uint32_t* g_MAILBOX = (volatile uint32_t*)0x4000;
-
-// Registers for debug register access
+volatile uint32_t* g_MAILBOX = (volatile uint32_t*) 0x64000;
 
 void halt() {
-    // Halt core with ebrake instruction
+    // Halt core with ebreak
     asm volatile("ebreak");
 }
+
+#error disable coverage on test builds | make tests build both unoptimized and optimized and run both | POTENTIALLY make a coverage test
 
 int f1(int a) {
     if (a <= 1) {

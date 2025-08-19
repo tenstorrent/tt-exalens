@@ -19,7 +19,7 @@ SECTIONS
    * Since loader cannot access private core memory from NOC, it copies .ldm_data section into .loader_init section,
    * and we embed code into CRT library that copies .loader_init section into .ldm_data section before main starts.
    */
-  .loader_init :
+  .loader_init : ALIGN(4)
   {
     __loader_init_start = .;
    . += LENGTH(REGION_LOADER_INIT);
@@ -31,7 +31,7 @@ SECTIONS
    * Since loader cannot access IRAM from NOC, it copies .init section into .loader_code section,
    * and we embed code into CRT library that copies .loader_code section into .init section before rest of the CRT starts.
    */
-  .loader_code :
+  .loader_code : ALIGN(4)
   {
     __loader_code_start = .;
    . += LENGTH(REGION_LOADER_CODE);
@@ -43,11 +43,11 @@ SECTIONS
    */
 
   PROVIDE (__executable_start = __firmware_start);
-  .init __firmware_start :
+  .init __firmware_start : ALIGN(4)
   {
     KEEP (*(SORT_NONE(.init)))
   } > REGION_CODE
-  .text :
+  .text : ALIGN(4)
   {
     *(.text.unlikely .text.*_unlikely .text.unlikely.*)
     *(.text.exit .text.exit.*)
@@ -60,11 +60,11 @@ SECTIONS
   {
     KEEP (*(SORT_NONE(.fini)))
   } > REGION_CODE
-  l1_data :
+  l1_data : ALIGN(4)
   {
     *(l1_data)
   } > REGION_CODE
-  l1_data_noinit (NOLOAD) :
+  l1_data_noinit (NOLOAD) : ALIGN(4)
   {
     *(l1_data_noinit)
   } > REGION_CODE
@@ -74,9 +74,8 @@ SECTIONS
   PROVIDE (etext = .);
   __fw_export_end_text = DEFINED(__fw_export_end_text) ? __fw_export_end_text : .;
   PROVIDE(__global_pointer$ = ORIGIN(REGION_DATA) + 0x800);
-  .ldm_data __ldm_start :
+  .ldm_data __ldm_start : ALIGN(4)
   {
-    . = ALIGN(4);
      __ldm_data_start = .;
      *(.rodata .rodata.* .gnu.linkonce.r.*)
      *(.rodata1)
@@ -124,11 +123,11 @@ SECTIONS
     . = ALIGN(4);
     __ldm_bss_end = .;
   } > REGION_DATA
-  local_data_noinit __ldm_bss_end (NOLOAD) :
+  local_data_noinit __ldm_bss_end (NOLOAD) : ALIGN(4)
   {
     *(local_data_noinit)
   } > REGION_DATA
-  .gcov_info :
+  .gcov_info : ALIGN(4)
   {
     __gcov_info_start = .;
     /* The KEEP directives tell the linker to not garbage-collect the segments. */
@@ -142,7 +141,7 @@ SECTIONS
   _edata = .; PROVIDE (edata = .);
   _end = .; PROVIDE (end = .);
   __fw_export_ldm_end = DEFINED(__fw_export_ldm_end) ? __fw_export_ldm_end : _end;
-  .stack :
+  .stack : ALIGN(4)
   {
     __stack_bottom = .;
    . += __firmware_stack_size;

@@ -72,6 +72,5 @@ int main() {
 
     // STEP END: Set the mailbox to RISC_DBG_STATUS0
     g_MAILBOX = (uint32_t)RISC_DBG_STATUS0;
-    infloop();
     return 0;
 }

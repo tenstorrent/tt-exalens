@@ -41,7 +41,7 @@ class ElfLoader:
         """
         return self.device._context
 
-    SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".stack", ".gcov_info"]
+    SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".gcov_info"]
 
     @staticmethod
     def get_jump_to_offset_instruction(offset, rd=0):
@@ -199,7 +199,7 @@ class ElfLoader:
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
                         if address % 4 != 0:
-                            raise ValueError(f"Section address 0x{address:08x} is not 32-bit aligned")
+                            raise ValueError(f"{elf_path}: section {section.name} (0x{address:08x}) is not 32-bit aligned")
 
                         address = self.remap_address(address, loader_data_address, loader_code_address)
                         data = section.data()
@@ -229,7 +229,6 @@ class ElfLoader:
         except Exception as e:
             util.ERROR(e)
             raise util.TTException(f"Error loading elf file {elf_path}")
-
         self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address
 

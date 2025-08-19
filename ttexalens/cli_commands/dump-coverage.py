@@ -3,6 +3,8 @@ Usage:
   dump-coverage <elf> [<gcno>] <outdir>
 
 Description:
+  Get coverage data for a given ELF.
+  
   Given the currently running ELF (and optionally its gcno),
   extract coverage data from the device and place it into the
   specified output directory along with its gcno.

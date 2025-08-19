@@ -950,7 +950,7 @@ class TestCallStack(unittest.TestCase):
     @parameterized.expand([1, 10, 50])
     def test_callstack_with_parsing(self, recursion_count):
         self.is_wormhole()
-        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        lib.write_words_to_device(self.core_loc, 0x64000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack")
         self.loader.run_elf(elf_path)
         parsed_elf = lib.parse_elf(elf_path, self.context)
@@ -966,7 +966,7 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand([1, 10, 50])
     def test_callstack(self, recursion_count: int):
-        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        lib.write_words_to_device(self.core_loc, 0x64000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack")
         self.loader.run_elf(elf_path)
         callstack: list[CallstackEntry] = lib.callstack(
@@ -985,7 +985,7 @@ class TestCallStack(unittest.TestCase):
         if self.is_wormhole() and self.is_eth_block() and elf_name == "callstack.optimized":
             self.skipTest("Callstack optimized tests break on ETH blocks")
 
-        lib.write_words_to_device(self.core_loc, 0x4000, 0, 0, self.context)
+        lib.write_words_to_device(self.core_loc, 0x64000, 0, 0, self.context)
         elf_path = self.get_elf_path(elf_name)
         self.loader.run_elf(elf_path)
         callstack: list[CallstackEntry] = lib.callstack(
@@ -998,7 +998,7 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand([1, 10, 50])
     def test_top_callstack_with_parsing(self, recursion_count: int):
-        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        lib.write_words_to_device(self.core_loc, 0x64000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack")
         self.loader.run_elf(elf_path)
         with self.risc_debug.ensure_halted():
@@ -1010,7 +1010,7 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand([1, 10, 50])
     def test_top_callstack(self, recursion_count):
-        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        lib.write_words_to_device(self.core_loc, 0x64000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack")
         self.loader.run_elf(elf_path)
         with self.risc_debug.ensure_halted():
@@ -1025,7 +1025,7 @@ class TestCallStack(unittest.TestCase):
         if self.is_wormhole() and self.is_eth_block():
             self.skipTest("Callstack optimized tests break on ETH blocks")
 
-        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        lib.write_words_to_device(self.core_loc, 0x64000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack.optimized")
         self.loader.run_elf(elf_path)
         callstack: list[CallstackEntry] = lib.callstack(
@@ -1045,7 +1045,7 @@ class TestCallStack(unittest.TestCase):
         if self.is_wormhole() and self.is_eth_block():
             self.skipTest("Callstack optimized tests break on ETH blocks")
 
-        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        lib.write_words_to_device(self.core_loc, 0x64000, recursion_count, 0, self.context)
         elf_path = self.get_elf_path("callstack.optimized")
         self.loader.run_elf(elf_path)
         with self.risc_debug.ensure_halted():
