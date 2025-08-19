@@ -121,7 +121,6 @@ function(create_riscv_target ARCH APP CORE OPTIMIZED)
         OUTPUT ${OUTPUT_ELF}
         COMMAND ${GXX} ${COMPILE_OPTIONS}
             ${LINK_OBJECTS}
-            -Wl,--print-memory-usage
             -T${RISCV_SOURCE}/memory.${ARCH}.${BUILD_TYPE_EXTENSION}.ld
             -T${RISCV_SOURCE}/${CORE}.ld
             -T${RISCV_SOURCE}/sections.ld
