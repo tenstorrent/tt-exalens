@@ -223,8 +223,6 @@ class ELF:
 
         # Initialization
         device = location._device
-        context = device._context
-        device_id = device._id
         if risc_name is not None:
             noc_block = device.get_block(location)
             risc_debug = noc_block.get_risc_debug(risc_name, neo_id)
@@ -251,9 +249,7 @@ class ELF:
                     bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in words)[:size_bytes]
 
             if bytes_data is None:
-                bytes_data = read_from_device(
-                    core_loc=location, device_id=device_id, addr=addr, num_bytes=size_bytes, context=context
-                )
+                bytes_data = read_from_device(location=location, addr=addr, num_bytes=size_bytes)
 
             return [
                 int.from_bytes(bytes_data[i * element_size : (i + 1) * element_size], byteorder="little")
