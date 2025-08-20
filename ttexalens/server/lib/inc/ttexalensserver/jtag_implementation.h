@@ -5,8 +5,8 @@
 
 #include <optional>
 
-#include "umd/device/jtag/jtag_device.h"
 #include "ttexalensserver/ttexalens_implementation.h"
+#include "umd/device/jtag/jtag_device.h"
 
 namespace tt::exalens {
 

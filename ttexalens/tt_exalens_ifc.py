@@ -525,7 +525,7 @@ class TTExaLensPybind(TTExaLensCommunicator):
     def jtag_read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int):
         if address % 4 != 0:
             raise Exception("Unaligned access in jtag_read32")
-        val =  self._check_result(ttexalens_pybind.jtag_read32(noc_id, chip_id, noc_x, noc_y, address))
+        val = self._check_result(ttexalens_pybind.jtag_read32(noc_id, chip_id, noc_x, noc_y, address))
         return val
 
     def jtag_write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int):

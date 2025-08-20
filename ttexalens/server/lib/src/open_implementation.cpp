@@ -11,11 +11,11 @@
 #include <stdexcept>
 #include <string>
 
-#include "umd/device/jtag/jtag.h"
-#include "umd/device/jtag/jtag_device.h"
 #include "ttexalensserver/jtag_implementation.h"
 #include "ttexalensserver/umd_implementation.h"
 #include "umd/device/cluster.h"
+#include "umd/device/jtag/jtag.h"
+#include "umd/device/jtag/jtag_device.h"
 #include "umd/device/logging/config.h"
 #include "umd/device/tt_cluster_descriptor.h"
 #include "umd/device/tt_core_coordinates.h"
