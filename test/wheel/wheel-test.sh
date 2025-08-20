@@ -27,7 +27,7 @@ pip3 install wheel
 
 echo -e "Building TTExaLens ..."
 make clean
-make build
+make debug_nocov
 
 echo -e "Building wheel ..."
 make wheel
