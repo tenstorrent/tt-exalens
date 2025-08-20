@@ -53,7 +53,7 @@ def run(cmd_text, context, ui_state: UIState = None):
         current_device = context.devices[device_id]
         core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
 
-        # TODO: Update JTAG library to use noc_id (currently it uses chip_id).
+        # TODO #560: Update JTAG library to use noc_id (currently it uses chip_id).
         # As a workaround, we use the device_id for both noc_id and chip_id.
         val = context.server_ifc.jtag_read32(device_id, device_id, *core_loc.to("noc0"), addr)
         core_loc_str_print = (
