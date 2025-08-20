@@ -11,11 +11,11 @@
 #include <stdexcept>
 #include <string>
 
-#include "ttexalensserver/jtag.h"
-#include "ttexalensserver/jtag_device.h"
 #include "ttexalensserver/jtag_implementation.h"
 #include "ttexalensserver/umd_implementation.h"
 #include "umd/device/cluster.h"
+#include "umd/device/jtag/jtag.h"
+#include "umd/device/jtag/jtag_device.h"
 #include "umd/device/logging/config.h"
 #include "umd/device/tt_cluster_descriptor.h"
 #include "umd/device/tt_core_coordinates.h"
@@ -185,9 +185,9 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
     jtag_device = std::move(init_jtag(binary_directory));
 
     // Check that all chips are of the same type
-    tt::ARCH arch = *jtag_device->get_jtag_arch(0);
+    tt::ARCH arch = jtag_device->get_jtag_arch(0);
     for (size_t i = 1; i < jtag_device->get_device_cnt(); i++) {
-        auto newArch = *jtag_device->get_jtag_arch(i);
+        auto newArch = jtag_device->get_jtag_arch(i);
 
         if (arch != newArch) {
             throw std::runtime_error("Not all devices have the same architecture.");
@@ -199,7 +199,7 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
     std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
 
     for (size_t device_id = 0; device_id < jtag_device->get_device_cnt(); device_id++) {
-        tt::ARCH arch = *jtag_device->get_jtag_arch(device_id);
+        tt::ARCH arch = jtag_device->get_jtag_arch(device_id);
         uint32_t harvesting = *jtag_device->get_efuse_harvesting(device_id);
         soc_descriptors[device_id] = tt_SocDescriptor(arch, harvesting);
         device_soc_descriptors_yamls[device_id] =
