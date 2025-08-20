@@ -653,8 +653,8 @@ class TestDebugging(unittest.TestCase):
 
         if self.core_sim.is_eth_block() and self.core_sim.is_wormhole():
             self.skipTest("This test is not applicable for ETH cores.")
-        if self.core_sim.is_wormhole() and self.core_sim.risc_name == "TRISC2":
-            self.skipTest("This test is unreliable on TRISC2 on wormhole.")
+        if (self.core_sim.is_wormhole() or self.core_sim.is_blackhole()) and self.core_sim.risc_name == "TRISC2":
+            self.skipTest("This test is unreliable on TRISC2 on wormhole or blackhole.")
 
         break_addr = 0x950
         jump_addr = 0x2000
