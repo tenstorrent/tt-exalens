@@ -5,6 +5,7 @@ import struct
 import unittest
 import os
 
+import itertools
 from functools import wraps
 
 from parameterized import parameterized, parameterized_class
@@ -526,16 +527,11 @@ class TestRunElf(unittest.TestCase):
         risc = risc_name.lower()
         return f"build/riscv-src/{arch}/{app_name}.{risc}.elf"
 
-    @parameterized.expand(
-        [
-            ("brisc"),
-            ("trisc0"),
-            ("trisc1"),
-            ("trisc2"),
-            ("ncrisc"),
-        ]
-    )
-    def test_run_elf(self, risc_name: str):
+    ELFS = ["run_elf_test", "run_elf_test.optimized"]
+    RISCS = ["brisc", "trisc0", "trisc1", "trisc2", "ncrisc"]
+
+    @parameterized.expand(itertools.product(ELFS, RISCS))
+    def test_run_elf(self, elf_name: str, risc_name: str):
         """Test running an ELF file."""
         core_loc = "0,0"
         addr = 0x0

@@ -12,8 +12,6 @@ void halt() {
     asm volatile("ebreak");
 }
 
-#error disable coverage on test builds | make tests build both unoptimized and optimized and run both | POTENTIALLY make a coverage test
-
 int f1(int a) {
     if (a <= 1) {
         halt();
