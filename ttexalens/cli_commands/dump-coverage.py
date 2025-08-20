@@ -1,10 +1,13 @@
+# SPDX-FileCopyrightText: (c) 2025 Tenstorrent AI ULC
+#
+# SPDX-License-Identifier: Apache-2.0
 """
 Usage:
   dump-coverage <elf> [<gcno>] <outdir>
 
 Description:
   Get coverage data for a given ELF.
-  
+
   Given the currently running ELF (and optionally its gcno),
   extract coverage data from the device and place it into the
   specified output directory along with its gcno.
@@ -18,7 +21,7 @@ command_metadata = {
     "type": "high-level",
     "description": __doc__,
     "context": "limited",
-    "common_option_names": ["--device", "--loc", "--verbose"]
+    "common_option_names": ["--device", "--loc", "--verbose"],
 }
 
 from pathlib import Path
@@ -27,18 +30,19 @@ from ttexalens import command_parser
 from ttexalens.uistate import UIState
 from ttexalens.coverage import dump_coverage
 
+
 def run(cmd_text, context, ui_state: UIState):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"]
+        common_option_names=command_metadata["common_option_names"],
     )
 
     elf_path = Path(dopt.args["<elf>"]).resolve()
     outdir = Path(dopt.args["<outdir>"]).resolve()
     gcno_arg = dopt.args.get("<gcno>")
     gcno_path = Path(gcno_arg).resolve() if gcno_arg else None
-    
+
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             try:

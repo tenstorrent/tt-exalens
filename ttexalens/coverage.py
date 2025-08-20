@@ -11,7 +11,7 @@ from ttexalens.tt_exalens_lib import parse_elf
 from ttexalens.tt_exalens_lib import TTException
 
 """
-Extract the coverage data from the device into a .gcda file, 
+Extract the coverage data from the device into a .gcda file,
 and find and copy its .gcno there such that it has the same name.
 Debug info is parsed from the passed ELF to get the gcno.
 
@@ -23,6 +23,7 @@ on a given architecture, this script can be adjusted to take the arch and RISC t
 of the ELF, should that be necessary. That is, however, less flexible, as it requires
 hardcoding offsets, which would break in case of linker script changes.
 """
+
 
 def find_gcno(elf_path: Path) -> Path:
     """
@@ -40,16 +41,11 @@ def find_gcno(elf_path: Path) -> Path:
         gcno = Path(gcda[:-4] + "gcno")
         if gcno.exists():
             return gcno
-        
+
     raise TTException("Could not find gcno from debuginfo")
 
-def dump_coverage(
-        context,
-        core_loc: str, 
-        elf_path: Path, 
-        outdir: Path, 
-        gcno: Path | None = None
-        ) -> None:
+
+def dump_coverage(context, core_loc: str, elf_path: Path, outdir: Path, gcno: Path | None = None) -> None:
 
     if not elf_path.exists():
         raise TTException(f"{elf_path} does not exist")

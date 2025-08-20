@@ -149,12 +149,12 @@ address_fix:
   mv      a2, zero
 
   call    main
-  
+
   # Automatically dump gcda into L1 when main returns if built with coverage.
   #ifdef COVERAGE
   call gcov_dump
   #endif
-  
+
   # Loop infinitely.
   10: j 10b
 

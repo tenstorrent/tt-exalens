@@ -5,7 +5,7 @@
 // Simple program to test call stack printing
 #include <stdint.h>
 
-volatile uint32_t* g_MAILBOX = (volatile uint32_t*) 0x64000;
+volatile uint32_t* g_MAILBOX = (volatile uint32_t*)0x64000;
 
 void halt() {
     // Halt core with ebreak

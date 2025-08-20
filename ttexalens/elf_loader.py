@@ -199,7 +199,9 @@ class ElfLoader:
                     if name in self.SECTIONS_TO_LOAD:
                         address = section.header.sh_addr
                         if address % 4 != 0:
-                            raise ValueError(f"{elf_path}: section {section.name} (0x{address:08x}) is not 32-bit aligned")
+                            raise ValueError(
+                                f"{elf_path}: section {section.name} (0x{address:08x}) is not 32-bit aligned"
+                            )
 
                         address = self.remap_address(address, loader_data_address, loader_code_address)
                         data = section.data()
