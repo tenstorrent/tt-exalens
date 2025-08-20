@@ -463,10 +463,6 @@ class TestReadWrite(unittest.TestCase):
         loc = OnChipCoordinate.create(location, device=self.context.devices[0])
         risc_debug = loc._device.get_block(loc).get_risc_debug(risc_name)
 
-        if type(risc_debug) is BabyRiscDebug:
-            if risc_debug.risc_info.can_change_code_start_address:
-                risc_debug.risc_info.set_code_start_address(risc_debug.register_store, 0xD000)
-
         private_memory = risc_debug.get_data_private_memory()
         assert private_memory is not None, "Private memory is not available."
         assert private_memory.address.private_address is not None, "Private memory address is not set."
