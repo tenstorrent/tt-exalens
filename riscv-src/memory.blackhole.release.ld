@@ -9,14 +9,13 @@ BRISC_L0_LENGTH = 8K;
 TRISC_L0_LENGTH = 4K;
 NCRISC_L0_LENGTH = 8K;
 
-L1_BASE = 0xA00;
+L1_BASE = 0x0;
 UNDEFINED = 0;
 
 /* The address space layout goes as follows:
  * [BRISC] [TRISCs] [NCRISC] (...) [L0]
  * LOADER_INIT regions are defined for every core, as the data segment resides in L0.
  * LOADER_CODE regions are undefined for all cores; NCRISC does not have IRAM on Blackhole.
- * DATA regions are all left undefined, as all data is in L0.
  * GCOV region is left undefined for obvious reasons.
  */
 

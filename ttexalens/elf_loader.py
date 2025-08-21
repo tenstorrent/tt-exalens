@@ -231,6 +231,7 @@ class ElfLoader:
         except Exception as e:
             util.ERROR(e)
             raise util.TTException(f"Error loading elf file {elf_path}")
+
         self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address
 

@@ -3,11 +3,6 @@ cmake_policy(VERSION 3.16)
 
 project(RISCVProject LANGUAGES CXX ASM)
 
-# Check if TTEXALENS_HOME is set, if not set it to .. from the directory that contains this file
-if(NOT TTEXALENS_HOME)
-    set(TTEXALENS_HOME "${CMAKE_CURRENT_LIST_DIR}/..")
-endif()
-
 # Set toolchain and tools
 set(TOOL_PATH "${SFPI_RELEASE_PATH}/compiler/bin")
 set(GXX "${TOOL_PATH}/riscv32-tt-elf-g++")
@@ -37,7 +32,7 @@ set(RISCV_OBJECT "${CMAKE_BINARY_DIR}/obj/riscv-src")
 # Define architectures, applications, and cores
 set(RISCV_ARCHITECTURES "wormhole" "blackhole")
 set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc")
-set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test")
+set(RISCV_APPS "sample" "run_elf_test" "callstack")
 set(RISCV_OPTIMIZED_APPS "run_elf_test" "callstack")
 
 # Create output directories
@@ -82,15 +77,15 @@ endif()
 
 # Add the CRT object (assembly file)
 # Pass COVERAGE as there is conditional compilation depending on the COVERAGE macro.
-add_riscv_object("${RISCV_OBJECT}/tmu-crt0.o" "${RISCV_SOURCE}/tmu-crt0.S" OFF ${COVERAGE})
-add_riscv_object("${RISCV_OBJECT}/tmu-crt0.optimized.o" "${RISCV_SOURCE}/tmu-crt0.S" ON ${COVERAGE})
+add_riscv_object("${RISCV_OBJECT}/tmu-crt0.o" "${RISCV_SOURCE}/tmu-crt0.S" OFF "${COVERAGE}")
+add_riscv_object("${RISCV_OBJECT}/tmu-crt0.optimized.o" "${RISCV_SOURCE}/tmu-crt0.S" ON "${COVERAGE}")
 
 # Add C++ compile target
 foreach(app ${RISCV_APPS})
-    add_riscv_object("${RISCV_OBJECT}/${app}.o" "${RISCV_SOURCE}/${app}.cc" OFF ${COVERAGE})
+    add_riscv_object("${RISCV_OBJECT}/${app}.o" "${RISCV_SOURCE}/${app}.cc" OFF "${COVERAGE}")
 endforeach()
 foreach(app ${RISCV_OPTIMIZED_APPS})
-    add_riscv_object("${RISCV_OBJECT}/${app}.optimized.o" "${RISCV_SOURCE}/${app}.cc" ON ${COVERAGE})
+    add_riscv_object("${RISCV_OBJECT}/${app}.optimized.o" "${RISCV_SOURCE}/${app}.cc" ON "${COVERAGE}")
 endforeach()
 
 # Define function to create targets for a specific architecture, application, and core

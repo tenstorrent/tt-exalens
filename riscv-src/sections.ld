@@ -76,6 +76,7 @@ SECTIONS
   PROVIDE(__global_pointer$ = ORIGIN(REGION_DATA) + 0x800);
   .ldm_data __ldm_start :
   {
+    . = ALIGN(4);
      __ldm_data_start = .;
      *(.rodata .rodata.* .gnu.linkonce.r.*)
      *(.rodata1)

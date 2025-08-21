@@ -10,7 +10,7 @@ extern "C" {
 
 #include "gcov.h"
 
-#define COV_OVERFLOW 0xDEADBEEF
+#define COVERAGE_OVERFLOW 0xDEADBEEF
 
 // Symbols pointing to per-TU coverage data from -fprofile-info-section.
 extern const struct gcov_info* __gcov_info_start[];
@@ -30,19 +30,19 @@ extern uint8_t __coverage_end[];
 static void write_data(const void* _data, unsigned int length, void* arg) {
     uint8_t* data = (uint8_t*)_data;
     uint32_t* written = (uint32_t*)__coverage_start;
+    if (*written == COVERAGE_OVERFLOW) return;
 
-    if (*written == COV_OVERFLOW) return;
-
-    if (__coverage_start + *written + length >= __coverage_end) {
+    uint8_t* mem = __coverage_start + *written; // Start writing from here.
+    if (mem + length >= __coverage_end) {
         // Not enough space in the segment, write overflow sentinel and return.
-        *written = COV_OVERFLOW;
+        *written = COVERAGE_OVERFLOW;
         return;
     }
 
     for (unsigned int i = 0; i < length; i++) {
-        __coverage_start[*written] = data[i];
-        (*written)++;  // Mind the operator precedence.
+        mem[i] = data[i];
     }
+    *written += length;
 }
 
 static void fname_nop(const char* fname, void* arg) {
@@ -54,7 +54,7 @@ static void fname_nop(const char* fname, void* arg) {
     // be used to facilitate that. However, that's a considerably more complex
     // approach; this is preferred as serializing the data into gcda format is
     // fairly straightforward if only one TU is relevant.
-
+#error "remove this comment from here and put it in the md file"
     return;
 }
 
@@ -64,7 +64,7 @@ void gcov_dump(void) {
     // multiple TUs by iterating from __gcov_info_start to __gcov_info_end
     // and calling __gcov_info_to_gcda on each of them with an implemented
     // filename callback; refer to the comment in fname_nop.
-
+#error "try removing the memset here"
     // Memory must be zeroed here. Cheaping out on this caused arcane issues
     // which I don't want anyone else to have to deal with.
     for (int* p = (int*)__coverage_start; p != (int*)__coverage_end; p++) *p = 0;

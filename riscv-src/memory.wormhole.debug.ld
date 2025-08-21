@@ -9,14 +9,14 @@ BRISC_L0_LENGTH = 4K;
 TRISC_L0_LENGTH = 2K;
 NCRISC_L0_LENGTH = 4K;
 
-L1_BASE = 0xA00;
+L1_BASE = 0x0;
 UNDEFINED = 0;
 
 /* The address space layout goes as follows:
  * [BRISC] [TRISCs] [NCRISC] (...) [L0]
  * LOADER_INIT regions are undefined for every core, as no data is in L0.
  * LOADER_CODE regions are undefined for every core, as no code is in IMEM.
- * LOCAL_DATA (now in L1) and CODE regions are spacious because of instrumentation and less optimized kernels.
+ * LOCAL_DATA and CODE regions are spacious because of instrumentation and less optimized kernels.
  * NCRISC gets its code in L1 as well, to avoid the eventuality of IMEM overflow for the same reasons.
  * L0 is only used for the stack.
  */

@@ -12,14 +12,13 @@ NCRISC_L0_LENGTH = 4K;
 NCRISC_IMEM = 0xFFC00000;
 NCRISC_IMEM_LENGTH = 16K;
 
-L1_BASE = 0xA00;
+L1_BASE = 0x0;
 UNDEFINED = 0;
 
 /* The address space layout goes as follows:
  * [BRISC] [TRISCs] [NCRISC] (...) [L0]
  * LOADER_INIT regions are defined for every core, as the data segment resides in L0.
  * LOADER_CODE regions are undefined for all cores excepting the NCRISC, as its code resides in its IMEM.
- * DATA regions are all left undefined, as all data is in L0.
  * GCOV region is left undefined for obvious reasons.
  */
 
@@ -44,7 +43,7 @@ MEMORY
 
 
     /* L1 layout */
-    BRISC_CODE              : ORIGIN = L1_BASE, LENGTH = 10K
+    BRISC_CODE              : ORIGIN = L1_BASE, LENGTH = 16K
     BRISC_LOADER_INIT_MEM   : ORIGIN = ORIGIN(BRISC_CODE) + LENGTH(BRISC_CODE), LENGTH = BRISC_L0_LENGTH
 
     TRISC0_CODE             : ORIGIN = ORIGIN(BRISC_LOADER_INIT_MEM) + LENGTH(BRISC_LOADER_INIT_MEM), LENGTH = 16K
@@ -57,7 +56,7 @@ MEMORY
     TRISC2_LOADER_INIT_MEM  : ORIGIN = ORIGIN(TRISC2_CODE) + LENGTH(TRISC2_CODE), LENGTH = TRISC_L0_LENGTH
 
     NCRISC_LOADER_INIT_MEM  : ORIGIN = ORIGIN(TRISC2_LOADER_INIT_MEM) + LENGTH(TRISC2_LOADER_INIT_MEM), LENGTH = NCRISC_L0_LENGTH
-    NCRISC_LOADER_CODE_MEM  : ORIGIN = ORIGIN(NCRISC_LOADER_INIT_MEM) + LENGTH(NCRISC_LOADER_INIT_MEM), LENGTH = 16K
+    NCRISC_LOADER_CODE_MEM  : ORIGIN = ORIGIN(NCRISC_LOADER_INIT_MEM) + LENGTH(NCRISC_LOADER_INIT_MEM), LENGTH = LENGTH(NCRISC_CODE)
 
 
     /* (discarded) */

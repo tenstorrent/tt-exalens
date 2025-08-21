@@ -75,6 +75,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     message(STATUS "Coverage instrumentation is ${COVERAGE}")
 else()
     set(COVERAGE OFF CACHE BOOL "Enable code coverage" FORCE)
+    message(STATUS "Coverage is only available in Debug builds")
 endif()
 
 # Add subdirectories

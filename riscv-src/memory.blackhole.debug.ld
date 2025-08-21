@@ -9,16 +9,14 @@ BRISC_L0_LENGTH = 8K;
 TRISC_L0_LENGTH = 4K;
 NCRISC_L0_LENGTH = 8K;
 
-L1_BASE = 0xA00;
+L1_BASE = 0x0;
 UNDEFINED = 0;
 
 /* The address space layout goes as follows:
  * [BRISC] [TRISCs] [NCRISC] (...) [L0]
- * LOADER_INIT regions are defined for every core, as some data is copied into L0.
- * LOADER_CODE regions are undefined for all cores, as no code is copied into IMEM.
- * DATA (now in L1) and CODE regions are spacious because of instrumentation and less optimized kernels.
- * NCRISC gets its code in L1 as well, to avoid the eventuality of IMEM overflow for the same reasons.
- * L0 is only used for the stack and an __init_array pointer.
+ * LOADER_INIT regions are undefined, all data is in L1; only stack is in L0.
+ * LOADER_CODE regions are undefined, as there is no NCRISC IMEM on Blackhole.
+ * LOCAL_DATA and CODE regions are spacious because of instrumentation and less optimized kernels.
  */
 
 MEMORY
