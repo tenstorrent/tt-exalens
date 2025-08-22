@@ -134,11 +134,13 @@ class ElfDwarf:
         """
         Given an address, find the function that contains that address. Goes through all CUs and all DIEs and all inlined functions.
         """
-        # Try to find the CU that contains this address.
         # DWARF symbols may sometimes show overlapping address ranges. If this is the
         # case, we return the function with the narrowest address range as a heuristic.
 
-        best_die = None  # We save the current best candidate here.
+        # We save the current best candidate here.
+        best_die = None
+
+        # Try to find the CU that contains this address.
         for cu in self.iter_CUs():
             # Top DIE should contain the address
             top_die = cu.top_DIE
@@ -158,8 +160,9 @@ class ElfDwarf:
                                     found = True
                                     break
 
+                    # Update our best solution based on the heuristic
                     if best_die is None:
-                        # Only result so far
+                        # This is our first solution
                         best_die = result_die
                         best_range = result_range
                     elif result_range[1] - result_range[0] < best_range[1] - best_range[0]:
