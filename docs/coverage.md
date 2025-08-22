@@ -3,7 +3,7 @@
 ## Tutorial
 
 If you wish to get coverage info for your kernels:
-- Make the build changes as demonstrated in `riscv-src/*.ld` and `riscv-src/CMakeLists.txt` (this comes down to ensuring your memory layout can handle this, compiling with coverage and -fprofile-info-section, linking with the libraries, and running gcov_dump at the end of your kernels).
+- Make the build changes as demonstrated in `riscv-src/*.ld` and `riscv-src/CMakeLists.txt` (this comes down to ensuring your memory layout can handle this, compiling with coverage and -fprofile-info-section, linking with the libraries, and running `gcov_dump` at the end of your kernels).
 - After the kernel completes, pull its gathered coverage data with `./tt-exalens --command "cov <core-loc> <elf> <outdir>;x"`: specify the running ELF itself, and the directory into which it should be written.
 - Once you've done that for all kernels, use any tool you wish to process the gathered data. `lcov` is one of them.
 
