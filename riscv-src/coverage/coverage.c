@@ -32,7 +32,7 @@ static void write_data(const void* _data, unsigned int length, void* arg) {
     uint32_t* written = (uint32_t*)__coverage_start;
     if (*written == COVERAGE_OVERFLOW) return;
 
-    uint8_t* mem = __coverage_start + *written; // Start writing from here.
+    uint8_t* mem = __coverage_start + *written;  // Start writing from here.
     if (mem + length >= __coverage_end) {
         // Not enough space in the segment, write overflow sentinel and return.
         *written = COVERAGE_OVERFLOW;
@@ -48,25 +48,13 @@ static void write_data(const void* _data, unsigned int length, void* arg) {
 static void fname_nop(const char* fname, void* arg) {
     // As we're only extracting data for one TU, writing the filename is not
     // necessary, and in fact would complicate things.
-    // One could call __gcov_filename_to_gcfn from gcc/libgcc/libgcov-driver.c
-    // (also found in tt-gcov.c) should it be necessary to merge data from
-    // multiple TUs, in which case gcov-tool's merge-stream subcommand would
-    // be used to facilitate that. However, that's a considerably more complex
-    // approach; this is preferred as serializing the data into gcda format is
-    // fairly straightforward if only one TU is relevant.
-#error "remove this comment from here and put it in the md file"
     return;
 }
 
 void gcov_dump(void) {
-    // Mind that this function extracts coverage info of only one TU, as this
-    // was built with LLK tests in mind. It is possible to extend this to
-    // multiple TUs by iterating from __gcov_info_start to __gcov_info_end
-    // and calling __gcov_info_to_gcda on each of them with an implemented
-    // filename callback; refer to the comment in fname_nop.
-#error "try removing the memset here"
-    // Memory must be zeroed here. Cheaping out on this caused arcane issues
-    // which I don't want anyone else to have to deal with.
+    // #error "try removing the memset here"
+    //  Memory must be zeroed here. Cheaping out on this caused arcane issues
+    //  which I don't want anyone else to have to deal with.
     for (int* p = (int*)__coverage_start; p != (int*)__coverage_end; p++) *p = 0;
 
     // First 4 bytes are reserved for the counter, start writing past that.

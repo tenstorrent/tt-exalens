@@ -32,8 +32,6 @@ void halt() {
 
 void decrement_mailbox() { g_MAILBOX--; }
 
-extern "C" void infloop() { for (;;); }
-
 int main() {
     g_TESTBYTEACCESS.all_bytes = 0x0102030405060708;
 

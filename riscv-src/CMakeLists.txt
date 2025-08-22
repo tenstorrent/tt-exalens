@@ -39,21 +39,16 @@ set(RISCV_OPTIMIZED_APPS "run_elf_test" "callstack")
 file(MAKE_DIRECTORY ${RISCV_OBJECT})
 file(MAKE_DIRECTORY ${RISCV_OUTPUT})
 
-# Set up the build type extension for memory.arch.build_type.ld scripts
-set(BUILD_TYPE_EXTENSION "")
-string(TOLOWER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_EXTENSION)
-
 # Helper function to add object files for each source
 # WITH_COVERAGE is given as an argument to allow the coverage runtime libraries themselves to be compiled without instrumentation
-function(add_riscv_object OBJECT_NAME SOURCE_FILE OPTIMIZED WITH_COVERAGE)
-    if(OPTIMIZED)
+function(add_riscv_object OBJECT_NAME SOURCE_FILE BUILD_TYPE)
+    if(BUILD_TYPE STREQUAL "release")
         set(COMPILE_OPTIONS ${OPTIMIZED_OPTIONS_ALL} ${OPTIMIZED_OPTIONS_COMPILE})
     else()
         set(COMPILE_OPTIONS ${OPTIONS_ALL} ${OPTIONS_COMPILE})
-    endif()
-
-    if(WITH_COVERAGE)
-        list(APPEND COMPILE_OPTIONS ${GCOV_FLAGS})
+        if(BUILD_TYPE STREQUAL "coverage")
+            list(APPEND COMPILE_OPTIONS ${GCOV_FLAGS})
+        endif()
     endif()
 
     add_custom_command(
@@ -64,100 +59,91 @@ function(add_riscv_object OBJECT_NAME SOURCE_FILE OPTIMIZED WITH_COVERAGE)
     )
 endfunction()
 
-# Compile the coverage-related libraries
-if(COVERAGE)
-    set(GCOV_SRC "${RISCV_SOURCE}/coverage/gcov.c")
-    set(GCOV_OBJ "${RISCV_OBJECT}/gcov.o")
-    set(COVERAGE_SRC "${RISCV_SOURCE}/coverage/coverage.c")
-    set(COVERAGE_OBJ "${RISCV_OBJECT}/coverage.o")
-
-    add_riscv_object("${GCOV_OBJ}" "${GCOV_SRC}" ON OFF)
-    add_riscv_object("${COVERAGE_OBJ}" "${COVERAGE_SRC}" ON OFF)
-endif()
+# Compile the coverage-related libraries (always optimized and without instrumentation)
+set(GCOV_OBJ "${RISCV_OBJECT}/gcov.o")
+set(COVERAGE_OBJ "${RISCV_OBJECT}/coverage.o")
+add_riscv_object("${GCOV_OBJ}" "${RISCV_SOURCE}/coverage/gcov.c" "release")
+add_riscv_object("${COVERAGE_OBJ}" "${RISCV_SOURCE}/coverage/coverage.c" "release")
 
 # Add the CRT object (assembly file)
-# Pass COVERAGE as there is conditional compilation depending on the COVERAGE macro.
-add_riscv_object("${RISCV_OBJECT}/tmu-crt0.o" "${RISCV_SOURCE}/tmu-crt0.S" OFF "${COVERAGE}")
-add_riscv_object("${RISCV_OBJECT}/tmu-crt0.optimized.o" "${RISCV_SOURCE}/tmu-crt0.S" ON "${COVERAGE}")
+# The "coverage" build just adds a call to gcov_dump into the CRT.
+add_riscv_object("${RISCV_OBJECT}/tmu-crt0.debug.o" "${RISCV_SOURCE}/tmu-crt0.S" "debug")
+add_riscv_object("${RISCV_OBJECT}/tmu-crt0.release.o" "${RISCV_SOURCE}/tmu-crt0.S" "release")
+add_riscv_object("${RISCV_OBJECT}/tmu-crt0.coverage.o" "${RISCV_SOURCE}/tmu-crt0.S" "coverage")
 
 # Add C++ compile target
 foreach(app ${RISCV_APPS})
-    add_riscv_object("${RISCV_OBJECT}/${app}.o" "${RISCV_SOURCE}/${app}.cc" OFF "${COVERAGE}")
-endforeach()
-foreach(app ${RISCV_OPTIMIZED_APPS})
-    add_riscv_object("${RISCV_OBJECT}/${app}.optimized.o" "${RISCV_SOURCE}/${app}.cc" ON "${COVERAGE}")
+    add_riscv_object("${RISCV_OBJECT}/${app}.debug.o" "${RISCV_SOURCE}/${app}.cc" "debug")
+    add_riscv_object("${RISCV_OBJECT}/${app}.release.o" "${RISCV_SOURCE}/${app}.cc" "release")
+    add_riscv_object("${RISCV_OBJECT}/${app}.coverage.o" "${RISCV_SOURCE}/${app}.cc" "coverage")
 endforeach()
 
 # Define function to create targets for a specific architecture, application, and core
-function(create_riscv_target ARCH APP CORE OPTIMIZED)
-    if(OPTIMIZED)
-        set(COMPILE_OPTIONS ${OPTIMIZED_OPTIONS_ALL} ${OPTIMIZED_OPTIONS_LINK})
-        set(OPTIMIZED_EXTENSION ".optimized")
+function(create_riscv_target ARCH APP CORE BUILD_TYPE)
+    if(BUILD_TYPE STREQUAL "release")
+        set(LINK_OPTIONS ${OPTIMIZED_OPTIONS_ALL} ${OPTIMIZED_OPTIONS_LINK})
     else()
-        set(COMPILE_OPTIONS ${OPTIONS_ALL} ${OPTIONS_LINK})
-        set(OPTIMIZED_EXTENSION "")
+        set(LINK_OPTIONS ${OPTIONS_ALL} ${OPTIONS_LINK})
     endif()
 
-    set(OUTPUT_ELF "${RISCV_OUTPUT}/${ARCH}/${APP}${OPTIMIZED_EXTENSION}.${CORE}.elf")
-    set(OUTPUT_DUMP "${RISCV_OUTPUT}/${ARCH}/${APP}${OPTIMIZED_EXTENSION}.${CORE}.dump")
-    set(OUTPUT_DIS "${RISCV_OUTPUT}/${ARCH}/${APP}${OPTIMIZED_EXTENSION}.${CORE}.dis")
+    set(OUTPUT_ELF "${RISCV_OUTPUT}/${ARCH}/${APP}.${BUILD_TYPE}.${CORE}.elf")
+    set(OUTPUT_OBJDUMP "${RISCV_OUTPUT}/${ARCH}/${APP}.${BUILD_TYPE}.${CORE}.objdump")
+    set(OUTPUT_DWARF "${RISCV_OUTPUT}/${ARCH}/${APP}.${BUILD_TYPE}.${CORE}.dwarf")
 
     set(LINK_OBJECTS
-        ${RISCV_OBJECT}/tmu-crt0${OPTIMIZED_EXTENSION}.o
-        ${RISCV_OBJECT}/${APP}${OPTIMIZED_EXTENSION}.o
+        ${RISCV_OBJECT}/tmu-crt0.${BUILD_TYPE}.o
+        ${RISCV_OBJECT}/${APP}.${BUILD_TYPE}.o
     )
 
-    if(COVERAGE)
-        list(APPEND LINK_OBJECTS ${GCOV_OBJ})
-        list(APPEND LINK_OBJECTS ${COVERAGE_OBJ})
+    # Handle memory.${ARCH}.debug.ld and memory.${ARCH}.release.ld
+    set(LDSCRIPT_EXTENSION ${BUILD_TYPE})
+
+    if(BUILD_TYPE STREQUAL "coverage")
+        list(APPEND LINK_OBJECTS ${GCOV_OBJ} ${COVERAGE_OBJ})
+        # Debug ld script should be used in coverage builds
+        set(LDSCRIPT_EXTENSION "debug")
     endif()
 
     add_custom_command(
         OUTPUT ${OUTPUT_ELF}
-        COMMAND ${GXX} ${COMPILE_OPTIONS}
+        COMMAND ${GXX} ${LINK_OPTIONS}
             ${LINK_OBJECTS}
-            -T${RISCV_SOURCE}/memory.${ARCH}.${BUILD_TYPE_EXTENSION}.ld
+            -T${RISCV_SOURCE}/memory.${ARCH}.${LDSCRIPT_EXTENSION}.ld
             -T${RISCV_SOURCE}/${CORE}.ld
             -T${RISCV_SOURCE}/sections.ld
             -o ${OUTPUT_ELF}
         DEPENDS ${LINK_OBJECTS}
-                ${RISCV_SOURCE}/memory.${ARCH}.${BUILD_TYPE_EXTENSION}.ld
+                ${RISCV_SOURCE}/memory.${ARCH}.${LDSCRIPT_EXTENSION}.ld
                 ${RISCV_SOURCE}/${CORE}.ld
                 ${RISCV_SOURCE}/sections.ld
         COMMENT "Linking ${OUTPUT_ELF}"
     )
 
-    add_custom_target("${ARCH}_${APP}_${CORE}_${OPTIMIZED}_target" ALL
+    add_custom_target("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_target" ALL
         DEPENDS ${OUTPUT_ELF})
 
     add_custom_command(
-        OUTPUT ${OUTPUT_DUMP} ${OUTPUT_DIS}
-        COMMAND ${OBJDUMP} -d -s -S ${OUTPUT_ELF} > ${OUTPUT_DUMP}
-        COMMAND ${OBJDUMP} -t ${OUTPUT_ELF} | sort >> ${OUTPUT_DUMP}
-        COMMAND ${READELF} --debug-dump ${OUTPUT_ELF} > ${OUTPUT_DIS}
+        OUTPUT ${OUTPUT_OBJDUMP} ${OUTPUT_DWARF}
+        COMMAND ${OBJDUMP} -d -s -S ${OUTPUT_ELF} > ${OUTPUT_OBJDUMP}
+        COMMAND ${OBJDUMP} -t ${OUTPUT_ELF} | sort >> ${OUTPUT_OBJDUMP}
+        COMMAND ${READELF} --debug-dump ${OUTPUT_ELF} > ${OUTPUT_DWARF}
         DEPENDS ${OUTPUT_ELF}
         COMMENT "Generating dump and disassembly for ${OUTPUT_ELF}"
     )
 
-    add_custom_target("${ARCH}_${APP}_${CORE}_${OPTIMIZED}_dump_dis" ALL
-        DEPENDS ${OUTPUT_DUMP} ${OUTPUT_DIS})
+    add_custom_target("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis" ALL
+        DEPENDS ${OUTPUT_OBJDUMP} ${OUTPUT_DWARF})
 
-    add_dependencies("${ARCH}_${APP}_${CORE}_${OPTIMIZED}_target" "${ARCH}_${APP}_${CORE}_${OPTIMIZED}_dump_dis")
+    add_dependencies("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_target" "${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis")
 endfunction()
 
 # Create targets for all architectures, applications, and cores
 foreach(CORE ${RISCV_CORES})
     foreach(APP ${RISCV_APPS})
         foreach(ARCH ${RISCV_ARCHITECTURES})
-            create_riscv_target(${ARCH} ${APP} ${CORE} OFF)
-        endforeach()
-    endforeach()
-endforeach()
-
-foreach(CORE ${RISCV_CORES})
-    foreach(APP ${RISCV_OPTIMIZED_APPS})
-        foreach(ARCH ${RISCV_ARCHITECTURES})
-            create_riscv_target(${ARCH} ${APP} ${CORE} ON)
+            foreach(BUILD_TYPE debug release coverage)
+                create_riscv_target(${ARCH} ${APP} ${CORE} ${BUILD_TYPE})
+            endforeach()
         endforeach()
     endforeach()
 endforeach()

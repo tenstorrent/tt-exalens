@@ -29,11 +29,6 @@ int recurse(int depth) {
     }
 }
 
-void infloop() {
-    for (;;) {
-    }
-}
-
 namespace ns {
 int ns_int;
 void foo() { halt(); }
@@ -50,6 +45,5 @@ int main() {
         int sum = recurse(*g_MAILBOX);
         *g_MAILBOX = sum;
     }
-    infloop();
     return 0;
 }

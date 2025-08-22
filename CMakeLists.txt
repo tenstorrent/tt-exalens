@@ -68,16 +68,6 @@ include(${PROJECT_SOURCE_DIR}/cmake/ttexalens_private.cmake)
 # Include pybind custom functions
 include(${PROJECT_SOURCE_DIR}/cmake/pybind.cmake)
 
-# Enable coverage by default if build type is Debug.
-# It can be overridden with -DCOVERAGE=OFF if desired.
-option(COVERAGE "Enable instrumentation for test coverage analysis with gcov" ON)
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    message(STATUS "Coverage instrumentation is ${COVERAGE}")
-else()
-    set(COVERAGE OFF CACHE BOOL "Enable code coverage" FORCE)
-    message(STATUS "Coverage is only available in Debug builds")
-endif()
-
 # Add subdirectories
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens)
 add_subdirectory(${PROJECT_SOURCE_DIR}/utils)

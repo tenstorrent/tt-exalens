@@ -15,11 +15,11 @@ Options:
   -d <D>        Device ID. Optional and repeatable. Default: current device
 
 Description:
-  Get coverage data for a given ELF. Extract coverage from the specified core
-  or DRAM channel and place it into the output directory along with its gcno.
+  Get coverage data for a given ELF. Extract the gcda from the given core
+  and place it into the output directory along with its gcno.
 
 Examples:
-  cov 0,0 build/riscv-src/wormhole/sample.trisc0.elf cov_dir
+  cov 0,0 build/riscv-src/wormhole/callstack.trisc0.elf cov_dir
 """
 
 command_metadata = {
@@ -55,7 +55,7 @@ def run(cmd_text, context, ui_state: UIState):
     for id in device_ids:
         device = context.devices[int(id, 0)]
         try:
-            dump_coverage(context, core_loc, elf_path, outdir, gcno_path)
+            dump_coverage(core_loc, elf_path, outdir, gcno_path, context)
             util.VERBOSE(f"Coverage data dumped for device {device.id} loc {core_loc}")
         except Exception as e:
             util.ERROR(f"dump-coverage: {e}")
