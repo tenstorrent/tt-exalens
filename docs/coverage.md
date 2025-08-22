@@ -3,38 +3,35 @@
 ## Tutorial
 
 If you wish to get coverage info for your kernels:
-- Make the build changes as demonstrated in `riscv-src/*.ld` and `riscv-src/CMakeLists.txt` (this comes down to ensuring your memory layout can handle this, compiling with coverage and -fprofile-info-section, and linking with the libraries).
-- After the kernel completes, pull its gathered coverage data with `./tt-exalens --command (finish this later)`: specify the running ELF itself, and the directory into which it should be written.
+- Make the build changes as demonstrated in `riscv-src/*.ld` and `riscv-src/CMakeLists.txt` (this comes down to ensuring your memory layout can handle this, compiling with coverage and -fprofile-info-section, linking with the libraries, and running gcov_dump at the end of your kernels).
+- After the kernel completes, pull its gathered coverage data with `./tt-exalens --command "cov <core-loc> <elf> <outdir>;x"`: specify the running ELF itself, and the directory into which it should be written.
 - Once you've done that for all kernels, use any tool you wish to process the gathered data. `lcov` is one of them.
 
 The latter two steps, for a simple run with three kernels, may go as follows:
 
-(update this later)
-
-In exalens:
+In exalens (or in a script with equivalent functionality using `tt-exalens-lib`):
 
 ```
-re build/riscv-src/wormhole/sample.trisc0.elf -r trisc0
-re build/riscv-src/wormhole/callstack.trisc1.elf -r trisc1
+re build/riscv-src/wormhole/sample.coverage.trisc0.elf -r trisc0
+re build/riscv-src/wormhole/callstack.coverage.trisc2.elf -r trisc2
 ```
 
 In the shell:
 
 ```bash
-python covdump.py build/riscv-src/wormhole/sample.trisc0.elf build/obj/riscv-src/sample.gcno coverage_dir
-python covdump.py build/riscv-src/wormhole/callstac.trisc1.elf build/obj/riscv-src/callstack.gcno coverage_dir
-python covmerge.py coverage_dir cov_report
+./tt-exalens --command "cov 0,0 build/riscv-src/wormhole/sample.coverage.trisc0.elf build/obj/riscv-src/sample.gcno coverage_dir;x"
+./tt-exalens --command "cov 0,0 build/riscv-src/wormhole/callstack.coverage.trisc2.elf build/obj/riscv-src/callstack.gcno coverage_dir;x"
+./scripts/merge-coverage.sh coverage_dir cov_report
 ```
 
 Then just open `cov_report/index.html`.
+You can of course run both `cov` calls in one `tt-exalens --command` invocation; commands are separated by semicolons.
 
 Note:
 - As each RISC has its own coverage region, it's fine to run instrumented kernels in parallel and grab data from each one.
 - Don't try instrumenting with `-fprofile-topn` or `-fprofile-values`. In case that is ever needed, make sure you link in `write_topn_counters` from `libgcov-driver.c`, and write a heap allocator.
 
 ## Documentation
-
-*(preliminary documentation)*
 
 The problem with GCC's profiling and test coverage out of the box for us is its reliance on a filesystem.
 
@@ -67,7 +64,7 @@ More linker script adjustments may be necessary depending on the nature of the i
 
 libgcov provides `__gcov_info_to_gcda` (found in `gcc/libgcc/libgcov-driver.c`) which converts raw counter info into the gcda format that can later be used by tools like `gcov` and `lcov`. However, as already mentioned, linking against libgcov turned out to be a problem (as we don't want all of newlib). That function itself does not have any libc dependencies, so I did the simplest thing and just carved it out, rather unceremoniously, along with its dependencies out of GCC's codebase and compiled it as a separate static library (found in `gcov.c`).
 
-The counters for each kernel, its pointer to the `struct gcov_info`, and the struct itself, are all in its `.ldm_data` (the counter being in the `bss` portion, unlike the other two). When the kernel ends, the C runtime calls `gcov_dump`, which passes that pointer to `__gcov_info_to_gcda`, which then gives us a data stream in gcda format. The linker scripts define `REGION_GCOV` (as well as two symbols to access it: `__coverage_start` and `__coverage_end`), and we write the data stream as a length-prefixed byte array into that region.
+The counters for each kernel, its pointer to the `struct gcov_info`, and the struct itself, are all in its `.ldm_data` (the counter being in the `bss` portion, unlike the other two). When the kernel ends, the C runtime `tmu-crt0.S` calls `gcov_dump`, which passes that pointer to `__gcov_info_to_gcda`, which then gives us a data stream in gcda format. The linker scripts define `REGION_GCOV` (as well as two symbols to access it: `__coverage_start` and `__coverage_end`), and we write the data stream as a length-prefixed byte array into that region.
 
 There is no need to iterate from `__gcov_info_start` to `__gcov_info_end` as only one `struct gcov_info` is present (since there's only one TU per kernel). This also simplifies more things that the tutorial mentions - `gcov-merge-tool` and the filename prefix function are unnecessary. You may notice the function passed as the second argument to `__gcov_info_to_gcda` is a no-op.
 
@@ -75,4 +72,4 @@ There is no need to iterate from `__gcov_info_start` to `__gcov_info_end` as onl
 
 ### 3. Storing the data on the host
 
-`tt-exalens` can extract the data for you with the `dump-coverage` (or `cov`) command. You merely supply it the path to the currently running ELF for which you want to gather coverage data, and where you want to output it. It walks the symbol table, finds `__coverage_start`, reads the length prefix and then reads the gcda into a file. It also parses the strings in `.ldm_data` and finds the corresponding gcno and puts it next to the gcda (`struct gcov_info` contains the full path to the directory where the compiler put the gcno). When you've run this script for every ELF whose coverage you wanted, you may wish to run `covmerge.sh` on the directory with the gcno-gcda pairs, which will call `lcov` and `genhtml` for you so that afterwards you can just open the html.
+`tt-exalens` can extract the data for you with the `dump-coverage` (or `cov`) command. You merely supply it the core location you're targeting, the path to the currently running ELF for which you want to gather coverage data, and where you want to output it. It walks the symbol table, finds `__coverage_start`, reads the length prefix and then reads the gcda into a file. It also parses the strings in `.ldm_data` and finds the corresponding gcno and puts it next to the gcda (`struct gcov_info` contains the full path to the directory where the compiler put the gcno). When you've run this script for every ELF whose coverage you wanted, you may wish to run `scripts/merge-coverage.sh` on the directory with the gcno-gcda pairs, which will call `lcov` and `genhtml` for you so that you can just open the html afterwards.
