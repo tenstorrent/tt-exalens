@@ -53,7 +53,7 @@ class BabyRiscInfo(RiscInfo):
         ):
             enabled_register_value = register_store.read_register(self.code_start_address_enable_register)
             if (enabled_register_value & self.code_start_address_enable_bit) == 0:
-                override_enabled = True
+                override_enabled = False
 
         if not override_enabled:
             assert self.default_code_start_address is not None
