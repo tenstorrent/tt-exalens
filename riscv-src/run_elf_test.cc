@@ -4,9 +4,9 @@
 
 #include <cstdint>
 
-#define RISCV_L1_REG_START_ADDR 0x64000
+#define MAILBOX_ADDRESS 0x64000
+volatile uint32_t *mailbox = reinterpret_cast<volatile uint32_t *>(MAILBOX_ADDRESS);
 
 int main() {
-    volatile uint32_t *MAILBOX = reinterpret_cast<volatile uint32_t *>(RISCV_L1_REG_START_ADDR);
-    *MAILBOX = 0x12345678;
+    *mailbox = 0x12345678;
 }

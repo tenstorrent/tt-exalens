@@ -135,34 +135,15 @@ Let's take a look at this simple program:
 
 ```cpp
 #include <cstdint>
-#include <stdint.h>
 
-extern void (* __init_array_start[])();
-extern void (* __init_array_end[])();
-
-#define RISCV_L1_REG_START_ADDR             0x64000
-
-extern "C" void wzerorange(uint32_t *start, uint32_t *end)
-{
-    for (; start != end; start++)
-    {
-        *start = 0;
-    }
-}
+#define MAILBOX_ADDRESS 0x64000
+volatile uint32_t *mailbox = reinterpret_cast<volatile uint32_t *>(MAILBOX_ADDRESS);
 
 int main() {
+    *mailbox = 0x12345678;
+}```
 
-	// Initialize some intrinsic functions
-	for (void (** fptr)() = __init_array_start; fptr < __init_array_end; fptr++) {
- 	    (**fptr)();
-	}
-
-    volatile uint32_t *MAILBOX = reinterpret_cast<volatile uint32_t *> (RISCV_L1_REG_START_ADDR);
-	*MAILBOX = 0x12345678;
-}
-```
-
-Ignoring all the code used for initialization and compiler compliance, this program writes the value `0x12345678` into L1 memory at address `0x64000`, and then enters an infinite loop (due to the C runtime).
+This program writes the value `0x12345678` into L1 memory at address `0x64000`, and then enters an infinite loop (due to the C runtime).
 To compile the .elf file, you can simply run `make build` and use the output generated in `build/riscv-src/wormhole/run_elf_test.debug.brisc.elf`.
 It can then be run on a brisc core through the TTExaLens library.
 

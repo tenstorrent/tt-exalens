@@ -62,14 +62,20 @@ More linker script adjustments may be necessary depending on the nature of the i
 
 ### 2. Converting counters into gcda and exposing it
 
-libgcov provides `__gcov_info_to_gcda` (found in `gcc/libgcc/libgcov-driver.c`) which converts raw counter info into the gcda format that can later be used by tools like `gcov` and `lcov`. However, as already mentioned, linking against libgcov turned out to be a problem (as we don't want all of newlib). That function itself does not have any libc dependencies, so I did the simplest thing and just carved it out, rather unceremoniously, along with its dependencies out of GCC's codebase and compiled it as a separate static library (found in `gcov.c`).
+libgcov provides `__gcov_info_to_gcda` (found in `gcc/libgcc/libgcov-driver.c`) which converts raw counter info into the gcda format that can later be used by tools like `gcov` and `lcov`. However, as already mentioned, linking against libgcov turned out to be a problem (as we don't want all of newlib). That function itself does not have any libc dependencies, so I did the simplest thing and just carved it out, rather unceremoniously, along with its dependencies out of GCC's codebase and compiled it into a separate object file (found in `gcov.c`), which should then be linked into kernels compiled for coverage.
 
 The counters for each kernel, its pointer to the `struct gcov_info`, and the struct itself, are all in its `.ldm_data` (the counter being in the `bss` portion, unlike the other two). When the kernel ends, the C runtime `tmu-crt0.S` calls `gcov_dump`, which passes that pointer to `__gcov_info_to_gcda`, which then gives us a data stream in gcda format. The linker scripts define `REGION_GCOV` (as well as two symbols to access it: `__coverage_start` and `__coverage_end`), and we write the data stream as a length-prefixed byte array into that region.
 
-There is no need to iterate from `__gcov_info_start` to `__gcov_info_end` as only one `struct gcov_info` is present (since there's only one TU per kernel). This also simplifies more things that the tutorial mentions - `gcov-merge-tool` and the filename prefix function are unnecessary. You may notice the function passed as the second argument to `__gcov_info_to_gcda` is a no-op.
+There is no need to iterate from `__gcov_info_start` to `__gcov_info_end` as only one `struct gcov_info` is present (since there's only one TU per kernel). This also simplifies more things that the tutorial mentions - `gcov-merge-tool` and the filename prefix function are unnecessary.
+
+The layout of the coverage region is as follows:
+- first word contains the length in bytes of the data in the region
+- second word contains the pointer to the filename (`struct gcov_info.filename`)
+- third word contains the length of the filename string
+- fourth word and onwards is the gcda data stream.
 
 ---
 
 ### 3. Storing the data on the host
 
-`tt-exalens` can extract the data for you with the `dump-coverage` (or `cov`) command. You merely supply it the core location you're targeting, the path to the currently running ELF for which you want to gather coverage data, and where you want to output it. It walks the symbol table, finds `__coverage_start`, reads the length prefix and then reads the gcda into a file. It also parses the strings in `.ldm_data` and finds the corresponding gcno and puts it next to the gcda (`struct gcov_info` contains the full path to the directory where the compiler put the gcno). When you've run this script for every ELF whose coverage you wanted, you may wish to run `scripts/merge-coverage.sh` on the directory with the gcno-gcda pairs, which will call `lcov` and `genhtml` for you so that you can just open the html afterwards.
+`tt-exalens` can extract the data for you with the `dump-coverage` (or `cov`) command. You merely supply the path to the currently running ELF for which you want to gather coverage data, and where you want to output it. Optionally you may provide where you want the original gcno (inferred from `struct gcov_info.filename`) to be placed. It walks the symbol table, finds `__coverage_start`, reads the header (length, filename pointer, `strlen(filename)`) and extracts the gcda and optionally gcno. When you've run this script for every ELF whose coverage you wanted, you may wish to run `scripts/merge-coverage.sh` on the directory with the gcno-gcda pairs, which will call `lcov` and `genhtml` for you so that you can just open the html afterwards.

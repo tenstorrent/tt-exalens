@@ -52,10 +52,10 @@ mkdir -p "$HTML_DIR"
 if ! genhtml --branch-coverage "$INFO_PATH" --output-directory "$HTML_DIR"; then
     echo "merge-coverage: genhtml --branch-coverage failed, trying without the flag..."
     if ! genhtml "$INFO_PATH" --output-directory "$HTML_DIR"; then
-        echo "genhtml failed"
+        echo "merge-coverage: genhtml failed"
         exit 1
     fi
 fi
 
-echo "done, open $HTML_DIR/index.html"
+echo "Done, open $HTML_DIR/index.html"
 rm -f "$INFO_PATH"

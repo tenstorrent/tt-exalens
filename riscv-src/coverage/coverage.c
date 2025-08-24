@@ -45,20 +45,31 @@ static void write_data(const void* _data, unsigned int length, void* arg) {
     *written += length;
 }
 
+static size_t strlen(const char* s)
+{
+    size_t n;
+    for(n = 0; s[n]; n++);
+    return n;
+}
+
+// This callback is called once at the beginning of the data for each TU.
 static void fname_nop(const char* fname, void* arg) {
-    // As we're only extracting data for one TU, writing the filename is not
-    // necessary, and in fact would complicate things.
-    return;
+    // We'll write the pointer to the filename as the second word in the
+    // segment, and its length as the third. The script will then use the
+    // filename to find the gcno.
+    *(const char**)(__coverage_start + 4) = fname;
+    *(uint32_t*)(__coverage_start + 8) = strlen(fname);
 }
 
 void gcov_dump(void) {
     // #error "try removing the memset here"
     //  Memory must be zeroed here. Cheaping out on this caused arcane issues
     //  which I don't want anyone else to have to deal with.
-    for (int* p = (int*)__coverage_start; p != (int*)__coverage_end; p++) *p = 0;
+    //for (int* p = (int*)__coverage_start; p != (int*)__coverage_end; p++) *p = 0;
 
-    // First 4 bytes are reserved for the counter, start writing past that.
-    *(uint32_t*)__coverage_start = 4;
+    // The first word is reserved for the total length, the second is for the
+    // filename pointer, and the third for its length; start writing past that.
+    *(uint32_t*)__coverage_start = 12;
 
     const struct gcov_info* const* info = __gcov_info_start;
     __asm__ volatile("" : "+r"(info));  // Prevent optimizations.

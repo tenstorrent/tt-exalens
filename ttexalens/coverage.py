@@ -6,17 +6,15 @@ import shutil
 import tempfile
 from pathlib import Path
 
+from ttexalens import util
 from ttexalens.tt_exalens_lib import read_word_from_device, read_from_device, parse_elf, check_context
 from ttexalens.tt_exalens_lib import TTException, ParsedElfFile
 from ttexalens.context import Context
-from ttexalens.util import WARN
 
 """
-Extract the coverage data from the device into a .gcda file,
-and find and copy its .gcno there such that it has the same name.
-Debug info is parsed from the passed ELF to get the gcno.
-
-You can supply the optional gcno argument, in which case debug info is not parsed.
+Extract the coverage data from the device into a .gcda file.
+Optionally get the gcno path from struct gcov_info from the ELF
+and copy it to the specified output path.
 
 Note that the ELF is needed for knowing the offset in L1 where coverage data resides and
 for finding the gcno. As the L1 offset is the same for all ELFs for a given baby RISC core
@@ -25,118 +23,40 @@ of the ELF, should that be necessary. That is, however, less flexible, as it req
 hardcoding offsets, which would break in case of linker script changes.
 """
 
-
-def get_remote_file(context: Context, file_path: Path) -> Path:
-    """
-    Try to fetch the given file from remote, store it in
-    a temporary file, and return the temporary file path.
-    """
-    try:
-        remote_file = context.server_ifc.get_binary(str(file_path))
-    except Exception as e:
-        raise TTException(f"Failed to fetch {file_path}: {e}")
-
-    try:
-        tmp_dir = Path(tempfile.gettempdir())
-        local_tmp_path = tmp_dir / file_path.name
-        with open(local_tmp_path, "wb") as local_file:
-            local_file.write(remote_file.read())
-    except Exception as e:
-        raise TTException(f"Failed to read {file_path}: {e}")
-
-    return local_tmp_path
-
-
-def find_gcno(elf: ParsedElfFile, context: Context) -> tuple[Path, bool]:
-    """
-    Look for the expected gcda path in the ELF's .ldm_data
-    section, then find the corresponding gcno in the same
-    directory. In case of remote debugging, copy the gcno
-    locally into a temporary file, and return its path.
-    The second tuple component is whether the file was local
-    or remote. If it was remote, the temp file should be deleted.
-    """
-
-    # GCC's struct gcov_info is in .ldm_data, and it contains
-    # the expected gcda path, which is where the gcno is also found.
-    # We need to parse the strings in that section and find it.
-
-    ldm_section = elf.elf.get_section_by_name(".ldm_data")
-    if not ldm_section:
-        raise TTException(".ldm_data section not found in ELF")
-
-    # Read the raw bytes of the section.
-    data = ldm_section.data()
-    # Convert to string and split on null bytes.
-    strings = []
-    current = bytearray()
-    for b in data:
-        if b == 0:
-            if current:
-                try:
-                    strings.append(current.decode("ascii"))
-                except UnicodeDecodeError:
-                    pass  # skip non-ASCII
-                current.clear()
-        else:
-            current.append(b)
-
-    # Look for something ending with gcda.
-    gcda_paths = [Path(s) for s in strings if s.endswith(".gcda")]
-    if not gcda_paths:
-        raise TTException(f"Could not find .gcda in .ldm_data; tried: {strings}")
-
-    # Take the first gcda path found (there should be only one).
-    gcda_path = gcda_paths[0]
-    gcno_path = gcda_path.with_suffix(".gcno")
-
-    if gcno_path.exists():
-        return gcno_path, False
-
-    # Not found. It could be that we're in a remote debugging session; try getting the file.
-    return get_remote_file(context, gcno_path), True
-
-
 def dump_coverage(
-    core_loc: str, elf_path: Path, outdir: Path, gcno: Path | None = None, context: Context | None = None
+    core_loc: str, elf_path: Path, gcda_path: Path, gcno_copy_path: Path | None = None, context: Context | None = None
 ) -> None:
     context = check_context(context)
     elf = parse_elf(str(elf_path), context)
-    is_temp = False  # Should we delete the gcno file at the end?
 
-    if gcno:
-        if not gcno.exists():
-            gcno = get_remote_file(context, gcno)
-            is_temp = True
-    else:
-        gcno, is_temp = find_gcno(elf, context)
-
-    # The first uint32_t at the __coverage_start symbol tells us the number of bytes that should be read.
-    length_addr = elf.symbols["__coverage_start"].value
-    if not length_addr:
+    #util.INFO(f"1: {core_loc} 2: {elf_path} 3: {gcda_path} 4: {gcno_copy_path} 5: {context}")
+    # Coverage region layout:
+    # The first word at the __coverage_start symbol tells us the length of the whole segment.
+    # The second word is a pointer to the filename, which we use to reach the gcno, if required.
+    # The third is the length of the filename string.
+    # Onward, it's *__coverage_start - 12 bytes of data.
+    coverage_start = elf.symbols["__coverage_start"].value
+    if not coverage_start:
         raise TTException("__coverage_start not found")
-    data_addr = length_addr + 4  # Actual data starts right after length.
 
-    length = read_word_from_device(core_loc, addr=length_addr, context=context)
+    length = read_word_from_device(core_loc, addr=coverage_start, context=context)
 
     # 0xDEADBEEF will be written in place of length if overflow occurred.
     if length == 0xDEADBEEF:
         raise TTException("Coverage region overflowed")
 
-    data = read_from_device(core_loc, data_addr, num_bytes=length, context=context)
+    if gcno_copy_path:
+        filename_addr = read_word_from_device(core_loc, addr=coverage_start+4, context=context)
+        filename_len = read_word_from_device(core_loc, addr=coverage_start+8, context=context)
+        filename: str = read_from_device(core_loc, filename_addr, num_bytes=filename_len, context=context).decode("ascii")
+        # This points to the expected gcda file, but it's in the same directory where the compiler placed the gcno,
+        # so we just replace the extension and get the gcno path.
+        gcno_path = filename[:-4] + "gcno"
+        if not Path.exists(Path(gcno_path).resolve()):
+            # Warn, but don't raise; we still extract the gcda.
+            util.WARN(f"{gcno_path}: file does not exist")
+        shutil.copy2(gcno_path, gcno_copy_path)
 
-    outdir.mkdir(parents=True, exist_ok=True)
-    basename = elf_path.stem
-    gcda_path = outdir / f"{basename}.gcda"
-    gcno_copy_path = outdir / f"{basename}.gcno"
-
-    shutil.copy2(gcno, gcno_copy_path)
+    data = read_from_device(core_loc, coverage_start+12, num_bytes=length-12, context=context)
     with open(gcda_path, "wb") as f:
         f.write(data)
-
-    # Clean up the temporary file if it was created.
-    if is_temp:
-        try:
-            gcno.unlink(True)
-        except Exception as e:
-            WARN(f"Failed to clean up temp file: {e}")

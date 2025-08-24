@@ -30,21 +30,12 @@ typedef void (*gcov_merge_fn)(gcov_type *, gcov_unsigned_t);
 #define GCOV_TAG_FOR_COUNTER(COUNT) (GCOV_TAG_COUNTER_BASE + ((gcov_unsigned_t)(COUNT) << 17))
 #define GCOV_TAG_COUNTER_LENGTH(NUM) ((NUM) * 2 * GCOV_WORD_SIZE)
 
-#undef NEED_L_GCOV
-#define NEED_L_GCOV_INFO_TO_GCDA
-#define inhibit_libc
 #define GCOV_WORD_SIZE 4
-#define GCOV_TOPN_MEM_COUNTERS 3
-#define GCOV_TOPN_DISK_COUNTERS 2
 #define GCOV_TAG_FUNCTION_LENGTH (3 * GCOV_WORD_SIZE)
 #define GCOV_VERSION 0x4232342a  // for GCC 12.4.0
-#ifndef __INTPTR_TYPE__
-#define __INTPTR_TYPE__ intptr_t
-#endif
 #define GCOV_TAG_FUNCTION ((gcov_unsigned_t)0x01000000)
 #define GCOV_TAG_COUNTER_BASE ((gcov_unsigned_t)0x01a10000)
 #define GCOV_DATA_MAGIC ((gcov_unsigned_t)0x67636461)
-#define GCOV_FILENAME_MAGIC ((gcov_unsigned_t)0x6763666e)
 
 void __gcov_merge_add(gcov_type *counters, unsigned n_counters) {}
 
@@ -67,12 +58,6 @@ struct gcov_info {
     gcov_unsigned_t n_functions; /* number of functions */
     struct gcov_fn_info **functions;
     struct gcov_summary summary;
-};
-
-struct gcov_kvp {
-    gcov_type value;
-    gcov_type count;
-    struct gcov_kvp *next;
 };
 
 struct gcov_ctr_info {
@@ -108,62 +93,6 @@ static inline void dump_counter(gcov_type counter, void (*dump_fn)(const void *,
         dump_unsigned(0, dump_fn, arg);
 }
 
-static void write_topn_counters(const struct gcov_ctr_info *ci_ptr, unsigned t_ix, gcov_unsigned_t n_counts,
-                                void (*dump_fn)(const void *, unsigned, void *), void *(*allocate_fn)(unsigned, void *),
-                                void *arg) {
-    return;
-    unsigned counters = n_counts / GCOV_TOPN_MEM_COUNTERS;
-
-    /* It can happen in a multi-threaded environment that number of counters is
-       different from the size of the corresponding linked lists.  */
-#define LIST_SIZE_MIN_LENGTH 4 * 1024
-
-    static unsigned *list_sizes = NULL;
-    static unsigned list_size_length = 0;
-
-    if (list_sizes == NULL || counters > list_size_length) {
-        list_size_length = MAX(LIST_SIZE_MIN_LENGTH, 2 * counters);
-#if !defined(inhibit_libc) && HAVE_SYS_MMAN_H
-        list_sizes = (unsigned *)malloc_mmap(list_size_length * sizeof(unsigned));
-#endif
-
-        /* Malloc fallback.  */
-        if (list_sizes == NULL) {
-            *(int *)161000 = 0xdeadbeef;
-        }
-        list_sizes = (unsigned *)(*allocate_fn)(list_size_length * sizeof(unsigned), arg);
-    }
-
-    unsigned pair_total = 0;
-    for (unsigned i = 0; i < counters; i++) {
-        gcov_type start = ci_ptr->values[GCOV_TOPN_MEM_COUNTERS * i + 2];
-        unsigned sizes = 0;
-
-        for (struct gcov_kvp *node = (struct gcov_kvp *)(__INTPTR_TYPE__)start; node != NULL; node = node->next)
-            ++sizes;
-
-        pair_total += sizes;
-        list_sizes[i] = sizes;
-    }
-
-    unsigned disk_size = GCOV_TOPN_DISK_COUNTERS * counters + 2 * pair_total;
-    dump_unsigned(GCOV_TAG_FOR_COUNTER(t_ix), dump_fn, arg),
-        dump_unsigned(GCOV_TAG_COUNTER_LENGTH(disk_size), dump_fn, arg);
-
-    for (unsigned i = 0; i < counters; i++) {
-        dump_counter(ci_ptr->values[GCOV_TOPN_MEM_COUNTERS * i], dump_fn, arg);
-        dump_counter(list_sizes[i], dump_fn, arg);
-        gcov_type start = ci_ptr->values[GCOV_TOPN_MEM_COUNTERS * i + 2];
-
-        unsigned j = 0;
-        for (struct gcov_kvp *node = (struct gcov_kvp *)(__INTPTR_TYPE__)start; j < list_sizes[i];
-             node = node->next, j++) {
-            dump_counter(node->value, dump_fn, arg);
-            dump_counter(node->count, dump_fn, arg);
-        }
-    }
-}
-
 static void write_one_data(const struct gcov_info *gi_ptr, const struct gcov_summary *prg_p,
                            void (*dump_fn)(const void *, unsigned, void *), void *(*allocate_fn)(unsigned, void *),
                            void *arg) {
@@ -174,35 +103,17 @@ static void write_one_data(const struct gcov_info *gi_ptr, const struct gcov_sum
     dump_unsigned(gi_ptr->stamp, dump_fn, arg);
     dump_unsigned(gi_ptr->checksum, dump_fn, arg);
 
-#ifdef NEED_L_GCOV
-    /* Generate whole program statistics.  */
-    gcov_write_summary(GCOV_TAG_OBJECT_SUMMARY, prg_p);
-#endif
-
     /* Write execution counts for each function.  */
     for (f_ix = 0; f_ix != gi_ptr->n_functions; f_ix++) {
-#ifdef NEED_L_GCOV
-        unsigned buffered = 0;
-#endif
         const struct gcov_fn_info *gfi_ptr;
         const struct gcov_ctr_info *ci_ptr;
         gcov_unsigned_t length;
         unsigned t_ix;
-#ifdef NEED_L_GCOV
-        if (fn_buffer && fn_buffer->fn_ix == f_ix) {
-            /* Buffered data from another program.  */
-            buffered = 1;
-            gfi_ptr = &fn_buffer->info;
+        gfi_ptr = gi_ptr->functions[f_ix];
+        if (gfi_ptr && gfi_ptr->key == gi_ptr)
             length = GCOV_TAG_FUNCTION_LENGTH;
-        } else
-#endif
-        {
-            gfi_ptr = gi_ptr->functions[f_ix];
-            if (gfi_ptr && gfi_ptr->key == gi_ptr)
-                length = GCOV_TAG_FUNCTION_LENGTH;
-            else
-                length = 0;
-        }
+        else
+            length = 0;
 
         dump_unsigned(GCOV_TAG_FUNCTION, dump_fn, arg);
         dump_unsigned(length, dump_fn, arg);
@@ -219,9 +130,7 @@ static void write_one_data(const struct gcov_info *gi_ptr, const struct gcov_sum
             if (!gi_ptr->merge[t_ix]) continue;
             n_counts = ci_ptr->num;
 
-            if (t_ix == GCOV_COUNTER_V_TOPN || t_ix == GCOV_COUNTER_V_INDIR)
-                write_topn_counters(ci_ptr, t_ix, n_counts, dump_fn, allocate_fn, arg);
-            else {
+            if(!(t_ix == GCOV_COUNTER_V_TOPN || t_ix == GCOV_COUNTER_V_INDIR)) {
                 dump_unsigned(GCOV_TAG_FOR_COUNTER(t_ix), dump_fn, arg);
                 if (are_all_counters_zero(ci_ptr)) /* Do not stream when all counters are zero.  */
                     dump_unsigned(GCOV_TAG_COUNTER_LENGTH(-n_counts), dump_fn, arg);
@@ -233,9 +142,6 @@ static void write_one_data(const struct gcov_info *gi_ptr, const struct gcov_sum
 
             ci_ptr++;
         }
-#ifdef NEED_L_GCOV
-        if (buffered) fn_buffer = free_fn_data(gi_ptr, fn_buffer, GCOV_COUNTERS);
-#endif
     }
 
     dump_unsigned(0, dump_fn, arg);
