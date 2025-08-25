@@ -2,14 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import shutil
-import tempfile
 from pathlib import Path
 
-from ttexalens import util
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
-from ttexalens.tt_exalens_lib import read_word_from_device, read_from_device, parse_elf, check_context
+from ttexalens.tt_exalens_lib import read_word_from_device, read_from_device
 from ttexalens.tt_exalens_lib import TTException, ParsedElfFile
 from ttexalens.context import Context
 
@@ -26,7 +23,7 @@ hardcoding offsets, which would break in case of linker script changes.
 """
 
 def dump_coverage(
-    context: Context, elf: ParsedElfFile, device: Device, core_loc: OnChipCoordinate, gcda_path: Path, gcno_copy_path: Path | None = None
+    context: Context, elf: ParsedElfFile, device: Device, location: OnChipCoordinate, gcda_path: Path, gcno_copy_path: Path | None = None
 ) -> None:
     
     # Coverage region layout:
@@ -38,16 +35,16 @@ def dump_coverage(
     if not coverage_start:
         raise TTException("__coverage_start not found")
 
-    length = read_word_from_device(core_loc, addr=coverage_start, context=context, device_id=device._id)
+    length = read_word_from_device(location, addr=coverage_start, context=context, device_id=device._id)
 
     # 0xDEADBEEF will be written in place of length if overflow occurred.
     if length == 0xDEADBEEF:
         raise TTException("Coverage region overflowed")
 
     if gcno_copy_path:
-        filename_addr = read_word_from_device(core_loc, addr=coverage_start+4, context=context, device_id=device._id)
-        filename_len = read_word_from_device(core_loc, addr=coverage_start+8, context=context, device_id=device._id)
-        filename: str = read_from_device(core_loc, filename_addr, num_bytes=filename_len, context=context, device_id=device._id).decode("ascii")
+        filename_addr = read_word_from_device(location, addr=coverage_start+4, context=context, device_id=device._id)
+        filename_len = read_word_from_device(location, addr=coverage_start+8, context=context, device_id=device._id)
+        filename: str = read_from_device(location, filename_addr, num_bytes=filename_len, context=context, device_id=device._id).decode("ascii")
         # This points to the expected gcda file, which is in the same directory where the compiler placed the gcno,
         # so we just replace the extension and get the gcno path.
         # We fetch it through context.server_ifc.get_binary in case this is a remote debugging session.
@@ -56,6 +53,6 @@ def dump_coverage(
             with open(gcno_copy_path, "wb") as f:
                 f.write(gcno_reader.read())
 
-    data = read_from_device(core_loc, coverage_start+12, num_bytes=length-12, context=context, device_id=device._id)
+    data = read_from_device(location, coverage_start+12, num_bytes=length-12, context=context, device_id=device._id)
     with open(gcda_path, "wb") as f:
         f.write(data)

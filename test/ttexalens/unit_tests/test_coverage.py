@@ -14,7 +14,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.risc_debug import RiscDebug
-from ttexalens.tt_exalens_lib import parse_elf, run_elf
+from ttexalens.tt_exalens_lib import parse_elf
 from ttexalens.coverage import dump_coverage
 
 ELFS = ["run_elf_test.coverage", "cov_test.coverage"] # We only run ELFs that don't halt.

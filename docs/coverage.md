@@ -16,12 +16,15 @@ re build/riscv-src/wormhole/sample.coverage.trisc0.elf -r trisc0
 re build/riscv-src/wormhole/callstack.coverage.trisc2.elf -r trisc2
 ```
 
-In the shell:
+In exalens:
 
+```
+cov build/riscv-src/wormhole/run_elf_test.coverage.trisc0.elf coverage_dir/run_elf_test.gcda coverage_dir/run_elf_test.gcno
+cov build/riscv-src/wormhole/cov_test.coverage.trisc2.elf coverage_dir/cov_test.gcda coverage_dir/cov_test.gcno
+```
+
+And in the shell:
 ```bash
-mkdir coverage_dir
-./tt-exalens --command "cov build/riscv-src/wormhole/run_elf_test.coverage.trisc0.elf coverage_dir/run_elf_test.gcda coverage_dir/run_elf_test.gcno;x"
-./tt-exalens --command "cov build/riscv-src/wormhole/cov_test.coverage.trisc2.elf coverage_dir/cov_test.gcda coverage_dir/cov_test.gcno;x"
 ./scripts/merge-coverage.sh coverage_dir cov_report
 ```
 
