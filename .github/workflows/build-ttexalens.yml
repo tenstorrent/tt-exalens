@@ -6,7 +6,7 @@ on:
       runs-on:
         required: false
         type: string
-        default: tt-beta-ubuntu-2204-large
+        default: tt-ubuntu-2204-large-stable
       os:
         required: false
         type: string
