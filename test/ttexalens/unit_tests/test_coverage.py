@@ -14,7 +14,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.risc_debug import RiscDebug
-from ttexalens.tt_exalens_lib import run_elf
+from ttexalens.tt_exalens_lib import parse_elf, run_elf
 from ttexalens.coverage import dump_coverage
 
 ELFS = ["run_elf_test.coverage", "cov_test.coverage"] # We only run ELFs that don't halt.
@@ -104,12 +104,13 @@ class TestCoverage(unittest.TestCase):
             
             # Run the ELF and save its coverage data.
             elf_path = self.elf_root / self.get_elf_name(elf)
+            elf = parse_elf(str(elf_path), self.context)
             self.loader.run_elf(str(elf_path))
             basename = elf_path.stem
             gcda = temp_root / f"{basename}.gcda"
             gcno = temp_root / f"{basename}.gcno"
 
-            dump_coverage(elf_path, self.device, self.location, gcda, gcno, context=self.context)
+            dump_coverage(self.context, elf, self.device, self.location, gcda, gcno)
 
             # Check if the files match expectations.
             self.assertTrue(gcda.exists(), f"{gcda}: file does not exist")

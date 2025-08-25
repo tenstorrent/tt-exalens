@@ -26,11 +26,9 @@ hardcoding offsets, which would break in case of linker script changes.
 """
 
 def dump_coverage(
-    elf_path: Path, device: Device, core_loc: OnChipCoordinate, gcda_path: Path, gcno_copy_path: Path | None = None, context: Context | None = None
+    context: Context, elf: ParsedElfFile, device: Device, core_loc: OnChipCoordinate, gcda_path: Path, gcno_copy_path: Path | None = None
 ) -> None:
-    context = check_context(context)
-    elf = parse_elf(str(elf_path), context)
-
+    
     # Coverage region layout:
     # The first word at the __coverage_start symbol tells us the length of the whole segment.
     # The second word is a pointer to the filename, which we use to reach the gcno, if required.
@@ -50,13 +48,13 @@ def dump_coverage(
         filename_addr = read_word_from_device(core_loc, addr=coverage_start+4, context=context, device_id=device._id)
         filename_len = read_word_from_device(core_loc, addr=coverage_start+8, context=context, device_id=device._id)
         filename: str = read_from_device(core_loc, filename_addr, num_bytes=filename_len, context=context, device_id=device._id).decode("ascii")
-        # This points to the expected gcda file, but it's in the same directory where the compiler placed the gcno,
+        # This points to the expected gcda file, which is in the same directory where the compiler placed the gcno,
         # so we just replace the extension and get the gcno path.
+        # We fetch it through context.server_ifc.get_binary in case this is a remote debugging session.
         gcno_path = filename[:-4] + "gcno"
-        if not Path.exists(Path(gcno_path).resolve()):
-            # Warn, but don't raise; we still extract the gcda.
-            util.WARN(f"{gcno_path}: file does not exist")
-        shutil.copy2(gcno_path, gcno_copy_path)
+        with context.server_ifc.get_binary(gcno_path) as gcno_reader:
+            with open(gcno_copy_path, "wb") as f:
+                f.write(gcno_reader.read())
 
     data = read_from_device(core_loc, coverage_start+12, num_bytes=length-12, context=context, device_id=device._id)
     with open(gcda_path, "wb") as f:

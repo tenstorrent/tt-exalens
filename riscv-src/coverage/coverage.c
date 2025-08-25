@@ -53,7 +53,7 @@ static size_t strlen(const char* s)
 }
 
 // This callback is called once at the beginning of the data for each TU.
-static void fname_nop(const char* fname, void* arg) {
+static void filename(const char* fname, void* arg) {
     // We'll write the pointer to the filename as the second word in the
     // segment, and its length as the third. The script will then use the
     // filename to find the gcno.
@@ -67,7 +67,7 @@ void gcov_dump(void) {
 
     const struct gcov_info* const* info = __gcov_info_start;
     __asm__ volatile("" : "+r"(info));  // Prevent optimizations.
-    __gcov_info_to_gcda(*info, fname_nop, write_data, NULL, NULL);
+    __gcov_info_to_gcda(*info, filename, write_data, NULL, NULL);
 }
 
 #ifdef __cplusplus

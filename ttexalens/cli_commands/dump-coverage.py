@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump-coverage <elf> <gcda_path> [<gcno_copy_path>] [-d <D>...] [-l <loc>]
+  dump-coverage <elf> <gcda_path> [<gcno_copy_path>] [-d <device>...] [-l <loc>]
 
 Arguments:
   device          ID of the device [default: current active]
@@ -32,6 +32,7 @@ command_metadata = {
 from pathlib import Path
 from ttexalens import util
 from ttexalens import command_parser
+from ttexalens.tt_exalens_lib import check_context, parse_elf
 from ttexalens.uistate import UIState
 from ttexalens.coverage import dump_coverage
 
@@ -47,11 +48,13 @@ def run(cmd_text, context, ui_state: UIState) -> list:
     gcda_path = Path(dopt.args["<gcda_path>"]).resolve()
     gcno_arg = dopt.args.get("<gcno_copy_path>")
     gcno_path = Path(gcno_arg).resolve() if gcno_arg else None
+    context = check_context(context)
+    elf = parse_elf(str(elf_path), context)
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
           try:
-              dump_coverage(elf_path, device, loc, gcda_path, gcno_copy_path=gcno_path, context=context)
+              dump_coverage(context, elf, device, loc, gcda_path, gcno_path)
               util.VERBOSE(f"Coverage data dumped for device {device.id} loc {loc}:")
               if gcno_path:
                   util.VERBOSE(gcno_path)
