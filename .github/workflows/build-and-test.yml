@@ -7,7 +7,7 @@ on:
 jobs:
 
   build-image:
-    runs-on: tt-beta-ubuntu-2204-large
+    runs-on: tt-ubuntu-2204-large-stable
     outputs:
       docker-image: ${{ steps.build.outputs.docker-image }}
     steps:
@@ -36,7 +36,7 @@ jobs:
           .github/build-docker-images.sh | tee docker.log
           DOCKER_CI_IMAGE=$(tail -n 1 docker.log)
 
-          # Replace use harbor.ci.tenstorrent.net if running on shared runner (tt-beta-ubuntu-2204-large)
+          # Replace use harbor.ci.tenstorrent.net if running on shared runner (tt-ubuntu-2204-large-stable)
           DOCKER_CI_IMAGE="harbor.ci.tenstorrent.net/$DOCKER_CI_IMAGE"
           echo "Replaced registry in Docker image name to use harbor cache"
 
@@ -79,9 +79,9 @@ jobs:
     strategy:
       matrix:
         runner-info: [
-          {arch: "blackhole", board: "p150b", runs-on: "tt-beta-ubuntu-2204-p150b-large-stable"},
-          {arch: "wormhole_b0", board: "n150", runs-on: "tt-beta-ubuntu-2204-n150-large-stable"},
-          {arch: "wormhole_b0", board: "n300", runs-on: "tt-beta-ubuntu-2204-n300-large-stable"},
+          {arch: "blackhole", board: "p150b", runs-on: "tt-ubuntu-2204-p150b-stable"},
+          {arch: "wormhole_b0", board: "n150", runs-on: "tt-ubuntu-2204-n150-stable"},
+          {arch: "wormhole_b0", board: "n300", runs-on: "tt-ubuntu-2204-n300-stable"},
         ]
     env:
       ARCH_NAME: ${{ matrix.runner-info.arch }}
@@ -154,9 +154,9 @@ jobs:
     strategy:
       matrix:
         runner-info: [
-          {arch: "blackhole", board: "p150b", runs-on: "tt-beta-ubuntu-2204-p150b-large-stable"},
-          {arch: "wormhole_b0", board: "n150", runs-on: "tt-beta-ubuntu-2204-n150-large-stable"},
-          {arch: "wormhole_b0", board: "n300", runs-on: "tt-beta-ubuntu-2204-n300-large-stable"},
+          {arch: "blackhole", board: "p150b", runs-on: "tt-ubuntu-2204-p150b-stable"},
+          {arch: "wormhole_b0", board: "n150", runs-on: "tt-ubuntu-2204-n150-stable"},
+          {arch: "wormhole_b0", board: "n300", runs-on: "tt-ubuntu-2204-n300-stable"},
         ]
     env:
       ARCH_NAME: ${{ matrix.runner-info.arch }}
