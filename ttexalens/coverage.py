@@ -26,7 +26,7 @@ hardcoding offsets, which would break in case of linker script changes.
 """
 
 def dump_coverage(
-    elf_path: Path, device: Device, core_loc, gcda_path: Path, gcno_copy_path: Path | None = None, context: Context | None = None
+    elf_path: Path, device: Device, core_loc: OnChipCoordinate, gcda_path: Path, gcno_copy_path: Path | None = None, context: Context | None = None
 ) -> None:
     context = check_context(context)
     elf = parse_elf(str(elf_path), context)
@@ -40,16 +40,16 @@ def dump_coverage(
     if not coverage_start:
         raise TTException("__coverage_start not found")
 
-    length = read_word_from_device(core_loc, addr=coverage_start, context=context)
+    length = read_word_from_device(core_loc, addr=coverage_start, context=context, device_id=device._id)
 
     # 0xDEADBEEF will be written in place of length if overflow occurred.
     if length == 0xDEADBEEF:
         raise TTException("Coverage region overflowed")
 
     if gcno_copy_path:
-        filename_addr = read_word_from_device(core_loc, addr=coverage_start+4, context=context)
-        filename_len = read_word_from_device(core_loc, addr=coverage_start+8, context=context)
-        filename: str = read_from_device(core_loc, filename_addr, num_bytes=filename_len, context=context).decode("ascii")
+        filename_addr = read_word_from_device(core_loc, addr=coverage_start+4, context=context, device_id=device._id)
+        filename_len = read_word_from_device(core_loc, addr=coverage_start+8, context=context, device_id=device._id)
+        filename: str = read_from_device(core_loc, filename_addr, num_bytes=filename_len, context=context, device_id=device._id).decode("ascii")
         # This points to the expected gcda file, but it's in the same directory where the compiler placed the gcno,
         # so we just replace the extension and get the gcno path.
         gcno_path = filename[:-4] + "gcno"
@@ -58,6 +58,6 @@ def dump_coverage(
             util.WARN(f"{gcno_path}: file does not exist")
         shutil.copy2(gcno_path, gcno_copy_path)
 
-    data = read_from_device(core_loc, coverage_start+12, num_bytes=length-12, context=context)
+    data = read_from_device(core_loc, coverage_start+12, num_bytes=length-12, context=context, device_id=device._id)
     with open(gcda_path, "wb") as f:
         f.write(data)
