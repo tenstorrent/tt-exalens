@@ -5,12 +5,10 @@
 // Simple program to test call stack printing
 #include <stdint.h>
 
-volatile uint32_t* g_MAILBOX = (volatile uint32_t*)0x4000;
-
-// Registers for debug register access
+volatile uint32_t* g_MAILBOX = (volatile uint32_t*)0x64000;
 
 void halt() {
-    // Halt core with ebrake instruction
+    // Halt core with ebreak
     asm volatile("ebreak");
 }
 
@@ -31,11 +29,6 @@ int recurse(int depth) {
     }
 }
 
-void infloop() {
-    for (;;) {
-    }
-}
-
 namespace ns {
 int ns_int;
 void foo() { halt(); }
@@ -52,6 +45,5 @@ int main() {
         int sum = recurse(*g_MAILBOX);
         *g_MAILBOX = sum;
     }
-    infloop();
     return 0;
 }

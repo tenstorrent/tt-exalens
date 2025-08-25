@@ -133,8 +133,6 @@ jobs:
 
       - name: Run Python tests for ttexalens library
         run: |
-          # Calling cmake configure for project located in ./ttexalens/riscv-src/ to fetch sfpi.
-          cmake -S ./ttexalens/riscv-src/ -B build_tmp
           python3 -m xmlrunner discover -v -t . -s test/ttexalens -p '*test*.py' \
           --output-file ${{ steps.strings.outputs.test_report_path }}
 

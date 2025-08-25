@@ -135,49 +135,28 @@ Let's take a look at this simple program:
 
 ```cpp
 #include <cstdint>
-#include <stdint.h>
 
-extern void (* __init_array_start[])();
-extern void (* __init_array_end[])();
-
-#define RISCV_L1_REG_START_ADDR             0x00000000
-
-extern "C" void wzerorange(uint32_t *start, uint32_t *end)
-{
-    for (; start != end; start++)
-    {
-        *start = 0;
-    }
-}
+#define MAILBOX_ADDRESS 0x64000
+volatile uint32_t *mailbox = reinterpret_cast<volatile uint32_t *>(MAILBOX_ADDRESS);
 
 int main() {
+    *mailbox = 0x12345678;
+}```
 
-	// Initialize some intrinsic functions
-	for (void (** fptr)() = __init_array_start; fptr < __init_array_end; fptr++) {
- 	    (**fptr)();
-	}
-
-    volatile uint32_t *MAILBOX = reinterpret_cast<volatile uint32_t *> (RISCV_L1_REG_START_ADDR);
-	*MAILBOX = 0x12345678;
-
-	for (;;);
-}
-```
-
-Ignoring all the code used for initialization and compiler compliance, this program  writes the value `0x12345678` into L1 memory at address `0x0`, and then enters an infinite loop.
-To compile the .elf file, you can simply run `make build` and use the output generated in `build/riscv-src/wormhole/run_elf_test.brisc.elf`.
+This program writes the value `0x12345678` into L1 memory at address `0x64000`, and then enters an infinite loop (due to the C runtime).
+To compile the .elf file, you can simply run `make build` and use the output generated in `build/riscv-src/wormhole/run_elf_test.debug.brisc.elf`.
 It can then be run on a brisc core through the TTExaLens library.
 
 ```python
 from ttexalens.tt_exalens_lib import run_elf, read_words_from_device
 
-run_elf("build/riscv-src/wormhole/run_elf_test.brisc.elf", "0,0")
+run_elf("build/riscv-src/wormhole/run_elf_test.debug.brisc.elf", "0,0")
 
-ret = read_words_from_device("0,0", 0x0)
+ret = read_words_from_device("0,0", 0x64000)
 print(hex(ret[0]))
 ```
 
-In the example above, we run the .elf file and then read the value that should be written to address `0x0` at core `0,0`.
+In the example above, we run the .elf file and then read the value that should be written to address `0x64000` at core `0,0`.
 
 `core_loc` parameter of `run_elf` function can either be a string specifying a single core, `OnChipCoordinate` object, `all` keyword (in which case the program is run on all available cores) or a list consisting of the first two options for specifying multiple cores.
 
