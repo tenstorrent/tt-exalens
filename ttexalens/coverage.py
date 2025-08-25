@@ -7,6 +7,8 @@ import tempfile
 from pathlib import Path
 
 from ttexalens import util
+from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.device import Device
 from ttexalens.tt_exalens_lib import read_word_from_device, read_from_device, parse_elf, check_context
 from ttexalens.tt_exalens_lib import TTException, ParsedElfFile
 from ttexalens.context import Context
@@ -24,12 +26,11 @@ hardcoding offsets, which would break in case of linker script changes.
 """
 
 def dump_coverage(
-    core_loc: str, elf_path: Path, gcda_path: Path, gcno_copy_path: Path | None = None, context: Context | None = None
+    elf_path: Path, device: Device, core_loc, gcda_path: Path, gcno_copy_path: Path | None = None, context: Context | None = None
 ) -> None:
     context = check_context(context)
     elf = parse_elf(str(elf_path), context)
 
-    #util.INFO(f"1: {core_loc} 2: {elf_path} 3: {gcda_path} 4: {gcno_copy_path} 5: {context}")
     # Coverage region layout:
     # The first word at the __coverage_start symbol tells us the length of the whole segment.
     # The second word is a pointer to the filename, which we use to reach the gcno, if required.

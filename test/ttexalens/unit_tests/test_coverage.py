@@ -44,7 +44,7 @@ class TestCoverage(unittest.TestCase):
             # Run the ELF and save its coverage data.
             elf_path = self.elf_root / f"{elf}.{risc}.elf"
             run_elf(str(elf_path), self.location, risc, context=self.context)
-            dump_coverage(self.location, elf_path, temp_root, context=self.context)
+            dump_coverage(elf_path, self.context.devices[0], self.location, temp_root / f"{elf}.{risc}.gcda", temp_root / f"{elf}.{risc}.gcno", context=self.context)
 
             # Check if the files match expectations.
             basename = elf_path.stem

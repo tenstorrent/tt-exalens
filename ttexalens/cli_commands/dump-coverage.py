@@ -17,7 +17,8 @@ Description:
   and place it into the output directory along with its gcno.
 
 Examples:
-  cov build/riscv-src/wormhole/callstack.trisc0.elf coverage/callstack.gcda
+  cov build/riscv-src/wormhole/callstack.coverage.trisc0.elf coverage/callstack.gcda
+  cov build/riscv-src/wormhole/cov_test.coverage.brisc.elf coverage/cov_test.gcda coverage/cov_test.gcno
 """
 
 command_metadata = {
@@ -50,7 +51,7 @@ def run(cmd_text, context, ui_state: UIState) -> list:
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
           try:
-              dump_coverage(loc, elf_path, gcda_path, gcno_copy_path=gcno_path, context=context)
+              dump_coverage(elf_path, device, loc, gcda_path, gcno_copy_path=gcno_path, context=context)
               util.VERBOSE(f"Coverage data dumped for device {device.id} loc {loc}:")
               if gcno_path:
                   util.VERBOSE(gcno_path)

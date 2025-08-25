@@ -62,13 +62,7 @@ static void fname_nop(const char* fname, void* arg) {
 }
 
 void gcov_dump(void) {
-    // #error "try removing the memset here"
-    //  Memory must be zeroed here. Cheaping out on this caused arcane issues
-    //  which I don't want anyone else to have to deal with.
-    //for (int* p = (int*)__coverage_start; p != (int*)__coverage_end; p++) *p = 0;
-
-    // The first word is reserved for the total length, the second is for the
-    // filename pointer, and the third for its length; start writing past that.
+    // First three words are for region metadata, start writing past that.
     *(uint32_t*)__coverage_start = 12;
 
     const struct gcov_info* const* info = __gcov_info_start;
