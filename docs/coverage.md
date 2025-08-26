@@ -7,14 +7,15 @@
 To quickly get coverage info for your kernels, you can use our repo:
 1. Drop your kernels into [`riscv-src`](../riscv-src/), add them into `RISCV_APPS`, and run `make` in the project root. This will compile debug, release and coverage binaries.
 2. Run them and extract their coverage info:
-In the shell, in `tt-exalens` root:
+
 ```bash
 mkdir coverage
 ./tt-exalens
-re build/riscv-src/wormhole/run_elf_test.coverage.trisc0.elf -r trisc0
-re build/riscv-src/wormhole/cov_test.coverage.trisc1.elf -r trisc1
-cov build/riscv-src/wormhole/run_elf_test.coverage.trisc0.elf coverage/run_elf_test.gcda coverage/run_elf_test.gcno
-cov build/riscv-src/wormhole/cov_test.coverage.trisc1.elf coverage/cov_test.gcda coverage/cov_test.gcno
+
+re build/riscv-src/wormhole/foo.coverage.trisc0.elf -r trisc0
+re build/riscv-src/wormhole/bar.coverage.trisc1.elf -r trisc1
+cov build/riscv-src/wormhole/foo.coverage.trisc0.elf coverage/foo.gcda coverage/foo.gcno
+cov build/riscv-src/wormhole/bar.coverage.trisc1.elf coverage/bar.gcda coverage/bar.gcno
 exit
 ```
 3. Get your coverage report by running:
@@ -99,8 +100,6 @@ This is a lot more involved beyond mechanically adding the compiler flags and ty
 
 Just telling GCC to compile with `-fprofile-arcs -ftest-coverage -fprofile-info-section` will pull in libgcov, which then pulls in the entirety of the C standard library I/O (from newlib), which made my first attempt at compiling fail spectacularly (with 60KiB+ `.text` section overflows).
 
-Don't try instrumenting with `-fprofile-topn` or `-fprofile-values`, these may require runtime heap allocation. In case those options are ever needed, make sure you link in `write_topn_counters` from `libgcov-driver.c` and write a heap allocator. The allocation function must be passed to `__gcov_info_to_gcda`.
-
 Linker script adjustments were immediately necessary. The private memory region (or L0 if you will) got bloated, so I placed it into L1 and let only the stack reside in L0. I also added a new region where the coverage data stream in gcda format will be written into, and hacked together a minimal library for extracting coverage data; more on those topics in [2. Converting counters into gcda and exposing it](#2-converting-counters-into-gcda-and-exposing-it).
 
 If you skim through the tutorial provided in the GCC docs linked above, you may notice they note some linker script changes necessary for `-fprofile-info-section` to work:
@@ -115,6 +114,8 @@ If you skim through the tutorial provided in the GCC docs linked above, you may 
 ```
 
 I have noticed that the `PROVIDE` directive does not get the job done for us, so I exposed the symbol with the plain `__gcov_info_start = .` statement. Mind that the `KEEP` directives are necessary for the linker to not discard this section as unused.
+
+Note: don't try instrumenting with `-fprofile-topn` or `-fprofile-values`, as these may require runtime heap allocation. In case those options are ever needed, make sure you link in `write_topn_counters` from `libgcov-driver.c` and write a heap allocator. The allocation function must be passed to `__gcov_info_to_gcda`.
 
 More linker script tweaks may be necessary depending on the nature of the instrumented kernels. In case there's an overflow in `.text` or some other such problem, simply expanding the region should get the job done. The numbers present in my scripts are more than sufficient for anything I've tested with.
 
