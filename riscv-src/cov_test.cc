@@ -35,7 +35,7 @@ constexpr char flip_case() {
 }
 
 int main(void) {
-    uint32_t* ptr = (uint32_t*) 0x64000;
+    uint32_t* ptr = (uint32_t*)0x64000;
     if (*ptr - 0xDEADBEEF) {
         ptr[1] = 0xDEADC0DE;
         ptr[2] = factorial<0>::value;

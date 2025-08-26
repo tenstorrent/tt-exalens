@@ -130,7 +130,7 @@ static void write_one_data(const struct gcov_info *gi_ptr, const struct gcov_sum
             if (!gi_ptr->merge[t_ix]) continue;
             n_counts = ci_ptr->num;
 
-            if(!(t_ix == GCOV_COUNTER_V_TOPN || t_ix == GCOV_COUNTER_V_INDIR)) {
+            if (!(t_ix == GCOV_COUNTER_V_TOPN || t_ix == GCOV_COUNTER_V_INDIR)) {
                 dump_unsigned(GCOV_TAG_FOR_COUNTER(t_ix), dump_fn, arg);
                 if (are_all_counters_zero(ci_ptr)) /* Do not stream when all counters are zero.  */
                     dump_unsigned(GCOV_TAG_COUNTER_LENGTH(-n_counts), dump_fn, arg);

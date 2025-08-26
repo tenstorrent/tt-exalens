@@ -45,10 +45,9 @@ static void write_data(const void* _data, unsigned int length, void* arg) {
     *written += length;
 }
 
-static size_t strlen(const char* s)
-{
+static size_t strlen(const char* s) {
     size_t n;
-    for(n = 0; s[n]; n++);
+    for (n = 0; s[n]; n++);
     return n;
 }
 

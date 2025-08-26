@@ -95,7 +95,7 @@ The counters for each kernel, its pointer to the `struct gcov_info`, and the str
 There is no need to iterate from `__gcov_info_start` to `__gcov_info_end` as only one `struct gcov_info` is present (since this was built with only one TU per kernel in mind). This also simplifies more things that the tutorial mentions - `gcov-merge-tool` is unnecessary, and so is the filename prefix function (for the most part). Namely, that function (`coverage.c:filename`) receives the filename string from `struct gcov_info`, which is the expected output path for the gcda, and it will be in the same directory as where the compiler placed the gcno. We use this to later find the gcno if so asked. `filename` merely writes the pointer it receives and the length of the string into the second and third word in the region, respectively. To be clear, this is not a requirement of the gcda format; this is done to make `cov` calls simpler and safer.
 
 The layout of the coverage region is as follows (in word granularity, i.e. 4 bytes):
-  
+
 ```
 REGION_GCOV (__coverage_start...__coverage_end)
 - [0] length in bytes of the data in the region (including the header)

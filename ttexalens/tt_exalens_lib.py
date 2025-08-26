@@ -638,6 +638,7 @@ def callstack(
         raise TTException(f"RiscV core {risc_debug.risc_location} is in reset")
     return risc_debug.get_callstack(elfs, offsets, max_depth, stop_on_main)
 
+
 def coverage(
     location: str | OnChipCoordinate,
     elf: str | ParsedElfFile,
@@ -646,10 +647,10 @@ def coverage(
     device_id: int = 0,
     context: Context | None = None,
 ) -> None:
-    
+
     """
     Extract coverage data from the device.
-    
+
     Args:
             location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
             elf (str | ParsedElfFile): ELF file whose coverage should be extracted.
@@ -666,8 +667,9 @@ def coverage(
     coordinate = convert_coordinate(location, device_id, context)
     if isinstance(elf, str):
         elf = parse_elf(elf, context)
-    
+
     from ttexalens.coverage import dump_coverage
+
     dump_coverage(context, elf, device, coordinate, gcda_path, gcno_copy_path)
 
 

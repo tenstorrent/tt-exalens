@@ -16,7 +16,8 @@ from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.tt_exalens_lib import parse_elf
 from ttexalens.coverage import dump_coverage
 
-ELFS = ["run_elf_test.coverage", "cov_test.coverage"] # We only run ELFs that don't halt.
+ELFS = ["run_elf_test.coverage", "cov_test.coverage"]  # We only run ELFs that don't halt.
+
 
 @parameterized_class(
     [
@@ -27,7 +28,7 @@ ELFS = ["run_elf_test.coverage", "cov_test.coverage"] # We only run ELFs that do
         {"core_desc": "FW0", "risc_name": "TRISC0"},
         {"core_desc": "FW0", "risc_name": "TRISC1"},
         {"core_desc": "FW0", "risc_name": "TRISC2"},
-        {"core_desc": "FW0", "risc_name": "NCRISC"}
+        {"core_desc": "FW0", "risc_name": "NCRISC"},
     ]
 )
 class TestCoverage(unittest.TestCase):
@@ -78,7 +79,7 @@ class TestCoverage(unittest.TestCase):
                 self.skipTest("FW core is not available on this platform")
         else:
             self.fail(f"Unknown core description {self.core_desc}")
-        
+
         self.location = OnChipCoordinate.create(self.core_loc, device=self.device)
         noc_block = self.location._device.get_block(self.location)
         try:
@@ -95,16 +96,15 @@ class TestCoverage(unittest.TestCase):
         else:
             return f"{elf}.{self.risc_name.lower()}.elf"
 
-
     @parameterized.expand(ELFS)
     def test_coverage(self, elf):
-        with tempfile.TemporaryDirectory(prefix = "cov_test_") as temp_root:
+        with tempfile.TemporaryDirectory(prefix="cov_test_") as temp_root:
 
             # Run the ELF and save its coverage data.
             elf_path = os.path.join(self.elf_root, self.get_elf_name(elf))
             elf = parse_elf(elf_path, self.context)
             self.loader.run_elf(elf_path)
-            
+
             basename, _ = os.path.splitext(os.path.basename(elf_path))
             gcda = os.path.join(temp_root, f"{basename}.gcda")
             gcno = os.path.join(temp_root, f"{basename}.gcno")

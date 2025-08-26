@@ -7,6 +7,4 @@
 #define MAILBOX_ADDRESS 0x64000
 volatile uint32_t *mailbox = reinterpret_cast<volatile uint32_t *>(MAILBOX_ADDRESS);
 
-int main() {
-    *mailbox = 0x12345678;
-}
+int main() { *mailbox = 0x12345678; }
