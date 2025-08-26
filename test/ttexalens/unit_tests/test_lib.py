@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-import struct
 import unittest
 import os
 
@@ -24,7 +23,6 @@ from ttexalens.hardware.risc_debug import CallstackEntry, RiscDebug
 from ttexalens.object import DataArray
 
 from ttexalens.hw.arc.arc import load_arc_fw
-from ttexalens.hw.arc.arc_dbg_fw import arc_dbg_fw_check_msg_loop_running, arc_dbg_fw_command, NUM_LOG_CALLS_OFFSET
 from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
 from ttexalens.elf_loader import ElfLoader
 
@@ -70,35 +68,38 @@ class TestAutoContext(unittest.TestCase):
 
 
 class TestReadWrite(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.context = init_default_test_context()
+
     def setUp(self):
-        self.context = init_default_test_context()
         self.assertIsNotNone(self.context)
         self.assertIsInstance(self.context, Context)
 
     def test_write_read(self):
         """Test write data -- read data."""
-        core_loc = "0,0"
+        location = "0,0"
         address = 0x100
 
         data = [0, 1, 2, 3]
 
-        ret = lib.write_to_device(core_loc, address, data)
+        ret = lib.write_to_device(location, address, data)
         self.assertEqual(ret, len(data))
 
-        ret = lib.read_from_device(core_loc, address, num_bytes=len(data))
+        ret = lib.read_from_device(location, address, num_bytes=len(data))
         self.assertEqual(ret, bytes(data))
 
     def test_write_read_bytes(self):
         """Test write bytes -- read bytes."""
-        core_loc = "1,0"
+        location = "1,0"
         address = 0x100
 
         data = b"abcd"
 
-        ret = lib.write_to_device(core_loc, address, data)
+        ret = lib.write_to_device(location, address, data)
         self.assertEqual(ret, len(data))
 
-        ret = lib.read_from_device(core_loc, address, num_bytes=len(data))
+        ret = lib.read_from_device(location, address, num_bytes=len(data))
         self.assertEqual(ret, data)
 
     @parameterized.expand(
@@ -121,7 +122,7 @@ class TestReadWrite(unittest.TestCase):
             ("ch0", 8192, 0x10C, 1),  # 8KB from device 1 at location DRAM channel 0
         ]
     )
-    def test_write_read_bytes_buffer(self, core_loc: str, size: int, address: int, device_id: int):
+    def test_write_read_bytes_buffer(self, location: str, size: int, address: int, device_id: int):
         """Test write bytes -- read bytes but with bigger buffer."""
 
         if device_id >= len(self.context.devices):
@@ -132,72 +133,72 @@ class TestReadWrite(unittest.TestCase):
         words = [int.from_bytes(data[i : i + 4], byteorder="little") for i in range(0, len(data), 4)]
 
         # Write buffer
-        ret = lib.write_to_device(core_loc, address, data, device_id)
+        ret = lib.write_to_device(location, address, data, device_id)
         self.assertEqual(ret, len(data))
 
         # Verify buffer as words
-        ret = lib.read_words_from_device(core_loc, address, device_id, len(words))
+        ret = lib.read_words_from_device(location, address, device_id, len(words))
         self.assertEqual(ret, words)
 
         # Write words
-        lib.write_words_to_device(core_loc, address, words, device_id)
+        lib.write_words_to_device(location, address, words, device_id)
 
         # Read buffer
-        ret = lib.read_from_device(core_loc, address, device_id, num_bytes=len(data))
+        ret = lib.read_from_device(location, address, device_id, num_bytes=len(data))
         self.assertEqual(ret, data)
 
     def test_write_read_words(self):
         """Test write words -- read words."""
-        core_loc = "1,0"
+        location = "1,0"
 
         address = [0x100, 0x104, 0x108]
         data = [156, 2, 212, 9]
 
         # Write a word to device two times
-        ret = lib.write_words_to_device(core_loc, address[0], data[0])
+        ret = lib.write_words_to_device(location, address[0], data[0])
         self.assertEqual(ret, 4)
 
-        ret = lib.write_words_to_device(core_loc, address[1], data[1])
+        ret = lib.write_words_to_device(location, address[1], data[1])
         self.assertEqual(ret, 4)
 
         # Write two words to device
-        ret = lib.write_words_to_device(core_loc, address[2], data[2:])
+        ret = lib.write_words_to_device(location, address[2], data[2:])
 
         # Read the first word
-        ret = lib.read_words_from_device(core_loc, address[0])
+        ret = lib.read_words_from_device(location, address[0])
         self.assertEqual(ret[0], data[0])
 
         # Read the second word
-        ret = lib.read_words_from_device(core_loc, address[1])
+        ret = lib.read_words_from_device(location, address[1])
         self.assertEqual(ret[0], data[1])
 
         # Read first two words
-        ret = lib.read_words_from_device(core_loc, address[0], word_count=2)
+        ret = lib.read_words_from_device(location, address[0], word_count=2)
         self.assertEqual(ret, data[0:2])
 
         # Read third and fourth words
-        ret = lib.read_words_from_device(core_loc, address[2], word_count=2)
+        ret = lib.read_words_from_device(location, address[2], word_count=2)
         self.assertEqual(ret, data[2:])
 
     def test_write_bytes_read_words(self):
         """Test write bytes -- read words."""
-        core_loc = "1,0"
+        location = "1,0"
         address = 0x100
         data = [0, 1, 2, 3]
 
         # Write bytes to device
-        ret = lib.write_to_device(core_loc, address, data)
+        ret = lib.write_to_device(location, address, data)
         # *4 is because we write 4-byte words
         self.assertEqual(ret, len(data))
 
         # Read the bytes as words
-        ret = lib.read_words_from_device(core_loc, address, word_count=1)
+        ret = lib.read_words_from_device(location, address, word_count=1)
         self.assertEqual(ret[0].to_bytes(4, "little"), bytes(data))
 
     @parameterized.expand(
         [
-            ("abcd", 0x100, 0, 1),  # Invalid core_loc string
-            ("-10", 0x100, 0, 1),  # Invalid core_loc string
+            ("abcd", 0x100, 0, 1),  # Invalid location string
+            ("-10", 0x100, 0, 1),  # Invalid location string
             ("0,0", -1, 0, 1),  # Invalid address
             ("0,0", 0x100, -1, 1),  # Invalid device_id
             ("0,0", 0x100, 112, 1),  # Invalid device_id (too high)
@@ -205,32 +206,32 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", 0x100, 0, 0),  # Invalid word_count
         ]
     )
-    def test_invalid_inputs_read(self, core_loc, address, device_id, word_count):
+    def test_invalid_inputs_read(self, location, address, device_id, word_count):
         """Test invalid inputs for read functions."""
         with self.assertRaises((util.TTException, ValueError)):
-            lib.read_words_from_device(core_loc, address, device_id, word_count)
+            lib.read_words_from_device(location, address, device_id, word_count)
         with self.assertRaises((util.TTException, ValueError)):
             # word_count can be used as num_bytes
-            lib.read_from_device(core_loc, address, device_id, word_count)
+            lib.read_from_device(location, address, device_id, word_count)
 
     @parameterized.expand(
         [
-            ("abcd", 0x100, 5, 0),  # Invalid core_loc string
-            ("-10", 0x100, 5, 0),  # Invalid core_loc string
+            ("abcd", 0x100, 5, 0),  # Invalid location string
+            ("-10", 0x100, 5, 0),  # Invalid location string
             ("0,0", -1, 5, 0),  # Invalid address
             ("0,0", 0x100, 5, -1),  # Invalid device_id
             ("0,0", 0x100, 5, 112),  # Invalid device_id (too high)
             # ("0,0", 0x100, -171, -1),        # Invalid word TODO: What are the limits for word?
         ]
     )
-    def test_invalid_write_word(self, core_loc, address, data, device_id):
+    def test_invalid_write_word(self, location, address, data, device_id):
         with self.assertRaises((util.TTException, ValueError)):
-            lib.write_words_to_device(core_loc, address, data, device_id)
+            lib.write_words_to_device(location, address, data, device_id)
 
     @parameterized.expand(
         [
-            ("abcd", 0x100, b"abcd", 0),  # Invalid core_loc string
-            ("-10", 0x100, b"abcd", 0),  # Invalid core_loc string
+            ("abcd", 0x100, b"abcd", 0),  # Invalid location string
+            ("-10", 0x100, b"abcd", 0),  # Invalid location string
             ("0,0", -1, b"abcd", 0),  # Invalid address
             ("0,0", 0x100, b"abcd", -1),  # Invalid device_id
             ("0,0", 0x100, b"abcd", 112),  # Invalid device_id (too high)
@@ -238,87 +239,87 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", 0x100, b"", 0),  # Invalid data
         ]
     )
-    def test_invalid_write(self, core_loc, address, data, device_id):
+    def test_invalid_write(self, location, address, data, device_id):
         """Test invalid inputs for write function."""
         with self.assertRaises((util.TTException, ValueError)):
-            lib.write_to_device(core_loc, address, data, device_id)
+            lib.write_to_device(location, address, data, device_id)
 
     def test_unaligned_read(self):
         for device_id in self.context.device_ids:
-            core_loc = self.context.devices[device_id].get_block_locations()[0]
-            lib.write_words_to_device(core_loc, 0, [0x12345678, 0x90ABCDEF], device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x12345678, 0x90ABCDEF]
-            assert lib.read_from_device(core_loc, 0, device_id, 1, self.context) == bytes([0x78])
-            assert lib.read_from_device(core_loc, 1, device_id, 1, self.context) == bytes([0x56])
-            assert lib.read_from_device(core_loc, 2, device_id, 1, self.context) == bytes([0x34])
-            assert lib.read_from_device(core_loc, 3, device_id, 1, self.context) == bytes([0x12])
-            assert lib.read_from_device(core_loc, 4, device_id, 1, self.context) == bytes([0xEF])
-            assert lib.read_from_device(core_loc, 5, device_id, 1, self.context) == bytes([0xCD])
-            assert lib.read_from_device(core_loc, 6, device_id, 1, self.context) == bytes([0xAB])
-            assert lib.read_from_device(core_loc, 7, device_id, 1, self.context) == bytes([0x90])
-            assert lib.read_from_device(core_loc, 0, device_id, 2, self.context) == bytes([0x78, 0x56])
-            assert lib.read_from_device(core_loc, 2, device_id, 2, self.context) == bytes([0x34, 0x12])
-            assert lib.read_from_device(core_loc, 4, device_id, 2, self.context) == bytes([0xEF, 0xCD])
-            assert lib.read_from_device(core_loc, 6, device_id, 2, self.context) == bytes([0xAB, 0x90])
-            assert lib.read_from_device(core_loc, 0, device_id, 4, self.context) == bytes([0x78, 0x56, 0x34, 0x12])
-            assert lib.read_from_device(core_loc, 4, device_id, 4, self.context) == bytes([0xEF, 0xCD, 0xAB, 0x90])
-            assert lib.read_from_device(core_loc, 0, device_id, 8, self.context) == bytes(
+            location = self.context.devices[device_id].get_block_locations()[0]
+            lib.write_words_to_device(location, 0, [0x12345678, 0x90ABCDEF], device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x12345678, 0x90ABCDEF]
+            assert lib.read_from_device(location, 0, device_id, 1, self.context) == bytes([0x78])
+            assert lib.read_from_device(location, 1, device_id, 1, self.context) == bytes([0x56])
+            assert lib.read_from_device(location, 2, device_id, 1, self.context) == bytes([0x34])
+            assert lib.read_from_device(location, 3, device_id, 1, self.context) == bytes([0x12])
+            assert lib.read_from_device(location, 4, device_id, 1, self.context) == bytes([0xEF])
+            assert lib.read_from_device(location, 5, device_id, 1, self.context) == bytes([0xCD])
+            assert lib.read_from_device(location, 6, device_id, 1, self.context) == bytes([0xAB])
+            assert lib.read_from_device(location, 7, device_id, 1, self.context) == bytes([0x90])
+            assert lib.read_from_device(location, 0, device_id, 2, self.context) == bytes([0x78, 0x56])
+            assert lib.read_from_device(location, 2, device_id, 2, self.context) == bytes([0x34, 0x12])
+            assert lib.read_from_device(location, 4, device_id, 2, self.context) == bytes([0xEF, 0xCD])
+            assert lib.read_from_device(location, 6, device_id, 2, self.context) == bytes([0xAB, 0x90])
+            assert lib.read_from_device(location, 0, device_id, 4, self.context) == bytes([0x78, 0x56, 0x34, 0x12])
+            assert lib.read_from_device(location, 4, device_id, 4, self.context) == bytes([0xEF, 0xCD, 0xAB, 0x90])
+            assert lib.read_from_device(location, 0, device_id, 8, self.context) == bytes(
                 [0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90]
             )
-            assert lib.read_from_device(core_loc, 1, device_id, 2, self.context) == bytes([0x56, 0x34])
-            assert lib.read_from_device(core_loc, 3, device_id, 2, self.context) == bytes([0x12, 0xEF])
-            assert lib.read_from_device(core_loc, 5, device_id, 2, self.context) == bytes([0xCD, 0xAB])
-            assert lib.read_from_device(core_loc, 1, device_id, 4, self.context) == bytes([0x56, 0x34, 0x12, 0xEF])
-            assert lib.read_from_device(core_loc, 2, device_id, 4, self.context) == bytes([0x34, 0x12, 0xEF, 0xCD])
-            assert lib.read_from_device(core_loc, 3, device_id, 4, self.context) == bytes([0x12, 0xEF, 0xCD, 0xAB])
-            assert lib.read_from_device(core_loc, 0, device_id, 8, self.context) == bytes(
+            assert lib.read_from_device(location, 1, device_id, 2, self.context) == bytes([0x56, 0x34])
+            assert lib.read_from_device(location, 3, device_id, 2, self.context) == bytes([0x12, 0xEF])
+            assert lib.read_from_device(location, 5, device_id, 2, self.context) == bytes([0xCD, 0xAB])
+            assert lib.read_from_device(location, 1, device_id, 4, self.context) == bytes([0x56, 0x34, 0x12, 0xEF])
+            assert lib.read_from_device(location, 2, device_id, 4, self.context) == bytes([0x34, 0x12, 0xEF, 0xCD])
+            assert lib.read_from_device(location, 3, device_id, 4, self.context) == bytes([0x12, 0xEF, 0xCD, 0xAB])
+            assert lib.read_from_device(location, 0, device_id, 8, self.context) == bytes(
                 [0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90]
             )
-            assert lib.read_from_device(core_loc, 1, device_id, 6, self.context) == bytes(
+            assert lib.read_from_device(location, 1, device_id, 6, self.context) == bytes(
                 [0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB]
             )
 
     def test_unaligned_write(self):
         for device_id in self.context.device_ids:
-            core_loc = self.context.devices[device_id].get_block_locations()[0]
-            lib.write_words_to_device(core_loc, 0, [0xDEADBEEF, 0xDEADBEEF], device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDEADBEEF, 0xDEADBEEF]
-            lib.write_to_device(core_loc, 0, bytes([0x12]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDEADBE12, 0xDEADBEEF]
-            lib.write_to_device(core_loc, 1, bytes([0x34]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDEAD3412, 0xDEADBEEF]
-            lib.write_to_device(core_loc, 2, bytes([0x56]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDE563412, 0xDEADBEEF]
-            lib.write_to_device(core_loc, 3, bytes([0x78]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDEADBEEF]
-            lib.write_to_device(core_loc, 4, bytes([0x90]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDEADBE90]
-            lib.write_to_device(core_loc, 5, bytes([0xAB]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDEADAB90]
-            lib.write_to_device(core_loc, 6, bytes([0xCD]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xDECDAB90]
-            lib.write_to_device(core_loc, 7, bytes([0xEF]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x78563412, 0xEFCDAB90]
-            lib.write_to_device(core_loc, 0, bytes([0xAA, 0xBB]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x7856BBAA, 0xEFCDAB90]
-            lib.write_to_device(core_loc, 2, bytes([0xCC, 0xDD]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDAB90]
-            lib.write_to_device(core_loc, 4, bytes([0xEE, 0xFF]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDFFEE]
-            lib.write_to_device(core_loc, 6, bytes([0x00, 0x11]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0x1100FFEE]
-            lib.write_to_device(core_loc, 1, bytes([0x22, 0x33]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xDD3322AA, 0x1100FFEE]
-            lib.write_to_device(core_loc, 3, bytes([0x44, 0x55]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x443322AA, 0x1100FF55]
-            lib.write_to_device(core_loc, 5, bytes([0x66, 0x77]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x443322AA, 0x11776655]
-            lib.write_to_device(core_loc, 2, bytes([0x88, 0x99, 0xAA]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x998822AA, 0x117766AA]
-            lib.write_to_device(core_loc, 3, bytes([0xBB, 0xCC, 0xDD]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0xBB8822AA, 0x1177DDCC]
-            lib.write_to_device(core_loc, 1, bytes([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]), device_id, self.context)
-            assert lib.read_words_from_device(core_loc, 0, device_id, 2, self.context) == [0x332211AA, 0x11665544]
+            location = self.context.devices[device_id].get_block_locations()[0]
+            lib.write_words_to_device(location, 0, [0xDEADBEEF, 0xDEADBEEF], device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDEADBEEF, 0xDEADBEEF]
+            lib.write_to_device(location, 0, bytes([0x12]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDEADBE12, 0xDEADBEEF]
+            lib.write_to_device(location, 1, bytes([0x34]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDEAD3412, 0xDEADBEEF]
+            lib.write_to_device(location, 2, bytes([0x56]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDE563412, 0xDEADBEEF]
+            lib.write_to_device(location, 3, bytes([0x78]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x78563412, 0xDEADBEEF]
+            lib.write_to_device(location, 4, bytes([0x90]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x78563412, 0xDEADBE90]
+            lib.write_to_device(location, 5, bytes([0xAB]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x78563412, 0xDEADAB90]
+            lib.write_to_device(location, 6, bytes([0xCD]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x78563412, 0xDECDAB90]
+            lib.write_to_device(location, 7, bytes([0xEF]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x78563412, 0xEFCDAB90]
+            lib.write_to_device(location, 0, bytes([0xAA, 0xBB]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x7856BBAA, 0xEFCDAB90]
+            lib.write_to_device(location, 2, bytes([0xCC, 0xDD]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDAB90]
+            lib.write_to_device(location, 4, bytes([0xEE, 0xFF]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDFFEE]
+            lib.write_to_device(location, 6, bytes([0x00, 0x11]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0x1100FFEE]
+            lib.write_to_device(location, 1, bytes([0x22, 0x33]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDD3322AA, 0x1100FFEE]
+            lib.write_to_device(location, 3, bytes([0x44, 0x55]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x443322AA, 0x1100FF55]
+            lib.write_to_device(location, 5, bytes([0x66, 0x77]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x443322AA, 0x11776655]
+            lib.write_to_device(location, 2, bytes([0x88, 0x99, 0xAA]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x998822AA, 0x117766AA]
+            lib.write_to_device(location, 3, bytes([0xBB, 0xCC, 0xDD]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xBB8822AA, 0x1177DDCC]
+            lib.write_to_device(location, 1, bytes([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]), device_id, self.context)
+            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x332211AA, 0x11665544]
 
     @parameterized.expand(
         [
@@ -333,24 +334,24 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 9),
         ]
     )
-    def test_write_read_tensix_register(self, core_loc, register, value):
+    def test_write_read_tensix_register(self, location, register, value):
         """Test writing and reading tensix registers"""
         if self.context.arch == "grayskull":
             self.skipTest("Skipping the test on grayskull.")
 
         # Storing the original value of the register
-        original_value = lib.read_tensix_register(core_loc, register)
+        original_value = lib.read_tensix_register(location, register)
 
         # Writing a value to the register and reading it back
-        lib.write_tensix_register(core_loc, register, value)
-        ret = lib.read_tensix_register(core_loc, register)
+        lib.write_tensix_register(location, register, value)
+        ret = lib.read_tensix_register(location, register)
 
         # Checking if the value was written and read correctly
         self.assertEqual(ret, value)
 
         # Writing the original value back to the register and reading it
-        lib.write_tensix_register(core_loc, register, original_value)
-        ret = lib.read_tensix_register(core_loc, register)
+        lib.write_tensix_register(location, register, original_value)
+        ret = lib.read_tensix_register(location, register)
 
         # Checking if read value is equal to the original value
         self.assertEqual(ret, original_value)
@@ -367,33 +368,33 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", DebugRegisterDescription(offset=0xA0), "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0"),
         ]
     )
-    def test_write_read_tensix_register_with_name(self, core_loc, register_description, register_name):
+    def test_write_read_tensix_register_with_name(self, location, register_description, register_name):
         "Test writing and reading tensix registers with name"
         if self.context.arch == "grayskull":
             self.skipTest("Skipping the test on grayskull.")
 
         # Reading original values of registers
-        original_val_desc = lib.read_tensix_register(core_loc, register_description)
-        original_val_name = lib.read_tensix_register(core_loc, register_name)
+        original_val_desc = lib.read_tensix_register(location, register_description)
+        original_val_name = lib.read_tensix_register(location, register_name)
 
         # Checking if values are equal
         self.assertEqual(original_val_desc, original_val_name)
 
         # Writing a value to the register given by description
-        lib.write_tensix_register(core_loc, register_description, 1)
+        lib.write_tensix_register(location, register_description, 1)
 
         # Reading values from both registers
-        val_desc = lib.read_tensix_register(core_loc, register_description)
-        val_name = lib.read_tensix_register(core_loc, register_name)
+        val_desc = lib.read_tensix_register(location, register_description)
+        val_name = lib.read_tensix_register(location, register_name)
 
         # Checking if writing to description register affects the name register (making sure they are the same)
         self.assertEqual(val_desc, val_name)
 
         # Wrting original value back
-        lib.write_tensix_register(core_loc, register_name, original_val_name)
+        lib.write_tensix_register(location, register_name, original_val_name)
 
-        val_desc = lib.read_tensix_register(core_loc, register_description)
-        val_name = lib.read_tensix_register(core_loc, register_name)
+        val_desc = lib.read_tensix_register(location, register_description)
+        val_name = lib.read_tensix_register(location, register_name)
 
         # Checking if original values are restored
         self.assertEqual(val_name, original_val_name)
@@ -401,8 +402,8 @@ class TestReadWrite(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("abcd", ConfigurationRegisterDescription(), 0, 0),  # Invalid core_loc string
-            ("-10", ConfigurationRegisterDescription(), 0, 0),  # Invalid core_loc string
+            ("abcd", ConfigurationRegisterDescription(), 0, 0),  # Invalid location string
+            ("-10", ConfigurationRegisterDescription(), 0, 0),  # Invalid location string
             ("0,0", ConfigurationRegisterDescription(), 0, -1),  # Invalid device_id
             ("0,0", ConfigurationRegisterDescription(), 0, 112),  # Invalid device_id (too high)
             ("0,0", DebugBusSignalDescription(), 0, 0),  # Invalid register type
@@ -418,20 +419,20 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", ConfigurationRegisterDescription(shift=32), 0, 0),  # Invalid shift (too high)
         ]
     )
-    def test_invalid_write_read_tensix_register(self, core_loc, register, value, device_id):
+    def test_invalid_write_read_tensix_register(self, location, register, value, device_id):
         """Test invalid inputs for tensix register read and write functions."""
         if self.context.arch == "grayskull":
             self.skipTest("Skipping the test on grayskull.")
 
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
             with self.assertRaises((util.TTException, ValueError)):
-                lib.read_tensix_register(core_loc, register, device_id)
+                lib.read_tensix_register(location, register, device_id)
         with self.assertRaises((util.TTException, ValueError)):
-            lib.write_tensix_register(core_loc, register, value, device_id)
+            lib.write_tensix_register(location, register, value, device_id)
 
-    def write_program(self, core_loc, addr, data):
+    def write_program(self, location, addr, data):
         """Write program code data to L1 memory."""
-        bytes_written = lib.write_words_to_device(core_loc, addr, data, context=self.context)
+        bytes_written = lib.write_words_to_device(location, addr, data, context=self.context)
         self.assertEqual(bytes_written, 4)
 
     @parameterized.expand(
@@ -456,14 +457,11 @@ class TestReadWrite(unittest.TestCase):
             ("1,0", "brisc", -5),
         ]
     )
-    def test_write_read_private_memory(self, core_loc: str, risc_name: str, offset: int = 0):
+    def test_write_read_private_memory(self, location: str, risc_name: str, offset: int = 0):
         """Testing read_memory and write_memory through debugging interface on private core memory range."""
 
-        loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
+        loc = OnChipCoordinate.create(location, device=self.context.devices[0])
         risc_debug = loc._device.get_block(loc).get_risc_debug(risc_name)
-
-        if risc_debug.risc_info.can_change_code_start_address:
-            risc_debug.risc_info.set_code_start_address(risc_debug.register_store, 0xD000)
 
         private_memory = risc_debug.get_data_private_memory()
         assert private_memory is not None, "Private memory is not available."
@@ -491,8 +489,8 @@ class TestReadWrite(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("abcd", 0xFFB00000, 0),  # Invalid core_loc string
-            ("-10", 0xFFB00000, 0),  # Invalid core_loc string
+            ("abcd", 0xFFB00000, 0),  # Invalid location string
+            ("-10", 0xFFB00000, 0),  # Invalid location string
             ("0,0", 0xFFA00000, 0),  # Invalid address (too low)
             ("0,0", 0xFFC00000, 0),  # Invalid address (too high)
             ("0,0", 0xFFB00000, 0, "invalid"),  # Invalid risc_name
@@ -500,13 +498,13 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", 0xFFB00000, 0, "brisc", 2**32),  # Invalid device_id
         ]
     )
-    def test_invalid_read_private_memory(self, core_loc: str, address: int, value: int, risc_name="brisc", device_id=0):
+    def test_invalid_read_private_memory(self, location: str, address: int, value: int, risc_name="brisc", device_id=0):
         """Test invalid inputs for reading private memory."""
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
             with self.assertRaises((util.TTException, ValueError)):
-                lib.read_riscv_memory(core_loc, address, risc_name, None, device_id)
+                lib.read_riscv_memory(location, address, risc_name, None, device_id)
         with self.assertRaises((util.TTException, ValueError)):
-            lib.write_riscv_memory(core_loc, address, value, risc_name, None, device_id)
+            lib.write_riscv_memory(location, address, value, risc_name, None, device_id)
 
 
 class TestRunElf(unittest.TestCase):
@@ -537,38 +535,38 @@ class TestRunElf(unittest.TestCase):
     )
     def test_run_elf(self, risc_name: str):
         """Test running an ELF file."""
-        core_loc = "0,0"
+        location = "0,0"
         addr = 0x0
 
         # Reset memory at addr
-        lib.write_words_to_device(core_loc, addr, 0, context=self.context)
-        ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+        lib.write_words_to_device(location, addr, 0, context=self.context)
+        ret = lib.read_words_from_device(location, addr, context=self.context)
         self.assertEqual(ret[0], 0)
 
         # Run an ELF that writes to the addr and check if it executed correctly
         elf_path = self.get_elf_path("run_elf_test", risc_name)
-        lib.run_elf(elf_path, core_loc, risc_name, context=self.context)
-        ret = lib.read_words_from_device(core_loc, addr, context=self.context)
+        lib.run_elf(elf_path, location, risc_name, context=self.context)
+        ret = lib.read_words_from_device(location, addr, context=self.context)
         self.assertEqual(ret[0], 0x12345678)
 
     @parameterized.expand(
         [
             ("", "0,0", "brisc", 0),  # Invalid ELF path
             ("/sbin/non_existing_elf", "0,0", "brisc", 0),  # Invalid ELF path
-            (None, "abcd", "brisc", 0),  # Invalid core_loc
-            (None, "-10", "brisc", 0),  # Invalid core_loc
-            (None, "0,0/", "brisc", 0),  # Invalid core_loc
-            (None, "0,0/00b", "brisc", 0),  # Invalid core_loc
+            (None, "abcd", "brisc", 0),  # Invalid location
+            (None, "-10", "brisc", 0),  # Invalid location
+            (None, "0,0/", "brisc", 0),  # Invalid location
+            (None, "0,0/00b", "brisc", 0),  # Invalid location
             (None, "0,0", "invalid", 0),  # Invalid risc_name
             (None, "0,0", "brisc", -1),  # Invalid device_id
             (None, "0,0", "brisc", 112),  # Invalid device_id (too high)
         ]
     )
-    def test_run_elf_invalid(self, elf_file, core_loc, risc_name, device_id):
+    def test_run_elf_invalid(self, elf_file, location, risc_name, device_id):
         if elf_file is None:
             elf_file = self.get_elf_path("run_elf_test", "brisc")
         with self.assertRaises((util.TTException, ValueError)):
-            lib.run_elf(elf_file, core_loc, risc_name, None, device_id, context=self.context)
+            lib.run_elf(elf_file, location, risc_name, None, device_id, context=self.context)
 
     @parameterized.expand(
         [
@@ -583,17 +581,17 @@ class TestRunElf(unittest.TestCase):
             self.skipTest("This test doesn't work as expected on blackhole. Disabling it until bug #120 is fixed.")
 
         """ Running old elf test, formerly done with -t option. """
-        core_loc = "0,0"
+        location = "0,0"
         elf_path = self.get_elf_path("sample", risc_name)
 
-        lib.run_elf(elf_path, core_loc, risc_name, context=self.context)
+        lib.run_elf(elf_path, location, risc_name, context=self.context)
 
         # Testing
         elf = ELF(self.context.server_ifc, {"fw": elf_path})
         MAILBOX_ADDR, MAILBOX_SIZE, _, _ = elf.parse_addr_size_value_type("fw.g_MAILBOX")
         TESTBYTEACCESS_ADDR, _, _, _ = elf.parse_addr_size_value_type("fw.g_TESTBYTEACCESS")
 
-        loc = OnChipCoordinate.create(core_loc, device=self.context.devices[0])
+        loc = OnChipCoordinate.create(location, device=self.context.devices[0])
         device = loc._device
         noc_block = device.get_block(loc)
         risc_debug = noc_block.get_risc_debug(risc_name)
@@ -857,21 +855,20 @@ class TestARC(unittest.TestCase):
 
 @parameterized_class(
     [
-        # {"core_desc": "ETH0", "risc_name": "ERISC"},
-        # {"core_desc": "ETH0", "risc_name": "ERISC0"},
-        # {"core_desc": "ETH0", "risc_name": "ERISC1"},
-        {"core_desc": "FW0", "risc_name": "BRISC"},
-        {"core_desc": "FW0", "risc_name": "TRISC0"},
-        {"core_desc": "FW0", "risc_name": "TRISC1"},
-        # {"core_desc": "FW0", "risc_name": "TRISC2"}, - there is a bug on TRISC2: #266
+        # {"location_desc": "ETH0", "risc_name": "ERISC"},
+        # {"location_desc": "ETH0", "risc_name": "ERISC0"},
+        # {"location_desc": "ETH0", "risc_name": "ERISC1"},
+        {"location_desc": "FW0", "risc_name": "BRISC"},
+        {"location_desc": "FW0", "risc_name": "TRISC0"},
+        {"location_desc": "FW0", "risc_name": "TRISC1"},
+        # {"location_desc": "FW0", "risc_name": "TRISC2"}, - there is a bug on TRISC2: #266
     ]
 )
 class TestCallStack(unittest.TestCase):
     risc_name: str  # Risc name
     risc_id: int  # Risc ID - being parametrized
     context: Context  # TTExaLens context
-    core_desc: str  # Core description ETH0, FW0, FW1 - being parametrized
-    core_loc: str  # Core location
+    location_desc: str  # Core description ETH0, FW0, FW1 - being parametrized
     location: OnChipCoordinate  # Core location
     risc_debug: RiscDebug  # RiscDebug object
     loader: ElfLoader  # ElfLoader object
@@ -884,29 +881,28 @@ class TestCallStack(unittest.TestCase):
 
     def setUp(self):
         self.device = self.context.devices[0]
-        # Convert core_desc to core_loc
-        if self.core_desc.startswith("ETH"):
+        # Convert location_desc to location
+        if self.location_desc.startswith("ETH"):
             # Ask device for all ETH cores and get first one
             eth_blocks = self.device.idle_eth_blocks
-            core_index = int(self.core_desc[3:])
-            if len(eth_blocks) > core_index:
-                self.core_loc = eth_blocks[core_index].location.to_str()
+            location_index = int(self.location_desc[3:])
+            if len(eth_blocks) > location_index:
+                self.location = eth_blocks[location_index].location
             else:
                 # If not found, we should skip the test
                 self.skipTest("ETH core is not available on this platform")
-        elif self.core_desc.startswith("FW"):
+        elif self.location_desc.startswith("FW"):
             # Ask device for all ETH cores and get first one
             eth_cores = self.device.get_block_locations(block_type="functional_workers")
-            core_index = int(self.core_desc[2:])
-            if len(eth_cores) > core_index:
-                self.core_loc = eth_cores[core_index].to_str()
+            location_index = int(self.location_desc[2:])
+            if len(eth_cores) > location_index:
+                self.location = eth_cores[location_index]
             else:
                 # If not found, we should skip the test
                 self.skipTest("FW core is not available on this platform")
         else:
-            self.fail(f"Unknown core description {self.core_desc}")
+            self.fail(f"Unknown core description {self.location_desc}")
 
-        self.location = OnChipCoordinate.create(self.core_loc, device=self.device)
         noc_block = self.location._device.get_block(self.location)
         try:
             self.risc_debug = noc_block.get_risc_debug(self.risc_name)
@@ -950,12 +946,12 @@ class TestCallStack(unittest.TestCase):
     @parameterized.expand([1, 10, 50])
     def test_callstack_with_parsing(self, recursion_count):
         self.is_wormhole()
-        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        lib.write_words_to_device(self.location, 0x4000, recursion_count)
         elf_path = self.get_elf_path("callstack")
         self.loader.run_elf(elf_path)
         parsed_elf = lib.parse_elf(elf_path, self.context)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.core_loc, parsed_elf, None, self.risc_name, None, 100, True, False, 0, self.context
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
         )
         self.assertEqual(len(callstack), recursion_count + 3)
         self.assertEqual(callstack[0].function_name, "halt")
@@ -966,12 +962,10 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand([1, 10, 50])
     def test_callstack(self, recursion_count: int):
-        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        lib.write_words_to_device(self.location, 0x4000, recursion_count)
         elf_path = self.get_elf_path("callstack")
         self.loader.run_elf(elf_path)
-        callstack: list[CallstackEntry] = lib.callstack(
-            self.core_loc, elf_path, None, self.risc_name, None, 100, True, False, 0, self.context
-        )
+        callstack: list[CallstackEntry] = lib.callstack(self.location, elf_path, None, self.risc_name, None, 100, True)
         self.assertEqual(len(callstack), recursion_count + 3)
         self.assertEqual(callstack[0].function_name, "halt")
         for i in range(1, recursion_count + 1):
@@ -985,12 +979,10 @@ class TestCallStack(unittest.TestCase):
         if self.is_wormhole() and self.is_eth_block() and elf_name == "callstack.optimized":
             self.skipTest("Callstack optimized tests break on ETH blocks")
 
-        lib.write_words_to_device(self.core_loc, 0x4000, 0, 0, self.context)
+        lib.write_words_to_device(self.location, 0x4000, 0)
         elf_path = self.get_elf_path(elf_name)
         self.loader.run_elf(elf_path)
-        callstack: list[CallstackEntry] = lib.callstack(
-            self.core_loc, elf_path, None, self.risc_name, None, 100, True, False, 0, self.context
-        )
+        callstack: list[CallstackEntry] = lib.callstack(self.location, elf_path, None, self.risc_name, None, 100, True)
         self.assertEqual(len(callstack), 3)
         self.assertEqual(callstack[0].function_name, "halt")
         self.assertEqual(callstack[1].function_name, "ns::foo")
@@ -998,7 +990,7 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand([1, 10, 50])
     def test_top_callstack_with_parsing(self, recursion_count: int):
-        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        lib.write_words_to_device(self.location, 0x4000, recursion_count)
         elf_path = self.get_elf_path("callstack")
         self.loader.run_elf(elf_path)
         with self.risc_debug.ensure_halted():
@@ -1010,7 +1002,7 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand([1, 10, 50])
     def test_top_callstack(self, recursion_count):
-        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        lib.write_words_to_device(self.location, 0x4000, recursion_count)
         elf_path = self.get_elf_path("callstack")
         self.loader.run_elf(elf_path)
         with self.risc_debug.ensure_halted():
@@ -1025,12 +1017,10 @@ class TestCallStack(unittest.TestCase):
         if self.is_wormhole() and self.is_eth_block():
             self.skipTest("Callstack optimized tests break on ETH blocks")
 
-        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        lib.write_words_to_device(self.location, 0x4000, recursion_count)
         elf_path = self.get_elf_path("callstack.optimized")
         self.loader.run_elf(elf_path)
-        callstack: list[CallstackEntry] = lib.callstack(
-            self.core_loc, elf_path, None, self.risc_name, None, 100, True, False, 0, self.context
-        )
+        callstack: list[CallstackEntry] = lib.callstack(self.location, elf_path, None, self.risc_name, None, 100, True)
 
         self.assertEqual(len(callstack), recursion_count + 3)
         self.assertEqual(callstack[0].function_name, "halt")
@@ -1045,7 +1035,7 @@ class TestCallStack(unittest.TestCase):
         if self.is_wormhole() and self.is_eth_block():
             self.skipTest("Callstack optimized tests break on ETH blocks")
 
-        lib.write_words_to_device(self.core_loc, 0x4000, recursion_count, 0, self.context)
+        lib.write_words_to_device(self.location, 0x4000, recursion_count)
         elf_path = self.get_elf_path("callstack.optimized")
         self.loader.run_elf(elf_path)
         with self.risc_debug.ensure_halted():
@@ -1060,7 +1050,7 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("abcd", "build/riscv-src/blackhole/callstack.brisc.elf"),  # Invalid core_loc string
+            ("abcd", "build/riscv-src/blackhole/callstack.brisc.elf"),  # Invalid location string
             ("0,0", "invalid_elf_path"),  # Invalid elf path
             (
                 "0,0",
@@ -1076,11 +1066,9 @@ class TestCallStack(unittest.TestCase):
             ("0,0", "build/riscv-src/blackhole/callstack.brisc.elf", 0, "brisc", 1, -1),  # Invalid device_id
         ]
     )
-    def test_callstack_invalid(self, core_loc, elf_paths, offsets=None, risc_name="brisc", max_depth=100, device_id=0):
+    def test_callstack_invalid(self, location, elf_paths, offsets=None, risc_name="brisc", max_depth=100, device_id=0):
         """Test invalid inputs for callstack function."""
 
-        # Check for invalid core_loc
+        # Check for invalid location
         with self.assertRaises((util.TTException, ValueError, FileNotFoundError)):
-            lib.callstack(
-                core_loc, elf_paths, offsets, risc_name, None, max_depth, True, False, device_id, self.context
-            )
+            lib.callstack(location, elf_paths, offsets, risc_name, None, max_depth, True, device_id, self.context)
