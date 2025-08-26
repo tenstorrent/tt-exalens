@@ -33,14 +33,12 @@ set(RISCV_OBJECT "${CMAKE_BINARY_DIR}/obj/riscv-src")
 set(RISCV_ARCHITECTURES "wormhole" "blackhole")
 set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc")
 set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test")
-set(RISCV_OPTIMIZED_APPS "run_elf_test" "callstack")
 
 # Create output directories
 file(MAKE_DIRECTORY ${RISCV_OBJECT})
 file(MAKE_DIRECTORY ${RISCV_OUTPUT})
 
 # Helper function to add object files for each source
-# WITH_COVERAGE is given as an argument to allow the coverage runtime libraries themselves to be compiled without instrumentation
 function(add_riscv_object OBJECT_NAME SOURCE_FILE BUILD_TYPE)
     if(BUILD_TYPE STREQUAL "release")
         set(COMPILE_OPTIONS ${OPTIMIZED_OPTIONS_ALL} ${OPTIMIZED_OPTIONS_COMPILE})

@@ -1,42 +1,74 @@
 # Test coverage analysis with gcov
 
-## Tutorial
+![What a coverage report may look like](./images/coverage_example.png "")
 
-If you wish to get coverage info for your kernels:
-- Make the build changes as demonstrated in `riscv-src/*.ld` and `riscv-src/CMakeLists.txt`. This comes down to ensuring your memory layout can handle this (increase code/data sections as needed, free up L0), compiling with coverage and `-fprofile-info-section`, linking with the routines from `coverage.c` and `gcov.c`, and running `gcov_dump` at the end of your kernels (see the end of `tmu-crt0.S`: ensure it is present in your C runtime, or call `gcov_dump` at the end of each kernel manually).
-- After the kernel completes, pull its gathered coverage data with the `dump-coverage` (`cov`) command in tt-exalens: specify the path to the executed ELF, the output gcda path, and optionally the output gcno path.
-- Once you've done that for all kernels, use any tool you wish to process the gathered data. `lcov` is one of them.
+## Quick start
 
-The latter two steps, for a simple run with two kernels, may go as follows:
-
-In exalens (or in a script with equivalent functionality using `tt-exalens-lib`):
-
-```
-re build/riscv-src/wormhole/sample.coverage.trisc0.elf -r trisc0
-re build/riscv-src/wormhole/callstack.coverage.trisc2.elf -r trisc2
-
-cov build/riscv-src/wormhole/run_elf_test.coverage.trisc0.elf coverage_dir/run_elf_test.gcda coverage_dir/run_elf_test.gcno
-cov build/riscv-src/wormhole/cov_test.coverage.trisc2.elf coverage_dir/cov_test.gcda coverage_dir/cov_test.gcno
-```
-
-And in the shell:
+To quickly get coverage info for your kernels, you can use our repo:
+1. Drop your kernels into [`riscv-src`](../riscv-src/), add them into `RISCV_APPS`, and run `make` in the project root. This will compile debug, release and coverage binaries.
+2. Run them and extract their coverage info:
+In the shell, in `tt-exalens` root:
 ```bash
-./scripts/merge-coverage.sh coverage_dir cov_report
+mkdir coverage
+./tt-exalens
+re build/riscv-src/wormhole/run_elf_test.coverage.trisc0.elf -r trisc0
+re build/riscv-src/wormhole/cov_test.coverage.trisc1.elf -r trisc1
+cov build/riscv-src/wormhole/run_elf_test.coverage.trisc0.elf coverage/run_elf_test.gcda coverage/run_elf_test.gcno
+cov build/riscv-src/wormhole/cov_test.coverage.trisc1.elf coverage/cov_test.gcda coverage/cov_test.gcno
+exit
 ```
-
-Then just open `cov_report/index.html`.
-You can of course run the commands in one `tt-exalens --command` invocation (commands are separated by semicolons):
+3. Get your coverage report by running:
 ```bash
-./tt-exalens --command "re foo.elf -r trisc0;cov foo.elf foo.gcda foo.gcno;x"
+./scripts/merge-coverage.sh coverage cov_report
 ```
-Note the `x` at the end: it tells tt-exalens to exit instead of dropping you into an interactive session.
+Afterwards, just open `cov_report/index.html`. Mind that the script uses `lcov`, so you may need to install it.
 
-Note:
-- As each RISC has its own coverage region, it's fine to run instrumented kernels in parallel and grab data from each one.
-- Don't try instrumenting with `-fprofile-topn` or `-fprofile-values`, these may require runtime heap allocation. In case those options are ever needed, make sure you link in `write_topn_counters` from `libgcov-driver.c` and write a heap allocator. The allocation function must be passed to `__gcov_info_to_gcda`.
-- As is mentioned later in this file, currently only one TU can be instrumented per kernel. This is so for the sake of simplicity.
+***
 
-## Overview
+## How to enable coverage in your workflow
+
+If you wish to integrate gcov into your project, some build adjustments will be needed (you can copy our `.ld` files and CRT, and skip to the build script changes):
+- Linker script changes:
+  - Make sure your memory layout can handle the increase in code and data size. It's recommended to move data out of L0 (the `0xFFB00000` region) and only leave the stack there.
+  - Allocate a memory region for each RISC to store its coverage data (for instance, `BRISC_GCOV_MEM`, `TRISC0_GCOV_MEM`, etc.)
+  
+    (Take a look at [`memory.wormhole.debug.ld`](../riscv-src/memory.wormhole.debug.ld) as an example.)
+  
+  - Alias each RISC's new region (`REGION_ALIAS("REGION_GCOV", BRISC_GCOV_MEM)` and so on, as seen in [`brisc.ld`](../riscv-src/brisc.ld), [`trisc0.ld`](../riscv-src/trisc0.ld), etc.)
+  - Add the following to the `SECTIONS` part of your linker scripts (as seen in [`sections.ld`](../riscv-src/sections.ld)):
+  ```GNU ld
+  .gcov_info :
+  {
+    __gcov_info_start = .;
+    KEEP(*(.gcov_info))
+    KEEP(*(.gcov_info.*))
+    __gcov_info_end = .;
+  } > REGION_DATA
+  __coverage_start = ORIGIN(REGION_GCOV);
+  __coverage_end = ORIGIN(REGION_GCOV) + LENGTH(REGION_GCOV);
+  ```
+- C runtime changes (present in [`riscv-src/tmu-crt0.S`](../riscv-src/tmu-crt0.S)):
+  ```asm
+  #ifdef COVERAGE
+  call gcov_dump
+  #endif
+  ```
+  Make sure your CRT gets preprocessed before being assembled (GCC does this automatically if the file extension is `.S`).
+  Alternatively, you can ignore the CRT and manually call `gcov_dump` at the end of every kernel.
+- Build script changes (present in [`riscv-src/CMakeLists.txt`](../riscv-src/CMakeLists.txt)):
+  - Add `-fprofile-arcs -ftest-coverage -fprofile-info-section -DCOVERAGE` to your compiler flags.
+  - Compile two additional source files: [`gcov.c`](../riscv-src/coverage/gcov.c) and [`coverage.c`](../riscv-src/coverage/coverage.c) into object files.
+  - Link every kernel with those two object files.
+  - Make sure you use the changed linker scripts when compiling for coverage.
+
+Now you can run your kernels as per usual. You can run multiple coverage kernels at the same time with no issues (they all work with their separate parts of memory).
+After a kernel completes, pull its gathered coverage data with the `dump-coverage` (`cov`) command in exalens: specify the path to the executed ELF, the output gcda path, and optionally the output gcno path.
+Once you've done that for all kernels, use any tool you wish to process the gathered data. `lcov` is one of them.
+We provide, as shown in [Quick start](#quick-start), the [`merge-coverage`](../scripts/merge-coverage.sh) shell script to automate this part.
+
+***
+
+## Implementation overview
 
 When compiling for coverage, GCC does the following:
 - Allocates space in the executable for profiling counters that get incremented as code executes.
@@ -46,7 +78,7 @@ When compiling for coverage, GCC does the following:
 
 Afterwards, tools like gcov and lcov can use the gcno-gcda pair to produce a coverage report.
 
-## Documentation
+## Implementation details
 
 Under the hood, GCC’s profiling and coverage machinery presupposes two things: global constructors and destructors that initialize and dump the counters, and a filesystem to store the gcda files at program exit. Neither presupposition holds for us.
 
@@ -67,7 +99,9 @@ This is a lot more involved beyond mechanically adding the compiler flags and ty
 
 Just telling GCC to compile with `-fprofile-arcs -ftest-coverage -fprofile-info-section` will pull in libgcov, which then pulls in the entirety of the C standard library I/O (from newlib), which made my first attempt at compiling fail spectacularly (with 60KiB+ `.text` section overflows).
 
-Linker script adjustments were immediately necessary. The private memory region (or L0 if you will) got bloated, so I placed it into L1 and let only the stack reside in L0. I also added a new region where the coverage data stream in gcda format will be written into, and hacked together a minimal library for extracting coverage data; more on those topics in **2**.
+Don't try instrumenting with `-fprofile-topn` or `-fprofile-values`, these may require runtime heap allocation. In case those options are ever needed, make sure you link in `write_topn_counters` from `libgcov-driver.c` and write a heap allocator. The allocation function must be passed to `__gcov_info_to_gcda`.
+
+Linker script adjustments were immediately necessary. The private memory region (or L0 if you will) got bloated, so I placed it into L1 and let only the stack reside in L0. I also added a new region where the coverage data stream in gcda format will be written into, and hacked together a minimal library for extracting coverage data; more on those topics in [2. Converting counters into gcda and exposing it](#2-converting-counters-into-gcda-and-exposing-it).
 
 If you skim through the tutorial provided in the GCC docs linked above, you may notice they note some linker script changes necessary for `-fprofile-info-section` to work:
 
@@ -92,7 +126,7 @@ libgcov provides `__gcov_info_to_gcda` (found in `gcc/libgcc/libgcov-driver.c`) 
 
 The counters for each kernel, its pointer to the `struct gcov_info`, and the struct itself, are all in its `.ldm_data` (the counter being in the `bss` portion, unlike the other two). When the kernel ends, the C runtime `tmu-crt0.S` calls `gcov_dump`, which passes that pointer to `__gcov_info_to_gcda`, which then gives us a data stream in gcda format. The linker scripts define `REGION_GCOV` (as well as two symbols to access it: `__coverage_start` and `__coverage_end`), and we write a short header and then the data stream as a byte array into that region.
 
-There is no need to iterate from `__gcov_info_start` to `__gcov_info_end` as only one `struct gcov_info` is present (since this was built with only one TU per kernel in mind). This also simplifies more things that the tutorial mentions - `gcov-merge-tool` is unnecessary, and so is the filename prefix function (for the most part). Namely, that function (`coverage.c:filename`) receives the filename string from `struct gcov_info`, which is the expected output path for the gcda, and it will be in the same directory as where the compiler placed the gcno. We use this to later find the gcno if so asked. `filename` merely writes the pointer it receives and the length of the string into the second and third word in the region, respectively. To be clear, this is not a requirement of the gcda format; this is done to make `cov` calls simpler and safer.
+There is no need to iterate from `__gcov_info_start` to `__gcov_info_end` as only one `struct gcov_info` is present (since this was built with only one TU per kernel in mind). This also simplifies more things that the tutorial mentions - `gcov-merge-tool` is unnecessary, and so is the filename prefix function (for the most part). Namely, that function (`coverage.c:filename`) receives the filename string from `struct gcov_info`, which is the expected output path for the gcda, and it will be in the same directory as where the compiler placed the gcno. We use this to later find the gcno if so asked. `filename` merely writes the pointer it receives and the length of the string into the second and third word in the region, respectively. To be clear, this is not a requirement of the gcda format; this is done to make `cov` calls simpler and safer. The actual gcda begins after the first 12 bytes of the region.
 
 The layout of the coverage region is as follows (in word granularity, i.e. 4 bytes):
 
@@ -103,6 +137,10 @@ REGION_GCOV (__coverage_start...__coverage_end)
 - [2] length of the filename string
 - [3...] gcda data stream
 ```
+
+Should it ever be necessary to support coverage for multiple TUs simultaneously, adding that would involve:
+- Iterating from `__gcov_info_start` to `__gcov_info_end` and calling `__gcov_info_to_gcda` for each `struct gcov_info`
+- Adjusting `coverage.c:filename` to call `__gcov_filename_to_gcfn
 
 ---
 
