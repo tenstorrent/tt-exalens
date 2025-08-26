@@ -2,13 +2,13 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import unittest
-from parameterized import parameterized_class
+from parameterized import parameterized_class, parameterized
 from ttexalens import tt_exalens_init
 from ttexalens import tt_exalens_lib as lib
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.debug_tensix import TensixDebug
+from ttexalens.debug_tensix import TensixDebug, TILE_SIZE, TensixDataFormat, REGFILE
 
 
 @parameterized_class(
@@ -48,3 +48,53 @@ class TestTensixDebug(unittest.TestCase):
         assert self.tdbg.read_tensix_register(dbg_reg_name) == 0
         self.tdbg.write_tensix_register(dbg_reg_name, 5)
         assert self.tdbg.read_tensix_register(dbg_reg_name) == 5
+
+    @parameterized.expand(
+        [
+            (1,),
+            (2,),
+            (4,),
+            (8,),
+        ]
+    )
+    def test_read_write_regfile_data_fp32(self, num_tiles: int):
+        data = [0.01 * i - 5 for i in range(num_tiles * TILE_SIZE)]
+        original_df = self.tdbg.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        self.tdbg.write_regfile_data(data, TensixDataFormat.Float32, num_tiles)
+        ret = self.tdbg.read_regfile_data(REGFILE.DSTACC, TensixDataFormat.Float32, num_tiles)
+        assert len(ret) == len(data)
+        assert all(abs(a - b) < 1e-4 for a, b in zip(ret, data))
+        self.tdbg.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
+        assert self.tdbg.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
+
+    @parameterized.expand(
+        [
+            (1,),
+            (2,),
+            (4,),
+            (8,),
+        ]
+    )
+    def test_read_write_regfile_data_int32(self, num_tiles: int):
+        data = [i - 512 for i in range(num_tiles * TILE_SIZE)]
+        original_df = self.tdbg.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        self.tdbg.write_regfile_data(data, TensixDataFormat.Int32, num_tiles)
+        assert self.tdbg.read_regfile_data(REGFILE.DSTACC, TensixDataFormat.Int32, num_tiles) == data
+        self.tdbg.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
+        assert self.tdbg.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
+
+    @parameterized.expand(
+        [
+            (1,),
+            (2,),
+            (4,),
+            (8,),
+        ]
+    )
+    def test_read_write_regfile_data_int8(self, num_tiles: int):
+        data = [(i % 256) - 128 for i in range(num_tiles * TILE_SIZE)]
+        original_df = self.tdbg.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        self.tdbg.write_regfile_data(data, TensixDataFormat.Int8, num_tiles)
+        assert self.tdbg.read_regfile_data(REGFILE.DSTACC, TensixDataFormat.Int8, num_tiles) == data
+        self.tdbg.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
+        assert self.tdbg.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df

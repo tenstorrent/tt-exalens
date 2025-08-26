@@ -217,6 +217,11 @@ class TensixDebug:
         if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
             base_address = self.noc_block.dest.address.private_address
             dest_size = self.noc_block.dest.size
+
+        was_in_reset = risc_debug.is_in_reset()
+        if was_in_reset:
+            risc_debug.set_reset_signal(False)
+
         with risc_debug.ensure_halted():
             for i in range(num_tiles * TILE_SIZE):
                 address = base_address + 4 * i
@@ -224,6 +229,9 @@ class TensixDebug:
                     raise TTException(f"Address {hex(address)} is out of bounds for destination memory block.")
                 rd_data = risc_debug.read_memory(address)
                 data.append(self._unpack_value(rd_data, df))
+
+        if was_in_reset:
+            risc_debug.set_reset_signal(True)
 
         return data
 
@@ -249,12 +257,19 @@ class TensixDebug:
         if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
             base_address = self.noc_block.dest.address.private_address
             dest_size = self.noc_block.dest.size
+
+        was_in_reset = risc_debug.is_in_reset()
+        if was_in_reset:
+            risc_debug.set_reset_signal(False)
         with risc_debug.ensure_halted():
             for i in range(num_tiles * TILE_SIZE):
                 address = base_address + 4 * i
                 if address >= base_address + dest_size:
                     raise TTException(f"Address {hex(address)} is out of bounds for destination memory block.")
                 risc_debug.write_memory(address, self._pack_value(data[i], df))
+
+        if was_in_reset:
+            risc_debug.set_reset_signal(True)
 
     def read_regfile_data(
         self, regfile: int | str | REGFILE, df: TensixDataFormat, num_tiles: int | None = None
