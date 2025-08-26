@@ -238,21 +238,19 @@ class TensixDebug:
     @staticmethod
     def _pack_value(value: int | float, df: TensixDataFormat) -> int:
         if df == TensixDataFormat.Float32:
-            if not isinstance(value, float):
-                raise TTException(f"Float value expected, got {type(value)}")
             return int.from_bytes(struct.pack(">f", float(value)), "big", signed=False)
         elif df == TensixDataFormat.Int32:
-            if not isinstance(value, int) or value < -(2**31) or value > 2**31 - 1:
-                raise TTException(f"Int32 value expected, got {type(value)}")
-            return value if value >= 0 else value + 0x100000000
+            if value < -(2**31) or value > 2**31 - 1:
+                raise TTException(f"Value {value} is out of range for Int32.")
+            return value if int(value) >= 0 else int(value) + 0x100000000
         elif df == TensixDataFormat.Int8:
-            if not isinstance(value, int) or value < -(2**7) or value > 2**7 - 1:
-                raise TTException(f"Int8 value expected, got {type(value)}")
+            if value < -(2**7) or value > 2**7 - 1:
+                raise TTException(f"Value {value} is out of range for Int8.")
             return value if value >= 0 else 0x80000000 | (value + 0x80)
         else:
             raise TTException(f"Unsupported data format {df} for packing.")
 
-    def direct_dest_write(self, data: list[int | float], df: TensixDataFormat, num_tiles: int) -> None:
+    def direct_dest_write(self, data: list[int | float], df: TensixDataFormat) -> None:
         risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
         if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
             base_address = self.noc_block.dest.address.private_address
@@ -262,7 +260,7 @@ class TensixDebug:
         if was_in_reset:
             risc_debug.set_reset_signal(False)
         with risc_debug.ensure_halted():
-            for i in range(num_tiles * TILE_SIZE):
+            for i in range(len(data)):
                 address = base_address + 4 * i
                 if address >= base_address + dest_size:
                     raise TTException(f"Address {hex(address)} is out of bounds for destination memory block.")
@@ -336,12 +334,12 @@ class TensixDebug:
 
         return data
 
-    def write_regfile_data(self, data: list[int | float], df: TensixDataFormat, num_tiles: int) -> None:
+    def write_regfile_data(self, data: list[int | float], df: TensixDataFormat) -> None:
         if not self._direct_dest_access_enabled(df):
             raise TTException("Direct dest writing not supported for this architecture or data format.")
 
         self.register_store.write_register("ALU_FORMAT_SPEC_REG2_Dstacc", df.value)
-        self.direct_dest_write(data, df, num_tiles)
+        self.direct_dest_write(data, df)
 
     def read_regfile(self, regfile: int | str | REGFILE, num_tiles: int | None = None) -> list[int | float] | list[str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
