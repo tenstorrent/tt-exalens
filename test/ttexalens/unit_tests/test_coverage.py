@@ -5,9 +5,8 @@ import unittest
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from parameterized import parameterized, parameterized_class
 
+import os
 import tempfile
-import itertools
-from pathlib import Path
 
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
@@ -33,7 +32,7 @@ ELFS = ["run_elf_test.coverage", "cov_test.coverage"] # We only run ELFs that do
 )
 class TestCoverage(unittest.TestCase):
     context: Context
-    elf_root: Path
+    elf_root: str
     risc_name: str
     risc_id: str
     core_desc: str
@@ -56,7 +55,7 @@ class TestCoverage(unittest.TestCase):
         else:
             self.skipTest(f"Unsupported architecture: {self.context.arch}")
 
-        self.elf_root = Path("build/riscv-src/") / arch
+        self.elf_root = "build/riscv-src/" + arch + "/"
 
         # Convert core_desc to core_loc
         if self.core_desc.startswith("ETH"):
@@ -99,32 +98,34 @@ class TestCoverage(unittest.TestCase):
 
     @parameterized.expand(ELFS)
     def test_coverage(self, elf):
-        with tempfile.TemporaryDirectory(prefix = "cov_test_") as temp:
-            temp_root = Path(temp)
-            
+        with tempfile.TemporaryDirectory(prefix = "cov_test_") as temp_root:
+
             # Run the ELF and save its coverage data.
-            elf_path = self.elf_root / self.get_elf_name(elf)
-            elf = parse_elf(str(elf_path), self.context)
-            self.loader.run_elf(str(elf_path))
-            basename = elf_path.stem
-            gcda = temp_root / f"{basename}.gcda"
-            gcno = temp_root / f"{basename}.gcno"
+            elf_path = os.path.join(self.elf_root, self.get_elf_name(elf))
+            elf = parse_elf(elf_path, self.context)
+            self.loader.run_elf(elf_path)
+            
+            basename, _ = os.path.splitext(os.path.basename(elf_path))
+            gcda = os.path.join(temp_root, f"{basename}.gcda")
+            gcno = os.path.join(temp_root, f"{basename}.gcno")
 
             dump_coverage(self.context, elf, self.device, self.location, gcda, gcno)
 
-            # Check if the files match expectations.
-            self.assertTrue(gcda.exists(), f"{gcda}: file does not exist")
-            self.assertTrue(gcno.exists(), f"{gcno}: file does not exist")
+            # Check if the files match expectations: if they exist, and if the headers are well-formed.
+            self.assertTrue(os.path.exists(gcda), f"{gcda}: file does not exist")
+            self.assertTrue(os.path.exists(gcno), f"{gcno}: file does not exist")
 
-            gcda_bytes = gcda.read_bytes()
-            gcno_bytes = gcno.read_bytes()
+            with open(gcda, "rb") as f:
+                gcda_header = f.read(12)
+            with open(gcno, "rb") as f:
+                gcno_header = f.read(12)
 
             # First four bytes of gcno and gcda contain their magic numbers (mind the endianness).
-            self.assertEqual(gcno_bytes[0:4], b"oncg", "f{gcno}: incorrect magic")
-            self.assertEqual(gcda_bytes[0:4], b"adcg", "f{gcda}: incorrect magic")
+            self.assertEqual(gcno_header[0:4], b"oncg", "f{gcno}: incorrect magic")
+            self.assertEqual(gcda_header[0:4], b"adcg", "f{gcda}: incorrect magic")
 
             # Test if versions match.
-            self.assertEqual(gcda_bytes[4:8], gcno_bytes[4:8], f"{gcda}: version mismatch with {gcno}")
+            self.assertEqual(gcda_header[4:8], gcno_header[4:8], f"{gcda}: version mismatch with {gcno}")
 
             # Most important test: checksum. It's very unlikely that a gcda is malformed if its checksum matches the gcno.
-            self.assertEqual(gcda_bytes[8:12], gcno_bytes[8:12], f"{gcda}: checksum mismatch with {gcno}")
+            self.assertEqual(gcda_header[8:12], gcno_header[8:12], f"{gcda}: checksum mismatch with {gcno}")

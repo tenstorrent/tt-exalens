@@ -638,6 +638,38 @@ def callstack(
         raise TTException(f"RiscV core {risc_debug.risc_location} is in reset")
     return risc_debug.get_callstack(elfs, offsets, max_depth, stop_on_main)
 
+def coverage(
+    location: str | OnChipCoordinate,
+    elf: str | ParsedElfFile,
+    gcda_path: str,
+    gcno_copy_path: str | None = None,
+    device_id: int = 0,
+    context: Context | None = None,
+) -> None:
+    
+    """
+    Extract coverage data from the device.
+    
+    Args:
+            location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+            elf (str | ParsedElfFile): ELF file whose coverage should be extracted.
+            gcda_path (str): The path where the gcda file will be written.
+            gcno_copy_path (str | None, optional): The path where the gcno will be written, if specified.
+            device_id (int, optional): ID of the device to read from. Default 0.
+            context (Context | None, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+            verbose (bool): If True, enables verbose output. Default: False.
+    """
+
+    context = check_context(context)
+    validate_device_id(device_id, context)
+    device = context.devices[device_id]
+    coordinate = convert_coordinate(location, device_id, context)
+    if isinstance(elf, str):
+        elf = parse_elf(elf, context)
+    
+    from ttexalens.coverage import dump_coverage
+    dump_coverage(context, elf, device, coordinate, gcda_path, gcno_copy_path)
+
 
 def read_riscv_memory(
     core_loc: str | OnChipCoordinate,

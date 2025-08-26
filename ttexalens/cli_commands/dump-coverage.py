@@ -29,7 +29,6 @@ command_metadata = {
     "common_option_names": ["--device", "--loc", "--verbose"],
 }
 
-from pathlib import Path
 from ttexalens import util
 from ttexalens import command_parser
 from ttexalens.tt_exalens_lib import check_context, parse_elf
@@ -44,12 +43,12 @@ def run(cmd_text, context, ui_state: UIState) -> list:
         common_option_names=command_metadata["common_option_names"],
     )
 
-    elf_path = Path(dopt.args["<elf>"]).resolve()
-    gcda_path = Path(dopt.args["<gcda_path>"]).resolve()
+    elf_path = dopt.args["<elf>"]
+    gcda_path = dopt.args["<gcda_path>"]
     gcno_arg = dopt.args.get("<gcno_copy_path>")
-    gcno_path = Path(gcno_arg).resolve() if gcno_arg else None
+    gcno_path = gcno_arg if gcno_arg else None
     context = check_context(context)
-    elf = parse_elf(str(elf_path), context)
+    elf = parse_elf(elf_path, context)
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):

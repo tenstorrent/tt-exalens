@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from pathlib import Path
-
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.tt_exalens_lib import read_word_from_device, read_from_device
@@ -23,7 +21,7 @@ hardcoding offsets, which would break in case of linker script changes.
 """
 
 def dump_coverage(
-    context: Context, elf: ParsedElfFile, device: Device, location: OnChipCoordinate, gcda_path: Path, gcno_copy_path: Path | None = None
+    context: Context, elf: ParsedElfFile, device: Device, location: OnChipCoordinate, gcda_path: str, gcno_copy_path: str | None = None
 ) -> None:
     
     # Coverage region layout:
