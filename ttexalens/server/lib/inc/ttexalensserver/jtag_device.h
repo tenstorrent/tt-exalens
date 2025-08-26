@@ -41,6 +41,8 @@ class JtagDevice {
     std::optional<uint32_t> read_id_raw(uint8_t chip_id);
     std::optional<uint32_t> read_id(uint8_t chip_id);
 
+    void close_device() {}
+
    private:
     bool select_device(uint8_t chip_id);
     std::unique_ptr<Jtag> jtag;

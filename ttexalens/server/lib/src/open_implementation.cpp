@@ -172,6 +172,11 @@ template <typename BaseClass>
 open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> device)
     : BaseClass(device.get()), device(std::move(device)) {}
 
+template <typename BaseClass>
+open_implementation<BaseClass>::~open_implementation() {
+    device->close_device();
+}
+
 template <>
 std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jtag_implementation>::open(
     const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
@@ -296,6 +301,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open_simulation(
     const std::filesystem::path &simulation_directory) {
+    tt::umd::logging::set_level(tt::umd::logging::level::debug);
     std::unique_ptr<tt::umd::Cluster> cluster =
         std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{.chip_type = tt::umd::ChipType::SIMULATION,
                                                                    .target_devices = {0},
