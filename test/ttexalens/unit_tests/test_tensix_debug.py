@@ -70,7 +70,7 @@ class TestTensixDebug(unittest.TestCase):
         data = [step * i - step * num_of_elements / 2 for i in range(num_of_elements)]
         original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
         self.tensix_debug.write_regfile_data(regfile, data, TensixDataFormat.Float32)
-        ret = self.tensix_debug.read_regfile_data(regfile, TensixDataFormat.Float32, num_tiles)
+        ret = self.tensix_debug.read_regfile(regfile, num_tiles)
         assert len(ret) == len(data)
         assert all(abs(a - b) < error_threshold for a, b in zip(ret, data))
         self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
@@ -94,7 +94,29 @@ class TestTensixDebug(unittest.TestCase):
         data = [i - num_of_elements // 2 for i in range(num_of_elements)]
         original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
         self.tensix_debug.write_regfile_data(regfile, data, TensixDataFormat.Int32)
-        assert self.tensix_debug.read_regfile_data(regfile, TensixDataFormat.Int32, num_tiles) == data
+        assert self.tensix_debug.read_regfile(regfile, num_tiles) == data
+        self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
+        assert self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
+
+    @parameterized.expand(
+        [
+            (1,),
+            (2,),
+            (4,),
+            (8,),
+        ]
+    )
+    def test_read_write_regfile_data_uint32(self, num_tiles: int):
+        if self.context.devices[0]._arch == "wormhole_b0":
+            self.skipTest("Direct read/write is not supported on Wormhole.")
+
+        regfile = REGFILE.DSTACC  # Writing is only supported for dest
+
+        num_of_elements = num_tiles * TILE_SIZE
+        data = [2**32 - 1 for i in range(num_of_elements)]
+        original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        self.tensix_debug.write_regfile_data(regfile, data, TensixDataFormat.UInt32)
+        assert self.tensix_debug.read_regfile(regfile, num_tiles, signed=False) == data
         self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
         assert self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
 
@@ -116,7 +138,29 @@ class TestTensixDebug(unittest.TestCase):
         data = [(i % 2**8) - 2**7 for i in range(num_of_elements)]
         original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
         self.tensix_debug.write_regfile_data(regfile, data, TensixDataFormat.Int8)
-        assert self.tensix_debug.read_regfile_data(regfile, TensixDataFormat.Int8, num_tiles) == data
+        assert self.tensix_debug.read_regfile(regfile, num_tiles) == data
+        self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
+        assert self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
+
+    @parameterized.expand(
+        [
+            (1,),
+            (2,),
+            (4,),
+            (8,),
+        ]
+    )
+    def test_read_write_regfile_data_uint8(self, num_tiles: int):
+        if self.context.devices[0]._arch == "wormhole_b0":
+            self.skipTest("Direct read/write is not supported on Wormhole.")
+
+        regfile = REGFILE.DSTACC  # Writing is only supported for dest
+
+        num_of_elements = num_tiles * TILE_SIZE
+        data = [(i % 2**8) for i in range(num_of_elements)]
+        original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        self.tensix_debug.write_regfile_data(regfile, data, TensixDataFormat.UInt8)
+        assert self.tensix_debug.read_regfile(regfile, num_tiles, signed=False) == data
         self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
         assert self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
 

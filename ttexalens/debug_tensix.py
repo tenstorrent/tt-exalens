@@ -193,21 +193,25 @@ class TensixDebug:
         )
 
     @staticmethod
-    def _unpack_value(value: int, df: TensixDataFormat) -> int | float:
+    def _unpack_value(value: int, df: TensixDataFormat, signed: bool) -> int | float:
         if df == TensixDataFormat.Float32:
             return struct.unpack(">f", value.to_bytes(4, "big"))[0]
         # Because in ALU register format for dest is INT32 for both INT32 and UINT32 we need to check sign bit
-        elif df == TensixDataFormat.Int32:
+        elif df == TensixDataFormat.Int32 and signed:
             # If the sign bit is set, we need to convert it to a signed integer
             return value - 0x100000000 if value & 0x80000000 else value
+        elif df == TensixDataFormat.Int32 and not signed:
+            return value
         # Same as for INT32/UINT32
-        elif df == TensixDataFormat.Int8:
+        elif df == TensixDataFormat.Int8 and signed:
             # Since 1-byte integers are stored in 32-bit mode sign bit is in MSB, bytes look like this: 0x80 0x00 0x00 value
             return (value & 0x000000FF) - 0x80 if value & 0x80000000 else value
+        elif df == TensixDataFormat.Int8 and not signed:
+            return value
         else:
             raise TTException(f"Unsupported data format {df} for unpacking.")
 
-    def direct_dest_read(self, df: TensixDataFormat, num_tiles: int) -> list[int | float]:
+    def direct_dest_read(self, df: TensixDataFormat, num_tiles: int, signed: bool) -> list[int | float]:
         if not self._direct_dest_access_enabled(df):
             raise TTException("Direct dest reading not supported for this architecture or data format.")
 
@@ -224,7 +228,7 @@ class TensixDebug:
                 if address >= base_address + dest_size:
                     raise TTException(f"Address {hex(address)} is out of bounds for destination memory block.")
                 rd_data = risc_debug.read_memory(address)
-                data.append(self._unpack_value(rd_data, df))
+                data.append(self._unpack_value(rd_data, df, signed))
 
         return data
 
@@ -236,10 +240,18 @@ class TensixDebug:
             if value < -(2**31) or value > 2**31 - 1:
                 raise TTException(f"Value {value} is out of range for Int32.")
             return value if int(value) >= 0 else int(value) + 0x100000000
+        elif df == TensixDataFormat.UInt32:
+            if value < 0 or value > 2**32 - 1:
+                raise TTException(f"Value {value} is out of range for UInt32.")
+            return value
         elif df == TensixDataFormat.Int8:
             if value < -(2**7) or value > 2**7 - 1:
                 raise TTException(f"Value {value} is out of range for Int8.")
             return value if value >= 0 else 0x80000000 | (value + 0x80)
+        elif df == TensixDataFormat.UInt8:
+            if value < 0 or value > 2**8 - 1:
+                raise TTException(f"Value {value} is out of range for UInt8.")
+            return value
         else:
             raise TTException(f"Unsupported data format {df} for packing.")
 
@@ -257,7 +269,7 @@ class TensixDebug:
                 risc_debug.write_memory(address, self._pack_value(data[i], df))
 
     def read_regfile_data(
-        self, regfile: int | str | REGFILE, df: TensixDataFormat, num_tiles: int | None = None
+        self, regfile: int | str | REGFILE, df: TensixDataFormat, signed: bool, num_tiles: int | None = None
     ) -> list[int | float]:
         """Dumps SRCA/DSTACC register file from the specified core.
             Due to the architecture of SRCA, you can see only see last two faces written.
@@ -282,7 +294,7 @@ class TensixDebug:
         # Directly reading dest does not require complex unpacking so we return it right away
         if regfile == REGFILE.DSTACC and self._direct_dest_access_enabled(df):
             num_tiles = self._validate_number_of_tiles(num_tiles)
-            return self.direct_dest_read(df, num_tiles)
+            return self.direct_dest_read(df, num_tiles, signed)
 
         data: list[int | float] = []
         self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
@@ -330,10 +342,20 @@ class TensixDebug:
         if regfile != REGFILE.DSTACC:
             raise TTException("Writing is only supported for dest register, but got {regfile}")
 
-        self.register_store.write_register("ALU_FORMAT_SPEC_REG2_Dstacc", df.value)
+        # Workaround because we can't write UInt32 or UInt8 data format to alu register
+        if df == TensixDataFormat.UInt32:
+            df_to_write = TensixDataFormat.Int32
+        elif df == TensixDataFormat.UInt8:
+            df_to_write = TensixDataFormat.Int8
+        else:
+            df_to_write = df
+
+        self.register_store.write_register("ALU_FORMAT_SPEC_REG2_Dstacc", df_to_write.value)
         self.direct_dest_write(data, df)
 
-    def read_regfile(self, regfile: int | str | REGFILE, num_tiles: int | None = None) -> list[int | float] | list[str]:
+    def read_regfile(
+        self, regfile: int | str | REGFILE, num_tiles: int | None = None, signed=True
+    ) -> list[int | float] | list[str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
 
@@ -374,7 +396,7 @@ class TensixDebug:
             data = upper + lower
             WARN("The previous contents of DSTACC have been lost and should not be relied upon.")
         else:
-            data = self.read_regfile_data(regfile, df, num_tiles)
+            data = self.read_regfile_data(regfile, df, signed, num_tiles)
         try:
             if regfile == REGFILE.DSTACC and self._direct_dest_access_enabled(df):
                 # If we use dircet read data is already unpacked
