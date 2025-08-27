@@ -2,7 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-from multiprocessing import Value
 import struct
 from enum import Enum
 

@@ -367,6 +367,15 @@ class TensixDebug:
         self.direct_dest_write(data, df)
 
     def write_regfile(self, regfile: int | str | REGFILE, data: list[int | float], df: TensixDataFormat) -> None:
+        """
+        Writes data to the register file.
+        Writing is only supported for dest register, but got {regfile}
+
+        Args:
+                regfile (int | str | REGFILE): Register file to write to (0: SRCA, 1: SRCB, 2: DSTACC).
+                data (list[int | float]): Data to write.
+                df (TensixDataFormat): Data format.
+        """
         if not self._direct_dest_access_enabled(df):
             raise TTException("Direct dest writing not supported for this architecture or data format.")
 
