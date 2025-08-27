@@ -201,25 +201,25 @@ def unpack_data_direct_access(data: list[int], df: int | TensixDataFormat, signe
     return [unpack_value_direct_access(value, df, signed) for value in data]
 
 
-def pack_value_direct_access(value: int, df: TensixDataFormat) -> int:
+def pack_value_direct_access(value: int | float, df: TensixDataFormat) -> int:
     if df == TensixDataFormat.Float32:
         return int.from_bytes(struct.pack(">f", float(value)), "big")
     elif df == TensixDataFormat.Int32:
         if value < -(2**31) or value > 2**31 - 1:
             raise ValueError(f"Value {value} is out of range for Int32.")
-        return value if int(value) >= 0 else int(value) + 0x100000000
+        return int(value) if value >= 0 else int(value) + 0x100000000
     elif df == TensixDataFormat.UInt32:
         if value < 0 or value > 2**32 - 1:
             raise ValueError(f"Value {value} is out of range for UInt32.")
-        return value
+        return int(value)
     elif df == TensixDataFormat.Int8:
         if value < -(2**7) or value > 2**7 - 1:
             raise ValueError(f"Value {value} is out of range for Int8.")
-        return value if value >= 0 else 0x80000000 | (value + 0x80)
+        return int(value) if value >= 0 else 0x80000000 | (int(value) + 0x80)
     elif df == TensixDataFormat.UInt8:
         if value < 0 or value > 2**8 - 1:
             raise ValueError(f"Value {value} is out of range for UInt8.")
-        return value
+        return int(value)
     else:
         raise ValueError(f"Unsupported data format {df} for packing.")
 

@@ -201,7 +201,7 @@ class TensixDebug:
         if not self._direct_dest_access_enabled(df):
             raise TTException("Direct dest reading not supported for this architecture or data format.")
 
-        data: list[int | float] = []
+        data: list[int] = []
         # Using TRISC0 debug hardware to read memory
         risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
         if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
@@ -316,7 +316,7 @@ class TensixDebug:
         if regfile == REGFILE.DSTACC and not self._direct_dest_access_enabled(df) and num_tiles is not None:
             WARN("num_tiles argument only has effect for 32 bit formats on blackhole.")
 
-        data: list[int | float] = []
+        data: list[int] = []
         # Workaround for an architectural quirk of Wormhole: reading DST as INT32 or FP32
         # returns zeros on the lower 16 bits of each datum. This handles the FP32 case.
         if regfile == REGFILE.DSTACC and df == TensixDataFormat.Float32 and isinstance(self.device, WormholeDevice):
@@ -369,7 +369,7 @@ class TensixDebug:
     def write_regfile(self, regfile: int | str | REGFILE, data: list[int | float], df: TensixDataFormat) -> None:
         """
         Writes data to the register file.
-        Writing is only supported for dest register, but got {regfile}
+        Writing is only supported for dest register and only for formats using 32 bit mode (Float32, Int32, UInt32, Int8, UInt8)
 
         Args:
                 regfile (int | str | REGFILE): Register file to write to (0: SRCA, 1: SRCB, 2: DSTACC).
