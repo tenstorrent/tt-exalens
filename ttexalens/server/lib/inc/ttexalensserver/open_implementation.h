@@ -28,6 +28,8 @@ class open_implementation : public BaseClass {
     open_implementation(std::unique_ptr<DeviceType> device);
 
    public:
+    ~open_implementation();
+
     static std::unique_ptr<open_implementation<BaseClass>> open(const std::filesystem::path& binary_directory = {},
                                                                 const std::vector<uint8_t>& wanted_devices = {},
                                                                 bool initialize_with_noc1 = false);
