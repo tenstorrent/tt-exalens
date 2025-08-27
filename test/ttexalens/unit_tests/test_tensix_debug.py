@@ -69,7 +69,7 @@ class TestTensixDebug(unittest.TestCase):
         num_of_elements = num_tiles * TILE_SIZE
         data = [step * i - step * num_of_elements / 2 for i in range(num_of_elements)]
         original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
-        self.tensix_debug.write_regfile_data(regfile, data, TensixDataFormat.Float32)
+        self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Float32)
         ret = self.tensix_debug.read_regfile(regfile, num_tiles)
         assert len(ret) == len(data)
         assert all(abs(a - b) < error_threshold for a, b in zip(ret, data))
@@ -93,7 +93,7 @@ class TestTensixDebug(unittest.TestCase):
         num_of_elements = num_tiles * TILE_SIZE
         data = [i - num_of_elements // 2 for i in range(num_of_elements)]
         original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
-        self.tensix_debug.write_regfile_data(regfile, data, TensixDataFormat.Int32)
+        self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Int32)
         assert self.tensix_debug.read_regfile(regfile, num_tiles) == data
         self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
         assert self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
@@ -115,7 +115,7 @@ class TestTensixDebug(unittest.TestCase):
         num_of_elements = num_tiles * TILE_SIZE
         data = [2**32 - 1 for i in range(num_of_elements)]
         original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
-        self.tensix_debug.write_regfile_data(regfile, data, TensixDataFormat.UInt32)
+        self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.UInt32)
         assert self.tensix_debug.read_regfile(regfile, num_tiles, signed=False) == data
         self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
         assert self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
@@ -137,7 +137,7 @@ class TestTensixDebug(unittest.TestCase):
         num_of_elements = num_tiles * TILE_SIZE
         data = [(i % 2**8) - 2**7 for i in range(num_of_elements)]
         original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
-        self.tensix_debug.write_regfile_data(regfile, data, TensixDataFormat.Int8)
+        self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Int8)
         assert self.tensix_debug.read_regfile(regfile, num_tiles) == data
         self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
         assert self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
@@ -159,7 +159,7 @@ class TestTensixDebug(unittest.TestCase):
         num_of_elements = num_tiles * TILE_SIZE
         data = [(i % 2**8) for i in range(num_of_elements)]
         original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
-        self.tensix_debug.write_regfile_data(regfile, data, TensixDataFormat.UInt8)
+        self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.UInt8)
         assert self.tensix_debug.read_regfile(regfile, num_tiles, signed=False) == data
         self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
         assert self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
@@ -184,5 +184,5 @@ class TestTensixDebug(unittest.TestCase):
         if self.context.devices[0]._arch == "wormhole_b0":
             self.skipTest("Direct read/write is not supported on Wormhole.")
 
-        with self.assertRaises(TTException):
-            self.tensix_debug.write_regfile_data(regfile, [value], df)
+        with self.assertRaises((TTException, ValueError)):
+            self.tensix_debug.write_regfile(regfile, [value], df)

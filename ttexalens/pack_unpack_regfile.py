@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from multiprocessing import Value
 import struct
 from enum import Enum
 
@@ -156,7 +157,7 @@ def unpack_uint16(data: list[int]) -> list[int]:
     return result
 
 
-def unpack_data(data, df: int | TensixDataFormat):
+def unpack_data(data, df: int | TensixDataFormat, signed: bool):
     if isinstance(df, int):
         df = TensixDataFormat(df)
 
@@ -171,4 +172,58 @@ def unpack_data(data, df: int | TensixDataFormat):
     elif df == TensixDataFormat.UInt16:
         return unpack_uint16(data)
     else:
-        raise ValueError(f"Unknown or unsupported data format {df}")
+        raise ValueError(f"Unsupported data format {df} for unpacking.")
+
+
+# Unpacking data read with direct access require different approach
+def unpack_value_direct_access(value: int, df: TensixDataFormat, signed: bool) -> int | float:
+    if df == TensixDataFormat.Float32:
+        return struct.unpack(">f", value.to_bytes(4, "big"))[0]
+    # Because in ALU register format for dest is INT32 for both INT32 and UINT32 we need to check sign bit
+    elif df == TensixDataFormat.Int32 and signed:
+        # If the sign bit is set, we need to convert it to a signed integer
+        return value - 0x100000000 if value & 0x80000000 else value
+    elif df == TensixDataFormat.Int32 and not signed:
+        return value
+    # Same as for INT32/UINT32
+    elif df == TensixDataFormat.Int8 and signed:
+        # Since 1-byte integers are stored in 32-bit mode sign bit is in MSB, bytes look like this: 0x80 0x00 0x00 value
+        return (value & 0x000000FF) - 0x80 if value & 0x80000000 else value
+    elif df == TensixDataFormat.Int8 and not signed:
+        return value
+    else:
+        raise ValueError(f"Unsupported data format {df} for unpacking.")
+
+
+def unpack_data_direct_access(data: list[int], df: int | TensixDataFormat, signed: bool):
+    if isinstance(df, int):
+        df = TensixDataFormat(df)
+
+    return [unpack_value_direct_access(value, df, signed) for value in data]
+
+
+def pack_value_direct_access(value: int, df: TensixDataFormat) -> int:
+    if df == TensixDataFormat.Float32:
+        return int.from_bytes(struct.pack(">f", float(value)), "big")
+    elif df == TensixDataFormat.Int32:
+        if value < -(2**31) or value > 2**31 - 1:
+            raise ValueError(f"Value {value} is out of range for Int32.")
+        return value if int(value) >= 0 else int(value) + 0x100000000
+    elif df == TensixDataFormat.UInt32:
+        if value < 0 or value > 2**32 - 1:
+            raise ValueError(f"Value {value} is out of range for UInt32.")
+        return value
+    elif df == TensixDataFormat.Int8:
+        if value < -(2**7) or value > 2**7 - 1:
+            raise ValueError(f"Value {value} is out of range for Int8.")
+        return value if value >= 0 else 0x80000000 | (value + 0x80)
+    elif df == TensixDataFormat.UInt8:
+        if value < 0 or value > 2**8 - 1:
+            raise ValueError(f"Value {value} is out of range for UInt8.")
+        return value
+    else:
+        raise ValueError(f"Unsupported data format {df} for packing.")
+
+
+def pack_data_direct_access(data: list[int | float], df: TensixDataFormat) -> list[int]:
+    return [pack_value_direct_access(value, df) for value in data]
