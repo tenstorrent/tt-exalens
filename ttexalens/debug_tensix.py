@@ -218,20 +218,13 @@ class TensixDebug:
             base_address = self.noc_block.dest.address.private_address
             dest_size = self.noc_block.dest.size
 
-        was_in_reset = risc_debug.is_in_reset()
-        if was_in_reset:
-            risc_debug.set_reset_signal(False)
-
-        with risc_debug.ensure_halted():
+        with risc_debug.ensure_private_memory_access():
             for i in range(num_tiles * TILE_SIZE):
                 address = base_address + 4 * i
                 if address >= base_address + dest_size:
                     raise TTException(f"Address {hex(address)} is out of bounds for destination memory block.")
                 rd_data = risc_debug.read_memory(address)
                 data.append(self._unpack_value(rd_data, df))
-
-        if was_in_reset:
-            risc_debug.set_reset_signal(True)
 
         return data
 
@@ -256,18 +249,12 @@ class TensixDebug:
             base_address = self.noc_block.dest.address.private_address
             dest_size = self.noc_block.dest.size
 
-        was_in_reset = risc_debug.is_in_reset()
-        if was_in_reset:
-            risc_debug.set_reset_signal(False)
-        with risc_debug.ensure_halted():
+        with risc_debug.ensure_private_memory_access():
             for i in range(len(data)):
                 address = base_address + 4 * i
                 if address >= base_address + dest_size:
                     raise TTException(f"Address {hex(address)} is out of bounds for destination memory block.")
                 risc_debug.write_memory(address, self._pack_value(data[i], df))
-
-        if was_in_reset:
-            risc_debug.set_reset_signal(True)
 
     def read_regfile_data(
         self, regfile: int | str | REGFILE, df: TensixDataFormat, num_tiles: int | None = None
@@ -334,9 +321,14 @@ class TensixDebug:
 
         return data
 
-    def write_regfile_data(self, data: list[int | float], df: TensixDataFormat) -> None:
+    def write_regfile_data(self, regfile: int | str | REGFILE, data: list[int | float], df: TensixDataFormat) -> None:
         if not self._direct_dest_access_enabled(df):
             raise TTException("Direct dest writing not supported for this architecture or data format.")
+
+        regfile = convert_regfile(regfile)
+
+        if regfile != REGFILE.DSTACC:
+            raise TTException("Writing is only supported for dest register, but got {regfile}")
 
         self.register_store.write_register("ALU_FORMAT_SPEC_REG2_Dstacc", df.value)
         self.direct_dest_write(data, df)
