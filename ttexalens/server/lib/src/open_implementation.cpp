@@ -172,6 +172,11 @@ template <typename BaseClass>
 open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> device)
     : BaseClass(device.get()), device(std::move(device)) {}
 
+template <typename BaseClass>
+open_implementation<BaseClass>::~open_implementation() {
+    device->close_device();
+}
+
 template <>
 std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jtag_implementation>::open(
     const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
@@ -201,7 +206,7 @@ std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jt
     for (size_t device_id = 0; device_id < jtag_device->get_device_cnt(); device_id++) {
         tt::ARCH arch = jtag_device->get_jtag_arch(device_id);
         uint32_t harvesting = *jtag_device->get_efuse_harvesting(device_id);
-        soc_descriptors[device_id] = tt_SocDescriptor(arch, harvesting);
+        soc_descriptors[device_id] = tt_SocDescriptor(arch, {.harvesting_masks = {harvesting}});
         device_soc_descriptors_yamls[device_id] =
             jtag_create_device_soc_descriptor(soc_descriptors[device_id], device_id);
         device_ids.push_back(device_id);
@@ -296,6 +301,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open_simulation(
     const std::filesystem::path &simulation_directory) {
+    tt::umd::logging::set_level(tt::umd::logging::level::debug);
     std::unique_ptr<tt::umd::Cluster> cluster =
         std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{.chip_type = tt::umd::ChipType::SIMULATION,
                                                                    .target_devices = {0},
