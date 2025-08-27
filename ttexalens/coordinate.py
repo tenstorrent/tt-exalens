@@ -125,6 +125,22 @@ class OnChipCoordinate:
         else:
             raise Exception("Unknown input coordinate system: " + input_type)
 
+    @property
+    def context(self):
+        return self._device._context
+
+    @property
+    def device(self):
+        return self._device
+
+    @property
+    def device_id(self):
+        return self._device._id
+
+    @property
+    def noc_block(self):
+        return self.device.get_block(self)
+
     # This returns a tuple with the coordinates in the specified coordinate system.
     def to(self, output_type):
         """
