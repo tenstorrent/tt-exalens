@@ -159,226 +159,6 @@ Try to find a default output directory.
 
 # tt_exalens_lib
 
-## convert_coordinate
-
-```
-convert_coordinate(core_loc, device_id=0, context=None) -> OnChipCoordinate
-```
-
-
-### Description
-
-Converts a string coordinate to an OnChipCoordinate object.
-
-
-### Args
-
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-- `device_id` *(int, default 0)*: ID number of device to convert to.
-- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-
-
-### Returns
-
- *(OnChipCoordinate)*: Converted coordinate.
-
-
-
-## read_word_from_device
-
-```
-read_word_from_device(core_loc, addr, device_id=0, context=None, noc_id=None) -> int
-```
-
-
-### Description
-
-Reads one word of data, from address 'addr' at core <x-y>.
-
-
-### Args
-
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-- `addr` *(int)*: Memory address to read from.
-- `device_id` *(int, default 0)*: ID number of device to read from.
-- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
-
-
-### Returns
-
- *(int)*: Data read from the device.
-
-
-
-## read_words_from_device
-
-```
-read_words_from_device(core_loc, addr, device_id=0, word_count=1, context=None, noc_id=None) -> list[int]
-```
-
-
-### Description
-
-Reads word_count four-byte words of data, starting from address 'addr' at core <x-y>.
-
-
-### Args
-
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-- `addr` *(int)*: Memory address to read from.
-- `device_id` *(int, default 0)*: ID number of device to read from.
-- `word_count` *(int, default 1)*: Number of 4-byte words to read.
-- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
-
-
-### Returns
-
- *(list[int])*: Data read from the device.
-
-
-
-## read_from_device
-
-```
-read_from_device(core_loc, addr, device_id=0, num_bytes=4, context=None, noc_id=None) -> bytes
-```
-
-
-### Description
-
-Reads num_bytes of data starting from address 'addr' at core <x-y>.
-
-
-### Args
-
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-- `addr` *(int)*: Memory address to read from.
-- `device_id` *(int, default 0)*: ID number of device to read from.
-- `num_bytes` *(int, default 4)*: Number of bytes to read.
-- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
-
-
-### Returns
-
- *(bytes)*: Data read from the device.
-
-
-
-## write_words_to_device
-
-```
-write_words_to_device(core_loc, addr, data, device_id=0, context=None, noc_id=None) -> int
-```
-
-
-### Description
-
-Writes data word to address 'addr' at noc0 location x-y of the current chip.
-
-
-### Args
-
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-- `addr` *(int)*: Memory address to write to. If multiple words are to be written, the address is the starting address.
-- `data` *(int | list[int])*: 4-byte integer word to be written, or a list of them.
-- `device_id` *(int, default 0)*: ID number of device to write to.
-- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
-
-
-### Returns
-
- *(int)*: If the execution is successful, return value should be 4 (number of bytes written).
-
-
-
-## write_to_device
-
-```
-write_to_device(core_loc, addr, data, device_id=0, context=None, noc_id=None) -> int
-```
-
-
-### Description
-
-Writes data to address 'addr' at noc0 location x-y of the current chip.
-
-
-### Args
-
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
-- `addr` *(int)*: Memory address to write to.
-- `data` *(list[int] | bytes)*: Data to be written. Lists are converted to bytes before writing, each element a byte. Elements must be between 0 and 255.
-- `device_id` *(int, default 0)*: ID number of device to write to.
-- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
-
-
-### Returns
-
- *(int)*: If the execution is successful, return value should be number of bytes written.
-
-
-
-## load_elf
-
-```
-load_elf(elf_file, core_loc, risc_name, neo_id=None, device_id=0, context=None) -> None
-```
-
-
-### Description
-
-Loads the given ELF file into the specified RISC core. RISC core must be in reset before loading the ELF.
-
-
-### Args
-
-- `elf_file` *(str)*: Path to the ELF file to run.
-- `core_loc` *(str | OnChipCoordinate | list[str | OnChipCoordinate])*: One of the following:
-1. "all" to run the ELF on all cores;
-2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
-3. a list of X-Y (noc0/translated), X,Y (logical) or OnChipCoordinate locations of cores, possibly mixed;
-4. an OnChipCoordinate object.
-- `risc_name` *(str)*: RiscV name (e.g. "brisc", "trisc0", "trisc1", "trisc2", "ncrisc").
-- `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
-- `device_id` *(int, default 0)*: ID number of device to run ELF on.
-- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-
-
-
-
-## run_elf
-
-```
-run_elf(elf_file, core_loc, risc_name, neo_id=None, device_id=0, context=None) -> None
-```
-
-
-### Description
-
-Loads the given ELF file into the specified RISC core and executes it. Similar to load_elf, but RISC core is taken out of reset after load.
-
-
-### Args
-
-- `elf_file` *(str)*: Path to the ELF file to run.
-- `core_loc` *(str | OnChipCoordinate | list[str | OnChipCoordinate])*: One of the following:
-1. "all" to run the ELF on all cores;
-2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
-3. a list of X-Y (noc0/translated), X,Y (logical) or OnChipCoordinate locations of cores, possibly mixed;
-4. an OnChipCoordinate object.
-- `risc_name` *(str)*: RiscV name (e.g. "brisc", "trisc0", "trisc1", "trisc2", "ncrisc").
-- `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
-- `device_id` *(int, default 0)*: ID number of device to run ELF on.
-- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-
-
-
-
 ## check_context
 
 ```
@@ -395,10 +175,231 @@ that the context can be reused in calls to other functions.
 
 
 
+## convert_coordinate
+
+```
+convert_coordinate(location, device_id=0, context=None) -> OnChipCoordinate
+```
+
+
+### Description
+
+Converts a string location to an OnChipCoordinate object.
+If location is already OnChipCoordinate, it is returned as-is.
+
+
+### Args
+
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
+- `device_id` *(int, default 0)*: ID number of device to convert to.
+- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+
+
+### Returns
+
+ *(OnChipCoordinate)*: Converted coordinate.
+
+
+
+## read_word_from_device
+
+```
+read_word_from_device(location, addr, device_id=0, context=None, noc_id=None) -> int
+```
+
+
+### Description
+
+Reads one four-byte word of data, from address 'addr' at specified location using specified noc.
+
+
+### Args
+
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
+- `addr` *(int)*: Memory address to read from.
+- `device_id` *(int, default 0)*: ID number of device to read from.
+- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+
+
+### Returns
+
+ *(int)*: Data read from the device.
+
+
+
+## read_words_from_device
+
+```
+read_words_from_device(location, addr, device_id=0, word_count=1, context=None, noc_id=None) -> int
+```
+
+
+### Description
+
+Reads word_count four-byte words of data, starting from address 'addr' at specified location using specified noc.
+
+
+### Args
+
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
+- `addr` *(int)*: Memory address to read from.
+- `device_id` *(int, default 0)*: ID number of device to read from.
+- `word_count` *(int, default 1)*: Number of 4-byte words to read.
+- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+
+
+### Returns
+
+ *(list[int])*: Data read from the device.
+
+
+
+## read_from_device
+
+```
+read_from_device(location, addr, device_id=0, num_bytes=4, context=None, noc_id=None) -> bytes
+```
+
+
+### Description
+
+Reads num_bytes of data starting from address 'addr' at specified location using specified noc.
+
+
+### Args
+
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
+- `addr` *(int)*: Memory address to read from.
+- `device_id` *(int, default 0)*: ID number of device to read from.
+- `num_bytes` *(int, default 4)*: Number of bytes to read.
+- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+
+
+### Returns
+
+ *(bytes)*: Data read from the device.
+
+
+
+## write_words_to_device
+
+```
+write_words_to_device(location, addr, data, device_id=0, context=None, noc_id=None) -> int
+```
+
+
+### Description
+
+Writes data word to address 'addr' at specified location using specified noc.
+
+
+### Args
+
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
+- `addr` *(int)*: Memory address to write to. If multiple words are to be written, the address is the starting address.
+- `data` *(int | list[int])*: 4-byte integer word to be written, or a list of them.
+- `device_id` *(int, default 0)*: ID number of device to write to.
+- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+
+
+### Returns
+
+ *(int)*: If the execution is successful, return value should be 4 (number of bytes written).
+
+
+
+## write_to_device
+
+```
+write_to_device(location, addr, data, device_id=0, context=None, noc_id=None) -> int
+```
+
+
+### Description
+
+Writes data to address 'addr' at specified location using specified noc.
+
+
+### Args
+
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
+- `addr` *(int)*: Memory address to write to.
+- `data` *(list[int] | bytes)*: Data to be written. Lists are converted to bytes before writing, each element a byte. Elements must be between 0 and 255.
+- `device_id` *(int, default 0)*: ID number of device to write to.
+- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+
+
+### Returns
+
+ *(int)*: If the execution is successful, return value should be number of bytes written.
+
+
+
+## load_elf
+
+```
+load_elf(elf_file, location, risc_name, neo_id=None, device_id=0, context=None) -> None
+```
+
+
+### Description
+
+Loads the given ELF file into the specified RISC core. RISC core must be in reset before loading the ELF.
+
+
+### Args
+
+- `elf_file` *(str)*: Path to the ELF file to run.
+- `location` *(str | OnChipCoordinate | list[str | OnChipCoordinate])*: One of the following:
+1. "all" to run the ELF on all cores;
+2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
+3. a list of X-Y (noc0/translated), X,Y (logical) or OnChipCoordinate locations of cores, possibly mixed;
+4. an OnChipCoordinate object.
+- `risc_name` *(str)*: RiscV name (e.g. "brisc", "trisc0", "trisc1", "trisc2", "ncrisc").
+- `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
+- `device_id` *(int, default 0)*: ID number of device to run ELF on.
+- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+
+
+
+
+## run_elf
+
+```
+run_elf(elf_file, location, risc_name, neo_id=None, device_id=0, context=None) -> None
+```
+
+
+### Description
+
+Loads the given ELF file into the specified RISC core and executes it. Similar to load_elf, but RISC core is taken out of reset after load.
+
+
+### Args
+
+- `elf_file` *(str)*: Path to the ELF file to run.
+- `location` *(str | OnChipCoordinate | list[str | OnChipCoordinate])*: One of the following:
+1. "all" to run the ELF on all cores;
+2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
+3. a list of X-Y (noc0/translated), X,Y (logical) or OnChipCoordinate locations of cores, possibly mixed;
+4. an OnChipCoordinate object.
+- `risc_name` *(str)*: RiscV name (e.g. "brisc", "trisc0", "trisc1", "trisc2", "ncrisc").
+- `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
+- `device_id` *(int, default 0)*: ID number of device to run ELF on.
+- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+
+
+
+
 ## arc_msg
 
 ```
-arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, context=None, noc_id=None) -> list[int]
+arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, context=None, noc_id=None) -> int
 ```
 
 
@@ -453,7 +454,7 @@ Reads an ARC telemetry entry from the device.
 ## read_tensix_register
 
 ```
-read_tensix_register(core_loc, register, noc_id=0, neo_id=None, device_id=0, context=None) -> int
+read_tensix_register(location, register, noc_id=0, neo_id=None, device_id=0, context=None) -> int
 ```
 
 
@@ -464,7 +465,7 @@ Reads the value of a register from the tensix core.
 
 ### Args
 
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
 - `register` *(str | RegisterDescription)*: Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
 ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
 - `noc_id` *(int, default 0)*: NOC ID to use.
@@ -482,7 +483,7 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 ## write_tensix_register
 
 ```
-write_tensix_register(core_loc, register, value, noc_id=0, neo_id=None, device_id=0, context=None) -> None
+write_tensix_register(location, register, value, noc_id=0, neo_id=None, device_id=0, context=None) -> None
 ```
 
 
@@ -493,7 +494,7 @@ Writes value to a register on the tensix core.
 
 ### Args
 
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
 - `register` *(str | TensixRegisterDescription)*: Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
 ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
 - `value` *(int)*: Value to write to the register.
@@ -533,13 +534,16 @@ top_callstack(pc, elfs, offsets=None, context=None) -> list
 
 Retrieves the top frame of the callstack for the specified PC on the given ELF.
 There is no stack walking, so the function will return the function at the given PC and all inlined functions on the top frame (if there are any).
-Args:
-pc (int): Program counter to be used for the callstack.
-elfs (list[str] | str | list[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
-offsets (list[int], int, optional): List of offsets for each ELF file. Default: None.
-context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
-Returns:
-List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
+
+
+### Args
+
+- `pc` *(int)*: Program counter to be used for the callstack.
+- `elfs` *(list[str] | str | list[ParsedElfFile] | ParsedElfFile)*: ELF files to be used for the callstack.
+- `offsets` *(list[int], int, optional)*: List of offsets for each ELF file. Default: None.
+- `context` *(Context)*: TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+- `Returns`
+- `List`: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
 
 
@@ -547,26 +551,28 @@ List: Callstack (list of functions and information about them) of the specified 
 ## callstack
 
 ```
-callstack(core_loc, elfs, offsets=None, risc_name=brisc, neo_id=None, max_depth=100, stop_on_main=True, verbose=False, device_id=0, context=None) -> list
+callstack(location, elfs, offsets=None, risc_name=brisc, neo_id=None, max_depth=100, stop_on_main=True, device_id=0, context=None) -> list
 ```
 
 
 ### Description
 
 Retrieves the callstack of the specified RISC core for a given ELF.
-Args:
-core_loc (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, DRAM channel (e.g., ch3), or OnChipCoordinate object.
-elfs (list[str] | str | list[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
-offsets (list[int], int, optional): List of offsets for each ELF file. Default: None.
-risc_name (str): RISC-V core name (e.g. "brisc", "trisc0", etc.).
-neo_id (int | None, optional): NEO ID of the RISC-V core.
-max_depth (int): Maximum depth of the callstack. Default: 100.
-stop_on_main (bool): If True, stops at the main function. Default: True.
-verbose (bool): If True, enables verbose output. Default: False.
-device_id (int): ID of the device on which the kernel is run. Default: 0.
-context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
-Returns:
-List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
+
+
+### Args
+
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
+- `elfs` *(list[str] | str | list[ParsedElfFile] | ParsedElfFile)*: ELF files to be used for the callstack.
+- `offsets` *(list[int], int, optional)*: List of offsets for each ELF file. Default: None.
+- `risc_name` *(str)*: RISC-V core name (e.g. "brisc", "trisc0", etc.).
+- `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
+- `max_depth` *(int)*: Maximum depth of the callstack. Default: 100.
+- `stop_on_main` *(bool)*: If True, stops at the main function. Default: True.
+- `device_id` *(int)*: ID of the device on which the kernel is run. Default: 0.
+- `context` *(Context)*: TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+- `Returns`
+- `List`: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
 
 
@@ -574,7 +580,7 @@ List: Callstack (list of functions and information about them) of the specified 
 ## read_riscv_memory
 
 ```
-read_riscv_memory(core_loc, addr, risc_name, neo_id=None, device_id=0, context=None) -> int
+read_riscv_memory(location, addr, risc_name, neo_id=None, device_id=0, context=None) -> int
 ```
 
 
@@ -585,7 +591,7 @@ Reads a 32-bit word from the specified RISC-V core's private memory.
 
 ### Args
 
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
 - `addr` *(int)*: Memory address to read from.
 - `risc_name` *(str)*: RISC-V core name (e.g. "brisc", "trisc0", etc.).
 - `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
@@ -602,7 +608,7 @@ Reads a 32-bit word from the specified RISC-V core's private memory.
 ## write_riscv_memory
 
 ```
-write_riscv_memory(core_loc, addr, value, risc_name, neo_id=None, device_id=0, context=None) -> None
+write_riscv_memory(location, addr, value, risc_name, neo_id=None, device_id=0, context=None) -> None
 ```
 
 
@@ -613,7 +619,7 @@ Writes a 32-bit word to the specified RISC-V core's private memory.
 
 ### Args
 
-- `core_loc` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location of a core in string format, dram channel (e.g. ch3), or OnChipCoordinate object.
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
 - `addr` *(int)*: Memory address to read from.
 - `value` *(int)*: Value to write.
 - `risc_name` *(str)*: RISC-V core name (e.g. "brisc", "trisc0", etc.).
@@ -650,7 +656,7 @@ Constructor for the Coordinate class.
 - `x` *(int)*: The x-coordinate value.
 - `y` *(int)*: The y-coordinate value.
 - `input_type` *(str)*: The input coordinate system type. One of the following:
-- `- noc0`: NOC routing coordinate for NOC 0. (X-Y).
+- `- noc0`: NOC routing coordinate for NOC 0. (X-Y). Also known as "physical" coordinate.
 - `- noc1`: NOC routing coordinate for NOC 1. (X-Y)
 - `- die`: Die coordinate, a location on the die grid. (X,Y)
 - `- logical`: Logical grid coordinate. Notation: qX,Y, where q represents first letter of the core type. If q is not present, it is considered as tensix core.
