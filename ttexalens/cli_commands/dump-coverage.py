@@ -53,7 +53,7 @@ def run(cmd_text, context, ui_state: UIState) -> list:
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             try:
-                dump_coverage(context, elf, device, loc, gcda_path, gcno_path)
+                dump_coverage(elf, loc, gcda_path, gcno_path)
                 util.VERBOSE(f"Coverage data dumped for device {device.id} loc {loc}:")
                 if gcno_path:
                     util.VERBOSE(gcno_path)

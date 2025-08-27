@@ -674,7 +674,7 @@ def coverage(
 
     from ttexalens.coverage import dump_coverage
 
-    dump_coverage(context, elf, coordinate, gcda_path, gcno_copy_path)
+    dump_coverage(elf, coordinate, gcda_path, gcno_copy_path)
 
 
 def read_riscv_memory(
