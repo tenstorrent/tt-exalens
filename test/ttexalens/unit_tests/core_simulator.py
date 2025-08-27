@@ -39,8 +39,6 @@ class RiscvCoreSimulator:
         debug_bus = self.noc_block.get_debug_bus(self.neo_id)
         assert debug_bus is not None
         self.debug_bus_store: DebugBusSignalStore = debug_bus
-        if self.risc_debug.risc_info.can_change_code_start_address:
-            self.risc_debug.risc_info.set_code_start_address(self.risc_debug.register_store, 0xD000)
         self.program_base_address = self.risc_debug.risc_info.get_code_start_address(self.risc_debug.register_store)
 
         # Initialize core in reset state

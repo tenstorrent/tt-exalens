@@ -31,6 +31,7 @@ class TestNOC(unittest.TestCase):
     def test_noc_write(self):
         # Read the counter, write 3 values through the NOC, and expect the counter to go up by at least 6
         before = self.register_store.read_register("NIU_SLV_NONPOSTED_WR_REQ_RECEIVED")
-        write_words_to_device(self.loc, 0x333, [1, 1, 1], noc_id=self.noc_id)
+        for _ in range(3):
+            write_words_to_device(self.loc, 0x333, 1, noc_id=self.noc_id)
         after = self.register_store.read_register("NIU_SLV_NONPOSTED_WR_REQ_RECEIVED")
         self.assertGreaterEqual(after, before + 6)

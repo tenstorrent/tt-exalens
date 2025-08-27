@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  callstack <elf-files> [-o <offsets>] [-r <risc>] [-m <max-depth>] [-v] [-d <device>] [-l <loc>]
+  callstack <elf-files> [-o <offsets>] [-r <risc>] [-m <max-depth>] [-d <device>] [-l <loc>]
 
 Description:
   Prints callstack using provided elf for a given RiscV core.
@@ -25,7 +25,7 @@ command_metadata = {
     "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],
-    "common_option_names": ["--device", "--loc", "--verbose"],
+    "common_option_names": ["--device", "--loc"],
 }
 
 import os
@@ -44,7 +44,6 @@ def run(cmd_text, context, ui_state: UIState):
         common_option_names=command_metadata["common_option_names"],
     )
 
-    verbose = dopt.args["-v"]
     limit = int(dopt.args["-m"])
     elf_paths = dopt.args["<elf-files>"].split(",")
     offsets = (
@@ -77,15 +76,12 @@ def run(cmd_text, context, ui_state: UIState):
                         util.ERROR(f"No RISC-V cores found at location {loc}")
                         return
                 callstack = lib.callstack(
-                    core_loc=loc,
+                    location=loc,
                     elfs=elfs,
                     offsets=offsets,
                     risc_name=risc_name,
                     max_depth=limit,
                     stop_on_main=stop_on_main,
-                    verbose=verbose,
-                    device_id=device.id(),
-                    context=context,
                 )
                 print(
                     f"Location: {util.CLR_INFO}{loc.to_user_str()}{util.CLR_END}, core: {util.CLR_WHITE}{risc_name}{util.CLR_END}"
