@@ -134,7 +134,13 @@ class ElfDwarf:
         """
         Given an address, find the function that contains that address. Goes through all CUs and all DIEs and all inlined functions.
         """
-        # Try to find CU that contains this address
+        # DWARF symbols may sometimes show overlapping address ranges. If this is the
+        # case, we return the function with the narrowest address range as a heuristic.
+
+        # We save the current best candidate here.
+        best_die = None
+
+        # Try to find the CU that contains this address.
         for cu in self.iter_CUs():
             # Top DIE should contain the address
             top_die = cu.top_DIE
@@ -142,19 +148,28 @@ class ElfDwarf:
                 if range[0] <= address < range[1]:
                     # Try to recurse until we find last child that contains the address
                     result_die = top_die
+                    result_range = range  # Save the range for later comparison
                     found = True
                     while found:
                         found = False
                         for child in result_die.iter_children():
                             for range in child.address_ranges:
                                 if range[0] <= address < range[1]:
+                                    result_range = range
                                     result_die = child
                                     found = True
                                     break
-                    return result_die
 
-        # We failed to find the function
-        return None
+                    # Update our best solution based on the heuristic
+                    if best_die is None:
+                        # This is our first solution
+                        best_die = result_die
+                        best_range = result_range
+                    elif result_range[1] - result_range[0] < best_range[1] - best_range[0]:
+                        # Tighter range than the previous, save this one
+                        best_range = result_range
+                        best_die = result_die
+        return best_die
 
     @cached_property
     def file_lines_ranges(self):
