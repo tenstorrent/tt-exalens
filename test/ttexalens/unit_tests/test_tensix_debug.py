@@ -32,6 +32,9 @@ class TestTensixDebug(unittest.TestCase):
         self.location = OnChipCoordinate.create(self.location_str, device=self.context.devices[0])
         self.tensix_debug = TensixDebug(self.location, 0, self.context)
 
+    def is_blackhole(self) -> bool:
+        return self.context.devices[0]._arch == "blackhole"
+
     def test_read_write_cfg_register(self):
         cfg_reg_name = "ALU_FORMAT_SPEC_REG2_Dstacc"
         self.tensix_debug.write_tensix_register(cfg_reg_name, 10)
@@ -59,8 +62,8 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_data_fp32(self, num_tiles: int):
-        if self.context.devices[0]._arch == "wormhole_b0":
-            self.skipTest("Direct read/write is not supported on Wormhole.")
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
@@ -85,8 +88,8 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_data_int32(self, num_tiles: int):
-        if self.context.devices[0]._arch == "wormhole_b0":
-            self.skipTest("Direct read/write is not supported on Wormhole.")
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
@@ -107,8 +110,8 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_data_uint32(self, num_tiles: int):
-        if self.context.devices[0]._arch == "wormhole_b0":
-            self.skipTest("Direct read/write is not supported on Wormhole.")
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
@@ -129,8 +132,8 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_data_int8(self, num_tiles: int):
-        if self.context.devices[0]._arch == "wormhole_b0":
-            self.skipTest("Direct read/write is not supported on Wormhole.")
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
@@ -151,8 +154,8 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_data_uint8(self, num_tiles: int):
-        if self.context.devices[0]._arch == "wormhole_b0":
-            self.skipTest("Direct read/write is not supported on Wormhole.")
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
@@ -181,8 +184,8 @@ class TestTensixDebug(unittest.TestCase):
     def test_invalid_write_regfile_data(
         self, df: TensixDataFormat, regfile: int | str | REGFILE = REGFILE.DSTACC, value: int | float = 1
     ):
-        if self.context.devices[0]._arch == "wormhole_b0":
-            self.skipTest("Direct read/write is not supported on Wormhole.")
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
 
         with self.assertRaises((TTException, ValueError)):
             self.tensix_debug.write_regfile(regfile, [value], df)
