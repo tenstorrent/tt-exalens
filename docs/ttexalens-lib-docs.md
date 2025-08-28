@@ -732,4 +732,3 @@ create(coord_str, device, coord_type=None) -> None
 ```
 Creates a coordinate object from a string. The string can be in any of the supported coordinate systems.
  *(OnChipCoordinate)*: The created coordinate object.
-

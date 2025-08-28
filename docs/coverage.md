@@ -32,9 +32,9 @@ If you wish to integrate gcov into your project, some build adjustments will be 
 - Linker script changes:
   - Make sure your memory layout can handle the increase in code and data size. It's recommended to move data out of L0 (the `0xFFB00000` region) and only leave the stack there.
   - Allocate a memory region for each RISC to store its coverage data (for instance, `BRISC_GCOV_MEM`, `TRISC0_GCOV_MEM`, etc.)
-  
+
     (Take a look at [`memory.wormhole.debug.ld`](../riscv-src/memory.wormhole.debug.ld) as an example.)
-  
+
   - Alias each RISC's new region (`REGION_ALIAS("REGION_GCOV", BRISC_GCOV_MEM)` and so on, as seen in [`brisc.ld`](../riscv-src/brisc.ld), [`trisc0.ld`](../riscv-src/trisc0.ld), etc.)
   - Add the following to the `SECTIONS` part of your linker scripts (as seen in [`sections.ld`](../riscv-src/sections.ld)):
   ```GNU ld

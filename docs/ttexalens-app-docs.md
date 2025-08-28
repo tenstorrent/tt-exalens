@@ -31,7 +31,7 @@ Reads and prints a block of data from address 'addr' at core <core-loc>.
 
 Read 1 word from address 0
 ```
-brxy 0,0 0x0 1                          
+brxy 0,0 0x0 1
 ```
 Output:
 ```
@@ -40,7 +40,7 @@ Output:
 ```
 Read 16 words from address 0
 ```
-brxy 0,0 0x0 16                         
+brxy 0,0 0x0 16
 ```
 Output:
 ```
@@ -52,7 +52,7 @@ Output:
 ```
 Prints 32 bytes in i8 format
 ```
-brxy 0,0 0x0 32 --format i8             
+brxy 0,0 0x0 32 --format i8
 ```
 Output:
 ```
@@ -68,7 +68,7 @@ Output:
 ```
 Sample for 5 seconds
 ```
-brxy 0,0 0x0 32 --format i8 --sample 5  
+brxy 0,0 0x0 32 --format i8 --sample 5
 ```
 Output:
 ```
@@ -96,7 +96,7 @@ Sampling for 0.15625 seconds...
 ```
 Read 16 words from dram channel 0
 ```
-brxy ch0 0x0 16                         
+brxy ch0 0x0 16
 ```
 Output:
 ```
@@ -201,12 +201,12 @@ Commands for RISC-V debugging:
 
 List predefined debug bus signals
 ```
-debug-bus list-names                        
+debug-bus list-names
 ```
 Output:
 ```
 === Device 0 - location 0,0)
-         Signals          
+         Signals
 ╭───────────┬────────────╮
 │ Name      │ Value      │
 ├───────────┼────────────┤
@@ -220,12 +220,12 @@ Output:
 ```
 List up to 5 signals whose names contain pc
 ```
-debug-bus list-names --search *pc* --max 5  
+debug-bus list-names --search *pc* --max 5
 ```
 Output:
 ```
 === Device 0 - location 0,0)
-         Signals          
+         Signals
 ╭───────────┬────────────╮
 │ Name      │ Value      │
 ├───────────┼────────────┤
@@ -239,7 +239,7 @@ Output:
 ```
 Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
 ```
-debug-bus trisc0_pc,trisc1_pc               
+debug-bus trisc0_pc,trisc1_pc
 ```
 Output:
 ```
@@ -248,7 +248,7 @@ device:0 loc:1-1 (0,0)  trisc1_pc: 0x2414c
 ```
 Prints custom debug bus signal and trisc2_pc
 ```
-debug-bus {7,0,12,0x3ffffff},trisc2_pc      
+debug-bus {7,0,12,0x3ffffff},trisc2_pc
 ```
 Output:
 ```
@@ -293,7 +293,7 @@ Shows a device summary. When no argument is supplied, shows the status of the RI
 
 Shows the status of the RISC-V for all devices
 ```
-device                              
+device
 ```
 Output:
 ```
@@ -319,7 +319,7 @@ Legend:
 ```
 Shows the status of the RISC-V on noc0 axis for all devices
 ```
-device noc0                         
+device noc0
 ```
 Output:
 ```
@@ -347,7 +347,7 @@ Legend:
 ```
 Shows noc0 coordinates on logical tensix axis for all devices
 ```
-device logical-tensix noc0          
+device logical-tensix noc0
 ```
 Output:
 ```
@@ -372,7 +372,7 @@ Legend:
 ```
 Shows the block type in noc0 axis for all devices without legend
 ```
-device noc0 block --no-legend       
+device noc0 block --no-legend
 ```
 Output:
 ```
@@ -393,7 +393,7 @@ Output:
 ```
 Shows the status of the RISC-V on die axis for device 0
 ```
-device -d 0 die                     
+device -d 0 die
 ```
 Output:
 ```
@@ -421,7 +421,7 @@ Legend:
 ```
 Shows noc0 coordinates on logical dram axis for device 0
 ```
-device -d 0 logical-dram noc0       
+device -d 0 logical-dram noc0
 ```
 Output:
 ```
@@ -440,7 +440,7 @@ Legend:
 ```
 Shows the block type on noc0 axis for device 0 without legend
 ```
-device -d 0 noc0 block --no-legend  
+device -d 0 noc0 block --no-legend
 ```
 Output:
 ```
@@ -495,7 +495,7 @@ Prints the configuration register of the given name, at the specified location a
 
 Prints all configuration registers for current device and core
 ```
-cfg              
+cfg
 ```
 Output:
 ```
@@ -523,7 +523,7 @@ ALU
 ```
 Prints all configuration registers for device with id 0 and current core
 ```
-cfg -d 0         
+cfg -d 0
 ```
 Output:
 ```
@@ -551,7 +551,7 @@ ALU
 ```
 Pirnts all configuration registers for current device and core at location 0,0
 ```
-cfg -l 0,0       
+cfg -l 0,0
 ```
 Output:
 ```
@@ -579,7 +579,7 @@ ALU
 ```
 Prints all configuration registers for current device and core
 ```
-cfg all          
+cfg all
 ```
 Output:
 ```
@@ -607,7 +607,7 @@ ALU
 ```
 Prints alu configuration registers for current device and core
 ```
-cfg alu          
+cfg alu
 ```
 Output:
 ```
@@ -634,7 +634,7 @@ ALU
 ```
 Prints packer's configuration registers for current device and core
 ```
-cfg pack         
+cfg pack
 ```
 Output:
 ```
@@ -662,7 +662,7 @@ PACKER
 ```
 Prints unpacker's configuration registers for current device and core
 ```
-cfg unpack       
+cfg unpack
 ```
 Output:
 ```
@@ -932,13 +932,13 @@ Displays NOC (Network on Chip) registers.
 
 Prints status registers for device 0 on 0,0
 ```
-noc status -d 0 -l 0,0                      
+noc status -d 0 -l 0,0
 ```
 Output:
 ```
 ==== Device 0 - Location: 1-1
 NOC0 Status Registers
-              Transaction Counters (Sent)                              Transaction Counters (Received)               
+              Transaction Counters (Sent)                              Transaction Counters (Received)
 ╭────────────────────────────┬────────────┬────────────╮ ╭────────────────────────────────┬────────────┬────────────╮
 │ Name                       │ Address    │ Value      │ │ Name                           │ Address    │ Value      │
 ├────────────────────────────┼────────────┼────────────┤ ├────────────────────────────────┼────────────┼────────────┤
@@ -953,54 +953,54 @@ NOC0 Status Registers
 ╰────────────────────────────┴────────────┴────────────╯ ╰────────────────────────────────┴────────────┴────────────╯
 
 NOC1 Status Registers
-              Transaction Counters (Sent)                              Transaction Counters (Received)               
+              Transaction Counters (Sent)                              Transaction Counters (Received)
 ╭────────────────────────────┬────────────┬────────────╮ ╭────────────────────────────────┬────────────┬────────────╮
 │ Name                       │ Address    │ Value      │ │ Name                           │ Address    │ Value      │
 ...
 ```
 Prints status registers with simple output
 ```
-noc status -s                               
+noc status -s
 ```
 Output:
 ```
 ==== Device 0 - Location: 1-1
 NOC0 Status Registers
-              Transaction Counters (Sent)               
-                                                        
-  write acks received          0xffb20204   0x00000000  
-  read resps received          0xffb20208   0x00000000  
-  read words received          0xffb2020c   0x00000000  
-  read reqs sent               0xffb20214   0x00000000  
-  nonposted write words sent   0xffb20220   0x00000000  
-  posted write words sent      0xffb20224   0x00000000  
-  nonposted write reqs sent    0xffb20228   0x00000000  
-  posted write reqs sent       0xffb2022c   0x00000000  
-                                                        
+              Transaction Counters (Sent)
 
-              Transaction Counters (Received)               
-                                                            
-  write acks sent                  0xffb202c4   0x0018b7fe  
-  read resps sent                  0xffb202c8   0x0010b60e  
-  read words sent                  0xffb202cc   0x0010b60d  
-  read reqs received               0xffb202d4   0x0010b60d  
+  write acks received          0xffb20204   0x00000000
+  read resps received          0xffb20208   0x00000000
+  read words received          0xffb2020c   0x00000000
+  read reqs sent               0xffb20214   0x00000000
+  nonposted write words sent   0xffb20220   0x00000000
+  posted write words sent      0xffb20224   0x00000000
+  nonposted write reqs sent    0xffb20228   0x00000000
+  posted write reqs sent       0xffb2022c   0x00000000
+
+
+              Transaction Counters (Received)
+
+  write acks sent                  0xffb202c4   0x0018b7fe
+  read resps sent                  0xffb202c8   0x0010b60e
+  read words sent                  0xffb202cc   0x0010b60d
+  read reqs received               0xffb202d4   0x0010b60d
 ...
 ```
 Prints a specific register value
 ```
-noc register NIU_MST_RD_REQ_SENT            
+noc register NIU_MST_RD_REQ_SENT
 ```
 Output:
 ```
 ==== Device 0 - Location: 1-1
-                 NOC0 Registers                  
+                 NOC0 Registers
 ╭─────────────────────┬────────────┬────────────╮
 │ Name                │ Address    │ Value      │
 ├─────────────────────┼────────────┼────────────┤
 │ NIU_MST_RD_REQ_SENT │ 0xffb20214 │ 0x00000000 │
 ╰─────────────────────┴────────────┴────────────╯
 
-                 NOC1 Registers                  
+                 NOC1 Registers
 ╭─────────────────────┬────────────┬────────────╮
 │ Name                │ Address    │ Value      │
 ├─────────────────────┼────────────┼────────────┤
@@ -1010,12 +1010,12 @@ Output:
 ```
 Prints multiple registers
 ```
-noc register NIU_MST_RD_REQ_SENT,NIU_MST_RD_DATA_WORD_RECEIVED  
+noc register NIU_MST_RD_REQ_SENT,NIU_MST_RD_DATA_WORD_RECEIVED
 ```
 Output:
 ```
 ==== Device 0 - Location: 1-1
-                      NOC0 Registers                       
+                      NOC0 Registers
 ╭───────────────────────────────┬────────────┬────────────╮
 │ Name                          │ Address    │ Value      │
 ├───────────────────────────────┼────────────┼────────────┤
@@ -1023,7 +1023,7 @@ Output:
 │ NIU_MST_RD_REQ_SENT           │ 0xffb20214 │ 0x00000000 │
 ╰───────────────────────────────┴────────────┴────────────╯
 
-                      NOC1 Registers                       
+                      NOC1 Registers
 ╭───────────────────────────────┬────────────┬────────────╮
 │ Name                          │ Address    │ Value      │
 ├───────────────────────────────┼────────────┼────────────┤
@@ -1034,12 +1034,12 @@ Output:
 ```
 Show all registers that have "_RD" in their name
 ```
-noc register --search *_RD* --max all       
+noc register --search *_RD* --max all
 ```
 Output:
 ```
 ==== Device 0 - Location: 1-1
-                      NOC0 Registers                       
+                      NOC0 Registers
 ╭───────────────────────────────┬────────────┬────────────╮
 │ Name                          │ Address    │ Value      │
 ├───────────────────────────────┼────────────┼────────────┤
@@ -1052,7 +1052,7 @@ Output:
 │ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x0010b62c │
 ╰───────────────────────────────┴────────────┴────────────╯
 
-                      NOC1 Registers                       
+                      NOC1 Registers
 ╭───────────────────────────────┬────────────┬────────────╮
 │ Name                          │ Address    │ Value      │
 ├───────────────────────────────┼────────────┼────────────┤
@@ -1113,7 +1113,7 @@ Commands for RISC-V debugging:
 
 Halt brisc
 ```
-riscv halt                      
+riscv halt
 ```
 Output:
 ```
@@ -1124,7 +1124,7 @@ Halting trisc2 0,0 [0]
 ```
 Print status
 ```
-riscv status                    
+riscv status
 ```
 Output:
 ```
@@ -1135,7 +1135,7 @@ Output:
 ```
 Step
 ```
-riscv step                      
+riscv step
 ```
 Output:
 ```
@@ -1146,7 +1146,7 @@ Stepping trisc2 0,0 [0]
 ```
 Continue
 ```
-riscv cont                      
+riscv cont
 ```
 Output:
 ```
@@ -1157,15 +1157,15 @@ Continuing trisc2 0,0 [0]
 ```
 Write a word to address 0
 ```
-riscv wr 0x0 0x2010006f         
+riscv wr 0x0 0x2010006f
 ```
 Read a word from address 0
 ```
-riscv rd 0x0                    
+riscv rd 0x0
 ```
 Write a word to register 1
 ```
-riscv wreg 1 0xabcd             
+riscv wreg 1 0xabcd
 ```
 Output:
 ```
@@ -1176,7 +1176,7 @@ Writing to register 1 on trisc2 0,0 [0]
 ```
 Read a word from register 1
 ```
-riscv rreg 1                    
+riscv rreg 1
 ```
 Output:
 ```
@@ -1191,7 +1191,7 @@ Reading from register 1 on trisc2 0,0 [0]
 ```
 Set breakpoint
 ```
-riscv bkpt set 0 0x1244         
+riscv bkpt set 0 0x1244
 ```
 Output:
 ```
@@ -1202,7 +1202,7 @@ Setting breakpoint at address 0 for trisc2 0,0 [0]
 ```
 Delete breakpoint
 ```
-riscv bkpt del 0                
+riscv bkpt del 0
 ```
 Output:
 ```
@@ -1213,7 +1213,7 @@ Deleting breakpoint 0 for trisc2 0,0 [0]
 ```
 Set a read watchpoint
 ```
-riscv wchpt setr 0 0xc          
+riscv wchpt setr 0 0xc
 ```
 Output:
 ```
@@ -1224,7 +1224,7 @@ Setting read watchpoint at address 0 for trisc2 0,0 [0]
 ```
 Set a write watchpoint
 ```
-riscv wchpt setw 0 0xc          
+riscv wchpt setw 0 0xc
 ```
 Output:
 ```
@@ -1321,7 +1321,7 @@ Prints/writes to the specified register, at the specified location and device.
 
 Prints configuration register with index 1, mask 0x1E000000, shift 25
 ```
-reg cfg(1,0x1E000000,25)                            
+reg cfg(1,0x1E000000,25)
 ```
 Output:
 ```
@@ -1330,7 +1330,7 @@ Value of register ConfigurationRegisterDescription(base_address=DeviceAddress(pr
 ```
 Prints debug register with address 0x54
 ```
-reg dbg(0x54)                                       
+reg dbg(0x54)
 ```
 Output:
 ```
@@ -1339,7 +1339,7 @@ Value of register DebugRegisterDescription(base_address=DeviceAddress(private_ad
 ```
 Prints names of first 10 registers that start with PACK
 ```
-reg --search PACK*                                  
+reg --search PACK*
 ```
 Output:
 ```
@@ -1358,7 +1358,7 @@ Hit printing limit. To see more results, increase the --max value.
 ```
 Prints names of first 5 registers that start with ALU
 ```
-reg --search ALU* --max 5                           
+reg --search ALU* --max 5
 ```
 Output:
 ```
@@ -1372,7 +1372,7 @@ Hit printing limit. To see more results, increase the --max value.
 ```
 Prints names of all registers that include word format
 ```
-reg --search *format* --max all                     
+reg --search *format* --max all
 ```
 Output:
 ```
@@ -1397,7 +1397,7 @@ PACK_CONFIG18_in_data_format
 ```
 Prints register with name UNPACK_CONFIG0_out_data_format
 ```
-reg UNPACK_CONFIG0_out_data_format                  
+reg UNPACK_CONFIG0_out_data_format
 ```
 Output:
 ```
@@ -1406,7 +1406,7 @@ TensixDataFormat.Float32
 ```
 Prints configuration register with index 60, mask 0xf, shift 0 in tensix data format
 ```
-reg cfg(1,0x1E000000,25) --type TENSIX_DATA_FORMAT  
+reg cfg(1,0x1E000000,25) --type TENSIX_DATA_FORMAT
 ```
 Output:
 ```
@@ -1415,7 +1415,7 @@ TensixDataFormat.Float16_b
 ```
 Prints debug register with address 0x54 in integer format
 ```
-reg dbg(0x54) --type INT_VALUE                      
+reg dbg(0x54) --type INT_VALUE
 ```
 Output:
 ```
@@ -1424,7 +1424,7 @@ Value of register DebugRegisterDescription(base_address=DeviceAddress(private_ad
 ```
 Writes 18 to debug register with address 0x54
 ```
-reg dbg(0x54) --write 18                            
+reg dbg(0x54) --write 18
 ```
 Output:
 ```
@@ -1432,7 +1432,7 @@ Register DebugRegisterDescription(base_address=DeviceAddress(private_address=428
 ```
 Writes 0 to configuration register with index 1, mask 0x1E000000, shift 25
 ```
-reg cfg(1,0x1E000000,25) --write 0x0                
+reg cfg(1,0x1E000000,25) --write 0x0
 ```
 Output:
 ```
@@ -1440,7 +1440,7 @@ Register ConfigurationRegisterDescription(base_address=DeviceAddress(private_add
 ```
 Prints debug register with address 0x54 for device 0 and core at location 0,0
 ```
-reg dbg(0x54) -d 0 -l 0,0                           
+reg dbg(0x54) -d 0 -l 0,0
 ```
 Output:
 ```
@@ -1449,7 +1449,7 @@ Value of register DebugRegisterDescription(base_address=DeviceAddress(private_ad
 ```
 Prints debug register with address 0x54 for core at location 0,0
 ```
-reg dbg(0x54) -l 0,0                                
+reg dbg(0x54) -l 0,0
 ```
 Output:
 ```
@@ -1458,7 +1458,7 @@ Value of register DebugRegisterDescription(base_address=DeviceAddress(private_ad
 ```
 Prints debug register with address 0x54 for device 0
 ```
-reg dbg(0x54) -d 0                                  
+reg dbg(0x54) -d 0
 ```
 Output:
 ```
@@ -1524,9 +1524,3 @@ Output:
 0,0 (L1) : 0x00000020 (32) <= 0x00001234 (4660)
 0,0 (L1) : 0x00000024 (36) <= 0x00001234 (4660)
 ```
-
-
-
-
-
-

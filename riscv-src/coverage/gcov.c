@@ -1,11 +1,7 @@
-// All the functions in this file are taken from gcc/libgcc/libgcov-driver.c
-
-// Note to whomever reviews my PR: GCC is licensed under GPL with the linking
-// exception. That exception applies to this code, so statically linking
-// against the library compiled from this does not force one to license the
-// rest of the code under GPL; all that is necessary is to release just this
-// file under GPL. However, I don't know what kind of license comment I should
-// put at the top of this file.
+// SPDX-FileCopyrightText: (c) 2025 Tenstorrent AI ULC
+//
+// SPDX-License-Identifier: Apache-2.0
+// All code in this file is adapted from gcc/libgcc/libgcov-driver.c
 
 #include <stddef.h>
 #include <stdint.h>

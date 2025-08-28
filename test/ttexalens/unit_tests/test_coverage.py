@@ -109,7 +109,7 @@ class TestCoverage(unittest.TestCase):
             gcda = os.path.join(temp_root, f"{basename}.gcda")
             gcno = os.path.join(temp_root, f"{basename}.gcno")
 
-            dump_coverage(self.context, elf, self.device, self.location, gcda, gcno)
+            dump_coverage(elf, self.location, gcda, gcno)
 
             # Check if the files match expectations: if they exist, and if the headers are well-formed.
             self.assertTrue(os.path.exists(gcda), f"{gcda}: file does not exist")
