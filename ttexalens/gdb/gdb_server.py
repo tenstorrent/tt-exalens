@@ -104,16 +104,16 @@ class GdbServer(threading.Thread):
                     # TODO: In ideal world, we would have "start time" for a core (time when core was taken out of reset) and use that as a key for reusing process id; for now, we can just check if elf path is the same
                     last_process = self._last_available_processes.get(risc_debug.risc_location)
                     if last_process is None or last_process.elf_path != elf_path:
-                        core_type = device.get_block_type(risc_debug.risc_location.location)
+                        block_tpye = device.get_block_type(risc_debug.risc_location.location)
                         # Shorten long core type for cleaner output
-                        if core_type == "functional_workers":
-                            core_type = "worker"
+                        if block_type == "functional_workers":
+                            block_type = "worker"
                         pid = self.next_pid
                         self.next_pid += 1
                         virtual_core = (
                             pid  # TODO: Maybe we should actually have some mapping from RiscLoc to virtual core
                         )
-                        process = GdbProcess(pid, elf_path, risc_debug, virtual_core, core_type)
+                        process = GdbProcess(pid, elf_path, risc_debug, virtual_core, block_type)
                     else:
                         process = last_process
                     available_processes[process.process_id] = process
