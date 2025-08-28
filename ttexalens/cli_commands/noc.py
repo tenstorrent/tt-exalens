@@ -6,7 +6,7 @@ Usage:
     noc status [-d <device>] [--noc <noc-id>] [-l <loc>] [-s]
     noc all [-d <device>] [-l <loc>] [-s]
     noc register (<reg-names> | --search <reg-pattern> [--max <max-regs>]) [-d <device>] [--noc <noc-id>] [-l <loc>] [-s]
-
+    noc vc-stall [-d <device>] [--noc <noc-id>]
 
 Arguments:
     device-id         ID of the device [default: current active]
@@ -35,13 +35,16 @@ Examples:
     noc register NIU_MST_RD_REQ_SENT            # Prints a specific register value
     noc register NIU_MST_RD_REQ_SENT,NIU_MST_RD_DATA_WORD_RECEIVED  # Prints multiple registers
     noc register --search *_RD* --max all       # Show all registers that have "_RD" in their name
+    noc vc-stall -d 0 --noc 1                   # Identify stalled VC on NoC 1
 """
 
 # Third-party imports
 from docopt import docopt
+from typing import List, Optional, Set, Tuple
 
 # Local imports
 from ttexalens import command_parser, util
+from ttexalens.tt_exalens_lib import read_word_from_device
 from ttexalens.util import search
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
@@ -333,6 +336,158 @@ def display_grouped_data(
 
 
 ###############################################################################
+# NOC Helper functions
+###############################################################################
+def _get_invalid_bits(expected_value, real_value):
+    diff = expected_value ^ real_value
+    invalid_bits = []
+    for i in range(32):
+        if diff & (1 << i):
+            invalid_bits.append(i)
+    return invalid_bits
+
+
+def _get_worker_locations_and_grid_size(device: Device) -> Tuple[List[OnChipCoordinate], int, int]:
+    """Get all functional worker locations and determine grid dimensions."""
+    worker_locations = []
+    num_rows = 0
+    num_cols = 0
+
+    for block_loc in device.get_block_locations(block_type="functional_workers"):
+        worker_locations.append(block_loc)
+        logical_coords = block_loc.to("logical")[0]
+        num_rows = max(num_rows, logical_coords[0])
+        num_cols = max(num_cols, logical_coords[1])
+
+    return worker_locations, num_rows, num_cols
+
+
+def _calculate_next_coordinate(
+    current_worker: OnChipCoordinate,
+    direction_index: int,
+    noc_id: int,
+    num_rows: int,
+    num_cols: int,
+    device: Device,
+    direction_vectors: dict,
+) -> Optional[OnChipCoordinate]:
+    """Calculate the next coordinate to visit based on error direction."""
+    current_logical = current_worker.to("logical")[0]
+    core_type = current_worker.to("logical")[1]
+
+    if direction_index == 0:  # Y-direction error
+        next_x = current_logical[1]
+        next_y = current_logical[0] + direction_vectors["y"][noc_id]
+    else:  # X-direction error
+        next_x = current_logical[1] + direction_vectors["x"][noc_id]
+        next_y = current_logical[0]
+
+    try:
+        return OnChipCoordinate(next_y % num_rows, next_x % num_cols, "logical", device, core_type)
+    except Exception as e:
+        util.VERBOSE(f"Could not move to ({next_x},{next_y}): {e}")
+        return None
+
+
+def _find_stalled_vc_for_noc(
+    worker_locations: List[OnChipCoordinate],
+    device: Device,
+    noc_id: int,
+    num_rows: int,
+    num_cols: int,
+    base_address: int,
+    vc_register_offsets: List[int],
+    expected_vc_value: int,
+    direction_vectors: dict,
+) -> Tuple[int, Optional[OnChipCoordinate]]:
+    """Find stalled VC and problem core for a specific NOC."""
+    problem_vc = -1
+    problem_core = None
+    last_invalid = None
+    visited: Set[OnChipCoordinate] = set()
+
+    for worker_coordinates in worker_locations:
+        if problem_core:
+            break
+
+        to_visit: Set[OnChipCoordinate] = set()
+        if worker_coordinates not in visited:
+            to_visit.add(worker_coordinates)
+
+        while to_visit and not problem_core:
+            current_worker = to_visit.pop()
+            visited.add(current_worker)
+            current_worker_has_error = False
+
+            for direction_index, offset in enumerate(vc_register_offsets):
+                reg_addr = base_address + offset
+                vc_value = read_word_from_device(
+                    current_worker, reg_addr, noc_id ^ 1
+                )  # Use the other NoC to read the value
+
+                if vc_value != expected_vc_value:
+                    invalid_bits_upper = _get_invalid_bits(expected_vc_value >> 16, vc_value >> 16)
+                    problem_vc = invalid_bits_upper[0]
+                    current_worker_has_error = True
+
+                    next_coord = _calculate_next_coordinate(
+                        current_worker, direction_index, noc_id, num_rows, num_cols, device, direction_vectors
+                    )
+                    if next_coord:
+                        to_visit.add(next_coord)
+
+            if not current_worker_has_error and last_invalid:
+                problem_core = last_invalid
+                last_invalid = None
+            if current_worker_has_error:
+                last_invalid = current_worker
+
+    return problem_vc, problem_core
+
+
+def identify_stalled_vc(loc: OnChipCoordinate, device: Device, noc_ids: List[int]) -> None:
+    """
+    Identify stalled virtual channels on specified NOCs.
+
+    This function traverses the chip grid to find VC stalls by reading VC status registers
+    and following the direction of errors to identify the source of the stall.
+
+    Args:
+        loc: On-chip coordinate (currently unused but kept for API consistency)
+        device: Device object to query
+        noc_ids: List of NOC IDs to check (0 and/or 1)
+    """
+    # VC stall detection constants
+    noc_base_addresses = [0xFFB20300, 0xFFB30300]  # NIU_BASE for NoC0, NIU_BASE for NoC1
+    vc_register_offsets = [0x00000008, 0x00000010]  # Y and X direction VC data
+    expected_vc_value = 0xFFFF0000
+    direction_vectors = {
+        "x": [1, -1],  # X direction movement for NOC0, NOC1
+        "y": [1, -1],  # Y direction movement for NOC0, NOC1
+    }
+
+    worker_locations, num_rows, num_cols = _get_worker_locations_and_grid_size(device)
+
+    for noc_id in noc_ids:
+        problem_vc, problem_core = _find_stalled_vc_for_noc(
+            worker_locations,
+            device,
+            noc_id,
+            num_rows,
+            num_cols,
+            noc_base_addresses[noc_id],
+            vc_register_offsets,
+            expected_vc_value,
+            direction_vectors,
+        )
+
+        if problem_vc == -1:
+            util.INFO(f"No VC is stalled on NOC{noc_id}")
+        else:
+            util.INFO(f"VC {problem_vc} is stalled at core {problem_core} on NOC{noc_id}")
+
+
+###############################################################################
 # Main Command Entry
 ###############################################################################
 def run(cmd_text: str, context: Context, ui_state: UIState) -> list:
@@ -409,5 +564,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list:
                     # Otherwise, display for both NOCs
                     for noc_id in [0, 1]:
                         display_specific_noc_registers(loc, device, reg_names, noc_id, simple_print)
-
+            elif dopt.args["vc-stall"]:
+                identify_stalled_vc(loc, device, noc_ids)
     return []
