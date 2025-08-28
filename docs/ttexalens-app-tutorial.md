@@ -168,16 +168,16 @@ It is possible to run .elf files on Tenstorrent hardware through TTExaLens using
 
 We can try and run the sample program that is used in testing TTExaLens.
 First, be sure that you have [cloned TTExaLens repository and built TTExaLens](../README.md#building-ttexalens).
-If everything worked as expected, there should be a file in `build/riscv-src/wormhole` directory named `run_elf_test.brisc.elf`.
-That simple program writes value 0x12345678 to the address 0x0 in L1 memory of the selected core.
-Currently, running `brxy 0,0 0x0` returns
+If everything worked as expected, there should be a file in `build/riscv-src/wormhole` directory named `run_elf_test.release.brisc.elf`.
+That simple program writes value 0x12345678 to the address 0x64000 in L1 memory of the selected core.
+Currently, running `brxy 0,0 0x64000` returns
 ```
 0,0 (L1) : 0x00000000 (4 bytes)
 0x00000000:  00000000
 ```
 Let's try running our .elf file on that core:
 ```
-re build/riscv-src/wormhole/run_elf_test.brisc.elf -l 0,0
+re build/riscv-src/wormhole/run_elf_test.release.brisc.elf -l 0,0
 ```
 The first argument is the path to the file we want to run, and the `-l` flag can be used to specify a single core to run the file on.
 If not specified, the .elf program will be run on all available cores.

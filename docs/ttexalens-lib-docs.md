@@ -577,6 +577,30 @@ Retrieves the callstack of the specified RISC core for a given ELF.
 
 
 
+## coverage
+
+```
+coverage(location, elf, gcda_path, gcno_copy_path=None, device_id=0, context=None) -> None
+```
+
+
+### Description
+
+Extract coverage data from the device.
+
+
+### Args
+
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
+- `elf` *(str | ParsedElfFile)*: ELF file whose coverage should be extracted.
+- `gcda_path` *(str)*: The path where the gcda file will be written.
+- `gcno_copy_path` *(str | None, optional)*: The path where the gcno will be written, if specified.
+- `device_id` *(int, optional)*: ID of the device to read from. Default 0.
+- `context` *(Context | None, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+
+
+
+
 ## read_riscv_memory
 
 ```
