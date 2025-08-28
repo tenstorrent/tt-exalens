@@ -40,7 +40,7 @@ class NocBlock:
 
     @cached_property
     def debuggable_riscs(self) -> list[RiscDebug]:
-        return [risc_debug for risc_debug in self.all_riscs if risc_debug.can_debug]
+        return [risc_debug for risc_debug in self.all_riscs if risc_debug.can_debug()]
 
     @cached_property
     @abstractmethod
