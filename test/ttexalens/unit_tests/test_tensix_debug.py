@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+import math
 import unittest
 from parameterized import parameterized_class, parameterized
 from ttexalens import tt_exalens_init
@@ -59,9 +60,14 @@ class TestTensixDebug(unittest.TestCase):
             2,
             4,
             8,
+            (1, float(0.0)),
+            (1, float(-0.0)),
+            (1, float("inf")),
+            (1, float("-inf")),
+            (1, float("nan")),
         ]
     )
-    def test_read_write_regfile_data_fp32(self, num_tiles: int):
+    def test_read_write_regfile_data_fp32(self, num_tiles: int, value: float | None = None):
         if not self.is_blackhole():
             self.skipTest("Direct read/write is supported only on Blackhole.")
 
@@ -70,14 +76,19 @@ class TestTensixDebug(unittest.TestCase):
         step = 0.01
         error_threshold = 1e-4
         num_of_elements = num_tiles * TILE_SIZE
-        data = [step * i - step * num_of_elements / 2 for i in range(num_of_elements)]
-        original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        if value is None:
+            data = [step * i - step * num_of_elements / 2 for i in range(num_of_elements)]
+        else:
+            data = [value for i in range(num_of_elements)]
         self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Float32)
         ret = self.tensix_debug.read_regfile(regfile, num_tiles)
-        assert len(ret) == len(data)
-        assert all(abs(a - b) < error_threshold for a, b in zip(ret, data))
-        self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
-        assert self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
+        if value is None:
+            assert len(ret) == len(data)
+            assert all(abs(a - b) < error_threshold for a, b in zip(ret, data))
+        elif math.isnan(value):
+            assert all(math.isnan(a) for a in ret)
+        else:
+            assert ret == data
 
     @parameterized.expand(
         [
@@ -87,19 +98,18 @@ class TestTensixDebug(unittest.TestCase):
             8,
         ]
     )
-    def test_read_write_regfile_data_int32(self, num_tiles: int):
+    def test_read_write_regfile_data_int32(self, num_tiles: int, value: int | None = None):
         if not self.is_blackhole():
             self.skipTest("Direct read/write is supported only on Blackhole.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
         num_of_elements = num_tiles * TILE_SIZE
-        data = [i - num_of_elements // 2 for i in range(num_of_elements)]
-        original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        min_value = -(2**31)
+        max_value = 2**31 - 1
+        data = [min_value] + [i - num_of_elements // 2 for i in range(1, num_of_elements - 1)] + [max_value]
         self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Int32)
         assert self.tensix_debug.read_regfile(regfile, num_tiles) == data
-        self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
-        assert self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
 
     @parameterized.expand(
         [
@@ -116,12 +126,10 @@ class TestTensixDebug(unittest.TestCase):
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
         num_of_elements = num_tiles * TILE_SIZE
-        data = [2**32 - 1 for i in range(num_of_elements)]
-        original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        max_value = 2**32 - 1
+        data = [i for i in range(num_of_elements - 1)] + [max_value]
         self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.UInt32)
         assert self.tensix_debug.read_regfile(regfile, num_tiles, signed=False) == data
-        self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
-        assert self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
 
     @parameterized.expand(
         [
@@ -139,11 +147,8 @@ class TestTensixDebug(unittest.TestCase):
 
         num_of_elements = num_tiles * TILE_SIZE
         data = [(i % 2**8) - 2**7 for i in range(num_of_elements)]
-        original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
         self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Int8)
         assert self.tensix_debug.read_regfile(regfile, num_tiles) == data
-        self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
-        assert self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
 
     @parameterized.expand(
         [
@@ -161,11 +166,8 @@ class TestTensixDebug(unittest.TestCase):
 
         num_of_elements = num_tiles * TILE_SIZE
         data = [(i % 2**8) for i in range(num_of_elements)]
-        original_df = self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
         self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.UInt8)
         assert self.tensix_debug.read_regfile(regfile, num_tiles, signed=False) == data
-        self.tensix_debug.write_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc", original_df)
-        assert self.tensix_debug.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc") == original_df
 
     @parameterized.expand(
         [
