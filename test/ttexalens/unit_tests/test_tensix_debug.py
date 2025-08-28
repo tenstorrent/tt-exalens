@@ -67,7 +67,7 @@ class TestTensixDebug(unittest.TestCase):
             (1, float("nan")),
         ]
     )
-    def test_read_write_regfile_data_fp32(self, num_tiles: int, value: float | None = None):
+    def test_read_write_regfile_fp32(self, num_tiles: int, value: float | None = None):
         if not self.is_blackhole():
             self.skipTest("Direct read/write is supported only on Blackhole.")
 
@@ -98,7 +98,7 @@ class TestTensixDebug(unittest.TestCase):
             8,
         ]
     )
-    def test_read_write_regfile_data_int32(self, num_tiles: int, value: int | None = None):
+    def test_read_write_regfile_int32(self, num_tiles: int, value: int | None = None):
         if not self.is_blackhole():
             self.skipTest("Direct read/write is supported only on Blackhole.")
 
@@ -119,7 +119,7 @@ class TestTensixDebug(unittest.TestCase):
             8,
         ]
     )
-    def test_read_write_regfile_data_uint32(self, num_tiles: int):
+    def test_read_write_regfile_uint32(self, num_tiles: int):
         if not self.is_blackhole():
             self.skipTest("Direct read/write is supported only on Blackhole.")
 
@@ -139,7 +139,7 @@ class TestTensixDebug(unittest.TestCase):
             8,
         ]
     )
-    def test_read_write_regfile_data_int8(self, num_tiles: int):
+    def test_read_write_regfile_int8(self, num_tiles: int):
         if not self.is_blackhole():
             self.skipTest("Direct read/write is supported only on Blackhole.")
 
@@ -158,7 +158,7 @@ class TestTensixDebug(unittest.TestCase):
             8,
         ]
     )
-    def test_read_write_regfile_data_uint8(self, num_tiles: int):
+    def test_read_write_regfile_uint8(self, num_tiles: int):
         if not self.is_blackhole():
             self.skipTest("Direct read/write is supported only on Blackhole.")
 
@@ -183,7 +183,7 @@ class TestTensixDebug(unittest.TestCase):
             (TensixDataFormat.Float32, REGFILE.SRCB),  # srcB not supported
         ]
     )
-    def test_invalid_write_regfile_data(
+    def test_invalid_write_regfile(
         self, df: TensixDataFormat, regfile: int | str | REGFILE = REGFILE.DSTACC, value: int | float = 1
     ):
         if not self.is_blackhole():
