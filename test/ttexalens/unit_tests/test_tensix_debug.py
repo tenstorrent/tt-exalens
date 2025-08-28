@@ -55,10 +55,10 @@ class TestTensixDebug(unittest.TestCase):
 
     @parameterized.expand(
         [
-            (1,),
-            (2,),
-            (4,),
-            (8,),
+            1,
+            2,
+            4,
+            8,
         ]
     )
     def test_read_write_regfile_data_fp32(self, num_tiles: int):
@@ -81,10 +81,10 @@ class TestTensixDebug(unittest.TestCase):
 
     @parameterized.expand(
         [
-            (1,),
-            (2,),
-            (4,),
-            (8,),
+            1,
+            2,
+            4,
+            8,
         ]
     )
     def test_read_write_regfile_data_int32(self, num_tiles: int):
@@ -103,10 +103,10 @@ class TestTensixDebug(unittest.TestCase):
 
     @parameterized.expand(
         [
-            (1,),
-            (2,),
-            (4,),
-            (8,),
+            1,
+            2,
+            4,
+            8,
         ]
     )
     def test_read_write_regfile_data_uint32(self, num_tiles: int):
@@ -125,10 +125,10 @@ class TestTensixDebug(unittest.TestCase):
 
     @parameterized.expand(
         [
-            (1,),
-            (2,),
-            (4,),
-            (8,),
+            1,
+            2,
+            4,
+            8,
         ]
     )
     def test_read_write_regfile_data_int8(self, num_tiles: int):
@@ -147,10 +147,10 @@ class TestTensixDebug(unittest.TestCase):
 
     @parameterized.expand(
         [
-            (1,),
-            (2,),
-            (4,),
-            (8,),
+            1,
+            2,
+            4,
+            8,
         ]
     )
     def test_read_write_regfile_data_uint8(self, num_tiles: int):
