@@ -64,11 +64,11 @@ add_riscv_object("${GCOV_OBJ}" "${RISCV_SOURCE}/coverage/gcov.c" "release")
 # Compile coverage.c with -fno-strict-aliasing, the tricks done in the code necessitate it.
 add_custom_command(
     OUTPUT ${COVERAGE_OBJ}
-    COMMAND ${GXX} 
-            ${OPTIMIZED_OPTIONS_ALL} 
-            ${OPTIMIZED_OPTIONS_COMPILE} 
-            -fno-strict-aliasing 
-            -c -o ${COVERAGE_OBJ} 
+    COMMAND ${GXX}
+            ${OPTIMIZED_OPTIONS_ALL}
+            ${OPTIMIZED_OPTIONS_COMPILE}
+            -fno-strict-aliasing
+            -c -o ${COVERAGE_OBJ}
             ${RISCV_SOURCE}/coverage/coverage.c
     DEPENDS ${RISCV_SOURCE}/coverage/coverage.c
 )
