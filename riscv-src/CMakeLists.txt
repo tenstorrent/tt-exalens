@@ -60,7 +60,18 @@ endfunction()
 set(GCOV_OBJ "${RISCV_OBJECT}/gcov.o")
 set(COVERAGE_OBJ "${RISCV_OBJECT}/coverage.o")
 add_riscv_object("${GCOV_OBJ}" "${RISCV_SOURCE}/coverage/gcov.c" "release")
-add_riscv_object("${COVERAGE_OBJ}" "${RISCV_SOURCE}/coverage/coverage.c" "release")
+
+# Compile coverage.c with -fno-strict-aliasing, the tricks done in the code necessitate it.
+add_custom_command(
+    OUTPUT ${COVERAGE_OBJ}
+    COMMAND ${GXX} 
+            ${OPTIMIZED_OPTIONS_ALL} 
+            ${OPTIMIZED_OPTIONS_COMPILE} 
+            -fno-strict-aliasing 
+            -c -o ${COVERAGE_OBJ} 
+            ${RISCV_SOURCE}/coverage/coverage.c
+    DEPENDS ${RISCV_SOURCE}/coverage/coverage.c
+)
 
 # Add the CRT object (assembly file)
 # The "coverage" build just adds a call to gcov_dump into the CRT.
