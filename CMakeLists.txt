@@ -56,6 +56,18 @@ set(UMD_HOME "${PROJECT_SOURCE_DIR}/third_party/umd")
 # Third party dependencies
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/umd)
 
+# Handle symlinks: build should point to build_debug or build_release,
+# and build_*/riscv-src should point to build_elfs
+set(BUILD_SYMLINK "${CMAKE_SOURCE_DIR}/build")
+set(ELF_SYMLINK "${CMAKE_BINARY_DIR}/riscv-src")
+file(MAKE_DIRECTORY "build_elfs")
+
+# Refresh the symlinks
+file(REMOVE "${BUILD_SYMLINK}")
+file(CREATE_LINK "${CMAKE_BINARY_DIR}" "${BUILD_SYMLINK}" SYMBOLIC)
+file(REMOVE "${ELF_SYMLINK}")
+file(CREATE_LINK "../build_elfs" "${ELF_SYMLINK}" SYMBOLIC)
+
 # Check for SFPI release
 include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
 
@@ -72,4 +84,4 @@ include(${PROJECT_SOURCE_DIR}/cmake/pybind.cmake)
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens)
 add_subdirectory(${PROJECT_SOURCE_DIR}/utils)
 add_subdirectory(${PROJECT_SOURCE_DIR}/test)
-add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src)
+add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src ${CMAKE_BINARY_DIR}/riscv-build)

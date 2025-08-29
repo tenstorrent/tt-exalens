@@ -26,7 +26,7 @@ set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section -DCOVERAGE)
 
 # Define project paths: source files, ELFs, and object files
 set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")
-set(RISCV_OUTPUT "${CMAKE_BINARY_DIR}/riscv-src")
+set(RISCV_OUTPUT "${CMAKE_SOURCE_DIR}/build_elfs")
 set(RISCV_OBJECT "${CMAKE_BINARY_DIR}/obj/riscv-src")
 
 # Define architectures, applications, and cores
@@ -34,9 +34,8 @@ set(RISCV_ARCHITECTURES "wormhole" "blackhole")
 set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc")
 set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test")
 
-# Create output directories
+# Create the object file output directory
 file(MAKE_DIRECTORY ${RISCV_OBJECT})
-file(MAKE_DIRECTORY ${RISCV_OUTPUT})
 
 # Helper function to add object files for each source
 function(add_riscv_object OBJECT_NAME SOURCE_FILE BUILD_TYPE)
@@ -135,11 +134,19 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
     add_dependencies("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_target" "${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis")
 endfunction()
 
+# On Debug builds, build every ELF variant (for tests etc.)
+# On Release builds, only build release ELFs
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(BUILD_TYPES debug release coverage)
+else()
+    set(BUILD_TYPES release)
+endif()
+
 # Create targets for all architectures, applications, and cores
 foreach(CORE ${RISCV_CORES})
     foreach(APP ${RISCV_APPS})
         foreach(ARCH ${RISCV_ARCHITECTURES})
-            foreach(BUILD_TYPE debug release coverage)
+            foreach(BUILD_TYPE ${BUILD_TYPES})
                 create_riscv_target(${ARCH} ${APP} ${CORE} ${BUILD_TYPE})
             endforeach()
         endforeach()

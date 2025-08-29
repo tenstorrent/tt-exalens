@@ -8,7 +8,7 @@ core
 *.pkl
 
 .cpmcache
-/build
+/build*
 
 __pycache__
 .venv
