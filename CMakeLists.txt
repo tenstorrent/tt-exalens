@@ -62,14 +62,15 @@ set(BUILD_SYMLINK "${CMAKE_SOURCE_DIR}/build")
 set(ELF_SYMLINK "${CMAKE_BINARY_DIR}/riscv-src")
 file(MAKE_DIRECTORY "build_elfs")
 
+# Check for SFPI release
+include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
+
 # Refresh the symlinks
 file(REMOVE "${BUILD_SYMLINK}")
 file(CREATE_LINK "${CMAKE_BINARY_DIR}" "${BUILD_SYMLINK}" SYMBOLIC)
 file(REMOVE "${ELF_SYMLINK}")
-file(CREATE_LINK "../build_elfs" "${ELF_SYMLINK}" SYMBOLIC)
-
-# Check for SFPI release
-include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
+file(CREATE_LINK "${CMAKE_SOURCE_DIR}/build_elfs" "${ELF_SYMLINK}" SYMBOLIC)
+file(CREATE_LINK "${CMAKE_SOURCE_DIR}/build_elfs/sfpi" "${CMAKE_BINARY_DIR}/sfpi" SYMBOLIC)
 
 # Check for ZeroMQ
 include(${PROJECT_SOURCE_DIR}/cmake/ZeroMQ.cmake)
