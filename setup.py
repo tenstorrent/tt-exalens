@@ -52,9 +52,9 @@ ttexalens_files = {
         "strip": True,
     },
     "gdb-client": {
-        "path": "build/sfpi/compiler/bin",
+        "path": "build_elfs/sfpi/compiler/bin",
         "files": ["riscv32-tt-elf-gdb"],
-        "output": "build/sfpi/compiler/bin",
+        "output": "build_elfs/sfpi/compiler/bin",
         "strip": True,
     },
 }

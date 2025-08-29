@@ -9,6 +9,9 @@ core
 
 .cpmcache
 /build
+/build_debug
+/build_release
+/build_elfs
 
 __pycache__
 .venv
