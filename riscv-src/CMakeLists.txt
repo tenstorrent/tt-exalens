@@ -134,19 +134,11 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
     add_dependencies("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_target" "${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis")
 endfunction()
 
-# On Debug builds, build every ELF variant (for tests etc.)
-# On Release builds, only build release ELFs
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(BUILD_TYPES debug release coverage)
-else()
-    set(BUILD_TYPES release)
-endif()
-
 # Create targets for all architectures, applications, and cores
 foreach(CORE ${RISCV_CORES})
     foreach(APP ${RISCV_APPS})
         foreach(ARCH ${RISCV_ARCHITECTURES})
-            foreach(BUILD_TYPE ${BUILD_TYPES})
+            foreach(BUILD_TYPE debug release coverage)
                 create_riscv_target(${ARCH} ${APP} ${CORE} ${BUILD_TYPE})
             endforeach()
         endforeach()

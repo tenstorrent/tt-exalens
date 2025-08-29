@@ -5,12 +5,18 @@ BUILD_DIR ?= build_$(shell echo $(CONFIG) | tr '[:upper:]' '[:lower:]') # build_
 .PHONY: build
 build:
 	@echo "Building"
-	@if [ ! -f $(BUILD_DIR)/build.ninja ] || ! grep -iq "CMAKE_BUILD_TYPE:STRING=$(CONFIG)" $(BUILD_DIR)/CMakeCache.txt; then \
-		if which ccache > /dev/null; then \
-			cmake -B $(BUILD_DIR) -G Ninja -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=$(CONFIG) -DDOWNLOAD_TTEXALENS_PRIVATE=$(JTAG) -DCMAKE_POLICY_VERSION_MINIMUM=3.5; \
-		else \
-			cmake -B $(BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=$(CONFIG) -DDOWNLOAD_TTEXALENS_PRIVATE=$(JTAG) -DCMAKE_POLICY_VERSION_MINIMUM=3.5; \
-		fi \
+	@if which ccache > /dev/null; then \
+		cmake -B $(BUILD_DIR) -G Ninja \
+			-DCMAKE_C_COMPILER_LAUNCHER=ccache \
+			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+			-DCMAKE_BUILD_TYPE=$(CONFIG) \
+			-DDOWNLOAD_TTEXALENS_PRIVATE=$(JTAG) \
+			-DCMAKE_POLICY_VERSION_MINIMUM=3.5; \
+	else \
+		cmake -B $(BUILD_DIR) -G Ninja \
+			-DCMAKE_BUILD_TYPE=$(CONFIG) \
+			-DDOWNLOAD_TTEXALENS_PRIVATE=$(JTAG) \
+			-DCMAKE_POLICY_VERSION_MINIMUM=3.5; \
 	fi
 	@ninja -C $(BUILD_DIR)
 
@@ -41,10 +47,12 @@ mypy:
 
 .PHONY: wheel_develop
 wheel_develop:
-	CONFIG=Debug pip wheel --no-deps --no-cache-dir . --wheel-dir build/ttexalens_wheel
+	CONFIG=Debug pip wheel --no-deps --no-cache-dir . --wheel-dir build_debug/ttexalens_wheel
 
 .PHONY: wheel
 wheel:
+	@mkdir -p build_release
+	@ln -sfn "$(abspath build_release)" build
 	STRIP_SYMBOLS=1 CONFIG=Release pip wheel --no-deps --no-cache-dir . --wheel-dir build_release/ttexalens_wheel
 
 .PHONY: ttexalens_server_unit_tests_run_only
