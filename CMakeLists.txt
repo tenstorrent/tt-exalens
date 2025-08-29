@@ -87,4 +87,4 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 
 # As build_<type>/riscv-src is a symlink, CMake can't put its configuration files there directly,
 # so we specify here that it should place them in an alternative directory instead.
-add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src ${CMAKE_BINARY_DIR}/riscv-build)
+add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src ${CMAKE_BINARY_DIR}/../build_elfs)
