@@ -70,7 +70,6 @@ file(REMOVE "${BUILD_SYMLINK}")
 file(CREATE_LINK "${CMAKE_BINARY_DIR}" "${BUILD_SYMLINK}" SYMBOLIC)
 file(REMOVE "${ELF_SYMLINK}")
 file(CREATE_LINK "${CMAKE_SOURCE_DIR}/build_elfs" "${ELF_SYMLINK}" SYMBOLIC)
-file(CREATE_LINK "${CMAKE_SOURCE_DIR}/build_elfs/sfpi" "${CMAKE_BINARY_DIR}/sfpi" SYMBOLIC)
 
 # Check for ZeroMQ
 include(${PROJECT_SOURCE_DIR}/cmake/ZeroMQ.cmake)

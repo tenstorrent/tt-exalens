@@ -47,6 +47,8 @@ mypy:
 
 .PHONY: wheel_develop
 wheel_develop:
+	@mkdir -p build_debug
+	@ln -sfn "$(abspath build_debug)" build
 	CONFIG=Debug pip wheel --no-deps --no-cache-dir . --wheel-dir build_debug/ttexalens_wheel
 
 .PHONY: wheel
