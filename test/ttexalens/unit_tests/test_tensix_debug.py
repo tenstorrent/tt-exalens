@@ -1,50 +1,193 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+import math
 import unittest
-from parameterized import parameterized_class
+from parameterized import parameterized_class, parameterized
 from ttexalens import tt_exalens_init
 from ttexalens import tt_exalens_lib as lib
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.debug_tensix import TensixDebug
+from ttexalens.debug_tensix import TensixDebug, TILE_SIZE, TensixDataFormat, REGFILE
+from ttexalens.util import TTException
 
 
 @parameterized_class(
     [
-        {"core_loc_str": "0,0"},
-        {"core_loc_str": "1,1"},
-        {"core_loc_str": "2,2"},
+        {"location_str": "0,0"},
+        {"location_str": "1,1"},
+        {"location_str": "2,2"},
     ]
 )
 class TestTensixDebug(unittest.TestCase):
     context: Context
-    core_loc: OnChipCoordinate
-    tdbg: TensixDebug
+    location: OnChipCoordinate
+    tensix_debug: TensixDebug
 
     @classmethod
     def setUpClass(cls):
         cls.context = tt_exalens_init.init_ttexalens()
 
     def setUp(self):
-        self.core_loc = OnChipCoordinate.create(self.core_loc_str, device=self.context.devices[0])
-        self.tdbg = TensixDebug(self.core_loc, 0, self.context)
+        self.location = OnChipCoordinate.create(self.location_str, device=self.context.devices[0])
+        self.tensix_debug = TensixDebug(self.location, 0, self.context)
+
+    def is_blackhole(self) -> bool:
+        return self.context.devices[0]._arch == "blackhole"
 
     def test_read_write_cfg_register(self):
         cfg_reg_name = "ALU_FORMAT_SPEC_REG2_Dstacc"
-        self.tdbg.write_tensix_register(cfg_reg_name, 10)
-        assert self.tdbg.read_tensix_register(cfg_reg_name) == 10
-        self.tdbg.write_tensix_register(cfg_reg_name, 0)
-        assert self.tdbg.read_tensix_register(cfg_reg_name) == 0
-        self.tdbg.write_tensix_register(cfg_reg_name, 5)
-        assert self.tdbg.read_tensix_register(cfg_reg_name) == 5
+        self.tensix_debug.write_tensix_register(cfg_reg_name, 10)
+        assert self.tensix_debug.read_tensix_register(cfg_reg_name) == 10
+        self.tensix_debug.write_tensix_register(cfg_reg_name, 0)
+        assert self.tensix_debug.read_tensix_register(cfg_reg_name) == 0
+        self.tensix_debug.write_tensix_register(cfg_reg_name, 5)
+        assert self.tensix_debug.read_tensix_register(cfg_reg_name) == 5
 
     def test_read_write_dbg_register(self):
         dbg_reg_name = "RISCV_DEBUG_REG_CFGREG_RD_CNTL"
-        self.tdbg.write_tensix_register(dbg_reg_name, 10)
-        assert self.tdbg.read_tensix_register(dbg_reg_name) == 10
-        self.tdbg.write_tensix_register(dbg_reg_name, 0)
-        assert self.tdbg.read_tensix_register(dbg_reg_name) == 0
-        self.tdbg.write_tensix_register(dbg_reg_name, 5)
-        assert self.tdbg.read_tensix_register(dbg_reg_name) == 5
+        self.tensix_debug.write_tensix_register(dbg_reg_name, 10)
+        assert self.tensix_debug.read_tensix_register(dbg_reg_name) == 10
+        self.tensix_debug.write_tensix_register(dbg_reg_name, 0)
+        assert self.tensix_debug.read_tensix_register(dbg_reg_name) == 0
+        self.tensix_debug.write_tensix_register(dbg_reg_name, 5)
+        assert self.tensix_debug.read_tensix_register(dbg_reg_name) == 5
+
+    @parameterized.expand(
+        [
+            1,
+            2,
+            4,
+            8,
+            (1, float(0.0)),
+            (1, float(-0.0)),
+            (1, float("inf")),
+            (1, float("-inf")),
+            (1, float("nan")),
+        ]
+    )
+    def test_read_write_regfile_fp32(self, num_tiles: int, value: float | None = None):
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
+
+        regfile = REGFILE.DSTACC  # Writing is only supported for dest
+
+        step = 0.01
+        error_threshold = 1e-4
+        num_of_elements = num_tiles * TILE_SIZE
+        if value is None:
+            data = [step * i - step * num_of_elements / 2 for i in range(num_of_elements)]
+        else:
+            data = [value for i in range(num_of_elements)]
+        self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Float32)
+        ret = self.tensix_debug.read_regfile(regfile, num_tiles)
+        if value is None:
+            assert len(ret) == len(data)
+            assert all(abs(a - b) < error_threshold for a, b in zip(ret, data))
+        elif math.isnan(value):
+            assert all(math.isnan(a) for a in ret)
+        else:
+            assert ret == data
+
+    @parameterized.expand(
+        [
+            1,
+            2,
+            4,
+            8,
+        ]
+    )
+    def test_read_write_regfile_int32(self, num_tiles: int, value: int | None = None):
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
+
+        regfile = REGFILE.DSTACC  # Writing is only supported for dest
+
+        num_of_elements = num_tiles * TILE_SIZE
+        min_value = -(2**31)
+        max_value = 2**31 - 1
+        data = [min_value] + [i - num_of_elements // 2 for i in range(1, num_of_elements - 1)] + [max_value]
+        self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Int32)
+        assert self.tensix_debug.read_regfile(regfile, num_tiles) == data
+
+    @parameterized.expand(
+        [
+            1,
+            2,
+            4,
+            8,
+        ]
+    )
+    def test_read_write_regfile_uint32(self, num_tiles: int):
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
+
+        regfile = REGFILE.DSTACC  # Writing is only supported for dest
+
+        num_of_elements = num_tiles * TILE_SIZE
+        max_value = 2**32 - 1
+        data = [i for i in range(num_of_elements - 1)] + [max_value]
+        self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.UInt32)
+        assert self.tensix_debug.read_regfile(regfile, num_tiles, signed=False) == data
+
+    @parameterized.expand(
+        [
+            1,
+            2,
+            4,
+            8,
+        ]
+    )
+    def test_read_write_regfile_int8(self, num_tiles: int):
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
+
+        regfile = REGFILE.DSTACC  # Writing is only supported for dest
+
+        num_of_elements = num_tiles * TILE_SIZE
+        data = [(i % 2**8) - 2**7 for i in range(num_of_elements)]
+        self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Int8)
+        assert self.tensix_debug.read_regfile(regfile, num_tiles) == data
+
+    @parameterized.expand(
+        [
+            1,
+            2,
+            4,
+            8,
+        ]
+    )
+    def test_read_write_regfile_uint8(self, num_tiles: int):
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
+
+        regfile = REGFILE.DSTACC  # Writing is only supported for dest
+
+        num_of_elements = num_tiles * TILE_SIZE
+        data = [(i % 2**8) for i in range(num_of_elements)]
+        self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.UInt8)
+        assert self.tensix_debug.read_regfile(regfile, num_tiles, signed=False) == data
+
+    @parameterized.expand(
+        [
+            (TensixDataFormat.UInt16,),  # Unsupported data format
+            (TensixDataFormat.Float16,),  # Unsupported data format
+            (TensixDataFormat.Float16_b,),  # Unsupported data format
+            (TensixDataFormat.Bfp8,),  # Unsupported data format
+            (TensixDataFormat.Int32, REGFILE.DSTACC, 2**31),  # Value out of range for Int32
+            (TensixDataFormat.Int32, REGFILE.DSTACC, -(2**31 + 1)),  # Value out of range for Int32
+            (TensixDataFormat.Int8, REGFILE.DSTACC, 2**7),  # Value out of range for Int8
+            (TensixDataFormat.Int8, REGFILE.DSTACC, -(2**7 + 1)),  # Value out of range for Int8
+            (TensixDataFormat.Float32, REGFILE.SRCA),  # srcA not supported
+            (TensixDataFormat.Float32, REGFILE.SRCB),  # srcB not supported
+        ]
+    )
+    def test_invalid_write_regfile(
+        self, df: TensixDataFormat, regfile: int | str | REGFILE = REGFILE.DSTACC, value: int | float = 1
+    ):
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
+
+        with self.assertRaises((TTException, ValueError)):
+            self.tensix_debug.write_regfile(regfile, [value], df)
