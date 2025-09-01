@@ -221,7 +221,7 @@ class Device(TTObject):
         return arc_blocks[0]
 
     @cached_property
-    def active_eth_block_locations(self) -> list[NocBlock]:
+    def active_eth_block_locations(self) -> list[OnChipCoordinate]:
         active_channels = []
         for connection in self.cluster_desc["ethernet_connections"]:
             for endpoint in connection:
@@ -231,7 +231,7 @@ class Device(TTObject):
         return [self.get_block_locations(block_type="eth")[chan] for chan in active_channels]
 
     @cached_property
-    def idle_eth_block_locations(self) -> list[NocBlock]:
+    def idle_eth_block_locations(self) -> list[OnChipCoordinate]:
         idle_block_locations = []
         for location in self.get_block_locations(block_type="eth"):
             if not location in self.active_eth_block_locations:
