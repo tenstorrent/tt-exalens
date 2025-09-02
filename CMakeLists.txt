@@ -43,11 +43,6 @@ add_library(compiler_flags INTERFACE)
 target_link_libraries(compiler_flags INTERFACE linker_flags)
 target_compile_options(compiler_flags INTERFACE -mavx2 -fPIC -DFMT_HEADER_ONLY -fvisibility-inlines-hidden -fno-lto)
 
-# Find Python3
-set(Python3_FIND_STRATEGY LOCATION)
-find_package (Python3 COMPONENTS Interpreter Development)
-message(STATUS "Python3 include dirs: ${Python3_INCLUDE_DIRS}")
-
 # Set default values for variables/options
 set(CMAKE_BUILD_BIN_DIR "${CMAKE_BINARY_DIR}/bin")
 set(TTEXALENS_HOME "${PROJECT_SOURCE_DIR}")
