@@ -4,7 +4,6 @@ DOC_DIR?=$(TTEXALENS_HOME)/docs
 
 .PHONY: docs
 docs:
-	make clean
 	make build
 
 	@echo "Installing dependencies"

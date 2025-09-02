@@ -24,7 +24,6 @@ echo ""
 echo ""
 
 big_echo "BUILDING TTEXALENS"
-make clean
 make build
 
 big_echo "RUNNING C++ TESTS"

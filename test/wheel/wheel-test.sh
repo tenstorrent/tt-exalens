@@ -26,8 +26,7 @@ pip3 install typing-extensions
 pip3 install wheel
 
 echo -e "Building TTExaLens ..."
-make clean
-make build
+make release
 
 echo -e "Building wheel ..."
 make wheel
