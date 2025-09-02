@@ -4,7 +4,6 @@ BUILD_DIR ?= build_$(shell echo $(CONFIG) | tr '[:upper:]' '[:lower:]') # build_
 
 .PHONY: build
 build:
-	@echo "Building"
 	@if which ccache > /dev/null; then \
 		cmake -B $(BUILD_DIR) -G Ninja \
 			-DCMAKE_C_COMPILER_LAUNCHER=ccache \
@@ -30,7 +29,7 @@ release: build
 
 .PHONY: clean
 clean:
-	@rm -rf build build_debug build_release build_elfs
+	@rm -rf build build_debug build_release build_riscv
 
 .PHONY: test
 test:

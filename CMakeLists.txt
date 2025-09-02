@@ -57,10 +57,10 @@ set(UMD_HOME "${PROJECT_SOURCE_DIR}/third_party/umd")
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/umd)
 
 # Handle symlinks: build should point to build_debug or build_release,
-# and build_*/riscv-src should point to build_elfs
+# and build_*/riscv-src should point to build_riscv
 set(BUILD_SYMLINK "${CMAKE_SOURCE_DIR}/build")
-set(ELF_SYMLINK "${CMAKE_BINARY_DIR}/riscv-src")
-file(MAKE_DIRECTORY "build_elfs")
+set(RISCV_SYMLINK "${CMAKE_BINARY_DIR}/riscv-src")
+file(MAKE_DIRECTORY "build_riscv")
 
 # Check for SFPI release
 include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
@@ -68,8 +68,8 @@ include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
 # Refresh the symlinks
 file(REMOVE "${BUILD_SYMLINK}")
 file(CREATE_LINK "${CMAKE_BINARY_DIR}" "${BUILD_SYMLINK}" SYMBOLIC)
-file(REMOVE "${ELF_SYMLINK}")
-file(CREATE_LINK "${CMAKE_SOURCE_DIR}/build_elfs" "${ELF_SYMLINK}" SYMBOLIC)
+file(REMOVE "${RISCV_SYMLINK}")
+file(CREATE_LINK "${CMAKE_SOURCE_DIR}/build_riscv" "${RISCV_SYMLINK}" SYMBOLIC)
 
 # Check for ZeroMQ
 include(${PROJECT_SOURCE_DIR}/cmake/ZeroMQ.cmake)
@@ -86,5 +86,5 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/utils)
 add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 
 # As build_<type>/riscv-src is a symlink, CMake can't put its configuration files there
-# directly, so we specify here that it should place them in build_elfs instead.
-add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src ${CMAKE_BINARY_DIR}/../build_elfs)
+# directly, so we specify here that it should place them in build_riscv instead.
+add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src ${PROJECT_SOURCE_DIR}/build_riscv)

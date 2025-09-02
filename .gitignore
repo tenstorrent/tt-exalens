@@ -11,7 +11,7 @@ core
 /build
 /build_debug
 /build_release
-/build_elfs
+/build_riscv
 
 __pycache__
 .venv
