@@ -51,9 +51,14 @@ jobs:
           make mypy
       - name: Build wheel
         run: |
+          make release
           make wheel
       - name: Upload libraries as artifacts
         uses: pyTooling/upload-artifact@v4
         with:
           name: ttexalens-build
-          path: build
+          path: |
+            build
+            build_debug
+            build_release
+            build_riscv
