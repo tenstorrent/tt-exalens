@@ -32,6 +32,16 @@ class TestDevice(unittest.TestCase):
 
         self.device = self.context.devices[self.device_id]
 
+    def test_get_active_idle_eth_block_locations(self):
+        set_eth = set(self.device.get_block_locations(block_type="eth"))
+        set_active_eth = set(self.device.active_eth_block_locations)
+        set_idle_eth = set(self.device.idle_eth_block_locations)
+
+        self.assertTrue(set_active_eth.isdisjoint(set_idle_eth), "Active and idle ETH block locations must not overlap")
+        self.assertTrue(
+            (set_active_eth | set_idle_eth) == set_eth, "All eth block locations must be either idle or active"
+        )
+
     def test_get_active_idle_eth_blocks(self):
         set_eth = set(self.device.get_blocks(block_type="eth"))
         set_active_eth = set(self.device.active_eth_blocks)

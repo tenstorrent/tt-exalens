@@ -221,23 +221,31 @@ class Device(TTObject):
         return arc_blocks[0]
 
     @cached_property
-    def active_eth_blocks(self) -> list[NocBlock]:
+    def active_eth_block_locations(self) -> list[OnChipCoordinate]:
         active_channels = []
         for connection in self.cluster_desc["ethernet_connections"]:
             for endpoint in connection:
                 if endpoint["chip"] == self._id:
                     active_channels.append(endpoint["chan"])
 
-        return [self.get_blocks(block_type="eth")[chan] for chan in active_channels]
+        return [self.get_block_locations(block_type="eth")[chan] for chan in active_channels]
+
+    @cached_property
+    def idle_eth_block_locations(self) -> list[OnChipCoordinate]:
+        idle_block_locations = []
+        for location in self.get_block_locations(block_type="eth"):
+            if not location in self.active_eth_block_locations:
+                idle_block_locations.append(location)
+
+        return idle_block_locations
+
+    @cached_property
+    def active_eth_blocks(self) -> list[NocBlock]:
+        return [self.get_block(location) for location in self.active_eth_block_locations]
 
     @cached_property
     def idle_eth_blocks(self) -> list[NocBlock]:
-        idle_blocks = []
-        for block in self.get_blocks(block_type="eth"):
-            if not block in self.active_eth_blocks:
-                idle_blocks.append(block)
-
-        return idle_blocks
+        return [self.get_block(location) for location in self.idle_eth_block_locations]
 
     @abstractmethod
     def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
