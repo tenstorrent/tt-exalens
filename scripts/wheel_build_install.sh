@@ -3,8 +3,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-make clean
-make build
 make wheel
 
 pip uninstall ttexalens -y

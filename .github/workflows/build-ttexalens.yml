@@ -45,15 +45,21 @@ jobs:
           key: ttexalens-${{ inputs.config }}-${{ inputs.os }}
       - name: Build TTEXALENS
         run: |
-          make build
+          make debug
+          make release
       - name: Run mypy
         run: |
           make mypy
       - name: Build wheel
         run: |
           make wheel
+          make wheel_develop
       - name: Upload libraries as artifacts
         uses: pyTooling/upload-artifact@v4
         with:
           name: ttexalens-build
-          path: build
+          path: |
+            build
+            build_debug
+            build_release
+            build_riscv

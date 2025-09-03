@@ -43,11 +43,6 @@ add_library(compiler_flags INTERFACE)
 target_link_libraries(compiler_flags INTERFACE linker_flags)
 target_compile_options(compiler_flags INTERFACE -mavx2 -fPIC -DFMT_HEADER_ONLY -fvisibility-inlines-hidden -fno-lto)
 
-# Find Python3
-set(Python3_FIND_STRATEGY LOCATION)
-find_package (Python3 COMPONENTS Interpreter Development)
-message(STATUS "Python3 include dirs: ${Python3_INCLUDE_DIRS}")
-
 # Set default values for variables/options
 set(CMAKE_BUILD_BIN_DIR "${CMAKE_BINARY_DIR}/bin")
 set(TTEXALENS_HOME "${PROJECT_SOURCE_DIR}")
@@ -56,8 +51,20 @@ set(UMD_HOME "${PROJECT_SOURCE_DIR}/third_party/umd")
 # Third party dependencies
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/umd)
 
+# Handle symlinks: build should point to build_debug or build_release,
+# and build_*/riscv-src should point to build_riscv
+set(BUILD_SYMLINK "${CMAKE_SOURCE_DIR}/build")
+set(RISCV_SYMLINK "${CMAKE_BINARY_DIR}/riscv-src")
+file(MAKE_DIRECTORY "build_riscv")
+
 # Check for SFPI release
 include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
+
+# Refresh the symlinks
+file(REMOVE "${BUILD_SYMLINK}")
+file(CREATE_LINK "${CMAKE_BINARY_DIR}" "${BUILD_SYMLINK}" SYMBOLIC)
+file(REMOVE "${RISCV_SYMLINK}")
+file(CREATE_LINK "${CMAKE_SOURCE_DIR}/build_riscv" "${RISCV_SYMLINK}" SYMBOLIC)
 
 # Check for ZeroMQ
 include(${PROJECT_SOURCE_DIR}/cmake/ZeroMQ.cmake)
@@ -72,4 +79,7 @@ include(${PROJECT_SOURCE_DIR}/cmake/pybind.cmake)
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens)
 add_subdirectory(${PROJECT_SOURCE_DIR}/utils)
 add_subdirectory(${PROJECT_SOURCE_DIR}/test)
-add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src)
+
+# As build_<type>/riscv-src is a symlink, CMake can't put its configuration files there
+# directly, so we specify here that it should place them in build_riscv instead.
+add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src ${PROJECT_SOURCE_DIR}/build_riscv)

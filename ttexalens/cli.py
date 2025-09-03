@@ -401,7 +401,9 @@ def main_loop(args, context):
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--gdb":
-        gdb_client_path = os.path.abspath(util.application_path() + "/../build/sfpi/compiler/bin/riscv32-tt-elf-gdb")
+        gdb_client_path = os.path.abspath(
+            util.application_path() + "/../build_riscv/sfpi/compiler/bin/riscv32-tt-elf-gdb"
+        )
         gdb_client_args = sys.argv[2:]
 
         # Start gdb client with the specified arguments
