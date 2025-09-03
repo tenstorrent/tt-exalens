@@ -52,8 +52,8 @@ jobs:
           make mypy
       - name: Build wheel
         run: |
-          make release
           make wheel
+          make wheel_develop
       - name: Upload libraries as artifacts
         uses: pyTooling/upload-artifact@v4
         with:
