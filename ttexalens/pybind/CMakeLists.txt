@@ -5,11 +5,11 @@ set_target_properties(ttexalens_pybind PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
 )
 target_link_libraries(ttexalens_pybind
+    PUBLIC
+        fmt umd::device
     PRIVATE
-    ttexalens_server_lib
-    umd::device
-    yaml-cpp
-    pthread
+        yaml-cpp
+        pthread
 )
 target_include_directories(ttexalens_pybind
     PUBLIC

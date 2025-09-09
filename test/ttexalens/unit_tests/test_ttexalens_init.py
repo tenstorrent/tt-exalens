@@ -6,8 +6,8 @@ import os
 
 from ttexalens import tt_exalens_init
 from ttexalens.context import Context
-from ttexalens.tt_exalens_server import start_server, stop_server
-
+from ttexalens.tt_exalens_ifc import init_pybind
+from ttexalens.tt_exalens_server import start_server
 
 CACHE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_cache.pkl"))
 
@@ -45,11 +45,11 @@ class TestLocalTTExaLensInit(unittest.TestCase):
 class TestRemoteTTExaLens(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.server = start_server(5555)
+        cls.server = start_server(5555, init_pybind())
 
     @classmethod
     def tearDownClass(cls) -> None:
-        stop_server(cls.server)
+        cls.server.stop()
 
     def test_remote_init(self):
         """Test remote TTExaLens initialization."""

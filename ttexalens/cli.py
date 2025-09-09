@@ -61,6 +61,7 @@ except ModuleNotFoundError as e:
     exit(1)
 
 
+from ttexalens import tt_exalens_ifc
 from ttexalens import tt_exalens_init
 from ttexalens import tt_exalens_server
 from ttexalens import util as util
@@ -410,8 +411,7 @@ def main():
         import subprocess
 
         subprocess.run([gdb_client_path] + gdb_client_args)
-
-        sys.exit(0)
+        return
 
     args = docopt(__doc__)
 
@@ -432,23 +432,31 @@ def main():
     if args["--write-cache"]:
         cache_path = args["--cache-path"]
 
+    # TODO: Consider making server work the same way as gdb server.
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
-        print(f"Starting TTExaLens server at {args['--port']}")
-        ttexalens_server = tt_exalens_server.start_server(
-            args["--port"],
+        communicator = tt_exalens_ifc.init_pybind(
             wanted_devices,
             init_jtag=args["--jtag"],
             initialize_with_noc1=args["--initialize-with-noc1"],
             simulation_directory=args["-s"],
-            background=args["--background"],
         )
-        if args["--test"]:
-            while True:
+        ttexalens_server = tt_exalens_server.start_server(port=int(args["--port"]), communicator=communicator)
+        if args["--background"]:
+            util.INFO("The debug server is running in the background.")
+            util.INFO("To stop the server, use the command: touch exit.server")
+            os.remove("exit.server")
+            try:
+                while os.path.isfile("exit.server"):
+                    import time
+
+                    time.sleep(1)
+            except KeyboardInterrupt:
                 pass
-        input("Press Enter to exit server...")
-        tt_exalens_server.stop_server(ttexalens_server)
-        sys.exit(0)
+        else:
+            input("Press Enter to exit server...")
+        ttexalens_server.stop()
+        return
 
     if args["--cached"]:
         util.INFO(f"Starting TTExaLens from cache.")

@@ -127,10 +127,6 @@ jobs:
         run: |
           echo "test_report_path=report_$JOB_ID.xml" >> "$GITHUB_OUTPUT"
 
-      - name: Run C++ tests
-        run: |
-          make ttexalens_server_unit_tests_run_only
-
       - name: Run Python tests for ttexalens library
         run: |
           python3 -m xmlrunner discover -v -t . -s test/ttexalens -p '*test*.py' \

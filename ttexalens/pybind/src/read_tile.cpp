@@ -4,7 +4,7 @@
 // The implementation of read_tile given here is taken from
 // budabackend/model/tile.cpp
 
-#include "ttexalensserver/read_tile.hpp"
+#include "read_tile.hpp"
 
 namespace tt::exalens::tile {
 
