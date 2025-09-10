@@ -13,4 +13,3 @@ CPMAddPackage(
 
 # Add subdirectories
 add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/pybind)
-add_subdirectory(${PROJECT_SOURCE_DIR}/test/ttexalens/server)

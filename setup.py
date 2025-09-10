@@ -45,12 +45,6 @@ ttexalens_files = {
         "output": "build/lib",
         "strip": True,
     },
-    "ttexalens-server-standalone": {
-        "path": "build/bin",
-        "files": ["ttexalens-server-standalone"],
-        "output": "build/bin",
-        "strip": True,
-    },
     "gdb-client": {
         "path": "build_riscv/sfpi/compiler/bin",
         "files": ["riscv32-tt-elf-gdb"],

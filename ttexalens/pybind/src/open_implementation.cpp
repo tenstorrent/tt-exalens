@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-#include "ttexalensserver/open_implementation.h"
+#include "open_implementation.h"
 
 #include <limits.h>
 #include <unistd.h>
@@ -11,8 +11,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "ttexalensserver/jtag_implementation.h"
-#include "ttexalensserver/umd_implementation.h"
+#include "jtag_implementation.h"
 #include "umd/device/cluster.h"
 #include "umd/device/jtag/jtag.h"
 #include "umd/device/jtag/jtag_device.h"
@@ -23,6 +22,7 @@
 #include "umd/device/tt_soc_descriptor.h"
 #include "umd/device/tt_xy_pair.h"
 #include "umd/device/types/arch.h"
+#include "umd_implementation.h"
 
 static std::filesystem::path get_temp_working_directory() {
     std::filesystem::path temp_path = std::filesystem::temp_directory_path();

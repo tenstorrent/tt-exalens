@@ -4,10 +4,14 @@ nanobind_add_module(ttexalens_pybind_unit_tests ${TTEXALENS_PYBIND_UNIT_TESTS_SR
 
 target_link_libraries(ttexalens_pybind_unit_tests
     PRIVATE
-    ttexalens_server_lib
     umd::device
     yaml-cpp
     pthread
+)
+
+target_include_directories(ttexalens_pybind_unit_tests
+    PUBLIC
+        $<TARGET_PROPERTY:ttexalens_pybind,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 set_target_properties(ttexalens_pybind_unit_tests PROPERTIES

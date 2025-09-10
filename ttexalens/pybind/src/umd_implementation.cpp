@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
-#include "ttexalensserver/umd_implementation.h"
+#include "umd_implementation.h"
 
 #include <cstdint>
 #include <tuple>
 
-#include "ttexalensserver/read_tile.hpp"
+#include "read_tile.hpp"
 #include "umd/device/arc_telemetry_reader.h"
 #include "umd/device/cluster.h"
 

@@ -56,11 +56,6 @@ wheel:
 	@ln -sfn "$(abspath build_release)" build
 	STRIP_SYMBOLS=1 CONFIG=Release pip wheel --no-deps --no-cache-dir . --wheel-dir build_release/ttexalens_wheel
 
-.PHONY: ttexalens_server_unit_tests_run_only
-ttexalens_server_unit_tests_run_only:
-	@echo "Running: build/bin/ttexalens_server_unit_tests"
-	@build/bin/ttexalens_server_unit_tests
-
 TTEXALENS_HOME ?= $(shell git rev-parse --show-toplevel)
 
 include docs/module.mk
