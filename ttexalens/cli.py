@@ -432,7 +432,6 @@ def main():
     if args["--write-cache"]:
         cache_path = args["--cache-path"]
 
-    # TODO: Consider making server work the same way as gdb server.
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
         communicator = tt_exalens_ifc.init_pybind(

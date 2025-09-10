@@ -24,7 +24,10 @@ except ImportError:
         sys.exit(1)
 
 
-# TODO: Consider moving this to nanobind to avoid wrapping everything into python class
+class ttexalens_server_not_supported(Exception):
+    pass
+
+
 class TTExaLensPybind(TTExaLensCommunicator):
     def __init__(
         self,

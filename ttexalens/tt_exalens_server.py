@@ -12,8 +12,8 @@ class TTExaLensServer:
     def __init__(self, port: int, communicator: TTExaLensCommunicator):
         self.port = port
         self.communicator = communicator
-        self.daemon = None
-        self.thread = None
+        self.daemon: Pyro5.api.Daemon | None = None
+        self.thread: threading.Thread | None = None
 
     def start(self):
         if self.daemon or self.thread:
