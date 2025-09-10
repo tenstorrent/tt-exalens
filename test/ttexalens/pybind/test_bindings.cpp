@@ -4,7 +4,7 @@
 
 #include <dlfcn.h>
 #include <nanobind/stl/string.h>
-#include <ttexalensserver/ttexalens_implementation.h>
+#include <ttexalens_implementation.h>
 
 #include <map>
 #include <memory>

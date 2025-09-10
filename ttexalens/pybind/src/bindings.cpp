@@ -4,9 +4,9 @@
 
 #include "bindings.h"
 
-#include <ttexalensserver/jtag_implementation.h>
-#include <ttexalensserver/open_implementation.h>
-#include <ttexalensserver/umd_implementation.h>
+#include <jtag_implementation.h>
+#include <open_implementation.h>
+#include <umd_implementation.h>
 
 #include <fstream>
 #include <optional>
@@ -47,6 +47,20 @@ bool open_device(const std::string &binary_directory, const std::vector<uint8_t>
             ttexalens_implementation = tt::exalens::open_implementation<tt::exalens::umd_implementation>::open(
                 binary_directory, wanted_devices, initialize_with_noc1);
         }
+        if (!ttexalens_implementation) {
+            return false;
+        }
+    } catch (std::runtime_error &error) {
+        std::cerr << "Cannot open device: " << error.what() << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool open_simulation(const std::string &simulation_directory) {
+    try {
+        ttexalens_implementation =
+            tt::exalens::open_implementation<tt::exalens::umd_implementation>::open_simulation(simulation_directory);
         if (!ttexalens_implementation) {
             return false;
         }
@@ -210,6 +224,8 @@ std::optional<uint32_t> read_arc_telemetry_entry(uint8_t chip_id, uint8_t teleme
 NB_MODULE(ttexalens_pybind, m) {
     m.def("open_device", &open_device, "Opens tt device. Prints error message if failed.", "binary_directory"_a,
           "wanted_devices"_a = std::vector<uint8_t>(), "init_jtag"_a = false, "initialize_with_noc1"_a = false);
+    m.def("open_simulation", &open_simulation, "Opens tt device simulation. Prints error message if failed.",
+          "simulation_directory"_a);
     m.def("pci_read32", &pci_read32, "Reads 4 bytes from PCI address", "noc_id"_a, "chip_id"_a, "noc_x"_a, "noc_y"_a,
           "address"_a);
     m.def("pci_write32", &pci_write32, "Writes 4 bytes to PCI address", "noc_id"_a, "chip_id"_a, "noc_x"_a, "noc_y"_a,

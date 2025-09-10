@@ -231,21 +231,6 @@ This will automatically generate new image releases and tag them as `latest`.
 
 ## Troubleshooting
 
-### fatal error: zmq.hpp: No such file or directory
-
-```
-In file included from ttexalens/server/lib/inc/ttexalensserver/server.h:8,
-                 from ttexalens/server/app/ttexalens-server-standalone.cpp:11:
-ttexalens/server/lib/inc/ttexalensserver/communication.h:9:10: fatal error: zmq.hpp: No such file or directory
-    9 | #include <zmq.hpp>
-```
-
-This happens when the docker image does not contain the required dependencies.
-Fix:
-```
-sudo apt update && sudo apt-get install -y libzmq3-dev libgtest-dev libgmock-dev
-```
-
 
 ### python: command not found
 ```
