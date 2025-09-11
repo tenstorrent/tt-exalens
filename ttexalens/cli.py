@@ -4,10 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-exalens [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1]
+  tt-exalens [--commands=<cmds>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1]
   tt-exalens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--initialize-with-noc1]
-  tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--write-cache] [--cache-path=<path>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
-  tt-exalens --cached [--cache-path=<path>] [--commands=<cmds>] [--verbosity=<verbosity>] [--test]
+  tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
   tt-exalens --gdb [gdb_args...]
   tt-exalens -h | --help
 
@@ -15,13 +14,10 @@ Options:
   -h --help                       Show this help message and exit.
   --server                        Start a TTExaLens server. If not specified, the port will be set to 5555.
   --remote                        Attach to the remote TTExaLens server. If not specified, IP defaults to localhost and port to 5555.
-  --cached                        Use the cache from previous TTExaLens run to simulate device communication.
   --port=<port>                   Port of the TTExaLens server. If not specified, defaults to 5555.  [default: 5555]
   --remote-address=<ip:port>      Address of the remote TTExaLens server, in the form of ip:port, or just :port, if ip is localhost. If not specified, defaults to localhost:5555. [default: localhost:5555]
   --commands=<cmds>               Execute a list of semicolon-separated commands.
   --start-gdb=<gdb_port>          Start a gdb server on the specified port.
-  --write-cache                   Write the cache to disk.
-  --cache-path=<path>             If running in --cached mode, this is the path to the cache file. If writing cache, this is the path for output. [default: ttexalens_cache.pkl]
   --devices=<devices>             Comma-separated list of devices to load. If not supplied, all devices will be loaded.
   --background                    Start the server in the background detached from console (doesn't require ENTER button for exit, but exit.server file to be created).
   --initialize-with-noc1          Initialize the device with NOC1.
@@ -35,10 +31,9 @@ Options:
 Description:
   TTExaLens parses the build output files and reads the device state to provide a debugging interface for the user.
 
-  There are three modes of operation:
+  There are two modes of operation:
     1. Local mode: The user can run tt-exalens with a specific output directory. This will load the runtime data from the output directory. If the output directory is not specified, the most recent subdirectory of tt_build/ will be used.
     2. Remote mode: The user can connect to a TTExaLens server running on a remote machine. The server will provide the runtime data.
-    3. Cached mode: The user can use a cache file from previous TTExaLens run. This is useful for debugging without a connection to the device. Writing is disabled in this mode.
 
   Passing the --server flag will start a TTExaLens server. The server will listen on the specified port (default 5555) for incoming connections.
   Passing the --gdb flag will start a RISC-V gdb client. The gdb client can be used to connect to gdb server that can be start from another TTExaLens instance.
@@ -423,14 +418,9 @@ def main():
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
     util.VERBOSE(f"Verbosity level: {Verbosity.get().name} ({Verbosity.get().value})")
 
-    wanted_devices: list[int] = None
+    wanted_devices: list[int] | None = None
     if args["--devices"]:
-        wanted_devices = args["--devices"].split(",")
-        wanted_devices = [int(d) for d in wanted_devices]
-
-    cache_path: str = None
-    if args["--write-cache"]:
-        cache_path = args["--cache-path"]
+        wanted_devices = [int(d) for d in args["--devices"].split(",")]
 
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
@@ -457,17 +447,14 @@ def main():
         ttexalens_server.stop()
         return
 
-    if args["--cached"]:
-        util.INFO(f"Starting TTExaLens from cache.")
-        context = tt_exalens_init.init_ttexalens_cached(args["--cache-path"])
-    elif args["--remote"]:
+    if args["--remote"]:
         address = args["--remote-address"].split(":")
         server_ip = address[0] if address[0] != "" else "localhost"
         server_port = address[-1]
         util.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
-        context = tt_exalens_init.init_ttexalens_remote(server_ip, int(server_port), cache_path)
+        context = tt_exalens_init.init_ttexalens_remote(server_ip, int(server_port))
     else:
-        context = tt_exalens_init.init_ttexalens(wanted_devices, cache_path, args["--jtag"], args["--use-noc1"])
+        context = tt_exalens_init.init_ttexalens(wanted_devices, args["--jtag"], args["--use-noc1"])
 
     # Main function
     exit_code = main_loop(args, context)

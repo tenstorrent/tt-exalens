@@ -4,7 +4,6 @@
 import os
 
 from ttexalens import tt_exalens_ifc
-from ttexalens import tt_exalens_ifc_cache
 from ttexalens import util as util
 
 from ttexalens.context import Context, LimitedContext
@@ -15,12 +14,11 @@ If a library function needs context parameter but it isn't provided, it will use
 whatever is in GLOBAL_CONTEXT variable. This does not mean that TTExaLens context is
 a singleton, as it can be explicitly provided to library functions.
 """
-GLOBAL_CONTEXT: Context = None
+GLOBAL_CONTEXT: Context | None = None
 
 
 def init_ttexalens(
-    wanted_devices: list = None,
-    cache_path: str = None,
+    wanted_devices: list | None = None,
     init_jtag: bool = False,
     use_noc1: bool = False,
 ) -> Context:
@@ -36,8 +34,6 @@ def init_ttexalens(
     """
 
     lens_ifc = tt_exalens_ifc.init_pybind(wanted_devices, init_jtag, use_noc1)
-    if cache_path:
-        lens_ifc = tt_exalens_ifc_cache.init_cache_writer(lens_ifc, cache_path)
 
     return load_context(lens_ifc, use_noc1)
 
@@ -45,7 +41,6 @@ def init_ttexalens(
 def init_ttexalens_remote(
     ip_address: str = "localhost",
     port: int = 5555,
-    cache_path: str = None,
 ) -> Context:
     """Initializes TTExaLens internals by creating the device interface and TTExaLens context.
     Interfacing device is done remotely through TTExaLens client.
@@ -60,28 +55,6 @@ def init_ttexalens_remote(
     """
 
     lens_ifc = tt_exalens_ifc.connect_to_server(ip_address, port)
-    if cache_path:
-        lens_ifc = tt_exalens_ifc_cache.init_cache_writer(lens_ifc, cache_path)
-
-    return load_context(lens_ifc)
-
-
-def init_ttexalens_cached(
-    cache_path: str,
-):
-    """Initializes TTExaLens internals by reading cached session data. There is no connection to the device.
-    Only cached commands are available.
-
-    Args:
-            cache_path (str): Path to the cache file.
-
-    Returns:
-            Context: TTExaLens context object.
-    """
-    if not os.path.exists(cache_path) or not os.path.isfile(cache_path):
-        raise util.TTFatalException(f"Error: Cache file at {cache_path} does not exist.")
-
-    lens_ifc = tt_exalens_ifc_cache.init_cache_reader(cache_path)
 
     return load_context(lens_ifc)
 
