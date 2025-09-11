@@ -40,26 +40,29 @@ def get_pybind_filename() -> str:
 
     # Dynamically determine python version, ABI, and platform for pybind filename
     filename = "ttexalens_pybind.so"
+    if check_pybind_file(filename):
+        return filename
 
     # Try using EXT_SUFFIX from sysconfig
-    if not check_pybind_file(filename):
-        ext_suffix = sysconfig.get_config_var("EXT_SUFFIX")
-        if ext_suffix:
-            filename = f"ttexalens_pybind{ext_suffix}"
+    ext_suffix = sysconfig.get_config_var("EXT_SUFFIX")
+    if ext_suffix:
+        filename = f"ttexalens_pybind{ext_suffix}"
+        if check_pybind_file(filename):
+            return filename
 
     # Try using SOABI from sysconfig
-    if not check_pybind_file(filename):
-        soabi = sysconfig.get_config_var("SOABI")
-        if soabi:
-            filename = f"ttexalens_pybind.{soabi}.so"
+    soabi = sysconfig.get_config_var("SOABI")
+    if soabi:
+        filename = f"ttexalens_pybind.{soabi}.so"
+        if check_pybind_file(filename):
+            return filename
 
     # Fallback to manual construction
-    if not check_pybind_file(filename):
-        py_major = sys.version_info.major
-        py_minor = sys.version_info.minor
-        arch = platform.machine()
-        sysname = platform.system().lower()
-        filename = f"ttexalens_pybind.cpython-{py_major}{py_minor}-{arch}-{sysname}-gnu.so"
+    py_major = sys.version_info.major
+    py_minor = sys.version_info.minor
+    arch = platform.machine()
+    sysname = platform.system().lower()
+    filename = f"ttexalens_pybind.cpython-{py_major}{py_minor}-{arch}-{sysname}-gnu.so"
 
     if not check_pybind_file(filename):
         raise FileNotFoundError(f"Could not find {filename} in build/lib")
