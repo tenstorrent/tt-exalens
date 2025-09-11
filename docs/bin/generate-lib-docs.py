@@ -262,7 +262,10 @@ class FileParser:
         """Parses a variable declaration and its docstring."""
         name = node.target.id
         docstring = None
-        annotation = node.annotation.id
+        if hasattr(node.annotation, "op"):
+            annotation = self._resolve_node_returns(node.annotation)
+        else:
+            annotation = getattr(node.annotation, "id", None)
         value = node.value.value if node.value.value else "None"
 
         if docstring_node:
