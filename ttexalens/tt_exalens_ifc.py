@@ -18,16 +18,19 @@ sys.path.append(ttexalens_pybind_path)
 try:
     # This is a pybind module so we don't need from .
     from ttexalens_pybind import open_simulation, open_device, TTExaLensImplementation
-except ImportError:
+except ImportError as error:
     if not os.path.isfile(os.path.join(ttexalens_pybind_path, "ttexalens_pybind.so")):
         print(f"Error: 'ttexalens_pybind.so' not found in {ttexalens_pybind_path}. Try: make build")
     else:
-        print("Error: Failed to import ttexalens_pybind module. Ensure all dependencies are installed.")
+        print(f"Error: Failed to import ttexalens_pybind module. Error {error}.")
     sys.exit(1)
-    ttexalens_pybind = None  # type: ignore
 
 
 class TTExaLensCommunicator(TTExaLensImplementation):
+    """
+    Base class for the TTExaLens interfaces. It extends binding class with file access methods.
+    """
+
     @abstractmethod
     def get_file(self, file_path: str) -> str:
         pass
@@ -37,7 +40,11 @@ class TTExaLensCommunicator(TTExaLensImplementation):
         pass
 
 
-class TTExaLensPybindImplementation(TTExaLensCommunicator):
+class TTExaLensPybind(TTExaLensCommunicator):
+    """
+    Pybind implementation of the TTExaLens communicator.
+    """
+
     def __init__(
         self,
         wanted_devices: list = [],
@@ -78,7 +85,7 @@ def init_pybind(
     if not wanted_devices:
         wanted_devices = []
 
-    communicator = TTExaLensPybindImplementation(wanted_devices, init_jtag, initialize_with_noc1, simulation_directory)
+    communicator = TTExaLensPybind(wanted_devices, init_jtag, initialize_with_noc1, simulation_directory)
     util.VERBOSE("Device opened successfully.")
     return communicator
 
