@@ -78,23 +78,6 @@ def get_libjtag() -> list:
     return []
 
 
-ttexalens_files = {
-    "ttexalens_lib": {"path": "ttexalens", "files": get_ttexalens_py_files(), "output": "ttexalens"},
-    "libs": {
-        "path": "build/lib",
-        "files": ["libdevice.so", get_pybind_filename()] + get_libjtag(),
-        "output": "build/lib",
-        "strip": True,
-    },
-    "gdb-client": {
-        "path": "build_riscv/sfpi/compiler/bin",
-        "files": ["riscv32-tt-elf-gdb"],
-        "output": "build_riscv/sfpi/compiler/bin",
-        "strip": True,
-    },
-}
-
-
 class TTExtension(Extension):
     def __init__(self, name):
         Extension.__init__(self, name, sources=[])
@@ -119,6 +102,21 @@ class MyBuild(build_ext):
         subprocess.check_call([f"cd {ttexalens_home} && make"], env=env, shell=True)
 
     def _copy_files(self, target_path):
+        ttexalens_files = {
+            "ttexalens_lib": {"path": "ttexalens", "files": get_ttexalens_py_files(), "output": "ttexalens"},
+            "libs": {
+                "path": "build/lib",
+                "files": ["libdevice.so", get_pybind_filename()] + get_libjtag(),
+                "output": "build/lib",
+                "strip": True,
+            },
+            "gdb-client": {
+                "path": "build_riscv/sfpi/compiler/bin",
+                "files": ["riscv32-tt-elf-gdb"],
+                "output": "build_riscv/sfpi/compiler/bin",
+                "strip": True,
+            },
+        }
         strip_symbols = os.environ.get("STRIP_SYMBOLS", "0") == "1"
         for _, d in ttexalens_files.items():
             path = target_path + "/" + d["output"]
