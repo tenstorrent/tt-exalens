@@ -11,7 +11,7 @@ from sortedcontainers import SortedSet
 
 from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.hardware.risc_debug import RiscLocation
-from ttexalens.tt_exalens_ifc_base import TTExaLensCommunicator
+from ttexalens.tt_exalens_ifc import TTExaLensCommunicator
 
 # All-encompassing structure representing a TTExaLens context
 class Context:

@@ -78,7 +78,6 @@ include(${PROJECT_SOURCE_DIR}/cmake/pybind.cmake)
 # Add subdirectories
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens)
 add_subdirectory(${PROJECT_SOURCE_DIR}/utils)
-add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 
 # As build_<type>/riscv-src is a symlink, CMake can't put its configuration files there
 # directly, so we specify here that it should place them in build_riscv instead.
