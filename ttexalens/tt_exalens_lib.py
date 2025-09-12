@@ -430,7 +430,7 @@ def arc_msg(
     if timeout < 0:
         raise TTException("Timeout must be greater than or equal to 0.")
 
-    return context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout)
+    return list(context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout))
 
 
 def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None) -> int:
