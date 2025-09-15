@@ -166,6 +166,7 @@ class GdbServer(threading.Thread):
                     try:
                         util.VERBOSE(f"sent response to GDB: {writer.data.decode()}")
                     except:
+                        # We ignore error if we cannot decode message
                         pass
                     writer.send()
             except Exception as e:
