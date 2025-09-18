@@ -46,8 +46,8 @@ class TTExaLensImplementation {
         return _check_result(implementation->pci_write32(noc_id, chip_id, noc_x, noc_y, address, data));
     }
 
-    nanobind::object pci_read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                              uint32_t size) {
+    nanobind::bytes pci_read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                             uint32_t size) {
         auto data = implementation->pci_read(noc_id, chip_id, noc_x, noc_y, address, size);
         if (data) {
             // For nanobind, we can use nanobind::bytes directly
