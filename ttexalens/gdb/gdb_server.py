@@ -163,7 +163,11 @@ class GdbServer(threading.Thread):
                     if should_ack:
                         client.write(b"+")
                         util.VERBOSE(f"sent response to GDB: +")
-                    util.VERBOSE(f"sent response to GDB: {writer.data.decode()}")
+                    try:
+                        util.VERBOSE(f"sent response to GDB: {writer.data.decode()}")
+                    except:
+                        # We ignore error if we cannot decode message
+                        pass
                     writer.send()
             except Exception as e:
                 client.write(b"-")
