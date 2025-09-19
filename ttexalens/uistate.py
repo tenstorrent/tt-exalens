@@ -70,7 +70,7 @@ class UIState:
 
         # Create prompt object.
         self.is_prompt_session = sys.stdin.isatty()
-        self.prompt_session = (
+        self.prompt_session: PromptSession | SimplePromptSession = (
             PromptSession(completer=TTExaLensCompleter(context)) if self.is_prompt_session else SimplePromptSession()
         )
 
