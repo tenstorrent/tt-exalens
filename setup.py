@@ -107,13 +107,13 @@ class MyBuild(build_ext):
             "libs": {
                 "path": "build/lib",
                 "files": ["libdevice.so", get_pybind_filename()] + get_libjtag(),
-                "output": "build/lib",
+                "output": "ttexalens/lib",
                 "strip": True,
             },
             "gdb-client": {
                 "path": "build_riscv/sfpi/compiler/bin",
                 "files": ["riscv32-tt-elf-gdb"],
-                "output": "build_riscv/sfpi/compiler/bin",
+                "output": "ttexalens/sfpi/compiler/bin",
                 "strip": True,
             },
         }

@@ -11,8 +11,9 @@ import Pyro5.api
 from ttexalens import util as util
 
 
-ttexalens_pybind_path = util.application_path() + "/../build/lib"
-binary_path = util.application_path() + "/../build/bin"
+ttexalens_pybind_path = util.application_path() + "/lib"
+if not os.path.exists(ttexalens_pybind_path):
+    ttexalens_pybind_path = util.application_path() + "/../build/lib"
 sys.path.append(ttexalens_pybind_path)
 
 try:
@@ -58,7 +59,7 @@ class TTExaLensPybind(TTExaLensCommunicator):
             if device is None:
                 raise Exception("Failed to open simulation using pybind library")
         else:
-            device = open_device(binary_path, wanted_devices, init_jtag, initialize_with_noc1)
+            device = open_device(ttexalens_pybind_path, wanted_devices, init_jtag, initialize_with_noc1)
             if device is None:
                 raise Exception("Failed to open device using pybind library")
         self.device: TTExaLensImplementation = device
