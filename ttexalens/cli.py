@@ -42,10 +42,7 @@ Description:
 try:
     import sys, os, traceback, fnmatch, importlib
     from tabulate import tabulate
-    from prompt_toolkit import PromptSession
-    from prompt_toolkit.completion import Completer, Completion
-    from prompt_toolkit.formatted_text import HTML, fragment_list_to_text, to_formatted_text
-    from prompt_toolkit.history import InMemoryHistory
+    from prompt_toolkit.formatted_text import HTML
     from docopt import DocoptExit, docopt
     from fastnumbers import try_int
 except ModuleNotFoundError as e:
@@ -64,38 +61,6 @@ from ttexalens.uistate import UIState
 from ttexalens.command_parser import find_command, CommandParsingException
 
 from ttexalens import Verbosity
-
-
-class TTExaLensCompleter(Completer):
-    def __init__(self, commands, context):
-        self.commands = [cmd["long"] for cmd in commands] + [cmd["short"] for cmd in commands]
-        self.context = context
-
-    # Given a piece of a command, find all possible completions
-    def lookup_commands(self, cmd):
-        completions = []
-        for command in self.commands:
-            if command.startswith(cmd):
-                completions.append(command)
-        return completions
-
-    def fuzzy_lookup_addresses(self, addr):
-        completions = self.context.elf.fuzzy_find_multiple(addr, limit=30)
-        return completions
-
-    def get_completions(self, document, complete_event):
-        if complete_event.completion_requested:
-            prompt_current_word = document.get_word_before_cursor(pattern=self.context.elf.name_word_pattern)
-            prompt_text = document.text_before_cursor
-            # 1. If it is the first word, complete with the list of commands (lookup_commands)
-            if " " not in prompt_text:
-                for command in self.lookup_commands(prompt_current_word):
-                    yield Completion(command, start_position=-len(prompt_current_word))
-            # 2. If the currently-edited word starts with @, complete with address lookup from FW (fuzzy_lookup_addresses)
-            elif prompt_current_word.startswith("@"):
-                addr_part = prompt_current_word[1:]
-                for address in self.fuzzy_lookup_addresses(addr_part):
-                    yield Completion(f"@{address}", start_position=-len(prompt_current_word))
 
 
 # Creates rows for tabulate for all commands of a given type
@@ -258,17 +223,6 @@ def import_commands(reload=False):
     return commands
 
 
-class SimplePromptSession:
-    def __init__(self):
-        self.history = InMemoryHistory()
-
-    def prompt(self, message):
-        print(fragment_list_to_text(to_formatted_text(message)))
-        s = input()
-        self.history.append_string(s)
-        return s
-
-
 def main_loop(args, context):
     """
     Main loop: read-eval-print
@@ -278,13 +232,6 @@ def main_loop(args, context):
     context.filter_commands(
         import_commands()
     )  # Set the commands in the context so we can call commands from other commands
-
-    # Create prompt object.
-    context.prompt_session = (
-        PromptSession(completer=TTExaLensCompleter(context.commands, context))
-        if sys.stdin.isatty()
-        else SimplePromptSession()
-    )
 
     # Initialize current UI state
     ui_state = UIState(context)
@@ -301,98 +248,109 @@ def main_loop(args, context):
     non_interactive_commands = args["--commands"].split(";") if args["--commands"] else []
 
     # Main command loop
-    while True:
-        have_non_interactive_commands = len(non_interactive_commands) > 0
-        current_loc = ui_state.current_location
+    try:
+        while True:
+            have_non_interactive_commands = len(non_interactive_commands) > 0
+            current_loc = ui_state.current_location
 
-        try:
-            print_navigation_suggestions(navigation_suggestions)
+            try:
+                print_navigation_suggestions(navigation_suggestions)
 
-            if have_non_interactive_commands:
-                cmd_raw = non_interactive_commands[0].strip()
-                non_interactive_commands = non_interactive_commands[1:]
-                if len(cmd_raw) > 0:
-                    print(f"{util.CLR_INFO}Executing command: %s{util.CLR_END}" % cmd_raw)
-            else:
-                if ui_state.gdb_server is None:
-                    gdb_status = f"{util.CLR_PROMPT_BAD_VALUE}None{util.CLR_PROMPT_BAD_VALUE_END}"
+                if have_non_interactive_commands:
+                    cmd_raw = non_interactive_commands[0].strip()
+                    non_interactive_commands = non_interactive_commands[1:]
+                    if len(cmd_raw) > 0:
+                        print(f"{util.CLR_INFO}Executing command: %s{util.CLR_END}" % cmd_raw)
                 else:
-                    gdb_status = f"{util.CLR_PROMPT}{ui_state.gdb_server.server.port}{util.CLR_PROMPT_END}"
-                    # TODO: Since we cannot update status during prompt, this is commented out for now
-                    # if ui_state.gdb_server.is_connected:
-                    #     gdb_status += "(connected)"
-                my_prompt = f"gdb:{gdb_status} "
-                jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
-                my_prompt += f"device:{util.CLR_PROMPT}{jtag_prompt}{ui_state.current_device_id}{util.CLR_PROMPT_END} "
-                my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
-                my_prompt += f"{ui_state.current_prompt}> "
-                cmd_raw = context.prompt_session.prompt(HTML(my_prompt))
 
-            # Trim comments
-            cmd_raw = cmd_raw.split("#")[0].strip()
+                    def get_dynamic_prompt() -> HTML:
+                        my_prompt = ""
+                        if ui_state.gdb_server is not None:
+                            gdb_status = f"{util.CLR_PROMPT}{ui_state.gdb_server.server.port}{util.CLR_PROMPT_END}"
+                            if ui_state.gdb_server.is_connected:
+                                gdb_status += "(connected)"
+                            my_prompt += f"gdb:{gdb_status} "
+                        jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
+                        my_prompt += (
+                            f"device:{util.CLR_PROMPT}{jtag_prompt}{ui_state.current_device_id}{util.CLR_PROMPT_END} "
+                        )
+                        my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
+                        my_prompt += f"{ui_state.current_prompt}> "
+                        return HTML(my_prompt)
 
-            cmd_int = try_int(cmd_raw)
-            if type(cmd_int) == int:
-                if navigation_suggestions and cmd_int >= 0 and cmd_int < len(navigation_suggestions):
-                    cmd_raw = navigation_suggestions[cmd_int]["cmd"]
-                else:
-                    raise util.TTException(f"Invalid speed dial number: {cmd_int}")
+                    cmd_raw = ui_state.prompt(get_dynamic_prompt)
 
-            cmd = cmd_raw.split()
-            if len(cmd) > 0:
-                cmd_string = cmd[0]
-                found_command = None
+                # Trim comments
+                cmd_raw = cmd_raw.split("#")[0].strip()
 
-                # Look for command to execute
-                for c in context.commands:
-                    if c["short"] == cmd_string or c["long"] == cmd_string:
-                        found_command = c
-
-                if found_command == None:
-                    # Print help on invalid commands
-                    print_help(context.commands, cmd)
-                    raise util.TTException(f"Invalid command '{cmd_string}'")
-                else:
-                    if found_command["long"] == "exit":
-                        exit_code = int(cmd[1]) if len(cmd) > 1 else 0
-                        return exit_code
-                    elif found_command["long"] == "help":
-                        print_help(context.commands, cmd)
-                    elif found_command["long"] == "reload":
-                        import_commands(reload=True)
-                    elif found_command["long"] == "eval":
-                        eval_str = " ".join(cmd[1:])
-                        eval_str = context.elf.substitute_names_with_values(eval_str)
-                        print(f"{eval_str} = {eval(eval_str)}")
+                cmd_int = try_int(cmd_raw)
+                if type(cmd_int) == int:
+                    if navigation_suggestions and cmd_int >= 0 and cmd_int < len(navigation_suggestions):
+                        cmd_raw = navigation_suggestions[cmd_int]["cmd"]
                     else:
-                        new_navigation_suggestions = found_command["module"].run(cmd_raw, context, ui_state)
-                        navigation_suggestions = new_navigation_suggestions
+                        raise util.TTException(f"Invalid speed dial number: {cmd_int}")
 
-        except CommandParsingException as e:
-            if e.is_parsing_error():
-                util.ERROR(e)
-                if args["--test"]:  # Always raise in test mode
+                cmd = cmd_raw.split()
+                if len(cmd) > 0:
+                    cmd_string = cmd[0]
+                    found_command = None
+
+                    # Look for command to execute
+                    for c in context.commands:
+                        if c["short"] == cmd_string or c["long"] == cmd_string:
+                            found_command = c
+
+                    if found_command == None:
+                        # Print help on invalid commands
+                        print_help(context.commands, cmd)
+                        raise util.TTException(f"Invalid command '{cmd_string}'")
+                    else:
+                        if found_command["long"] == "exit":
+                            exit_code = int(cmd[1]) if len(cmd) > 1 else 0
+                            return exit_code
+                        elif found_command["long"] == "help":
+                            print_help(context.commands, cmd)
+                        elif found_command["long"] == "reload":
+                            import_commands(reload=True)
+                        elif found_command["long"] == "eval":
+                            eval_str = " ".join(cmd[1:])
+                            eval_str = context.elf.substitute_names_with_values(eval_str)
+                            print(f"{eval_str} = {eval(eval_str)}")
+                        else:
+                            new_navigation_suggestions = found_command["module"].run(cmd_raw, context, ui_state)
+                            navigation_suggestions = new_navigation_suggestions
+
+            except CommandParsingException as e:
+                if e.is_parsing_error():
+                    util.ERROR(e)
+                    if args["--test"]:  # Always raise in test mode
+                        raise
+                elif e.is_help_message():
+                    # help is automatically printed by command parser
+                    pass
+                else:
                     raise
-            elif e.is_help_message():
-                # help is automatically printed by command parser
-                pass
-            else:
-                raise
-        except Exception as e:
-            if args["--test"]:  # Always raise in test mode
-                util.ERROR("CLI option --test is set. Raising exception to exit.")
-                raise
-            else:
-                util.notify_exception(type(e), e, e.__traceback__)
-            if have_non_interactive_commands or type(e) == util.TTFatalException:
-                # In non-interactive mode and on fatal excepions, we re-raise to exit the program
-                raise
-        except DocoptExit as e:
-            if args["--test"]:  # Always raise in test mode
-                util.ERROR("CLI option --test is set. Raising exception to exit.")
-                raise
-            else:
-                print(e.usage)
+            except Exception as e:
+                if args["--test"]:  # Always raise in test mode
+                    util.ERROR("CLI option --test is set. Raising exception to exit.")
+                    raise
+                else:
+                    util.notify_exception(type(e), e, e.__traceback__)
+                if have_non_interactive_commands or type(e) == util.TTFatalException:
+                    # In non-interactive mode and on fatal excepions, we re-raise to exit the program
+                    raise
+            except DocoptExit as e:
+                if args["--test"]:  # Always raise in test mode
+                    util.ERROR("CLI option --test is set. Raising exception to exit.")
+                    raise
+                else:
+                    print(e.usage)
+    finally:
+        # Do best effort cleanup before exiting
+        try:
+            ui_state.stop_gdb()
+        except:
+            pass
 
 
 def main():
