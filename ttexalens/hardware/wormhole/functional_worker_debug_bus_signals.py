@@ -1136,4 +1136,170 @@ debug_bus_signal_map = {
     "tensix_frontend_t2_xsearch_busy": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x3
     ),
+    "adcs2_packers_channel1_w_cr": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=5, mask=0xFF000000
+    ),
+    "adcs2_packers_channel1_w_counter": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=5, mask=0xFF0000
+    ),
+    "adcs2_packers_channel1_z_cr": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=5, mask=0xFF00
+    ),
+    "adcs2_packers_channel1_z_counter": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=5, mask=0xFF
+    ),
+    "adcs2_packers_channel1_y_cr": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=5, mask=0x1FFF0000
+    ),
+    "adcs2_packers_channel1_y_counter": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=5, mask=0x1FFF
+    ),
+    "adcs2_packers_channel1_x_cr": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=6, sig_sel=5, mask=0xFFFC0000
+    ),
+    "adcs2_packers_channel1_x_cr": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=6, sig_sel=5, mask=0xF
+    ),
+    "adcs2_packers_channel1_x_counter": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=6, sig_sel=5, mask=0x3FFFF
+    ),
+    "adcs2_packers_channel0_w_cr": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=4, mask=0xFF000000
+    ),
+    "adcs2_packers_channel0_w_counter": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=4, mask=0xFF0000
+    ),
+    "adcs2_packers_channel0_z_cr": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=4, mask=0xFF00
+    ),
+    "adcs2_packers_channel0_z_counter": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=4, mask=0xFF
+    ),
+    "adcs2_packers_channel0_y_cr": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=4, mask=0x1FFF0000
+    ),
+    "adcs2_packers_channel0_y_counter": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=4, mask=0x1FFF
+    ),
+    "adcs2_packers_channel0_x_cr": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=6, sig_sel=4, mask=0xFFFC0000
+    ),
+    "adcs2_packers_channel0_x_cr": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=6, sig_sel=4, mask=0xF
+    ),
+    "adcs2_packers_channel0_x_counter": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=6, sig_sel=4, mask=0x3FFFF
+    ),
+    "adcs0_unpacker1_channel1_w_cr": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=3, mask=0xFF000000
+    ),
+    "adcs0_unpacker1_channel1_w_counter": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=3, mask=0xFF0000
+    ),
+    "adcs0_unpacker1_channel1_z_cr": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=3, mask=0xFF00
+    ),
+    "adcs0_unpacker1_channel1_z_counter": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=3, mask=0xFF
+    ),
+    "adcs0_unpacker1_channel1_y_cr": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=3, mask=0x1FFF0000
+    ),
+    "adcs0_unpacker1_channel1_y_counter": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=3, mask=0x1FFF
+    ),
+    "adcs0_unpacker1_channel1_x_cr": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=6, sig_sel=3, mask=0xFFFC0000
+    ),
+    "adcs0_unpacker1_channel1_x_cr": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=6, sig_sel=3, mask=0xF
+    ),
+    "adcs0_unpacker1_channel1_x_counter": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=6, sig_sel=3, mask=0x3FFFF
+    ),
+    "adcs0_unpacker1_channel0_w_cr": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=2, mask=0xFF000000
+    ),
+    "adcs0_unpacker1_channel0_w_counter": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=2, mask=0xFF0000
+    ),
+    "adcs0_unpacker1_channel0_z_cr": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=2, mask=0xFF00
+    ),
+    "adcs0_unpacker1_channel0_z_counter": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=2, mask=0xFF
+    ),
+    "adcs0_unpacker1_channel0_y_cr": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=2, mask=0x1FFF0000
+    ),
+    "adcs0_unpacker1_channel0_y_counter": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=2, mask=0x1FFF
+    ),
+    "adcs0_unpacker1_channel0_x_cr": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=6, sig_sel=2, mask=0xFFFC0000
+    ),
+    "adcs0_unpacker1_channel0_x_cr": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=6, sig_sel=2, mask=0xF
+    ),
+    "adcs0_unpacker1_channel0_x_counter": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=6, sig_sel=2, mask=0x3FFFF
+    ),
+    "adcs0_unpacker0_channel1_w_cr": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=1, mask=0xFF000000
+    ),
+    "adcs0_unpacker0_channel1_w_counter": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=1, mask=0xFF0000
+    ),
+    "adcs0_unpacker0_channel1_z_cr": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=1, mask=0xFF00
+    ),
+    "adcs0_unpacker0_channel1_z_counter": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=1, mask=0xFF
+    ),
+    "adcs0_unpacker0_channel1_y_cr": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=1, mask=0x1FFF0000
+    ),
+    "adcs0_unpacker0_channel1_y_counter": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=1, mask=0x1FFF
+    ),
+    "adcs0_unpacker0_channel1_x_cr": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=6, sig_sel=1, mask=0xFFFC0000
+    ),
+    "adcs0_unpacker0_channel1_x_cr": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=6, sig_sel=1, mask=0xF
+    ),
+    "adcs0_unpacker0_channel1_x_counter": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=6, sig_sel=1, mask=0x3FFFF
+    ),
+    "adcs0_unpacker0_channel0_w_cr": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=0, mask=0xFF000000
+    ),
+    "adcs0_unpacker0_channel0_w_counter": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=0, mask=0xFF0000
+    ),
+    "adcs0_unpacker0_channel0_z_cr": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=0, mask=0xFF00
+    ),
+    "adcs0_unpacker0_channel0_z_counter": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=0, mask=0xFF
+    ),
+    "adcs0_unpacker0_channel0_y_cr": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=0, mask=0x1FFF0000
+    ),
+    "adcs0_unpacker0_channel0_y_counter": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=0, mask=0x1FFF
+    ),
+    "adcs0_unpacker0_channel0_x_cr": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=6, sig_sel=0, mask=0xF
+    ),
+    "adcs0_unpacker0_channel0_x_cr": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=6, sig_sel=0, mask=0xFFFC0000
+    ),
+    "adcs0_unpacker0_channel0_x_counter": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=6, sig_sel=0, mask=0x3FFFF
+    ),
+
+
+
+
 }
