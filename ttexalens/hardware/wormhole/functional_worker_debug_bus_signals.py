@@ -1514,4 +1514,105 @@ debug_bus_signal_map = {
     "rwcs0_fidelity_phase": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=3, sig_sel=4, mask=0xC000000
     ),
+    "sfpu_lane_enabled[31]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x80000000
+    ),
+    "sfpu_lane_enabled[23]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x40000000
+    ),
+    "sfpu_lane_enabled[15]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x20000000
+    ),
+    "sfpu_lane_enabled[7]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x10000000
+    ),
+    "sfpu_lane_enabled[30]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x8000000
+    ),
+    "sfpu_lane_enabled[22]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x4000000
+    ),
+    "sfpu_lane_enabled[14]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x2000000
+    ),
+    "sfpu_lane_enabled[6]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x1000000
+    ),
+    "sfpu_lane_enabled[29]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x800000
+    ),
+    "sfpu_lane_enabled[21]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x400000
+    ),
+    "sfpu_lane_enabled[13]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x200000
+    ),
+    "sfpu_lane_enabled[5]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x100000
+    ),
+    "sfpu_lane_enabled[28]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x80000
+    ),
+    "sfpu_lane_enabled[20]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x40000
+    ),
+    "sfpu_lane_enabled[12]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x20000
+    ),
+    "sfpu_lane_enabled[4]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x10000
+    ),
+    "sfpu_lane_enabled[27]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x8000
+    ),
+    "sfpu_lane_enabled[19]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x4000
+    ),
+    "sfpu_lane_enabled[11]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x2000
+    ),
+    "sfpu_lane_enabled[3]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x1000
+    ),
+    "sfpu_lane_enabled[26]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x800
+    ),
+    "sfpu_lane_enabled[18]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x400
+    ),
+    "sfpu_lane_enabled[10]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x200
+    ),
+    "sfpu_lane_enabled[2]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x100
+    ),
+    "sfpu_lane_enabled[25]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x80
+    ),
+    "sfpu_lane_enabled[17]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x40
+    ),
+    "sfpu_lane_enabled[9]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x20
+    ),
+    "sfpu_lane_enabled[1]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x10
+    ),
+    "sfpu_lane_enabled[24]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x8
+    ),
+    "sfpu_lane_enabled[16]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x4
+    ),
+    "sfpu_lane_enabled[8]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x2
+    ),
+    "sfpu_lane_enabled[0]": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x1
+    ),
+
+
+
+    # zavrsiti srca i srcb
+    # zavrsiti l1
 }
