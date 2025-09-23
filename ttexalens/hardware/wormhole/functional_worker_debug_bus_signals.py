@@ -1298,8 +1298,220 @@ debug_bus_signal_map = {
     "adcs0_unpacker0_channel0_x_counter": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=6, sig_sel=0, mask=0x3FFFF
     ),
-
-
-
-
+    "rwc_(|math_winner_combo&math_instrn_pipe_ack)": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x10000000
+    ),
+    # "rwc_debug_daisy_stop_issue0_debug_issue0_in[0]_math_instrn_pipe_ack": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x8000000
+    # ),
+    "rwc_o_math_instrnbuf_rden": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x4000000
+    ),
+    "rwc_math_instrn_valid": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x2000000
+    ),
+    "rwc_src_data_ready": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x1000000
+    ),
+    "rwc_srcb_data_ready": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x800000
+    ),
+    "rwc_srca_data_ready": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x400000
+    ),
+    "rwc_debug_issue0_in[0]_srcb_write_ready": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x200000
+    ),
+    "rwc_debug_issue0_in[0]_srca_write_ready": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x100000
+    ),
+    "rwc_srca_update_inst": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x80000
+    ),
+    "rwc_srcb_update_inst": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x40000
+    ),
+    "rwc_allow_regfile_update": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x20000
+    ),
+    "rwc_math_srca_wr_port_avail": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x10000
+    ),
+    "rwc_debug_issue0_in[0]_dma_srca_wr_port_avail": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x8000
+    ),
+    "rwc_math_srcb_wr_port_avail": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x4000
+    ),
+    "rwc_debug_issue0_in[0]_dma_srcb_wr_port_avail": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x2000
+    ),
+    "rwc_s0_alu_inst_decoded": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x1C00
+    ),
+    "rwc_s0_sfpu_inst_decoded": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x380
+    ),
+    "rwc_regw_incr_inst_decoded": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x70
+    ),
+    "rwc_regmov_inst_decoded": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0xE
+    ),
+    "rwc_math_instr_valid_th": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=3, sig_sel=1, mask=0xE0000000
+    ),
+    "rwc_math_winner_thread_combo": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x18000000
+    ),
+    # "rwc_debug_daisy_stop_issue0_debug_issue0_in[0]_math_instrn_pipe_ack": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x800000
+    # ),
+    "rwc_math_winner_wo_pipe_stall": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x380000
+    ),
+    "rwc_s0_srca_data_ready": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x70000
+    ),
+    "rwc_s0_srcb_data_ready": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=3, sig_sel=1, mask=0xE000
+    ),
+    "rwc_math_thread_inst_data_valid": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=3, sig_sel=1, mask=0xE00
+    ),
+    # "rwc_i_dest_target_reg_cfg_pack_sec0_offset": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=3, sig_sel=1, mask=0xE0000000
+    # ),
+    # "rwc_i_dest_target_reg_cfg_pack_sec0_offset": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x1FF
+    # ),
+    "rwc_i_dest_target_reg_cfg_pack_sec1_offset": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=3, sig_sel=1, mask=0x1FFE0000
+    ),
+    "rwc_i_dest_target_reg_cfg_pack_sec2_offset": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=3, sig_sel=1, mask=0x1FFE0
+    ),
+    # "rwc_i_dest_target_reg_cfg_pack_sec3_offset": DebugBusSignalDescription(
+    #     rd_sel=0, daisy_sel=3, sig_sel=1, mask=0xFE000000
+    # ),
+    # "rwc_i_dest_target_reg_cfg_pack_sec3_offset": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=3, sig_sel=1, mask=0x1F
+    # ),
+    "rwc_i_dest_target_reg_cfg_pack_sec0_zoffset": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=3, sig_sel=1, mask=0x1F80000
+    ),
+    "rwc_i_dest_target_reg_cfg_pack_sec1_zoffset": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=3, sig_sel=1, mask=0x7E000
+    ),
+    "rwc_i_dest_target_reg_cfg_pack_sec2_zoffset": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=3, sig_sel=1, mask=0x1F80
+    ),
+    "rwc_i_dest_target_reg_cfg_pack_sec3_zoffset": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=3, sig_sel=1, mask=0x7E
+    ),
+    # "rwc_i_dest_target_reg_cfg_math_offset": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=3, sig_sel=0, mask=0xFFE00000
+    # ),
+    # "rwc_i_dest_target_reg_cfg_math_offset": DebugBusSignalDescription(
+    #     rd_sel=0, daisy_sel=3, sig_sel=1, mask=0x1
+    # ),
+    # "rwc_i_dest_target_reg_cfg_math_offset": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=3, sig_sel=0, mask=0x1FFE00
+    # ),
+    # "rwc_i_dest_target_reg_cfg_math_offset": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=3, sig_sel=0, mask=0xE0000000
+    # ),
+    # "rwc_i_dest_target_reg_cfg_math_offset": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=3, sig_sel=0, mask=0x1FF
+    # ),
+    "rwc_i_thread_state_id": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=3, sig_sel=0, mask=0xE000000
+    ),
+    # "rwc_i_opcode": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=3, sig_sel=0, mask=0x1FE0000
+    # ),
+    # "rwc_i_instrn_payload": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=3, sig_sel=0, mask=0xFE000000
+    # ),
+    # "rwc_i_instrn_payload": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=3, sig_sel=0, mask=0x1FFFF
+    # ),
+    # "rwc_i_opcode": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=3, sig_sel=0, mask=0x1FE0000
+    # ),
+    # "rwc_i_instrn_payload": DebugBusSignalDescription(
+    #     rd_sel=0, daisy_sel=3, sig_sel=0, mask=0xFE000000
+    # ),
+    # "rwc_i_instrn_payload": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=3, sig_sel=0, mask=0x1FFFF
+    # ),
+    # "rwc_i_opcode": DebugBusSignalDescription(
+    #     rd_sel=0, daisy_sel=3, sig_sel=0, mask=0x1000000
+    # ),
+    # "rwc_i_instrn_payload": DebugBusSignalDescription(
+    #     rd_sel=0, daisy_sel=3, sig_sel=0, mask=0xFFFFFF
+    # ),
+    "rwcs0_dst_cr": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=2, mask=0x3FF0000
+    ),
+    "rwcs0_dst": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=2, mask=0x3FF
+    ),
+    "rwcs2_srcb_cr": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=3, sig_sel=2, mask=0x3F000000
+    ),
+    "rwcs2_srcb": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=3, sig_sel=2, mask=0x3F0000
+    ),
+    "rwcs1_srcb_cr": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=3, sig_sel=2, mask=0x3F00
+    ),
+    "rwcs1_srcb": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=3, sig_sel=2, mask=0x3F
+    ),
+    "rwcs0_srcb_cr": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=3, sig_sel=2, mask=0x3F000000
+    ),
+    "rwcs0_srcb": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=3, sig_sel=2, mask=0x3F0000
+    ),
+    "rwcs2_srca_cr": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=3, sig_sel=2, mask=0x3F00
+    ),
+    "rwcs2_srca": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=3, sig_sel=2, mask=0x3F
+    ),
+    "rwcs1_srca_cr": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=3, sig_sel=2, mask=0x3F000000
+    ),
+    "rwcs1_srca": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=3, sig_sel=2, mask=0x3F0000
+    ),
+    "rwcs0_srca_cr": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=3, sig_sel=2, mask=0x3F00
+    ),
+    "rwcs0_srca": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=3, sig_sel=2, mask=0x3F
+    ),
+    "rwcs2_dst_cr": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=3, sig_sel=3, mask=0x3FF0000
+    ),
+    "rwcs2_dst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=3, sig_sel=3, mask=0x3FF
+    ),
+    "rwcs1_dst_cr": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=3, sig_sel=3, mask=0x3FF0000
+    ),
+    "rwcs1_dst": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=3, sig_sel=3, mask=0x3FF
+    ),
+    "rwcs2_fidelity_phase": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=3, sig_sel=4, mask=0xC0000000
+    ),
+    "rwcs1_fidelity_phase": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=3, sig_sel=4, mask=0x30000000
+    ),
+    "rwcs0_fidelity_phase": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=3, sig_sel=4, mask=0xC000000
+    ),
 }
