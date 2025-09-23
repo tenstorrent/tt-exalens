@@ -5,6 +5,7 @@
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 
 
+# The commented-out signals are either duplicates (have the same name) or signals that span across more than one 32-bit word (where different parts of the signal use different rd_sel values). In the current implementation, it is not possible to read both parts in a synchronized way (the result would not be consistent), so reading them is not recommended.
 debug_bus_signal_map = {
     # For the other signals applying the pc_mask.
     "brisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 5, mask=0x7FFFFFFF),
@@ -13,30 +14,30 @@ debug_bus_signal_map = {
     "trisc2_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 8, mask=0x7FFFFFFF),
     "ncrisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 12, mask=0x7FFFFFFF),
 
-    "brisc_ex_id_rtr": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x200
-    ),
-    "brisc_id_ex_rts": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x100
-    ),
+    # "brisc_ex_id_rtr": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x200
+    # ),
+    # "brisc_id_ex_rts": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x100
+    # ),
     "brisc_if_rts": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x80
     ),
     "brisc_if_ex_predicted": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x20
     ),
-    "brisc_if_ex_deco": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x1F
-    ),
-    "brisc_if_ex_deco": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=11, mask=0xFFFFFFFF
-    ),
-    "brisc_id_ex_rts": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=11, mask=0x80000000
-    ),
-    "brisc_ex_id_rtr": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=11, mask=0x40000000
-    ),
+    # "brisc_if_ex_deco": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x1F
+    # ),
+    # "brisc_if_ex_deco": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=7, sig_sel=11, mask=0xFFFFFFFF
+    # ),
+    # "brisc_id_ex_rts": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=7, sig_sel=11, mask=0x80000000
+    # ),
+    # "brisc_ex_id_rtr": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=7, sig_sel=11, mask=0x40000000
+    # ),
     "brisc_id_ex_pc": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=11, mask=0x3FFFFFFF
     ),
@@ -106,12 +107,12 @@ debug_bus_signal_map = {
     "brisc_o_mailbox_rddata": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=1, mask=0x7F00
     ),
-    "brisc_intf_wrack_brisc": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=1, mask=0xFFE00000
-    ),
-    "brisc_intf_wrack_brisc": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=1, mask=0x3F
-    ),
+    # "brisc_intf_wrack_brisc": DebugBusSignalDescription(
+    #     rd_sel=0, daisy_sel=7, sig_sel=1, mask=0xFFE00000
+    # ),
+    # "brisc_intf_wrack_brisc": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=7, sig_sel=1, mask=0x3F
+    # ),
     "brisc_dmem_tensix_rden": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x100000
     ),
@@ -124,30 +125,30 @@ debug_bus_signal_map = {
     "brisc_icache_req_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x1
     ),
-    "trisc0_ex_id_rtr": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x200
-    ),
-    "trisc0_id_ex_rts": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x100
-    ),
+    # "trisc0_ex_id_rtr": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x200
+    # ),
+    # "trisc0_id_ex_rts": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x100
+    # ),
     "trisc0_if_rts": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x80
     ),
     "trisc0_if_ex_predicted": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x20
     ),
-    "trisc0_if_ex_deco": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x1F
-    ),
-    "trisc0_if_ex_deco": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=13, mask=0xFFFFFFFF
-    ),
-    "trisc0_id_ex_rts": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=13, mask=0x80000000
-    ),
-    "trisc0_ex_id_rtr": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=13, mask=0x40000000
-    ),
+    # "trisc0_if_ex_deco": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x1F
+    # ),
+    # "trisc0_if_ex_deco": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=7, sig_sel=13, mask=0xFFFFFFFF
+    # ),
+    # "trisc0_id_ex_rts": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=7, sig_sel=13, mask=0x80000000
+    # ),
+    # "trisc0_ex_id_rtr": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=7, sig_sel=13, mask=0x40000000
+    # ),
     "trisc0_id_ex_pc": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=13, mask=0x3FFFFFFF
     ),
@@ -289,12 +290,12 @@ debug_bus_signal_map = {
     "trisc0_risc_wrapper_debug_bus_trisc_o_mailbox_rdvalid": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x3C0
     ),
-    "trisc0_risc_wrapper_debug_bus_trisc_o_mailbox_rddata": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=18, mask=0xFFFF0000
-    ),
-    "trisc0_risc_wrapper_debug_bus_trisc_o_mailbox_rddata": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x3F
-    ),
+    # "trisc0_risc_wrapper_debug_bus_trisc_o_mailbox_rddata": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=7, sig_sel=18, mask=0xFFFF0000
+    # ),
+    # "trisc0_risc_wrapper_debug_bus_trisc_o_mailbox_rddata": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x3F
+    # ),
     "trisc0_risc_wrapper_debug_bus_trisc_intf_wrack_trisc": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x3FFE0000
     ),
@@ -310,30 +311,30 @@ debug_bus_signal_map = {
     "trisc0_risc_wrapper_debug_bus_trisc_icache_req_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x1
     ),
-    "trisc1_ex_id_rtr": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x200
-    ),
-    "trisc1_id_ex_rts": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x100
-    ),
+    # "trisc1_ex_id_rtr": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x200
+    # ),
+    # "trisc1_id_ex_rts": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x100
+    # ),
     "trisc1_if_rts": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x80
     ),
     "trisc1_if_ex_predicted": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x20
     ),
-    "trisc1_if_ex_deco": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x1F
-    ),
-    "trisc1_if_ex_deco": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=15, mask=0xFFFFFFFF
-    ),
-    "trisc1_id_ex_rts": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=15, mask=0x80000000
-    ),
-    "trisc1_ex_id_rtr": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=15, mask=0x40000000
-    ),
+    # "trisc1_if_ex_deco": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x1F
+    # ),
+    # "trisc1_if_ex_deco": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=7, sig_sel=15, mask=0xFFFFFFFF
+    # ),
+    # "trisc1_id_ex_rts": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=7, sig_sel=15, mask=0x80000000
+    # ),
+    # "trisc1_ex_id_rtr": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=7, sig_sel=15, mask=0x40000000
+    # ),
     "trisc1_id_ex_pc": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=15, mask=0x3FFFFFFF
     ),
@@ -400,12 +401,12 @@ debug_bus_signal_map = {
     "trisc1_mop_decode_debug_bus_mop_stage_valid": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=21, mask=0x400000
     ),
-    "trisc1_mop_decode_debug_bus_mop_stage_opcode": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=21, mask=0xFFC00000
-    ),
-    "trisc1_mop_decode_debug_bus_mop_stage_opcode": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=21, mask=0x3FFFFF
-    ),
+    # "trisc1_mop_decode_debug_bus_mop_stage_opcode": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=7, sig_sel=21, mask=0xFFC00000
+    # ),
+    # "trisc1_mop_decode_debug_bus_mop_stage_opcode": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=21, mask=0x3FFFFF
+    # ),
     "trisc1_mop_decode_debug_bus_math_loop_active": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=7, sig_sel=21, mask=0x200000
     ),
@@ -415,12 +416,12 @@ debug_bus_signal_map = {
     "trisc1_mop_decode_debug_bus_o_instrn_valid": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=7, sig_sel=21, mask=0x80000
     ),
-    "trisc1_mop_decode_debug_bus_o_instrn_opcode": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=21, mask=0xFFF80000
-    ),
-    "trisc1_mop_decode_debug_bus_o_instrn_opcode": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=21, mask=0x7FFFF
-    ),
+    # "trisc1_mop_decode_debug_bus_o_instrn_opcode": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=7, sig_sel=21, mask=0xFFF80000
+    # ),
+    # "trisc1_mop_decode_debug_bus_o_instrn_opcode": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=7, sig_sel=21, mask=0x7FFFF
+    # ),
     "trisc1_pc_buffer_debug_bus_sempost_pending": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=21, mask=0xFF00
     ),
@@ -454,12 +455,12 @@ debug_bus_signal_map = {
     "trisc1_pc_buffer_debug_bus_cmd_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x800000
     ),
-    "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=20, mask=0xFF800000
-    ),
-    "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x7FFFFF
-    ),
+    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=20, mask=0xFF800000
+    # ),
+    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
+    #     rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x7FFFFF
+    # ),
     "trisc1_risc_wrapper_debug_bus_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=20, mask=0x400000
     ),
@@ -475,12 +476,12 @@ debug_bus_signal_map = {
     "trisc1_risc_wrapper_debug_bus_trisc_o_mailbox_rdvalid": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=20, mask=0x3C0
     ),
-    "trisc1_risc_wrapper_debug_bus_trisc_o_mailbox_rddata": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=20, mask=0xFFFF0000
-    ),
-    "trisc1_risc_wrapper_debug_bus_trisc_o_mailbox_rddata": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=20, mask=0x3F
-    ),
+    # "trisc1_risc_wrapper_debug_bus_trisc_o_mailbox_rddata": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=7, sig_sel=20, mask=0xFFFF0000
+    # ),
+    # "trisc1_risc_wrapper_debug_bus_trisc_o_mailbox_rddata": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=20, mask=0x3F
+    # ),
     "trisc1_risc_wrapper_debug_bus_trisc_intf_wrack_trisc": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x3FFE0000
     ),
@@ -511,12 +512,12 @@ debug_bus_signal_map = {
     "trisc2_mop_decode_debug_bus_mop_stage_valid": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=23, mask=0x400000
     ),
-    "trisc2_mop_decode_debug_bus_mop_stage_opcode": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=23, mask=0xFFC00000
-    ),
-    "trisc2_mop_decode_debug_bus_mop_stage_opcode": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=23, mask=0x3FFFFF
-    ),
+    # "trisc2_mop_decode_debug_bus_mop_stage_opcode": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=7, sig_sel=23, mask=0xFFC00000
+    # ),
+    # "trisc2_mop_decode_debug_bus_mop_stage_opcode": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=23, mask=0x3FFFFF
+    # ),
     "trisc2_mop_decode_debug_bus_math_loop_active": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=7, sig_sel=23, mask=0x200000
     ),
@@ -526,12 +527,12 @@ debug_bus_signal_map = {
     "trisc2_mop_decode_debug_bus_o_instrn_valid": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=7, sig_sel=23, mask=0x80000
     ),
-    "trisc2_mop_decode_debug_bus_o_instrn_opcode": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=23, mask=0xFFF80000
-    ),
-    "trisc2_mop_decode_debug_bus_o_instrn_opcode": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=23, mask=0x7FFFF
-    ),
+    # "trisc2_mop_decode_debug_bus_o_instrn_opcode": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=7, sig_sel=23, mask=0xFFF80000
+    # ),
+    # "trisc2_mop_decode_debug_bus_o_instrn_opcode": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=7, sig_sel=23, mask=0x7FFFF
+    # ),
     "trisc2_pc_buffer_debug_bus_sempost_pending": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=23, mask=0xFF00
     ),
@@ -565,12 +566,12 @@ debug_bus_signal_map = {
     "trisc2_pc_buffer_debug_bus_cmd_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x800000
     ),
-    "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=22, mask=0xFF800000
-    ),
-    "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x7FFFFF
-    ),
+    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=22, mask=0xFF800000
+    # ),
+    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
+    #     rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x7FFFFF
+    # ),
     "trisc2_risc_wrapper_debug_bus_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=22, mask=0x400000
     ),
@@ -586,12 +587,12 @@ debug_bus_signal_map = {
     "trisc2_risc_wrapper_debug_bus_trisc_o_mailbox_rdvalid": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=22, mask=0x3C0
     ),
-    "trisc2_risc_wrapper_debug_bus_trisc_o_mailbox_rddata": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=22, mask=0xFFFF0000
-    ),
-    "trisc2_risc_wrapper_debug_bus_trisc_o_mailbox_rddata": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=22, mask=0x3F
-    ),
+    # "trisc2_risc_wrapper_debug_bus_trisc_o_mailbox_rddata": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=7, sig_sel=22, mask=0xFFFF0000
+    # ),
+    # "trisc2_risc_wrapper_debug_bus_trisc_o_mailbox_rddata": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=22, mask=0x3F
+    # ),
     "trisc2_risc_wrapper_debug_bus_trisc_intf_wrack_trisc": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x3FFE0000
     ),
@@ -607,30 +608,30 @@ debug_bus_signal_map = {
     "trisc2_risc_wrapper_debug_bus_trisc_icache_req_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x1
     ),
-    "trisc2_ex_id_rtr": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x200
-    ),
-    "trisc2_id_ex_rts": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x100
-    ),
+    # "trisc2_ex_id_rtr": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x200
+    # ),
+    # "trisc2_id_ex_rts": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x100
+    # ),
     "trisc2_if_rts": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x80
     ),
     "trisc2_if_ex_predicted": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x20
     ),
-    "trisc2_if_ex_deco": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x1F
-    ),
-    "trisc2_if_ex_deco": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=17, mask=0xFFFFFFFF
-    ),
-    "trisc2_id_ex_rts": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=17, mask=0x80000000
-    ),
-    "trisc2_ex_id_rtr": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=17, mask=0x40000000
-    ),
+    # "trisc2_if_ex_deco": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x1F
+    # ),
+    # "trisc2_if_ex_deco": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=7, sig_sel=17, mask=0xFFFFFFFF
+    # ),
+    # "trisc2_id_ex_rts": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=7, sig_sel=17, mask=0x80000000
+    # ),
+    # "trisc2_ex_id_rtr": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=7, sig_sel=17, mask=0x40000000
+    # ),
     "trisc2_id_ex_pc": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=17, mask=0x3FFFFFFF
     ),
@@ -682,30 +683,30 @@ debug_bus_signal_map = {
     "trisc2_dbg_obs_cmt_pc": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=16, mask=0x7FFFFFFF
     ),
-    "ncrisc_ex_id_rtr": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x200
-    ),
-    "ncrisc_id_ex_rts": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x100
-    ),
+    # "ncrisc_ex_id_rtr": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x200
+    # ),
+    # "ncrisc_id_ex_rts": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x100
+    # ),
     "ncrisc_if_rts": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x80
     ),
     "ncrisc_if_ex_predicted": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x20
     ),
-    "ncrisc_if_ex_deco": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x1F
-    ),
-    "ncrisc_if_ex_deco": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=25, mask=0xFFFFFFFF
-    ),
-    "ncrisc_id_ex_rts": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=25, mask=0x80000000
-    ),
-    "ncrisc_ex_id_rtr": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=25, mask=0x40000000
-    ),
+    # "ncrisc_if_ex_deco": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x1F
+    # ),
+    # "ncrisc_if_ex_deco": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=7, sig_sel=25, mask=0xFFFFFFFF
+    # ),
+    # "ncrisc_id_ex_rts": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=7, sig_sel=25, mask=0x80000000
+    # ),
+    # "ncrisc_ex_id_rtr": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=7, sig_sel=25, mask=0x40000000
+    # ),
     "ncrisc_id_ex_pc": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=25, mask=0x3FFFFFFF
     ),
@@ -756,5 +757,131 @@ debug_bus_signal_map = {
     ),
     "ncrisc_dbg_obs_cmt_pc": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=24, mask=0x7FFFFFFF
+    ),
+    "tensix_frontend_t2_i_cg_trisc_busy": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=1, sig_sel=4, mask=0x80000000
+    ),
+    "tensix_frontend_t2_machine_busy": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=1, sig_sel=4, mask=0x40000000
+    ),
+    "tensix_frontend_t2_req_iramd_buffer_not_empty": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=1, sig_sel=4, mask=0x20000000
+    ),
+    "tensix_frontend_t2_gpr_file_busy": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=1, sig_sel=4, mask=0x10000000
+    ),
+    "tensix_frontend_t2_cfg_exu_busy": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=1, sig_sel=4, mask=0x8000000
+    ),
+    "tensix_frontend_t2_req_iramd_buffer_empty": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=1, sig_sel=4, mask=0x4000000
+    ),
+    "tensix_frontend_t2_req_iramd_buffer_full": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=1, sig_sel=4, mask=0x2000000
+    ),
+    "tensix_frontend_t2_~ibuffer_rtr": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=1, sig_sel=4, mask=0x1000000
+    ),
+    "tensix_frontend_t2_ibuffer_empty": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=1, sig_sel=4, mask=0x800000
+    ),
+    # "tensix_frontend_t2_thread_inst": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=1, sig_sel=4, mask=0x7fffff
+    # ),
+    # "tensix_frontend_t2_thread_inst": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=1, sig_sel=4, mask=0xff800000
+    # ),
+    "tensix_frontend_t2_math_inst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x400000
+    ),
+    "tensix_frontend_t2_tdma_inst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x200000
+    ),
+    "tensix_frontend_t2_pack_inst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x1e0000
+    ),  
+    "tensix_frontend_t2_move_inst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x10000
+    ),
+    "tensix_frontend_t2_sfpu_inst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x8000
+    ),
+    "tensix_frontend_t2_unpack_inst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x6000
+    ),
+    "tensix_frontend_t2_xsearch_inst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x1000
+    ),
+    "tensix_frontend_t2_thcon_inst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x800
+    ),
+    "tensix_frontend_t2_sync_inst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x400
+    ),
+    "tensix_frontend_t2_cfg_inst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x200
+    ),
+    "tensix_frontend_t2_stalled_pack_inst": DebugBusSignalDescription(      
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x1e0
+    ),
+    "tensix_frontend_t2_stalled_unpack_inst": DebugBusSignalDescription( 
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x18
+    ),
+    "tensix_frontend_t2_stalled_math_inst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x4
+    ),
+    "tensix_frontend_t2_stalled_tdma_inst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x2
+    ),
+    "tensix_frontend_t2_stalled_move_inst": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=1, sig_sel=4, mask=0x1
+    ),
+    "tensix_frontend_t2_stalled_xsearch_inst": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x80000000
+    ),
+    "tensix_frontend_t2_stalled_thcon_inst": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x40000000
+    ),
+    "tensix_frontend_t2_stalled_sync_inst": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x20000000
+    ),
+    "tensix_frontend_t2_stalled_cfg_inst": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x10000000
+    ),
+    "tensix_frontend_t2_stalled_sfpu_inst": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x8000000
+    ),
+    "tensix_frontend_t2_tdma_kick_move": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x4000000
+    ),
+    "tensix_frontend_t2_tdma_kick_pack": DebugBusSignalDescription(      
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x3c00000
+    ),
+    "tensix_frontend_t2_tdma_kick_unpack": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x300000
+    ),
+    "tensix_frontend_t2_tdma_kick_xsearch": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x80000
+    ),
+    "tensix_frontend_t2_tdma_kick_thcon": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x40000
+    ),
+    "tensix_frontend_t2_tdma_status_busy": DebugBusSignalDescription(  
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x3fc00
+    ),
+    "tensix_frontend_t2_packer_busy": DebugBusSignalDescription(     
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x3c0 
+    ),
+    "tensix_frontend_t2_unpacker_busy": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x30
+    ),
+    "tensix_frontend_t2_thcon_busy": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x8
+    ),
+    "tensix_frontend_t2_move_busy": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x4
+    ),
+    "tensix_frontend_t2_xsearch_busy": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=1, sig_sel=4, mask=0x3
     ),
 }
