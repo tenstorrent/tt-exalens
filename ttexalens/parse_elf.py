@@ -54,6 +54,7 @@ try:
     from elftools.dwarf.compileunit import CompileUnit as DWARF_CU
     from elftools.dwarf.dwarf_expr import DWARFExprParser
     from elftools.dwarf.dwarfinfo import DWARFInfo
+    from elftools.dwarf.ranges import RangeEntry
     from elftools.dwarf.die import DIE as DWARF_DIE
     from elftools.dwarf.locationlists import LocationParser, LocationExpr
     from docopt import docopt
@@ -662,7 +663,7 @@ class ElfDie:
         elif "DW_AT_ranges" in self.attributes:
             assert self.cu.dwarf.range_lists is not None
             ranges = self.cu.dwarf.range_lists.get_range_list_at_offset(self.attributes["DW_AT_ranges"].value)
-            return [(r.begin_offset, r.end_offset) for r in ranges]
+            return [(r.begin_offset, r.end_offset) for r in ranges if isinstance(r, RangeEntry)]
         else:
             child_ranges = []
             for child in self.iter_children():
