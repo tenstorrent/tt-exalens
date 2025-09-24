@@ -130,7 +130,7 @@ std::unique_ptr<JtagDevice> init_jtag(std::filesystem::path binary_directory) {
 
     std::unique_ptr<JtagDevice> jtag_implementation;
     std::unique_ptr<Jtag> jtag;
-    jtag = std::make_unique<Jtag>((binary_directory / std::string("../lib/libttexalens_jtag.so")).c_str());
+    jtag = std::make_unique<Jtag>((binary_directory / std::string("../lib/libtt_umd_jtag.so")).c_str());
     jtag_implementation = std::make_unique<JtagDevice>(std::move(jtag));
 
     return jtag_implementation;

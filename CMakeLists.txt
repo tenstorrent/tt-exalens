@@ -69,9 +69,6 @@ file(CREATE_LINK "${CMAKE_SOURCE_DIR}/build_riscv" "${RISCV_SYMLINK}" SYMBOLIC)
 # Check for ZeroMQ
 include(${PROJECT_SOURCE_DIR}/cmake/ZeroMQ.cmake)
 
-# Including private repository
-include(${PROJECT_SOURCE_DIR}/cmake/ttexalens_private.cmake)
-
 # Include pybind custom functions
 include(${PROJECT_SOURCE_DIR}/cmake/pybind.cmake)
 

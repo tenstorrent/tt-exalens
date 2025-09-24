@@ -72,8 +72,8 @@ def get_pybind_filename() -> str:
 def get_libjtag() -> list:
     """A function to get the libjtag if it exists."""
 
-    if os.path.exists(f"{ttexalens_home}/build/lib/libttexalens_jtag.so"):
-        return ["libttexalens_jtag.so", "libjlinkarm.so"]
+    if os.path.exists(f"{ttexalens_home}/build/lib/libtt_umd_jtag.so"):
+        return ["libtt_umd_jtag.so", "libjlinkarm.so"]
 
     return []
 
