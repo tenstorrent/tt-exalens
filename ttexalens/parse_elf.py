@@ -454,6 +454,11 @@ class ElfDie:
                 ):
                     return type_die.resolved_type
                 return type_die
+        elif "DW_AT_specification" in self.attributes:
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
+            die = self.cu.dwarf.get_die(dwarf_die)
+            if die is not None:
+                return die.resolved_type
         return self
 
     @cached_property
