@@ -144,8 +144,8 @@ class Device(TTObject):
         # Fill in coordinate maps from UMD coordinate manager
         self._from_noc0 = {}
         self._to_noc0 = {}
-        umd_supported_coordinates = ["noc1", "logical", "virtual", "translated"]
-        unique_coordinates = ["noc1", "virtual", "translated"]
+        umd_supported_coordinates = ["noc1", "logical", "translated"]
+        unique_coordinates = ["noc1", "translated"]
         for noc0_location, block_type in self._noc0_to_block_type.items():
             core_type = self.block_types[block_type]["core_type"]
             for coord_system in umd_supported_coordinates:
