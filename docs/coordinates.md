@@ -16,17 +16,14 @@ This document explains how we handle different coordinate systems on a chip. The
 4. **logical**
    - Abstracts physical details. Often used to reference Tensix cores (e.g., `t0,0`), Ethernet (`e0,0`), DRAM (`d0,0`), etc.
 
-5. **virtual**
-   - A “compressed” version of `noc0`, skipping harvested (disabled) rows.
-
-6. **translated**
+5. **translated**
    - A hardware-usable coordinate system offset by certain values (e.g., `(16,16)` on some chips), automatically accounting for harvesting.
 
 ## Class Overview
 
 ### `OnChipCoordinate`
 - Stores an internal `noc0` coordinate (`_noc0_coord`).
-- Converts from the input coordinate (die, noc0, noc1, logical, translated, virtual) to `noc0`.
+- Converts from the input coordinate (die, noc0, noc1, logical, translated) to `noc0`.
 - Provides a `.to(output_type)` method to translate to the desired system.
 - Offers helper string methods (`to_str`, `to_user_str`) for user-friendly representation.
 
@@ -78,7 +75,7 @@ print("Logical coords:", logical_coord)
    You can manually instantiate `OnChipCoordinate(x, y, input_type, device)` if you know the type (e.g., `"noc0"`).
 
 2. **Switching Types**
-   Use `.to("logical")`, `.to("noc0")`, `.to("virtual")`, etc., as needed.
+   Use `.to("logical")`, `.to("noc0")`, etc., as needed.
 
 ---
 

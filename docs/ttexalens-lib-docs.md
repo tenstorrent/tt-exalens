@@ -660,7 +660,6 @@ Constructor for the Coordinate class.
 - `- noc1`: NOC routing coordinate for NOC 1. (X-Y)
 - `- die`: Die coordinate, a location on the die grid. (X,Y)
 - `- logical`: Logical grid coordinate. Notation: qX,Y, where q represents first letter of the core type. If q is not present, it is considered as tensix core.
-- `- virtual`: Virtual NOC coordinate. Similar to noc0, but with the harvested rows removed, and the locations of functioning rows shifted down to fill in the gap. (X-Y)
 - `- translated`: Translated NOC coordinate. (X-Y)
 - `device`: The device object used for coordinate conversion.
 - `core_type` *(str, optional)*: The core_type used for coordinate conversion. Some coordinate systems require core_type as third dimension. Defaults to "any".

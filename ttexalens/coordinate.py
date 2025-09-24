@@ -34,10 +34,8 @@ The following coordinate systems are available to represent a grid location on t
                     same coordinates with different core types. For example, (0,0) can be a tensix core, an eth core, or a dram core.
                     In order to differentiate between these, first letter is included in string coordinate. Examples:
                     e0,0 for eth core, t0,0 for tensix core, d0,0 for dram core. If you use 0,0, it will be considered as tensix core.
-  - virtual:        Virtual NOC coordinate. Similar to noc0, but with the harvested rows moved to the end, and the locations of
-                    functioning rows shifted down to fill in the gap. This coordinate system is used to communicate with
-                    the driver. Notation: X-Y.
-  - translated:     Translated NOC coordinate. Similar to virtual, but offset by 16 on wormhole. Notation: X-Y
+  - translated:     Translated NOC coordinate. Similar to noc0, but with the harvested rows moved to the end, and the locations of
+                    functioning rows shifted down to fill in the gap and offset by 16 on wormhole.
                     This system is used by the NOC hardware to account for harvesting. On wormhole, translated coordinates will
                     start at 16, 16. It is also constructed such that starting with (18,18) maps exactly to the logical tensix
                     grid. It is used by the NOC hardware and it is programmable ahead of time. Notation: X-Y
@@ -58,7 +56,6 @@ VALID_COORDINATE_TYPES = [
     "logical-tensix",
     "logical-eth",
     "logical-dram",
-    "virtual",
     "translated",
 ]
 
@@ -97,7 +94,6 @@ class OnChipCoordinate:
                 - noc1: NOC routing coordinate for NOC 1. (X-Y)
                 - die: Die coordinate, a location on the die grid. (X,Y)
                 - logical: Logical grid coordinate. Notation: qX,Y, where q represents first letter of the core type. If q is not present, it is considered as tensix core.
-                - virtual: Virtual NOC coordinate. Similar to noc0, but with the harvested rows removed, and the locations of functioning rows shifted down to fill in the gap. (X-Y)
                 - translated: Translated NOC coordinate. (X-Y)
             device: The device object used for coordinate conversion.
             core_type (str, optional): The core_type used for coordinate conversion. Some coordinate systems require core_type as third dimension. Defaults to "any".
@@ -112,8 +108,6 @@ class OnChipCoordinate:
         self._device = device
         if input_type == "noc0" or input_type == "physical":
             self._noc0_coord = (x, y)
-        elif input_type == "virtual":
-            self._noc0_coord = self._device.to_noc0((x, y), "virtual", core_type)
         elif input_type == "noc1":
             self._noc0_coord = self._device.to_noc0((x, y), "noc1", core_type)
         elif input_type == "die":
@@ -157,8 +151,6 @@ class OnChipCoordinate:
         """
         if output_type == "noc0" or output_type == "physical":
             return self._noc0_coord
-        elif output_type == "virtual":
-            return self._device.from_noc0(self._noc0_coord, "virtual")[0]
         elif output_type == "noc1":
             return self._device.from_noc0(self._noc0_coord, "noc1")[0]
         elif output_type == "die":
@@ -255,7 +247,7 @@ class OnChipCoordinate:
         return self.to_user_str()
 
     def full_str(self) -> str:
-        return f"noc0: {self.to_str('noc0')}, noc1: {self.to_str('noc1')}, die: {self.to_str('die')}, logical: {self.to_str('logical')}, translated: {self.to_str('translated')}, virtual: {self.to_str('virtual')}"
+        return f"noc0: {self.to_str('noc0')}, noc1: {self.to_str('noc1')}, die: {self.to_str('die')}, logical: {self.to_str('logical')}, translated: {self.to_str('translated')}"
 
     # == operator
     def __eq__(self, other):
