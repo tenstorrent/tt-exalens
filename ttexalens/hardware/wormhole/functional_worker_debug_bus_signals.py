@@ -1610,9 +1610,58 @@ debug_bus_signal_map = {
     "sfpu_lane_enabled[0]": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x1
     ),
-
-
-
-    # zavrsiti srca i srcb
-    # zavrsiti l1
+    # "l1_access_port_l1_at_instrn_p12": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=8, sig_sel=3, mask=0xFFF
+    # ),
+    # "l1_access_port_l1_at_instrn_p12": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=8, sig_sel=3, mask=0xF8000000
+    # ),
+    "l1_access_port_l1_at_instrn_p11": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=8, sig_sel=3, mask=0x7FFFC00
+    ),
+    # "l1_access_port_l1_at_instrn_p10": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=8, sig_sel=3, mask=0x3FF
+    # ),
+    # "l1_access_port_l1_at_instrn_p10": DebugBusSignalDescription(
+    #     rd_sel=0, daisy_sel=8, sig_sel=3, mask=0xFE000000
+    # ),
+    "l1_access_port_l1_at_instrn_p9": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=8, sig_sel=3, mask=0x1FFFF00
+    ),
+    "l1_access_port_l1_at_instrn_p8": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=8, sig_sel=3, mask=0xFF
+    ),
+    "l1_access_port_l1_addr_p7": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=2, mask=0xFF800000  
+    ),
+    "l1_access_port_l1_addr_p6": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=2, mask=0x7FFFC0      
+    ),
+    # "l1_access_port_l1_addr_p5": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=8, sig_sel=2, mask=0x3F
+    # ),
+    # "l1_access_port_l1_addr_p5": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=8, sig_sel=2, mask=0xFFE00000
+    # ),
+    "l1_access_port_l1_addr_p4": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=2, mask=0x1FFFF0
+    ),
+    # "l1_access_port_l1_addr_p3": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=8, sig_sel=2, mask=0xF
+    # ),
+    # "l1_access_port_l1_addr_p3": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=8, sig_sel=2, mask=0xFFF80000
+    # ),
+    "l1_access_port_l1_addr_p2": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=8, sig_sel=2, mask=0x7FFFC
+    ),
+    # "l1_access_port_l1_addr_p1": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=8, sig_sel=2, mask=0x3
+    # ),
+    # "l1_access_port_l1_addr_p1": DebugBusSignalDescription(
+    #     rd_sel=0, daisy_sel=8, sig_sel=2, mask=0xFFFE0000
+    # ),
+    "l1_access_port_l1_addr_p0": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=8, sig_sel=2, mask=0x1FFFF
+    ),
 }
