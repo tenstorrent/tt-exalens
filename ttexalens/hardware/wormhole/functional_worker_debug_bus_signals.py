@@ -1610,25 +1610,142 @@ debug_bus_signal_map = {
     "sfpu_lane_enabled[0]": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x1
     ),
-    # "l1_access_port_l1_at_instrn_p12": DebugBusSignalDescription(
+    "l1_access_port_l1_addr_p18": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=5, mask=0x1FFFF0
+    ),
+    # "l1_access_port_l1_addr_p17": DebugBusSignalDescription(
+    #     rd_sel=2, daisy_sel=8, sig_sel=5, mask=0xF
+    # ),
+    # "l1_access_port_l1_addr_p17": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=8, sig_sel=5, mask=0xFFF80000
+    # ),
+    "l1_access_port_l1_addr_p16": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=8, sig_sel=5, mask=0x7FFFC
+    ),
+    # "l1_access_port_l1_addr_p15": DebugBusSignalDescription(
+    #     rd_sel=1, daisy_sel=8, sig_sel=5, mask=0x3
+    # ),
+    # "l1_access_port_l1_addr_p14": DebugBusSignalDescription(
+    #     rd_sel=0, daisy_sel=8, sig_sel=5, mask=0xFFFE0000
+    # ),
+    "l1_access_port_l1_addr_p13": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=8, sig_sel=5, mask=0x1FFFF
+    ),
+    "l1_access_port_rd_req_port15": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x800
+    ),
+    "l1_access_port_rd_req_port14": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x400
+    ),
+    "l1_access_port_rd_req_port13": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x200
+    ),
+    "l1_access_port_rd_req_port12": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x100
+    ),
+    "l1_access_port_rd_req_port11": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x80
+    ),
+    "l1_access_port_rd_req_port10": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x40
+    ),
+    "l1_access_port_rd_req_port9": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x20
+    ),
+    "l1_access_port_rd_req_port8": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x10
+    ),
+    "l1_access_port_rd_req_port7": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x8
+    ),
+    "l1_access_port_rd_req_port6": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x4
+    ),
+    "l1_access_port_rd_req_port5": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x2
+    ),
+    "l1_access_port_rd_req_port4": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x1
+    ),
+    "l1_access_port_rd_req_port3": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x80000000
+    ),
+    "l1_access_port_rd_req_port2": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x40000000
+    ),
+    "l1_access_port_rd_req_port1": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x20000000
+    ),
+    "l1_access_port_rd_req_port0": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x10000000
+    ),
+    "l1_access_port_wr_req_port15": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x8000000
+    ),
+    "l1_access_port_wr_req_port14": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x4000000
+    ),
+    "l1_access_port_wr_req_port13": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x2000000
+    ),
+    "l1_access_port_wr_req_port12": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x1000000
+    ),
+    "l1_access_port_wr_req_port11": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x800000
+    ),
+    "l1_access_port_wr_req_port10": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x400000
+    ),
+    "l1_access_port_wr_req_port9": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x200000
+    ),
+    "l1_access_port_wr_req_port8": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x100000
+    ),
+    "l1_access_port_wr_req_port7": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x80000
+    ),
+    "l1_access_port_wr_req_port6": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x40000
+    ),
+    "l1_access_port_wr_req_port5": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x20000
+    ),
+    "l1_access_port_wr_req_port4": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x10000
+    ),
+    "l1_access_port_wr_req_port3": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x8000
+    ),
+    "l1_access_port_wr_req_port2": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x4000
+    ),
+    "l1_access_port_wr_req_port1": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x2000
+    ),
+    "l1_access_port_wr_req_port0": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x1000
+    ),
+    # "l1_access_port_l1_addr_p12": DebugBusSignalDescription(
     #     rd_sel=2, daisy_sel=8, sig_sel=3, mask=0xFFF
     # ),
-    # "l1_access_port_l1_at_instrn_p12": DebugBusSignalDescription(
+    # "l1_access_port_l1_addr_p12": DebugBusSignalDescription(
     #     rd_sel=1, daisy_sel=8, sig_sel=3, mask=0xF8000000
     # ),
-    "l1_access_port_l1_at_instrn_p11": DebugBusSignalDescription(
+    "l1_access_port_l1_addr_p11": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=8, sig_sel=3, mask=0x7FFFC00
     ),
-    # "l1_access_port_l1_at_instrn_p10": DebugBusSignalDescription(
+    # "l1_access_port_l1_addr_p10": DebugBusSignalDescription(
     #     rd_sel=1, daisy_sel=8, sig_sel=3, mask=0x3FF
     # ),
-    # "l1_access_port_l1_at_instrn_p10": DebugBusSignalDescription(
+    # "l1_access_port_l1_addr_p10": DebugBusSignalDescription(
     #     rd_sel=0, daisy_sel=8, sig_sel=3, mask=0xFE000000
     # ),
-    "l1_access_port_l1_at_instrn_p9": DebugBusSignalDescription(
+    "l1_access_port_l1_addr_p9": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=8, sig_sel=3, mask=0x1FFFF00
     ),
-    "l1_access_port_l1_at_instrn_p8": DebugBusSignalDescription(
+    "l1_access_port_l1_addr_p8": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=8, sig_sel=3, mask=0xFF
     ),
     "l1_access_port_l1_addr_p7": DebugBusSignalDescription(
@@ -1663,5 +1780,41 @@ debug_bus_signal_map = {
     # ),
     "l1_access_port_l1_addr_p0": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=8, sig_sel=2, mask=0x1FFFF
+    ),
+    "srcA_B_access_control_unpacker1_srcb_bank": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x40000
+    ),
+    "srcA_B_access_control_mxu_srcb_bank": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x10000
+    ),
+    "srcA_B_access_control_srcb_bank0_mxu_allowed": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x8000
+    ),
+    "srcA_B_access_control_srcb_bank1_mxu_allowed": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x4000
+    ),
+    "srcA_B_access_control_srcb_mxu_allowed": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x2000
+    ),
+    "srcA_B_access_control_srcb_unpacker1_allowed": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x10
+    ),
+    "srcA_B_access_control_unpacker0_srca_bank": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=9, mask=0x40000000
+    ),
+    "srcA_B_access_control_mxu_srca_bank": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=9, mask=0x10000000
+    ),
+    "srcA_B_access_control_srca_srca_bank0_mxu_allowed": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=9, mask=0x8000000
+    ),
+    "srcA_B_access_control_srca_bank1_mxu_allowed": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=9, mask=0x4000000
+    ),
+    "srcA_B_access_control_srca_mxu_allowed": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=9, mask=0x200000
+    ),
+    "srcA_B_access_control_srca_unpacker0_allowed": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=6, sig_sel=9, mask=0x100000
     ),
 }
