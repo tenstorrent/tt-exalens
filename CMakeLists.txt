@@ -61,9 +61,9 @@ file(MAKE_DIRECTORY "build_riscv")
 include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
 
 # Refresh the symlinks
-file(REMOVE "${BUILD_SYMLINK}")
+file(REMOVE_RECURSE "${BUILD_SYMLINK}")
 file(CREATE_LINK "${CMAKE_BINARY_DIR}" "${BUILD_SYMLINK}" SYMBOLIC)
-file(REMOVE "${RISCV_SYMLINK}")
+file(REMOVE_RECURSE "${RISCV_SYMLINK}")
 file(CREATE_LINK "${CMAKE_SOURCE_DIR}/build_riscv" "${RISCV_SYMLINK}" SYMBOLIC)
 
 # Check for ZeroMQ
