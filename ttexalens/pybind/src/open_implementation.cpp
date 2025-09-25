@@ -272,9 +272,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     switch (arch) {
         case tt::ARCH::WORMHOLE_B0:
         case tt::ARCH::BLACKHOLE:
-            cluster = std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{
-                .target_devices = target_devices,
-            });
+            cluster = std::make_unique<tt::umd::Cluster>();
             break;
         default:
             throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");
