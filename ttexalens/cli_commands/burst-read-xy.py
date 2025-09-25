@@ -55,48 +55,32 @@ def run(cmd_text, context, ui_state: UIState = None):
     args = dopt.args
 
     core_loc_str = args["<core-loc>"]
-    current_device_id = ui_state.current_device_id
-    current_device = context.devices[current_device_id]
-    core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
-    mem_reader = ELF.get_mem_reader(core_loc)
 
-    # If we can parse the address as a number, do it. Otherwise, it's a variable name.
-    try:
-        addr, size_bytes = int(args["<addr>"], 0), 4
-    except ValueError:
-        addr, size_bytes = context.elf.parse_addr_size(args["<addr>"], mem_reader)
+    def process_device(device_id):
+        core_loc = OnChipCoordinate.create(core_loc_str, device=context.devices[device_id])
+        mem_reader = ELF.get_mem_reader(core_loc)
 
-    size_words = ((size_bytes + 3) // 4) if size_bytes else 1
+        # If we can parse the address as a number, do it. Otherwise, it's a variable name.
+        try:
+            addr, size_bytes = int(args["<addr>"], 0), 4
+        except ValueError:
+            addr, size_bytes = context.elf.parse_addr_size(args["<addr>"], mem_reader)
 
-    sample = float(args["--sample"]) if args["--sample"] else 0
-    word_count = int(args["<word-count>"]) if args["<word-count>"] else size_words
-    format = args["--format"] if args["--format"] else "hex32"
-    if format not in util.PRINT_FORMATS:
-        raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
+        size_words = ((size_bytes + 3) // 4) if size_bytes else 1
 
-    offsets = args["-o"]
-    for offset in offsets:
-        offset_addr, _ = context.elf.parse_addr_size(offset, mem_reader)
-        addr += offset_addr
+        sample = float(args["--sample"]) if args["--sample"] else 0
+        word_count = int(args["<word-count>"]) if args["<word-count>"] else size_words
+        format = args["--format"] if args["--format"] else "hex32"
+        if format not in util.PRINT_FORMATS:
+            raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
 
-    devices = args["-d"]
-    if devices:
-        for device in devices:
-            did = int(device, 0)
-            util.INFO(f"Reading from device {did}")
-            print_a_pci_burst_read(
-                did,
-                core_loc,
-                addr,
-                core_loc_str,
-                word_count=word_count,
-                sample=sample,
-                print_format=format,
-                context=context,
-            )
-    else:
+        offsets = args["-o"]
+        for offset in offsets:
+            offset_addr, _ = context.elf.parse_addr_size(offset, mem_reader)
+            addr += offset_addr
+
         print_a_pci_burst_read(
-            ui_state.current_device_id,
+            device_id,
             core_loc,
             addr,
             core_loc_str,
@@ -105,6 +89,15 @@ def run(cmd_text, context, ui_state: UIState = None):
             print_format=format,
             context=context,
         )
+
+    devices = args["-d"]
+    if devices:
+        for device in devices:
+            did = int(device, 0)
+            util.INFO(f"Reading from device {did}")
+            process_device(did)
+    else:
+        process_device(ui_state.current_device_id)
 
 
 # A helper to print the result of a single PCI read
