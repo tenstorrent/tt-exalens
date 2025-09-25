@@ -7,7 +7,7 @@ from functools import cached_property
 from typing import Iterable, TYPE_CHECKING
 
 from ttexalens.hardware.noc_block import NocBlock
-from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
+from ttexalens.tt_exalens_lib import read_word_from_device, read_words_from_device, write_words_to_device
 
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
@@ -98,7 +98,7 @@ class DebugBusSignalStore:
                 f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device._id}."
             )
 
-    def read_signal_32(self, signal: DebugBusSignalDescription | str) -> int:
+    def read_signal(self, signal: DebugBusSignalDescription | str) -> int:
         if isinstance(signal, str):
             signal = self.get_signal_description(signal)
         else:
@@ -132,7 +132,44 @@ class DebugBusSignalStore:
 
 
     # TODO: Add parameter check
-    def read_signal_128(self, signal: DebugBusSignalDescription | str, l1_address: int, samples: int = 1, sampling_interval: int = 1, write_mode: int = 1) -> int:
+    def read_signal_128(self, signal: DebugBusSignalDescription | str, l1_address: int, samples: int = 1, sampling_interval: int = 0, write_mode: int = 0) -> int:
+        """
+        Read a 128-bit debug signal from the Tensix debug daisychain.
+
+        This function configures the debug daisychain to select a specific 128-bit word, instructs it to write 
+        samples into L1 memory, and then reads the captured data. It allows either a single 128-bit capture or 
+        periodic sampling.
+
+        Parameters
+        ----------
+        signal : DebugBusSignalDescription | str
+            The signal to read. Can be provided either as:
+            - a string (signal name, must exist in `self.signals`), or
+            - a DebugBusSignalDescription object 
+        l1_address : int
+            Byte-address in L1 memory where the first 128-bit word should be written. Must be 16-byte aligned.
+        samples : int, default=1
+            Number of 128-bit samples to capture. If `samples == 1`, a single write to L1 is triggered. 
+            If `samples > 1`, hardware is instructed to perform repeated sampling.
+        sampling_period : int, default=0
+            Interval (in cycles) between consecutive samples when `samples > 1`.
+            Must be ≥ 2 due to a known hardware bug that may cause one extra sample if `sampling_period == 1`.
+        write_mode : int, default=0
+            Write mode configuration:
+            - 0 → overwrite the same L1 address on each capture
+            - 1 → increment address by 16 bytes after each sample)
+                Note: Using WriteMode=0 or WriteMode=1 only makes sense if the write preparation is followed 
+                by a loop that repeatedly toggles the write_trigger. Each trigger causes one 128-bit write to 
+                L1 (same address if mode=0, incremented by 16 bytes if mode=1).
+            - 4 → hardware-driven sampling mode (does not need to be passed explicitly; it will be set automatically if `samples > 1`)
+
+        Returns
+        -------
+        int
+            The sampled data, masked with the `signal.mask` if set.
+            TODO: If multiple samples are taken.
+        """
+
         if isinstance(signal, str):
             signal = self.get_signal_description(signal)
 
@@ -164,17 +201,18 @@ class DebugBusSignalStore:
             sampling_interval=0, 
             write_mode=0
         )
+
         # prepare
         reg2_struct.write_mode = 0xF
         write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
         reg0_val = (l1_address >> 4) & 0xFFFFFFFF
         write_words_to_device(self.location, reg0_addr, reg0_val, self.device._id, self.device._context)
 
-        if sampling_interval:
+        if samples > 1:
             reg1_val = ((l1_address >> 4) + samples) & 0xFFFFFFFF
             write_words_to_device(self.location, reg1_addr, reg1_val, self.device._id, self.device._context)
             reg2_struct.write_mode = 4
-            reg2_struct.sampling_interval = sampling_interval - 1  # hardware bug, when N==1, hardware might take one more sample than requested
+            reg2_struct.sampling_interval = sampling_interval - 1  
             reg2_struct.write_trigger = 1
         else:
             reg2_struct.write_mode = write_mode
@@ -185,42 +223,22 @@ class DebugBusSignalStore:
         write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
         reg2_struct.write_trigger = 0
         write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
-        
-        # location of last 128-bit word in L1
-        expected_last = (l1_address >> 4) + (samples - 1 if write_mode == 1 else 0)
-
 
         # Disable the signal - da li ce prekinutio samplovanje!?
         write_words_to_device(self.location, self._control_register_address, 0, self.device._id, self.device._context)
-        # read from L1 
-        data = 0
-        return data if signal.mask is None else data & signal.mask
 
-# read 128 bits
-# write config
+        # read 128 bits from L1
+        words = read_words_from_device(
+            self.location, l1_address, self.device._id, 4, self.device._context
+        )
 
-# write in L1:
-# prepare:
-# RISCV_DEBUG_REG_DBG_L1_MEM_REG2 (reserved(19), writeTrigger(1), SamplingInenterval(8), WriteMode(4))
-# RISCV_DEBUG_REG_DBG_L1_MEM_REG2 = 0xF    (WriteMode = 0xF and rest = 0)
-# ***RISCV_DEBUG_REG_DBG_L1_MEM_REG0 = (x >> 4)    (x - byte-address in L1)
-# RISCV_DEBUG_REG_DBG_L1_MEM_REG2 = 0x0 ili 0x1   (writeMode = 1 ili 0)  
+        data = (
+            (words[0] & 0xFFFFFFFF)
+            | ((words[1] & 0xFFFFFFFF) << 32)
+            | ((words[2] & 0xFFFFFFFF) << 64)
+            | ((words[3] & 0xFFFFFFFF) << 96)
+        )
 
-# instruct to write:
-# RISCV_DEBUG_REG_DBG_L1_MEM_REG2 = (set writeTrigger to 1 and rest same as before) - can wait up to 200 cycles if L1 is busy.
-# RISCV_DEBUG_REG_DBG_L1_MEM_REG2 = (set writeTrigger to 0 and rest same as before) 
-# if writeMode = 0: 
-#     write on same address in next iteration
-# if writeMode = 1:
-#     increment address in next iteration - 16 bytes after
-
-# samples:
-# after *** instruction
-# RISCV_DEBUG_REG_DBG_L1_MEM_REG1 = (x >> 4) + c  (c - number of samples)
-# RISCV_DEBUG_REG_DBG_L1_MEM_REG2 = (WriteMode == 4, SamplingInterval = N-1 - to get a 
-# sample every N cycles - not precise (if misses, it will try again after N cycles), WriteTrigger == true) - hardware bug, when N==1, 
-# hardware might take one more sample than requested
-
-
-
+        # TODO: Return masked data 
+        return data 
 
