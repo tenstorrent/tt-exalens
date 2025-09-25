@@ -55,26 +55,31 @@ def run(cmd_text, context, ui_state: UIState = None):
     args = dopt.args
 
     core_loc_str = args["<core-loc>"]
+    offsets = args["-o"]
+    sample = float(args["--sample"]) if args["--sample"] else 0
+    word_count = int(args["<word-count>"]) if args["<word-count>"] else 0
+    format = args["--format"] if args["--format"] else "hex32"
+    if format not in util.PRINT_FORMATS:
+        raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
+    addr_arg = args["<addr>"]
+    size_bytes_arg = 4
+    try:
+        # If we can parse the address as a number, do it. Otherwise, it's a variable name.
+        addr_arg = int(addr_arg, 0)
+    except ValueError:
+        pass
 
     def process_device(device_id):
         core_loc = OnChipCoordinate.create(core_loc_str, device=context.devices[device_id])
         mem_reader = ELF.get_mem_reader(core_loc)
 
-        # If we can parse the address as a number, do it. Otherwise, it's a variable name.
-        try:
-            addr, size_bytes = int(args["<addr>"], 0), 4
-        except ValueError:
-            addr, size_bytes = context.elf.parse_addr_size(args["<addr>"], mem_reader)
+        if isinstance(addr_arg, str):
+            addr, size_bytes = context.elf.parse_addr_size(addr_arg, mem_reader)
+        else:
+            addr, size_bytes = addr_arg, size_bytes_arg
 
         size_words = ((size_bytes + 3) // 4) if size_bytes else 1
 
-        sample = float(args["--sample"]) if args["--sample"] else 0
-        word_count = int(args["<word-count>"]) if args["<word-count>"] else size_words
-        format = args["--format"] if args["--format"] else "hex32"
-        if format not in util.PRINT_FORMATS:
-            raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
-
-        offsets = args["-o"]
         for offset in offsets:
             offset_addr, _ = context.elf.parse_addr_size(offset, mem_reader)
             addr += offset_addr
@@ -84,7 +89,7 @@ def run(cmd_text, context, ui_state: UIState = None):
             core_loc,
             addr,
             core_loc_str,
-            word_count=word_count,
+            word_count=word_count if word_count > 0 else size_words,
             sample=sample,
             print_format=format,
             context=context,
