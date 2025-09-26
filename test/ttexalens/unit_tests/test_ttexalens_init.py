@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+import tempfile
 import unittest
 import os
 
@@ -42,6 +43,29 @@ class TestRemoteTTExaLens(unittest.TestCase):
         context = tt_exalens_init.init_ttexalens_remote()
         self.assertIsNotNone(context)
         self.assertIsInstance(context, Context)
+
+    def test_remote_read_file(self):
+        """Test remote TTExaLens file reading."""
+        context = tt_exalens_init.init_ttexalens_remote()
+        self.assertIsNotNone(context)
+        self.assertIsInstance(context, Context)
+
+        # Create file in temp directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_path = os.path.join(temp_dir, "test_file.txt")
+            with open(file_path, "w") as f:
+                f.write("Hello, TTExaLens!")
+
+            # Read file remotely
+            content = context.server_ifc.get_file(file_path)
+            self.assertEqual(content, "Hello, TTExaLens!")
+
+            # Read file through streaming interface
+            stream = context.server_ifc.get_binary(file_path)
+            size = stream.seek(0, os.SEEK_END)
+            stream.seek(0)
+            stream_content = stream.read(size).decode("utf-8")
+            self.assertEqual(stream_content, "Hello, TTExaLens!")
 
 
 if __name__ == "__main__":
