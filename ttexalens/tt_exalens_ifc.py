@@ -5,6 +5,7 @@ from abc import abstractmethod
 import base64
 import io
 import os
+import serpent
 import sys
 import Pyro5.api
 
@@ -79,6 +80,14 @@ class TTExaLensPybind(TTExaLensCommunicator):
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         return open(binary_path, "rb")
 
+    def get_binary_content(self, binary_path: str) -> bytes:
+        """
+        Returns binary file content as base64-encoded data for remote access.
+        This method is used by the server to serialize binary data properly.
+        """
+        with open(binary_path, "rb") as f:
+            return f.read()
+
 
 def init_pybind(
     wanted_devices=None, init_jtag=False, initialize_with_noc1=False, simulation_directory: str | None = None
@@ -102,6 +111,15 @@ class TTExaLensClientWrapper:
     def __getattr__(self, name):
         function = getattr(self.proxy, name)
         return lambda *args, **kwargs: TTExaLensClientWrapper.convert_bytes(function(*args, **kwargs))
+
+    def get_binary(self, binary_path: str) -> io.BufferedIOBase:
+        """
+        Handle get_binary by calling get_binary_content and wrapping result in BytesIO.
+        """
+        # Try to call get_binary_content which returns serializable data
+        data = self.proxy.get_binary_content(binary_path)
+        binary_data = serpent.tobytes(data)
+        return io.BytesIO(binary_data)
 
     @staticmethod
     def convert_bytes(data):
