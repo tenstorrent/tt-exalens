@@ -7,17 +7,13 @@
 
 #pragma once
 
-#include <array>
+#include <umd/device/cluster.h>
+
 #include <cmath>
 #include <cstdint>
-#include <iomanip>
 #include <optional>
 #include <string>
-
-// TODO: Resolve this. Dependencies:
-// (c)xy_pair
-// tt_device
-#include "umd/device/device_api_metal.h"
+#include <vector>
 
 namespace tt::exalens::tile {
 
