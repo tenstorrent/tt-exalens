@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include <mutex>
 #include <optional>
 
 #include "ttexalens_implementation.h"
@@ -41,12 +42,13 @@ class umd_implementation : public ttexalens_implementation {
 
    private:
     bool is_chip_mmio_capable(uint8_t chip_id);
+    tt::umd::ArcTelemetryReader* get_arc_telemetry_reader(uint8_t chip_id);
 
     tt::umd::Cluster* cluster = nullptr;
     std::string cluster_descriptor_path;
 
-    std::unique_ptr<tt::umd::ArcTelemetryReader> cached_arc_telemetry_reader;
-    uint8_t cached_arc_telemetry_reader_chip_id = UINT8_MAX;
+    std::vector<std::unique_ptr<tt::umd::ArcTelemetryReader>> cached_arc_telemetry_readers;
+    std::mutex cached_arc_telemetry_readers_mutex;
 };
 
 }  // namespace tt::exalens

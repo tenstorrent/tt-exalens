@@ -20,7 +20,6 @@
 #include "umd/device/tt_core_coordinates.h"
 #include "umd/device/tt_device/tt_device.h"
 #include "umd/device/tt_soc_descriptor.h"
-#include "umd/device/tt_xy_pair.h"
 #include "umd/device/types/arch.h"
 #include "umd_implementation.h"
 
@@ -45,18 +44,6 @@ static std::optional<std::string> read_string_from_file(const std::string &file_
 }
 
 static std::filesystem::path temp_working_directory = get_temp_working_directory();
-
-static std::string write_temp_file(const std::string &file_name, const char *bytes, size_t length) {
-    std::string temp_file_name = temp_working_directory / file_name;
-    std::ofstream conf_file(temp_file_name, std::ios::out | std::ios::binary);
-
-    if (!conf_file.is_open()) {
-        throw std::runtime_error("Couldn't write configuration to temp file " + temp_file_name + ".");
-    }
-    conf_file.write(bytes, length);
-    conf_file.close();
-    return temp_file_name;
-}
 
 // Identifies and returns the directory path of the currently running executable in a Linux environment.
 static std::filesystem::path find_binary_directory() {
