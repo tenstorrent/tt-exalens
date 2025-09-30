@@ -32,7 +32,7 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
 
         if self.risc_info.risc_name == "trisc2" and address % 16 > 4:
             raise TTException(
-                f"Writing to trisc2 private memory address {address:08x} does not work due to blackhole bug. For more information see issue #528 in tt-exalens repo."
+                f"Writing to trisc2 private memory address 0x{address:08x} does not work due to blackhole bug. For more information see issue #528 in tt-exalens repo."
             )
 
         word_size_bytes = 4
@@ -59,7 +59,7 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
 
         if self.risc_info.risc_name == "trisc2" and address % 16 > 4:
             raise TTException(
-                f"Reading from trisc2 private memory address {address:08x} does not work due to blackhole bug. For more information see issue #528 in tt-exalens repo."
+                f"Reading from trisc2 private memory address 0x{address:08x} does not work due to blackhole bug. For more information see issue #528 in tt-exalens repo."
             )
 
         word_size_bytes = 4
