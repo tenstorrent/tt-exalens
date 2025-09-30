@@ -162,6 +162,8 @@ std::unique_ptr<TTExaLensImplementation> open_simulation(const std::string &simu
 
 NB_MODULE(ttexalens_pybind, m) {
     // Disable nanobind leak warnings
+    // We are creating single instance of ttexalens_pybind.TTExaLensImplementation, but nanobind thinks it is a leak
+    // because we are not explicitly deleting it. However, we want to keep it alive for the entire program duration.
     nanobind::set_leak_warnings(false);
 
     // Bind the TTExaLensImplementation class
