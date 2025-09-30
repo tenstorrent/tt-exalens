@@ -161,6 +161,9 @@ std::unique_ptr<TTExaLensImplementation> open_simulation(const std::string &simu
 }
 
 NB_MODULE(ttexalens_pybind, m) {
+    // Disable nanobind leak warnings
+    nanobind::set_leak_warnings(false);
+
     // Bind the TTExaLensImplementation class
     nanobind::class_<TTExaLensImplementation>(m, "TTExaLensImplementation")
         .def("pci_read32", &TTExaLensImplementation::pci_read32, "Reads 4 bytes from PCI address", "noc_id"_a,
