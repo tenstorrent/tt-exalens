@@ -7,8 +7,8 @@
 #include <tuple>
 
 #include "read_tile.hpp"
-#include "umd/device/arc/arc_telemetry_reader.hpp"
 #include "umd/device/cluster.h"
+#include "umd/device/firmware/firmware_info_provider.hpp"
 
 namespace tt::exalens {
 
@@ -225,19 +225,6 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(u
     uint32_t return_4 = 0;
     int return_code = cluster->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout, &return_3, &return_4);
     return std::make_tuple(return_code, return_3, return_4);
-}
-
-tt::umd::ArcTelemetryReader* umd_implementation::get_arc_telemetry_reader(uint8_t chip_id) {
-    auto& cached_arc_telemetry_reader = cached_arc_telemetry_readers[chip_id];
-
-    if (!cached_arc_telemetry_reader) {
-        std::lock_guard<std::mutex> lock(cached_arc_telemetry_readers_mutex);
-        if (!cached_arc_telemetry_reader) {
-            cached_arc_telemetry_reader =
-                tt::umd::ArcTelemetryReader::create_arc_telemetry_reader(cluster->get_tt_device(chip_id));
-        }
-    }
-    return cached_arc_telemetry_reader.get();
 }
 
 tt::umd::FirmwareInfoProvider* umd_implementation::get_firmware_info_provider(uint8_t chip_id) {
