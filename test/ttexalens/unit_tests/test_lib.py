@@ -782,18 +782,20 @@ class TestARC(unittest.TestCase):
 
     fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
 
-    def test_read_arc_telemetry(self):
-        """Test reading ARC telemetry entries of known values"""
+    def test_arc_heartbeat(self):
+        """Test reading ARC heartbeat"""
         device_id = 0
         if not self.is_wormhole() and not self.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
 
+        tag = "TAG_HEARTBEAT"
+
         # Check if heartbeat is increasing
         import time
 
-        heartbeat1 = lib.read_arc_telemetry_entry(device_id, "TAG_HEARTBEAT")
+        heartbeat1 = lib.read_arc_telemetry_entry(device_id, tag)
         time.sleep(0.1)
-        heartbeat2 = lib.read_arc_telemetry_entry(device_id, "TAG_HEARTBEAT")
+        heartbeat2 = lib.read_arc_telemetry_entry(device_id, tag)
         self.assertGreater(heartbeat2, heartbeat1)
 
     @parameterized.expand(
@@ -806,14 +808,13 @@ class TestARC(unittest.TestCase):
         ]
     )
     def test_read_arc_telemetry_entry(self, tag_name, tag_id):
-        """Test reading ARC telemetry entry by tag name and tag ID"""
+        """Test if reading ARC telemetry entry by tag name and tag ID gives the same result"""
 
         if not self.is_wormhole() and not self.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
 
         device_id = 0
 
-        # Check if reading by tag name and tag ID gives the same result
         ret_from_name = lib.read_arc_telemetry_entry(device_id, tag_name)
         ret_from_id = lib.read_arc_telemetry_entry(device_id, tag_id)
         self.assertEqual(ret_from_name, ret_from_id)
