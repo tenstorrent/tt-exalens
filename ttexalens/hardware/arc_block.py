@@ -8,8 +8,19 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.noc_block import NocBlock
 
 
+telemetry_tags_map: dict[str, int] = {
+    "TAG_BOARD_ID": 1,
+    "TAG_AICLK": 2,
+    "TAG_AXICLK": 3,
+    "TAG_ARCCLK": 4,
+    "TAG_HEARTBEAT": 5,
+}
+
+
 class ArcBlock(NocBlock):
-    def __init__(self, location: OnChipCoordinate, block_type: str, telemetry_tags: dict[str, int]):
+    def __init__(
+        self, location: OnChipCoordinate, block_type: str, telemetry_tags: dict[str, int] = telemetry_tags_map
+    ):
         super().__init__(location, block_type)
 
         self.telemetry_tags = telemetry_tags

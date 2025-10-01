@@ -7,7 +7,7 @@
 #include <tuple>
 
 #include "read_tile.hpp"
-#include "umd/device/arc/arc_telemetry_reader.h"
+#include "umd/device/arc/arc_telemetry_reader.hpp"
 #include "umd/device/cluster.h"
 
 namespace tt::exalens {
@@ -92,7 +92,7 @@ void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_pt
 }  // namespace tt::exalens
 
 umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {
-    cached_arc_telemetry_readers.resize(cluster->get_cluster_description()->get_number_of_chips());
+    cached_firmware_info_providers.resize(cluster->get_cluster_description()->get_number_of_chips());
 }
 
 std::optional<uint32_t> umd_implementation::pci_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
@@ -240,10 +240,43 @@ tt::umd::ArcTelemetryReader* umd_implementation::get_arc_telemetry_reader(uint8_
     return cached_arc_telemetry_reader.get();
 }
 
-std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
-    auto* arc_telemetry_reader = get_arc_telemetry_reader(chip_id);
+tt::umd::FirmwareInfoProvider* umd_implementation::get_firmware_info_provider(uint8_t chip_id) {
+    auto& cached_firmware_info_provider = cached_firmware_info_providers[chip_id];
+    if (!cached_firmware_info_provider) {
+        std::lock_guard<std::mutex> lock(cached_firmware_info_providers_mutex);
+        if (!cached_firmware_info_provider) {
+            cached_firmware_info_provider =
+                tt::umd::FirmwareInfoProvider::create_firmware_info_provider(cluster->get_tt_device(chip_id));
+        }
+    }
+    return cached_firmware_info_provider.get();
+}
 
-    return arc_telemetry_reader->read_entry(telemetry_tag);
+enum TelemetryTag : uint8_t {
+    BOARD_ID = 1,
+    AICLK = 2,
+    AXICLK = 3,
+    ARCCLK = 4,
+    HEARTBEAT = 5,
+};
+
+std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
+    auto* firmware_info_provider = get_firmware_info_provider(chip_id);
+    switch (telemetry_tag) {
+        case TelemetryTag::BOARD_ID:
+            return firmware_info_provider->get_board_id();
+        case TelemetryTag::AICLK:
+            return firmware_info_provider->get_aiclk();
+        case TelemetryTag::AXICLK:
+            return firmware_info_provider->get_axiclk();
+        case TelemetryTag::ARCCLK:
+            return firmware_info_provider->get_arcclk();
+        case TelemetryTag::HEARTBEAT:
+            return firmware_info_provider->get_heartbeat();
+        default:
+            throw std::runtime_error(fmt::format("Telemetry tag {} is not available.", telemetry_tag));
+    }
+    return {};
 }
 
 }  // namespace tt::exalens

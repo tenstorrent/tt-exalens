@@ -42,13 +42,13 @@ class umd_implementation : public ttexalens_implementation {
 
    private:
     bool is_chip_mmio_capable(uint8_t chip_id);
-    tt::umd::ArcTelemetryReader* get_arc_telemetry_reader(uint8_t chip_id);
+    tt::umd::FirmwareInfoProvider* get_firmware_info_provider(uint8_t chip_id);
 
     tt::umd::Cluster* cluster = nullptr;
     std::string cluster_descriptor_path;
 
-    std::vector<std::unique_ptr<tt::umd::ArcTelemetryReader>> cached_arc_telemetry_readers;
-    std::mutex cached_arc_telemetry_readers_mutex;
+    std::vector<std::unique_ptr<tt::umd::FirmwareInfoProvider>> cached_firmware_info_providers;
+    std::mutex cached_firmware_info_providers_mutex;
 };
 
 }  // namespace tt::exalens
