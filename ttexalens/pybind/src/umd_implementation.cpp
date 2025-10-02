@@ -247,7 +247,7 @@ enum TelemetryTag : uint8_t {
     HEARTBEAT = 5,
 };
 
-std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
+std::optional<uint64_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
     auto* firmware_info_provider = get_firmware_info_provider(chip_id);
     switch (telemetry_tag) {
         case TelemetryTag::BOARD_ID:

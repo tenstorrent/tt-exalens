@@ -129,7 +129,7 @@ class TTExaLensImplementation {
         return _check_result(implementation->arc_msg(noc_id, chip_id, msg_code, wait_for_done, arg0, arg1, timeout));
     }
 
-    uint32_t read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
+    uint64_t read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
         return _check_result(implementation->read_arc_telemetry_entry(chip_id, telemetry_tag));
     }
 };
