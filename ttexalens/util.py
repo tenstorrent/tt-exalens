@@ -296,7 +296,7 @@ def ryml_to_dict(tree, i):
 
 from collections.abc import Sequence
 from functools import cached_property
-from typing import Mapping, Tuple, TypeVar
+from typing import Mapping, TypeVar
 from fastnumbers import try_int
 
 
