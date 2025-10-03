@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from dataclasses import dataclass
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
@@ -591,6 +592,18 @@ class TabulateTable:
             self.rows.sort(key=lambda x: x[self.sort_col])
 
         return tabulate(self.rows, headers=self.headers, disable_numparse=True)
+
+
+@dataclass
+class FirmwareVersion:
+    def __init__(self, version: tuple[int, int, int]):
+        self.major, self.minor, self.patch = version
+
+    def __repr__(self):
+        return f"{self.major}.{self.minor}.{self.patch}"
+
+    def as_tuple(self) -> tuple[int, int, int]:
+        return (self.major, self.minor, self.patch)
 
 
 def is_iterable(obj):
