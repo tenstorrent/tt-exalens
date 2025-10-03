@@ -7,8 +7,9 @@
 #include <tuple>
 
 #include "read_tile.hpp"
+#include "umd/device/arc/arc_telemetry_reader.hpp"
 #include "umd/device/cluster.h"
-#include "umd/device/firmware/firmware_info_provider.hpp"
+#include "umd/device/firmware/firmware_utils.hpp"
 
 namespace tt::exalens {
 
@@ -92,7 +93,7 @@ void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_pt
 }  // namespace tt::exalens
 
 umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {
-    cached_firmware_info_providers.resize(cluster->get_cluster_description()->get_number_of_chips());
+    cached_arc_telemetry_readers.resize(cluster->get_cluster_description()->get_number_of_chips());
 }
 
 std::optional<uint32_t> umd_implementation::pci_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
@@ -227,43 +228,38 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(u
     return std::make_tuple(return_code, return_3, return_4);
 }
 
-tt::umd::FirmwareInfoProvider* umd_implementation::get_firmware_info_provider(uint8_t chip_id) {
-    auto& cached_firmware_info_provider = cached_firmware_info_providers[chip_id];
-    if (!cached_firmware_info_provider) {
-        std::lock_guard<std::mutex> lock(cached_firmware_info_providers_mutex);
-        if (!cached_firmware_info_provider) {
-            cached_firmware_info_provider =
-                tt::umd::FirmwareInfoProvider::create_firmware_info_provider(cluster->get_tt_device(chip_id));
+tt::umd::ArcTelemetryReader* umd_implementation::get_arc_telemetry_reader(uint8_t chip_id) {
+    auto& cached_arc_telemetry_reader = cached_arc_telemetry_readers[chip_id];
+    if (!cached_arc_telemetry_reader) {
+        std::lock_guard<std::mutex> lock(cached_arc_telemetry_readers_mutex);
+        if (!cached_arc_telemetry_reader) {
+            cached_arc_telemetry_reader =
+                tt::umd::ArcTelemetryReader::create_arc_telemetry_reader(cluster->get_tt_device(chip_id));
         }
     }
-    return cached_firmware_info_provider.get();
+    return cached_arc_telemetry_reader.get();
 }
 
-enum TelemetryTag : uint8_t {
-    BOARD_ID = 1,
-    AICLK = 2,
-    AXICLK = 3,
-    ARCCLK = 4,
-    HEARTBEAT = 5,
-};
-
-std::optional<uint64_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
-    auto* firmware_info_provider = get_firmware_info_provider(chip_id);
-    switch (telemetry_tag) {
-        case TelemetryTag::BOARD_ID:
-            return firmware_info_provider->get_board_id();
-        case TelemetryTag::AICLK:
-            return firmware_info_provider->get_aiclk();
-        case TelemetryTag::AXICLK:
-            return firmware_info_provider->get_axiclk();
-        case TelemetryTag::ARCCLK:
-            return firmware_info_provider->get_arcclk();
-        case TelemetryTag::HEARTBEAT:
-            return firmware_info_provider->get_heartbeat();
-        default:
-            throw std::runtime_error(fmt::format("Telemetry tag {} is not available.", telemetry_tag));
+std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
+    auto* arc_telemetry_reader = get_arc_telemetry_reader(chip_id);
+    auto umd_telemetry_tag = static_cast<tt::umd::TelemetryTag>(telemetry_tag);
+    if (!arc_telemetry_reader->is_entry_available(telemetry_tag)) {
+        return {};
     }
-    return {};
+    return arc_telemetry_reader->read_entry(telemetry_tag);
+}
+
+std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> umd_implementation::get_firmware_version(uint8_t chip_id) {
+    const auto& firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
+    return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
+}
+
+// Return -1 if version1 < version2, 0 if version1 == version2, 1 if version1 > version2
+std::optional<int> umd_implementation::compare_firmware_versions(
+    const std::tuple<uint64_t, uint64_t, uint64_t> version1, const std::tuple<uint64_t, uint64_t, uint64_t> version2) {
+    tt::umd::semver_t v1(std::get<0>(version1), std::get<1>(version1), std::get<2>(version1));
+    tt::umd::semver_t v2(std::get<0>(version2), std::get<1>(version2), std::get<2>(version2));
+    return tt::umd::semver_t::compare_firmware_bundle(v1, v2);
 }
 
 }  // namespace tt::exalens

@@ -129,8 +129,17 @@ class TTExaLensImplementation {
         return _check_result(implementation->arc_msg(noc_id, chip_id, msg_code, wait_for_done, arg0, arg1, timeout));
     }
 
-    uint64_t read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
+    uint32_t read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
         return _check_result(implementation->read_arc_telemetry_entry(chip_id, telemetry_tag));
+    }
+
+    std::tuple<uint64_t, uint64_t, uint64_t> get_firmware_version(uint8_t chip_id) {
+        return _check_result(implementation->get_firmware_version(chip_id));
+    }
+
+    int compare_firmware_versions(std::tuple<uint64_t, uint64_t, uint64_t> version1,
+                                  std::tuple<uint64_t, uint64_t, uint64_t> version2) {
+        return _check_result(implementation->compare_firmware_versions(version1, version2));
     }
 };
 
@@ -204,7 +213,11 @@ NB_MODULE(ttexalens_pybind, m) {
         .def("arc_msg", &TTExaLensImplementation::arc_msg, "Send ARC message", "noc_id"_a, "chip_id"_a, "msg_code"_a,
              "wait_for_done"_a, "arg0"_a, "arg1"_a, "timeout"_a)
         .def("read_arc_telemetry_entry", &TTExaLensImplementation::read_arc_telemetry_entry, "Read ARC telemetry entry",
-             "chip_id"_a, "telemetry_tag"_a);
+             "chip_id"_a, "telemetry_tag"_a)
+        .def("get_firmware_version", &TTExaLensImplementation::get_firmware_version, "Returns firmware version",
+             "chip_id"_a)
+        .def("compare_firmware_versions", &TTExaLensImplementation::compare_firmware_versions,
+             "Compares firmware versions", "version1"_a, "version2"_a);
 
     // Bind factory functions
     m.def("open_device", &open_device, "Opens tt device. Returns TTExaLensImplementation object or None if failed.",

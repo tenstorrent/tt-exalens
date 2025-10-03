@@ -788,7 +788,7 @@ class TestARC(unittest.TestCase):
         if not self.is_wormhole() and not self.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
 
-        tag = "TAG_HEARTBEAT"
+        tag = "TIMER_HEARTBEAT"
 
         # Check if heartbeat is increasing
         import time
@@ -800,11 +800,11 @@ class TestARC(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("TAG_BOARD_ID", 1),
-            ("TAG_AICLK", 2),
-            ("TAG_AXICLK", 3),
-            ("TAG_ARCCLK", 4),
-            ("TAG_HEARTBEAT", 5),
+            ("BOARD_ID_HIGH", 1),
+            ("BOARD_ID_LOW", 2),
+            ("AICLK", 14),
+            ("AXICLK", 15),
+            ("ARCCLK", 16),
         ]
     )
     def test_read_arc_telemetry_entry(self, tag_name, tag_id):
