@@ -7,8 +7,9 @@
 #include <tuple>
 
 #include "read_tile.hpp"
-#include "umd/device/arc/arc_telemetry_reader.h"
+#include "umd/device/arc/arc_telemetry_reader.hpp"
 #include "umd/device/cluster.h"
+#include "umd/device/firmware/firmware_utils.hpp"
 
 namespace tt::exalens {
 
@@ -229,7 +230,6 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(u
 
 tt::umd::ArcTelemetryReader* umd_implementation::get_arc_telemetry_reader(uint8_t chip_id) {
     auto& cached_arc_telemetry_reader = cached_arc_telemetry_readers[chip_id];
-
     if (!cached_arc_telemetry_reader) {
         std::lock_guard<std::mutex> lock(cached_arc_telemetry_readers_mutex);
         if (!cached_arc_telemetry_reader) {
@@ -242,8 +242,16 @@ tt::umd::ArcTelemetryReader* umd_implementation::get_arc_telemetry_reader(uint8_
 
 std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
     auto* arc_telemetry_reader = get_arc_telemetry_reader(chip_id);
-
+    auto umd_telemetry_tag = static_cast<tt::umd::TelemetryTag>(telemetry_tag);
+    if (!arc_telemetry_reader->is_entry_available(telemetry_tag)) {
+        return {};
+    }
     return arc_telemetry_reader->read_entry(telemetry_tag);
+}
+
+std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> umd_implementation::get_firmware_version(uint8_t chip_id) {
+    const auto& firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
+    return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
 }
 
 }  // namespace tt::exalens
