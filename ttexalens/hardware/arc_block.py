@@ -4,12 +4,12 @@
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.noc_block import NocBlock
-from ttexalens.util import TTException
+from ttexalens.util import FirmwareVersion, TTException
 
 # For new firmware version (18.4 or higher) we have same telemetry tags for both wormhole and blackhole
 # We no longer support ARC telemetry for firmware versions 18.3 and lower
 
-CUTOFF_FIRMWARE_VERSION = (18, 4, 0)
+CUTOFF_FIRMWARE_VERSION = FirmwareVersion((18, 4, 0))
 
 telemetry_tags_map: dict[str, int] = {
     "BOARD_ID_HIGH": 1,
@@ -61,14 +61,8 @@ class ArcBlock(NocBlock):
         self, location: OnChipCoordinate, block_type: str, telemetry_tags: dict[str, int] = telemetry_tags_map
     ):
         super().__init__(location, block_type)
-
         self.telemetry_tags = (
-            telemetry_tags
-            if self.location.context.server_ifc.compare_firmware_versions(
-                self.location.device._firmware_version.as_tuple(), CUTOFF_FIRMWARE_VERSION
-            )
-            >= 0
-            else None
+            telemetry_tags if self.location.device._firmware_version >= CUTOFF_FIRMWARE_VERSION else None
         )
         self.telemetry_tag_ids: set[int] = set(telemetry_tags.values()) if self.telemetry_tags else None
 

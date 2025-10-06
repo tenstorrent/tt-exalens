@@ -2,14 +2,12 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from dataclasses import dataclass
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
 import traceback, socket
 import ryml, yaml
 from ttexalens import Verbosity
-import re
 from fnmatch import fnmatch
 
 # Pretty print exceptions (traceback)
@@ -594,7 +592,10 @@ class TabulateTable:
         return tabulate(self.rows, headers=self.headers, disable_numparse=True)
 
 
-@dataclass
+from functools import total_ordering
+
+
+@total_ordering
 class FirmwareVersion:
     def __init__(self, version: tuple[int, int, int]):
         self.major, self.minor, self.patch = version
@@ -602,8 +603,18 @@ class FirmwareVersion:
     def __repr__(self):
         return f"{self.major}.{self.minor}.{self.patch}"
 
-    def as_tuple(self) -> tuple[int, int, int]:
-        return (self.major, self.minor, self.patch)
+    def normalize_major(self):
+        return self.major if self.major < 80 else 0
+
+    def __lt__(self, other: "FirmwareVersion"):
+        self_major = self.normalize_major()
+        other_major = other.normalize_major()
+        return (self_major, self.minor, self.patch) < (other_major, other.minor, other.patch)
+
+    def __eq__(self, other: "FirmwareVersion"):
+        self_major = self.normalize_major()
+        other_major = other.normalize_major()
+        return (self_major, self.minor, self.patch) == (other_major, other.minor, other.patch)
 
 
 def is_iterable(obj):

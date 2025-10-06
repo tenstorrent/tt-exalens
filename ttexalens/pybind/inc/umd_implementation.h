@@ -40,8 +40,6 @@ class umd_implementation : public ttexalens_implementation {
                                                                        uint32_t arg0, uint32_t arg1,
                                                                        int timeout) override;
     virtual std::optional<uint32_t> read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) override;
-    virtual std::optional<int> compare_firmware_versions(std::tuple<uint64_t, uint64_t, uint64_t> version1,
-                                                         std::tuple<uint64_t, uint64_t, uint64_t> version2) override;
     virtual std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> get_firmware_version(uint8_t chip_id) override;
 
    private:

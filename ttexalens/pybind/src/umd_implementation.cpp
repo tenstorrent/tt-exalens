@@ -254,12 +254,4 @@ std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> umd_implementation::get_
     return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
 }
 
-// Return -1 if version1 < version2, 0 if version1 == version2, 1 if version1 > version2
-std::optional<int> umd_implementation::compare_firmware_versions(
-    const std::tuple<uint64_t, uint64_t, uint64_t> version1, const std::tuple<uint64_t, uint64_t, uint64_t> version2) {
-    tt::umd::semver_t v1(std::get<0>(version1), std::get<1>(version1), std::get<2>(version1));
-    tt::umd::semver_t v2(std::get<0>(version2), std::get<1>(version2), std::get<2>(version2));
-    return tt::umd::semver_t::compare_firmware_bundle(v1, v2);
-}
-
 }  // namespace tt::exalens
