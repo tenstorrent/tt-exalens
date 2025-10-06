@@ -26,6 +26,7 @@ from ttexalens.object import DataArray
 from ttexalens.hw.arc.arc import load_arc_fw
 from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
 from ttexalens.elf_loader import ElfLoader
+from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
 
 
 def invalid_argument_decorator(func):
@@ -788,6 +789,11 @@ class TestARC(unittest.TestCase):
         if not self.is_wormhole() and not self.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
 
+        if self.context.devices[0]._firmware_version < CUTOFF_FIRMWARE_VERSION:
+            self.skipTest(
+                f"ARC telemetry is not supported for firmware version {self.context.devices[0]._firmware_version}"
+            )
+
         tag = "TIMER_HEARTBEAT"
 
         # Check if heartbeat is increasing
@@ -812,6 +818,11 @@ class TestARC(unittest.TestCase):
 
         if not self.is_wormhole() and not self.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
+
+        if self.context.devices[0]._firmware_version < CUTOFF_FIRMWARE_VERSION:
+            self.skipTest(
+                f"ARC telemetry is not supported for firmware version {self.context.devices[0]._firmware_version}"
+            )
 
         device_id = 0
 
