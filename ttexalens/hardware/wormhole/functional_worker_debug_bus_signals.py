@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 
 
 # The commented-out signals are either duplicates (have the same name) or signals that span across more than one 32-bit word (where different parts of the signal use different rd_sel values). In the current implementation, it is not possible to read both parts in a synchronized way (the result would not be consistent), so reading them is not recommended.
@@ -1781,40 +1781,93 @@ debug_bus_signal_map = {
     "l1_access_port_l1_addr_p0": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=8, sig_sel=2, mask=0x1FFFF
     ),
-    "srcA_B_access_control_unpacker1_srcb_bank": DebugBusSignalDescription(
+    "srca_srcb_access_control_unpacker1_srcb_bank": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x40000
     ),
-    "srcA_B_access_control_mxu_srcb_bank": DebugBusSignalDescription(
+    "srca_srcb_access_control_mxu_srcb_bank": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x10000
     ),
-    "srcA_B_access_control_srcb_bank0_mxu_allowed": DebugBusSignalDescription(
+    "srca_srcb_access_control_srcb_bank0_mxu_allowed": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x8000
     ),
-    "srcA_B_access_control_srcb_bank1_mxu_allowed": DebugBusSignalDescription(
+    "srca_srcb_access_control_srcb_bank1_mxu_allowed": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x4000
     ),
-    "srcA_B_access_control_srcb_mxu_allowed": DebugBusSignalDescription(
+    "srca_srcb_access_control_srcb_mxu_allowed": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x2000
     ),
-    "srcA_B_access_control_srcb_unpacker1_allowed": DebugBusSignalDescription(
+    "srca_srcb_access_control_srcb_unpacker1_allowed": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x10
     ),
-    "srcA_B_access_control_unpacker0_srca_bank": DebugBusSignalDescription(
+    "srca_srcb_access_control_unpacker0_srca_bank": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=6, sig_sel=9, mask=0x40000000
     ),
-    "srcA_B_access_control_mxu_srca_bank": DebugBusSignalDescription(
+    "srca_srcb_access_control_mxu_srca_bank": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=6, sig_sel=9, mask=0x10000000
     ),
-    "srcA_B_access_control_srca_srca_bank0_mxu_allowed": DebugBusSignalDescription(
+    "srca_srcb_access_control_srca_srca_bank0_mxu_allowed": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=6, sig_sel=9, mask=0x8000000
     ),
-    "srcA_B_access_control_srca_bank1_mxu_allowed": DebugBusSignalDescription(
+    "srca_srcb_access_control_srca_bank1_mxu_allowed": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=6, sig_sel=9, mask=0x4000000
     ),
-    "srcA_B_access_control_srca_mxu_allowed": DebugBusSignalDescription(
+    "srca_srcb_access_control_srca_mxu_allowed": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=6, sig_sel=9, mask=0x200000
     ),
-    "srcA_B_access_control_srca_unpacker0_allowed": DebugBusSignalDescription(
+    "srca_srcb_access_control_srca_unpacker0_allowed": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=6, sig_sel=9, mask=0x100000
     ),
 }
+
+# TODO: add eth debug groups
+# Group name mapping (daisy_sel, sig_sel) based on documentation
+group_names = {
+    # RISCV execution state (DaisySel == 7)
+    (7, 10): "brisc_group_a",
+    (7, 11): "brisc_group_b", 
+    (7, 1): "brisc_group_c",
+    (7, 12): "trisc0_group_a",
+    (7, 13): "trisc0_group_b",
+    (7, 18): "trisc0_group_c",
+    (7, 19): "trisc0_group_d",
+    (7, 14): "trisc1_group_a",
+    (7, 15): "trisc1_group_b",
+    (7, 20): "trisc1_group_c",
+    (7, 21): "trisc1_group_d",
+    (7, 16): "trisc2_group_a",
+    (7, 17): "trisc2_group_b",
+    (7, 22): "trisc2_group_c",
+    (7, 23): "trisc2_group_d",
+    (7, 24): "ncrisc_group_a",
+    (7, 25): "ncrisc_group_b",
+    (7, 28): "sfpu_lane_enabled",
+    
+    # Tensix Frontend (DaisySel == 1)
+    (1, 12): "tensix_frontend_t0",
+    (1, 8): "tensix_frontend_t1",
+    (1, 4): "tensix_frontend_t2",
+    
+    # ADCs and srcA and srcB (DaisySel == 6)
+    (6, 0): "adcs0_unpacker0_channel0",
+    (6, 1): "adcs0_unpacker0_channel1",
+    (6, 2): "adcs0_unpacker1_channel0",
+    (6, 3): "adcs0_unpacker1_channel1",
+    (6, 4): "adcs2_packers_channel0",
+    (6, 5): "adcs2_packers_channel1",
+    (6, 9): "srca_srcb_access_control",
+    
+    # RWCs (DaisySel == 3)
+    (3, 0): "rwc_control_signals",
+    (3, 1): "rwc_status_signals",
+    (3, 2): "rwc_coordinates_a",
+    (3, 3): "rwc_coordinates_b",
+    (3, 4): "rwc_fidelity_phase",
+    
+    # L1 access ports (DaisySel == 8)
+    (8, 2): "l1_access_ports_addr_a",
+    (8, 3): "l1_access_ports_addr_b",
+    (8, 5): "l1_access_ports_addr_c",
+}
+
+debug_bus_signal_group_map = DebugBusSignalStore.get_signal_groups(debug_bus_signal_map, group_names)
+

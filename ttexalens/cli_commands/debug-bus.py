@@ -4,12 +4,21 @@
 """
 Usage:
   debug-bus list-names [-v] [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s]
-  debug-bus [<signals>] [-v] [-d <device>] [-l <loc>]
+  debug-bus [<signals>] [-v] [-d <device>] [-l <loc>] [--l1-sampling] [--samples <num>] [--sampling-interval <cycles>] [--write-mode <mode>]
 
 Options:
-    -s, --simple            Print simple output
-    --search <pattern>      Search for signals by pattern (in wildcard format)
-    --max <max-sigs>        Limit --search output (default: 10, use --max "all" to print all matches)
+    -s, --simple                        Print simple output.
+    --search <pattern>                  Search for signals by pattern (in wildcard format).
+    --max <max-sigs>                    Limit --search output (default: 10, use --max "all" to print all matches).
+    --l1-sampling                       Enable sampling into L1 memory. Instead of a direct 32-bit register read,
+                                        this triggers a 128-bit capture of the signal into the core's L1 memory at address 0.
+    --samples <num>                     (L1-sampling only) Number of 128-bit samples to capture. [default: 1].
+    --sampling-interval <cycles>        (L1-sampling only) When samples > 1, this sets the delay in clock cycles
+                                        between each sample. Must be between 2 and 255. [default: 2].
+    --write-mode <mode>                 (L1-sampling only) When samples = 1, defines L1 write behavior:
+                                        0: Overwrite the same L1 address on each capture.
+                                        1: Increment the L1 address by 16 bytes after each capture.
+                                        [default: 0].
 
 Description:
   Commands for RISC-V debugging:
@@ -27,6 +36,7 @@ Examples:
   debug-bus list-names --search *pc* --max 5  # List up to 5 signals whose names contain pc
   debug-bus trisc0_pc,trisc1_pc               # Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
   debug-bus {7,0,12,0x3ffffff},trisc2_pc      # Prints custom debug bus signal and trisc2_pc
+  debug-bus trisc0_pc --l1-sampling --samples 5 --sampling-interval 10 # Read trisc0_pc using L1 sampling 5 times with 10 cycle interval
 """
 
 command_metadata = {
@@ -167,11 +177,32 @@ def run(cmd_text, context, ui_state: UIState = None):
             where = f"device:{device._id} loc:{loc.to_user_str()} "
             for signal in signals:
                 try:
+                    read_signal_args = {"signal": signal}
+                    if dopt.args["--l1-sampling"]:
+                        read_signal_args["use_l1_sampling"] = True
+
+                        # Get samples value for validation, using the function's default if not provided.
+                        samples = 1
+                        if "--samples" in cmd_text:
+                            samples = int(dopt.args["--samples"])
+                            read_signal_args["samples"] = samples
+
+                        if "--write-mode" in cmd_text:
+                            read_signal_args["write_mode"] = int(dopt.args["--write-mode"])
+
+                        if "--sampling-interval" in cmd_text:
+                            sampling_interval = int(dopt.args["--sampling-interval"])
+                            if samples > 1 and not (2 <= sampling_interval <= 255):
+                                raise ValueError(
+                                    f"When --samples > 1, --sampling-interval must be between 2 and 255, but got {sampling_interval}"
+                                )
+                            read_signal_args["sampling_interval"] = sampling_interval
+
+                    value = debug_bus_signal_store.read_signal(**read_signal_args)
+
                     if isinstance(signal, str):
-                        value = debug_bus_signal_store.read_signal(signal)
                         print(f"{where} {signal}: 0x{value:x}")
                     else:
-                        value = debug_bus_signal_store.read_signal(signal)
                         signal_description = f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
                         print(f"{where} Debug Bus Config({signal_description}) = 0x{value:x}")
                 except ValueError as e:
