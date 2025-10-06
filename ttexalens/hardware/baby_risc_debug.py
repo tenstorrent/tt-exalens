@@ -411,6 +411,8 @@ class BabyRiscDebugHardware:
         return self.read_status().is_memory_watchpoint_hit
 
     def read_gpr(self, reg_index):
+        if not 0 <= reg_index <= 32:
+            raise ValueError(f"Invalid register index {reg_index}. Must be between 0 and 32.")
         if self.verbose:
             util.INFO(f"  read_gpr({reg_index})")
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
