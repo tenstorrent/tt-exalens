@@ -412,9 +412,12 @@ def main():
 
             util.INFO("The debug server is running in the background.")
             util.INFO("To stop the server, use the command: touch exit.server")
+
+            # Remove exit.server file if it exists
             if os.path.exists("exit.server"):
                 os.remove("exit.server")
             try:
+                # Wait until exit.server file is created to exit the program
                 while not os.path.isfile("exit.server"):
                     import time
 
