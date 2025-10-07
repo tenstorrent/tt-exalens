@@ -277,6 +277,12 @@ def main_loop(args, context):
                             if ui_state.gdb_server.is_connected:
                                 gdb_status += "(connected)"
                             my_prompt += f"gdb:{gdb_status} "
+                        noc_prompt = "1" if ui_state.context.use_noc1 else "0"
+                        if (
+                            ui_state.current_device._arch == "blackhole"
+                            or ui_state.current_device._arch == "wormhole_b0"
+                        ):
+                            my_prompt += f"noc:{util.CLR_PROMPT}{noc_prompt}{util.CLR_PROMPT_END} "
                         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
                         my_prompt += (
                             f"device:{util.CLR_PROMPT}{jtag_prompt}{ui_state.current_device_id}{util.CLR_PROMPT_END} "
