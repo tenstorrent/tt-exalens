@@ -25,6 +25,7 @@ class TTExaLensServer:
 
     def stop(self):
         if self.daemon:
+            self.daemon.unregister(self.communicator)
             self.daemon.shutdown()
         if self.thread:
             self.thread.join()
