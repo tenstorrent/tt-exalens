@@ -74,21 +74,6 @@
     </Expand>
   </Type>
 
-  <!-- TODO: std::deque<T> -->
-  <Type Name="std::__1::deque&lt;*&gt;" Priority="High">
-    <DisplayString>{{ size={__size_.__value_} }}</DisplayString>
-    <Expand>
-      <Item Name="[size]">__size_.__value_</Item>
-      <IndexListItems>
-        <Size>__size_.__value_</Size>
-        <ValueNode>
-          <!-- Simplified deque access - actual implementation is more complex -->
-          *(__map_.__begin_ + (__start_ + $i) / __block_size)[(__start_ + $i) % __block_size]
-        </ValueNode>
-      </IndexListItems>
-    </Expand>
-  </Type>
-
   <!-- std::list<T> -->
   <Type Name="std::__1::list&lt;*&gt;" Priority="High"> <!-- libc++ -->
     <DisplayString>{{ size={__size_alloc_.__value_} }}</DisplayString>
@@ -111,18 +96,6 @@
         <HeadPointer>_M_impl._M_node._M_next</HeadPointer>
         <NextPointer>_M_next</NextPointer>
         <ValueNode>*(($T1*)&amp;(((std::__cxx11::list&lt;$T1,$T2&gt;::_Node*)this)._M_storage._M_storage))</ValueNode>
-      </LinkedListItems>
-    </Expand>
-  </Type>
-
-  <!-- TODO: std::forward_list<T> -->
-  <Type Name="std::__1::forward_list&lt;*&gt;" Priority="High">
-    <DisplayString>forward_list</DisplayString>
-    <Expand>
-      <LinkedListItems>
-        <HeadPointer>__before_begin_.__value_.__next_</HeadPointer>
-        <NextPointer>__next_</NextPointer>
-        <ValueNode>__value_</ValueNode>
       </LinkedListItems>
     </Expand>
   </Type>
@@ -162,21 +135,6 @@
     </Expand>
   </Type>
 
-  <!-- TODO: std::multimap<K,V> -->
-  <Type Name="std::__1::multimap&lt;*&gt;" Priority="High">
-    <DisplayString>{{ size={__tree_.__pair3_.__value_} }}</DisplayString>
-    <Expand>
-      <Item Name="[size]">__tree_.__pair3_.__value_</Item>
-      <TreeItems>
-        <Size>__tree_.__pair3_.__value_</Size>
-        <HeadPointer>__tree_.__begin_node_</HeadPointer>
-        <LeftPointer>__left_</LeftPointer>
-        <RightPointer>__right_</RightPointer>
-        <ValueNode Name="[{__value_.__cc.first}]">__value_.__cc.second</ValueNode>
-      </TreeItems>
-    </Expand>
-  </Type>
-
   <!-- std::set<T> -->
   <Type Name="std::__1::set&lt;*&gt;" Priority="High"> <!-- libc++ -->
     <DisplayString>{{ size={__tree_.__pair3_.__value_} }}</DisplayString>
@@ -201,21 +159,6 @@
         <LeftPointer>_M_left</LeftPointer>
         <RightPointer>_M_right</RightPointer>
         <ValueNode>($T1*)((*this)+1)</ValueNode>
-      </TreeItems>
-    </Expand>
-  </Type>
-
-  <!-- TODO: std::multiset<T> -->
-  <Type Name="std::__1::multiset&lt;*&gt;" Priority="High">
-    <DisplayString>{{ size={__tree_.__pair3_.__value_} }}</DisplayString>
-    <Expand>
-      <Item Name="[size]">__tree_.__pair3_.__value_</Item>
-      <TreeItems>
-        <Size>__tree_.__pair3_.__value_</Size>
-        <HeadPointer>__tree_.__begin_node_</HeadPointer>
-        <LeftPointer>__left_</LeftPointer>
-        <RightPointer>__right_</RightPointer>
-        <ValueNode>__value_</ValueNode>
       </TreeItems>
     </Expand>
   </Type>
@@ -255,21 +198,6 @@
     </Expand>
   </Type>
 
-  <!-- TODO: std::unordered_multimap<K,V> -->
-  <Type Name="std::__1::unordered_multimap&lt;*&gt;" Priority="High">
-    <DisplayString>{{ size={__table_.__p2_.__value_} }}</DisplayString>
-    <Expand>
-      <Item Name="[size]">__table_.__p2_.__value_</Item>
-      <Item Name="[bucket_count]">__table_.__p3_.__value_</Item>
-      <LinkedListItems>
-        <Size>__table_.__p2_.__value_</Size>
-        <HeadPointer>__table_.__p1_.__value_.__next_</HeadPointer>
-        <NextPointer>__next_</NextPointer>
-        <ValueNode Name="[{__value_.__cc.first}]">__value_.__cc.second</ValueNode>
-      </LinkedListItems>
-    </Expand>
-  </Type>
-
   <!-- std::unordered_set<T> -->
   <Type Name="std::__1::unordered_set&lt;*&gt;" Priority="High"> <!-- libc++ -->
     <DisplayString>{{ size={__table_.__p2_.__value_} }}</DisplayString>
@@ -294,21 +222,6 @@
         <HeadPointer>(std::unordered_set&lt;$T1,$T2,$T3,$T4&gt;::_Hashtable::__node_type*)(_M_h._M_before_begin._M_nxt)</HeadPointer>
         <NextPointer>_M_nxt</NextPointer>
         <ValueNode>*(($T1*)(_M_storage._M_storage.__data))</ValueNode>
-      </LinkedListItems>
-    </Expand>
-  </Type>
-
-  <!-- TODO: std::unordered_multiset<T> -->
-  <Type Name="std::__1::unordered_multiset&lt;*&gt;" Priority="High">
-    <DisplayString>{{ size={__table_.__p2_.__value_} }}</DisplayString>
-    <Expand>
-      <Item Name="[size]">__table_.__p2_.__value_</Item>
-      <Item Name="[bucket_count]">__table_.__bucket_list_.__ptr_.__value_</Item>
-      <LinkedListItems>
-        <Size>__table_.__p2_.__value_</Size>
-        <HeadPointer>__table_.__p1_.__value_.__next_</HeadPointer>
-        <NextPointer>__next_</NextPointer>
-        <ValueNode>__value_</ValueNode>
       </LinkedListItems>
     </Expand>
   </Type>
@@ -374,34 +287,6 @@
     </Expand>
   </Type>
 
-  <!-- CONTAINER ADAPTERS -->
-
-  <!-- TODO: std::stack<T> -->
-  <Type Name="std::__1::stack&lt;*&gt;" Priority="High">
-    <DisplayString>stack</DisplayString>
-    <Expand>
-      <ExpandedItem>c</ExpandedItem>
-    </Expand>
-  </Type>
-
-  <!-- TODO: std::queue<T> -->
-  <Type Name="std::__1::queue&lt;*&gt;" Priority="High">
-    <DisplayString>queue</DisplayString>
-    <Expand>
-      <ExpandedItem>c</ExpandedItem>
-    </Expand>
-  </Type>
-
-  <!-- TODO: std::priority_queue<T> -->
-  <Type Name="std::__1::priority_queue&lt;*&gt;" Priority="High">
-    <DisplayString>priority_queue</DisplayString>
-    <Expand>
-      <ExpandedItem>c</ExpandedItem>
-    </Expand>
-  </Type>
-
-  <!-- STRINGS -->
-
   <!-- std::filesystem::path -->
   <Type Name="std::__1::__fs::filesystem::path" Priority="High">
     <DisplayString Condition="(__pn_.__r_.__value_.__s.__is_long_) == 0">{&amp;__pn_.__r_.__value_.__s.__data_,s8}</DisplayString>
@@ -411,6 +296,15 @@
       <Item Name="[size]" Condition="(__pn_.__r_.__value_.__s.__is_long_) != 0">__pn_.__r_.__value_.__l.__size_</Item>
       <Item Name="[capacity]" Condition="(__pn_.__r_.__value_.__s.__is_long_) == 0">sizeof(__pn_.__r_.__value_.__s.__data_) - 1</Item>
       <Item Name="[capacity]" Condition="(__pn_.__r_.__value_.__s.__is_long_) != 0">__pn_.__r_.__value_.__l.__cap_ * 2 - 1</Item>
+    </Expand>
+  </Type>
+  <Type Name="std::filesystem::__cxx11::path" Priority="High"> <!-- libstdc++ -->
+    <DisplayString Condition="_M_pathname._M_string_length &lt; 16">{_M_pathname._M_local_buf,s8}</DisplayString>
+    <DisplayString Condition="_M_pathname._M_string_length &gt; 15">{((char**)&amp;_M_pathname._M_dataplus)[0],s8}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_M_pathname._M_string_length</Item>
+      <Item Name="[capacity]" Condition="_M_pathname._M_string_length &lt; 16">15</Item>
+      <Item Name="[capacity]" Condition="_M_pathname._M_string_length &gt; 15">_M_pathname._M_allocated_capacity</Item>
     </Expand>
   </Type>
 
@@ -559,7 +453,7 @@
     </Expand>
   </Type>
 
-  <!-- TODO: std::basic_wstring_view -->
+  <!-- std::basic_wstring_view -->
   <Type Name="std::__1::basic_wstring_view&lt;*,*&gt;" Priority="High">
     <!-- <DisplayString>{__data_,[__size_]s32}</DisplayString> -->
     <DisplayString>{__data_,s32}</DisplayString>
@@ -571,8 +465,6 @@
       </ArrayItems>
     </Expand>
   </Type>
-
-  <!-- SMART POINTERS -->
 
   <!-- std::unique_ptr<T> -->
   <Type Name="std::__1::unique_ptr&lt;*&gt;" Priority="High"> <!-- libc++ -->
@@ -592,7 +484,7 @@
     </Expand>
   </Type>
 
-  <!-- TODO: std::shared_ptr<T> -->
+  <!-- std::shared_ptr<T> -->
   <Type Name="std::__1::shared_ptr&lt;*&gt;" Priority="High"> <!-- libc++ -->
     <SmartPointer Usage="Minimal">__ptr_</SmartPointer>
     <DisplayString Condition="__ptr_ == 0">empty</DisplayString>
@@ -641,8 +533,6 @@
     </Expand>
   </Type>
 
-  <!-- TUPLES AND OPTIONAL -->
-
   <!-- std::tuple<> (empty tuple) -->
   <Type Name="std::__1::tuple&lt;&gt;" Priority="High">
     <DisplayString IncludeView="noparens">empty</DisplayString>
@@ -680,7 +570,7 @@
     </Expand>
   </Type>
 
-  <!-- TODO: std::nullopt_t -->
+  <!-- std::nullopt_t -->
   <Type Name="std::__1::nullopt_t" Priority="High">
     <DisplayString>std::nullopt</DisplayString>
   </Type>
@@ -700,146 +590,6 @@
     <Expand>
       <Item Name="[value]" Condition="_M_payload._M_engaged">_M_payload._M_payload._M_value</Item>
       <Item Name="[has_value]">_M_payload._M_engaged</Item>
-    </Expand>
-  </Type>
-
-  <!-- TODO: std::variant -->
-  <Type Name="std::__1::variant&lt;*&gt;" Priority="High">
-    <Intrinsic Name="index" Expression="(int)__impl.__index"/>
-    <DisplayString Condition="index() &lt; 0">[valueless_by_exception]</DisplayString>
-    <DisplayString Condition="index() == 0" Optional="true">{{ #{index()}, value={__impl.__data.__head.__value} }}</DisplayString>
-    <DisplayString Condition="index() == 1" Optional="true">{{ #{index()}, value={__impl.__data.__tail.__head.__value} }}</DisplayString>
-    <DisplayString Condition="index() == 2" Optional="true">{{ #{index()}, value={__impl.__data.__tail.__tail.__head.__value} }}</DisplayString>
-    <DisplayString Condition="index() == 3" Optional="true">{{ #{index()}, value={__impl.__data.__tail.__tail.__tail.__head.__value} }}</DisplayString>
-    <DisplayString Condition="index() == 4" Optional="true">{{ #{index()}, value={__impl.__data.__tail.__tail.__tail.__tail.__head.__value} }}</DisplayString>
-    <DisplayString Condition="index() == 5" Optional="true">{{ #{index()}, value={__impl.__data.__tail.__tail.__tail.__tail.__tail.__head.__value} }}</DisplayString>
-    <Expand>
-      <Item Name="[index]">index()</Item>
-      <Item Name="[value]" Condition="index() == 0" Optional="true">__impl.__data.__head.__value</Item>
-      <Item Name="[value]" Condition="index() == 1" Optional="true">__impl.__data.__tail.__head.__value</Item>
-      <Item Name="[value]" Condition="index() == 2" Optional="true">__impl.__data.__tail.__tail.__head.__value</Item>
-      <Item Name="[value]" Condition="index() == 3" Optional="true">__impl.__data.__tail.__tail.__tail.__head.__value</Item>
-      <Item Name="[value]" Condition="index() == 4" Optional="true">__impl.__data.__tail.__tail.__tail.__tail.__head.__value</Item>
-      <Item Name="[value]" Condition="index() == 5" Optional="true">__impl.__data.__tail.__tail.__tail.__tail.__tail.__head.__value</Item>
-    </Expand>
-  </Type>
-
-  <!-- ITERATORS -->
-
-  <!-- TODO: std::vector::iterator (__wrap_iter) -->
-  <Type Name="std::__1::__wrap_iter&lt;*&gt;" Priority="High">
-    <DisplayString>{*__i}</DisplayString>
-    <Expand>
-      <Item Name="[ptr]">__i</Item>
-      <Item Name="[value]">*__i</Item>
-    </Expand>
-  </Type>
-
-  <!-- TODO: std::vector<bool>::iterator (__bit_iterator) -->
-  <Type Name="std::__1::__bit_iterator&lt;*&gt;" Priority="High">
-    <DisplayString>{(__seg_ &amp; (1 &lt;&lt; __ctz_)) != 0}</DisplayString>
-    <Expand>
-      <Item Name="[segment]">__seg_</Item>
-      <Item Name="[offset]">__ctz_</Item>
-      <Item Name="[value]">(__seg_ &amp; (1 &lt;&lt; __ctz_)) != 0</Item>
-    </Expand>
-  </Type>
-
-  <!-- TODO: std::list::iterator -->
-  <Type Name="std::__1::__list_iterator&lt;*&gt;" Priority="High">
-    <DisplayString>{__ptr_->__value_}</DisplayString>
-    <Expand>
-      <Item Name="[node]">__ptr_</Item>
-      <Item Name="[value]">__ptr_->__value_</Item>
-    </Expand>
-  </Type>
-
-  <Type Name="std::__1::__list_const_iterator&lt;*&gt;" Priority="High">
-    <DisplayString>{__ptr_->__value_}</DisplayString>
-    <Expand>
-      <Item Name="[node]">__ptr_</Item>
-      <Item Name="[value]">__ptr_->__value_</Item>
-    </Expand>
-  </Type>
-
-  <!-- TODO: std::deque::iterator -->
-  <Type Name="std::__1::__deque_iterator&lt;*&gt;" Priority="High">
-    <DisplayString>{*__ptr_}</DisplayString>
-    <Expand>
-      <Item Name="[ptr]">__ptr_</Item>
-      <Item Name="[value]">*__ptr_</Item>
-    </Expand>
-  </Type>
-
-  <!-- TODO: std::map/set::iterator (__tree_iterator) -->
-  <Type Name="std::__1::__tree_iterator&lt;*&gt;" Priority="High">
-    <DisplayString>{__ptr_->__value_}</DisplayString>
-    <Expand>
-      <Item Name="[node]">__ptr_</Item>
-      <Item Name="[value]">__ptr_->__value_</Item>
-    </Expand>
-  </Type>
-
-  <Type Name="std::__1::__tree_const_iterator&lt;*&gt;" Priority="High">
-    <DisplayString>{__ptr_->__value_}</DisplayString>
-    <Expand>
-      <Item Name="[node]">__ptr_</Item>
-      <Item Name="[value]">__ptr_->__value_</Item>
-    </Expand>
-  </Type>
-
-  <!-- TODO: std::map::iterator (__map_iterator) -->
-  <Type Name="std::__1::__map_iterator&lt;*&gt;" Priority="High">
-    <DisplayString>[{__i_.__ptr_->__value_.__cc.first}] = {__i_.__ptr_->__value_.__cc.second}</DisplayString>
-    <Expand>
-      <Item Name="[key]">__i_.__ptr_->__value_.__cc.first</Item>
-      <Item Name="[value]">__i_.__ptr_->__value_.__cc.second</Item>
-      <Item Name="[node]">__i_.__ptr_</Item>
-    </Expand>
-  </Type>
-
-  <Type Name="std::__1::__map_const_iterator&lt;*&gt;" Priority="High">
-    <DisplayString>[{__i_.__ptr_->__value_.__cc.first}] = {__i_.__ptr_->__value_.__cc.second}</DisplayString>
-    <Expand>
-      <Item Name="[key]">__i_.__ptr_->__value_.__cc.first</Item>
-      <Item Name="[value]">__i_.__ptr_->__value_.__cc.second</Item>
-      <Item Name="[node]">__i_.__ptr_</Item>
-    </Expand>
-  </Type>
-
-  <!-- TODO: std::unordered_map/set::iterator (__hash_iterator) -->
-  <Type Name="std::__1::__hash_iterator&lt;*&gt;" Priority="High">
-    <DisplayString>{__node_->__value_}</DisplayString>
-    <Expand>
-      <Item Name="[node]">__node_</Item>
-      <Item Name="[value]">__node_->__value_</Item>
-    </Expand>
-  </Type>
-
-  <Type Name="std::__1::__hash_const_iterator&lt;*&gt;" Priority="High">
-    <DisplayString>{__node_->__value_}</DisplayString>
-    <Expand>
-      <Item Name="[node]">__node_</Item>
-      <Item Name="[value]">__node_->__value_</Item>
-    </Expand>
-  </Type>
-
-  <!-- TODO: std::unordered_map::iterator (__hash_map_iterator) -->
-  <Type Name="std::__1::__hash_map_iterator&lt;*&gt;" Priority="High">
-    <DisplayString>[{__i_.__node_->__value_.__cc.first}] = {__i_.__node_->__value_.__cc.second}</DisplayString>
-    <Expand>
-      <Item Name="[key]">__i_.__node_->__value_.__cc.first</Item>
-      <Item Name="[value]">__i_.__node_->__value_.__cc.second</Item>
-      <Item Name="[node]">__i_.__node_</Item>
-    </Expand>
-  </Type>
-
-  <Type Name="std::__1::__hash_map_const_iterator&lt;*&gt;" Priority="High">
-    <DisplayString>[{__i_.__node_->__value_.__cc.first}] = {__i_.__node_->__value_.__cc.second}</DisplayString>
-    <Expand>
-      <Item Name="[key]">__i_.__node_->__value_.__cc.first</Item>
-      <Item Name="[value]">__i_.__node_->__value_.__cc.second</Item>
-      <Item Name="[node]">__i_.__node_</Item>
     </Expand>
   </Type>
 

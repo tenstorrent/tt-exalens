@@ -161,7 +161,9 @@ open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> 
 
 template <typename BaseClass>
 open_implementation<BaseClass>::~open_implementation() {
-    device->close_device();
+    if (is_simulation) {
+        device->close_device();
+    }
 }
 
 template <>
@@ -320,6 +322,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(cluster)));
 
+    implementation->is_simulation = true;
     implementation->cluster_descriptor_path = create_simulation_cluster_descriptor_file(soc_descriptor.arch);
     implementation->device_ids = device_ids;
     implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
@@ -344,6 +347,15 @@ std::optional<std::string> open_implementation<BaseClass>::get_device_soc_descri
     } catch (...) {
         return {};
     }
+}
+
+template <typename BaseClass>
+std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> open_implementation<BaseClass>::get_firmware_version(
+    uint8_t chip_id) {
+    if (!is_simulation) {
+        return BaseClass::get_firmware_version(chip_id);
+    }
+    return std::make_tuple(0, 0, 0);
 }
 
 template <typename BaseClass>
