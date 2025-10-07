@@ -400,6 +400,7 @@ class ElfDie:
             or self.tag == "DW_TAG_GNU_template_parameter_pack"
             or self.tag == "DW_TAG_GNU_formal_parameter_pack"
             or self.tag == "DW_TAG_inheritance"
+            or self.tag == "DW_TAG_label"
         ):
             return None
         else:
