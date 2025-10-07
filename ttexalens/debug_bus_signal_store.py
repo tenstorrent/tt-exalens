@@ -11,6 +11,12 @@ from typing import Iterable, TYPE_CHECKING
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.tt_exalens_lib import read_word_from_device, read_words_from_device, write_words_to_device
 
+# Constants for better code readability
+L1_SAMPLE_SIZE_BYTES = 16  # Each 128-bit sample is 16 bytes
+WORD_SIZE_BITS = 32
+WORDS_PER_SAMPLE = 4  # 4x32-bit words per 128-bit sample
+WAIT_SLEEP_MS = 0.001
+SENTINEL_VALUE = 0xACAFACA
 
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
@@ -104,9 +110,23 @@ class DebugBusSignalStore:
     def get_signal_names(self) -> Iterable[str]:
         return self.signals.keys()
 
+    def _validate_signal_parameters(self, signal: DebugBusSignalDescription) -> None:
+        """Validate signal parameters are within expected ranges"""
+        if not (0 <= signal.rd_sel <= 3):
+            raise ValueError(f"rd_sel must be between 0 and 3, got {signal.rd_sel}")
+        
+        if not (0 <= signal.daisy_sel <= 255):
+            raise ValueError(f"daisy_sel must be between 0 and 255, got {signal.daisy_sel}")
+        
+        if not (0 <= signal.sig_sel <= 65535):
+            raise ValueError(f"sig_sel must be between 0 and 65535, got {signal.sig_sel}")
+        
+        if not (0 <= signal.mask <= 0xFFFFFFFF):
+            raise ValueError(f"mask must be a valid 32-bit integer, got {signal.mask}")
+
     def is_combined_signal(self, signal_name: str) -> bool:
-        low_signal_name = f"{signal_name}/0"
-        return low_signal_name in self.signals
+        """Check if signal_name is a base name for a combined signal (has /0, /1, /2... variants)"""
+        return f"{signal_name}/0" in self.signals
 
     def get_signal_description(self, signal_name: str) -> list[DebugBusSignalDescription]:
         # First check if exact signal exists
@@ -115,7 +135,7 @@ class DebugBusSignalStore:
         
         # If not found, check if it's a base name for combined signal
         if self.is_combined_signal(signal_name):
-            # For combined signals, return list of all signal parts (#0, #1, #2, ...)
+            # For combined signals, return list of all signal parts (/0, /1, /2, ...)
             combined_signals = []
             counter = 0
             while True:
@@ -127,15 +147,11 @@ class DebugBusSignalStore:
                     break
             return combined_signals
         
-        # Signal not found
-        if self.neo_id is None:
-            raise ValueError(
-                f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} for device {self.device._id}."
-            )
-        else:
-            raise ValueError(
-                f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device._id}."
-            )
+        # Signal not found - raise error with appropriate context
+        neo_context = f" [NEO {self.neo_id}]" if self.neo_id is not None else ""
+        raise ValueError(
+            f"Unknown signal name '{signal_name}' on {self.location.to_user_str()}{neo_context} for device {self.device._id}."
+        )
 
     def read_signal(
         self,
@@ -176,17 +192,8 @@ class DebugBusSignalStore:
         if isinstance(signal, str):
             signal = self.get_signal_description(signal)
         else:
-            if not (0 <= signal.rd_sel <= 3):  # Example range, update if needed
-                raise ValueError(f"rd_sel must be between 0 and 3, got {signal.rd_sel}")
-
-            if not (0 <= signal.daisy_sel <= 255):  # Example range, update if needed
-                raise ValueError(f"daisy_sel must be between 0 and 255, got {signal.daisy_sel}")
-
-            if not (0 <= signal.sig_sel <= 65535):  # Example range, update if needed
-                raise ValueError(f"sig_sel must be between 0 and 65535, got {signal.sig_sel}")
-
-            if not (0 <= signal.mask <= 0xFFFFFFFF):  # Mask should be a valid 32-bit value
-                raise ValueError(f"mask must be a valid 32-bit integer, got {signal.mask}")
+            # Validate signal parameters if passed as DebugBusSignalDescription
+            self._validate_signal_parameters(signal)
 
         # Check if this is a combined signal and enforce L1 sampling
         if len(signal) > 1 and not use_l1_sampling:
@@ -196,7 +203,6 @@ class DebugBusSignalStore:
             )
 
         if use_l1_sampling:
-            # Always pass a list to _read_signal_from_l1
             return self._read_signal_from_l1(
                 signal, l1_address, samples, sampling_interval
             )
@@ -221,6 +227,7 @@ class DebugBusSignalStore:
         samples: int,
         sampling_interval: int,
     ) -> int | list[int]:
+        """Read signal(s) using L1 memory sampling method"""
         if samples < 1:
             raise ValueError(f"samples must be at least 1, but got {samples}")
 
@@ -270,10 +277,9 @@ class DebugBusSignalStore:
         write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
 
         # wait for the last memory location to be written to  
-        wait_addr = l1_address + ((samples - 1) * 16)
-        sentinel_value = 0xACAFACA
+        wait_addr = l1_address + ((samples - 1) * L1_SAMPLE_SIZE_BYTES)
         # Write sentinel value to all 4 32-bit words in the 128-bit location
-        sentinel_words = [sentinel_value] * 4
+        sentinel_words = [SENTINEL_VALUE] * WORDS_PER_SAMPLE
         write_words_to_device(self.location, wait_addr, sentinel_words, self.device._id, self.device._context)
 
         # instruct to write
@@ -285,32 +291,30 @@ class DebugBusSignalStore:
         # wait for the last memory location to be written to
         while True:
             val = read_word_from_device(self.location, wait_addr, self.device._id, self.device._context)
-            if val != sentinel_value:
+            if val != SENTINEL_VALUE:
                 break
-            sleep(0.001)
-
+            sleep(WAIT_SLEEP_MS)
+        
         write_words_to_device(self.location, self._control_register_address, 0, self.device._id, self.device._context)
 
         # Helper function to read and convert 128-bit data
-        def read_128bit_sample(addr):
-            words = read_words_from_device(self.location, addr, self.device._id, 4, self.device._context)
-            return sum(((words[i] & 0xFFFFFFFF) << (32 * i)) for i in range(4))
+        def read_128bit_sample(addr: int) -> int:
+            """Read 4x32-bit words and combine them into a single 128-bit integer"""
+            words = read_words_from_device(self.location, addr, self.device._id, WORDS_PER_SAMPLE, self.device._context)
+            return sum((words[i] << (WORD_SIZE_BITS * i)) for i in range(WORDS_PER_SAMPLE))
 
         # Read all samples and extract the correct portion based on signal type
         sample_values = []
         for i in range(samples):
-            sample_data = read_128bit_sample(l1_address + (i * 16))
+            sample_data = read_128bit_sample(l1_address + (i * L1_SAMPLE_SIZE_BYTES))
             
             if len(signal) > 1:
                 # Combined signal - read each part and combine them
                 combined_value = 0
                 for j, signal_part in enumerate(signal):
-                    # Extract 32-bit value for this signal part
-                    extracted_value = (sample_data >> (32 * signal_part.rd_sel)) & 0xFFFFFFFF
-                    # Apply mask
+                    extracted_value = (sample_data >> (WORD_SIZE_BITS * signal_part.rd_sel)) & 0xFFFFFFFF
                     masked_value = extracted_value & signal_part.mask
-                    # Combine: each part goes to its respective 32-bit position
-                    combined_value |= (masked_value << (32 * j))
+                    combined_value |= (masked_value << (WORD_SIZE_BITS * j))
                 
                 # Count trailing zeros in first signal's mask and shift combined value
                 count = (signal[0].mask & -signal[0].mask).bit_length() - 1 
@@ -318,12 +322,10 @@ class DebugBusSignalStore:
                 sample_values.append(combined_value)
             else:
                 # Single signal - extract 32-bit value using rd_sel
-                extracted_value = (sample_data >> (32 * signal[0].rd_sel)) & 0xFFFFFFFF
-                # Apply mask
+                extracted_value = (sample_data >> (WORD_SIZE_BITS * signal[0].rd_sel)) & 0xFFFFFFFF
                 masked_value = extracted_value & signal[0].mask
                 sample_values.append(masked_value)
         
-        # Return single value or list based on sample count
         return sample_values[0] if samples == 1 else sample_values
 
 

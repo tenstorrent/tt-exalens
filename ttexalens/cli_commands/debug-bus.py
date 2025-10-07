@@ -61,12 +61,12 @@ def parse_string(input_string):
     parsed_result = []
 
     for m in re.finditer(pattern, input_string):
-        if m.group(1):  # ako postoji prva grupa → {a,b,c} ili {a,b,c,d}
-            numbers = [int(m.group(i), 0) for i in range(1, 4)]  # prve 3 obavezne vrednosti
+        if m.group(1): 
+            numbers = [int(m.group(i), 0) for i in range(1, 4)]  
             fourth_number = int(m.group(4), 0) if m.group(4) else 0xFFFFFFFF
             numbers.append(fourth_number)
             parsed_result.append(numbers)
-        else:  # plain signal
+        else:  
             parsed_result.append(m.group(5))
 
     return parsed_result
@@ -175,7 +175,6 @@ def run(cmd_text, context, ui_state: UIState = None):
                     if dopt.args["--l1-sampling"]:
                         read_signal_args["use_l1_sampling"] = True
 
-                        # Get samples value for validation, using the function's default if not provided.
                         samples = 1
                         if "--samples" in cmd_text:
                             samples = int(dopt.args["--samples"])
@@ -191,7 +190,6 @@ def run(cmd_text, context, ui_state: UIState = None):
 
                     value = debug_bus_signal_store.read_signal(**read_signal_args)
 
-                    # Handle single value or list of values
                     if isinstance(value, list):
                         # Multiple samples returned as list
                         for i, sample_value in enumerate(value):
