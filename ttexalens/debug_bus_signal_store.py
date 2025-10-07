@@ -61,7 +61,6 @@ class L1MemReg2:
         )
 
 
-
 class DebugBusSignalStore:
     def __init__(self, signals: dict[str, DebugBusSignalDescription], group_signals: dict[str, list[str]], noc_block: NocBlock, neo_id: int | None = None):
         self.signals = signals
@@ -237,29 +236,49 @@ class DebugBusSignalStore:
                     f"When samples > 1, sampling_interval must be between 2 and 256, but got {sampling_interval}"
                 )
 
+        # Configure debug bus and setup L1 registers for sampling
+        reg2_addr, reg2_struct = self._setup_l1_sampling_configuration(signal[0], l1_address, samples, sampling_interval)
+
+        # Execute L1 sampling and wait for completion
+        self._execute_l1_sampling(reg2_addr, reg2_struct, l1_address, samples)
+
+        # Process the sampled data and return results
+        return self._process_l1_samples(signal, l1_address, samples)
+
+    def _setup_l1_sampling_configuration(
+        self, 
+        signal: DebugBusSignalDescription, 
+        l1_address: int, 
+        samples: int, 
+        sampling_interval: int
+    ) -> tuple[int, L1MemReg2]:
+        """Configure debug bus and setup L1 memory registers for sampling"""
         # Write the configuration - select 128 bit word
         en = 1
-        config = (en << 29) | (signal[0].daisy_sel << 16) | (signal[0].sig_sel << 0)
+        config = (en << 29) | (signal.daisy_sel << 16) | (signal.sig_sel << 0)
         write_words_to_device(
             self.location, self._control_register_address, config, self.device._id, self.device._context
         )
 
+        # Get L1 register addresses
         reg0_addr = self._register_store.get_register_noc_address("RISCV_DEBUG_REG_DBG_L1_MEM_REG0")
         reg1_addr = self._register_store.get_register_noc_address("RISCV_DEBUG_REG_DBG_L1_MEM_REG1")
         reg2_addr = self._register_store.get_register_noc_address("RISCV_DEBUG_REG_DBG_L1_MEM_REG2")
 
+        # Initialize L1 register structure
         reg2_struct = L1MemReg2(
             write_trigger=0, 
             sampling_interval=0, 
             write_mode=0
         )
 
-        # prepare L1 writing
+        # Prepare L1 writing - set initial write mode and reg0
         reg2_struct.write_mode = 0xF
         write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
         reg0_val = (l1_address >> 4) & 0xFFFFFFFF
         write_words_to_device(self.location, reg0_addr, reg0_val, self.device._id, self.device._context)
 
+        # Configure sampling mode based on number of samples
         # Write mode values:
         # 0: Overwrite same L1 address (NOT SUPPORTED - causes issues with wait logic)
         # 1: Increment address by 16 bytes after each sample  
@@ -274,8 +293,13 @@ class DebugBusSignalStore:
         else:
             reg2_struct.write_mode = write_mode
 
+        # Write final configuration to reg2
         write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
+        
+        return reg2_addr, reg2_struct
 
+    def _execute_l1_sampling(self, reg2_addr: int, reg2_struct: L1MemReg2, l1_address: int, samples: int) -> None:
+        """Execute L1 sampling process and wait for completion"""
         # wait for the last memory location to be written to  
         wait_addr = l1_address + ((samples - 1) * L1_SAMPLE_SIZE_BYTES)
         # Write sentinel value to all 4 32-bit words in the 128-bit location
@@ -297,7 +321,14 @@ class DebugBusSignalStore:
         
         write_words_to_device(self.location, self._control_register_address, 0, self.device._id, self.device._context)
 
-        # Helper function to read and convert 128-bit data
+    def _process_l1_samples(
+        self, 
+        signal: list[DebugBusSignalDescription], 
+        l1_address: int, 
+        samples: int
+    ) -> int | list[int]:
+        """Process L1 samples and extract signal data based on signal configuration"""
+        
         def read_128bit_sample(addr: int) -> int:
             """Read 4x32-bit words and combine them into a single 128-bit integer"""
             words = read_words_from_device(self.location, addr, self.device._id, WORDS_PER_SAMPLE, self.device._context)
