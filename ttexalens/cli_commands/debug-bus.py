@@ -4,7 +4,7 @@
 """
 Usage:
   debug-bus list-names [-v] [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s]
-  debug-bus [<signals>] [-v] [-d <device>] [-l <loc>] [--l1-sampling] [--samples <num>] [--sampling-interval <cycles>] [--write-mode <mode>]
+  debug-bus [<signals>] [-v] [-d <device>] [-l <loc>] [--l1-sampling] [--samples <num>] [--sampling-interval <cycles>]
 
 Options:
     -s, --simple                        Print simple output.
@@ -15,10 +15,6 @@ Options:
     --samples <num>                     (L1-sampling only) Number of 128-bit samples to capture. [default: 1].
     --sampling-interval <cycles>        (L1-sampling only) When samples > 1, this sets the delay in clock cycles
                                         between each sample. Must be between 2 and 255. [default: 2].
-    --write-mode <mode>                 (L1-sampling only) When samples = 1, defines L1 write behavior:
-                                        0: Overwrite the same L1 address on each capture.
-                                        1: Increment the L1 address by 16 bytes after each capture.
-                                        [default: 0].
 
 Description:
   Commands for RISC-V debugging:
@@ -60,22 +56,20 @@ from ttexalens.uistate import UIState
 
 
 def parse_string(input_string):
-    pattern = r"(\{([\dA-Fa-fx]+),([\dA-Fa-fx]+),([\dA-Fa-fx]+)(?:,([\dA-Fa-fx]+))?\}|[^,\{\}]+)"
+    pattern = r"\{([\dA-Fa-fx]+),([\dA-Fa-fx]+),([\dA-Fa-fx]+)(?:,([\dA-Fa-fx]+))?\}|([A-Za-z_][A-Za-z0-9_/#]*)"
 
-    matches = re.findall(pattern, input_string)
     parsed_result = []
 
-    for match in matches:
-        if match[0].startswith("{"):  # Case when A is in bracket format
-            numbers = [int(match[i], 0) for i in range(1, 4)]  # First 3 numbers (mandatory)
-            fourth_number = int(match[4], 0) if match[4] else 0xFFFFFFFF  # Replace missing with 0xFFFFFFFF
+    for m in re.finditer(pattern, input_string):
+        if m.group(1):  # ako postoji prva grupa → {a,b,c} ili {a,b,c,d}
+            numbers = [int(m.group(i), 0) for i in range(1, 4)]  # prve 3 obavezne vrednosti
+            fourth_number = int(m.group(4), 0) if m.group(4) else 0xFFFFFFFF
             numbers.append(fourth_number)
             parsed_result.append(numbers)
-        else:  # Case of plain string
-            parsed_result.append(match[0])
+        else:  # plain signal
+            parsed_result.append(m.group(5))
 
     return parsed_result
-
 
 def parse_command_arguments(args):
     """
@@ -161,7 +155,7 @@ def run(cmd_text, context, ui_state: UIState = None):
                 )
 
         return []
-
+    
     signals = parse_command_arguments(dopt.args)
 
     for device in dopt.for_each("--device", context, ui_state):
@@ -187,9 +181,6 @@ def run(cmd_text, context, ui_state: UIState = None):
                             samples = int(dopt.args["--samples"])
                             read_signal_args["samples"] = samples
 
-                        if "--write-mode" in cmd_text:
-                            read_signal_args["write_mode"] = int(dopt.args["--write-mode"])
-
                         if "--sampling-interval" in cmd_text:
                             sampling_interval = int(dopt.args["--sampling-interval"])
                             if samples > 1 and not (2 <= sampling_interval <= 255):
@@ -200,11 +191,22 @@ def run(cmd_text, context, ui_state: UIState = None):
 
                     value = debug_bus_signal_store.read_signal(**read_signal_args)
 
-                    if isinstance(signal, str):
-                        print(f"{where} {signal}: 0x{value:x}")
+                    # Handle single value or list of values
+                    if isinstance(value, list):
+                        # Multiple samples returned as list
+                        for i, sample_value in enumerate(value):
+                            if isinstance(signal, str):
+                                print(f"{where} {signal} [sample {i}]: 0x{sample_value:x}")
+                            else:
+                                signal_description = f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
+                                print(f"{where} Debug Bus Config({signal_description}) [sample {i}] = 0x{sample_value:x}")
                     else:
-                        signal_description = f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
-                        print(f"{where} Debug Bus Config({signal_description}) = 0x{value:x}")
+                        # Single value
+                        if isinstance(signal, str):
+                            print(f"{where} {signal}: 0x{value:x}")
+                        else:
+                            signal_description = f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
+                            print(f"{where} Debug Bus Config({signal_description}) = 0x{value:x}")
                 except ValueError as e:
                     util.ERROR(f"Error reading signal '{signal}': {e}")
                     continue

@@ -4,10 +4,13 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from functools import cached_property
+from time import sleep
 from typing import Iterable, TYPE_CHECKING
+
 
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.tt_exalens_lib import read_word_from_device, read_words_from_device, write_words_to_device
+
 
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
@@ -54,8 +57,9 @@ class L1MemReg2:
 
 
 class DebugBusSignalStore:
-    def __init__(self, signals: dict[str, DebugBusSignalDescription], noc_block: NocBlock, neo_id: int | None = None):
+    def __init__(self, signals: dict[str, DebugBusSignalDescription], group_signals: dict[str, list[str]], noc_block: NocBlock, neo_id: int | None = None):
         self.signals = signals
+        self.group_signals = group_signals
         self.noc_block = noc_block
         self.neo_id = neo_id
 
@@ -82,14 +86,49 @@ class DebugBusSignalStore:
         address = self._register_store.get_register_noc_address("RISCV_DEBUG_REG_DBG_RD_DATA")
         assert address is not None, "Data register address not found in register store."
         return address
+    
+    @staticmethod
+    def get_signal_groups(signal_map: dict, group_names: dict) -> dict:
+        groups = {}
+        for signal_name, signal_desc in signal_map.items():
+            key = (signal_desc.daisy_sel, signal_desc.sig_sel)
+            group_key = group_names[key]
+            
+            if group_key not in groups:
+                groups[group_key] = []
+            
+            groups[group_key].append(signal_name)
+        
+        return groups
 
     def get_signal_names(self) -> Iterable[str]:
         return self.signals.keys()
 
-    def get_signal_description(self, signal_name: str) -> DebugBusSignalDescription:
+    def is_combined_signal(self, signal_name: str) -> bool:
+        low_signal_name = f"{signal_name}/0"
+        return low_signal_name in self.signals
+
+    def get_signal_description(self, signal_name: str) -> list[DebugBusSignalDescription]:
+        # First check if exact signal exists
         if signal_name in self.signals:
-            return self.signals[signal_name]
-        elif self.neo_id is None:
+            return [self.signals[signal_name]]
+        
+        # If not found, check if it's a base name for combined signal
+        if self.is_combined_signal(signal_name):
+            # For combined signals, return list of all signal parts (#0, #1, #2, ...)
+            combined_signals = []
+            counter = 0
+            while True:
+                part_signal_name = f"{signal_name}/{counter}"
+                if part_signal_name in self.signals:
+                    combined_signals.append(self.signals[part_signal_name])
+                    counter += 1
+                else:
+                    break
+            return combined_signals
+        
+        # Signal not found
+        if self.neo_id is None:
             raise ValueError(
                 f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} for device {self.device._id}."
             )
@@ -98,7 +137,42 @@ class DebugBusSignalStore:
                 f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device._id}."
             )
 
-    def read_signal(self, signal: DebugBusSignalDescription | str) -> int:
+    def read_signal(
+        self,
+        signal: DebugBusSignalDescription | str,
+        use_l1_sampling: bool = False,
+        l1_address: int = 0,
+        samples: int = 1,
+        sampling_interval: int = 2,
+    ) -> int | list[int]:
+        """Reads a debug signal from the Tensix debug daisychain.
+
+        This function can operate in two modes:
+        1.  **Direct Register Read (default):** Reads a 32-bit signal value directly 
+            from the debug register. This is the default behavior when `use_l1_sampling=False`.
+        2.  **L1 Sampling:** Captures one or more 128-bit signal samples into L1 
+            memory and reads the result. Enabled by setting `use_l1_sampling=True`.
+
+        Parameters
+        ----------
+        signal : DebugBusSignalDescription | str
+            The signal to read. Can be a string (signal name) or a DebugBusSignalDescription object.
+        use_l1_sampling : bool, default=False
+            If True, enables L1 sampling mode. Otherwise, performs a direct register read.
+        l1_address : int, default=0
+            (L1 Sampling only) Byte-address in L1 memory for the first 128-bit word. Must be 16-byte aligned.
+        samples : int, default=1
+            (L1 Sampling only) Number of 128-bit samples to capture. If `samples > 1`, hardware performs repeated sampling.
+        sampling_interval : int, default=0
+            (L1 Sampling only) Interval (in cycles) between consecutive samples when `samples > 1`.
+            Should be ≥ 2 due to a known hardware bug that may cause one extra sample if `sampling_period == 1`
+
+        Returns
+        -------
+        int
+            The sampled data. A 32-bit value in direct read mode, or a 128-bit value in L1 sampling mode.
+            The value is masked with `signal.mask` if set.
+        """
         if isinstance(signal, str):
             signal = self.get_signal_description(signal)
         else:
@@ -114,80 +188,51 @@ class DebugBusSignalStore:
             if not (0 <= signal.mask <= 0xFFFFFFFF):  # Mask should be a valid 32-bit value
                 raise ValueError(f"mask must be a valid 32-bit integer, got {signal.mask}")
 
-        # Write the configuration
+        # Check if this is a combined signal and enforce L1 sampling
+        if len(signal) > 1 and not use_l1_sampling:
+            raise ValueError(
+                f"Combined signal can only be read using L1 sampling. "
+                f"Use --l1-sampling flag to read this signal."
+            )
+
+        if use_l1_sampling:
+            # Always pass a list to _read_signal_from_l1
+            return self._read_signal_from_l1(
+                signal, l1_address, samples, sampling_interval
+            )
+
+        # Default behavior: read from 32bit debug register
         en = 1
-        config = (en << 29) | (signal.rd_sel << 25) | (signal.daisy_sel << 16) | (signal.sig_sel << 0)
+        config = (en << 29) | (signal[0].rd_sel << 25) | (signal[0].daisy_sel << 16) | (signal[0].sig_sel << 0)
         write_words_to_device(
             self.location, self._control_register_address, config, self.device._id, self.device._context
         )
 
-        # Read the data
         data = read_word_from_device(self.location, self._data_register_address, self.device._id, self.device._context)
 
-        # Disable the signal
         write_words_to_device(self.location, self._control_register_address, 0, self.device._id, self.device._context)
 
-        return data if signal.mask is None else data & signal.mask
+        return data if signal[0].mask is None else data & signal[0].mask
 
+    def _read_signal_from_l1(
+        self,
+        signal: list[DebugBusSignalDescription],
+        l1_address: int,
+        samples: int,
+        sampling_interval: int,
+    ) -> int | list[int]:
+        if samples < 1:
+            raise ValueError(f"samples must be at least 1, but got {samples}")
 
-
-    # TODO: Add parameter check
-    def read_signal_128(self, signal: DebugBusSignalDescription | str, l1_address: int, samples: int = 1, sampling_interval: int = 0, write_mode: int = 0) -> int:
-        """
-        Read a 128-bit debug signal from the Tensix debug daisychain.
-
-        This function configures the debug daisychain to select a specific 128-bit word, instructs it to write 
-        samples into L1 memory, and then reads the captured data. It allows either a single 128-bit capture or 
-        periodic sampling.
-
-        Parameters
-        ----------
-        signal : DebugBusSignalDescription | str
-            The signal to read. Can be provided either as:
-            - a string (signal name, must exist in `self.signals`), or
-            - a DebugBusSignalDescription object 
-        l1_address : int
-            Byte-address in L1 memory where the first 128-bit word should be written. Must be 16-byte aligned.
-        samples : int, default=1
-            Number of 128-bit samples to capture. If `samples == 1`, a single write to L1 is triggered. 
-            If `samples > 1`, hardware is instructed to perform repeated sampling.
-        sampling_period : int, default=0
-            Interval (in cycles) between consecutive samples when `samples > 1`.
-            Must be ≥ 2 due to a known hardware bug that may cause one extra sample if `sampling_period == 1`.
-        write_mode : int, default=0
-            Write mode configuration:
-            - 0 → overwrite the same L1 address on each capture
-            - 1 → increment address by 16 bytes after each sample)
-                Note: Using WriteMode=0 or WriteMode=1 only makes sense if the write preparation is followed 
-                by a loop that repeatedly toggles the write_trigger. Each trigger causes one 128-bit write to 
-                L1 (same address if mode=0, incremented by 16 bytes if mode=1).
-            - 4 → hardware-driven sampling mode (does not need to be passed explicitly; it will be set automatically if `samples > 1`)
-
-        Returns
-        -------
-        int
-            The sampled data, masked with the `signal.mask` if set.
-            TODO: If multiple samples are taken.
-        """
-
-        if isinstance(signal, str):
-            signal = self.get_signal_description(signal)
-
-        if not (0 <= signal.rd_sel <= 3):  # Example range, update if needed
-            raise ValueError(f"rd_sel must be between 0 and 3, got {signal.rd_sel}")
-
-        if not (0 <= signal.daisy_sel <= 255):  # Example range, update if needed
-            raise ValueError(f"daisy_sel must be between 0 and 255, got {signal.daisy_sel}")
-
-        if not (0 <= signal.sig_sel <= 65535):  # Example range, update if needed
-            raise ValueError(f"sig_sel must be between 0 and 65535, got {signal.sig_sel}")
-
-        if not (0 <= signal.mask <= 0xFFFFFFFF):  # Mask should be a valid 32-bit value
-            raise ValueError(f"mask must be a valid 32-bit integer, got {signal.mask}")
+        if samples > 1:
+            if not (2 <= sampling_interval <= 256):
+                raise ValueError(
+                    f"When samples > 1, sampling_interval must be between 2 and 256, but got {sampling_interval}"
+                )
 
         # Write the configuration - select 128 bit word
         en = 1
-        config = (en << 29) | (signal.daisy_sel << 16) | (signal.sig_sel << 0)
+        config = (en << 29) | (signal[0].daisy_sel << 16) | (signal[0].sig_sel << 0)
         write_words_to_device(
             self.location, self._control_register_address, config, self.device._id, self.device._context
         )
@@ -202,21 +247,34 @@ class DebugBusSignalStore:
             write_mode=0
         )
 
-        # prepare
+        # prepare L1 writing
         reg2_struct.write_mode = 0xF
         write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
         reg0_val = (l1_address >> 4) & 0xFFFFFFFF
         write_words_to_device(self.location, reg0_addr, reg0_val, self.device._id, self.device._context)
 
+        # Write mode values:
+        # 0: Overwrite same L1 address (NOT SUPPORTED - causes issues with wait logic)
+        # 1: Increment address by 16 bytes after each sample  
+        # 4: Hardware-driven sampling mode (auto-set when samples > 1)
+        write_mode = 1  # Always use mode 1 (increment address)
+        
         if samples > 1:
             reg1_val = ((l1_address >> 4) + samples) & 0xFFFFFFFF
             write_words_to_device(self.location, reg1_addr, reg1_val, self.device._id, self.device._context)
             reg2_struct.write_mode = 4
             reg2_struct.sampling_interval = sampling_interval - 1  
-            reg2_struct.write_trigger = 1
         else:
             reg2_struct.write_mode = write_mode
-            write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
+
+        write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
+
+        # wait for the last memory location to be written to  
+        wait_addr = l1_address + ((samples - 1) * 16)
+        sentinel_value = 0xACAFACA
+        # Write sentinel value to all 4 32-bit words in the 128-bit location
+        sentinel_words = [sentinel_value] * 4
+        write_words_to_device(self.location, wait_addr, sentinel_words, self.device._id, self.device._context)
 
         # instruct to write
         reg2_struct.write_trigger = 1
@@ -224,21 +282,48 @@ class DebugBusSignalStore:
         reg2_struct.write_trigger = 0
         write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
 
-        # Disable the signal - da li ce prekinutio samplovanje!?
+        # wait for the last memory location to be written to
+        while True:
+            val = read_word_from_device(self.location, wait_addr, self.device._id, self.device._context)
+            if val != sentinel_value:
+                break
+            sleep(0.001)
+
         write_words_to_device(self.location, self._control_register_address, 0, self.device._id, self.device._context)
 
-        # read 128 bits from L1
-        words = read_words_from_device(
-            self.location, l1_address, self.device._id, 4, self.device._context
-        )
+        # Helper function to read and convert 128-bit data
+        def read_128bit_sample(addr):
+            words = read_words_from_device(self.location, addr, self.device._id, 4, self.device._context)
+            return sum(((words[i] & 0xFFFFFFFF) << (32 * i)) for i in range(4))
 
-        data = (
-            (words[0] & 0xFFFFFFFF)
-            | ((words[1] & 0xFFFFFFFF) << 32)
-            | ((words[2] & 0xFFFFFFFF) << 64)
-            | ((words[3] & 0xFFFFFFFF) << 96)
-        )
+        # Read all samples and extract the correct portion based on signal type
+        sample_values = []
+        for i in range(samples):
+            sample_data = read_128bit_sample(l1_address + (i * 16))
+            
+            if len(signal) > 1:
+                # Combined signal - read each part and combine them
+                combined_value = 0
+                for j, signal_part in enumerate(signal):
+                    # Extract 32-bit value for this signal part
+                    extracted_value = (sample_data >> (32 * signal_part.rd_sel)) & 0xFFFFFFFF
+                    # Apply mask
+                    masked_value = extracted_value & signal_part.mask
+                    # Combine: each part goes to its respective 32-bit position
+                    combined_value |= (masked_value << (32 * j))
+                
+                # Count trailing zeros in first signal's mask and shift combined value
+                count = (signal[0].mask & -signal[0].mask).bit_length() - 1 
+                combined_value = combined_value >> count
+                sample_values.append(combined_value)
+            else:
+                # Single signal - extract 32-bit value using rd_sel
+                extracted_value = (sample_data >> (32 * signal[0].rd_sel)) & 0xFFFFFFFF
+                # Apply mask
+                masked_value = extracted_value & signal[0].mask
+                sample_values.append(masked_value)
+        
+        # Return single value or list based on sample count
+        return sample_values[0] if samples == 1 else sample_values
 
-        # TODO: Return masked data 
-        return data 
 
