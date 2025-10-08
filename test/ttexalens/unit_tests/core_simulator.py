@@ -1,11 +1,12 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 # SPDX-License-Identifier: Apache-2.0
 
+from functools import cached_property
 from ttexalens import tt_exalens_lib as lib
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
-from ttexalens.hardware.baby_risc_debug import BabyRiscDebug, get_register_index
+from ttexalens.hardware.baby_risc_debug import BabyRiscDebug, BabyRiscDebugHardware, get_register_index
 
 
 class RiscvCoreSimulator:
@@ -34,8 +35,6 @@ class RiscvCoreSimulator:
         risc_debug = self.noc_block.get_risc_debug(self.risc_name, self.neo_id)
         assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug instance, got {type(risc_debug)}"
         self.risc_debug: BabyRiscDebug = risc_debug
-        assert self.risc_debug.debug_hardware is not None
-        self.debug_hardware = self.risc_debug.debug_hardware
         debug_bus = self.noc_block.get_debug_bus(self.neo_id)
         assert debug_bus is not None
         self.debug_bus_store: DebugBusSignalStore = debug_bus
@@ -43,6 +42,15 @@ class RiscvCoreSimulator:
 
         # Initialize core in reset state
         self.set_reset(True)
+
+    @cached_property
+    def debug_hardware(self) -> BabyRiscDebugHardware:
+        assert self.risc_debug.debug_hardware is not None
+        return self.risc_debug.debug_hardware
+
+    def has_debug_hardware(self) -> bool:
+        """Check if core has debug hardware available."""
+        return self.risc_debug.debug_hardware is not None
 
     def _get_core_location(self) -> str:
         """Convert core_desc to core location string."""
