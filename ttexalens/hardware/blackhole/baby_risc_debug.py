@@ -57,10 +57,19 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             self.assert_not_in_reset()
 
         read_memory: Callable[[int], int]
-        if self.risc_info.data_private_memory is not None and self.risc_info.data_private_memory.address.noc_address is not None and self.risc_info.data_private_memory.contains_private_address(address) and not self.is_in_reset():
+        if (
+            self.risc_info.data_private_memory is not None
+            and self.risc_info.data_private_memory.address.noc_address is not None
+            and self.risc_info.data_private_memory.contains_private_address(address)
+            and not self.is_in_reset()
+        ):
             # We can read from data memory directly if core is not in reset, but we need to update address to NOC address
             assert self.risc_info.data_private_memory.address.private_address is not None
-            address = address - self.risc_info.data_private_memory.address.private_address + self.risc_info.data_private_memory.address.noc_address
+            address = (
+                address
+                - self.risc_info.data_private_memory.address.private_address
+                + self.risc_info.data_private_memory.address.noc_address
+            )
             read_memory = lambda addr: read_word_from_device(self.risc_info.noc_block.location, addr)
         else:
             self.assert_debug_hardware()
