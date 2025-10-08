@@ -23,31 +23,30 @@ from ttexalens.register_store import (
 
 
 debug_bus_signal_map = {
-    # old name: new included below - duplicate
     "erisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x7FFFFFFF),
     "erisc_ex_id_rtr": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x200
     ),
+    # "erisc_ex_id_rtr": DebugBusSignalDescription(             # Duplicate signal name
+    #     rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x40000000
+    # ),
     "erisc_id_ex_rts": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x100
     ),
+    # "erisc_id_ex_rts": DebugBusSignalDescription(             # Duplicate signal name
+    #     rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x80000000
+    # ),
     "erisc_if_rts": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x80
     ),
     "erisc_if_ex_predicted": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x20
     ),
-    "erisc_if_ex_deco": DebugBusSignalDescription(
+    "erisc_if_ex_deco/1": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x1F
     ),
-    "erisc_if_ex_deco": DebugBusSignalDescription(
+    "erisc_if_ex_deco/0": DebugBusSignalDescription(              
         rd_sel=2, daisy_sel=7, sig_sel=19, mask=0xFFFFFFFF
-    ),
-    "erisc_id_ex_rts": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x80000000
-    ),
-    "erisc_ex_id_rtr": DebugBusSignalDescription(
-        rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x40000000
     ),
     "erisc_id_ex_pc": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x3FFFFFFF
@@ -157,7 +156,7 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 
 class WormholeEthBlock(WormholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
-        super().__init__(location, block_type="eth", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self))
+        super().__init__(location, block_type="eth", debug_bus=DebugBusSignalStore(debug_bus_signal_map, {}, self))
 
         self.l1 = MemoryBlock(
             size=256 * 1024, address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000)

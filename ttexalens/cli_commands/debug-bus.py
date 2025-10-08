@@ -4,17 +4,20 @@
 """
 Usage:
   debug-bus list-names [-v] [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s]
-  debug-bus [<signals>] [-v] [-d <device>] [-l <loc>] [--l1-sampling] [--samples <num>] [--sampling-interval <cycles>]
+  debug-bus [<signals>] [-v] [-d <device>] [-l <loc>] [--l1-sampling --l1-address <addr> [--samples <num>] [--sampling-interval <cycles>]]
 
 Options:
     -s, --simple                        Print simple output.
     --search <pattern>                  Search for signals by pattern (in wildcard format).
     --max <max-sigs>                    Limit --search output (default: 10, use --max "all" to print all matches).
     --l1-sampling                       Enable sampling into L1 memory. Instead of a direct 32-bit register read,
-                                        this triggers a 128-bit capture of the signal into the core's L1 memory at address 0.
+                                        this triggers a 128-bit capture of the signal into the core's L1 memory.
+    --l1-address <addr>                 (L1-sampling only) Byte address in L1 memory for sampling. Must be 16-byte aligned. 
+                                        Each sample occupies 16 bytes (128 bits) in L1 memory. All samples must fit within 
+                                        the first 1 MiB of L1 memory (0x0 - 0xFFFFF). Required when using --l1-sampling.
     --samples <num>                     (L1-sampling only) Number of 128-bit samples to capture. [default: 1].
     --sampling-interval <cycles>        (L1-sampling only) When samples > 1, this sets the delay in clock cycles
-                                        between each sample. Must be between 2 and 255. [default: 2].
+                                        between each sample. Must be between 2 and 256. [default: 2].
 
 Description:
   Commands for RISC-V debugging:
@@ -32,7 +35,8 @@ Examples:
   debug-bus list-names --search *pc* --max 5  # List up to 5 signals whose names contain pc
   debug-bus trisc0_pc,trisc1_pc               # Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
   debug-bus {7,0,12,0x3ffffff},trisc2_pc      # Prints custom debug bus signal and trisc2_pc
-  debug-bus trisc0_pc --l1-sampling --samples 5 --sampling-interval 10 # Read trisc0_pc using L1 sampling 5 times with 10 cycle interval
+  debug-bus trisc0_pc --l1-sampling --l1-address 0x1000 --samples 5 --sampling-interval 10 # Read trisc0_pc using L1 sampling 5 times with 10 cycle interval
+  debug-bus trisc0_pc --l1-sampling --l1-address 0x2000 --samples 3    # Read trisc0_pc using L1 sampling at address 0x2000
 """
 
 command_metadata = {
@@ -56,18 +60,27 @@ from ttexalens.uistate import UIState
 
 
 def parse_string(input_string):
+    # Regex pattern with groups:
+    # group(0): entire match
+    # group(1): first number in {num,num,num,num} format  
+    # group(2): second number
+    # group(3): third number
+    # group(4): fourth number (optional, may be None)
+    # group(5): signal name (when not in {} format)
     pattern = r"\{([\dA-Fa-fx]+),([\dA-Fa-fx]+),([\dA-Fa-fx]+)(?:,([\dA-Fa-fx]+))?\}|([A-Za-z_][A-Za-z0-9_/#]*)"
 
-    parsed_result = []
+    parsed_result: list[list[int] | str] = []
 
-    for m in re.finditer(pattern, input_string):
-        if m.group(1): 
-            numbers = [int(m.group(i), 0) for i in range(1, 4)]  
-            fourth_number = int(m.group(4), 0) if m.group(4) else 0xFFFFFFFF
+    for match in re.finditer(pattern, input_string):
+        if match.group(1): 
+            # Matched {num,num,num,num} format - extract numbers from groups 1-4
+            numbers = [int(match.group(i), 0) for i in range(1, 4)]  
+            fourth_number = int(match.group(4), 0) if match.group(4) else 0xFFFFFFFF
             numbers.append(fourth_number)
             parsed_result.append(numbers)
         else:  
-            parsed_result.append(m.group(5))
+            # Matched signal name format - group(5) contains the signal name
+            parsed_result.append(match.group(5))
 
     return parsed_result
 
@@ -171,24 +184,37 @@ def run(cmd_text, context, ui_state: UIState = None):
             where = f"device:{device._id} loc:{loc.to_user_str()} "
             for signal in signals:
                 try:
-                    read_signal_args = {"signal": signal}
                     if dopt.args["--l1-sampling"]:
-                        read_signal_args["use_l1_sampling"] = True
+                        # L1 sampling mode - prepare parameters
+                        samples = int(dopt.args["--samples"]) if dopt.args["--samples"] else 1
+                        sampling_interval = int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
+                        
+                        if not dopt.args["--l1-address"]:
+                            raise ValueError("--l1-address is required when using --l1-sampling")
+                        
+                        l1_address = int(dopt.args["--l1-address"], 0)
 
-                        samples = 1
-                        if "--samples" in cmd_text:
-                            samples = int(dopt.args["--samples"])
-                            read_signal_args["samples"] = samples
+                        # Validate L1 address alignment (must be 16-byte aligned)
+                        if l1_address % 16 != 0:
+                            raise ValueError(f"L1 address must be 16-byte aligned, got 0x{l1_address:x}")
 
-                        if "--sampling-interval" in cmd_text:
-                            sampling_interval = int(dopt.args["--sampling-interval"])
-                            if samples > 1 and not (2 <= sampling_interval <= 255):
-                                raise ValueError(
-                                    f"When --samples > 1, --sampling-interval must be between 2 and 255, but got {sampling_interval}"
-                                )
-                            read_signal_args["sampling_interval"] = sampling_interval
+                        if dopt.args["--sampling-interval"] and samples == 1:
+                            util.WARN(f"--sampling-interval parameter is meaningless when --samples=1, ignoring interval value {sampling_interval}")
+                        elif samples > 1 and not (2 <= sampling_interval <= 256):
+                            raise ValueError(
+                                f"When --samples > 1, --sampling-interval must be between 2 and 256, but got {sampling_interval}"
+                            )
 
-                    value = debug_bus_signal_store.read_signal(**read_signal_args)
+                        value = debug_bus_signal_store.read_signal(
+                            signal=signal,
+                            use_l1_sampling=True,
+                            l1_address=l1_address,
+                            samples=samples,
+                            sampling_interval=sampling_interval
+                        )
+                    else:
+                        # Direct register read mode
+                        value = debug_bus_signal_store.read_signal(signal=signal)
 
                     if isinstance(value, list):
                         # Multiple samples returned as list
@@ -198,13 +224,13 @@ def run(cmd_text, context, ui_state: UIState = None):
                             else:
                                 signal_description = f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
                                 print(f"{where} Debug Bus Config({signal_description}) [sample {i}] = 0x{sample_value:x}")
+                    elif isinstance(signal, str):
+                        # Single value with string signal name
+                        print(f"{where} {signal}: 0x{value:x}")
                     else:
-                        # Single value
-                        if isinstance(signal, str):
-                            print(f"{where} {signal}: 0x{value:x}")
-                        else:
-                            signal_description = f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
-                            print(f"{where} Debug Bus Config({signal_description}) = 0x{value:x}")
+                        # Single value with signal description object
+                        signal_description = f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
+                        print(f"{where} Debug Bus Config({signal_description}) = 0x{value:x}")
                 except ValueError as e:
                     util.ERROR(f"Error reading signal '{signal}': {e}")
                     continue

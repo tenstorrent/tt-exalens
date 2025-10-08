@@ -15,8 +15,9 @@ from ttexalens.tt_exalens_lib import read_word_from_device, read_words_from_devi
 L1_SAMPLE_SIZE_BYTES = 16  # Each 128-bit sample is 16 bytes
 WORD_SIZE_BITS = 32
 WORDS_PER_SAMPLE = 4  # 4x32-bit words per 128-bit sample
-WAIT_SLEEP_MS = 0.001
-SENTINEL_VALUE = 0xACAFACA
+WAIT_SLEEP_SECONDS = 0.001
+SENTINEL_VALUE = 0xDEADBEEF
+L1_LOW_MEMORY_SIZE = 1024 * 1024  # 1 MiB - low L1 memory limit for sampling
 
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
@@ -42,7 +43,7 @@ class L1MemReg2:
       - write_mode (bits 3:0)          
     """
     write_trigger: int = 0
-    sampling_interval: int = 0
+    sampling_interval: int = 2
     write_mode: int = 0
 
     def encode(self) -> int:
@@ -80,21 +81,38 @@ class DebugBusSignalStore:
     def _register_store(self) -> RegisterStore:
         return self.noc_block.get_register_store(neo_id=self.neo_id)
 
-    @cached_property
-    def _control_register_address(self) -> int:
-        address = self._register_store.get_register_noc_address("RISCV_DEBUG_REG_DBG_BUS_CNTL_REG")
-        assert address is not None, "Control register address not found in register store."
+    def _get_register_address(self, register_name: str, description: str) -> int:
+        """Get register address with error handling"""
+        address = self._register_store.get_register_noc_address(register_name)
+        assert address is not None, f"{description} address not found in register store."
         return address
 
     @cached_property
+    def _control_register_address(self) -> int:
+        return self._get_register_address("RISCV_DEBUG_REG_DBG_BUS_CNTL_REG", "Control register")
+
+    @cached_property
     def _data_register_address(self) -> int:
-        address = self._register_store.get_register_noc_address("RISCV_DEBUG_REG_DBG_RD_DATA")
-        assert address is not None, "Data register address not found in register store."
-        return address
+        return self._get_register_address("RISCV_DEBUG_REG_DBG_RD_DATA", "Data register")
+
+    @cached_property
+    def _l1_mem_reg0_address(self) -> int:
+        return self._get_register_address("RISCV_DEBUG_REG_DBG_L1_MEM_REG0", "L1 memory register 0")
+
+    @cached_property
+    def _l1_mem_reg1_address(self) -> int:
+        return self._get_register_address("RISCV_DEBUG_REG_DBG_L1_MEM_REG1", "L1 memory register 1")
+
+    @cached_property
+    def _l1_mem_reg2_address(self) -> int:
+        return self._get_register_address("RISCV_DEBUG_REG_DBG_L1_MEM_REG2", "L1 memory register 2")
     
     @staticmethod
-    def get_signal_groups(signal_map: dict, group_names: dict) -> dict:
-        groups = {}
+    def get_signal_groups(
+        signal_map: dict[str, DebugBusSignalDescription], 
+        group_names: dict[tuple[int, int], str]
+    ) -> dict[str, list[str]]:
+        groups: dict[str, list[str]] = {}
         for signal_name, signal_desc in signal_map.items():
             key = (signal_desc.daisy_sel, signal_desc.sig_sel)
             group_key = group_names[key]
@@ -155,8 +173,9 @@ class DebugBusSignalStore:
     def read_signal(
         self,
         signal: DebugBusSignalDescription | str,
+        *,
         use_l1_sampling: bool = False,
-        l1_address: int = 0,
+        l1_address: int | None = None,
         samples: int = 1,
         sampling_interval: int = 2,
     ) -> int | list[int]:
@@ -174,11 +193,13 @@ class DebugBusSignalStore:
             The signal to read. Can be a string (signal name) or a DebugBusSignalDescription object.
         use_l1_sampling : bool, default=False
             If True, enables L1 sampling mode. Otherwise, performs a direct register read.
-        l1_address : int, default=0
+        l1_address : int | None, default=None
             (L1 Sampling only) Byte-address in L1 memory for the first 128-bit word. Must be 16-byte aligned.
+            Must be within low L1 memory range (0x0 - 0xFFFFF, first 1 MiB). All samples must fit within this range.
+            Required when use_l1_sampling=True.
         samples : int, default=1
             (L1 Sampling only) Number of 128-bit samples to capture. If `samples > 1`, hardware performs repeated sampling.
-        sampling_interval : int, default=0
+        sampling_interval : int, default=2
             (L1 Sampling only) Interval (in cycles) between consecutive samples when `samples > 1`.
             Should be ≥ 2 due to a known hardware bug that may cause one extra sample if `sampling_period == 1`
 
@@ -188,27 +209,34 @@ class DebugBusSignalStore:
             The sampled data. A 32-bit value in direct read mode, or a 128-bit value in L1 sampling mode.
             The value is masked with `signal.mask` if set.
         """
+        # Convert input to list of signal descriptions
+        signal_list: list[DebugBusSignalDescription]
         if isinstance(signal, str):
-            signal = self.get_signal_description(signal)
-        else:
+            signal_list = self.get_signal_description(signal)
+        elif isinstance(signal, DebugBusSignalDescription):
             # Validate signal parameters if passed as DebugBusSignalDescription
             self._validate_signal_parameters(signal)
+            signal_list = [signal]
+        else:
+            raise ValueError(f"Invalid signal type: {type(signal)}")
 
         # Check if this is a combined signal and enforce L1 sampling
-        if len(signal) > 1 and not use_l1_sampling:
+        if len(signal_list) > 1 and not use_l1_sampling:
             raise ValueError(
                 f"Combined signal can only be read using L1 sampling. "
                 f"Use --l1-sampling flag to read this signal."
             )
 
         if use_l1_sampling:
+            if l1_address is None:
+                raise ValueError("l1_address is required when use_l1_sampling=True")
             return self._read_signal_from_l1(
-                signal, l1_address, samples, sampling_interval
+                signal_list, l1_address, samples, sampling_interval
             )
 
         # Default behavior: read from 32bit debug register
         en = 1
-        config = (en << 29) | (signal[0].rd_sel << 25) | (signal[0].daisy_sel << 16) | (signal[0].sig_sel << 0)
+        config = (en << 29) | (signal_list[0].rd_sel << 25) | (signal_list[0].daisy_sel << 16) | (signal_list[0].sig_sel << 0)
         write_words_to_device(
             self.location, self._control_register_address, config, self.device._id, self.device._context
         )
@@ -217,7 +245,7 @@ class DebugBusSignalStore:
 
         write_words_to_device(self.location, self._control_register_address, 0, self.device._id, self.device._context)
 
-        return data if signal[0].mask is None else data & signal[0].mask
+        return data if signal_list[0].mask is None else data & signal_list[0].mask
 
     def _read_signal_from_l1(
         self,
@@ -229,6 +257,14 @@ class DebugBusSignalStore:
         """Read signal(s) using L1 memory sampling method"""
         if samples < 1:
             raise ValueError(f"samples must be at least 1, but got {samples}")
+
+        # Validate L1 address alignment and memory range
+        if l1_address % 16 != 0:
+            raise ValueError(f"L1 address must be 16-byte aligned, got 0x{l1_address:x}")
+        
+        end_address = l1_address + (samples * L1_SAMPLE_SIZE_BYTES) - 1
+        if end_address >= L1_LOW_MEMORY_SIZE:
+            raise ValueError(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit")
 
         if samples > 1:
             if not (2 <= sampling_interval <= 256):
@@ -261,14 +297,14 @@ class DebugBusSignalStore:
         )
 
         # Get L1 register addresses
-        reg0_addr = self._register_store.get_register_noc_address("RISCV_DEBUG_REG_DBG_L1_MEM_REG0")
-        reg1_addr = self._register_store.get_register_noc_address("RISCV_DEBUG_REG_DBG_L1_MEM_REG1")
-        reg2_addr = self._register_store.get_register_noc_address("RISCV_DEBUG_REG_DBG_L1_MEM_REG2")
+        reg0_addr = self._l1_mem_reg0_address
+        reg1_addr = self._l1_mem_reg1_address
+        reg2_addr = self._l1_mem_reg2_address
 
         # Initialize L1 register structure
         reg2_struct = L1MemReg2(
             write_trigger=0, 
-            sampling_interval=0, 
+            sampling_interval=2, 
             write_mode=0
         )
 
@@ -313,11 +349,8 @@ class DebugBusSignalStore:
         write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
 
         # wait for the last memory location to be written to
-        while True:
-            val = read_word_from_device(self.location, wait_addr, self.device._id, self.device._context)
-            if val != SENTINEL_VALUE:
-                break
-            sleep(WAIT_SLEEP_MS)
+        while read_word_from_device(self.location, wait_addr, self.device._id, self.device._context) == SENTINEL_VALUE:
+            sleep(WAIT_SLEEP_SECONDS)
         
         write_words_to_device(self.location, self._control_register_address, 0, self.device._id, self.device._context)
 

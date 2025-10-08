@@ -140,7 +140,7 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 
 class BlackholeDramBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
-        super().__init__(location, block_type="dram", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self))
+        super().__init__(location, block_type="dram", debug_bus=DebugBusSignalStore(debug_bus_signal_map, {}, self))
 
         self.dram_bank = MemoryBlock(
             # TODO #432: Check if this size is correct

@@ -4,6 +4,7 @@
 
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 
+# TODO(vuk): add signal grouping as there is for Wormhole
 
 debug_bus_signal_map = {
     # For the other signals applying the pc_mask.
@@ -26,7 +27,7 @@ debug_bus_signal_map = {
     ),
     "DEBUG_BUS_THREAD_STATE[0]_I_TTSYNC_DBG_BITS_PREV_GEN_NO__3_0": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=1, sig_sel=12, mask=0xF0000000
-    ),  
+    ),
     "DEBUG_BUS_THREAD_STATE[0]_I_TTSYNC_DBG_BITS_PREV_GEN_NO__7_4": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=1, sig_sel=13, mask=0xF
     ),
@@ -509,12 +510,6 @@ debug_bus_signal_map = {
     "DEBUG_BUS_THREAD_STATE[2]_I_TTSYNC_DBG_BITS_RQ_FULL": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=1, sig_sel=4, mask=0x40000
     ),
-
-
-
-
-
-    
     "DEBUG_BUS_THREAD_STATE[2]_I_CG_TRISC_BUSY": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=1, sig_sel=4, mask=0x20000
     ),

@@ -53,7 +53,7 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
         super().__init__(
-            location, block_type="functional_workers", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self)
+            location, block_type="functional_workers", debug_bus=DebugBusSignalStore(debug_bus_signal_map, None, self)
         )
 
         self.l1 = MemoryBlock(
