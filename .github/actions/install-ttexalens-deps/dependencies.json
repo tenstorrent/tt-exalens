@@ -4,7 +4,6 @@
 		"build-essential",
 		"libyaml-cpp-dev",
 		"libhwloc-dev",
-		"xxd",
 		"cmake",
 		"ninja-build"
 	]

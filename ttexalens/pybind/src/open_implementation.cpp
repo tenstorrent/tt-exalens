@@ -277,6 +277,15 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(cluster)));
+    auto &unique_ids = cluster_descriptor->get_chip_unique_ids();
+
+    for (auto device_id : device_ids) {
+        auto it = unique_ids.find(device_id);
+
+        if (it != unique_ids.end()) {
+            implementation->device_id_to_unique_id[device_id] = it->second;
+        }
+    }
 
     std::string file_path = temp_working_directory / "cluster_desc.yaml";
     cluster_descriptor->serialize_to_file(file_path);
@@ -356,6 +365,16 @@ std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> open_implementation<Base
         return BaseClass::get_firmware_version(chip_id);
     }
     return std::make_tuple(0, 0, 0);
+}
+
+template <typename BaseClass>
+std::optional<uint64_t> open_implementation<BaseClass>::get_device_unique_id(uint8_t chip_id) {
+    auto it = device_id_to_unique_id.find(chip_id);
+
+    if (it != device_id_to_unique_id.end()) {
+        return it->second;
+    }
+    return {};
 }
 
 template <typename BaseClass>

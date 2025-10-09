@@ -20,6 +20,7 @@ class open_implementation : public BaseClass {
    private:
     std::unique_ptr<DeviceType> device;
     std::vector<uint8_t> device_ids;
+    std::map<uint8_t, uint64_t> device_id_to_unique_id;
     std::map<uint8_t, std::string> device_soc_descriptors_yamls;
     std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
     bool is_simulation = false;
@@ -44,6 +45,7 @@ class open_implementation : public BaseClass {
                                                                   const std::string& core_type,
                                                                   const std::string& coord_system) override;
     std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> get_firmware_version(uint8_t chip_id) override;
+    std::optional<uint64_t> get_device_unique_id(uint8_t chip_id) override;
 };
 
 }  // namespace tt::exalens
