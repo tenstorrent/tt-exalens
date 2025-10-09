@@ -5,21 +5,21 @@
 Usage:
   debug-bus list-names [-v] [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s]
   debug-bus list-groups [-v] [-d <device>] [-l <loc>] [--search <pattern>] [--group <group-name>] [-s]
-  debug-bus [<signals>] [-v] [-d <device>] [-l <loc>] [--l1-sampling --l1-address <addr> [--samples <num>] [--sampling-interval <cycles>]]
+  debug-bus [<signals>] [-v] [-d <device>] [-l <loc>] [--l1-address <addr> [--samples <num>] [--sampling-interval <cycles>]]
 
 Options:
     -s, --simple                        Print simple output.
     --search <pattern>                  Search for signals by pattern (in wildcard format).
     --max <max-sigs>                    Limit --search output (default: 10, use --max "all" to print all matches).
     --group <group-names>               (list-groups only) List signals in the specified group(s). Multiple groups can be separated by commas.
-    --l1-sampling                       Enable sampling into L1 memory. Instead of a direct 32-bit register read,
-                                        this triggers a 128-bit capture of the signal into the core's L1 memory.
-    --l1-address <addr>                 (L1-sampling only) Byte address in L1 memory for sampling. Must be 16-byte aligned. 
+    --l1-address <addr>                 Byte address in L1 memory for L1 sampling mode. Must be 16-byte aligned. 
+                                        When specified, enables L1 sampling mode which triggers a 128-bit capture 
+                                        of the signal into the core's L1 memory instead of a direct 32-bit register read.
                                         Each sample occupies 16 bytes (128 bits) in L1 memory. All samples must fit within 
-                                        the first 1 MiB of L1 memory (0x0 - 0xFFFFF). Required when using --l1-sampling.
-    --samples <num>                     (L1-sampling only) Number of 128-bit samples to capture. [default: 1].
-    --sampling-interval <cycles>        (L1-sampling only) When samples > 1, this sets the delay in clock cycles
-                                        between each sample. Must be between 2 and 256. [default: 2].
+                                        the first 1 MiB of L1 memory (0x0 - 0xFFFFF).
+    --samples <num>                     (L1-sampling mode only) Number of 128-bit samples to capture. [default: 1].
+    --sampling-interval <cycles>        (L1-sampling mode only) When samples > 1, this sets the delay in clock cycles
+                                        between each sample. Must be between 2 and 256.
 
 Description:
   Commands for RISC-V debugging:
@@ -44,8 +44,8 @@ Examples:
   debug-bus list-groups --group brisc_group_a,trisc0_group_a,trisc1_group_a # List signals from multiple groups
   debug-bus trisc0_pc,trisc1_pc               # Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
   debug-bus {7,0,12,0x3ffffff},trisc2_pc      # Prints custom debug bus signal and trisc2_pc
-  debug-bus trisc0_pc --l1-sampling --l1-address 0x1000 --samples 5 --sampling-interval 10 # Read trisc0_pc using L1 sampling 5 times with 10 cycle interval
-  debug-bus trisc0_pc --l1-sampling --l1-address 0x2000 --samples 3    # Read trisc0_pc using L1 sampling at address 0x2000
+  debug-bus trisc0_pc --l1-address 0x1000 --samples 5 --sampling-interval 10 # Read trisc0_pc using L1 sampling 5 times with 10 cycle interval
+  debug-bus trisc0_pc --l1-address 0x2000 --samples 3    # Read trisc0_pc using L1 sampling at address 0x2000
 """
 
 command_metadata = {
@@ -60,11 +60,9 @@ import re
 
 from ttexalens import command_parser
 from ttexalens import util as util
-from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.util import search
 from ttexalens.rich_formatters import formatter
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
-from ttexalens.device import Device
 from ttexalens.uistate import UIState
 
 
@@ -287,7 +285,7 @@ def handle_signal_reading_command(dopt, context, ui_state):
             # Process each signal
             for signal in signals:
                 try:
-                    if dopt.args["--l1-sampling"]:
+                    if dopt.args["--l1-address"]:
                         value = _read_signal_with_l1_sampling(dopt, debug_bus_signal_store, signal)
                     else:
                         # Direct register read mode
@@ -306,16 +304,13 @@ def _read_signal_with_l1_sampling(dopt, debug_bus_signal_store, signal):
     samples = int(dopt.args["--samples"]) if dopt.args["--samples"] else 1
     sampling_interval = int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
     
-    if not dopt.args["--l1-address"]:
-        raise ValueError("--l1-address is required when using --l1-sampling")
-    
     l1_address = int(dopt.args["--l1-address"], 0)
 
     # Validate L1 sampling parameters
     if l1_address % 16 != 0:
         raise ValueError(f"L1 address must be 16-byte aligned, got 0x{l1_address:x}")
 
-    if dopt.args["--sampling-interval"] and samples == 1:
+    if dopt.args["--sampling-interval"] is not None and samples == 1:
         util.WARN(f"--sampling-interval parameter is meaningless when --samples=1, ignoring interval value {sampling_interval}")
     elif samples > 1 and not (2 <= sampling_interval <= 256):
         raise ValueError(

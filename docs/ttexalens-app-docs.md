@@ -36,7 +36,7 @@ brxy 0,0 0x0 1
 Output:
 ```
 0,0 (L1) : 0x00000000 (4 bytes)
-0x00000000:  80000164
+0x00000000:  00000168
 ```
 Read 16 words from address 0
 ```
@@ -45,10 +45,10 @@ brxy 0,0 0x0 16
 Output:
 ```
 0,0 (L1) : 0x00000000 (64 bytes)
-0x00000000:  80000164  00008010  80000190  00000000
-0x00000010:  80000164  00008010  80000190  00000000
-0x00000020:  80000164  00008010  80000190  00000000
-0x00000030:  80000164  00008010  80000190  00000000
+0x00000000:  00000168  00008010  80000190  00000000
+0x00000010:  00000168  00008010  80000190  00000000
+0x00000020:  00000168  00008010  80000190  00000000
+0x00000030:  00000168  00008010  80000190  00000000
 ```
 Prints 32 bytes in i8 format
 ```
@@ -57,14 +57,14 @@ brxy 0,0 0x0 32 --format i8
 Output:
 ```
 0,0 (L1) : 0x00000000 (128 bytes)
-0x00000000:  100  1   0   128  16   128  0  0   144  1    0  128  0    0  0  0
-0x00000010:  100  1   0   128  16   128  0  0   144  1    0  128  0    0  0  0
-0x00000020:  100  1   0   128  16   128  0  0   144  1    0  128  0    0  0  0
-0x00000030:  100  1   0   128  16   128  0  0   144  1    0  128  0    0  0  0
-0x00000040:  100  1   0   128  16   128  0  0   144  1    0  128  0    0  0  0
-0x00000050:  2    64  32  16   116  1    0  64  131  219  7  0    192  2  0  0
-0x00000060:  2    64  32  16   116  1    0  64  131  219  7  0    192  2  0  0
-0x00000070:  2    64  32  16   116  1    0  64  131  219  7  0    192  2  0  0
+0x00000000:  104  1   0   0   16   128  0  0   144  1    0  128  0    0  0  0
+0x00000010:  104  1   0   0   16   128  0  0   144  1    0  128  0    0  0  0
+0x00000020:  104  1   0   0   16   128  0  0   144  1    0  128  0    0  0  0
+0x00000030:  104  1   0   0   16   128  0  0   144  1    0  128  0    0  0  0
+0x00000040:  104  1   0   0   16   128  0  0   144  1    0  128  0    0  0  0
+0x00000050:  2    64  32  16  116  1    0  64  131  219  7  0    192  2  0  0
+0x00000060:  2    64  32  16  116  1    0  64  131  219  7  0    192  2  0  0
+0x00000070:  2    64  32  16  116  1    0  64  131  219  7  0    192  2  0  0
 ```
 Sample for 5 seconds
 ```
@@ -73,25 +73,25 @@ brxy 0,0 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000000 (0) => 0x80000164 (2147484004) - 33746 times
+0,0 (L1) : 0x00000000 (0) => 0x00000168 (360) - 34273 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000004 (4) => 0x80000164 (2147484004) - 33608 times
+0,0 (L1) : 0x00000004 (4) => 0x00000168 (360) - 34011 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000008 (8) => 0x80000164 (2147484004) - 33090 times
+0,0 (L1) : 0x00000008 (8) => 0x00000168 (360) - 34300 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x0000000c (12) => 0x80000164 (2147484004) - 32055 times
+0,0 (L1) : 0x0000000c (12) => 0x00000168 (360) - 34258 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000010 (16) => 0x80000164 (2147484004) - 25566 times
+0,0 (L1) : 0x00000010 (16) => 0x00000168 (360) - 34679 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000014 (20) => 0x80000164 (2147484004) - 32704 times
+0,0 (L1) : 0x00000014 (20) => 0x00000168 (360) - 34351 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000018 (24) => 0x80000164 (2147484004) - 33762 times
+0,0 (L1) : 0x00000018 (24) => 0x00000168 (360) - 34952 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x0000001c (28) => 0x80000164 (2147484004) - 33680 times
+0,0 (L1) : 0x0000001c (28) => 0x00000168 (360) - 34587 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000020 (32) => 0x80000164 (2147484004) - 33586 times
+0,0 (L1) : 0x00000020 (32) => 0x00000168 (360) - 34599 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000024 (36) => 0x80000164 (2147484004) - 33918 times
+0,0 (L1) : 0x00000024 (36) => 0x00000168 (360) - 34005 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -173,7 +173,8 @@ File build/riscv-src/wormhole/sample.brisc.elf does not exist
 
 ```
 debug-bus list-names [-v] [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s]
-debug-bus [<signals>] [-v] [-d <device>] [-l <loc>] [--l1-sampling --l1-address <addr> [--samples <num>] [--sampling-interval <cycles>]]
+debug-bus list-groups [-v] [-d <device>] [-l <loc>] [--search <pattern>] [--group <group-name>] [-s]
+debug-bus [<signals>] [-v] [-d <device>] [-l <loc>] [--l1-address <addr> [--samples <num>] [--sampling-interval <cycles>]]
 ```
 
 
@@ -182,6 +183,9 @@ debug-bus [<signals>] [-v] [-d <device>] [-l <loc>] [--l1-sampling --l1-address 
 Commands for RISC-V debugging:
 - list-names:    List all predefined debug bus signal names.
 --search:
+- list-groups:   List all debug bus signal groups or signals in a specific group.
+--group:     Show signals in a specific group
+--search:    Search for groups by pattern (in wildcard format)
 - [<signals>]:   List of signals described by signal name or signal description.
 <signal-description>: {DaisyId,RDSel,SigSel,Mask}
 -DaisyId - daisy chain identifier
@@ -195,10 +199,10 @@ Commands for RISC-V debugging:
 - `-s,` = **--simple**: Print simple output.
 - `--search` = **\<pattern\>**: Search for signals by pattern (in wildcard format).
 - `--max` = **\<max-sigs\>**: Limit --search output (default: 10, use --max "all" to print all matches).
-- `--l1-sampling`: Enable sampling into L1 memory. Instead of a direct 32-bit register read, this triggers a 128-bit capture of the signal into the core's L1 memory.
-- `--l1-address` = **\<addr\>**: (L1-sampling only) Byte address in L1 memory for sampling. Must be 16-byte aligned. Each sample occupies 16 bytes (128 bits) in L1 memory. All samples must fit within the first 1 MiB of L1 memory (0x0 - 0xFFFFF). Required when using --l1-sampling.
-- `--samples` = **\<num\>**: (L1-sampling only) Number of 128-bit samples to capture. [default: 1].
-- `--sampling-interval` = **\<cycles\>**: (L1-sampling only) When samples > 1, this sets the delay in clock cycles between each sample. Must be between 2 and 256. [default: 2].
+- `--group` = **\<group-names\>**: (list-groups only) List signals in the specified group(s). Multiple groups can be separated by commas.
+- `--l1-address` = **\<addr\>**: Byte address in L1 memory for L1 sampling mode. Must be 16-byte aligned. When specified, enables L1 sampling mode which triggers a 128-bit capture of the signal into the core's L1 memory instead of a direct 32-bit register read. Each sample occupies 16 bytes (128 bits) in L1 memory. All samples must fit within the first 1 MiB of L1 memory (0x0 - 0xFFFFF).
+- `--samples` = **\<num\>**: (L1-sampling mode only) Number of 128-bit samples to capture. [default: 1].
+- `--sampling-interval` = **\<cycles\>**: (L1-sampling mode only) When samples > 1, this sets the delay in clock cycles between each sample. Must be between 2 and 256.
 
 
 ### Examples
@@ -214,20 +218,20 @@ Output:
 ╭─────────────────────────────────────────────────────────────────────┬────────────╮
 │ Name                                                                │ Value      │
 ├─────────────────────────────────────────────────────────────────────┼────────────┤
-│ brisc_pc                                                            │ 0x00000164 │
+│ brisc_pc                                                            │ 0x00000168 │
 │ trisc0_pc                                                           │ 0x00005794 │
 │ trisc1_pc                                                           │ 0x00005d70 │
 │ trisc2_pc                                                           │ 0x00006378 │
 │ ncrisc_pc                                                           │ 0x00004f98 │
-│ brisc_ex_id_rtr                                                     │ 0x00000200 │
-│ brisc_if_rts                                                        │ 0x00000080 │
+│ brisc_ex_id_rtr                                                     │ 0x00000001 │
+│ brisc_if_rts                                                        │ 0x00000001 │
 │ brisc_if_ex_predicted                                               │ 0x00000000 │
 │ brisc_if_ex_deco/1                                                  │ 0x00000000 │
 │ brisc_if_ex_deco/0                                                  │ 0x0007db83 │
 │ brisc_id_ex_rts                                                     │ 0x00000000 │
 │ brisc_id_ex_pc                                                      │ 0x00000174 │
-│ brisc_id_rf_wr_flag                                                 │ 0x10000000 │
-│ brisc_id_rf_wraddr                                                  │ 0x00200000 │
+│ brisc_id_rf_wr_flag                                                 │ 0x00000001 │
+│ brisc_id_rf_wraddr                                                  │ 0x00000002 │
 │ brisc_id_rf_p1_rden                                                 │ 0x00000000 │
 ...
 ```
@@ -243,13 +247,111 @@ There are matches remaining. To see more results, increase the --max value.
 ╭───────────┬────────────╮
 │ Name      │ Value      │
 ├───────────┼────────────┤
-│ brisc_pc  │ 0x00000164 │
+│ brisc_pc  │ 0x00000168 │
 │ trisc0_pc │ 0x00005794 │
 │ trisc1_pc │ 0x00005d70 │
 │ trisc2_pc │ 0x00006378 │
 │ ncrisc_pc │ 0x00004f98 │
 ╰───────────┴────────────╯
 
+```
+List all debug bus signal groups
+```
+debug-bus list-groups                       
+```
+Output:
+```
+=== Device 0 - location 0,0 - Signal Groups ===
+                  Groups                   
+╭──────────────────────────┬──────────────╮
+│ Group Name               │ Signal Count │
+├──────────────────────────┼──────────────┤
+│ brisc_group_a            │ 11           │
+│ trisc0_group_a           │ 11           │
+│ trisc1_group_a           │ 11           │
+│ trisc2_group_a           │ 11           │
+│ ncrisc_group_a           │ 11           │
+│ brisc_group_b            │ 13           │
+│ brisc_group_c            │ 12           │
+│ trisc0_group_b           │ 13           │
+│ trisc0_group_d           │ 21           │
+│ trisc0_group_c           │ 13           │
+│ trisc1_group_b           │ 13           │
+│ trisc1_group_d           │ 23           │
+│ trisc1_group_c           │ 12           │
+│ trisc2_group_d           │ 23           │
+│ trisc2_group_c           │ 12           │
+...
+```
+List groups matching pattern
+```
+debug-bus list-groups --search *brisc*      
+```
+Output:
+```
+=== Device 0 - location 0,0 - Signal Groups ===
+             Groups             
+╭───────────────┬──────────────╮
+│ Group Name    │ Signal Count │
+├───────────────┼──────────────┤
+│ brisc_group_a │ 11           │
+│ brisc_group_b │ 13           │
+│ brisc_group_c │ 12           │
+╰───────────────┴──────────────╯
+
+```
+List all signals in brisc_group_a
+```
+debug-bus list-groups --group brisc_group_a 
+```
+Output:
+```
+=== Device 0 - location 0,0 - Group: brisc_group_a ===
+                            Signals                             
+╭─────────────────────────────────────────────────┬────────────╮
+│ Name                                            │ Value      │
+├─────────────────────────────────────────────────┼────────────┤
+│ brisc_pc                                        │ 0x00000168 │
+│ brisc_i_instrn_vld                              │ 0x00000000 │
+│ brisc_i_instrn                                  │ 0x00000000 │
+│ brisc_i_instrn_req_rtr                          │ 0x00000001 │
+│ brisc_(o_instrn_req_early&~o_instrn_req_cancel) │ 0x00000000 │
+│ brisc_o_instrn_addr                             │ 0x00000190 │
+│ brisc_dbg_obs_mem_wren                          │ 0x00000000 │
+│ brisc_dbg_obs_mem_rden                          │ 0x00000000 │
+│ brisc_dbg_obs_mem_addr                          │ 0x00008010 │
+│ brisc_dbg_obs_cmt_vld                           │ 0x00000000 │
+│ brisc_dbg_obs_cmt_pc                            │ 0x00000168 │
+╰─────────────────────────────────────────────────┴────────────╯
+
+```
+List signals from multiple groups
+```
+debug-bus list-groups --group brisc_group_a,trisc0_group_a,trisc1_group_a 
+```
+Output:
+```
+=== Device 0 - location 0,0 - Group: brisc_group_a (1/3) ===
+                            Signals                             
+╭─────────────────────────────────────────────────┬────────────╮
+│ Name                                            │ Value      │
+├─────────────────────────────────────────────────┼────────────┤
+│ brisc_pc                                        │ 0x00000168 │
+│ brisc_i_instrn_vld                              │ 0x00000000 │
+│ brisc_i_instrn                                  │ 0x00000000 │
+│ brisc_i_instrn_req_rtr                          │ 0x00000001 │
+│ brisc_(o_instrn_req_early&~o_instrn_req_cancel) │ 0x00000000 │
+│ brisc_o_instrn_addr                             │ 0x00000190 │
+│ brisc_dbg_obs_mem_wren                          │ 0x00000000 │
+│ brisc_dbg_obs_mem_rden                          │ 0x00000000 │
+│ brisc_dbg_obs_mem_addr                          │ 0x00008010 │
+│ brisc_dbg_obs_cmt_vld                           │ 0x00000000 │
+│ brisc_dbg_obs_cmt_pc                            │ 0x00000168 │
+╰─────────────────────────────────────────────────┴────────────╯
+
+
+=== Device 0 - location 0,0 - Group: trisc0_group_a (2/3) ===
+...
 ```
 Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
 ```
@@ -271,7 +373,7 @@ device:0 loc:1-1 (0,0)  trisc2_pc: 0x6378
 ```
 Read trisc0_pc using L1 sampling 5 times with 10 cycle interval
 ```
-debug-bus trisc0_pc --l1-sampling --l1-address 0x1000 --samples 5 --sampling-interval 10 
+debug-bus trisc0_pc --l1-address 0x1000 --samples 5 --sampling-interval 10 
 ```
 Output:
 ```
@@ -283,7 +385,7 @@ device:0 loc:1-1 (0,0)  trisc0_pc [sample 4]: 0x5794
 ```
 Read trisc0_pc using L1 sampling at address 0x2000
 ```
-debug-bus trisc0_pc --l1-sampling --l1-address 0x2000 --samples 3    
+debug-bus trisc0_pc --l1-address 0x2000 --samples 3    
 ```
 Output:
 ```
@@ -813,44 +915,9 @@ Command:
 ```
 gpr
 ```
-Output:
-```
-RISC-V registers for location 0,0 on device 0
-Register     brisc       trisc0    trisc1    trisc2    ncrisc
------------  ----------  --------  --------  --------  --------
-0 - zero     0x00000000
-1 - ra       0x000001dc
-2 - sp       0xffb00fd0
-3 - gp       0x00008800
-4 - tp       0x00000000
-5 - t0       0x00000000
-6 - t1       0x00000000
-7 - t2       0x00000000
-8 - s0 / fp  0xffb00fe0
-9 - s1       0x00000000
-10 - a0      0x00000001
-11 - a1      0xffb00ff0
-12 - a2      0x00000000
-13 - a3      0x00000000
-14 - a4      0xffb1208c
-15 - a5      0x00008000
-16 - a6      0x00000000
-...
-```
 Command:
 ```
 gpr ra,sp,pc
-```
-Output:
-```
-RISC-V registers for location 0,0 on device 0
-Register    brisc       trisc0    trisc1    trisc2    ncrisc
-----------  ----------  --------  --------  --------  --------
-1 - ra      0x000001dc
-2 - sp      0xffb00fd0
-32 - pc     0x00000164
-Soft reset  False       True      True      True      True
-Halted      True        -         -         -         -
 ```
 
 
@@ -978,13 +1045,13 @@ NOC0 Status Registers
 ╭────────────────────────────┬────────────┬────────────╮ ╭────────────────────────────────┬────────────┬────────────╮
 │ Name                       │ Address    │ Value      │ │ Name                           │ Address    │ Value      │
 ├────────────────────────────┼────────────┼────────────┤ ├────────────────────────────────┼────────────┼────────────┤
-│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x0003ff04 │
-│ read resps received        │ 0xffb20208 │ 0x000000c8 │ │ read resps sent                │ 0xffb202c8 │ 0x00183f28 │
-│ read words received        │ 0xffb2020c │ 0x00006400 │ │ read words sent                │ 0xffb202cc │ 0x00183f27 │
-│ read reqs sent             │ 0xffb20214 │ 0x000000c8 │ │ read reqs received             │ 0xffb202d4 │ 0x00183f27 │
-│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x000553a4 │
+│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x00041b7d │
+│ read resps received        │ 0xffb20208 │ 0x000000c8 │ │ read resps sent                │ 0xffb202c8 │ 0x00292e0b │
+│ read words received        │ 0xffb2020c │ 0x00006400 │ │ read words sent                │ 0xffb202cc │ 0x00292e0a │
+│ read reqs sent             │ 0xffb20214 │ 0x000000c8 │ │ read reqs received             │ 0xffb202d4 │ 0x00292e0a │
+│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x0005701d │
 │ posted write words sent    │ 0xffb20224 │ 0x00000000 │ │ posted write words received    │ 0xffb202e4 │ 0x00000000 │
-│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x0003ff04 │
+│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x00041b7d │
 │ posted write reqs sent     │ 0xffb2022c │ 0x00000000 │ │ posted write reqs received     │ 0xffb202ec │ 0x00000000 │
 ╰────────────────────────────┴────────────┴────────────╯ ╰────────────────────────────────┴────────────┴────────────╯
 
@@ -1016,10 +1083,10 @@ NOC0 Status Registers
 
               Transaction Counters (Received)               
                                                             
-  write acks sent                  0xffb202c4   0x0003ff04  
-  read resps sent                  0xffb202c8   0x00183f48  
-  read words sent                  0xffb202cc   0x00183f47  
-  read reqs received               0xffb202d4   0x00183f47  
+  write acks sent                  0xffb202c4   0x00041b7d  
+  read resps sent                  0xffb202c8   0x00292e2b  
+  read words sent                  0xffb202cc   0x00292e2a  
+  read reqs received               0xffb202d4   0x00292e2a  
 ...
 ```
 Prints a specific register value
@@ -1083,9 +1150,9 @@ Output:
 │ NIU_MST_RD_DATA_WORD_RECEIVED │ 0xffb2020c │ 0x00006400 │
 │ NIU_MST_RD_REQ_SENT           │ 0xffb20214 │ 0x000000c8 │
 │ NIU_MST_RD_REQ_STARTED        │ 0xffb20238 │ 0x000000c8 │
-│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x00183f63 │
-│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x00183f64 │
-│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x00183f66 │
+│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x00292e46 │
+│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x00292e47 │
+│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x00292e49 │
 ╰───────────────────────────────┴────────────┴────────────╯
 
                       NOC1 Registers                       
@@ -1157,7 +1224,7 @@ riscv status
 ```
 Output:
 ```
-  HALTED PC=0x00000164 - brisc 0,0 [0]
+  RUNNING - brisc 0,0 [0]
   IN RESET - trisc0 0,0 [0]
   IN RESET - trisc1 0,0 [0]
   IN RESET - trisc2 0,0 [0]

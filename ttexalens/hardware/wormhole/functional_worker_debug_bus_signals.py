@@ -142,7 +142,7 @@ debug_bus_signal_map = {
     "trisc0_if_ex_predicted": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x20
     ),
-    "trisc0_if_ex_dec/1": DebugBusSignalDescription(
+    "trisc0_if_ex_deco/1": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x1F
     ),
     "trisc0_if_ex_deco/0": DebugBusSignalDescription(

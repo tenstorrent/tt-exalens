@@ -137,6 +137,10 @@ class DebugBusSignalStore:
             raise ValueError(f"Unknown group name '{group_name}'. Available groups: {list(self.group_signals.keys())}")
         return self.group_signals[group_name]
 
+    def _normalize_value(self, value: int, mask: int) -> int:
+        """Shift value right to remove trailing zeros from mask"""
+        return value >> (mask & -mask).bit_length() - 1
+
     def _validate_signal_parameters(self, signal: DebugBusSignalDescription) -> None:
         # Validate signal parameters are within expected ranges
         if not (0 <= signal.rd_sel <= 3):
@@ -230,13 +234,6 @@ class DebugBusSignalStore:
         else:
             raise ValueError(f"Invalid signal type: {type(signal)}")
 
-        # Check if this is a combined signal and enforce L1 sampling
-        if len(signal_list) > 1 and not use_l1_sampling:
-            raise ValueError(
-                f"Combined signal can only be read using L1 sampling. "
-                f"Use --l1-sampling flag to read this signal."
-            )
-
         if use_l1_sampling:
             if l1_address is None:
                 raise ValueError("l1_address is required when use_l1_sampling=True")
@@ -245,8 +242,30 @@ class DebugBusSignalStore:
             )
 
         # Default behavior: read from 32bit debug register
+        return self._read_signal_from_register(signal_list)
+
+    def _read_signal_from_register(self, signal: list[DebugBusSignalDescription]) -> int:
+        """Read signal using direct 32-bit register access"""
+        if len(signal) > 1:
+            # Combined signal - read each part and combine them
+            value = 0
+            for j, signal_part in enumerate(signal):
+                data = self._read_single_register(signal_part)
+                # Apply mask and combine
+                masked_data = data & signal_part.mask
+                value |= (masked_data << (WORD_SIZE_BITS * j))
+        else:
+            # Single signal - read single 32-bit register
+            data = self._read_single_register(signal[0])
+            value = data & signal[0].mask
+        
+        # Normalize value by removing trailing zeros
+        return self._normalize_value(value, signal[0].mask)
+
+    def _read_single_register(self, signal_part: DebugBusSignalDescription) -> int:
+        """Read a single 32-bit register value"""
         en = 1
-        config = (en << 29) | (signal_list[0].rd_sel << 25) | (signal_list[0].daisy_sel << 16) | (signal_list[0].sig_sel << 0)
+        config = (en << 29) | (signal_part.rd_sel << 25) | (signal_part.daisy_sel << 16) | (signal_part.sig_sel << 0)
         write_words_to_device(
             self.location, self._control_register_address, config, self.device._id, self.device._context
         )
@@ -255,7 +274,7 @@ class DebugBusSignalStore:
 
         write_words_to_device(self.location, self._control_register_address, 0, self.device._id, self.device._context)
 
-        return data if signal_list[0].mask is None else data & signal_list[0].mask
+        return data
 
     def _read_signal_from_l1(
         self,
@@ -384,22 +403,19 @@ class DebugBusSignalStore:
             
             if len(signal) > 1:
                 # Combined signal - read each part and combine them
-                combined_value = 0
+                value = 0
                 for j, signal_part in enumerate(signal):
                     extracted_value = (sample_data >> (WORD_SIZE_BITS * signal_part.rd_sel)) & 0xFFFFFFFF
                     masked_value = extracted_value & signal_part.mask
-                    combined_value |= (masked_value << (WORD_SIZE_BITS * j))
-                
-                # Count trailing zeros in first signal's mask and shift combined value
-                count = (signal[0].mask & -signal[0].mask).bit_length() - 1 
-                combined_value = combined_value >> count
-                sample_values.append(combined_value)
+                    value |= (masked_value << (WORD_SIZE_BITS * j))
             else:
                 # Single signal - extract 32-bit value using rd_sel
                 extracted_value = (sample_data >> (WORD_SIZE_BITS * signal[0].rd_sel)) & 0xFFFFFFFF
-                masked_value = extracted_value & signal[0].mask
-                sample_values.append(masked_value)
+                value = extracted_value & signal[0].mask
+
+            # Normalize value by removing trailing zeros
+            normalized_value = self._normalize_value(value, signal[0].mask)
+            sample_values.append(normalized_value)
         
         return sample_values[0] if samples == 1 else sample_values
-
 
