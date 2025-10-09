@@ -127,8 +127,18 @@ class DebugBusSignalStore:
     def get_signal_names(self) -> Iterable[str]:
         return self.signals.keys()
 
+    def get_group_names(self) -> Iterable[str]:
+        # Get all available group names.
+        return self.group_signals.keys()
+
+    def get_signals_in_group(self, group_name: str) -> list[str]:
+        # Get all signal names in the specified group.
+        if group_name not in self.group_signals:
+            raise ValueError(f"Unknown group name '{group_name}'. Available groups: {list(self.group_signals.keys())}")
+        return self.group_signals[group_name]
+
     def _validate_signal_parameters(self, signal: DebugBusSignalDescription) -> None:
-        """Validate signal parameters are within expected ranges"""
+        # Validate signal parameters are within expected ranges
         if not (0 <= signal.rd_sel <= 3):
             raise ValueError(f"rd_sel must be between 0 and 3, got {signal.rd_sel}")
         
@@ -142,7 +152,7 @@ class DebugBusSignalStore:
             raise ValueError(f"mask must be a valid 32-bit integer, got {signal.mask}")
 
     def is_combined_signal(self, signal_name: str) -> bool:
-        """Check if signal_name is a base name for a combined signal (has /0, /1, /2... variants)"""
+        # Check if signal_name is a base name for a combined signal (has /0, /1, /2... variants)
         return f"{signal_name}/0" in self.signals
 
     def get_signal_description(self, signal_name: str) -> list[DebugBusSignalDescription]:
