@@ -688,13 +688,15 @@ class BabyRiscDebug(RiscDebug):
     @cached_property
     def debug_bus_pc_signal(self) -> DebugBusSignalDescription | None:
         try:
-            return self.risc_info.noc_block.debug_bus.get_signal_description(self.risc_info.risc_name + "_pc")
+            if self.risc_info.noc_block.debug_bus is not None:
+                return self.risc_info.noc_block.debug_bus.get_signal_description(self.risc_info.risc_name + "_pc")
         except:
-            return None
+            pass
+        return None
 
     def get_pc(self) -> int:
         debug_bus_pc_signal = self.debug_bus_pc_signal
-        if debug_bus_pc_signal is not None:
+        if debug_bus_pc_signal is not None and self.risc_info.noc_block.debug_bus is not None:
             pc = self.risc_info.noc_block.debug_bus.read_signal(debug_bus_pc_signal)
             if self.risc_info.risc_name == "ncrisc" and pc & 0xF0000000 == 0x70000000:
                 pc = pc | 0x80000000  # Turn the topmost bit on as it was lost on debug bus
