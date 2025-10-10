@@ -14,7 +14,6 @@ RUN apt-get update && apt-get install -y \
     git \
     libyaml-cpp-dev \
     libhwloc-dev \
-    libzmq3-dev \
     libnsl2 \
     sudo \
     wget \

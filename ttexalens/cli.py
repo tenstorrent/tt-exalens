@@ -284,9 +284,11 @@ def main_loop(args, context):
                         ):
                             my_prompt += f"noc:{util.CLR_PROMPT}{noc_prompt}{util.CLR_PROMPT_END} "
                         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
-                        my_prompt += (
-                            f"device:{util.CLR_PROMPT}{jtag_prompt}{ui_state.current_device_id}{util.CLR_PROMPT_END} "
-                        )
+                        device_id = f"{ui_state.current_device_id}"
+                        # TODO (#617): Once we figure out do we want to show unique_id in prompt, uncomment following lines
+                        # if ui_state.current_device.unique_id is not None:
+                        #     device_id += f" [0x{ui_state.current_device.unique_id:x}]"
+                        my_prompt += f"device:{util.CLR_PROMPT}{jtag_prompt}{device_id}{util.CLR_PROMPT_END} "
                         my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
                         my_prompt += f"{ui_state.current_prompt}> "
                         return HTML(my_prompt)

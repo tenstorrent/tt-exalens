@@ -128,6 +128,7 @@ class Device(TTObject):
         self.cluster_desc = cluster_desc
         self._init_coordinate_systems()
         self._firmware_version = util.FirmwareVersion(self._context.server_ifc.get_firmware_version(self._id))
+        self.unique_id = self._context.server_ifc.get_device_unique_id(self._id)
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
     def __noc_to_die(self, noc_loc, noc_id=0):

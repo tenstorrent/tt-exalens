@@ -66,9 +66,6 @@ file(CREATE_LINK "${CMAKE_BINARY_DIR}" "${BUILD_SYMLINK}" SYMBOLIC)
 file(REMOVE_RECURSE "${RISCV_SYMLINK}")
 file(CREATE_LINK "${CMAKE_SOURCE_DIR}/build_riscv" "${RISCV_SYMLINK}" SYMBOLIC)
 
-# Check for ZeroMQ
-include(${PROJECT_SOURCE_DIR}/cmake/ZeroMQ.cmake)
-
 # Include pybind custom functions
 include(${PROJECT_SOURCE_DIR}/cmake/pybind.cmake)
 

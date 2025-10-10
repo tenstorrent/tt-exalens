@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-# TODO: Try replacing socket with ZMQ. Ask GPT for example.
 import select
 import socket
 from ttexalens.gdb.gdb_data import GdbThreadId

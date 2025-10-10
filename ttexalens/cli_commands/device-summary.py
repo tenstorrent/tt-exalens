@@ -129,7 +129,10 @@ def run(cmd_text, context, ui_state: UIState):
     device: Device
     for device in dopt.for_each("--device", context, ui_state):
         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
-        util.INFO(f"==== Device {jtag_prompt}{device.id()}")
+        device_id_str = f"{device.id()}"
+        if device.unique_id is not None:
+            device_id_str += f" [0x{device.unique_id:x}]"
+        util.INFO(f"==== Device {jtag_prompt}{device_id_str}")
 
         # What to render in each cell
         cell_contents_array = [s.strip() for s in cell_contents.split(",")]
