@@ -137,6 +137,56 @@ class DebugBusSignalStore:
             raise ValueError(f"Unknown group name '{group_name}'. Available groups: {list(self.group_signals.keys())}")
         return self.group_signals[group_name]
 
+    def get_base_signal_name(self, signal_name: str) -> str:
+        """Extract base signal name from composite signal names like 'signal/0' or 'signal/1'."""
+        return signal_name.split('/')[0] if '/' in signal_name else signal_name
+
+    def is_composite_signal_part(self, signal_name: str) -> bool:
+        """Check if signal name indicates a composite signal part (ends with /number)."""
+        return '/' in signal_name
+
+    def group_composite_signals(self, signal_names: Iterable[str]) -> tuple[dict[str, list[str]], list[str]]:
+        """
+        Group composite signals by their base name and return both composite and simple signals.
+        
+        Returns:
+            tuple: (composite_signals_dict, simple_signals_list)
+            - composite_signals_dict: {base_name: [part_names]}
+            - simple_signals_list: [simple_signal_names]
+        """
+        composite_signals = {}
+        simple_signals = []
+        
+        for signal_name in signal_names:
+            if self.is_composite_signal_part(signal_name):
+                base_name = self.get_base_signal_name(signal_name)
+                if base_name not in composite_signals:
+                    composite_signals[base_name] = []
+                composite_signals[base_name].append(signal_name)
+            else:
+                simple_signals.append(signal_name)
+        
+        return composite_signals, simple_signals
+
+    def validate_l1_parameters(
+        self,
+        l1_address: int,
+        samples: int = 1,
+        sampling_interval: int = 2
+    ) -> None:
+        """Validate L1 sampling parameters and raise appropriate errors."""
+        if l1_address % 16 != 0:
+            raise ValueError(f"L1 address must be 16-byte aligned, got 0x{l1_address:x}")
+        
+        end_address = l1_address + (samples * L1_SAMPLE_SIZE_BYTES) - 1
+        if end_address >= L1_LOW_MEMORY_SIZE:
+            raise ValueError(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit")
+        
+        if samples > 1 and not (2 <= sampling_interval <= 256):
+            raise ValueError(
+                f"When samples > 1, sampling_interval must be between 2 and 256, but got {sampling_interval}"
+            )
+
     def _normalize_value(self, value: int, mask: int) -> int:
         """Shift value right to remove trailing zeros from mask"""
         return value >> (mask & -mask).bit_length() - 1
