@@ -15,6 +15,8 @@ from fuzzywuzzy import process, fuzz
 from sys import getsizeof
 
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.hardware.risc_debug import RiscDebug
 
 
 class FAKE_DIE(object):
@@ -223,11 +225,13 @@ class ELF:
 
         # Initialization
         device = location._device
+        private_memory: MemoryBlock | None = None
+        risc_debug: RiscDebug | None = None
+        word_size = 4
         if risc_name is not None:
             noc_block = device.get_block(location)
             risc_debug = noc_block.get_risc_debug(risc_name, neo_id)
             private_memory = risc_debug.get_data_private_memory()
-            word_size = 4
 
         def mem_reader(addr: int, size_bytes: int, elements_to_read: int) -> list[int]:
             if elements_to_read == 0:
@@ -238,7 +242,11 @@ class ELF:
             bytes_data: bytes | None = None
             if risc_name is not None:
                 # Check if address is in private memory
-                if private_memory.contains_private_address(addr):
+                if (
+                    private_memory is not None
+                    and risc_debug is not None
+                    and private_memory.contains_private_address(addr)
+                ):
                     # If number of bytes we want to read is not divisible by word size, we round that up to read 1 extra word
                     words_to_read = (size_bytes + word_size - 1) // word_size
 

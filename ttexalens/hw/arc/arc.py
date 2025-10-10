@@ -10,7 +10,7 @@ from ttexalens.tt_exalens_lib_utils import check_context
 from time import sleep
 
 
-def run_arc_core(mask: int, device_id: int = 0, context: Context = None):
+def run_arc_core(mask: int, device_id: int = 0, context: Context | None = None):
     """Runs the arc core specified by the mask.
 
     Args:
@@ -42,7 +42,7 @@ def run_arc_core(mask: int, device_id: int = 0, context: Context = None):
     arc_register_store.write_register("ARC_RESET_ARC_MISC_CNTL", current & ~0xF)
 
 
-def halt_arc_core(mask: int, device_id: int = 0, context: Context = None):
+def halt_arc_core(mask: int, device_id: int = 0, context: Context | None = None):
     """Halts the ARC core specified by the mask.
 
     Args:
@@ -72,7 +72,7 @@ def halt_arc_core(mask: int, device_id: int = 0, context: Context = None):
     arc_register_store.write_register("ARC_RESET_ARC_MISC_CNTL", current & ~0xF0)
 
 
-def set_udmiaxi_region(mem_type: str, device_id: int = 0, context: Context = None):
+def set_udmiaxi_region(mem_type: str, device_id: int = 0, context: Context | None = None):
     """Sets the UDMIAXI region to the specified memory type.
 
     Args:
@@ -102,7 +102,7 @@ def set_udmiaxi_region(mem_type: str, device_id: int = 0, context: Context = Non
     arc_register_store.write_register("ARC_RESET_ARC_UDMIAXI_REGION", base_addr)
 
 
-def trigger_fw_int(device_id: int = 0, context: Context = None) -> bool:
+def trigger_fw_int(device_id: int = 0, context: Context | None = None) -> bool:
     """
     Triggers a firmware interrupt on the specified device.
 
@@ -127,7 +127,7 @@ def trigger_fw_int(device_id: int = 0, context: Context = None) -> bool:
     return True
 
 
-def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context = None) -> None:
+def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context | None = None) -> None:
     """Loads the ARC firmware from the file into the device.
 
     Args:

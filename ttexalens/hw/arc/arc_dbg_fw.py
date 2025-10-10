@@ -22,7 +22,9 @@ DFW_MSG_SETUP_LOGGING = 0x3  # Calls dfw_setup_log_buffer(start_addr, size)
 DFW_MSG_SETUP_PMON = 0x4  # Calls dfw_setup_pmon(pmon_id, ro_id)
 
 
-def arc_dbg_fw_send_message(message, arg0: int = 0, arg1: int = 0, device_id: int = 0, context: Context = None) -> None:
+def arc_dbg_fw_send_message(
+    message, arg0: int = 0, arg1: int = 0, device_id: int = 0, context: Context | None = None
+) -> None:
     """Send a message to the ARC debug firmware.
 
     Args:
@@ -51,7 +53,7 @@ def arc_dbg_fw_send_message(message, arg0: int = 0, arg1: int = 0, device_id: in
     arc_register_store.write_register("ARC_RESET_SCRATCH2", message | 0xABCDEF00)
 
 
-def arc_dbg_fw_check_msg_loop_running(device_id: int = 0, context: Context = None):
+def arc_dbg_fw_check_msg_loop_running(device_id: int = 0, context: Context | None = None):
     """
     Send PING, check for PONG
     """
@@ -71,7 +73,7 @@ def arc_dbg_fw_check_msg_loop_running(device_id: int = 0, context: Context = Non
 
 
 def arc_dbg_fw_command(
-    command: str, tt_metal_arc_debug_buffer_size: int = 1024, device_id: int = 0, context: Context = None
+    command: str, tt_metal_arc_debug_buffer_size: int = 1024, device_id: int = 0, context: Context | None = None
 ) -> None:
     """
     Send a command to the ARC debug firmware. Available commands are "start", "stop", and "clear":
@@ -95,7 +97,9 @@ def arc_dbg_fw_command(
         arc_dbg_fw_send_message(DFW_MSG_SETUP_LOGGING, DFW_MSG_CLEAR_DRAM, DRAM_REGION_SIZE, device_id, context)
 
 
-def setup_pmon(pmon_id, ro_id, wait_for_l1_trigger, stop_on_flatline, device_id: int = 0, context: Context = None):
+def setup_pmon(
+    pmon_id, ro_id, wait_for_l1_trigger, stop_on_flatline, device_id: int = 0, context: Context | None = None
+):
     arg0 = pmon_id & 0xFF | (ro_id & 0xFF) << 8 | (wait_for_l1_trigger & 0xFF) << 16 | (stop_on_flatline & 0xFF) << 24
     print(
         f"Setting up PMON {pmon_id}, RO {ro_id}, wait_for_l1_trigger: {wait_for_l1_trigger}, stop_on_flatline: {stop_on_flatline} => {arg0:08x}"

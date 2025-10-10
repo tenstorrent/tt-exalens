@@ -68,7 +68,7 @@ class TensixDebug:
         self,
         core_loc: str | OnChipCoordinate,
         device_id: int,
-        context: Context = None,
+        context: Context | None = None,
     ) -> None:
         self.context = check_context(context)
         validate_device_id(device_id, self.context)
@@ -175,10 +175,11 @@ class TensixDebug:
             if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock)
             else None
         )
-        if num_tiles is None or num_tiles > max_num_tiles or num_tiles <= 0:
+        if num_tiles is None or (max_num_tiles is not None and num_tiles > max_num_tiles) or num_tiles <= 0:
             WARN(
                 f"Number of tiles given {num_tiles} is not valid, defaulting to maximum number of tiles {max_num_tiles}"
             )
+            assert max_num_tiles is not None
             return max_num_tiles
 
         return num_tiles
@@ -203,12 +204,12 @@ class TensixDebug:
         data: list[int] = []
         # Using TRISC0 debug hardware to read memory
         risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
-        if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
-            base_address = self.noc_block.dest.address.private_address
-            dest_size = self.noc_block.dest.size
-        else:
+        if not isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
             raise TTException("Direct dest reading not supported for this architecture.")
 
+        base_address = self.noc_block.dest.address.private_address
+        dest_size = self.noc_block.dest.size
+        assert base_address is not None
         with risc_debug.ensure_private_memory_access():
             for i in range(num_tiles * TILE_SIZE):
                 address = base_address + 4 * i
@@ -220,15 +221,13 @@ class TensixDebug:
 
     def direct_dest_write(self, data: list[int], df: TensixDataFormat) -> None:
         risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
-        if isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
-            base_address = self.noc_block.dest.address.private_address
-            dest_size = self.noc_block.dest.size
-        else:
+        if not isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
             raise TTException("Direct dest writing not supported for this architecture.")
-
+        dest_size = self.noc_block.dest.size
         if 4 * (len(data) - 1) >= dest_size:
             raise TTException(f"Data is to large to be written in destination memory block.")
-
+        base_address = self.noc_block.dest.address.private_address
+        assert base_address is not None
         with risc_debug.ensure_private_memory_access():
             for i in range(len(data)):
                 address = base_address + 4 * i

@@ -47,7 +47,7 @@ from ttexalens.object import DataArray
 from ttexalens import command_parser, util as util
 
 
-def run(cmd_text, context, ui_state: UIState = None):
+def run(cmd_text, context, ui_state: UIState):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],

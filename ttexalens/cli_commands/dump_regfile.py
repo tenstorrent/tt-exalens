@@ -53,7 +53,7 @@ def print_regfile(data: list[int | float] | list[str]) -> None:
             print()
 
 
-def run(cmd_text, context, ui_state: UIState = None):
+def run(cmd_text, context, ui_state: UIState):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
 
     core_loc_str = args["<core-loc>"]

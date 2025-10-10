@@ -40,7 +40,7 @@ def print_a_jtag_write(device_id, core_loc_str, addr, val, comment=""):
     print(f"device: {device_id} loc: {core_loc_str} 0x{addr:08x} ({addr}) <= 0x{val:08x} ({val:d})")
 
 
-def run(cmd_text, context, ui_state: UIState = None):
+def run(cmd_text, context, ui_state: UIState):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
 
     core_loc_str = args["<core-loc>"]

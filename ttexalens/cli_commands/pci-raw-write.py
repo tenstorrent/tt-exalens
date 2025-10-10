@@ -29,7 +29,7 @@ command_metadata = {
 }
 
 
-def run(cmd_text, context, ui_state: UIState = None):
+def run(cmd_text, context, ui_state: UIState):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
     addr = int(args["<addr>"], 0)
     data = int(args["<data>"], 0)
