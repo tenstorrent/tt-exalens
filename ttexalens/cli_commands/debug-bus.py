@@ -68,33 +68,22 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.uistate import UIState
 
 
-def _format_signal_value(value, is_composite_signal=False, use_l1_sampling=False):
+def _format_signal_value(value, is_composite_signal=False, use_l1_sampling=False, show_all_samples=False):
     """Format signal value for display with optional warning marker."""
     if isinstance(value, list):
-        # Multiple samples - show first sample for list view
-        return f"0x{value[0]:08x} ({len(value)} samples)"
+        if show_all_samples and len(value) > 1:
+            # Show all samples when requested
+            samples_str = ", ".join([f"0x{v:08x}" for v in value])
+            return f"[{samples_str}] ({len(value)} samples)"
+        else:
+            # Multiple samples - show first sample for list view
+            return f"0x{value[0]:08x} ({len(value)} samples)"
     else:
         formatted = f"0x{value:08x}"
         # Add warning marker for composite signals if not using L1 sampling
         if is_composite_signal and not use_l1_sampling:
             formatted += "**"
         return formatted
-
-
-def _read_signal_with_parameters(debug_bus_signal_store, signal_name, use_l1_sampling, l1_address, samples, sampling_interval):
-    """Read signal with L1 parameters if needed."""
-    if use_l1_sampling:
-        return debug_bus_signal_store.read_signal(
-            signal_name,
-            use_l1_sampling=True,
-            l1_address=l1_address,
-            samples=samples,
-            sampling_interval=sampling_interval
-        )
-    else:
-        return debug_bus_signal_store.read_signal(signal_name)
-
-
 
 
 
@@ -212,18 +201,36 @@ def handle_list_names_command(dopt, context, ui_state):
             
             # Add simple signals
             for name in simple_signals:
-                value = _read_signal_with_parameters(
-                    debug_bus_signal_store, name, use_l1_sampling, l1_address, samples, sampling_interval
+                value = debug_bus_signal_store.read_signal(
+                    name,
+                    use_l1_sampling=use_l1_sampling,
+                    l1_address=l1_address,
+                    samples=samples,
+                    sampling_interval=sampling_interval
                 )
-                formatted_value = _format_signal_value(value, is_composite_signal=False, use_l1_sampling=use_l1_sampling)
+                formatted_value = _format_signal_value(
+                    value, 
+                    is_composite_signal=False, 
+                    use_l1_sampling=use_l1_sampling,
+                    show_all_samples=use_l1_sampling and samples > 1
+                )
                 signal_data.append((name, formatted_value))
             
             # Add composite signals
             for base_name, part_names in composite_signals.items():
-                value = _read_signal_with_parameters(
-                    debug_bus_signal_store, base_name, use_l1_sampling, l1_address, samples, sampling_interval
+                value = debug_bus_signal_store.read_signal(
+                    base_name,
+                    use_l1_sampling=use_l1_sampling,
+                    l1_address=l1_address,
+                    samples=samples,
+                    sampling_interval=sampling_interval
                 )
-                formatted_value = _format_signal_value(value, is_composite_signal=True, use_l1_sampling=use_l1_sampling)
+                formatted_value = _format_signal_value(
+                    value, 
+                    is_composite_signal=True, 
+                    use_l1_sampling=use_l1_sampling,
+                    show_all_samples=use_l1_sampling and samples > 1
+                )
                 signal_data.append((base_name, formatted_value))
             
             # Sort by signal name for consistent display
@@ -282,18 +289,36 @@ def handle_list_groups_command(dopt, context, ui_state):
                         
                         # Add simple signals
                         for name in simple_signals:
-                            value = _read_signal_with_parameters(
-                                debug_bus_signal_store, name, use_l1_sampling, l1_address, samples, sampling_interval
+                            value = debug_bus_signal_store.read_signal(
+                                name,
+                                use_l1_sampling=use_l1_sampling,
+                                l1_address=l1_address,
+                                samples=samples,
+                                sampling_interval=sampling_interval
                             )
-                            formatted_value = _format_signal_value(value, is_composite_signal=False, use_l1_sampling=use_l1_sampling)
+                            formatted_value = _format_signal_value(
+                                value, 
+                                is_composite_signal=False, 
+                                use_l1_sampling=use_l1_sampling,
+                                show_all_samples=use_l1_sampling and samples > 1
+                            )
                             signal_data.append((name, formatted_value))
                         
                         # Add composite signals
                         for base_name, part_names in composite_signals.items():
-                            value = _read_signal_with_parameters(
-                                debug_bus_signal_store, base_name, use_l1_sampling, l1_address, samples, sampling_interval
+                            value = debug_bus_signal_store.read_signal(
+                                base_name,
+                                use_l1_sampling=use_l1_sampling,
+                                l1_address=l1_address,
+                                samples=samples,
+                                sampling_interval=sampling_interval
                             )
-                            formatted_value = _format_signal_value(value, is_composite_signal=True, use_l1_sampling=use_l1_sampling)
+                            formatted_value = _format_signal_value(
+                                value, 
+                                is_composite_signal=True, 
+                                use_l1_sampling=use_l1_sampling,
+                                show_all_samples=use_l1_sampling and samples > 1
+                            )
                             signal_data.append((base_name, formatted_value))
                         
                         # Sort by signal name for consistent display
