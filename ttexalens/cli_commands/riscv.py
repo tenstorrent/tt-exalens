@@ -179,7 +179,7 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
             risc.set_reset_signal(False)
 
 
-def run(cmd_text, context, ui_state: UIState = None):
+def run(cmd_text, context, ui_state: UIState):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],

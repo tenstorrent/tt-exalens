@@ -65,7 +65,7 @@ class TensixInstructions:
 # a specific device.
 #
 class Device(TTObject):
-    instructions: TensixInstructions = None
+    instructions: TensixInstructions
     DIE_X_TO_NOC_0_X: list[int] = []
     DIE_Y_TO_NOC_0_Y: list[int] = []
     NOC_0_X_TO_DIE_X: list[int] = []
@@ -301,7 +301,7 @@ class Device(TTObject):
         """
         Returns the type of block at the given location
         """
-        return self._noc0_to_block_type.get(loc._noc0_coord)
+        return self._noc0_to_block_type[loc._noc0_coord]
 
     # Returns a string representation of the device. When printed, the string will
     # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list
@@ -390,7 +390,7 @@ class Device(TTObject):
 
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         noc_id = 1 if self._context.use_noc1 else 0
-        return self._context.server_ifc.pci_read_tile(noc_id, self.id(), x, y, reg_addr, msg_size, data_format)
+        return self._context.server_ifc.pci_read_tile(noc_id, self._id, x, y, reg_addr, msg_size, data_format)
 
 
 # end of class Device
