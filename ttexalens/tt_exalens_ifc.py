@@ -110,7 +110,7 @@ class TTExaLensClientWrapper:
 
     def __getattr__(self, name):
         function = getattr(self.proxy, name)
-        return lambda *args, **kwargs: TTExaLensClientWrapper.convert_bytes(function(*args, **kwargs))
+        return lambda *args, **kwargs: function(*args, **kwargs)
 
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         """
@@ -120,12 +120,6 @@ class TTExaLensClientWrapper:
         data = self.proxy.get_binary_content(binary_path)
         binary_data = serpent.tobytes(data)
         return io.BytesIO(binary_data)
-
-    @staticmethod
-    def convert_bytes(data):
-        if isinstance(data, dict) and data.get("encoding") == "base64" and "data" in data:
-            return base64.b64decode(data["data"])
-        return data
 
 
 def connect_to_server(server_host="localhost", port=5555) -> TTExaLensCommunicator:

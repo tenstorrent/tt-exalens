@@ -68,7 +68,7 @@ class TestRemoteTTExaLens(unittest.TestCase):
             stream_content = stream.read(size).decode("utf-8")
             self.assertEqual(stream_content, "Hello, TTExaLens!")
 
-    def test_read_write_bytes(self):
+    def test_write_read_bytes(self):
         context = tt_exalens_init.init_ttexalens_remote()
         self.assertIsNotNone(context)
         self.assertIsInstance(context, Context)
@@ -84,6 +84,9 @@ class TestRemoteTTExaLens(unittest.TestCase):
 
         ret = lib.read_from_device(location, address, num_bytes=len(data), device_id=0, context=context)
         self.assertEqual(ret, data)
+
+        ret = lib.read_word_from_device(location, address, device_id=0, context=context)
+        self.assertEqual(ret, int.from_bytes(data, "little"))
 
 
 if __name__ == "__main__":
