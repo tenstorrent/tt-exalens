@@ -59,18 +59,12 @@ telemetry_tags_map: dict[str, int] = {
 
 
 class ArcBlock(NocBlock):
-    def __init__(
-        self, location: OnChipCoordinate, block_type: str
-    ):
+    def __init__(self, location: OnChipCoordinate, block_type: str):
         super().__init__(location, block_type)
 
     @cached_property
     def telemetry_tags(self) -> dict[str, int] | None:
-        return (
-            telemetry_tags_map
-            if self.location.device._firmware_version >= CUTOFF_FIRMWARE_VERSION
-            else None
-        )
+        return telemetry_tags_map if self.location.device._firmware_version >= CUTOFF_FIRMWARE_VERSION else None
 
     @cached_property
     def telemetry_tag_ids(self) -> set[int] | None:
