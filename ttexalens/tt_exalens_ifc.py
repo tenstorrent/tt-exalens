@@ -110,7 +110,7 @@ class TTExaLensClientWrapper:
 
     def __getattr__(self, name):
         function = getattr(self.proxy, name)
-        return lambda *args, **kwargs: TTExaLensClientWrapper.convert_bytes(function(*args, **kwargs))
+        return lambda *args, **kwargs: function(*args, **kwargs)
 
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         """
@@ -121,12 +121,6 @@ class TTExaLensClientWrapper:
         binary_data = serpent.tobytes(data)
         return io.BytesIO(binary_data)
 
-    @staticmethod
-    def convert_bytes(data):
-        if isinstance(data, dict) and data.get("encoding") == "base64" and "data" in data:
-            return base64.b64decode(data["data"])
-        return data
-
 
 def connect_to_server(server_host="localhost", port=5555) -> TTExaLensCommunicator:
     pyro_address = f"PYRO:communicator@{server_host}:{port}"
@@ -135,6 +129,8 @@ def connect_to_server(server_host="localhost", port=5555) -> TTExaLensCommunicat
     try:
         # We are returning a wrapper around the Pyro5 proxy to provide TTExaLensCommunicator-like behavior.
         # Since this is not a direct instance of TTExaLensCommunicator, mypy will warn; hence the ignore.
-        return TTExaLensClientWrapper(Pyro5.api.Proxy(pyro_address))  # type: ignore
+        proxy = Pyro5.api.Proxy(pyro_address)
+        proxy._pyroSerializer = "marshal"
+        return TTExaLensClientWrapper(proxy)  # type: ignore
     except:
         raise util.TTFatalException("Failed to connect to TTExaLens server.")
