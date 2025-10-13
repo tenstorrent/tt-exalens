@@ -115,12 +115,16 @@ class ElfLoader:
         Writes a block of bytes to a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
         the debug interface to write them.
         """
+        private_data_memory = self.risc_debug.get_data_private_memory()
+        private_code_memory = self.risc_debug.get_code_private_memory()
         if (
-            ElfLoader.__inside_private_memory(self.risc_debug.get_data_private_memory(), address)
-            and self.risc_debug.get_data_private_memory().address.noc_address is None
+            private_data_memory is not None
+            and ElfLoader.__inside_private_memory(private_data_memory, address)
+            and private_data_memory.address.noc_address is None
         ) or (
-            ElfLoader.__inside_private_memory(self.risc_debug.get_code_private_memory(), address)
-            and self.risc_debug.get_code_private_memory().address.noc_address is None
+            private_code_memory is not None
+            and ElfLoader.__inside_private_memory(private_code_memory, address)
+            and private_code_memory.address.noc_address is None
         ):
             # Use debug interface
             self.write_block_through_debug(address, data)
@@ -132,12 +136,16 @@ class ElfLoader:
         Reads a block of bytes from a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
         the debug interface to read them.
         """
+        private_data_memory = self.risc_debug.get_data_private_memory()
+        private_code_memory = self.risc_debug.get_code_private_memory()
         if (
-            ElfLoader.__inside_private_memory(self.risc_debug.get_data_private_memory(), address)
-            and self.risc_debug.get_data_private_memory().address.noc_address is None
+            private_data_memory is not None
+            and ElfLoader.__inside_private_memory(private_data_memory, address)
+            and private_data_memory.address.noc_address is None
         ) or (
-            ElfLoader.__inside_private_memory(self.risc_debug.get_code_private_memory(), address)
-            and self.risc_debug.get_code_private_memory().address.noc_address is None
+            private_code_memory is not None
+            and ElfLoader.__inside_private_memory(private_code_memory, address)
+            and private_code_memory.address.noc_address is None
         ):
             # Use debug interface
             return self.read_block_through_debug(address, byte_count)

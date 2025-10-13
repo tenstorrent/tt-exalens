@@ -173,12 +173,15 @@ class OnChipCoordinate:
 
     # Which axis is used to advance in the horizontal direction when rendering the chip
     # For X-Y coordinates, this is the X, for R,C coordinates, this is the C.
+    @staticmethod
     def horizontal_axis(coord_type):
         return 0
 
+    @staticmethod
     def vertical_axis(coord_type):
         return 1 - OnChipCoordinate.horizontal_axis(coord_type)
 
+    @staticmethod
     def vertical_axis_increasing_up(coord_type):
         return False
 

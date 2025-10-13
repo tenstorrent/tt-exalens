@@ -92,13 +92,11 @@ def read_word_from_device(
     noc_id = check_noc_id(noc_id, context)
 
     if coordinate.device._has_jtag:
-        word = context.server_ifc.jtag_read32(
-            noc_id, coordinate.device_id, *context.convert_loc_to_jtag(coordinate), addr
-        )
+        noc_loc = context.convert_loc_to_jtag(coordinate)
+        word = context.server_ifc.jtag_read32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr)
     else:
-        word = context.server_ifc.pci_read32(
-            noc_id, coordinate.device_id, *context.convert_loc_to_umd(coordinate), addr
-        )
+        noc_loc = context.convert_loc_to_umd(coordinate)
+        word = context.server_ifc.pci_read32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr)
     return word
 
 
@@ -135,14 +133,14 @@ def read_words_from_device(
     if coordinate.device._has_jtag:
         data = []
         for i in range(word_count):
-            word = context.server_ifc.jtag_read32(
-                noc_id, coordinate.device_id, *context.convert_loc_to_jtag(coordinate), addr + 4 * i
-            )
+            noc_loc = context.convert_loc_to_jtag(coordinate)
+            word = context.server_ifc.jtag_read32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr + 4 * i)
             data.append(word)
         return data
     else:
+        noc_loc = context.convert_loc_to_umd(coordinate)
         bytes_data = context.server_ifc.pci_read(
-            noc_id, coordinate.device_id, *context.convert_loc_to_umd(coordinate), addr, 4 * word_count
+            noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, 4 * word_count
         )
         data = list(struct.unpack(f"<{word_count}I", bytes_data))
     return data
@@ -184,9 +182,8 @@ def read_from_device(
         )
         return struct.pack(f"{len(int_array)}I", *int_array)[:num_bytes]
 
-    return context.server_ifc.pci_read(
-        noc_id, coordinate.device_id, *context.convert_loc_to_umd(coordinate), addr, num_bytes
-    )
+    noc_loc = context.convert_loc_to_umd(coordinate)
+    return context.server_ifc.pci_read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, num_bytes)
 
 
 def write_words_to_device(
@@ -219,26 +216,24 @@ def write_words_to_device(
 
     if isinstance(data, int):
         if coordinate.device._has_jtag:
-            return context.server_ifc.jtag_write32(
-                noc_id, coordinate.device_id, *context.convert_loc_to_jtag(coordinate), addr, data
-            )
+            noc_loc = context.convert_loc_to_jtag(coordinate)
+            return context.server_ifc.jtag_write32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
         else:
-            return context.server_ifc.pci_write32(
-                noc_id, coordinate.device_id, *context.convert_loc_to_umd(coordinate), addr, data
-            )
+            noc_loc = context.convert_loc_to_umd(coordinate)
+            return context.server_ifc.pci_write32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
 
     if coordinate.device._has_jtag:
+        noc_loc = context.convert_loc_to_jtag(coordinate)
         bytes_written = 0
         for i, word in enumerate(data):
             bytes_written += context.server_ifc.jtag_write32(
-                noc_id, coordinate.device_id, *context.convert_loc_to_jtag(coordinate), addr + i * 4, word
+                noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr + i * 4, word
             )
         return bytes_written
     else:
         byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-        return context.server_ifc.pci_write(
-            noc_id, coordinate.device_id, *context.convert_loc_to_umd(coordinate), addr, byte_data
-        )
+        noc_loc = context.convert_loc_to_umd(coordinate)
+        return context.server_ifc.pci_write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data)
 
 
 def write_to_device(
@@ -285,9 +280,8 @@ def write_to_device(
             )
         return len(data)
 
-    return context.server_ifc.pci_write(
-        noc_id, coordinate.device_id, *context.convert_loc_to_umd(coordinate), addr, data
-    )
+    noc_loc = context.convert_loc_to_umd(coordinate)
+    return context.server_ifc.pci_write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
 
 
 def load_elf(
