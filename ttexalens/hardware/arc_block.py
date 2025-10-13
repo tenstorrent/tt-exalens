@@ -71,14 +71,10 @@ class ArcBlock(NocBlock):
             if self.location.device._firmware_version >= CUTOFF_FIRMWARE_VERSION
             else None
         )
-<<<<<<< HEAD
 
     @cached_property
     def telemetry_tag_ids(self) -> set[int] | None:
         return set(self.telemetry_tags.values()) if self.telemetry_tags else None
-=======
-        self.telemetry_tag_ids: set[int] | None = set(telemetry_tags.values()) if self.telemetry_tags else None
->>>>>>> origin/main
 
     def has_telemetry_tag_id(self, tag_id: int) -> bool:
         """Returns the keys of the ARC telemetry tags map."""
