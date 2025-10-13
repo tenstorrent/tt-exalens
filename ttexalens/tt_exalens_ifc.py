@@ -135,6 +135,8 @@ def connect_to_server(server_host="localhost", port=5555) -> TTExaLensCommunicat
     try:
         # We are returning a wrapper around the Pyro5 proxy to provide TTExaLensCommunicator-like behavior.
         # Since this is not a direct instance of TTExaLensCommunicator, mypy will warn; hence the ignore.
-        return TTExaLensClientWrapper(Pyro5.api.Proxy(pyro_address))  # type: ignore
+        proxy = Pyro5.api.Proxy(pyro_address)
+        proxy._pyroSerializer = "marshal"
+        return TTExaLensClientWrapper(proxy)  # type: ignore
     except:
         raise util.TTFatalException("Failed to connect to TTExaLens server.")
