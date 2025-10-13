@@ -27,7 +27,7 @@ command_metadata = {
 }
 
 
-def run(cmd_text, context, ui_state: UIState = None):
+def run(cmd_text, context, ui_state: UIState):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
     addr = int(args["<addr>"], 0)
     pci_read_result = context.server_ifc.pci_read32_raw(ui_state.current_device_id, addr)

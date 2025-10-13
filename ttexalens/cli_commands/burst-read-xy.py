@@ -41,13 +41,13 @@ from docopt import docopt
 from ttexalens.uistate import UIState
 
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.tt_exalens_lib import read_words_from_device, read_from_device
+from ttexalens.tt_exalens_lib import read_words_from_device, read_word_from_device
 from ttexalens.firmware import ELF
 from ttexalens.object import DataArray
 from ttexalens import command_parser, util as util
 
 
-def run(cmd_text, context, ui_state: UIState = None):
+def run(cmd_text, context, ui_state: UIState):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
@@ -125,16 +125,14 @@ def print_a_pci_burst_read(
         da.data = data
         if bytes_per_entry != 4:
             da.to_bytes_per_entry(bytes_per_entry)
-        formated = f"{da._id}\n" + util.dump_memory(addr, da.data, bytes_per_entry, 16, is_hex)
-        print(formated)
+        print(f"{da._id}\n{util.dump_memory(addr, da.data, bytes_per_entry, 16, is_hex)}")
     else:
         for i in range(word_count):
             values = {}
             print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
             t_end = time.time() + sample / word_count
             while time.time() < t_end:
-                val = read_from_device(core_loc, addr, device_id, context=context)
-                val = int.from_bytes(val, byteorder="little")
+                val = read_word_from_device(core_loc, addr + 4 * i, device_id, context=context)
                 if val not in values:
                     values[val] = 0
                 values[val] += 1

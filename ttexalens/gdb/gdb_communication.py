@@ -8,7 +8,7 @@ from ttexalens import util as util
 
 # Simple class that wraps reading/writing to a socket
 class ClientSocket:
-    def __init__(self, socket: socket.socket = None, packet_size: int = None):
+    def __init__(self, socket: socket.socket | None = None, packet_size: int | None = None):
         self.socket = socket
         self.packet_size = packet_size if packet_size is not None else 2048
 
@@ -31,16 +31,19 @@ class ClientSocket:
         return False
 
     def peek(self, packet_size=1):
+        assert self.socket is not None
         if packet_size is None:
             packet_size = self.packet_size
         return self.socket.recv(packet_size, socket.MSG_PEEK)
 
     def read(self, packet_size=None):
+        assert self.socket is not None
         if packet_size is None:
             packet_size = self.packet_size
         return self.socket.recv(packet_size)
 
     def write(self, data: bytes):
+        assert self.socket is not None
         self.socket.send(data)
 
 
@@ -48,8 +51,8 @@ class ClientSocket:
 class ServerSocket:
     def __init__(self, port: int):
         self.port = port
-        self.server: socket.socket = None
-        self.connection: socket.socket = None
+        self.server: socket.socket | None = None
+        self.connection: socket.socket | None = None
 
     def __del__(self):
         self.close()
@@ -61,7 +64,8 @@ class ServerSocket:
             self.server.bind(("localhost", self.port))
             self.server.listen(1)
 
-    def accept(self, timeout: float = None):
+    def accept(self, timeout: float | None = None):
+        assert self.server is not None
         self.server.settimeout(timeout)
         try:
             self.connection, _ = self.server.accept()

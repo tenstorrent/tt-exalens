@@ -38,7 +38,7 @@ def print_a_jtag_axi_read(device_id, addr, val, comment=""):
     print(f"device: {device_id} (AXI) 0x{addr:08x} ({addr}) = 0x{val:08x} ({val:d})")
 
 
-def run(cmd_text, context, ui_state: UIState = None):
+def run(cmd_text, context, ui_state: UIState):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
 
     addr = int(args["<addr>"], 0)
