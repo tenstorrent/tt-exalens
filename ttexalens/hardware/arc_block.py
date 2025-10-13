@@ -2,6 +2,8 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from functools import cached_property
+
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.util import FirmwareVersion, TTException
@@ -57,14 +59,16 @@ telemetry_tags_map: dict[str, int] = {
 
 
 class ArcBlock(NocBlock):
-    def __init__(
-        self, location: OnChipCoordinate, block_type: str, telemetry_tags: dict[str, int] = telemetry_tags_map
-    ):
+    def __init__(self, location: OnChipCoordinate, block_type: str):
         super().__init__(location, block_type)
-        self.telemetry_tags = (
-            telemetry_tags if self.location.device._firmware_version >= CUTOFF_FIRMWARE_VERSION else None
-        )
-        self.telemetry_tag_ids: set[int] | None = set(telemetry_tags.values()) if self.telemetry_tags else None
+
+    @cached_property
+    def telemetry_tags(self) -> dict[str, int] | None:
+        return telemetry_tags_map if self.location.device._firmware_version >= CUTOFF_FIRMWARE_VERSION else None
+
+    @cached_property
+    def telemetry_tag_ids(self) -> set[int] | None:
+        return set(self.telemetry_tags.values()) if self.telemetry_tags else None
 
     def has_telemetry_tag_id(self, tag_id: int) -> bool:
         """Returns the keys of the ARC telemetry tags map."""
