@@ -180,7 +180,6 @@ def parse_group_names(group_string):
     if not group_string:
         return []
 
-    # Simple split for group names (no complex {num,num,num} format needed)
     group_names = [name.strip() for name in group_string.split(",")]
     # Remove empty strings
     return [name for name in group_names if name]
