@@ -9,6 +9,7 @@
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/unique_ptr.h>
 #include <nanobind/stl/vector.h>
+#include <new_umd_implementation.h>
 #include <open_implementation.h>
 #include <umd_implementation.h>
 
@@ -150,8 +151,11 @@ std::unique_ptr<TTExaLensImplementation> open_device(const std::string &binary_d
         impl = tt::exalens::open_implementation<tt::exalens::jtag_implementation>::open(
             binary_directory, wanted_devices, initialize_with_noc1);
     } else {
-        impl = tt::exalens::open_implementation<tt::exalens::umd_implementation>::open(binary_directory, wanted_devices,
-                                                                                       initialize_with_noc1);
+        impl = std::make_unique<tt::exalens::new_umd_implementation>(binary_directory, wanted_devices,
+                                                                     initialize_with_noc1);
+        // impl = tt::exalens::open_implementation<tt::exalens::umd_implementation>::open(binary_directory,
+        // wanted_devices,
+        //                                                                                initialize_with_noc1);
     }
     if (!impl) {
         return nullptr;
