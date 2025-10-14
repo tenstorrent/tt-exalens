@@ -4,7 +4,7 @@
 """
 Usage:
   debug-bus list-names [-v] [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s] [--l1-address <addr> [--samples <num>] [--sampling-interval <cycles>]]
-  debug-bus list-groups [-v] [-d <device>] [-l <loc>] [--search <pattern>] [--group <group-name>] [-s] [--l1-address <addr> [--samples <num>] [--sampling-interval <cycles>]]
+  debug-bus list-groups [-v] [--search <pattern>] [-s]
   debug-bus [<signals>] [-v] [-d <device>] [-l <loc>] [--l1-address <addr> [--samples <num>] [--sampling-interval <cycles>]] [--group <group-name>]
 
 Options:
@@ -26,7 +26,6 @@ Description:
     - list-names:    List all predefined debug bus signal names.
         --search:
     - list-groups:   List all debug bus signal groups or signals in a specific group.
-        --group:     Show signals in a specific group
         --search:    Search for groups by pattern (in wildcard format)
     - [<signals>]:   List of signals described by signal name or signal description.
         <signal-description>: {DaisyId,RDSel,SigSel,Mask}
@@ -68,23 +67,36 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.uistate import UIState
 
 
-def _format_signal_value(value, is_composite_signal=False, use_l1_sampling=False, show_all_samples=False):
-    """Format signal value for display with optional warning marker."""
+def _format_signal_value(value, is_composite_signal=False, use_l1_sampling=False, show_all_samples=False, signal_desc=None):
+    """
+    Format signal value for display:
+    - 1-bit signals as True/False
+    - others as 0x... (no leading zeros)
+    """
+    def is_single_bit(mask):
+        return mask is not None and (mask & (mask - 1)) == 0
+
+    if signal_desc is not None:
+        mask = signal_desc.mask
+        if is_single_bit(mask):
+            # Always display 1-bit signals as True/False
+            if isinstance(value, list):
+                samples_str = ", ".join(["True" if v else "False" for v in value]) if show_all_samples and len(value) > 1 else ("True" if value[0] else "False")
+                return f"[{samples_str}]" if show_all_samples and len(value) > 1 else samples_str
+            else:
+                return "True" if value else "False"
+
+    def hex_width(val):
+        return f"0x{val:x}"
+
     if isinstance(value, list):
-        if show_all_samples and len(value) > 1:
-            # Show all samples when requested
-            samples_str = ", ".join([f"0x{v:08x}" for v in value])
-            return f"[{samples_str}] ({len(value)} samples)"
-        else:
-            # Multiple samples - show first sample for list view
-            return f"0x{value[0]:08x} ({len(value)} samples)"
+        samples_str = ", ".join([hex_width(v) for v in value]) if show_all_samples and len(value) > 1 else hex_width(value[0])
+        return f"[{samples_str}]" if show_all_samples and len(value) > 1 else samples_str
     else:
-        formatted = f"0x{value:08x}"
-        # Add warning marker for composite signals if not using L1 sampling
+        formatted = hex_width(value)
         if is_composite_signal and not use_l1_sampling:
             formatted += "**"
         return formatted
-
 
 
 def parse_string(input_string):
@@ -133,12 +145,13 @@ def parse_command_arguments(args):
         ValueError: If a signal list has an invalid format that prevents the creation of
                     a `DebugBusSignalDescription` object.
     """
-    if not (args.get("<signals>")):
+    print(args["<signals>"])
+    if not (args["<signals>"]):
         raise ValueError("Missing debug bus signal parameter")
 
     result: list[str | DebugBusSignalDescription] = []
 
-    signals = parse_string(args.get("<signals>"))
+    signals = parse_string(args["<signals>"])
 
     for item in signals:
         if isinstance(item, str):  # It's a string
@@ -164,8 +177,52 @@ def parse_group_names(group_string):
     return [name for name in group_names if name]
 
 
+def collect_signal_data(debug_bus_signal_store, signal_names, use_l1_sampling, l1_address, samples, sampling_interval):
+    """Helper to read and format all signals (simple and composite) for display."""
+    composite_signals, simple_signals = debug_bus_signal_store.group_composite_signals(signal_names)
+    signal_data = []
+
+    # Simple signals
+    for name in simple_signals:
+        value = debug_bus_signal_store.read_signal(
+            name,
+            use_l1_sampling=use_l1_sampling,
+            l1_address=l1_address,
+            samples=samples,
+            sampling_interval=sampling_interval
+        )
+        formatted_value = _format_signal_value(
+            value,
+            is_composite_signal=False,
+            use_l1_sampling=use_l1_sampling,
+            show_all_samples=use_l1_sampling and samples > 1,
+            signal_desc=debug_bus_signal_store.signals.get(name, None)
+        )
+        signal_data.append((name, formatted_value))
+
+    # Composite signals
+    for base_name, part_names in composite_signals.items():
+        value = debug_bus_signal_store.read_signal(
+            base_name,
+            use_l1_sampling=use_l1_sampling,
+            l1_address=l1_address,
+            samples=samples,
+            sampling_interval=sampling_interval
+        )
+        formatted_value = _format_signal_value(
+            value,
+            is_composite_signal=True,
+            use_l1_sampling=use_l1_sampling,
+            show_all_samples=use_l1_sampling and samples > 1,
+            signal_desc=debug_bus_signal_store.signals.get(base_name, None)
+        )
+        signal_data.append((base_name, formatted_value))
+
+    signal_data.sort(key=lambda x: x[0])
+    return signal_data, composite_signals
+
+
 def handle_list_names_command(dopt, context, ui_state):
-    """Handle the list-names command - list all signal names with optional search."""
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             noc_block = device.get_block(loc)
@@ -176,10 +233,8 @@ def handle_list_names_command(dopt, context, ui_state):
             if not debug_bus_signal_store:
                 util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
                 continue
-            
-            names = debug_bus_signal_store.get_signal_names()
 
-            # Apply search filter if provided
+            names = debug_bus_signal_store.get_signal_names()
             if dopt.args["--search"]:
                 max = dopt.args["--max"] if dopt.args["--max"] else 10
                 names = search(list(names), dopt.args["--search"], max)
@@ -187,56 +242,15 @@ def handle_list_names_command(dopt, context, ui_state):
                     print("No matches found.")
                     return []
 
-            # Group composite signals and simple signals
-            composite_signals, simple_signals = debug_bus_signal_store.group_composite_signals(names)
-            
-            # Read signal values and convert to list of tuples
-            signal_data = []
-            
-            # Check if L1 sampling is enabled
             use_l1_sampling = dopt.args["--l1-address"] is not None
             l1_address = int(dopt.args["--l1-address"], 0) if use_l1_sampling else None
             samples = int(dopt.args["--samples"]) if dopt.args["--samples"] else 1
             sampling_interval = int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
-            
-            # Add simple signals
-            for name in simple_signals:
-                value = debug_bus_signal_store.read_signal(
-                    name,
-                    use_l1_sampling=use_l1_sampling,
-                    l1_address=l1_address,
-                    samples=samples,
-                    sampling_interval=sampling_interval
-                )
-                formatted_value = _format_signal_value(
-                    value, 
-                    is_composite_signal=False, 
-                    use_l1_sampling=use_l1_sampling,
-                    show_all_samples=use_l1_sampling and samples > 1
-                )
-                signal_data.append((name, formatted_value))
-            
-            # Add composite signals
-            for base_name, part_names in composite_signals.items():
-                value = debug_bus_signal_store.read_signal(
-                    base_name,
-                    use_l1_sampling=use_l1_sampling,
-                    l1_address=l1_address,
-                    samples=samples,
-                    sampling_interval=sampling_interval
-                )
-                formatted_value = _format_signal_value(
-                    value, 
-                    is_composite_signal=True, 
-                    use_l1_sampling=use_l1_sampling,
-                    show_all_samples=use_l1_sampling and samples > 1
-                )
-                signal_data.append((base_name, formatted_value))
-            
-            # Sort by signal name for consistent display
-            signal_data.sort(key=lambda x: x[0])
-            
-            # Display results in formatted table
+
+            signal_data, composite_signals = collect_signal_data(
+                debug_bus_signal_store, names, use_l1_sampling, l1_address, samples, sampling_interval
+            )
+
             formatter.print_header(f"=== Device {device._id} - location {loc.to_str('logical')})", style="bold")
             if not use_l1_sampling and composite_signals:
                 formatter.print_header("** Composite signals marked with ** - use L1 sampling for consistent reads")
@@ -264,72 +278,28 @@ def handle_list_groups_command(dopt, context, ui_state):
                 continue
 
             if dopt.args["--group"]:
-                # Show signals in specified group(s)
                 group_names = parse_group_names(dopt.args["--group"])
                 if not group_names:
                     util.ERROR("No valid group names provided.")
                     continue
-                
-                # Process each group
+
                 for group_name in group_names:
                     try:
                         signal_names = debug_bus_signal_store.get_signals_in_group(group_name)
-                        
-                        # Group composite signals and simple signals
-                        composite_signals, simple_signals = debug_bus_signal_store.group_composite_signals(signal_names)
-                        
-                        # Read signal values and convert to list of tuples
-                        signal_data = []
-                        
-                        # Check if L1 sampling is enabled
                         use_l1_sampling = dopt.args["--l1-address"] is not None
                         l1_address = int(dopt.args["--l1-address"], 0) if use_l1_sampling else None
                         samples = int(dopt.args["--samples"]) if dopt.args["--samples"] else 1
                         sampling_interval = int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
-                        
-                        # Add simple signals
-                        for name in simple_signals:
-                            value = debug_bus_signal_store.read_signal(
-                                name,
-                                use_l1_sampling=use_l1_sampling,
-                                l1_address=l1_address,
-                                samples=samples,
-                                sampling_interval=sampling_interval
-                            )
-                            formatted_value = _format_signal_value(
-                                value, 
-                                is_composite_signal=False, 
-                                use_l1_sampling=use_l1_sampling,
-                                show_all_samples=use_l1_sampling and samples > 1
-                            )
-                            signal_data.append((name, formatted_value))
-                        
-                        # Add composite signals
-                        for base_name, part_names in composite_signals.items():
-                            value = debug_bus_signal_store.read_signal(
-                                base_name,
-                                use_l1_sampling=use_l1_sampling,
-                                l1_address=l1_address,
-                                samples=samples,
-                                sampling_interval=sampling_interval
-                            )
-                            formatted_value = _format_signal_value(
-                                value, 
-                                is_composite_signal=True, 
-                                use_l1_sampling=use_l1_sampling,
-                                show_all_samples=use_l1_sampling and samples > 1
-                            )
-                            signal_data.append((base_name, formatted_value))
-                        
-                        # Sort by signal name for consistent display
-                        signal_data.sort(key=lambda x: x[0])
-                        
-                        # Display group signals in formatted table
+
+                        signal_data, composite_signals = collect_signal_data(
+                            debug_bus_signal_store, signal_names, use_l1_sampling, l1_address, samples, sampling_interval
+                        )
+
                         if len(group_names) == 1:
                             header = f"=== Device {device._id} - location {loc.to_str('logical')} - Group: {group_name} ==="
                         else:
                             header = f"=== Device {device._id} - location {loc.to_str('logical')} - Group: {group_name} ({group_names.index(group_name) + 1}/{len(group_names)}) ==="
-                        
+
                         formatter.print_header(header, style="bold")
                         if not use_l1_sampling and composite_signals:
                             formatter.print_header("** Composite signals marked with ** - use L1 sampling for consistent reads")
@@ -340,38 +310,28 @@ def handle_list_groups_command(dopt, context, ui_state):
                             [["Signals"]],
                             simple_print=dopt.args["--simple"],
                         )
-                        
-                        # Add spacing between groups if multiple groups
+
                         if len(group_names) > 1 and group_names.index(group_name) < len(group_names) - 1:
-                            print()  
-                            
+                            print()
                     except ValueError as e:
                         util.ERROR(f"Error processing group '{group_name}': {e}")
                         continue
-                    
+
             else:
-                # List all groups with their signal counts
                 group_names = list(debug_bus_signal_store.get_group_names())
-                
-                # Apply search filter if provided
                 if dopt.args["--search"]:
-                    max = dopt.args["--max"] if dopt.args["--max"] else 10
-                    group_names = search(group_names, dopt.args["--search"], max)
+                    max_results = dopt.args["--max"] if dopt.args["--max"] else 10
+                    group_names = search(group_names, dopt.args["--search"], max_results)
                     if len(group_names) == 0:
                         print("No groups found matching the pattern.")
                         return []
-                
-                # Create group data with signal counts
-                group_data = []
-                for group_name in group_names:
-                    signal_count = len(debug_bus_signal_store.get_signals_in_group(group_name))
-                    group_data.append((group_name, str(signal_count)))
-                
-                # Display groups in formatted table
+
+                group_data = [(group_name,) for group_name in group_names]
+
                 formatter.print_header(f"=== Device {device._id} - location {loc.to_str('logical')} - Signal Groups ===", style="bold")
                 formatter.display_grouped_data(
                     {"Groups": group_data},
-                    [("Group Name", ""), ("Signal Count", "")],
+                    [("Group Name", "")],
                     [["Groups"]],
                     simple_print=dopt.args["--simple"],
                 )
@@ -380,6 +340,47 @@ def handle_list_groups_command(dopt, context, ui_state):
 
 def handle_signal_reading_command(dopt, context, ui_state):
     """Handle signal reading commands - read specific signals with optional L1 sampling."""
+    if not dopt.args["<signals>"] and dopt.args["--group"]:
+        group_names = parse_group_names(dopt.args["--group"])
+        for device in dopt.for_each("--device", context, ui_state):
+            for loc in dopt.for_each("--loc", context, ui_state, device=device):
+                noc_block = device.get_block(loc)
+                if not noc_block:
+                    util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a NOC block.")
+                    continue
+                debug_bus_signal_store = noc_block.debug_bus
+                if not debug_bus_signal_store:
+                    util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
+                    continue
+                for group_name in group_names:
+                    try:
+                        signal_names = debug_bus_signal_store.get_signals_in_group(group_name)
+                        use_l1_sampling = dopt.args["--l1-address"] is not None
+                        l1_address = int(dopt.args["--l1-address"], 0) if use_l1_sampling else None
+                        samples = int(dopt.args["--samples"]) if dopt.args["--samples"] else 1
+                        sampling_interval = int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
+
+                        signal_data, composite_signals = collect_signal_data(
+                            debug_bus_signal_store, signal_names, use_l1_sampling, l1_address, samples, sampling_interval
+                        )
+
+                        header = f"=== Device {device._id} - location {loc.to_str('logical')} - Group: {group_name} ==="
+                        formatter.print_header(header, style="bold")
+                        if not use_l1_sampling and composite_signals:
+                            formatter.print_header("** Composite signals marked with ** - use L1 sampling for consistent reads")
+                        formatter.display_grouped_data(
+                            {"Signals": signal_data},
+                            [("Name", ""), ("Value", "")],
+                            [["Signals"]],
+                            simple_print=dopt.args["--simple"],
+                        )
+                        if len(group_names) > 1 and group_names.index(group_name) < len(group_names) - 1:
+                            print()
+                    except ValueError as e:
+                        util.ERROR(f"Error processing group '{group_name}': {e}")
+                        continue
+        return []
+
     signals = parse_command_arguments(dopt.args)
 
     for device in dopt.for_each("--device", context, ui_state):
@@ -392,27 +393,22 @@ def handle_signal_reading_command(dopt, context, ui_state):
             if not debug_bus_signal_store:
                 util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
                 continue
-            
+
             where = f"device:{device._id} loc:{loc.to_user_str()} "
-            
-            # Get composite signals to check for warnings
             composite_signals, _ = debug_bus_signal_store.group_composite_signals(debug_bus_signal_store.get_signal_names())
-            
-            # Process each signal
+
             for signal in signals:
                 try:
-                    # Check if this is a composite signal and warn if not using L1 sampling
                     if isinstance(signal, str) and signal in composite_signals and not dopt.args["--l1-address"]:
                         util.WARN(f"Signal '{signal}' is a composite signal. For consistent reading, use L1 sampling mode (--l1-address).")
-                    
+
                     if dopt.args["--l1-address"]:
                         value = _read_signal_with_l1_sampling(dopt, debug_bus_signal_store, signal)
                     else:
-                        # Direct register read mode
                         value = debug_bus_signal_store.read_signal(signal=signal)
 
                     _display_signal_value(where, signal, value)
-                        
+
                 except ValueError as e:
                     util.ERROR(f"Error reading signal '{signal}': {e}")
                     continue
@@ -469,7 +465,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     # Route to appropriate handler based on command
     if dopt.args["list-names"]:
         return handle_list_names_command(dopt, context, ui_state)
-    elif dopt.args["list-groups"] or dopt.args["--group"]:
+    elif dopt.args["list-groups"]:
         return handle_list_groups_command(dopt, context, ui_state)
     else:
         return handle_signal_reading_command(dopt, context, ui_state)

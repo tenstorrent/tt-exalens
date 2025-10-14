@@ -154,8 +154,8 @@ class DebugBusSignalStore:
             - composite_signals_dict: {base_name: [part_names]}
             - simple_signals_list: [simple_signal_names]
         """
-        composite_signals = {}
-        simple_signals = []
+        composite_signals: dict[str, list[str]] = {}
+        simple_signals: list[str] = []
         
         for signal_name in signal_names:
             if self.is_composite_signal_part(signal_name):
