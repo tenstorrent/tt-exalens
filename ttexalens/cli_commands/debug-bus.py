@@ -12,10 +12,10 @@ Options:
     --search <pattern>                  Search for signals by pattern (in wildcard format).
     --max <max-sigs>                    Limit --search output (default: 10, use --max "all" to print all matches).
     --group <group-names>               List signals in the specified group(s). Multiple groups can be separated by commas.
-    --l1-address <addr>                 Byte address in L1 memory for L1 sampling mode. Must be 16-byte aligned. 
-                                        When specified, enables L1 sampling mode which triggers a 128-bit capture 
+    --l1-address <addr>                 Byte address in L1 memory for L1 sampling mode. Must be 16-byte aligned.
+                                        When specified, enables L1 sampling mode which triggers a 128-bit capture
                                         of the signal into the core's L1 memory instead of a direct 32-bit register read.
-                                        Each sample occupies 16 bytes (128 bits) in L1 memory. All samples must fit within 
+                                        Each sample occupies 16 bytes (128 bits) in L1 memory. All samples must fit within
                                         the first 1 MiB of L1 memory (0x0 - 0xFFFFF).
     --samples <num>                     (L1-sampling mode only) Number of 128-bit samples to capture. [default: 1].
     --sampling-interval <cycles>        (L1-sampling mode only) When samples > 1, this sets the delay in clock cycles
@@ -67,12 +67,15 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.uistate import UIState
 
 
-def _format_signal_value(value, is_composite_signal=False, use_l1_sampling=False, show_all_samples=False, signal_desc=None):
+def _format_signal_value(
+    value, is_composite_signal=False, use_l1_sampling=False, show_all_samples=False, signal_desc=None
+):
     """
     Format signal value for display:
     - 1-bit signals as True/False
     - others as 0x... (no leading zeros)
     """
+
     def is_single_bit(mask):
         return mask is not None and (mask & (mask - 1)) == 0
 
@@ -81,7 +84,11 @@ def _format_signal_value(value, is_composite_signal=False, use_l1_sampling=False
         if is_single_bit(mask):
             # Always display 1-bit signals as True/False
             if isinstance(value, list):
-                samples_str = ", ".join(["True" if v else "False" for v in value]) if show_all_samples and len(value) > 1 else ("True" if value[0] else "False")
+                samples_str = (
+                    ", ".join(["True" if v else "False" for v in value])
+                    if show_all_samples and len(value) > 1
+                    else ("True" if value[0] else "False")
+                )
                 return f"[{samples_str}]" if show_all_samples and len(value) > 1 else samples_str
             else:
                 return "True" if value else "False"
@@ -90,7 +97,9 @@ def _format_signal_value(value, is_composite_signal=False, use_l1_sampling=False
         return f"0x{val:x}"
 
     if isinstance(value, list):
-        samples_str = ", ".join([hex_width(v) for v in value]) if show_all_samples and len(value) > 1 else hex_width(value[0])
+        samples_str = (
+            ", ".join([hex_width(v) for v in value]) if show_all_samples and len(value) > 1 else hex_width(value[0])
+        )
         return f"[{samples_str}]" if show_all_samples and len(value) > 1 else samples_str
     else:
         formatted = hex_width(value)
@@ -103,7 +112,7 @@ def parse_string(input_string):
     """Parse input string to extract signal descriptions and signal names."""
     # Regex pattern with groups:
     # group(0): entire match
-    # group(1): first number in {num,num,num,num} format  
+    # group(1): first number in {num,num,num,num} format
     # group(2): second number
     # group(3): third number
     # group(4): fourth number (optional, may be None)
@@ -113,13 +122,13 @@ def parse_string(input_string):
     parsed_result: list[list[int] | str] = []
 
     for match in re.finditer(pattern, input_string):
-        if match.group(1): 
+        if match.group(1):
             # Matched {num,num,num,num} format - extract numbers from groups 1-4
-            numbers = [int(match.group(i), 0) for i in range(1, 4)]  
+            numbers = [int(match.group(i), 0) for i in range(1, 4)]
             fourth_number = int(match.group(4), 0) if match.group(4) else 0xFFFFFFFF
             numbers.append(fourth_number)
             parsed_result.append(numbers)
-        else:  
+        else:
             # Matched signal name format - group(5) contains the signal name
             parsed_result.append(match.group(5))
 
@@ -170,9 +179,9 @@ def parse_group_names(group_string):
     """Parse comma-separated group names from input string."""
     if not group_string:
         return []
-    
+
     # Simple split for group names (no complex {num,num,num} format needed)
-    group_names = [name.strip() for name in group_string.split(',')]
+    group_names = [name.strip() for name in group_string.split(",")]
     # Remove empty strings
     return [name for name in group_names if name]
 
@@ -189,14 +198,14 @@ def collect_signal_data(debug_bus_signal_store, signal_names, use_l1_sampling, l
             use_l1_sampling=use_l1_sampling,
             l1_address=l1_address,
             samples=samples,
-            sampling_interval=sampling_interval
+            sampling_interval=sampling_interval,
         )
         formatted_value = _format_signal_value(
             value,
             is_composite_signal=False,
             use_l1_sampling=use_l1_sampling,
             show_all_samples=use_l1_sampling and samples > 1,
-            signal_desc=debug_bus_signal_store.signals.get(name, None)
+            signal_desc=debug_bus_signal_store.signals.get(name, None),
         )
         signal_data.append((name, formatted_value))
 
@@ -207,14 +216,14 @@ def collect_signal_data(debug_bus_signal_store, signal_names, use_l1_sampling, l
             use_l1_sampling=use_l1_sampling,
             l1_address=l1_address,
             samples=samples,
-            sampling_interval=sampling_interval
+            sampling_interval=sampling_interval,
         )
         formatted_value = _format_signal_value(
             value,
             is_composite_signal=True,
             use_l1_sampling=use_l1_sampling,
             show_all_samples=use_l1_sampling and samples > 1,
-            signal_desc=debug_bus_signal_store.signals.get(base_name, None)
+            signal_desc=debug_bus_signal_store.signals.get(base_name, None),
         )
         signal_data.append((base_name, formatted_value))
 
@@ -289,20 +298,31 @@ def handle_list_groups_command(dopt, context, ui_state):
                         use_l1_sampling = dopt.args["--l1-address"] is not None
                         l1_address = int(dopt.args["--l1-address"], 0) if use_l1_sampling else None
                         samples = int(dopt.args["--samples"]) if dopt.args["--samples"] else 1
-                        sampling_interval = int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
+                        sampling_interval = (
+                            int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
+                        )
 
                         signal_data, composite_signals = collect_signal_data(
-                            debug_bus_signal_store, signal_names, use_l1_sampling, l1_address, samples, sampling_interval
+                            debug_bus_signal_store,
+                            signal_names,
+                            use_l1_sampling,
+                            l1_address,
+                            samples,
+                            sampling_interval,
                         )
 
                         if len(group_names) == 1:
-                            header = f"=== Device {device._id} - location {loc.to_str('logical')} - Group: {group_name} ==="
+                            header = (
+                                f"=== Device {device._id} - location {loc.to_str('logical')} - Group: {group_name} ==="
+                            )
                         else:
                             header = f"=== Device {device._id} - location {loc.to_str('logical')} - Group: {group_name} ({group_names.index(group_name) + 1}/{len(group_names)}) ==="
 
                         formatter.print_header(header, style="bold")
                         if not use_l1_sampling and composite_signals:
-                            formatter.print_header("** Composite signals marked with ** - use L1 sampling for consistent reads")
+                            formatter.print_header(
+                                "** Composite signals marked with ** - use L1 sampling for consistent reads"
+                            )
 
                         formatter.display_grouped_data(
                             {"Signals": signal_data},
@@ -328,7 +348,9 @@ def handle_list_groups_command(dopt, context, ui_state):
 
                 group_data = [(group_name,) for group_name in group_names]
 
-                formatter.print_header(f"=== Device {device._id} - location {loc.to_str('logical')} - Signal Groups ===", style="bold")
+                formatter.print_header(
+                    f"=== Device {device._id} - location {loc.to_str('logical')} - Signal Groups ===", style="bold"
+                )
                 formatter.display_grouped_data(
                     {"Groups": group_data},
                     [("Group Name", "")],
@@ -358,16 +380,25 @@ def handle_signal_reading_command(dopt, context, ui_state):
                         use_l1_sampling = dopt.args["--l1-address"] is not None
                         l1_address = int(dopt.args["--l1-address"], 0) if use_l1_sampling else None
                         samples = int(dopt.args["--samples"]) if dopt.args["--samples"] else 1
-                        sampling_interval = int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
+                        sampling_interval = (
+                            int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
+                        )
 
                         signal_data, composite_signals = collect_signal_data(
-                            debug_bus_signal_store, signal_names, use_l1_sampling, l1_address, samples, sampling_interval
+                            debug_bus_signal_store,
+                            signal_names,
+                            use_l1_sampling,
+                            l1_address,
+                            samples,
+                            sampling_interval,
                         )
 
                         header = f"=== Device {device._id} - location {loc.to_str('logical')} - Group: {group_name} ==="
                         formatter.print_header(header, style="bold")
                         if not use_l1_sampling and composite_signals:
-                            formatter.print_header("** Composite signals marked with ** - use L1 sampling for consistent reads")
+                            formatter.print_header(
+                                "** Composite signals marked with ** - use L1 sampling for consistent reads"
+                            )
                         formatter.display_grouped_data(
                             {"Signals": signal_data},
                             [("Name", ""), ("Value", "")],
@@ -395,12 +426,16 @@ def handle_signal_reading_command(dopt, context, ui_state):
                 continue
 
             where = f"device:{device._id} loc:{loc.to_user_str()} "
-            composite_signals, _ = debug_bus_signal_store.group_composite_signals(debug_bus_signal_store.get_signal_names())
+            composite_signals, _ = debug_bus_signal_store.group_composite_signals(
+                debug_bus_signal_store.get_signal_names()
+            )
 
             for signal in signals:
                 try:
                     if isinstance(signal, str) and signal in composite_signals and not dopt.args["--l1-address"]:
-                        util.WARN(f"Signal '{signal}' is a composite signal. For consistent reading, use L1 sampling mode (--l1-address).")
+                        util.WARN(
+                            f"Signal '{signal}' is a composite signal. For consistent reading, use L1 sampling mode (--l1-address)."
+                        )
 
                     if dopt.args["--l1-address"]:
                         value = _read_signal_with_l1_sampling(dopt, debug_bus_signal_store, signal)
@@ -419,18 +454,16 @@ def _read_signal_with_l1_sampling(dopt, debug_bus_signal_store, signal):
     """Read signal using L1 sampling with parameter validation."""
     samples = int(dopt.args["--samples"]) if dopt.args["--samples"] else 1
     sampling_interval = int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
-    
+
     l1_address = int(dopt.args["--l1-address"], 0)
 
     if dopt.args["--sampling-interval"] is not None and samples == 1:
-        util.WARN(f"--sampling-interval parameter is meaningless when --samples=1, ignoring interval value {sampling_interval}")
+        util.WARN(
+            f"--sampling-interval parameter is meaningless when --samples=1, ignoring interval value {sampling_interval}"
+        )
 
     return debug_bus_signal_store.read_signal(
-        signal=signal,
-        use_l1_sampling=True,
-        l1_address=l1_address,
-        samples=samples,
-        sampling_interval=sampling_interval
+        signal=signal, use_l1_sampling=True, l1_address=l1_address, samples=samples, sampling_interval=sampling_interval
     )
 
 
@@ -444,13 +477,15 @@ def _display_signal_value(where, signal, value):
             else:
                 signal_description = f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
                 print(f"{where} Debug Bus Config({signal_description}) [sample {i}] = 0x{sample_value:x}")
-                
+
     elif isinstance(signal, str):
         # Single value with string signal name
         print(f"{where} {signal}: 0x{value:x}")
     else:
         # Single value with signal description object
-        signal_description = f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
+        signal_description = (
+            f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
+        )
         print(f"{where} Debug Bus Config({signal_description}) = 0x{value:x}")
 
 

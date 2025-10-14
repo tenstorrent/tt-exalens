@@ -39,9 +39,10 @@ class L1MemReg2:
     Representation of RISCV_DEBUG_REG_DBG_L1_MEM_REG2 fields:
       - reserved (bits 31:13)
       - write_trigger (bit 12)
-      - sampling_interval (bits 11:4)   
-      - write_mode (bits 3:0)          
+      - sampling_interval (bits 11:4)
+      - write_mode (bits 3:0)
     """
+
     write_trigger: int = 0
     sampling_interval: int = 2
     write_mode: int = 0
@@ -50,7 +51,7 @@ class L1MemReg2:
         val = 0
         val |= (self.write_trigger & 0x1) << 12
         val |= (self.sampling_interval & 0xFF) << 4
-        val |= (self.write_mode & 0xF)
+        val |= self.write_mode & 0xF
         return val
 
     @classmethod
@@ -63,7 +64,13 @@ class L1MemReg2:
 
 
 class DebugBusSignalStore:
-    def __init__(self, signals: dict[str, DebugBusSignalDescription], group_signals: dict[str, list[str]], noc_block: NocBlock, neo_id: int | None = None):
+    def __init__(
+        self,
+        signals: dict[str, DebugBusSignalDescription],
+        group_signals: dict[str, list[str]],
+        noc_block: NocBlock,
+        neo_id: int | None = None,
+    ):
         self.signals = signals
         self.group_signals = group_signals
         self.noc_block = noc_block
@@ -106,22 +113,21 @@ class DebugBusSignalStore:
     @cached_property
     def _l1_mem_reg2_address(self) -> int:
         return self._get_register_address("RISCV_DEBUG_REG_DBG_L1_MEM_REG2", "L1 memory register 2")
-    
+
     @staticmethod
     def get_signal_groups(
-        signal_map: dict[str, DebugBusSignalDescription], 
-        group_names: dict[tuple[int, int], str]
+        signal_map: dict[str, DebugBusSignalDescription], group_names: dict[tuple[int, int], str]
     ) -> dict[str, list[str]]:
         groups: dict[str, list[str]] = {}
         for signal_name, signal_desc in signal_map.items():
             key = (signal_desc.daisy_sel, signal_desc.sig_sel)
             group_key = group_names[key]
-            
+
             if group_key not in groups:
                 groups[group_key] = []
-            
+
             groups[group_key].append(signal_name)
-        
+
         return groups
 
     def get_signal_names(self) -> Iterable[str]:
@@ -139,16 +145,16 @@ class DebugBusSignalStore:
 
     def get_base_signal_name(self, signal_name: str) -> str:
         """Extract base signal name from composite signal names like 'signal/0' or 'signal/1'."""
-        return signal_name.split('/')[0] if '/' in signal_name else signal_name
+        return signal_name.split("/")[0] if "/" in signal_name else signal_name
 
     def is_composite_signal_part(self, signal_name: str) -> bool:
         """Check if signal name indicates a composite signal part (ends with /number)."""
-        return '/' in signal_name
+        return "/" in signal_name
 
     def group_composite_signals(self, signal_names: Iterable[str]) -> tuple[dict[str, list[str]], list[str]]:
         """
         Group composite signals by their base name and return both composite and simple signals.
-        
+
         Returns:
             tuple: (composite_signals_dict, simple_signals_list)
             - composite_signals_dict: {base_name: [part_names]}
@@ -156,7 +162,7 @@ class DebugBusSignalStore:
         """
         composite_signals: dict[str, list[str]] = {}
         simple_signals: list[str] = []
-        
+
         for signal_name in signal_names:
             if self.is_composite_signal_part(signal_name):
                 base_name = self.get_base_signal_name(signal_name)
@@ -165,23 +171,18 @@ class DebugBusSignalStore:
                 composite_signals[base_name].append(signal_name)
             else:
                 simple_signals.append(signal_name)
-        
+
         return composite_signals, simple_signals
 
-    def validate_l1_parameters(
-        self,
-        l1_address: int,
-        samples: int = 1,
-        sampling_interval: int = 2
-    ) -> None:
+    def validate_l1_parameters(self, l1_address: int, samples: int = 1, sampling_interval: int = 2) -> None:
         """Validate L1 sampling parameters and raise appropriate errors."""
         if l1_address % 16 != 0:
             raise ValueError(f"L1 address must be 16-byte aligned, got 0x{l1_address:x}")
-        
+
         end_address = l1_address + (samples * L1_SAMPLE_SIZE_BYTES) - 1
         if end_address >= L1_LOW_MEMORY_SIZE:
             raise ValueError(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit")
-        
+
         if samples > 1 and not (2 <= sampling_interval <= 256):
             raise ValueError(
                 f"When samples > 1, sampling_interval must be between 2 and 256, but got {sampling_interval}"
@@ -195,13 +196,13 @@ class DebugBusSignalStore:
         # Validate signal parameters are within expected ranges
         if not (0 <= signal.rd_sel <= 3):
             raise ValueError(f"rd_sel must be between 0 and 3, got {signal.rd_sel}")
-        
+
         if not (0 <= signal.daisy_sel <= 255):
             raise ValueError(f"daisy_sel must be between 0 and 255, got {signal.daisy_sel}")
-        
+
         if not (0 <= signal.sig_sel <= 65535):
             raise ValueError(f"sig_sel must be between 0 and 65535, got {signal.sig_sel}")
-        
+
         if not (0 <= signal.mask <= 0xFFFFFFFF):
             raise ValueError(f"mask must be a valid 32-bit integer, got {signal.mask}")
 
@@ -213,7 +214,7 @@ class DebugBusSignalStore:
         # First check if exact signal exists
         if signal_name in self.signals:
             return [self.signals[signal_name]]
-        
+
         # If not found, check if it's a base name for combined signal
         if self.is_combined_signal(signal_name):
             # For combined signals, return list of all signal parts (/0, /1, /2, ...)
@@ -227,7 +228,7 @@ class DebugBusSignalStore:
                 else:
                     break
             return combined_signals
-        
+
         # Signal not found - raise error with appropriate context
         neo_context = f" [NEO {self.neo_id}]" if self.neo_id is not None else ""
         raise ValueError(
@@ -246,9 +247,9 @@ class DebugBusSignalStore:
         """Reads a debug signal from the Tensix debug daisychain.
 
         This function can operate in two modes:
-        1.  **Direct Register Read (default):** Reads a 32-bit signal value directly 
+        1.  **Direct Register Read (default):** Reads a 32-bit signal value directly
             from the debug register. This is the default behavior when `use_l1_sampling=False`.
-        2.  **L1 Sampling:** Captures one or more 128-bit signal samples into L1 
+        2.  **L1 Sampling:** Captures one or more 128-bit signal samples into L1
             memory and reads the result. Enabled by setting `use_l1_sampling=True`.
 
         Parameters
@@ -287,9 +288,7 @@ class DebugBusSignalStore:
         if use_l1_sampling:
             if l1_address is None:
                 raise ValueError("l1_address is required when use_l1_sampling=True")
-            return self._read_signal_from_l1(
-                signal_list, l1_address, samples, sampling_interval
-            )
+            return self._read_signal_from_l1(signal_list, l1_address, samples, sampling_interval)
 
         # Default behavior: read from 32bit debug register
         return self._read_signal_from_register(signal_list)
@@ -303,12 +302,12 @@ class DebugBusSignalStore:
                 data = self._read_single_register(signal_part)
                 # Apply mask and combine
                 masked_data = data & signal_part.mask
-                value |= (masked_data << (WORD_SIZE_BITS * j))
+                value |= masked_data << (WORD_SIZE_BITS * j)
         else:
             # Single signal - read single 32-bit register
             data = self._read_single_register(signal[0])
             value = data & signal[0].mask
-        
+
         # Normalize value by removing trailing zeros
         return self._normalize_value(value, signal[0].mask)
 
@@ -340,7 +339,7 @@ class DebugBusSignalStore:
         # Validate L1 address alignment and memory range
         if l1_address % 16 != 0:
             raise ValueError(f"L1 address must be 16-byte aligned, got 0x{l1_address:x}")
-        
+
         end_address = l1_address + (samples * L1_SAMPLE_SIZE_BYTES) - 1
         if end_address >= L1_LOW_MEMORY_SIZE:
             raise ValueError(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit")
@@ -352,7 +351,9 @@ class DebugBusSignalStore:
                 )
 
         # Configure debug bus and setup L1 registers for sampling
-        reg2_addr, reg2_struct = self._setup_l1_sampling_configuration(signal[0], l1_address, samples, sampling_interval)
+        reg2_addr, reg2_struct = self._setup_l1_sampling_configuration(
+            signal[0], l1_address, samples, sampling_interval
+        )
 
         # Execute L1 sampling and wait for completion
         self._execute_l1_sampling(reg2_addr, reg2_struct, l1_address, samples)
@@ -361,11 +362,7 @@ class DebugBusSignalStore:
         return self._process_l1_samples(signal, l1_address, samples)
 
     def _setup_l1_sampling_configuration(
-        self, 
-        signal: DebugBusSignalDescription, 
-        l1_address: int, 
-        samples: int, 
-        sampling_interval: int
+        self, signal: DebugBusSignalDescription, l1_address: int, samples: int, sampling_interval: int
     ) -> tuple[int, L1MemReg2]:
         """Configure debug bus and setup L1 memory registers for sampling"""
         # Write the configuration - select 128 bit word
@@ -381,11 +378,7 @@ class DebugBusSignalStore:
         reg2_addr = self._l1_mem_reg2_address
 
         # Initialize L1 register structure
-        reg2_struct = L1MemReg2(
-            write_trigger=0, 
-            sampling_interval=2, 
-            write_mode=0
-        )
+        reg2_struct = L1MemReg2(write_trigger=0, sampling_interval=2, write_mode=0)
 
         # Prepare L1 writing - set initial write mode and reg0
         reg2_struct.write_mode = 0xF
@@ -396,26 +389,26 @@ class DebugBusSignalStore:
         # Configure sampling mode based on number of samples
         # Write mode values:
         # 0: Overwrite same L1 address (NOT SUPPORTED - causes issues with wait logic)
-        # 1: Increment address by 16 bytes after each sample  
+        # 1: Increment address by 16 bytes after each sample
         # 4: Hardware-driven sampling mode (auto-set when samples > 1)
         write_mode = 1  # Always use mode 1 (increment address)
-        
+
         if samples > 1:
             reg1_val = ((l1_address >> 4) + samples) & 0xFFFFFFFF
             write_words_to_device(self.location, reg1_addr, reg1_val, self.device._id, self.device._context)
             reg2_struct.write_mode = 4
-            reg2_struct.sampling_interval = sampling_interval - 1  
+            reg2_struct.sampling_interval = sampling_interval - 1
         else:
             reg2_struct.write_mode = write_mode
 
         # Write final configuration to reg2
         write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
-        
+
         return reg2_addr, reg2_struct
 
     def _execute_l1_sampling(self, reg2_addr: int, reg2_struct: L1MemReg2, l1_address: int, samples: int) -> None:
         """Execute L1 sampling process and wait for completion"""
-        # wait for the last memory location to be written to  
+        # wait for the last memory location to be written to
         wait_addr = l1_address + ((samples - 1) * L1_SAMPLE_SIZE_BYTES)
         # Write sentinel value to all 4 32-bit words in the 128-bit location
         sentinel_words = [SENTINEL_VALUE] * WORDS_PER_SAMPLE
@@ -430,17 +423,14 @@ class DebugBusSignalStore:
         # wait for the last memory location to be written to
         while read_word_from_device(self.location, wait_addr, self.device._id, self.device._context) == SENTINEL_VALUE:
             sleep(WAIT_SLEEP_SECONDS)
-        
+
         write_words_to_device(self.location, self._control_register_address, 0, self.device._id, self.device._context)
 
     def _process_l1_samples(
-        self, 
-        signal: list[DebugBusSignalDescription], 
-        l1_address: int, 
-        samples: int
+        self, signal: list[DebugBusSignalDescription], l1_address: int, samples: int
     ) -> int | list[int]:
         """Process L1 samples and extract signal data based on signal configuration"""
-        
+
         def read_128bit_sample(addr: int) -> int:
             """Read 4x32-bit words and combine them into a single 128-bit integer"""
             words = read_words_from_device(self.location, addr, self.device._id, WORDS_PER_SAMPLE, self.device._context)
@@ -450,14 +440,14 @@ class DebugBusSignalStore:
         sample_values = []
         for i in range(samples):
             sample_data = read_128bit_sample(l1_address + (i * L1_SAMPLE_SIZE_BYTES))
-            
+
             if len(signal) > 1:
                 # Combined signal - read each part and combine them
                 value = 0
                 for j, signal_part in enumerate(signal):
                     extracted_value = (sample_data >> (WORD_SIZE_BITS * signal_part.rd_sel)) & 0xFFFFFFFF
                     masked_value = extracted_value & signal_part.mask
-                    value |= (masked_value << (WORD_SIZE_BITS * j))
+                    value |= masked_value << (WORD_SIZE_BITS * j)
             else:
                 # Single signal - extract 32-bit value using rd_sel
                 extracted_value = (sample_data >> (WORD_SIZE_BITS * signal[0].rd_sel)) & 0xFFFFFFFF
@@ -466,6 +456,5 @@ class DebugBusSignalStore:
             # Normalize value by removing trailing zeros
             normalized_value = self._normalize_value(value, signal[0].mask)
             sample_values.append(normalized_value)
-        
-        return sample_values[0] if samples == 1 else sample_values
 
+        return sample_values[0] if samples == 1 else sample_values

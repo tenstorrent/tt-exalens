@@ -11,7 +11,10 @@ from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
-from ttexalens.hardware.wormhole.functional_worker_debug_bus_signals import debug_bus_signal_map, debug_bus_signal_group_map
+from ttexalens.hardware.wormhole.functional_worker_debug_bus_signals import (
+    debug_bus_signal_map,
+    debug_bus_signal_group_map,
+)
 from ttexalens.hardware.wormhole.functional_worker_registers import register_map
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.wormhole.noc_block import WormholeNocBlock
@@ -53,7 +56,9 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 class WormholeFunctionalWorkerBlock(WormholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
         super().__init__(
-            location, block_type="functional_workers", debug_bus=DebugBusSignalStore(debug_bus_signal_map, debug_bus_signal_group_map, self)
+            location,
+            block_type="functional_workers",
+            debug_bus=DebugBusSignalStore(debug_bus_signal_map, debug_bus_signal_group_map, self),
         )
 
         self.l1 = MemoryBlock(
