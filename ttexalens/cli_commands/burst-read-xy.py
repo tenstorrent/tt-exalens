@@ -84,7 +84,7 @@ def run(cmd_text, context, ui_state: UIState = None):
             offset_addr, _ = context.elf.parse_addr_size(offset, mem_reader)
             addr += offset_addr
 
-        print_a_pci_burst_read(
+        print_a_burst_read(
             device_id,
             core_loc,
             addr,
@@ -106,11 +106,11 @@ def run(cmd_text, context, ui_state: UIState = None):
 
 
 # A helper to print the result of a single PCI read
-def print_a_pci_read(core_loc_str, addr, val, comment=""):
+def print_a_read(core_loc_str, addr, val, comment=""):
     print(f"{core_loc_str} 0x{addr:08x} ({addr}) => 0x{val:08x} ({val:d}) {comment}")
 
 
-def print_a_pci_burst_read(
+def print_a_burst_read(
     device_id, core_loc, addr, core_loc_str, word_count=1, sample=1, print_format="hex32", context=None
 ):
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
@@ -139,4 +139,4 @@ def print_a_pci_burst_read(
                     values[val] = 0
                 values[val] += 1
             for val in values.keys():
-                print_a_pci_read(core_loc_str, addr + 4 * i, val, f"- {values[val]} times")
+                print_a_read(core_loc_str, addr + 4 * i, val, f"- {values[val]} times")

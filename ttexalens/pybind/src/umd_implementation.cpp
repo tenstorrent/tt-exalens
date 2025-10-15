@@ -93,7 +93,7 @@ void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_pt
 
 umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {}
 
-std::optional<uint32_t> umd_implementation::pci_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+std::optional<uint32_t> umd_implementation::read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                        uint64_t address) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
@@ -105,7 +105,7 @@ std::optional<uint32_t> umd_implementation::pci_read32(uint8_t noc_id, uint8_t c
     return result;
 }
 
-std::optional<uint32_t> umd_implementation::pci_write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+std::optional<uint32_t> umd_implementation::write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                         uint64_t address, uint32_t data) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
@@ -116,14 +116,13 @@ std::optional<uint32_t> umd_implementation::pci_write32(uint8_t noc_id, uint8_t 
     return 4;
 }
 
-std::optional<std::vector<uint8_t>> umd_implementation::pci_read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x,
+std::optional<std::vector<uint8_t>> umd_implementation::read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x,
                                                                  uint8_t noc_y, uint64_t address, uint32_t size) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
-
+                                                                    
     std::vector<uint8_t> result(size);
     tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
-
     // TODO #124: Mitigation for UMD bug #77
     if (!is_chip_mmio_capable(chip_id)) {
         for (uint32_t done = 0; done < size;) {
@@ -138,7 +137,7 @@ std::optional<std::vector<uint8_t>> umd_implementation::pci_read(uint8_t noc_id,
     return result;
 }
 
-std::optional<uint32_t> umd_implementation::pci_write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+std::optional<uint32_t> umd_implementation::write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                       uint64_t address, const uint8_t* data, uint32_t size) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
@@ -197,11 +196,31 @@ std::optional<uint32_t> umd_implementation::dma_buffer_read32(uint8_t chip_id, u
     return result;
 }
 
-std::optional<std::string> umd_implementation::pci_read_tile(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x,
+std::optional<std::string> umd_implementation::read_tile(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x,
                                                              uint8_t noc_y, uint64_t address, uint32_t size,
                                                              uint8_t data_format) {
     return tt::exalens::tile::read_tile_implementation(noc_id, chip_id, noc_x, noc_y, address, size, data_format,
                                                        cluster);
+}
+
+std::optional<uint32_t> umd_implementation::jtag_write32_axi(uint8_t chip_id, uint64_t address, uint32_t data) {
+    if (is_chip_mmio_capable(chip_id)) {
+        if (cluster) {
+            cluster->get_chip(chip_id)->get_tt_device()->get_jtag_device()->write32_axi(chip_id, address, data);
+            return 4;
+        }
+    }
+    return {};
+}
+
+std::optional<uint32_t> umd_implementation::jtag_read32_axi(uint8_t chip_id, uint32_t address) {
+    if (is_chip_mmio_capable(chip_id)) {
+        if (cluster) {
+            cluster->get_chip(chip_id)->get_tt_device()->get_jtag_device()->read32_axi(chip_id, address);
+            return 4;
+        }
+    }
+    return {};
 }
 
 std::optional<std::string> umd_implementation::get_device_arch(uint8_t chip_id) {

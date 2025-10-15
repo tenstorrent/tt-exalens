@@ -317,5 +317,4 @@ class OnChipCoordinate:
             coord_type = "logical"
         else:
             raise TTException("Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C")
-
         return OnChipCoordinate(x, y, coord_type, device, core_type)

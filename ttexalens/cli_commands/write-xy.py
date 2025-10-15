@@ -38,7 +38,7 @@ from ttexalens.tt_exalens_lib import write_words_to_device
 
 
 # A helper to print the result of a single PCI read
-def print_a_pci_write(core_loc_str, addr, val, comment=""):
+def print_a_write(core_loc_str, addr, val, comment=""):
     core_loc_str = f"{core_loc_str} (L1) :" if not core_loc_str.startswith("ch") else f"{core_loc_str} (DRAM): "
     print(f"{core_loc_str} 0x{addr:08x} ({addr}) <= 0x{val:08x} ({val:d})")
 
@@ -61,7 +61,7 @@ def run(cmd_text, context, ui_state: UIState = None):
     for _ in range(repeat):
         write_words_to_device(core_loc, addr, data, ui_state.current_device_id, context)
 
-        print_a_pci_write(core_loc_str, addr, data)
+        print_a_write(core_loc_str, addr, data)
         addr += 4
 
     return None

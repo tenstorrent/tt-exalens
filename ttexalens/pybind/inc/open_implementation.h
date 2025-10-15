@@ -32,7 +32,8 @@ class open_implementation : public BaseClass {
 
     static std::unique_ptr<open_implementation<BaseClass>> open(const std::filesystem::path& binary_directory = {},
                                                                 const std::vector<uint8_t>& wanted_devices = {},
-                                                                bool initialize_with_noc1 = false);
+                                                                bool initialize_with_noc1 = false,
+                                                                bool init_jtag = false);
     static std::unique_ptr<open_implementation<BaseClass>> open_simulation(
         const std::filesystem::path& simulation_directory);
 
