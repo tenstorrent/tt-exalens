@@ -167,7 +167,8 @@ new_umd_implementation::new_umd_implementation(const std::string& binary_directo
             auto physical_device_id = cluster_descriptor->get_chips_with_mmio().at(chip_id);
             auto tt_device = umd::TTDevice::create(physical_device_id, umd::IODeviceType::PCIe);
             uint32_t num_host_mem_channels = 1;
-            tt_device->init_tt_device();
+            tt_device->init_tt_device();  // TODO: We might want to remove init_tt_device from here since it will wait
+                                          // for device to be up and running
             tlb_managers[chip_id] = std::make_unique<umd::TLBManager>(tt_device.get());
             sysmem_managers[chip_id] =
                 std::make_unique<umd::SysmemManager>(tlb_managers[chip_id].get(), num_host_mem_channels);
@@ -201,8 +202,9 @@ umd::TTDevice* new_umd_implementation::get_device(uint8_t chip_id) {
 }
 
 tt::xy_pair new_umd_implementation::get_noc0_to_device_coords(uint8_t chip_id, uint8_t noc_x, uint8_t noc_y) {
-    // TODO: What coordinate system is being used by TTDevice?!?
-    return {noc_x, noc_y};
+    auto& soc_descriptor = soc_descriptors.at(chip_id);
+    return soc_descriptor.translate_coord_to(soc_descriptor.get_coord_at({noc_x, noc_y}, CoordSystem::NOC0),
+                                             CoordSystem::TRANSLATED);
 }
 
 bool new_umd_implementation::is_chip_mmio_capable(uint8_t chip_id) {
