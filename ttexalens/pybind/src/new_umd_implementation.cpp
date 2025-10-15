@@ -146,23 +146,6 @@ new_umd_implementation::new_umd_implementation(const std::string& binary_directo
 
     // Construct all the required devices from the cluster descriptor.
     for (auto& chip_id : cluster_descriptor->get_chips_local_first(cluster_descriptor->get_all_chips())) {
-        // Create soc descriptor for each chip
-        ChipInfo chip_info{
-            .noc_translation_enabled = cluster_descriptor->get_noc_translation_table_en().at(chip_id),
-            .harvesting_masks = cluster_descriptor->get_harvesting_masks(chip_id),
-            .board_type = cluster_descriptor->get_board_type(chip_id),
-            .asic_location = cluster_descriptor->get_asic_location(chip_id),
-        };
-
-        SocDescriptor soc_descriptor(cluster_descriptor->get_arch(chip_id), chip_info);
-
-        // Serialize soc descriptor to a file
-        soc_descriptors[chip_id] = soc_descriptor;
-        std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(chip_id) + ".yaml");
-        soc_descriptor.serialize_to_file(file_name);
-        device_soc_descriptors_yamls[chip_id] = file_name;
-
-        // Create device object
         if (cluster_descriptor->is_chip_mmio_capable(chip_id)) {
             auto physical_device_id = cluster_descriptor->get_chips_with_mmio().at(chip_id);
             auto tt_device = umd::TTDevice::create(physical_device_id, umd::IODeviceType::PCIe);
@@ -189,6 +172,13 @@ new_umd_implementation::new_umd_implementation(const std::string& binary_directo
             remote_tt_device->init_tt_device();
             devices[chip_id] = std::move(remote_tt_device);
         }
+
+        SocDescriptor soc_descriptor(devices[chip_id]->get_arch(), devices[chip_id]->get_chip_info());
+        std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(chip_id) + ".yaml");
+
+        soc_descriptor.serialize_to_file(file_name);
+        device_soc_descriptors_yamls[chip_id] = file_name;
+        soc_descriptors[chip_id] = soc_descriptor;
     }
     cached_arc_telemetry_readers.resize(cluster_descriptor->get_number_of_chips());
 }
