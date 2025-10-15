@@ -26,6 +26,7 @@ from ttexalens.object import DataArray
 from ttexalens.hw.arc.arc import load_arc_fw
 from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
 from ttexalens.elf_loader import ElfLoader
+from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
 
 
 def invalid_argument_decorator(func):
@@ -782,55 +783,51 @@ class TestARC(unittest.TestCase):
 
     fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
 
-    def test_read_arc_telemetry(self):
-        """Test reading ARC telemetry entries of known values"""
+    def test_arc_heartbeat(self):
+        """Test reading ARC heartbeat"""
         device_id = 0
-        if self.is_wormhole():
-            # Check vendor ID
-            expected_vendor_id = 0x1E52
-            vendor_id = lib.read_arc_telemetry_entry(device_id, "TAG_DEVICE_ID") & 0xFFFF
-            self.assertEqual(vendor_id, expected_vendor_id)
-
-            # Check if heartbeat is increasing
-            import time
-
-            heartbeat1 = lib.read_arc_telemetry_entry(device_id, "TAG_ARC0_HEALTH")
-            time.sleep(0.1)
-            heartbeat2 = lib.read_arc_telemetry_entry(device_id, "TAG_ARC0_HEALTH")
-            self.assertGreater(heartbeat2, heartbeat1)
-        elif self.is_blackhole():
-            # Check if heartbeat is increasing
-            import time
-
-            heartbeat1 = lib.read_arc_telemetry_entry(device_id, "TAG_TIMER_HEARTBEAT")
-            time.sleep(0.1)
-            heartbeat2 = lib.read_arc_telemetry_entry(device_id, "TAG_TIMER_HEARTBEAT")
-            self.assertGreater(heartbeat2, heartbeat1)
-        else:
+        if not self.is_wormhole() and not self.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
+
+        if self.context.devices[0]._firmware_version < CUTOFF_FIRMWARE_VERSION:
+            self.skipTest(
+                f"ARC telemetry is not supported for firmware version {self.context.devices[0]._firmware_version}"
+            )
+
+        tag = "TIMER_HEARTBEAT"
+
+        # Check if heartbeat is increasing
+        import time
+
+        heartbeat1 = lib.read_arc_telemetry_entry(device_id, tag)
+        time.sleep(0.1)
+        heartbeat2 = lib.read_arc_telemetry_entry(device_id, tag)
+        self.assertGreater(heartbeat2, heartbeat1)
 
     @parameterized.expand(
         [
-            ("TAG_BOARD_ID_HIGH", (4, 1)),
-            ("TAG_BOARD_ID_LOW", (5, 2)),
-            ("TAG_AICLK", (24, 14)),
-            ("TAG_AXICLK", (25, 15)),
-            ("TAG_ARCCLK", (26, 16)),
+            ("BOARD_ID_HIGH", 1),
+            ("BOARD_ID_LOW", 2),
+            ("AICLK", 14),
+            ("AXICLK", 15),
+            ("ARCCLK", 16),
         ]
     )
     def test_read_arc_telemetry_entry(self, tag_name, tag_id):
-        """Test reading ARC telemetry entry by tag name and tag ID"""
+        """Test if reading ARC telemetry entry by tag name and tag ID gives the same result"""
 
-        index = 0 if self.is_wormhole() else 1 if self.is_blackhole() else None
-
-        if index is None:
+        if not self.is_wormhole() and not self.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
+
+        if self.context.devices[0]._firmware_version < CUTOFF_FIRMWARE_VERSION:
+            self.skipTest(
+                f"ARC telemetry is not supported for firmware version {self.context.devices[0]._firmware_version}"
+            )
 
         device_id = 0
 
-        # Check if reading by tag name and tag ID gives the same result
         ret_from_name = lib.read_arc_telemetry_entry(device_id, tag_name)
-        ret_from_id = lib.read_arc_telemetry_entry(device_id, tag_id[index])
+        ret_from_id = lib.read_arc_telemetry_entry(device_id, tag_id)
         self.assertEqual(ret_from_name, ret_from_id)
 
     def test_load_arc_fw(self):
@@ -857,7 +854,7 @@ class TestARC(unittest.TestCase):
         {"location_desc": "FW0", "risc_name": "BRISC"},
         {"location_desc": "FW0", "risc_name": "TRISC0"},
         {"location_desc": "FW0", "risc_name": "TRISC1"},
-        # {"location_desc": "FW0", "risc_name": "TRISC2"}, - there is a bug on TRISC2: #266
+        {"location_desc": "FW0", "risc_name": "TRISC2"},
     ]
 )
 class TestCallStack(unittest.TestCase):

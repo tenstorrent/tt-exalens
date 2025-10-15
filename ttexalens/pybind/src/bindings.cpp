@@ -116,6 +116,14 @@ class TTExaLensImplementation {
     uint32_t read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
         return _check_result(implementation->read_arc_telemetry_entry(chip_id, telemetry_tag));
     }
+
+    std::tuple<uint64_t, uint64_t, uint64_t> get_firmware_version(uint8_t chip_id) {
+        return _check_result(implementation->get_firmware_version(chip_id));
+    }
+
+    std::optional<uint64_t> get_device_unique_id(uint8_t chip_id) {
+        return implementation->get_device_unique_id(chip_id);
+    }
 };
 
 std::unique_ptr<TTExaLensImplementation> open_device(const std::string &binary_directory,
@@ -143,6 +151,11 @@ std::unique_ptr<TTExaLensImplementation> open_simulation(const std::string &simu
 }
 
 NB_MODULE(ttexalens_pybind, m) {
+    // Disable nanobind leak warnings
+    // We are creating single instance of ttexalens_pybind.TTExaLensImplementation, but nanobind thinks it is a leak
+    // because we are not explicitly deleting it. However, we want to keep it alive for the entire program duration.
+    nanobind::set_leak_warnings(false);
+
     // Bind the TTExaLensImplementation class
     nanobind::class_<TTExaLensImplementation>(m, "TTExaLensImplementation")
         .def("read32", &TTExaLensImplementation::read32, "Reads 4 bytes from address", "noc_id"_a,
@@ -177,7 +190,11 @@ NB_MODULE(ttexalens_pybind, m) {
         .def("arc_msg", &TTExaLensImplementation::arc_msg, "Send ARC message", "noc_id"_a, "chip_id"_a, "msg_code"_a,
              "wait_for_done"_a, "arg0"_a, "arg1"_a, "timeout"_a)
         .def("read_arc_telemetry_entry", &TTExaLensImplementation::read_arc_telemetry_entry, "Read ARC telemetry entry",
-             "chip_id"_a, "telemetry_tag"_a);
+             "chip_id"_a, "telemetry_tag"_a)
+        .def("get_firmware_version", &TTExaLensImplementation::get_firmware_version, "Returns firmware version",
+             "chip_id"_a)
+        .def("get_device_unique_id", &TTExaLensImplementation::get_device_unique_id, "Returns device unique id",
+             "chip_id"_a);
 
     // Bind factory functions
     m.def("open_device", &open_device, "Opens tt device. Returns TTExaLensImplementation object or None if failed.",

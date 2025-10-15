@@ -8,7 +8,7 @@ from ttexalens.context import Context
 from ttexalens.util import TTException
 
 
-def check_context(context: Context = None) -> Context:
+def check_context(context: Context | None = None) -> Context:
     """Function to initialize context if not provided. By default, it starts a local
     TTExaLens session with no output folder and caching disabled and sets GLOBAL_CONETXT variable so
     that the context can be reused in calls to other functions.

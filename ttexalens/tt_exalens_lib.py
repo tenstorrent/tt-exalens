@@ -6,7 +6,7 @@ import re
 import struct
 
 from ttexalens import tt_exalens_init
-
+from ttexalens.util import FirmwareVersion
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.parse_elf import ParsedElfFile, read_elf
@@ -402,10 +402,17 @@ def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: 
     Returns:
         int: Value of the telemetry entry.
     """
+    from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
+
     context = check_context(context)
     validate_device_id(device_id, context)
     device = context.devices[device_id]
     arc = device.arc_block
+
+    if device._firmware_version < CUTOFF_FIRMWARE_VERSION:
+        raise TTException(
+            f"We no longer support ARC telemetry for firmware versions 18.3 and lower. This device is running firmware version {device._firmware_version}"
+        )
 
     if isinstance(telemetry_tag, str):
         telemetry_tag_id = arc.get_telemetry_tag_id(telemetry_tag)

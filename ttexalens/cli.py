@@ -4,8 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-exalens [--commands=<cmds>] [--start-gdb=<gdb_port>] [--devices=<devices>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1]
-  tt-exalens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--initialize-with-noc1]
+  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [--devices=<devices>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1]
+  tt-exalens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1]
   tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
   tt-exalens --gdb [gdb_args...]
   tt-exalens -h | --help
@@ -18,14 +18,14 @@ Options:
   --remote-address=<ip:port>      Address of the remote TTExaLens server, in the form of ip:port, or just :port, if ip is localhost. If not specified, defaults to localhost:5555. [default: localhost:5555]
   --commands=<cmds>               Execute a list of semicolon-separated commands.
   --start-gdb=<gdb_port>          Start a gdb server on the specified port.
+  --start-server=<server_port>    Start a tt-exalens server on the specified port.
   --devices=<devices>             Comma-separated list of devices to load. If not supplied, all devices will be loaded.
   --background                    Start the server in the background detached from console (doesn't require ENTER button for exit, but exit.server file to be created).
-  --initialize-with-noc1          Initialize the device with NOC1.
   -s=<simulation_directory>       Specifies build output directory of the simulator.
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
-  --use-noc1                      Use NOC1 for communication with the device.
+  --use-noc1                      Initialize with NOC1 and use NOC1 for communication with the device.
   --gdb                           Start RISC-V gdb client with the specified arguments.
 
 Description:
@@ -238,10 +238,14 @@ def main_loop(args, context):
 
     navigation_suggestions = None
 
+    # Check if we need to start server
+    if args["--start-server"]:
+        port = int(args["--start-server"])
+        ui_state.start_server(port)
+
     # Check if we need to start gdb server
     if args["--start-gdb"]:
         port = int(args["--start-gdb"])
-        print(f"Starting gdb server on port {port}")
         ui_state.start_gdb(port)
 
     # These commands will be executed right away (before allowing user input)
@@ -265,15 +269,26 @@ def main_loop(args, context):
 
                     def get_dynamic_prompt() -> HTML:
                         my_prompt = ""
+                        if ui_state.ttexalens_server is not None:
+                            server_status = f"{util.CLR_PROMPT}{ui_state.ttexalens_server.port}{util.CLR_PROMPT_END}"
+                            my_prompt += f"server:{server_status} "
                         if ui_state.gdb_server is not None:
                             gdb_status = f"{util.CLR_PROMPT}{ui_state.gdb_server.server.port}{util.CLR_PROMPT_END}"
                             if ui_state.gdb_server.is_connected:
                                 gdb_status += "(connected)"
                             my_prompt += f"gdb:{gdb_status} "
+                        noc_prompt = "1" if ui_state.context.use_noc1 else "0"
+                        if (
+                            ui_state.current_device._arch == "blackhole"
+                            or ui_state.current_device._arch == "wormhole_b0"
+                        ):
+                            my_prompt += f"noc:{util.CLR_PROMPT}{noc_prompt}{util.CLR_PROMPT_END} "
                         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
-                        my_prompt += (
-                            f"device:{util.CLR_PROMPT}{jtag_prompt}{ui_state.current_device_id}{util.CLR_PROMPT_END} "
-                        )
+                        device_id = f"{ui_state.current_device_id}"
+                        # TODO (#617): Once we figure out do we want to show unique_id in prompt, uncomment following lines
+                        # if ui_state.current_device.unique_id is not None:
+                        #     device_id += f" [0x{ui_state.current_device.unique_id:x}]"
+                        my_prompt += f"device:{util.CLR_PROMPT}{jtag_prompt}{device_id}{util.CLR_PROMPT_END} "
                         my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
                         my_prompt += f"{ui_state.current_prompt}> "
                         return HTML(my_prompt)
@@ -348,6 +363,10 @@ def main_loop(args, context):
     finally:
         # Do best effort cleanup before exiting
         try:
+            ui_state.stop_server()
+        except:
+            pass
+        try:
             ui_state.stop_gdb()
         except:
             pass
@@ -384,28 +403,33 @@ def main():
 
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
-        communicator = tt_exalens_ifc.init_pybind(
-            wanted_devices,
-            init_jtag=args["--jtag"],
-            initialize_with_noc1=args["--initialize-with-noc1"],
-            simulation_directory=args["-s"],
-        )
-        ttexalens_server = tt_exalens_server.start_server(port=int(args["--port"]), communicator=communicator)
         if args["--background"]:
+            communicator = tt_exalens_ifc.init_pybind(
+                wanted_devices=wanted_devices,
+                init_jtag=args["--jtag"],
+                initialize_with_noc1=args["--use-noc1"],
+                simulation_directory=args["-s"],
+            )
+            ttexalens_server = tt_exalens_server.start_server(port=int(args["--port"]), communicator=communicator)
+
             util.INFO("The debug server is running in the background.")
             util.INFO("To stop the server, use the command: touch exit.server")
-            os.remove("exit.server")
+
+            # Remove exit.server file if it exists
+            if os.path.exists("exit.server"):
+                os.remove("exit.server")
             try:
-                while os.path.isfile("exit.server"):
+                # Wait until exit.server file is created to exit the program
+                while not os.path.isfile("exit.server"):
                     import time
 
                     time.sleep(1)
             except KeyboardInterrupt:
                 pass
+            ttexalens_server.stop()
+            return
         else:
-            input("Press Enter to exit server...")
-        ttexalens_server.stop()
-        return
+            args["--start-server"] = args["--port"]
 
     if args["--remote"]:
         address = args["--remote-address"].split(":")
@@ -414,7 +438,12 @@ def main():
         util.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
         context = tt_exalens_init.init_ttexalens_remote(server_ip, int(server_port))
     else:
-        context = tt_exalens_init.init_ttexalens(wanted_devices, args["--jtag"], args["--use-noc1"])
+        context = tt_exalens_init.init_ttexalens(
+            wanted_devices=wanted_devices,
+            init_jtag=args["--jtag"],
+            use_noc1=args["--use-noc1"],
+            simulation_directory=args["-s"],
+        )
 
     # Main function
     exit_code = main_loop(args, context)

@@ -13,6 +13,7 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from ttexalens.context import Context
 from ttexalens.gdb.gdb_server import GdbServer, ServerSocket
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.tt_exalens_server import TTExaLensServer, start_server
 
 
 class TTExaLensCompleter(Completer):
@@ -67,6 +68,7 @@ class UIState:
         self.current_location = OnChipCoordinate.create("0,0", self.current_device)  # Currently selected core
         self.current_prompt = ""  # Based on the current x,y
         self.gdb_server: GdbServer | None = None
+        self.ttexalens_server: TTExaLensServer | None = None  # TTExaLens server object
 
         # Create prompt object.
         self.is_prompt_session = sys.stdin.isatty()
@@ -104,3 +106,15 @@ class UIState:
         if self.gdb_server is not None:
             self.gdb_server.stop()
         self.gdb_server = None
+
+    def start_server(self, port: int | None = None):
+        if self.ttexalens_server is not None:
+            self.ttexalens_server.stop()
+        if port is None:
+            port = 5555
+        self.ttexalens_server = start_server(port, self.context.server_ifc)
+
+    def stop_server(self):
+        if self.ttexalens_server is not None:
+            self.ttexalens_server.stop()
+        self.ttexalens_server = None

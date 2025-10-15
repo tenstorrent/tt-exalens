@@ -411,6 +411,8 @@ class BabyRiscDebugHardware:
         return self.read_status().is_memory_watchpoint_hit
 
     def read_gpr(self, reg_index):
+        if not 0 <= reg_index <= 32:
+            raise ValueError(f"Invalid register index {reg_index}. Must be between 0 and 32.")
         if self.verbose:
             util.INFO(f"  read_gpr({reg_index})")
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
@@ -686,13 +688,15 @@ class BabyRiscDebug(RiscDebug):
     @cached_property
     def debug_bus_pc_signal(self) -> DebugBusSignalDescription | None:
         try:
-            return self.risc_info.noc_block.debug_bus.get_signal_description(self.risc_info.risc_name + "_pc")
+            if self.risc_info.noc_block.debug_bus is not None:
+                return self.risc_info.noc_block.debug_bus.get_signal_description(self.risc_info.risc_name + "_pc")
         except:
-            return None
+            pass
+        return None
 
     def get_pc(self) -> int:
         debug_bus_pc_signal = self.debug_bus_pc_signal
-        if debug_bus_pc_signal is not None:
+        if debug_bus_pc_signal is not None and self.risc_info.noc_block.debug_bus is not None:
             pc = self.risc_info.noc_block.debug_bus.read_signal(debug_bus_pc_signal)
             if self.risc_info.risc_name == "ncrisc" and pc & 0xF0000000 == 0x70000000:
                 pc = pc | 0x80000000  # Turn the topmost bit on as it was lost on debug bus

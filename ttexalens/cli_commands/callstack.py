@@ -46,7 +46,7 @@ def run(cmd_text, context, ui_state: UIState):
 
     limit = int(dopt.args["-m"])
     elf_paths = dopt.args["<elf-files>"].split(",")
-    offsets = (
+    offsets: list[int | None] = (
         [int(offset, 0) for offset in dopt.args["-o"].split(",")]
         if dopt.args["-o"]
         else [None for _ in range(len(elf_paths))]

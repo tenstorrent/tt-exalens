@@ -19,7 +19,6 @@
 #include "umd/device/tt_core_coordinates.h"
 #include "umd/device/tt_device/tt_device.h"
 #include "umd/device/tt_soc_descriptor.h"
-#include "umd/device/tt_xy_pair.h"
 #include "umd/device/types/arch.h"
 #include "umd/device/types/communication_protocol.hpp"
 #include "umd_implementation.h"
@@ -45,18 +44,6 @@ static std::optional<std::string> read_string_from_file(const std::string &file_
 }
 
 static std::filesystem::path temp_working_directory = get_temp_working_directory();
-
-static std::string write_temp_file(const std::string &file_name, const char *bytes, size_t length) {
-    std::string temp_file_name = temp_working_directory / file_name;
-    std::ofstream conf_file(temp_file_name, std::ios::out | std::ios::binary);
-
-    if (!conf_file.is_open()) {
-        throw std::runtime_error("Couldn't write configuration to temp file " + temp_file_name + ".");
-    }
-    conf_file.write(bytes, length);
-    conf_file.close();
-    return temp_file_name;
-}
 
 // Identifies and returns the directory path of the currently running executable in a Linux environment.
 static std::filesystem::path find_binary_directory() {
@@ -161,7 +148,9 @@ open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> 
 
 template <typename BaseClass>
 open_implementation<BaseClass>::~open_implementation() {
-    device->close_device();
+    if (is_simulation) {
+        device->close_device();
+    }
 }
 
 
@@ -233,6 +222,15 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(cluster)));
+    auto &unique_ids = cluster_descriptor->get_chip_unique_ids();
+
+    for (auto device_id : device_ids) {
+        auto it = unique_ids.find(device_id);
+
+        if (it != unique_ids.end()) {
+            implementation->device_id_to_unique_id[device_id] = it->second;
+        }
+    }
 
     std::string file_path = temp_working_directory / "cluster_desc.yaml";
     cluster_descriptor->serialize_to_file(file_path);
@@ -278,6 +276,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(cluster)));
 
+    implementation->is_simulation = true;
     implementation->cluster_descriptor_path = create_simulation_cluster_descriptor_file(soc_descriptor.arch);
     implementation->device_ids = device_ids;
     implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
@@ -302,6 +301,25 @@ std::optional<std::string> open_implementation<BaseClass>::get_device_soc_descri
     } catch (...) {
         return {};
     }
+}
+
+template <typename BaseClass>
+std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> open_implementation<BaseClass>::get_firmware_version(
+    uint8_t chip_id) {
+    if (!is_simulation) {
+        return BaseClass::get_firmware_version(chip_id);
+    }
+    return std::make_tuple(0, 0, 0);
+}
+
+template <typename BaseClass>
+std::optional<uint64_t> open_implementation<BaseClass>::get_device_unique_id(uint8_t chip_id) {
+    auto it = device_id_to_unique_id.find(chip_id);
+
+    if (it != device_id_to_unique_id.end()) {
+        return it->second;
+    }
+    return {};
 }
 
 template <typename BaseClass>

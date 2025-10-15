@@ -7,8 +7,9 @@
 #include <tuple>
 
 #include "read_tile.hpp"
-#include "umd/device/arc_telemetry_reader.h"
+#include "umd/device/arc/arc_telemetry_reader.hpp"
 #include "umd/device/cluster.h"
+#include "umd/device/firmware/firmware_utils.hpp"
 
 namespace tt::exalens {
 
@@ -91,7 +92,9 @@ void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_pt
 
 }  // namespace tt::exalens
 
-umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {}
+umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {
+    cached_arc_telemetry_readers.resize(cluster->get_cluster_description()->get_number_of_chips());
+}
 
 std::optional<uint32_t> umd_implementation::read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                                        uint64_t address) {
@@ -244,14 +247,30 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(u
     return std::make_tuple(return_code, return_3, return_4);
 }
 
-std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
-    // Speed optimization: cache ArcTelemetryReader to avoid creating it multiple times
-    if (!cached_arc_telemetry_reader || cached_arc_telemetry_reader_chip_id != chip_id) {
-        cached_arc_telemetry_reader =
-            tt::umd::ArcTelemetryReader::create_arc_telemetry_reader(cluster->get_tt_device(chip_id));
-        cached_arc_telemetry_reader_chip_id = chip_id;
+tt::umd::ArcTelemetryReader* umd_implementation::get_arc_telemetry_reader(uint8_t chip_id) {
+    auto& cached_arc_telemetry_reader = cached_arc_telemetry_readers[chip_id];
+    if (!cached_arc_telemetry_reader) {
+        std::lock_guard<std::mutex> lock(cached_arc_telemetry_readers_mutex);
+        if (!cached_arc_telemetry_reader) {
+            cached_arc_telemetry_reader =
+                tt::umd::ArcTelemetryReader::create_arc_telemetry_reader(cluster->get_tt_device(chip_id));
+        }
     }
-    return cached_arc_telemetry_reader->read_entry(telemetry_tag);
+    return cached_arc_telemetry_reader.get();
+}
+
+std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
+    auto* arc_telemetry_reader = get_arc_telemetry_reader(chip_id);
+    auto umd_telemetry_tag = static_cast<tt::umd::TelemetryTag>(telemetry_tag);
+    if (!arc_telemetry_reader->is_entry_available(telemetry_tag)) {
+        return {};
+    }
+    return arc_telemetry_reader->read_entry(telemetry_tag);
+}
+
+std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> umd_implementation::get_firmware_version(uint8_t chip_id) {
+    const auto& firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
+    return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
 }
 
 }  // namespace tt::exalens

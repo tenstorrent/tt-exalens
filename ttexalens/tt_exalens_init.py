@@ -21,19 +21,22 @@ def init_ttexalens(
     wanted_devices: list | None = None,
     init_jtag: bool = False,
     use_noc1: bool = False,
+    simulation_directory: str | None = None,
 ) -> Context:
     """Initializes TTExaLens internals by creating the device interface and TTExaLens context.
     Interfacing device is local, through pybind.
 
     Args:
-            wanted_devices (list, optional): List of device IDs we want to connect to. If None, connect to all available devices.
-            caching_path (str, optional): Path to the cache file to write. If None, caching is disabled.
+        wanted_devices (list, optional): List of device IDs we want to connect to. If None, connect to all available devices.
+        init_jtag (bool): Whether to initialize JTAG interface. Default is False.
+        use_noc1 (bool): Whether to initialize with NOC1 and use NOC1 for communication with the device. Default is False.
+        simulation_directory (str, optional): If specified, starts the simulator from the given build output directory.
 
     Returns:
-            Context: TTExaLens context object.
+        Context: TTExaLens context object.
     """
 
-    lens_ifc = tt_exalens_ifc.init_pybind(wanted_devices, init_jtag, use_noc1)
+    lens_ifc = tt_exalens_ifc.init_pybind(wanted_devices, init_jtag, use_noc1, simulation_directory)
 
     return load_context(lens_ifc, use_noc1)
 
@@ -48,7 +51,6 @@ def init_ttexalens_remote(
     Args:
             ip_address (str): IP address of the TTExaLens server. Default is 'localhost'.
             port (int): Port number of the TTExaLens server interface. Default is 5555.
-            cache_path (str, optional): Path to the cache file to write. If None, caching is disabled.
 
     Returns:
             Context: TTExaLens context object.

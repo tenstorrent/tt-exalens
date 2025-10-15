@@ -46,14 +46,12 @@ To build it, you need the following dependencies:
 - python3.X-venv,
 - libyaml-cpp-dev,
 - libhwloc-dev,
-- libzmq3-dev,
-- xxd,
 - ninja-build
 
 Install them with:
 
 ```bash
-sudo apt install software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libzmq3-dev libgtest-dev libgmock-dev xxd ninja-build
+sudo apt install software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libgtest-dev libgmock-dev xxd ninja-build
 ```
 
 Python 3.10 is the only supported version. Install it with:

@@ -5,6 +5,7 @@ from abc import abstractmethod
 import base64
 import io
 import os
+import serpent
 import sys
 import Pyro5.api
 
@@ -79,6 +80,14 @@ class TTExaLensPybind(TTExaLensCommunicator):
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         return open(binary_path, "rb")
 
+    def get_binary_content(self, binary_path: str) -> bytes:
+        """
+        Returns binary file content as base64-encoded data for remote access.
+        This method is used by the server to serialize binary data properly.
+        """
+        with open(binary_path, "rb") as f:
+            return f.read()
+
 
 def init_pybind(
     wanted_devices=None, init_jtag=False, initialize_with_noc1=False, simulation_directory: str | None = None
@@ -101,13 +110,16 @@ class TTExaLensClientWrapper:
 
     def __getattr__(self, name):
         function = getattr(self.proxy, name)
-        return lambda *args, **kwargs: TTExaLensClientWrapper.convert_bytes(function(*args, **kwargs))
+        return lambda *args, **kwargs: function(*args, **kwargs)
 
-    @staticmethod
-    def convert_bytes(data):
-        if isinstance(data, dict) and data.get("encoding") == "base64" and "data" in data:
-            return base64.b64decode(data["data"])
-        return data
+    def get_binary(self, binary_path: str) -> io.BufferedIOBase:
+        """
+        Handle get_binary by calling get_binary_content and wrapping result in BytesIO.
+        """
+        # Try to call get_binary_content which returns serializable data
+        data = self.proxy.get_binary_content(binary_path)
+        binary_data = serpent.tobytes(data)
+        return io.BytesIO(binary_data)
 
 
 def connect_to_server(server_host="localhost", port=5555) -> TTExaLensCommunicator:
@@ -117,6 +129,8 @@ def connect_to_server(server_host="localhost", port=5555) -> TTExaLensCommunicat
     try:
         # We are returning a wrapper around the Pyro5 proxy to provide TTExaLensCommunicator-like behavior.
         # Since this is not a direct instance of TTExaLensCommunicator, mypy will warn; hence the ignore.
-        return TTExaLensClientWrapper(Pyro5.api.Proxy(pyro_address))  # type: ignore
+        proxy = Pyro5.api.Proxy(pyro_address)
+        proxy._pyroSerializer = "marshal"
+        return TTExaLensClientWrapper(proxy)  # type: ignore
     except:
         raise util.TTFatalException("Failed to connect to TTExaLens server.")
