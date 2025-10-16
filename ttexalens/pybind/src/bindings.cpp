@@ -94,20 +94,6 @@ class TTExaLensImplementation {
         return _check_result(implementation->get_device_soc_description(chip_id));
     }
 
-    uint32_t jtag_read32_axi(uint8_t chip_id, uint32_t address) {
-        if (address % 4 != 0) {
-            throw std::runtime_error("Unaligned access in jtag_read32_axi");
-        }
-        return _check_result(implementation->jtag_read32_axi(chip_id, address));
-    }
-
-    uint32_t jtag_write32_axi(uint8_t chip_id, uint64_t address, uint32_t data) {
-        if (address % 4 != 0) {
-            throw std::runtime_error("Unaligned access in jtag_write32_axi");
-        }
-        return _check_result(implementation->jtag_write32_axi(chip_id, address, data));
-    }
-
     std::tuple<int, uint32_t, uint32_t> arc_msg(uint8_t noc_id, uint8_t chip_id, uint32_t msg_code, bool wait_for_done,
                                                 uint32_t arg0, uint32_t arg1, int timeout) {
         return _check_result(implementation->arc_msg(noc_id, chip_id, msg_code, wait_for_done, arg0, arg1, timeout));
@@ -183,10 +169,6 @@ NB_MODULE(ttexalens_pybind, m) {
         .def("get_device_arch", &TTExaLensImplementation::get_device_arch, "Returns device architecture", "chip_id"_a)
         .def("get_device_soc_description", &TTExaLensImplementation::get_device_soc_description,
              "Returns device SoC description", "chip_id"_a)
-        .def("jtag_read32_axi", &TTExaLensImplementation::jtag_read32_axi, "Reads 4 bytes from AXI address using JTAG",
-             "chip_id"_a, "address"_a)
-        .def("jtag_write32_axi", &TTExaLensImplementation::jtag_write32_axi, "Writes 4 bytes to AXI address using JTAG",
-             "chip_id"_a, "address"_a, "data"_a)
         .def("arc_msg", &TTExaLensImplementation::arc_msg, "Send ARC message", "noc_id"_a, "chip_id"_a, "msg_code"_a,
              "wait_for_done"_a, "arg0"_a, "arg1"_a, "timeout"_a)
         .def("read_arc_telemetry_entry", &TTExaLensImplementation::read_arc_telemetry_entry, "Read ARC telemetry entry",

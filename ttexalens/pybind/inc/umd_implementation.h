@@ -33,10 +33,6 @@ class umd_implementation : public ttexalens_implementation {
     std::optional<std::string> read_tile(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
                                              uint64_t address, uint32_t size, uint8_t data_format) override;
 
-    std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) override;
-
-    std::optional<uint32_t> jtag_write32_axi(uint8_t chip_id, uint64_t address, uint32_t data) override;
-
     std::optional<std::string> get_device_arch(uint8_t chip_id) override;
 
     virtual std::optional<std::tuple<int, uint32_t, uint32_t>> arc_msg(uint8_t noc_id, uint8_t chip_id,

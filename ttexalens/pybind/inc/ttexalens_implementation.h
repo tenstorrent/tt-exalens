@@ -42,8 +42,6 @@ class ttexalens_implementation {
                                                      uint64_t address, uint32_t size, uint8_t data_format) {
         return {};
     }
-    virtual std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) { return {}; }
-    virtual std::optional<uint32_t> jtag_write32_axi(uint8_t chip_id, uint64_t address, uint32_t data) { return {}; }
     virtual std::optional<std::string> get_cluster_description() { return {}; }
     virtual std::optional<std::vector<uint8_t>> get_device_ids() { return {}; }
     virtual std::optional<std::string> get_device_arch(uint8_t chip_id) { return {}; }

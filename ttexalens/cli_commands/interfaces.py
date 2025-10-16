@@ -47,8 +47,11 @@ def decode_test_id(test_id_data):
 
 def read_axi_size(context: Context, device_id, address, size):
     data = b""
+    noc_id = 0
+    arc_location: tuple[int, int] = context.devices[device_id]._block_locations["arc"][0].to("noc0")
+
     for i in range(0, size, 4):
-        data += context.server_ifc.jtag_read32_axi(device_id, address + i).to_bytes(4, byteorder="little")
+        data += context.server_ifc.read32(noc_id, device_id, arc_location[0], arc_location[1], address + i).to_bytes(4, byteorder="little")
     return data[:size]
 
 
@@ -77,38 +80,35 @@ def run(cmd_text, context: Context, ui_state=None):
 
     devices_list = list(context.devices.keys())
     for device_id in devices_list:
-        if not context.devices[device_id]._has_jtag:
-            arc_location: tuple[int, int] = context.devices[device_id]._block_locations["arc"][0].to("noc0")
-            print(
-                f"NOC Device {device_id}: "
-                + str(
-                    decode_test_id(
-                        read_noc_size(
-                            context,
-                            device_id,
-                            *arc_location,
-                            efuse_noc,
-                            TEST_ID_SIZE,
-                        )
+        arc_location: tuple[int, int] = context.devices[device_id]._block_locations["arc"][0].to("noc0")
+        print(
+            f"NOC Device {device_id}: "
+            + str(
+                decode_test_id(
+                    read_noc_size(
+                        context,
+                        device_id,
+                        *arc_location,
+                        efuse_noc,
+                        TEST_ID_SIZE,
                     )
                 )
             )
+        )
 
     for device_id in devices_list:
         # mmio chips
         if context.devices[device_id]._has_mmio:
-            print(
-                f"PCI Device {device_id}: "
-                + str(decode_test_id(read_pci_raw_size(context, device_id, efuse_pci, TEST_ID_SIZE)))
-            )
-
-    for device_id in devices_list:
-        # jtag chips
-        if context.devices[device_id]._has_jtag:
-            print(
-                f"JTAG Device {device_id}: "
-                + str(decode_test_id(read_axi_size(context, device_id, efuse_jtag_axi, TEST_ID_SIZE)))
-            )
+            if context.devices[device_id]._has_jtag:
+                print(
+                    f"JTAG Device {device_id}: "
+                    + str(decode_test_id(read_axi_size(context, device_id, efuse_jtag_axi, TEST_ID_SIZE)))
+                )
+            else: 
+                print(
+                    f"PCI Device {device_id}: "
+                    + str(decode_test_id(read_pci_raw_size(context, device_id, efuse_pci, TEST_ID_SIZE)))
+                )
 
     navigation_suggestions: list[int] = []
     return navigation_suggestions

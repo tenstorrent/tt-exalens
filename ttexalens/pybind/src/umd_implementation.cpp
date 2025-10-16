@@ -206,26 +206,6 @@ std::optional<std::string> umd_implementation::read_tile(uint8_t noc_id, uint8_t
                                                        cluster);
 }
 
-std::optional<uint32_t> umd_implementation::jtag_write32_axi(uint8_t chip_id, uint64_t address, uint32_t data) {
-    if (is_chip_mmio_capable(chip_id)) {
-        if (cluster) {
-            cluster->get_chip(chip_id)->get_tt_device()->get_jtag_device()->write32_axi(chip_id, address, data);
-            return 4;
-        }
-    }
-    return {};
-}
-
-std::optional<uint32_t> umd_implementation::jtag_read32_axi(uint8_t chip_id, uint32_t address) {
-    if (is_chip_mmio_capable(chip_id)) {
-        if (cluster) {
-            cluster->get_chip(chip_id)->get_tt_device()->get_jtag_device()->read32_axi(chip_id, address);
-            return 4;
-        }
-    }
-    return {};
-}
-
 std::optional<std::string> umd_implementation::get_device_arch(uint8_t chip_id) {
     try {
         return tt::arch_to_str(cluster->get_soc_descriptor(chip_id).arch);

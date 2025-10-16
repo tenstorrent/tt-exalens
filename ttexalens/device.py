@@ -123,7 +123,7 @@ class Device(TTObject):
         self._context = context
         self._has_mmio = any(id in chip for chip in cluster_desc["chips_with_mmio"])
         self._has_jtag = (
-            any(id in chip for chip in cluster_desc["chips_with_jtag"]) if "chips_with_jtag" in cluster_desc else False
+            cluster_desc["io_device_type"] == "JTAG"
         )
         self.cluster_desc = cluster_desc
         self._init_coordinate_systems()
