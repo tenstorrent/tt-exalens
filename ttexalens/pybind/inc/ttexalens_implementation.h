@@ -17,19 +17,19 @@ class ttexalens_implementation {
     virtual ~ttexalens_implementation() = default;
 
     virtual std::optional<uint32_t> read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                               uint64_t address) {
+                                           uint64_t address) {
         return {};
     }
     virtual std::optional<uint32_t> write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                uint64_t address, uint32_t data) {
+                                            uint64_t address, uint32_t data) {
         return {};
     }
     virtual std::optional<std::vector<uint8_t>> read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                         uint64_t address, uint32_t size) {
+                                                     uint64_t address, uint32_t size) {
         return {};
     }
     virtual std::optional<uint32_t> write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                              uint64_t address, const uint8_t* data, uint32_t size) {
+                                          uint64_t address, const uint8_t* data, uint32_t size) {
         return {};
     }
     virtual std::optional<uint32_t> pci_read32_raw(uint8_t chip_id, uint64_t address) { return {}; }
@@ -39,7 +39,7 @@ class ttexalens_implementation {
     }
 
     virtual std::optional<std::string> read_tile(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                     uint64_t address, uint32_t size, uint8_t data_format) {
+                                                 uint64_t address, uint32_t size, uint8_t data_format) {
         return {};
     }
     virtual std::optional<std::string> get_cluster_description() { return {}; }

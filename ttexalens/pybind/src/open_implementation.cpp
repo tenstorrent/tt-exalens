@@ -153,7 +153,6 @@ open_implementation<BaseClass>::~open_implementation() {
     }
 }
 
-
 template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open(
     const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
@@ -205,10 +204,8 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     switch (arch) {
         case tt::ARCH::WORMHOLE_B0:
         case tt::ARCH::BLACKHOLE:
-            cluster = std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{
-                .target_devices = target_devices,
-                .io_device_type = device_type
-            });
+            cluster = std::make_unique<tt::umd::Cluster>(
+                tt::umd::ClusterOptions{.target_devices = target_devices, .io_device_type = device_type});
             break;
         default:
             throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");

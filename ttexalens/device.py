@@ -122,9 +122,7 @@ class Device(TTObject):
         self._device_desc_path = device_desc_path
         self._context = context
         self._has_mmio = any(id in chip for chip in cluster_desc["chips_with_mmio"])
-        self._has_jtag = (
-            cluster_desc["io_device_type"] == "JTAG"
-        )
+        self._has_jtag = cluster_desc["io_device_type"] == "JTAG"
         self.cluster_desc = cluster_desc
         self._init_coordinate_systems()
         self.unique_id = self._context.server_ifc.get_device_unique_id(self._id)

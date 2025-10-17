@@ -91,9 +91,7 @@ def read_word_from_device(
     noc_id = check_noc_id(noc_id, context)
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    word = context.server_ifc.read32(
-        noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr
-    )
+    word = context.server_ifc.read32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr)
     return word
 
 
@@ -128,9 +126,7 @@ def read_words_from_device(
         raise TTException("word_count must be greater than 0.")
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    bytes_data = context.server_ifc.read(
-        noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, 4 * word_count
-    )
+    bytes_data = context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, 4 * word_count)
     data = list(struct.unpack(f"<{word_count}I", bytes_data))
     return data
 
@@ -164,11 +160,9 @@ def read_from_device(
     noc_id = check_noc_id(noc_id, context)
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
-    
+
     noc_loc = context.convert_loc_to_umd(coordinate)
-    return context.server_ifc.read(
-        noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, num_bytes
-    )
+    return context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, num_bytes)
 
 
 def write_words_to_device(
@@ -198,17 +192,13 @@ def write_words_to_device(
 
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
-    
+
     noc_loc = context.convert_loc_to_umd(coordinate)
     if isinstance(data, int):
-        return context.server_ifc.write32(
-            noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data
-        )
+        return context.server_ifc.write32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
 
     byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-    return context.server_ifc.write(
-        noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data
-    )
+    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data)
 
 
 def write_to_device(
@@ -246,9 +236,7 @@ def write_to_device(
         raise TTException("Data to write must not be empty.")
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    return context.server_ifc.write(
-        noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data
-    )
+    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
 
 
 def load_elf(

@@ -51,7 +51,9 @@ def read_axi_size(context: Context, device_id, address, size):
     arc_location: tuple[int, int] = context.devices[device_id]._block_locations["arc"][0].to("noc0")
 
     for i in range(0, size, 4):
-        data += context.server_ifc.read32(noc_id, device_id, arc_location[0], arc_location[1], address + i).to_bytes(4, byteorder="little")
+        data += context.server_ifc.read32(noc_id, device_id, arc_location[0], arc_location[1], address + i).to_bytes(
+            4, byteorder="little"
+        )
     return data[:size]
 
 
@@ -104,7 +106,7 @@ def run(cmd_text, context: Context, ui_state=None):
                     f"JTAG Device {device_id}: "
                     + str(decode_test_id(read_axi_size(context, device_id, efuse_jtag_axi, TEST_ID_SIZE)))
                 )
-            else: 
+            else:
                 print(
                     f"PCI Device {device_id}: "
                     + str(decode_test_id(read_pci_raw_size(context, device_id, efuse_pci, TEST_ID_SIZE)))
