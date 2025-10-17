@@ -96,8 +96,8 @@ umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(clus
     cached_arc_telemetry_readers.resize(cluster->get_cluster_description()->get_number_of_chips());
 }
 
-std::optional<uint32_t> umd_implementation::pci_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                       uint64_t address) {
+std::optional<uint32_t> umd_implementation::read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                   uint64_t address) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
@@ -108,8 +108,8 @@ std::optional<uint32_t> umd_implementation::pci_read32(uint8_t noc_id, uint8_t c
     return result;
 }
 
-std::optional<uint32_t> umd_implementation::pci_write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                        uint64_t address, uint32_t data) {
+std::optional<uint32_t> umd_implementation::write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                    uint64_t address, uint32_t data) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
@@ -119,14 +119,13 @@ std::optional<uint32_t> umd_implementation::pci_write32(uint8_t noc_id, uint8_t 
     return 4;
 }
 
-std::optional<std::vector<uint8_t>> umd_implementation::pci_read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x,
-                                                                 uint8_t noc_y, uint64_t address, uint32_t size) {
+std::optional<std::vector<uint8_t>> umd_implementation::read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x,
+                                                             uint8_t noc_y, uint64_t address, uint32_t size) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
     std::vector<uint8_t> result(size);
     tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
-
     // TODO #124: Mitigation for UMD bug #77
     if (!is_chip_mmio_capable(chip_id)) {
         for (uint32_t done = 0; done < size;) {
@@ -141,8 +140,8 @@ std::optional<std::vector<uint8_t>> umd_implementation::pci_read(uint8_t noc_id,
     return result;
 }
 
-std::optional<uint32_t> umd_implementation::pci_write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                      uint64_t address, const uint8_t* data, uint32_t size) {
+std::optional<uint32_t> umd_implementation::write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                  uint64_t address, const uint8_t* data, uint32_t size) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
@@ -200,9 +199,8 @@ std::optional<uint32_t> umd_implementation::dma_buffer_read32(uint8_t chip_id, u
     return result;
 }
 
-std::optional<std::string> umd_implementation::pci_read_tile(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x,
-                                                             uint8_t noc_y, uint64_t address, uint32_t size,
-                                                             uint8_t data_format) {
+std::optional<std::string> umd_implementation::read_tile(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                         uint64_t address, uint32_t size, uint8_t data_format) {
     return tt::exalens::tile::read_tile_implementation(noc_id, chip_id, noc_x, noc_y, address, size, data_format,
                                                        cluster);
 }

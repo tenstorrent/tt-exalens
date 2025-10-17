@@ -87,16 +87,11 @@ def read_word_from_device(
     """
     coordinate = convert_coordinate(location, device_id, context)
     context = coordinate.context
-
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
 
-    if coordinate.device._has_jtag:
-        noc_loc = context.convert_loc_to_jtag(coordinate)
-        word = context.server_ifc.jtag_read32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr)
-    else:
-        noc_loc = context.convert_loc_to_umd(coordinate)
-        word = context.server_ifc.pci_read32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr)
+    noc_loc = context.convert_loc_to_umd(coordinate)
+    word = context.server_ifc.read32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr)
     return word
 
 
@@ -130,19 +125,9 @@ def read_words_from_device(
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
-    if coordinate.device._has_jtag:
-        data = []
-        for i in range(word_count):
-            noc_loc = context.convert_loc_to_jtag(coordinate)
-            word = context.server_ifc.jtag_read32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr + 4 * i)
-            data.append(word)
-        return data
-    else:
-        noc_loc = context.convert_loc_to_umd(coordinate)
-        bytes_data = context.server_ifc.pci_read(
-            noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, 4 * word_count
-        )
-        data = list(struct.unpack(f"<{word_count}I", bytes_data))
+    noc_loc = context.convert_loc_to_umd(coordinate)
+    bytes_data = context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, 4 * word_count)
+    data = list(struct.unpack(f"<{word_count}I", bytes_data))
     return data
 
 
@@ -176,14 +161,8 @@ def read_from_device(
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
-    if coordinate.device._has_jtag:
-        int_array = read_words_from_device(
-            coordinate, addr, coordinate.device_id, num_bytes // 4 + (num_bytes % 4 > 0), context, noc_id
-        )
-        return struct.pack(f"{len(int_array)}I", *int_array)[:num_bytes]
-
     noc_loc = context.convert_loc_to_umd(coordinate)
-    return context.server_ifc.pci_read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, num_bytes)
+    return context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, num_bytes)
 
 
 def write_words_to_device(
@@ -214,26 +193,12 @@ def write_words_to_device(
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
 
+    noc_loc = context.convert_loc_to_umd(coordinate)
     if isinstance(data, int):
-        if coordinate.device._has_jtag:
-            noc_loc = context.convert_loc_to_jtag(coordinate)
-            return context.server_ifc.jtag_write32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
-        else:
-            noc_loc = context.convert_loc_to_umd(coordinate)
-            return context.server_ifc.pci_write32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
+        return context.server_ifc.write32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
 
-    if coordinate.device._has_jtag:
-        noc_loc = context.convert_loc_to_jtag(coordinate)
-        bytes_written = 0
-        for i, word in enumerate(data):
-            bytes_written += context.server_ifc.jtag_write32(
-                noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr + i * 4, word
-            )
-        return bytes_written
-    else:
-        byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-        noc_loc = context.convert_loc_to_umd(coordinate)
-        return context.server_ifc.pci_write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data)
+    byte_data = b"".join(x.to_bytes(4, "little") for x in data)
+    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data)
 
 
 def write_to_device(
@@ -270,18 +235,8 @@ def write_to_device(
     if len(data) == 0:
         raise TTException("Data to write must not be empty.")
 
-    if coordinate.device._has_jtag:
-        assert (
-            len(data) % 4 == 0
-        ), "Data length must be a multiple of 4 bytes as JTAG currently does not support unaligned access."
-        for i in range(0, len(data), 4):
-            write_words_to_device(
-                coordinate, addr + i, struct.unpack("<I", data[i : i + 4])[0], coordinate.device_id, context, noc_id
-            )
-        return len(data)
-
     noc_loc = context.convert_loc_to_umd(coordinate)
-    return context.server_ifc.pci_write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
+    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
 
 
 def load_elf(

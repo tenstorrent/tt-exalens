@@ -16,20 +16,20 @@ class ttexalens_implementation {
    public:
     virtual ~ttexalens_implementation() = default;
 
-    virtual std::optional<uint32_t> pci_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                               uint64_t address) {
+    virtual std::optional<uint32_t> read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                           uint64_t address) {
         return {};
     }
-    virtual std::optional<uint32_t> pci_write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                uint64_t address, uint32_t data) {
+    virtual std::optional<uint32_t> write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                            uint64_t address, uint32_t data) {
         return {};
     }
-    virtual std::optional<std::vector<uint8_t>> pci_read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                         uint64_t address, uint32_t size) {
+    virtual std::optional<std::vector<uint8_t>> read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                     uint64_t address, uint32_t size) {
         return {};
     }
-    virtual std::optional<uint32_t> pci_write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                              uint64_t address, const uint8_t* data, uint32_t size) {
+    virtual std::optional<uint32_t> write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                          uint64_t address, const uint8_t* data, uint32_t size) {
         return {};
     }
     virtual std::optional<uint32_t> pci_read32_raw(uint8_t chip_id, uint64_t address) { return {}; }
@@ -38,8 +38,8 @@ class ttexalens_implementation {
         return {};
     }
 
-    virtual std::optional<std::string> pci_read_tile(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                     uint64_t address, uint32_t size, uint8_t data_format) {
+    virtual std::optional<std::string> read_tile(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                 uint64_t address, uint32_t size, uint8_t data_format) {
         return {};
     }
     virtual std::optional<std::string> get_cluster_description() { return {}; }
@@ -60,17 +60,6 @@ class ttexalens_implementation {
     virtual std::optional<uint32_t> read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) { return {}; }
     virtual std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> get_firmware_version(uint8_t chip_id) { return {}; }
     virtual std::optional<uint64_t> get_device_unique_id(uint8_t chip_id) { return {}; }
-
-    virtual std::optional<int> jtag_write32_axi(uint8_t chip_id, uint32_t address, uint32_t data) { return {}; }
-    virtual std::optional<int> jtag_write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                            uint64_t address, uint32_t data) {
-        return {};
-    }
-    virtual std::optional<uint32_t> jtag_read32_axi(uint8_t chip_id, uint32_t address) { return {}; }
-    virtual std::optional<uint32_t> jtag_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                uint64_t address) {
-        return {};
-    }
 };
 
 }  // namespace tt::exalens
