@@ -780,9 +780,7 @@ class TestARC(unittest.TestCase):
             self.skipTest("ARC telemetry is not supported for this architecture")
 
         if self.device._firmware_version < CUTOFF_FIRMWARE_VERSION:
-            self.skipTest(
-                f"ARC telemetry is not supported for firmware version {self.device._firmware_version}"
-            )
+            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device._firmware_version}")
 
         tag = "TIMER_HEARTBEAT"
 
@@ -810,9 +808,7 @@ class TestARC(unittest.TestCase):
             self.skipTest("ARC telemetry is not supported for this architecture")
 
         if self.device._firmware_version < CUTOFF_FIRMWARE_VERSION:
-            self.skipTest(
-                f"ARC telemetry is not supported for firmware version {self.device._firmware_version}"
-            )
+            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device._firmware_version}")
 
         device_id = 0
 
