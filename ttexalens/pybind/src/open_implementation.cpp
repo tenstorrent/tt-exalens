@@ -11,7 +11,6 @@
 #include <stdexcept>
 #include <string>
 
-#include "jtag_implementation.h"
 #include "umd/device/cluster.h"
 #include "umd/device/jtag/jtag.h"
 #include "umd/device/jtag/jtag_device.h"
@@ -21,6 +20,7 @@
 #include "umd/device/tt_device/tt_device.h"
 #include "umd/device/tt_soc_descriptor.h"
 #include "umd/device/types/arch.h"
+#include "umd/device/types/communication_protocol.hpp"
 #include "umd_implementation.h"
 
 static std::filesystem::path get_temp_working_directory() {
@@ -110,19 +110,6 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Clu
     return device_soc_descriptors_yamls;
 }
 
-std::unique_ptr<JtagDevice> init_jtag(std::filesystem::path binary_directory) {
-    if (binary_directory.empty()) {
-        binary_directory = find_binary_directory();
-    }
-
-    std::unique_ptr<JtagDevice> jtag_implementation;
-    std::unique_ptr<Jtag> jtag;
-    jtag = std::make_unique<Jtag>((binary_directory / std::string("../lib/libtt_umd_jtag.so")).c_str());
-    jtag_implementation = std::make_unique<JtagDevice>(std::move(jtag));
-
-    return jtag_implementation;
-}
-
 static std::string jtag_create_temp_network_descriptor_file(JtagDevice *jtag_device) {
     // In python we only need chips_with_mmio, harvesting and chips_with_jtag, other fields are not needed
     // We are doing this beacause we are reusing this file in python which was originaly created for UMD initialization
@@ -167,62 +154,18 @@ open_implementation<BaseClass>::~open_implementation() {
 }
 
 template <>
-std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jtag_implementation>::open(
-    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
-    bool initialize_with_noc1) {
-    // TODO: initialize with noc1 in JTAG
-
-    std::vector<uint8_t> device_ids;
-    std::unique_ptr<tt::umd::Cluster> cluster;
-    std::unique_ptr<JtagDevice> jtag_device;
-
-    jtag_device = std::move(init_jtag(binary_directory));
-
-    // Check that all chips are of the same type
-    tt::ARCH arch = jtag_device->get_jtag_arch(0);
-    for (size_t i = 1; i < jtag_device->get_device_cnt(); i++) {
-        auto newArch = jtag_device->get_jtag_arch(i);
-
-        if (arch != newArch) {
-            throw std::runtime_error("Not all devices have the same architecture.");
-        }
-    }
-    auto cluster_descriptor_path = jtag_create_temp_network_descriptor_file(jtag_device.get());
-
-    std::map<uint8_t, std::string> device_soc_descriptors_yamls;
-    std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
-
-    for (size_t device_id = 0; device_id < jtag_device->get_device_cnt(); device_id++) {
-        tt::ARCH arch = jtag_device->get_jtag_arch(device_id);
-        uint32_t harvesting = *jtag_device->get_efuse_harvesting(device_id);
-        soc_descriptors[device_id] = tt_SocDescriptor(arch, {.harvesting_masks = {harvesting}});
-        device_soc_descriptors_yamls[device_id] =
-            jtag_create_device_soc_descriptor(soc_descriptors[device_id], device_id);
-        device_ids.push_back(device_id);
-    }
-
-    auto implementation = std::unique_ptr<open_implementation<jtag_implementation>>(
-        new open_implementation<jtag_implementation>(std::move(jtag_device)));
-
-    implementation->cluster_descriptor_path = cluster_descriptor_path;
-    implementation->device_ids = device_ids;
-    implementation->soc_descriptors = std::move(soc_descriptors);
-    implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
-    return std::move(implementation);
-}
-
-template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open(
     const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
-    bool initialize_with_noc1) {
+    bool initialize_with_noc1, bool init_jtag) {
     // Disable UMD logging
     tt::umd::logging::set_level(tt::umd::logging::level::error);
 
     // TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use
     // noc1
     tt::umd::TTDevice::use_noc1(initialize_with_noc1);
+    tt::umd::IODeviceType device_type = init_jtag ? tt::umd::IODeviceType::JTAG : tt::umd::IODeviceType::PCIe;
 
-    auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor();
+    auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor("", {}, device_type);
 
     if (cluster_descriptor->get_number_of_chips() == 0) {
         throw std::runtime_error("No Tenstorrent devices were detected on this system.");
@@ -261,9 +204,8 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     switch (arch) {
         case tt::ARCH::WORMHOLE_B0:
         case tt::ARCH::BLACKHOLE:
-            cluster = std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{
-                .target_devices = target_devices,
-            });
+            cluster = std::make_unique<tt::umd::Cluster>(
+                tt::umd::ClusterOptions{.target_devices = target_devices, .io_device_type = device_type});
             break;
         default:
             throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");

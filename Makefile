@@ -1,5 +1,5 @@
 CONFIG ?= Debug
-JTAG ?= OFF
+TT_UMD_BUILD_JTAG ?= OFF
 BUILD_DIR ?= build_$(shell echo $(CONFIG) | tr '[:upper:]' '[:lower:]') # build_debug or build_release
 
 .PHONY: build
@@ -9,12 +9,12 @@ build:
 			-DCMAKE_C_COMPILER_LAUNCHER=ccache \
 			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
 			-DCMAKE_BUILD_TYPE=$(CONFIG) \
-			-DJTAG=$(JTAG) \
+			-DTT_UMD_BUILD_JTAG=$(TT_UMD_BUILD_JTAG) \
 			-DCMAKE_POLICY_VERSION_MINIMUM=3.5; \
 	else \
 		cmake -B $(BUILD_DIR) -G Ninja \
 			-DCMAKE_BUILD_TYPE=$(CONFIG) \
-			-DJTAG=$(JTAG) \
+			-DTT_UMD_BUILD_JTAG=$(TT_UMD_BUILD_JTAG) \
 			-DCMAKE_POLICY_VERSION_MINIMUM=3.5; \
 	fi
 	@ninja -C $(BUILD_DIR)

@@ -77,9 +77,6 @@ class Context:
     def elf_loaded(self, risc_location: RiscLocation, elf_path: str):
         pass
 
-    def convert_loc_to_jtag(self, location: OnChipCoordinate) -> tuple[int, int]:
-        return location.to("noc0")
-
     def convert_loc_to_umd(self, location: OnChipCoordinate) -> tuple[int, int]:
         return location.to("noc0")
 

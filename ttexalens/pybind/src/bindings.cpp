@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include <jtag_implementation.h>
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/string.h>
@@ -37,18 +36,17 @@ class TTExaLensImplementation {
         return result.value();
     }
 
-    uint32_t pci_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
-        return _check_result(implementation->pci_read32(noc_id, chip_id, noc_x, noc_y, address));
+    uint32_t read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
+        return _check_result(implementation->read32(noc_id, chip_id, noc_x, noc_y, address));
     }
 
-    uint32_t pci_write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                         uint32_t data) {
-        return _check_result(implementation->pci_write32(noc_id, chip_id, noc_x, noc_y, address, data));
+    uint32_t write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data) {
+        return _check_result(implementation->write32(noc_id, chip_id, noc_x, noc_y, address, data));
     }
 
-    nanobind::bytes pci_read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                             uint32_t size) {
-        auto data = implementation->pci_read(noc_id, chip_id, noc_x, noc_y, address, size);
+    nanobind::bytes read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                         uint32_t size) {
+        auto data = implementation->read(noc_id, chip_id, noc_x, noc_y, address, size);
         if (data) {
             // For nanobind, we can use nanobind::bytes directly
             return nanobind::bytes(reinterpret_cast<const char *>(data.value().data()), size);
@@ -56,11 +54,11 @@ class TTExaLensImplementation {
         throw std::runtime_error("TTExaLens implementation not implemented");
     }
 
-    uint32_t pci_write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                       nanobind::bytes data) {
+    uint32_t write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                   nanobind::bytes data) {
         const char *data_ptr = data.c_str();
-        return _check_result(implementation->pci_write(noc_id, chip_id, noc_x, noc_y, address,
-                                                       reinterpret_cast<const uint8_t *>(data_ptr), data.size()));
+        return _check_result(implementation->write(noc_id, chip_id, noc_x, noc_y, address,
+                                                   reinterpret_cast<const uint8_t *>(data_ptr), data.size()));
     }
 
     uint32_t pci_read32_raw(uint8_t chip_id, uint64_t address) {
@@ -75,9 +73,9 @@ class TTExaLensImplementation {
         return _check_result(implementation->dma_buffer_read32(chip_id, address, channel));
     }
 
-    std::string pci_read_tile(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                              uint32_t size, uint8_t data_format) {
-        return _check_result(implementation->pci_read_tile(noc_id, chip_id, noc_x, noc_y, address, size, data_format));
+    std::string read_tile(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                          uint32_t size, uint8_t data_format) {
+        return _check_result(implementation->read_tile(noc_id, chip_id, noc_x, noc_y, address, size, data_format));
     }
 
     std::string get_cluster_description() { return _check_result(implementation->get_cluster_description()); }
@@ -93,35 +91,6 @@ class TTExaLensImplementation {
 
     std::string get_device_soc_description(uint8_t chip_id) {
         return _check_result(implementation->get_device_soc_description(chip_id));
-    }
-
-    uint32_t jtag_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
-        if (address % 4 != 0) {
-            throw std::runtime_error("Unaligned access in jtag_read32");
-        }
-        return _check_result(implementation->jtag_read32(noc_id, chip_id, noc_x, noc_y, address));
-    }
-
-    uint32_t jtag_write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                          uint32_t data) {
-        if (address % 4 != 0) {
-            throw std::runtime_error("Unaligned access in jtag_write32");
-        }
-        return _check_result(implementation->jtag_write32(noc_id, chip_id, noc_x, noc_y, address, data));
-    }
-
-    uint32_t jtag_read32_axi(uint8_t chip_id, uint32_t address) {
-        if (address % 4 != 0) {
-            throw std::runtime_error("Unaligned access in jtag_read32_axi");
-        }
-        return _check_result(implementation->jtag_read32_axi(chip_id, address));
-    }
-
-    uint32_t jtag_write32_axi(uint8_t chip_id, uint64_t address, uint32_t data) {
-        if (address % 4 != 0) {
-            throw std::runtime_error("Unaligned access in jtag_write32_axi");
-        }
-        return _check_result(implementation->jtag_write32_axi(chip_id, address, data));
     }
 
     std::tuple<int, uint32_t, uint32_t> arc_msg(uint8_t noc_id, uint8_t chip_id, uint32_t msg_code, bool wait_for_done,
@@ -146,13 +115,10 @@ std::unique_ptr<TTExaLensImplementation> open_device(const std::string &binary_d
                                                      const std::vector<uint8_t> &wanted_devices, bool init_jtag,
                                                      bool initialize_with_noc1) {
     std::unique_ptr<tt::exalens::ttexalens_implementation> impl;
-    if (init_jtag) {
-        impl = tt::exalens::open_implementation<tt::exalens::jtag_implementation>::open(
-            binary_directory, wanted_devices, initialize_with_noc1);
-    } else {
-        impl = tt::exalens::open_implementation<tt::exalens::umd_implementation>::open(binary_directory, wanted_devices,
-                                                                                       initialize_with_noc1);
-    }
+
+    impl = tt::exalens::open_implementation<tt::exalens::umd_implementation>::open(binary_directory, wanted_devices,
+                                                                                   initialize_with_noc1, init_jtag);
+
     if (!impl) {
         return nullptr;
     }
@@ -176,22 +142,22 @@ NB_MODULE(ttexalens_pybind, m) {
 
     // Bind the TTExaLensImplementation class
     nanobind::class_<TTExaLensImplementation>(m, "TTExaLensImplementation")
-        .def("pci_read32", &TTExaLensImplementation::pci_read32, "Reads 4 bytes from PCI address", "noc_id"_a,
-             "chip_id"_a, "noc_x"_a, "noc_y"_a, "address"_a)
-        .def("pci_write32", &TTExaLensImplementation::pci_write32, "Writes 4 bytes to PCI address", "noc_id"_a,
-             "chip_id"_a, "noc_x"_a, "noc_y"_a, "address"_a, "data"_a)
-        .def("pci_read", &TTExaLensImplementation::pci_read, "Reads data from PCI address", "noc_id"_a, "chip_id"_a,
-             "noc_x"_a, "noc_y"_a, "address"_a, "size"_a)
-        .def("pci_write", &TTExaLensImplementation::pci_write, "Writes data to PCI address", "noc_id"_a, "chip_id"_a,
+        .def("read32", &TTExaLensImplementation::read32, "Reads 4 bytes from address", "noc_id"_a, "chip_id"_a,
+             "noc_x"_a, "noc_y"_a, "address"_a)
+        .def("write32", &TTExaLensImplementation::write32, "Writes 4 bytes to address", "noc_id"_a, "chip_id"_a,
              "noc_x"_a, "noc_y"_a, "address"_a, "data"_a)
+        .def("read", &TTExaLensImplementation::read, "Reads data from address", "noc_id"_a, "chip_id"_a, "noc_x"_a,
+             "noc_y"_a, "address"_a, "size"_a)
+        .def("write", &TTExaLensImplementation::write, "Writes data to address", "noc_id"_a, "chip_id"_a, "noc_x"_a,
+             "noc_y"_a, "address"_a, "data"_a)
         .def("pci_read32_raw", &TTExaLensImplementation::pci_read32_raw, "Reads 4 bytes from PCI address", "chip_id"_a,
              "address"_a)
         .def("pci_write32_raw", &TTExaLensImplementation::pci_write32_raw, "Writes 4 bytes to PCI address", "chip_id"_a,
              "address"_a, "data"_a)
         .def("dma_buffer_read32", &TTExaLensImplementation::dma_buffer_read32, "Reads 4 bytes from DMA buffer",
              "chip_id"_a, "address"_a, "channel"_a)
-        .def("pci_read_tile", &TTExaLensImplementation::pci_read_tile, "Reads tile from PCI address", "noc_id"_a,
-             "chip_id"_a, "noc_x"_a, "noc_y"_a, "address"_a, "size"_a, "data_format"_a)
+        .def("pci_read_tile", &TTExaLensImplementation::read_tile, "Reads tile from address", "noc_id"_a, "chip_id"_a,
+             "noc_x"_a, "noc_y"_a, "address"_a, "size"_a, "data_format"_a)
         .def("get_cluster_description", &TTExaLensImplementation::get_cluster_description,
              "Returns cluster description")
         .def("convert_from_noc0", &TTExaLensImplementation::convert_from_noc0,
@@ -201,14 +167,6 @@ NB_MODULE(ttexalens_pybind, m) {
         .def("get_device_arch", &TTExaLensImplementation::get_device_arch, "Returns device architecture", "chip_id"_a)
         .def("get_device_soc_description", &TTExaLensImplementation::get_device_soc_description,
              "Returns device SoC description", "chip_id"_a)
-        .def("jtag_read32", &TTExaLensImplementation::jtag_read32, "Reads 4 bytes from NOC address using JTAG",
-             "noc_id"_a, "chip_id"_a, "noc_x"_a, "noc_y"_a, "address"_a)
-        .def("jtag_write32", &TTExaLensImplementation::jtag_write32, "Writes 4 bytes to NOC address using JTAG",
-             "noc_id"_a, "chip_id"_a, "noc_x"_a, "noc_y"_a, "address"_a, "data"_a)
-        .def("jtag_read32_axi", &TTExaLensImplementation::jtag_read32_axi, "Reads 4 bytes from AXI address using JTAG",
-             "chip_id"_a, "address"_a)
-        .def("jtag_write32_axi", &TTExaLensImplementation::jtag_write32_axi, "Writes 4 bytes to AXI address using JTAG",
-             "chip_id"_a, "address"_a, "data"_a)
         .def("arc_msg", &TTExaLensImplementation::arc_msg, "Send ARC message", "noc_id"_a, "chip_id"_a, "msg_code"_a,
              "wait_for_done"_a, "arg0"_a, "arg1"_a, "timeout"_a)
         .def("read_arc_telemetry_entry", &TTExaLensImplementation::read_arc_telemetry_entry, "Read ARC telemetry entry",
