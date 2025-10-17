@@ -51,6 +51,9 @@ class WormholeDevice(Device):
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         return x >= 16 and y >= 16
 
+    def is_wormhole(self) -> bool:
+        return True
+
     @cache
     def get_block(self, location: OnChipCoordinate) -> NocBlock:
         block_type = self.get_block_type(location)

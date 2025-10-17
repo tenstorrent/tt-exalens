@@ -99,7 +99,7 @@ class TestDebugging(unittest.TestCase):
         )
 
     def test_default_start_address(self):
-        if self.core_sim.is_quasar():
+        if self.core_sim.device.is_quasar():
             self.skipTest("Skipping Quasar test since it lasts for 1 hour on simulator.")
 
         risc_info = self.core_sim.risc_debug.risc_info
@@ -388,7 +388,7 @@ class TestDebugging(unittest.TestCase):
 
     def test_core_lockup(self):
         """Running code that should lock up the core and then trying to halt it."""
-        if not self.core_sim.is_wormhole():
+        if not self.core_sim.device.is_wormhole():
             self.skipTest("Issue is hit only on wormhole.")
 
         # lui t3, 0 - 0x00000e37
@@ -525,7 +525,7 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
 
     def test_invalidate_cache(self):
-        if self.core_sim.is_wormhole():
+        if self.core_sim.device.is_wormhole():
             self.skipTest("Invalidate cache is not reliable on wormhole.")
 
         if self.core_sim.is_eth_block():
@@ -651,9 +651,11 @@ class TestDebugging(unittest.TestCase):
     def test_invalidate_cache_with_nops_and_long_jump(self):
         """Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation by having NOPs block and jump back. All that is done on brisc."""
 
-        if self.core_sim.is_eth_block() and self.core_sim.is_wormhole():
+        if self.core_sim.is_eth_block() and self.core_sim.device.is_wormhole():
             self.skipTest("This test is not applicable for ETH cores.")
-        if (self.core_sim.is_wormhole() or self.core_sim.is_blackhole()) and self.core_sim.risc_name == "TRISC2":
+        if (
+            self.core_sim.device.is_wormhole() or self.core_sim.device.is_blackhole()
+        ) and self.core_sim.risc_name == "TRISC2":
             self.skipTest("This test is unreliable on TRISC2 on wormhole or blackhole.")
 
         break_addr = 0x950
@@ -684,7 +686,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.set_reset(False)
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.is_quasar():
+        if self.core_sim.device.is_quasar():
             for i in range(50):
                 self.core_sim.read_data(0)
 
@@ -714,7 +716,7 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.is_quasar():
+        if self.core_sim.device.is_quasar():
             for i in range(200):
                 if self.core_sim.read_data(addr) == 0x87654000:
                     break
@@ -1207,10 +1209,10 @@ class TestDebugging(unittest.TestCase):
         if self.core_sim.is_eth_block():
             self.skipTest("We don't know how to enable/disable branch prediction ETH cores.")
 
-        if self.core_sim.is_blackhole():
+        if self.core_sim.device.is_blackhole():
             self.skipTest("BNE instruction with debug hardware enabled is fixed in blackhole.")
 
-        if self.core_sim.is_quasar():
+        if self.core_sim.device.is_quasar():
             self.skipTest("BNE instruction with debug hardware enabled is fixed in quasar.")
 
         # Enable branch prediction
@@ -1336,7 +1338,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.debug_hardware.continue_without_debug()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.is_quasar():
+        if self.core_sim.device.is_quasar():
             for i in range(20):
                 self.core_sim.read_data(0)
 
@@ -1411,7 +1413,7 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
         # Disable branch prediction
-        if not self.core_sim.is_blackhole():
+        if not self.core_sim.device.is_blackhole():
             # Disabling branch prediction fails this test on blackhole :(
             self.core_sim.set_branch_prediction(False)
 
@@ -1419,7 +1421,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.is_quasar():
+        if self.core_sim.device.is_quasar():
             for i in range(20):
                 self.core_sim.read_data(0)
 

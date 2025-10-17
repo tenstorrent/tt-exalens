@@ -46,6 +46,9 @@ class BlackholeDevice(Device):
         )
         self.instructions = BlackholeInstructions()
 
+    def is_blackhole(self) -> bool:
+        return True
+
     @cache
     def get_block(self, location: OnChipCoordinate) -> NocBlock:
         block_type = self.get_block_type(location)

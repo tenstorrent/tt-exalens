@@ -86,10 +86,18 @@ class Device(TTObject):
                 cores.extend(noc_block.debuggable_riscs)
         return cores
 
+    def is_wormhole(self) -> bool:
+        return False
+
+    def is_blackhole(self) -> bool:
+        return False
+
+    def is_quasar(self) -> bool:
+        return False
+
     # Class method to create a Device object given device architecture
     @staticmethod
     def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
-        dev = None
         if "wormhole" in arch.lower():
             from ttexalens.hw.tensix.wormhole import wormhole
 
