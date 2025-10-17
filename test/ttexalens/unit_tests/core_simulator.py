@@ -138,18 +138,6 @@ class RiscvCoreSimulator:
         """Check if ebreak instruction was hit."""
         return self.read_status().is_ebreak_hit
 
-    def is_blackhole(self) -> bool:
-        """Check if device is blackhole."""
-        return self.device._arch == "blackhole"
-
-    def is_wormhole(self) -> bool:
-        """Check if device is wormhole_b0."""
-        return self.device._arch == "wormhole_b0"
-
-    def is_quasar(self):
-        """Check if device is quasar."""
-        return self.device._arch == "quasar"
-
     def is_eth_block(self):
         """Check if the core is ETH."""
         return self.device.get_block_type(self.location) == "eth"

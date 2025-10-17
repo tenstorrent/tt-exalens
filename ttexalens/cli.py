@@ -279,8 +279,8 @@ def main_loop(args, context):
                             my_prompt += f"gdb:{gdb_status} "
                         noc_prompt = "1" if ui_state.context.use_noc1 else "0"
                         if (
-                            ui_state.current_device._arch == "blackhole"
-                            or ui_state.current_device._arch == "wormhole_b0"
+                            ui_state.current_device.is_blackhole()
+                            or ui_state.current_device.is_wormhole()
                         ):
                             my_prompt += f"noc:{util.CLR_PROMPT}{noc_prompt}{util.CLR_PROMPT_END} "
                         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""

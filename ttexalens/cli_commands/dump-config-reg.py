@@ -124,7 +124,7 @@ def run(cmd_text, context, ui_state: UIState):
                 pack_counters_table = config_regs_to_table(conf_reg_desc.pack_counters, "COUNTERS", register_store)
                 edge_offset_table = config_regs_to_table(conf_reg_desc.pack_edge_offset, "EDGE OFFSET", register_store)
                 pack_strides_table = config_regs_to_table(conf_reg_desc.pack_strides, "STRIDES", register_store)
-                if device._arch == "wormhole_b0" or device._arch == "blackhole":
+                if device.is_wormhole() or device.is_blackhole():
                     relu_config_table = config_regs_to_table(conf_reg_desc.relu_config, "RELU CONFIG", register_store)
                     dest_rd_ctrl_table = config_regs_to_table(
                         conf_reg_desc.pack_dest_rd_ctrl, "DEST RD CTRL", register_store

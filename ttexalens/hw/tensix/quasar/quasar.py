@@ -27,6 +27,9 @@ class QuasarDevice(Device):
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(id, arch, cluster_desc, device_desc_path, context)
 
+    def is_quasar(self) -> bool:
+        return True
+
     @cache
     def get_block(self, location: OnChipCoordinate) -> NocBlock:
         block_type = self.get_block_type(location)
