@@ -290,7 +290,7 @@ class BabyRiscDebugHardware:
 
         if self.enable_asserts:
             if not self.__is_read_valid():
-                util.WARN(f"Reading from RiscV debug registers failed (debug read valid bit is set to 0).")
+                util.DEBUG(f"Reading from RiscV debug registers failed (debug read valid bit is set to 0).")
         return self.__read(self.RISC_DBG_STATUS1)
 
     def enable_debug(self):
