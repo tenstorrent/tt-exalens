@@ -755,7 +755,6 @@ class TestARC(unittest.TestCase):
         if self.device.is_blackhole():
             self.skipTest("Arc message is not supported on blackhole UMD")
 
-        device_id = 0
         msg_code = 0x90  # ArcMessageType::TEST
         wait_for_done = True
         arg0 = 0
@@ -763,7 +762,9 @@ class TestARC(unittest.TestCase):
         timeout = 1000
 
         # Ask for reply, check for reasonable TEST value
-        ret, return_3, _ = lib.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, context=self.context)
+        ret, return_3, _ = lib.arc_msg(
+            self.device._id, msg_code, wait_for_done, arg0, arg1, timeout, context=self.context
+        )
 
         print(f"ARC message result={ret}, test={return_3}")
         self.assertEqual(ret, 0)
@@ -775,7 +776,6 @@ class TestARC(unittest.TestCase):
 
     def test_arc_heartbeat(self):
         """Test reading ARC heartbeat"""
-        device_id = 0
         if not self.device.is_wormhole() and not self.device.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
 
@@ -787,9 +787,9 @@ class TestARC(unittest.TestCase):
         # Check if heartbeat is increasing
         import time
 
-        heartbeat1 = lib.read_arc_telemetry_entry(device_id, tag)
+        heartbeat1 = lib.read_arc_telemetry_entry(self.device._id, tag)
         time.sleep(0.1)
-        heartbeat2 = lib.read_arc_telemetry_entry(device_id, tag)
+        heartbeat2 = lib.read_arc_telemetry_entry(self.device._id, tag)
         self.assertGreater(heartbeat2, heartbeat1)
 
     @parameterized.expand(
@@ -810,10 +810,8 @@ class TestARC(unittest.TestCase):
         if self.device._firmware_version < CUTOFF_FIRMWARE_VERSION:
             self.skipTest(f"ARC telemetry is not supported for firmware version {self.device._firmware_version}")
 
-        device_id = 0
-
-        ret_from_name = lib.read_arc_telemetry_entry(device_id, tag_name)
-        ret_from_id = lib.read_arc_telemetry_entry(device_id, tag_id)
+        ret_from_name = lib.read_arc_telemetry_entry(self.device._id, tag_name)
+        ret_from_id = lib.read_arc_telemetry_entry(self.device._id, tag_id)
         self.assertEqual(ret_from_name, ret_from_id)
 
     def test_load_arc_fw(self):
