@@ -1179,6 +1179,11 @@ class ElfVariable:
             return value
 
     def read(self):
+        if self.type_die.tag_is("pointer_type"):
+            assert self.type_die.size is not None
+            address = self.mem_access_function(self.address, self.type_die.size, 1)[0]
+            dereferenced_pointer = ElfVariable(self.type_die.dereference_type, address, self.mem_access_function)
+            return dereferenced_pointer.read()
         assert self.type_die.size is not None
         int_bytes = self.mem_access_function(self.address, self.type_die.size, self.type_die.size)
         data = bytes(int_bytes)
