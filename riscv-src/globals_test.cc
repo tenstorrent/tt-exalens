@@ -5,6 +5,11 @@
 // An example RISC-V program that is used to debug memory access to global variables.
 #include <cstdint>
 
+constexpr uint32_t c_uint32_t = 0x11223344;
+constexpr uint64_t c_uint64_t = 0x5566778899AABBCC;
+constexpr float c_float = 0.5f;
+constexpr double c_double = 2.718281828459;
+
 struct InnerStruct {
     uint16_t x;
     uint16_t y;
@@ -38,8 +43,8 @@ void halt() {
 
 int main() {
     // Fill in some test data
-    g_global_struct.a = 0x11223344;
-    g_global_struct.b = 0x5566778899AABBCC;
+    g_global_struct.a = c_uint32_t;
+    g_global_struct.b = c_uint64_t;
     for (int i = 0; i < 16; i++) {
         g_global_struct.c[i] = static_cast<uint8_t>(i);
     }

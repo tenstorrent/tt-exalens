@@ -1012,6 +1012,34 @@ class ParsedElfFile:
         """
         return self.get_global(name, mem_access_function).read()
 
+    def get_constant(self, name: str):
+        die = self.variables.get(name)
+        if die is None:
+            raise Exception(f"ERROR: Cannot find constant variable {name} in ELF DWARF info")
+        if die.value is None:
+            raise Exception(f"ERROR: Cannot find variable {name} is not constant in ELF DWARF info")
+        type_die = die.resolved_type
+        value = die.value
+        if not type_die.tag_is("base_type"):
+            raise Exception(f"ERROR: Constant {name} is not a base type")
+
+        # If value is a list, convert to bytes
+        if isinstance(value, list):
+            value = bytes(value)
+
+        # Convert the value to the appropriate type
+        if type_die.name == "float":
+            if not isinstance(value, bytes):
+                value = struct.pack("I", value)
+            return struct.unpack("f", value)[0]
+        elif type_die.name == "double":
+            if not isinstance(value, bytes):
+                value = struct.pack("Q", value)
+            return struct.unpack("d", value)[0]
+        elif type_die.name == "bool":
+            return bool(value)
+        return value
+
 
 class ParsedElfFileWithOffset(ParsedElfFile):
     def __init__(self, parsed_elf: ParsedElfFile, load_address: int):
