@@ -114,11 +114,7 @@ class TestDebugSymbols(unittest.TestCase):
         self.verify_global_struct(g_global_struct)
 
     def test_elf_variable_constants(self):
-        const_uint32 = self.parsed_elf.get_constant("c_uint32_t")
-        self.assertEqual(0x11223344, const_uint32)
-        const_uint64 = self.parsed_elf.get_constant("c_uint64_t")
-        self.assertEqual(0x5566778899AABBCC, const_uint64)
-        const_float = self.parsed_elf.get_constant("c_float")
-        self.assertEqual(0.5, const_float)
-        const_double = self.parsed_elf.get_constant("c_double")
-        self.assertEqual(2.718281828459, const_double)
+        self.assertEqual(0x11223344, self.parsed_elf.get_constant("c_uint32_t"))
+        self.assertEqual(0x5566778899AABBCC, self.parsed_elf.get_constant("c_uint64_t"))
+        self.assertEqual(0.5, self.parsed_elf.get_constant("c_float"))
+        self.assertEqual(2.718281828459, self.parsed_elf.get_constant("c_double"))
