@@ -1089,6 +1089,7 @@ class ElfVariable:
 
     def __getattr__(self, member_name) -> "ElfVariable":
         if self.type_die.tag_is("pointer_type"):
+            assert self.type_die.size is not None
             address = self.mem_access_function(self.address, self.type_die.size, 1)[0]
             dereferenced_pointer = ElfVariable(self.type_die.dereference_type, address, self.mem_access_function)
             return getattr(dereferenced_pointer, member_name)
@@ -1136,6 +1137,7 @@ class ElfVariable:
             raise Exception(f"ERROR: {self.type_die.name} is not a base type")
 
         # Read the value from memory
+        assert self.type_die.size is not None
         value = self.mem_access_function(self.address, self.type_die.size, 1)[0]
 
         # Convert the value to the appropriate type
@@ -1149,6 +1151,7 @@ class ElfVariable:
             return value
 
     def read(self):
+        assert self.type_die.size is not None
         int_bytes = self.mem_access_function(self.address, self.type_die.size, self.type_die.size)
         data = bytes(int_bytes)
         address = self.address
