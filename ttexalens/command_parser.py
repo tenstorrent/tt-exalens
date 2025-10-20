@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from collections.abc import Iterator
 from docopt import DocoptExit, docopt
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
