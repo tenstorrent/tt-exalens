@@ -7,12 +7,11 @@
 
 #pragma once
 
-#include <umd/device/cluster.h>
-
 #include <cmath>
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <umd/device/cluster.hpp>
 #include <vector>
 
 namespace tt::exalens::tile {

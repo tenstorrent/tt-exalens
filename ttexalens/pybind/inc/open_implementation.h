@@ -8,7 +8,7 @@
 #include <memory>
 #include <optional>
 
-#include "umd/device/tt_soc_descriptor.h"
+#include "umd/device/soc_descriptor.hpp"
 
 namespace tt::exalens {
 
@@ -22,7 +22,7 @@ class open_implementation : public BaseClass {
     std::vector<uint8_t> device_ids;
     std::map<uint8_t, uint64_t> device_id_to_unique_id;
     std::map<uint8_t, std::string> device_soc_descriptors_yamls;
-    std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
+    std::map<uint8_t, umd::SocDescriptor> soc_descriptors;
     bool is_simulation = false;
 
     std::string cluster_descriptor_path;
