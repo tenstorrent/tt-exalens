@@ -1012,6 +1012,7 @@ class ParsedElfFile:
         """
         return self.get_global(name, mem_access_function).read()
 
+
 class ParsedElfFileWithOffset(ParsedElfFile):
     def __init__(self, parsed_elf: ParsedElfFile, load_address: int):
         super().__init__(parsed_elf.elf, parsed_elf.elf_file_path)
@@ -1151,6 +1152,7 @@ class ElfVariable:
         int_bytes = self.mem_access_function(self.address, self.type_die.size, self.type_die.size)
         data = bytes(int_bytes)
         address = self.address
+
         def mem_access(addr: int, size_bytes: int, elements_to_read: int) -> list[int]:
             if elements_to_read == 0:
                 return []
@@ -1164,7 +1166,9 @@ class ElfVariable:
                     for i in range(elements_to_read)
                 ]
             return self.mem_access_function(addr, size_bytes, elements_to_read)
+
         return ElfVariable(self.type_die, self.address, mem_access)
+
 
 #
 # Access path parsing / processing

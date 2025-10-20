@@ -18,11 +18,18 @@ class TestDebugSymbols(unittest.TestCase):
     def setUpClass(cls):
         cls.context = init_default_test_context()
         risc_debug = cls.context.devices[0].get_blocks()[0].all_riscs[0]
-        cls.core_sim = RiscvCoreSimulator(cls.context, risc_debug.risc_location.location.to_str(), risc_debug.risc_location.risc_name, risc_debug.risc_location.neo_id)
+        cls.core_sim = RiscvCoreSimulator(
+            cls.context,
+            risc_debug.risc_location.location.to_str(),
+            risc_debug.risc_location.risc_name,
+            risc_debug.risc_location.neo_id,
+        )
         cls.core_sim.load_elf("globals_test.debug")
         cls.parsed_elf = cls.core_sim.parse_elf("globals_test.debug")
-        cls.mem_reader = ELF.get_mem_reader(risc_debug.risc_location.location, risc_debug.risc_location.risc_name, risc_debug.risc_location.neo_id)
-        assert(not cls.core_sim.is_in_reset())
+        cls.mem_reader = ELF.get_mem_reader(
+            risc_debug.risc_location.location, risc_debug.risc_location.risc_name, risc_debug.risc_location.neo_id
+        )
+        assert not cls.core_sim.is_in_reset()
 
     @classmethod
     def tearDownClass(cls):
