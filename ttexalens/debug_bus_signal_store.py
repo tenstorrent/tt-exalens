@@ -63,6 +63,53 @@ class L1MemReg2:
         )
 
 
+# 128 bit value of sampled group of signals
+@dataclass
+class SignalGroupSample:
+    raw_data: list[int]  # list of 128-bit samples
+    signal_store: DebugBusSignalStore
+    group_name: str
+
+    def _extract_signal_value(self, signal: DebugBusSignalDescription, index: int) -> int:
+        """Helper method to extract the value of a single signal."""
+        extracted_value = (self.raw_data[index] >> (WORD_SIZE_BITS * signal.rd_sel)) & 0xFFFFFFFF
+        return extracted_value & signal.mask
+
+    def _get_signal_value(self, signal: str) -> list[int]:
+        # simple signal
+        if signal in self.signal_store.signals:
+            signal_desc = self.signal_store.get_signal_description(signal)
+            return [self._extract_signal_value(signal_desc[0], i) for i in range(len(self.raw_data))]
+
+        # combined signal
+        elif self.signal_store.is_combined_signal(signal):
+            combined_signals = self.signal_store.get_signal_description(signal)
+            ret = []
+            for i in range(len(self.raw_data)):
+                value = 0
+                for j, part in enumerate(combined_signals):
+                    value |= self._extract_signal_value(part, i) << (WORD_SIZE_BITS * j)
+                ret.append(self.signal_store._normalize_value(value, combined_signals[0].mask))
+            return ret
+
+        else:
+            raise ValueError(f"Signal '{signal}' does not exist.")
+
+    def items(self):
+        for signal in self.signal_store.group_signals[self.group_name]:
+            yield signal, self[signal]
+
+    def keys(self):
+        for signal in self.signal_store.group_signals[self.group_name]:
+            yield signal
+
+    def __getitem__(self, key: str) -> list[int]:
+        """Allows dictionary-like access to signal values."""
+        if key not in self.signal_store.group_signals[self.group_name]:
+            raise KeyError(f"Signal '{key}' not part of group '{self.group_name}'.")
+        return self._get_signal_value(key)
+
+
 class DebugBusSignalStore:
     def __init__(
         self,
@@ -119,14 +166,16 @@ class DebugBusSignalStore:
         signal_map: dict[str, DebugBusSignalDescription], group_names: dict[tuple[int, int], str]
     ) -> dict[str, list[str]]:
         groups: dict[str, list[str]] = {}
+
         for signal_name, signal_desc in signal_map.items():
             key = (signal_desc.daisy_sel, signal_desc.sig_sel)
             group_key = group_names[key]
-
             if group_key not in groups:
                 groups[group_key] = []
 
-            groups[group_key].append(signal_name)
+            base_name = signal_name.split("/")[0] if "/" in signal_name else signal_name
+            if base_name not in groups[group_key]:
+                groups[group_key].append(base_name)
 
         return groups
 
@@ -140,53 +189,30 @@ class DebugBusSignalStore:
     def get_signals_in_group(self, group_name: str) -> list[str]:
         # Get all signal names in the specified group.
         if group_name not in self.group_signals:
-            raise ValueError(f"Unknown group name '{group_name}'. Available groups: {list(self.group_signals.keys())}")
+            raise ValueError(f"Unknown group name '{group_name}'.")
         return self.group_signals[group_name]
 
     def get_base_signal_name(self, signal_name: str) -> str:
-        """Extract base signal name from composite signal names like 'signal/0' or 'signal/1'."""
+        """Extract base signal name from combined signal names like 'signal/0' or 'signal/1'."""
         return signal_name.split("/")[0] if "/" in signal_name else signal_name
 
-    def is_composite_signal_part(self, signal_name: str) -> bool:
-        """Check if signal name indicates a composite signal part (ends with /number)."""
+    def get_signal_part_names(self, base_name: str) -> list[str]:
+        part_names = []
+        counter = 0
+        while f"{base_name}/{counter}" in self.get_signal_names():
+            part_names.append(f"{base_name}/{counter}")
+            counter += 1
+        return part_names
+
+    def get_group_for_signal(self, signal: str) -> str:
+        for group_name, signals in self.group_signals.items():
+            if self.get_base_signal_name(signal) in signals:
+                return group_name
+        return ""
+
+    def is_combined_signal_part(self, signal_name: str) -> bool:
+        """Check if signal name indicates a combined signal part (ends with /number)."""
         return "/" in signal_name
-
-    def group_composite_signals(self, signal_names: Iterable[str]) -> tuple[dict[str, list[str]], list[str]]:
-        """
-        Group composite signals by their base name and return both composite and simple signals.
-
-        Returns:
-            tuple: (composite_signals_dict, simple_signals_list)
-            - composite_signals_dict: {base_name: [part_names]}
-            - simple_signals_list: [simple_signal_names]
-        """
-        composite_signals: dict[str, list[str]] = {}
-        simple_signals: list[str] = []
-
-        for signal_name in signal_names:
-            if self.is_composite_signal_part(signal_name):
-                base_name = self.get_base_signal_name(signal_name)
-                if base_name not in composite_signals:
-                    composite_signals[base_name] = []
-                composite_signals[base_name].append(signal_name)
-            else:
-                simple_signals.append(signal_name)
-
-        return composite_signals, simple_signals
-
-    def validate_l1_parameters(self, l1_address: int, samples: int = 1, sampling_interval: int = 2) -> None:
-        """Validate L1 sampling parameters and raise appropriate errors."""
-        if l1_address % 16 != 0:
-            raise ValueError(f"L1 address must be 16-byte aligned, got 0x{l1_address:x}")
-
-        end_address = l1_address + (samples * L1_SAMPLE_SIZE_BYTES) - 1
-        if end_address >= L1_LOW_MEMORY_SIZE:
-            raise ValueError(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit")
-
-        if samples > 1 and not (2 <= sampling_interval <= 256):
-            raise ValueError(
-                f"When samples > 1, sampling_interval must be between 2 and 256, but got {sampling_interval}"
-            )
 
     def _normalize_value(self, value: int, mask: int) -> int:
         """Shift value right to remove trailing zeros from mask"""
@@ -206,6 +232,23 @@ class DebugBusSignalStore:
         if not (0 <= signal.mask <= 0xFFFFFFFF):
             raise ValueError(f"mask must be a valid 32-bit integer, got {signal.mask}")
 
+    def _validate_l1_parameters(self, l1_address: int, samples: int = 1, sampling_interval: int = 2) -> None:
+        """Validate L1 sampling parameters and raise appropriate errors."""
+        if samples < 1:
+            raise ValueError(f"samples must be at least 1, but got {samples}")
+
+        if l1_address % 16 != 0:
+            raise ValueError(f"L1 address must be 16-byte aligned, got 0x{l1_address:x}")
+
+        end_address = l1_address + (samples * L1_SAMPLE_SIZE_BYTES) - 1
+        if end_address >= L1_LOW_MEMORY_SIZE:
+            raise ValueError(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit")
+
+        if samples > 1 and not (2 <= sampling_interval <= 256):
+            raise ValueError(
+                f"When samples > 1, sampling_interval must be between 2 and 256, but got {sampling_interval}"
+            )
+
     def is_combined_signal(self, signal_name: str) -> bool:
         # Check if signal_name is a base name for a combined signal (has /0, /1, /2... variants)
         return f"{signal_name}/0" in self.signals
@@ -218,15 +261,9 @@ class DebugBusSignalStore:
         # If not found, check if it's a base name for combined signal
         if self.is_combined_signal(signal_name):
             # For combined signals, return list of all signal parts (/0, /1, /2, ...)
-            combined_signals = []
-            counter = 0
-            while True:
-                part_signal_name = f"{signal_name}/{counter}"
-                if part_signal_name in self.signals:
-                    combined_signals.append(self.signals[part_signal_name])
-                    counter += 1
-                else:
-                    break
+            # Return list of DebugBusSignalDescription objects for all parts of the combined signal
+            part_names = self.get_signal_part_names(signal_name)
+            combined_signals = [self.signals[name] for name in part_names]
             return combined_signals
 
         # Signal not found - raise error with appropriate context
@@ -235,81 +272,57 @@ class DebugBusSignalStore:
             f"Unknown signal name '{signal_name}' on {self.location.to_user_str()}{neo_context} for device {self.device._id}."
         )
 
+    def get_signal_group_description(self, group_name: str) -> dict[str, list[DebugBusSignalDescription]]:
+        """
+        Returns a dictionary with signal names as keys and a list of DebugBusSignalDescription objects as values.
+        If the signal is simple, the list will contain only one descriptor.
+        If the signal is combined, the list will contain multiple descriptors.
+        """
+        if group_name not in self.group_signals:
+            raise ValueError(f"Unknown group name '{group_name}'.")
+
+        signal_descriptions = {}
+        for signal_name in self.group_signals[group_name]:
+            # Uvek vraćamo listu deskriptora, bilo da je prost ili složen signal
+            description = self.get_signal_description(signal_name)
+            signal_descriptions[signal_name] = description
+
+        return signal_descriptions
+
     def read_signal(
         self,
         signal: DebugBusSignalDescription | str,
-        *,
-        use_l1_sampling: bool = False,
-        l1_address: int | None = None,
-        samples: int = 1,
-        sampling_interval: int = 2,
-    ) -> int | list[int]:
+    ) -> int:
         """Reads a debug signal from the Tensix debug daisychain.
 
-        This function can operate in two modes:
-        1.  **Direct Register Read (default):** Reads a 32-bit signal value directly
-            from the debug register. This is the default behavior when `use_l1_sampling=False`.
-        2.  **L1 Sampling:** Captures one or more 128-bit signal samples into L1
-            memory and reads the result. Enabled by setting `use_l1_sampling=True`.
+        **Direct Register Read:** Reads a 32-bit signal value directly
+        from the debug register. It is possible to read all signals listed
+        in the debug_bus_signal_map. For complex signals, only their parts,
+        marked with the suffix /number, can be read atomically.
 
         Parameters
         ----------
         signal : DebugBusSignalDescription | str
             The signal to read. Can be a string (signal name) or a DebugBusSignalDescription object.
-        use_l1_sampling : bool, default=False
-            If True, enables L1 sampling mode. Otherwise, performs a direct register read.
-        l1_address : int | None, default=None
-            (L1 Sampling only) Byte-address in L1 memory for the first 128-bit word. Must be 16-byte aligned.
-            Must be within low L1 memory range (0x0 - 0xFFFFF, first 1 MiB). All samples must fit within this range.
-            Required when use_l1_sampling=True.
-        samples : int, default=1
-            (L1 Sampling only) Number of 128-bit samples to capture. If `samples > 1`, hardware performs repeated sampling.
-        sampling_interval : int, default=2
-            (L1 Sampling only) Interval (in cycles) between consecutive samples when `samples > 1`.
-            Should be ≥ 2 due to a known hardware bug that may cause one extra sample if `sampling_period == 1`
 
         Returns
         -------
         int
-            The sampled data. A 32-bit value in direct read mode, or a 128-bit value in L1 sampling mode.
-            The value is masked with `signal.mask` if set.
+            A 32-bit value in direct read mode. The value is masked with `signal.mask` if set.
         """
-        # Convert input to list of signal descriptions
-        signal_list: list[DebugBusSignalDescription]
         if isinstance(signal, str):
-            signal_list = self.get_signal_description(signal)
+            signal_desc = self.get_signal_description(signal)
         elif isinstance(signal, DebugBusSignalDescription):
             # Validate signal parameters if passed as DebugBusSignalDescription
             self._validate_signal_parameters(signal)
-            signal_list = [signal]
+            signal_desc = [signal]
         else:
             raise ValueError(f"Invalid signal type: {type(signal)}")
 
-        if use_l1_sampling:
-            if l1_address is None:
-                raise ValueError("l1_address is required when use_l1_sampling=True")
-            return self._read_signal_from_l1(signal_list, l1_address, samples, sampling_interval)
+        data = self._read_single_register(signal_desc[0])
+        value = data & signal_desc[0].mask
 
-        # Default behavior: read from 32bit debug register
-        return self._read_signal_from_register(signal_list)
-
-    def _read_signal_from_register(self, signal: list[DebugBusSignalDescription]) -> int:
-        """Read signal using direct 32-bit register access"""
-        if len(signal) > 1:
-            # Combined signal - read each part and combine them
-            value = 0
-            for j, signal_part in enumerate(signal):
-                data = self._read_single_register(signal_part)
-                # Apply mask and combine
-                masked_data = data & signal_part.mask
-                value |= masked_data << (WORD_SIZE_BITS * j)
-        else:
-            # Single signal - read single 32-bit register
-            data = self._read_single_register(signal[0])
-            value = data & signal[0].mask
-
-        # Normalize value by removing trailing zeros
-        return self._normalize_value(value, signal[0].mask)
+        return self._normalize_value(value, signal_desc[0].mask)
 
     def _read_single_register(self, signal_part: DebugBusSignalDescription) -> int:
         """Read a single 32-bit register value"""
@@ -318,48 +331,62 @@ class DebugBusSignalStore:
         write_words_to_device(
             self.location, self._control_register_address, config, self.device._id, self.device._context
         )
-
         data = read_word_from_device(self.location, self._data_register_address, self.device._id, self.device._context)
-
         write_words_to_device(self.location, self._control_register_address, 0, self.device._id, self.device._context)
-
         return data
 
-    def _read_signal_from_l1(
+    def read_signal_group(
         self,
-        signal: list[DebugBusSignalDescription],
+        signal_group: str,
         l1_address: int,
-        samples: int,
-        sampling_interval: int,
-    ) -> int | list[int]:
-        """Read signal(s) using L1 memory sampling method"""
-        if samples < 1:
-            raise ValueError(f"samples must be at least 1, but got {samples}")
+        samples: int = 1,
+        sampling_interval: int = 2,
+    ) -> SignalGroupSample:
+        """Reads a debug signal group from the Tensix debug daisychain.
+
+        **L1 Sampling:** Captures one or more 128-bit signal samples into L1
+        memory and reads the result. Combined signals can be read fully, atomically,
+        by specifying only the signal name without the /number suffix.
+
+        Parameters
+        ----------
+        signal_group : str
+            The signal group to read. It is signal group name from `group_names`.
+        l1_address : int
+            Byte-address in L1 memory for the first 128-bit word. Must be 16-byte aligned.
+            Must be within low L1 memory range (0x0 - 0xFFFFF, first 1 MiB). All samples must fit within this range.
+        samples : int, default=1
+            Number of 128-bit samples to capture. If `samples > 1`, hardware performs repeated sampling.
+        sampling_interval : int, default=2
+            Interval (in cycles) between consecutive samples when `samples > 1`.
+            Should be ≥ 2 due to a known hardware bug that may cause one extra sample if `sampling_period == 1`
+            It will try to take a sample every N cycles. If the L1 write interface is available when a sample is scheduled,
+            the sample will be captured at that time. If the L1 interface is busy, the system will wait and attempt to take
+            the sample again after N cycles. Regardless of L1 availability, the system will still collect a total of c samples,
+            but the samples may not be taken from equally spaced points in time.
+
+        Returns
+        -------
+        int
+            The object of SignalGroupSample. The SignalGroupSample object behaves like a dictionary: keys are signal names, and
+            values are lists of sampled values for each signal.
+        """
 
         # Validate L1 address alignment and memory range
-        if l1_address % 16 != 0:
-            raise ValueError(f"L1 address must be 16-byte aligned, got 0x{l1_address:x}")
+        self._validate_l1_parameters(l1_address, samples, sampling_interval)
 
-        end_address = l1_address + (samples * L1_SAMPLE_SIZE_BYTES) - 1
-        if end_address >= L1_LOW_MEMORY_SIZE:
-            raise ValueError(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit")
-
-        if samples > 1:
-            if not (2 <= sampling_interval <= 256):
-                raise ValueError(
-                    f"When samples > 1, sampling_interval must be between 2 and 256, but got {sampling_interval}"
-                )
+        signal_names = self.get_signals_in_group(signal_group)
+        signals = {name: self.get_signal_description(name) for name in signal_names}
 
         # Configure debug bus and setup L1 registers for sampling
         reg2_addr, reg2_struct = self._setup_l1_sampling_configuration(
-            signal[0], l1_address, samples, sampling_interval
+            next(iter(signals.values()))[0], l1_address, samples, sampling_interval
         )
 
         # Execute L1 sampling and wait for completion
         self._execute_l1_sampling(reg2_addr, reg2_struct, l1_address, samples)
 
-        # Process the sampled data and return results
-        return self._process_l1_samples(signal, l1_address, samples)
+        return self._process_l1_samples(l1_address, samples, signal_group)
 
     def _setup_l1_sampling_configuration(
         self, signal: DebugBusSignalDescription, l1_address: int, samples: int, sampling_interval: int
@@ -426,9 +453,7 @@ class DebugBusSignalStore:
 
         write_words_to_device(self.location, self._control_register_address, 0, self.device._id, self.device._context)
 
-    def _process_l1_samples(
-        self, signal: list[DebugBusSignalDescription], l1_address: int, samples: int
-    ) -> int | list[int]:
+    def _process_l1_samples(self, l1_address: int, samples: int, group_name: str) -> SignalGroupSample:
         """Process L1 samples and extract signal data based on signal configuration"""
 
         def read_128bit_sample(addr: int) -> int:
@@ -437,24 +462,6 @@ class DebugBusSignalStore:
             return sum((words[i] << (WORD_SIZE_BITS * i)) for i in range(WORDS_PER_SAMPLE))
 
         # Read all samples and extract the correct portion based on signal type
-        sample_values = []
-        for i in range(samples):
-            sample_data = read_128bit_sample(l1_address + (i * L1_SAMPLE_SIZE_BYTES))
+        sample_values = [read_128bit_sample(l1_address + (i * L1_SAMPLE_SIZE_BYTES)) for i in range(samples)]
 
-            if len(signal) > 1:
-                # Combined signal - read each part and combine them
-                value = 0
-                for j, signal_part in enumerate(signal):
-                    extracted_value = (sample_data >> (WORD_SIZE_BITS * signal_part.rd_sel)) & 0xFFFFFFFF
-                    masked_value = extracted_value & signal_part.mask
-                    value |= masked_value << (WORD_SIZE_BITS * j)
-            else:
-                # Single signal - extract 32-bit value using rd_sel
-                extracted_value = (sample_data >> (WORD_SIZE_BITS * signal[0].rd_sel)) & 0xFFFFFFFF
-                value = extracted_value & signal[0].mask
-
-            # Normalize value by removing trailing zeros
-            normalized_value = self._normalize_value(value, signal[0].mask)
-            sample_values.append(normalized_value)
-
-        return sample_values[0] if samples == 1 else sample_values
+        return SignalGroupSample(raw_data=sample_values, signal_store=self, group_name=group_name)

@@ -3,50 +3,51 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  debug-bus list-names [-v] [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s] [--l1-address <addr> [--samples <num>] [--sampling-interval <cycles>]]
-  debug-bus list-groups [-v] [--search <pattern>] [-s]
-  debug-bus [<signals>] [-v] [-d <device>] [-l <loc>] [--l1-address <addr> [--samples <num>] [--sampling-interval <cycles>]] [--group <group-name>]
+  debug-bus list-names [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s]
+  debug-bus list-groups [--search <pattern>] [--max <max-sigs>] [-s]
+  debug-bus group [<group-name>] l1-address <addr> [--samples <num>] [--sampling-interval <cycles>] [--search <pattern>] [-d <device>] [-l <loc>] [-s]
+  debug-bus [<signals>] [-d <device>] [-l <loc>] [-s]
 
 Options:
     -s, --simple                        Print simple output.
     --search <pattern>                  Search for signals by pattern (in wildcard format).
-    --max <max-sigs>                    Limit --search output (default: 10, use --max "all" to print all matches).
-    --group <group-names>               List signals in the specified group(s). Multiple groups can be separated by commas.
-    --l1-address <addr>                 Byte address in L1 memory for L1 sampling mode. Must be 16-byte aligned.
-                                        When specified, enables L1 sampling mode which triggers a 128-bit capture
-                                        of the signal into the core's L1 memory instead of a direct 32-bit register read.
-                                        Each sample occupies 16 bytes (128 bits) in L1 memory. All samples must fit within
-                                        the first 1 MiB of L1 memory (0x0 - 0xFFFFF).
-    --samples <num>                     (L1-sampling mode only) Number of 128-bit samples to capture. [default: 1].
-    --sampling-interval <cycles>        (L1-sampling mode only) When samples > 1, this sets the delay in clock cycles
-                                        between each sample. Must be between 2 and 256.
+    --max <max-sigs>                    Limit --search output (default: 10, use --max "all" to print all matches). [default: 10].
+    --samples <num>                     (L1 sampling only) Number of 128-bit samples to capture. [default: 1]
+    --sampling-interval <cycles>        (L1 sampling only, if --samples > 1) Delay in clock cycles between samples. Must be 2-256.[ default: 2]
 
 Description:
   Commands for RISC-V debugging:
     - list-names:    List all predefined debug bus signal names.
-        --search:
-    - list-groups:   List all debug bus signal groups or signals in a specific group.
-        --search:    Search for groups by pattern (in wildcard format)
+        --search:    Search for signals by pattern (wildcard format)
+        --max:       Limit number of results
+    - list-groups:   List all debug bus signal groups.
+        --search:    Search for groups by pattern (wildcard format)
+        --max:       Limit number of results
+    - group [<group-names>] l1-address <addr>:   List all signals in group(s) using L1 sampling
+        --search:    Search for signals by pattern (wildcard format)
+        --samples:   Number of samples
+        --sampling-interval: Delay between samples
+        l1-address <addr>:      Byte address in L1 memory for L1 sampling mode (must be 16-byte aligned).
+                                Enables L1 sampling: signal(s) are captured as 128-bit words to L1 memory at the given address
+                                instead of direct 32-bit register read. Each sample uses 16 bytes. All samples must fit in the first 1 MiB (0x0 - 0xFFFFF).
+
     - [<signals>]:   List of signals described by signal name or signal description.
         <signal-description>: {DaisyId,RDSel,SigSel,Mask}
-            -DaisyId - daisy chain identifier
-            -RDSel   - select 32bit data in 128bit register -> values [0-3]
-            -SigSel  - select 128bit register
-            -Mask    - 32bit number to show only significant bits (optional)
+            - DaisyId   - daisy chain identifier
+            - RDSel     - select 32bit data in 128bit register (values 0-3)
+            - SigSel    - select 128bit register
+            - Mask      - 32bit mask for significant bits (optional)
 
 Examples:
-  debug-bus list-names                        # List predefined debug bus signals
-  debug-bus list-names --search *pc* --max 5  # List up to 5 signals whose names contain pc
-  debug-bus list-names --l1-address 0x1000    # List all signals with L1 sampling (no composite signal warnings)
-  debug-bus list-groups                       # List all debug bus signal groups
-  debug-bus list-groups --search *brisc*      # List groups matching pattern
-  debug-bus --group brisc_group_a             # List all signals in brisc_group_a
-  debug-bus --group brisc_group_a --l1-address 0x1000 # List signals in group using L1 sampling
-  debug-bus --group brisc_group_a,trisc0_group_a,trisc1_group_a # List signals from multiple groups
-  debug-bus trisc0_pc,trisc1_pc               # Prints trisc0_pc and trisc1_pc program counter for trisc0 and trisc1
-  debug-bus {7,0,12,0x3ffffff},trisc2_pc      # Prints custom debug bus signal and trisc2_pc
-  debug-bus trisc0_pc --l1-address 0x1000 --samples 5 --sampling-interval 10 # Read trisc0_pc using L1 sampling 5 times with 10 cycle interval
-  debug-bus trisc0_pc --l1-address 0x2000 --samples 3    # Read trisc0_pc using L1 sampling at address 0x2000
+  debug-bus list-names                                        # List up to 10 predefined debug bus signals (default max)
+  debug-bus list-names --max all                              # List all predefined debug bus signals
+  debug-bus list-names --search *pc* --max 5                  # List up to 5 signals whose names contain 'pc'
+  debug-bus list-groups                                       # List all debug bus signal groups
+  debug-bus list-groups --search *brisc*                      # List groups whose names match pattern 'brisc'
+  debug-bus group brisc_group_a l1-address 0x1000 --samples 4 --sampling-interval 10 # List all signals in group 'brisc_group_a' using L1 sampling, 4 samples, 10 cycles interval
+  debug-bus group brisc_group_a l1-address 0x1000 --search *pc # List all signals in group 'brisc_group_a' that ends with 'pc' using L1 sampling
+  debug-bus trisc0_pc,trisc1_pc                               # Print values for trisc0_pc and trisc1_pc
+  debug-bus {7,0,12,0x3ffffff},trisc2_pc                      # Print value for a custom signal and trisc2_pc
 """
 
 command_metadata = {
@@ -59,17 +60,18 @@ command_metadata = {
 
 import re
 
-from ttexalens import command_parser
+from ttexalens.command_parser import tt_docopt
 from ttexalens import util as util
 from ttexalens.util import search
 from ttexalens.rich_formatters import formatter
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.uistate import UIState
+from ttexalens.context import Context
+from ttexalens.device import Device
+from ttexalens.coordinate import OnChipCoordinate
 
 
-def _format_signal_value(
-    value, is_composite_signal=False, use_l1_sampling=False, show_all_samples=False, signal_desc=None
-):
+def _format_signal_value(value, show_all_samples=False, signal_desc=None):
     """
     Format signal value for display:
     - 1-bit signals as True/False
@@ -103,12 +105,10 @@ def _format_signal_value(
         return f"[{samples_str}]" if show_all_samples and len(value) > 1 else samples_str
     else:
         formatted = hex_width(value)
-        if is_composite_signal and not use_l1_sampling:
-            formatted += "**"
         return formatted
 
 
-def parse_string(input_string):
+def parse_string(input_string: str) -> list[list[int] | str]:
     """Parse input string to extract signal descriptions and signal names."""
     # Regex pattern with groups:
     # group(0): entire match
@@ -154,12 +154,10 @@ def parse_command_arguments(args):
         ValueError: If a signal list has an invalid format that prevents the creation of
                     a `DebugBusSignalDescription` object.
     """
-    print(args["<signals>"])
     if not (args["<signals>"]):
         raise ValueError("Missing debug bus signal parameter")
 
     result: list[str | DebugBusSignalDescription] = []
-
     signals = parse_string(args["<signals>"])
 
     for item in signals:
@@ -175,271 +173,183 @@ def parse_command_arguments(args):
     return result
 
 
-def parse_group_names(group_string):
-    """Parse comma-separated group names from input string."""
-    if not group_string:
-        return []
-
-    group_names = [name.strip() for name in group_string.split(",")]
-    # Remove empty strings
-    return [name for name in group_names if name]
-
-
-def collect_signal_data(debug_bus_signal_store, signal_names, use_l1_sampling, l1_address, samples, sampling_interval):
-    """Helper to read and format all signals (simple and composite) for display."""
-    composite_signals, simple_signals = debug_bus_signal_store.group_composite_signals(signal_names)
-    signal_data = []
-
-    # Simple signals
-    for name in simple_signals:
-        value = debug_bus_signal_store.read_signal(
-            name,
-            use_l1_sampling=use_l1_sampling,
-            l1_address=l1_address,
-            samples=samples,
-            sampling_interval=sampling_interval,
-        )
-        formatted_value = _format_signal_value(
-            value,
-            is_composite_signal=False,
-            use_l1_sampling=use_l1_sampling,
-            show_all_samples=use_l1_sampling and samples > 1,
-            signal_desc=debug_bus_signal_store.signals.get(name, None),
-        )
-        signal_data.append((name, formatted_value))
-
-    # Composite signals
-    for base_name, part_names in composite_signals.items():
-        value = debug_bus_signal_store.read_signal(
-            base_name,
-            use_l1_sampling=use_l1_sampling,
-            l1_address=l1_address,
-            samples=samples,
-            sampling_interval=sampling_interval,
-        )
-        formatted_value = _format_signal_value(
-            value,
-            is_composite_signal=True,
-            use_l1_sampling=use_l1_sampling,
-            show_all_samples=use_l1_sampling and samples > 1,
-            signal_desc=debug_bus_signal_store.signals.get(base_name, None),
-        )
-        signal_data.append((base_name, formatted_value))
-
-    signal_data.sort(key=lambda x: x[0])
-    return signal_data, composite_signals
+def _get_debug_bus_signal_store(device: Device, loc: OnChipCoordinate):
+    """Return debug bus signal store for given device and location, or None if unavailable."""
+    noc_block = device.get_block(loc)
+    if not noc_block:
+        util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a NOC block.")
+        return None
+    debug_bus_signal_store = noc_block.debug_bus
+    if not debug_bus_signal_store:
+        util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
+        return None
+    return debug_bus_signal_store
 
 
-def handle_list_names_command(dopt, context, ui_state):
+def handle_list_names_command(dopt: tt_docopt, context: Context, ui_state: UIState):
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            noc_block = device.get_block(loc)
-            if not noc_block:
-                util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a NOC block.")
-                continue
-            debug_bus_signal_store = noc_block.debug_bus
+            debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
             if not debug_bus_signal_store:
-                util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
                 continue
 
-            names = debug_bus_signal_store.get_signal_names()
+            names = list(debug_bus_signal_store.get_signal_names())
             if dopt.args["--search"]:
-                max = dopt.args["--max"] if dopt.args["--max"] else 10
-                names = search(list(names), dopt.args["--search"], max)
-                if len(names) == 0:
+                names = search(names, dopt.args["--search"], dopt.args["--max"])
+                if not names:
                     print("No matches found.")
                     return []
 
-            use_l1_sampling = dopt.args["--l1-address"] is not None
-            l1_address = int(dopt.args["--l1-address"], 0) if use_l1_sampling else None
-            samples = int(dopt.args["--samples"]) if dopt.args["--samples"] else 1
-            sampling_interval = int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
+            signal_data = []
+            for name in names:
+                value = debug_bus_signal_store.read_signal(name)
+                formatted_value = _format_signal_value(
+                    value,
+                    show_all_samples=False,
+                    signal_desc=debug_bus_signal_store.signals.get(name, None),
+                )
+                group_name = debug_bus_signal_store.get_group_for_signal(name)
+                signal_data.append((group_name, name, formatted_value))
 
-            signal_data, composite_signals = collect_signal_data(
-                debug_bus_signal_store, names, use_l1_sampling, l1_address, samples, sampling_interval
-            )
+            # Sort signal_data by group name, then by signal name
+            signal_data.sort(key=lambda x: (x[0], x[1]))
+
+            max_arg = dopt.args["--max"]
+            if max_arg is not None and str(max_arg).lower() != "all":
+                try:
+                    max_count = int(max_arg)
+                    signal_data = signal_data[:max_count]
+                except Exception:
+                    pass
 
             formatter.print_header(f"=== Device {device._id} - location {loc.to_str('logical')})", style="bold")
-            if not use_l1_sampling and composite_signals:
-                formatter.print_header("** Composite signals marked with ** - use L1 sampling for consistent reads")
-
             formatter.display_grouped_data(
                 {"Signals": signal_data},
-                [("Name", ""), ("Value", "")],
+                [("Group", ""), ("Name", ""), ("Value", "")],
                 [["Signals"]],
                 simple_print=dopt.args["--simple"],
             )
     return []
 
 
-def handle_list_groups_command(dopt, context, ui_state):
+def handle_list_groups_command(dopt: tt_docopt, context: Context, ui_state: UIState):
     """Handle the list-groups command - list all groups or signals in a specific group."""
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            noc_block = device.get_block(loc)
-            if not noc_block:
-                util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a NOC block.")
-                continue
-            debug_bus_signal_store = noc_block.debug_bus
+            debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
             if not debug_bus_signal_store:
-                util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
                 continue
 
-            if dopt.args["--group"]:
-                group_names = parse_group_names(dopt.args["--group"])
-                if not group_names:
-                    util.ERROR("No valid group names provided.")
-                    continue
+            names = list(debug_bus_signal_store.get_group_names())
+            max_arg = dopt.args["--max"]
+            if dopt.args["--search"]:
+                names = search(names, dopt.args["--search"], max_arg)
+                if not names:
+                    print("No matches found.")
+                    return []
+            elif max_arg is not None and str(max_arg).lower() != "all":
+                names = names[: int(max_arg)]
 
-                for group_name in group_names:
-                    try:
-                        signal_names = debug_bus_signal_store.get_signals_in_group(group_name)
-                        use_l1_sampling = dopt.args["--l1-address"] is not None
-                        l1_address = int(dopt.args["--l1-address"], 0) if use_l1_sampling else None
-                        samples = int(dopt.args["--samples"]) if dopt.args["--samples"] else 1
-                        sampling_interval = (
-                            int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
-                        )
-
-                        signal_data, composite_signals = collect_signal_data(
-                            debug_bus_signal_store,
-                            signal_names,
-                            use_l1_sampling,
-                            l1_address,
-                            samples,
-                            sampling_interval,
-                        )
-
-                        if len(group_names) == 1:
-                            header = (
-                                f"=== Device {device._id} - location {loc.to_str('logical')} - Group: {group_name} ==="
-                            )
-                        else:
-                            header = f"=== Device {device._id} - location {loc.to_str('logical')} - Group: {group_name} ({group_names.index(group_name) + 1}/{len(group_names)}) ==="
-
-                        formatter.print_header(header, style="bold")
-                        if not use_l1_sampling and composite_signals:
-                            formatter.print_header(
-                                "** Composite signals marked with ** - use L1 sampling for consistent reads"
-                            )
-
-                        formatter.display_grouped_data(
-                            {"Signals": signal_data},
-                            [("Name", ""), ("Value", "")],
-                            [["Signals"]],
-                            simple_print=dopt.args["--simple"],
-                        )
-
-                        if len(group_names) > 1 and group_names.index(group_name) < len(group_names) - 1:
-                            print()
-                    except ValueError as e:
-                        util.ERROR(f"Error processing group '{group_name}': {e}")
-                        continue
-
-            else:
-                group_names = list(debug_bus_signal_store.get_group_names())
-                if dopt.args["--search"]:
-                    max_results = dopt.args["--max"] if dopt.args["--max"] else 10
-                    group_names = search(group_names, dopt.args["--search"], max_results)
-                    if len(group_names) == 0:
-                        print("No groups found matching the pattern.")
-                        return []
-
-                group_data = [(group_name,) for group_name in group_names]
-
+            if not names:
                 formatter.print_header(
                     f"=== Device {device._id} - location {loc.to_str('logical')} - Signal Groups ===", style="bold"
                 )
-                formatter.display_grouped_data(
-                    {"Groups": group_data},
-                    [("Group Name", "")],
-                    [["Groups"]],
-                    simple_print=dopt.args["--simple"],
-                )
+                print("No signal groups available.")
+                continue
+
+            formatter.print_header(
+                f"=== Device {device._id} - location {loc.to_str('logical')} - Signal Groups ===", style="bold"
+            )
+            formatter.display_grouped_data(
+                {"Groups": [(name,) for name in names]},
+                [("Group Name", "")],
+                [["Groups"]],
+                simple_print=dopt.args["--simple"],
+            )
     return []
 
 
-def handle_signal_reading_command(dopt, context, ui_state):
-    """Handle signal reading commands - read specific signals with optional L1 sampling."""
-    if not dopt.args["<signals>"] and dopt.args["--group"]:
-        group_names = parse_group_names(dopt.args["--group"])
-        for device in dopt.for_each("--device", context, ui_state):
-            for loc in dopt.for_each("--loc", context, ui_state, device=device):
-                noc_block = device.get_block(loc)
-                if not noc_block:
-                    util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a NOC block.")
-                    continue
-                debug_bus_signal_store = noc_block.debug_bus
-                if not debug_bus_signal_store:
-                    util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
-                    continue
-                for group_name in group_names:
-                    try:
-                        signal_names = debug_bus_signal_store.get_signals_in_group(group_name)
-                        use_l1_sampling = dopt.args["--l1-address"] is not None
-                        l1_address = int(dopt.args["--l1-address"], 0) if use_l1_sampling else None
-                        samples = int(dopt.args["--samples"]) if dopt.args["--samples"] else 1
-                        sampling_interval = (
-                            int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
-                        )
-
-                        signal_data, composite_signals = collect_signal_data(
-                            debug_bus_signal_store,
-                            signal_names,
-                            use_l1_sampling,
-                            l1_address,
-                            samples,
-                            sampling_interval,
-                        )
-
-                        header = f"=== Device {device._id} - location {loc.to_str('logical')} - Group: {group_name} ==="
-                        formatter.print_header(header, style="bold")
-                        if not use_l1_sampling and composite_signals:
-                            formatter.print_header(
-                                "** Composite signals marked with ** - use L1 sampling for consistent reads"
-                            )
-                        formatter.display_grouped_data(
-                            {"Signals": signal_data},
-                            [("Name", ""), ("Value", "")],
-                            [["Signals"]],
-                            simple_print=dopt.args["--simple"],
-                        )
-                        if len(group_names) > 1 and group_names.index(group_name) < len(group_names) - 1:
-                            print()
-                    except ValueError as e:
-                        util.ERROR(f"Error processing group '{group_name}': {e}")
-                        continue
+def handle_group_reading_command(dopt: tt_docopt, context: Context, ui_state: UIState):
+    """Handle the 'dbus group' command: read all signals in specified group(s) using L1 sampling."""
+    if not dopt.args["<group-name>"]:
+        util.ERROR("Missing group name(s) for group command.")
         return []
 
-    signals = parse_command_arguments(dopt.args)
+    group_name = dopt.args["<group-name>"].strip()
+    if not dopt.args.get("<addr>") or not dopt.args.get("l1-address"):
+        util.ERROR("Missing l1-address for group reading command.")
+        return []
+
+    l1_address = int(dopt.args["<addr>"], 0)
+    samples = int(dopt.args["--samples"]) if dopt.args["--samples"] else 1
+    sampling_interval = int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            noc_block = device.get_block(loc)
-            if not noc_block:
-                util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a NOC block.")
-                continue
-            debug_bus_signal_store = noc_block.debug_bus
+            debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
             if not debug_bus_signal_store:
-                util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
+                continue
+
+            try:
+                signal_group_sample = debug_bus_signal_store.read_signal_group(
+                    group_name,
+                    l1_address,
+                    samples=samples,
+                    sampling_interval=sampling_interval,
+                )
+                signal_data = []
+                names = signal_group_sample.keys()
+                if dopt.args["--search"]:
+                    names = search(names, dopt.args["--search"])
+                    if not names:
+                        print("No matches found.")
+                        return []
+
+                for signal_name in names:
+                    formatted_value = _format_signal_value(
+                        signal_group_sample[signal_name],
+                        show_all_samples=samples > 1,
+                        signal_desc=debug_bus_signal_store.signals.get(signal_name, None),
+                    )
+                    signal_data.append((signal_name, formatted_value))
+
+                header = f"=== Device {device._id} - location {loc.to_str('logical')} - Group: {group_name} ==="
+                formatter.print_header(header, style="bold")
+                formatter.display_grouped_data(
+                    {group_name: signal_data},
+                    [("Name", ""), ("Value", "")],
+                    [[group_name]],
+                    simple_print=dopt.args["--simple"],
+                )
+            except Exception as e:
+                util.ERROR(f"Error reading group '{group_name}': {e}")
+                continue
+    return []
+
+
+def handle_signal_reading_command(dopt: tt_docopt, context: Context, ui_state: UIState):
+    """Handle signal reading commands - read specific signals with optional L1 sampling."""
+    signals = parse_command_arguments(dopt.args)
+    for device in dopt.for_each("--device", context, ui_state):
+        for loc in dopt.for_each("--loc", context, ui_state, device=device):
+            debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
+            if not debug_bus_signal_store:
                 continue
 
             where = f"device:{device._id} loc:{loc.to_user_str()} "
-            composite_signals, _ = debug_bus_signal_store.group_composite_signals(
-                debug_bus_signal_store.get_signal_names()
-            )
-
             for signal in signals:
                 try:
-                    if isinstance(signal, str) and signal in composite_signals and not dopt.args["--l1-address"]:
+                    if isinstance(signal, str) and debug_bus_signal_store.is_combined_signal(signal):
                         util.WARN(
-                            f"Signal '{signal}' is a composite signal. For consistent reading, use L1 sampling mode (--l1-address)."
+                            f"Signal '{signal}' is a combined signal. For consistent reading, use L1 sampling mode. "
+                            "Only parts can be read in this mode, and their values may be inconsistent due to hardware implementation.\n"
+                            "The parts are listed below:"
                         )
+                        for s in debug_bus_signal_store.get_signal_part_names(signal):
+                            print(s)
+                        return []
 
-                    if dopt.args["--l1-address"]:
-                        value = _read_signal_with_l1_sampling(dopt, debug_bus_signal_store, signal)
-                    else:
-                        value = debug_bus_signal_store.read_signal(signal=signal)
+                    value = debug_bus_signal_store.read_signal(signal)
 
                     _display_signal_value(where, signal, value)
 
@@ -449,48 +359,26 @@ def handle_signal_reading_command(dopt, context, ui_state):
     return []
 
 
-def _read_signal_with_l1_sampling(dopt, debug_bus_signal_store, signal):
-    """Read signal using L1 sampling with parameter validation."""
-    samples = int(dopt.args["--samples"]) if dopt.args["--samples"] else 1
-    sampling_interval = int(dopt.args["--sampling-interval"]) if dopt.args["--sampling-interval"] else 2
+def _display_signal_value(where: str, signal: str | DebugBusSignalDescription, value):
+    """Display signal value(s) in a simple format."""
 
-    l1_address = int(dopt.args["--l1-address"], 0)
-
-    if dopt.args["--sampling-interval"] is not None and samples == 1:
-        util.WARN(
-            f"--sampling-interval parameter is meaningless when --samples=1, ignoring interval value {sampling_interval}"
+    def signal_desc_str(sig):
+        return (
+            f"Daisy:{sig.daisy_sel}; Rd Sel:{sig.rd_sel}; Sig Sel:{sig.sig_sel}; Mask:0x{sig.mask:x}"
+            if isinstance(sig, DebugBusSignalDescription)
+            else str(sig)
         )
 
-    return debug_bus_signal_store.read_signal(
-        signal=signal, use_l1_sampling=True, l1_address=l1_address, samples=samples, sampling_interval=sampling_interval
-    )
-
-
-def _display_signal_value(where, signal, value):
-    """Display signal value(s) in appropriate format."""
     if isinstance(value, list):
-        # Multiple samples returned as list
-        for i, sample_value in enumerate(value):
-            if isinstance(signal, str):
-                print(f"{where} {signal} [sample {i}]: 0x{sample_value:x}")
-            else:
-                signal_description = f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
-                print(f"{where} Debug Bus Config({signal_description}) [sample {i}] = 0x{sample_value:x}")
-
-    elif isinstance(signal, str):
-        # Single value with string signal name
-        print(f"{where} {signal}: 0x{value:x}")
+        for i, v in enumerate(value):
+            print(f"{where} {signal_desc_str(signal)} [sample {i}]: 0x{v:x}")
     else:
-        # Single value with signal description object
-        signal_description = (
-            f"Daisy:{signal.daisy_sel}; Rd Sel:{signal.rd_sel}; Sig Sel:{signal.sig_sel}; Mask:0x{signal.mask:x}"
-        )
-        print(f"{where} Debug Bus Config({signal_description}) = 0x{value:x}")
+        print(f"{where} {signal_desc_str(signal)}: 0x{value:x}")
 
 
-def run(cmd_text, context, ui_state: UIState = None):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     """Main entry point for debug-bus command."""
-    dopt = command_parser.tt_docopt(
+    dopt = tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
         common_option_names=command_metadata["common_option_names"],
@@ -501,5 +389,7 @@ def run(cmd_text, context, ui_state: UIState = None):
         return handle_list_names_command(dopt, context, ui_state)
     elif dopt.args["list-groups"]:
         return handle_list_groups_command(dopt, context, ui_state)
+    elif dopt.args["group"] and dopt.args["l1-address"]:
+        return handle_group_reading_command(dopt, context, ui_state)
     else:
         return handle_signal_reading_command(dopt, context, ui_state)
