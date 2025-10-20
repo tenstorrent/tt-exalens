@@ -177,7 +177,7 @@ def _get_debug_bus_signal_store(device: Device, loc: OnChipCoordinate) -> DebugB
     return debug_bus_signal_store
 
 
-def handle_list_signals_command(dopt: tt_docopt, device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
+def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
     """Handle the list-signals command - list all signals, optionally filtered by search pattern."""
     debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
     if not debug_bus_signal_store:
@@ -222,7 +222,7 @@ def handle_list_signals_command(dopt: tt_docopt, device: Device, loc: OnChipCoor
     return
 
 
-def handle_list_groups_command(dopt: tt_docopt, device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
+def handle_list_groups_command(device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
     """Handle the list-groups command - list all groups or signals in a specific group."""
     debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
     if not debug_bus_signal_store:
@@ -257,9 +257,7 @@ def handle_list_groups_command(dopt: tt_docopt, device: Device, loc: OnChipCoord
     return
 
 
-def handle_group_reading_command(
-    dopt: tt_docopt, device: Device, loc: OnChipCoordinate, params: dict[str, Any]
-) -> None:
+def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
     """Handle the 'dbus group' command: read all signals in specified group(s) using L1 sampling."""
     debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
     if not debug_bus_signal_store:
@@ -269,9 +267,9 @@ def handle_group_reading_command(
         util.ERROR("Missing group name(s) for group command.")
         return
 
-    group_name = params["group-name"].strip()
-    print(params["l1-address"])
-    if not params["l1-address"]:
+    group_name = params["group-name"]
+    print(params["l1-address"], type(params["l1-address"]))
+    if params["l1-address"] is None:
         util.ERROR("Missing l1-address for group reading command.")
         return
 
@@ -316,17 +314,14 @@ def handle_group_reading_command(
     return
 
 
-def handle_signal_reading_command(
-    dopt: tt_docopt, device: Device, loc: OnChipCoordinate, params: dict[str, Any]
-) -> None:
+def handle_signal_reading_command(device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
     """Handle signal reading commands - read specific signals with optional L1 sampling."""
     debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
     if not debug_bus_signal_store:
         return
 
-    signals = parse_command_arguments(dopt.args)
     where = f"device:{device._id} loc:{loc.to_user_str()} "
-    for signal in signals:
+    for signal in params["signals"]:
         try:
             if isinstance(signal, str) and debug_bus_signal_store.is_combined_signal(signal):
                 util.WARN(
@@ -389,11 +384,11 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         "samples": int(dopt.args["--samples"]) if dopt.args.get("--samples") else None,
         "sampling-interval": int(dopt.args["--sampling-interval"]) if dopt.args.get("--sampling-interval") else None,
         "group-name": dopt.args.get("<group-name>") or None,
-        "l1-address": int(dopt.args["<l1-address>"], 0) if dopt.args["<l1-address>"] else None,
+        "l1-address": int(dopt.args["<l1-address>"], 0) if dopt.args.get("<l1-address>") is not None else None,
         "signals": parse_command_arguments(dopt.args) if dopt.args.get("<signals>") else None,
         "simple": dopt.args.get("--simple") or None,
     }
 
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            command_handler(dopt, device, loc, params)
+            command_handler(device, loc, params)
