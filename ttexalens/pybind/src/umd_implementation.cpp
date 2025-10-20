@@ -8,14 +8,14 @@
 
 #include "read_tile.hpp"
 #include "umd/device/arc/arc_telemetry_reader.hpp"
-#include "umd/device/cluster.h"
+#include "umd/device/cluster.hpp"
 #include "umd/device/firmware/firmware_utils.hpp"
 
 namespace tt::exalens {
 
 // TODO #375: Remove read/write unaligned functions once UMD implements ability to set unaligned access for our TLB
 
-void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, chip_id_t chip, tt::umd::CoreCoord core,
+void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip, tt::umd::CoreCoord core,
                                     uint64_t addr, uint32_t size) {
     // Read first unaligned word
     uint32_t first_unaligned_index = addr % 4;
@@ -50,8 +50,8 @@ void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ch
     }
 }
 
-void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
-                                   chip_id_t chip, tt::umd::CoreCoord core, uint64_t addr) {
+void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes, ChipId chip,
+                                   tt::umd::CoreCoord core, uint64_t addr) {
     {
         // Read/Write first unaligned word
         uint32_t first_unaligned_index = addr % 4;

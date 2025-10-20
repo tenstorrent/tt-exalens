@@ -8,7 +8,7 @@
 #include <tuple>
 
 #include "ttexalens_implementation.h"
-#include "umd/device/cluster.h"
+#include "umd/device/cluster.hpp"
 
 namespace tt::exalens {
 
