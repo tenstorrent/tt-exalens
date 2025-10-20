@@ -75,37 +75,27 @@ def _format_signal_value(value, show_all_samples=False, signal_desc=None):
     """
     Format signal value for display:
     - 1-bit signals as True/False
-    - others as 0x... (no leading zeros)
+    - multi-bit signals as hexadecimal (0x...)
+    - can display a single value or a list of samples
     """
 
     def is_single_bit(mask):
         return mask is not None and (mask & (mask - 1)) == 0
 
-    if signal_desc is not None:
-        mask = signal_desc.mask
-        if is_single_bit(mask):
-            # Always display 1-bit signals as True/False
-            if isinstance(value, list):
-                samples_str = (
-                    ", ".join(["True" if v else "False" for v in value])
-                    if show_all_samples and len(value) > 1
-                    else ("True" if value[0] else "False")
-                )
-                return f"[{samples_str}]" if show_all_samples and len(value) > 1 else samples_str
-            else:
-                return "True" if value else "False"
-
-    def hex_width(val):
-        return f"0x{val:x}"
+    def fmt(v):
+        """
+        Format a single sample value `v`:
+        - If the signal has a mask and it's a single bit, return "True" or "False"
+        - Otherwise, return the value in hexadecimal (without leading zeros)
+        """
+        if is_single_bit(mask := getattr(signal_desc, "mask", None)):
+            return "True" if v else "False"
+        return f"0x{v:x}"
 
     if isinstance(value, list):
-        samples_str = (
-            ", ".join([hex_width(v) for v in value]) if show_all_samples and len(value) > 1 else hex_width(value[0])
-        )
-        return f"[{samples_str}]" if show_all_samples and len(value) > 1 else samples_str
-    else:
-        formatted = hex_width(value)
-        return formatted
+        formatted = [fmt(v) for v in value]
+        return f"[{', '.join(formatted)}]" if show_all_samples and len(value) > 1 else formatted[0]
+    return fmt(value)
 
 
 def parse_string(input_string: str) -> list[list[int] | str]:
