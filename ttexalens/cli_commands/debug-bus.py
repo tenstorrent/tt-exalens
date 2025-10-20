@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  debug-bus list-names [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s]
+  debug-bus list-signals [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s]
   debug-bus list-groups [--search <pattern>] [--max <max-sigs>] [-s]
   debug-bus group [<group-name>] l1-address <addr> [--samples <num>] [--sampling-interval <cycles>] [--search <pattern>] [-d <device>] [-l <loc>] [-s]
   debug-bus [<signals>] [-d <device>] [-l <loc>] [-s]
@@ -17,7 +17,7 @@ Options:
 
 Description:
   Commands for RISC-V debugging:
-    - list-names:    List all predefined debug bus signal names.
+    - list-signals:    List all predefined debug bus signal names.
         --search:    Search for signals by pattern (wildcard format)
         --max:       Limit number of results
     - list-groups:   List all debug bus signal groups.
@@ -39,9 +39,9 @@ Description:
             - Mask      - 32bit mask for significant bits (optional)
 
 Examples:
-  debug-bus list-names                                        # List up to 10 predefined debug bus signals (default max)
-  debug-bus list-names --max all                              # List all predefined debug bus signals
-  debug-bus list-names --search *pc* --max 5                  # List up to 5 signals whose names contain 'pc'
+  debug-bus list-signals                                        # List up to 10 predefined debug bus signals (default max)
+  debug-bus list-signals --max all                              # List all predefined debug bus signals
+  debug-bus list-signals --search *pc* --max 5                  # List up to 5 signals whose names contain 'pc'
   debug-bus list-groups                                       # List all debug bus signal groups
   debug-bus list-groups --search *brisc*                      # List groups whose names match pattern 'brisc'
   debug-bus group brisc_group_a l1-address 0x1000 --samples 4 --sampling-interval 10 # List all signals in group 'brisc_group_a' using L1 sampling, 4 samples, 10 cycles interval
@@ -385,7 +385,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     )
 
     # Route to appropriate handler based on command
-    if dopt.args["list-names"]:
+    if dopt.args["list-signals"]:
         return handle_list_names_command(dopt, context, ui_state)
     elif dopt.args["list-groups"]:
         return handle_list_groups_command(dopt, context, ui_state)
