@@ -6,11 +6,11 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBus
 
 
 # Commented signals marked with "# Duplicate signal name" are true duplicates -
-# their name already exists in the map and they represent the same signal.
-#
+# their name already exists in the map and they represent the same signal so suffix "_dup" is added.
+
 # Commented signals marked with "# Duplicate signal name - not same width" are duplicates
 # that don't have the same width, so they probably represent different signals/parts of signals.
-# TODO - needs investigation.
+# TODO(#651): needs investigation.
 debug_bus_signal_map = {
     # For the other signals applying the pc_mask.
     "brisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 5, mask=0x7FFFFFFF),
@@ -19,17 +19,17 @@ debug_bus_signal_map = {
     "trisc2_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 8, mask=0x7FFFFFFF),
     "ncrisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 12, mask=0x7FFFFFFF),
     "brisc_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x200),
-    # "brisc_id_ex_rts": DebugBusSignalDescription(  # Duplicate signal name
-    #     rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x100
-    # ),
+    "brisc_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x100
+    ),
     "brisc_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x80),
     "brisc_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x20),
     "brisc_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x1F),
     "brisc_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=11, mask=0xFFFFFFFF),
     "brisc_id_ex_rts": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=11, mask=0x80000000),
-    # "brisc_ex_id_rtr": DebugBusSignalDescription(  # Duplicate signal name
-    #     rd_sel=1, daisy_sel=7, sig_sel=11, mask=0x40000000
-    # ),
+    "brisc_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=11, mask=0x40000000
+    ),
     "brisc_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=11, mask=0x3FFFFFFF),
     "brisc_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=11, mask=0x10000000),
     "brisc_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=11, mask=0x1F00000),
@@ -62,17 +62,17 @@ debug_bus_signal_map = {
     "brisc_icache_req_fifo_full": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x2),
     "brisc_icache_req_fifo_empty": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x1),
     "trisc0_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x200),
-    # "trisc0_id_ex_rts": DebugBusSignalDescription(  # Duplicate signal name
-    #     rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x100
-    # ),
+    "trisc0_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x100
+    ),
     "trisc0_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x80),
     "trisc0_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x20),
     "trisc0_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x1F),
     "trisc0_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=13, mask=0xFFFFFFFF),
     "trisc0_id_ex_rts": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=13, mask=0x80000000),
-    # "trisc0_ex_id_rtr": DebugBusSignalDescription(  Duplicate signal name
-    #     rd_sel=1, daisy_sel=7, sig_sel=13, mask=0x40000000
-    # ),
+    "trisc0_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=13, mask=0x40000000
+    ),
     "trisc0_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=13, mask=0x3FFFFFFF),
     "trisc0_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=13, mask=0x10000000),
     "trisc0_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=13, mask=0x1F00000),
@@ -198,17 +198,17 @@ debug_bus_signal_map = {
         rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x1
     ),
     "trisc1_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x200),
-    # "trisc1_id_ex_rts": DebugBusSignalDescription(  # Duplicate signal name
-    #     rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x100
-    # ),
+    "trisc1_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x100
+    ),
     "trisc1_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x80),
     "trisc1_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x20),
     "trisc1_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x1F),
     "trisc1_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=15, mask=0xFFFFFFFF),
     "trisc1_id_ex_rts": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=15, mask=0x80000000),
-    # "trisc1_ex_id_rtr": DebugBusSignalDescription(  Duplicate signal name
-    #     rd_sel=1, daisy_sel=7, sig_sel=15, mask=0x40000000
-    # ),
+    "trisc1_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=15, mask=0x40000000
+    ),
     "trisc1_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=15, mask=0x3FFFFFFF),
     "trisc1_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=15, mask=0x10000000),
     "trisc1_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=15, mask=0x1F00000),
@@ -396,7 +396,7 @@ debug_bus_signal_map = {
     "trisc2_pc_buffer_debug_bus_cmd_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x800000
     ),
-    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
+    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Duplicate signal name - not same width
     #     rd_sel=3, daisy_sel=7, sig_sel=22, mask=0xFF800000
     # ),
     # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Duplicate signal name - not same width
@@ -439,17 +439,17 @@ debug_bus_signal_map = {
         rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x1
     ),
     "trisc2_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x200),
-    # "trisc2_id_ex_rts": DebugBusSignalDescription(  # Duplicate signal name
-    #     rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x100
-    # ),
+    "trisc2_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x100
+    ),
     "trisc2_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x80),
     "trisc2_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x20),
     "trisc2_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x1F),
     "trisc2_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=17, mask=0xFFFFFFFF),
     "trisc2_id_ex_rts": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=17, mask=0x80000000),
-    # "trisc2_ex_id_rtr": DebugBusSignalDescription(  # Duplicate signal name
-    #     rd_sel=1, daisy_sel=7, sig_sel=17, mask=0x40000000
-    # ),
+    "trisc2_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=17, mask=0x40000000
+    ),
     "trisc2_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=17, mask=0x3FFFFFFF),
     "trisc2_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=17, mask=0x10000000),
     "trisc2_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=17, mask=0x1F00000),
@@ -470,17 +470,17 @@ debug_bus_signal_map = {
     "trisc2_dbg_obs_cmt_vld": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=16, mask=0x80000000),
     "trisc2_dbg_obs_cmt_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=16, mask=0x7FFFFFFF),
     "ncrisc_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x200),
-    # "ncrisc_id_ex_rts": DebugBusSignalDescription(  # Duplicate signal name
-    #     rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x100
-    # ),
+    "ncrisc_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x100
+    ),
     "ncrisc_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x80),
     "ncrisc_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x20),
     "ncrisc_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x1F),
     "ncrisc_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=25, mask=0xFFFFFFFF),
     "ncrisc_id_ex_rts": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=25, mask=0x80000000),
-    # "ncrisc_ex_id_rtr": DebugBusSignalDescription(  # Duplicate signal name
-    #     rd_sel=1, daisy_sel=7, sig_sel=25, mask=0x40000000
-    # ),
+    "ncrisc_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=25, mask=0x40000000
+    ),
     "ncrisc_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=25, mask=0x3FFFFFFF),
     "ncrisc_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=25, mask=0x10000000),
     "ncrisc_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=25, mask=0x1F00000),
@@ -754,9 +754,9 @@ debug_bus_signal_map = {
     "rwc_regmov_inst_decoded": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0xE),
     "rwc_math_instr_valid_th": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0xE0000000),
     "rwc_math_winner_thread_combo": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x18000000),
-    # "rwc_debug_daisy_stop_issue0_debug_issue0_in[0]_math_instrn_pipe_ack": DebugBusSignalDescription(  # Duplicate signal name
-    #     rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x800000
-    # ),
+    "rwc_debug_daisy_stop_issue0_debug_issue0_in[0]_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x800000
+    ),
     "rwc_math_winner_wo_pipe_stall": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x380000),
     "rwc_s0_srca_data_ready": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x70000),
     "rwc_s0_srcb_data_ready": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0xE000),
@@ -975,50 +975,50 @@ debug_bus_signal_map = {
     ),
 }
 
-# TODO: add eth debug groups
 # Group name mapping (daisy_sel, sig_sel) based on documentation
+# Signal name mapping to (DaisySel, sig_sel)
 group_names = {
     # RISCV execution state (DaisySel == 7)
-    (7, 10): "brisc_group_a",
-    (7, 11): "brisc_group_b",
-    (7, 1): "brisc_group_c",
-    (7, 12): "trisc0_group_a",
-    (7, 13): "trisc0_group_b",
-    (7, 18): "trisc0_group_c",
-    (7, 19): "trisc0_group_d",
-    (7, 14): "trisc1_group_a",
-    (7, 15): "trisc1_group_b",
-    (7, 20): "trisc1_group_c",
-    (7, 21): "trisc1_group_d",
-    (7, 16): "trisc2_group_a",
-    (7, 17): "trisc2_group_b",
-    (7, 22): "trisc2_group_c",
-    (7, 23): "trisc2_group_d",
-    (7, 24): "ncrisc_group_a",
-    (7, 25): "ncrisc_group_b",
-    (7, 28): "sfpu_lane_enabled",
+    "brisc_group_a": (7, 10),
+    "brisc_group_b": (7, 11),
+    "brisc_group_c": (7, 1),
+    "trisc0_group_a": (7, 12),
+    "trisc0_group_b": (7, 13),
+    "trisc0_group_c": (7, 18),
+    "trisc0_group_d": (7, 19),
+    "trisc1_group_a": (7, 14),
+    "trisc1_group_b": (7, 15),
+    "trisc1_group_c": (7, 20),
+    "trisc1_group_d": (7, 21),
+    "trisc2_group_a": (7, 16),
+    "trisc2_group_b": (7, 17),
+    "trisc2_group_c": (7, 22),
+    "trisc2_group_d": (7, 23),
+    "ncrisc_group_a": (7, 24),
+    "ncrisc_group_b": (7, 25),
+    "sfpu_lane_enabled": (7, 28),
     # Tensix Frontend (DaisySel == 1)
-    (1, 12): "tensix_frontend_t0",
-    (1, 8): "tensix_frontend_t1",
-    (1, 4): "tensix_frontend_t2",
+    "tensix_frontend_t0": (1, 12),
+    "tensix_frontend_t1": (1, 8),
+    "tensix_frontend_t2": (1, 4),
     # ADCs and srcA and srcB (DaisySel == 6)
-    (6, 0): "adcs0_unpacker0_channel0",
-    (6, 1): "adcs0_unpacker0_channel1",
-    (6, 2): "adcs0_unpacker1_channel0",
-    (6, 3): "adcs0_unpacker1_channel1",
-    (6, 4): "adcs2_packers_channel0",
-    (6, 5): "adcs2_packers_channel1",
-    (6, 9): "srca_srcb_access_control",
+    "adcs0_unpacker0_channel0": (6, 0),
+    "adcs0_unpacker0_channel1": (6, 1),
+    "adcs0_unpacker1_channel0": (6, 2),
+    "adcs0_unpacker1_channel1": (6, 3),
+    "adcs2_packers_channel0": (6, 4),
+    "adcs2_packers_channel1": (6, 5),
+    "srca_srcb_access_control": (6, 9),
     # RWCs (DaisySel == 3)
-    (3, 0): "rwc_control_signals",
-    (3, 1): "rwc_status_signals",
-    (3, 2): "rwc_coordinates_a",
-    (3, 3): "rwc_coordinates_b",
-    (3, 4): "rwc_fidelity_phase",
+    "rwc_control_signals": (3, 0),
+    "rwc_status_signals": (3, 1),
+    "rwc_coordinates_a": (3, 2),
+    "rwc_coordinates_b": (3, 3),
+    "rwc_fidelity_phase": (3, 4),
     # L1 access ports (DaisySel == 8)
-    (8, 2): "l1_access_ports_addr_a",
-    (8, 3): "l1_access_ports_addr_b",
-    (8, 5): "l1_access_ports_addr_c",
+    "l1_access_ports_addr_a": (8, 2),
+    "l1_access_ports_addr_b": (8, 3),
+    "l1_access_ports_addr_c": (8, 5),
 }
 
 debug_bus_signal_group_map = DebugBusSignalStore.get_signal_groups(debug_bus_signal_map, group_names)

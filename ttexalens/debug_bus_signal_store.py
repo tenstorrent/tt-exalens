@@ -11,12 +11,9 @@ from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.tt_exalens_lib import read_word_from_device, read_words_from_device, write_words_to_device
 
 # Constants for better code readability
-L1_SAMPLE_SIZE_BYTES = 16  # Each 128-bit sample is 16 bytes
 WORD_SIZE_BITS = 32
-WORDS_PER_SAMPLE = 4  # 4x32-bit words per 128-bit sample
 WAIT_SLEEP_SECONDS = 0.001
 SENTINEL_VALUE = 0xDEADBEEF
-L1_LOW_MEMORY_SIZE = 1024 * 1024  # 1 MiB - low L1 memory limit for sampling
 
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
@@ -121,6 +118,9 @@ class DebugBusSignalStore:
         self.group_signals = group_signals
         self.noc_block = noc_block
         self.neo_id = neo_id
+        self.L1_SAMPLE_SIZE_BYTES = 16  # Each 128-bit sample is 16 bytes
+        self.WORDS_PER_SAMPLE = 4  # 4x32-bit words per 128-bit sample
+        self.L1_LOW_MEMORY_SIZE = 1024 * 1024  # 1 MiB - low L1 memory limit for sampling
 
     @cached_property
     def device(self) -> Device:
@@ -167,15 +167,15 @@ class DebugBusSignalStore:
         groups: dict[str, list[str]] = {}
 
         for signal_name, signal_desc in signal_map.items():
-            key = (signal_desc.daisy_sel, signal_desc.sig_sel)
-            group_key = group_names[key]
-            if group_key not in groups:
-                groups[group_key] = []
+            for group_key, (daisy_sel, sig_sel) in group_names.items():
+                if signal_desc.daisy_sel == daisy_sel and signal_desc.sig_sel == sig_sel:
+                    if group_key not in groups:
+                        groups[group_key] = []
 
-            base_name = signal_name.split("/")[0] if "/" in signal_name else signal_name
-            if base_name not in groups[group_key]:
-                groups[group_key].append(base_name)
-
+                    base_name = signal_name.split("/")[0] if "/" in signal_name else signal_name
+                    if base_name not in groups[group_key]:
+                        groups[group_key].append(base_name)
+                    break
         return groups
 
     def get_signal_names(self) -> Iterable[str]:
@@ -239,8 +239,8 @@ class DebugBusSignalStore:
         if l1_address % 16 != 0:
             raise ValueError(f"L1 address must be 16-byte aligned, got 0x{l1_address:x}")
 
-        end_address = l1_address + (samples * L1_SAMPLE_SIZE_BYTES) - 1
-        if end_address >= L1_LOW_MEMORY_SIZE:
+        end_address = l1_address + (samples * self.L1_SAMPLE_SIZE_BYTES) - 1
+        if end_address >= self.L1_LOW_MEMORY_SIZE:
             raise ValueError(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit")
 
         if samples > 1 and not (2 <= sampling_interval <= 256):
@@ -443,9 +443,9 @@ class DebugBusSignalStore:
         - https://github.com/tenstorrent/tt-isa-documentation/blob/main/WormholeB0/TensixTile/DebugDaisychain.md
         """
         # wait for the last memory location to be written to
-        wait_addr = l1_address + ((samples - 1) * L1_SAMPLE_SIZE_BYTES)
+        wait_addr = l1_address + ((samples - 1) * self.L1_SAMPLE_SIZE_BYTES)
         # Write sentinel value to all 4 32-bit words in the 128-bit location
-        sentinel_words = [SENTINEL_VALUE] * WORDS_PER_SAMPLE
+        sentinel_words = [SENTINEL_VALUE] * self.WORDS_PER_SAMPLE
         write_words_to_device(self.location, wait_addr, sentinel_words, self.device._id, self.device._context)
 
         # instruct to write
@@ -465,10 +465,12 @@ class DebugBusSignalStore:
 
         def read_128bit_sample(addr: int) -> int:
             """Read 4x32-bit words and combine them into a single 128-bit integer"""
-            words = read_words_from_device(self.location, addr, self.device._id, WORDS_PER_SAMPLE, self.device._context)
-            return sum((words[i] << (WORD_SIZE_BITS * i)) for i in range(WORDS_PER_SAMPLE))
+            words = read_words_from_device(
+                self.location, addr, self.device._id, self.WORDS_PER_SAMPLE, self.device._context
+            )
+            return sum((words[i] << (WORD_SIZE_BITS * i)) for i in range(self.WORDS_PER_SAMPLE))
 
         # Read all samples and extract the correct portion based on signal type
-        sample_values = [read_128bit_sample(l1_address + (i * L1_SAMPLE_SIZE_BYTES)) for i in range(samples)]
+        sample_values = [read_128bit_sample(l1_address + (i * self.L1_SAMPLE_SIZE_BYTES)) for i in range(samples)]
 
         return SignalGroupSample(raw_data=sample_values, signal_store=self, group_name=group_name)

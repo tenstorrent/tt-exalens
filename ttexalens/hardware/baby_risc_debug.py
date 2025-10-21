@@ -689,7 +689,7 @@ class BabyRiscDebug(RiscDebug):
     def debug_bus_pc_signal(self) -> list[DebugBusSignalDescription] | None:
         try:
             if self.risc_info.noc_block.debug_bus is not None:
-                return self.risc_info.noc_block.debug_bus.get_signal_description(self.risc_info.risc_name + "_pc")
+                return self.risc_info.noc_block.debug_bus.get_signal_description(self.risc_info.risc_name + "_pc")[0]
         except:
             pass
         return None
