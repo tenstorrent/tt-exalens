@@ -95,7 +95,7 @@ def _format_signal_value(value, show_all_samples=False, signal_desc=None):
 
     if isinstance(value, list):
         formatted = [fmt(v) for v in value]
-        return f"[{', '.join(formatted)}]" if show_all_samples and len(value) > 1 else formatted[0]
+        return f"[{', '.join(formatted)}]" if show_all_samples else formatted[0]
     return fmt(value)
 
 
@@ -184,8 +184,11 @@ def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: d
         return
 
     names = list(debug_bus_signal_store.get_signal_names())
-    if params["search"]:
-        names = search(names, params["search"], params["max"])
+    search_arg = params["search"]
+    max_arg = params["max"]
+
+    if search_arg:
+        names = search(names, search_arg, max_arg)
         if not names:
             print("No matches found.")
             return
@@ -204,7 +207,6 @@ def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: d
     # Sort signal_data by group name, then by signal name
     signal_data.sort(key=lambda x: (x[0], x[1]))
 
-    max_arg = params["max"]
     if max_arg is not None and str(max_arg).lower() != "all":
         try:
             max_count = int(max_arg)
@@ -268,22 +270,25 @@ def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: 
         return
 
     group_name = params["group-name"]
-    print(params["l1-address"], type(params["l1-address"]))
     if params["l1-address"] is None:
         util.ERROR("Missing l1-address for group reading command.")
         return
 
     samples = params["samples"]
-    if samples == 1 and params["sampling-interval"]:
+    sampling_interval = params["sampling-interval"]
+    if samples == 1 and sampling_interval is not None:
         util.WARN("Sampling interval is ignored when --samples=1.")
+
+    sampling_interval = sampling_interval or 2
 
     try:
         signal_group_sample = debug_bus_signal_store.read_signal_group(
             group_name,
             params["l1-address"],
             samples=samples,
-            sampling_interval=params["sampling-interval"],
+            sampling_interval=sampling_interval,
         )
+
         signal_data = []
         names = signal_group_sample.keys()
         if params["search"]:
@@ -382,7 +387,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         "search": dopt.args.get("--search") or None,
         "max": dopt.args.get("--max") or None,
         "samples": int(dopt.args["--samples"]) if dopt.args.get("--samples") else None,
-        "sampling-interval": int(dopt.args["--sampling-interval"]) if dopt.args.get("--sampling-interval") else None,
+        "sampling-interval": int(dopt.args["--sampling-interval"])
+        if dopt.args.get("--sampling-interval") is not None
+        else None,
         "group-name": dopt.args.get("<group-name>") or None,
         "l1-address": int(dopt.args["<l1-address>"], 0) if dopt.args.get("<l1-address>") is not None else None,
         "signals": parse_command_arguments(dopt.args) if dopt.args.get("<signals>") else None,

@@ -7,7 +7,6 @@ from functools import cached_property
 from time import sleep
 from typing import Iterable, TYPE_CHECKING
 
-
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.tt_exalens_lib import read_word_from_device, read_words_from_device, write_words_to_device
 
@@ -283,7 +282,7 @@ class DebugBusSignalStore:
 
         signal_descriptions = {}
         for signal_name in self.group_signals[group_name]:
-            # Uvek vraćamo listu deskriptora, bilo da je prost ili složen signal
+            # Always return a list of descriptors, whether the signal is simple or complex.
             description = self.get_signal_description(signal_name)
             signal_descriptions[signal_name] = description
 
@@ -391,7 +390,11 @@ class DebugBusSignalStore:
     def _setup_l1_sampling_configuration(
         self, signal: DebugBusSignalDescription, l1_address: int, samples: int, sampling_interval: int
     ) -> tuple[int, L1MemReg2]:
-        """Configure debug bus and setup L1 memory registers for sampling"""
+        """
+        Configure debug bus and setup L1 memory registers for sampling
+        Relevant documentation:
+        - https://github.com/tenstorrent/tt-isa-documentation/blob/main/WormholeB0/TensixTile/DebugDaisychain.md
+        """
         # Write the configuration - select 128 bit word
         en = 1
         config = (en << 29) | (signal.daisy_sel << 16) | (signal.sig_sel << 0)
@@ -434,7 +437,11 @@ class DebugBusSignalStore:
         return reg2_addr, reg2_struct
 
     def _execute_l1_sampling(self, reg2_addr: int, reg2_struct: L1MemReg2, l1_address: int, samples: int) -> None:
-        """Execute L1 sampling process and wait for completion"""
+        """
+        Execute L1 sampling process and wait for completion
+        Relevant documentation:
+        - https://github.com/tenstorrent/tt-isa-documentation/blob/main/WormholeB0/TensixTile/DebugDaisychain.md
+        """
         # wait for the last memory location to be written to
         wait_addr = l1_address + ((samples - 1) * L1_SAMPLE_SIZE_BYTES)
         # Write sentinel value to all 4 32-bit words in the 128-bit location
