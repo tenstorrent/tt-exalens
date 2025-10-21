@@ -65,7 +65,7 @@ class TensixInstructions:
 # a specific device.
 #
 class Device(TTObject):
-    instructions: TensixInstructions = None
+    instructions: TensixInstructions
     DIE_X_TO_NOC_0_X: list[int] = []
     DIE_Y_TO_NOC_0_Y: list[int] = []
     NOC_0_X_TO_DIE_X: list[int] = []
@@ -86,10 +86,18 @@ class Device(TTObject):
                 cores.extend(noc_block.debuggable_riscs)
         return cores
 
+    def is_wormhole(self) -> bool:
+        return False
+
+    def is_blackhole(self) -> bool:
+        return False
+
+    def is_quasar(self) -> bool:
+        return False
+
     # Class method to create a Device object given device architecture
     @staticmethod
     def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
-        dev = None
         if "wormhole" in arch.lower():
             from ttexalens.hw.tensix.wormhole import wormhole
 
@@ -122,11 +130,14 @@ class Device(TTObject):
         self._device_desc_path = device_desc_path
         self._context = context
         self._has_mmio = any(id in chip for chip in cluster_desc["chips_with_mmio"])
-        self._has_jtag = (
-            any(id in chip for chip in cluster_desc["chips_with_jtag"]) if "chips_with_jtag" in cluster_desc else False
-        )
+        self._has_jtag = cluster_desc["io_device_type"] == "JTAG"
         self.cluster_desc = cluster_desc
         self._init_coordinate_systems()
+        self.unique_id = self._context.server_ifc.get_device_unique_id(self._id)
+
+    @cached_property
+    def _firmware_version(self):
+        return util.FirmwareVersion(self._context.server_ifc.get_firmware_version(self._id))
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
     def __noc_to_die(self, noc_loc, noc_id=0):
@@ -144,8 +155,8 @@ class Device(TTObject):
         # Fill in coordinate maps from UMD coordinate manager
         self._from_noc0 = {}
         self._to_noc0 = {}
-        umd_supported_coordinates = ["noc1", "logical", "virtual", "translated"]
-        unique_coordinates = ["noc1", "virtual", "translated"]
+        umd_supported_coordinates = ["noc1", "logical", "translated"]
+        unique_coordinates = ["noc1", "translated"]
         for noc0_location, block_type in self._noc0_to_block_type.items():
             core_type = self.block_types[block_type]["core_type"]
             for coord_system in umd_supported_coordinates:
@@ -299,7 +310,7 @@ class Device(TTObject):
         """
         Returns the type of block at the given location
         """
-        return self._noc0_to_block_type.get(loc._noc0_coord)
+        return self._noc0_to_block_type[loc._noc0_coord]
 
     # Returns a string representation of the device. When printed, the string will
     # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list
@@ -388,7 +399,7 @@ class Device(TTObject):
 
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         noc_id = 1 if self._context.use_noc1 else 0
-        return self._context.server_ifc.pci_read_tile(noc_id, self.id(), x, y, reg_addr, msg_size, data_format)
+        return self._context.server_ifc.pci_read_tile(noc_id, self._id, x, y, reg_addr, msg_size, data_format)
 
 
 # end of class Device

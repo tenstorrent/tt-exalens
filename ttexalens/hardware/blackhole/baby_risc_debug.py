@@ -2,9 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ttexalens import util
+from typing import Callable
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
+from ttexalens.tt_exalens_lib import read_word_from_device
+from ttexalens.util import TTException
 
 
 class BlackholeBabyRiscDebug(BabyRiscDebug):
@@ -30,7 +32,9 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
 
         if self.risc_info.risc_name == "trisc2" and address % 16 > 4:
-            util.WARN(f"Writing to private memory address {address} may not work properly. See issue #528")
+            raise TTException(
+                f"Writing to trisc2 private memory address 0x{address:08x} does not work due to blackhole bug. For more information see issue #528 in tt-exalens repo."
+            )
 
         word_size_bytes = 4
         word_size_bits = word_size_bytes * 8
@@ -51,11 +55,31 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
     def read_memory(self, address: int):
         if self.enable_asserts:
             self.assert_not_in_reset()
-        self.assert_debug_hardware()
-        assert self.debug_hardware is not None, "Debug hardware is not initialized"
 
-        if self.risc_info.risc_name == "trisc2" and address % 16 > 4:
-            util.WARN(f"Reading private memory address {address} may not work properly. See issue #528")
+        read_memory: Callable[[int], int]
+        if (
+            self.risc_info.data_private_memory is not None
+            and self.risc_info.data_private_memory.address.noc_address is not None
+            and self.risc_info.data_private_memory.contains_private_address(address)
+            and not self.is_in_reset()
+        ):
+            # We can read from data memory directly if core is not in reset, but we need to update address to NOC address
+            assert self.risc_info.data_private_memory.address.private_address is not None
+            address = (
+                address
+                - self.risc_info.data_private_memory.address.private_address
+                + self.risc_info.data_private_memory.address.noc_address
+            )
+            read_memory = lambda addr: read_word_from_device(self.risc_info.noc_block.location, addr)
+        else:
+            self.assert_debug_hardware()
+            assert self.debug_hardware is not None, "Debug hardware is not initialized"
+
+            if self.risc_info.risc_name == "trisc2" and address % 16 > 4:
+                raise TTException(
+                    f"Reading from trisc2 private memory address 0x{address:08x} does not work due to blackhole bug. For more information see issue #528 in tt-exalens repo."
+                )
+            read_memory = self.debug_hardware.read_memory
 
         word_size_bytes = 4
         word_size_bits = word_size_bytes * 8
@@ -63,11 +87,11 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         # We have to treat unaligned read separately due to blackhole bug
         if bytes_shifted == 0:
             # aligned read
-            return self.debug_hardware.read_memory(address)
+            return read_memory(address)
         else:
             # unaligned read
             bits_shifted = bytes_shifted * 8
-            word1 = self.debug_hardware.read_memory(address - bytes_shifted)
-            word2 = self.debug_hardware.read_memory(address + word_size_bytes - bytes_shifted)
+            word1 = read_memory(address - bytes_shifted)
+            word2 = read_memory(address + word_size_bytes - bytes_shifted)
             mask = (1 << (word_size_bits - bits_shifted)) - 1
             return ((word1 & mask) << bits_shifted) | (word2 >> (word_size_bits - bits_shifted))

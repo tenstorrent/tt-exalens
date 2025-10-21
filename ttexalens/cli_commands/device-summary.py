@@ -8,12 +8,12 @@ Usage:
 Arguments:
   device-id            ID of the device [default: all]
   axis-coordinate      Coordinate system for the axis [default: logical-tensix]
-                       Supported: noc0, noc1, translated, virtual, die, logical-tensix, logical-eth, logical-dram
+                       Supported: noc0, noc1, translated, die, logical-tensix, logical-eth, logical-dram
   cell-contents        A comma separated list of the cell contents [default: riscv]
                        Supported:
                          riscv - show the status of the RISC-V ('R': running, '-': in reset), or block type if there are no RISC-V cores
                          block - show the type of the block at that coordinate
-                         logical, noc0, noc1, translated, virtual, die - show coordinate
+                         logical, noc0, noc1, translated, die - show coordinate
                          noc0_id - show the NOC0 node ID (x-y) for the block
                          noc1_id - show the NOC1 node ID (x-y) for the block
 
@@ -129,7 +129,10 @@ def run(cmd_text, context, ui_state: UIState):
     device: Device
     for device in dopt.for_each("--device", context, ui_state):
         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
-        util.INFO(f"==== Device {jtag_prompt}{device.id()}")
+        device_id_str = f"{device.id()}"
+        if device.unique_id is not None:
+            device_id_str += f" [0x{device.unique_id:x}]"
+        util.INFO(f"==== Device {jtag_prompt}{device_id_str}")
 
         # What to render in each cell
         cell_contents_array = [s.strip() for s in cell_contents.split(",")]

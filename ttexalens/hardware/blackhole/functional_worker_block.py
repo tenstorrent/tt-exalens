@@ -76,7 +76,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             code_start_address_register=None,  # We don't have a regsiter to override code start address
             data_private_memory=MemoryBlock(
                 size=8 * 1024,
-                address=DeviceAddress(private_address=0xFFB00000),
+                address=DeviceAddress(private_address=0xFFB00000, noc_address=0xFFB14000),
             ),
             code_private_memory=None,
             debug_hardware_present=True,
@@ -98,7 +98,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             code_start_address_enable_bit=0b001,
             data_private_memory=MemoryBlock(
                 size=4 * 1024,
-                address=DeviceAddress(private_address=0xFFB00000),
+                address=DeviceAddress(private_address=0xFFB00000, noc_address=0xFFB18000),
             ),
             code_private_memory=None,
             debug_hardware_present=True,
@@ -120,7 +120,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             code_start_address_enable_bit=0b010,
             data_private_memory=MemoryBlock(
                 size=4 * 1024,
-                address=DeviceAddress(private_address=0xFFB00000),
+                address=DeviceAddress(private_address=0xFFB00000, noc_address=0xFFB1A000),
             ),
             code_private_memory=None,
             debug_hardware_present=True,
@@ -142,7 +142,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             code_start_address_enable_bit=0b100,
             data_private_memory=MemoryBlock(
                 size=4 * 1024,
-                address=DeviceAddress(private_address=0xFFB00000),
+                address=DeviceAddress(private_address=0xFFB00000, noc_address=0xFFB1C000),
             ),
             code_private_memory=None,
             debug_hardware_present=True,
@@ -158,17 +158,13 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             reset_flag_shift=18,
             branch_prediction_register="DISABLE_RISC_BP_Disable_ncrisc",
             branch_prediction_mask=0x1,
-            default_code_start_address=0xFFC00000,
+            default_code_start_address=0x12000,
             code_start_address_register="NCRISC_RESET_PC_PC",
             code_start_address_enable_register="NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b1,
             data_private_memory=MemoryBlock(
-                size=4 * 1024,  # TODO #432: Check if this is correct
-                address=DeviceAddress(private_address=0xFFB00000),
-            ),
-            code_private_memory=MemoryBlock(
-                size=4 * 1024,  # TODO #432: This memory is removed on blackhole?!?
-                address=DeviceAddress(private_address=0xFFC00000),
+                size=8 * 1024,
+                address=DeviceAddress(private_address=0xFFB00000, noc_address=0xFFB16000),
             ),
             debug_hardware_present=False,
         )

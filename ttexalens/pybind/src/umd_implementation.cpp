@@ -7,14 +7,15 @@
 #include <tuple>
 
 #include "read_tile.hpp"
-#include "umd/device/arc_telemetry_reader.h"
-#include "umd/device/cluster.h"
+#include "umd/device/arc/arc_telemetry_reader.hpp"
+#include "umd/device/cluster.hpp"
+#include "umd/device/firmware/firmware_utils.hpp"
 
 namespace tt::exalens {
 
 // TODO #375: Remove read/write unaligned functions once UMD implements ability to set unaligned access for our TLB
 
-void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, chip_id_t chip, tt::umd::CoreCoord core,
+void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip, tt::umd::CoreCoord core,
                                     uint64_t addr, uint32_t size) {
     // Read first unaligned word
     uint32_t first_unaligned_index = addr % 4;
@@ -49,8 +50,8 @@ void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ch
     }
 }
 
-void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
-                                   chip_id_t chip, tt::umd::CoreCoord core, uint64_t addr) {
+void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes, ChipId chip,
+                                   tt::umd::CoreCoord core, uint64_t addr) {
     {
         // Read/Write first unaligned word
         uint32_t first_unaligned_index = addr % 4;
@@ -91,10 +92,12 @@ void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_pt
 
 }  // namespace tt::exalens
 
-umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {}
+umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {
+    cached_arc_telemetry_readers.resize(cluster->get_cluster_description()->get_number_of_chips());
+}
 
-std::optional<uint32_t> umd_implementation::pci_read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                       uint64_t address) {
+std::optional<uint32_t> umd_implementation::read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                   uint64_t address) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
@@ -105,8 +108,8 @@ std::optional<uint32_t> umd_implementation::pci_read32(uint8_t noc_id, uint8_t c
     return result;
 }
 
-std::optional<uint32_t> umd_implementation::pci_write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                        uint64_t address, uint32_t data) {
+std::optional<uint32_t> umd_implementation::write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                    uint64_t address, uint32_t data) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
@@ -116,14 +119,13 @@ std::optional<uint32_t> umd_implementation::pci_write32(uint8_t noc_id, uint8_t 
     return 4;
 }
 
-std::optional<std::vector<uint8_t>> umd_implementation::pci_read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x,
-                                                                 uint8_t noc_y, uint64_t address, uint32_t size) {
+std::optional<std::vector<uint8_t>> umd_implementation::read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x,
+                                                             uint8_t noc_y, uint64_t address, uint32_t size) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
     std::vector<uint8_t> result(size);
     tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
-
     // TODO #124: Mitigation for UMD bug #77
     if (!is_chip_mmio_capable(chip_id)) {
         for (uint32_t done = 0; done < size;) {
@@ -138,8 +140,8 @@ std::optional<std::vector<uint8_t>> umd_implementation::pci_read(uint8_t noc_id,
     return result;
 }
 
-std::optional<uint32_t> umd_implementation::pci_write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                      uint64_t address, const uint8_t* data, uint32_t size) {
+std::optional<uint32_t> umd_implementation::write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                  uint64_t address, const uint8_t* data, uint32_t size) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
@@ -197,9 +199,8 @@ std::optional<uint32_t> umd_implementation::dma_buffer_read32(uint8_t chip_id, u
     return result;
 }
 
-std::optional<std::string> umd_implementation::pci_read_tile(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x,
-                                                             uint8_t noc_y, uint64_t address, uint32_t size,
-                                                             uint8_t data_format) {
+std::optional<std::string> umd_implementation::read_tile(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
+                                                         uint64_t address, uint32_t size, uint8_t data_format) {
     return tt::exalens::tile::read_tile_implementation(noc_id, chip_id, noc_x, noc_y, address, size, data_format,
                                                        cluster);
 }
@@ -225,14 +226,30 @@ std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(u
     return std::make_tuple(return_code, return_3, return_4);
 }
 
-std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
-    // Speed optimization: cache ArcTelemetryReader to avoid creating it multiple times
-    if (!cached_arc_telemetry_reader || cached_arc_telemetry_reader_chip_id != chip_id) {
-        cached_arc_telemetry_reader =
-            tt::umd::ArcTelemetryReader::create_arc_telemetry_reader(cluster->get_tt_device(chip_id));
-        cached_arc_telemetry_reader_chip_id = chip_id;
+tt::umd::ArcTelemetryReader* umd_implementation::get_arc_telemetry_reader(uint8_t chip_id) {
+    auto& cached_arc_telemetry_reader = cached_arc_telemetry_readers[chip_id];
+    if (!cached_arc_telemetry_reader) {
+        std::lock_guard<std::mutex> lock(cached_arc_telemetry_readers_mutex);
+        if (!cached_arc_telemetry_reader) {
+            cached_arc_telemetry_reader =
+                tt::umd::ArcTelemetryReader::create_arc_telemetry_reader(cluster->get_tt_device(chip_id));
+        }
     }
-    return cached_arc_telemetry_reader->read_entry(telemetry_tag);
+    return cached_arc_telemetry_reader.get();
+}
+
+std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
+    auto* arc_telemetry_reader = get_arc_telemetry_reader(chip_id);
+    auto umd_telemetry_tag = static_cast<tt::umd::TelemetryTag>(telemetry_tag);
+    if (!arc_telemetry_reader->is_entry_available(telemetry_tag)) {
+        return {};
+    }
+    return arc_telemetry_reader->read_entry(telemetry_tag);
+}
+
+std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> umd_implementation::get_firmware_version(uint8_t chip_id) {
+    const auto& firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
+    return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
 }
 
 }  // namespace tt::exalens

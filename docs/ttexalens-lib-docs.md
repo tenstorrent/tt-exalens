@@ -2,7 +2,7 @@
 
 ## GLOBAL_CONTEXT
 
-`GLOBAL_CONTEXT` = **None** *(Context)*
+`GLOBAL_CONTEXT` = **None** *(Context | None)*
 
 ### Description
 
@@ -17,7 +17,7 @@ a singleton, as it can be explicitly provided to library functions.
 ## init_ttexalens
 
 ```
-init_ttexalens(wanted_devices=None, cache_path=None, init_jtag=False, use_noc1=False) -> Context
+init_ttexalens(wanted_devices=None, init_jtag=False, use_noc1=False) -> Context
 ```
 
 
@@ -42,7 +42,7 @@ Interfacing device is local, through pybind.
 ## init_ttexalens_remote
 
 ```
-init_ttexalens_remote(ip_address=localhost, port=5555, cache_path=None) -> Context
+init_ttexalens_remote(ip_address=localhost, port=5555) -> Context
 ```
 
 
@@ -57,30 +57,6 @@ Interfacing device is done remotely through TTExaLens client.
 - `ip_address` *(str)*: IP address of the TTExaLens server. Default is 'localhost'.
 - `port` *(int)*: Port number of the TTExaLens server interface. Default is 5555.
 - `cache_path` *(str, optional)*: Path to the cache file to write. If None, caching is disabled.
-
-
-### Returns
-
- *(Context)*: TTExaLens context object.
-
-
-
-## init_ttexalens_cached
-
-```
-init_ttexalens_cached(cache_path) -> None
-```
-
-
-### Description
-
-Initializes TTExaLens internals by reading cached session data. There is no connection to the device.
-Only cached commands are available.
-
-
-### Args
-
-- `cache_path` *(str)*: Path to the cache file.
 
 
 ### Returns
@@ -684,7 +660,6 @@ Constructor for the Coordinate class.
 - `- noc1`: NOC routing coordinate for NOC 1. (X-Y)
 - `- die`: Die coordinate, a location on the die grid. (X,Y)
 - `- logical`: Logical grid coordinate. Notation: qX,Y, where q represents first letter of the core type. If q is not present, it is considered as tensix core.
-- `- virtual`: Virtual NOC coordinate. Similar to noc0, but with the harvested rows removed, and the locations of functioning rows shifted down to fill in the gap. (X-Y)
 - `- translated`: Translated NOC coordinate. (X-Y)
 - `device`: The device object used for coordinate conversion.
 - `core_type` *(str, optional)*: The core_type used for coordinate conversion. Some coordinate systems require core_type as third dimension. Defaults to "any".

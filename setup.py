@@ -15,7 +15,7 @@ ttexalens_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 ttexalens_home = os.path.dirname(ttexalens_folder_path)
 
 
-def get_ttexalens_py_files(file_dir: os.PathLike = f"{ttexalens_home}/ttexalens", ignorelist: list = []) -> list:
+def get_ttexalens_py_files(file_dir: str = f"{ttexalens_home}/ttexalens", ignorelist: list = []) -> list:
     """A function to get the list of files in the ttexalens lib directory.
     Ignore the files in the ignorelist."""
     py_files = []
@@ -28,30 +28,54 @@ def get_ttexalens_py_files(file_dir: os.PathLike = f"{ttexalens_home}/ttexalens"
     return py_files
 
 
+def check_pybind_file(filename: str) -> bool:
+    """Check if the pybind file exists in the build directory."""
+    return os.path.exists(f"{ttexalens_home}/build/lib/{filename}")
+
+
+def get_pybind_filename() -> str:
+    import sys
+    import sysconfig
+    import platform
+
+    # Dynamically determine python version, ABI, and platform for pybind filename
+    filename = "ttexalens_pybind.so"
+    if check_pybind_file(filename):
+        return filename
+
+    # Try using EXT_SUFFIX from sysconfig
+    ext_suffix = sysconfig.get_config_var("EXT_SUFFIX")
+    if ext_suffix:
+        filename = f"ttexalens_pybind{ext_suffix}"
+        if check_pybind_file(filename):
+            return filename
+
+    # Try using SOABI from sysconfig
+    soabi = sysconfig.get_config_var("SOABI")
+    if soabi:
+        filename = f"ttexalens_pybind.{soabi}.so"
+        if check_pybind_file(filename):
+            return filename
+
+    # Fallback to manual construction
+    py_major = sys.version_info.major
+    py_minor = sys.version_info.minor
+    arch = platform.machine()
+    sysname = platform.system().lower()
+    filename = f"ttexalens_pybind.cpython-{py_major}{py_minor}-{arch}-{sysname}-gnu.so"
+
+    if not check_pybind_file(filename):
+        raise FileNotFoundError(f"Could not find {filename} in build/lib")
+    return filename
+
+
 def get_libjtag() -> list:
     """A function to get the libjtag if it exists."""
 
-    if os.path.exists(f"{ttexalens_home}/build/lib/libttexalens_jtag.so"):
-        return ["libttexalens_jtag.so", "libjlinkarm.so"]
+    if os.path.exists(f"{ttexalens_home}/build/lib/libtt_umd_jtag.so"):
+        return ["libtt_umd_jtag.so", "libjlinkarm.so"]
 
     return []
-
-
-ttexalens_files = {
-    "ttexalens_lib": {"path": "ttexalens", "files": get_ttexalens_py_files(), "output": "ttexalens"},
-    "libs": {
-        "path": "build/lib",
-        "files": ["libdevice.so", "ttexalens_pybind.cpython-310-x86_64-linux-gnu.so"] + get_libjtag(),
-        "output": "build/lib",
-        "strip": True,
-    },
-    "gdb-client": {
-        "path": "build_riscv/sfpi/compiler/bin",
-        "files": ["riscv32-tt-elf-gdb"],
-        "output": "build_riscv/sfpi/compiler/bin",
-        "strip": True,
-    },
-}
 
 
 class TTExtension(Extension):
@@ -78,6 +102,21 @@ class MyBuild(build_ext):
         subprocess.check_call([f"cd {ttexalens_home} && make"], env=env, shell=True)
 
     def _copy_files(self, target_path):
+        ttexalens_files = {
+            "ttexalens_lib": {"path": "ttexalens", "files": get_ttexalens_py_files(), "output": "ttexalens"},
+            "libs": {
+                "path": "build/lib",
+                "files": ["libdevice.so", get_pybind_filename()] + get_libjtag(),
+                "output": "ttexalens/lib",
+                "strip": True,
+            },
+            "gdb-client": {
+                "path": "build_riscv/sfpi/compiler/bin",
+                "files": ["riscv32-tt-elf-gdb"],
+                "output": "ttexalens/sfpi/compiler/bin",
+                "strip": True,
+            },
+        }
         strip_symbols = os.environ.get("STRIP_SYMBOLS", "0") == "1"
         for _, d in ttexalens_files.items():
             path = target_path + "/" + d["output"]

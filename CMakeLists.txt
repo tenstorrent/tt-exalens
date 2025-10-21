@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.16)
-cmake_policy(VERSION 3.16)
+cmake_minimum_required(VERSION 3.27)
+cmake_policy(VERSION 3.27)
 
 # Sanity check, forgetting to clone submodules is a common omission and results in a poor error message
 if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/umd/CMakeLists.txt")
@@ -61,16 +61,10 @@ file(MAKE_DIRECTORY "build_riscv")
 include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
 
 # Refresh the symlinks
-file(REMOVE "${BUILD_SYMLINK}")
+file(REMOVE_RECURSE "${BUILD_SYMLINK}")
 file(CREATE_LINK "${CMAKE_BINARY_DIR}" "${BUILD_SYMLINK}" SYMBOLIC)
-file(REMOVE "${RISCV_SYMLINK}")
+file(REMOVE_RECURSE "${RISCV_SYMLINK}")
 file(CREATE_LINK "${CMAKE_SOURCE_DIR}/build_riscv" "${RISCV_SYMLINK}" SYMBOLIC)
-
-# Check for ZeroMQ
-include(${PROJECT_SOURCE_DIR}/cmake/ZeroMQ.cmake)
-
-# Including private repository
-include(${PROJECT_SOURCE_DIR}/cmake/ttexalens_private.cmake)
 
 # Include pybind custom functions
 include(${PROJECT_SOURCE_DIR}/cmake/pybind.cmake)
@@ -78,7 +72,6 @@ include(${PROJECT_SOURCE_DIR}/cmake/pybind.cmake)
 # Add subdirectories
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens)
 add_subdirectory(${PROJECT_SOURCE_DIR}/utils)
-add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 
 # As build_<type>/riscv-src is a symlink, CMake can't put its configuration files there
 # directly, so we specify here that it should place them in build_riscv instead.

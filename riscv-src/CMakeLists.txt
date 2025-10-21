@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.16)
-cmake_policy(VERSION 3.16)
+cmake_minimum_required(VERSION 3.27)
+cmake_policy(VERSION 3.27)
 
 project(RISCVProject LANGUAGES CXX ASM)
 
@@ -32,7 +32,7 @@ set(RISCV_OBJECT "${CMAKE_BINARY_DIR}/obj/riscv-src")
 # Define architectures, applications, and cores
 set(RISCV_ARCHITECTURES "wormhole" "blackhole")
 set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc")
-set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test")
+set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test")
 
 # Create the object file output directory
 file(MAKE_DIRECTORY ${RISCV_OBJECT})

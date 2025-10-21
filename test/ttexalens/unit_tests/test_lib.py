@@ -26,6 +26,7 @@ from ttexalens.object import DataArray
 from ttexalens.hw.arc.arc import load_arc_fw
 from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
 from ttexalens.elf_loader import ElfLoader
+from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
 
 
 def invalid_argument_decorator(func):
@@ -512,14 +513,11 @@ class TestRunElf(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.context = init_default_test_context()
-
-    def is_blackhole(self):
-        """Check if the device is blackhole."""
-        return self.context.devices[0]._arch == "blackhole"
+        cls.device = cls.context.devices[0]
 
     def get_elf_path(self, app_name: str, risc_name: str):
         """Get the path to the ELF file."""
-        arch = self.context.devices[0]._arch.lower()
+        arch = self.device._arch.lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
         risc = risc_name.lower()
@@ -573,7 +571,7 @@ class TestRunElf(unittest.TestCase):
         ]
     )
     def test_old_elf_test(self, risc_name: str):
-        if self.is_blackhole():
+        if self.device.is_blackhole():
             self.skipTest("This test doesn't work as expected on blackhole. Disabling it until bug #120 is fixed.")
 
         """ Running old elf test, formerly done with -t option. """
@@ -587,7 +585,7 @@ class TestRunElf(unittest.TestCase):
         MAILBOX_ADDR, MAILBOX_SIZE, _, _ = elf.parse_addr_size_value_type("fw.g_MAILBOX")
         TESTBYTEACCESS_ADDR, _, _, _ = elf.parse_addr_size_value_type("fw.g_TESTBYTEACCESS")
 
-        loc = OnChipCoordinate.create(location, device=self.context.devices[0])
+        loc = OnChipCoordinate.create(location, device=self.device)
         device = loc._device
         noc_block = device.get_block(loc)
         risc_debug = noc_block.get_risc_debug(risc_name)
@@ -749,22 +747,14 @@ class TestARC(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.context = tt_exalens_init.init_ttexalens()
-
-    def is_wormhole(self):
-        """Check if the device is wormhole."""
-        return self.context.devices[0]._arch == "wormhole_b0"
-
-    def is_blackhole(self):
-        """Check if the device is blackhole."""
-        return self.context.devices[0]._arch == "blackhole"
+        cls.device = cls.context.devices[0]
 
     def test_arc_msg(self):
         """Test getting AICLK from ARC."""
 
-        if self.is_blackhole():
+        if self.device.is_blackhole():
             self.skipTest("Arc message is not supported on blackhole UMD")
 
-        device_id = 0
         msg_code = 0x90  # ArcMessageType::TEST
         wait_for_done = True
         arg0 = 0
@@ -772,7 +762,9 @@ class TestARC(unittest.TestCase):
         timeout = 1000
 
         # Ask for reply, check for reasonable TEST value
-        ret, return_3, _ = lib.arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, context=self.context)
+        ret, return_3, _ = lib.arc_msg(
+            self.device._id, msg_code, wait_for_done, arg0, arg1, timeout, context=self.context
+        )
 
         print(f"ARC message result={ret}, test={return_3}")
         self.assertEqual(ret, 0)
@@ -782,60 +774,49 @@ class TestARC(unittest.TestCase):
 
     fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
 
-    def test_read_arc_telemetry(self):
-        """Test reading ARC telemetry entries of known values"""
-        device_id = 0
-        if self.is_wormhole():
-            # Check vendor ID
-            expected_vendor_id = 0x1E52
-            vendor_id = lib.read_arc_telemetry_entry(device_id, "TAG_DEVICE_ID") & 0xFFFF
-            self.assertEqual(vendor_id, expected_vendor_id)
-
-            # Check if heartbeat is increasing
-            import time
-
-            heartbeat1 = lib.read_arc_telemetry_entry(device_id, "TAG_ARC0_HEALTH")
-            time.sleep(0.1)
-            heartbeat2 = lib.read_arc_telemetry_entry(device_id, "TAG_ARC0_HEALTH")
-            self.assertGreater(heartbeat2, heartbeat1)
-        elif self.is_blackhole():
-            # Check if heartbeat is increasing
-            import time
-
-            heartbeat1 = lib.read_arc_telemetry_entry(device_id, "TAG_TIMER_HEARTBEAT")
-            time.sleep(0.1)
-            heartbeat2 = lib.read_arc_telemetry_entry(device_id, "TAG_TIMER_HEARTBEAT")
-            self.assertGreater(heartbeat2, heartbeat1)
-        else:
+    def test_arc_heartbeat(self):
+        """Test reading ARC heartbeat"""
+        if not self.device.is_wormhole() and not self.device.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
+
+        if self.device._firmware_version < CUTOFF_FIRMWARE_VERSION:
+            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device._firmware_version}")
+
+        tag = "TIMER_HEARTBEAT"
+
+        # Check if heartbeat is increasing
+        import time
+
+        heartbeat1 = lib.read_arc_telemetry_entry(self.device._id, tag)
+        time.sleep(0.1)
+        heartbeat2 = lib.read_arc_telemetry_entry(self.device._id, tag)
+        self.assertGreater(heartbeat2, heartbeat1)
 
     @parameterized.expand(
         [
-            ("TAG_BOARD_ID_HIGH", (4, 1)),
-            ("TAG_BOARD_ID_LOW", (5, 2)),
-            ("TAG_AICLK", (24, 14)),
-            ("TAG_AXICLK", (25, 15)),
-            ("TAG_ARCCLK", (26, 16)),
+            ("BOARD_ID_HIGH", 1),
+            ("BOARD_ID_LOW", 2),
+            ("AICLK", 14),
+            ("AXICLK", 15),
+            ("ARCCLK", 16),
         ]
     )
     def test_read_arc_telemetry_entry(self, tag_name, tag_id):
-        """Test reading ARC telemetry entry by tag name and tag ID"""
+        """Test if reading ARC telemetry entry by tag name and tag ID gives the same result"""
 
-        index = 0 if self.is_wormhole() else 1 if self.is_blackhole() else None
-
-        if index is None:
+        if not self.device.is_wormhole() and not self.device.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
 
-        device_id = 0
+        if self.device._firmware_version < CUTOFF_FIRMWARE_VERSION:
+            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device._firmware_version}")
 
-        # Check if reading by tag name and tag ID gives the same result
-        ret_from_name = lib.read_arc_telemetry_entry(device_id, tag_name)
-        ret_from_id = lib.read_arc_telemetry_entry(device_id, tag_id[index])
+        ret_from_name = lib.read_arc_telemetry_entry(self.device._id, tag_name)
+        ret_from_id = lib.read_arc_telemetry_entry(self.device._id, tag_id)
         self.assertEqual(ret_from_name, ret_from_id)
 
     def test_load_arc_fw(self):
 
-        if self.is_blackhole():
+        if self.device.is_blackhole():
             self.skipTest("Loading ARC firmware is not supported on blackhole")
 
         wait_time = 0.1
@@ -857,7 +838,7 @@ class TestARC(unittest.TestCase):
         {"location_desc": "FW0", "risc_name": "BRISC"},
         {"location_desc": "FW0", "risc_name": "TRISC0"},
         {"location_desc": "FW0", "risc_name": "TRISC1"},
-        # {"location_desc": "FW0", "risc_name": "TRISC2"}, - there is a bug on TRISC2: #266
+        {"location_desc": "FW0", "risc_name": "TRISC2"},
     ]
 )
 class TestCallStack(unittest.TestCase):
@@ -874,9 +855,9 @@ class TestCallStack(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.context = tt_exalens_init.init_ttexalens()
+        cls.device = cls.context.devices[0]
 
     def setUp(self):
-        self.device = self.context.devices[0]
         # Convert location_desc to location
         if self.location_desc.startswith("ETH"):
             # Ask device for all ETH cores and get first one
@@ -916,14 +897,6 @@ class TestCallStack(unittest.TestCase):
         self.risc_debug.set_reset_signal(True)
         self.assertTrue(self.risc_debug.is_in_reset())
 
-    def is_wormhole(self):
-        """Check if the device is wormhole"""
-        return self.device._arch == "wormhole_b0"
-
-    def is_blackhole(self):
-        """Check if the device is blackhole."""
-        return self.device._arch == "blackhole"
-
     def is_eth_block(self):
         """Check if the core is ETH."""
         return self.device.get_block_type(self.location) == "eth"
@@ -944,7 +917,7 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack_with_parsing(self, elf_name, recursion_count):
-        if self.is_wormhole() and self.is_eth_block() and elf_name == "callstack.release":
+        if self.device.is_wormhole() and self.is_eth_block() and elf_name == "callstack.release":
             self.skipTest("Callstack optimized tests break on ETH blocks")
 
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
@@ -963,7 +936,7 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack(self, elf_name: str, recursion_count: int):
-        if self.is_wormhole() and self.is_eth_block() and elf_name == "callstack.release":
+        if self.device.is_wormhole() and self.is_eth_block() and elf_name == "callstack.release":
             self.skipTest("Callstack optimized tests break on ETH blocks")
 
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
@@ -979,7 +952,7 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_namespace(self, elf_name):
-        if self.is_wormhole() and self.is_eth_block() and elf_name == "callstack.release":
+        if self.device.is_wormhole() and self.is_eth_block() and elf_name == "callstack.release":
             self.skipTest("Callstack optimized tests break on ETH blocks")
 
         lib.write_words_to_device(self.location, 0x64000, 0)
@@ -1017,7 +990,7 @@ class TestCallStack(unittest.TestCase):
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack_optimized(self, elf_name: str, recursion_count: int):
 
-        if self.is_wormhole() and self.is_eth_block():
+        if self.device.is_wormhole() and self.is_eth_block():
             self.skipTest("Callstack optimized tests break on ETH blocks")
 
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
@@ -1035,7 +1008,7 @@ class TestCallStack(unittest.TestCase):
     @parameterized.expand([(1, 1)])
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):
 
-        if self.is_wormhole() and self.is_eth_block():
+        if self.device.is_wormhole() and self.is_eth_block():
             self.skipTest("Callstack optimized tests break on ETH blocks")
 
         lib.write_words_to_device(self.location, 0x64000, recursion_count)

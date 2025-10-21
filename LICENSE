@@ -224,7 +224,6 @@ distributed as part of the software:
 | `pyelftools`                | [Public Domain](https://github.com/eliben/pyelftools/blob/main/LICENSE)                                     |
 | `python-levenshtein`        | [GNU General Public License v2 or later](https://github.com/rapidfuzz/python-Levenshtein/blob/main/COPYING) |
 | `pyyaml`                    | [MIT License](https://github.com/yaml/pyyaml/blob/main/LICENSE)                                             |
-| `pyzmq`                     | [BSD License](https://github.com/zeromq/pyzmq/blob/main/LICENSE.md)                                         |
 | `rapidyaml`                 | [MIT License](https://github.com/biojppm/rapidyaml/blob/master/LICENSE.txt)                                 |
 | `sortedcontainers`          | [Apache License 2.0](https://grantjenks.com/docs/sortedcontainers/#sorted-containers-license)               |
 | `tabulate`                  | [MIT License](https://github.com/astanin/python-tabulate/blob/master/LICENSE)                               |
@@ -232,3 +231,4 @@ distributed as part of the software:
 | `pytest`                    | [MIT License](https://github.com/pytest-dev/pytest/blob/main/LICENSE)                                       |
 | `parameterized`             | [BSD License](https://github.com/wolever/parameterized/blob/master/LICENSE.txt)                             |
 | `unittest-xml-reporting`    | [BSD License](https://github.com/xmlrunner/unittest-xml-reporting/blob/master/LICENSE)                      |
+| `pyro5`                     | [MIT License](https://github.com/irmen/Pyro5/blob/master/LICENSE)                      |

@@ -41,13 +41,13 @@ from docopt import docopt
 from ttexalens.uistate import UIState
 
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.tt_exalens_lib import read_words_from_device, read_from_device
+from ttexalens.tt_exalens_lib import read_words_from_device, read_word_from_device
 from ttexalens.firmware import ELF
 from ttexalens.object import DataArray
 from ttexalens import command_parser, util as util
 
 
-def run(cmd_text, context, ui_state: UIState = None):
+def run(cmd_text, context, ui_state: UIState):
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],
@@ -55,64 +55,62 @@ def run(cmd_text, context, ui_state: UIState = None):
     args = dopt.args
 
     core_loc_str = args["<core-loc>"]
-    current_device_id = ui_state.current_device_id
-    current_device = context.devices[current_device_id]
-    core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
-    mem_reader = ELF.get_mem_reader(core_loc)
-
-    # If we can parse the address as a number, do it. Otherwise, it's a variable name.
-    try:
-        addr, size_bytes = int(args["<addr>"], 0), 4
-    except ValueError:
-        addr, size_bytes = context.elf.parse_addr_size(args["<addr>"], mem_reader)
-
-    size_words = ((size_bytes + 3) // 4) if size_bytes else 1
-
+    offsets = args["-o"]
     sample = float(args["--sample"]) if args["--sample"] else 0
-    word_count = int(args["<word-count>"]) if args["<word-count>"] else size_words
+    word_count = int(args["<word-count>"]) if args["<word-count>"] else 0
     format = args["--format"] if args["--format"] else "hex32"
     if format not in util.PRINT_FORMATS:
         raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
+    addr_arg = args["<addr>"]
+    size_bytes_arg = 4
+    try:
+        # If we can parse the address as a number, do it. Otherwise, it's a variable name.
+        addr_arg = int(addr_arg, 0)
+    except ValueError:
+        pass
 
-    offsets = args["-o"]
-    for offset in offsets:
-        offset_addr, _ = context.elf.parse_addr_size(offset, mem_reader)
-        addr += offset_addr
+    def process_device(device_id):
+        core_loc = OnChipCoordinate.create(core_loc_str, device=context.devices[device_id])
+        mem_reader = ELF.get_mem_reader(core_loc)
+
+        if isinstance(addr_arg, str):
+            addr, size_bytes = context.elf.parse_addr_size(addr_arg, mem_reader)
+        else:
+            addr, size_bytes = addr_arg, size_bytes_arg
+
+        size_words = ((size_bytes + 3) // 4) if size_bytes else 1
+
+        for offset in offsets:
+            offset_addr, _ = context.elf.parse_addr_size(offset, mem_reader)
+            addr += offset_addr
+
+        print_a_burst_read(
+            device_id,
+            core_loc,
+            addr,
+            core_loc_str,
+            word_count=word_count if word_count > 0 else size_words,
+            sample=sample,
+            print_format=format,
+            context=context,
+        )
 
     devices = args["-d"]
     if devices:
         for device in devices:
             did = int(device, 0)
             util.INFO(f"Reading from device {did}")
-            print_a_pci_burst_read(
-                did,
-                core_loc,
-                addr,
-                core_loc_str,
-                word_count=word_count,
-                sample=sample,
-                print_format=format,
-                context=context,
-            )
+            process_device(did)
     else:
-        print_a_pci_burst_read(
-            ui_state.current_device_id,
-            core_loc,
-            addr,
-            core_loc_str,
-            word_count=word_count,
-            sample=sample,
-            print_format=format,
-            context=context,
-        )
+        process_device(ui_state.current_device_id)
 
 
 # A helper to print the result of a single PCI read
-def print_a_pci_read(core_loc_str, addr, val, comment=""):
+def print_a_read(core_loc_str, addr, val, comment=""):
     print(f"{core_loc_str} 0x{addr:08x} ({addr}) => 0x{val:08x} ({val:d}) {comment}")
 
 
-def print_a_pci_burst_read(
+def print_a_burst_read(
     device_id, core_loc, addr, core_loc_str, word_count=1, sample=1, print_format="hex32", context=None
 ):
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
@@ -127,18 +125,16 @@ def print_a_pci_burst_read(
         da.data = data
         if bytes_per_entry != 4:
             da.to_bytes_per_entry(bytes_per_entry)
-        formated = f"{da._id}\n" + util.dump_memory(addr, da.data, bytes_per_entry, 16, is_hex)
-        print(formated)
+        print(f"{da._id}\n{util.dump_memory(addr, da.data, bytes_per_entry, 16, is_hex)}")
     else:
         for i in range(word_count):
             values = {}
             print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
             t_end = time.time() + sample / word_count
             while time.time() < t_end:
-                val = read_from_device(core_loc, addr, device_id, context=context)
-                val = int.from_bytes(val, byteorder="little")
+                val = read_word_from_device(core_loc, addr + 4 * i, device_id, context=context)
                 if val not in values:
                     values[val] = 0
                 values[val] += 1
             for val in values.keys():
-                print_a_pci_read(core_loc_str, addr + 4 * i, val, f"- {values[val]} times")
+                print_a_read(core_loc_str, addr + 4 * i, val, f"- {values[val]} times")

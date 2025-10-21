@@ -11,7 +11,7 @@ from sortedcontainers import SortedSet
 
 from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.hardware.risc_debug import RiscLocation
-from ttexalens.tt_exalens_ifc_base import TTExaLensCommunicator
+from ttexalens.tt_exalens_ifc import TTExaLensCommunicator
 
 # All-encompassing structure representing a TTExaLens context
 class Context:
@@ -76,9 +76,6 @@ class Context:
 
     def elf_loaded(self, risc_location: RiscLocation, elf_path: str):
         pass
-
-    def convert_loc_to_jtag(self, location: OnChipCoordinate) -> tuple[int, int]:
-        return location.to("noc0")
 
     def convert_loc_to_umd(self, location: OnChipCoordinate) -> tuple[int, int]:
         return location.to("noc0")

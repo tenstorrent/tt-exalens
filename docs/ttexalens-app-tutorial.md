@@ -1,7 +1,7 @@
 # Command-Line Application Tutorial
 
 This tutorial explains how to use the ttexalens command-line application.
-It includes examples of basic commands, remote usage, and running from cache.
+It includes examples of basic commands and remote usage.
 
 To follow this tutorial, you can either:
 
@@ -76,7 +76,7 @@ The basic syntax of this command is:
 brxy <core-loc> <addr> [ <word-count> ] [--sample <N>]
 ```
 
-To read word from cache address 0x100 of core at 0,0 of the current device, you can use
+To read word from address 0x100 of core at 0,0 of the current device, you can use
 ```
 brxy 0,0 0x100
 ```
@@ -85,7 +85,7 @@ which should produce an output akin to
 0,0 (L1) :  0x00000100 (4 bytes)
 0x00000100:  03020100
 ```
-which specifies that four bytes read from L1 cache at address 0x100 are all 0.
+which specifies that four bytes read from L1 at address 0x100 are all 0.
 We can also read multiple words, starting at some address, by specifying a number of after the address:
 ```
 brxy 0,0 0x100 4
@@ -250,88 +250,6 @@ Running
 ```
 will try to connect to server on port 5555 running on localhost.
 From there on, you can use TTExaLens the same way you would use it in local mode.
-
-
-## Using the Caching Mechanism
-
-The debugger includes a built-in caching mechanism that allows you to save the results of executed commands and reuse them later, even on a different machine.
-
-Caching can be enabled using the `--write-cache` flag in both local and client modes.
-The results are saved as a `.pkl` (pickle) file, which can later be used in cached mode.
-
-For example, to save results for later inspection on a machine without Tenstorrent hardware, run:
-
-```
-./tt-exalens.py --write-cache --cache-path=tutorial_cache.pkl
-```
-By default, cache path is set to `ttexalens_cache.pkl`, but we have changed that here.
-Let's write something to memory:
-```
-gdb:None Current epoch:None(None) device:0 loc:1-1 (0,0) > wxy 0,0 0x100 0x1234
-0,0 (L1) : 0x00000100 (256) <= 0x00001234 (4660)
-```
-and then read
-```
-gdb:None Current epoch:None(None) device:0 loc:1-1 (0,0) > brxy 0,0 0x100 4
-0,0 (L1) : 0x00000100 (16 bytes)
-0x00000100:  00001234  00000000  00000000  00000000
-```
-Finally, the cache is automatically written to the specified file upon exit:
-```
-gdb:None Current epoch:None(None) device:0 loc:1-1 (0,0) > x
-Saving server cache to file tutorial_cache.pkl
-  Saved 11 entries
-```
-
-We can now open this cache by running:
-```
-./tt-exalens.py --cached --cache-path=tutorial_cache.pkl
-```
-This will produce output like:
-```
-Starting TTExaLens from cache.
-Loading server cache from file tutorial_cache.pkl
-  Loaded 7 entries
-gdb:None device:0 loc:1-1 (0, 0) >
-```
-
-Since we are running from cache, we can't write to device:
-```
-gdb:None Current epoch:None(None) device:0 loc:1-1 (0,0) > wxy 0,0 0x100 0x1234
-------------------------------------------  -----------  --------------------------------------------------------------------------
-tt-exalens:428                              main_loop    new_navigation_suggestions = found_command["module"].run(
-ttexalens/cli_commands/pci-write-xy.py:52   run            device.SERVER_IFC.pci_write32(
-ttexalens/tt_exalens_ifc_cache.py:198       pci_write32      raise util.TTException("Device not available, cannot write to cache.")
-ttexalens/tt_exalens_ifc_cache.py:198       pci_write32  TTException: Device not available, cannot write to cache.
-------------------------------------------  -----------  --------------------------------------------------------------------------
-```
-but we can repeat our read command and get the same results:
-```
-gdb:None Current epoch:None(None) device:0 loc:1-1 (0,0) > brxy 0,0 0x100 4
-0,0 (L1) : 0x00000100 (16 bytes)
-0x00000100:  00001234  00000000  00000000  00000000
-```
-Or we can even read a subset of addresses:
-```
-gdb:None Current epoch:None(None) device:0 loc:1-1 (0,0) > brxy 0,0 0x104 2
-0,0 (L1) : 0x00000104 (8 bytes)
-0x00000104:  00000000  00000000
-```
-If we try to execute a command that wasn't cached, however, we get a cache miss error:
-```
-gdb:None Current epoch:None(None) device:0 loc:1-1(0,0) > brxy 0,0 0x200
-Cache miss for pci_read32.
---------------------------------------------  ----------------------  ---------------------------------------------------------------------------------
-cli.py:428                                    main_loop               new_navigation_suggestions = found_command["module"].run(
-ttexalens/cli_commands/burst-read-xy.py:97    run                       print_a_pci_burst_read(
-ttexalens/cli_commands/burst-read-xy.py:123   print_a_pci_burst_read      data = read_words_from_device(core_loc, addr, device_id, word_count, context)
-ttexalens/tt_exalens_lib.py:50                      read_words_from_device        word = context.server_ifc.pci_read32(
-ttexalens/tt_exalens_ifc_cache.py:174               wrapper                         raise util.TTException(f"Cache miss for {func.__name__}.")
-ttexalens/tt_exalens_ifc_cache.py:174               wrapper                 TTException: Cache miss for pci_read32.
---------------------------------------------  ----------------------  ---------------------------------------------------------------------------------
-```
-
-For more details refer to  [the `ttexalens` library tutorial](./ttexalens-lib-tutorial.md#ttexalens-internal-structure-and-initialization).
 
 
 ## Scripting and Development

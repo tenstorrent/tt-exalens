@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from io import StringIO
 import threading
+from typing import Callable
 from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 
 from ttexalens.gdb.gdb_communication import (
@@ -56,6 +57,10 @@ class GdbServer(threading.Thread):
         self.context = context  # TTExaLens context
         self.server = server  # server socket used for listening to incoming connections
         self.is_connected = False  # flag that indicates if gdb client is connected
+        self.on_connected: Callable[[], None] | None = None  # callback that is called when gdb client is connected
+        self.on_disconnected: Callable[
+            [], None
+        ] | None = None  # callback that is called when gdb client is disconnected
         self.is_non_stop = False  # flag that indicates if we are in non-stop mode
         self.should_ack = True  # flag that indicates if we should send ack after each message
         self.stop_event = threading.Event()  # event that indicates that server should stop
@@ -137,6 +142,8 @@ class GdbServer(threading.Thread):
             client = self.server.accept(0.5)
             if client:
                 self.is_connected = True
+                if self.on_connected is not None:
+                    self.on_connected()
                 self.should_ack = True
                 try:
                     self.process_client(client)
@@ -145,6 +152,8 @@ class GdbServer(threading.Thread):
                     util.ERROR(f"Unhandled exception in GDB implementation: {e}")
                 client.close()
                 self.is_connected = False
+                if self.on_disconnected is not None:
+                    self.on_disconnected()
                 self.file_server.close_all()
 
     def process_client(self, client: ClientSocket):
@@ -163,7 +172,11 @@ class GdbServer(threading.Thread):
                     if should_ack:
                         client.write(b"+")
                         util.VERBOSE(f"sent response to GDB: +")
-                    util.VERBOSE(f"sent response to GDB: {writer.data.decode()}")
+                    try:
+                        util.VERBOSE(f"sent response to GDB: {writer.data.decode()}")
+                    except:
+                        # We ignore error if we cannot decode message
+                        pass
                     writer.send()
             except Exception as e:
                 client.write(b"-")

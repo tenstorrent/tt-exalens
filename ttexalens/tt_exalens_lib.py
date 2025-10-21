@@ -6,7 +6,7 @@ import re
 import struct
 
 from ttexalens import tt_exalens_init
-
+from ttexalens.util import FirmwareVersion
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.parse_elf import ParsedElfFile, read_elf
@@ -87,18 +87,11 @@ def read_word_from_device(
     """
     coordinate = convert_coordinate(location, device_id, context)
     context = coordinate.context
-
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
 
-    if coordinate.device._has_jtag:
-        word = context.server_ifc.jtag_read32(
-            noc_id, coordinate.device_id, *context.convert_loc_to_jtag(coordinate), addr
-        )
-    else:
-        word = context.server_ifc.pci_read32(
-            noc_id, coordinate.device_id, *context.convert_loc_to_umd(coordinate), addr
-        )
+    noc_loc = context.convert_loc_to_umd(coordinate)
+    word = context.server_ifc.read32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr)
     return word
 
 
@@ -132,19 +125,9 @@ def read_words_from_device(
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
-    if coordinate.device._has_jtag:
-        data = []
-        for i in range(word_count):
-            word = context.server_ifc.jtag_read32(
-                noc_id, coordinate.device_id, *context.convert_loc_to_jtag(coordinate), addr + 4 * i
-            )
-            data.append(word)
-        return data
-    else:
-        bytes_data = context.server_ifc.pci_read(
-            noc_id, coordinate.device_id, *context.convert_loc_to_umd(coordinate), addr, 4 * word_count
-        )
-        data = list(struct.unpack(f"<{word_count}I", bytes_data))
+    noc_loc = context.convert_loc_to_umd(coordinate)
+    bytes_data = context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, 4 * word_count)
+    data = list(struct.unpack(f"<{word_count}I", bytes_data))
     return data
 
 
@@ -178,15 +161,8 @@ def read_from_device(
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
-    if coordinate.device._has_jtag:
-        int_array = read_words_from_device(
-            coordinate, addr, coordinate.device_id, num_bytes // 4 + (num_bytes % 4 > 0), context, noc_id
-        )
-        return struct.pack(f"{len(int_array)}I", *int_array)[:num_bytes]
-
-    return context.server_ifc.pci_read(
-        noc_id, coordinate.device_id, *context.convert_loc_to_umd(coordinate), addr, num_bytes
-    )
+    noc_loc = context.convert_loc_to_umd(coordinate)
+    return context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, num_bytes)
 
 
 def write_words_to_device(
@@ -217,28 +193,12 @@ def write_words_to_device(
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
 
+    noc_loc = context.convert_loc_to_umd(coordinate)
     if isinstance(data, int):
-        if coordinate.device._has_jtag:
-            return context.server_ifc.jtag_write32(
-                noc_id, coordinate.device_id, *context.convert_loc_to_jtag(coordinate), addr, data
-            )
-        else:
-            return context.server_ifc.pci_write32(
-                noc_id, coordinate.device_id, *context.convert_loc_to_umd(coordinate), addr, data
-            )
+        return context.server_ifc.write32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
 
-    if coordinate.device._has_jtag:
-        bytes_written = 0
-        for i, word in enumerate(data):
-            bytes_written += context.server_ifc.jtag_write32(
-                noc_id, coordinate.device_id, *context.convert_loc_to_jtag(coordinate), addr + i * 4, word
-            )
-        return bytes_written
-    else:
-        byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-        return context.server_ifc.pci_write(
-            noc_id, coordinate.device_id, *context.convert_loc_to_umd(coordinate), addr, byte_data
-        )
+    byte_data = b"".join(x.to_bytes(4, "little") for x in data)
+    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data)
 
 
 def write_to_device(
@@ -275,19 +235,8 @@ def write_to_device(
     if len(data) == 0:
         raise TTException("Data to write must not be empty.")
 
-    if coordinate.device._has_jtag:
-        assert (
-            len(data) % 4 == 0
-        ), "Data length must be a multiple of 4 bytes as JTAG currently does not support unaligned access."
-        for i in range(0, len(data), 4):
-            write_words_to_device(
-                coordinate, addr + i, struct.unpack("<I", data[i : i + 4])[0], coordinate.device_id, context, noc_id
-            )
-        return len(data)
-
-    return context.server_ifc.pci_write(
-        noc_id, coordinate.device_id, *context.convert_loc_to_umd(coordinate), addr, data
-    )
+    noc_loc = context.convert_loc_to_umd(coordinate)
+    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
 
 
 def load_elf(
@@ -430,7 +379,7 @@ def arc_msg(
     if timeout < 0:
         raise TTException("Timeout must be greater than or equal to 0.")
 
-    return context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout)
+    return list(context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout))
 
 
 def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None) -> int:
@@ -445,10 +394,17 @@ def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: 
     Returns:
         int: Value of the telemetry entry.
     """
+    from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
+
     context = check_context(context)
     validate_device_id(device_id, context)
     device = context.devices[device_id]
     arc = device.arc_block
+
+    if device._firmware_version < CUTOFF_FIRMWARE_VERSION:
+        raise TTException(
+            f"We no longer support ARC telemetry for firmware versions 18.3 and lower. This device is running firmware version {device._firmware_version}"
+        )
 
     if isinstance(telemetry_tag, str):
         telemetry_tag_id = arc.get_telemetry_tag_id(telemetry_tag)

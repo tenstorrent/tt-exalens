@@ -11,17 +11,16 @@
 #include <stdexcept>
 #include <string>
 
-#include "jtag_implementation.h"
-#include "umd/device/cluster.h"
-#include "umd/device/jtag/jtag.h"
-#include "umd/device/jtag/jtag_device.h"
-#include "umd/device/logging/config.h"
-#include "umd/device/tt_cluster_descriptor.h"
-#include "umd/device/tt_core_coordinates.h"
-#include "umd/device/tt_device/tt_device.h"
-#include "umd/device/tt_soc_descriptor.h"
-#include "umd/device/tt_xy_pair.h"
-#include "umd/device/types/arch.h"
+#include "umd/device/cluster.hpp"
+#include "umd/device/cluster_descriptor.hpp"
+#include "umd/device/jtag/jtag.hpp"
+#include "umd/device/jtag/jtag_device.hpp"
+#include "umd/device/logging/config.hpp"
+#include "umd/device/soc_descriptor.hpp"
+#include "umd/device/tt_device/tt_device.hpp"
+#include "umd/device/types/arch.hpp"
+#include "umd/device/types/communication_protocol.hpp"
+#include "umd/device/types/core_coordinates.hpp"
 #include "umd_implementation.h"
 
 static std::filesystem::path get_temp_working_directory() {
@@ -45,18 +44,6 @@ static std::optional<std::string> read_string_from_file(const std::string &file_
 }
 
 static std::filesystem::path temp_working_directory = get_temp_working_directory();
-
-static std::string write_temp_file(const std::string &file_name, const char *bytes, size_t length) {
-    std::string temp_file_name = temp_working_directory / file_name;
-    std::ofstream conf_file(temp_file_name, std::ios::out | std::ios::binary);
-
-    if (!conf_file.is_open()) {
-        throw std::runtime_error("Couldn't write configuration to temp file " + temp_file_name + ".");
-    }
-    conf_file.write(bytes, length);
-    conf_file.close();
-    return temp_file_name;
-}
 
 // Identifies and returns the directory path of the currently running executable in a Linux environment.
 static std::filesystem::path find_binary_directory() {
@@ -123,19 +110,6 @@ static std::map<uint8_t, std::string> create_device_soc_descriptors(tt::umd::Clu
     return device_soc_descriptors_yamls;
 }
 
-std::unique_ptr<JtagDevice> init_jtag(std::filesystem::path binary_directory) {
-    if (binary_directory.empty()) {
-        binary_directory = find_binary_directory();
-    }
-
-    std::unique_ptr<JtagDevice> jtag_implementation;
-    std::unique_ptr<Jtag> jtag;
-    jtag = std::make_unique<Jtag>((binary_directory / std::string("../lib/libttexalens_jtag.so")).c_str());
-    jtag_implementation = std::make_unique<JtagDevice>(std::move(jtag));
-
-    return jtag_implementation;
-}
-
 static std::string jtag_create_temp_network_descriptor_file(JtagDevice *jtag_device) {
     // In python we only need chips_with_mmio, harvesting and chips_with_jtag, other fields are not needed
     // We are doing this beacause we are reusing this file in python which was originaly created for UMD initialization
@@ -160,7 +134,7 @@ static std::string jtag_create_temp_network_descriptor_file(JtagDevice *jtag_dev
     return cluster_descriptor_path;
 }
 
-static std::string jtag_create_device_soc_descriptor(const tt_SocDescriptor &soc_descriptor, uint32_t device_id) {
+static std::string jtag_create_device_soc_descriptor(const tt::umd::SocDescriptor &soc_descriptor, uint32_t device_id) {
     std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
     soc_descriptor.serialize_to_file(file_name);
     return file_name;
@@ -174,66 +148,24 @@ open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> 
 
 template <typename BaseClass>
 open_implementation<BaseClass>::~open_implementation() {
-    device->close_device();
-}
-
-template <>
-std::unique_ptr<open_implementation<jtag_implementation>> open_implementation<jtag_implementation>::open(
-    const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
-    bool initialize_with_noc1) {
-    // TODO: initialize with noc1 in JTAG
-
-    std::vector<uint8_t> device_ids;
-    std::unique_ptr<tt::umd::Cluster> cluster;
-    std::unique_ptr<JtagDevice> jtag_device;
-
-    jtag_device = std::move(init_jtag(binary_directory));
-
-    // Check that all chips are of the same type
-    tt::ARCH arch = jtag_device->get_jtag_arch(0);
-    for (size_t i = 1; i < jtag_device->get_device_cnt(); i++) {
-        auto newArch = jtag_device->get_jtag_arch(i);
-
-        if (arch != newArch) {
-            throw std::runtime_error("Not all devices have the same architecture.");
-        }
+    if (is_simulation) {
+        device->close_device();
     }
-    auto cluster_descriptor_path = jtag_create_temp_network_descriptor_file(jtag_device.get());
-
-    std::map<uint8_t, std::string> device_soc_descriptors_yamls;
-    std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
-
-    for (size_t device_id = 0; device_id < jtag_device->get_device_cnt(); device_id++) {
-        tt::ARCH arch = jtag_device->get_jtag_arch(device_id);
-        uint32_t harvesting = *jtag_device->get_efuse_harvesting(device_id);
-        soc_descriptors[device_id] = tt_SocDescriptor(arch, {.harvesting_masks = {harvesting}});
-        device_soc_descriptors_yamls[device_id] =
-            jtag_create_device_soc_descriptor(soc_descriptors[device_id], device_id);
-        device_ids.push_back(device_id);
-    }
-
-    auto implementation = std::unique_ptr<open_implementation<jtag_implementation>>(
-        new open_implementation<jtag_implementation>(std::move(jtag_device)));
-
-    implementation->cluster_descriptor_path = cluster_descriptor_path;
-    implementation->device_ids = device_ids;
-    implementation->soc_descriptors = std::move(soc_descriptors);
-    implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
-    return std::move(implementation);
 }
 
 template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open(
     const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
-    bool initialize_with_noc1) {
+    bool initialize_with_noc1, bool init_jtag) {
     // Disable UMD logging
     tt::umd::logging::set_level(tt::umd::logging::level::error);
 
     // TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use
     // noc1
     tt::umd::TTDevice::use_noc1(initialize_with_noc1);
+    tt::umd::IODeviceType device_type = init_jtag ? tt::umd::IODeviceType::JTAG : tt::umd::IODeviceType::PCIe;
 
-    auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor();
+    auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor("", {}, device_type);
 
     if (cluster_descriptor->get_number_of_chips() == 0) {
         throw std::runtime_error("No Tenstorrent devices were detected on this system.");
@@ -255,9 +187,9 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     std::unique_ptr<tt::umd::Cluster> cluster;
 
     // Try to read cluster descriptor
-    std::unordered_set<chip_id_t> target_devices;
+    std::unordered_set<ChipId> target_devices;
 
-    for (chip_id_t i : cluster_descriptor->get_all_chips()) {
+    for (ChipId i : cluster_descriptor->get_all_chips()) {
         device_ids.push_back(i);
     }
 
@@ -272,22 +204,30 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     switch (arch) {
         case tt::ARCH::WORMHOLE_B0:
         case tt::ARCH::BLACKHOLE:
-            cluster = std::make_unique<tt::umd::Cluster>(tt::umd::ClusterOptions{
-                .target_devices = target_devices,
-            });
+            cluster = std::make_unique<tt::umd::Cluster>(
+                tt::umd::ClusterOptions{.target_devices = target_devices, .io_device_type = device_type});
             break;
         default:
             throw std::runtime_error("Unsupported architecture " + tt::arch_to_str(arch) + ".");
     }
 
     auto device_soc_descriptors_yamls = create_device_soc_descriptors(cluster.get(), device_ids);
-    std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
+    std::map<uint8_t, umd::SocDescriptor> soc_descriptors;
     for (auto device_id : device_ids) {
         soc_descriptors[device_id] = cluster->get_soc_descriptor(device_id);
     }
 
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(cluster)));
+    auto &unique_ids = cluster_descriptor->get_chip_unique_ids();
+
+    for (auto device_id : device_ids) {
+        auto it = unique_ids.find(device_id);
+
+        if (it != unique_ids.end()) {
+            implementation->device_id_to_unique_id[device_id] = it->second;
+        }
+    }
 
     std::string file_path = temp_working_directory / "cluster_desc.yaml";
     cluster_descriptor->serialize_to_file(file_path);
@@ -325,7 +265,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 
     std::vector<uint8_t> device_ids{0};
     auto device_soc_descriptors_yamls = create_device_soc_descriptors(cluster.get(), device_ids);
-    std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
+    std::map<uint8_t, umd::SocDescriptor> soc_descriptors;
     for (auto device_id : device_ids) {
         soc_descriptors[device_id] = cluster->get_soc_descriptor(device_id);
     }
@@ -333,6 +273,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
         new open_implementation<umd_implementation>(std::move(cluster)));
 
+    implementation->is_simulation = true;
     implementation->cluster_descriptor_path = create_simulation_cluster_descriptor_file(soc_descriptor.arch);
     implementation->device_ids = device_ids;
     implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
@@ -357,6 +298,25 @@ std::optional<std::string> open_implementation<BaseClass>::get_device_soc_descri
     } catch (...) {
         return {};
     }
+}
+
+template <typename BaseClass>
+std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> open_implementation<BaseClass>::get_firmware_version(
+    uint8_t chip_id) {
+    if (!is_simulation) {
+        return BaseClass::get_firmware_version(chip_id);
+    }
+    return std::make_tuple(0, 0, 0);
+}
+
+template <typename BaseClass>
+std::optional<uint64_t> open_implementation<BaseClass>::get_device_unique_id(uint8_t chip_id) {
+    auto it = device_id_to_unique_id.find(chip_id);
+
+    if (it != device_id_to_unique_id.end()) {
+        return it->second;
+    }
+    return {};
 }
 
 template <typename BaseClass>
@@ -396,8 +356,6 @@ std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::conv
 
     if (coord_system == "logical") {
         coord_system_enum = CoordSystem::LOGICAL;
-    } else if (coord_system == "virtual") {
-        coord_system_enum = CoordSystem::VIRTUAL;
     } else if (coord_system == "translated") {
         coord_system_enum = CoordSystem::TRANSLATED;
     } else if (coord_system == "noc0") {
