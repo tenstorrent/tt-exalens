@@ -162,7 +162,7 @@ class DebugBusSignalStore:
 
     @staticmethod
     def get_signal_groups(
-        signal_map: dict[str, DebugBusSignalDescription], group_names: dict[tuple[int, int], str]
+        signal_map: dict[str, DebugBusSignalDescription], group_names: dict[str, tuple[int, int]]
     ) -> dict[str, list[str]]:
         groups: dict[str, list[str]] = {}
 
