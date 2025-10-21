@@ -24,8 +24,8 @@ class TestDebugSymbols(unittest.TestCase):
             risc_debug.risc_location.risc_name,
             risc_debug.risc_location.neo_id,
         )
-        cls.core_sim.load_elf("globals_test.debug")
-        cls.parsed_elf = cls.core_sim.parse_elf("globals_test.debug")
+        cls.core_sim.load_elf("globals_test.release")
+        cls.parsed_elf = cls.core_sim.parse_elf("globals_test.release")
         cls.mem_reader = ELF.get_mem_reader(
             risc_debug.risc_location.location, risc_debug.risc_location.risc_name, risc_debug.risc_location.neo_id
         )
@@ -38,7 +38,15 @@ class TestDebugSymbols(unittest.TestCase):
     def mem_access(self, symbol_name: str):
         return mem_access(self.parsed_elf, symbol_name, TestDebugSymbols.mem_reader)[0][0]
 
+    def mem_access_constant(self, const_name: str):
+        return mem_access(self.parsed_elf, const_name, lambda x, y, z: [0])[3]
+
     def test_mem_access(self):
+        self.assertEqual(0x11223344, self.mem_access_constant("c_uint32_t"))
+        self.assertEqual(0x5566778899AABBCC, self.mem_access_constant("c_uint64_t"))
+        self.assertEqual([0, 0, 0, 63], self.mem_access_constant("c_float"))
+        self.assertEqual([3, 87, 20, 139, 10, 191, 5, 64], self.mem_access_constant("c_double"))
+        self.assertEqual(0x5566778899AABBCC, self.mem_access("g_global_struct.b"))
         self.assertEqual(0x11223344, self.mem_access("g_global_struct.a"))
         self.assertEqual(0x5566778899AABBCC, self.mem_access("g_global_struct.b"))
         for i in range(16):
@@ -86,6 +94,10 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(63, g_global_struct.u.bytes[3].value())
         self.assertEqual(0, g_global_struct.u.words[0].value())
         self.assertEqual(16128, g_global_struct.u.words[1].value())
+        self.assertEqual(0x12345678, g_global_struct.msg.test.value())
+        self.assertEqual(0xAABBCCDD, g_global_struct.msg.packed.value())
+        self.assertEqual(0xAA, g_global_struct.msg.signal.value())
+        self.assertEqual(0x87654321, g_global_struct.msg.test2.value())
 
     def test_elf_variable(self):
         variable_die = self.parsed_elf.variables["g_global_struct"]
@@ -104,3 +116,17 @@ class TestDebugSymbols(unittest.TestCase):
     def test_read_elf_global_variable(self):
         g_global_struct = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_reader)
         self.verify_global_struct(g_global_struct)
+
+    def test_elf_const_global_variable(self):
+        g_global_struct = self.parsed_elf.get_global("g_global_const_struct_ptr", TestDebugSymbols.mem_reader)
+        self.verify_global_struct(g_global_struct)
+
+    def test_read_elf_const_global_variable(self):
+        g_global_struct = self.parsed_elf.read_global("g_global_const_struct_ptr", TestDebugSymbols.mem_reader)
+        self.verify_global_struct(g_global_struct)
+
+    def test_elf_variable_constants(self):
+        self.assertEqual(0x11223344, self.parsed_elf.get_constant("c_uint32_t"))
+        self.assertEqual(0x5566778899AABBCC, self.parsed_elf.get_constant("c_uint64_t"))
+        self.assertEqual(0.5, self.parsed_elf.get_constant("c_float"))
+        self.assertEqual(2.718281828459, self.parsed_elf.get_constant("c_double"))

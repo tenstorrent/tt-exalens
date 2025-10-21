@@ -1004,6 +1004,8 @@ class ParsedElfFile:
         address = die.address
         if address is None:
             raise Exception(f"ERROR: Cannot find address of global variable {name} in ELF DWARF info")
+        if die.value is not None and die.resolved_type.tag_is("pointer_type"):
+            return ElfVariable(die.resolved_type.dereference_type, address, mem_access_function)
         return ElfVariable(die.resolved_type, address, mem_access_function)
 
     def read_global(self, name: str, mem_access_function: Callable[[int, int, int], list[int]]) -> ElfVariable:
@@ -1011,6 +1013,34 @@ class ParsedElfFile:
         Given a global variable name, return an ElfVariable object that has been read
         """
         return self.get_global(name, mem_access_function).read()
+
+    def get_constant(self, name: str):
+        die = self.variables.get(name)
+        if die is None:
+            raise Exception(f"ERROR: Cannot find constant variable {name} in ELF DWARF info")
+        if die.value is None:
+            raise Exception(f"ERROR: Cannot find variable {name} is not constant in ELF DWARF info")
+        type_die = die.resolved_type
+        value = die.value
+        if not type_die.tag_is("base_type"):
+            raise Exception(f"ERROR: Constant {name} is not a base type")
+
+        # If value is a list, convert to bytes
+        if isinstance(value, list):
+            value = bytes(value)
+
+        # Convert the value to the appropriate type
+        if type_die.name == "float":
+            if not isinstance(value, bytes):
+                value = struct.pack("I", value)
+            return struct.unpack("f", value)[0]
+        elif type_die.name == "double":
+            if not isinstance(value, bytes):
+                value = struct.pack("Q", value)
+            return struct.unpack("d", value)[0]
+        elif type_die.name == "bool":
+            return bool(value)
+        return value
 
 
 class ParsedElfFileWithOffset(ParsedElfFile):
@@ -1093,15 +1123,33 @@ class ElfVariable:
             address = self.mem_access_function(self.address, self.type_die.size, 1)[0]
             dereferenced_pointer = ElfVariable(self.type_die.dereference_type, address, self.mem_access_function)
             return getattr(dereferenced_pointer, member_name)
+        offset = 0
         child_die = self.type_die.get_child_by_name(member_name)
         if not child_die:
-            child_die = resolve_unnamed_union_member(self.type_die, member_name)
+            offset, child_die = ElfVariable._resolve_unnamed_struct_union_member(self.type_die, member_name)
         if not child_die:
             assert self.type_die.path is not None
             member_path = self.type_die.path + "::" + member_name
             raise Exception(f"ERROR: Cannot find {member_path}")
         assert self.address is not None and child_die.address is not None
-        return ElfVariable(child_die.resolved_type, self.address + child_die.address, self.mem_access_function)
+        return ElfVariable(child_die.resolved_type, self.address + child_die.address + offset, self.mem_access_function)
+
+    @staticmethod
+    def _resolve_unnamed_struct_union_member(type_die: ElfDie, member_name: str):
+        """
+        Given a die that contains an unnamed union of type type_die, and a member path
+        represening a member of the unnamed union, return the die of the unnamed union.
+        """
+        for child in type_die.iter_children():
+            if "DW_AT_name" not in child.attributes and child.tag == "DW_TAG_member":
+                struct_union_type = child.resolved_type
+                member = struct_union_type.get_child_by_name(member_name)
+                if member is not None:
+                    return child.address, member
+                address, member = ElfVariable._resolve_unnamed_struct_union_member(struct_union_type, member_name)
+                if member is not None:
+                    return address + child.address, member
+        return None, None
 
     def __getitem__(self, index: int) -> "ElfVariable":
         if not self.type_die.tag_is("array_type") and not self.type_die.tag_is("pointer_type"):
@@ -1151,6 +1199,11 @@ class ElfVariable:
             return value
 
     def read(self):
+        if self.type_die.tag_is("pointer_type"):
+            assert self.type_die.size is not None
+            address = self.mem_access_function(self.address, self.type_die.size, 1)[0]
+            dereferenced_pointer = ElfVariable(self.type_die.dereference_type, address, self.mem_access_function)
+            return dereferenced_pointer.read()
         assert self.type_die.size is not None
         int_bytes = self.mem_access_function(self.address, self.type_die.size, self.type_die.size)
         data = bytes(int_bytes)
