@@ -6,8 +6,9 @@ import unittest
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from ttexalens.context import Context
+from ttexalens.elf import ElfVariable
 from ttexalens.firmware import ELF
-from ttexalens.parse_elf import ElfVariable, mem_access
+from ttexalens.parse_elf import mem_access
 
 
 class TestDebugSymbols(unittest.TestCase):
