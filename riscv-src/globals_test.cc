@@ -22,6 +22,20 @@ union UnionTest {
     uint16_t words[2];
 };
 
+struct go_msg_t {
+    uint32_t test;
+    union {
+        uint32_t packed;
+        struct {
+            uint8_t dispatch_message_offset;
+            uint8_t master_x;
+            uint8_t master_y;
+            uint8_t signal;  // INIT, GO, DONE, RESET_RD_PTR
+        };
+    };
+    uint32_t test2;
+} __attribute__((packed));
+
 struct GlobalStruct {
     uint32_t a;
     uint64_t b;
@@ -32,33 +46,43 @@ struct GlobalStruct {
     bool h[8];
     InnerStruct* p;
     UnionTest u;
+    go_msg_t msg;
 };
 
 GlobalStruct g_global_struct;
+GlobalStruct* const g_global_const_struct_ptr = (GlobalStruct*)(0x60000);
 
 void halt() {
     // Halt core with ebrake instruction
     asm volatile("ebreak");
 }
 
-int main() {
+void update_struct(GlobalStruct* gs) {
     // Fill in some test data
-    g_global_struct.a = c_uint32_t;
-    g_global_struct.b = c_uint64_t;
+    gs->a = c_uint32_t;
+    gs->b = c_uint64_t;
     for (int i = 0; i < 16; i++) {
-        g_global_struct.c[i] = static_cast<uint8_t>(i);
+        gs->c[i] = static_cast<uint8_t>(i);
     }
     for (int i = 0; i < 4; i++) {
-        g_global_struct.d[i].x = static_cast<uint16_t>(i * 2);
-        g_global_struct.d[i].y = static_cast<uint16_t>(i * 2 + 1);
+        gs->d[i].x = static_cast<uint16_t>(i * 2);
+        gs->d[i].y = static_cast<uint16_t>(i * 2 + 1);
     }
-    g_global_struct.f = 2.0f;
-    g_global_struct.g = 2.718281828459;
+    gs->f = 2.0f;
+    gs->g = 2.718281828459;
     for (int i = 0; i < 8; i++) {
-        g_global_struct.h[i] = (i % 2 == 0);
+        gs->h[i] = (i % 2 == 0);
     }
-    g_global_struct.p = &g_global_struct.d[2];
-    g_global_struct.u.f32 = 0.5f;
+    gs->p = &gs->d[2];
+    gs->u.f32 = 0.5f;
+    gs->msg.test = 0x12345678;
+    gs->msg.packed = 0xAABBCCDD;
+    gs->msg.test2 = 0x87654321;
+}
+
+int main() {
+    update_struct(&g_global_struct);
+    update_struct(g_global_const_struct_ptr);
     halt();
     return 0;
 }

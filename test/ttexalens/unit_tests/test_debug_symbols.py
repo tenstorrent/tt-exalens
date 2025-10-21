@@ -94,6 +94,10 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(63, g_global_struct.u.bytes[3].value())
         self.assertEqual(0, g_global_struct.u.words[0].value())
         self.assertEqual(16128, g_global_struct.u.words[1].value())
+        self.assertEqual(0x12345678, g_global_struct.msg.test.value())
+        self.assertEqual(0xAABBCCDD, g_global_struct.msg.packed.value())
+        self.assertEqual(0xAA, g_global_struct.msg.signal.value())
+        self.assertEqual(0x87654321, g_global_struct.msg.test2.value())
 
     def test_elf_variable(self):
         variable_die = self.parsed_elf.variables["g_global_struct"]
@@ -111,6 +115,14 @@ class TestDebugSymbols(unittest.TestCase):
 
     def test_read_elf_global_variable(self):
         g_global_struct = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_reader)
+        self.verify_global_struct(g_global_struct)
+
+    def test_elf_const_global_variable(self):
+        g_global_struct = self.parsed_elf.get_global("g_global_const_struct_ptr", TestDebugSymbols.mem_reader)
+        self.verify_global_struct(g_global_struct)
+
+    def test_read_elf_const_global_variable(self):
+        g_global_struct = self.parsed_elf.read_global("g_global_const_struct_ptr", TestDebugSymbols.mem_reader)
         self.verify_global_struct(g_global_struct)
 
     def test_elf_variable_constants(self):
