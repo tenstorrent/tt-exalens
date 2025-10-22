@@ -6,10 +6,9 @@ import re
 import struct
 
 from ttexalens import tt_exalens_init
-from ttexalens.util import FirmwareVersion
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.parse_elf import ParsedElfFile, read_elf
+from ttexalens.elf import read_elf, ParsedElfFile
 from ttexalens.util import TTException
 
 
