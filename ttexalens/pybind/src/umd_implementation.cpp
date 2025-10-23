@@ -14,9 +14,8 @@
 namespace tt::exalens {
 
 // TODO #375: Remove read/write unaligned functions once UMD implements ability to set unaligned access for our TLB
-
-void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, chip_id_t chip, tt::umd::CoreCoord core,
-                                    uint64_t addr, uint32_t size) {
+void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_ptr, chip_id_t chip,
+                                           tt::umd::CoreCoord core, uint64_t addr, uint32_t size) {
     // Read first unaligned word
     uint32_t first_unaligned_index = addr % 4;
     if (first_unaligned_index != 0) {
@@ -50,8 +49,29 @@ void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ch
     }
 }
 
-void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
-                                   chip_id_t chip, tt::umd::CoreCoord core, uint64_t addr) {
+void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, chip_id_t chip, tt::umd::CoreCoord core,
+                                    uint64_t addr, uint32_t size) {
+    try {
+        read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
+    } catch (const std::exception& e) {
+        ChipId mmio_chip_id = cluster->get_cluster_description()->get_closest_mmio_capable_chip(chip);
+        for (auto channel : cluster->get_cluster_description()->get_active_eth_channels(mmio_chip_id)) {
+            std::unordered_set<tt::umd::CoreCoord> active_eth_core = {
+                cluster->get_soc_descriptor(mmio_chip_id).get_eth_core_for_channel(channel, CoordSystem::LOGICAL)};
+            cluster->configure_active_ethernet_cores_for_mmio_device(mmio_chip_id, active_eth_core);
+            try {
+                read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
+                return;
+            } catch (const std::exception& e) {
+                continue;
+            }
+        }
+        throw std::runtime_error(e.what());
+    }
+}
+
+void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
+                                          chip_id_t chip, tt::umd::CoreCoord core, uint64_t addr) {
     {
         // Read/Write first unaligned word
         uint32_t first_unaligned_index = addr % 4;
@@ -89,7 +109,27 @@ void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_pt
             cluster->write_to_device_reg(&temp, sizeof(temp), chip, core, addr);
         }
     }
+}
 
+void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
+                                   chip_id_t chip, tt::umd::CoreCoord core, uint64_t addr) {
+    try {
+        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
+    } catch (const std::exception& e) {
+        ChipId mmio_chip_id = cluster->get_cluster_description()->get_closest_mmio_capable_chip(chip);
+        for (auto channel : cluster->get_cluster_description()->get_active_eth_channels(mmio_chip_id)) {
+            std::unordered_set<tt::umd::CoreCoord> active_eth_core = {
+                cluster->get_soc_descriptor(mmio_chip_id).get_eth_core_for_channel(channel, CoordSystem::LOGICAL)};
+            cluster->configure_active_ethernet_cores_for_mmio_device(mmio_chip_id, active_eth_core);
+            try {
+                write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
+                return;
+            } catch (const std::exception& e) {
+                continue;
+            }
+        }
+        throw std::runtime_error(e.what());
+    }
 }  // namespace tt::exalens
 
 umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {
@@ -238,7 +278,7 @@ tt::umd::ArcTelemetryReader* umd_implementation::get_arc_telemetry_reader(uint8_
     return cached_arc_telemetry_reader.get();
 }
 
-std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
+std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry_helper(uint8_t chip_id, uint8_t telemetry_tag) {
     auto* arc_telemetry_reader = get_arc_telemetry_reader(chip_id);
     auto umd_telemetry_tag = static_cast<tt::umd::TelemetryTag>(telemetry_tag);
     if (!arc_telemetry_reader->is_entry_available(telemetry_tag)) {
@@ -247,9 +287,44 @@ std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chi
     return arc_telemetry_reader->read_entry(telemetry_tag);
 }
 
-std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> umd_implementation::get_firmware_version(uint8_t chip_id) {
-    const auto& firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
-    return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
+std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
+    try {
+        return read_arc_telemetry_entry_helper(chip_id, telemetry_tag);
+    } catch (const std::exception& e) {
+        ChipId mmio_chip_id = cluster->get_cluster_description()->get_closest_mmio_capable_chip(chip_id);
+        for (auto channel : cluster->get_cluster_description()->get_active_eth_channels(mmio_chip_id)) {
+            std::unordered_set<tt::umd::CoreCoord> active_eth_core = {
+                cluster->get_soc_descriptor(mmio_chip_id).get_eth_core_for_channel(channel, CoordSystem::LOGICAL)};
+            cluster->configure_active_ethernet_cores_for_mmio_device(mmio_chip_id, active_eth_core);
+            try {
+                return read_arc_telemetry_entry_helper(chip_id, telemetry_tag);
+            } catch (const std::exception& e) {
+                continue;
+            }
+            throw std::runtime_error(e.what());
+        }
+    }
+    return {};
 }
 
+std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> umd_implementation::get_firmware_version(uint8_t chip_id) {
+    try {
+        const auto& firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
+        return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
+    } catch (const std::runtime_error& e) {
+        ChipId mmio_chip_id = cluster->get_cluster_description()->get_closest_mmio_capable_chip(chip_id);
+        for (auto channel : cluster->get_cluster_description()->get_active_eth_channels(mmio_chip_id)) {
+            std::unordered_set<tt::umd::CoreCoord> active_eth_core = {
+                cluster->get_soc_descriptor(mmio_chip_id).get_eth_core_for_channel(channel, CoordSystem::LOGICAL)};
+            cluster->configure_active_ethernet_cores_for_mmio_device(mmio_chip_id, active_eth_core);
+            try {
+                const auto& firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
+                return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
+            } catch (const std::runtime_error& e) {
+                continue;
+            }
+        }
+        throw std::runtime_error(e.what());
+    }
+}
 }  // namespace tt::exalens
