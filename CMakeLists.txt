@@ -48,6 +48,9 @@ set(CMAKE_BUILD_BIN_DIR "${CMAKE_BINARY_DIR}/bin")
 set(TTEXALENS_HOME "${PROJECT_SOURCE_DIR}")
 set(UMD_HOME "${PROJECT_SOURCE_DIR}/third_party/umd")
 
+# Always compile UMD with trace/debug logging enabled
+set(TT_UMD_ENxABLE_LOGGING ON CACHE BOOL "Enables inclusion of log_trace and log_debug into the binary." FORCE)
+
 # Third party dependencies
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/umd)
 
