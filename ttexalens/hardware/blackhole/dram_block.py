@@ -23,6 +23,9 @@ from ttexalens.register_store import (
 
 # TODO #432: Once signals are added, we can remove type hint
 debug_bus_signal_map: dict[str, DebugBusSignalDescription] = {}
+# TODO(#651) Once signals are grouped, we can remove type hint
+group_names: dict[str, tuple[int, int]] = {}
+
 
 register_map: dict[str, RegisterDescription] = {
     "RISCV_DEBUG_REG_PERF_CNT_INSTRN_THREAD0": DebugRegisterDescription(offset=0x00),
@@ -140,7 +143,11 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 
 class BlackholeDramBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
-        super().__init__(location, block_type="dram", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self))
+        super().__init__(
+            location,
+            block_type="dram",
+            debug_bus=DebugBusSignalStore(debug_bus_signal_map, group_names, self),
+        )
 
         self.dram_bank = MemoryBlock(
             # TODO #432: Check if this size is correct
