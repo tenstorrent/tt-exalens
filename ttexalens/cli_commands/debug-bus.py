@@ -23,7 +23,7 @@ Description:
     - list-groups:   List all debug bus signal groups.
         --search:    Search for groups by pattern (wildcard format)
         --max:       Limit number of results
-    - group [<group-names>] <l1-address>:   List all signals in group(s) using L1 sampling
+    - group <group-name> <l1-address>:   List all signals in group using L1 sampling
         --search:    Search for signals by pattern (wildcard format)
         --samples:   Number of samples
         --sampling-interval: Delay between samples
