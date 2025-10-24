@@ -89,7 +89,8 @@ def _format_signal_value(value, show_all_samples=False, signal_desc=None):
         - If the signal has a mask and it's a single bit, return "True" or "False"
         - Otherwise, return the value in hexadecimal (without leading zeros)
         """
-        if is_single_bit(mask := getattr(signal_desc, "mask", None)):
+        mask_value = getattr(signal_desc, "mask", None)
+        if is_single_bit(mask_value):
             return "True" if v else "False"
         return f"0x{v:x}"
 

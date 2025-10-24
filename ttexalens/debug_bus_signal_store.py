@@ -59,8 +59,6 @@ class L1MemReg2:
         )
 
 
-# signal_groups - group_name: { signal_name: 128bit mask }
-
 # 128 bit value of sampled group of signals
 @dataclass
 class SignalGroupSample:
@@ -68,33 +66,24 @@ class SignalGroupSample:
     signal_store: DebugBusSignalStore
     group_name: str
 
-    # ispraviti
-    # signal_name -> list of sampled values
-    def _get_signal_value(self, signal: str) -> list[int]:
-        group = self.signal_store.signal_groups[self.group_name]
-        if signal not in group:
-            raise ValueError(f"Signal '{signal}' does not exist in group '{self.group_name}'.")
-
-        mask = group[signal]
-        return [self.signal_store._normalize_value(sample & mask, mask) for sample in self.raw_data]
-
-    # returns (signal_name, list of sampled values) pairs
     def items(self) -> Iterable[tuple[str, list[int]]]:
+        """Returns (signal_name, list of sampled values) pairs."""
         for signal in self.signal_store.signal_groups[self.group_name]:
             yield signal, self[signal]
 
-    # returns signal names in the group
     def keys(self) -> Iterable[str]:
+        """Returns signal names in the group."""
         for signal in self.signal_store.signal_groups[self.group_name]:
             yield signal
 
-    # for signal name, give list of sampled values
     def __getitem__(self, key: str) -> list[int]:
-        """Allows dictionary-like access to signal values."""
-        if key not in self.signal_store.signal_groups[self.group_name]:
-            raise KeyError(f"Signal '{key}' not part of group '{self.group_name}'.")
+        """For the given signal name in the group, returns a list of sampled values."""
+        group = self.signal_store.signal_groups[self.group_name]
+        if key not in group:
+            raise ValueError(f"Signal '{key}' does not exist in group '{self.group_name}'.")
 
-        return self._get_signal_value(key)
+        mask = group[key]
+        return [self.signal_store._normalize_value(sample & mask, mask) for sample in self.raw_data]
 
 
 class DebugBusSignalStore:
@@ -150,9 +139,9 @@ class DebugBusSignalStore:
     def _l1_mem_reg2_address(self) -> int:
         return self._get_register_address("RISCV_DEBUG_REG_DBG_L1_MEM_REG2", "L1 memory register 2")
 
-    # group_name: { signal_name: 128bit mask }
     @cached_property
     def signal_groups(self) -> dict[str, dict[str, int]]:
+        """Returns a dict mapping group names to dicts of signal names and their 128-bit masks in that group."""
         groups: dict[str, dict[str, int]] = {}
         for group_key, (daisy_sel, sig_sel) in self.group_map.items():
             group_dict: dict[str, int] = {}
@@ -176,16 +165,17 @@ class DebugBusSignalStore:
 
     @cached_property
     def signal_names(self) -> Iterable[str]:
+        """Get all signal names."""
         return self.signals.keys()
 
     @cached_property
     def group_names(self) -> list[str]:
-        # Get all group names.
+        """Get all group names."""
         return list(self.group_map.keys())
 
     @cache
     def get_signal_names_in_group(self, group_name: str) -> Iterable[str]:
-        # Get all signal names in the specified group.
+        """Get all signal names in the specified group."""
         if group_name not in self.signal_groups:
             raise ValueError(f"Unknown group name '{group_name}'.")
 
@@ -209,6 +199,7 @@ class DebugBusSignalStore:
         return part_names
 
     def get_group_for_signal(self, signal: str) -> str:
+        """Get the group name for a given signal name."""
         for group_name, group_dict in self.signal_groups.items():
             if self.get_base_signal_name(signal) in group_dict:
                 return group_name
@@ -216,11 +207,11 @@ class DebugBusSignalStore:
         return ""
 
     def is_signal_part(self, signal_name: str) -> bool:
-        """Check if signal name indicates a combined signal part (ends with /number)."""
+        """Check if signal name indicates a combined signal part (ends with '/number')."""
         return "/" in signal_name
 
     def is_combined_signal(self, signal_name: str) -> bool:
-        # Check if signal_name is a base name for a combined signal (has /0, /1, /2... variants)
+        """Check if signal name is a base name for a combined signal (has /0, /1, /2... variants)."""
         return f"{signal_name}/0" in self.signals
 
     def _normalize_value(self, value: int, mask: int) -> int:
@@ -228,7 +219,7 @@ class DebugBusSignalStore:
         return value >> (mask & -mask).bit_length() - 1
 
     def _validate_signal_parameters(self, signal: DebugBusSignalDescription) -> None:
-        # Validate signal parameters are within expected ranges
+        """Validate signal parameters and raise appropriate errors."""
         if not (0 <= signal.rd_sel <= 3):
             raise ValueError(f"rd_sel must be between 0 and 3, got {signal.rd_sel}")
 
@@ -259,6 +250,7 @@ class DebugBusSignalStore:
             )
 
     def get_signal_description(self, signal_name: str) -> DebugBusSignalDescription:
+        """Returns the DebugBusSignalDescription for the given signal name."""
         if signal_name in self.signals:
             return self.signals[signal_name]
         elif self.neo_id is None:
@@ -269,24 +261,6 @@ class DebugBusSignalStore:
             raise ValueError(
                 f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device._id}."
             )
-
-    # promeniti povratnu vrednost
-    # def get_signal_group_description(self, group_name: str) -> dict[str, list[DebugBusSignalDescription]]:
-    #     """
-    #     Returns a dictionary with signal names as keys and a list of DebugBusSignalDescription objects as values.
-    #     If the signal is simple, the list will contain only one descriptor.
-    #     If the signal is combined, the list will contain multiple descriptors.
-    #     """
-    #     if group_name not in self.signal_groups:
-    #         raise ValueError(f"Unknown group name '{group_name}'.")
-
-    #     signal_descriptions = {}
-    #     for signal_name in self.signal_groups[group_name]:
-    #         # Always return a list of descriptors, whether the signal is simple or complex.
-    #         description = self.get_signal_description(signal_name)
-    #         signal_descriptions[signal_name] = description
-
-    #     return signal_descriptions
 
     def read_signal(
         self,
@@ -313,7 +287,6 @@ class DebugBusSignalStore:
         if isinstance(signal, str):
             signal_desc = self.get_signal_description(signal)
         elif isinstance(signal, DebugBusSignalDescription):
-            # Validate signal parameters if passed as DebugBusSignalDescription
             self._validate_signal_parameters(signal)
             signal_desc = signal
         else:
@@ -471,7 +444,7 @@ class DebugBusSignalStore:
             )
             return sum((words[i] << (WORD_SIZE_BITS * i)) for i in range(self.WORDS_PER_SAMPLE))
 
-        # Read all samples and extract the correct portion based on signal type
+        # Read samples from L1 memory
         sample_values = [read_128bit_sample(l1_address + (i * self.L1_SAMPLE_SIZE_BYTES)) for i in range(samples)]
 
         return SignalGroupSample(raw_data=sample_values, signal_store=self, group_name=group_name)
