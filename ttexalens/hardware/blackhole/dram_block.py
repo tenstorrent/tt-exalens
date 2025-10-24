@@ -23,7 +23,8 @@ from ttexalens.register_store import (
 
 # TODO #432: Once signals are added, we can remove type hint
 debug_bus_signal_map: dict[str, DebugBusSignalDescription] = {}
-debug_bus_signal_group_map: dict[str, list[str]] = {}
+# TODO(#651) Once signals are grouped, we can remove type hint
+group_names: dict[str, tuple[int, int]] = {}
 
 
 register_map: dict[str, RegisterDescription] = {
@@ -145,7 +146,7 @@ class BlackholeDramBlock(BlackholeNocBlock):
         super().__init__(
             location,
             block_type="dram",
-            debug_bus=DebugBusSignalStore(debug_bus_signal_map, debug_bus_signal_group_map, self),
+            debug_bus=DebugBusSignalStore(debug_bus_signal_map, group_names, self),
         )
 
         self.dram_bank = MemoryBlock(

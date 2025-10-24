@@ -13,7 +13,7 @@ from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
 from ttexalens.hardware.wormhole.functional_worker_debug_bus_signals import (
     debug_bus_signal_map,
-    debug_bus_signal_group_map,
+    group_names,
 )
 from ttexalens.hardware.wormhole.functional_worker_registers import register_map
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
@@ -58,7 +58,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
         super().__init__(
             location,
             block_type="functional_workers",
-            debug_bus=DebugBusSignalStore(debug_bus_signal_map, debug_bus_signal_group_map, self),
+            debug_bus=DebugBusSignalStore(debug_bus_signal_map, group_names, self),
         )
 
         self.l1 = MemoryBlock(

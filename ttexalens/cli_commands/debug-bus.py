@@ -152,9 +152,9 @@ def parse_command_arguments(args):
     signals = parse_string(args["<signals>"])
 
     for item in signals:
-        if isinstance(item, str):  # It's a string
+        if isinstance(item, str):
             result.append(item)
-        elif isinstance(item, list):  # It's a list of numbers
+        elif isinstance(item, list):
             try:
                 signal_description = DebugBusSignalDescription(item[1], item[0], item[2], item[3])
                 result.append(signal_description)
@@ -170,10 +170,12 @@ def _get_debug_bus_signal_store(device: Device, loc: OnChipCoordinate) -> DebugB
     if not noc_block:
         util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a NOC block.")
         return None
+
     debug_bus_signal_store = noc_block.debug_bus
     if not debug_bus_signal_store:
         util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
         return None
+
     return debug_bus_signal_store
 
 
@@ -183,7 +185,7 @@ def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: d
     if not debug_bus_signal_store:
         return
 
-    names = list(debug_bus_signal_store.get_signal_names())
+    names = list(debug_bus_signal_store.signal_names)
     search_arg = params["search"]
     max_arg = params["max"]
 
@@ -230,7 +232,7 @@ def handle_list_groups_command(device: Device, loc: OnChipCoordinate, params: di
     if not debug_bus_signal_store:
         return
 
-    names = list(debug_bus_signal_store.get_group_names())
+    names = list(debug_bus_signal_store.group_names)
     max_arg = params["max"]
     if params["search"]:
         names = search(names, params["search"], max_arg)
@@ -290,7 +292,7 @@ def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: 
         )
 
         signal_data = []
-        names = signal_group_sample.keys()
+        names = list(signal_group_sample.keys())
         if params["search"]:
             names = search(names, params["search"])
             if not names:

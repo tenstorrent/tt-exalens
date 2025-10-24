@@ -49,11 +49,16 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
     [register_map, niu_register_map], get_register_base_address_callable(noc_id=1)
 )
 
+# TODO(#651) Once signals are grouped, we can remove type hint
+group_names: dict[str, tuple[int, int]] = {}
+
 
 class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
         super().__init__(
-            location, block_type="functional_workers", debug_bus=DebugBusSignalStore(debug_bus_signal_map, {}, self)
+            location,
+            block_type="functional_workers",
+            debug_bus=DebugBusSignalStore(debug_bus_signal_map, group_names, self),
         )
 
         self.l1 = MemoryBlock(

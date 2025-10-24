@@ -27,8 +27,8 @@ debug_bus_signal_map = {
     "erisc1_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 10 + 1, mask=0x3FFFFFFF),
 }
 
-# TODO Once signals are grouped, we can remove type hint
-debug_bus_signal_group_map: dict[str, list[str]] = {}
+# TODO(#651) Once signals are grouped, we can remove type hint
+group_names: dict[str, tuple[int, int]] = {}
 
 register_map = {
     "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=185, mask=0x1F),
@@ -99,7 +99,7 @@ class BlackholeEthBlock(BlackholeNocBlock):
         super().__init__(
             location,
             block_type="eth",
-            debug_bus=DebugBusSignalStore(debug_bus_signal_map, debug_bus_signal_group_map, self),
+            debug_bus=DebugBusSignalStore(debug_bus_signal_map, group_names, self),
         )
 
         self.l1 = MemoryBlock(

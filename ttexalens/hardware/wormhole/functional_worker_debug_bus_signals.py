@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 
 
 # Commented signals marked with "# Duplicate signal name" are true duplicates -
@@ -1020,5 +1020,3 @@ group_names = {
     "l1_access_ports_addr_b": (8, 3),
     "l1_access_ports_addr_c": (8, 5),
 }
-
-debug_bus_signal_group_map = DebugBusSignalStore.get_signal_groups(debug_bus_signal_map, group_names)

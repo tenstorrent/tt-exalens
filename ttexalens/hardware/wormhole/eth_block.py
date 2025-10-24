@@ -57,8 +57,8 @@ debug_bus_signal_map = {
     "erisc_dbg_obs_cmt_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x7FFFFFFF),
 }
 
-# TODO Once signals are grouped, we can remove type hint
-debug_bus_signal_group_map: dict[str, list[str]] = {}
+# TODO(#650) Once signals are grouped, we can remove type hint
+group_names: dict[str, tuple[int, int]] = {}
 
 register_map = {
     "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=157, mask=0x1F),
@@ -118,7 +118,7 @@ class WormholeEthBlock(WormholeNocBlock):
         super().__init__(
             location,
             block_type="eth",
-            debug_bus=DebugBusSignalStore(debug_bus_signal_map, debug_bus_signal_group_map, self),
+            debug_bus=DebugBusSignalStore(debug_bus_signal_map, group_names, self),
         )
 
         self.l1 = MemoryBlock(
