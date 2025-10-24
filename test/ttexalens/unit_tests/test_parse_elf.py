@@ -7,7 +7,8 @@ import os
 from ttexalens import tt_exalens_lib as lib
 from ttexalens import util as util
 from ttexalens.firmware import ELF
-from ttexalens.parse_elf import ParsedElfFile, read_elf, mem_access
+from ttexalens.elf import read_elf, ParsedElfFile
+from ttexalens.parse_elf import mem_access
 
 
 class TestFileIfc:
