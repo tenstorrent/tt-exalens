@@ -270,6 +270,76 @@ class TestDebugging(unittest.TestCase):
         # Verify value at address
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
 
+    def test_debug_bus_signal_store(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
+        if (
+            self.core_sim.risc_name == "TRISC2"
+            or self.core_sim.risc_name == "TRISC1"
+            or self.core_sim.risc_name == "TRISC0"
+        ):
+            self.skipTest(
+                "This test is unreliable on TRISC[i] on wormhole or blackhole."
+            )  # these signals are not stable: trisc[i]_risc_wrapper_debug_bus_trisc_o_mailbox_rddata
+
+        signal_store = self.core_sim.debug_bus_store
+        pc_signal_name = self.core_sim.risc_name.lower() + "_pc"
+
+        # ebreak
+        self.core_sim.write_program(0, 0x00100073)
+
+        # Take risc out of reset
+        self.core_sim.set_reset(False)
+
+        assert self.core_sim.is_halted(), "Core should be halted after ebreak."
+
+        # simple test for pc signal
+        pc_value_32 = signal_store.read_signal(pc_signal_name)
+
+        group_name = signal_store.get_group_for_signal(pc_signal_name)
+        l1_addr = 0x1000
+        samples = 1
+        sampling_interval = 2
+        group_values = signal_store.read_signal_group(
+            group_name, l1_addr, samples=samples, sampling_interval=sampling_interval
+        )
+        assert pc_signal_name in group_values.keys()
+
+        assert group_values[pc_signal_name][0] == pc_value_32
+
+        # check all groups for chosen core
+        for group in signal_store.group_names:
+            # skip groups that do not belong to this core
+            if not group.startswith(self.core_sim.risc_name.lower() + "_"):
+                continue
+
+            l1_addr = 0x1000
+            samples = 3
+            group_values = signal_store.read_signal_group(group, l1_addr, samples=samples)
+
+            for signal_name, values in group_values.items():
+                parts = signal_store.get_signal_part_names(signal_name)
+
+                if signal_store.is_combined_signal(signal_name):
+                    # combined signal
+                    combined_value = 0
+                    for part in parts:
+                        part_value = signal_store.read_signal(part)
+                        part_description = signal_store.get_signal_description(part)
+                        shift = (part_description.mask & -part_description.mask).bit_length() - 1
+                        combined_value |= part_value << shift
+
+                    combined_value = signal_store._normalize_value(
+                        combined_value, signal_store.get_signal_description(parts[0]).mask
+                    )
+                    assert values[0] == combined_value, f"Combined signal {signal_name} value mismatch."
+                else:
+                    # single part signal
+                    signal_value_32 = signal_store.read_signal(signal_name)
+                    assert values[0] == signal_value_32, f"Signal {signal_name} value mismatch."
+        return
+
     def test_ebreak(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
         addr = 0x10000
