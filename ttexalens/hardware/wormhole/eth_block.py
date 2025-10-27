@@ -5,7 +5,7 @@
 from functools import cache, cached_property
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore, DebugBusSignals
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
@@ -22,16 +22,18 @@ from ttexalens.register_store import (
 )
 
 
+# Commented signals marked with "# Duplicate signal name" are true duplicates -
+# their name already exists in the map and they represent the same signal so suffix "_dup" is added.
 debug_bus_signal_map = {
     "erisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x7FFFFFFF),
     "erisc_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x200),
-    # "erisc_ex_id_rtr": DebugBusSignalDescription(             # Duplicate signal name
-    #     rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x40000000
-    # ),
+    "erisc_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x40000000
+    ),
     "erisc_id_ex_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x100),
-    # "erisc_id_ex_rts": DebugBusSignalDescription(             # Duplicate signal name
-    #     rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x80000000
-    # ),
+    "erisc_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x80000000
+    ),
     "erisc_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x80),
     "erisc_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x20),
     "erisc_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x1F),
@@ -111,6 +113,7 @@ register_store_noc0_initialization = RegisterStore.create_initialization(
 register_store_noc1_initialization = RegisterStore.create_initialization(
     [register_map, niu_register_map], get_register_base_address_callable(noc_id=1)
 )
+debug_bus_signals_initialization = DebugBusSignals(group_names, debug_bus_signal_map)
 
 
 class WormholeEthBlock(WormholeNocBlock):
@@ -118,7 +121,7 @@ class WormholeEthBlock(WormholeNocBlock):
         super().__init__(
             location,
             block_type="eth",
-            debug_bus=DebugBusSignalStore(debug_bus_signal_map, group_names, self),
+            debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
         )
 
         self.l1 = MemoryBlock(

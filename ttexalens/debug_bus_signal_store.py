@@ -68,17 +68,17 @@ class SignalGroupSample:
 
     def items(self) -> Iterable[tuple[str, list[int]]]:
         """Returns (signal_name, list of sampled values) pairs."""
-        for signal in self.signal_store.signal_groups[self.group_name]:
+        for signal in self.signal_store.debug_bus_signals.signal_groups[self.group_name]:
             yield signal, self[signal]
 
     def keys(self) -> Iterable[str]:
         """Returns signal names in the group."""
-        for signal in self.signal_store.signal_groups[self.group_name]:
+        for signal in self.signal_store.debug_bus_signals.signal_groups[self.group_name]:
             yield signal
 
     def __getitem__(self, key: str) -> list[int]:
         """For the given signal name in the group, returns a list of sampled values."""
-        group = self.signal_store.signal_groups[self.group_name]
+        group = self.signal_store.debug_bus_signals.signal_groups[self.group_name]
         if key not in group:
             raise ValueError(f"Signal '{key}' does not exist in group '{self.group_name}'.")
 
@@ -86,16 +86,110 @@ class SignalGroupSample:
         return [self.signal_store._normalize_value(sample & mask, mask) for sample in self.raw_data]
 
 
+class DebugBusSignals:
+    def __init__(
+        self,
+        group_map: dict[str, tuple[int, int]],
+        signals: dict[str, DebugBusSignalDescription],
+    ):
+        self.group_map = group_map
+        self.signals = signals
+        self.signal_groups: dict[str, dict[str, int]] = self.create_signal_groups(signals)
+
+    def get_base_signal_name(self, signal_name: str) -> str:
+        """Extract base signal name from combined signal names like 'signal/0' or 'signal/1'."""
+        return signal_name.split("/")[0] if "/" in signal_name else signal_name
+
+    def get_signal_part_names(self, base_name: str) -> list[str]:
+        """Get all part names for a combined signal based on its base name."""
+        if not self.is_combined_signal(base_name):
+            return [base_name]
+
+        part_names = []
+        counter = 0
+        while f"{base_name}/{counter}" in self.signal_names:
+            part_names.append(f"{base_name}/{counter}")
+            counter += 1
+
+        return part_names
+
+    def get_group_for_signal(self, signal: str) -> str:
+        """Get the group name for a given signal name."""
+        for group_name, group_dict in self.signal_groups.items():
+            if self.get_base_signal_name(signal) in group_dict:
+                return group_name
+
+        return ""
+
+    def is_signal_part(self, signal_name: str) -> bool:
+        """Check if signal name indicates a combined signal part (ends with '/number')."""
+        return "/" in signal_name
+
+    def is_combined_signal(self, signal_name: str) -> bool:
+        """Check if signal name is a base name for a combined signal (has /0, /1, /2... variants)."""
+        return f"{signal_name}/0" in self.signals
+
+    @cache
+    def get_signal_names_in_group(self, group_name: str) -> Iterable[str]:
+        """Get all signal names in the specified group."""
+        if group_name not in self.signal_groups:
+            raise ValueError(f"Unknown group name '{group_name}'.")
+
+        return self.signal_groups[group_name].keys()
+
+    @cached_property
+    def signal_names(self) -> Iterable[str]:
+        """Get all signal names."""
+        return self.signals.keys()
+
+    @cached_property
+    def group_names(self) -> list[str]:
+        """Get all group names."""
+        return list(self.group_map.keys())
+
+    @cached_property
+    def signal_groups(self) -> dict[str, dict[str, int]]:
+        """Returns a dict mapping group names to dicts of signal names and their 128-bit masks in that group."""
+        return self.signal_groups
+
+    def create_signal_groups(self, signals: dict[str, DebugBusSignalDescription]) -> dict[str, dict[str, int]]:
+        """Returns a dict mapping group names to dicts of signal names and their 128-bit masks in that group."""
+        groups: dict[str, dict[str, int]] = {}
+        for group_key, (daisy_sel, sig_sel) in self.group_map.items():
+            group_dict: dict[str, int] = {}
+            for signal_name, signal_desc in signals.items():
+                if signal_desc.daisy_sel != daisy_sel or signal_desc.sig_sel != sig_sel:
+                    continue
+
+                base_name = self.get_base_signal_name(signal_name)
+                if base_name in group_dict:
+                    continue
+
+                part_names = self.get_signal_part_names(base_name)
+                mask = 0
+                for part_name in part_names:
+                    part_desc = self.get_signal_description(part_name)
+                    mask |= part_desc.mask << (WORD_SIZE_BITS * part_desc.rd_sel)
+
+                group_dict[base_name] = mask
+            groups[group_key] = group_dict
+        return groups
+
+    def get_signal_description(self, signal_name: str) -> DebugBusSignalDescription:
+        """Returns the DebugBusSignalDescription for the given signal name."""
+        if signal_name in self.signals:
+            return self.signals[signal_name]
+        raise ValueError(f"Unknown signal name '{signal_name}'.")
+
+
 class DebugBusSignalStore:
     def __init__(
         self,
-        signals: dict[str, DebugBusSignalDescription],
-        group_map: dict[str, tuple[int, int]],
+        debug_bus_signals: DebugBusSignals,
         noc_block: NocBlock,
         neo_id: int | None = None,
     ):
-        self.signals = signals
-        self.group_map = group_map
+        self.debug_bus_signals = debug_bus_signals
         self.noc_block = noc_block
         self.neo_id = neo_id
         self.L1_SAMPLE_SIZE_BYTES = 16  # Each 128-bit sample is 16 bytes
@@ -139,81 +233,6 @@ class DebugBusSignalStore:
     def _l1_mem_reg2_address(self) -> int:
         return self._get_register_address("RISCV_DEBUG_REG_DBG_L1_MEM_REG2", "L1 memory register 2")
 
-    @cached_property
-    def signal_groups(self) -> dict[str, dict[str, int]]:
-        """Returns a dict mapping group names to dicts of signal names and their 128-bit masks in that group."""
-        groups: dict[str, dict[str, int]] = {}
-        for group_key, (daisy_sel, sig_sel) in self.group_map.items():
-            group_dict: dict[str, int] = {}
-            for signal_name, signal_desc in self.signals.items():
-                if signal_desc.daisy_sel != daisy_sel or signal_desc.sig_sel != sig_sel:
-                    continue
-
-                base_name = self.get_base_signal_name(signal_name)
-                if base_name in group_dict:
-                    continue
-
-                part_names = self.get_signal_part_names(base_name)
-                mask = 0
-                for part_name in part_names:
-                    part_desc = self.get_signal_description(part_name)
-                    mask |= part_desc.mask << (WORD_SIZE_BITS * part_desc.rd_sel)
-
-                group_dict[base_name] = mask
-            groups[group_key] = group_dict
-        return groups
-
-    @cached_property
-    def signal_names(self) -> Iterable[str]:
-        """Get all signal names."""
-        return self.signals.keys()
-
-    @cached_property
-    def group_names(self) -> list[str]:
-        """Get all group names."""
-        return list(self.group_map.keys())
-
-    @cache
-    def get_signal_names_in_group(self, group_name: str) -> Iterable[str]:
-        """Get all signal names in the specified group."""
-        if group_name not in self.signal_groups:
-            raise ValueError(f"Unknown group name '{group_name}'.")
-
-        return self.signal_groups[group_name].keys()
-
-    def get_base_signal_name(self, signal_name: str) -> str:
-        """Extract base signal name from combined signal names like 'signal/0' or 'signal/1'."""
-        return signal_name.split("/")[0] if "/" in signal_name else signal_name
-
-    def get_signal_part_names(self, base_name: str) -> list[str]:
-        """Get all part names for a combined signal based on its base name."""
-        if not self.is_combined_signal(base_name):
-            return [base_name]
-
-        part_names = []
-        counter = 0
-        while f"{base_name}/{counter}" in self.signal_names:
-            part_names.append(f"{base_name}/{counter}")
-            counter += 1
-
-        return part_names
-
-    def get_group_for_signal(self, signal: str) -> str:
-        """Get the group name for a given signal name."""
-        for group_name, group_dict in self.signal_groups.items():
-            if self.get_base_signal_name(signal) in group_dict:
-                return group_name
-
-        return ""
-
-    def is_signal_part(self, signal_name: str) -> bool:
-        """Check if signal name indicates a combined signal part (ends with '/number')."""
-        return "/" in signal_name
-
-    def is_combined_signal(self, signal_name: str) -> bool:
-        """Check if signal name is a base name for a combined signal (has /0, /1, /2... variants)."""
-        return f"{signal_name}/0" in self.signals
-
     def _normalize_value(self, value: int, mask: int) -> int:
         """Shift value right to remove trailing zeros from mask"""
         return value >> (mask & -mask).bit_length() - 1
@@ -251,8 +270,9 @@ class DebugBusSignalStore:
 
     def get_signal_description(self, signal_name: str) -> DebugBusSignalDescription:
         """Returns the DebugBusSignalDescription for the given signal name."""
-        if signal_name in self.signals:
-            return self.signals[signal_name]
+        signal_desc = self.debug_bus_signals.get_signal_description(signal_name)
+        if signal_desc:
+            return signal_desc
         elif self.neo_id is None:
             raise ValueError(
                 f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} for device {self.device._id}."
@@ -367,7 +387,7 @@ class DebugBusSignalStore:
         - https://github.com/tenstorrent/tt-isa-documentation/blob/main/WormholeB0/TensixTile/DebugDaisychain.md
         """
         # get daisy and sig selection for group
-        daisy_sel, sig_sel = self.group_map[signal_group]
+        daisy_sel, sig_sel = self.debug_bus_signals.group_map[signal_group]
 
         # Write the configuration - select 128 bit word
         en = 1

@@ -186,11 +186,13 @@ def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: d
     if debug_bus_signal_store is None:
         return
 
-    names: list[str] = list(debug_bus_signal_store.signal_names)
-    search_arg: str | None = params["search"]
-    max_arg: str | None = params["max"]
+    names: list[str] = list(debug_bus_signal_store.debug_bus_signals.signal_names)
+    max_arg: str = "all"
+    if params["max"] is not None:
+        max_arg = params["max"]
 
-    if search_arg is not None:
+    if params["search"] is not None:
+        search_arg: str = params["search"]
         names = search(names, search_arg, max_arg)
         if len(names) == 0:
             print("No matches found.")
@@ -202,9 +204,9 @@ def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: d
         formatted_value = _format_signal_value(
             value,
             show_all_samples=False,
-            signal_desc=debug_bus_signal_store.signals.get(name, None),
+            signal_desc=debug_bus_signal_store.debug_bus_signals.signals.get(name, None),
         )
-        group_name = debug_bus_signal_store.get_group_for_signal(name)
+        group_name = debug_bus_signal_store.debug_bus_signals.get_group_for_signal(name)
         signal_data.append((group_name, name, formatted_value))
 
     # Sort signal_data by group name, then by signal name
@@ -233,10 +235,14 @@ def handle_list_groups_command(device: Device, loc: OnChipCoordinate, params: di
     if debug_bus_signal_store is None:
         return
 
-    names: list[str] = list(debug_bus_signal_store.group_names)
-    max_arg: str | None = params["max"]
+    names: list[str] = list(debug_bus_signal_store.debug_bus_signals.group_names)
+    max_arg: str = "all"
+    if params["max"] is not None:
+        max_arg = params["max"]
+
     if params["search"] is not None:
-        names = search(names, params["search"], max_arg)
+        search_arg: str = params["search"]
+        names = search(names, search_arg, max_arg)
         if len(names) == 0:
             print("No matches found.")
             return
@@ -272,15 +278,18 @@ def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: 
         util.ERROR("Missing group name(s) for group command.")
         return
 
-    group_name: str | None = params["group-name"]
+    group_name: str = params["group-name"]
     if params["l1-address"] is None:
         util.ERROR("Missing l1-address for group reading command.")
         return
 
-    samples: int | None = params["samples"]
     sampling_interval: int | None = params["sampling-interval"]
-    if samples == 1 and sampling_interval is not None:
+    if params["samples"] == 1 and sampling_interval is not None:
         util.WARN("Sampling interval is ignored when --samples=1.")
+
+    samples = 1
+    if params["samples"] is not None:
+        samples = params["samples"]
 
     sampling_interval = sampling_interval or 2
     try:
@@ -291,7 +300,7 @@ def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: 
             sampling_interval=sampling_interval,
         )
 
-        signal_data: list[tuple[str, str, str]] = []
+        signal_data: list[tuple[str, Any]] = []
         names: list[str] = list(signal_group_sample.keys())
         if params["search"] is not None:
             names = search(names, params["search"])
@@ -303,7 +312,7 @@ def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: 
             formatted_value = _format_signal_value(
                 signal_group_sample[signal_name],
                 show_all_samples=samples > 1,
-                signal_desc=debug_bus_signal_store.signals.get(signal_name, None),
+                signal_desc=debug_bus_signal_store.debug_bus_signals.signals.get(signal_name, None),
             )
             signal_data.append((signal_name, formatted_value))
 
@@ -334,13 +343,13 @@ def handle_signal_reading_command(device: Device, loc: OnChipCoordinate, params:
     where = f"device:{device._id} loc:{loc.to_user_str()} "
     for signal in params["signals"]:
         try:
-            if isinstance(signal, str) and debug_bus_signal_store.is_combined_signal(signal):
+            if isinstance(signal, str) and debug_bus_signal_store.debug_bus_signals.is_combined_signal(signal):
                 util.WARN(
                     f"Signal '{signal}' is a combined signal. For consistent reading, use L1 sampling mode. "
                     "Only parts can be read in this mode, and their values may be inconsistent due to hardware implementation.\n"
                     "The parts are listed below:"
                 )
-                for s in debug_bus_signal_store.get_signal_part_names(signal):
+                for s in debug_bus_signal_store.debug_bus_signals.get_signal_part_names(signal):
                     print(s)
                 return
 
