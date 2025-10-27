@@ -12,8 +12,39 @@ OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv",
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
 SEARCH_DIR("/opt/riscv32i/riscv32-tt-elf/lib");
+
+MEMORY
+{
+  DPRINT_STRINGS (r) : ORIGIN = 0x6400000, LENGTH = 0x100000
+  DPRINT_STRINGS_INDEX (r) : ORIGIN = 0x6500000, LENGTH = 0x100000
+}
+
 SECTIONS
 {
+  /*
+   * Test section for dprint strings
+   * Placed at 0x6400000 (100MB), size 1MB
+   */
+  .dprint_strings 0x6400000 :
+  {
+    __dprint_strings_start = .;
+    KEEP(*(dprint_strings))
+    KEEP(*(.dprint_strings*))
+    __dprint_strings_end = .;
+    . = ALIGN(4);
+  } > DPRINT_STRINGS
+  /*
+   * Test section for dprint strings
+   * Placed at 0x6500000 (101MB), size 1MB
+   */
+  .dprint_strings 0x6500000 :
+  {
+    __dprint_strings_index_start = .;
+    KEEP(*(dprint_strings_index))
+    KEEP(*(.dprint_strings_index*))
+    __dprint_strings_index_end = .;
+    . = ALIGN(4);
+  } > DPRINT_STRINGS_INDEX
   /*
    * This section is used to transfer .ldm_data section into private memory (0xffb00000).
    * Since loader cannot access private core memory from NOC, it copies .ldm_data section into .loader_init section,
