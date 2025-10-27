@@ -146,7 +146,7 @@ def parse_command_arguments(args):
         ValueError: If a signal list has an invalid format that prevents the creation of
                     a `DebugBusSignalDescription` object.
     """
-    if not (args["<signals>"]):
+    if args["<signals>"] is None:
         raise ValueError("Missing debug bus signal parameter")
 
     result: list[str | DebugBusSignalDescription] = []
@@ -173,7 +173,7 @@ def _get_debug_bus_signal_store(device: Device, loc: OnChipCoordinate) -> DebugB
         return None
 
     debug_bus_signal_store = noc_block.debug_bus
-    if not debug_bus_signal_store:
+    if debug_bus_signal_store is None:
         util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
         return None
 
@@ -183,20 +183,20 @@ def _get_debug_bus_signal_store(device: Device, loc: OnChipCoordinate) -> DebugB
 def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
     """Handle the list-signals command - list all signals, optionally filtered by search pattern."""
     debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
-    if not debug_bus_signal_store:
+    if debug_bus_signal_store is None:
         return
 
-    names = list(debug_bus_signal_store.signal_names)
-    search_arg = params["search"]
-    max_arg = params["max"]
+    names: list[str] = list(debug_bus_signal_store.signal_names)
+    search_arg: str | None = params["search"]
+    max_arg: str | None = params["max"]
 
-    if search_arg:
+    if search_arg is not None:
         names = search(names, search_arg, max_arg)
-        if not names:
+        if len(names) == 0:
             print("No matches found.")
             return
 
-    signal_data = []
+    signal_data: list[tuple[str, str, str]] = []
     for name in names:
         value = debug_bus_signal_store.read_signal(name)
         formatted_value = _format_signal_value(
@@ -230,20 +230,20 @@ def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: d
 def handle_list_groups_command(device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
     """Handle the list-groups command - list all groups or signals in a specific group."""
     debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
-    if not debug_bus_signal_store:
+    if debug_bus_signal_store is None:
         return
 
-    names = list(debug_bus_signal_store.group_names)
-    max_arg = params["max"]
-    if params["search"]:
+    names: list[str] = list(debug_bus_signal_store.group_names)
+    max_arg: str | None = params["max"]
+    if params["search"] is not None:
         names = search(names, params["search"], max_arg)
-        if not names:
+        if len(names) == 0:
             print("No matches found.")
             return
     elif max_arg is not None and str(max_arg).lower() != "all":
         names = names[: int(max_arg)]
 
-    if not names:
+    if len(names) == 0:
         formatter.print_header(
             f"=== Device {device._id} - location {loc.to_str('logical')} - Signal Groups ===", style="bold"
         )
@@ -263,27 +263,26 @@ def handle_list_groups_command(device: Device, loc: OnChipCoordinate, params: di
 
 
 def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
-    """Handle the 'dbus group' command: read all signals in specified group(s) using L1 sampling."""
+    """Handle the 'dbus group' command: read all signals in specified group using L1 sampling."""
     debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
-    if not debug_bus_signal_store:
+    if debug_bus_signal_store is None:
         return
 
-    if not params["group-name"]:
+    if params["group-name"] is None:
         util.ERROR("Missing group name(s) for group command.")
         return
 
-    group_name = params["group-name"]
+    group_name: str | None = params["group-name"]
     if params["l1-address"] is None:
         util.ERROR("Missing l1-address for group reading command.")
         return
 
-    samples = params["samples"]
-    sampling_interval = params["sampling-interval"]
+    samples: int | None = params["samples"]
+    sampling_interval: int | None = params["sampling-interval"]
     if samples == 1 and sampling_interval is not None:
         util.WARN("Sampling interval is ignored when --samples=1.")
 
     sampling_interval = sampling_interval or 2
-
     try:
         signal_group_sample = debug_bus_signal_store.read_signal_group(
             group_name,
@@ -292,11 +291,11 @@ def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: 
             sampling_interval=sampling_interval,
         )
 
-        signal_data = []
-        names = list(signal_group_sample.keys())
-        if params["search"]:
+        signal_data: list[tuple[str, str, str]] = []
+        names: list[str] = list(signal_group_sample.keys())
+        if params["search"] is not None:
             names = search(names, params["search"])
-            if not names:
+            if len(names) == 0:
                 print("No matches found.")
                 return
 
@@ -325,7 +324,11 @@ def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: 
 def handle_signal_reading_command(device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
     """Handle signal reading commands - read specific signals with optional L1 sampling."""
     debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
-    if not debug_bus_signal_store:
+    if debug_bus_signal_store is None:
+        return
+
+    if params["signals"] is None:
+        util.ERROR("No signals specified for reading.")
         return
 
     where = f"device:{device._id} loc:{loc.to_user_str()} "
@@ -389,13 +392,13 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     params: dict[str, Any] = {
         "search": dopt.args.get("--search") or None,
         "max": dopt.args.get("--max") or None,
-        "samples": int(dopt.args["--samples"]) if dopt.args.get("--samples") else None,
+        "samples": int(dopt.args["--samples"]) if dopt.args.get("--samples") is not None else None,
         "sampling-interval": int(dopt.args["--sampling-interval"])
         if dopt.args.get("--sampling-interval") is not None
         else None,
         "group-name": dopt.args.get("<group-name>") or None,
         "l1-address": int(dopt.args["<l1-address>"], 0) if dopt.args.get("<l1-address>") is not None else None,
-        "signals": parse_command_arguments(dopt.args) if dopt.args.get("<signals>") else None,
+        "signals": parse_command_arguments(dopt.args) if dopt.args.get("<signals>") is not None else None,
         "simple": dopt.args.get("--simple") or None,
     }
 
