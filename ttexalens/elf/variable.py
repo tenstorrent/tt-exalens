@@ -484,10 +484,16 @@ class ElfVariable:
             f"size={type_size}, address=0x{self.__address:x}{value_info}{length_info})"
         )
 
+    def __hash__(self):
+        try:
+            return hash(self.get_value())
+        except Exception:
+            return hash((self.__type_die.offset, self.__address))
+
     def get_address(self) -> int:
         return self.__address
 
-    def get_bytes(self) -> bytes:
+    def read_bytes(self) -> bytes:
         size = self.__type_die.size
         assert size is not None
         int_bytes = self.__mem_access_function(self.__address, size, size)
@@ -499,7 +505,7 @@ class ElfVariable:
             address = self.__mem_access_function(self.__address, self.__type_die.size, 1)[0]
             dereferenced_pointer = ElfVariable(self.__type_die.dereference_type, address, self.__mem_access_function)
             return dereferenced_pointer.read()
-        data = self.get_bytes()
+        data = self.read_bytes()
         address = self.__address
 
         def mem_access(addr: int, size_bytes: int, elements_to_read: int) -> list[int]:

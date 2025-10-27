@@ -335,3 +335,14 @@ class TestDebugSymbols(unittest.TestCase):
         # Test that we didn't do any additional memory reads
         self.assertEqual(self.mem_reader.call_count, 0)
         self.assertEqual(self.mem_reader.total_bytes_transferred, 0)
+
+    def test_elf_variable_hash(self):
+        g_global_struct1 = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_reader)
+        g_global_struct2 = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_reader)
+        self.assertEqual(hash(g_global_struct1), hash(g_global_struct2))
+        self.assertEqual(hash(g_global_struct1.a), hash(g_global_struct2.a))
+        self.assertEqual(hash(g_global_struct1.b), hash(g_global_struct2.b))
+        self.assertEqual(hash(g_global_struct1.c[5]), hash(g_global_struct2.c[5]))
+        self.assertEqual(hash(g_global_struct1.f), hash(g_global_struct2.f))
+        self.assertEqual(hash(g_global_struct1.g), hash(g_global_struct2.g))
+        self.assertEqual(hash(g_global_struct1.h[3]), hash(g_global_struct2.h[3]))
