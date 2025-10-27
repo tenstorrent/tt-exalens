@@ -297,7 +297,7 @@ class TestDebugging(unittest.TestCase):
         # simple test for pc signal
         pc_value_32 = signal_store.read_signal(pc_signal_name)
 
-        group_name = signal_store.get_group_for_signal(pc_signal_name)
+        group_name = signal_store.debug_bus_signals.get_group_for_signal(pc_signal_name)
         l1_addr = 0x1000
         samples = 1
         sampling_interval = 2
@@ -309,7 +309,7 @@ class TestDebugging(unittest.TestCase):
         assert group_values[pc_signal_name][0] == pc_value_32
 
         # check all groups for chosen core
-        for group in signal_store.group_names:
+        for group in signal_store.debug_bus_signals.group_names:
             # skip groups that do not belong to this core
             if not group.startswith(self.core_sim.risc_name.lower() + "_"):
                 continue
@@ -319,9 +319,9 @@ class TestDebugging(unittest.TestCase):
             group_values = signal_store.read_signal_group(group, l1_addr, samples=samples)
 
             for signal_name, values in group_values.items():
-                parts = signal_store.get_signal_part_names(signal_name)
+                parts = signal_store.debug_bus_signals.get_signal_part_names(signal_name)
 
-                if signal_store.is_combined_signal(signal_name):
+                if signal_store.debug_bus_signals.is_combined_signal(signal_name):
                     # combined signal
                     combined_value = 0
                     for part in parts:
