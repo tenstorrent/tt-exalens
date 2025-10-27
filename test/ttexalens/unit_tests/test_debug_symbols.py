@@ -346,3 +346,13 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(hash(g_global_struct1.f), hash(g_global_struct2.f))
         self.assertEqual(hash(g_global_struct1.g), hash(g_global_struct2.g))
         self.assertEqual(hash(g_global_struct1.h[3]), hash(g_global_struct2.h[3]))
+
+    def test_elf_variable_format(self):
+        g_global_struct = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_reader)
+        self.assertEqual(format(g_global_struct.a, "010x"), format(0x11223344, "010x"))
+        self.assertEqual(format(g_global_struct.b, "X"), format(0x5566778899AABBCC, "X"))
+        self.assertEqual(format(g_global_struct.c[10], "d"), format(10, "d"))
+        self.assertEqual(format(g_global_struct.f, ".2f"), format(2.0, ".2f"))
+        self.assertEqual(f"{g_global_struct.f:.2f}", format(2.0, ".2f"))
+        self.assertEqual(format(g_global_struct.g, ".5f"), format(2.718281828459, ".5f"))
+        self.assertEqual(format(g_global_struct.h[2], ""), format(True, ""))

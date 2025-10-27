@@ -490,6 +490,18 @@ class ElfVariable:
         except Exception:
             return hash((self.__type_die.offset, self.__address))
 
+    def __format__(self, format_spec: str) -> str:
+        """
+        Enable formatted string representation of the ElfVariable's value.
+        This allows usage like: format(elf_var, 'x') for hexadecimal formatting.
+        """
+        try:
+            value = self.get_value()
+            return format(value, format_spec)
+        except Exception:
+            # If get_value() fails, fall back to default string representation
+            return str(self)
+
     def get_address(self) -> int:
         return self.__address
 
