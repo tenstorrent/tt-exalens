@@ -247,14 +247,19 @@ class ELF:
                     and risc_debug is not None
                     and private_memory.contains_private_address(addr)
                 ):
-                    # If number of bytes we want to read is not divisible by word size, we round that up to read 1 extra word
-                    words_to_read = (size_bytes + word_size - 1) // word_size
+                    # We need to read aligned to 4 bytes
+                    aligned_start = addr - (addr % word_size)
+                    aligned_end = ((addr + size_bytes + word_size - 1) // word_size) * word_size
+
+                    # Figure out how many words to read
+                    words_to_read = (aligned_end - aligned_start) // word_size
 
                     with risc_debug.ensure_private_memory_access():
-                        words = [risc_debug.read_memory(addr + i * word_size) for i in range(words_to_read)]
+                        words = [risc_debug.read_memory(aligned_start + i * word_size) for i in range(words_to_read)]
 
                     # Convert words to bytes and remove extra bytes
-                    bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in words)[:size_bytes]
+                    bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in words)
+                    bytes_data = bytes_data[addr - aligned_start : addr - aligned_start + size_bytes]
 
             if bytes_data is None:
                 bytes_data = read_from_device(location=location, addr=addr, num_bytes=size_bytes)

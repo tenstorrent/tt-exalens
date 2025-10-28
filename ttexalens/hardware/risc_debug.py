@@ -9,7 +9,7 @@ from typing import Any, Generator
 from ttexalens import util
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.parse_elf import ParsedElfFile, ParsedElfFileWithOffset
+from ttexalens.elf import ParsedElfFile, ParsedElfFileWithOffset
 
 
 @dataclass

@@ -11,16 +11,16 @@
 #include <stdexcept>
 #include <string>
 
-#include "umd/device/cluster.h"
-#include "umd/device/jtag/jtag.h"
-#include "umd/device/jtag/jtag_device.h"
-#include "umd/device/logging/config.h"
-#include "umd/device/tt_cluster_descriptor.h"
-#include "umd/device/tt_core_coordinates.h"
-#include "umd/device/tt_device/tt_device.h"
-#include "umd/device/tt_soc_descriptor.h"
-#include "umd/device/types/arch.h"
+#include "umd/device/cluster.hpp"
+#include "umd/device/cluster_descriptor.hpp"
+#include "umd/device/jtag/jtag.hpp"
+#include "umd/device/jtag/jtag_device.hpp"
+#include "umd/device/logging/config.hpp"
+#include "umd/device/soc_descriptor.hpp"
+#include "umd/device/tt_device/tt_device.hpp"
+#include "umd/device/types/arch.hpp"
 #include "umd/device/types/communication_protocol.hpp"
+#include "umd/device/types/core_coordinates.hpp"
 #include "umd_implementation.h"
 
 static std::filesystem::path get_temp_working_directory() {
@@ -134,7 +134,7 @@ static std::string jtag_create_temp_network_descriptor_file(JtagDevice *jtag_dev
     return cluster_descriptor_path;
 }
 
-static std::string jtag_create_device_soc_descriptor(const tt_SocDescriptor &soc_descriptor, uint32_t device_id) {
+static std::string jtag_create_device_soc_descriptor(const tt::umd::SocDescriptor &soc_descriptor, uint32_t device_id) {
     std::string file_name = temp_working_directory / ("device_desc_runtime_" + std::to_string(device_id) + ".yaml");
     soc_descriptor.serialize_to_file(file_name);
     return file_name;
@@ -157,8 +157,12 @@ template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open(
     const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
     bool initialize_with_noc1, bool init_jtag) {
-    // Disable UMD logging
-    tt::umd::logging::set_level(tt::umd::logging::level::error);
+    // Respect UMD's existing env var first; default to ERROR otherwise.
+    // If Python wants DEBUG, it can set TT_LOGGER_LEVEL=debug before calling into this function.
+    const char *tt_logger_level = std::getenv("TT_LOGGER_LEVEL");
+    if (tt_logger_level == nullptr) {
+        tt::umd::logging::set_level(tt::umd::logging::level::error);
+    }
 
     // TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use
     // noc1
@@ -187,9 +191,9 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     std::unique_ptr<tt::umd::Cluster> cluster;
 
     // Try to read cluster descriptor
-    std::unordered_set<chip_id_t> target_devices;
+    std::unordered_set<ChipId> target_devices;
 
-    for (chip_id_t i : cluster_descriptor->get_all_chips()) {
+    for (ChipId i : cluster_descriptor->get_all_chips()) {
         device_ids.push_back(i);
     }
 
@@ -212,7 +216,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     }
 
     auto device_soc_descriptors_yamls = create_device_soc_descriptors(cluster.get(), device_ids);
-    std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
+    std::map<uint8_t, umd::SocDescriptor> soc_descriptors;
     for (auto device_id : device_ids) {
         soc_descriptors[device_id] = cluster->get_soc_descriptor(device_id);
     }
@@ -265,7 +269,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
 
     std::vector<uint8_t> device_ids{0};
     auto device_soc_descriptors_yamls = create_device_soc_descriptors(cluster.get(), device_ids);
-    std::map<uint8_t, tt_SocDescriptor> soc_descriptors;
+    std::map<uint8_t, umd::SocDescriptor> soc_descriptors;
     for (auto device_id : device_ids) {
         soc_descriptors[device_id] = cluster->get_soc_descriptor(device_id);
     }
