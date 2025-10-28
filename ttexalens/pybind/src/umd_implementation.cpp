@@ -13,21 +13,6 @@
 
 namespace tt::exalens {
 
-void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
-    ChipId mmio_chip_id = cluster->get_cluster_description()->get_closest_mmio_capable_chip(chip_id);
-    for (auto channel : cluster->get_cluster_description()->get_active_eth_channels(mmio_chip_id)) {
-        std::unordered_set<tt::umd::CoreCoord> active_eth_core = {
-            cluster->get_soc_descriptor(mmio_chip_id).get_eth_core_for_channel(channel, CoordSystem::LOGICAL)};
-        cluster->configure_active_ethernet_cores_for_mmio_device(mmio_chip_id, active_eth_core);
-        try {
-            tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
-            return;
-        } catch (const std::exception& e) {
-            continue;
-        }
-    }
-    throw std::runtime_error("Failed to configure working active Ethernet");
-}
 // TODO #375: Remove read/write unaligned functions once UMD implements ability to set unaligned access for our TLB
 
 void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip, tt::umd::CoreCoord core,
@@ -105,16 +90,6 @@ void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_pt
         }
     }
 }
-
-void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
-                                   chip_id_t chip, tt::umd::CoreCoord core, uint64_t addr) {
-    try {
-        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
-    } catch (const std::exception& e) {
-        _configure_working_active_eth(cluster, chip);
-        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
-    }
-}  // namespace tt::exalens
 
 umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {
     cached_arc_telemetry_readers.resize(cluster->get_cluster_description()->get_number_of_chips());
@@ -272,23 +247,11 @@ std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry_helper(uint
 }
 
 std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
-    try {
-        return read_arc_telemetry_entry_helper(chip_id, telemetry_tag);
-    } catch (const std::exception& e) {
-        _configure_working_active_eth(cluster, chip_id);
-        return read_arc_telemetry_entry_helper(chip_id, telemetry_tag);
-    }
-    return {};
+    return read_arc_telemetry_entry_helper(chip_id, telemetry_tag);
 }
 
 std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> umd_implementation::get_firmware_version(uint8_t chip_id) {
-    try {
-        const auto& firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
-        return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
-    } catch (const std::runtime_error& e) {
-        _configure_working_active_eth(cluster, chip_id);
-        const auto& firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
-        return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
-    }
+    const auto& firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
+    return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
 }
 }  // namespace tt::exalens
