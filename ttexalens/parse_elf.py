@@ -150,16 +150,35 @@ class ElfDwarf:
                     # Try to recurse until we find last child that contains the address
                     result_die = top_die
                     result_range = range  # Save the range for later comparison
+                    result_base_address = 0
                     found = True
                     while found:
                         found = False
                         for child in result_die.iter_children():
+                            try:
+                                if "DW_AT_low_pc" in child.attributes:
+                                    parent_address = 0
+                                else:
+                                    parent_address = result_range[0] + result_base_address
+                                if "DW_AT_entry_pc" in child.attributes:
+                                    parent_address = child.attributes["DW_AT_entry_pc"].value
+                                # elif child.parent is not None:
+                                #     parent_address = child.parent.address
+                                #     if parent_address is None:
+                                #         parent_address = result_range[0] + result_base_address
+                                # else:
+                                #     parent_address = result_range[0] + result_base_address
+                            except:
+                                parent_address = result_range[0] + result_base_address
                             for range in child.address_ranges:
-                                if range[0] <= address < range[1]:
+                                if range[0] + parent_address <= address < range[1] + parent_address:
                                     result_range = range
+                                    result_base_address = parent_address
                                     result_die = child
                                     found = True
                                     break
+                            if found:
+                                break
 
                     # Update our best solution based on the heuristic
                     if best_die is None:
