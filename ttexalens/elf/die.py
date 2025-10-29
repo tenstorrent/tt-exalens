@@ -359,24 +359,18 @@ class ElfDie:
                 (
                     self.attributes["DW_AT_low_pc"].value,
                     self.attributes["DW_AT_low_pc"].value + self.attributes["DW_AT_high_pc"].value,
+                    True,
                 )
             ]
         elif "DW_AT_ranges" in self.attributes:
             assert self.cu.dwarf.range_lists is not None
             ranges = self.cu.dwarf.range_lists.get_range_list_at_offset(self.attributes["DW_AT_ranges"].value)
-            return [(r.begin_offset, r.end_offset) for r in ranges if isinstance(r, RangeEntry)]
+            return [(r.begin_offset, r.end_offset, False) for r in ranges if isinstance(r, RangeEntry)]
         else:
             child_ranges = []
             for child in self.iter_children():
                 child_ranges.extend(child.address_ranges)
-
-            if child_ranges:
-                # Compute the overall range
-                min_address = min(r[0] for r in child_ranges)
-                max_address = max(r[1] for r in child_ranges)
-                return [(min_address, max_address)]
-
-        return []
+            return child_ranges
 
     @cached_property
     def decl_file_info(self):

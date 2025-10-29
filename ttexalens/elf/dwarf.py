@@ -90,7 +90,11 @@ class ElfDwarf:
                             except:
                                 parent_address = result_range[0] + result_base_address
                             for range in child.address_ranges:
-                                if range[0] + parent_address <= address < range[1] + parent_address:
+                                if (
+                                    range[0] + parent_address * (1 - int(range[2]))
+                                    <= address
+                                    <= range[1] + parent_address * (1 - int(range[2]))
+                                ):
                                     result_range = range
                                     result_base_address = parent_address
                                     result_die = child
