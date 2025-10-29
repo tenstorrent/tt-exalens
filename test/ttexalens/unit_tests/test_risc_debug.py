@@ -281,7 +281,7 @@ class TestDebugging(unittest.TestCase):
         ):
             self.skipTest(
                 "This test is unreliable on TRISC[i] on wormhole or blackhole."
-            )  # these signals are not stable: trisc[i]_risc_wrapper_debug_bus_trisc_o_mailbox_rddata
+            )  # these signals are not stable: trisc[i]_risc_wrapper_debug_bus_trisc_o_mailbox_rddata, so whole risc is skipped
 
         signal_store = self.core_sim.debug_bus_store
         pc_signal_name = self.core_sim.risc_name.lower() + "_pc"
