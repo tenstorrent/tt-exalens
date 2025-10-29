@@ -270,19 +270,7 @@ class TestDebugging(unittest.TestCase):
         # Verify value at address
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
 
-    def test_debug_bus_signal_store(self):
-        if self.core_sim.device.is_blackhole():
-            self.skipTest("This test does not work on blackhole.")
-
-        if (
-            self.core_sim.risc_name == "TRISC2"
-            or self.core_sim.risc_name == "TRISC1"
-            or self.core_sim.risc_name == "TRISC0"
-        ):
-            self.skipTest(
-                "This test is unreliable on TRISC[i] on wormhole or blackhole."
-            )  # these signals are not stable: trisc[i]_risc_wrapper_debug_bus_trisc_o_mailbox_rddata, so whole risc is skipped
-
+    def test_debug_bus_signal_store_pc(self):
         signal_store = self.core_sim.debug_bus_store
         pc_signal_name = self.core_sim.risc_name.lower() + "_pc"
 
@@ -291,7 +279,6 @@ class TestDebugging(unittest.TestCase):
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
-
         assert self.core_sim.is_halted(), "Core should be halted after ebreak."
 
         # simple test for pc signal
@@ -305,8 +292,22 @@ class TestDebugging(unittest.TestCase):
             group_name, l1_addr, samples=samples, sampling_interval=sampling_interval
         )
         assert pc_signal_name in group_values.keys()
-
         assert group_values[pc_signal_name][0] == pc_value_32
+
+    def test_debug_bus_signal_store_all_groups(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
+        if (
+            self.core_sim.risc_name == "TRISC2"
+            or self.core_sim.risc_name == "TRISC1"
+            or self.core_sim.risc_name == "TRISC0"
+        ):
+            self.skipTest(
+                "This test is unreliable on TRISC[i] on wormhole or blackhole."
+            )  # these signals are not stable: trisc[i]_risc_wrapper_debug_bus_trisc_o_mailbox_rddata, so whole risc is skipped
+
+        signal_store = self.core_sim.debug_bus_store
 
         # check all groups for chosen core
         for group in signal_store.debug_bus_signals.group_names:
