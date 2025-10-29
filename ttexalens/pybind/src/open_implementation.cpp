@@ -92,6 +92,7 @@ static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
     cluster_descriptor << "boardtype: {" << std::endl;
     cluster_descriptor << "   0: " << arch_str << "Simulator," << std::endl;
     cluster_descriptor << "}" << std::endl;
+    cluster_descriptor << "io_device_type: SIMULATION" << std::endl;
 
     return cluster_descriptor_path;
 }

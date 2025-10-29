@@ -267,6 +267,13 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.set_reset(False)
         self.assertFalse(self.core_sim.is_in_reset())
 
+        # Since simulator is slow, we need to wait a bit by reading something
+        # if self.core_sim.device.is_quasar():
+        for i in range(50):
+            print(self.core_sim.read_data(0))
+            if self.core_sim.read_data(addr) == 0x87654000:
+                break
+
         # Verify value at address
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
 
