@@ -186,7 +186,9 @@ def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: d
     if debug_bus_signal_store is None:
         return
 
-    names: list[str] = list(debug_bus_signal_store.debug_bus_signals.signal_names)
+    debug_bus_signals = debug_bus_signal_store.debug_bus_signals
+
+    names: list[str] = list(debug_bus_signals.signal_names)
     max_arg: str = "all"
     if params["max"] is not None:
         max_arg = params["max"]
@@ -204,9 +206,9 @@ def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: d
         formatted_value = _format_signal_value(
             value,
             show_all_samples=False,
-            signal_desc=debug_bus_signal_store.debug_bus_signals.signals.get(name, None),
+            signal_desc=debug_bus_signals.signals.get(name, None),
         )
-        group_name = debug_bus_signal_store.debug_bus_signals.get_group_for_signal(name)
+        group_name = debug_bus_signals.get_group_for_signal(name)
         signal_data.append((group_name, name, formatted_value))
 
     # Sort signal_data by group name, then by signal name
@@ -234,6 +236,8 @@ def handle_list_groups_command(device: Device, loc: OnChipCoordinate, params: di
     debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
     if debug_bus_signal_store is None:
         return
+
+    debug_bus_signals = debug_bus_signal_store.debug_bus_signals
 
     names: list[str] = list(debug_bus_signal_store.debug_bus_signals.group_names)
     max_arg: str = "all"
