@@ -59,7 +59,9 @@ debug_bus_signal_map = {
     "erisc_dbg_obs_cmt_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x7FFFFFFF),
 }
 
-# TODO(#650) Once signals are grouped, we can remove type hint
+# Group name mapping (daisy_sel, sig_sel) based on documentation
+"""https://github.com/tenstorrent/tt-isa-documentation/blob/main/WormholeB0/TensixTile/DebugDaisychain.md"""
+# Signal name mapping to (DaisySel, sig_sel)
 group_names: dict[str, tuple[int, int]] = {
     "erisc_group_a": (7, 18),
     "erisc_group_b": (7, 19),
