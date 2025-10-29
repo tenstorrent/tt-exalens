@@ -387,6 +387,8 @@ class DebugBusSignalStore:
         - https://github.com/tenstorrent/tt-isa-documentation/blob/main/WormholeB0/TensixTile/DebugDaisychain.md
         """
         # get daisy and sig selection for group
+        print("PROSLOOOOOOOOOOO", self.debug_bus_signals.group_map)
+
         daisy_sel, sig_sel = self.debug_bus_signals.group_map[signal_group]
 
         # Write the configuration - select 128 bit word
