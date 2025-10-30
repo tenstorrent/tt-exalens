@@ -376,7 +376,7 @@ def arc_msg(
     noc_id = check_noc_id(noc_id, context)
 
     validate_device_id(device_id, context)
-    if timeout < 0:
+    if timeout < datetime.timedelta(0):
         raise TTException("Timeout must be greater than or equal to 0.")
 
     return list(context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout))
