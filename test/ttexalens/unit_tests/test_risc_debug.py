@@ -1554,7 +1554,10 @@ class TestDebugging(unittest.TestCase):
         self.assertIn("mask must be a valid 32-bit integer", str(cm.exception))
 
     def test_read_signal_group_invalid_samples(self):
-        group_name = self.core_sim.debug_bus_store.debug_bus_signals.group_map.keys().__iter__().__next__()
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
+        group_name = next(iter(self.core_sim.debug_bus_store.debug_bus_signals.group_map.keys()))
         with self.assertRaises(ValueError) as cm:
             self.core_sim.debug_bus_store.read_signal_group(
                 signal_group=group_name,
@@ -1565,6 +1568,9 @@ class TestDebugging(unittest.TestCase):
         self.assertIn("samples must be at least 1", str(cm.exception))
 
     def test_read_signal_group_invalid_l1_address(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
         group_name = next(iter(self.core_sim.debug_bus_store.debug_bus_signals.group_map.keys()))
         with self.assertRaises(ValueError) as cm:
             self.core_sim.debug_bus_store.read_signal_group(
@@ -1576,6 +1582,9 @@ class TestDebugging(unittest.TestCase):
         self.assertIn("L1 address must be 16-byte aligned", str(cm.exception))
 
     def test_read_signal_group_invalid_sampling_interval(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
         group_name = next(iter(self.core_sim.debug_bus_store.debug_bus_signals.group_map.keys()))
         with self.assertRaises(ValueError) as cm:
             self.core_sim.debug_bus_store.read_signal_group(
@@ -1587,6 +1596,9 @@ class TestDebugging(unittest.TestCase):
         self.assertIn("When samples > 1, sampling_interval must be between 2 and 256", str(cm.exception))
 
     def test_read_signal_group_exceeds_memory(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
         group_name = next(iter(self.core_sim.debug_bus_store.debug_bus_signals.group_map.keys()))
         l1_address = 0x100000 - 16
         samples = 4
@@ -1602,6 +1614,9 @@ class TestDebugging(unittest.TestCase):
         self.assertIn(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit", str(cm.exception))
 
     def test_read_signal_group_invalid_signal_name(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
         signal_name = "invalid_signal_name"
         group_name = next(iter(self.core_sim.debug_bus_store.debug_bus_signals.group_map.keys()))
         with self.assertRaises(ValueError) as cm:
@@ -1615,6 +1630,9 @@ class TestDebugging(unittest.TestCase):
         self.assertIn(f"Signal '{signal_name}' does not exist in group '{group_name}'.", str(cm.exception))
 
     def test_invalid_group_name(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
         group_name = "invalid_group_name"
         with self.assertRaises(ValueError) as cm:
             self.core_sim.debug_bus_store.debug_bus_signals.get_signal_names_in_group(group_name)
