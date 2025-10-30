@@ -8,7 +8,7 @@ from ttexalens import tt_exalens_lib as lib
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from ttexalens.context import Context
-from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.hardware.baby_risc_debug import get_register_index
 from ttexalens.elf_loader import ElfLoader
 
