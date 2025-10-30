@@ -371,10 +371,10 @@ def main_loop(args, context):
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--gdb":
-        gdb_client_path = os.path.abspath(util.application_path() + "/sfpi/compiler/bin/riscv32-tt-elf-gdb")
+        gdb_client_path = os.path.abspath(util.application_path() + "/sfpi/compiler/bin/riscv-tt-elf-gdb")
         if not os.path.isfile(gdb_client_path):
             gdb_client_path = os.path.abspath(
-                util.application_path() + "/../build_riscv/sfpi/compiler/bin/riscv32-tt-elf-gdb"
+                util.application_path() + "/../build_riscv/sfpi/compiler/bin/riscv-tt-elf-gdb"
             )
         gdb_client_args = sys.argv[2:]
 

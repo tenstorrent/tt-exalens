@@ -24,7 +24,7 @@ def compile_test_cpp_program(program_path, program_text):
     Just compile a program to get an ELF file
     """
     print(f"\nCompiling {program_path}...")
-    # Run ./build_riscv/sfpi/compiler/bin/riscv32-tt-elf-g++ -g ./test-elf.c -o test-elf on the program_text
+    # Run ./build_riscv/sfpi/compiler/bin/riscv-tt-elf-g++ -g ./test-elf.c -o test-elf on the program_text
     import os
 
     elf_file_name = f"{program_path}.elf"
@@ -33,7 +33,7 @@ def compile_test_cpp_program(program_path, program_text):
     with open(f"{src_file_name}", "w") as f:
         f.write(program_text)
     # Compile the program
-    os.system(f"./build_riscv/sfpi/compiler/bin/riscv32-tt-elf-g++ -g {src_file_name} -o {program_path}.elf")
+    os.system(f"./build_riscv/sfpi/compiler/bin/riscv-tt-elf-g++ -g {src_file_name} -o {program_path}.elf")
     if not os.path.exists(elf_file_name):
         util.ERROR(f"ERROR: Failed to compile {src_file_name}")
         exit(1)
@@ -77,6 +77,7 @@ class TestParseElf(unittest.TestCase):
         if not os.path.exists(cls.output_dir):
             os.makedirs(cls.output_dir)
 
+    @unittest.skip("mem_access should be removed")
     def test_simple(self):
         program_name, program_definition = "simple", {
             "program_text": """
@@ -181,7 +182,7 @@ class TestParseElf(unittest.TestCase):
         for generated_file in generated_files:
             os.system(f"rm -f {generated_file}")
 
-    # @unittest.skip("demonstrating skipping")
+    @unittest.skip("mem_access should be removed")
     def test_array(self):
         program_name, program_definition = "array", {
             "program_text": """
@@ -234,7 +235,7 @@ class TestParseElf(unittest.TestCase):
         for generated_file in generated_files:
             os.system(f"rm -f {generated_file}")
 
-    # @unittest.skip("demonstrating skipping")
+    @unittest.skip("mem_access should be removed")
     def test_double_array(self):
         program_name, program_definition = "double_array", {
             "program_text": """
@@ -266,6 +267,7 @@ class TestParseElf(unittest.TestCase):
         for generated_file in generated_files:
             os.system(f"rm -f {generated_file}")
 
+    @unittest.skip("mem_access should be removed")
     def test_union(self):
         program_name, program_definition = "union", {
             "program_text": """

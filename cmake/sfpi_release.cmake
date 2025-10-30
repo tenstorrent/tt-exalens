@@ -1,6 +1,6 @@
-set(SFPI_DOWNLOAD_URL "https://github.com/tenstorrent/sfpi/releases/download/v6.11.1/sfpi-x86_64_Linux.txz")
-set(SFPI_MD5_HASH "14ade50b3fdf3fff5078195332edc15a")
-set(SFPI_LOCAL_FILE "${TTEXALENS_HOME}/build_riscv/sfpi-x86_64_Linux-v6.11.1.txz")
+set(SFPI_DOWNLOAD_URL "https://github.com/tenstorrent/sfpi/releases/download/7.6.0-gdb-31401/sfpi_7.6.0-gdb-31401_x86_64_linux.txz")
+set(SFPI_MD5_HASH "bd3de7a55b55691ac0fc778e31fbea7a")
+set(SFPI_LOCAL_FILE "${TTEXALENS_HOME}/build_riscv/sfpi_7.6.0-gdb-31401_x86_64_linux.txz")
 set(SFPI_RELEASE_PATH "${TTEXALENS_HOME}/build_riscv/sfpi")
 
 if(NOT EXISTS "${SFPI_LOCAL_FILE}")
