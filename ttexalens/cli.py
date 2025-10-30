@@ -326,7 +326,6 @@ def main_loop(args, context):
                             import_commands(reload=True)
                         elif found_command["long"] == "eval":
                             eval_str = " ".join(cmd[1:])
-                            eval_str = context.elf.substitute_names_with_values(eval_str)
                             print(f"{eval_str} = {eval(eval_str)}")
                         else:
                             new_navigation_suggestions = found_command["module"].run(cmd_raw, context, ui_state)

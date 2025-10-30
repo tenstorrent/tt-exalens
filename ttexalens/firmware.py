@@ -7,7 +7,7 @@ This module is used to represent the firmware
 
 import time
 from typing import Callable
-from ttexalens import parse_elf
+from ttexalens.elf import ParsedElfFile, read_elf
 from ttexalens import util as util
 
 import re
@@ -45,14 +45,14 @@ class ELF:
         self.names. For example, if filemap is { "brisc" : "./build/riscv-src/wormhole/sample.brisc.elf" },
         the parsed content of "./build/riscv-src/wormhole/sample.brisc.elf" will be stored in self.names["brisc"].
         """
-        self.names: dict[str, parse_elf.ParsedElfFile] = dict()
+        self.names: dict[str, ParsedElfFile] = dict()
         self.filemap = filemap
         self._file_ifc = file_ifc
         self.name_word_pattern = re.compile(r"[_@.a-zA-Z]+")
         for prefix, filename in filemap.items():
             util.INFO(f"Loading ELF file: '{filename}'", end="")
             start_time = time.time()
-            self.names[prefix] = parse_elf.read_elf(self._file_ifc, filename)
+            self.names[prefix] = read_elf(self._file_ifc, filename)
             util.INFO(f" ({getsizeof(self.names[prefix])} bytes loaded in {time.time() - start_time:.2f}s)")
 
             # Inject the variables that are not in the ELF
@@ -109,17 +109,6 @@ class ELF:
             filtered_matches = [match for match, score in sorted_matches]
         return filtered_matches
 
-    def substitute_names_with_values(self, text):
-        """
-        Replace all names starting with @ with their addresses
-        """
-
-        def repl(match):
-            addr, _ = self.parse_addr_size(match.group(0))
-            return f"0x{addr:08x}"
-
-        return re.sub(r"@[_@.a-zA-Z0-9\[\]]+", repl, text)
-
     def get_enum_mapping(self, enum_path):
         """
         Given a path, return the enum mapping for it. Example: get_enum_mapping("erisc_app.epoch_queue.EpochQueueCmd")
@@ -134,85 +123,6 @@ class ELF:
 
                 ret_val[val] = name[name.rfind("::") + 2 :]
         return ret_val
-
-    def get_member_paths(self, elf_name, access_path, mem_reader=None):
-        """
-        Given an access path, return all the member paths recursively. The return value is a tree
-        with the format as seen in 'ret_val' below.
-        """
-        addr, size, value, type_die = self._get_var_addr_size_value_type(elf_name, access_path, mem_reader)
-        ret_val = {
-            "name": access_path,
-            "addr": addr,
-            "size": size,
-            "value": value,
-            "type": type_die,  # ELF DIE (see parse_elf.py)
-            "children": [],
-        }
-
-        access_operator = "."
-        if type_die.tag_is("pointer_type"):
-            type_die = type_die.dereference_type
-            access_operator = "->"
-
-        for child in type_die.iter_children():
-            if child.tag == "DW_TAG_member":
-                if "DW_AT_name" in child.attributes:
-                    child_name = child.attributes["DW_AT_name"].value.decode("utf-8")
-                    ret_val["children"].append(
-                        self.get_member_paths(elf_name, f"{access_path}{access_operator}{child_name}", mem_reader)
-                    )
-        return ret_val
-
-    def _get_var_addr_size_value_type(self, elf_name, var_name, mem_reader=None):
-        """
-        Given an access path to a variable (e.g. "EPOCH_INFO_PTR.epoch_id"), return the
-        address, size and type_die of the variable. If the variable is not found, return None.
-        """
-
-        def my_mem_reader(addr: int, size_bytes: int, elements_to_read: int) -> list[int]:
-            return []
-
-        if mem_reader is None:
-            mem_reader = my_mem_reader
-
-        _, ret_addr, ret_size_bytes, ret_value, type_die = parse_elf.mem_access(
-            self.names[elf_name], var_name, mem_reader
-        )
-        return ret_addr, ret_size_bytes, ret_value, type_die
-
-    def _get_var_addr_size(self, elf_name, var_name, mem_reader=None):
-        """
-        Given an access path to a variable (e.g. "EPOCH_INFO_PTR.epoch_id"), return the
-        address, size the variable. If the variable is not found, return None.
-        """
-        ret_addr, ret_size_bytes, _, _ = self._get_var_addr_size_value_type(elf_name, var_name, mem_reader)
-        return ret_addr, ret_size_bytes
-
-    def parse_addr_size_value_type(self, path_str, mem_reader=None):
-        """
-        When path is given with the elf prefix
-        """
-        if path_str.startswith("@"):
-            path_str = path_str[1:]
-        return self._get_var_addr_size_value_type(*self._get_prefix_and_suffix(path_str), mem_reader)
-
-    def parse_addr_size(self, path_str, mem_reader=None):
-        """
-        When path is given with the elf prefix
-        """
-        addr, size, _, _ = self.parse_addr_size_value_type(path_str, mem_reader)
-        return addr, size
-
-    def read_path(self, path_str, mem_reader):
-        """
-        Given a path, read the data using mem_reader and return it.
-        """
-        if path_str.startswith("@"):
-            path_str = path_str[1:]
-        elf_name, var_name = self._get_prefix_and_suffix(path_str)
-        data, ret_addr, ret_size_bytes, type_die = parse_elf.mem_access(self.names[elf_name], var_name, mem_reader)
-        return data
 
     @staticmethod
     def get_mem_reader(

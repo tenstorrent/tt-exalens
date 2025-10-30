@@ -73,16 +73,12 @@ def run(cmd_text, context, ui_state: UIState):
         core_loc = OnChipCoordinate.create(core_loc_str, device=context.devices[device_id])
         mem_reader = ELF.get_mem_reader(core_loc)
 
-        if isinstance(addr_arg, str):
-            addr, size_bytes = context.elf.parse_addr_size(addr_arg, mem_reader)
-        else:
-            addr, size_bytes = addr_arg, size_bytes_arg
+        addr, size_bytes = addr_arg, size_bytes_arg
 
         size_words = ((size_bytes + 3) // 4) if size_bytes else 1
 
         for offset in offsets:
-            offset_addr, _ = context.elf.parse_addr_size(offset, mem_reader)
-            addr += offset_addr
+            addr += offset
 
         print_a_burst_read(
             device_id,

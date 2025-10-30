@@ -8,7 +8,6 @@ from test.ttexalens.unit_tests.test_base import init_default_test_context
 from ttexalens.context import Context
 from ttexalens.elf import ElfVariable
 from ttexalens.firmware import ELF
-from ttexalens.parse_elf import mem_access
 
 
 class MemoryReaderWrapper:
@@ -75,40 +74,6 @@ class TestDebugSymbols(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.core_sim.set_reset(True)
-
-    def mem_access(self, symbol_name: str):
-        return mem_access(self.parsed_elf, symbol_name, TestDebugSymbols.mem_reader)[0][0]
-
-    def mem_access_constant(self, const_name: str):
-        return mem_access(self.parsed_elf, const_name, lambda x, y, z: [0])[3]
-
-    def test_mem_access(self):
-        self.assertEqual(0x11223344, self.mem_access_constant("c_uint32_t"))
-        self.assertEqual(0x5566778899AABBCC, self.mem_access_constant("c_uint64_t"))
-        self.assertEqual([0, 0, 0, 63], self.mem_access_constant("c_float"))
-        self.assertEqual([3, 87, 20, 139, 10, 191, 5, 64], self.mem_access_constant("c_double"))
-        self.assertEqual(0x5566778899AABBCC, self.mem_access("g_global_struct.b"))
-        self.assertEqual(0x11223344, self.mem_access("g_global_struct.a"))
-        self.assertEqual(0x5566778899AABBCC, self.mem_access("g_global_struct.b"))
-        for i in range(16):
-            self.assertEqual(i, self.mem_access(f"g_global_struct.c[{i}]"))
-        for i in range(4):
-            self.assertEqual(i * 2, self.mem_access(f"g_global_struct.d[{i}].x"))
-            self.assertEqual(i * 2 + 1, self.mem_access(f"g_global_struct.d[{i}].y"))
-        self.assertEqual(1073741824, self.mem_access("g_global_struct.f"))
-        self.assertEqual(4613303445314885379, self.mem_access("g_global_struct.g"))
-        for i in range(8):
-            self.assertEqual(i % 2 == 0, self.mem_access(f"g_global_struct.h[{i}]"))
-        self.assertEqual(2 * 2, self.mem_access("g_global_struct.p->x"))
-        self.assertEqual(2 * 2 + 1, self.mem_access("g_global_struct.p->y"))
-        self.assertEqual(1056964608, self.mem_access("g_global_struct.u.u32"))
-        self.assertEqual(1056964608, self.mem_access("g_global_struct.u.f32"))
-        self.assertEqual(0, self.mem_access("g_global_struct.u.bytes[0]"))
-        self.assertEqual(0, self.mem_access("g_global_struct.u.bytes[1]"))
-        self.assertEqual(0, self.mem_access("g_global_struct.u.bytes[2]"))
-        self.assertEqual(63, self.mem_access("g_global_struct.u.bytes[3]"))
-        self.assertEqual(0, self.mem_access("g_global_struct.u.words[0]"))
-        self.assertEqual(16128, self.mem_access("g_global_struct.u.words[1]"))
 
     def verify_global_struct_low_level(self, g_global_struct):
         self.assertEqual(0x11223344, g_global_struct.a.get_value())
