@@ -6,7 +6,7 @@ from __future__ import annotations
 import cxxfilt
 from elftools.dwarf.die import DIE as DWARF_DIE
 from elftools.dwarf.locationlists import LocationExpr
-from elftools.dwarf.ranges import RangeEntry
+from elftools.dwarf.ranges import BaseAddressEntry, RangeEntry
 from functools import cached_property
 import os
 import re
@@ -364,7 +364,19 @@ class ElfDie:
         elif "DW_AT_ranges" in self.attributes:
             assert self.cu.dwarf.range_lists is not None
             ranges = self.cu.dwarf.range_lists.get_range_list_at_offset(self.attributes["DW_AT_ranges"].value)
-            return [(r.begin_offset, r.end_offset) for r in ranges if isinstance(r, RangeEntry)]
+            address_ranges = []
+            base_address = None
+            for r in ranges:
+                if isinstance(r, BaseAddressEntry):
+                    base_address = r.base_address
+                elif isinstance(r, RangeEntry):
+                    if r.is_absolute:
+                        address_ranges.append((r.begin_offset, r.end_offset, True))
+                    elif base_address is None:
+                        address_ranges.append((r.begin_offset, r.end_offset, False))
+                    else:
+                        address_ranges.append((r.begin_offset + base_address, r.end_offset + base_address, True))
+            return address_ranges
         else:
             child_ranges = []
             for child in self.iter_children():
