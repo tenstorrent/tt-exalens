@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+import datetime
 import os
 import re
 import struct
@@ -351,7 +352,7 @@ def arc_msg(
     wait_for_done: bool,
     arg0: int,
     arg1: int,
-    timeout: int,
+    timeout: datetime.timedelta,
     context: Context | None = None,
     noc_id: int | None = None,
 ) -> list[int]:
@@ -364,7 +365,7 @@ def arc_msg(
         wait_for_done (bool): If True, waits for the message to be processed.
         arg0 (int): First argument to the message.
         arg1 (int): Second argument to the message.
-        timeout (int): Timeout in milliseconds.
+        timeout (datetime.timedelta): Timeout.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 

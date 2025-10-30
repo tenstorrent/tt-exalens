@@ -6,6 +6,7 @@ import os
 
 import itertools
 from functools import wraps
+from datetime import timedelta
 
 from parameterized import parameterized, parameterized_class
 
@@ -759,7 +760,7 @@ class TestARC(unittest.TestCase):
         wait_for_done = True
         arg0 = 0
         arg1 = 0
-        timeout = 1000
+        timeout = timedelta(milliseconds=1000)
 
         # Ask for reply, check for reasonable TEST value
         ret, return_3, _ = lib.arc_msg(
