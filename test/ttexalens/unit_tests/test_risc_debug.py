@@ -271,6 +271,9 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
 
     def test_debug_bus_signal_store_pc(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
         signal_store = self.core_sim.debug_bus_store
         pc_signal_name = self.core_sim.risc_name.lower() + "_pc"
 
