@@ -49,7 +49,8 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
     regs_to_include = args["<reg-list>"].split(",") if args["<reg-list>"] else []
     regs_to_include = [get_register_index(reg) for reg in regs_to_include]
 
-    reg_value = {}
+    reg_value: dict[str, dict[int, int]] = {}
+    callstack_value: dict[str, list] = {}
     halted_state = {}
     reset_state = {}
 
@@ -83,7 +84,7 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
                 elf_path = context.get_risc_elf_path(RiscLocation(loc, neo_id=None, risc_name=risc_name))
                 if elf_path is not None:
                     elf = lib.parse_elf(elf_path, context)
-                    reg_value[risc_name]["top_callstack"] = lib.top_callstack(risc.get_pc(), elf, None, context)
+                    callstack_value[risc_name] = lib.top_callstack(risc.get_pc(), elf, None, context)
             except:
                 # Unable to load ELF file for this RISC
                 pass
@@ -102,9 +103,10 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
                 row.append("")
                 continue
             src_location = ""
-            top_callstack = reg_value[risc_id].get("top_callstack", None)
-            if top_callstack is not None and len(top_callstack) > 0 and reg_id == 32:
-                src_location = f"- {top_callstack[0].file}:{top_callstack[0].line}"
+            if reg_id == 32:  # PC register
+                top_callstack = callstack_value.get(risc_id, None)
+                if top_callstack is not None and len(top_callstack) > 0:
+                    src_location = f"- {top_callstack[0].file}:{top_callstack[0].line}"
             row.append(f"0x{reg_value[risc_id][reg_id]:08x}{src_location}" if reg_id in reg_value[risc_id] else "-")
         table.append(row)
 
