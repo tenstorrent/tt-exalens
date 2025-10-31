@@ -270,7 +270,6 @@ class TestDebugging(unittest.TestCase):
         # Since simulator is slow, we need to wait a bit by reading something
         if self.core_sim.device.is_quasar():
             for i in range(50):
-                print(self.core_sim.read_data(0))
                 if self.core_sim.read_data(addr) == 0x87654000:
                     break
 
