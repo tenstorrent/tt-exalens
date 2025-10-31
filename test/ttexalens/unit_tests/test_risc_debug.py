@@ -2,12 +2,13 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import unittest
-from parameterized import parameterized_class
+from parameterized import parameterized_class, parameterized
 
 from ttexalens import tt_exalens_lib as lib
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from ttexalens.context import Context
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.hardware.baby_risc_debug import get_register_index
 from ttexalens.elf_loader import ElfLoader
 
@@ -103,7 +104,6 @@ class TestDebugging(unittest.TestCase):
             self.skipTest("Skipping Quasar test since it lasts for 1 hour on simulator.")
 
         risc_info = self.core_sim.risc_debug.risc_info
-
         if risc_info.default_code_start_address is None:
             self.skipTest(
                 "Default code start address doesn't exist for this RISC. Start address is always controlled by register."
@@ -275,6 +275,93 @@ class TestDebugging(unittest.TestCase):
 
         # Verify value at address
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
+
+    def test_debug_bus_signal_store_pc(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
+        signal_store = self.core_sim.debug_bus_store
+        pc_signal_name = self.core_sim.risc_name.lower() + "_pc"
+
+        # ebreak
+        self.core_sim.write_program(0, 0x00100073)
+
+        # Take risc out of reset
+        self.core_sim.set_reset(False)
+        assert self.core_sim.is_halted(), "Core should be halted after ebreak."
+
+        # simple test for pc signal
+        pc_value_32 = signal_store.read_signal(pc_signal_name)
+
+        group_name = signal_store.debug_bus_signals.get_group_for_signal(pc_signal_name)
+        l1_addr = 0x1000
+        samples = 1
+        sampling_interval = 2
+        group_values = signal_store.read_signal_group(
+            group_name, l1_addr, samples=samples, sampling_interval=sampling_interval
+        )
+        assert pc_signal_name in group_values.keys()
+        assert group_values[pc_signal_name][0] == pc_value_32
+
+    @parameterized.expand(
+        [
+            (1, 2),  # samples, sampling_interval
+            (11, 50),
+            (25, 100),
+            (40, 5),
+        ]
+    )
+    def test_debug_bus_signal_store_all_groups(self, samples, sampling_interval):
+        """Validate signal group readings for all groups on this core."""
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
+        WORD_SIZE_BITS = 32
+        signal_store = self.core_sim.debug_bus_store
+        l1_addr = 0x1000
+
+        for group in signal_store.debug_bus_signals.group_names:
+            if not group.startswith(self.core_sim.risc_name.lower() + "_"):
+                continue
+
+            group_values = signal_store.read_signal_group(
+                group, l1_addr, samples=samples, sampling_interval=sampling_interval
+            )
+
+            for signal_name, values in group_values.items():
+                # check number of samples taken
+                self.assertEqual(len(values), samples, f"{signal_name}: Expected {samples} samples, got {len(values)}")
+
+                # all samples should be equal
+                first_val = values[0]
+                self.assertTrue(
+                    all(v == first_val for v in values), f"{signal_name}: Inconsistent sampled values: {values}"
+                )
+
+                parts = signal_store.debug_bus_signals.get_signal_part_names(signal_name)
+
+                if signal_store.debug_bus_signals.is_combined_signal(signal_name):
+                    # combined signal
+                    combined_value = 0
+
+                    i = 0
+                    while i < len(parts):
+                        part = parts[i]
+                        part_value = signal_store.read_signal(part)
+                        part_desc = signal_store.get_signal_description(part)
+                        shift = (part_desc.mask & -part_desc.mask).bit_length() - 1
+                        combined_value |= part_value << (shift + i * WORD_SIZE_BITS)
+                        i += 1
+
+                    combined_value = signal_store._normalize_value(
+                        combined_value, signal_store.get_signal_description(parts[0]).mask
+                    )
+
+                    self.assertEqual(values[0], combined_value, f"Combined signal {signal_name} value mismatch.")
+                else:
+                    # single signal
+                    single_value = signal_store.read_signal(signal_name)
+                    self.assertEqual(values[0], single_value, f"Signal {signal_name} value mismatch.")
 
     def test_ebreak(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
@@ -1444,3 +1531,124 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.halt()
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
+
+    def test_invalid_rd_sel(self):
+        sig = DebugBusSignalDescription(rd_sel=4, daisy_sel=0, sig_sel=0)
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal(sig)
+        self.assertIn("rd_sel must be between 0 and 3", str(cm.exception))
+
+    def test_invalid_rd_sel(self):
+        sig = DebugBusSignalDescription(rd_sel=4, daisy_sel=0, sig_sel=0)
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal(sig)
+        self.assertIn("rd_sel must be between 0 and 3", str(cm.exception))
+
+    def test_invalid_daisy_sel(self):
+        sig = DebugBusSignalDescription(rd_sel=0, daisy_sel=256, sig_sel=0)
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal(sig)
+        self.assertIn("daisy_sel must be between 0 and 255", str(cm.exception))
+
+    def test_invalid_sig_sel(self):
+        sig = DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=65536)
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal(sig)
+        self.assertIn("sig_sel must be between 0 and 65535", str(cm.exception))
+
+    def test_invalid_mask(self):
+        sig = DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=0, mask=0xFFFFFFFFF)
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal(sig)
+        self.assertIn("mask must be a valid 32-bit integer", str(cm.exception))
+
+    def test_read_signal_group_invalid_samples(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
+        group_name = next(iter(self.core_sim.debug_bus_store.debug_bus_signals.group_map.keys()))
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal_group(
+                signal_group=group_name,
+                l1_address=0x1000,
+                samples=0,
+                sampling_interval=2,
+            )
+        self.assertIn("samples must be at least 1", str(cm.exception))
+
+    def test_read_signal_group_invalid_l1_address(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
+        group_name = next(iter(self.core_sim.debug_bus_store.debug_bus_signals.group_map.keys()))
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal_group(
+                signal_group=group_name,
+                l1_address=0x1001,
+                samples=1,
+                sampling_interval=2,
+            )
+        self.assertIn("L1 address must be 16-byte aligned", str(cm.exception))
+
+    def test_read_signal_group_invalid_sampling_interval(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
+        group_name = next(iter(self.core_sim.debug_bus_store.debug_bus_signals.group_map.keys()))
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal_group(
+                signal_group=group_name,
+                l1_address=0x1000,
+                samples=2,
+                sampling_interval=1,
+            )
+        self.assertIn("When samples > 1, sampling_interval must be between 2 and 256", str(cm.exception))
+
+    def test_read_signal_group_exceeds_memory(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
+        group_name = next(iter(self.core_sim.debug_bus_store.debug_bus_signals.group_map.keys()))
+        l1_address = 0x100000 - 16
+        samples = 4
+        sampling_interval = 10
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal_group(
+                signal_group=group_name,
+                l1_address=l1_address,
+                samples=samples,
+                sampling_interval=sampling_interval,
+            )
+        end_address = l1_address + (samples * self.core_sim.debug_bus_store.L1_SAMPLE_SIZE_BYTES) - 1
+        self.assertIn(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit", str(cm.exception))
+
+    def test_read_signal_group_invalid_signal_name(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
+        signal_name = "invalid_signal_name"
+        group_name = next(iter(self.core_sim.debug_bus_store.debug_bus_signals.group_map.keys()))
+        with self.assertRaises(ValueError) as cm:
+            group_sample = self.core_sim.debug_bus_store.read_signal_group(
+                signal_group=group_name,
+                l1_address=0x1000,
+                samples=4,
+                sampling_interval=10,
+            )
+            group_sample[signal_name]
+        self.assertIn(f"Signal '{signal_name}' does not exist in group '{group_name}'.", str(cm.exception))
+
+    def test_invalid_group_name(self):
+        if self.core_sim.device.is_blackhole():
+            self.skipTest("This test does not work on blackhole.")
+
+        group_name = "invalid_group_name"
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.debug_bus_signals.get_signal_names_in_group(group_name)
+        self.assertIn(f"Unknown group name '{group_name}'.", str(cm.exception))
+
+    def test_get_signal_description_invalid_signal_name(self):
+        signal_name = "invalid_signal_name"
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.debug_bus_signals.get_signal_description(signal_name)
+        self.assertIn(f"Unknown signal name '{signal_name}'.", str(cm.exception))

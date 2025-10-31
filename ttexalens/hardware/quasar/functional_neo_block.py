@@ -5,7 +5,7 @@
 from __future__ import annotations
 from functools import cache, cached_property
 from typing import Callable
-from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+from ttexalens.debug_bus_signal_store import DebugBusSignalStore, DebugBusSignals
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
@@ -24,6 +24,9 @@ from ttexalens.register_store import (
 
 if TYPE_CHECKING:
     from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
+
+# TODO(#650) Once signals are grouped, we can remove type hint
+group_names: dict[str, tuple[int, int]] = {}
 
 
 def get_register_base_address_callable(
@@ -49,6 +52,9 @@ def get_register_base_address_callable(
     return get_register_base_address
 
 
+debug_bus_signals_initialization = DebugBusSignals(group_names, debug_bus_signal_map)
+
+
 class QuasarFunctionalNeoBlock:
     def __init__(
         self,
@@ -62,7 +68,7 @@ class QuasarFunctionalNeoBlock:
 
         self.noc_block = noc_block
         self.neo_id = neo_id
-        self.debug_bus = DebugBusSignalStore(debug_bus_signal_map, noc_block, neo_id)
+        self.debug_bus = DebugBusSignalStore(debug_bus_signals_initialization, noc_block, neo_id)
         # TODO: This register initialization should be moved to global scope to avoid its calculation every time object is created
         # TODO: It should be done once Quasar is finalized and we know all about its hardware. For simulator we create only few of these blocks
         register_store_initialization = RegisterStore.create_initialization(
