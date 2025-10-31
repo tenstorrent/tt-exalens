@@ -319,3 +319,13 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(f"{g_global_struct.f:.2f}", format(2.0, ".2f"))
         self.assertEqual(format(g_global_struct.g, ".5f"), format(2.718281828459, ".5f"))
         self.assertEqual(format(g_global_struct.h[2], ""), format(True, ""))
+
+    def test_elf_variable_write_value(self):
+        g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_access)
+        g_global_struct.a.write_value(0xDEADBEEF)
+        self.assertEqual(0xDEADBEEF, g_global_struct.a)
+        g_global_struct.a.write_value(0x11223344)  # Restore original value
+        self.assertRaises(Exception, g_global_struct.a.write_value, 2.5)  # Rounding with float
+        self.assertRaises(Exception, g_global_struct.f.write_value, 0xFFFFFFFF)  # Overflow uint32 on float32
+        self.assertRaises(Exception, g_global_struct.f.write_value, 3.4028235e38 * 2)  # Overflow float32
+        self.assertRaises(Exception, g_global_struct.g.write_value, 0xFFFFFFFFFFFFFFFF)  # Overflow uint64 on float64

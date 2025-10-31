@@ -239,7 +239,7 @@ class ElfVariable:
         else:
             return int.from_bytes(value_bytes, byteorder="little")
 
-    def write_value(self, value: int | float | bool) -> None:
+    def write_value(self, value: int | float | bool, check_data_loss: bool = True) -> None:
         # Check that type_die is a basic type
         if not self.__type_die.tag_is("base_type"):
             raise Exception(f"ERROR: {self.__type_die.name} is not a base type")
@@ -248,12 +248,31 @@ class ElfVariable:
         assert self.__type_die.size is not None
         if self.__type_die.name == "float":
             value_bytes = struct.pack("f", value)
+            if len(value_bytes) > self.__type_die.size:
+                value_bytes = value_bytes[: self.__type_die.size]
+            if check_data_loss:
+                # Verify no data loss
+                unpacked_value = struct.unpack("f", value_bytes)[0]
+                if unpacked_value != value:
+                    raise Exception(f"ERROR: Data loss when writing float value {value} to variable")
         elif self.__type_die.name == "double":
             value_bytes = struct.pack("d", value)
+            if len(value_bytes) > self.__type_die.size:
+                value_bytes = value_bytes[: self.__type_die.size]
+            if check_data_loss:
+                # Verify no data loss
+                unpacked_value = struct.unpack("d", value_bytes)[0]
+                if unpacked_value != value:
+                    raise Exception(f"ERROR: Data loss when writing double value {value} to variable")
         elif self.__type_die.name == "bool":
             value_bytes = (1 if value else 0).to_bytes(self.__type_die.size, byteorder="little")
         else:
             value_bytes = int(value).to_bytes(self.__type_die.size, byteorder="little")
+            if check_data_loss:
+                # Verify no data loss
+                unpacked_value = int.from_bytes(value_bytes, byteorder="little")
+                if unpacked_value != value:
+                    raise Exception(f"ERROR: Data loss when writing integer value {value} to variable")
 
         # Write the value to memory
         self.__mem_access.write(self.__address, value_bytes)
