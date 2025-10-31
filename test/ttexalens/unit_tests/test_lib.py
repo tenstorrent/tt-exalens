@@ -19,10 +19,9 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
-from ttexalens.firmware import ELF
+from ttexalens.elf import MemoryAccess
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.risc_debug import CallstackEntry, RiscDebug
-from ttexalens.object import DataArray
 
 from ttexalens.hw.arc.arc import load_arc_fw
 from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
@@ -592,11 +591,9 @@ class TestRunElf(unittest.TestCase):
         rloader = ElfLoader(rdbg)
 
         elf = lib.parse_elf(elf_path)
-        mem_reader = ELF.get_mem_reader(
-            risc_debug.location, risc_debug.risc_location.risc_name, risc_debug.risc_location.neo_id
-        )
-        mailbox = elf.get_global("g_MAILBOX", mem_reader)
-        testbyteaccess = elf.get_global("g_TESTBYTEACCESS", mem_reader)
+        mem_access = MemoryAccess.get(risc_debug)
+        mailbox = elf.get_global("g_MAILBOX", mem_access)
+        testbyteaccess = elf.get_global("g_TESTBYTEACCESS", mem_access)
 
         # Disable branch rediction due to bne instruction in the elf
         rdbg.set_branch_prediction(False)
@@ -620,7 +617,7 @@ class TestRunElf(unittest.TestCase):
 
         # Step 2: Write 0x1234 to the mailbox to resume operation.
         try:
-            rloader.write_block(mailbox.get_address(), 0x1234.to_bytes(4, "little"))
+            mailbox.write_value(0x1234)
         except Exception as e:
             if e.args[0].startswith("Failed to continue"):
                 # We are expecting this to assert as here, the core will halt istself by calling halt()
@@ -671,7 +668,7 @@ class TestRunElf(unittest.TestCase):
                     pass
                 else:
                     raise e
-            mbox_val = mailbox.get_value()
+            mbox_val = mailbox.read_value()
             # Step 5b: Continue RISC
             timeout_retries -= 1
 

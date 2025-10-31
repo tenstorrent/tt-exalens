@@ -14,8 +14,8 @@ from ttexalens import Verbosity
 import ttexalens.util as util
 from ttexalens.elf.dwarf import ElfDwarf, ElfDwarfWithOffset
 from ttexalens.elf.frame import FrameInfoProvider, FrameInfoProviderWithOffset
-from ttexalens.elf.variable import ElfVariable
-from typing import TYPE_CHECKING, Callable
+from ttexalens.elf.variable import ElfVariable, MemoryAccess
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ttexalens.elf.die import ElfDie
@@ -190,7 +190,7 @@ class ParsedElfFile:
     def frame_info(self) -> FrameInfoProvider:
         return FrameInfoProvider(self._dwarf.dwarf)
 
-    def get_global(self, name: str, mem_access_function: Callable[[int, int, int], list[int]]) -> ElfVariable:
+    def get_global(self, name: str, mem_access: MemoryAccess) -> ElfVariable:
         """
         Given a global variable name, return an ElfVariable object that can be used to access it
         """
@@ -201,14 +201,15 @@ class ParsedElfFile:
         if address is None:
             raise Exception(f"ERROR: Cannot find address of global variable {name} in ELF DWARF info")
         if die.value is not None and die.resolved_type.tag_is("pointer_type"):
-            return ElfVariable(die.resolved_type.dereference_type, address, mem_access_function)
-        return ElfVariable(die.resolved_type, address, mem_access_function)
+            assert die.resolved_type.dereference_type is not None
+            return ElfVariable(die.resolved_type.dereference_type, address, mem_access)
+        return ElfVariable(die.resolved_type, address, mem_access)
 
-    def read_global(self, name: str, mem_access_function: Callable[[int, int, int], list[int]]) -> ElfVariable:
+    def read_global(self, name: str, mem_access: MemoryAccess) -> ElfVariable:
         """
         Given a global variable name, return an ElfVariable object that has been read
         """
-        return self.get_global(name, mem_access_function).read()
+        return self.get_global(name, mem_access).read()
 
     def get_constant(self, name: str):
         die = self.variables.get(name)

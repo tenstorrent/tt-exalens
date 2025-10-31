@@ -6,17 +6,12 @@ This module is used to represent the firmware
 """
 
 import time
-from typing import Callable
 from ttexalens.elf import ParsedElfFile, read_elf
 from ttexalens import util as util
 
 import re
 from fuzzywuzzy import process, fuzz
 from sys import getsizeof
-
-from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.hardware.risc_debug import RiscDebug
 
 
 class FAKE_DIE(object):
@@ -123,60 +118,3 @@ class ELF:
 
                 ret_val[val] = name[name.rfind("::") + 2 :]
         return ret_val
-
-    @staticmethod
-    def get_mem_reader(
-        location: OnChipCoordinate, risc_name: str | None = None, neo_id: int | None = None
-    ) -> Callable[[int, int, int], list[int]]:
-        """
-        Returns a simple memory reader function that reads from a given device and a given core.
-        """
-        from ttexalens.tt_exalens_lib import read_from_device
-
-        # Initialization
-        device = location._device
-        private_memory: MemoryBlock | None = None
-        risc_debug: RiscDebug | None = None
-        word_size = 4
-        if risc_name is not None:
-            noc_block = device.get_block(location)
-            risc_debug = noc_block.get_risc_debug(risc_name, neo_id)
-            private_memory = risc_debug.get_data_private_memory()
-
-        def mem_reader(addr: int, size_bytes: int, elements_to_read: int) -> list[int]:
-            if elements_to_read == 0:
-                return []
-            element_size = size_bytes // elements_to_read
-            assert element_size * elements_to_read == size_bytes, "Size must be divisible by number of elements"
-
-            bytes_data: bytes | None = None
-            if risc_name is not None:
-                # Check if address is in private memory
-                if (
-                    private_memory is not None
-                    and risc_debug is not None
-                    and private_memory.contains_private_address(addr)
-                ):
-                    # We need to read aligned to 4 bytes
-                    aligned_start = addr - (addr % word_size)
-                    aligned_end = ((addr + size_bytes + word_size - 1) // word_size) * word_size
-
-                    # Figure out how many words to read
-                    words_to_read = (aligned_end - aligned_start) // word_size
-
-                    with risc_debug.ensure_private_memory_access():
-                        words = [risc_debug.read_memory(aligned_start + i * word_size) for i in range(words_to_read)]
-
-                    # Convert words to bytes and remove extra bytes
-                    bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in words)
-                    bytes_data = bytes_data[addr - aligned_start : addr - aligned_start + size_bytes]
-
-            if bytes_data is None:
-                bytes_data = read_from_device(location=location, addr=addr, num_bytes=size_bytes)
-
-            return [
-                int.from_bytes(bytes_data[i * element_size : (i + 1) * element_size], byteorder="little")
-                for i in range(elements_to_read)
-            ]
-
-        return mem_reader

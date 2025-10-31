@@ -6,44 +6,38 @@ import unittest
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from ttexalens.context import Context
-from ttexalens.elf import ElfVariable
-from ttexalens.firmware import ELF
+from ttexalens.elf import ElfVariable, MemoryAccess
 
 
-class MemoryReaderWrapper:
+class MemoryAccessWrapper(MemoryAccess):
     """
     Wrapper around ELF memory reader that collects basic statistics about memory access.
     Maintains the same interface as the original memory reader.
     """
 
-    def __init__(self, mem_reader):
-        self._mem_reader = mem_reader
-        self.call_count = 0
-        self.total_bytes_transferred = 0
+    def __init__(self, mem_access: MemoryAccess):
+        self._mem_access = mem_access
+        self.read_count = 0
+        self.total_bytes_read = 0
+        self.write_count = 0
+        self.total_bytes_written = 0
 
-    def __call__(self, address: int, size_bytes: int, elements_to_read: int) -> list[int]:
-        """
-        Call the underlying memory reader and collect statistics.
+    def read(self, address: int, size_bytes: int) -> bytes:
+        self.read_count += 1
+        self.total_bytes_read += size_bytes
+        return self._mem_access.read(address, size_bytes)
 
-        Args:
-            address: Memory address to read from
-            size_bytes: Total number of bytes to read
-            elements_to_read: Number of elements to read
-
-        Returns:
-            List of integers read from memory
-        """
-        # Update statistics
-        self.call_count += 1
-        self.total_bytes_transferred += size_bytes
-
-        # Call the actual memory reader
-        return self._mem_reader(address, size_bytes, elements_to_read)
+    def write(self, address: int, data: bytes) -> None:
+        self.write_count += 1
+        self.total_bytes_written += len(data)
+        return self._mem_access.write(address, data)
 
     def reset_stats(self):
         """Reset all statistics counters."""
-        self.call_count = 0
-        self.total_bytes_transferred = 0
+        self.read_count = 0
+        self.total_bytes_read = 0
+        self.write_count = 0
+        self.total_bytes_written = 0
 
 
 class TestDebugSymbols(unittest.TestCase):
@@ -63,11 +57,9 @@ class TestDebugSymbols(unittest.TestCase):
         cls.core_sim.load_elf("globals_test.release")
         cls.parsed_elf = cls.core_sim.parse_elf("globals_test.release")
 
-        # Create the memory reader wrapper
-        original_mem_reader = ELF.get_mem_reader(
-            risc_debug.risc_location.location, risc_debug.risc_location.risc_name, risc_debug.risc_location.neo_id
-        )
-        cls.mem_reader = MemoryReaderWrapper(original_mem_reader)
+        # Create the memory access wrapper
+        original_mem_access = MemoryAccess.get(risc_debug)
+        cls.mem_access = MemoryAccessWrapper(original_mem_access)
 
         assert not cls.core_sim.is_in_reset()
 
@@ -76,34 +68,34 @@ class TestDebugSymbols(unittest.TestCase):
         cls.core_sim.set_reset(True)
 
     def verify_global_struct_low_level(self, g_global_struct):
-        self.assertEqual(0x11223344, g_global_struct.a.get_value())
-        self.assertEqual(0x5566778899AABBCC, g_global_struct.b.get_value())
+        self.assertEqual(0x11223344, g_global_struct.a.read_value())
+        self.assertEqual(0x5566778899AABBCC, g_global_struct.b.read_value())
         self.assertEqual(16, len(g_global_struct.c))
         for i in range(16):
-            self.assertEqual(i, g_global_struct.c[i].get_value())
+            self.assertEqual(i, g_global_struct.c[i].read_value())
         self.assertEqual(4, len(g_global_struct.d))
         for i in range(4):
-            self.assertEqual(i * 2, g_global_struct.d[i].x.get_value())
-            self.assertEqual(i * 2 + 1, g_global_struct.d[i].y.get_value())
-        self.assertEqual(2, g_global_struct.f.get_value())
-        self.assertEqual(2.718281828459, g_global_struct.g.get_value())
+            self.assertEqual(i * 2, g_global_struct.d[i].x.read_value())
+            self.assertEqual(i * 2 + 1, g_global_struct.d[i].y.read_value())
+        self.assertEqual(2, g_global_struct.f.read_value())
+        self.assertEqual(2.718281828459, g_global_struct.g.read_value())
         self.assertEqual(8, len(g_global_struct.h))
         for i in range(8):
-            self.assertEqual(i % 2 == 0, g_global_struct.h[i].get_value())
-        self.assertEqual(2 * 2, g_global_struct.p.x.get_value())
-        self.assertEqual(2 * 2 + 1, g_global_struct.p.y.get_value())
-        self.assertEqual(1056964608, g_global_struct.u.u32.get_value())
-        self.assertEqual(0.5, g_global_struct.u.f32.get_value())
-        self.assertEqual(0, g_global_struct.u.bytes[0].get_value())
-        self.assertEqual(0, g_global_struct.u.bytes[1].get_value())
-        self.assertEqual(0, g_global_struct.u.bytes[2].get_value())
-        self.assertEqual(63, g_global_struct.u.bytes[3].get_value())
-        self.assertEqual(0, g_global_struct.u.words[0].get_value())
-        self.assertEqual(16128, g_global_struct.u.words[1].get_value())
-        self.assertEqual(0x12345678, g_global_struct.msg.test.get_value())
-        self.assertEqual(0xAABBCCDD, g_global_struct.msg.packed.get_value())
-        self.assertEqual(0xAA, g_global_struct.msg.signal.get_value())
-        self.assertEqual(0x87654321, g_global_struct.msg.test2.get_value())
+            self.assertEqual(i % 2 == 0, g_global_struct.h[i].read_value())
+        self.assertEqual(2 * 2, g_global_struct.p.x.read_value())
+        self.assertEqual(2 * 2 + 1, g_global_struct.p.y.read_value())
+        self.assertEqual(1056964608, g_global_struct.u.u32.read_value())
+        self.assertEqual(0.5, g_global_struct.u.f32.read_value())
+        self.assertEqual(0, g_global_struct.u.bytes[0].read_value())
+        self.assertEqual(0, g_global_struct.u.bytes[1].read_value())
+        self.assertEqual(0, g_global_struct.u.bytes[2].read_value())
+        self.assertEqual(63, g_global_struct.u.bytes[3].read_value())
+        self.assertEqual(0, g_global_struct.u.words[0].read_value())
+        self.assertEqual(16128, g_global_struct.u.words[1].read_value())
+        self.assertEqual(0x12345678, g_global_struct.msg.test.read_value())
+        self.assertEqual(0xAABBCCDD, g_global_struct.msg.packed.read_value())
+        self.assertEqual(0xAA, g_global_struct.msg.signal.read_value())
+        self.assertEqual(0x87654321, g_global_struct.msg.test2.read_value())
 
     def verify_global_struct(self, g_global_struct):
         self.assertEqual(0x11223344, g_global_struct.a)
@@ -129,40 +121,43 @@ class TestDebugSymbols(unittest.TestCase):
 
     def test_elf_variable_low_level(self):
         variable_die = self.parsed_elf.variables["g_global_struct"]
-        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_reader)
+        assert variable_die.address is not None
+        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
         self.verify_global_struct_low_level(g_global_struct)
 
     def test_elf_variable(self):
         variable_die = self.parsed_elf.variables["g_global_struct"]
-        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_reader)
+        assert variable_die.address is not None
+        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
         self.verify_global_struct(g_global_struct)
 
     def test_read_elf_variable(self):
         variable_die = self.parsed_elf.variables["g_global_struct"]
-        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_reader)
+        assert variable_die.address is not None
+        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
         self.verify_global_struct(g_global_struct.read())
 
     def test_elf_global_variable(self):
-        self.mem_reader.reset_stats()
-        g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_reader)
+        self.mem_access.reset_stats()
+        g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_access)
         self.verify_global_struct(g_global_struct)
-        self.assertGreater(self.mem_reader.call_count, 1)
+        self.assertGreater(self.mem_access.read_count, 1)
 
     def test_read_elf_global_variable(self):
-        self.mem_reader.reset_stats()
-        g_global_struct = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_reader)
+        self.mem_access.reset_stats()
+        g_global_struct = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_access)
         self.verify_global_struct(g_global_struct)
-        self.assertEqual(self.mem_reader.call_count, 1)
+        self.assertEqual(self.mem_access.read_count, 1)
 
     def test_elf_const_global_variable(self):
-        g_global_struct = self.parsed_elf.get_global("g_global_const_struct_ptr", TestDebugSymbols.mem_reader)
+        g_global_struct = self.parsed_elf.get_global("g_global_const_struct_ptr", TestDebugSymbols.mem_access)
         self.verify_global_struct(g_global_struct)
 
     def test_read_elf_const_global_variable(self):
-        self.mem_reader.reset_stats()
-        g_global_struct = self.parsed_elf.read_global("g_global_const_struct_ptr", TestDebugSymbols.mem_reader)
+        self.mem_access.reset_stats()
+        g_global_struct = self.parsed_elf.read_global("g_global_const_struct_ptr", TestDebugSymbols.mem_access)
         self.verify_global_struct(g_global_struct)
-        self.assertEqual(self.mem_reader.call_count, 1)
+        self.assertEqual(self.mem_access.read_count, 1)
 
     def test_elf_variable_constants(self):
         self.assertEqual(0x11223344, self.parsed_elf.get_constant("c_uint32_t"))
@@ -172,35 +167,38 @@ class TestDebugSymbols(unittest.TestCase):
 
     def test_elf_variable_array_iteration(self):
         variable_die = self.parsed_elf.variables["g_global_struct"]
-        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_reader)
-        c_values = [var.get_value() for var in g_global_struct.c]
+        assert variable_die.address is not None
+        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
+        c_values = [var.read_value() for var in g_global_struct.c]
         self.assertEqual(list(range(16)), c_values)
-        d_x_values = [var.x.get_value() for var in g_global_struct.d]
-        d_y_values = [var.y.get_value() for var in g_global_struct.d]
+        d_x_values = [var.x.read_value() for var in g_global_struct.d]
+        d_y_values = [var.y.read_value() for var in g_global_struct.d]
         self.assertEqual([i * 2 for i in range(4)], d_x_values)
         self.assertEqual([i * 2 + 1 for i in range(4)], d_y_values)
-        h_values = [var.get_value() for var in g_global_struct.h]
+        h_values = [var.read_value() for var in g_global_struct.h]
         self.assertEqual([i % 2 == 0 for i in range(8)], h_values)
 
     def test_elf_variable_array_as_list(self):
         variable_die = self.parsed_elf.variables["g_global_struct"]
-        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_reader)
-        c_values = [var.get_value() for var in g_global_struct.c.as_list()]
+        assert variable_die.address is not None
+        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
+        c_values = [var.read_value() for var in g_global_struct.c.as_list()]
         self.assertEqual(list(range(16)), c_values)
-        d_x_values = [var.x.get_value() for var in g_global_struct.d.as_list()]
-        d_y_values = [var.y.get_value() for var in g_global_struct.d.as_list()]
+        d_x_values = [var.x.read_value() for var in g_global_struct.d.as_list()]
+        d_y_values = [var.y.read_value() for var in g_global_struct.d.as_list()]
         self.assertEqual([i * 2 for i in range(4)], d_x_values)
         self.assertEqual([i * 2 + 1 for i in range(4)], d_y_values)
-        h_values = [var.get_value() for var in g_global_struct.h.as_list()]
+        h_values = [var.read_value() for var in g_global_struct.h.as_list()]
         self.assertEqual([i % 2 == 0 for i in range(8)], h_values)
 
     def test_elf_variable_array_as_value_list(self):
         variable_die = self.parsed_elf.variables["g_global_struct"]
-        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_reader)
+        assert variable_die.address is not None
+        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
         c_values = g_global_struct.c.as_value_list()
         self.assertEqual(list(range(16)), c_values)
-        d_x_values = [var.x.get_value() for var in g_global_struct.d.as_list()]
-        d_y_values = [var.y.get_value() for var in g_global_struct.d.as_list()]
+        d_x_values = [var.x.read_value() for var in g_global_struct.d.as_list()]
+        d_y_values = [var.y.read_value() for var in g_global_struct.d.as_list()]
         self.assertEqual([i * 2 for i in range(4)], d_x_values)
         self.assertEqual([i * 2 + 1 for i in range(4)], d_y_values)
         h_values = g_global_struct.h.as_value_list()
@@ -208,15 +206,15 @@ class TestDebugSymbols(unittest.TestCase):
 
     def test_elf_variable_operators(self):
         """Test arithmetic, bitwise, and comparison operators"""
-        self.mem_reader.reset_stats()
+        self.mem_access.reset_stats()
 
-        g_global_struct = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_reader)
+        g_global_struct = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_access)
 
         # Test that we didn't do any additional memory reads
-        self.assertEqual(self.mem_reader.call_count, 1)
+        self.assertEqual(self.mem_access.read_count, 1)
 
         # Reset memory reader stats
-        self.mem_reader.reset_stats()
+        self.mem_access.reset_stats()
 
         # Test comparison operators with integers
         self.assertTrue(g_global_struct.a == g_global_struct.a)
@@ -298,12 +296,12 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(g_global_struct["u"].get_member("bytes")[3], 63)
 
         # Test that we didn't do any additional memory reads
-        self.assertEqual(self.mem_reader.call_count, 0)
-        self.assertEqual(self.mem_reader.total_bytes_transferred, 0)
+        self.assertEqual(self.mem_access.read_count, 0)
+        self.assertEqual(self.mem_access.total_bytes_read, 0)
 
     def test_elf_variable_hash(self):
-        g_global_struct1 = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_reader)
-        g_global_struct2 = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_reader)
+        g_global_struct1 = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_access)
+        g_global_struct2 = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_access)
         self.assertEqual(hash(g_global_struct1), hash(g_global_struct2))
         self.assertEqual(hash(g_global_struct1.a), hash(g_global_struct2.a))
         self.assertEqual(hash(g_global_struct1.b), hash(g_global_struct2.b))
@@ -313,7 +311,7 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(hash(g_global_struct1.h[3]), hash(g_global_struct2.h[3]))
 
     def test_elf_variable_format(self):
-        g_global_struct = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_reader)
+        g_global_struct = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_access)
         self.assertEqual(format(g_global_struct.a, "010x"), format(0x11223344, "010x"))
         self.assertEqual(format(g_global_struct.b, "X"), format(0x5566778899AABBCC, "X"))
         self.assertEqual(format(g_global_struct.c[10], "d"), format(10, "d"))
