@@ -293,13 +293,13 @@ std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chi
 }
 
 std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> umd_implementation::get_firmware_version(uint8_t chip_id) {
+    tt::umd::semver_t firmware_version(0, 0, 0);
     try {
-        const auto& firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
-        return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
+        firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
     } catch (const std::runtime_error& e) {
         _configure_working_active_eth(cluster, chip_id);
-        const auto& firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
-        return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
+        firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
     }
+    return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
 }
 }  // namespace tt::exalens
