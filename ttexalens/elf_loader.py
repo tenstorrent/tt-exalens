@@ -243,7 +243,7 @@ class ElfLoader:
         self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address
 
-    def load_elf(self, elf_path: str):
+    def load_elf(self, elf_path: str, return_start_address: bool = False) -> None | int:
         # Risc must be in reset
         assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.risc_location} is not in reset."
 
@@ -251,7 +251,10 @@ class ElfLoader:
         init_section_address = self.load_elf_sections(elf_path, loader_data=".loader_init", loader_code=".loader_code")
         assert init_section_address is not None, "No .init section found in the ELF file"
 
-        self.risc_debug.set_code_start_address(init_section_address)
+        if return_start_address:
+            return init_section_address
+        else:
+            self.risc_debug.set_code_start_address(init_section_address)
 
     def run_elf(self, elf_path: str):
         # Make sure risc is in reset
