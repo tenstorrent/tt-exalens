@@ -32,7 +32,7 @@ void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
     throw std::runtime_error("Failed to configure working active Ethernet");
 }
 // TODO #375: Remove read/write unaligned functions once UMD implements ability to set unaligned access for our TLB
-void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_ptr, chip_id_t chip,
+void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip,
                                            tt::umd::CoreCoord core, uint64_t addr, uint32_t size) {
     // Read first unaligned word
     uint32_t first_unaligned_index = addr % 4;
@@ -67,7 +67,7 @@ void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_
     }
 }
 
-void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, chip_id_t chip, tt::umd::CoreCoord core,
+void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip, tt::umd::CoreCoord core,
                                     uint64_t addr, uint32_t size) {
     try {
         read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
@@ -78,7 +78,7 @@ void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ch
 }
 
 void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
-                                          chip_id_t chip, tt::umd::CoreCoord core, uint64_t addr) {
+                                          ChipId chip, tt::umd::CoreCoord core, uint64_t addr) {
     {
         // Read/Write first unaligned word
         uint32_t first_unaligned_index = addr % 4;
@@ -118,8 +118,8 @@ void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void*
     }
 }
 
-void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
-                                   chip_id_t chip, tt::umd::CoreCoord core, uint64_t addr) {
+void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes, ChipId chip,
+                                   tt::umd::CoreCoord core, uint64_t addr) {
     try {
         write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
     } catch (const std::exception& e) {
