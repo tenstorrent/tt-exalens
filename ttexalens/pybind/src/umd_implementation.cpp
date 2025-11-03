@@ -15,10 +15,13 @@ namespace tt::exalens {
 
 void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
     ChipId mmio_chip_id = cluster->get_cluster_description()->get_closest_mmio_capable_chip(chip_id);
-    for (auto channel : cluster->get_cluster_description()->get_active_eth_channels(mmio_chip_id)) {
-        std::unordered_set<tt::umd::CoreCoord> active_eth_core = {
-            cluster->get_soc_descriptor(mmio_chip_id).get_eth_core_for_channel(channel, CoordSystem::LOGICAL)};
-        cluster->configure_active_ethernet_cores_for_mmio_device(mmio_chip_id, active_eth_core);
+    std::unordered_set<tt::umd::CoreCoord> active_eth_cores =
+        cluster->get_soc_descriptor(mmio_chip_id)
+            .get_eth_cores_for_channels(cluster->get_cluster_description()->get_active_eth_channels(mmio_chip_id),
+                                        CoordSystem::LOGICAL);
+    for (auto core : active_eth_cores) {
+        cluster->configure_active_ethernet_cores_for_mmio_device(mmio_chip_id,
+                                                                 std::unordered_set<tt::umd::CoreCoord>({core}));
         try {
             tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
             return;
@@ -287,7 +290,6 @@ std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chi
         _configure_working_active_eth(cluster, chip_id);
         return read_arc_telemetry_entry_helper(chip_id, telemetry_tag);
     }
-    return {};
 }
 
 std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> umd_implementation::get_firmware_version(uint8_t chip_id) {
