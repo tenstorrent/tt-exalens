@@ -6,6 +6,7 @@ from ttexalens import tt_exalens_lib as lib
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug, BabyRiscDebugHardware, get_register_index
 
 
@@ -39,6 +40,7 @@ class RiscvCoreSimulator:
         assert debug_bus is not None
         self.debug_bus_store: DebugBusSignalStore = debug_bus
         self.program_base_address = self.risc_debug.risc_info.get_code_start_address(self.risc_debug.register_store)
+        self.loader = ElfLoader(self.risc_debug)
 
         # Initialize core in reset state
         self.set_reset(True)
@@ -74,7 +76,11 @@ class RiscvCoreSimulator:
                 return dram_cores[core_index].to_str()
             raise ValueError(f"DRAM core {core_index} not available on this platform")
 
-        raise ValueError(f"Unknown core description {self.core_desc}")
+        try:
+            OnChipCoordinate.create(self.core_desc, device=self.device)
+            return self.core_desc
+        except KeyError:
+            raise ValueError(f"Unknown core description {self.core_desc}")
 
     def write_program(self, addr: int, data: int | list[int]):
         """Write program code data at specified address offset."""
@@ -203,3 +209,22 @@ class RiscvCoreSimulator:
 
     def read_status(self):
         return self.debug_hardware.read_status()
+
+    def get_elf_path(self, app_name):
+        """Get the path to the ELF file."""
+        arch = self.device._arch.lower()
+        if arch == "wormhole_b0":
+            arch = "wormhole"
+        if self.risc_name.lower().startswith("erisc"):
+            # For eriscs we can use brisc elf
+            return f"build/riscv-src/{arch}/{app_name}.brisc.elf"
+        else:
+            return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
+
+    def load_elf(self, app_name: str):
+        elf_path = self.get_elf_path(app_name)
+        self.loader.run_elf(elf_path)
+
+    def parse_elf(self, app_name: str):
+        elf_path = self.get_elf_path(app_name)
+        return lib.parse_elf(elf_path, self.context)

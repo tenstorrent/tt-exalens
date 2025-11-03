@@ -42,7 +42,6 @@ from ttexalens.uistate import UIState
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import read_words_from_device, read_word_from_device
-from ttexalens.firmware import ELF
 from ttexalens.object import DataArray
 from ttexalens import command_parser, util as util
 
@@ -71,18 +70,13 @@ def run(cmd_text, context, ui_state: UIState):
 
     def process_device(device_id):
         core_loc = OnChipCoordinate.create(core_loc_str, device=context.devices[device_id])
-        mem_reader = ELF.get_mem_reader(core_loc)
 
-        if isinstance(addr_arg, str):
-            addr, size_bytes = context.elf.parse_addr_size(addr_arg, mem_reader)
-        else:
-            addr, size_bytes = addr_arg, size_bytes_arg
+        addr, size_bytes = addr_arg, size_bytes_arg
 
         size_words = ((size_bytes + 3) // 4) if size_bytes else 1
 
         for offset in offsets:
-            offset_addr, _ = context.elf.parse_addr_size(offset, mem_reader)
-            addr += offset_addr
+            addr += offset
 
         print_a_burst_read(
             device_id,
