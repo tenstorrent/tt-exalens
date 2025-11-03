@@ -293,9 +293,13 @@ def load_elf(
         risc_debug = loc.noc_block.get_risc_debug(risc_name, neo_id)
         elf_loader = ElfLoader(risc_debug)
         start_address = elf_loader.load_elf(elf_file, return_start_address=return_start_address)
-        returns.append(start_address)
+        if return_start_address:
+            assert start_address is not None
+            returns.append(start_address)
     if return_start_address:
         return returns if len(returns) > 1 else returns[0]
+    else:
+        return None
 
 
 def run_elf(

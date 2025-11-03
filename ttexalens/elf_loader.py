@@ -255,6 +255,7 @@ class ElfLoader:
             return init_section_address
         else:
             self.risc_debug.set_code_start_address(init_section_address)
+            return None
 
     def run_elf(self, elf_path: str):
         # Make sure risc is in reset
