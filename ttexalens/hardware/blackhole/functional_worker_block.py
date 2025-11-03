@@ -5,12 +5,12 @@
 from functools import cache, cached_property
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.debug_bus_signal_store import DebugBusSignalStore, DebugBusSignals
+from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.blackhole.baby_risc_debug import BlackholeBabyRiscDebug
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import debug_bus_signal_map
+from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import debug_bus_signal_map, group_map
 from ttexalens.hardware.blackhole.functional_worker_registers import register_map
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
@@ -21,10 +21,6 @@ from ttexalens.register_store import (
     RegisterDescription,
     RegisterStore,
 )
-
-
-# TODO(#651) Once signals are grouped, we can remove type hint
-group_names: dict[str, tuple[int, int]] = {}
 
 
 def get_register_base_address_callable(noc_id: int) -> Callable[[RegisterDescription], DeviceAddress]:
@@ -52,7 +48,7 @@ register_store_noc0_initialization = RegisterStore.create_initialization(
 register_store_noc1_initialization = RegisterStore.create_initialization(
     [register_map, niu_register_map], get_register_base_address_callable(noc_id=1)
 )
-debug_bus_signals_initialization = DebugBusSignals(group_names, debug_bus_signal_map)
+debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
 
 class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):

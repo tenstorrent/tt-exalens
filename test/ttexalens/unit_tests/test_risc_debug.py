@@ -8,7 +8,7 @@ from ttexalens import tt_exalens_lib as lib
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from ttexalens.context import Context
-from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.hardware.baby_risc_debug import get_register_index
 from ttexalens.elf_loader import ElfLoader
 
@@ -270,9 +270,16 @@ class TestDebugging(unittest.TestCase):
         # Verify value at address
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
 
+    def _get_group_for_signal(self, signal_store: DebugBusSignalStore, signal: str) -> str:
+        """Get the group name for a given signal name."""
+        for group_name, group_dict in signal_store.signal_groups.items():
+            if signal_store.get_base_signal_name(signal) in group_dict:
+                return group_name
+        return ""
+
     def test_debug_bus_signal_store_pc(self):
-        if self.core_sim.device.is_blackhole():
-            self.skipTest("This test does not work on blackhole.")
+        if not self.core_sim.device.is_wormhole():
+            self.skipTest("This test only works on wormhole.")
 
         signal_store = self.core_sim.debug_bus_store
         pc_signal_name = self.core_sim.risc_name.lower() + "_pc"
@@ -287,15 +294,24 @@ class TestDebugging(unittest.TestCase):
         # simple test for pc signal
         pc_value_32 = signal_store.read_signal(pc_signal_name)
 
-        group_name = signal_store.debug_bus_signals.get_group_for_signal(pc_signal_name)
-        l1_addr = 0x1000
-        samples = 1
-        sampling_interval = 2
-        group_values = signal_store.read_signal_group(
-            group_name, l1_addr, samples=samples, sampling_interval=sampling_interval
-        )
+        group_name = self._get_group_for_signal(signal_store, pc_signal_name)
+        group_values = signal_store.read_signal_group(group_name, l1_address=0x1000)
         assert pc_signal_name in group_values.keys()
-        assert group_values[pc_signal_name][0] == pc_value_32
+        assert group_values[pc_signal_name] == pc_value_32
+
+    def _get_signal_part_names(self, debug_bus_signal_store: DebugBusSignalStore, base_name: str) -> list[str]:
+        """Get all part names for a combined signal based on its base name."""
+        if not debug_bus_signal_store.is_combined_signal(base_name):
+            return [base_name]
+
+        part_names: list[str] = []
+        for signal_name in debug_bus_signal_store.signal_names:
+            if signal_name.startswith(f"{base_name}/"):
+                part_names.append(signal_name)
+
+        return part_names
+
+        # 6fee
 
     @parameterized.expand(
         [
@@ -305,57 +321,58 @@ class TestDebugging(unittest.TestCase):
             (40, 5),
         ]
     )
-    def test_debug_bus_signal_store_all_groups(self, samples, sampling_interval):
+    def test_debug_bus_signal_store_sample_signal_group(self, samples, sampling_interval):
         """Validate signal group readings for all groups on this core."""
-        if self.core_sim.device.is_blackhole():
-            self.skipTest("This test does not work on blackhole.")
+        if not self.core_sim.device.is_wormhole():
+            self.skipTest("This test only works on wormhole.")
 
         WORD_SIZE_BITS = 32
         signal_store = self.core_sim.debug_bus_store
         l1_addr = 0x1000
 
-        for group in signal_store.debug_bus_signals.group_names:
+        for group in signal_store.group_names:
             if not group.startswith(self.core_sim.risc_name.lower() + "_"):
                 continue
 
-            group_values = signal_store.read_signal_group(
-                group, l1_addr, samples=samples, sampling_interval=sampling_interval
-            )
+            sampled_group = signal_store.sample_signal_group(group, l1_addr, samples, sampling_interval)
 
-            for signal_name, values in group_values.items():
-                # check number of samples taken
-                self.assertEqual(len(values), samples, f"{signal_name}: Expected {samples} samples, got {len(values)}")
+            # check number of samples taken
+            self.assertEqual(len(sampled_group), samples, f"Expected {samples} samples, got {len(sampled_group)}")
 
+            for signal_name in signal_store.get_signal_names_in_group(group):
                 # all samples should be equal
-                first_val = values[0]
+                first_val = sampled_group[0][signal_name]
                 self.assertTrue(
-                    all(v == first_val for v in values), f"{signal_name}: Inconsistent sampled values: {values}"
+                    all(v[signal_name] == first_val for v in sampled_group),
+                    f"{signal_name}: Inconsistent sampled values: {sampled_group}",
                 )
 
-                parts = signal_store.debug_bus_signals.get_signal_part_names(signal_name)
+                parts = self._get_signal_part_names(signal_store, signal_name)
 
-                if signal_store.debug_bus_signals.is_combined_signal(signal_name):
+                if signal_store.is_combined_signal(signal_name):
                     # combined signal
                     combined_value = 0
 
-                    i = 0
-                    while i < len(parts):
-                        part = parts[i]
+                    # Find the lowest part of combined signal, which has minimum rd_sel among all parts
+                    min_part = min(parts, key=lambda part: signal_store.get_signal_description(part).rd_sel)
+                    min_part_desc = signal_store.get_signal_description(min_part)
+
+                    for part in parts:
                         part_value = signal_store.read_signal(part)
                         part_desc = signal_store.get_signal_description(part)
                         shift = (part_desc.mask & -part_desc.mask).bit_length() - 1
-                        combined_value |= part_value << (shift + i * WORD_SIZE_BITS)
-                        i += 1
+                        combined_value |= part_value << (shift + part_desc.rd_sel * WORD_SIZE_BITS)
+                        if part == "brisc_o_mailbox_rddata[DEBUG_MAILBOX_DATA_W-1:0]/0":
+                            raise Exception(f"{combined_value:x}.")
 
-                    combined_value = signal_store._normalize_value(
-                        combined_value, signal_store.get_signal_description(parts[0]).mask
-                    )
+                    min_shift = (min_part_desc.mask & -min_part_desc.mask).bit_length() - 1
+                    combined_value >>= min_shift + min_part_desc.rd_sel * WORD_SIZE_BITS
 
-                    self.assertEqual(values[0], combined_value, f"Combined signal {signal_name} value mismatch.")
+                    self.assertEqual(first_val, combined_value, f"Combined signal {signal_name} value mismatch.")
                 else:
                     # single signal
                     single_value = signal_store.read_signal(signal_name)
-                    self.assertEqual(values[0], single_value, f"Signal {signal_name} value mismatch.")
+                    self.assertEqual(first_val, single_value, f"Signal {signal_name} value mismatch.")
 
     def test_ebreak(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""

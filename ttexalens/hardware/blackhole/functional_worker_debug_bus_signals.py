@@ -3019,3 +3019,6 @@ debug_bus_signal_map = {
         rd_sel=2, daisy_sel=14, sig_sel=4, mask=0x1
     ),
 }
+
+# TODO(#651) Once signals are grouped, we can remove type hint
+group_map: dict[str, tuple[int, int]] = {}

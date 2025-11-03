@@ -5,7 +5,7 @@
 from functools import cache, cached_property
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore, DebugBusSignals
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
@@ -62,7 +62,7 @@ debug_bus_signal_map = {
 # Group name mapping (daisy_sel, sig_sel) based on documentation
 """https://github.com/tenstorrent/tt-isa-documentation/blob/main/WormholeB0/TensixTile/DebugDaisychain.md"""
 # Signal name mapping to (DaisySel, sig_sel)
-group_names: dict[str, tuple[int, int]] = {
+group_map: dict[str, tuple[int, int]] = {
     "erisc_group_a": (7, 18),
     "erisc_group_b": (7, 19),
 }
@@ -121,7 +121,7 @@ register_store_noc0_initialization = RegisterStore.create_initialization(
 register_store_noc1_initialization = RegisterStore.create_initialization(
     [register_map, niu_register_map], get_register_base_address_callable(noc_id=1)
 )
-debug_bus_signals_initialization = DebugBusSignals(group_names, debug_bus_signal_map)
+debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
 
 class WormholeEthBlock(WormholeNocBlock):

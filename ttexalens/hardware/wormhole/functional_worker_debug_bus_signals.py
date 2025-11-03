@@ -10,7 +10,7 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 
 # Commented signals marked with "# Duplicate signal name - not same width" are duplicates
 # that don't have the same width, so they probably represent different signals/parts of signals.
-# TODO(#651): needs investigation.
+# TODO(#671): needs investigation.
 debug_bus_signal_map = {
     # For the other signals applying the pc_mask.
     "brisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 5, mask=0x7FFFFFFF),
@@ -23,6 +23,7 @@ debug_bus_signal_map = {
         rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x100
     ),
     "brisc_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x80),
+    "brisc_if_invalid_instrn": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x40),
     "brisc_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x20),
     "brisc_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x1F),
     "brisc_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=11, mask=0xFFFFFFFF),
@@ -54,11 +55,21 @@ debug_bus_signal_map = {
     "brisc_i_mailbox_rd_type": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=1, mask=0x7800000),
     "brisc_o_mailbox_rd_req_ready": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=1, mask=0x780000),
     "brisc_o_mailbox_rdvalid": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=1, mask=0x78000),
-    "brisc_o_mailbox_rddata": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=1, mask=0x7F00),
-    "brisc_intf_wrack_brisc/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0xFFE00000),
-    "brisc_intf_wrack_brisc/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=1, mask=0x3F),
-    "brisc_dmem_tensix_rden": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x100000),
-    "brisc_dmem_tensix_wren": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x80000),
+    "brisc_o_mailbox_rddata[DEBUG_MAILBOX_DATA_W-1:0]/0": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=7, sig_sel=1, mask=0xC0000000
+    ),
+    "brisc_o_mailbox_rddata[DEBUG_MAILBOX_DATA_W-1:0]/1": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=7, sig_sel=1, mask=0x7FFF
+    ),
+    "brisc_intf_rden": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=1, mask=0x3FFF8000),
+    "brisc_intf_wren": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=1, mask=0x7FFF),
+    "brisc_intf_ready": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=1, mask=0xFFFE0000),
+    "brisc_intf_rd_data_vld": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=1, mask=0x1FFFC),
+    "brisc_intf_wrack/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0xFFF80000),
+    "brisc_intf_wrack/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=1, mask=0x3),
+    "brisc_rv_out_dmem_rden": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x40000),
+    "brisc_rv_out_dmem_wren": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x20000),
+    "brisc_target_intf": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x1FFFC),
     "brisc_icache_req_fifo_full": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x2),
     "brisc_icache_req_fifo_empty": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x1),
     "trisc0_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x200),
@@ -973,4 +984,51 @@ debug_bus_signal_map = {
     "srca_srcb_access_control_srca_unpacker0_allowed": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=6, sig_sel=9, mask=0x100000
     ),
+}
+
+# Group name mapping (daisy_sel, sig_sel) based on documentation
+"""https://github.com/tenstorrent/tt-isa-documentation/blob/main/WormholeB0/TensixTile/DebugDaisychain.md"""
+# Signal name mapping to (DaisySel, sig_sel)
+group_map = {
+    # RISCV execution state (DaisySel == 7)
+    "brisc_group_a": (7, 10),
+    "brisc_group_b": (7, 11),
+    "brisc_group_c": (7, 1),
+    "trisc0_group_a": (7, 12),
+    "trisc0_group_b": (7, 13),
+    "trisc0_group_c": (7, 18),
+    "trisc0_group_d": (7, 19),
+    "trisc1_group_a": (7, 14),
+    "trisc1_group_b": (7, 15),
+    "trisc1_group_c": (7, 20),
+    "trisc1_group_d": (7, 21),
+    "trisc2_group_a": (7, 16),
+    "trisc2_group_b": (7, 17),
+    "trisc2_group_c": (7, 22),
+    "trisc2_group_d": (7, 23),
+    "ncrisc_group_a": (7, 24),
+    "ncrisc_group_b": (7, 25),
+    "sfpu_lane_enabled": (7, 28),
+    # Tensix Frontend (DaisySel == 1)
+    "tensix_frontend_t0": (1, 12),
+    "tensix_frontend_t1": (1, 8),
+    "tensix_frontend_t2": (1, 4),
+    # ADCs and srcA and srcB (DaisySel == 6)
+    "adcs0_unpacker0_channel0": (6, 0),
+    "adcs0_unpacker0_channel1": (6, 1),
+    "adcs0_unpacker1_channel0": (6, 2),
+    "adcs0_unpacker1_channel1": (6, 3),
+    "adcs2_packers_channel0": (6, 4),
+    "adcs2_packers_channel1": (6, 5),
+    "srca_srcb_access_control": (6, 9),
+    # RWCs (DaisySel == 3)
+    "rwc_control_signals": (3, 0),
+    "rwc_status_signals": (3, 1),
+    "rwc_coordinates_a": (3, 2),
+    "rwc_coordinates_b": (3, 3),
+    "rwc_fidelity_phase": (3, 4),
+    # L1 access ports (DaisySel == 8)
+    "l1_access_ports_addr_a": (8, 2),
+    "l1_access_ports_addr_b": (8, 3),
+    "l1_access_ports_addr_c": (8, 5),
 }
