@@ -1586,7 +1586,7 @@ class TestDebugging(unittest.TestCase):
                 samples=0,
                 sampling_interval=2,
             )
-        self.assertIn("samples must be at least 1", str(cm.exception))
+        self.assertIn("samples count must be at least 1", str(cm.exception))
 
     def test_signal_group_invalid_l1_address(self):
         if not self.device.is_wormhole():
@@ -1615,7 +1615,7 @@ class TestDebugging(unittest.TestCase):
                 samples=2,
                 sampling_interval=1,
             )
-        self.assertIn("When samples > 1, sampling_interval must be between 2 and 256", str(cm.exception))
+        self.assertIn("When sampling groups, sampling_interval must be between 2 and 256", str(cm.exception))
 
     @parameterized.expand(
         [

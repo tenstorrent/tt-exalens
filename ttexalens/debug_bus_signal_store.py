@@ -59,28 +59,11 @@ class L1MemReg2:
         )
 
 
-class SignalGroup:
-    """
-    Represents signals in a single group, where each key is the signal name and each value is a tuple (mask, shift).
-    Mask and shift are used to extract signal values from a 128-bit number (shift removes trailing zeros).
-    """
-
-    def __init__(self, signals: dict[str, tuple[int, int]]):
-        self._signals: dict[str, tuple[int, int]] = signals
-
-    def __getitem__(self, key: str) -> tuple[int, int]:
-        return self._signals[key]
-
-    def __iter__(self):
-        return iter(self._signals)
-
-    def keys(self):
-        return self._signals.keys()
-
-    def extract_value(self, raw_data: int, signal_name: str) -> int:
-        """Extract value for a single signal using mask and shift tuple."""
-        mask, shift = self._signals[signal_name]
-        return (raw_data & mask) >> shift
+# Represents shift and mask for a signal in a group
+@dataclass
+class ShiftMask:
+    shift: int
+    mask: int
 
 
 # 128 bit value of sampled group of signals
@@ -89,7 +72,7 @@ class SignalGroupSample:
     def __init__(
         self,
         raw_data: int,
-        group: SignalGroup,
+        group: dict[str, ShiftMask],
     ):
         self.raw_data = raw_data  # 128-bit sample
         self.group = group
@@ -108,14 +91,16 @@ class SignalGroupSample:
         if key not in self.group:
             raise ValueError(f"Signal '{key}' does not exist in group.")
 
-        return self.group.extract_value(self.raw_data, key)
+        mask = self.group[key].mask
+        shift = self.group[key].shift
+        return (self.raw_data & mask) >> shift
 
 
 @dataclass
 class DebugBusSignalStoreInitialization:
     group_map: dict[str, tuple[int, int]]
     signals: dict[str, DebugBusSignalDescription]
-    signal_groups: dict[str, SignalGroup]
+    signal_groups: dict[str, dict[str, ShiftMask]]
 
 
 class DebugBusSignalStore:
@@ -127,7 +112,7 @@ class DebugBusSignalStore:
     ):
         self.group_map: dict[str, tuple[int, int]] = initialization.group_map
         self.signals: dict[str, DebugBusSignalDescription] = initialization.signals
-        self.signal_groups: dict[str, SignalGroup] = initialization.signal_groups
+        self.signal_groups: dict[str, dict[str, ShiftMask]] = initialization.signal_groups
         self.noc_block = noc_block
         self.neo_id = neo_id
         self.L1_SAMPLE_SIZE_BYTES = 16  # Each 128-bit sample is 16 bytes
@@ -183,7 +168,8 @@ class DebugBusSignalStore:
 
     def is_combined_signal(self, signal_name: str) -> bool:
         """Check if signal name is a base name for a combined signal (has /0, /1, /2... variants)."""
-        return f"{signal_name}/0" in self.signals
+        prefix = signal_name + "/"
+        return any(s.startswith(prefix) for s in self.signals)
 
     @cache
     def get_signal_names_in_group(self, group_name: str) -> list[str]:
@@ -194,14 +180,14 @@ class DebugBusSignalStore:
         return list(self.signal_groups[group_name].keys())
 
     @cached_property
-    def signal_names(self) -> list[str]:
+    def signal_names(self) -> set[str]:
         """Get all signal names."""
-        return list(self.signals.keys())
+        return set(self.signals.keys())
 
     @cached_property
-    def group_names(self) -> list[str]:
+    def group_names(self) -> set[str]:
         """Get all group names."""
-        return list(self.group_map.keys())
+        return set(self.group_map.keys())
 
     def get_signal_description(self, signal_name: str) -> DebugBusSignalDescription:
         """Returns the DebugBusSignalDescription for the given signal name."""
@@ -233,7 +219,7 @@ class DebugBusSignalStore:
     def _validate_l1_parameters(self, l1_address: int, samples: int = 1, sampling_interval: int = 2) -> None:
         """Validate L1 sampling parameters and raise appropriate errors."""
         if samples < 1:
-            raise ValueError(f"samples must be at least 1, but got {samples}")
+            raise ValueError(f"samples count must be at least 1, but got {samples}")
 
         if l1_address % 16 != 0:
             raise ValueError(f"L1 address must be 16-byte aligned, got 0x{l1_address:x}")
@@ -245,20 +231,8 @@ class DebugBusSignalStore:
 
         if samples > 1 and not (2 <= sampling_interval <= 256):
             raise ValueError(
-                f"When samples > 1, sampling_interval must be between 2 and 256, but got {sampling_interval}"
+                f"When sampling groups, sampling_interval must be between 2 and 256, but got {sampling_interval}"
             )
-
-    def _read_single_register(self, signal_part: DebugBusSignalDescription) -> int:
-        """Read a single 32-bit register value"""
-        en = 1
-        config = (en << 29) | (signal_part.rd_sel << 25) | (signal_part.daisy_sel << 16) | (signal_part.sig_sel << 0)
-        write_words_to_device(
-            self.location, self._control_register_address, config, self.device._id, self.device._context
-        )
-        # Read the data
-        data = read_word_from_device(self.location, self._data_register_address, self.device._id, self.device._context)
-
-        return data
 
     def read_signal(
         self,
@@ -290,7 +264,16 @@ class DebugBusSignalStore:
         else:
             raise ValueError(f"Invalid signal type: {type(signal)}")
 
-        data = self._read_single_register(signal_desc)
+        # Configure debug bus to read the signal
+        en = 1
+        config = (en << 29) | (signal_desc.rd_sel << 25) | (signal_desc.daisy_sel << 16) | (signal_desc.sig_sel << 0)
+        write_words_to_device(
+            self.location, self._control_register_address, config, self.device._id, self.device._context
+        )
+        # Read the data
+        data = read_word_from_device(self.location, self._data_register_address, self.device._id, self.device._context)
+
+        # Apply mask
         value = data & signal_desc.mask
 
         # remove trailing zeros from mask
@@ -397,7 +380,7 @@ class DebugBusSignalStore:
     def _process_l1_samples(self, l1_address: int, group_name: str, samples: int = 1) -> list[SignalGroupSample]:
         """Process L1 samples and extract signal data based on signal configuration"""
 
-        def read_128bit_sample(addr: int) -> int:
+        def read_sample(addr: int) -> int:
             """Read 4x32-bit words and combine them into a single 128-bit integer"""
             words = read_words_from_device(
                 self.location, addr, self.device._id, self.WORDS_PER_SAMPLE, self.device._context
@@ -405,7 +388,7 @@ class DebugBusSignalStore:
             return sum((words[i] << (WORD_SIZE_BITS * i)) for i in range(self.WORDS_PER_SAMPLE))
 
         # Read samples from L1 memory
-        sample_values = [read_128bit_sample(l1_address + (i * self.L1_SAMPLE_SIZE_BYTES)) for i in range(samples)]
+        sample_values = [read_sample(l1_address + (i * self.L1_SAMPLE_SIZE_BYTES)) for i in range(samples)]
 
         return [SignalGroupSample(sample, self.signal_groups[group_name]) for sample in sample_values]
 
@@ -481,21 +464,23 @@ class DebugBusSignalStore:
         way we save initialization time as creating store from initialization object is fast. It groups signals into signal groups
         based on the provided group map, calculating masks and shifts for each signal within the group.
         """
-        signal_groups: dict[str, SignalGroup] = {}
+        # Build signal groups based on group map
+        # dictionary where key is group name and value is dictionary of signals in that group
+        signal_groups: dict[str, dict[str, ShiftMask]] = {}
 
         for group_key, (daisy_sel, sig_sel) in group_map.items():
-            # dictionary where key is signal name and value is (mask, shift) tuple
-            signal_group: dict[str, tuple[int, int]] = {}
+            # group dictionary where key is signal name and value is ShiftMask for that signal
+            signal_group: dict[str, ShiftMask] = {}
             for signal_name, signal_desc in signals.items():
                 if signal_desc.daisy_sel == daisy_sel and signal_desc.sig_sel == sig_sel:
                     base_name = DebugBusSignalStore.get_base_signal_name(signal_name)
-                    mask = signal_group[base_name][0] if base_name in signal_group else 0
+                    mask = signal_group[base_name].mask if base_name in signal_group else 0
                     mask |= signal_desc.mask << (WORD_SIZE_BITS * signal_desc.rd_sel)
 
                     # Compute mask and shift for the signal within the 128-bit sample.
-                    signal_group[base_name] = (mask, (mask & -mask).bit_length() - 1)
+                    signal_group[base_name] = ShiftMask(shift=(mask & -mask).bit_length() - 1, mask=mask)
 
-            signal_groups[group_key] = SignalGroup(signal_group)
+            signal_groups[group_key] = signal_group
 
         return DebugBusSignalStoreInitialization(
             group_map=group_map,
