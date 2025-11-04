@@ -47,6 +47,7 @@ class open_implementation : public BaseClass {
                                                                   const std::string& coord_system) override;
     std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> get_firmware_version(uint8_t chip_id) override;
     std::optional<uint64_t> get_device_unique_id(uint8_t chip_id) override;
+    virtual void warm_reset() override;
 };
 
 }  // namespace tt::exalens
