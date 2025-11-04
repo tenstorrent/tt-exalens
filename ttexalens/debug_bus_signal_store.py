@@ -489,7 +489,7 @@ class DebugBusSignalStore:
             for signal_name, signal_desc in signals.items():
                 if signal_desc.daisy_sel == daisy_sel and signal_desc.sig_sel == sig_sel:
                     base_name = DebugBusSignalStore.get_base_signal_name(signal_name)
-                    mask = signal_group.get(base_name, 0)[0] if base_name in signal_group else 0
+                    mask = signal_group[base_name][0] if base_name in signal_group else 0
                     mask |= signal_desc.mask << (WORD_SIZE_BITS * signal_desc.rd_sel)
 
                     # Compute mask and shift for the signal within the 128-bit sample.

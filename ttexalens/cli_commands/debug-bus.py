@@ -348,7 +348,7 @@ def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: 
         {group_name: formatted_data},
         [("Name", ""), ("Value", "")],
         [[group_name]],
-        simple_print=params.get("simple"),
+        simple_print=params["simple"],
     )
 
 
@@ -424,8 +424,8 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         else None,
         "group-name": dopt.args.get("<group-name>") if dopt.args["<group-name>"] is not None else None,
         "l1-address": int(dopt.args["<l1-address>"], 0) if dopt.args["<l1-address>"] is not None else None,
-        "signals": parse_command_arguments(dopt.args) if dopt.args.get("<signals>") is not None else None,
-        "simple": dopt.args.get("--simple") or None,
+        "signals": parse_command_arguments(dopt.args) if dopt.args["<signals>"] is not None else None,
+        "simple": dopt.args["--simple"] or None,
     }
 
     for device in dopt.for_each("--device", context, ui_state):
