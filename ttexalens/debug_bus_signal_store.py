@@ -358,6 +358,7 @@ class DebugBusSignalStore:
         # 4: Hardware-driven sampling mode (auto-set when samples > 1)
         write_mode = 1  # Always use mode 1 (increment address)
 
+        # set configuration
         if samples > 1:
             reg1_val = ((l1_address >> 4) + samples) & 0xFFFFFFFF
             write_words_to_device(self.location, reg1_addr, reg1_val, self.device._id, self.device._context)
@@ -483,17 +484,18 @@ class DebugBusSignalStore:
         signal_groups: dict[str, SignalGroup] = {}
 
         for group_key, (daisy_sel, sig_sel) in group_map.items():
-            group_fields: dict[str, tuple[int, int]] = {}
-
+            # dictionary where key is signal name and value is (mask, shift) tuple
+            signal_group: dict[str, tuple[int, int]] = {}
             for signal_name, signal_desc in signals.items():
                 if signal_desc.daisy_sel == daisy_sel and signal_desc.sig_sel == sig_sel:
                     base_name = DebugBusSignalStore.get_base_signal_name(signal_name)
-                    mask = signal_desc.mask << (WORD_SIZE_BITS * signal_desc.rd_sel)
+                    mask = signal_group.get(base_name, 0)[0] if base_name in signal_group else 0
+                    mask |= signal_desc.mask << (WORD_SIZE_BITS * signal_desc.rd_sel)
 
                     # Compute mask and shift for the signal within the 128-bit sample.
-                    group_fields[base_name] = (mask, (mask & -mask).bit_length() - 1)
+                    signal_group[base_name] = (mask, (mask & -mask).bit_length() - 1)
 
-            signal_groups[group_key] = SignalGroup(group_fields)
+            signal_groups[group_key] = SignalGroup(signal_group)
 
         return DebugBusSignalStoreInitialization(
             group_map=group_map,

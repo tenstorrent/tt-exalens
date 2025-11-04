@@ -265,6 +265,7 @@ def handle_list_groups_command(device: Device, loc: OnChipCoordinate, params: di
     if params["max"] is not None:
         max_arg = params["max"]
 
+    # Filter group names by search pattern
     if params["search"] is not None:
         search_arg: str = params["search"]
         names = search(names, search_arg, max_arg)
@@ -274,6 +275,7 @@ def handle_list_groups_command(device: Device, loc: OnChipCoordinate, params: di
     elif max_arg is not None and str(max_arg).lower() != "all":
         names = names[: int(max_arg)]
 
+    # Handle case of no groups
     if len(names) == 0:
         formatter.print_header(
             f"=== Device {device._id} - location {loc.to_str('logical')} - Signal Groups ===", style="bold"
@@ -281,6 +283,7 @@ def handle_list_groups_command(device: Device, loc: OnChipCoordinate, params: di
         print("No signal groups available.")
         return
 
+    # Display results
     formatter.print_header(
         f"=== Device {device._id} - location {loc.to_str('logical')} - Signal Groups ===", style="bold"
     )
