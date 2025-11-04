@@ -6,7 +6,7 @@ from __future__ import annotations
 import cxxfilt
 from elftools.dwarf.die import DIE as DWARF_DIE
 from elftools.dwarf.locationlists import LocationExpr
-from elftools.dwarf.ranges import RangeEntry
+from elftools.dwarf.ranges import BaseAddressEntry, RangeEntry
 from functools import cached_property
 import os
 import re
@@ -232,6 +232,8 @@ class ElfDie:
         addr = None
         if "DW_AT_data_member_location" in self.attributes:
             addr = self.attributes["DW_AT_data_member_location"].value
+        elif "DW_AT_low_pc" in self.attributes:
+            addr = self.attributes["DW_AT_low_pc"].value
         else:
             location_attribute = self.attributes.get("DW_AT_location")
             location_parser = self.cu.dwarf.location_parser
@@ -359,24 +361,38 @@ class ElfDie:
                 (
                     self.attributes["DW_AT_low_pc"].value,
                     self.attributes["DW_AT_low_pc"].value + self.attributes["DW_AT_high_pc"].value,
+                    True,
                 )
             ]
         elif "DW_AT_ranges" in self.attributes:
             assert self.cu.dwarf.range_lists is not None
             ranges = self.cu.dwarf.range_lists.get_range_list_at_offset(self.attributes["DW_AT_ranges"].value)
-            return [(r.begin_offset, r.end_offset) for r in ranges if isinstance(r, RangeEntry)]
+            address_ranges = []
+            base_address = None
+            parent = self
+            while parent is not None:
+                if "DW_AT_low_pc" in parent.attributes:
+                    base_address = parent.attributes["DW_AT_low_pc"].value
+                    break
+                parent = parent.parent
+            if base_address is None:
+                base_address = self.cu.top_DIE.address
+            for r in ranges:
+                if isinstance(r, BaseAddressEntry):
+                    base_address = r.base_address
+                elif isinstance(r, RangeEntry):
+                    if r.is_absolute:
+                        address_ranges.append((r.begin_offset, r.end_offset, True))
+                    elif base_address is None:
+                        address_ranges.append((r.begin_offset, r.end_offset, False))
+                    else:
+                        address_ranges.append((r.begin_offset + base_address, r.end_offset + base_address, True))
+            return address_ranges
         else:
             child_ranges = []
             for child in self.iter_children():
                 child_ranges.extend(child.address_ranges)
-
-            if child_ranges:
-                # Compute the overall range
-                min_address = min(r[0] for r in child_ranges)
-                max_address = max(r[1] for r in child_ranges)
-                return [(min_address, max_address)]
-
-        return []
+            return child_ranges
 
     @cached_property
     def decl_file_info(self):

@@ -92,6 +92,7 @@ static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
     cluster_descriptor << "boardtype: {" << std::endl;
     cluster_descriptor << "   0: " << arch_str << "Simulator," << std::endl;
     cluster_descriptor << "}" << std::endl;
+    cluster_descriptor << "io_device_type: SIMULATION" << std::endl;
 
     return cluster_descriptor_path;
 }
@@ -157,8 +158,12 @@ template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open(
     const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
     bool initialize_with_noc1, bool init_jtag) {
-    // Disable UMD logging
-    tt::umd::logging::set_level(tt::umd::logging::level::error);
+    // Respect UMD's existing env var first; default to ERROR otherwise.
+    // If Python wants DEBUG, it can set TT_LOGGER_LEVEL=debug before calling into this function.
+    const char *tt_logger_level = std::getenv("TT_LOGGER_LEVEL");
+    if (tt_logger_level == nullptr) {
+        tt::umd::logging::set_level(tt::umd::logging::level::error);
+    }
 
     // TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use
     // noc1

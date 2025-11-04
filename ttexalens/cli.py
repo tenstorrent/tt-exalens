@@ -326,7 +326,6 @@ def main_loop(args, context):
                             import_commands(reload=True)
                         elif found_command["long"] == "eval":
                             eval_str = " ".join(cmd[1:])
-                            eval_str = context.elf.substitute_names_with_values(eval_str)
                             print(f"{eval_str} = {eval(eval_str)}")
                         else:
                             new_navigation_suggestions = found_command["module"].run(cmd_raw, context, ui_state)
@@ -371,10 +370,10 @@ def main_loop(args, context):
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--gdb":
-        gdb_client_path = os.path.abspath(util.application_path() + "/sfpi/compiler/bin/riscv32-tt-elf-gdb")
+        gdb_client_path = os.path.abspath(util.application_path() + "/sfpi/compiler/bin/riscv-tt-elf-gdb")
         if not os.path.isfile(gdb_client_path):
             gdb_client_path = os.path.abspath(
-                util.application_path() + "/../build_riscv/sfpi/compiler/bin/riscv32-tt-elf-gdb"
+                util.application_path() + "/../build_riscv/sfpi/compiler/bin/riscv-tt-elf-gdb"
             )
         gdb_client_args = sys.argv[2:]
 

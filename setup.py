@@ -112,7 +112,7 @@ class MyBuild(build_ext):
             },
             "gdb-client": {
                 "path": "build_riscv/sfpi/compiler/bin",
-                "files": ["riscv32-tt-elf-gdb"],
+                "files": ["riscv-tt-elf-gdb"],
                 "output": "ttexalens/sfpi/compiler/bin",
                 "strip": True,
             },
