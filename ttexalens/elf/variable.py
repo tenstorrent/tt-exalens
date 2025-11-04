@@ -132,6 +132,8 @@ class ElfVariable:
         child_die = self.__type_die.get_child_by_name(member_name)
         if child_die is None:
             offset, child_die = ElfVariable._resolve_unnamed_struct_union_member(self.__type_die, member_name)
+        if child_die is None:
+            offset, child_die = ElfVariable._resolve_inheritance_member(self.__type_die, member_name)
         if child_die is None or offset is None:
             assert self.__type_die.path is not None
             member_path = self.__type_die.path + "::" + member_name
@@ -155,6 +157,27 @@ class ElfVariable:
                 if member is not None and address is not None:
                     assert child.address is not None
                     return address + child.address, member
+        return None, None
+
+    @staticmethod
+    def _resolve_inheritance_member(
+        type_die: ElfDie, member_name: str, offset: int = 0
+    ) -> tuple[int | None, ElfDie | None]:
+        for child in type_die.iter_children():
+            if child.tag_is("inheritance"):
+                assert child.address is not None
+                data_member_location = offset + child.address
+                child_type = child.resolved_type
+                member = child_type.get_child_by_name(member_name)
+                if member is not None:
+                    assert member.address is not None
+                    return data_member_location, member
+                address, member = ElfVariable._resolve_inheritance_member(child_type, member_name, data_member_location)
+                if member is not None and address is not None:
+                    return address, member
+                address, member = ElfVariable._resolve_unnamed_struct_union_member(child_type, member_name)
+                if member is not None and address is not None:
+                    return data_member_location + address, member
         return None, None
 
     def __getitem__(self, key: str | int) -> "ElfVariable":
