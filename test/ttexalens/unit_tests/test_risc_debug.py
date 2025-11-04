@@ -55,6 +55,7 @@ class TestDebugging(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.context = init_default_test_context()
+        cls.device = cls.context.devices[0]
 
     def setUp(self):
         try:
@@ -71,8 +72,6 @@ class TestDebugging(unittest.TestCase):
                 self.skipTest(f"Test requires NEO ID, but is not supported on this platform: {e}")
             else:
                 raise e
-
-        self.device = self.context.devices[0]
 
         # Stop risc with reset
         self.core_sim.set_reset(True)
@@ -100,7 +99,7 @@ class TestDebugging(unittest.TestCase):
         )
 
     def test_default_start_address(self):
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             self.skipTest("Skipping Quasar test since it lasts for 1 hour on simulator.")
 
         risc_info = self.core_sim.risc_debug.risc_info
@@ -116,7 +115,7 @@ class TestDebugging(unittest.TestCase):
         assert l1_start is not None, "L1 address should not be None."
         word_bytes = 0x00100073.to_bytes(4, byteorder="little")
         bytes = word_bytes * (risc_info.l1.size // 4)
-        lib.write_to_device(self.core_sim.location, l1_start, bytes, self.core_sim.device._id, self.core_sim.context)
+        lib.write_to_device(self.core_sim.location, l1_start, bytes, self.device._id, self.core_sim.context)
 
         # Take risc out of reset
         if risc_info.can_change_code_start_address:
@@ -268,7 +267,7 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.is_in_reset())
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             for i in range(50):
                 if self.core_sim.read_data(addr) == 0x87654000:
                     break
@@ -284,7 +283,7 @@ class TestDebugging(unittest.TestCase):
         return ""
 
     def test_debug_bus_signal_store_pc(self):
-        if not self.core_sim.device.is_wormhole():
+        if not self.device.is_wormhole():
             self.skipTest("This test only works on wormhole.")
 
         signal_store = self.core_sim.debug_bus_store
@@ -327,7 +326,7 @@ class TestDebugging(unittest.TestCase):
     )
     def test_debug_bus_signal_store_sample_signal_group(self, samples, sampling_interval):
         """Validate signal group readings for all groups on this core."""
-        if not self.core_sim.device.is_wormhole():
+        if not self.device.is_wormhole():
             self.skipTest("This test only works on wormhole.")
 
         WORD_SIZE_BITS = 32
@@ -496,7 +495,7 @@ class TestDebugging(unittest.TestCase):
 
     def test_core_lockup(self):
         """Running code that should lock up the core and then trying to halt it."""
-        if not self.core_sim.device.is_wormhole():
+        if not self.device.is_wormhole():
             self.skipTest("Issue is hit only on wormhole.")
 
         # lui t3, 0 - 0x00000e37
@@ -633,7 +632,7 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
 
     def test_invalidate_cache(self):
-        if self.core_sim.device.is_wormhole():
+        if self.device.is_wormhole():
             self.skipTest("Invalidate cache is not reliable on wormhole.")
 
         if self.core_sim.is_eth_block():
@@ -759,11 +758,9 @@ class TestDebugging(unittest.TestCase):
     def test_invalidate_cache_with_nops_and_long_jump(self):
         """Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation by having NOPs block and jump back. All that is done on brisc."""
 
-        if self.core_sim.is_eth_block() and self.core_sim.device.is_wormhole():
+        if self.core_sim.is_eth_block() and self.device.is_wormhole():
             self.skipTest("This test is not applicable for ETH cores.")
-        if (
-            self.core_sim.device.is_wormhole() or self.core_sim.device.is_blackhole()
-        ) and self.core_sim.risc_name == "TRISC2":
+        if (self.device.is_wormhole() or self.device.is_blackhole()) and self.core_sim.risc_name == "TRISC2":
             self.skipTest("This test is unreliable on TRISC2 on wormhole or blackhole.")
 
         break_addr = 0x950
@@ -794,7 +791,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.set_reset(False)
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             for i in range(50):
                 self.core_sim.read_data(0)
 
@@ -824,7 +821,7 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             for i in range(200):
                 if self.core_sim.read_data(addr) == 0x87654000:
                     break
@@ -1317,10 +1314,10 @@ class TestDebugging(unittest.TestCase):
         if self.core_sim.is_eth_block():
             self.skipTest("We don't know how to enable/disable branch prediction ETH cores.")
 
-        if self.core_sim.device.is_blackhole():
+        if self.device.is_blackhole():
             self.skipTest("BNE instruction with debug hardware enabled is fixed in blackhole.")
 
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             self.skipTest("BNE instruction with debug hardware enabled is fixed in quasar.")
 
         # Enable branch prediction
@@ -1446,7 +1443,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.debug_hardware.continue_without_debug()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             for i in range(20):
                 self.core_sim.read_data(0)
 
@@ -1521,7 +1518,7 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
         # Disable branch prediction
-        if not self.core_sim.device.is_blackhole():
+        if not self.device.is_blackhole():
             # Disabling branch prediction fails this test on blackhole :(
             self.core_sim.set_branch_prediction(False)
 
@@ -1529,7 +1526,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             for i in range(20):
                 self.core_sim.read_data(0)
 
@@ -1578,7 +1575,7 @@ class TestDebugging(unittest.TestCase):
         self.assertIn("mask must be a valid 32-bit integer", str(cm.exception))
 
     def test_sample_signal_group_invalid_samples(self):
-        if not self.core_sim.device.is_wormhole():
+        if not self.device.is_wormhole():
             self.skipTest("This test only works on wormhole.")
 
         group_name = next(iter(self.core_sim.debug_bus_store.group_map.keys()))
@@ -1592,7 +1589,7 @@ class TestDebugging(unittest.TestCase):
         self.assertIn("samples must be at least 1", str(cm.exception))
 
     def test_signal_group_invalid_l1_address(self):
-        if not self.core_sim.device.is_wormhole():
+        if not self.device.is_wormhole():
             self.skipTest("This test only works on wormhole.")
 
         # test sample_signal_group
@@ -1607,7 +1604,7 @@ class TestDebugging(unittest.TestCase):
         self.assertIn("L1 address must be 16-byte aligned", str(cm.exception))
 
     def test_sample_signal_group_invalid_sampling_interval(self):
-        if not self.core_sim.device.is_wormhole():
+        if not self.device.is_wormhole():
             self.skipTest("This test only works on wormhole.")
 
         group_name = next(iter(self.core_sim.debug_bus_store.group_map.keys()))
@@ -1629,7 +1626,7 @@ class TestDebugging(unittest.TestCase):
         ]
     )
     def test_signal_group_exceeds_memory(self, samples, l1_address):
-        if not self.core_sim.device.is_wormhole():
+        if not self.device.is_wormhole():
             self.skipTest("This test only works on wormhole.")
 
         # test sample_signal_group
@@ -1644,7 +1641,7 @@ class TestDebugging(unittest.TestCase):
         self.assertIn(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit", str(cm.exception))
 
     def test_read_signal_group_invalid_signal_name(self):
-        if not self.core_sim.device.is_wormhole():
+        if not self.device.is_wormhole():
             self.skipTest("This test only works on wormhole.")
 
         signal_name = "invalid_signal_name"
@@ -1658,7 +1655,7 @@ class TestDebugging(unittest.TestCase):
         self.assertIn(f"Signal '{signal_name}' does not exist in group.", str(cm.exception))
 
     def test_invalid_group_name(self):
-        if not self.core_sim.device.is_wormhole():
+        if not self.device.is_wormhole():
             self.skipTest("This test only works on wormhole.")
 
         group_name = "invalid_group_name"
