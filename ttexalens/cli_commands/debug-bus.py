@@ -416,16 +416,16 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
     # Collect parameters for the command
     params: dict[str, Any] = {
-        "search": dopt.args.get("--search") or None,
-        "max": dopt.args.get("--max") or None,
+        "search": dopt.args.get("--search"),
+        "max": dopt.args.get("--max"),
         "samples": int(dopt.args["--samples"]) if dopt.args.get("--samples") is not None else None,
         "sampling-interval": int(dopt.args["--sampling-interval"])
         if dopt.args.get("--sampling-interval") is not None
         else None,
-        "group-name": dopt.args.get("<group-name>") if dopt.args["<group-name>"] is not None else None,
-        "l1-address": int(dopt.args["<l1-address>"], 0) if dopt.args["<l1-address>"] is not None else None,
-        "signals": parse_command_arguments(dopt.args) if dopt.args["<signals>"] is not None else None,
-        "simple": dopt.args["--simple"] or None,
+        "group-name": dopt.args.get("<group-name>"),
+        "l1-address": int(dopt.args["<l1-address>"], 0) if dopt.args.get("<l1-address>") is not None else None,
+        "signals": parse_command_arguments(dopt.args) if dopt.args.get("<signals>") is not None else None,
+        "simple": dopt.args.get("--simple"),
     }
 
     for device in dopt.for_each("--device", context, ui_state):
