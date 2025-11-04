@@ -382,4 +382,9 @@ std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::conv
     }
 }
 
+template <typename BaseClass>
+void open_implementation<BaseClass>::warm_reset() {
+    BaseClass::warm_reset();
+}
+
 }  // namespace tt::exalens

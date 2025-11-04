@@ -110,6 +110,8 @@ class TTExaLensImplementation {
     std::optional<uint64_t> get_device_unique_id(uint8_t chip_id) {
         return implementation->get_device_unique_id(chip_id);
     }
+
+    void warm_reset() { implementation->warm_reset(); }
 };
 
 std::unique_ptr<TTExaLensImplementation> open_device(const std::string &binary_directory,
@@ -175,8 +177,8 @@ NB_MODULE(ttexalens_pybind, m) {
         .def("get_firmware_version", &TTExaLensImplementation::get_firmware_version, "Returns firmware version",
              "chip_id"_a)
         .def("get_device_unique_id", &TTExaLensImplementation::get_device_unique_id, "Returns device unique id",
-             "chip_id"_a);
-
+             "chip_id"_a)
+        .def("warm_reset", &TTExaLensImplementation::warm_reset, "Warm resets the device");
     // Bind factory functions
     m.def("open_device", &open_device, "Opens tt device. Returns TTExaLensImplementation object or None if failed.",
           "binary_directory"_a, "wanted_devices"_a = std::vector<uint8_t>(), "init_jtag"_a = false,
