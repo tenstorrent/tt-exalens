@@ -36,7 +36,35 @@ struct go_msg_t {
     uint32_t test2;
 } __attribute__((packed));
 
-struct GlobalStruct {
+struct BaseStruct {
+    uint8_t base_field1;
+    uint16_t base_field2;
+    union {
+        uint32_t packed;
+        struct {
+            uint8_t v1;
+            uint8_t v2;
+            uint8_t v3;
+            uint8_t v4;
+        };
+    };
+};
+
+struct BaseStruct2 {
+    uint8_t bs2_base_field1;
+    uint16_t bs2_base_field2;
+    union {
+        uint32_t bs2_packed;
+        struct {
+            uint8_t bs2_v1;
+            uint8_t bs2_v2;
+            uint8_t bs2_v3;
+            uint8_t bs2_v4;
+        };
+    };
+};
+
+struct GlobalStruct : public BaseStruct, public BaseStruct2 {
     uint32_t a;
     uint64_t b;
     uint8_t c[16];
@@ -59,6 +87,12 @@ void halt() {
 
 void update_struct(GlobalStruct* gs) {
     // Fill in some test data
+    gs->base_field1 = 0xAA;
+    gs->base_field2 = 0xBBBB;
+    gs->packed = 0x04030201;
+    gs->bs2_base_field1 = 0xCC;
+    gs->bs2_base_field2 = 0xDDDD;
+    gs->bs2_packed = 0x08070605;
     gs->a = c_uint32_t;
     gs->b = c_uint64_t;
     for (int i = 0; i < 16; i++) {
