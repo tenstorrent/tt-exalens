@@ -178,7 +178,8 @@ NB_MODULE(ttexalens_pybind, m) {
              "chip_id"_a)
         .def("get_device_unique_id", &TTExaLensImplementation::get_device_unique_id, "Returns device unique id",
              "chip_id"_a)
-        .def("warm_reset", &TTExaLensImplementation::warm_reset, "Warm resets the device", "is_galaxy_configuration"_a = false);
+        .def("warm_reset", &TTExaLensImplementation::warm_reset, "Warm resets the device",
+             "is_galaxy_configuration"_a = false);
 
     // Bind factory functions
     m.def("open_device", &open_device, "Opens tt device. Returns TTExaLensImplementation object or None if failed.",
