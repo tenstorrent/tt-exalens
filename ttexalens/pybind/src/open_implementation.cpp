@@ -382,4 +382,9 @@ std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::conv
     }
 }
 
+template <typename BaseClass>
+void open_implementation<BaseClass>::warm_reset(bool is_galaxy_configuration) {
+    BaseClass::warm_reset(is_galaxy_configuration);
+}
+
 }  // namespace tt::exalens
