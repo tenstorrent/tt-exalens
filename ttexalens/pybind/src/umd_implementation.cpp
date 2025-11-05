@@ -254,23 +254,11 @@ std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> umd_implementation::get_
     return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
 }
 
-bool _is_galaxy_configuration(tt::umd::Cluster* cluster) {
-    bool is_4u_galaxy_configuration = cluster != nullptr && cluster->get_target_remote_device_ids().size() > 0 &&
-                                      cluster->get_cluster_description()->get_board_type(
-                                          *cluster->get_target_remote_device_ids().begin()) == BoardType::GALAXY;
-    bool is_6u_galaxy_configuration = cluster->get_target_device_ids().size() > 0 &&
-                                      cluster->get_cluster_description()->get_board_type(0) == BoardType::UBB;
-    return is_4u_galaxy_configuration || is_6u_galaxy_configuration;
-}
-
-void umd_implementation::warm_reset() {
-    if (_is_galaxy_configuration(cluster)) {
+void umd_implementation::warm_reset(bool is_galaxy_configuration) {
+    if (is_galaxy_configuration) {
         tt::umd::WarmReset::ubb_warm_reset();
     } else {
         tt::umd::WarmReset::warm_reset();
     }
-    // Calling discover to ensure warm reset has finished
-    tt::umd::TopologyDiscovery::discover(tt::umd::TopologyDiscoveryOptions());
 }
-
 }  // namespace tt::exalens
