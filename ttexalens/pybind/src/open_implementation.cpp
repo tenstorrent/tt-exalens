@@ -170,7 +170,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     tt::umd::TTDevice::use_noc1(initialize_with_noc1);
     tt::umd::IODeviceType device_type = init_jtag ? tt::umd::IODeviceType::JTAG : tt::umd::IODeviceType::PCIe;
 
-    auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor("", {}, device_type);
+    auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor("", device_type);
 
     if (cluster_descriptor->get_number_of_chips() == 0) {
         throw std::runtime_error("No Tenstorrent devices were detected on this system.");
