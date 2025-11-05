@@ -4,8 +4,8 @@
 """
 Usage:
   debug-bus list-signals [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s]
-  debug-bus list-groups [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s]
-  debug-bus group <group-name> <l1-address> [--samples <num>] [--sampling-interval <cycles>] [--search <pattern>] [-d <device>] [-l <loc>] [-s]
+  debug-bus list-groups [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-groups>] [-s]
+  debug-bus group <group-name> <l1-address> [--samples <num>] [--sampling-interval <cycles>] [--search <pattern>] [--max <max-sigs>] [-d <device>] [-l <loc>] [-s]
   debug-bus <signals> [-d <device>] [-l <loc>] [-s]
 
 Options:
@@ -173,19 +173,6 @@ def _get_group_for_signal(signal_store: DebugBusSignalStore, signal: str) -> str
     return ""
 
 
-def _get_signal_part_names(debug_bus_signal_store: DebugBusSignalStore, base_name: str) -> list[str]:
-    """Get all part names for a combined signal based on its base name. Does not guarantee order."""
-    if not debug_bus_signal_store.is_combined_signal(base_name):
-        return [base_name]
-
-    part_names: list[str] = []
-    for signal_name in debug_bus_signal_store.signal_names:
-        if signal_name.startswith(f"{base_name}/"):
-            part_names.append(signal_name)
-
-    return part_names
-
-
 def _get_debug_bus_signal_store(device: Device, loc: OnChipCoordinate) -> DebugBusSignalStore | None:
     """Return debug bus signal store for given device and location, or None if unavailable."""
     noc_block = device.get_block(loc)
@@ -209,17 +196,14 @@ def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: d
 
     # Get all signal names
     names: list[str] = list(debug_bus_signal_store.signal_names)
-    max_arg: str = "all"
-    if params["max"] is not None:
-        max_arg = params["max"]
 
     # Filter signal names by search pattern
-    if params["search"] is not None:
-        search_arg: str = params["search"]
-        names = search(names, search_arg, max_arg)
-        if len(names) == 0:
-            print("No matches found.")
-            return
+    search_arg: str = params["search"]
+    max_arg: str = params["max"]
+    names = search(names, search_arg, max_arg)
+    if len(names) == 0:
+        print("No matches found.")
+        return
 
     signal_data: list[tuple[str, str, str]] = []
     # Read and format each signal value
@@ -235,14 +219,6 @@ def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: d
 
     # Sort by group and signal name
     signal_data.sort(key=lambda x: (x[0], x[1]))
-
-    # Limit number of displayed signals
-    if max_arg is not None and str(max_arg).lower() != "all":
-        try:
-            max_count = int(max_arg)
-            signal_data = signal_data[:max_count]
-        except Exception:
-            pass
 
     # Display results
     formatter.print_header(f"=== Device {device._id} - location {loc.to_str('logical')})", style="bold")
@@ -260,20 +236,16 @@ def handle_list_groups_command(device: Device, loc: OnChipCoordinate, params: di
     if debug_bus_signal_store is None:
         return
 
+    # Get all group names
     names: list[str] = list(debug_bus_signal_store.group_names)
-    max_arg: str = "all"
-    if params["max"] is not None:
-        max_arg = params["max"]
 
     # Filter group names by search pattern
-    if params["search"] is not None:
-        search_arg: str = params["search"]
-        names = search(names, search_arg, max_arg)
-        if len(names) == 0:
-            print("No matches found.")
-            return
-    elif max_arg is not None and str(max_arg).lower() != "all":
-        names = names[: int(max_arg)]
+    search_arg: str = params["search"]
+    max_arg: str = params["max"]
+    names = search(names, search_arg, max_arg)
+    if len(names) == 0:
+        print("No matches found.")
+        return
 
     # Handle case of no groups
     if len(names) == 0:
@@ -321,13 +293,16 @@ def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: 
         print("No signals read from group.")
         return
 
+    # Filter signal names by search pattern
+    search_arg: str = params["search"]
+    max_arg: str = params["max"]
+
     # Get all signal names from the first sample
     signal_names = list(signal_group_sample[0].keys())
-    if params.get("search"):
-        signal_names = search(signal_names, params["search"])
-        if not signal_names:
-            print("No matches found.")
-            return
+    signal_names = search(signal_names, search_arg, max_arg)
+    if not signal_names:
+        print("No matches found.")
+        return
 
     # Format all signals, showing all samples
     formatted_data = []
@@ -367,7 +342,7 @@ def handle_signal_reading_command(device: Device, loc: OnChipCoordinate, params:
                     "Only parts can be read in this mode, and their values may be inconsistent due to hardware implementation.\n"
                     "The parts are listed below:"
                 )
-                for s in _get_signal_part_names(debug_bus_signal_store, signal):
+                for s in debug_bus_signal_store.get_signal_part_names(signal):
                     print(s)
                 return
 
@@ -416,8 +391,8 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
     # Collect parameters for the command
     params: dict[str, Any] = {
-        "search": dopt.args.get("--search"),
-        "max": dopt.args.get("--max"),
+        "search": dopt.args["--search"] if dopt.args.get("--search") is not None else "*",
+        "max": dopt.args["--max"] if dopt.args.get("--max") is not None else "10",
         "samples": int(dopt.args["--samples"]) if dopt.args.get("--samples") is not None else None,
         "sampling-interval": int(dopt.args["--sampling-interval"])
         if dopt.args.get("--sampling-interval") is not None

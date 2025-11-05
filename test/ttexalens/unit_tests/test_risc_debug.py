@@ -304,18 +304,6 @@ class TestDebugging(unittest.TestCase):
         assert pc_signal_name in group_values.keys()
         assert group_values[pc_signal_name] == pc_value_32
 
-    def _get_signal_part_names(self, debug_bus_signal_store: DebugBusSignalStore, base_name: str) -> list[str]:
-        """Get all part names for a combined signal based on its base name."""
-        if not debug_bus_signal_store.is_combined_signal(base_name):
-            return [base_name]
-
-        part_names: list[str] = []
-        for signal_name in debug_bus_signal_store.signal_names:
-            if signal_name.startswith(f"{base_name}/"):
-                part_names.append(signal_name)
-
-        return part_names
-
     @parameterized.expand(
         [
             (1, 2),  # samples, sampling_interval
@@ -352,7 +340,7 @@ class TestDebugging(unittest.TestCase):
                     f"{signal_name}: Inconsistent sampled values: {sampled_group}",
                 )
 
-                parts = self._get_signal_part_names(signal_store, signal_name)
+                parts = signal_store.get_signal_part_names(signal_name)
 
                 if signal_store.is_combined_signal(signal_name):
                     # combined signal

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 from dataclasses import dataclass
-from functools import cached_property, cache
+from functools import cached_property
 from time import sleep
 from typing import Iterable, TYPE_CHECKING
 
@@ -98,9 +98,12 @@ class SignalGroupSample:
 
 @dataclass
 class DebugBusSignalStoreInitialization:
-    group_map: dict[str, tuple[int, int]]
-    signals: dict[str, DebugBusSignalDescription]
-    signal_groups: dict[str, dict[str, ShiftMask]]
+    group_map: dict[str, tuple[int, int]]  # key: group_name, value: (daisy_sel, sig_sel)
+    signals: dict[str, DebugBusSignalDescription]  # key: signal_name, value: signal description
+    signal_groups: dict[
+        str, dict[str, ShiftMask]
+    ]  # key: group_name, value: signal_in_group on shift and mask in group mapping
+    combined_signals: dict[str, list[str]]  # key: base signal name, value: list of combined signal parts
 
 
 class DebugBusSignalStore:
@@ -113,6 +116,7 @@ class DebugBusSignalStore:
         self.group_map: dict[str, tuple[int, int]] = initialization.group_map
         self.signals: dict[str, DebugBusSignalDescription] = initialization.signals
         self.signal_groups: dict[str, dict[str, ShiftMask]] = initialization.signal_groups
+        self.combined_signals: dict[str, list[str]] = initialization.combined_signals
         self.noc_block = noc_block
         self.neo_id = neo_id
         self.L1_SAMPLE_SIZE_BYTES = 16  # Each 128-bit sample is 16 bytes
@@ -158,26 +162,31 @@ class DebugBusSignalStore:
 
     @staticmethod
     def get_base_signal_name(signal_name: str) -> str:
-        """Extract base signal name from combined signal names like 'signal/0' or 'signal/1'."""
+        """Extract base signal name from combined signal names like 'signal/suffix'."""
         return signal_name.split("/")[0] if "/" in signal_name else signal_name
+
+    def get_signal_part_names(self, base_name: str) -> list[str]:
+        """Get all part names for a combined signal based on its base name. Does not guarantee order."""
+        if not self.is_combined_signal(base_name):
+            return [base_name]
+
+        return self.combined_signals[base_name]
 
     @staticmethod
     def is_signal_part(signal_name: str) -> bool:
-        """Check if signal name indicates a combined signal part (ends with '/number')."""
+        """Check if signal name indicates a combined signal part (ends with '/suffix')."""
         return "/" in signal_name
 
     def is_combined_signal(self, signal_name: str) -> bool:
-        """Check if signal name is a base name for a combined signal (has /0, /1, /2... variants)."""
-        prefix = signal_name + "/"
-        return any(s.startswith(prefix) for s in self.signals)
+        """Check if signal name is a base name for a combined signal (has /suffix variants)."""
+        return signal_name in self.combined_signals
 
-    @cache
-    def get_signal_names_in_group(self, group_name: str) -> list[str]:
+    def get_signal_names_in_group(self, group_name: str) -> Iterable[str]:
         """Get all signal names in the specified group."""
         if group_name not in self.signal_groups:
             raise ValueError(f"Unknown group name '{group_name}'.")
 
-        return list(self.signal_groups[group_name].keys())
+        return self.signal_groups[group_name].keys()
 
     @cached_property
     def signal_names(self) -> set[str]:
@@ -243,7 +252,7 @@ class DebugBusSignalStore:
         **Direct Register Read:** Reads a 32-bit signal value directly
         from the debug register. It is possible to read all signals listed
         in the debug_bus_signal_map. For complex signals, only their parts,
-        marked with the suffix /number, can be read atomically.
+        marked with the suffix /suffix, can be read atomically.
 
         Parameters
         ----------
@@ -399,7 +408,7 @@ class DebugBusSignalStore:
 
         **L1 Sampling:** Captures one or more 128-bit signal samples into L1
         memory and reads the result. Combined signals can be read fully, atomically,
-        by specifying only the signal name without the /number suffix.
+        by specifying only the signal name without the /suffix.
 
         Parameters
         ----------
@@ -468,6 +477,9 @@ class DebugBusSignalStore:
         # dictionary where key is group name and value is dictionary of signals in that group
         signal_groups: dict[str, dict[str, ShiftMask]] = {}
 
+        # dictionary where key is base signal name and value is list of combined signal parts
+        combined_signals: dict[str, list[str]] = {}
+
         for group_key, (daisy_sel, sig_sel) in group_map.items():
             # group dictionary where key is signal name and value is ShiftMask for that signal
             signal_group: dict[str, ShiftMask] = {}
@@ -480,10 +492,18 @@ class DebugBusSignalStore:
                     # Compute mask and shift for the signal within the 128-bit sample.
                     signal_group[base_name] = ShiftMask(shift=(mask & -mask).bit_length() - 1, mask=mask)
 
+                    # Build combined_signals dictionary
+                    if DebugBusSignalStore.is_signal_part(signal_name):
+                        base_name = DebugBusSignalStore.get_base_signal_name(signal_name)
+                        if base_name not in combined_signals:
+                            combined_signals[base_name] = []
+                        combined_signals[base_name].append(signal_name)
+
             signal_groups[group_key] = signal_group
 
         return DebugBusSignalStoreInitialization(
             group_map=group_map,
             signals=signals,
             signal_groups=signal_groups,
+            combined_signals=combined_signals,
         )

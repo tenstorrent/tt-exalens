@@ -5,34 +5,33 @@
 # Unit test for ttexalens/util.py:search.
 import unittest
 from ttexalens.util import search
-from fnmatch import fnmatch
 
 
 class TestSearch(unittest.TestCase):
     def setUp(self):
         self.data = [
-            "test",
-            "testing",
-            "tested",
-            "Tenstorrent",
+            "42",
+            "<thing>",
+            "BLACKHOLE",
+            "O_RDWR",
             "Tensix",
-            "status",
-            "step",
+            "Tenstorrent",
+            "[/string,]",
+            "_3",
+            "__builtin_unreachable",
             "read",
             "reset",
-            "terminal emulator",
-            "technology",
-            "tech",
-            "tender",
-            "text",
+            "status",
+            "step",
             "team",
-            "[/string,]",
-            "O_RDWR",
-            "__builtin_unreachable",
-            "BLACKHOLE",
-            "<thing>",
-            "42",
-            "_3",
+            "tech",
+            "technology",
+            "tender",
+            "terminal emulator",
+            "test",
+            "tested",
+            "testing",
+            "text",
         ]
 
     def test_default(self):
@@ -44,17 +43,17 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(
             result,
             [
-                "test",
-                "testing",
-                "tested",
-                "Tenstorrent",
                 "Tensix",
-                "terminal emulator",
-                "technology",
-                "tech",
-                "tender",
-                "text",
+                "Tenstorrent",
                 "team",
+                "tech",
+                "technology",
+                "tender",
+                "terminal emulator",
+                "test",
+                "tested",
+                "testing",
+                "text",
             ],
         )
 
@@ -78,7 +77,7 @@ class TestSearch(unittest.TestCase):
         result = search(self.data, "*,]", "all")
         self.assertEqual(result, ["[/string,]"])
         result = search(self.data, "*_*", "all")
-        self.assertEqual(result, ["O_RDWR", "__builtin_unreachable", "_3"])
+        self.assertEqual(result, ["O_RDWR", "_3", "__builtin_unreachable"])
 
     def test_invalid_max(self):
         with self.assertRaises(ValueError):
