@@ -153,6 +153,7 @@ def get_gdb_callstack(
         start_callstack_label = "START CALLSTACK"
         end_callstack_label = "END CALLSTACK"
 
+        assert gdb_server.server.port is not None
         gdb_script = make_gdb_script_for_callstack(
             process_ids[location][risc_name],
             elf_paths,
