@@ -28,6 +28,10 @@ from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegi
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
 
+from ttexalens.gdb.gdb_client import get_gdb_callstack
+from ttexalens.gdb.gdb_communication import ServerSocket
+from ttexalens.gdb.gdb_server import GdbServer
+
 
 def invalid_argument_decorator(func):
     @wraps(func)
@@ -824,11 +828,16 @@ class TestCallStack(unittest.TestCase):
     loader: ElfLoader  # ElfLoader object
     pc_register_index: int  # PC register index
     device: Device  # Device
+    gdb_server: GdbServer  # GDB server
 
     @classmethod
     def setUpClass(cls):
         cls.context = tt_exalens_init.init_ttexalens()
         cls.device = cls.context.devices[0]
+        server = ServerSocket()
+        server.start()
+        cls.gdb_server = GdbServer(cls.context, server)
+        cls.gdb_server.start()
 
     def setUp(self):
         # Convert location_desc to location
@@ -856,6 +865,7 @@ class TestCallStack(unittest.TestCase):
         noc_block = self.location._device.get_block(self.location)
         try:
             self.risc_debug = noc_block.get_risc_debug(self.risc_name)
+            self.risc_name = self.risc_debug.risc_location.risc_name
         except ValueError as e:
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
 
@@ -885,6 +895,16 @@ class TestCallStack(unittest.TestCase):
         else:
             return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
 
+    def compare_callstacks(self, cs1: list[CallstackEntry], cs2: list[CallstackEntry]):
+        """Compare two callstacks."""
+        self.assertEqual(len(cs1), len(cs2), "Callstacks have different lengths")
+        for entry1, entry2 in zip(cs1, cs2):
+            self.assertEqual(entry1.function_name, entry2.function_name, "Function names do not match")
+            self.assertEqual(entry1.file, entry2.file, "Source files do not match")
+            self.assertEqual(entry1.line, entry2.line, "Line numbers do not match")
+            if entry1.pc is not None and entry2.pc is not None:
+                self.assertEqual(entry1.pc, entry2.pc, "Addresses do not match")
+
     CALLSTACK_ELFS = ["callstack.debug", "callstack.release", "callstack.coverage"]
     RECURSION_COUNT = [1, 10, 50]
 
@@ -906,6 +926,10 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack(self, elf_name: str, recursion_count: int):
@@ -922,6 +946,10 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_namespace(self, elf_name):
@@ -936,6 +964,10 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[0].function_name, "halt")
         self.assertEqual(callstack[1].function_name, "ns::foo")
         self.assertEqual(callstack[2].function_name, "main")
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(RECURSION_COUNT)
     def test_top_callstack_with_parsing(self, recursion_count: int):
@@ -977,6 +1009,10 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand([(1, 1)])
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):

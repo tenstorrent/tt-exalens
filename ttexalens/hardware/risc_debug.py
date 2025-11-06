@@ -328,9 +328,15 @@ class RiscDebug:
 
     @staticmethod
     def get_frame_callstack(
-        elf: ParsedElfFile, pc: int, frame_pointer: int | None = None, callstack: list["CallstackEntry"] | None = None
+        elf: ParsedElfFile,
+        pc: int,
+        frame_pointer: int | None = None,
+        callstack: list["CallstackEntry"] | None = None,
+        top_frame: bool = True,
     ):
-        file_line = elf._dwarf.find_file_line_by_address(pc)
+        # If we are at the top frame, we read file/line info for the current pc
+        # Otherwise, we read file/line info for the call instruction (pc - 4)
+        file_line = elf._dwarf.find_file_line_by_address(pc if top_frame else pc - 4)
         function_die = elf._dwarf.find_function_by_address(pc)
         file = file_line[0] if file_line is not None else None
         line = file_line[1] if file_line is not None else None
@@ -395,7 +401,9 @@ class RiscDebug:
 
             frame_pointer = frame_description.read_previous_cfa()
             while len(callstack) < limit:
-                callstack, function_die = RiscDebug.get_frame_callstack(elf, pc, frame_pointer, callstack)
+                callstack, function_die = RiscDebug.get_frame_callstack(
+                    elf, pc, frame_pointer, callstack, top_frame=len(callstack) == 0
+                )
 
                 # We want to stop when we print main as frame descriptor might not be correct afterwards
                 if stop_on_main and function_die is not None and function_die.name == "main":

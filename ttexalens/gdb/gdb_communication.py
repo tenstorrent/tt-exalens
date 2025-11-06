@@ -1,10 +1,33 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from contextlib import closing
 import select
 import socket
+import threading
 from ttexalens.gdb.gdb_data import GdbThreadId
 from ttexalens import util as util
+
+
+# Global lock for thread-safe port finding
+_port_lock = threading.Lock()
+
+
+def find_available_port() -> int:
+    """
+    Find an available port for gdb_server in a thread-safe manner.
+    Returns:
+        An available port number
+    """
+    try:
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.bind(("", 0))  # 0 → OS picks a free port
+            s.listen()
+            return s.getsockname()[1]
+    except (socket.error, OSError) as e:
+        # If we get here, no port was found
+        raise Exception(f"No available port found: {e}")
+
 
 # Simple class that wraps reading/writing to a socket
 class ClientSocket:
@@ -49,7 +72,7 @@ class ClientSocket:
 
 # Simple class that wraps listening and accepting connections
 class ServerSocket:
-    def __init__(self, port: int):
+    def __init__(self, port: int | None = None):
         self.port = port
         self.server: socket.socket | None = None
         self.connection: socket.socket | None = None
@@ -59,10 +82,13 @@ class ServerSocket:
 
     def start(self):
         if self.server is None:
-            self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.server.bind(("localhost", self.port))
-            self.server.listen(1)
+            with _port_lock:
+                if self.port is None:
+                    self.port = find_available_port()
+                self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                self.server.bind(("localhost", self.port))
+                self.server.listen(1)
 
     def accept(self, timeout: float | None = None):
         assert self.server is not None

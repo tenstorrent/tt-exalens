@@ -44,7 +44,10 @@ class umd_implementation : public ttexalens_implementation {
     virtual std::optional<uint32_t> read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) override;
     virtual std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> get_firmware_version(uint8_t chip_id) override;
     virtual void warm_reset(bool is_galaxy_configuration = false) override;
+<<<<<<< HEAD
     virtual std::optional<std::tuple<uint8_t, uint8_t>> get_currently_active_eth_core(uint8_t chip_id) override;
+=======
+>>>>>>> origin/main
 
    private:
     bool is_chip_mmio_capable(uint8_t chip_id);
