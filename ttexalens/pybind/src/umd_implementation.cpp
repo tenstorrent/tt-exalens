@@ -317,6 +317,10 @@ void umd_implementation::warm_reset(bool is_galaxy_configuration) {
 std::optional<std::tuple<uint8_t, uint8_t>> umd_implementation::get_currently_active_eth_core(uint8_t chip_id) {
     tt_xy_pair active_eth_core =
         cluster->get_remote_chip(chip_id)->get_remote_communication()->get_active_remote_transfer_eth_core();
-    return std::make_tuple(active_eth_core.x, active_eth_core.y);
+    const tt::umd::CoreCoord eth_translated =
+        tt::umd::CoreCoord(active_eth_core.x, active_eth_core.y, CoreType::ETH, CoordSystem::TRANSLATED);
+    const tt::umd::CoreCoord eth_logical =
+        cluster->get_soc_descriptor(chip_id).translate_coord_to(eth_translated, CoordSystem::LOGICAL);
+    return std::make_tuple(eth_logical.x, eth_logical.y);
 }
 }  // namespace tt::exalens
