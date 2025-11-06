@@ -280,6 +280,12 @@ class GdbServer(threading.Thread):
             for j in range(0, GdbServer.REGISTER_COUNT):
                 assert self.current_process is not None, "Current process should not be None when reading registers"
                 value = self.current_process.risc_debug.read_gpr(j)
+                if j == 32:
+                    # If ebreak was hit, pc will point to the instruction after it
+                    risc_debug_status = self.current_process.risc_debug.read_status()
+                    if risc_debug_status.is_ebreak_hit:
+                        # Rewind pc to unwind callstack from the ebreak instruction
+                        value -= 4
                 writer.append_register_hex(value)
         elif parser.parse(b"G"):  # Write general registers.
             # ‘G XX...’
