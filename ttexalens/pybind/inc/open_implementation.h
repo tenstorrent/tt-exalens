@@ -48,6 +48,7 @@ class open_implementation : public BaseClass {
     std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> get_firmware_version(uint8_t chip_id) override;
     std::optional<uint64_t> get_device_unique_id(uint8_t chip_id) override;
     virtual void warm_reset(bool is_galaxy_configuration = false) override;
+    virtual std::optional<std::tuple<uint8_t, uint8_t>> get_currently_active_eth_core(uint8_t chip_id) override;
 };
 
 }  // namespace tt::exalens
