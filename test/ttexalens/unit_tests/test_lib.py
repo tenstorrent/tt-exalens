@@ -809,9 +809,9 @@ class TestARC(unittest.TestCase):
 
 @parameterized_class(
     [
-        # {"location_desc": "ETH0", "risc_name": "ERISC"},
-        # {"location_desc": "ETH0", "risc_name": "ERISC0"},
-        # {"location_desc": "ETH0", "risc_name": "ERISC1"},
+        {"location_desc": "ETH0", "risc_name": "ERISC"},
+        {"location_desc": "ETH0", "risc_name": "ERISC0"},
+        {"location_desc": "ETH0", "risc_name": "ERISC1"},
         {"location_desc": "FW0", "risc_name": "BRISC"},
         {"location_desc": "FW0", "risc_name": "TRISC0"},
         {"location_desc": "FW0", "risc_name": "TRISC1"},
