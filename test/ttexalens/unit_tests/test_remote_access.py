@@ -30,7 +30,7 @@ class TestRemoteAccess(unittest.TestCase):
         fw_versions1: list[FirmwareVersion] = []
         for remote_device in self.remote_devices:
             fw_versions1.append(FirmwareVersion(self.context.server_ifc.get_firmware_version(remote_device._id)))
-            eth_core = self.context.server_ifc.get_currently_active_eth_core(remote_device._id)
+            eth_core = self.context.server_ifc.get_remote_transfer_eth_core(remote_device._id)
             coord_str = f"e{eth_core[0]},{eth_core[1]}"
             loc = OnChipCoordinate.create(coord_str, self.local_device)
             noc_block = self.local_device.get_block(loc)

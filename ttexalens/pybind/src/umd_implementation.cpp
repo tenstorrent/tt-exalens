@@ -314,7 +314,7 @@ void umd_implementation::warm_reset(bool is_galaxy_configuration) {
     }
 }
 
-std::optional<std::tuple<uint8_t, uint8_t>> umd_implementation::get_currently_active_eth_core(uint8_t chip_id) {
+std::optional<std::tuple<uint8_t, uint8_t>> umd_implementation::get_remote_transfer_eth_core(uint8_t chip_id) {
     tt_xy_pair active_eth_core =
         cluster->get_remote_chip(chip_id)->get_remote_communication()->get_remote_transfer_ethernet_core();
     const tt::umd::CoreCoord eth_translated =

@@ -112,8 +112,8 @@ class TTExaLensImplementation {
     }
 
     void warm_reset(bool is_galaxy_configuration) { implementation->warm_reset(is_galaxy_configuration); }
-    std::optional<std::tuple<uint8_t, uint8_t>> get_currently_active_eth_core(uint8_t chip_id) {
-        return implementation->get_currently_active_eth_core(chip_id);
+    std::optional<std::tuple<uint8_t, uint8_t>> get_remote_transfer_eth_core(uint8_t chip_id) {
+        return implementation->get_remote_transfer_eth_core(chip_id);
     }
 };
 
@@ -183,7 +183,7 @@ NB_MODULE(ttexalens_pybind, m) {
              "chip_id"_a)
         .def("warm_reset", &TTExaLensImplementation::warm_reset, "Warm resets the device",
              "is_galaxy_configuration"_a = false)
-        .def("get_currently_active_eth_core", &TTExaLensImplementation::get_currently_active_eth_core,
+        .def("get_remote_transfer_eth_core", &TTExaLensImplementation::get_remote_transfer_eth_core,
              "Returns currently active Ethernet core", "chip_id"_a);
 
     // Bind factory functions
