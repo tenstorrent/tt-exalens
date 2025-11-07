@@ -9,6 +9,7 @@ from test.ttexalens.unit_tests.test_base import init_default_test_context
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
+from ttexalens.util import FirmwareVersion
 
 class TestRemoteAccess(unittest.TestCase):
     context: Context  # TTExaLens context
@@ -25,8 +26,9 @@ class TestRemoteAccess(unittest.TestCase):
 
         remote_devices = [self.context.devices[i] for i in range(1, len(self.context.devices))]
 
+        fw_versions1: list[FirmwareVersion] = []
         for remote_device in remote_devices:
-            fw_version1 =self.context.server_ifc.get_firmware_version(remote_device._id)
+            fw_versions1.append(FirmwareVersion(self.context.server_ifc.get_firmware_version(remote_device._id)))
             eth_core = self.context.server_ifc.get_currently_active_eth_core(remote_device._id)
             coord_str = f"e{eth_core[0]},{eth_core[1]}"
             loc = OnChipCoordinate.create(coord_str, self.local_device)
@@ -36,6 +38,9 @@ class TestRemoteAccess(unittest.TestCase):
         self.context.server_ifc.warm_reset()
         self.context = init_default_test_context()
     
+        fw_versions2: list[FirmwareVersion] = []
         for remote_device in remote_devices:
-            fw_version2 =self.context.server_ifc.get_firmware_version(remote_device._id)
-            self.assertEqual(fw_version1, fw_version2)
+            fw_versions2.append(FirmwareVersion(self.context.server_ifc.get_firmware_version(remote_device._id)))
+
+        for i in range(len(remote_devices)):
+            self.assertEqual(fw_versions1[i], fw_versions2[i])
