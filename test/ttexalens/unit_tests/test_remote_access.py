@@ -11,9 +11,10 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.util import FirmwareVersion
 
+
 class TestRemoteAccess(unittest.TestCase):
     context: Context  # TTExaLens context
-    local_device: Device # Local (PCIE) device
+    local_device: Device  # Local (PCIE) device
 
     @classmethod
     def setUpClass(cls):
@@ -35,10 +36,10 @@ class TestRemoteAccess(unittest.TestCase):
             noc_block = self.local_device.get_block(loc)
             risc_debug = noc_block.get_risc_debug(noc_block.risc_names[0])
             risc_debug.halt()
-        
+
         self.context.server_ifc.warm_reset()
         self.context = init_default_test_context()
-    
+
         fw_versions2: list[FirmwareVersion] = []
         for remote_device in remote_devices:
             fw_versions2.append(FirmwareVersion(self.context.server_ifc.get_firmware_version(remote_device._id)))
