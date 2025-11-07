@@ -32,7 +32,8 @@ class TestRemoteAccess(unittest.TestCase):
             eth_core = self.context.server_ifc.get_currently_active_eth_core(remote_device._id)
             coord_str = f"e{eth_core[0]},{eth_core[1]}"
             loc = OnChipCoordinate.create(coord_str, self.local_device)
-            risc_debug = self.local_device.get_block(loc).get_risc_debug("erisc")
+            noc_block = self.local_device.get_block(loc)
+            risc_debug = noc_block.get_risc_debug(noc_block.risc_names[0])
             risc_debug.halt()
         
         self.context.server_ifc.warm_reset()
