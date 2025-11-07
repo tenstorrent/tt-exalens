@@ -427,10 +427,10 @@ Reads an ARC telemetry entry from the device.
 
 
 
-## read_tensix_register
+## read_register
 
 ```
-read_tensix_register(location, register, noc_id=0, neo_id=None, device_id=0, context=None) -> int
+read_register(location, register, noc_id=0, neo_id=None, device_id=0, context=None) -> int
 ```
 
 
@@ -456,16 +456,16 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 
 
 
-## write_tensix_register
+## write_register
 
 ```
-write_tensix_register(location, register, value, noc_id=0, neo_id=None, device_id=0, context=None) -> None
+write_register(location, register, value, noc_id=0, neo_id=None, device_id=0, context=None) -> None
 ```
 
 
 ### Description
 
-Writes value to a register on the tensix core.
+Writes value to a register on the core.
 
 
 ### Args

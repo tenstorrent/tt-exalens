@@ -346,18 +346,18 @@ class TestReadWrite(unittest.TestCase):
             self.skipTest("Skipping the test on grayskull.")
 
         # Storing the original value of the register
-        original_value = lib.read_tensix_register(location, register)
+        original_value = lib.read_register(location, register)
 
         # Writing a value to the register and reading it back
-        lib.write_tensix_register(location, register, value)
-        ret = lib.read_tensix_register(location, register)
+        lib.write_register(location, register, value)
+        ret = lib.read_register(location, register)
 
         # Checking if the value was written and read correctly
         self.assertEqual(ret, value)
 
         # Writing the original value back to the register and reading it
-        lib.write_tensix_register(location, register, original_value)
-        ret = lib.read_tensix_register(location, register)
+        lib.write_register(location, register, original_value)
+        ret = lib.read_register(location, register)
 
         # Checking if read value is equal to the original value
         self.assertEqual(ret, original_value)
@@ -380,27 +380,27 @@ class TestReadWrite(unittest.TestCase):
             self.skipTest("Skipping the test on grayskull.")
 
         # Reading original values of registers
-        original_val_desc = lib.read_tensix_register(location, register_description)
-        original_val_name = lib.read_tensix_register(location, register_name)
+        original_val_desc = lib.read_register(location, register_description)
+        original_val_name = lib.read_register(location, register_name)
 
         # Checking if values are equal
         self.assertEqual(original_val_desc, original_val_name)
 
         # Writing a value to the register given by description
-        lib.write_tensix_register(location, register_description, 1)
+        lib.write_register(location, register_description, 1)
 
         # Reading values from both registers
-        val_desc = lib.read_tensix_register(location, register_description)
-        val_name = lib.read_tensix_register(location, register_name)
+        val_desc = lib.read_register(location, register_description)
+        val_name = lib.read_register(location, register_name)
 
         # Checking if writing to description register affects the name register (making sure they are the same)
         self.assertEqual(val_desc, val_name)
 
         # Wrting original value back
-        lib.write_tensix_register(location, register_name, original_val_name)
+        lib.write_register(location, register_name, original_val_name)
 
-        val_desc = lib.read_tensix_register(location, register_description)
-        val_name = lib.read_tensix_register(location, register_name)
+        val_desc = lib.read_register(location, register_description)
+        val_name = lib.read_register(location, register_name)
 
         # Checking if original values are restored
         self.assertEqual(val_name, original_val_name)
@@ -432,9 +432,9 @@ class TestReadWrite(unittest.TestCase):
 
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
             with self.assertRaises((util.TTException, ValueError)):
-                lib.read_tensix_register(location, register, device_id)
+                lib.read_register(location, register, device_id)
         with self.assertRaises((util.TTException, ValueError)):
-            lib.write_tensix_register(location, register, value, device_id)
+            lib.write_register(location, register, value, device_id)
 
     def write_program(self, location, addr, data):
         """Write program code data to L1 memory."""
