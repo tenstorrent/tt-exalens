@@ -21,9 +21,9 @@ ELFS = ["run_elf_test.coverage", "cov_test.coverage"]  # We only run ELFs that d
 
 @parameterized_class(
     [
-        # {"core_desc": "ETH0", "risc_name": "ERISC"},
-        # {"core_desc": "ETH0", "risc_name": "ERISC0"},
-        # {"core_desc": "ETH0", "risc_name": "ERISC1"},
+        {"core_desc": "ETH0", "risc_name": "ERISC"},
+        {"core_desc": "ETH0", "risc_name": "ERISC0"},
+        {"core_desc": "ETH0", "risc_name": "ERISC1"},
         {"core_desc": "FW0", "risc_name": "BRISC"},
         {"core_desc": "FW0", "risc_name": "TRISC0"},
         {"core_desc": "FW0", "risc_name": "TRISC1"},
