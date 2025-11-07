@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
+import unittest
+from parameterized import parameterized_class
+
+
+from test.ttexalens.unit_tests.test_base import init_default_test_context
+from ttexalens.context import Context
+from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.device import Device
+
+class TestRemoteAccess(unittest.TestCase):
+    context: Context  # TTExaLens context
+    local_device: Device # Local (PCIE) device
+
+    @classmethod
+    def setUpClass(cls):
+        cls.context = init_default_test_context()
+        cls.local_device = cls.context.devices[0]
+
+    def test_remote_access(self):
+        if len(self.context.devices) < 2:
+            self.skipTest("There are no remote devices to test")
+
+        remote_devices = [self.context.devices[i] for i in range(1, len(self.context.devices))]
+
+        for remote_device in remote_devices:
+            fw_version1 =self.context.server_ifc.get_firmware_version(remote_device._id)
+            eth_core = self.context.server_ifc.get_currently_active_eth_core(remote_device._id)
+            coord_str = f"e{eth_core[0]},{eth_core[1]}"
+            loc = OnChipCoordinate.create(coord_str, self.local_device)
+            risc_debug = self.local_device.get_block(loc).get_risc_debug("erisc")
+            risc_debug.halt()
+        
+        self.context.server_ifc.warm_reset()
+        self.context = init_default_test_context()
+    
+        for remote_device in remote_devices:
+            fw_version2 =self.context.server_ifc.get_firmware_version(remote_device._id)
+            self.assertEqual(fw_version1, fw_version2)
