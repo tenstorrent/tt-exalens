@@ -30,6 +30,10 @@ inline volatile DebugPrintMemLayout* get_debug_print_buffer() {
 }
 
 namespace dprint_detail {
+    // If you see linker error about multiple definitions of this variable,
+    // know that multiple compile units are not allowed when using current dprint implementation.
+    const std::array<char, 5> single_compile_unit_forcing __attribute__((section("dprint_strings"), used)) = {'!', '@', '#', '$', '\0'};
+
     constexpr std::size_t message_header_size = 1;
 
     // Type-to-size mapping for serialization
