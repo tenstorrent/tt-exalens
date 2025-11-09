@@ -438,7 +438,7 @@ def read_register(
     context: Context | None = None,
 ) -> int:
     """
-    Reads the value of a register from the core.
+    Reads the value of a register from the noc location.
 
     Args:
         location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
@@ -474,7 +474,7 @@ def write_register(
     context: Context | None = None,
 ) -> None:
     """
-    Writes value to a register on the core.
+    Writes value to a register on the noc location.
 
     Args:
         location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.

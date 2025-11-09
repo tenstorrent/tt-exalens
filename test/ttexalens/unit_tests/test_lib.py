@@ -436,6 +436,66 @@ class TestReadWrite(unittest.TestCase):
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_register(location, register, value, device_id)
 
+    @parameterized.expand(
+        [
+            ("0,0",),
+            ("1,1",),
+            ("2,2",),
+        ]
+    )
+    def test_read_write_cfg_register(self, location):
+        """Test reading and writing configuration registers using lib functions."""
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull.")
+
+        cfg_reg_name = "ALU_FORMAT_SPEC_REG2_Dstacc"
+
+        # Store original value
+        original_value = lib.read_register(location, cfg_reg_name)
+
+        # Test writing and reading different values
+        lib.write_register(location, cfg_reg_name, 10)
+        assert lib.read_register(location, cfg_reg_name) == 10
+
+        lib.write_register(location, cfg_reg_name, 0)
+        assert lib.read_register(location, cfg_reg_name) == 0
+
+        lib.write_register(location, cfg_reg_name, 5)
+        assert lib.read_register(location, cfg_reg_name) == 5
+
+        # Restore original value
+        lib.write_register(location, cfg_reg_name, original_value)
+
+    @parameterized.expand(
+        [
+            ("0,0",),
+            ("1,1",),
+            ("2,2",),
+        ]
+    )
+    def test_read_write_dbg_register(self, location):
+        """Test reading and writing debug registers using lib functions."""
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull.")
+
+        dbg_reg_name = "RISCV_DEBUG_REG_CFGREG_RD_CNTL"
+
+        # Store original value
+        original_value = lib.read_register(location, dbg_reg_name)
+
+        # Test writing and reading different values
+        lib.write_register(location, dbg_reg_name, 10)
+        assert lib.read_register(location, dbg_reg_name) == 10
+
+        lib.write_register(location, dbg_reg_name, 0)
+        assert lib.read_register(location, dbg_reg_name) == 0
+
+        lib.write_register(location, dbg_reg_name, 5)
+        assert lib.read_register(location, dbg_reg_name) == 5
+
+        # Restore original value
+        lib.write_register(location, dbg_reg_name, original_value)
+
     def write_program(self, location, addr, data):
         """Write program code data to L1 memory."""
         bytes_written = lib.write_words_to_device(location, addr, data, context=self.context)

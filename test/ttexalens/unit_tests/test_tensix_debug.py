@@ -36,24 +36,6 @@ class TestTensixDebug(unittest.TestCase):
     def is_blackhole(self) -> bool:
         return self.context.devices[0]._arch == "blackhole"
 
-    def test_read_write_cfg_register(self):
-        cfg_reg_name = "ALU_FORMAT_SPEC_REG2_Dstacc"
-        self.tensix_debug.register_store.write_register(cfg_reg_name, 10)
-        assert self.tensix_debug.register_store.read_register(cfg_reg_name) == 10
-        self.tensix_debug.register_store.write_register(cfg_reg_name, 0)
-        assert self.tensix_debug.register_store.read_register(cfg_reg_name) == 0
-        self.tensix_debug.register_store.write_register(cfg_reg_name, 5)
-        assert self.tensix_debug.register_store.read_register(cfg_reg_name) == 5
-
-    def test_read_write_dbg_register(self):
-        dbg_reg_name = "RISCV_DEBUG_REG_CFGREG_RD_CNTL"
-        self.tensix_debug.register_store.write_register(dbg_reg_name, 10)
-        assert self.tensix_debug.register_store.read_register(dbg_reg_name) == 10
-        self.tensix_debug.register_store.write_register(dbg_reg_name, 0)
-        assert self.tensix_debug.register_store.read_register(dbg_reg_name) == 0
-        self.tensix_debug.register_store.write_register(dbg_reg_name, 5)
-        assert self.tensix_debug.register_store.read_register(dbg_reg_name) == 5
-
     @parameterized.expand(
         [
             1,
