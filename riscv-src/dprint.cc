@@ -273,6 +273,88 @@ namespace dprint_detail {
     //     }
     // }
     // Why this implementation might be ok... Because DPRINT is debugging path and we might not care if dprint take 120 cycles instead of 100 cycles.
+    //
+    // Final solution for single buffer shared among riscs, firmwares and kernels.
+    // We will refer to dprint stream as a stream of bytes that host reads from dprint buffer (or that device writes to same buffer).
+    // We will address reading/writing from/to dprint buffer later.
+    //
+    // There will be two sections inside the elf:
+    // - dprint_strings: contains all format strings used by dprint calls and file names.
+    // - dprint_strings_info: contains list of DPrintStringInfo structures.
+    // struct DPrintStringInfo {
+    //     const char* format; // Pointer to format string in dprint_strings section
+    //     const char* file;   // Pointer to file name string in dprint_strings section
+    //     uint32_t line;      // Line number
+    // };
+    //
+    // We need 2 bytes to store dprint header:
+    // struct DPrintHeader {
+    //     uint8_t is_kernel: 1; // 0 = firmware, 1 = kernel
+    //     uint8_t risc_id: 5;   // 0-31 risc id (supports quasar as well)
+    //     uint16_t info_id: 10; // Up to 1024 dprints per risc/firmware/kernel
+    // };
+    // There is special value of the structure: 0xFFFF.
+    // That means that output of the new kernel started. New kernel will be described with 3 bytes:
+    // - risc_id (1 byte)
+    // - kernel_id (2 bytes)
+    //
+    // HOST:
+    // - It reads stream of data from dprint buffer (will be explained later how)
+    // - When it sees 0xFFFF, it will read next 3 bytes to know which kernel started on which risc
+    // - If it is not 0xFFFF, it parses DPrintHeader structure.
+    // - Based on is_kernel flag and risc_id, it knows which elf it should read (similar to tt-triage)
+    // - From elf, it loads DPrintStringInfo structure by indexing dprint_strings_info section with info_id (it represents index of array in that section)
+    // - From DPrintStringInfo structure it reads format string pointer (along with file and line if needed)
+    // - Format string pointer is located in dprint_strings section, so it reads format string from there
+    // - It parses format string and understands how to read arguments from dprint stream.
+    // - It reads arguments from dprint stream and visualizes the output based on the format string.
+    //
+    // DEVICE:
+    // - It has dprint buffer shared among all riscs. Structure for dprint buffer should look something like this:
+    //   struct DPrintBuffer {
+    //       uint32_t lock;
+    //       uint32_t write_position;
+    //       uint32_t read_position;
+    //       uint8_t kernel_printed[MAX_KERNELS]; // Array of flags that say if kernel has printed dprint or not since starting
+    //       uint8_t data[DPRINT_BUFFER_SIZE];
+    //   };
+    // - When any risc wants to do dprint, it takes lock (using atomic or other mechanism)
+    // - After taking a lock, it waits for enough space in dprint buffer to write its dprint message (in case when host needs to drain the stream).
+    // - If kernel is writing dprint for the first time after starting, it writes 0xFFFF followed by risc_id and kernel_id. (Either kernel _start or firmware main will update kernel_printed flag to 0 if it is compiled with dprint)
+    // - It writes DPrintHeader structure (is_kernel, risc_id, info_id) to dprint buffer followed by the serialized arguments.
+    // - It releases the lock.
+    // DEVICE COMPILE TIME MAGIC:
+    // - During dprint compilation, format string should look like this:
+    //   DPRINT("Some message: {}\n", arg);
+    // - Compiler will test number of arguments against number of {} placeholders.
+    // - Compiler will generate updated format string with type information:
+    //   "Some message: {d}\n" (assuming arg is int)
+    // - Compiler will create string in dprint_strings section for the updated format string.
+    // - Compiler will create DPrintStringInfo structure in dprint_strings_info section with pointer to format string, file name and line number.
+    // - Compiler will generate index of DPrintStringInfo structure in dprint_strings_info section and store it in DPrintHeader (along with is_kernel and risc_id).
+    // - Since compiler knows all argument types, during runtime it can serialize arguments properly.
+    //
+    // Reading and writting from/to dprint buffer:
+    //
+    // HOST:
+    // - Reads dprint buffer read/write positions to know how much data is available to read.
+    // - If write position is bigger than read position, if can read from read position to write position.
+    // - If write position is smaller than read position, it means buffer wrapped around, so it reads from read position to end of buffer and then from beginning of buffer to write position.
+    // - After reading data, it updates read position in dprint buffer.
+    //
+    // DEVICE:
+    // - When kernel wants to do dprint, it first checks if kernel_printed[risc_id] is 0.
+    // - If it is 0, it reads current kernel_id from mailboxes_t for that risc and sets kernel_printed[risc_id] to 1.
+    // - It takes writers lock. (THIS NEEDS TO BE EXPLAINED PER ARCHITECTURE)
+    // - If local variable for kernel_id is not 0 (meaning it is a subsequent dprint), it will want to write 0xFFFF followed by kernel_id and risc_id to the dprint buffer.
+    // - Before any argument writing, it checks if there is enough space in dprint buffer to write the argument (or if we want to optimize device code size/speed, space for the whole message) and waits for it if there isn't enough.
+    // - It writes DPrintHeader structure (that was generated at compile time) to dprint buffer.
+    // - It writes serialized arguments to dprint buffer.
+    // - It releases the writers lock.
+    // - If we want to do circular buffer, we need to have different ways of writing:
+    //   - if there is enough space from write position to end of buffer, we can do single write
+    //   - if there isn't enough space, we need to do two writes: from write position to end of buffer and from beginning of buffer to remaining size
+    //   - this writes should happend per argument
 }
 
 #define STRING_INDEX(var, str) \
