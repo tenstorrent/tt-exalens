@@ -19,4 +19,3 @@ class BlackholeHarvestedEthBlock(BlackholeNocBlock):
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
-
