@@ -429,7 +429,7 @@ def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: 
     return context.server_ifc.read_arc_telemetry_entry(device_id, telemetry_tag_id)
 
 
-def read_tensix_register(
+def read_register(
     location: str | OnChipCoordinate,
     register,
     noc_id: int = 0,
@@ -438,7 +438,7 @@ def read_tensix_register(
     context: Context | None = None,
 ) -> int:
     """
-    Reads the value of a register from the tensix core.
+    Reads the value of a register from the noc location.
 
     Args:
         location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
@@ -464,7 +464,7 @@ def read_tensix_register(
     return register_store.read_register(register)
 
 
-def write_tensix_register(
+def write_register(
     location: str | OnChipCoordinate,
     register,
     value: int,
@@ -474,7 +474,7 @@ def write_tensix_register(
     context: Context | None = None,
 ) -> None:
     """
-    Writes value to a register on the tensix core.
+    Writes value to a register on the noc location.
 
     Args:
         location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.

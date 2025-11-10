@@ -879,7 +879,7 @@ def color_text_by_index(text, color_index):
 
 # Return a list of up to n elements from strings that match the given wildcard pattern.
 # Defaults to 10 elements, negative values of max or "all" mean all.
-def search(strings: list[str], pattern: str, max: str | int = "all") -> list[str]:
+def search(strings: list[str], pattern: str = "*", max: str | int = "all") -> list[str]:
     try:
         if max != "all":
             n = int(max)
@@ -894,7 +894,7 @@ def search(strings: list[str], pattern: str, max: str | int = "all") -> list[str
 
     pattern = pattern.lower()
     results = []
-
+    strings = sorted(strings)
     for s in strings:
         if n == 0:
             print(f"There are matches remaining. To see more results, increase the --max value.")
