@@ -15,9 +15,9 @@ from ttexalens.elf_loader import ElfLoader
 
 @parameterized_class(
     [
-        # {"core_desc": "ETH0", "risc_name": "ERISC", "neo_id": None},
-        # {"core_desc": "ETH0", "risc_name": "ERISC0", "neo_id": None},
-        # {"core_desc": "ETH0", "risc_name": "ERISC1", "neo_id": None},
+        {"core_desc": "ETH0", "risc_name": "ERISC", "neo_id": None},
+        {"core_desc": "ETH0", "risc_name": "ERISC0", "neo_id": None},
+        {"core_desc": "ETH0", "risc_name": "ERISC1", "neo_id": None},
         {"core_desc": "FW0", "risc_name": "BRISC", "neo_id": None},
         {"core_desc": "FW0", "risc_name": "TRISC0", "neo_id": None},
         {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": None},
@@ -107,8 +107,6 @@ class TestDebugging(unittest.TestCase):
             self.skipTest(
                 "Default code start address doesn't exist for this RISC. Start address is always controlled by register."
             )
-        if self.core_sim.is_eth_block():
-            self.skipTest("Skipping ETH test since UMD doesn't support destroying ETH L1 memory.")
 
         # Fill L1 with 0x00100073 (ebreak)
         l1_start = risc_info.l1.address.noc_address

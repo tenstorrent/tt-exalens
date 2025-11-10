@@ -59,6 +59,7 @@ from ttexalens import tt_exalens_server
 from ttexalens import util as util
 from ttexalens.uistate import UIState
 from ttexalens.command_parser import find_command, CommandParsingException
+from ttexalens.gdb.gdb_client import get_gdb_client_path
 
 from ttexalens import Verbosity
 
@@ -370,11 +371,7 @@ def main_loop(args, context):
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--gdb":
-        gdb_client_path = os.path.abspath(util.application_path() + "/sfpi/compiler/bin/riscv-tt-elf-gdb")
-        if not os.path.isfile(gdb_client_path):
-            gdb_client_path = os.path.abspath(
-                util.application_path() + "/../build_riscv/sfpi/compiler/bin/riscv-tt-elf-gdb"
-            )
+        gdb_client_path = get_gdb_client_path()
         gdb_client_args = sys.argv[2:]
 
         # Start gdb client with the specified arguments

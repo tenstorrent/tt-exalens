@@ -28,6 +28,10 @@ from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegi
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
 
+from ttexalens.gdb.gdb_client import get_gdb_callstack
+from ttexalens.gdb.gdb_communication import ServerSocket
+from ttexalens.gdb.gdb_server import GdbServer
+
 
 def invalid_argument_decorator(func):
     @wraps(func)
@@ -342,18 +346,18 @@ class TestReadWrite(unittest.TestCase):
             self.skipTest("Skipping the test on grayskull.")
 
         # Storing the original value of the register
-        original_value = lib.read_tensix_register(location, register)
+        original_value = lib.read_register(location, register)
 
         # Writing a value to the register and reading it back
-        lib.write_tensix_register(location, register, value)
-        ret = lib.read_tensix_register(location, register)
+        lib.write_register(location, register, value)
+        ret = lib.read_register(location, register)
 
         # Checking if the value was written and read correctly
         self.assertEqual(ret, value)
 
         # Writing the original value back to the register and reading it
-        lib.write_tensix_register(location, register, original_value)
-        ret = lib.read_tensix_register(location, register)
+        lib.write_register(location, register, original_value)
+        ret = lib.read_register(location, register)
 
         # Checking if read value is equal to the original value
         self.assertEqual(ret, original_value)
@@ -376,27 +380,27 @@ class TestReadWrite(unittest.TestCase):
             self.skipTest("Skipping the test on grayskull.")
 
         # Reading original values of registers
-        original_val_desc = lib.read_tensix_register(location, register_description)
-        original_val_name = lib.read_tensix_register(location, register_name)
+        original_val_desc = lib.read_register(location, register_description)
+        original_val_name = lib.read_register(location, register_name)
 
         # Checking if values are equal
         self.assertEqual(original_val_desc, original_val_name)
 
         # Writing a value to the register given by description
-        lib.write_tensix_register(location, register_description, 1)
+        lib.write_register(location, register_description, 1)
 
         # Reading values from both registers
-        val_desc = lib.read_tensix_register(location, register_description)
-        val_name = lib.read_tensix_register(location, register_name)
+        val_desc = lib.read_register(location, register_description)
+        val_name = lib.read_register(location, register_name)
 
         # Checking if writing to description register affects the name register (making sure they are the same)
         self.assertEqual(val_desc, val_name)
 
         # Wrting original value back
-        lib.write_tensix_register(location, register_name, original_val_name)
+        lib.write_register(location, register_name, original_val_name)
 
-        val_desc = lib.read_tensix_register(location, register_description)
-        val_name = lib.read_tensix_register(location, register_name)
+        val_desc = lib.read_register(location, register_description)
+        val_name = lib.read_register(location, register_name)
 
         # Checking if original values are restored
         self.assertEqual(val_name, original_val_name)
@@ -428,9 +432,69 @@ class TestReadWrite(unittest.TestCase):
 
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
             with self.assertRaises((util.TTException, ValueError)):
-                lib.read_tensix_register(location, register, device_id)
+                lib.read_register(location, register, device_id)
         with self.assertRaises((util.TTException, ValueError)):
-            lib.write_tensix_register(location, register, value, device_id)
+            lib.write_register(location, register, value, device_id)
+
+    @parameterized.expand(
+        [
+            ("0,0",),
+            ("1,1",),
+            ("2,2",),
+        ]
+    )
+    def test_read_write_cfg_register(self, location):
+        """Test reading and writing configuration registers using lib functions."""
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull.")
+
+        cfg_reg_name = "ALU_FORMAT_SPEC_REG2_Dstacc"
+
+        # Store original value
+        original_value = lib.read_register(location, cfg_reg_name)
+
+        # Test writing and reading different values
+        lib.write_register(location, cfg_reg_name, 10)
+        assert lib.read_register(location, cfg_reg_name) == 10
+
+        lib.write_register(location, cfg_reg_name, 0)
+        assert lib.read_register(location, cfg_reg_name) == 0
+
+        lib.write_register(location, cfg_reg_name, 5)
+        assert lib.read_register(location, cfg_reg_name) == 5
+
+        # Restore original value
+        lib.write_register(location, cfg_reg_name, original_value)
+
+    @parameterized.expand(
+        [
+            ("0,0",),
+            ("1,1",),
+            ("2,2",),
+        ]
+    )
+    def test_read_write_dbg_register(self, location):
+        """Test reading and writing debug registers using lib functions."""
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull.")
+
+        dbg_reg_name = "RISCV_DEBUG_REG_CFGREG_RD_CNTL"
+
+        # Store original value
+        original_value = lib.read_register(location, dbg_reg_name)
+
+        # Test writing and reading different values
+        lib.write_register(location, dbg_reg_name, 10)
+        assert lib.read_register(location, dbg_reg_name) == 10
+
+        lib.write_register(location, dbg_reg_name, 0)
+        assert lib.read_register(location, dbg_reg_name) == 0
+
+        lib.write_register(location, dbg_reg_name, 5)
+        assert lib.read_register(location, dbg_reg_name) == 5
+
+        # Restore original value
+        lib.write_register(location, dbg_reg_name, original_value)
 
     def write_program(self, location, addr, data):
         """Write program code data to L1 memory."""
@@ -805,9 +869,9 @@ class TestARC(unittest.TestCase):
 
 @parameterized_class(
     [
-        # {"location_desc": "ETH0", "risc_name": "ERISC"},
-        # {"location_desc": "ETH0", "risc_name": "ERISC0"},
-        # {"location_desc": "ETH0", "risc_name": "ERISC1"},
+        {"location_desc": "ETH0", "risc_name": "ERISC"},
+        {"location_desc": "ETH0", "risc_name": "ERISC0"},
+        {"location_desc": "ETH0", "risc_name": "ERISC1"},
         {"location_desc": "FW0", "risc_name": "BRISC"},
         {"location_desc": "FW0", "risc_name": "TRISC0"},
         {"location_desc": "FW0", "risc_name": "TRISC1"},
@@ -824,11 +888,16 @@ class TestCallStack(unittest.TestCase):
     loader: ElfLoader  # ElfLoader object
     pc_register_index: int  # PC register index
     device: Device  # Device
+    gdb_server: GdbServer  # GDB server
 
     @classmethod
     def setUpClass(cls):
         cls.context = tt_exalens_init.init_ttexalens()
         cls.device = cls.context.devices[0]
+        server = ServerSocket()
+        server.start()
+        cls.gdb_server = GdbServer(cls.context, server)
+        cls.gdb_server.start()
 
     def setUp(self):
         # Convert location_desc to location
@@ -856,6 +925,7 @@ class TestCallStack(unittest.TestCase):
         noc_block = self.location._device.get_block(self.location)
         try:
             self.risc_debug = noc_block.get_risc_debug(self.risc_name)
+            self.risc_name = self.risc_debug.risc_location.risc_name
         except ValueError as e:
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
 
@@ -885,14 +955,21 @@ class TestCallStack(unittest.TestCase):
         else:
             return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
 
+    def compare_callstacks(self, cs1: list[CallstackEntry], cs2: list[CallstackEntry]):
+        """Compare two callstacks."""
+        self.assertEqual(len(cs1), len(cs2), "Callstacks have different lengths")
+        for entry1, entry2 in zip(cs1, cs2):
+            self.assertEqual(entry1.function_name, entry2.function_name, "Function names do not match")
+            self.assertEqual(entry1.file, entry2.file, "Source files do not match")
+            self.assertEqual(entry1.line, entry2.line, "Line numbers do not match")
+            if entry1.pc is not None and entry2.pc is not None:
+                self.assertEqual(entry1.pc, entry2.pc, "Addresses do not match")
+
     CALLSTACK_ELFS = ["callstack.debug", "callstack.release", "callstack.coverage"]
     RECURSION_COUNT = [1, 10, 50]
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack_with_parsing(self, elf_name, recursion_count):
-        if self.device.is_wormhole() and self.is_eth_block() and elf_name == "callstack.release":
-            self.skipTest("Callstack optimized tests break on ETH blocks")
-
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
         self.loader.run_elf(elf_path)
@@ -906,12 +983,13 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack(self, elf_name: str, recursion_count: int):
-        if self.device.is_wormhole() and self.is_eth_block() and elf_name == "callstack.release":
-            self.skipTest("Callstack optimized tests break on ETH blocks")
-
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
         self.loader.run_elf(elf_path)
@@ -922,12 +1000,13 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_namespace(self, elf_name):
-        if self.device.is_wormhole() and self.is_eth_block() and elf_name == "callstack.release":
-            self.skipTest("Callstack optimized tests break on ETH blocks")
-
         lib.write_words_to_device(self.location, 0x64000, 0)
         elf_path = self.get_elf_path(elf_name)
         self.loader.run_elf(elf_path)
@@ -936,6 +1015,10 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[0].function_name, "halt")
         self.assertEqual(callstack[1].function_name, "ns::foo")
         self.assertEqual(callstack[2].function_name, "main")
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(RECURSION_COUNT)
     def test_top_callstack_with_parsing(self, recursion_count: int):
@@ -962,10 +1045,6 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack_optimized(self, elf_name: str, recursion_count: int):
-
-        if self.device.is_wormhole() and self.is_eth_block():
-            self.skipTest("Callstack optimized tests break on ETH blocks")
-
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
         self.loader.run_elf(elf_path)
@@ -977,13 +1056,13 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand([(1, 1)])
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):
-
-        if self.device.is_wormhole() and self.is_eth_block():
-            self.skipTest("Callstack optimized tests break on ETH blocks")
-
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.release")
         self.loader.run_elf(elf_path)

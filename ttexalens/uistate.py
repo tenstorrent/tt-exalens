@@ -92,7 +92,7 @@ class UIState:
             app = get_app()
             app.invalidate()
 
-    def start_gdb(self, port: int):
+    def start_gdb(self, port: int | None = None):
         if self.gdb_server is not None:
             self.gdb_server.stop()
         server = ServerSocket(port)
