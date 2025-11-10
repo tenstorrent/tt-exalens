@@ -16,8 +16,10 @@
 
 namespace tt::exalens {
 
+// Find working active eth core and configure it for remote communication
 void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
     ChipId mmio_chip_id = cluster->get_cluster_description()->get_closest_mmio_capable_chip(chip_id);
+    const tt::umd::CoreCoord tensix_core = tt::umd::CoreCoord(0, 0, CoreType::TENSIX, CoordSystem::LOGICAL);
     std::unordered_set<tt::umd::CoreCoord> active_eth_cores =
         cluster->get_soc_descriptor(mmio_chip_id)
             .get_eth_cores_for_channels(cluster->get_cluster_description()->get_active_eth_channels(mmio_chip_id),
@@ -26,7 +28,8 @@ void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
         cluster->configure_active_ethernet_cores_for_mmio_device(mmio_chip_id,
                                                                  std::unordered_set<tt::umd::CoreCoord>({core}));
         try {
-            tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
+            uint32_t temp = 0;
+            cluster->read_from_device_reg(&temp, mmio_chip_id, tensix_core, 0, sizeof(temp));
             return;
         } catch (const std::exception& e) {
             continue;
@@ -34,6 +37,7 @@ void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
     }
     throw std::runtime_error("Failed to configure working active Ethernet");
 }
+
 // TODO #375: Remove read/write unaligned functions once UMD implements ability to set unaligned access for our TLB
 void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip,
                                            tt::umd::CoreCoord core, uint64_t addr, uint32_t size) {
@@ -316,7 +320,7 @@ void umd_implementation::warm_reset(bool is_galaxy_configuration) {
 
 std::optional<std::tuple<uint8_t, uint8_t>> umd_implementation::get_currently_active_eth_core(uint8_t chip_id) {
     tt_xy_pair active_eth_core =
-        cluster->get_remote_chip(chip_id)->get_remote_communication()->get_active_remote_transfer_eth_core();
+        cluster->get_remote_chip(chip_id)->get_remote_communication()->get_remote_transfer_ethernet_core();
     const tt::umd::CoreCoord eth_translated =
         tt::umd::CoreCoord(active_eth_core.x, active_eth_core.y, CoreType::ETH, CoordSystem::TRANSLATED);
     const tt::umd::CoreCoord eth_logical =
