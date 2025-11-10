@@ -32,10 +32,7 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
 
         write_memory: Callable[[int, int], None]
 
-        noc_address = self.risc_info.data_private_memory.translate_private_to_noc_address(address)
-        if noc_address is None:
-            noc_address = self.risc_info.l1.translate_private_to_noc_address(address)
-
+        noc_address = self.risc_info.translate_to_noc_address(address)
         if noc_address is not None and not self.is_in_reset():
             address = noc_address
             write_memory = lambda addr, val: write_words_to_device(self.risc_info.noc_block.location, addr, val)
@@ -71,10 +68,7 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
 
         read_memory: Callable[[int], int]
 
-        noc_address = self.risc_info.data_private_memory.translate_private_to_noc_address(address)
-        if noc_address is None:
-            noc_address = self.risc_info.l1.translate_private_to_noc_address(address)
-
+        noc_address = self.risc_info.translate_to_noc_address(address)
         if noc_address is not None and not self.is_in_reset():
             address = noc_address
             read_memory = lambda addr: read_word_from_device(self.risc_info.noc_block.location, addr)

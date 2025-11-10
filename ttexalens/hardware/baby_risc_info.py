@@ -93,3 +93,13 @@ class BabyRiscInfo(RiscInfo):
             register_store.write_register(
                 self.code_start_address_enable_register, enabled_register_value & ~self.code_start_address_enable_bit
             )
+
+    def translate_to_noc_address(self, addr: int) -> int | None:
+        # Try data-private, then L1
+        for mem in (self.data_private_memory, self.l1):
+            if mem is None:
+                continue
+            noc = mem.translate_to_noc_address(addr)
+            if noc is not None:
+                return noc
+        return None

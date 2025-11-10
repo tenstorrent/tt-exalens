@@ -14,8 +14,16 @@ class MemoryBlock:
         assert self.address.private_address is not None
         return address >= self.address.private_address and address < self.address.private_address + self.size
 
-    def translate_private_to_noc_address(self, address: int) -> int | None:
-        if self.address.private_address is None or self.address.noc_address is None:
+    def contains_noc_address(self, address: int) -> bool:
+        assert self.address.noc_address is not None
+        return address >= self.address.noc_address and address < self.address.noc_address + self.size
+
+    def translate_to_noc_address(self, address: int) -> int | None:
+        if self.address.noc_address is None:
+            return None
+        if self.contains_noc_address(address):
+            return address
+        if self.address.private_address is None:
             return None
         if not self.contains_private_address(address):
             return None
