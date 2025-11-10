@@ -13,6 +13,7 @@ from ttexalens.util import FirmwareVersion
 class TestRemoteCommunication(unittest.TestCase):
     context: Context  # TTExaLens context
     local_device: Device  # Local (PCIE) device
+    remote_devices: list[Device]  # Remote devices
 
     @classmethod
     def setUpClass(cls):
@@ -32,7 +33,7 @@ class TestRemoteCommunication(unittest.TestCase):
             coord_str = f"e{eth_core[0]},{eth_core[1]}"
             loc = OnChipCoordinate.create(coord_str, self.local_device)
             noc_block = self.local_device.get_block(loc)
-            risc_debug = noc_block.get_risc_debug(noc_block.risc_names[0])
+            risc_debug = noc_block.get_default_risc_debug()
             risc_debug.halt()
 
         fw_versions2: list[FirmwareVersion] = []
