@@ -30,7 +30,7 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         if self.enable_asserts:
             self.assert_not_in_reset()
 
-        write_memory: Callable[[int, int], None]
+        write_memory: Callable[[int, int], int]
 
         noc_address = self.risc_info.translate_to_noc_address(address)
         if noc_address is not None and not self.is_in_reset():
