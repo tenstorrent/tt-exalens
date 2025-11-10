@@ -82,21 +82,11 @@ def run(cmd_text, context: Context, ui_state=None):
 
     devices_list = list(context.devices.keys())
     for device_id in devices_list:
-        arc_location: tuple[int, int] = context.devices[device_id]._block_locations["arc"][0].to("noc0")
-        print(
-            f"NOC Device {device_id}: "
-            + str(
-                decode_test_id(
-                    read_noc_size(
-                        context,
-                        device_id,
-                        *arc_location,
-                        efuse_noc,
-                        TEST_ID_SIZE,
-                    )
-                )
-            )
-        )
+        device = context.devices[device_id]
+        if device.unique_id is not None:
+            print(f"NOC Device {device_id}: unique_id=0x{device.unique_id:x}")
+        else:
+            print(f"NOC Device {device_id}: unique_id=None")
 
     for device_id in devices_list:
         # mmio chips
