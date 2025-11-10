@@ -9,6 +9,8 @@ from ttexalens.hardware.blackhole.eth_block import BlackholeEthBlock
 from ttexalens.hardware.blackhole.functional_worker_registers import configuration_registers_descriptions
 from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
 from ttexalens.hardware.blackhole.harvested_worker_block import BlackholeHarvestedWorkerBlock
+from ttexalens.hardware.blackhole.harvested_eth_block import BlackholeHarvestedEthBlock
+from ttexalens.hardware.blackhole.harvested_dram_block import BlackholeHarvestedDramBlock
 from ttexalens.hardware.blackhole.l2cpu_block import BlackholeL2cpuBlock
 from ttexalens.hardware.blackhole.pcie_block import BlackholePcieBlock
 from ttexalens.hardware.blackhole.router_only_block import BlackholeRouterOnlyBlock
@@ -56,8 +58,12 @@ class BlackholeDevice(Device):
             return BlackholeArcBlock(location)
         elif block_type == "dram":
             return BlackholeDramBlock(location)
+        elif block_type == "harvested_dram":
+            return BlackholeHarvestedDramBlock(location)
         elif block_type == "eth":
             return BlackholeEthBlock(location)
+        elif block_type == "harvested_eth":
+            return BlackholeHarvestedEthBlock(location)
         elif block_type == "functional_workers":
             return BlackholeFunctionalWorkerBlock(location)
         elif block_type == "harvested_workers":
