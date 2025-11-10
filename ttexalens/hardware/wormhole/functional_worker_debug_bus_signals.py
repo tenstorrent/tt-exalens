@@ -41,9 +41,7 @@ debug_bus_signal_map = {
     "brisc_i_instrn_vld": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=10, mask=0x80000000),
     "brisc_i_instrn": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=10, mask=0x7FFFFFFF),
     "brisc_i_instrn_req_rtr": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=10, mask=0x80000000),
-    "brisc_(o_instrn_req_early&~o_instrn_req_cancel)": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=10, mask=0x40000000
-    ),
+    "brisc_o_instrn_req": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=10, mask=0x40000000),
     "brisc_o_instrn_addr": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=10, mask=0x3FFFFFFF),
     "brisc_dbg_obs_mem_wren": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=10, mask=0x80000000),
     "brisc_dbg_obs_mem_rden": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=10, mask=0x40000000),
@@ -166,12 +164,12 @@ debug_bus_signal_map = {
     "trisc0_pc_buffer_debug_bus_cmd_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x800000
     ),
-    "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x7FFFFF
-    ),
-    "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=7, sig_sel=18, mask=0xFF800000
-    ),
+    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(       # Duplicate signal name - not same width" are duplicates
+    #     rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x7FFFFF
+    # ),
+    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(       # Duplicate signal name - not same width" are duplicates
+    #     rd_sel=3, daisy_sel=7, sig_sel=18, mask=0xFF800000
+    # ),
     "trisc0_risc_wrapper_debug_bus_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x400000
     ),

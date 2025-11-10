@@ -4,7 +4,6 @@
 
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 
-# TODO(#651): add signal grouping as there is for Wormhole
 
 debug_bus_signal_map = {
     # For the other signals applying the pc_mask.

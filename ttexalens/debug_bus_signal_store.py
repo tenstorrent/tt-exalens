@@ -382,7 +382,7 @@ class DebugBusSignalStore:
         reg2_struct.write_trigger = 0
         write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
 
-        # wait for the last memory location to be written to
+        # wait for the last memory location to be written to - using sentinel value as indicator
         while read_word_from_device(self.location, wait_addr, self.device._id, self.device._context) == SENTINEL_VALUE:
             sleep(WAIT_SLEEP_SECONDS)
 
