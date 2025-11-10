@@ -1657,3 +1657,8 @@ class TestDebugging(unittest.TestCase):
             f"Unknown signal name '{signal_name}' on {self.core_sim.location.to_user_str()} for device {self.device._id}.",
             str(cm.exception),
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.context.server_ifc.warm_reset()
+        cls.context = init_default_test_context()

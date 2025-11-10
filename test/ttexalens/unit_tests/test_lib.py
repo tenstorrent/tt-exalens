@@ -1100,3 +1100,8 @@ class TestCallStack(unittest.TestCase):
         # Check for invalid location
         with self.assertRaises((util.TTException, ValueError, FileNotFoundError)):
             lib.callstack(location, elf_paths, offsets, risc_name, None, max_depth, True, device_id, self.context)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.context.server_ifc.warm_reset()
+        cls.context = init_default_test_context()

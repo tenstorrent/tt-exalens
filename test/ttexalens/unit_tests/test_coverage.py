@@ -130,3 +130,8 @@ class TestCoverage(unittest.TestCase):
 
             # Most important test: checksum. It's very unlikely that a gcda is malformed if its checksum matches the gcno.
             self.assertEqual(gcda_header[8:12], gcno_header[8:12], f"{gcda}: checksum mismatch with {gcno}")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.context.server_ifc.warm_reset()
+        cls.context = init_default_test_context()
