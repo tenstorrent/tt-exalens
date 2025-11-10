@@ -2,12 +2,13 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import unittest
-from parameterized import parameterized_class
+from parameterized import parameterized_class, parameterized
 
 from ttexalens import tt_exalens_lib as lib
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from ttexalens.context import Context
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.hardware.baby_risc_debug import get_register_index
 from ttexalens.elf_loader import ElfLoader
 
@@ -54,6 +55,7 @@ class TestDebugging(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.context = init_default_test_context()
+        cls.device = cls.context.devices[0]
 
     def setUp(self):
         try:
@@ -70,8 +72,6 @@ class TestDebugging(unittest.TestCase):
                 self.skipTest(f"Test requires NEO ID, but is not supported on this platform: {e}")
             else:
                 raise e
-
-        self.device = self.context.devices[0]
 
         # Stop risc with reset
         self.core_sim.set_reset(True)
@@ -99,11 +99,10 @@ class TestDebugging(unittest.TestCase):
         )
 
     def test_default_start_address(self):
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             self.skipTest("Skipping Quasar test since it lasts for 1 hour on simulator.")
 
         risc_info = self.core_sim.risc_debug.risc_info
-
         if risc_info.default_code_start_address is None:
             self.skipTest(
                 "Default code start address doesn't exist for this RISC. Start address is always controlled by register."
@@ -114,7 +113,7 @@ class TestDebugging(unittest.TestCase):
         assert l1_start is not None, "L1 address should not be None."
         word_bytes = 0x00100073.to_bytes(4, byteorder="little")
         bytes = word_bytes * (risc_info.l1.size // 4)
-        lib.write_to_device(self.core_sim.location, l1_start, bytes, self.core_sim.device._id, self.core_sim.context)
+        lib.write_to_device(self.core_sim.location, l1_start, bytes, self.device._id, self.core_sim.context)
 
         # Take risc out of reset
         if risc_info.can_change_code_start_address:
@@ -266,13 +265,103 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.is_in_reset())
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             for i in range(50):
                 if self.core_sim.read_data(addr) == 0x87654000:
                     break
 
         # Verify value at address
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
+
+    def _get_group_for_signal(self, signal_store: DebugBusSignalStore, signal: str) -> str:
+        """Get the group name for a given signal name."""
+        for group_name, group_dict in signal_store.signal_groups.items():
+            if signal_store.get_base_signal_name(signal) in group_dict:
+                return group_name
+        return ""
+
+    def test_debug_bus_signal_store_pc(self):
+        if not self.device.is_wormhole():
+            self.skipTest("This test only works on wormhole.")
+
+        signal_store = self.core_sim.debug_bus_store
+        pc_signal_name = self.core_sim.risc_name.lower() + "_pc"
+
+        # ebreak
+        self.core_sim.write_program(0, 0x00100073)
+
+        # Take risc out of reset
+        self.core_sim.set_reset(False)
+        assert self.core_sim.is_halted(), "Core should be halted after ebreak."
+
+        # simple test for pc signal
+        pc_value_32 = signal_store.read_signal(pc_signal_name)
+
+        group_name = self._get_group_for_signal(signal_store, pc_signal_name)
+        group_values = signal_store.read_signal_group(group_name, l1_address=0x1000)
+        assert pc_signal_name in group_values.keys()
+        assert group_values[pc_signal_name] == pc_value_32
+
+    @parameterized.expand(
+        [
+            (1, 2),  # samples, sampling_interval
+            (11, 50),
+            (25, 100),
+            (40, 5),
+        ]
+    )
+    def test_debug_bus_signal_store_sample_signal_group(self, samples, sampling_interval):
+        """Validate signal group readings for all groups on this core."""
+        if not self.device.is_wormhole():
+            self.skipTest("This test only works on wormhole.")
+
+        WORD_SIZE_BITS = 32
+        signal_store = self.core_sim.debug_bus_store
+        l1_addr = 0x1000
+
+        for group in signal_store.group_names:
+            if not group.startswith(self.core_sim.risc_name.lower() + "_"):
+                continue
+
+            sampled_group = signal_store._read_signal_group_samples(group, l1_addr, samples, sampling_interval)
+            if not isinstance(sampled_group, list):
+                sampled_group = [sampled_group]
+
+            # check number of samples taken
+            self.assertEqual(len(sampled_group), samples, f"Expected {samples} samples, got {len(sampled_group)}")
+
+            for signal_name in signal_store.get_signal_names_in_group(group):
+                # all samples should be equal
+                first_val = sampled_group[0][signal_name]
+                self.assertTrue(
+                    all(v[signal_name] == first_val for v in sampled_group),
+                    f"{signal_name}: Inconsistent sampled values: {sampled_group}",
+                )
+
+                parts = signal_store.get_signal_part_names(signal_name)
+
+                if signal_store.is_combined_signal(signal_name):
+                    # combined signal
+                    combined_value = 0
+
+                    # Find the lowest part of combined signal, which has minimum rd_sel among all parts
+                    min_part = min(parts, key=lambda part: signal_store.get_signal_description(part).rd_sel)
+                    min_part_desc = signal_store.get_signal_description(min_part)
+
+                    # calculate combined value from all parts using read_signal
+                    for part in parts:
+                        part_value = signal_store.read_signal(part)
+                        part_desc = signal_store.get_signal_description(part)
+                        shift = (part_desc.mask & -part_desc.mask).bit_length() - 1
+                        combined_value |= part_value << (shift + part_desc.rd_sel * WORD_SIZE_BITS)
+
+                    min_shift = (min_part_desc.mask & -min_part_desc.mask).bit_length() - 1
+                    combined_value >>= min_shift + min_part_desc.rd_sel * WORD_SIZE_BITS
+                    self.assertEqual(first_val, combined_value, f"Combined signal {signal_name} value mismatch.")
+                else:
+                    # single signal
+                    single_value = signal_store.read_signal(signal_name)
+                    self.assertEqual(first_val, single_value, f"Signal {signal_name} value mismatch.")
 
     def test_ebreak(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
@@ -392,7 +481,7 @@ class TestDebugging(unittest.TestCase):
 
     def test_core_lockup(self):
         """Running code that should lock up the core and then trying to halt it."""
-        if not self.core_sim.device.is_wormhole():
+        if not self.device.is_wormhole():
             self.skipTest("Issue is hit only on wormhole.")
 
         # lui t3, 0 - 0x00000e37
@@ -529,7 +618,7 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
 
     def test_invalidate_cache(self):
-        if self.core_sim.device.is_wormhole():
+        if self.device.is_wormhole():
             self.skipTest("Invalidate cache is not reliable on wormhole.")
 
         if self.core_sim.is_eth_block():
@@ -655,11 +744,9 @@ class TestDebugging(unittest.TestCase):
     def test_invalidate_cache_with_nops_and_long_jump(self):
         """Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation by having NOPs block and jump back. All that is done on brisc."""
 
-        if self.core_sim.is_eth_block() and self.core_sim.device.is_wormhole():
+        if self.core_sim.is_eth_block() and self.device.is_wormhole():
             self.skipTest("This test is not applicable for ETH cores.")
-        if (
-            self.core_sim.device.is_wormhole() or self.core_sim.device.is_blackhole()
-        ) and self.core_sim.risc_name == "TRISC2":
+        if (self.device.is_wormhole() or self.device.is_blackhole()) and self.core_sim.risc_name == "TRISC2":
             self.skipTest("This test is unreliable on TRISC2 on wormhole or blackhole.")
 
         break_addr = 0x950
@@ -690,7 +777,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.set_reset(False)
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             for i in range(50):
                 self.core_sim.read_data(0)
 
@@ -720,7 +807,7 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             for i in range(200):
                 if self.core_sim.read_data(addr) == 0x87654000:
                     break
@@ -1213,10 +1300,10 @@ class TestDebugging(unittest.TestCase):
         if self.core_sim.is_eth_block():
             self.skipTest("We don't know how to enable/disable branch prediction ETH cores.")
 
-        if self.core_sim.device.is_blackhole():
+        if self.device.is_blackhole():
             self.skipTest("BNE instruction with debug hardware enabled is fixed in blackhole.")
 
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             self.skipTest("BNE instruction with debug hardware enabled is fixed in quasar.")
 
         # Enable branch prediction
@@ -1342,7 +1429,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.debug_hardware.continue_without_debug()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             for i in range(20):
                 self.core_sim.read_data(0)
 
@@ -1417,7 +1504,7 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
         # Disable branch prediction
-        if not self.core_sim.device.is_blackhole():
+        if not self.device.is_blackhole():
             # Disabling branch prediction fails this test on blackhole :(
             self.core_sim.set_branch_prediction(False)
 
@@ -1425,7 +1512,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
         # Since simulator is slow, we need to wait a bit by reading something
-        if self.core_sim.device.is_quasar():
+        if self.device.is_quasar():
             for i in range(20):
                 self.core_sim.read_data(0)
 
@@ -1442,3 +1529,131 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.halt()
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
+
+    def test_invalid_rd_sel(self):
+        sig = DebugBusSignalDescription(rd_sel=4, daisy_sel=0, sig_sel=0)
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal(sig)
+        self.assertIn("rd_sel must be between 0 and 3", str(cm.exception))
+
+    def test_invalid_rd_sel(self):
+        sig = DebugBusSignalDescription(rd_sel=4, daisy_sel=0, sig_sel=0)
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal(sig)
+        self.assertIn("rd_sel must be between 0 and 3", str(cm.exception))
+
+    def test_invalid_daisy_sel(self):
+        sig = DebugBusSignalDescription(rd_sel=0, daisy_sel=256, sig_sel=0)
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal(sig)
+        self.assertIn("daisy_sel must be between 0 and 255", str(cm.exception))
+
+    def test_invalid_sig_sel(self):
+        sig = DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=65536)
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal(sig)
+        self.assertIn("sig_sel must be between 0 and 65535", str(cm.exception))
+
+    def test_invalid_mask(self):
+        sig = DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=0, mask=0xFFFFFFFFF)
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.read_signal(sig)
+        self.assertIn("mask must be a valid 32-bit integer", str(cm.exception))
+
+    def test_sample_signal_group_invalid_samples(self):
+        if not self.device.is_wormhole():
+            self.skipTest("This test only works on wormhole.")
+
+        group_name = next(iter(self.core_sim.debug_bus_store.group_map.keys()))
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.sample_signal_group(
+                signal_group=group_name,
+                l1_address=0x1000,
+                samples=0,
+                sampling_interval=2,
+            )
+        self.assertIn("samples count must be at least 1", str(cm.exception))
+
+    def test_signal_group_invalid_l1_address(self):
+        if not self.device.is_wormhole():
+            self.skipTest("This test only works on wormhole.")
+
+        # test sample_signal_group
+        group_name = next(iter(self.core_sim.debug_bus_store.group_map.keys()))
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store._read_signal_group_samples(
+                signal_group=group_name,
+                l1_address=0x1001,
+                samples=1,
+                sampling_interval=2,
+            )
+        self.assertIn("L1 address must be 16-byte aligned", str(cm.exception))
+
+    def test_sample_signal_group_invalid_sampling_interval(self):
+        if not self.device.is_wormhole():
+            self.skipTest("This test only works on wormhole.")
+
+        group_name = next(iter(self.core_sim.debug_bus_store.group_map.keys()))
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.sample_signal_group(
+                signal_group=group_name,
+                l1_address=0x1000,
+                samples=2,
+                sampling_interval=1,
+            )
+        self.assertIn("When sampling groups, sampling_interval must be between 2 and 256", str(cm.exception))
+
+    @parameterized.expand(
+        [
+            (1, 0x100000),  # samples, l1_address
+            (4, 0x100000 - 16),
+            (25, 0x100000 - 32),
+            (40, 0x100000 - 160),
+        ]
+    )
+    def test_signal_group_exceeds_memory(self, samples, l1_address):
+        if not self.device.is_wormhole():
+            self.skipTest("This test only works on wormhole.")
+
+        # test sample_signal_group
+        group_name = next(iter(self.core_sim.debug_bus_store.group_map.keys()))
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store._read_signal_group_samples(
+                signal_group=group_name,
+                l1_address=l1_address,
+                samples=samples,
+            )
+        end_address = l1_address + (samples * self.core_sim.debug_bus_store.L1_SAMPLE_SIZE_BYTES) - 1
+        self.assertIn(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit", str(cm.exception))
+
+    def test_read_signal_group_invalid_signal_name(self):
+        if not self.device.is_wormhole():
+            self.skipTest("This test only works on wormhole.")
+
+        signal_name = "invalid_signal_name"
+        group_name = next(iter(self.core_sim.debug_bus_store.group_map.keys()))
+        with self.assertRaises(ValueError) as cm:
+            group_sample = self.core_sim.debug_bus_store.read_signal_group(
+                signal_group=group_name,
+                l1_address=0x1000,
+            )
+            group_sample[signal_name]
+        self.assertIn(f"Signal '{signal_name}' does not exist in group.", str(cm.exception))
+
+    def test_invalid_group_name(self):
+        if not self.device.is_wormhole():
+            self.skipTest("This test only works on wormhole.")
+
+        group_name = "invalid_group_name"
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.get_signal_names_in_group(group_name)
+        self.assertIn(f"Unknown group name '{group_name}'.", str(cm.exception))
+
+    def test_get_signal_description_invalid_signal_name(self):
+        signal_name = "invalid_signal_name"
+        with self.assertRaises(ValueError) as cm:
+            self.core_sim.debug_bus_store.get_signal_description(signal_name)
+        self.assertIn(
+            f"Unknown signal name '{signal_name}' on {self.core_sim.location.to_user_str()} for device {self.device._id}.",
+            str(cm.exception),
+        )
