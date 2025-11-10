@@ -35,7 +35,9 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         noc_address = self.risc_info.translate_to_noc_address(address)
         if noc_address is not None and not self.is_in_reset():
             address = noc_address
-            write_memory = lambda addr, val: write_words_to_device(self.risc_info.noc_block.location, addr, val)
+            write_memory = lambda addr, val: write_words_to_device(
+                self.risc_info.noc_block.location, addr, val, device_id=self.risc_info.noc_block.location.device_id
+            )
         else:
             self.assert_debug_hardware()
             assert self.debug_hardware is not None, "Debug hardware is not initialized"
@@ -71,7 +73,9 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         noc_address = self.risc_info.translate_to_noc_address(address)
         if noc_address is not None and not self.is_in_reset():
             address = noc_address
-            read_memory = lambda addr: read_word_from_device(self.risc_info.noc_block.location, addr)
+            read_memory = lambda addr: read_word_from_device(
+                self.risc_info.noc_block.location, addr, device_id=self.risc_info.noc_block.location.device_id
+            )
         else:
             self.assert_debug_hardware()
             assert self.debug_hardware is not None, "Debug hardware is not initialized"
