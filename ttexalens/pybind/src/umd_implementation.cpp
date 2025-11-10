@@ -10,6 +10,7 @@
 #include "umd/device/arc/arc_telemetry_reader.hpp"
 #include "umd/device/cluster.hpp"
 #include "umd/device/firmware/firmware_utils.hpp"
+#include "umd/device/warm_reset.hpp"
 
 namespace tt::exalens {
 
@@ -252,4 +253,11 @@ std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> umd_implementation::get_
     return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
 }
 
+void umd_implementation::warm_reset(bool is_galaxy_configuration) {
+    if (is_galaxy_configuration) {
+        tt::umd::WarmReset::ubb_warm_reset();
+    } else {
+        tt::umd::WarmReset::warm_reset();
+    }
+}
 }  // namespace tt::exalens

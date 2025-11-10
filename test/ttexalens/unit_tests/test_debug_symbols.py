@@ -68,6 +68,22 @@ class TestDebugSymbols(unittest.TestCase):
         cls.core_sim.set_reset(True)
 
     def verify_global_struct_low_level(self, g_global_struct):
+        self.assertEqual(0xAA, g_global_struct.base_field1.read_value())
+        self.assertEqual(0xBBBB, g_global_struct.base_field2.read_value())
+        self.assertEqual(0x04030201, g_global_struct.packed.read_value())
+        self.assertEqual(0x01, g_global_struct.v1.read_value())
+        self.assertEqual(0x02, g_global_struct.v2.read_value())
+        self.assertEqual(0x03, g_global_struct.v3.read_value())
+        self.assertEqual(0x04, g_global_struct.v4.read_value())
+
+        self.assertEqual(0xCC, g_global_struct.bs2_base_field1.read_value())
+        self.assertEqual(0xDDDD, g_global_struct.bs2_base_field2.read_value())
+        self.assertEqual(0x08070605, g_global_struct.bs2_packed.read_value())
+        self.assertEqual(0x05, g_global_struct.bs2_v1.read_value())
+        self.assertEqual(0x06, g_global_struct.bs2_v2.read_value())
+        self.assertEqual(0x07, g_global_struct.bs2_v3.read_value())
+        self.assertEqual(0x08, g_global_struct.bs2_v4.read_value())
+
         self.assertEqual(0x11223344, g_global_struct.a.read_value())
         self.assertEqual(0x5566778899AABBCC, g_global_struct.b.read_value())
         self.assertEqual(16, len(g_global_struct.c))
@@ -98,6 +114,22 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(0x87654321, g_global_struct.msg.test2.read_value())
 
     def verify_global_struct(self, g_global_struct):
+        self.assertEqual(0xAA, g_global_struct.base_field1)
+        self.assertEqual(0xBBBB, g_global_struct.base_field2)
+        self.assertEqual(0x04030201, g_global_struct.packed)
+        self.assertEqual(0x01, g_global_struct.v1)
+        self.assertEqual(0x02, g_global_struct.v2)
+        self.assertEqual(0x03, g_global_struct.v3)
+        self.assertEqual(0x04, g_global_struct.v4)
+
+        self.assertEqual(0xCC, g_global_struct.bs2_base_field1)
+        self.assertEqual(0xDDDD, g_global_struct.bs2_base_field2)
+        self.assertEqual(0x08070605, g_global_struct.bs2_packed)
+        self.assertEqual(0x05, g_global_struct.bs2_v1)
+        self.assertEqual(0x06, g_global_struct.bs2_v2)
+        self.assertEqual(0x07, g_global_struct.bs2_v3)
+        self.assertEqual(0x08, g_global_struct.bs2_v4)
+
         self.assertEqual(0x11223344, g_global_struct.a)
         self.assertEqual(0x5566778899AABBCC, g_global_struct.b)
         self.assertEqual([i for i in range(16)], g_global_struct.c)

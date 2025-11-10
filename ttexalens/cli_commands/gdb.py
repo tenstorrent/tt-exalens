@@ -3,14 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  gdb start --port <port>
+  gdb start [<port>]
   gdb stop
+
+Options:
+  <port>         Port of the GDB server. If not specified, an available port will be chosen.
 
 Description:
   Starts or stops gdb server.
 
 Examples:
-  gdb start --port 6767
+  gdb start
+  gdb start 6767
   gdb stop
 """
 
@@ -32,11 +36,17 @@ def run(cmd_text, context, ui_state: UIState):
     )
 
     if dopt.args["start"]:
-        try:
-            port = int(dopt.args["<port>"])
-            ui_state.start_gdb(port)
-        except:
-            util.ERROR("Invalid port number")
+        if dopt.args["<port>"] is None:
+            try:
+                ui_state.start_gdb()
+            except Exception as e:
+                util.ERROR(f"Failed to start GDB server on an available port: {e}")
+        else:
+            try:
+                port = int(dopt.args["<port>"])
+                ui_state.start_gdb(port)
+            except:
+                util.ERROR("Invalid port number")
     elif dopt.args["stop"]:
         ui_state.stop_gdb()
     else:

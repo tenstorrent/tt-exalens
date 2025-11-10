@@ -149,26 +149,6 @@ class TensixDebug:
         self._insn_push(instruction_bytes, thread_id)
         self._end_insn_push(thread_id)
 
-    def read_tensix_register(self, register: str | RegisterDescription) -> int:
-        """Reads the value of a configuration or debug register from the tensix core.
-
-        Args:
-                register (str | TensixRegisterDescription): Name of the configuration or debug register or instance of ConfigurationRegisterDescription or DebugRegisterDescription.
-
-        Returns:
-                int: Value of the configuration or debug register specified.
-        """
-        return self.register_store.read_register(register)
-
-    def write_tensix_register(self, register: str | RegisterDescription, value: int) -> None:
-        """Writes value to the configuration or debug register on the tensix core.
-
-        Args:
-                register (str | RegisterDescription): Name of the configuration or debug register or instance of ConfigurationRegisterDescription or DebugRegisterDescription.
-                val (int): Value to write
-        """
-        self.register_store.write_register(register, value)
-
     def _validate_number_of_tiles(self, num_tiles: int | None) -> int:
         max_num_tiles = (
             self.noc_block.dest.size // TILE_SIZE // 4
@@ -311,7 +291,7 @@ class TensixDebug:
                 list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data) or num_tiles * TILE_SIZE for direct read.
         """
         regfile = convert_regfile(regfile)
-        df = TensixDataFormat(self.read_tensix_register("ALU_FORMAT_SPEC_REG2_Dstacc"))
+        df = TensixDataFormat(self.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc"))
 
         if not self._direct_dest_access_enabled(df, regfile) and num_tiles is not None:
             WARN("num_tiles argument only has effect for 32 bit formats on blackhole.")
