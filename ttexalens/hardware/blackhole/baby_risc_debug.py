@@ -5,7 +5,8 @@
 from typing import Callable
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
-from ttexalens.tt_exalens_lib import read_word_from_device
+from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 from ttexalens.util import TTException
 
 
@@ -28,13 +29,25 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
     def write_memory(self, address: int, value: int):
         if self.enable_asserts:
             self.assert_not_in_reset()
-        self.assert_debug_hardware()
-        assert self.debug_hardware is not None, "Debug hardware is not initialized"
 
-        if self.risc_info.risc_name == "trisc2" and address % 16 > 4:
-            raise TTException(
-                f"Writing to trisc2 private memory address 0x{address:08x} does not work due to blackhole bug. For more information see issue #528 in tt-exalens repo."
-            )
+        write_memory: Callable[[int,int], None]
+
+        noc_address = self.risc_info.data_private_memory.translate_private_to_noc_address(address)
+        if noc_address is None:
+            noc_address = self.risc_info.l1.translate_private_to_noc_address(address)
+
+        if noc_address is not None and not self.is_in_reset():
+            address = noc_address
+            write_memory = lambda addr, val: write_words_to_device(self.risc_info.noc_block.location, addr, val)
+        else:
+            self.assert_debug_hardware()
+            assert self.debug_hardware is not None, "Debug hardware is not initialized"
+
+            if self.risc_info.risc_name == "trisc2" and address % 16 > 4:
+                raise TTException(
+                    f"Writing to trisc2 private memory address 0x{address:08x} does not work due to blackhole bug. For more information see issue #528 in tt-exalens repo."
+                )
+            write_memory = self.debug_hardware.write_memory
 
         word_size_bytes = 4
         word_size_bits = word_size_bytes * 8
@@ -42,34 +55,28 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         # We have to treat unaligned write separately due to blackhole bug
         if bytes_shifted == 0:
             # aligned write
-            self.debug_hardware.write_memory(address, value)
+            write_memory(address, value)
         else:
             # unaligned write
             bits_shifted = bytes_shifted * 8
             word1 = value >> bits_shifted
             mask = (1 << bits_shifted) - 1
             word2 = (value & mask) << (word_size_bits - bits_shifted)
-            self.debug_hardware.write_memory(address - bytes_shifted, word1)
-            self.debug_hardware.write_memory(address + word_size_bytes - bytes_shifted, word2)
+            write_memory(address - bytes_shifted, word1)
+            write_memory(address + word_size_bytes - bytes_shifted, word2)
 
     def read_memory(self, address: int):
         if self.enable_asserts:
             self.assert_not_in_reset()
 
         read_memory: Callable[[int], int]
-        if (
-            self.risc_info.data_private_memory is not None
-            and self.risc_info.data_private_memory.address.noc_address is not None
-            and self.risc_info.data_private_memory.contains_private_address(address)
-            and not self.is_in_reset()
-        ):
-            # We can read from data memory directly if core is not in reset, but we need to update address to NOC address
-            assert self.risc_info.data_private_memory.address.private_address is not None
-            address = (
-                address
-                - self.risc_info.data_private_memory.address.private_address
-                + self.risc_info.data_private_memory.address.noc_address
-            )
+
+        noc_address = self.risc_info.data_private_memory.translate_private_to_noc_address(address)
+        if noc_address is None:
+            noc_address = self.risc_info.l1.translate_private_to_noc_address(address)
+
+        if noc_address is not None and not self.is_in_reset():
+            address = noc_address
             read_memory = lambda addr: read_word_from_device(self.risc_info.noc_block.location, addr)
         else:
             self.assert_debug_hardware()

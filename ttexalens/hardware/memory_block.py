@@ -13,3 +13,10 @@ class MemoryBlock:
     def contains_private_address(self, address: int) -> bool:
         assert self.address.private_address is not None
         return address >= self.address.private_address and address < self.address.private_address + self.size
+
+    def translate_private_to_noc_address(self, address: int) -> int | None:
+        if self.address.private_address is None or self.address.noc_address is None:
+            return None
+        if not self.contains_private_address(address):
+            return None
+        return self.address.noc_address + (address - self.address.private_address)
