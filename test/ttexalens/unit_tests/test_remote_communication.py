@@ -2,8 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import unittest
-from parameterized import parameterized_class
-
 
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from ttexalens.context import Context
@@ -12,7 +10,7 @@ from ttexalens.device import Device
 from ttexalens.util import FirmwareVersion
 
 
-class TestRemoteAccess(unittest.TestCase):
+class TestRemoteCommunication(unittest.TestCase):
     context: Context  # TTExaLens context
     local_device: Device  # Local (PCIE) device
 
@@ -22,7 +20,7 @@ class TestRemoteAccess(unittest.TestCase):
         cls.local_device = cls.context.devices[0]
         cls.remote_devices = [cls.context.devices[i] for i in range(1, len(cls.context.devices))]
 
-    def test_remote_access(self):
+    def test_remote_communication(self):
 
         if len(self.remote_devices) == 0:
             self.skipTest("There are no remote devices to test")
@@ -37,12 +35,13 @@ class TestRemoteAccess(unittest.TestCase):
             risc_debug = noc_block.get_risc_debug(noc_block.risc_names[0])
             risc_debug.halt()
 
-        self.context.server_ifc.warm_reset()
-        self.context = init_default_test_context()
-
         fw_versions2: list[FirmwareVersion] = []
         for remote_device in self.remote_devices:
             fw_versions2.append(FirmwareVersion(self.context.server_ifc.get_firmware_version(remote_device._id)))
 
         for i in range(len(self.remote_devices)):
             self.assertEqual(fw_versions1[i], fw_versions2[i])
+
+    def tearDown(self) -> None:
+        self.context.server_ifc.warm_reset()
+        self.context = init_default_test_context()

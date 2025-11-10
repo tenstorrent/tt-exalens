@@ -29,7 +29,7 @@ void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
                                                                  std::unordered_set<tt::umd::CoreCoord>({core}));
         try {
             uint32_t temp = 0;
-            cluster->read_from_device_reg(&temp, mmio_chip_id, tensix_core, 0, sizeof(temp));
+            cluster->read_from_device_reg(&temp, chip_id, tensix_core, 0, sizeof(temp));
             return;
         } catch (const std::exception& e) {
             continue;
