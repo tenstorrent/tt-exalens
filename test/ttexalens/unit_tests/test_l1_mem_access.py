@@ -76,7 +76,7 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
         # Stop risc with reset
         self.core_sim.set_reset(True)
         self.assertTrue(self.core_sim.is_in_reset())
-        if self.device.is_wormhole and self.risc_name.lower() == "ncrisc":
+        if self.device.is_wormhole() and self.risc_name.lower() == "ncrisc":
             self.core_sim.risc_debug.set_code_start_address(0x2000)
 
     def tearDown(self):
@@ -120,6 +120,12 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
             (9, 0x10203040),
             (10, 0x50607080),
             (11, 0x90A0B0C0),
+            (13, 0xD0E0F000),
+            (14, 0x1A2B3C4D),
+            (15, 0x12345967),
+            (17, 0x89ABCDEF),
+            (18, 0x0FEDCBA9),
+            (19, 0x76543210),
         ]
     )
     def test_word_unaligned_writes(self, offset: int, value: int):
@@ -147,9 +153,23 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
         word0 = self.core_sim.read_data(aligned_address)
         word1 = self.core_sim.read_data(aligned_address + 4)
 
-        # Reconstruct expected value based on alignment
-        self.assertEqual(word0, value)
-        self.assertEqual(word1, pattern)
+        # Reconstruct expected value based on alignment and architecture
+        if self.device.is_wormhole():
+            expected_value0 = value
+            expected_value1 = pattern
+        elif self.device.is_blackhole():
+            high_mask = ((1 << ((4 - (address & 0x3)) * 8)) - 1) << ((address & 0x3) * 8)
+            if address % 16 > 12:
+                # If writing to the last word in the cache line, upper word is not updated
+                low_mask = 0
+            else:
+                low_mask = ~high_mask & 0xFFFFFFFF
+            expected_value0 = (pattern & ~(high_mask)) | (value & high_mask)
+            expected_value1 = (pattern & ~(low_mask)) | (value & low_mask)
+        else:
+            raise NotImplementedError("Unhandled device type for unaligned word write verification")
+        self.assertEqual(word0, expected_value0, f"Data mismatch at address {address:x}: expected 0x{expected_value0:x}, got 0x{word0:x}")
+        self.assertEqual(word1, expected_value1, f"Data mismatch at address {address:x}: expected 0x{expected_value1:x}, got 0x{word1:x}")
 
     def test_half_word_aligned_writes(self):
         base_address = 0x20000
@@ -184,7 +204,7 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
         pattern = 0xDEADBEEF
 
         self.core_sim.write_data_checked(base_address, [pattern] * 16)
-        for offset in range(1, 20, 2):
+        for offset in range(1, 60, 2):
             address = base_address + offset
             aligned_address = address & ~0x3
 
@@ -195,13 +215,26 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
             program_writer.append_while_true()
             program_writer.write_program()
 
-            # It behaves as if addressing the previous aligned half-word
-            address = address - 1
-
             self.core_sim.set_reset(True)
             self.core_sim.set_reset(False)
-            read_data = self.core_sim.read_data(aligned_address)
-            expected_value = (pattern & ~(0xFFFF << ((address & 0x3) * 8))) | (value << ((address & 0x3) * 8))
+
+            test_value = value
+            test_value_mask = 0xFFFF
+            if self.device.is_wormhole():
+                # It behaves as if addressing the previous aligned half-word
+                address = address - 1
+            elif self.device.is_blackhole():
+                # Value gets flipped on Blackhole devices
+                test_value = ((value & 0xFF00) >> 8) | ((value & 0x00FF) << 8)
+                if offset % 16 == 15:
+                    # Also, upper word is not updated
+                    test_value = test_value & 0xFF
+                    test_value_mask = 0xFF
+
+            read_data0 = self.core_sim.read_data(aligned_address)
+            read_data1 = self.core_sim.read_data(aligned_address + 4)
+            read_data = read_data0 | (read_data1 << 32)
+            expected_value = ((pattern | (pattern << 32)) & ~(test_value_mask << ((address & 0x3) * 8))) | (test_value << ((address & 0x3) * 8))
             self.assertEqual(
                 read_data,
                 expected_value,
