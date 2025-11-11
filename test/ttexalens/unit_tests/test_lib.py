@@ -496,11 +496,6 @@ class TestReadWrite(unittest.TestCase):
         # Restore original value
         lib.write_register(location, dbg_reg_name, original_value)
 
-    def write_program(self, location, addr, data):
-        """Write program code data to L1 memory."""
-        bytes_written = lib.write_words_to_device(location, addr, data, context=self.context)
-        self.assertEqual(bytes_written, 4)
-
     @parameterized.expand(
         [
             ("0,0", "brisc"),
