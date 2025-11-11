@@ -168,8 +168,16 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
             expected_value1 = (pattern & ~(low_mask)) | (value & low_mask)
         else:
             raise NotImplementedError("Unhandled device type for unaligned word write verification")
-        self.assertEqual(word0, expected_value0, f"Data mismatch at address {address:x}: expected 0x{expected_value0:x}, got 0x{word0:x}")
-        self.assertEqual(word1, expected_value1, f"Data mismatch at address {address:x}: expected 0x{expected_value1:x}, got 0x{word1:x}")
+        self.assertEqual(
+            word0,
+            expected_value0,
+            f"Data mismatch at address {address:x}: expected 0x{expected_value0:x}, got 0x{word0:x}",
+        )
+        self.assertEqual(
+            word1,
+            expected_value1,
+            f"Data mismatch at address {address:x}: expected 0x{expected_value1:x}, got 0x{word1:x}",
+        )
 
     def test_half_word_aligned_writes(self):
         base_address = 0x20000
@@ -234,7 +242,9 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
             read_data0 = self.core_sim.read_data(aligned_address)
             read_data1 = self.core_sim.read_data(aligned_address + 4)
             read_data = read_data0 | (read_data1 << 32)
-            expected_value = ((pattern | (pattern << 32)) & ~(test_value_mask << ((address & 0x3) * 8))) | (test_value << ((address & 0x3) * 8))
+            expected_value = ((pattern | (pattern << 32)) & ~(test_value_mask << ((address & 0x3) * 8))) | (
+                test_value << ((address & 0x3) * 8)
+            )
             self.assertEqual(
                 read_data,
                 expected_value,
