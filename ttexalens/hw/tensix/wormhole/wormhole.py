@@ -34,10 +34,6 @@ class WormholeDevice(Device):
     NOC_0_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_0_X)
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
 
-    EFUSE_PCI = 0x1FF42200
-    EFUSE_JTAG_AXI = 0x80042200
-    EFUSE_NOC = 0x880042200
-
     def __init__(self, id, arch, cluster_desc, device_desc_path, context):
         super().__init__(
             id,

@@ -73,34 +73,21 @@ def run(cmd_text, context: Context, ui_state=None):
     args = docopt(__doc__, argv=cmd_text.split()[1:])
     device = context.devices[0]
 
-    try:
-        efuse_pci = device.EFUSE_PCI
-        efuse_noc = device.EFUSE_NOC
-        efuse_jtag_axi = device.EFUSE_JTAG_AXI
-    except:
-        raise Exception(f"Unsupported arch {device._arch}")
-
     devices_list = list(context.devices.keys())
     for device_id in devices_list:
         device = context.devices[device_id]
-        if device.unique_id is not None:
-            print(f"NOC Device {device_id}: unique_id=0x{device.unique_id:x}")
-        else:
-            print(f"NOC Device {device_id}: unique_id=None")
+        unique_id_str = f"0x{device.unique_id:x}" if device.unique_id is not None else "{}"
+        print(f"NOC Device {device_id}: {unique_id_str}")
 
     for device_id in devices_list:
         # mmio chips
         if context.devices[device_id]._has_mmio:
-            if context.devices[device_id]._has_jtag:
-                print(
-                    f"JTAG Device {device_id}: "
-                    + str(decode_test_id(read_axi_size(context, device_id, efuse_jtag_axi, TEST_ID_SIZE)))
-                )
+            device = context.devices[device_id]
+            unique_id_str = f"0x{device.unique_id:x}" if device.unique_id is not None else "{}"
+            if device._has_jtag:
+                print(f"JTAG Device {device_id}: {unique_id_str}")
             else:
-                print(
-                    f"PCI Device {device_id}: "
-                    + str(decode_test_id(read_pci_raw_size(context, device_id, efuse_pci, TEST_ID_SIZE)))
-                )
+                print(f"PCI Device {device_id}: {unique_id_str}")
 
     navigation_suggestions: list[int] = []
     return navigation_suggestions
