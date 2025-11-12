@@ -32,7 +32,7 @@ void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
             cluster->read_from_device_reg(&temp, chip_id, tensix_core, 0, sizeof(temp));
             // If reading from remote device is successful, we found the working active eth core
             return;
-        // If reading from remote device fails, try the next active eth core
+            // If reading from remote device fails, try the next active eth core
         } catch (const std::exception& e) {
             continue;
         }
