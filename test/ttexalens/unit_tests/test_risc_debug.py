@@ -57,14 +57,6 @@ class TestDebugging(unittest.TestCase):
         cls.context = init_default_test_context()
         cls.device = cls.context.devices[0]
 
-    @classmethod
-    def tearDownClass(cls):
-        if (cls.device.is_wormhole() and cls.risc_name.lower() == "erisc") or (
-            cls.device.is_blackhole() and cls.risc_name.lower() not in ("erisc0", "erisc1")
-        ):
-            cls.context.server_ifc.warm_reset()
-            cls.context = init_default_test_context()
-
     def setUp(self):
         try:
             self.core_sim = RiscvCoreSimulator(self.context, self.core_desc, self.risc_name, self.neo_id)

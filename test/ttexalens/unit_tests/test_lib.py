@@ -899,14 +899,6 @@ class TestCallStack(unittest.TestCase):
         cls.gdb_server = GdbServer(cls.context, server)
         cls.gdb_server.start()
 
-    @classmethod
-    def tearDownClass(cls):
-        if (cls.device.is_wormhole() and cls.risc_name.lower() == "erisc") or (
-            cls.device.is_blackhole() and cls.risc_name.lower() not in ("erisc0", "erisc1")
-        ):
-            cls.context.server_ifc.warm_reset()
-            cls.context = init_default_test_context()
-
     def setUp(self):
         # Convert location_desc to location
         if self.location_desc.startswith("ETH"):
