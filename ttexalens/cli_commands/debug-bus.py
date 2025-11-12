@@ -63,7 +63,7 @@ from typing import Any
 
 from ttexalens.command_parser import tt_docopt
 from ttexalens import util as util
-from ttexalens.util import search
+from ttexalens.util import search, parse_string
 from ttexalens.rich_formatters import formatter
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.uistate import UIState
@@ -109,7 +109,7 @@ def parse_string(input_string: str) -> list[list[int] | str]:
     # group(3): third number
     # group(4): fourth number (optional, may be None)
     # group(5): signal name (when not in {} format)
-    pattern = r"\{([\dA-Fa-fx]+),([\dA-Fa-fx]+),([\dA-Fa-fx]+)(?:,([\dA-Fa-fx]+))?\}|([A-Za-z_][A-Za-z0-9_/#]*)"
+    pattern = r"\{([\dA-Fa-fx]+),([\dA-Fa-fx]+),([\dA-Fa-fx]+)(?:,([\dA-Fa-fx]+))?\}|([A-Za-z_][^,\{\}]*)"
 
     parsed_result: list[list[int] | str] = []
 

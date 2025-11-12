@@ -280,6 +280,72 @@ class TestDebugging(unittest.TestCase):
                 return group_name
         return ""
 
+    @staticmethod
+    def _parse_string(input_string: str) -> list[list[int] | str]:
+        """Parse input string to extract signal descriptions and signal names."""
+        import re
+
+        # Regex pattern with groups:
+        # group(0): entire match
+        # group(1): first number in {num,num,num,num} format
+        # group(2): second number
+        # group(3): third number
+        # group(4): fourth number (optional, may be None)
+        # group(5): signal name (when not in {} format)
+        pattern = r"\{([\dA-Fa-fx]+),([\dA-Fa-fx]+),([\dA-Fa-fx]+)(?:,([\dA-Fa-fx]+))?\}|([A-Za-z_][^,\{\}]*)"
+
+        parsed_result: list[list[int] | str] = []
+
+        for match in re.finditer(pattern, input_string):
+            if match.group(1):
+                # Matched {num,num,num,num} format - extract numbers from groups 1-4
+                numbers = [int(match.group(i), 0) for i in range(1, 4)]
+                fourth_number = int(match.group(4), 0) if match.group(4) else 0xFFFFFFFF
+                numbers.append(fourth_number)
+                parsed_result.append(numbers)
+            else:
+                # Matched signal name format - group(5) contains the signal name
+                parsed_result.append(match.group(5))
+
+        return parsed_result
+
+    def test_debug_bus_command_signal_name_parser(self):
+        if self.device.is_quasar():
+            self.skipTest("This test only works on wormhole and blackhole.")
+
+        signal_store = self.core_sim.debug_bus_store
+        signal_names = signal_store.signal_names
+
+        for name in signal_names:
+            input_string = name
+
+            # Use the parse_string function you provided previously
+            try:
+                parsed_result = self._parse_string(input_string)
+
+            except Exception as e:
+                # Fail the test if the parsing function raises an exception
+                self.fail(f"Parsing failed for signal: '{name}'. Error: {e}")
+
+            # Assertion 1: Check that the parsing returned exactly one item
+            self.assertEqual(
+                len(parsed_result), 1, f"Parsing returned {len(parsed_result)} results for '{name}'. Expected: 1."
+            )
+
+            # Assertion 2: Check that the result is a string (a signal name, not a list of numbers)
+            self.assertIsInstance(
+                parsed_result[0],
+                str,
+                f"Parsed result for '{name}' is not a string. Type: {type(parsed_result[0]).__name__}.",
+            )
+
+            # Assertion 3: Check that the parsed string matches the original signal name
+            self.assertEqual(
+                parsed_result[0],
+                name,
+                f"Parsed name does not match original. Original: '{name}', Parsed: '{parsed_result[0]}'.",
+            )
+
     def test_debug_bus_signal_store_pc(self):
         if not self.device.is_wormhole():
             self.skipTest("This test only works on wormhole.")
