@@ -6,7 +6,7 @@ on:
       runs-on:
         required: false
         type: string
-        default: runner
+        default: ubuntu-latest
       os:
         required: false
         type: string
