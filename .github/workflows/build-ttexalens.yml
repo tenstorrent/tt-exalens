@@ -45,8 +45,8 @@ jobs:
           key: ttexalens-${{ inputs.config }}-${{ inputs.os }}
       - name: Build TTEXALENS
         run: |
-          make debug
           make release
+          make debug
       - name: Run mypy
         run: |
           make mypy
