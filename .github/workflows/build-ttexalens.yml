@@ -57,7 +57,7 @@ jobs:
       - name: Remove SFPI from build artifacts
         run: |
           rm -rf build_riscv/sfpi
-          rm -f sfpi_*
+          rm -f build_riscv/sfpi_*
       - name: Upload libraries as artifacts
         uses: pyTooling/upload-artifact@v4
         with:
