@@ -54,12 +54,15 @@ jobs:
         run: |
           make wheel
           make wheel_develop
+      - name: Remove SFPI from build artifacts
+        run: |
+          rm -rf build_riscv/sfpi
+          rm -f sfpi_*
       - name: Upload libraries as artifacts
         uses: pyTooling/upload-artifact@v4
         with:
           name: ttexalens-build
           path: |
             build
-            build_debug
             build_release
             build_riscv
