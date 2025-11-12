@@ -50,6 +50,11 @@ class RiscvCoreSimulator:
         assert self.risc_debug.debug_hardware is not None
         return self.risc_debug.debug_hardware
 
+    def set_code_start_address(self, address: int):
+        """Set the code start address for the core."""
+        self.risc_debug.set_code_start_address(address)
+        self.program_base_address = address
+
     def has_debug_hardware(self) -> bool:
         """Check if core has debug hardware available."""
         return self.risc_debug.debug_hardware is not None

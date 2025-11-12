@@ -77,7 +77,7 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
         self.core_sim.set_reset(True)
         self.assertTrue(self.core_sim.is_in_reset())
         if self.device.is_wormhole() and self.risc_name.lower() == "ncrisc":
-            self.core_sim.risc_debug.set_code_start_address(0x2000)
+            self.core_sim.set_code_start_address(0x2000)
 
     def tearDown(self):
         # Stop risc with reset
