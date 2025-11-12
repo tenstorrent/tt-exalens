@@ -17,6 +17,7 @@ namespace tt::exalens {
 // Find working active eth core and configure it for remote communication
 void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
     ChipId mmio_chip_id = cluster->get_cluster_description()->get_closest_mmio_capable_chip(chip_id);
+    // Define tensix core for testing remote communication
     const tt::umd::CoreCoord tensix_core = tt::umd::CoreCoord(0, 0, CoreType::TENSIX, CoordSystem::LOGICAL);
     std::unordered_set<tt::umd::CoreCoord> active_eth_cores =
         cluster->get_soc_descriptor(mmio_chip_id)
@@ -26,9 +27,12 @@ void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
         cluster->configure_active_ethernet_cores_for_mmio_device(mmio_chip_id,
                                                                  std::unordered_set<tt::umd::CoreCoord>({core}));
         try {
+            // Try to read from remote device to see if remote communication is working
             uint32_t temp = 0;
             cluster->read_from_device_reg(&temp, chip_id, tensix_core, 0, sizeof(temp));
+            // If reading from remote device is successful, we found the working active eth core
             return;
+        // If reading from remote device fails, try the next active eth core
         } catch (const std::exception& e) {
             continue;
         }
@@ -316,6 +320,7 @@ void umd_implementation::warm_reset(bool is_galaxy_configuration) {
     }
 }
 
+// Function returns logical coordinates on local device of the active eth core used for remote communication
 std::optional<std::tuple<uint8_t, uint8_t>> umd_implementation::get_remote_transfer_eth_core(uint8_t chip_id) {
     tt_xy_pair active_eth_core =
         cluster->get_remote_chip(chip_id)->get_remote_communication()->get_remote_transfer_ethernet_core();
