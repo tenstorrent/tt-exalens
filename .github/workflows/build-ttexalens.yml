@@ -6,7 +6,7 @@ on:
       runs-on:
         required: false
         type: string
-        default: tt-ubuntu-2204-large-stable
+        default: ubuntu-latest
       os:
         required: false
         type: string
@@ -60,6 +60,3 @@ jobs:
           name: ttexalens-build
           path: |
             build
-            build_debug
-            build_release
-            build_riscv
