@@ -1682,30 +1682,39 @@ debug_bus_signal_map = {
     "DEBUG_BUS_DEBUG_ISSUE2_IN[0]_DMA_CNT_CH0_STATE_W_CR__7_0": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=6, sig_sel=0, mask=0xFF000000
     ),
+    "adcs0_unpacker0_channel0_w_cr": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=0, mask=0xFF000000),
     "DEBUG_BUS_DEBUG_ISSUE2_IN[0]_DMA_CNT_CH0_STATE_W_COUNTER__7_0": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=6, sig_sel=0, mask=0xFF0000
     ),
+    "adcs0_unpacker0_channel0_w_counter": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=0, mask=0xFF0000),
     "DEBUG_BUS_DEBUG_ISSUE2_IN[0]_DMA_CNT_CH0_STATE_Z_CR__7_0": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=6, sig_sel=0, mask=0xFF00
     ),
+    "adcs0_unpacker0_channel0_z_cr": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=0, mask=0xFF00),
     "DEBUG_BUS_DEBUG_ISSUE2_IN[0]_DMA_CNT_CH0_STATE_Z_COUNTER__7_0": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=6, sig_sel=0, mask=0xFF
     ),
+    "adcs0_unpacker0_channel0_z_counter": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=0, mask=0xFF),
     "DEBUG_BUS_DEBUG_ISSUE2_IN[0]_DMA_CNT_CH0_STATE_Y_CR": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=6, sig_sel=0, mask=0x1FFF0000
     ),
+    "adcs0_unpacker0_channel0_y_cr": DebugBusSignalDescription(rd_sel=2, daisy_sel=6, sig_sel=0, mask=0x1FFF0000),
     "DEBUG_BUS_DEBUG_ISSUE2_IN[0]_DMA_CNT_CH0_STATE_Y_COUNTER": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=6, sig_sel=0, mask=0x1FFF
     ),
+    "adcs0_unpacker0_channel0_y_counter": DebugBusSignalDescription(rd_sel=2, daisy_sel=6, sig_sel=0, mask=0x1FFF),
     "DEBUG_BUS_DEBUG_ISSUE2_IN[0]_DMA_CNT_CH0_STATE_X_CR__13_0": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=6, sig_sel=0, mask=0xFFFC0000
     ),
+    "adcs0_unpacker0_channel0_x_cr/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=6, sig_sel=0, mask=0xFFFC0000),
     "DEBUG_BUS_DEBUG_ISSUE2_IN[0]_DMA_CNT_CH0_STATE_X_CR__17_14": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=6, sig_sel=0, mask=0xF
     ),
+    "adcs0_unpacker0_channel0_x_cr/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=6, sig_sel=0, mask=0xF),
     "DEBUG_BUS_DEBUG_ISSUE2_IN[0]_DMA_CNT_CH0_STATE_X_COUNTER": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=6, sig_sel=0, mask=0x3FFFF
     ),
+    "adcs0_unpacker0_channel0_x_counter": DebugBusSignalDescription(rd_sel=0, daisy_sel=6, sig_sel=0, mask=0x3FFFF),
     "DEBUG_BUS_SRCA_WREN_RESH_D[7]": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=28, mask=0x1000),
     "DEBUG_BUS_SRCA_WR_DATUM_EN_RESH_D[7]__5_0": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=28, mask=0xFC000000
