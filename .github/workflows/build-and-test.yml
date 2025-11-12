@@ -7,7 +7,7 @@ on:
 jobs:
 
   build-image:
-    runs-on: ubuntu-latest # TODO: Revert to tt-ubuntu-2204-large-stable
+    runs-on: runner
     outputs:
       docker-image: ${{ steps.build.outputs.docker-image }}
     steps:
@@ -36,9 +36,9 @@ jobs:
           .github/build-docker-images.sh | tee docker.log
           DOCKER_CI_IMAGE=$(tail -n 1 docker.log)
 
-          # Replace use harbor.ci.tenstorrent.net if running on shared runner (tt-ubuntu-2204-large-stable)
-          DOCKER_CI_IMAGE="harbor.ci.tenstorrent.net/$DOCKER_CI_IMAGE"
-          echo "Replaced registry in Docker image name to use harbor cache"
+          # # Replace use harbor.ci.tenstorrent.net if running on shared runner (tt-ubuntu-2204-large-stable)
+          # DOCKER_CI_IMAGE="harbor.ci.tenstorrent.net/$DOCKER_CI_IMAGE"
+          # echo "Replaced registry in Docker image name to use harbor cache"
 
           echo "DOCKER_CI_IMAGE $DOCKER_CI_IMAGE"
           echo "docker-image=$DOCKER_CI_IMAGE" >> "$GITHUB_OUTPUT"
