@@ -10,8 +10,6 @@
 #include "umd/device/arc/arc_telemetry_reader.hpp"
 #include "umd/device/cluster.hpp"
 #include "umd/device/firmware/firmware_utils.hpp"
-#include "umd/device/topology/topology_discovery.hpp"
-#include "umd/device/tt_device/remote_communication.hpp"
 #include "umd/device/warm_reset.hpp"
 
 namespace tt::exalens {
