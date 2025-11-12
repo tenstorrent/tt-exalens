@@ -7,7 +7,7 @@ on:
 jobs:
 
   build-image:
-    runs-on: tt-ubuntu-2204-large-stable
+    runs-on: ubuntu-latest # TODO: Revert to tt-ubuntu-2204-large-stable
     outputs:
       docker-image: ${{ steps.build.outputs.docker-image }}
     steps:
