@@ -23,6 +23,7 @@ from ttexalens.uistate import UIState
 
 command_metadata = {
     "short": "pciw",
+    "long": "pci-raw-write",
     "type": "dev",
     "description": __doc__,
     "context": ["limited", "metal"],

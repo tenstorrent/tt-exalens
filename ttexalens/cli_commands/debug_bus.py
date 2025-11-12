@@ -52,6 +52,7 @@ Examples:
 
 command_metadata = {
     "short": "dbus",
+    "long": "debug-bus",
     "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],

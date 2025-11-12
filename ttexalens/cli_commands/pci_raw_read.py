@@ -21,6 +21,7 @@ from ttexalens.uistate import UIState
 
 command_metadata = {
     "short": "pcir",
+    "long": "pci-raw-read",
     "type": "dev",
     "description": __doc__,
     "context": ["limited", "metal"],
