@@ -10,11 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       docker-image: ${{ steps.build.outputs.docker-image }}
+      public-docker-image: ${{ steps.build.outputs.public-docker-image }}
     steps:
-      # - name: Fix permissions
-      #   shell: bash
-      #   run: sudo chown ubuntu:ubuntu -R $(pwd)
-
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -34,12 +31,14 @@ jobs:
           # Output the image name
           set pipefail
           .github/build-docker-images.sh | tee docker.log
-          DOCKER_CI_IMAGE=$(tail -n 1 docker.log)
+          PUBLIC_DOCKER_CI_IMAGE=$(tail -n 1 docker.log)
 
-          # # Replace use harbor.ci.tenstorrent.net if running on shared runner (tt-ubuntu-2204-large-stable)
-          # DOCKER_CI_IMAGE="harbor.ci.tenstorrent.net/$DOCKER_CI_IMAGE"
-          # echo "Replaced registry in Docker image name to use harbor cache"
+          # Replace use harbor.ci.tenstorrent.net if running on shared runner (tt-ubuntu-2204-large-stable)
+          DOCKER_CI_IMAGE="harbor.ci.tenstorrent.net/$PUBLIC_DOCKER_CI_IMAGE"
+          echo "Replaced registry in Docker image name to use harbor cache"
 
+          echo "PUBLIC_DOCKER_CI_IMAGE $PUBLIC_DOCKER_CI_IMAGE"
+          echo "public-docker-image=$PUBLIC_DOCKER_CI_IMAGE" >> "$GITHUB_OUTPUT"
           echo "DOCKER_CI_IMAGE $DOCKER_CI_IMAGE"
           echo "docker-image=$DOCKER_CI_IMAGE" >> "$GITHUB_OUTPUT"
 
@@ -47,7 +46,8 @@ jobs:
     needs: build-image
     uses: ./.github/workflows/build-ttexalens.yml
     with:
-      docker-image: ${{ needs.build-image.outputs.docker-image }}
+      runs-on: ubuntu-latest
+      docker-image: ${{ needs.build-image.outputs.public-docker-image }}
 
   set-latest:
     # Set the latest tag on the IRD image
