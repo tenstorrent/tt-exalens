@@ -11,6 +11,7 @@ from ttexalens.context import Context
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.hardware.baby_risc_debug import get_register_index
 from ttexalens.elf_loader import ElfLoader
+from ttexalens.cli_commands.debug_bus import parse_string
 
 
 @parameterized_class(
@@ -280,71 +281,63 @@ class TestDebugging(unittest.TestCase):
                 return group_name
         return ""
 
-    @staticmethod
-    def _parse_string(input_string: str) -> list[list[int] | str]:
-        """Parse input string to extract signal descriptions and signal names."""
-        import re
-
-        # Regex pattern with groups:
-        # group(0): entire match
-        # group(1): first number in {num,num,num,num} format
-        # group(2): second number
-        # group(3): third number
-        # group(4): fourth number (optional, may be None)
-        # group(5): signal name (when not in {} format)
-        pattern = r"\{([\dA-Fa-fx]+),([\dA-Fa-fx]+),([\dA-Fa-fx]+)(?:,([\dA-Fa-fx]+))?\}|([A-Za-z_][^,\{\}]*)"
-
-        parsed_result: list[list[int] | str] = []
-
-        for match in re.finditer(pattern, input_string):
-            if match.group(1):
-                # Matched {num,num,num,num} format - extract numbers from groups 1-4
-                numbers = [int(match.group(i), 0) for i in range(1, 4)]
-                fourth_number = int(match.group(4), 0) if match.group(4) else 0xFFFFFFFF
-                numbers.append(fourth_number)
-                parsed_result.append(numbers)
-            else:
-                # Matched signal name format - group(5) contains the signal name
-                parsed_result.append(match.group(5))
-
-        return parsed_result
-
     def test_debug_bus_command_signal_name_parser(self):
-        if self.device.is_quasar():
-            self.skipTest("This test only works on wormhole and blackhole.")
-
+        """Test the parse_string function for all signal names in the signal store."""
         signal_store = self.core_sim.debug_bus_store
         signal_names = signal_store.signal_names
 
         for name in signal_names:
             input_string = name
+            parsed_result = parse_string(input_string)
 
-            # Use the parse_string function you provided previously
-            try:
-                parsed_result = self._parse_string(input_string)
-
-            except Exception as e:
-                # Fail the test if the parsing function raises an exception
-                self.fail(f"Parsing failed for signal: '{name}'. Error: {e}")
-
-            # Assertion 1: Check that the parsing returned exactly one item
+            # Check that the parsing returned exactly one item
             self.assertEqual(
                 len(parsed_result), 1, f"Parsing returned {len(parsed_result)} results for '{name}'. Expected: 1."
             )
 
-            # Assertion 2: Check that the result is a string (a signal name, not a list of numbers)
+            # Check that the result is a string (a signal name, not a list of numbers)
             self.assertIsInstance(
                 parsed_result[0],
                 str,
                 f"Parsed result for '{name}' is not a string. Type: {type(parsed_result[0]).__name__}.",
             )
 
-            # Assertion 3: Check that the parsed string matches the original signal name
+            # Check that the parsed string matches the original signal name
             self.assertEqual(
                 parsed_result[0],
                 name,
                 f"Parsed name does not match original. Original: '{name}', Parsed: '{parsed_result[0]}'.",
             )
+
+    def test_debug_bus_command_parse_string_other_cases(self):
+        """Test various cases of the parse_string function beyond simple signal names."""
+
+        # only signal description provided
+        input_4_numbers = "{7,0,12,0x3ffffff}"
+        expected_4_numbers = [[7, 0, 12, 0x3FFFFFF]]
+
+        parsed_result = parse_string(input_4_numbers)
+        # Test parsing a sequence of 4 numbers
+        self.assertEqual(parsed_result, expected_4_numbers, "Bad parsing of 4 numbers.")
+        self.assertIsInstance(parsed_result, list, "Result should be list.")
+
+        # Test parsing a sequence of 3 numbers with implicit 0xFFFFFFFF
+        input_3_numbers = "{10,20,30}"
+        expected_3_numbers = [[10, 20, 30, 0xFFFFFFFF]]
+
+        parsed_result = parse_string(input_3_numbers)
+        self.assertEqual(parsed_result, expected_3_numbers, "Bad parsing of 3 numbers.")
+        self.assertEqual(len(parsed_result[0]), 4, "Result should be list.")
+
+        # Testing parsing name combined with sequence of numbers
+        input_mixed = "SigA,{1,2,3},SigB,{10,20,30,40},End"
+        expected_mixed = ["SigA", [1, 2, 3, 0xFFFFFFFF], "SigB", [10, 20, 30, 40], "End"]
+
+        parsed_result = parse_string(input_mixed)
+        self.assertEqual(parsed_result, expected_mixed, "Test mixed combination of names and sequences.")
+        self.assertEqual(len(parsed_result), 5, "Test expected 5 parsed elements.")
+        self.assertIsInstance(parsed_result[1], list, "Test second element should be a list.")
+        self.assertIsInstance(parsed_result[3], list, "Test fourth element should be a list.")
 
     def test_debug_bus_signal_store_pc(self):
         if not self.device.is_wormhole():

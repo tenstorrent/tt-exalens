@@ -63,7 +63,7 @@ from typing import Any
 
 from ttexalens.command_parser import tt_docopt
 from ttexalens import util as util
-from ttexalens.util import search, parse_string
+from ttexalens.util import search
 from ttexalens.rich_formatters import formatter
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.uistate import UIState
