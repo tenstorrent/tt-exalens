@@ -60,3 +60,6 @@ jobs:
           name: ttexalens-build
           path: |
             build
+            build_debug
+            build_release
+            build_riscv
