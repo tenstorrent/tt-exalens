@@ -26,6 +26,11 @@ class TestRemoteCommunication(unittest.TestCase):
         cls.remote_device_id = cls.context.devices[1]._id if len(cls.context.devices) > 1 else None
         cls.tensix_core = OnChipCoordinate.create("0,0", cls.local_device)
 
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.context.server_ifc.warm_reset()
+        cls.context = init_default_test_context()
+
     def test_remote_communication(self):
         data = 0x12345678
         address = 0x100
@@ -46,7 +51,3 @@ class TestRemoteCommunication(unittest.TestCase):
         write_words_to_device(self.tensix_core, address, data, self.remote_device_id)
         ret = read_word_from_device(self.tensix_core, address, self.remote_device_id)
         self.assertEqual(ret, data)
-
-    def tearDown(self) -> None:
-        self.context.server_ifc.warm_reset()
-        self.context = init_default_test_context()
