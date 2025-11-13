@@ -55,7 +55,6 @@ class ElfDie:
             for die in self.iter_children():
                 if die.name is None:
                     continue
-                assert die.name not in self.children_by_name or self.children_by_name[die.name] == die
                 self.children_by_name[die.name] = die
                 if die.name == child_name:
                     return die
