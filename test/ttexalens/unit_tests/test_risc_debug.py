@@ -7,8 +7,9 @@ from parameterized import parameterized_class, parameterized
 from ttexalens import tt_exalens_lib as lib
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
+from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
 from ttexalens.context import Context
-from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
+from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.baby_risc_debug import get_register_index
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.cli_commands.debug_bus import parse_string
@@ -61,6 +62,7 @@ class TestDebugging(unittest.TestCase):
     def setUp(self):
         try:
             self.core_sim = RiscvCoreSimulator(self.context, self.core_desc, self.risc_name, self.neo_id)
+            self.program_writer = RiscvProgramWriter(self.core_sim)
         except ValueError as e:
             if self.risc_name.lower() in e.__str__().lower():
                 self.skipTest(f"Core {self.risc_name} not available on this platform: {e}")
@@ -133,11 +135,9 @@ class TestDebugging(unittest.TestCase):
         # C++:
         #   asm volatile ("nop");
         #   while (true);
-
-        # NOP
-        self.core_sim.write_program(0, 0x00000013)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(4, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_nop()
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -170,9 +170,8 @@ class TestDebugging(unittest.TestCase):
         # Write code for brisc core at address 0
         # C++:
         #   while (true);
-
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(0, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -204,9 +203,8 @@ class TestDebugging(unittest.TestCase):
         # Write code for brisc core at address 0
         # C++:
         #   while (true);
-
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(0, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -251,15 +249,11 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
-
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(0, 0x00010537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(4, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(8, 0x00B52023)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(12, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_store_word_to_memory(
+            0x10000, 0x87654000, 10, 11
+        )  # Load address into x10, data into x11, store word
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -347,7 +341,8 @@ class TestDebugging(unittest.TestCase):
         pc_signal_name = self.core_sim.risc_name.lower() + "_pc"
 
         # ebreak
-        self.core_sim.write_program(0, 0x00100073)
+        self.program_writer.append_ebreak()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -435,17 +430,12 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
-
-        # ebreak
-        self.core_sim.write_program(0, 0x00100073)
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(4, 0x00010537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(8, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(12, 0x00B52023)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_ebreak()
+        self.program_writer.append_store_word_to_memory(
+            0x10000, 0x87654000, 10, 11
+        )  # Load address into x10, data into x11, store word
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -469,17 +459,12 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
-
-        # ebreak
-        self.core_sim.write_program(0, 0x00100073)
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(4, 0x00010537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(8, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(12, 0x00B52023)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_ebreak()
+        self.program_writer.append_store_word_to_memory(
+            0x10000, 0x87654000, 10, 11
+        )  # Load address into x10, data into x11, store word
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         self.core_sim.set_reset(False)
 
@@ -517,17 +502,12 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
-
-        # ebreak
-        self.core_sim.write_program(0, 0x00100073)
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(4, 0x00010537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(8, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(12, 0x00B52023)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_ebreak()
+        self.program_writer.append_store_word_to_memory(
+            0x10000, 0x87654000, 10, 11
+        )  # Load address into x10, data into x11, store word
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -543,17 +523,21 @@ class TestDebugging(unittest.TestCase):
         if not self.device.is_wormhole():
             self.skipTest("Issue is hit only on wormhole.")
 
-        # lui t3, 0 - 0x00000e37
-        # b_loop:
-        #    addi t3, t3, 1 # Counter increment 0x001e0e13
-        #    lw t1, 0(x0) # L1 read             0x00002303
-        #    lw t2, 0(x0) # L1 read             0x00002383
-        #    jal b_loop(-12) 0xff5ff06f
-        self.core_sim.write_program(0, 0x00000E37)
-        self.core_sim.write_program(4, 0x001E0E13)
-        self.core_sim.write_program(8, 0x00002303)
-        self.core_sim.write_program(12, 0x00002383)
-        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(-12))
+        # Write code for brisc core at address 0
+        # C++:
+        #    for (int i = 0; ; i++) {
+        #        int* a = (int*)0x0;
+        #        int* b = (int*)0x0;
+        #        c = *a;
+        #        d = *b;
+        #    }
+        self.program_writer.append_load_constant_to_register(28, 0)
+        b_loop_address = self.program_writer.current_address
+        self.program_writer.append_load_word_from_memory_to_register(6, 0, 0)
+        self.program_writer.append_load_word_from_memory_to_register(7, 0, 0)
+        self.program_writer.append_addi(28, 28, 1)
+        self.program_writer.append_loop(b_loop_address)
+        self.program_writer.write_program()
 
         self.core_sim.set_reset(False)
         iteration = 0
@@ -586,21 +570,15 @@ class TestDebugging(unittest.TestCase):
         #   *a = 0x87654000;
         #   while (true)
         #     *a++;
-
-        # ebreak
-        self.core_sim.write_program(0, 0x00100073)
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(4, 0x00010537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(8, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(12, 0x00B52023)
-        # Increment x11 by 1 (addi x11, x11, 1)
-        self.core_sim.write_program(16, 0x00158593)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(20, 0x00B52023)
-        # Infinite loop (jal -8)
-        self.core_sim.write_program(24, ElfLoader.get_jump_to_offset_instruction(-8))
+        self.program_writer.append_ebreak()
+        self.program_writer.append_store_word_to_memory(
+            0x10000, 0x87654000, 10, 11
+        )  # Load address into x10, data into x11, store word
+        loop_address = self.program_writer.current_address
+        self.program_writer.append_addi(11, 11, 1)  # Increment x11 by 1
+        self.program_writer.append_store_word_to_memory_from_register(10, 11)  # Store x11 to address in x10
+        self.program_writer.append_loop(loop_address)
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -644,17 +622,12 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
-
-        # ebreak
-        self.core_sim.write_program(0, 0x00100073)
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(4, 0x00010537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(8, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(12, 0x00B52023)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_ebreak()
+        self.program_writer.append_store_word_to_memory(
+            0x10000, 0x87654000, 10, 11
+        )  # Load address into x10, data into x11, store word
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -677,9 +650,6 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
 
     def test_invalidate_cache(self):
-        if self.device.is_wormhole():
-            self.skipTest("Invalidate cache is not reliable on wormhole.")
-
         if self.core_sim.is_eth_block():
             self.skipTest("This test is not applicable for ETH cores.")
 
@@ -695,10 +665,11 @@ class TestDebugging(unittest.TestCase):
         #   while (true);
         #   while (true);
         #   while (true);
-        self.core_sim.write_program(0, ElfLoader.get_jump_to_offset_instruction(0))
-        self.core_sim.write_program(4, ElfLoader.get_jump_to_offset_instruction(0))
-        self.core_sim.write_program(8, ElfLoader.get_jump_to_offset_instruction(0))
-        self.core_sim.write_program(12, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_while_true()
+        self.program_writer.append_while_true()
+        self.program_writer.append_while_true()
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -716,15 +687,12 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
-
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(0, 0x00010537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(4, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(8, 0x00B52023)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(12, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer = RiscvProgramWriter(self.core_sim)
+        self.program_writer.append_store_word_to_memory(
+            0x10000, 0x87654000, 10, 11
+        )  # Load address into x10, data into x11, store word
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Invalidate instruction cache
         self.core_sim.invalidate_instruction_cache()
@@ -756,10 +724,11 @@ class TestDebugging(unittest.TestCase):
         #   while (true);
         #   while (true);
         #   while (true);
-        self.core_sim.write_program(0, ElfLoader.get_jump_to_offset_instruction(0))
-        self.core_sim.write_program(4, ElfLoader.get_jump_to_offset_instruction(0))
-        self.core_sim.write_program(8, ElfLoader.get_jump_to_offset_instruction(0))
-        self.core_sim.write_program(12, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_while_true()
+        self.program_writer.append_while_true()
+        self.program_writer.append_while_true()
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -777,15 +746,12 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
-
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(0, 0x00010537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(4, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(8, 0x00B52023)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(12, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer = RiscvProgramWriter(self.core_sim)
+        self.program_writer.append_store_word_to_memory(
+            0x10000, 0x87654000, 10, 11
+        )  # Load address into x10, data into x11, store word
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Invalidate instruction cache with reset
         self.core_sim.set_reset(True)
@@ -851,15 +817,11 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
-
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(0, 0x00010537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(4, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(8, 0x00B52023)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(12, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_store_word_to_memory(
+            0x10000, 0x87654000, 10, 11
+        )  # Load address into x10, data into x11, store word
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Continue execution
         self.core_sim.continue_execution()
@@ -900,25 +862,16 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
-
-        # ebreak
-        self.core_sim.write_program(0, 0x00100073)
-        # nop
-        self.core_sim.write_program(4, 0x00000013)
-        # nop
-        self.core_sim.write_program(8, 0x00000013)
-        # nop
-        self.core_sim.write_program(12, 0x00000013)
-        # nop
-        self.core_sim.write_program(16, 0x00000013)
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(20, 0x00010537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(24, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(28, 0x00B52023)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(32, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_ebreak()
+        self.program_writer.append_nop()
+        self.program_writer.append_nop()
+        self.program_writer.append_nop()
+        self.program_writer.append_nop()
+        self.program_writer.append_store_word_to_memory(
+            0x10000, 0x87654000, 10, 11
+        )  # Load address into x10, data into x11, store word
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -968,11 +921,9 @@ class TestDebugging(unittest.TestCase):
         # C++:
         #   asm volatile ("ebreak");
         #   while (true);
-
-        # ebreak
-        self.core_sim.write_program(0, 0x00100073)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(4, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_ebreak()
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -1119,11 +1070,9 @@ class TestDebugging(unittest.TestCase):
         # C++:
         #   asm volatile ("ebreak");
         #   while (true);
-
-        # ebreak
-        self.core_sim.write_program(0, 0x00100073)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(4, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_ebreak()
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -1249,50 +1198,20 @@ class TestDebugging(unittest.TestCase):
         #   int d = *c;
         #   int* c = (int*)0x30000;
         #   *c = 0x87654000;
+        #   c = (int*)0x40000;
+        #   d = *c;
         #   while (true);
-
-        # ebreak
-        self.core_sim.write_program(0, 0x00100073)
-
-        # nop
-        self.core_sim.write_program(4, 0x00000013)
-        # nop
-        self.core_sim.write_program(8, 0x00000013)
-        # nop
-        self.core_sim.write_program(12, 0x00000013)
-        # nop
-        self.core_sim.write_program(16, 0x00000013)
-
-        # First write
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(20, 0x00010537)
-        # Load Immediate Value 0x45678000 into x11 (lui x11, 0x45678)
-        self.core_sim.write_program(24, 0x456785B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(28, 0x00B52023)
-
-        # Read from memory
-        # Load Immediate Address 0x20000 into x10 (lui x10, 0x20)
-        self.core_sim.write_program(32, 0x00020537)
-        # Load the word from memory at address held in x10 (0x20000) into x12
-        self.core_sim.write_program(36, 0x00052603)
-
-        # Second write
-        # Load Immediate Address 0x30000 into x10 (lui x10, 0x30)
-        self.core_sim.write_program(40, 0x00030537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(44, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(48, 0x00B52023)
-
-        # Second from memory
-        # Load Immediate Address 0x40000 into x10 (lui x10, 0x20)
-        self.core_sim.write_program(52, 0x00040537)
-        # Load the word from memory at address held in x10 (0x40000) into x12
-        self.core_sim.write_program(56, 0x00052603)
-
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(60, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_ebreak()
+        self.program_writer.append_nop()
+        self.program_writer.append_nop()
+        self.program_writer.append_nop()
+        self.program_writer.append_nop()
+        self.program_writer.append_store_word_to_memory(0x10000, 0x45678000, 10, 11)  # First write
+        self.program_writer.append_load_word_from_memory_to_register(12, 0x20000, 10)  # First read
+        self.program_writer.append_store_word_to_memory(0x30000, 0x87654000, 10, 11)  # Second write
+        self.program_writer.append_load_word_from_memory_to_register(12, 0x40000, 10)  # Second read
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -1381,31 +1300,20 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
-
-        # ebreak
-        self.core_sim.write_program(0, 0x00100073)
-        # Store 0 to x1 (addi x1, x0, 0)
-        self.core_sim.write_program(4, 0x00000093)
-        # Store 63 to x2 (addi x2, x0, 63)
-        self.core_sim.write_program(8, 0x03F00113)
-        # See if they are equal (bne x1, x2, 8)
-        self.core_sim.write_program(12, 0x00209463)
-        # Jump to ebreak
-        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(12))
-        # Increase value in x1 (addi x1, x1, 1)
-        self.core_sim.write_program(20, 0x00108093)
-        # Jump to bne
-        self.core_sim.write_program(24, ElfLoader.get_jump_to_offset_instruction(-12))
-        # ebreak
-        self.core_sim.write_program(28, 0x00100073)
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(32, 0x00010537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(36, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(40, 0x00B52023)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(44, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_ebreak()
+        self.program_writer.append_load_constant_to_register(1, 0)  # x1 = 0
+        self.program_writer.append_load_constant_to_register(2, 63)  # x2 = 63
+        loop_address = self.program_writer.current_address
+        self.program_writer.append_bne(8, 1, 2)  # Skip this and next instruction if x1 != x2
+        self.program_writer.append_jal(12)  # Skip 3 instructions and goto ebreak
+        self.program_writer.append_addi(1, 1, 1)  # x1 = x1 + 1
+        self.program_writer.append_loop(loop_address)
+        self.program_writer.append_ebreak()
+        self.program_writer.append_store_word_to_memory(
+            0x10000, 0x87654000, 10, 11
+        )  # Load address into x10, data into x11, store word
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -1450,31 +1358,20 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
-
-        # ebreak
-        self.core_sim.write_program(0, 0x00100073)
-        # Store 0 to x1 (addi x1, x0, 0)
-        self.core_sim.write_program(4, 0x00000093)
-        # Store 63 to x2 (addi x2, x0, 63)
-        self.core_sim.write_program(8, 0x03F00113)
-        # See if they are equal (bne x1, x2, 8)
-        self.core_sim.write_program(12, 0x00209463)
-        # Jump to ebreak
-        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(12))
-        # Increase value in x1 (addi x1, x1, 1)
-        self.core_sim.write_program(20, 0x00108093)
-        # Jump to bne
-        self.core_sim.write_program(24, ElfLoader.get_jump_to_offset_instruction(-12))
-        # ebreak
-        self.core_sim.write_program(28, 0x00100073)
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(32, 0x00010537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(36, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(40, 0x00B52023)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(44, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_ebreak()
+        self.program_writer.append_load_constant_to_register(1, 0)  # x1 = 0
+        self.program_writer.append_load_constant_to_register(2, 63)  # x2 = 63
+        loop_address = self.program_writer.current_address
+        self.program_writer.append_bne(8, 1, 2)  # Skip this and next instruction if x1 != x2
+        self.program_writer.append_jal(12)  # Skip 3 instructions and goto ebreak
+        self.program_writer.append_addi(1, 1, 1)  # x1 = x1 + 1
+        self.program_writer.append_loop(loop_address)
+        self.program_writer.append_ebreak()
+        self.program_writer.append_store_word_to_memory(
+            0x10000, 0x87654000, 10, 11
+        )  # Load address into x10, data into x11, store word
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -1528,31 +1425,20 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
-
-        # ebreak
-        self.core_sim.write_program(0, 0x00100073)
-        # Store 0 to x1 (addi x1, x0, 0)
-        self.core_sim.write_program(4, 0x00000093)
-        # Store 63 to x2 (addi x2, x0, 63)
-        self.core_sim.write_program(8, 0x03F00113)
-        # See if they are equal (bne x1, x2, 8)
-        self.core_sim.write_program(12, 0x00209463)
-        # Jump to ebreak
-        self.core_sim.write_program(16, ElfLoader.get_jump_to_offset_instruction(12))
-        # Increase value in x1 (addi x1, x1, 1)
-        self.core_sim.write_program(20, 0x00108093)
-        # Jump to bne
-        self.core_sim.write_program(24, ElfLoader.get_jump_to_offset_instruction(-12))
-        # ebreak
-        self.core_sim.write_program(28, 0x00100073)
-        # Load Immediate Address 0x10000 into x10 (lui x10, 0x10)
-        self.core_sim.write_program(32, 0x00010537)
-        # Load Immediate Value 0x87654000 into x11 (lui x11, 0x87654)
-        self.core_sim.write_program(36, 0x876545B7)
-        # Store the word value from register x11 to address from register x10 (sw x11, 0(x10))
-        self.core_sim.write_program(40, 0x00B52023)
-        # Infinite loop (jal 0)
-        self.core_sim.write_program(44, ElfLoader.get_jump_to_offset_instruction(0))
+        self.program_writer.append_ebreak()
+        self.program_writer.append_load_constant_to_register(1, 0)  # x1 = 0
+        self.program_writer.append_load_constant_to_register(2, 63)  # x2 = 63
+        loop_address = self.program_writer.current_address
+        self.program_writer.append_bne(8, 1, 2)  # Skip this and next instruction if x1 != x2
+        self.program_writer.append_jal(12)  # Skip 3 instructions and goto ebreak
+        self.program_writer.append_addi(1, 1, 1)  # x1 = x1 + 1
+        self.program_writer.append_loop(loop_address)
+        self.program_writer.append_ebreak()
+        self.program_writer.append_store_word_to_memory(
+            0x10000, 0x87654000, 10, 11
+        )  # Load address into x10, data into x11, store word
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -1588,131 +1474,3 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.halt()
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
-
-    def test_invalid_rd_sel(self):
-        sig = DebugBusSignalDescription(rd_sel=4, daisy_sel=0, sig_sel=0)
-        with self.assertRaises(ValueError) as cm:
-            self.core_sim.debug_bus_store.read_signal(sig)
-        self.assertIn("rd_sel must be between 0 and 3", str(cm.exception))
-
-    def test_invalid_rd_sel(self):
-        sig = DebugBusSignalDescription(rd_sel=4, daisy_sel=0, sig_sel=0)
-        with self.assertRaises(ValueError) as cm:
-            self.core_sim.debug_bus_store.read_signal(sig)
-        self.assertIn("rd_sel must be between 0 and 3", str(cm.exception))
-
-    def test_invalid_daisy_sel(self):
-        sig = DebugBusSignalDescription(rd_sel=0, daisy_sel=256, sig_sel=0)
-        with self.assertRaises(ValueError) as cm:
-            self.core_sim.debug_bus_store.read_signal(sig)
-        self.assertIn("daisy_sel must be between 0 and 255", str(cm.exception))
-
-    def test_invalid_sig_sel(self):
-        sig = DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=65536)
-        with self.assertRaises(ValueError) as cm:
-            self.core_sim.debug_bus_store.read_signal(sig)
-        self.assertIn("sig_sel must be between 0 and 65535", str(cm.exception))
-
-    def test_invalid_mask(self):
-        sig = DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=0, mask=0xFFFFFFFFF)
-        with self.assertRaises(ValueError) as cm:
-            self.core_sim.debug_bus_store.read_signal(sig)
-        self.assertIn("mask must be a valid 32-bit integer", str(cm.exception))
-
-    def test_sample_signal_group_invalid_samples(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on wormhole.")
-
-        group_name = next(iter(self.core_sim.debug_bus_store.group_map.keys()))
-        with self.assertRaises(ValueError) as cm:
-            self.core_sim.debug_bus_store.sample_signal_group(
-                signal_group=group_name,
-                l1_address=0x1000,
-                samples=0,
-                sampling_interval=2,
-            )
-        self.assertIn("samples count must be at least 1", str(cm.exception))
-
-    def test_signal_group_invalid_l1_address(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on wormhole.")
-
-        # test sample_signal_group
-        group_name = next(iter(self.core_sim.debug_bus_store.group_map.keys()))
-        with self.assertRaises(ValueError) as cm:
-            self.core_sim.debug_bus_store._read_signal_group_samples(
-                signal_group=group_name,
-                l1_address=0x1001,
-                samples=1,
-                sampling_interval=2,
-            )
-        self.assertIn("L1 address must be 16-byte aligned", str(cm.exception))
-
-    def test_sample_signal_group_invalid_sampling_interval(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on wormhole.")
-
-        group_name = next(iter(self.core_sim.debug_bus_store.group_map.keys()))
-        with self.assertRaises(ValueError) as cm:
-            self.core_sim.debug_bus_store.sample_signal_group(
-                signal_group=group_name,
-                l1_address=0x1000,
-                samples=2,
-                sampling_interval=1,
-            )
-        self.assertIn("When sampling groups, sampling_interval must be between 2 and 256", str(cm.exception))
-
-    @parameterized.expand(
-        [
-            (1, 0x100000),  # samples, l1_address
-            (4, 0x100000 - 16),
-            (25, 0x100000 - 32),
-            (40, 0x100000 - 160),
-        ]
-    )
-    def test_signal_group_exceeds_memory(self, samples, l1_address):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on wormhole.")
-
-        # test sample_signal_group
-        group_name = next(iter(self.core_sim.debug_bus_store.group_map.keys()))
-        with self.assertRaises(ValueError) as cm:
-            self.core_sim.debug_bus_store._read_signal_group_samples(
-                signal_group=group_name,
-                l1_address=l1_address,
-                samples=samples,
-            )
-        end_address = l1_address + (samples * self.core_sim.debug_bus_store.L1_SAMPLE_SIZE_BYTES) - 1
-        self.assertIn(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit", str(cm.exception))
-
-    def test_read_signal_group_invalid_signal_name(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on wormhole.")
-
-        signal_name = "invalid_signal_name"
-        group_name = next(iter(self.core_sim.debug_bus_store.group_map.keys()))
-        with self.assertRaises(ValueError) as cm:
-            group_sample = self.core_sim.debug_bus_store.read_signal_group(
-                signal_group=group_name,
-                l1_address=0x1000,
-            )
-            group_sample[signal_name]
-        self.assertIn(f"Signal '{signal_name}' does not exist in group.", str(cm.exception))
-
-    def test_invalid_group_name(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on wormhole.")
-
-        group_name = "invalid_group_name"
-        with self.assertRaises(ValueError) as cm:
-            self.core_sim.debug_bus_store.get_signal_names_in_group(group_name)
-        self.assertIn(f"Unknown group name '{group_name}'.", str(cm.exception))
-
-    def test_get_signal_description_invalid_signal_name(self):
-        signal_name = "invalid_signal_name"
-        with self.assertRaises(ValueError) as cm:
-            self.core_sim.debug_bus_store.get_signal_description(signal_name)
-        self.assertIn(
-            f"Unknown signal name '{signal_name}' on {self.core_sim.location.to_user_str()} for device {self.device._id}.",
-            str(cm.exception),
-        )

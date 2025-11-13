@@ -52,14 +52,20 @@ jobs:
           make mypy
       - name: Build wheel
         run: |
-          make wheel
           make wheel_develop
+          make wheel
+      - name: Remove SFPI from build artifacts
+        run: |
+          mv build_riscv/sfpi build_riscv/sfpi_backup
+          mkdir -p build_riscv/sfpi/compiler/bin/
+          cp build_riscv/sfpi_backup/compiler/bin/riscv-tt-elf-gdb build_riscv/sfpi/compiler/bin/riscv-tt-elf-gdb
+          rm -rf build_riscv/sfpi_backup
+          rm -f build_riscv/sfpi_*
       - name: Upload libraries as artifacts
         uses: pyTooling/upload-artifact@v4
         with:
           name: ttexalens-build
           path: |
             build
-            build_debug
             build_release
             build_riscv
