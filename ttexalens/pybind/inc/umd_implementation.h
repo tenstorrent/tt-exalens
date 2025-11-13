@@ -39,9 +39,12 @@ class umd_implementation : public ttexalens_implementation {
                                                                        uint32_t msg_code, bool wait_for_done,
                                                                        uint32_t arg0, uint32_t arg1,
                                                                        std::chrono::milliseconds timeout) override;
+
+    virtual std::optional<uint32_t> read_arc_telemetry_entry_helper(uint8_t chip_id, uint8_t telemetry_tag);
     virtual std::optional<uint32_t> read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) override;
     virtual std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> get_firmware_version(uint8_t chip_id) override;
     virtual void warm_reset(bool is_galaxy_configuration = false) override;
+    virtual std::optional<std::tuple<uint8_t, uint8_t>> get_remote_transfer_eth_core(uint8_t chip_id) override;
 
    private:
     bool is_chip_mmio_capable(uint8_t chip_id);

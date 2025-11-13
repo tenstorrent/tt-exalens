@@ -42,10 +42,12 @@ class TestCoverage(unittest.TestCase):
     loader: ElfLoader
     risc_debug: RiscDebug
 
-    def setUp(self):
-        self.context = init_default_test_context()
-        self.device = self.context.devices[0]
+    @classmethod
+    def setUpClass(cls):
+        cls.context = init_default_test_context()
+        cls.device = cls.context.devices[0]
 
+    def setUp(self):
         # Arch is needed to know the ELF path
         if not self.context.arch:
             self.skipTest(f"Undefined architecture")
