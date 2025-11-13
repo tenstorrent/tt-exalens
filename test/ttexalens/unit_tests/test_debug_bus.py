@@ -4,9 +4,12 @@
 
 import unittest
 from parameterized import parameterized_class, parameterized
+from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
+from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
 from test.ttexalens.unit_tests.test_base import get_core_location, init_default_test_context
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.context import Context
+from ttexalens.cli_commands.debug_bus import parse_string
 
 
 @parameterized_class(
@@ -33,7 +36,14 @@ class TestDebugBus(unittest.TestCase):
         cls.device = cls.context.devices[0]
 
     def setUp(self):
-        self.location = get_core_location(self.core_desc, self.device)
+        try:
+            self.location = get_core_location(self.core_desc, self.device)
+        except ValueError as e:
+            if "ETH core" in e.__str__() or "FW core" in e.__str__():
+                self.skipTest(f"Core {self.core_desc} not available on this platform: {e}")
+            else:
+                raise e
+
         debug_bus = self.location.noc_block.get_debug_bus(self.neo_id)
         if debug_bus is None:
             self.skipTest(f"Debug bus not available on core {self.core_desc}[neo={self.neo_id}]")
@@ -160,3 +170,166 @@ class TestDebugBus(unittest.TestCase):
             f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} for device {self.device._id}.",
             str(cm.exception),
         )
+
+    def _get_group_for_signal(self, signal_store: DebugBusSignalStore, signal: str) -> str:
+        """Get the group name for a given signal name."""
+        for group_name, group_dict in signal_store.signal_groups.items():
+            if signal_store.get_base_signal_name(signal) in group_dict:
+                return group_name
+        return ""
+
+    def test_debug_bus_command_signal_name_parser(self):
+        """Test the parse_string function for all signal names in the signal store."""
+        signal_names = self.debug_bus.signal_names
+
+        for name in signal_names:
+            input_string = name
+            parsed_result = parse_string(input_string)
+
+            # Check that the parsing returned exactly one item
+            self.assertEqual(
+                len(parsed_result), 1, f"Parsing returned {len(parsed_result)} results for '{name}'. Expected: 1."
+            )
+
+            # Check that the result is a string (a signal name, not a list of numbers)
+            self.assertIsInstance(
+                parsed_result[0],
+                str,
+                f"Parsed result for '{name}' is not a string. Type: {type(parsed_result[0]).__name__}.",
+            )
+
+            # Check that the parsed string matches the original signal name
+            self.assertEqual(
+                parsed_result[0],
+                name,
+                f"Parsed name does not match original. Original: '{name}', Parsed: '{parsed_result[0]}'.",
+            )
+
+    def test_debug_bus_command_parse_string_other_cases(self):
+        """Test various cases of the parse_string function beyond simple signal names."""
+
+        # only signal description provided
+        input_4_numbers = "{7,0,12,0x3ffffff}"
+        expected_4_numbers = [[7, 0, 12, 0x3FFFFFF]]
+
+        parsed_result = parse_string(input_4_numbers)
+        # Test parsing a sequence of 4 numbers
+        self.assertEqual(parsed_result, expected_4_numbers, "Bad parsing of 4 numbers.")
+        self.assertIsInstance(parsed_result, list, "Result should be list.")
+
+        # Test parsing a sequence of 3 numbers with implicit 0xFFFFFFFF
+        input_3_numbers = "{10,20,30}"
+        expected_3_numbers = [[10, 20, 30, 0xFFFFFFFF]]
+
+        parsed_result = parse_string(input_3_numbers)
+        self.assertEqual(parsed_result, expected_3_numbers, "Bad parsing of 3 numbers.")
+        self.assertEqual(len(parsed_result[0]), 4, "Result should be list.")
+
+        # Testing parsing name combined with sequence of numbers
+        input_mixed = "SigA,{1,2,3},SigB,{10,20,30,40},End"
+        expected_mixed = ["SigA", [1, 2, 3, 0xFFFFFFFF], "SigB", [10, 20, 30, 40], "End"]
+
+        parsed_result = parse_string(input_mixed)
+        self.assertEqual(parsed_result, expected_mixed, "Test mixed combination of names and sequences.")
+        self.assertEqual(len(parsed_result), 5, "Test expected 5 parsed elements.")
+        self.assertIsInstance(parsed_result[1], list, "Test second element should be a list.")
+        self.assertIsInstance(parsed_result[3], list, "Test fourth element should be a list.")
+
+    def test_debug_bus_signal_store_pc(self):
+        if not self.device.is_wormhole():
+            self.skipTest("This test only works on wormhole.")
+
+        for risc_name in self.location.noc_block.risc_names:
+            core_sim = RiscvCoreSimulator(self.context, self.core_desc, risc_name, self.neo_id)
+            program_writer = RiscvProgramWriter(core_sim)
+
+            pc_signal_name = risc_name.lower() + "_pc"
+
+            # ebreak
+            program_writer.append_ebreak()
+            program_writer.write_program()
+
+            # Take risc out of reset
+            core_sim.set_reset(False)
+            assert core_sim.is_halted(), "Core should be halted after ebreak."
+
+            # simple test for pc signal
+            pc_value_32 = self.debug_bus.read_signal(pc_signal_name)
+
+            group_name = self._get_group_for_signal(self.debug_bus, pc_signal_name)
+            group_values = self.debug_bus.read_signal_group(group_name, l1_address=0x1000)
+            assert pc_signal_name in group_values.keys()
+            assert group_values[pc_signal_name] == pc_value_32
+
+    @parameterized.expand(
+        [
+            (1, 2),  # samples, sampling_interval
+            (11, 50),
+            (25, 100),
+            (40, 5),
+        ]
+    )
+    def test_debug_bus_signal_store_sample_signal_group(self, samples, sampling_interval):
+        """Validate signal group readings for all groups on this core."""
+
+        WORD_SIZE_BITS = 32
+        l1_addr = 0x1000
+
+        for risc_name in self.location.noc_block.risc_names:
+            if risc_name.lower() == "ncrisc":
+                continue  # Skipping NCRISC core since we cannot reset it.
+
+            core_sim = RiscvCoreSimulator(self.context, self.core_desc, risc_name, self.neo_id)
+            program_writer = RiscvProgramWriter(core_sim)
+
+            # ebreak
+            program_writer.append_ebreak()
+            program_writer.write_program()
+
+            # Take risc out of reset
+            core_sim.set_reset(False)
+            assert core_sim.is_halted(), "Core should be halted after ebreak."
+
+            for group in self.debug_bus.group_names:
+                if not group.startswith(risc_name.lower() + "_"):
+                    continue
+
+                sampled_group = self.debug_bus._read_signal_group_samples(group, l1_addr, samples, sampling_interval)
+                if not isinstance(sampled_group, list):
+                    sampled_group = [sampled_group]
+
+                # check number of samples taken
+                self.assertEqual(len(sampled_group), samples, f"Expected {samples} samples, got {len(sampled_group)}")
+
+                for signal_name in self.debug_bus.get_signal_names_in_group(group):
+                    # all samples should be equal
+                    first_val = sampled_group[0][signal_name]
+                    self.assertTrue(
+                        all(v[signal_name] == first_val for v in sampled_group),
+                        f"{signal_name}: Inconsistent sampled values: {sampled_group}",
+                    )
+
+                    parts = self.debug_bus.get_signal_part_names(signal_name)
+
+                    if self.debug_bus.is_combined_signal(signal_name):
+                        # combined signal
+                        combined_value = 0
+
+                        # Find the lowest part of combined signal, which has minimum rd_sel among all parts
+                        min_part = min(parts, key=lambda part: self.debug_bus.get_signal_description(part).rd_sel)
+                        min_part_desc = self.debug_bus.get_signal_description(min_part)
+
+                        # calculate combined value from all parts using read_signal
+                        for part in parts:
+                            part_value = self.debug_bus.read_signal(part)
+                            part_desc = self.debug_bus.get_signal_description(part)
+                            shift = (part_desc.mask & -part_desc.mask).bit_length() - 1
+                            combined_value |= part_value << (shift + part_desc.rd_sel * WORD_SIZE_BITS)
+
+                        min_shift = (min_part_desc.mask & -min_part_desc.mask).bit_length() - 1
+                        combined_value >>= min_shift + min_part_desc.rd_sel * WORD_SIZE_BITS
+                        self.assertEqual(first_val, combined_value, f"Combined signal {signal_name} value mismatch.")
+                    else:
+                        # single signal
+                        single_value = self.debug_bus.read_signal(signal_name)
+                        self.assertEqual(first_val, single_value, f"Signal {signal_name} value mismatch.")
