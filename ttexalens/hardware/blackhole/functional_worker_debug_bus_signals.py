@@ -16,10 +16,10 @@ debug_bus_signal_map = {
     "tensix_frontend_t0_risc_cfg_stall": DebugBusSignalDescription(rd_sel=0, daisy_sel=1, sig_sel=13, mask=0x40),
     "tensix_frontend_t0_risc_gpr_stall": DebugBusSignalDescription(rd_sel=0, daisy_sel=1, sig_sel=13, mask=0x20),
     "tensix_frontend_t0_risc_tdma_stall": DebugBusSignalDescription(rd_sel=0, daisy_sel=1, sig_sel=13, mask=0x10),
-    # "tensix_frontend_t0_prev_gen_no/0": DebugBusSignalDescription(        # Duplicate signal name - not same width
+    # "tensix_frontend_t0_prev_gen_no/0": DebugBusSignalDescription(        # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=3, daisy_sel=1, sig_sel=12, mask=0xF0000000
     # ),
-    # "tensix_frontend_t0_prev_gen_no/1": DebugBusSignalDescription(        # Duplicate signal name - not same width
+    # "tensix_frontend_t0_prev_gen_no/1": DebugBusSignalDescription(        # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=0, daisy_sel=1, sig_sel=13, mask=0xF
     # ),
     "tensix_frontend_t0_lsq_head_valid": DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=12, mask=0x8000000),
@@ -162,10 +162,10 @@ debug_bus_signal_map = {
     "tensix_frontend_t1_risc_cfg_stall": DebugBusSignalDescription(rd_sel=0, daisy_sel=1, sig_sel=9, mask=0x40),
     "tensix_frontend_t1_risc_gpr_stall": DebugBusSignalDescription(rd_sel=0, daisy_sel=1, sig_sel=9, mask=0x20),
     "tensix_frontend_t1_risc_tdma_stall": DebugBusSignalDescription(rd_sel=0, daisy_sel=1, sig_sel=9, mask=0x10),
-    # "tensix_frontend_t1_prev_gen_no/0": DebugBusSignalDescription(        # Duplicate signal name - not same width
+    # "tensix_frontend_t1_prev_gen_no/0": DebugBusSignalDescription(        # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=3, daisy_sel=1, sig_sel=8, mask=0xF0000000
     # ),
-    # "tensix_frontend_t1_prev_gen_no/1": DebugBusSignalDescription(        # Duplicate signal name - not same width
+    # "tensix_frontend_t1_prev_gen_no/1": DebugBusSignalDescription(        # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=0, daisy_sel=1, sig_sel=9, mask=0xF
     # ),
     "tensix_frontend_t1_lsq_head_valid": DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x8000000),
@@ -298,10 +298,10 @@ debug_bus_signal_map = {
     "tensix_frontend_t2_risc_cfg_stall": DebugBusSignalDescription(rd_sel=0, daisy_sel=1, sig_sel=5, mask=0x40),
     "tensix_frontend_t2_risc_gpr_stall": DebugBusSignalDescription(rd_sel=0, daisy_sel=1, sig_sel=5, mask=0x20),
     "tensix_frontend_t2_risc_tdma_stall": DebugBusSignalDescription(rd_sel=0, daisy_sel=1, sig_sel=5, mask=0x10),
-    # "tensix_frontend_t2_prev_gen_no/0": DebugBusSignalDescription(              # Duplicate signal name - not same width
+    # "tensix_frontend_t2_prev_gen_no/0": DebugBusSignalDescription(              # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=3, daisy_sel=1, sig_sel=4, mask=0xF0000000
     # ),
-    # "tensix_frontend_t2_prev_gen_no/1": DebugBusSignalDescription(              # Duplicate signal name - not same width
+    # "tensix_frontend_t2_prev_gen_no/1": DebugBusSignalDescription(              # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=0, daisy_sel=1, sig_sel=5, mask=0xF
     # ),
     "tensix_frontend_t2_lsq_head_valid": DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=4, mask=0x8000000),
@@ -690,8 +690,8 @@ debug_bus_signal_map = {
     "rwcs_srcb_single_row_rd_mode": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=5, mask=0x40),
     "rwcs_dest_apply_relu": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=5, mask=0x60),
     "rwcs_tdma_dstac_regif_state_id": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=5, mask=0x10),
-    # "rwcs_relu_thresh/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=4, mask=0xFFF00000),        # Duplicate signal name - not same width
-    # "rwcs_relu_thresh/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=5, mask=0xF),              # Duplicate signal name - not same width
+    # "rwcs_relu_thresh/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=4, mask=0xFFF00000),        # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "rwcs_relu_thresh/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=5, mask=0xF),              # Signal spans two consecutive groups, so its value cannot be read atomically.
     "rwcs_dest_offset_state_id": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=4, mask=0x80000),
     "rwcs_dma_dest_offset_apply_en": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=4, mask=0x40000),
     "rwcs_srca_fpu_output_alu_s1": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=4, mask=0x3C000),
@@ -1058,8 +1058,8 @@ debug_bus_signal_map = {
         rd_sel=0, daisy_sel=5, sig_sel=0, mask=0xFFFFFFFF
     ),
     "adcs_dbg_dest_sfpu_zero_return": DebugBusSignalDescription(rd_sel=0, daisy_sel=6, sig_sel=11, mask=0x1FE),
-    # "adcs_dest_sfpu_wr_en/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=10, mask=0xFE000000),  # Duplicate signal name - not same width
-    # "adcs_dest_sfpu_wr_en/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=6, sig_sel=11, mask=0x1),     # Duplicate signal name - not same width
+    # "adcs_dest_sfpu_wr_en/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=10, mask=0xFE000000),  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "adcs_dest_sfpu_wr_en/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=6, sig_sel=11, mask=0x1),     # Signal spans two consecutive groups, so its value cannot be read atomically.
     "adcs_dest_sfpu_rd_en": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=10, mask=0x1FE0000),
     "adcs_sfpu_store_32bits_s1": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=10, mask=0x10000),
     "adcs_sfpu_load_32bits_s1": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=10, mask=0x8000),
@@ -1103,9 +1103,9 @@ debug_bus_signal_map = {
     "adcs_i_pack_req_dest_x_pos": DebugBusSignalDescription(rd_sel=1, daisy_sel=6, sig_sel=9, mask=0xFF00),
     "adcs_i_pack_req_dest_ds_rate/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=6, sig_sel=9, mask=0xF0000000),
     "adcs_i_pack_req_dest_ds_rate/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=6, sig_sel=9, mask=0xFF),
-    # "adcs_i_pack_req_dest_ds_mask/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=6, sig_sel=8, mask=0xF0000000),   # Duplicate signal name - not same width
-    # "adcs_i_pack_req_dest_ds_mask/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=8, mask=0xFFFFFFFF),   # Duplicate signal name - not same width
-    # "adcs_i_pack_req_dest_ds_mask/2": DebugBusSignalDescription(rd_sel=0, daisy_sel=6, sig_sel=9, mask=0xFFFFFFF),    # Duplicate signal name - not same width
+    # "adcs_i_pack_req_dest_ds_mask/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=6, sig_sel=8, mask=0xF0000000),   # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "adcs_i_pack_req_dest_ds_mask/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=8, mask=0xFFFFFFFF),   # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "adcs_i_pack_req_dest_ds_mask/2": DebugBusSignalDescription(rd_sel=0, daisy_sel=6, sig_sel=9, mask=0xFFFFFFF),    # Signal spans two consecutive groups, so its value cannot be read atomically.
     "adcs_i_packer_z_pos": DebugBusSignalDescription(rd_sel=2, daisy_sel=6, sig_sel=8, mask=0xFFFFFF0),
     "adcs_i_packer_edge_mask/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=6, sig_sel=8, mask=0xFFFFFFF0),
     "adcs_i_packer_edge_mask/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=6, sig_sel=8, mask=0xFFFFFFFF),
@@ -1407,10 +1407,10 @@ debug_bus_signal_map = {
     "trisc2_pc_buffer_debug_bus_cmd_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x800000
     ),
-    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Duplicate signal name - not same width
+    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=3, daisy_sel=7, sig_sel=22, mask=0xFF800000
     # ),
-    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Duplicate signal name - not same width
+    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x7FFFFF
     # ),
     "trisc2_risc_wrapper_debug_bus_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
@@ -1512,10 +1512,10 @@ debug_bus_signal_map = {
     "trisc1_pc_buffer_debug_bus_cmd_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x800000
     ),
-    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(   # Duplicate signal name - not same width
+    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(   # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=3, daisy_sel=7, sig_sel=20, mask=0xFF800000
     # ),
-    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Duplicate signal name - not same width
+    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x7FFFFF
     # ),
     "trisc1_risc_wrapper_debug_bus_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
@@ -1617,10 +1617,10 @@ debug_bus_signal_map = {
     "trisc0_pc_buffer_debug_bus_cmd_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x800000
     ),
-    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(       # Duplicate signal name - not same width" are duplicates
+    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(       # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
     #     rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x7FFFFF
     # ),
-    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(       # Duplicate signal name - not same width" are duplicates
+    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(       # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
     #     rd_sel=3, daisy_sel=7, sig_sel=18, mask=0xFF800000
     # ),
     "trisc0_risc_wrapper_debug_bus_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
@@ -1836,8 +1836,8 @@ debug_bus_signal_map = {
     "l1_addr_p41/1": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=13, mask=0x3),
     "l1_addr_p40": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=13, mask=0x1FFFF),
     "l1_addr_p39": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=13, mask=0xFFFF8000),
-    # "l1_addr_p38/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=13, mask=0x7FFF),       # Duplicate signal name - not same width
-    # "l1_addr_p38/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=11, mask=0xC0000000),   # Duplicate signal name - not same width
+    # "l1_addr_p38/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=13, mask=0x7FFF),       # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "l1_addr_p38/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=11, mask=0xC0000000),   # Signal spans two consecutive groups, so its value cannot be read atomically.
     "l1_addr_p37": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=11, mask=0x3FFFE000),
     "l1_addr_p36/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=11, mask=0xF0000000),
     "l1_addr_p36/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=11, mask=0x1FFF),
@@ -1848,8 +1848,8 @@ debug_bus_signal_map = {
     "l1_addr_p32/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=11, mask=0xFF000000),
     "l1_addr_p32/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=11, mask=0x1FF),
     "l1_addr_p31": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=11, mask=0xFFFF80),
-    # "l1_addr_p30/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=10, mask=0xFFC00000),       # Duplicate signal name - not same width
-    # "l1_addr_p30/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=11, mask=0x7F),     # Duplicate signal name - not same width
+    # "l1_addr_p30/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=10, mask=0xFFC00000),       # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "l1_addr_p30/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=11, mask=0x7F),     # Signal spans two consecutive groups, so its value cannot be read atomically.
     "l1_addr_p29": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=10, mask=0x3FFFE0),
     "l1_addr_p28/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=10, mask=0xFFF00000),
     "l1_addr_p28/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=10, mask=0x1F),
@@ -1859,8 +1859,8 @@ debug_bus_signal_map = {
     "l1_addr_p25": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=10, mask=0x3FFFE),
     "l1_addr_p24/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=10, mask=0xFFFF0000),
     "l1_addr_p24/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=10, mask=0x1),
-    # "l1_addr_p23/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=10, mask=0xFFFF),    # Duplicate signal name - not same width
-    # "l1_addr_p23/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=9, mask=0x80000000),  # Duplicate signal name - not same width
+    # "l1_addr_p23/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=10, mask=0xFFFF),    # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "l1_addr_p23/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=9, mask=0x80000000),  # Signal spans two consecutive groups, so its value cannot be read atomically.
     "l1_addr_p22": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=9, mask=0x7FFFC000),
     "l1_addr_p21/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=9, mask=0xE0000000),
     "l1_addr_p21/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=9, mask=0x3FFF),
@@ -1871,8 +1871,8 @@ debug_bus_signal_map = {
     "l1_addr_p17/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=9, mask=0xFE000000),
     "l1_addr_p17/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=9, mask=0x3FF),
     "l1_addr_p16": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=9, mask=0x1FFFF00),
-    # "l1_addr_p15/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=8, mask=0xFF800000),   # Duplicate signal name - not same width
-    # "l1_addr_p15/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=9, mask=0xFF),          # Duplicate signal name - not same width
+    # "l1_addr_p15/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=8, mask=0xFF800000),   # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "l1_addr_p15/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=9, mask=0xFF),          # Signal spans two consecutive groups, so its value cannot be read atomically.
     "l1_addr_p14": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=8, mask=0x7FFFC0),
     "l1_addr_p13/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=8, mask=0xFFE00000),
     "l1_addr_p13/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=8, mask=0x3F),
@@ -1892,8 +1892,8 @@ debug_bus_signal_map = {
     "l1_addr_p3/1": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=7, mask=0x3),
     "l1_addr_p2": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=7, mask=0x1FFFF),
     "l1_addr_p1": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=7, mask=0xFFFF8000),
-    # "l1_addr_p0/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=6, mask=0xC0000000),     # Duplicate signal name - not same width
-    # "l1_addr_p0/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=7, mask=0x7FFF),         # Duplicate signal name - not same width
+    # "l1_addr_p0/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=6, mask=0xC0000000),     # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "l1_addr_p0/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=7, mask=0x7FFF),         # Signal spans two consecutive groups, so its value cannot be read atomically.
     "t_l1_reqif_ready/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=6, mask=0xFFF00000),
     "t_l1_reqif_ready/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=6, mask=0x3FFFFFFF),
     "t_l1_rden/0": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=6, mask=0xFFFFFC00),
@@ -1979,9 +1979,9 @@ debug_bus_signal_map = {
     "tdma_packer_y_pos": DebugBusSignalDescription(rd_sel=0, daisy_sel=14, sig_sel=6, mask=0xFFFF),
     "packed_exps_p5/0": DebugBusSignalDescription(rd_sel=1, daisy_sel=14, sig_sel=5, mask=0xFFFFFFFC),
     "packed_exps_p5/1": DebugBusSignalDescription(rd_sel=2, daisy_sel=14, sig_sel=5, mask=0xFFFFFFFF),
-    # "packed_data_p5/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=14, sig_sel=4, mask=0xFFFFFFF0),        # Duplicate signal name - not same width
-    # "packed_data_p5/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=14, sig_sel=5, mask=0xFFFFFFFF),        # Duplicate signal name - not same width
-    # "packed_data_p5/2": DebugBusSignalDescription(rd_sel=1, daisy_sel=14, sig_sel=5, mask=0x3),               # Duplicate signal name - not same width
+    # "packed_data_p5/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=14, sig_sel=4, mask=0xFFFFFFF0),        # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "packed_data_p5/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=14, sig_sel=5, mask=0xFFFFFFFF),        # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "packed_data_p5/2": DebugBusSignalDescription(rd_sel=1, daisy_sel=14, sig_sel=5, mask=0x3),               # Signal spans two consecutive groups, so its value cannot be read atomically.
     "dram_data_fifo_rden": DebugBusSignalDescription(rd_sel=3, daisy_sel=14, sig_sel=4, mask=0x8),
     "dram_rden": DebugBusSignalDescription(rd_sel=3, daisy_sel=14, sig_sel=4, mask=0x4),
     "dram_data_fifo_rden_p2": DebugBusSignalDescription(rd_sel=3, daisy_sel=14, sig_sel=4, mask=0x2),
