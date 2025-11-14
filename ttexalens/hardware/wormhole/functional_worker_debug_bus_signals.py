@@ -1002,7 +1002,7 @@ group_map = {
     "adcs0_unpacker1_channel1": (6, 3),
     "adcs2_packers_channel0": (6, 4),
     "adcs2_packers_channel1": (6, 5),
-    "srca_srcb_access_control": (6, 9),
+    "adcs_srca_srcb_access_control": (6, 9),
     # RWCs (DaisySel == 3)
     "rwc_control_signals": (3, 0),
     "rwc_status_signals": (3, 1),
