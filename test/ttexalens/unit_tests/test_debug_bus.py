@@ -4,7 +4,7 @@
 
 import unittest
 from parameterized import parameterized_class, parameterized
-from test.ttexalens.unit_tests.test_base import get_core_location, init_default_test_context
+from test.ttexalens.unit_tests.test_base import get_core_location, init_cached_test_context
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.context import Context
 
@@ -29,7 +29,7 @@ class TestDebugBus(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
 
     def setUp(self):

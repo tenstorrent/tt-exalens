@@ -30,6 +30,19 @@ def init_default_test_context():
         return tt_exalens_init.init_ttexalens()
 
 
+# Speeding up tests by not executing UMD initialization every time
+# We are using class parameterized tests which cause multiple
+# initializations of the test context
+_cached_test_context = None
+
+
+def init_cached_test_context():
+    global _cached_test_context
+    if _cached_test_context is None:
+        _cached_test_context = init_default_test_context()
+    return _cached_test_context
+
+
 def init_test_context(use_noc1: bool = False):
     if use_noc1:
         assert not os.getenv("TTEXALENS_TESTS_REMOTE"), "Remote testing for NOC1 not supported"
