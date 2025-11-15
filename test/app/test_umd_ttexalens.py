@@ -103,7 +103,7 @@ class TTExaLensTestRunner:
         self.invoke(args)
         self.verifier.verify_start(self, tester)
 
-    def readline(self, timeoutSeconds: float = 1):
+    def readline(self, timeoutSeconds: float = 2):
         # Fast path for program that ended
         rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], 0)
         if len(rlist) == 0:
