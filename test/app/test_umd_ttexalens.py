@@ -30,7 +30,7 @@ class TTExaLensOutputVerifier:
 
 
 class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
-    prompt_regex = r"^gdb:[^ ]+ device:\d+ loc:\d+-\d+ \(\d+, \d+\) > $"
+    prompt_regex = r"^(gdb:[^ ]+ )?noc:\d+ device:\d+ loc:\d+-\d+ \(\d+,\d+\) > $"
 
     def __init__(self):
         self.server_temp_path = ""
@@ -158,7 +158,6 @@ class TTExaLensTestRunner:
 
 
 class TestUmdTTExaLens(unittest.TestCase):
-    @unittest.skip("Disabling this test for the moment. Something not working in CI, investigation needed.")
     def test_startup_and_exit_just_return_code(self):
         runner = TTExaLensTestRunner(UmdTTExaLensOutputVerifier())
         runner.start(self)
