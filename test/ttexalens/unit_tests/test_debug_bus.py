@@ -33,7 +33,13 @@ class TestDebugBus(unittest.TestCase):
         cls.device = cls.context.devices[0]
 
     def setUp(self):
-        self.location = get_core_location(self.core_desc, self.device)
+        try:
+            self.location = get_core_location(self.core_desc, self.device)
+        except ValueError as e:
+            if "ETH core" in e.__str__() or "FW core" in e.__str__():
+                self.skipTest(f"Core {self.core_desc} not available on this platform: {e}")
+            else:
+                raise e
         debug_bus = self.location.noc_block.get_debug_bus(self.neo_id)
         if debug_bus is None:
             self.skipTest(f"Debug bus not available on core {self.core_desc}[neo={self.neo_id}]")
