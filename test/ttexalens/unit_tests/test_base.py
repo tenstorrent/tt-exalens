@@ -12,14 +12,20 @@ from ttexalens.device import Device
 # parameterized test classes
 _cached_simulator_context = None
 
+# Speeding up tests by not executing UMD initialization every time
+# We are using class parameterized tests which cause multiple
+# initializations of the test context
+_cached_test_context = None
+
 
 def init_default_test_context():
     global _cached_simulator_context
+    global _cached_test_context
 
     if os.getenv("TTEXALENS_TESTS_REMOTE"):
         ip_address = os.getenv("TTEXALENS_TESTS_REMOTE_ADDRESS", "localhost")
         port = int(os.getenv("TTEXALENS_TESTS_REMOTE_PORT", "5555"))
-        return tt_exalens_init.init_ttexalens_remote(ip_address, port)
+        _cached_test_context = tt_exalens_init.init_ttexalens_remote(ip_address, port)
     elif os.getenv("TTEXALENS_SIMULATOR"):
         # Reuse cached simulator context to prevent multiple simulator processes
         if _cached_simulator_context is None:
@@ -27,7 +33,15 @@ def init_default_test_context():
             _cached_simulator_context = tt_exalens_init.init_ttexalens(simulation_directory=simulation_directory)
         return _cached_simulator_context
     else:
-        return tt_exalens_init.init_ttexalens()
+        _cached_test_context = tt_exalens_init.init_ttexalens()
+    return _cached_test_context
+
+
+def init_cached_test_context():
+    global _cached_test_context
+    if _cached_test_context is None:
+        _cached_test_context = init_default_test_context()
+    return _cached_test_context
 
 
 def init_test_context(use_noc1: bool = False):

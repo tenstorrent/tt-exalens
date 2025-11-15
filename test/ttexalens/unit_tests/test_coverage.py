@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import unittest
-from test.ttexalens.unit_tests.test_base import init_default_test_context
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from parameterized import parameterized, parameterized_class
 
 import os
@@ -44,7 +44,7 @@ class TestCoverage(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
 
     def setUp(self):

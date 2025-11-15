@@ -10,7 +10,7 @@ from datetime import timedelta
 
 from parameterized import parameterized, parameterized_class
 
-from test.ttexalens.unit_tests.test_base import init_default_test_context
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens import tt_exalens_init
 from ttexalens import tt_exalens_lib as lib
 from ttexalens import util
@@ -76,7 +76,7 @@ class TestAutoContext(unittest.TestCase):
 class TestReadWrite(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
 
     def setUp(self):
         self.assertIsNotNone(self.context)
@@ -571,7 +571,7 @@ class TestReadWrite(unittest.TestCase):
 class TestRunElf(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
 
     def get_elf_path(self, app_name: str, risc_name: str):
