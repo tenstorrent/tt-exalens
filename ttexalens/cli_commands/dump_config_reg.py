@@ -25,6 +25,7 @@ Examples:
 
 command_metadata = {
     "short": "cfg",
+    "long": "dump-config-reg",
     "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],

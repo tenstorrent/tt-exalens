@@ -29,6 +29,7 @@ Examples:
 
 command_metadata = {
     "short": "brxy",
+    "long": "burst-read-xy",
     "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],

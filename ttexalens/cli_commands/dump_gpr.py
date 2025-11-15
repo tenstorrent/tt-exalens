@@ -19,6 +19,7 @@ Examples:
 """
 command_metadata = {
     "short": "gpr",
+    "long": "dump-gpr",
     "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],
