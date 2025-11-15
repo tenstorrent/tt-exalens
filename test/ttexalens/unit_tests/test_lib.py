@@ -944,11 +944,7 @@ class TestCallStack(unittest.TestCase):
         arch = self.device._arch.lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
-        if self.risc_name.lower().startswith("erisc"):
-            # For eriscs we can use brisc elf
-            return f"build/riscv-src/{arch}/{app_name}.brisc.elf"
-        else:
-            return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
+        return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
 
     def compare_callstacks(self, cs1: list[CallstackEntry], cs2: list[CallstackEntry]):
         """Compare two callstacks."""
