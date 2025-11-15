@@ -4,8 +4,8 @@
 import math
 import unittest
 from parameterized import parameterized_class, parameterized
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens import tt_exalens_init
-from ttexalens import tt_exalens_lib as lib
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
@@ -27,7 +27,7 @@ class TestTensixDebug(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.context = tt_exalens_init.init_ttexalens()
+        cls.context = init_cached_test_context()
 
     def setUp(self):
         self.location = OnChipCoordinate.create(self.location_str, device=self.context.devices[0])
