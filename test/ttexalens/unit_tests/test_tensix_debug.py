@@ -173,26 +173,3 @@ class TestTensixDebug(unittest.TestCase):
 
         with self.assertRaises((TTException, ValueError)):
             self.tensix_debug.write_regfile(regfile, [value], df)
-
-    def test_read_gpr(self):
-
-        from ttexalens.debug_tensix import TENSIX_GPR_BASE_ADDRESS, TENSIX_GPR_COUNT
-
-        TRISC_COUNT = 3
-
-        brisc_debug = self.context.devices[0].get_block(self.location).get_risc_debug("brisc")
-        with brisc_debug.ensure_private_memory_access():
-            brisc_gpr_data: list[int] = [
-                brisc_debug.read_memory(TENSIX_GPR_BASE_ADDRESS + i * 4)
-                for i in range(0, TENSIX_GPR_COUNT * TRISC_COUNT)
-            ]
-
-        trisc_gpr_data = []
-        for trisc_id in range(TRISC_COUNT):
-            trisc_debug = self.location.device.get_block(self.location).get_risc_debug(f"trisc{trisc_id}")
-            with trisc_debug.ensure_private_memory_access():
-                trisc_gpr_data.extend(
-                    [trisc_debug.read_memory(TENSIX_GPR_BASE_ADDRESS + i * 4) for i in range(0, TENSIX_GPR_COUNT)]
-                )
-
-        assert brisc_gpr_data == trisc_gpr_data

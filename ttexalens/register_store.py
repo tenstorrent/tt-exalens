@@ -122,6 +122,15 @@ class ConfigurationRegisterDescription(RegisterDescription):
 
 
 @dataclass
+class GeneralPurposeRegisterDescription(RegisterDescription):
+    index: int = 0
+    thread_id: int = 0
+
+    def __post_init__(self):
+        self.offset = self.offset + (self.index + self.thread_id * 64) * 4
+
+
+@dataclass
 class NocStatusRegisterDescription(RegisterDescription):
     pass
 

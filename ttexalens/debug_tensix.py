@@ -7,9 +7,6 @@ import struct
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
-from ttexalens.hw.tensix.wormhole.wormhole import WormholeDevice
-from ttexalens.hw.tensix.blackhole.blackhole import BlackholeDevice
-from ttexalens.register_store import RegisterDescription
 from ttexalens.tt_exalens_lib import check_context, validate_device_id
 from ttexalens.util import WARN, TTException
 from ttexalens.device import Device
@@ -19,9 +16,6 @@ from ttexalens.pack_unpack_regfile import (
     pack_data_direct_access,
     TensixDataFormat,
 )
-
-TENSIX_GPR_BASE_ADDRESS = 0xFFE00000
-TENSIX_GPR_COUNT = 64
 
 
 def validate_thread_id(thread_id: int) -> None:
@@ -369,11 +363,3 @@ class TensixDebug:
         regfile = convert_regfile(regfile)
         packed_data = pack_data_direct_access(data, df)
         self.write_regfile_data(regfile, packed_data, df)
-
-    def read_gpr(self, thread_id: int) -> list[int]:
-        risc_debug = self.device.get_block(self.core_loc).get_risc_debug(f"trisc{thread_id}")
-        with risc_debug.ensure_private_memory_access():
-            gpr_data: list[int] = [
-                risc_debug.read_memory(TENSIX_GPR_BASE_ADDRESS + i * 4) for i in range(0, TENSIX_GPR_COUNT)
-            ]
-        return gpr_data
