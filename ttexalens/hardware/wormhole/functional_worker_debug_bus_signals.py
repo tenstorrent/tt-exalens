@@ -732,7 +732,7 @@ debug_bus_signal_map = {
     "rwc_(|math_winner_combo&math_instrn_pipe_ack)": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x10000000
     ),
-    "rwc_debug_daisy_stop_issue0_debug_issue0_in[0]_math_instrn_pipe_ack": DebugBusSignalDescription(
+    "rwc_debug_daisy_stop_issue0_debug_issue0_in0_math_instrn_pipe_ack": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x8000000
     ),
     "rwc_o_math_instrnbuf_rden": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x4000000),
@@ -740,21 +740,17 @@ debug_bus_signal_map = {
     "rwc_src_data_ready": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x1000000),
     "rwc_srcb_data_ready": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x800000),
     "rwc_srca_data_ready": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x400000),
-    "rwc_debug_issue0_in[0]_srcb_write_ready": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x200000
-    ),
-    "rwc_debug_issue0_in[0]_srca_write_ready": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x100000
-    ),
+    "rwc_debug_issue0_in0_srcb_write_ready": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x200000),
+    "rwc_debug_issue0_in0_srca_write_ready": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x100000),
     "rwc_srca_update_inst": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x80000),
     "rwc_srcb_update_inst": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x40000),
     "rwc_allow_regfile_update": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x20000),
     "rwc_math_srca_wr_port_avail": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x10000),
-    "rwc_debug_issue0_in[0]_dma_srca_wr_port_avail": DebugBusSignalDescription(
+    "rwc_debug_issue0_in0_dma_srca_wr_port_avail": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x8000
     ),
     "rwc_math_srcb_wr_port_avail": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x4000),
-    "rwc_debug_issue0_in[0]_dma_srcb_wr_port_avail": DebugBusSignalDescription(
+    "rwc_debug_issue0_in0_dma_srcb_wr_port_avail": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x2000
     ),
     "rwc_s0_alu_inst_decoded": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x1C00),
@@ -763,7 +759,7 @@ debug_bus_signal_map = {
     "rwc_regmov_inst_decoded": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0xE),
     "rwc_math_instr_valid_th": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0xE0000000),
     "rwc_math_winner_thread_combo": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x18000000),
-    "rwc_debug_daisy_stop_issue0_debug_issue0_in[0]_dup": DebugBusSignalDescription(  # Duplicate signal name
+    "rwc_debug_daisy_stop_issue0_debug_issue0_in0_dup": DebugBusSignalDescription(  # Duplicate signal name
         rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x800000
     ),
     "rwc_math_winner_wo_pipe_stall": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x380000),
@@ -800,19 +796,13 @@ debug_bus_signal_map = {
     "rwc_i_dest_target_reg_cfg_pack_sec3_zoffset": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=3, sig_sel=1, mask=0x7E
     ),
-    "rwc_i_dest_target_reg_cfg_math_offset[34..24]": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=3, sig_sel=0, mask=0xFFE00000
-    ),
-    "rwc_i_dest_target_reg_cfg_math_offset[35]": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=1, mask=0x1),
-    "rwc_i_dest_target_reg_cfg_math_offset[23..12]": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=3, sig_sel=0, mask=0x1FFE00
-    ),
-    "rwc_i_dest_target_reg_cfg_math_offset[2..0]": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=3, sig_sel=0, mask=0xE0000000
-    ),
-    "rwc_i_dest_target_reg_cfg_math_offset[11..3]": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=3, sig_sel=0, mask=0x1FF
-    ),
+    # "rwc_i_dest_target_reg_cfg_math_offset/2": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=1, mask=0x1), # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "rwc_i_dest_target_reg_cfg_math_offset/1": DebugBusSignalDescription(             # Signal spans two consecutive groups, so its value cannot be read atomically.
+    #     rd_sel=3, daisy_sel=3, sig_sel=0, mask=0xFFFFFFFF
+    # ),
+    # "rwc_i_dest_target_reg_cfg_math_offset/0": DebugBusSignalDescription(         # Signal spans two consecutive groups, so its value cannot be read atomically.
+    #     rd_sel=2, daisy_sel=3, sig_sel=0, mask=0xE0000000
+    # ),
     "rwc_i_thread_state_id": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=0, mask=0xE000000),
     "rwc_i_opcode[23..16]": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=0, mask=0x1FE0000),
     "rwc_i_instrn_payload[54..48]": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=0, mask=0xFE000000),

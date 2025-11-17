@@ -634,7 +634,7 @@ debug_bus_signal_map = {
     "rwc_math_instrn/1": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=7, mask=0x7FF),
     "rwc_math_winner_thread": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=7, mask=0x600),
     "rwc_math_winner": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=7, mask=0x1C0),
-    "rwc_s0_fidelity_phase_d": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=7, mask=0x30),
+    "rwc0_fidelity_phase_d": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=7, mask=0x30),
     "rwc0_srca_reg_addr_d/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0xC0000000),
     "rwc0_srca_reg_addr_d/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=7, mask=0xF),
     "rwc0_srcb_reg_addr_d": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0x3F000000),
