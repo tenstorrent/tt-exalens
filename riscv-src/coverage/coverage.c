@@ -8,7 +8,20 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef USE_GCOV_COPY
+#include "gcov_copy.h"
+#define MAYBE_STATIC static
+#else
 #include "gcov.h"
+#define MAYBE_STATIC
+
+typedef int64_t gcov_type;
+void __gcov_merge_add(gcov_type* counters, unsigned n_counters) {}
+int gcov_error(const char*, ...) { return 0; }
+void abort() { while (1); }
+uint32_t __umodsi3(uint32_t a, uint32_t b) { return a % b; }
+uint32_t __udivsi3(uint32_t a, uint32_t b) { return a / b; }
+#endif
 
 #define COVERAGE_OVERFLOW 0xDEADBEEF
 
@@ -45,7 +58,7 @@ static void write_data(const void* _data, unsigned int length, void* arg) {
     *written += length;
 }
 
-static size_t strlen(const char* s) {
+MAYBE_STATIC size_t strlen(const char* s) {
     size_t n;
     for (n = 0; s[n]; n++);
     return n;

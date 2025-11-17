@@ -3,6 +3,9 @@ cmake_policy(VERSION 3.27)
 
 project(RISCVProject LANGUAGES CXX ASM)
 
+# Option to enable gcov_copy in coverage builds
+option(USE_GCOV_COPY "Use gcov_copy in coverage builds" OFF)
+
 # Set toolchain and tools
 set(TOOL_PATH "${SFPI_RELEASE_PATH}/compiler/bin")
 set(GXX "${TOOL_PATH}/riscv-tt-elf-g++")
@@ -23,6 +26,13 @@ set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size
 # Note that -fprofile-info-section must be specified so as to not rely on unavailable runtime support (libc, complete crt, etc),
 # but instead have GCC provide us with a pointer to the raw coverage data and let us extract it ourselves.
 set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section -DCOVERAGE)
+if(USE_GCOV_COPY)
+    list(APPEND GCOV_FLAGS -DUSE_GCOV_COPY)
+else()
+    # If it is needed to understand why linking pulls in standard library, uncomment the following lines and implement std functions accordingly.
+    # list(APPEND OPTIMIZED_OPTIONS_LINK -nodefaultlibs)
+    # list(APPEND OPTIONS_LINK -nodefaultlibs)
+endif()
 
 # Define project paths: source files, ELFs, and object files
 set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")
@@ -57,16 +67,21 @@ function(add_riscv_object OBJECT_NAME SOURCE_FILE BUILD_TYPE)
 endfunction()
 
 # Compile the coverage-related libraries (always optimized and without instrumentation)
-set(GCOV_OBJ "${RISCV_OBJECT}/gcov.o")
+set(GCOV_OBJ "${RISCV_OBJECT}/gcov_copy.o")
 set(COVERAGE_OBJ "${RISCV_OBJECT}/coverage.o")
-add_riscv_object("${GCOV_OBJ}" "${RISCV_SOURCE}/coverage/gcov.c" "release")
+add_riscv_object("${GCOV_OBJ}" "${RISCV_SOURCE}/coverage/gcov_copy.c" "release")
 
 # Compile coverage.c with -fno-strict-aliasing, the tricks done in the code necessitate it.
+set(COVERAGE_LIB_OPTIONS_COMPILE -DCOVERAGE)
+if(USE_GCOV_COPY)
+    list(APPEND COVERAGE_LIB_OPTIONS_COMPILE -DUSE_GCOV_COPY)
+endif()
 add_custom_command(
     OUTPUT ${COVERAGE_OBJ}
     COMMAND ${GXX}
             ${OPTIMIZED_OPTIONS_ALL}
             ${OPTIMIZED_OPTIONS_COMPILE}
+            ${COVERAGE_LIB_OPTIONS_COMPILE}
             -fno-strict-aliasing
             -c -o ${COVERAGE_OBJ}
             ${RISCV_SOURCE}/coverage/coverage.c
@@ -105,9 +120,15 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
 
     # Handle memory.${ARCH}.debug.ld and memory.${ARCH}.release.ld
     set(LDSCRIPT_EXTENSION ${BUILD_TYPE})
+    set(LINK_LIBS)
 
     if(BUILD_TYPE STREQUAL "coverage")
-        list(APPEND LINK_OBJECTS ${GCOV_OBJ} ${COVERAGE_OBJ})
+        if(USE_GCOV_COPY)
+            list(APPEND LINK_OBJECTS ${GCOV_OBJ} ${COVERAGE_OBJ})
+        else()
+            list(APPEND LINK_OBJECTS ${COVERAGE_OBJ})
+            list(APPEND LINK_LIBS -lgcov)
+        endif()
         # Debug ld script should be used in coverage builds
         set(LDSCRIPT_EXTENSION "debug")
     endif()
@@ -120,6 +141,7 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
             -T${RISCV_SOURCE}/${CORE}.ld
             -T${RISCV_SOURCE}/sections.ld
             -o ${OUTPUT_ELF}
+            ${LINK_LIBS}
         DEPENDS ${LINK_OBJECTS}
                 ${RISCV_SOURCE}/memory.${ARCH}.${LDSCRIPT_EXTENSION}.ld
                 ${RISCV_SOURCE}/${CORE}.ld
