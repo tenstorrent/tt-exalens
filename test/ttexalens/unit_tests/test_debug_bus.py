@@ -205,35 +205,27 @@ class TestDebugBus(unittest.TestCase):
                 f"Parsed name does not match original. Original: '{name}', Parsed: '{parsed_result[0]}'.",
             )
 
-    def test_debug_bus_command_parse_string_other_cases(self):
-        """Test various cases of the parse_string function beyond simple signal names."""
-
-        # only signal description provided
-        input_4_numbers = "{7,0,12,0x3ffffff}"
-        expected_4_numbers = [[7, 0, 12, 0x3FFFFFF]]
-
-        parsed_result = parse_string(input_4_numbers)
-        # Test parsing a sequence of 4 numbers
-        self.assertEqual(parsed_result, expected_4_numbers, "Bad parsing of 4 numbers.")
-        self.assertIsInstance(parsed_result, list, "Result should be list.")
-
-        # Test parsing a sequence of 3 numbers with implicit 0xFFFFFFFF
-        input_3_numbers = "{10,20,30}"
-        expected_3_numbers = [[10, 20, 30, 0xFFFFFFFF]]
-
-        parsed_result = parse_string(input_3_numbers)
-        self.assertEqual(parsed_result, expected_3_numbers, "Bad parsing of 3 numbers.")
-        self.assertEqual(len(parsed_result[0]), 4, "Result should be list.")
-
-        # Testing parsing name combined with sequence of numbers
-        input_mixed = "SigA,{1,2,3},SigB,{10,20,30,40},End"
-        expected_mixed = ["SigA", [1, 2, 3, 0xFFFFFFFF], "SigB", [10, 20, 30, 40], "End"]
-
-        parsed_result = parse_string(input_mixed)
-        self.assertEqual(parsed_result, expected_mixed, "Test mixed combination of names and sequences.")
-        self.assertEqual(len(parsed_result), 5, "Test expected 5 parsed elements.")
-        self.assertIsInstance(parsed_result[1], list, "Test second element should be a list.")
-        self.assertIsInstance(parsed_result[3], list, "Test fourth element should be a list.")
+    @parameterized.expand(
+        [
+            # input_string, expected_result
+            ("{7,0,12,0x3ffffff}", [[7, 0, 12, 0x3FFFFFF]]),
+            ("{10,20,30}", [[10, 20, 30, 0xFFFFFFFF]]),
+            ("SigA,{1,2,3},SigB,{10,20,30,40},End", ["SigA", [1, 2, 3, 0xFFFFFFFF], "SigB", [10, 20, 30, 40], "End"]),
+            ("signal1", ["signal1"]),
+            ("", []),
+            ("signal1,signal2", ["signal1", "signal2"]),
+            ("{1,2,3,4}", [[1, 2, 3, 4]]),
+        ]
+    )
+    def test_debug_bus_command_parse_string(self, input_string, expected_result):
+        """Test various cases of the parse_string function."""
+        parsed_result = parse_string(input_string)
+        self.assertEqual(
+            parsed_result,
+            expected_result,
+            f"Failed parsing input '{input_string}': expected {expected_result}, got {parsed_result}",
+        )
+        self.assertIsInstance(parsed_result, list, f"Result should be a list, got {type(parsed_result).__name__}")
 
     def test_debug_bus_signal_store_pc(self):
         if not self.device.is_wormhole():
@@ -251,15 +243,19 @@ class TestDebugBus(unittest.TestCase):
 
             # Take risc out of reset
             core_sim.set_reset(False)
-            assert core_sim.is_halted(), "Core should be halted after ebreak."
+            assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
 
             # simple test for pc signal
             pc_value_32 = self.debug_bus.read_signal(pc_signal_name)
 
             group_name = self._get_group_for_signal(self.debug_bus, pc_signal_name)
             group_values = self.debug_bus.read_signal_group(group_name, l1_address=0x1000)
-            assert pc_signal_name in group_values.keys()
-            assert group_values[pc_signal_name] == pc_value_32
+            assert (
+                pc_signal_name in group_values.keys()
+            ), f"PC signal '{pc_signal_name}' not found in group for {risc_name}"
+            assert (
+                group_values[pc_signal_name] == pc_value_32
+            ), f"PC signal value mismatch for {risc_name}: group={group_values[pc_signal_name]}, direct={pc_value_32}"
 
     @parameterized.expand(
         [
@@ -288,7 +284,7 @@ class TestDebugBus(unittest.TestCase):
 
             # Take risc out of reset
             core_sim.set_reset(False)
-            assert core_sim.is_halted(), "Core should be halted after ebreak."
+            assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
 
             for group in self.debug_bus.group_names:
                 if not group.startswith(risc_name.lower() + "_"):
