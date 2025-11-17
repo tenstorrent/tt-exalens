@@ -53,10 +53,6 @@ class TestDebugBus(unittest.TestCase):
         for risc_name in self.location.noc_block.risc_names:
             if self.device.is_wormhole() and risc_name.lower() == "ncrisc":
                 self.location.noc_block.get_risc_debug(risc_name, self.neo_id).set_code_start_address(0x2000)
-
-    def tearDown(self):
-        # Stop risc with reset
-        for risc_name in self.location.noc_block.risc_names:
             self.location.noc_block.get_risc_debug(risc_name, self.neo_id).set_reset_signal(True)
             self.assertTrue(self.location.noc_block.get_risc_debug(risc_name, self.neo_id).is_in_reset())
 
