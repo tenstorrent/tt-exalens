@@ -8,8 +8,8 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 # Commented signals marked with "# Duplicate signal name" are true duplicates -
 # their name already exists in the map and they represent the same signal so suffix "_dup" is added.
 
-# Commented signals marked with "# Duplicate signal name - not same width" are duplicates
-# that don't have the same width, so they probably represent different signals/parts of signals.
+# Commented signals marked with "# Signal spans two consecutive groups, so its value cannot be read atomically."
+# These signals must be read in two parts and combined externally.
 # TODO(#671): needs investigation.
 debug_bus_signal_map = {
     # For the other signals applying the pc_mask.
@@ -112,10 +112,10 @@ debug_bus_signal_map = {
     "trisc0_mop_decode_debug_bus_mop_stage_valid": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x400000
     ),
-    "trisc0_mop_decode_debug_bus_mop_stage_opcode": DebugBusSignalDescription(
+    "trisc0_mop_decode_debug_bus_mop_stage_opcode/0": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=7, sig_sel=19, mask=0xFFC00000
     ),
-    "trisc0_mop_decode_debug_bus_mop_stage_opcode": DebugBusSignalDescription(
+    "trisc0_mop_decode_debug_bus_mop_stage_opcode/1": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x3FFFFF
     ),
     "trisc0_mop_decode_debug_bus_math_loop_active": DebugBusSignalDescription(
@@ -164,10 +164,10 @@ debug_bus_signal_map = {
     "trisc0_pc_buffer_debug_bus_cmd_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x800000
     ),
-    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(       # Duplicate signal name - not same width" are duplicates
+    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(       # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
     #     rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x7FFFFF
     # ),
-    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(       # Duplicate signal name - not same width" are duplicates
+    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(       # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
     #     rd_sel=3, daisy_sel=7, sig_sel=18, mask=0xFF800000
     # ),
     "trisc0_risc_wrapper_debug_bus_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
@@ -300,10 +300,10 @@ debug_bus_signal_map = {
     "trisc1_pc_buffer_debug_bus_cmd_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x800000
     ),
-    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(   # Duplicate signal name - not same width
+    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(   # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=3, daisy_sel=7, sig_sel=20, mask=0xFF800000
     # ),
-    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Duplicate signal name - not same width
+    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x7FFFFF
     # ),
     "trisc1_risc_wrapper_debug_bus_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
@@ -405,10 +405,10 @@ debug_bus_signal_map = {
     "trisc2_pc_buffer_debug_bus_cmd_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x800000
     ),
-    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Duplicate signal name - not same width
+    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=3, daisy_sel=7, sig_sel=22, mask=0xFF800000
     # ),
-    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Duplicate signal name - not same width
+    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
     #     rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x7FFFFF
     # ),
     "trisc2_risc_wrapper_debug_bus_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
