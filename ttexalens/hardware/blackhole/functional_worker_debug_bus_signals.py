@@ -635,14 +635,14 @@ debug_bus_signal_map = {
     "rwc_math_winner_thread": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=7, mask=0x600),
     "rwc_math_winner": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=7, mask=0x1C0),
     "rwc_s0_fidelity_phase_d": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=7, mask=0x30),
-    "rwc_s0_srca_reg_addr_d/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0xC0000000),
-    "rwc_s0_srca_reg_addr_d/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=7, mask=0xF),
-    "rwc_s0_srcb_reg_addr_d": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0x3F000000),
-    "rwc_s0_dst_reg_addr_d": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0xFFC000),
-    "rwc_s0_mov_dst_reg_addr_d": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0x3FF0),
-    "rwc_s0_dec_instr_single_output_row_d": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0x8),
-    "rwc_fpu_rd_data_required_d": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0x7),
-    "rwc_tdma_srca_unpack_src_reg_set_upd": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=6, mask=0x10),
+    "rwc0_srca_reg_addr_d/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0xC0000000),
+    "rwc0_srca_reg_addr_d/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=7, mask=0xF),
+    "rwc0_srcb_reg_addr_d": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0x3F000000),
+    "rwc0_dst_reg_addr_d": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0xFFC000),
+    "rwc0_mov_dst_reg_addr_d": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0x3FF0),
+    "rwc0_dec_instr_single_output_row_d": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0x8),
+    "rwc0_fpu_rd_data_required_d": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=7, mask=0x7),
+    "rwc0_tdma_srca_unpack_src_reg_set_upd": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=6, mask=0x10),
     "rwc_debug_issue0_in_3_dma_srca_wr_port_avail": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=3, sig_sel=6, mask=0x8
     ),
@@ -731,12 +731,12 @@ debug_bus_signal_map = {
     "rwc_math_instrn": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=4, mask=0xC000000),
     "rwc_math_winner_thread/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=4, mask=0xFC000000),
     "rwc_math_winner_thread/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=4, mask=0x3FFFFFF),
-    "rwc_s0_srca_reg_addr": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=4, mask=0x1F80000),
-    "rwc_s0_srcb_reg_addr": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=4, mask=0x7E000),
-    "rwc_s0_dst_reg_addr": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=4, mask=0x1FF8),
-    "rwc_s0_fidelity_phase": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=4, mask=0x6),
-    "rwc_s0_dec_instr_single_output_row": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=4, mask=0x1),
-    "rwc_(|math_winner_combo&math_instrn_pipe_ack)": DebugBusSignalDescription(
+    "rwc0_srca": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=4, mask=0x1F80000),
+    "rwc0_srcb": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=4, mask=0x7E000),
+    "rwc0_dst": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=4, mask=0x1FF8),
+    "rwc0_fidelity_phase": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=4, mask=0x6),
+    "rwc0_dec_instr_single_output_row": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=4, mask=0x1),
+    "rwc0_(math_winner_combo&math_instrn_pipe_ack)": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x10000000
     ),
     "rwc_debug_daisy_stop_issue0_debug_issue0_in0_math_instrn_pipe_ack": DebugBusSignalDescription(
@@ -760,8 +760,8 @@ debug_bus_signal_map = {
     "rwc_debug_issue0_in0_dma_srcb_wr_port_avail": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x2000
     ),
-    "rwc_s0_alu_inst_decoded": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x1C00),
-    "rwc_s0_sfpu_inst_decoded": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x380),
+    "rwc0_alu_inst_decoded": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x1C00),
+    "rwc0_sfpu_inst_decoded": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x380),
     "rwc_regw_incr_inst_decoded": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0x70),
     "rwc_regmov_inst_decoded": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=1, mask=0xE),
     "rwc_math_instr_valid_th": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0xE0000000),
@@ -770,8 +770,8 @@ debug_bus_signal_map = {
         rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x800000
     ),
     "rwc_math_winner_wo_pipe_stall": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x380000),
-    "rwc_s0_srca_data_ready": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x70000),
-    "rwc_s0_srcb_data_ready": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0xE000),
+    "rwc0_srca_data_ready": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0x70000),
+    "rwc0_srcb_data_ready": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0xE000),
     "rwc_math_thread_inst_data_valid": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=1, mask=0xE00),
     "rwc_i_dest_target_reg_cfg_pack_sec0_offset/0": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=3, sig_sel=1, mask=0xE0000000
