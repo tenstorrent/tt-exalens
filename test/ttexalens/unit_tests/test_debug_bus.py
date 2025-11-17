@@ -4,9 +4,10 @@
 
 import unittest
 from parameterized import parameterized_class, parameterized
+from ttexalens.tt_exalens_init import init_ttexalens
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
-from test.ttexalens.unit_tests.test_base import get_core_location, init_default_test_context
+from test.ttexalens.unit_tests.test_base import get_core_location
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.context import Context
 from ttexalens.cli_commands.debug_bus import parse_string
@@ -32,7 +33,7 @@ class TestDebugBus(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.context = init_cached_test_context()
+        cls.context = init_ttexalens()
         cls.device = cls.context.devices[0]
 
     def setUp(self):
@@ -48,6 +49,16 @@ class TestDebugBus(unittest.TestCase):
         if debug_bus is None:
             self.skipTest(f"Debug bus not available on core {self.core_desc}[neo={self.neo_id}]")
         self.debug_bus = debug_bus
+
+        for risc_name in self.location.noc_block.risc_names:
+            if self.device.is_wormhole() and risc_name.lower() == "ncrisc":
+                self.location.noc_block.get_risc_debug(risc_name, self.neo_id).set_code_start_address(0x2000)
+
+    def tearDown(self):
+        # Stop risc with reset
+        for risc_name in self.location.noc_block.risc_names:
+            self.location.noc_block.get_risc_debug(risc_name, self.neo_id).set_reset_signal(True)
+            self.assertTrue(self.location.noc_block.get_risc_debug(risc_name, self.neo_id).is_in_reset())
 
     def test_invalid_rd_sel(self):
         sig = DebugBusSignalDescription(rd_sel=4, daisy_sel=0, sig_sel=0)
@@ -74,8 +85,8 @@ class TestDebugBus(unittest.TestCase):
         self.assertIn("mask must be a valid 32-bit integer", str(cm.exception))
 
     def test_sample_signal_group_invalid_samples(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on wormhole.")
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on Quasar.")
 
         group_name = next(iter(self.debug_bus.group_map.keys()))
         with self.assertRaises(ValueError) as cm:
@@ -88,8 +99,8 @@ class TestDebugBus(unittest.TestCase):
         self.assertIn("samples count must be at least 1", str(cm.exception))
 
     def test_signal_group_invalid_l1_address(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on wormhole.")
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on Quasar.")
 
         # test sample_signal_group
         group_name = next(iter(self.debug_bus.group_map.keys()))
@@ -103,8 +114,8 @@ class TestDebugBus(unittest.TestCase):
         self.assertIn("L1 address must be 16-byte aligned", str(cm.exception))
 
     def test_sample_signal_group_invalid_sampling_interval(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on wormhole.")
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on Quasar.")
 
         group_name = next(iter(self.debug_bus.group_map.keys()))
         with self.assertRaises(ValueError) as cm:
@@ -125,8 +136,8 @@ class TestDebugBus(unittest.TestCase):
         ]
     )
     def test_signal_group_exceeds_memory(self, samples, l1_address):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on wormhole.")
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on Quasar.")
 
         # test sample_signal_group
         group_name = next(iter(self.debug_bus.group_map.keys()))
@@ -140,8 +151,8 @@ class TestDebugBus(unittest.TestCase):
         self.assertIn(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit", str(cm.exception))
 
     def test_read_signal_group_invalid_signal_name(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on wormhole.")
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on Quasar.")
 
         signal_name = "invalid_signal_name"
         group_name = next(iter(self.debug_bus.group_map.keys()))
@@ -154,8 +165,8 @@ class TestDebugBus(unittest.TestCase):
         self.assertIn(f"Signal '{signal_name}' does not exist in group.", str(cm.exception))
 
     def test_invalid_group_name(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on wormhole.")
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on Quasar.")
 
         group_name = "invalid_group_name"
         with self.assertRaises(ValueError) as cm:
@@ -228,8 +239,8 @@ class TestDebugBus(unittest.TestCase):
         self.assertIsInstance(parsed_result, list, f"Result should be a list, got {type(parsed_result).__name__}")
 
     def test_debug_bus_signal_store_pc(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on wormhole.")
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on Quasar.")
 
         for risc_name in self.location.noc_block.risc_names:
             core_sim = RiscvCoreSimulator(self.context, self.core_desc, risc_name, self.neo_id)
@@ -243,7 +254,8 @@ class TestDebugBus(unittest.TestCase):
 
             # Take risc out of reset
             core_sim.set_reset(False)
-            assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
+            if not risc_name.lower() == "ncrisc":
+                assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
 
             # simple test for pc signal
             pc_value_32 = self.debug_bus.read_signal(pc_signal_name)
@@ -272,9 +284,6 @@ class TestDebugBus(unittest.TestCase):
         l1_addr = 0x1000
 
         for risc_name in self.location.noc_block.risc_names:
-            if risc_name.lower() == "ncrisc":
-                continue  # Skipping NCRISC core since we cannot reset it.
-
             core_sim = RiscvCoreSimulator(self.context, self.core_desc, risc_name, self.neo_id)
             program_writer = RiscvProgramWriter(core_sim)
 
@@ -284,7 +293,8 @@ class TestDebugBus(unittest.TestCase):
 
             # Take risc out of reset
             core_sim.set_reset(False)
-            assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
+            if not risc_name.lower() == "ncrisc":
+                assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
 
             for group in self.debug_bus.group_names:
                 if not group.startswith(risc_name.lower() + "_"):
