@@ -14,10 +14,35 @@
 
 namespace tt::exalens {
 
-// TODO #375: Remove read/write unaligned functions once UMD implements ability to set unaligned access for our TLB
+// Find working active eth core and configure it for remote communication
+void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
+    ChipId mmio_chip_id = cluster->get_cluster_description()->get_closest_mmio_capable_chip(chip_id);
+    // Define tensix core for testing remote communication
+    const tt::umd::CoreCoord tensix_core = tt::umd::CoreCoord(0, 0, CoreType::TENSIX, CoordSystem::LOGICAL);
+    std::unordered_set<tt::umd::CoreCoord> active_eth_cores =
+        cluster->get_soc_descriptor(mmio_chip_id)
+            .get_eth_cores_for_channels(cluster->get_cluster_description()->get_active_eth_channels(mmio_chip_id),
+                                        CoordSystem::LOGICAL);
+    for (auto core : active_eth_cores) {
+        cluster->configure_active_ethernet_cores_for_mmio_device(mmio_chip_id,
+                                                                 std::unordered_set<tt::umd::CoreCoord>({core}));
+        try {
+            // Try to read from remote device to see if remote communication is working
+            uint32_t temp = 0;
+            cluster->read_from_device_reg(&temp, chip_id, tensix_core, 0, sizeof(temp));
+            // If reading from remote device is successful, we found the working active eth core
+            return;
+            // If reading from remote device fails, try the next active eth core
+        } catch (const std::exception& e) {
+            continue;
+        }
+    }
+    throw std::runtime_error("Failed to configure working active Ethernet");
+}
 
-void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip, tt::umd::CoreCoord core,
-                                    uint64_t addr, uint32_t size) {
+// TODO #375: Remove read/write unaligned functions once UMD implements ability to set unaligned access for our TLB
+void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip,
+                                           tt::umd::CoreCoord core, uint64_t addr, uint32_t size) {
     // Read first unaligned word
     uint32_t first_unaligned_index = addr % 4;
     if (first_unaligned_index != 0) {
@@ -51,8 +76,18 @@ void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, Ch
     }
 }
 
-void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes, ChipId chip,
-                                   tt::umd::CoreCoord core, uint64_t addr) {
+void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip, tt::umd::CoreCoord core,
+                                    uint64_t addr, uint32_t size) {
+    try {
+        read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
+    } catch (const std::exception& e) {
+        _configure_working_active_eth(cluster, chip);
+        read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
+    }
+}
+
+void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
+                                          ChipId chip, tt::umd::CoreCoord core, uint64_t addr) {
     {
         // Read/Write first unaligned word
         uint32_t first_unaligned_index = addr % 4;
@@ -90,7 +125,16 @@ void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_pt
             cluster->write_to_device_reg(&temp, sizeof(temp), chip, core, addr);
         }
     }
+}
 
+void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes, ChipId chip,
+                                   tt::umd::CoreCoord core, uint64_t addr) {
+    try {
+        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
+    } catch (const std::exception& e) {
+        _configure_working_active_eth(cluster, chip);
+        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
+    }
 }  // namespace tt::exalens
 
 umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {
@@ -239,7 +283,7 @@ tt::umd::ArcTelemetryReader* umd_implementation::get_arc_telemetry_reader(uint8_
     return cached_arc_telemetry_reader.get();
 }
 
-std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
+std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry_helper(uint8_t chip_id, uint8_t telemetry_tag) {
     auto* arc_telemetry_reader = get_arc_telemetry_reader(chip_id);
     auto umd_telemetry_tag = static_cast<tt::umd::TelemetryTag>(telemetry_tag);
     if (!arc_telemetry_reader->is_entry_available(telemetry_tag)) {
@@ -248,8 +292,23 @@ std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chi
     return arc_telemetry_reader->read_entry(telemetry_tag);
 }
 
+std::optional<uint32_t> umd_implementation::read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
+    try {
+        return read_arc_telemetry_entry_helper(chip_id, telemetry_tag);
+    } catch (const std::exception& e) {
+        _configure_working_active_eth(cluster, chip_id);
+        return read_arc_telemetry_entry_helper(chip_id, telemetry_tag);
+    }
+}
+
 std::optional<std::tuple<uint64_t, uint64_t, uint64_t>> umd_implementation::get_firmware_version(uint8_t chip_id) {
-    const auto& firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
+    tt::umd::semver_t firmware_version(0, 0, 0);
+    try {
+        firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
+    } catch (const std::runtime_error& e) {
+        _configure_working_active_eth(cluster, chip_id);
+        firmware_version = tt::umd::get_firmware_version_util(cluster->get_tt_device(chip_id));
+    }
     return std::make_tuple(firmware_version.major, firmware_version.minor, firmware_version.patch);
 }
 
@@ -259,5 +318,16 @@ void umd_implementation::warm_reset(bool is_galaxy_configuration) {
     } else {
         tt::umd::WarmReset::warm_reset();
     }
+}
+
+// Function returns logical coordinates on local device of the active eth core used for remote communication
+std::optional<std::tuple<uint8_t, uint8_t>> umd_implementation::get_remote_transfer_eth_core(uint8_t chip_id) {
+    tt_xy_pair active_eth_core =
+        cluster->get_remote_chip(chip_id)->get_remote_communication()->get_remote_transfer_ethernet_core();
+    const tt::umd::CoreCoord eth_translated =
+        tt::umd::CoreCoord(active_eth_core.x, active_eth_core.y, CoreType::ETH, CoordSystem::TRANSLATED);
+    const tt::umd::CoreCoord eth_logical =
+        cluster->get_soc_descriptor(chip_id).translate_coord_to(eth_translated, CoordSystem::LOGICAL);
+    return std::make_tuple(eth_logical.x, eth_logical.y);
 }
 }  // namespace tt::exalens

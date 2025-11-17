@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import unittest
-from test.ttexalens.unit_tests.test_base import init_default_test_context
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from parameterized import parameterized, parameterized_class
 
 import os
@@ -42,10 +42,12 @@ class TestCoverage(unittest.TestCase):
     loader: ElfLoader
     risc_debug: RiscDebug
 
-    def setUp(self):
-        self.context = init_default_test_context()
-        self.device = self.context.devices[0]
+    @classmethod
+    def setUpClass(cls):
+        cls.context = init_cached_test_context()
+        cls.device = cls.context.devices[0]
 
+    def setUp(self):
         # Arch is needed to know the ELF path
         if not self.context.arch:
             self.skipTest(f"Undefined architecture")
@@ -90,11 +92,7 @@ class TestCoverage(unittest.TestCase):
         self.loader = ElfLoader(self.risc_debug)
 
     def get_elf_name(self, elf: str):
-        # We can use BRISC elf for ERISCs
-        if self.risc_name.lower().startswith("erisc"):
-            return f"{elf}.brisc.elf"
-        else:
-            return f"{elf}.{self.risc_name.lower()}.elf"
+        return f"{elf}.{self.risc_name.lower()}.elf"
 
     @parameterized.expand(ELFS)
     def test_coverage(self, elf):
