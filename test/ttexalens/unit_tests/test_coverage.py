@@ -92,11 +92,7 @@ class TestCoverage(unittest.TestCase):
         self.loader = ElfLoader(self.risc_debug)
 
     def get_elf_name(self, elf: str):
-        # We can use BRISC elf for ERISCs
-        if self.risc_name.lower().startswith("erisc"):
-            return f"{elf}.brisc.elf"
-        else:
-            return f"{elf}.{self.risc_name.lower()}.elf"
+        return f"{elf}.{self.risc_name.lower()}.elf"
 
     @parameterized.expand(ELFS)
     def test_coverage(self, elf):
