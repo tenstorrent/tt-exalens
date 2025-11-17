@@ -8,6 +8,7 @@ L0_BASE = 0xFFB00000;
 BRISC_L0_LENGTH = 4K;
 TRISC_L0_LENGTH = 2K;
 NCRISC_L0_LENGTH = 4K;
+ERISC_L0_LENGTH = 4K;
 
 NCRISC_IMEM = 0xFFC00000;
 NCRISC_IMEM_LENGTH = 16K;
@@ -20,6 +21,12 @@ UNDEFINED = 0;
  * LOADER_INIT regions are defined for every core, as the data segment resides in L0.
  * LOADER_CODE regions are undefined for all cores excepting the NCRISC, as its code resides in its IMEM.
  * GCOV region is left undefined for obvious reasons.
+ *
+ * On ETH, space layout is simple:
+ * [ERISC] (...) [L0]
+ * LOADER_INIT region is defined, as the data segment resides in L0.
+ * LOADER_CODE region is undefined, as no code is in IMEM.
+ * L0 is only used for the stack.
  */
 
 MEMORY
@@ -41,6 +48,9 @@ MEMORY
     NCRISC_STACK_MEM        : ORIGIN = ORIGIN(NCRISC_LOCAL_DATA_MEM) + LENGTH(NCRISC_LOCAL_DATA_MEM), LENGTH = NCRISC_L0_LENGTH - LENGTH(NCRISC_LOCAL_DATA_MEM)
     NCRISC_CODE             : ORIGIN = NCRISC_IMEM, LENGTH = NCRISC_IMEM_LENGTH
 
+    ERISC_LOCAL_DATA_MEM    : ORIGIN = L0_BASE, LENGTH = 3K
+    ERISC_STACK_MEM         : ORIGIN = ORIGIN(ERISC_LOCAL_DATA_MEM) + LENGTH(ERISC_LOCAL_DATA_MEM), LENGTH = ERISC_L0_LENGTH - LENGTH(ERISC_LOCAL_DATA_MEM)
+
 
     /* L1 layout */
     BRISC_CODE              : ORIGIN = L1_BASE, LENGTH = 16K
@@ -59,6 +69,11 @@ MEMORY
     NCRISC_LOADER_CODE_MEM  : ORIGIN = ORIGIN(NCRISC_LOADER_INIT_MEM) + LENGTH(NCRISC_LOADER_INIT_MEM), LENGTH = LENGTH(NCRISC_CODE)
 
 
+    /* ETH L1 layout */
+    ERISC_CODE              : ORIGIN = L1_BASE, LENGTH = 16K
+    ERISC_LOADER_INIT_MEM   : ORIGIN = ORIGIN(ERISC_CODE) + LENGTH(ERISC_CODE), LENGTH = ERISC_L0_LENGTH
+
+
     /* (discarded) */
     BRISC_LOADER_CODE_MEM   : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
     BRISC_GCOV_MEM          : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
@@ -73,4 +88,7 @@ MEMORY
     TRISC2_GCOV_MEM         : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
 
     NCRISC_GCOV_MEM         : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
+
+    ERISC_LOADER_CODE_MEM   : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
+    ERISC_GCOV_MEM          : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
 }

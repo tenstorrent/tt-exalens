@@ -84,6 +84,8 @@ def get_callstack_entry(line: str) -> CallstackEntry:
         entry.function_name = match.groupdict()["function_name"]
         entry.file = match.groupdict()["file_path"]
         entry.line = int(match.groupdict()["line"]) if match.groupdict()["line"] is not None else None
+    elif "Backtrace stopped: frame did not save the PC" in line:
+        return get_callstack_entry(line.replace("Backtrace stopped: frame did not save the PC", "").strip())
 
     return entry
 

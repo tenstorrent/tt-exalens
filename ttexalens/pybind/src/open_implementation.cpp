@@ -387,4 +387,10 @@ void open_implementation<BaseClass>::warm_reset(bool is_galaxy_configuration) {
     BaseClass::warm_reset(is_galaxy_configuration);
 }
 
+template <typename BaseClass>
+std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::get_remote_transfer_eth_core(
+    uint8_t chip_id) {
+    return BaseClass::get_remote_transfer_eth_core(chip_id);
+}
+
 }  // namespace tt::exalens

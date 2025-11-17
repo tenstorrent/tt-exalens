@@ -3,7 +3,7 @@
 
 import unittest
 import time
-from test.ttexalens.unit_tests.test_base import init_default_test_context
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from ttexalens.elf_loader import ElfLoader
 
@@ -12,7 +12,7 @@ class TestMulticore(unittest.TestCase):
     """Test class for multi-core scenarios."""
 
     def setUp(self):
-        self.context = init_default_test_context()
+        self.context = init_cached_test_context()
         self.brisc = RiscvCoreSimulator(self.context, "FW0", "BRISC")
         self.trisc0 = RiscvCoreSimulator(self.context, "FW0", "TRISC0")
 
