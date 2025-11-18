@@ -148,22 +148,27 @@ def run(cmd_text, context, ui_state: UIState):
                 for thread_id in thread_ids:
                     gpr_mapping = conf_reg_desc.general_purpose_registers[thread_id]
                     rows: list[list[str]] = []
+                    merged_registers: dict[str, int] = {}
                     for register_name in gpr_mapping:
                         if verbose or not register_name.startswith("ID"):
-                            if register_name.endswith("_hi"):
-                                continue
-                            elif register_name.endswith("_lo"):
+                            reg_desc = register_store.registers[gpr_mapping[register_name]]
+                            if register_name.endswith("_lo"):
                                 value = register_store.read_register(
                                     gpr_mapping[register_name[:-3] + "_hi"]
                                 ) << 16 + register_store.read_register(gpr_mapping[register_name])
-                                name = register_name[:-3]
-                            else:
-                                value = register_store.read_register(gpr_mapping[register_name])
-                                name = register_name
-                            reg_desc = register_store.registers[gpr_mapping[register_name]]
+                                merged_registers[register_name[:-3]] = format_register_value(
+                                    value, reg_desc.data_type, reg_desc.mask.bit_count()
+                                )
+                            value = register_store.read_register(gpr_mapping[register_name])
                             rows.append(
-                                [name, format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count())]
+                                [
+                                    register_name,
+                                    format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count()),
+                                ]
                             )
+                    # Adding merged registers to the end of the table
+                    for register_name in merged_registers:
+                        rows.append([register_name, merged_registers[register_name]])
                     table = tabulate.tabulate(
                         rows,
                         headers=[f"Thread {thread_id}", "Values"],
