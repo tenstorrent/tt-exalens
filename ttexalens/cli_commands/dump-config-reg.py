@@ -24,7 +24,7 @@ Examples:
   cfg unpack       # Prints unpacker's configuration registers for current device and core
   cfg gpr          # Prints general purpose registers for current device and core
   cfg gpr -v       # Prints all general purpose registers for current device and core
-  cfg gpr -t 0,1    # Prints general purpose registers for threads 0 and 1 for current device and core
+  cfg gpr -t 0,1   # Prints general purpose registers for threads 0 and 1 for current device and core
 """
 
 command_metadata = {
@@ -73,6 +73,7 @@ def config_regs_to_table(config_regs: list[dict[str, str]], table_name: str, reg
                 if key.endswith("_hi"):
                     continue
                 elif key.endswith("_lo"):
+                    # Merging split registers into one
                     value = (register_store.read_register(config[key]) << 16) + register_store.read_register(
                         config[key[:-3] + "_hi"]
                     )
@@ -156,6 +157,7 @@ def run(cmd_text, context, ui_state: UIState):
                         if verbose or not register_name.startswith("ID"):
                             reg_desc = register_store.registers[gpr_mapping[register_name]]
                             if register_name.endswith("_lo"):
+                                # Merging split registers into one
                                 value = register_store.read_register(
                                     gpr_mapping[register_name[:-3] + "_hi"]
                                 ) << 16 + register_store.read_register(gpr_mapping[register_name])
@@ -172,10 +174,11 @@ def run(cmd_text, context, ui_state: UIState):
                     # Adding merged registers to the end of the table
                     for register_name in merged_registers:
                         rows.append([register_name, str(merged_registers[register_name])])
-                    table = tabulate.tabulate(
-                        rows,
-                        headers=[f"Thread {thread_id}", "Values"],
-                        tablefmt="simple_outline",
+                    tables.append(
+                        tabulate.tabulate(
+                            rows,
+                            headers=[f"Thread {thread_id}", "Values"],
+                            tablefmt="simple_outline",
+                        )
                     )
-                    tables.append(table)
                 print(put_table_list_side_by_side(tables))
