@@ -9,7 +9,7 @@ Options:
   <config-reg>    Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
   -d <device>     Device ID. Optional. Default: current device
   -l <loc>        Core location in X-Y or R,C format. Default: current core
-  -v              Verbose mode. Prints all general purpose registers for each thread if specified.
+  -v              Verbose mode. Prints all general purpose registers.
   -t <thread-id>  Thread ID. Options: [0, 1, 2] Default: all
 Description:
   Prints the configuration register of the given name, at the specified location and device.
@@ -22,6 +22,9 @@ Examples:
   cfg alu          # Prints alu configuration registers for current device and core
   cfg pack         # Prints packer's configuration registers for current device and core
   cfg unpack       # Prints unpacker's configuration registers for current device and core
+  cfg gpr          # Prints general purpose registers for current device and core
+  cfg gpr -v       # Prints all general purpose registers for current device and core
+  cfg gpr -t 0,1    # Prints general purpose registers for threads 0 and 1 for current device and core
 """
 
 command_metadata = {
@@ -168,7 +171,7 @@ def run(cmd_text, context, ui_state: UIState):
                             )
                     # Adding merged registers to the end of the table
                     for register_name in merged_registers:
-                        rows.append([register_name, merged_registers[register_name]])
+                        rows.append([register_name, str(merged_registers[register_name])])
                     table = tabulate.tabulate(
                         rows,
                         headers=[f"Thread {thread_id}", "Values"],
