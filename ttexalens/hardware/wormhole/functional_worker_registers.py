@@ -680,8 +680,12 @@ register_map: dict[str, RegisterDescription] = {
     "DBG_RESERVED_T0": GeneralPurposeRegisterDescription(index=1, thread_id=0),
     "DBG_MSG_T0": GeneralPurposeRegisterDescription(index=2, thread_id=0),
     "DBG_CKID_T0": GeneralPurposeRegisterDescription(index=3, thread_id=0),
-    "OPERAND_BASE_ADDR_T0": GeneralPurposeRegisterDescription(index=4, thread_id=0),
-    "OPERAND_OFFSET_ADDR_T0": GeneralPurposeRegisterDescription(index=5, thread_id=0),
+    "OPERAND_BASE_ADDR_T0": GeneralPurposeRegisterDescription(
+        index=4, thread_id=0, data_type=REGISTER_DATA_TYPE.ADDRESS
+    ),
+    "OPERAND_OFFSET_ADDR_T0": GeneralPurposeRegisterDescription(
+        index=5, thread_id=0, data_type=REGISTER_DATA_TYPE.ADDRESS
+    ),
     "GPR_T0_6": GeneralPurposeRegisterDescription(index=6, thread_id=0),
     "GPR_T0_7": GeneralPurposeRegisterDescription(index=7, thread_id=0),
     "ZERO_0_T0": GeneralPurposeRegisterDescription(index=8, thread_id=0),
@@ -693,7 +697,7 @@ register_map: dict[str, RegisterDescription] = {
     "TILE_SIZE_T0": GeneralPurposeRegisterDescription(index=14, thread_id=0),
     "TILE_OFFSET_T0": GeneralPurposeRegisterDescription(index=15, thread_id=0),
     "GPR_T0_16": GeneralPurposeRegisterDescription(index=16, thread_id=0),
-    "L1_BUFFER_ADDR_T0": GeneralPurposeRegisterDescription(index=17, thread_id=0),
+    "L1_BUFFER_ADDR_T0": GeneralPurposeRegisterDescription(index=17, thread_id=0, data_type=REGISTER_DATA_TYPE.ADDRESS),
     "TMP_LO_T0": GeneralPurposeRegisterDescription(index=18, thread_id=0),
     "TMP_HI_T0": GeneralPurposeRegisterDescription(index=19, thread_id=0),
     "GPR_T0_20": GeneralPurposeRegisterDescription(index=20, thread_id=0),
@@ -750,7 +754,9 @@ register_map: dict[str, RegisterDescription] = {
     "PERF_MEM_DUMP_CNTL_SET_T1": GeneralPurposeRegisterDescription(index=6, thread_id=1),
     "PERF_CNT_START_T1": GeneralPurposeRegisterDescription(index=7, thread_id=1),
     "PERF_CNT_STOP_T1": GeneralPurposeRegisterDescription(index=8, thread_id=1),
-    "PERF_EPOCH_BASE_ADDR_T1": GeneralPurposeRegisterDescription(index=9, thread_id=1),
+    "PERF_EPOCH_BASE_ADDR_T1": GeneralPurposeRegisterDescription(
+        index=9, thread_id=1, data_type=REGISTER_DATA_TYPE.ADDRESS
+    ),
     "PERF_EPOCH_OFFSET_T1": GeneralPurposeRegisterDescription(index=10, thread_id=1),
     "GPR_T1_11": GeneralPurposeRegisterDescription(index=11, thread_id=1),
     "GPR_T1_12": GeneralPurposeRegisterDescription(index=12, thread_id=1),
@@ -818,7 +824,7 @@ register_map: dict[str, RegisterDescription] = {
     "GPR_T2_9": GeneralPurposeRegisterDescription(index=9, thread_id=2),
     "GPR_T2_10": GeneralPurposeRegisterDescription(index=10, thread_id=2),
     "GPR_T2_11": GeneralPurposeRegisterDescription(index=11, thread_id=2),
-    "OUTPUT_ADDR_T2": GeneralPurposeRegisterDescription(index=12, thread_id=2),
+    "OUTPUT_ADDR_T2": GeneralPurposeRegisterDescription(index=12, thread_id=2, data_type=REGISTER_DATA_TYPE.ADDRESS),
     "GPR_T2_13": GeneralPurposeRegisterDescription(index=13, thread_id=2),
     "GPR_T2_14": GeneralPurposeRegisterDescription(index=14, thread_id=2),
     "GPR_T2_15": GeneralPurposeRegisterDescription(index=15, thread_id=2),
@@ -832,7 +838,7 @@ register_map: dict[str, RegisterDescription] = {
     "GPR_T2_23": GeneralPurposeRegisterDescription(index=23, thread_id=2),
     "NUM_MSGS_RECEIVED_T2": GeneralPurposeRegisterDescription(index=24, thread_id=2),
     "ONE_MSG_RECEIVED_T2": GeneralPurposeRegisterDescription(index=25, thread_id=2),
-    "HEADER_ADDR_T2": GeneralPurposeRegisterDescription(index=26, thread_id=2),
+    "HEADER_ADDR_T2": GeneralPurposeRegisterDescription(index=26, thread_id=2, data_type=REGISTER_DATA_TYPE.ADDRESS),
     "GPR_T2_27": GeneralPurposeRegisterDescription(index=27, thread_id=2),
     "TMP0_T2": GeneralPurposeRegisterDescription(index=28, thread_id=2),
     "TMP1_T2": GeneralPurposeRegisterDescription(index=29, thread_id=2),
@@ -1018,16 +1024,19 @@ def get_pack_strides() -> list[dict[str, str]]:
 
 
 def get_general_purpose_registers() -> list[dict[str, str]]:
-    register_by_thread: list[dict[str, str]] = [dict() for _ in range(3)]
+    register_mapping_by_thread: list[dict[str, str]] = [dict() for _ in range(3)]
     for register_name in register_map.keys():
         if not isinstance(register_map[register_name], GeneralPurposeRegisterDescription):
             continue
         if register_name.endswith("_T0") or register_name.endswith("_T1") or register_name.endswith("_T2"):
-            register_by_thread[int(register_name[-1])][register_name[:-3].lower()] = register_name
+            thread_id = int(register_name[-1])  # Last character is the thread id
+            register_mapping_by_thread[thread_id][register_name[:-3].lower()] = register_name
         else:
-            register_by_thread[int(register_name[5])][f"Index: {register_name[7:]}"] = register_name
+            thread_id = int(register_name[5])  # Fifth character is the thread id in this case
+            index = int(register_name[7:])  # Index is the number after the underscore
+            register_mapping_by_thread[thread_id][f"ID = {index}"] = register_name
 
-    return register_by_thread
+    return register_mapping_by_thread
 
 
 configuration_registers_descriptions = TensixConfigurationRegistersDescription(

@@ -3,13 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump-config-reg [ <config-reg> ] [ -d <device> ] [ -l <loc> ]
+  dump-config-reg [ <config-reg> ] [ -d <device> ] [ -l <loc> ] [ -v ] [ -t <thread-id> ]
 
 Options:
-  <config-reg>  Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
-  -d <device>   Device ID. Optional. Default: current device
-  -l <loc>      Core location in X-Y or R,C format. Default: current core
-
+  <config-reg>    Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
+  -d <device>     Device ID. Optional. Default: current device
+  -l <loc>        Core location in X-Y or R,C format. Default: current core
+  -v              Verbose mode. Prints all general purpose registers for each thread if specified.
+  -t <thread-id>  Thread ID. Options: [0, 1, 2] Default: all
 Description:
   Prints the configuration register of the given name, at the specified location and device.
 
@@ -35,10 +36,8 @@ import copy
 
 import tabulate
 from ttexalens import util
-from ttexalens.hardware.wormhole.functional_worker_registers import get_general_purpose_registers
 from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
-from ttexalens.debug_tensix import TensixDebug
 from ttexalens.device import Device
 from ttexalens import command_parser
 from ttexalens.util import (
@@ -61,28 +60,28 @@ def create_column_names(num_of_columns):
 
 # Converts list of configuration registers to table
 def config_regs_to_table(config_regs: list[dict[str, str]], table_name: str, register_store: RegisterStore):
-    config_regs = copy.deepcopy(config_regs)
+    config_reg_values: list[dict[str, int]] = []
     keys = list(config_regs[0].keys())
 
-    if "blobs_y_start_lo" in keys and "blobs_y_start_hi" in keys:
-        for config in config_regs:
-            config["blobs_y_start"] = (
-                register_store.read_register(config["blobs_y_start_hi"]) << 16
-            ) + register_store.read_register(config["blobs_y_start_lo"])
-            del config["blobs_y_start_lo"]
-            del config["blobs_y_start_hi"]
-
-        keys.remove("blobs_y_start_lo")
-        keys.remove("blobs_y_start_hi")
-
     for config in config_regs:
+        config_reg_value: dict[str, int] = {}
         for key in keys:
             if key in config:
-                value = register_store.read_register(config[key])
+                if key.endswith("_hi"):
+                    continue
+                elif key.endswith("_lo"):
+                    value = (register_store.read_register(config[key]) << 16) + register_store.read_register(
+                        config[key[:-3] + "_hi"]
+                    )
+                    name = key[:-3]
+                else:
+                    value = register_store.read_register(config[key])
+                    name = key
                 reg_desc = register_store.get_register_description(config[key])
-                config[key] = format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count())
+                config_reg_value[name] = format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count())
+        config_reg_values.append(config_reg_value)
 
-    return dict_list_to_table(config_regs, table_name, create_column_names(len(config_regs)))
+    return dict_list_to_table(config_reg_values, table_name, create_column_names(len(config_reg_values)))
 
 
 def run(cmd_text, context, ui_state: UIState):
@@ -90,7 +89,6 @@ def run(cmd_text, context, ui_state: UIState):
         command_metadata["description"],
         argv=cmd_text.split()[1:],
     )
-
     cfg = dopt.args["<config-reg>"] if dopt.args["<config-reg>"] else "all"
     if cfg not in possible_registers:
         raise ValueError(f"Invalid configuration register: {cfg}. Possible values: {possible_registers}")
@@ -141,21 +139,35 @@ def run(cmd_text, context, ui_state: UIState):
                     print(pack_config_table)
                     print(put_table_list_side_by_side([edge_offset_table, pack_strides_table]))
             if cfg == "gpr" or cfg == "all":
+                verbose = dopt.args["-v"]
+                thread_ids = (
+                    [int(thread_id) for thread_id in dopt.args["-t"].split(",")] if dopt.args["-t"] else [0, 1, 2]
+                )
                 print(f"{CLR_GREEN}GPR{CLR_END}")
                 tables: list[str] = []
-                for thread_id in range(len(conf_reg_desc.general_purpose_registers)):
-                    dct = conf_reg_desc.general_purpose_registers[thread_id]
-                    tables.append(
-                        tabulate.tabulate(
-                            [
-                                [
-                                    register_name,
-                                    (register_store.read_register(register_store.registers[dct[register_name]])),
-                                ]
-                                for register_name in dct
-                            ],
-                            headers=[f"Thread {thread_id}", "Values"],
-                            tablefmt="simple_outline",
-                        )
+                for thread_id in thread_ids:
+                    gpr_mapping = conf_reg_desc.general_purpose_registers[thread_id]
+                    rows: list[list[str]] = []
+                    for register_name in gpr_mapping:
+                        if verbose or not register_name.startswith("ID"):
+                            if register_name.endswith("_hi"):
+                                continue
+                            elif register_name.endswith("_lo"):
+                                value = register_store.read_register(
+                                    gpr_mapping[register_name[:-3] + "_hi"]
+                                ) << 16 + register_store.read_register(gpr_mapping[register_name])
+                                name = register_name[:-3]
+                            else:
+                                value = register_store.read_register(gpr_mapping[register_name])
+                                name = register_name
+                            reg_desc = register_store.registers[gpr_mapping[register_name]]
+                            rows.append(
+                                [name, format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count())]
+                            )
+                    table = tabulate.tabulate(
+                        rows,
+                        headers=[f"Thread {thread_id}", "Values"],
+                        tablefmt="simple_outline",
                     )
+                    tables.append(table)
                 print(put_table_list_side_by_side(tables))
