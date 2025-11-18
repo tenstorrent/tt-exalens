@@ -4,7 +4,7 @@
 
 import unittest
 from parameterized import parameterized_class, parameterized
-from test.ttexalens.unit_tests.test_base import init_default_test_context
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
 from ttexalens.context import Context
@@ -53,7 +53,7 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
 
     def setUp(self):

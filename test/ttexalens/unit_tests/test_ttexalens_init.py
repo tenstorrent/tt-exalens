@@ -10,6 +10,7 @@ from ttexalens import tt_exalens_lib as lib
 from ttexalens.context import Context
 from ttexalens.tt_exalens_ifc import init_pybind
 from ttexalens.tt_exalens_server import start_server
+from test.ttexalens.unit_tests.test_base import init_default_test_context
 
 
 class TestLocalTTExaLensInit(unittest.TestCase):
@@ -38,6 +39,7 @@ class TestRemoteTTExaLens(unittest.TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         cls.server.stop()
+        init_default_test_context()
 
     def test_remote_init(self):
         """Test remote TTExaLens initialization."""

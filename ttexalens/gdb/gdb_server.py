@@ -939,6 +939,43 @@ class GdbServer(threading.Thread):
                 assert type(pwrite_result) is int
                 writer.append(b"F")
                 writer.append_hex(pwrite_result)
+        elif parser.parse(b"x"):  # Read length addressable memory units starting at address addr.
+            # ‘x addr,length’
+            address = parser.parse_hex()
+            parser.parse(b",")
+            length = parser.parse_hex()
+
+            if self.current_process is None:
+                # Return error if we are not debugging any process
+                writer.append(b"E02")
+            elif address is None or length is None or length <= 0:
+                writer.append(b"E01")
+            else:
+                # Reply with data should start with 'b'
+                writer.append(b"b")
+
+                # Read first 4 bytes of unaligned data
+                first_offset = address % 4
+                if first_offset != 0:
+                    value = self.current_process.risc_debug.read_memory(address - first_offset)
+                    buffer = value.to_bytes(4, byteorder="little")
+                    used_bytes = min(4 - first_offset, length)
+                    writer.append(buffer[first_offset : first_offset + used_bytes])
+                    length -= used_bytes
+                    address += used_bytes
+
+                # Read aligned data
+                while length >= 4:
+                    value = self.current_process.risc_debug.read_memory(address)
+                    writer.append(value.to_bytes(4, byteorder="little"))
+                    length -= 4
+                    address += 4
+
+                # Read last 4 bytes of unaligned data
+                if length > 0:
+                    value = self.current_process.risc_debug.read_memory(address)
+                    buffer = value.to_bytes(4, byteorder="little")
+                    writer.append(buffer[:length])
         elif parser.parse(b"X"):  # Write data to memory, where the data is transmitted in binary.
             # ‘X addr,length:XX…’
             try:

@@ -4,7 +4,7 @@
 import unittest
 
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
-from test.ttexalens.unit_tests.test_base import init_default_test_context
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens.context import Context
 from ttexalens.elf import ElfVariable, MemoryAccess
 
@@ -46,7 +46,7 @@ class TestDebugSymbols(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
         risc_debug = cls.context.devices[0].get_blocks()[0].all_riscs[0]
         cls.core_sim = RiscvCoreSimulator(
             cls.context,
