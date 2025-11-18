@@ -21,3 +21,6 @@ class TensixConfigurationRegistersDescription:
     pack_edge_offset: list[dict[str, str]] = field(default_factory=list)
     pack_counters: list[dict[str, str]] = field(default_factory=list)
     pack_strides: list[dict[str, str]] = field(default_factory=list)
+
+    # GENERAL PURPOSE REGISTERS
+    general_purpose_registers: list[dict[str, str]] = field(default_factory=list)

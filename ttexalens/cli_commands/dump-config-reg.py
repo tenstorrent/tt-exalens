@@ -32,7 +32,10 @@ command_metadata = {
 }
 
 import copy
+
+import tabulate
 from ttexalens import util
+from ttexalens.hardware.wormhole.functional_worker_registers import get_general_purpose_registers
 from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
 from ttexalens.debug_tensix import TensixDebug
@@ -46,7 +49,7 @@ from ttexalens.util import (
     dict_list_to_table,
 )
 
-possible_registers = ["all", "alu", "pack", "unpack"]
+possible_registers = ["all", "alu", "pack", "unpack", "gpr"]
 
 # Creates list of column names for configuration register table
 def create_column_names(num_of_columns):
@@ -57,7 +60,9 @@ def create_column_names(num_of_columns):
 
 
 # Converts list of configuration registers to table
-def config_regs_to_table(config_regs: list[dict], table_name: str, register_store: RegisterStore):
+def config_regs_to_table(
+    config_regs: list[dict[str, str]] | list[list[str]], table_name: str, register_store: RegisterStore
+):
     config_regs = copy.deepcopy(config_regs)
     keys = list(config_regs[0].keys())
 
@@ -137,3 +142,22 @@ def run(cmd_text, context, ui_state: UIState):
                     print(pack_counters_table)
                     print(pack_config_table)
                     print(put_table_list_side_by_side([edge_offset_table, pack_strides_table]))
+            if cfg == "gpr" or cfg == "all":
+                print(f"{CLR_GREEN}GPR{CLR_END}")
+                tables: list[str] = []
+                for thread_id in range(len(conf_reg_desc.general_purpose_registers)):
+                    dct = conf_reg_desc.general_purpose_registers[thread_id]
+                    tables.append(
+                        tabulate.tabulate(
+                            [
+                                [
+                                    register_name,
+                                    (register_store.read_register(register_store.registers[dct[register_name]])),
+                                ]
+                                for register_name in dct
+                            ],
+                            headers=[f"Thread {thread_id}", "Values"],
+                            tablefmt="simple_outline",
+                        )
+                    )
+                print(put_table_list_side_by_side(tables))
