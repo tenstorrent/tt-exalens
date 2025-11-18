@@ -10,7 +10,7 @@ from datetime import timedelta
 
 from parameterized import parameterized, parameterized_class
 
-from test.ttexalens.unit_tests.test_base import init_default_test_context
+from test.ttexalens.unit_tests.test_base import init_default_test_context, init_cached_test_context
 from ttexalens import tt_exalens_init
 from ttexalens import tt_exalens_lib as lib
 from ttexalens import util
@@ -571,7 +571,7 @@ class TestReadWrite(unittest.TestCase):
 class TestRunElf(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
 
     def get_elf_path(self, app_name: str, risc_name: str):
@@ -944,11 +944,7 @@ class TestCallStack(unittest.TestCase):
         arch = self.device._arch.lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
-        if self.risc_name.lower().startswith("erisc"):
-            # For eriscs we can use brisc elf
-            return f"build/riscv-src/{arch}/{app_name}.brisc.elf"
-        else:
-            return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
+        return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
 
     def compare_callstacks(self, cs1: list[CallstackEntry], cs2: list[CallstackEntry]):
         """Compare two callstacks."""

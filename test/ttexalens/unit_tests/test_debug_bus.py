@@ -4,7 +4,7 @@
 
 import unittest
 from parameterized import parameterized_class, parameterized
-from test.ttexalens.unit_tests.test_base import get_core_location, init_default_test_context
+from test.ttexalens.unit_tests.test_base import get_core_location, init_cached_test_context
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.context import Context
 
@@ -29,11 +29,17 @@ class TestDebugBus(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
 
     def setUp(self):
-        self.location = get_core_location(self.core_desc, self.device)
+        try:
+            self.location = get_core_location(self.core_desc, self.device)
+        except ValueError as e:
+            if "ETH core" in e.__str__() or "FW core" in e.__str__():
+                self.skipTest(f"Core {self.core_desc} not available on this platform: {e}")
+            else:
+                raise e
         debug_bus = self.location.noc_block.get_debug_bus(self.neo_id)
         if debug_bus is None:
             self.skipTest(f"Debug bus not available on core {self.core_desc}[neo={self.neo_id}]")
