@@ -60,9 +60,7 @@ def create_column_names(num_of_columns):
 
 
 # Converts list of configuration registers to table
-def config_regs_to_table(
-    config_regs: list[dict[str, str]] | list[list[str]], table_name: str, register_store: RegisterStore
-):
+def config_regs_to_table(config_regs: list[dict[str, str]], table_name: str, register_store: RegisterStore):
     config_regs = copy.deepcopy(config_regs)
     keys = list(config_regs[0].keys())
 
