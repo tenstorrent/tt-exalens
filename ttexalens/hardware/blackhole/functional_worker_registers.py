@@ -798,6 +798,7 @@ def get_pack_strides() -> list[dict[str, str]]:
 
     return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(2)]
 
+
 def get_general_purpose_registers() -> list[dict[str, str]]:
     register_mapping_by_thread: list[dict[str, str]] = [dict() for _ in range(3)]
     for register_name in register_map.keys():
@@ -812,6 +813,7 @@ def get_general_purpose_registers() -> list[dict[str, str]]:
             register_mapping_by_thread[thread_id][f"ID = {index}"] = register_name
 
     return register_mapping_by_thread
+
 
 configuration_registers_descriptions = TensixConfigurationRegistersDescription(
     # ALU CONFIG
