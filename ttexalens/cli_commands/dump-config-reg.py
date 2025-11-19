@@ -35,9 +35,9 @@ command_metadata = {
     "command_option_names": ["--device", "--loc"],
 }
 
-import copy
 
 import tabulate
+
 from ttexalens import util
 from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
@@ -158,9 +158,9 @@ def run(cmd_text, context, ui_state: UIState):
                             reg_desc = register_store.registers[gpr_mapping[register_name]]
                             if register_name.endswith("_lo"):
                                 # Merging split registers into one
-                                value = register_store.read_register(
-                                    gpr_mapping[register_name[:-3] + "_hi"]
-                                ) << 16 + register_store.read_register(gpr_mapping[register_name])
+                                value = (
+                                    register_store.read_register(gpr_mapping[register_name[:-3] + "_hi"]) << 16
+                                ) + register_store.read_register(gpr_mapping[register_name])
                                 merged_registers[register_name[:-3]] = format_register_value(
                                     value, reg_desc.data_type, reg_desc.mask.bit_count()
                                 )
