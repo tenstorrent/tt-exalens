@@ -338,6 +338,9 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", "UNPACK_CONFIG0_out_data_format", 6),
             ("0,0", "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1),
             ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 9),
+            ("0,0", "OPERAND_BASE_ADDR_T0", 4),
+            ("0,0", "PERF_EPOCH_BASE_ADDR_T1", 8),
+            ("0,0", "OUTPUT_ADDR_T2", 12),
         ]
     )
     def test_write_read_tensix_register(self, location, register, value):
