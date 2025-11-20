@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class TensixConfigurationRegistersDescription:
+class TensixRegisterDescription:
     # ALU
     alu_config: list[dict[str, str]] = field(default_factory=list)
 

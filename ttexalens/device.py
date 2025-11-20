@@ -11,7 +11,7 @@ from ttexalens.context import Context
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
-from ttexalens.hardware.tensix_configuration_registers_description import TensixConfigurationRegistersDescription
+from ttexalens.hardware.tensix_configuration_registers_description import TensixRegisterDescription
 from ttexalens.object import TTObject
 from ttexalens import util as util
 from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
@@ -259,7 +259,7 @@ class Device(TTObject):
         return [self.get_block(location) for location in self.idle_eth_block_locations]
 
     @abstractmethod
-    def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
+    def get_tensix_configuration_registers_description(self) -> TensixRegisterDescription:
         pass
 
     def get_block_locations(self, block_type="functional_workers") -> list[OnChipCoordinate]:

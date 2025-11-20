@@ -122,7 +122,7 @@ class ConfigurationRegisterDescription(RegisterDescription):
 
 
 @dataclass
-class GeneralPurposeRegisterDescription(RegisterDescription):
+class TensixGeneralPurposeRegisterDescription(RegisterDescription):
     index: int = 0
     thread_id: int = 0
 

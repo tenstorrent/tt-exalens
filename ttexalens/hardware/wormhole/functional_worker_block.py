@@ -18,7 +18,7 @@ from ttexalens.hardware.wormhole.noc_block import WormholeNocBlock
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
-    GeneralPurposeRegisterDescription,
+    TensixGeneralPurposeRegisterDescription,
     RegisterDescription,
     RegisterStore,
 )
@@ -28,7 +28,7 @@ def get_register_base_address_callable(noc_id: int) -> Callable[[RegisterDescrip
     def get_register_base_address(register_description: RegisterDescription) -> DeviceAddress:
         if isinstance(register_description, ConfigurationRegisterDescription):
             return DeviceAddress(private_address=0xFFEF0000)
-        elif isinstance(register_description, GeneralPurposeRegisterDescription):
+        elif isinstance(register_description, TensixGeneralPurposeRegisterDescription):
             return DeviceAddress(private_address=0xFFE00000)
         elif isinstance(register_description, DebugRegisterDescription):
             return DeviceAddress(private_address=0xFFB12000, noc_address=0xFFB12000)

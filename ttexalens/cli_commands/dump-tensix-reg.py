@@ -3,32 +3,32 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump-config-reg [ <config-reg> ] [ -d <device> ] [ -l <loc> ] [ -v ] [ -t <thread-id> ]
+  dump-tensix-reg [ <reg-group> ] [ -d <device> ] [ -l <loc> ] [ -v ] [ -t <thread-id> ]
 
 Options:
-  <config-reg>    Configuration register name to dump. Options: [all, alu, pack, unpack] Default: all
+  <reg-group>     Tensix register group to dump. Options: [all, alu, pack, unpack, gpr] Default: all
   -d <device>     Device ID. Optional. Default: current device
   -l <loc>        Core location in X-Y or R,C format. Default: current core
   -v              Verbose mode. Prints all general purpose registers.
   -t <thread-id>  Thread ID. Options: [0, 1, 2] Default: all
 Description:
-  Prints the configuration register of the given name, at the specified location and device.
+  Prints the tensix register group of the given name, at the specified location and device.
 
 Examples:
-  cfg              # Prints all configuration registers for current device and core
-  cfg -d 0         # Prints all configuration registers for device with id 0 and current core
-  cfg -l 0,0       # Pirnts all configuration registers for current device and core at location 0,0
-  cfg all          # Prints all configuration registers for current device and core
-  cfg alu          # Prints alu configuration registers for current device and core
-  cfg pack         # Prints packer's configuration registers for current device and core
-  cfg unpack       # Prints unpacker's configuration registers for current device and core
-  cfg gpr          # Prints general purpose registers for current device and core
-  cfg gpr -v       # Prints all general purpose registers for current device and core
-  cfg gpr -t 0,1   # Prints general purpose registers for threads 0 and 1 for current device and core
+  tensix              # Prints all configuration registers for current device and core
+  tensix -d 0         # Prints all configuration registers for device with id 0 and current core
+  tensix -l 0,0       # Pirnts all configuration registers for current device and core at location 0,0
+  tensix all          # Prints all configuration registers for current device and core
+  tensix alu          # Prints alu configuration registers for current device and core
+  tensix pack         # Prints packer's configuration registers for current device and core
+  tensix unpack       # Prints unpacker's configuration registers for current device and core
+  tensix gpr          # Prints general purpose registers for current device and core
+  tensix gpr -v       # Prints all general purpose registers for current device and core
+  tensix gpr -t 0,1   # Prints general purpose registers for threads 0 and 1 for current device and core
 """
 
 command_metadata = {
-    "short": "cfg",
+    "short": "tensix",
     "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],
@@ -93,15 +93,15 @@ def run(cmd_text, context, ui_state: UIState):
         command_metadata["description"],
         argv=cmd_text.split()[1:],
     )
-    cfg = dopt.args["<config-reg>"] if dopt.args["<config-reg>"] else "all"
-    if cfg not in possible_registers:
-        raise ValueError(f"Invalid configuration register: {cfg}. Possible values: {possible_registers}")
+    reg_group = dopt.args["<reg-group>"] if dopt.args["<reg-group>"] else "all"
+    if reg_group not in possible_registers:
+        raise ValueError(f"Invalid configuration register: {reg_group}. Possible values: {possible_registers}")
 
     device: Device
     for device in dopt.for_each("--device", context, ui_state):
         conf_reg_desc = device.get_tensix_configuration_registers_description()
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            INFO(f"Configuration registers for location {loc} on device {device.id()}")
+            INFO(f"Tensix registers for location {loc} on device {device.id()}")
 
             noc_block = device.get_block(loc)
             if not noc_block:
@@ -112,18 +112,18 @@ def run(cmd_text, context, ui_state: UIState):
                 continue
             register_store = noc_block.get_register_store()
 
-            if cfg == "alu" or cfg == "all":
+            if reg_group == "alu" or reg_group == "all":
                 print(f"{CLR_GREEN}ALU{CLR_END}")
                 alu_config_table = config_regs_to_table(conf_reg_desc.alu_config, "ALU CONFIG", register_store)
                 print(alu_config_table)
-            if cfg == "unpack" or cfg == "all":
+            if reg_group == "unpack" or reg_group == "all":
                 print(f"{CLR_GREEN}UNPACKER{CLR_END}")
                 tile_descriptor_table = config_regs_to_table(
                     conf_reg_desc.unpack_tile_descriptor, "TILE DESCRIPTOR", register_store
                 )
                 unpack_config_table = config_regs_to_table(conf_reg_desc.unpack_config, "UNPACK CONFIG", register_store)
                 print(put_table_list_side_by_side([unpack_config_table, tile_descriptor_table]))
-            if cfg == "pack" or cfg == "all":
+            if reg_group == "pack" or reg_group == "all":
                 print(f"{CLR_GREEN}PACKER{CLR_END}")
                 pack_config_table = config_regs_to_table(conf_reg_desc.pack_config, "PACK CONFIG", register_store)
                 pack_counters_table = config_regs_to_table(conf_reg_desc.pack_counters, "COUNTERS", register_store)
@@ -142,7 +142,7 @@ def run(cmd_text, context, ui_state: UIState):
                     print(pack_counters_table)
                     print(pack_config_table)
                     print(put_table_list_side_by_side([edge_offset_table, pack_strides_table]))
-            if cfg == "gpr" or cfg == "all":
+            if reg_group == "gpr" or reg_group == "all":
                 verbose = dopt.args["-v"]
                 thread_ids = (
                     [int(thread_id) for thread_id in dopt.args["-t"].split(",")] if dopt.args["-t"] else [0, 1, 2]
