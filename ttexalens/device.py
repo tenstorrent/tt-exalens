@@ -259,7 +259,7 @@ class Device(TTObject):
         return [self.get_block(location) for location in self.idle_eth_block_locations]
 
     @abstractmethod
-    def get_tensix_configuration_registers_description(self) -> TensixRegisterDescription:
+    def get_tensix_registers_description(self) -> TensixRegisterDescription:
         pass
 
     def get_block_locations(self, block_type="functional_workers") -> list[OnChipCoordinate]:

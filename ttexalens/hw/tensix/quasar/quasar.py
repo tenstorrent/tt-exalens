@@ -37,5 +37,5 @@ class QuasarDevice(Device):
             return QuasarFunctionalWorkerBlock(location)
         raise ValueError(f"Unsupported block type: {block_type}")
 
-    def get_tensix_configuration_registers_description(self) -> TensixRegisterDescription:
+    def get_tensix_registers_description(self) -> TensixRegisterDescription:
         raise NotImplementedError("Quasar does not have a Tensix configuration registers description yet.")
