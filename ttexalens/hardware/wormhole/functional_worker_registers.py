@@ -1032,8 +1032,10 @@ def get_pack_strides() -> list[dict[str, str]]:
 def get_general_purpose_registers() -> list[dict[str, str]]:
     register_mapping_by_thread: list[dict[str, str]] = [dict() for _ in range(3)]
     for register_name in register_map.keys():
-        if isinstance(register_map[register_name], TensixGeneralPurposeRegisterDescription):
-            thread_id = register_map[register_name].thread_id
+        register_desc = register_map[register_name]
+        if isinstance(register_desc, TensixGeneralPurposeRegisterDescription):
+            assert isinstance(register_desc, TensixGeneralPurposeRegisterDescription)
+            thread_id = register_desc.thread_id
             register_mapping_by_thread[thread_id][register_name[:-3].lower()] = register_name
 
     return register_mapping_by_thread

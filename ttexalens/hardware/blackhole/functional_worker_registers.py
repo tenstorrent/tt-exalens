@@ -808,15 +808,11 @@ def get_pack_strides() -> list[dict[str, str]]:
 def get_general_purpose_registers() -> list[dict[str, str]]:
     register_mapping_by_thread: list[dict[str, str]] = [dict() for _ in range(3)]
     for register_name in register_map.keys():
-        if not isinstance(register_map[register_name], TensixGeneralPurposeRegisterDescription):
-            continue
-        if register_name.endswith("_T0") or register_name.endswith("_T1") or register_name.endswith("_T2"):
-            thread_id = int(register_name[-1])  # Last character is the thread id
+        register_desc = register_map[register_name]
+        if isinstance(register_desc, TensixGeneralPurposeRegisterDescription):
+            assert isinstance(register_desc, TensixGeneralPurposeRegisterDescription)
+            thread_id = register_desc.thread_id
             register_mapping_by_thread[thread_id][register_name[:-3].lower()] = register_name
-        else:
-            thread_id = int(register_name[5])  # Fifth character is the thread id in this case
-            index = int(register_name[7:])  # Index is the number after the underscore
-            register_mapping_by_thread[thread_id][f"ID = {index}"] = register_name
 
     return register_mapping_by_thread
 
