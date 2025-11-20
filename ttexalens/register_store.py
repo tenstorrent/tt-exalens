@@ -122,6 +122,16 @@ class ConfigurationRegisterDescription(RegisterDescription):
 
 
 @dataclass
+class TensixGeneralPurposeRegisterDescription(RegisterDescription):
+    index: int = 0
+    thread_id: int = 0
+
+    def __post_init__(self):
+        # Tensix has 64 4 byte general purpose registers per thread.
+        self.offset = self.offset + (self.index + self.thread_id * 64) * 4
+
+
+@dataclass
 class NocStatusRegisterDescription(RegisterDescription):
     pass
 
