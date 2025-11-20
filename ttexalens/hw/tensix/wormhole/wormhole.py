@@ -69,7 +69,7 @@ class WormholeDevice(Device):
             return WormholeRouterOnlyBlock(location)
         raise ValueError(f"Unsupported block type: {block_type}")
 
-    def get_tensix_configuration_registers_description(self) -> TensixRegisterDescription:
+    def get_tensix_registers_description(self) -> TensixRegisterDescription:
         return configuration_registers_descriptions
 
 

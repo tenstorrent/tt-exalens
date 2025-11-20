@@ -15,10 +15,10 @@ Description:
   Prints the tensix register group of the given name, at the specified location and device.
 
 Examples:
-  tensix              # Prints all configuration registers for current device and core
-  tensix -d 0         # Prints all configuration registers for device with id 0 and current core
-  tensix -l 0,0       # Pirnts all configuration registers for current device and core at location 0,0
-  tensix all          # Prints all configuration registers for current device and core
+  tensix              # Prints all tensix registers for current device and core
+  tensix -d 0         # Prints all tensix registers for device with id 0 and current core
+  tensix -l 0,0       # Prints all tensix registers for current device and core at location 0,0
+  tensix all          # Prints all tensix registers for current device and core
   tensix alu          # Prints alu configuration registers for current device and core
   tensix pack         # Prints packer's configuration registers for current device and core
   tensix unpack       # Prints unpacker's configuration registers for current device and core
@@ -51,7 +51,7 @@ from ttexalens.util import (
     dict_list_to_table,
 )
 
-possible_registers = ["all", "alu", "pack", "unpack", "gpr"]
+possible_register_groups = ["all", "alu", "pack", "unpack", "gpr"]
 
 # Creates list of column names for configuration register table
 def create_column_names(num_of_columns):
@@ -94,12 +94,14 @@ def run(cmd_text, context, ui_state: UIState):
         argv=cmd_text.split()[1:],
     )
     reg_group = dopt.args["<reg-group>"] if dopt.args["<reg-group>"] else "all"
-    if reg_group not in possible_registers:
-        raise ValueError(f"Invalid configuration register: {reg_group}. Possible values: {possible_registers}")
+    if reg_group not in possible_register_groups:
+        raise ValueError(
+            f"Invalid tensix register group name: {reg_group}. Possible values: {possible_register_groups}"
+        )
 
     device: Device
     for device in dopt.for_each("--device", context, ui_state):
-        conf_reg_desc = device.get_tensix_configuration_registers_description()
+        conf_reg_desc = device.get_tensix_registers_description()
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             INFO(f"Tensix registers for location {loc} on device {device.id()}")
 
