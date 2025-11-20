@@ -298,12 +298,12 @@ debug_bus_signal_map = {
     "tensix_frontend_t2_risc_cfg_stall": DebugBusSignalDescription(rd_sel=0, daisy_sel=1, sig_sel=5, mask=0x40),
     "tensix_frontend_t2_risc_gpr_stall": DebugBusSignalDescription(rd_sel=0, daisy_sel=1, sig_sel=5, mask=0x20),
     "tensix_frontend_t2_risc_tdma_stall": DebugBusSignalDescription(rd_sel=0, daisy_sel=1, sig_sel=5, mask=0x10),
-    # "tensix_frontend_t2_prev_gen_no/0": DebugBusSignalDescription(              # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "tensix_frontend_t2_prev_gen_no/0": DebugBusSignalDescription(
     #     rd_sel=3, daisy_sel=1, sig_sel=4, mask=0xF0000000
-    # ),
-    # "tensix_frontend_t2_prev_gen_no/1": DebugBusSignalDescription(              # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # ),    # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "tensix_frontend_t2_prev_gen_no/1": DebugBusSignalDescription(
     #     rd_sel=0, daisy_sel=1, sig_sel=5, mask=0xF
-    # ),
+    # ),    # Signal spans two consecutive groups, so its value cannot be read atomically.
     "tensix_frontend_t2_lsq_head_valid": DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=4, mask=0x8000000),
     "tensix_frontend_t2_lsq_head_rsrcs_wr_tdma": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=1, sig_sel=4, mask=0x4000000
@@ -804,12 +804,12 @@ debug_bus_signal_map = {
         rd_sel=0, daisy_sel=3, sig_sel=1, mask=0x7E
     ),
     # "rwc_i_dest_target_reg_cfg_math_offset/2": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=1, mask=0x1), # Signal spans two consecutive groups, so its value cannot be read atomically.
-    # "rwc_i_dest_target_reg_cfg_math_offset/1": DebugBusSignalDescription(             # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "rwc_i_dest_target_reg_cfg_math_offset/1": DebugBusSignalDescription(
     #     rd_sel=3, daisy_sel=3, sig_sel=0, mask=0xFFFFFFFF
-    # ),
-    # "rwc_i_dest_target_reg_cfg_math_offset/0": DebugBusSignalDescription(         # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # ),    # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "rwc_i_dest_target_reg_cfg_math_offset/0": DebugBusSignalDescription(
     #     rd_sel=2, daisy_sel=3, sig_sel=0, mask=0xE0000000
-    # ),
+    # ),    # Signal spans two consecutive groups, so its value cannot be read atomically.
     "rwc_i_thread_state_id": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=0, mask=0xE000000),
     "rwc_i_opcode[23..16]": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=0, mask=0x1FE0000),
     "rwc_i_instrn_payload[54..48]": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=0, mask=0xFE000000),
@@ -1304,17 +1304,17 @@ debug_bus_signal_map = {
     "brisc_icache_noc_ctrl_o_req_ready": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=26, mask=0x2),
     "brisc_icache_noc_ctrl_o_instrn_vld": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=26, mask=0x1),
     "ncrisc_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x200),
-    "ncrisc_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+    "ncrisc_id_ex_rts_dup": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x100
-    ),
+    ),  # Duplicate signal name
     "ncrisc_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x80),
     "ncrisc_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x20),
     "ncrisc_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x1F),
     "ncrisc_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=25, mask=0xFFFFFFFF),
     "ncrisc_id_ex_rts": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=25, mask=0x80000000),
-    "ncrisc_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+    "ncrisc_ex_id_rtr_dup": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=25, mask=0x40000000
-    ),
+    ),  # Duplicate signal name
     "ncrisc_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=25, mask=0x3FFFFFFF),
     "ncrisc_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=25, mask=0x10000000),
     "ncrisc_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=25, mask=0x1F00000),
@@ -1397,12 +1397,12 @@ debug_bus_signal_map = {
     "trisc2_pc_buffer_debug_bus_cmd_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x800000
     ),
-    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
     #     rd_sel=3, daisy_sel=7, sig_sel=22, mask=0xFF800000
-    # ),
-    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # ),        # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "trisc2_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
     #     rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x7FFFFF
-    # ),
+    # ),        # Signal spans two consecutive groups, so its value cannot be read atomically.
     "trisc2_risc_wrapper_debug_bus_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=22, mask=0x400000
     ),
@@ -1502,12 +1502,12 @@ debug_bus_signal_map = {
     "trisc1_pc_buffer_debug_bus_cmd_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x800000
     ),
-    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(   # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
     #     rd_sel=3, daisy_sel=7, sig_sel=20, mask=0xFF800000
-    # ),
-    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # ),         # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "trisc1_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
     #     rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x7FFFFF
-    # ),
+    # ),    # Signal spans two consecutive groups, so its value cannot be read atomically.
     "trisc1_risc_wrapper_debug_bus_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=20, mask=0x400000
     ),
@@ -1607,12 +1607,12 @@ debug_bus_signal_map = {
     "trisc0_pc_buffer_debug_bus_cmd_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x800000
     ),
-    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(       # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
+    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
     #     rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x7FFFFF
-    # ),
-    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(       # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
+    # ),        # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
+    # "trisc0_pc_buffer_debug_bus_next_cmd_fifo_data": DebugBusSignalDescription(
     #     rd_sel=3, daisy_sel=7, sig_sel=18, mask=0xFF800000
-    # ),
+    # ),        # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
     "trisc0_risc_wrapper_debug_bus_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x400000
     ),
@@ -1650,17 +1650,17 @@ debug_bus_signal_map = {
         rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x1
     ),
     "trisc2_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x200),
-    "trisc2_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+    "trisc2_id_ex_rts_dup": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x100
-    ),
+    ),  # Duplicate signal name
     "trisc2_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x80),
     "trisc2_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x20),
     "trisc2_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x1F),
     "trisc2_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=17, mask=0xFFFFFFFF),
     "trisc2_id_ex_rts": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=17, mask=0x80000000),
-    "trisc2_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+    "trisc2_ex_id_rtr_dup": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=17, mask=0x40000000
-    ),
+    ),  # Duplicate signal name
     "trisc2_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=17, mask=0x3FFFFFFF),
     "trisc2_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=17, mask=0x10000000),
     "trisc2_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=17, mask=0x1F00000),
@@ -1681,17 +1681,17 @@ debug_bus_signal_map = {
     "trisc2_dbg_obs_cmt_vld": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=16, mask=0x80000000),
     "trisc2_dbg_obs_cmt_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=16, mask=0x7FFFFFFF),
     "trisc1_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x200),
-    "trisc1_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+    "trisc1_id_ex_rts_dup": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x100
-    ),
+    ),  # Duplicate signal name
     "trisc1_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x80),
     "trisc1_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x20),
     "trisc1_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x1F),
     "trisc1_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=15, mask=0xFFFFFFFF),
     "trisc1_id_ex_rts": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=15, mask=0x80000000),
-    "trisc1_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+    "trisc1_ex_id_rtr_dup": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=15, mask=0x40000000
-    ),
+    ),  # Duplicate signal name
     "trisc1_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=15, mask=0x3FFFFFFF),
     "trisc1_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=15, mask=0x10000000),
     "trisc1_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=15, mask=0x1F00000),
@@ -1712,17 +1712,17 @@ debug_bus_signal_map = {
     "trisc1_dbg_obs_cmt_vld": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=14, mask=0x80000000),
     "trisc1_dbg_obs_cmt_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=14, mask=0x7FFFFFFF),
     "trisc0_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x200),
-    "trisc0_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+    "trisc0_id_ex_rts_dup": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x100
-    ),
+    ),  # Duplicate signal name
     "trisc0_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x80),
     "trisc0_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x20),
     "trisc0_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x1F),
     "trisc0_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=13, mask=0xFFFFFFFF),
     "trisc0_id_ex_rts": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=13, mask=0x80000000),
-    "trisc0_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+    "trisc0_ex_id_rtr_dup": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=13, mask=0x40000000
-    ),
+    ),  # Duplicate signal name
     "trisc0_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=13, mask=0x3FFFFFFF),
     "trisc0_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=13, mask=0x10000000),
     "trisc0_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=13, mask=0x1F00000),
@@ -1743,18 +1743,18 @@ debug_bus_signal_map = {
     "trisc0_dbg_obs_cmt_vld": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=12, mask=0x80000000),
     "trisc0_dbg_obs_cmt_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=12, mask=0x7FFFFFFF),
     "brisc_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x200),
-    "brisc_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+    "brisc_id_ex_rts_dup": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x100
-    ),
+    ),  # Duplicate signal name
     "brisc_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x80),
     "brisc_if_invalid_instrn": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x40),
     "brisc_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x20),
     "brisc_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x1F),
     "brisc_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=11, mask=0xFFFFFFFF),
     "brisc_id_ex_rts": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=11, mask=0x80000000),
-    "brisc_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+    "brisc_ex_id_rtr_dup": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=11, mask=0x40000000
-    ),
+    ),  # Duplicate signal name
     "brisc_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=11, mask=0x3FFFFFFF),
     "brisc_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=11, mask=0x10000000),
     "brisc_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=11, mask=0x1F00000),
