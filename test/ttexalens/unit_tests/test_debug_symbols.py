@@ -112,6 +112,15 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(0xAABBCCDD, g_global_struct.msg.packed.read_value())
         self.assertEqual(0xAA, g_global_struct.msg.signal.read_value())
         self.assertEqual(0x87654321, g_global_struct.msg.test2.read_value())
+        self.assertEqual(4, len(g_global_struct.uint_array))
+        self.assertEqual(0x11111111, g_global_struct.uint_array[0].read_value())
+        self.assertEqual(0x22222222, g_global_struct.uint_array[1].read_value())
+        self.assertEqual(0x33333333, g_global_struct.uint_array[2].read_value())
+        self.assertEqual(0x44444444, g_global_struct.uint_array[3].read_value())
+        self.assertNotEqual(0, g_global_struct.uint_pointer.read_value())
+        self.assertEqual(0x11111111, g_global_struct.uint_pointer.dereference().read_value())
+        self.assertEqual(0x11111111, g_global_struct.uint_pointer[0].read_value())
+        self.assertEqual(0x22222222, g_global_struct.uint_pointer[1].read_value())
 
     def verify_global_struct(self, g_global_struct):
         self.assertEqual(0xAA, g_global_struct.base_field1)
@@ -150,6 +159,15 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(0xAABBCCDD, g_global_struct.msg.packed)
         self.assertEqual(0xAA, g_global_struct.msg.signal)
         self.assertEqual(0x87654321, g_global_struct.msg.test2)
+        self.assertEqual(4, len(g_global_struct.uint_array))
+        self.assertEqual(0x11111111, g_global_struct.uint_array[0])
+        self.assertEqual(0x22222222, g_global_struct.uint_array[1])
+        self.assertEqual(0x33333333, g_global_struct.uint_array[2])
+        self.assertEqual(0x44444444, g_global_struct.uint_array[3])
+        self.assertNotEqual(0, g_global_struct.uint_pointer)
+        self.assertEqual(0x11111111, g_global_struct.uint_pointer.dereference())
+        self.assertEqual(0x11111111, g_global_struct.uint_pointer[0])
+        self.assertEqual(0x22222222, g_global_struct.uint_pointer[1])
 
     def test_elf_variable_low_level(self):
         variable_die = self.parsed_elf.variables["g_global_struct"]
