@@ -95,7 +95,7 @@ def run(cmd_text, context, ui_state: UIState):
 
     device: Device
     for device in dopt.for_each("--device", context, ui_state):
-        conf_reg_desc = device.get_tensix_configuration_registers_description()
+        conf_reg_desc = device.get_tensix_registers_description()
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             INFO(f"Configuration registers for location {loc} on device {device.id()}")
 
