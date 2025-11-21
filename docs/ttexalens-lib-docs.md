@@ -17,7 +17,7 @@ a singleton, as it can be explicitly provided to library functions.
 ## init_ttexalens
 
 ```
-init_ttexalens(wanted_devices=None, init_jtag=False, use_noc1=False) -> Context
+init_ttexalens(wanted_devices=None, init_jtag=False, use_noc1=False, simulation_directory=None) -> Context
 ```
 
 
@@ -30,7 +30,9 @@ Interfacing device is local, through pybind.
 ### Args
 
 - `wanted_devices` *(list, optional)*: List of device IDs we want to connect to. If None, connect to all available devices.
-- `caching_path` *(str, optional)*: Path to the cache file to write. If None, caching is disabled.
+- `init_jtag` *(bool)*: Whether to initialize JTAG interface. Default is False.
+- `use_noc1` *(bool)*: Whether to initialize with NOC1 and use NOC1 for communication with the device. Default is False.
+- `simulation_directory` *(str, optional)*: If specified, starts the simulator from the given build output directory.
 
 
 ### Returns
@@ -56,7 +58,6 @@ Interfacing device is done remotely through TTExaLens client.
 
 - `ip_address` *(str)*: IP address of the TTExaLens server. Default is 'localhost'.
 - `port` *(int)*: Port number of the TTExaLens server interface. Default is 5555.
-- `cache_path` *(str, optional)*: Path to the cache file to write. If None, caching is disabled.
 
 
 ### Returns
@@ -319,7 +320,7 @@ Writes data to address 'addr' at specified location using specified noc.
 ## load_elf
 
 ```
-load_elf(elf_file, location, risc_name, neo_id=None, device_id=0, context=None) -> None
+load_elf(elf_file, location, risc_name, neo_id=None, device_id=0, context=None, return_start_address=False) -> None | int | int
 ```
 
 
@@ -391,7 +392,7 @@ Sends an ARC message to the device.
 - `wait_for_done` *(bool)*: If True, waits for the message to be processed.
 - `arg0` *(int)*: First argument to the message.
 - `arg1` *(int)*: Second argument to the message.
-- `timeout` *(int)*: Timeout in milliseconds.
+- `timeout` *(datetime.timedelta)*: Timeout.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 
@@ -427,16 +428,16 @@ Reads an ARC telemetry entry from the device.
 
 
 
-## read_tensix_register
+## read_register
 
 ```
-read_tensix_register(location, register, noc_id=0, neo_id=None, device_id=0, context=None) -> int
+read_register(location, register, noc_id=0, neo_id=None, device_id=0, context=None) -> int
 ```
 
 
 ### Description
 
-Reads the value of a register from the tensix core.
+Reads the value of a register from the noc location.
 
 
 ### Args
@@ -456,16 +457,16 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 
 
 
-## write_tensix_register
+## write_register
 
 ```
-write_tensix_register(location, register, value, noc_id=0, neo_id=None, device_id=0, context=None) -> None
+write_register(location, register, value, noc_id=0, neo_id=None, device_id=0, context=None) -> None
 ```
 
 
 ### Description
 
-Writes value to a register on the tensix core.
+Writes value to a register on the noc location.
 
 
 ### Args
