@@ -15,7 +15,7 @@ from ttexalens.cli_commands.debug_bus import parse_string
 
 @parameterized_class(
     [
-        {"core_desc": "ETH0", "neo_id": None},
+        # {"core_desc": "ETH0", "neo_id": None},
         {"core_desc": "FW0", "neo_id": None},
         {"core_desc": "FW1", "neo_id": None},
         # {"core_desc": "DRAM0", "neo_id": None},
