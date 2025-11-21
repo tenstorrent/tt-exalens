@@ -16,7 +16,7 @@ from ttexalens.hardware.blackhole.pcie_block import BlackholePcieBlock
 from ttexalens.hardware.blackhole.router_only_block import BlackholeRouterOnlyBlock
 from ttexalens.hardware.blackhole.security_block import BlackholeSecurityBlock
 from ttexalens.hardware.noc_block import NocBlock
-from ttexalens.hardware.tensix_configuration_registers_description import TensixConfigurationRegistersDescription
+from ttexalens.hardware.tensix_configuration_registers_description import TensixRegisterDescription
 import ttexalens.util as util
 from ttexalens.device import TensixInstructions, Device
 
@@ -78,5 +78,5 @@ class BlackholeDevice(Device):
             return BlackholeSecurityBlock(location)
         raise ValueError(f"Unsupported block type: {block_type}")
 
-    def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
+    def get_tensix_registers_description(self) -> TensixRegisterDescription:
         return configuration_registers_descriptions

@@ -122,12 +122,7 @@ class ElfVariable:
         Example: var.get_member('bytes') instead of var.bytes
         """
         if self.__type_die.tag_is("pointer_type"):
-            assert self.__type_die.size is not None
-            assert self.__type_die.dereference_type is not None
-            address_bytes = self.__mem_access.read(self.__address, self.__type_die.size)
-            address = int.from_bytes(address_bytes, byteorder="little")
-            dereferenced_pointer = ElfVariable(self.__type_die.dereference_type, address, self.__mem_access)
-            return dereferenced_pointer.get_member(member_name)
+            return self.dereference().get_member(member_name)
         offset = 0
         child_die = self.__type_die.get_child_by_name(member_name)
         if child_die is None:
@@ -192,12 +187,14 @@ class ElfVariable:
 
             if self.__type_die.tag_is("pointer_type"):
                 array_element_type = self.__type_die.dereference_type
+                address = self.dereference().get_address()
             else:
                 array_element_type = self.__type_die.array_element_type
+                address = self.__address
 
             assert array_element_type is not None
             assert array_element_type.size is not None
-            new_address = self.__address + key * array_element_type.size
+            new_address = address + key * array_element_type.size
             return ElfVariable(array_element_type, new_address, self.__mem_access)
 
         # Handle other types that might be used as indices (like ElfVariable with __index__)
@@ -243,16 +240,30 @@ class ElfVariable:
         """
         return [self[i].read_value() for i in range(len(self))]
 
+    def dereference(self) -> "ElfVariable":
+        """
+        Dereference a pointer variable and return the pointed-to variable.
+        """
+        if not self.__type_die.tag_is("pointer_type"):
+            raise Exception(f"ERROR: {self.__type_die.name} is not a pointer type")
+        assert self.__type_die.size is not None
+        assert self.__type_die.dereference_type is not None
+        address_bytes = self.__mem_access.read(self.__address, self.__type_die.size)
+        address = int.from_bytes(address_bytes, byteorder="little")
+        return ElfVariable(self.__type_die.dereference_type, address, self.__mem_access)
+
     def read_value(self) -> int | float | bool:
         # Check that type_die is a basic type
-        if not self.__type_die.tag_is("base_type"):
-            raise Exception(f"ERROR: {self.__type_die.name} is not a base type")
+        if not self.__type_die.tag_is("base_type") and not self.__type_die.tag_is("pointer_type"):
+            raise Exception(f"ERROR: {self.__type_die.name} is not a base type or pointer type")
 
         # Read the value from memory
         assert self.__type_die.size is not None
         value_bytes = self.__mem_access.read(self.__address, self.__type_die.size)
 
         # Convert the value to the appropriate type
+        if self.__type_die.tag_is("pointer_type"):
+            return self.dereference().get_address()
         if self.__type_die.name == "float":
             return struct.unpack("f", value_bytes)[0]
         elif self.__type_die.name == "double":
@@ -671,12 +682,7 @@ class ElfVariable:
 
     def read(self) -> "ElfVariable":
         if self.__type_die.tag_is("pointer_type"):
-            assert self.__type_die.size is not None
-            assert self.__type_die.dereference_type is not None
-            address_bytes = self.__mem_access.read(self.__address, self.__type_die.size)
-            address = int.from_bytes(address_bytes, byteorder="little")
-            dereferenced_pointer = ElfVariable(self.__type_die.dereference_type, address, self.__mem_access)
-            return dereferenced_pointer.read()
+            return self.dereference().read()
         data = self.read_bytes()
         address = self.__address
         return ElfVariable(self.__type_die, address, CachedReadMemoryAccess(address, data, self.__mem_access))

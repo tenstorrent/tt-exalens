@@ -8,7 +8,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
-from ttexalens.hardware.tensix_configuration_registers_description import TensixConfigurationRegistersDescription
+from ttexalens.hardware.tensix_configuration_registers_description import TensixRegisterDescription
 
 #
 # Device
@@ -37,5 +37,5 @@ class QuasarDevice(Device):
             return QuasarFunctionalWorkerBlock(location)
         raise ValueError(f"Unsupported block type: {block_type}")
 
-    def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
+    def get_tensix_registers_description(self) -> TensixRegisterDescription:
         raise NotImplementedError("Quasar does not have a Tensix configuration registers description yet.")

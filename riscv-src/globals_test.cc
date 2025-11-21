@@ -75,6 +75,8 @@ struct GlobalStruct : public BaseStruct, public BaseStruct2 {
     InnerStruct* p;
     UnionTest u;
     go_msg_t msg;
+    uint32_t uint_array[4];
+    uint32_t* uint_pointer;
 };
 
 GlobalStruct g_global_struct;
@@ -112,6 +114,11 @@ void update_struct(GlobalStruct* gs) {
     gs->msg.test = 0x12345678;
     gs->msg.packed = 0xAABBCCDD;
     gs->msg.test2 = 0x87654321;
+    gs->uint_array[0] = 0x11111111;
+    gs->uint_array[1] = 0x22222222;
+    gs->uint_array[2] = 0x33333333;
+    gs->uint_array[3] = 0x44444444;
+    gs->uint_pointer = &gs->uint_array[0];
 }
 
 int main() {

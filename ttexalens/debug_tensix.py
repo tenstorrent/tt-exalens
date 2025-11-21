@@ -7,9 +7,6 @@ import struct
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
-from ttexalens.hw.tensix.wormhole.wormhole import WormholeDevice
-from ttexalens.hw.tensix.blackhole.blackhole import BlackholeDevice
-from ttexalens.register_store import RegisterDescription
 from ttexalens.tt_exalens_lib import check_context, validate_device_id
 from ttexalens.util import WARN, TTException
 from ttexalens.device import Device
@@ -58,7 +55,6 @@ def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
 
 
 class TensixDebug:
-    trisc_id: int
     core_loc: OnChipCoordinate
     device_id: int
     context: Context
