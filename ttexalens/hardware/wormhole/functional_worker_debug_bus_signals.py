@@ -986,7 +986,6 @@ debug_bus_signal_map = {
 
 # Group name mapping (daisy_sel, sig_sel) based on documentation
 """https://github.com/tenstorrent/tt-isa-documentation/blob/main/WormholeB0/TensixTile/DebugDaisychain.md"""
-# Signal name mapping to (DaisySel, sig_sel)
 group_map = {
     # RISCV execution state (DaisySel == 7)
     "brisc_group_a": (7, 10),
@@ -1025,7 +1024,7 @@ group_map = {
     "rwc_coordinates_a": (3, 2),
     "rwc_coordinates_b": (3, 3),
     "rwc_fidelity_phase": (3, 4),
-    # L1 access ports (DaisySel == 8)
+    # L1 Memory Access Ports (DaisySel == 8)
     "l1_access_ports_addr_a": (8, 2),
     "l1_access_ports_addr_b": (8, 3),
     "l1_access_ports_addr_c": (8, 5),

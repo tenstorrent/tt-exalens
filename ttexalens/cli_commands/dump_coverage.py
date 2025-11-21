@@ -23,6 +23,7 @@ Examples:
 
 command_metadata = {
     "short": "cov",
+    "long": "dump-coverage",
     "type": "high-level",
     "description": __doc__,
     "context": "limited",
