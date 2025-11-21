@@ -94,7 +94,6 @@ class TestDebugBus(unittest.TestCase):
             )
         self.assertIn("samples count must be at least 1", str(cm.exception))
 
-
     def test_signal_group_invalid_l1_address(self):
         if not self.device.is_wormhole():
             self.skipTest("This test only works on Wormhole devices.")
