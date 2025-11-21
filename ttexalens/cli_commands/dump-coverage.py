@@ -17,9 +17,7 @@ Description:
   and place it into the output directory along with its gcno.
 
 Examples:
-  run-elf build/riscv-src/wormhole/callstack.coverage.trisc0.elf -r trisc0 # Pre-requisite: we have to run the elf before running coverage
-  cov build/riscv-src/wormhole/callstack.coverage.trisc0.elf coverage/callstack.gcda
-  run-elf build/riscv-src/wormhole/cov_test.coverage.brisc.elf -r brisc # Pre-requisite: we have to run the elf before running coverage
+  re build/riscv-src/wormhole/cov_test.coverage.brisc.elf -r brisc # Pre-requisite: we have to run the elf before running coverage
   cov build/riscv-src/wormhole/cov_test.coverage.brisc.elf coverage/cov_test.gcda coverage/cov_test.gcno
 """
 
@@ -39,28 +37,28 @@ from ttexalens.coverage import dump_coverage
 
 
 def run(cmd_text, context, ui_state: UIState) -> list:
-    # dopt = command_parser.tt_docopt(
-    #     command_metadata["description"],
-    #     argv=cmd_text.split()[1:],
-    #     common_option_names=command_metadata["common_option_names"],
-    # )
+    dopt = command_parser.tt_docopt(
+        command_metadata["description"],
+        argv=cmd_text.split()[1:],
+        common_option_names=command_metadata["common_option_names"],
+    )
 
-    # elf_path = dopt.args["<elf>"]
-    # gcda_path = dopt.args["<gcda_path>"]
-    # gcno_arg = dopt.args.get("<gcno_copy_path>")
-    # gcno_path = gcno_arg if gcno_arg else None
-    # context = check_context(context)
-    # elf = parse_elf(elf_path, context)
+    elf_path = dopt.args["<elf>"]
+    gcda_path = dopt.args["<gcda_path>"]
+    gcno_arg = dopt.args.get("<gcno_copy_path>")
+    gcno_path = gcno_arg if gcno_arg else None
+    context = check_context(context)
+    elf = parse_elf(elf_path, context)
 
-    # for device in dopt.for_each("--device", context, ui_state):
-    #     for loc in dopt.for_each("--loc", context, ui_state, device=device):
-    #         try:
-    #             dump_coverage(elf, loc, gcda_path, gcno_path)
-    #             util.VERBOSE(f"Coverage data dumped for device {device.id} loc {loc}:")
-    #             if gcno_path:
-    #                 util.VERBOSE(gcno_path)
-    #             util.VERBOSE(gcda_path)
-    #         except Exception as e:
-    #             util.ERROR(f"dump-coverage: {e}")
+    for device in dopt.for_each("--device", context, ui_state):
+        for loc in dopt.for_each("--loc", context, ui_state, device=device):
+            try:
+                dump_coverage(elf, loc, gcda_path, gcno_path)
+                util.VERBOSE(f"Coverage data dumped for device {device.id} loc {loc}:")
+                if gcno_path:
+                    util.VERBOSE(gcno_path)
+                util.VERBOSE(gcda_path)
+            except Exception as e:
+                util.ERROR(f"dump-coverage: {e}")
 
     return []

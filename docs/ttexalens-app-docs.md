@@ -36,7 +36,7 @@ brxy 0,0 0x0 1
 Output:
 ```
 0,0 (L1) : 0x00000000 (4 bytes)
-0x00000000:  00001234
+0x00000000:  00000293
 ```
 Read 16 words from address 0
 ```
@@ -45,9 +45,9 @@ brxy 0,0 0x0 16
 Output:
 ```
 0,0 (L1) : 0x00000000 (64 bytes)
-0x00000000:  00001234  00001234  00001234  00001234
-0x00000010:  00001234  00001234  00001234  00001234
-0x00000020:  00001234  00001234  0062a023  ffb112b7
+0x00000000:  00000293  00000313  0a628063  ffb112b7
+0x00000010:  00000313  00435313  0062a023  ffb112b7
+0x00000020:  00428293  00004337  0062a023  ffb112b7
 0x00000030:  00828293  00000313  00000393  40638333
 ```
 Prints 32 bytes in i8 format
@@ -57,9 +57,9 @@ brxy 0,0 0x0 32 --format i8
 Output:
 ```
 0,0 (L1) : 0x00000000 (128 bytes)
-0x00000000:  52   18   0    0  52   18   0   0  52   18   0    0    52   18   0    0
-0x00000010:  52   18   0    0  52   18   0   0  52   18   0    0    52   18   0    0
-0x00000020:  52   18   0    0  52   18   0   0  35   160  98   0    183  18   177  255
+0x00000000:  147  2    0    0  19   3    0   0  99   128  98   10   183  18   177  255
+0x00000010:  19   3    0    0  19   83   67  0  35   160  98   0    183  18   177  255
+0x00000020:  147  130  66   0  55   67   0   0  35   160  98   0    183  18   177  255
 0x00000030:  147  130  130  0  19   3    0   0  147  3    0    0    51   131  99   64
 0x00000040:  19   83   67   0  35   160  98  0  183  18   177  255  147  130  194  0
 0x00000050:  19   3    16   0  35   160  98  0  183  18   177  255  147  130  2    1
@@ -73,25 +73,25 @@ brxy 0,0 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000000 (0) => 0x00001234 (4660) - 23218 times
+0,0 (L1) : 0x00000000 (0) => 0x00000293 (659) - 22105 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000004 (4) => 0x00001234 (4660) - 23156 times
+0,0 (L1) : 0x00000004 (4) => 0x00000313 (787) - 22301 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000008 (8) => 0x00001234 (4660) - 23084 times
+0,0 (L1) : 0x00000008 (8) => 0x0a628063 (174227555) - 22544 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x0000000c (12) => 0x00001234 (4660) - 22977 times
+0,0 (L1) : 0x0000000c (12) => 0xffb112b7 (4289794743) - 22768 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000010 (16) => 0x00001234 (4660) - 23108 times
+0,0 (L1) : 0x00000010 (16) => 0x00000313 (787) - 22797 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000014 (20) => 0x00001234 (4660) - 22322 times
+0,0 (L1) : 0x00000014 (20) => 0x00435313 (4412179) - 22363 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000018 (24) => 0x00001234 (4660) - 22867 times
+0,0 (L1) : 0x00000018 (24) => 0x0062a023 (6463523) - 22238 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x0000001c (28) => 0x00001234 (4660) - 22917 times
+0,0 (L1) : 0x0000001c (28) => 0xffb112b7 (4289794743) - 22131 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000020 (32) => 0x00001234 (4660) - 22500 times
+0,0 (L1) : 0x00000020 (32) => 0x00428293 (4358803) - 21874 times
 Sampling for 0.15625 seconds...
-0,0 (L1) : 0x00000024 (36) => 0x00001234 (4660) - 22969 times
+0,0 (L1) : 0x00000024 (36) => 0x00004337 (17207) - 22060 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -101,7 +101,7 @@ brxy ch0 0x0 16
 Output:
 ```
 ch0 (DRAM) : 0x00000000 (64 bytes)
-0x00000000:  404000bb  55555555  55555551  55555555
+0x00000000:  405000bf  55555555  55555551  55555555
 0x00000010:  55555555  55555555  55555555  55555555
 0x00000020:  5455525d  50545551  55555755  55575555
 0x00000030:  51555555  55515455  55555555  57df5155
@@ -273,11 +273,11 @@ There are matches remaining. To see more results, increase the --max value.
 ╭────────────────┬───────────────────────┬────────────╮
 │ Group          │ Name                  │ Value      │
 ├────────────────┼───────────────────────┼────────────┤
-│ brisc_group_a  │ brisc_dbg_obs_cmt_pc  │ 0x0        │
-│ brisc_group_a  │ brisc_pc              │ 0x0        │
-│ brisc_group_b  │ brisc_id_ex_pc        │ 0x0        │
-│ ncrisc_group_a │ ncrisc_dbg_obs_cmt_pc │ 0x1f02bb62 │
-│ ncrisc_group_b │ ncrisc_id_ex_pc       │ 0x1da3fdd9 │
+│ brisc_group_a  │ brisc_dbg_obs_cmt_pc  │ 0x15c      │
+│ brisc_group_a  │ brisc_pc              │ 0x15c      │
+│ brisc_group_b  │ brisc_id_ex_pc        │ 0x15c      │
+│ ncrisc_group_a │ ncrisc_dbg_obs_cmt_pc │ 0x1f02bad2 │
+│ ncrisc_group_b │ ncrisc_id_ex_pc       │ 0x1d81dd89 │
 ╰────────────────┴───────────────────────┴────────────╯
 
 ```
@@ -335,16 +335,16 @@ There are matches remaining. To see more results, increase the --max value.
 ╭────────────────────────┬──────────────────────────────────────╮
 │ Name                   │ Value                                │
 ├────────────────────────┼──────────────────────────────────────┤
-│ brisc_dbg_obs_cmt_pc   │ [0x0, 0x0, 0x0, 0x0]                 │
-│ brisc_dbg_obs_cmt_vld  │ [False, False, False, False]         │
-│ brisc_dbg_obs_mem_addr │ [0x10001, 0x10001, 0x10001, 0x10001] │
+│ brisc_dbg_obs_cmt_pc   │ [0x15c, 0x15c, 0x15c, 0x15c]         │
+│ brisc_dbg_obs_cmt_vld  │ [False, False, True, False]          │
+│ brisc_dbg_obs_mem_addr │ [0x10000, 0x10000, 0x10000, 0x10000] │
 │ brisc_dbg_obs_mem_rden │ [False, False, False, False]         │
 │ brisc_dbg_obs_mem_wren │ [False, False, False, False]         │
-│ brisc_i_instrn         │ [0x0, 0x0, 0x0, 0x0]                 │
+│ brisc_i_instrn         │ [0x6f, 0x8067, 0x0, 0x6f]            │
 │ brisc_i_instrn_req_rtr │ [True, True, True, True]             │
-│ brisc_i_instrn_vld     │ [False, False, False, False]         │
-│ brisc_o_instrn_addr    │ [0x0, 0x0, 0x0, 0x0]                 │
-│ brisc_o_instrn_req     │ [False, False, False, False]         │
+│ brisc_i_instrn_vld     │ [True, True, False, True]            │
+│ brisc_o_instrn_addr    │ [0x160, 0x164, 0x15c, 0x160]         │
+│ brisc_o_instrn_req     │ [True, True, True, True]             │
 ╰────────────────────────┴──────────────────────────────────────╯
 
 ```
@@ -359,8 +359,8 @@ Output:
 ╭──────────────────────┬───────╮
 │ Name                 │ Value │
 ├──────────────────────┼───────┤
-│ brisc_dbg_obs_cmt_pc │ 0x0   │
-│ brisc_pc             │ 0x0   │
+│ brisc_dbg_obs_cmt_pc │ 0x15c │
+│ brisc_pc             │ 0x15c │
 ╰──────────────────────┴───────╯
 
 ```
@@ -370,8 +370,8 @@ debug-bus trisc0_pc,trisc1_pc
 ```
 Output:
 ```
-device:0 loc:1-1 (0,0)  trisc0_pc: 0x3b751654
-device:0 loc:1-1 (0,0)  trisc1_pc: 0x6440adfd
+device:0 loc:1-1 (0,0)  trisc0_pc: 0x1b6f5654
+device:0 loc:1-1 (0,0)  trisc1_pc: 0x6460bd75
 ```
 Print value for a custom signal and trisc2_pc
 ```
@@ -379,8 +379,8 @@ debug-bus {7,0,12,0x3ffffff},trisc2_pc
 ```
 Output:
 ```
-device:0 loc:1-1 (0,0)  Daisy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff: 0x3751654
-device:0 loc:1-1 (0,0)  trisc2_pc: 0x3c80803d
+device:0 loc:1-1 (0,0)  Daisy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff: 0x36f5654
+device:0 loc:1-1 (0,0)  trisc2_pc: 0x1c880011
 ```
 
 
@@ -434,7 +434,7 @@ Legend:
 
 ==== Device 0 [0x261832012]
     00     01     02     03     04     05     06     07
-00  -----  -----  -----  -----  -----  -----  -----  -----
+00  R----  -----  -----  -----  -----  -----  -----  -----
 01  -----  -----  -----  -----  -----  -----  -----  -----
 02  -----  -----  -----  -----  -----  -----  -----  -----
 03  -----  -----  -----  -----  -----  -----  -----  -----
@@ -637,15 +637,7 @@ and place it into the output directory along with its gcno.
 
 Pre-requisite: we have to run the elf before running coverage
 ```
-run-elf build/riscv-src/wormhole/callstack.coverage.trisc0.elf -r trisc0
-```
-Command:
-```
-cov build/riscv-src/wormhole/callstack.coverage.trisc0.elf coverage/callstack.gcda
-```
-Pre-requisite: we have to run the elf before running coverage
-```
-run-elf build/riscv-src/wormhole/cov_test.coverage.brisc.elf -r brisc
+re build/riscv-src/wormhole/cov_test.coverage.brisc.elf -r brisc
 ```
 Command:
 ```
@@ -694,25 +686,25 @@ gpr
 Output:
 ```
 RISC-V registers for location 0,0 on device 0
-Register     brisc       trisc0      trisc1    trisc2    ncrisc
------------  ----------  ----------  --------  --------  --------
-0 - zero     0x00000000  0x00000000
-1 - ra       0x0000015c  0x000122b8
-2 - sp       0xffb00ff0  0xffb00660
-3 - gp       0x00008800  0x0001a800
-4 - tp       0x00000000  0x00000000
-5 - t0       0x00000001  0x00000000
-6 - t1       0x00020000  0x00000000
-7 - t2       0x00000008  0x00000000
-8 - s0 / fp  0x00000000  0xffb00670
-9 - s1       0x00000000  0x00000000
-10 - a0      0xffb00fcc  0x00000001
-11 - a1      0x00000000  0x00000000
-12 - a2      0x00000001  0x00000001
-13 - a3      0x00000000  0x0001a1c0
-14 - a4      0x00000000  0x00000001
-15 - a5      0x00000100  0x00000000
-16 - a6      0x00000006  0x00000000
+Register     brisc       trisc0    trisc1    trisc2    ncrisc
+-----------  ----------  --------  --------  --------  --------
+0 - zero     0x00000000
+1 - ra       0x0000015c
+2 - sp       0xffb00ff0
+3 - gp       0x00008800
+4 - tp       0x00000000
+5 - t0       0x00000001
+6 - t1       0x00020000
+7 - t2       0x00000008
+8 - s0 / fp  0x00000000
+9 - s1       0x00000000
+10 - a0      0xffb00fcc
+11 - a1      0x00000000
+12 - a2      0x00000001
+13 - a3      0x00000000
+14 - a4      0x00000000
+15 - a5      0x00000100
+16 - a6      0x00000006
 ...
 ```
 Command:
@@ -722,13 +714,13 @@ gpr ra,sp,pc
 Output:
 ```
 RISC-V registers for location 0,0 on device 0
-Register    brisc       trisc0      trisc1    trisc2    ncrisc
-----------  ----------  ----------  --------  --------  --------
-1 - ra      0x0000015c  0x000122b8
-2 - sp      0xffb00ff0  0xffb00660
-32 - pc     0x0000015c  0x000121bc
-Soft reset  False       False       True      True      True
-Halted      False       True        -         -         -
+Register    brisc       trisc0    trisc1    trisc2    ncrisc
+----------  ----------  --------  --------  --------  --------
+1 - ra      0x0000015c
+2 - sp      0xffb00ff0
+32 - pc     0x0000015c
+Soft reset  False       True      True      True      True
+Halted      False       -         -         -         -
 ```
 
 
@@ -970,21 +962,21 @@ GPR
 ┌─────────────────────────────┬─────────────────┐   ┌──────────────────────────┬────────────┐   ┌─────────────────────┬───────────...
 │ Thread 0                    │ Values          │   │ Thread 1                 │ Values     │   │ Thread 2            │ Values    ...
 ├─────────────────────────────┼─────────────────┤   ├──────────────────────────┼────────────┤   ├─────────────────────┼───────────...
-│ zero                        │ 2613105121      │   │ zero                     │ 3791483198 │   │ zero                │ 134334145 ...
-│ dbg_reserved                │ 224351033       │   │ dbg_reserved             │ 2306539146 │   │ dbg_reserved        │ 2768158373...
-│ dbg_msg                     │ 2869502861      │   │ dbg_msg                  │ 1709266305 │   │ dbg_msg             │ 2057438295...
-│ dbg_ckid                    │ 518018233       │   │ dbg_ckid                 │ 2204027414 │   │ dbg_ckid            │ 56131782  ...
-│ operand_base_addr           │ 0x4f1b43a3      │   │ perf_dbus_cntl           │ 553321984  │   │ dest_offset_lo      │ 1568382383...
-│ operand_offset_addr         │ 0xa0bb5234      │   │ perf_mem_dump_cntl_clear │ 3791447602 │   │ gpr_5               │ 274231776 ...
-│ gpr_6                       │ 2155074513      │   │ perf_mem_dump_cntl_set   │ 3848472389 │   │ gpr_6               │ 3660870710...
-│ gpr_7                       │ 2468164076      │   │ perf_cnt_start           │ 491974993  │   │ gpr_7               │ 4116906870...
-│ zero_0                      │ 540116083       │   │ perf_cnt_stop            │ 1218130083 │   │ dest_offset_hi      │ 1915585435...
-│ zero_1                      │ 3323633380      │   │ perf_epoch_base_addr     │ 0x7eb77cb  │   │ gpr_9               │ 252981344 ...
-│ zero_2                      │ 992136414       │   │ perf_epoch_offset        │ 2170228232 │   │ gpr_10              │ 4034855142...
-│ zero_3                      │ 2587008857      │   │ gpr_11                   │ 4219454334 │   │ gpr_11              │ 1078108227...
-│ tmp0                        │ 2301046721      │   │ gpr_12                   │ 348228310  │   │ output_addr         │ 0x3e11a101...
-│ tmp1                        │ 1730277751      │   │ gpr_13                   │ 2179345549 │   │ gpr_13              │ 3765559460...
-│ tile_size                   │ 3022754017      │   │ gpr_14                   │ 1159465041 │   │ gpr_14              │ 2931555667...
+│ zero                        │ 2606813643      │   │ zero                     │ 3791479294 │   │ zero                │ 209897045 ...
+│ dbg_reserved                │ 492783129       │   │ dbg_reserved             │ 2290007842 │   │ dbg_reserved        │ 2768153155...
+│ dbg_msg                     │ 2332632060      │   │ dbg_msg                  │ 1424019877 │   │ dbg_msg             │ 2046952519...
+│ dbg_ckid                    │ 515906201       │   │ dbg_ckid                 │ 2423835159 │   │ dbg_ckid            │ 1121222854...
+│ operand_base_addr           │ 0x4f1ff5f2      │   │ perf_dbus_cntl           │ 553320976  │   │ dest_offset_lo      │ 1567333743...
+│ operand_offset_addr         │ 0xa8ab32b4      │   │ perf_mem_dump_cntl_clear │ 3279741442 │   │ gpr_5               │ 2420679130...
+│ gpr_6                       │ 2152780753      │   │ perf_mem_dump_cntl_set   │ 1702036293 │   │ gpr_6               │ 1530161458...
+│ gpr_7                       │ 2443017900      │   │ perf_cnt_start           │ 2488332656 │   │ gpr_7               │ 3831701878...
+│ zero_0                      │ 876201075       │   │ perf_cnt_stop            │ 1620783411 │   │ dest_offset_hi      │ 1915585435...
+│ zero_1                      │ 3324688836      │   │ perf_epoch_base_addr     │ 0x7cb3fea  │   │ gpr_9               │ 163881462 ...
+│ zero_2                      │ 639814878       │   │ perf_epoch_offset        │ 2171817753 │   │ gpr_10              │ 3095380462...
+│ zero_3                      │ 2591203153      │   │ gpr_11                   │ 2625586042 │   │ gpr_11              │ 1086887235...
+│ tmp0                        │ 2284273633      │   │ gpr_12                   │ 2495711762 │   │ output_addr         │ 0x9211a541...
+│ tmp1                        │ 1695674467      │   │ gpr_13                   │ 2175147545 │   │ gpr_13              │ 3774201944...
+│ tile_size                   │ 3173685442      │   │ gpr_14                   │ 1163331665 │   │ gpr_14              │ 2931555667...
 ...
 ```
 Prints all general purpose registers for current device and core
@@ -998,21 +990,21 @@ GPR
 ┌─────────────────────────────┬─────────────────┐   ┌──────────────────────────┬────────────┐   ┌─────────────────────┬───────────...
 │ Thread 0                    │ Values          │   │ Thread 1                 │ Values     │   │ Thread 2            │ Values    ...
 ├─────────────────────────────┼─────────────────┤   ├──────────────────────────┼────────────┤   ├─────────────────────┼───────────...
-│ zero                        │ 2613105121      │   │ zero                     │ 3791483198 │   │ zero                │ 134334145 ...
-│ dbg_reserved                │ 224351033       │   │ dbg_reserved             │ 2306539146 │   │ dbg_reserved        │ 2768158373...
-│ dbg_msg                     │ 2869502861      │   │ dbg_msg                  │ 1709266305 │   │ dbg_msg             │ 2057438295...
-│ dbg_ckid                    │ 518018233       │   │ dbg_ckid                 │ 2204027414 │   │ dbg_ckid            │ 56131782  ...
-│ operand_base_addr           │ 0x4f1b43a3      │   │ perf_dbus_cntl           │ 553321984  │   │ dest_offset_lo      │ 1568382383...
-│ operand_offset_addr         │ 0xa0bb5234      │   │ perf_mem_dump_cntl_clear │ 3791447602 │   │ gpr_5               │ 274231776 ...
-│ gpr_6                       │ 2155074513      │   │ perf_mem_dump_cntl_set   │ 3848472389 │   │ gpr_6               │ 3660870710...
-│ gpr_7                       │ 2468164076      │   │ perf_cnt_start           │ 491974993  │   │ gpr_7               │ 4116906870...
-│ zero_0                      │ 540116083       │   │ perf_cnt_stop            │ 1218130083 │   │ dest_offset_hi      │ 1915585435...
-│ zero_1                      │ 3323633380      │   │ perf_epoch_base_addr     │ 0x7eb77cb  │   │ gpr_9               │ 252981344 ...
-│ zero_2                      │ 992136414       │   │ perf_epoch_offset        │ 2170228232 │   │ gpr_10              │ 4034855142...
-│ zero_3                      │ 2587008857      │   │ gpr_11                   │ 4219454334 │   │ gpr_11              │ 1078108227...
-│ tmp0                        │ 2301046721      │   │ gpr_12                   │ 348228310  │   │ output_addr         │ 0x3e11a101...
-│ tmp1                        │ 1730277751      │   │ gpr_13                   │ 2179345549 │   │ gpr_13              │ 3765559460...
-│ tile_size                   │ 3022754017      │   │ gpr_14                   │ 1159465041 │   │ gpr_14              │ 2931555667...
+│ zero                        │ 2606813643      │   │ zero                     │ 3791479294 │   │ zero                │ 209897045 ...
+│ dbg_reserved                │ 492783129       │   │ dbg_reserved             │ 2290007842 │   │ dbg_reserved        │ 2768153155...
+│ dbg_msg                     │ 2332632060      │   │ dbg_msg                  │ 1424019877 │   │ dbg_msg             │ 2046952519...
+│ dbg_ckid                    │ 515906201       │   │ dbg_ckid                 │ 2423835159 │   │ dbg_ckid            │ 1121222854...
+│ operand_base_addr           │ 0x4f1ff5f2      │   │ perf_dbus_cntl           │ 553320976  │   │ dest_offset_lo      │ 1567333743...
+│ operand_offset_addr         │ 0xa8ab32b4      │   │ perf_mem_dump_cntl_clear │ 3279741442 │   │ gpr_5               │ 2420679130...
+│ gpr_6                       │ 2152780753      │   │ perf_mem_dump_cntl_set   │ 1702036293 │   │ gpr_6               │ 1530161458...
+│ gpr_7                       │ 2443017900      │   │ perf_cnt_start           │ 2488332656 │   │ gpr_7               │ 3831701878...
+│ zero_0                      │ 876201075       │   │ perf_cnt_stop            │ 1620783411 │   │ dest_offset_hi      │ 1915585435...
+│ zero_1                      │ 3324688836      │   │ perf_epoch_base_addr     │ 0x7cb3fea  │   │ gpr_9               │ 163881462 ...
+│ zero_2                      │ 639814878       │   │ perf_epoch_offset        │ 2171817753 │   │ gpr_10              │ 3095380462...
+│ zero_3                      │ 2591203153      │   │ gpr_11                   │ 2625586042 │   │ gpr_11              │ 1086887235...
+│ tmp0                        │ 2284273633      │   │ gpr_12                   │ 2495711762 │   │ output_addr         │ 0x9211a541...
+│ tmp1                        │ 1695674467      │   │ gpr_13                   │ 2175147545 │   │ gpr_13              │ 3774201944...
+│ tile_size                   │ 3173685442      │   │ gpr_14                   │ 1163331665 │   │ gpr_14              │ 2931555667...
 ...
 ```
 Prints general purpose registers for threads 0 and 1 for current device and core
@@ -1026,21 +1018,21 @@ GPR
 ┌─────────────────────────────┬─────────────────┐   ┌──────────────────────────┬────────────┐
 │ Thread 0                    │ Values          │   │ Thread 1                 │ Values     │
 ├─────────────────────────────┼─────────────────┤   ├──────────────────────────┼────────────┤
-│ zero                        │ 2613105121      │   │ zero                     │ 3791483198 │
-│ dbg_reserved                │ 224351033       │   │ dbg_reserved             │ 2306539146 │
-│ dbg_msg                     │ 2869502861      │   │ dbg_msg                  │ 1709266305 │
-│ dbg_ckid                    │ 518018233       │   │ dbg_ckid                 │ 2204027414 │
-│ operand_base_addr           │ 0x4f1b43a3      │   │ perf_dbus_cntl           │ 553321984  │
-│ operand_offset_addr         │ 0xa0bb5234      │   │ perf_mem_dump_cntl_clear │ 3791447602 │
-│ gpr_6                       │ 2155074513      │   │ perf_mem_dump_cntl_set   │ 3848472389 │
-│ gpr_7                       │ 2468164076      │   │ perf_cnt_start           │ 491974993  │
-│ zero_0                      │ 540116083       │   │ perf_cnt_stop            │ 1218130083 │
-│ zero_1                      │ 3323633380      │   │ perf_epoch_base_addr     │ 0x7eb77cb  │
-│ zero_2                      │ 992136414       │   │ perf_epoch_offset        │ 2170228232 │
-│ zero_3                      │ 2587008857      │   │ gpr_11                   │ 4219454334 │
-│ tmp0                        │ 2301046721      │   │ gpr_12                   │ 348228310  │
-│ tmp1                        │ 1730277751      │   │ gpr_13                   │ 2179345549 │
-│ tile_size                   │ 3022754017      │   │ gpr_14                   │ 1159465041 │
+│ zero                        │ 2606813643      │   │ zero                     │ 3791479294 │
+│ dbg_reserved                │ 492783129       │   │ dbg_reserved             │ 2290007842 │
+│ dbg_msg                     │ 2332632060      │   │ dbg_msg                  │ 1424019877 │
+│ dbg_ckid                    │ 515906201       │   │ dbg_ckid                 │ 2423835159 │
+│ operand_base_addr           │ 0x4f1ff5f2      │   │ perf_dbus_cntl           │ 553320976  │
+│ operand_offset_addr         │ 0xa8ab32b4      │   │ perf_mem_dump_cntl_clear │ 3279741442 │
+│ gpr_6                       │ 2152780753      │   │ perf_mem_dump_cntl_set   │ 1702036293 │
+│ gpr_7                       │ 2443017900      │   │ perf_cnt_start           │ 2488332656 │
+│ zero_0                      │ 876201075       │   │ perf_cnt_stop            │ 1620783411 │
+│ zero_1                      │ 3324688836      │   │ perf_epoch_base_addr     │ 0x7cb3fea  │
+│ zero_2                      │ 639814878       │   │ perf_epoch_offset        │ 2171817753 │
+│ zero_3                      │ 2591203153      │   │ gpr_11                   │ 2625586042 │
+│ tmp0                        │ 2284273633      │   │ gpr_12                   │ 2495711762 │
+│ tmp1                        │ 1695674467      │   │ gpr_13                   │ 2175147545 │
+│ tile_size                   │ 3173685442      │   │ gpr_14                   │ 1163331665 │
 ...
 ```
 
@@ -1170,13 +1162,13 @@ NOC0 Status Registers
 ╭────────────────────────────┬────────────┬────────────╮ ╭────────────────────────────────┬────────────┬────────────╮
 │ Name                       │ Address    │ Value      │ │ Name                           │ Address    │ Value      │
 ├────────────────────────────┼────────────┼────────────┤ ├────────────────────────────────┼────────────┼────────────┤
-│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x0001c2c6 │
-│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x00222a1f │
-│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x00222a1e │
-│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x00222a1e │
-│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x0001c2c6 │
+│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x00008e30 │
+│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x000b3b1c │
+│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x000b3b1b │
+│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x000b3b1b │
+│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x00008e30 │
 │ posted write words sent    │ 0xffb20224 │ 0x00000000 │ │ posted write words received    │ 0xffb202e4 │ 0x00000000 │
-│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x0001c2c6 │
+│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x00008e30 │
 │ posted write reqs sent     │ 0xffb2022c │ 0x00000000 │ │ posted write reqs received     │ 0xffb202ec │ 0x00000000 │
 ╰────────────────────────────┴────────────┴────────────╯ ╰────────────────────────────────┴────────────┴────────────╯
 
@@ -1208,10 +1200,10 @@ NOC0 Status Registers
 
               Transaction Counters (Received)
 
-  write acks sent                  0xffb202c4   0x0001c2c6
-  read resps sent                  0xffb202c8   0x00222a3f
-  read words sent                  0xffb202cc   0x00222a3e
-  read reqs received               0xffb202d4   0x00222a3e
+  write acks sent                  0xffb202c4   0x00008e30
+  read resps sent                  0xffb202c8   0x000b3b3c
+  read words sent                  0xffb202cc   0x000b3b3b
+  read reqs received               0xffb202d4   0x000b3b3b
 ...
 ```
 Prints a specific register value
@@ -1275,9 +1267,9 @@ Output:
 │ NIU_MST_RD_DATA_WORD_RECEIVED │ 0xffb2020c │ 0x00000000 │
 │ NIU_MST_RD_REQ_SENT           │ 0xffb20214 │ 0x00000000 │
 │ NIU_MST_RD_REQ_STARTED        │ 0xffb20238 │ 0x00000000 │
-│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x00222a5c │
-│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x00222a5a │
-│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x00222a5c │
+│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x000b3b59 │
+│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x000b3b57 │
+│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x000b3b59 │
 ╰───────────────────────────────┴────────────┴────────────╯
 
                       NOC1 Registers
@@ -1350,7 +1342,7 @@ riscv status
 Output:
 ```
   HALTED PC=0x0000015c - brisc 0,0 [0]
-  HALTED PC=0x000121bc - trisc0 0,0 [0]
+  IN RESET - trisc0 0,0 [0]
   IN RESET - trisc1 0,0 [0]
   IN RESET - trisc2 0,0 [0]
 ```
@@ -1382,17 +1374,45 @@ Set breakpoint
 ```
 riscv bkpt set 0 0x1244
 ```
+Output:
+```
+Setting breakpoint at address 0 for brisc 0,0 [0]
+Setting breakpoint at address 0 for trisc0 0,0 [0]
+Setting breakpoint at address 0 for trisc1 0,0 [0]
+Setting breakpoint at address 0 for trisc2 0,0 [0]
+```
 Delete breakpoint
 ```
 riscv bkpt del 0
+```
+Output:
+```
+Deleting breakpoint 0 for brisc 0,0 [0]
+Deleting breakpoint 0 for trisc0 0,0 [0]
+Deleting breakpoint 0 for trisc1 0,0 [0]
+Deleting breakpoint 0 for trisc2 0,0 [0]
 ```
 Set a read watchpoint
 ```
 riscv wchpt setr 0 0xc
 ```
+Output:
+```
+Setting read watchpoint at address 0 for brisc 0,0 [0]
+Setting read watchpoint at address 0 for trisc0 0,0 [0]
+Setting read watchpoint at address 0 for trisc1 0,0 [0]
+Setting read watchpoint at address 0 for trisc2 0,0 [0]
+```
 Set a write watchpoint
 ```
 riscv wchpt setw 0 0xc
+```
+Output:
+```
+Setting write watchpoint at address 0 for brisc 0,0 [0]
+Setting write watchpoint at address 0 for trisc0 0,0 [0]
+Setting write watchpoint at address 0 for trisc1 0,0 [0]
+Setting write watchpoint at address 0 for trisc2 0,0 [0]
 ```
 
 
@@ -1531,7 +1551,7 @@ reg dbg(0x54)
 Output:
 ```
 Value of register DebugRegisterDescription(base_address=DeviceAddress(private_address=4289798144, noc_address=4289798144, raw_addr...
-537329676
+537329674
 ```
 Prints names of first 10 registers that start with PACK
 ```
@@ -1616,7 +1636,7 @@ reg dbg(0x54) --type INT_VALUE
 Output:
 ```
 Value of register DebugRegisterDescription(base_address=DeviceAddress(private_address=4289798144, noc_address=4289798144, raw_addr...
-537329676
+537329674
 ```
 Writes 18 to debug register with address 0x54
 ```
