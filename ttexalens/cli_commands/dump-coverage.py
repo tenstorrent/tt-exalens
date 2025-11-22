@@ -17,7 +17,7 @@ Description:
   and place it into the output directory along with its gcno.
 
 Examples:
-  cov build/riscv-src/wormhole/callstack.coverage.trisc0.elf coverage/callstack.gcda
+  re build/riscv-src/wormhole/cov_test.coverage.brisc.elf -r brisc # Pre-requisite: we have to run the elf before running coverage
   cov build/riscv-src/wormhole/cov_test.coverage.brisc.elf coverage/cov_test.gcda coverage/cov_test.gcno
 """
 
