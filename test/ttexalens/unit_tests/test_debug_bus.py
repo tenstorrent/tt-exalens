@@ -312,6 +312,7 @@ class TestDebugBus(unittest.TestCase):
                         f"{signal_name}: Inconsistent sampled values: {sampled_group}",
                     )
 
+                    # get all signal parts
                     parts = self.debug_bus.get_signal_part_names(signal_name)
 
                     if self.debug_bus.is_combined_signal(signal_name):
