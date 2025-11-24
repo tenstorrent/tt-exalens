@@ -4,10 +4,9 @@
 
 import unittest
 from parameterized import parameterized_class, parameterized
-from ttexalens.tt_exalens_init import init_ttexalens
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
-from test.ttexalens.unit_tests.test_base import get_core_location
+from test.ttexalens.unit_tests.test_base import get_core_location, init_cached_test_context
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.context import Context
 from ttexalens.cli_commands.debug_bus import parse_string
@@ -33,7 +32,7 @@ class TestDebugBus(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.context = init_ttexalens()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
 
     def setUp(self):
