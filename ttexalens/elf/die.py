@@ -5,7 +5,11 @@
 from __future__ import annotations
 import cxxfilt
 from elftools.dwarf.die import DIE as DWARF_DIE
-from elftools.dwarf.locationlists import LocationExpr
+from elftools.dwarf.locationlists import (
+    LocationExpr,
+    LocationEntry as ListLocationEntry,
+    BaseAddressEntry as ListBaseAddressEntry,
+)
 from elftools.dwarf.ranges import BaseAddressEntry, RangeEntry
 from functools import cached_property
 import os
@@ -15,6 +19,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ttexalens.elf.cu import ElfCompileUnit
+    from ttexalens.elf.frame import FrameInspection
 
 
 # We only care about the stuff we can use for probing the memory
@@ -448,6 +453,97 @@ class ElfDie:
             return self.cu.get_die(parent)
         return None
 
+    ###########################################
+    # Propertied for debugging and inspection #
+    ###########################################
+
+    @cached_property
+    def _children(self):
+        return list(self.iter_children())
+
+    @cached_property
+    def _location(self):
+        """
+        Return the location expression of the DIE
+        """
+        if "DW_AT_location" in self.attributes:
+            location_attribute = self.attributes["DW_AT_location"]
+            location_parser = self.cu.dwarf.location_parser
+            location = location_parser.parse_from_attribute(location_attribute, self.cu.version, self.dwarf_die)
+            return location
+        return None
+
+    @cached_property
+    def _parsed_attributes(self):
+        parsed_attributes = {}
+        for attr_name, attr in self.attributes.items():
+            value = attr
+            if attr_name == "DW_AT_abstract_origin":
+                value = self.get_DIE_from_attribute(attr_name)
+                if value is None:
+                    value = "[unresolvable]"
+            elif attr_name == "DW_AT_artificial":
+                value = attr.value
+            elif attr_name == "DW_AT_byte_size":
+                value = attr.value
+            elif attr_name == "DW_AT_call_column":
+                value = attr.value
+            elif attr_name == "DW_AT_call_file":
+                assert self.cu.line_program is not None
+                file_entry = self.cu.line_program["file_entry"][attr.value]
+                directory = self.cu.line_program["include_directory"][file_entry.dir_index].decode("utf-8")
+                value = file_entry.name.decode("utf-8")
+                value = os.path.join(directory, value)
+            elif attr_name == "DW_AT_call_line":
+                value = attr.value
+            elif attr_name == "DW_AT_const_value":
+                value = attr.value
+            elif attr_name == "DW_AT_data_member_location":
+                value = attr.value
+            elif attr_name == "DW_AT_decl_column":
+                value = attr.value
+            elif attr_name == "DW_AT_decl_file":
+                assert self.cu is not None and self.cu.line_program is not None
+                file_entry = self.cu.line_program["file_entry"][attr.value]
+                directory = self.cu.line_program["include_directory"][file_entry.dir_index].decode("utf-8")
+                value = file_entry.name.decode("utf-8")
+                value = os.path.join(directory, value)
+            elif attr_name == "DW_AT_decl_line":
+                value = attr.value
+            elif attr_name == "DW_AT_high_pc":
+                value = attr.value
+            elif attr_name == "DW_AT_linkage_name":
+                value = attr.value
+                try:
+                    value = cxxfilt.demangle(value.decode("utf-8"))
+                except:
+                    pass
+            elif attr_name == "DW_AT_location":
+                value = self.cu.dwarf.location_parser.parse_from_attribute(attr, self.cu.version, self.dwarf_die)
+            elif attr_name == "DW_AT_low_pc":
+                value = attr.value
+            elif attr_name == "DW_AT_name":
+                value = self.attributes["DW_AT_name"].value
+                if value is not None:
+                    value = value.decode("utf-8")
+                else:
+                    value = None
+            elif attr_name == "DW_AT_ranges":
+                assert self.cu.dwarf.range_lists is not None
+                value = self.cu.dwarf.range_lists.get_range_list_at_offset(attr.value)
+            elif attr_name == "DW_AT_specification":
+                value = self.get_DIE_from_attribute(attr_name)
+                if value is None:
+                    value = "[unresolvable]"
+            elif attr_name == "DW_AT_type":
+                value = self.cu.find_DIE_at_local_offset(attr.value)
+                if value is None:
+                    value = "[unresolvable]"
+            elif attr_name == "DW_AT_upper_bound":
+                value = attr.value
+            parsed_attributes[attr_name] = value
+        return parsed_attributes
+
     def __repr__(self):
         """
         Return a string representation of the DIE for debugging
@@ -462,3 +558,48 @@ class ElfDie:
 
     def tag_is(self, tag):
         return self.tag == f"DW_TAG_{tag}"
+
+    def read_value(self, frame_inspection: FrameInspection):
+        # TODO: Check if it is variable (global, local, member, argument)
+        # TODO: Constant?
+
+        # Check if we have address
+        address = self.address
+        if address is not None:
+            from ttexalens.elf.variable import ElfVariable
+
+            return ElfVariable(self, address, frame_inspection.mem_access)
+
+        # Check if we have location
+        location = self._location
+        if location is None:
+            return None
+
+        # Get parsed location expression
+        if isinstance(location, LocationExpr):
+            parsed_expression = self.cu.expression_parser.parse_expr(location.loc_expr)
+        elif isinstance(location, list):
+            base_address = 0
+            pc = frame_inspection.pc
+            parsed_expression = None
+            for loc in location:
+                if isinstance(loc, ListBaseAddressEntry):
+                    base_address = loc.base_address
+                elif isinstance(loc, ListLocationEntry):
+                    if loc.is_absolute:
+                        begin_offset = loc.begin_offset
+                        end_offset = loc.end_offset
+                    else:
+                        begin_offset = loc.begin_offset + base_address
+                        end_offset = loc.end_offset + base_address
+                    if begin_offset <= pc < end_offset:
+                        parsed_expression = self.cu.expression_parser.parse_expr(loc.loc_expr)
+            if parsed_expression is None:
+                return None
+
+        # TODO: Evaluate expression to get value
+        return None
+
+    def _evaluate_location_expression(self, parsed_expression: list, frame_inspection: FrameInspection):
+        # TODO: Implement expression evaluation
+        return None
