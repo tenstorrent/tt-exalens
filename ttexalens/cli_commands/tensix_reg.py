@@ -41,6 +41,7 @@ Examples:
 
 command_metadata = {
     "short": "reg",
+    "long": "tensix-reg",
     "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],
