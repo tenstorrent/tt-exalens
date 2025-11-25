@@ -4,6 +4,7 @@
 #include "umd_implementation.h"
 
 #include <cstdint>
+#include <exception>
 #include <tuple>
 
 #include "read_tile.hpp"
@@ -78,7 +79,7 @@ void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_
 
 void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip, tt::umd::CoreCoord core,
                                     uint64_t addr, uint32_t size) {
-    throw std::runtime_error("test exception");
+    std::terminate();
     // if timeout detected throw exception
     read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
 }
@@ -127,7 +128,7 @@ void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void*
 void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes, ChipId chip,
                                    tt::umd::CoreCoord core, uint64_t addr) {
     // if timeout detected throw exception
-    throw std::runtime_error("test exception");
+    std::terminate();
     write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
 
 }  // namespace tt::exalens
