@@ -337,7 +337,7 @@ class RiscDebug:
         # If we are at the top frame, we read file/line info for the current pc
         # Otherwise, we read file/line info for the call instruction (pc - 4)
         file_line = elf._dwarf.find_file_line_by_address(pc if top_frame else pc - 4)
-        function_die = elf._dwarf.find_function_by_address(pc)
+        function_die = elf._dwarf.find_function_by_address(pc if top_frame else pc - 4)
         file = file_line[0] if file_line is not None else None
         line = file_line[1] if file_line is not None else None
         column = file_line[2] if file_line is not None else None

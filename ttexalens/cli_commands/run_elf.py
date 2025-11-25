@@ -23,6 +23,7 @@ from ttexalens.uistate import UIState
 
 command_metadata = {
     "short": "re",
+    "long": "run-elf",
     "type": "high-level",
     "description": __doc__,
     "context": ["limited"],

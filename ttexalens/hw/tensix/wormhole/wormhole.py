@@ -4,7 +4,7 @@
 from functools import cache
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.noc_block import NocBlock
-from ttexalens.hardware.tensix_configuration_registers_description import TensixConfigurationRegistersDescription
+from ttexalens.hardware.tensix_configuration_registers_description import TensixRegisterDescription
 from ttexalens.hardware.wormhole.arc_block import WormholeArcBlock
 from ttexalens.hardware.wormhole.dram_block import WormholeDramBlock
 from ttexalens.hardware.wormhole.eth_block import WormholeEthBlock
@@ -69,7 +69,7 @@ class WormholeDevice(Device):
             return WormholeRouterOnlyBlock(location)
         raise ValueError(f"Unsupported block type: {block_type}")
 
-    def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
+    def get_tensix_registers_description(self) -> TensixRegisterDescription:
         return configuration_registers_descriptions
 
 

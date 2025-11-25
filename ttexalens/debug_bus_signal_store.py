@@ -297,7 +297,7 @@ class DebugBusSignalStore:
     ) -> list[SignalGroupSample]:
         """Internal method to read one or more samples from a signal group."""
         if self.device.is_quasar():
-            raise NotImplementedError("Groups are not supported on Quasar devices.")
+            raise NotImplementedError("Groups are only supported on Wormhole and Blackhole devices.")
 
         # Validate L1 address alignment and memory range
         self._validate_l1_parameters(l1_address, samples, sampling_interval)

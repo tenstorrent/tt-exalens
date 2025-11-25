@@ -2,11 +2,12 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-from ttexalens.hardware.tensix_configuration_registers_description import TensixConfigurationRegistersDescription
+from ttexalens.hardware.tensix_configuration_registers_description import TensixRegisterDescription
 from ttexalens.register_store import (
     REGISTER_DATA_TYPE,
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
+    TensixGeneralPurposeRegisterDescription,
     RegisterDescription,
 )
 
@@ -672,6 +673,215 @@ register_map: dict[str, RegisterDescription] = {
     "PACK_STRIDES1_w_stride": ConfigurationRegisterDescription(
         index=11, mask=0xFFFF000, shift=12, data_type=REGISTER_DATA_TYPE.INT_VALUE
     ),
+    # GENERAL PURPOSE REGISTERS
+    # https://github.com/tenstorrent/tt-llk/blob/main/tt_llk_wormhole/common/inc/ckernel_gpr_map.h
+    # THREAD 0
+    "ZERO_T0": TensixGeneralPurposeRegisterDescription(index=0, thread_id=0),
+    "DBG_RESERVED_T0": TensixGeneralPurposeRegisterDescription(index=1, thread_id=0),
+    "DBG_MSG_T0": TensixGeneralPurposeRegisterDescription(index=2, thread_id=0),
+    "DBG_CKID_T0": TensixGeneralPurposeRegisterDescription(index=3, thread_id=0),
+    "OPERAND_BASE_ADDR_T0": TensixGeneralPurposeRegisterDescription(
+        index=4, thread_id=0, data_type=REGISTER_DATA_TYPE.ADDRESS
+    ),
+    "OPERAND_OFFSET_ADDR_T0": TensixGeneralPurposeRegisterDescription(
+        index=5, thread_id=0, data_type=REGISTER_DATA_TYPE.ADDRESS
+    ),
+    "GPR_6_T0": TensixGeneralPurposeRegisterDescription(index=6, thread_id=0),
+    "GPR_7_T0": TensixGeneralPurposeRegisterDescription(index=7, thread_id=0),
+    "ZERO_0_T0": TensixGeneralPurposeRegisterDescription(index=8, thread_id=0),
+    "ZERO_1_T0": TensixGeneralPurposeRegisterDescription(index=9, thread_id=0),
+    "ZERO_2_T0": TensixGeneralPurposeRegisterDescription(index=10, thread_id=0),
+    "ZERO_3_T0": TensixGeneralPurposeRegisterDescription(index=11, thread_id=0),
+    "TMP0_T0": TensixGeneralPurposeRegisterDescription(index=12, thread_id=0),
+    "TMP1_T0": TensixGeneralPurposeRegisterDescription(index=13, thread_id=0),
+    "TILE_SIZE_T0": TensixGeneralPurposeRegisterDescription(index=14, thread_id=0),
+    "TILE_OFFSET_T0": TensixGeneralPurposeRegisterDescription(index=15, thread_id=0),
+    "GPR_16_T0": TensixGeneralPurposeRegisterDescription(index=16, thread_id=0),
+    "L1_BUFFER_ADDR_T0": TensixGeneralPurposeRegisterDescription(
+        index=17, thread_id=0, data_type=REGISTER_DATA_TYPE.ADDRESS
+    ),
+    "TMP_LO_T0": TensixGeneralPurposeRegisterDescription(index=18, thread_id=0),
+    "TMP_HI_T0": TensixGeneralPurposeRegisterDescription(index=19, thread_id=0),
+    "GPR_20_T0": TensixGeneralPurposeRegisterDescription(index=20, thread_id=0),
+    "GPR_21_T0": TensixGeneralPurposeRegisterDescription(index=21, thread_id=0),
+    "GPR_22_T0": TensixGeneralPurposeRegisterDescription(index=22, thread_id=0),
+    "GPR_23_T0": TensixGeneralPurposeRegisterDescription(index=23, thread_id=0),
+    "GPR_24_T0": TensixGeneralPurposeRegisterDescription(index=24, thread_id=0),
+    "GPR_25_T0": TensixGeneralPurposeRegisterDescription(index=25, thread_id=0),
+    "GPR_26_T0": TensixGeneralPurposeRegisterDescription(index=26, thread_id=0),
+    "GPR_27_T0": TensixGeneralPurposeRegisterDescription(index=27, thread_id=0),
+    "GPR_28_T0": TensixGeneralPurposeRegisterDescription(index=28, thread_id=0),
+    "GPR_29_T0": TensixGeneralPurposeRegisterDescription(index=29, thread_id=0),
+    "GPR_30_T0": TensixGeneralPurposeRegisterDescription(index=30, thread_id=0),
+    "GPR_31_T0": TensixGeneralPurposeRegisterDescription(index=31, thread_id=0),
+    "PERF_FIRST_UNP_LO_T0": TensixGeneralPurposeRegisterDescription(index=32, thread_id=0),
+    "PERF_FIRST_UNP_HI_T0": TensixGeneralPurposeRegisterDescription(index=33, thread_id=0),
+    "GPR_34_T0": TensixGeneralPurposeRegisterDescription(index=34, thread_id=0),
+    "GPR_35_T0": TensixGeneralPurposeRegisterDescription(index=35, thread_id=0),
+    "TILE_SIZE_A_T0": TensixGeneralPurposeRegisterDescription(index=36, thread_id=0),
+    "TILE_SIZE_B_T0": TensixGeneralPurposeRegisterDescription(index=37, thread_id=0),
+    "KT_DIM_T0": TensixGeneralPurposeRegisterDescription(index=38, thread_id=0),
+    "GPR_39_T0": TensixGeneralPurposeRegisterDescription(index=39, thread_id=0),
+    "FACE_DIM_16x16_T0": TensixGeneralPurposeRegisterDescription(index=40, thread_id=0),
+    "FACE_DIM_8x16_T0": TensixGeneralPurposeRegisterDescription(index=41, thread_id=0),
+    "FACE_DIM_4x16_T0": TensixGeneralPurposeRegisterDescription(index=42, thread_id=0),
+    "FACE_DIM_2x16_T0": TensixGeneralPurposeRegisterDescription(index=43, thread_id=0),
+    "FACE_DIM_1x16_T0": TensixGeneralPurposeRegisterDescription(index=44, thread_id=0),
+    "PERF_UNPACK_NUM_TILES_0_T0": TensixGeneralPurposeRegisterDescription(index=45, thread_id=0),
+    "PERF_UNPACK_NUM_TILES_1_T0": TensixGeneralPurposeRegisterDescription(index=46, thread_id=0),
+    "PERF_UNPACK_NUM_TILES_2_T0": TensixGeneralPurposeRegisterDescription(index=47, thread_id=0),
+    "PERF_UNPACK_NUM_TILES_3_T0": TensixGeneralPurposeRegisterDescription(index=48, thread_id=0),
+    "GPR_49_T0": TensixGeneralPurposeRegisterDescription(index=49, thread_id=0),
+    "GPR_50_T0": TensixGeneralPurposeRegisterDescription(index=50, thread_id=0),
+    "GPR_51_T0": TensixGeneralPurposeRegisterDescription(index=51, thread_id=0),
+    "UNPACK_STRIDE_T0": TensixGeneralPurposeRegisterDescription(index=52, thread_id=0),
+    "GPR_53_T0": TensixGeneralPurposeRegisterDescription(index=53, thread_id=0),
+    "SR_UNPACK_TILIZER_STATE_0_T0": TensixGeneralPurposeRegisterDescription(index=54, thread_id=0),
+    "SR_UNPACK_TILIZER_STATE_1_T0": TensixGeneralPurposeRegisterDescription(index=55, thread_id=0),
+    "SR_UNPACK_UNTILIZER_STATE_0_T0": TensixGeneralPurposeRegisterDescription(index=56, thread_id=0),
+    "SR_UNPACK_UNTILIZER_STATE_1_T0": TensixGeneralPurposeRegisterDescription(index=57, thread_id=0),
+    "SR_UNPACK_UNTILIZER_STATE_2_T0": TensixGeneralPurposeRegisterDescription(index=58, thread_id=0),
+    "SR_UNPACK_UNTILIZER_STATE_3_T0": TensixGeneralPurposeRegisterDescription(index=59, thread_id=0),
+    "GPR_60_T0": TensixGeneralPurposeRegisterDescription(index=60, thread_id=0),
+    "GPR_61_T0": TensixGeneralPurposeRegisterDescription(index=61, thread_id=0),
+    "GPR_62_T0": TensixGeneralPurposeRegisterDescription(index=62, thread_id=0),
+    "GPR_63_T0": TensixGeneralPurposeRegisterDescription(index=63, thread_id=0),
+    # THREAD 1
+    "ZERO_T1": TensixGeneralPurposeRegisterDescription(index=0, thread_id=1),
+    "DBG_RESERVED_T1": TensixGeneralPurposeRegisterDescription(index=1, thread_id=1),
+    "DBG_MSG_T1": TensixGeneralPurposeRegisterDescription(index=2, thread_id=1),
+    "DBG_CKID_T1": TensixGeneralPurposeRegisterDescription(index=3, thread_id=1),
+    "PERF_DBUS_CNTL_T1": TensixGeneralPurposeRegisterDescription(index=4, thread_id=1),
+    "PERF_MEM_DUMP_CNTL_CLEAR_T1": TensixGeneralPurposeRegisterDescription(index=5, thread_id=1),
+    "PERF_MEM_DUMP_CNTL_SET_T1": TensixGeneralPurposeRegisterDescription(index=6, thread_id=1),
+    "PERF_CNT_START_T1": TensixGeneralPurposeRegisterDescription(index=7, thread_id=1),
+    "PERF_CNT_STOP_T1": TensixGeneralPurposeRegisterDescription(index=8, thread_id=1),
+    "PERF_EPOCH_BASE_ADDR_T1": TensixGeneralPurposeRegisterDescription(
+        index=9, thread_id=1, data_type=REGISTER_DATA_TYPE.ADDRESS
+    ),
+    "PERF_EPOCH_OFFSET_T1": TensixGeneralPurposeRegisterDescription(index=10, thread_id=1),
+    "GPR_11_T1": TensixGeneralPurposeRegisterDescription(index=11, thread_id=1),
+    "GPR_12_T1": TensixGeneralPurposeRegisterDescription(index=12, thread_id=1),
+    "GPR_13_T1": TensixGeneralPurposeRegisterDescription(index=13, thread_id=1),
+    "GPR_14_T1": TensixGeneralPurposeRegisterDescription(index=14, thread_id=1),
+    "GPR_15_T1": TensixGeneralPurposeRegisterDescription(index=15, thread_id=1),
+    "GPR_16_T1": TensixGeneralPurposeRegisterDescription(index=16, thread_id=1),
+    "GPR_17_T1": TensixGeneralPurposeRegisterDescription(index=17, thread_id=1),
+    "GPR_18_T1": TensixGeneralPurposeRegisterDescription(index=18, thread_id=1),
+    "GPR_19_T1": TensixGeneralPurposeRegisterDescription(index=19, thread_id=1),
+    "GPR_20_T1": TensixGeneralPurposeRegisterDescription(index=20, thread_id=1),
+    "GPR_21_T1": TensixGeneralPurposeRegisterDescription(index=21, thread_id=1),
+    "GPR_22_T1": TensixGeneralPurposeRegisterDescription(index=22, thread_id=1),
+    "GPR_23_T1": TensixGeneralPurposeRegisterDescription(index=23, thread_id=1),
+    "GPR_24_T1": TensixGeneralPurposeRegisterDescription(index=24, thread_id=1),
+    "GPR_25_T1": TensixGeneralPurposeRegisterDescription(index=25, thread_id=1),
+    "GPR_26_T1": TensixGeneralPurposeRegisterDescription(index=26, thread_id=1),
+    "GPR_27_T1": TensixGeneralPurposeRegisterDescription(index=27, thread_id=1),
+    "GPR_28_T1": TensixGeneralPurposeRegisterDescription(index=28, thread_id=1),
+    "GPR_29_T1": TensixGeneralPurposeRegisterDescription(index=29, thread_id=1),
+    "GPR_30_T1": TensixGeneralPurposeRegisterDescription(index=30, thread_id=1),
+    "GPR_31_T1": TensixGeneralPurposeRegisterDescription(index=31, thread_id=1),
+    "GPR_32_T1": TensixGeneralPurposeRegisterDescription(index=32, thread_id=1),
+    "GPR_33_T1": TensixGeneralPurposeRegisterDescription(index=33, thread_id=1),
+    "GPR_34_T1": TensixGeneralPurposeRegisterDescription(index=34, thread_id=1),
+    "GPR_35_T1": TensixGeneralPurposeRegisterDescription(index=35, thread_id=1),
+    "GPR_36_T1": TensixGeneralPurposeRegisterDescription(index=36, thread_id=1),
+    "GPR_37_T1": TensixGeneralPurposeRegisterDescription(index=37, thread_id=1),
+    "GPR_38_T1": TensixGeneralPurposeRegisterDescription(index=38, thread_id=1),
+    "GPR_39_T1": TensixGeneralPurposeRegisterDescription(index=39, thread_id=1),
+    "GPR_40_T1": TensixGeneralPurposeRegisterDescription(index=40, thread_id=1),
+    "GPR_41_T1": TensixGeneralPurposeRegisterDescription(index=41, thread_id=1),
+    "GPR_42_T1": TensixGeneralPurposeRegisterDescription(index=42, thread_id=1),
+    "GPR_43_T1": TensixGeneralPurposeRegisterDescription(index=43, thread_id=1),
+    "GPR_44_T1": TensixGeneralPurposeRegisterDescription(index=44, thread_id=1),
+    "GPR_45_T1": TensixGeneralPurposeRegisterDescription(index=45, thread_id=1),
+    "GPR_46_T1": TensixGeneralPurposeRegisterDescription(index=46, thread_id=1),
+    "GPR_47_T1": TensixGeneralPurposeRegisterDescription(index=47, thread_id=1),
+    "DEST_OP0_BASE_T1": TensixGeneralPurposeRegisterDescription(index=48, thread_id=1),
+    "DEST_OP1_BASE_T1": TensixGeneralPurposeRegisterDescription(index=49, thread_id=1),
+    "DEST_REGW_OFFSET_T1": TensixGeneralPurposeRegisterDescription(index=50, thread_id=1),
+    "DEST_REGW_INCR_T1": TensixGeneralPurposeRegisterDescription(index=51, thread_id=1),
+    "DEST_REGW_OFFSET2_T1": TensixGeneralPurposeRegisterDescription(index=52, thread_id=1),
+    "DEST_REGW_INCR2_T1": TensixGeneralPurposeRegisterDescription(index=53, thread_id=1),
+    "GPR_54_T1": TensixGeneralPurposeRegisterDescription(index=54, thread_id=1),
+    "GPR_55_T1": TensixGeneralPurposeRegisterDescription(index=55, thread_id=1),
+    "GPR_56_T1": TensixGeneralPurposeRegisterDescription(index=56, thread_id=1),
+    "GPR_57_T1": TensixGeneralPurposeRegisterDescription(index=57, thread_id=1),
+    "GPR_58_T1": TensixGeneralPurposeRegisterDescription(index=58, thread_id=1),
+    "GPR_59_T1": TensixGeneralPurposeRegisterDescription(index=59, thread_id=1),
+    "TMP0_T1": TensixGeneralPurposeRegisterDescription(index=60, thread_id=1),
+    "NUM_DRAM_REQS_T1": TensixGeneralPurposeRegisterDescription(index=61, thread_id=1),
+    "GPR_62_T1": TensixGeneralPurposeRegisterDescription(index=62, thread_id=1),
+    "GPR_63_T1": TensixGeneralPurposeRegisterDescription(index=63, thread_id=1),
+    # THREAD 2
+    "ZERO_T2": TensixGeneralPurposeRegisterDescription(index=0, thread_id=2),
+    "DBG_RESERVED_T2": TensixGeneralPurposeRegisterDescription(index=1, thread_id=2),
+    "DBG_MSG_T2": TensixGeneralPurposeRegisterDescription(index=2, thread_id=2),
+    "DBG_CKID_T2": TensixGeneralPurposeRegisterDescription(index=3, thread_id=2),
+    "DEST_OFFSET_LO_T2": TensixGeneralPurposeRegisterDescription(index=4, thread_id=2),
+    "GPR_5_T2": TensixGeneralPurposeRegisterDescription(index=5, thread_id=2),
+    "GPR_6_T2": TensixGeneralPurposeRegisterDescription(index=6, thread_id=2),
+    "GPR_7_T2": TensixGeneralPurposeRegisterDescription(index=7, thread_id=2),
+    "DEST_OFFSET_HI_T2": TensixGeneralPurposeRegisterDescription(index=8, thread_id=2),
+    "GPR_9_T2": TensixGeneralPurposeRegisterDescription(index=9, thread_id=2),
+    "GPR_10_T2": TensixGeneralPurposeRegisterDescription(index=10, thread_id=2),
+    "GPR_11_T2": TensixGeneralPurposeRegisterDescription(index=11, thread_id=2),
+    "OUTPUT_ADDR_T2": TensixGeneralPurposeRegisterDescription(
+        index=12, thread_id=2, data_type=REGISTER_DATA_TYPE.ADDRESS
+    ),
+    "GPR_13_T2": TensixGeneralPurposeRegisterDescription(index=13, thread_id=2),
+    "GPR_14_T2": TensixGeneralPurposeRegisterDescription(index=14, thread_id=2),
+    "GPR_15_T2": TensixGeneralPurposeRegisterDescription(index=15, thread_id=2),
+    "TILE_HEADER_T2": TensixGeneralPurposeRegisterDescription(index=16, thread_id=2),
+    "GPR_17_T2": TensixGeneralPurposeRegisterDescription(index=17, thread_id=2),
+    "GPR_18_T2": TensixGeneralPurposeRegisterDescription(index=18, thread_id=2),
+    "GPR_19_T2": TensixGeneralPurposeRegisterDescription(index=19, thread_id=2),
+    "TEMP_TILE_OFFSET_T2": TensixGeneralPurposeRegisterDescription(index=20, thread_id=2),
+    "GPR_21_T2": TensixGeneralPurposeRegisterDescription(index=21, thread_id=2),
+    "GPR_22_T2": TensixGeneralPurposeRegisterDescription(index=22, thread_id=2),
+    "GPR_23_T2": TensixGeneralPurposeRegisterDescription(index=23, thread_id=2),
+    "NUM_MSGS_RECEIVED_T2": TensixGeneralPurposeRegisterDescription(index=24, thread_id=2),
+    "ONE_MSG_RECEIVED_T2": TensixGeneralPurposeRegisterDescription(index=25, thread_id=2),
+    "HEADER_ADDR_T2": TensixGeneralPurposeRegisterDescription(
+        index=26, thread_id=2, data_type=REGISTER_DATA_TYPE.ADDRESS
+    ),
+    "GPR_27_T2": TensixGeneralPurposeRegisterDescription(index=27, thread_id=2),
+    "TMP0_T2": TensixGeneralPurposeRegisterDescription(index=28, thread_id=2),
+    "TMP1_T2": TensixGeneralPurposeRegisterDescription(index=29, thread_id=2),
+    "TMP_LO_T2": TensixGeneralPurposeRegisterDescription(index=30, thread_id=2),
+    "TMP_HI_T2": TensixGeneralPurposeRegisterDescription(index=31, thread_id=2),
+    "PACK_STREAM_SYNC_T2": TensixGeneralPurposeRegisterDescription(index=32, thread_id=2),
+    "GPR_33_T2": TensixGeneralPurposeRegisterDescription(index=33, thread_id=2),
+    "GPR_34_T2": TensixGeneralPurposeRegisterDescription(index=34, thread_id=2),
+    "GPR_35_T2": TensixGeneralPurposeRegisterDescription(index=35, thread_id=2),
+    "GPR_36_T2": TensixGeneralPurposeRegisterDescription(index=36, thread_id=2),
+    "GPR_37_T2": TensixGeneralPurposeRegisterDescription(index=37, thread_id=2),
+    "GPR_38_T2": TensixGeneralPurposeRegisterDescription(index=38, thread_id=2),
+    "GPR_39_T2": TensixGeneralPurposeRegisterDescription(index=39, thread_id=2),
+    "GPR_40_T2": TensixGeneralPurposeRegisterDescription(index=40, thread_id=2),
+    "GPR_41_T2": TensixGeneralPurposeRegisterDescription(index=41, thread_id=2),
+    "GPR_42_T2": TensixGeneralPurposeRegisterDescription(index=42, thread_id=2),
+    "GPR_43_T2": TensixGeneralPurposeRegisterDescription(index=43, thread_id=2),
+    "GPR_44_T2": TensixGeneralPurposeRegisterDescription(index=44, thread_id=2),
+    "GPR_45_T2": TensixGeneralPurposeRegisterDescription(index=45, thread_id=2),
+    "GPR_46_T2": TensixGeneralPurposeRegisterDescription(index=46, thread_id=2),
+    "GPR_47_T2": TensixGeneralPurposeRegisterDescription(index=47, thread_id=2),
+    "GPR_48_T2": TensixGeneralPurposeRegisterDescription(index=48, thread_id=2),
+    "GPR_49_T2": TensixGeneralPurposeRegisterDescription(index=49, thread_id=2),
+    "OUTPUT_ADDR_OFFSET_T2": TensixGeneralPurposeRegisterDescription(index=50, thread_id=2),
+    "PERF_PACK_NUM_TILES_T2": TensixGeneralPurposeRegisterDescription(index=51, thread_id=2),
+    "EXP0_SEC_SIZE_BFP_T2": TensixGeneralPurposeRegisterDescription(index=52, thread_id=2),
+    "EXP1_SEC_SIZE_BFP8_T2": TensixGeneralPurposeRegisterDescription(index=53, thread_id=2),
+    "EXP2_SEC_SIZE_BFP8_T2": TensixGeneralPurposeRegisterDescription(index=54, thread_id=2),
+    "EXP3_SEC_SIZE_BFP8_T2": TensixGeneralPurposeRegisterDescription(index=55, thread_id=2),
+    "GPR_56_T2": TensixGeneralPurposeRegisterDescription(index=56, thread_id=2),
+    "EXP1_SEC_SIZE_BFP4_T2": TensixGeneralPurposeRegisterDescription(index=57, thread_id=2),
+    "EXP2_SEC_SIZE_BFP4_T2": TensixGeneralPurposeRegisterDescription(index=58, thread_id=2),
+    "EXP3_SEC_SIZE_BFP4_T2": TensixGeneralPurposeRegisterDescription(index=59, thread_id=2),
+    "GPR_60_T2": TensixGeneralPurposeRegisterDescription(index=60, thread_id=2),
+    "EXP1_SEC_SIZE_BFP2_T2": TensixGeneralPurposeRegisterDescription(index=61, thread_id=2),
+    "EXP2_SEC_SIZE_BFP2_T2": TensixGeneralPurposeRegisterDescription(index=62, thread_id=2),
+    "EXP3_SEC_SIZE_BFP2_T2": TensixGeneralPurposeRegisterDescription(index=63, thread_id=2),
     # REST
     "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=157, mask=0x1F),
     "TRISC_RESET_PC_SEC0_PC": ConfigurationRegisterDescription(index=158),
@@ -819,7 +1029,19 @@ def get_pack_strides() -> list[dict[str, str]]:
     return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(2)]
 
 
-configuration_registers_descriptions = TensixConfigurationRegistersDescription(
+def get_general_purpose_registers() -> list[dict[str, str]]:
+    register_mapping_by_thread: list[dict[str, str]] = [dict() for _ in range(3)]
+    for register_name in register_map.keys():
+        register_desc = register_map[register_name]
+        if isinstance(register_desc, TensixGeneralPurposeRegisterDescription):
+            assert isinstance(register_desc, TensixGeneralPurposeRegisterDescription)
+            thread_id = register_desc.thread_id
+            register_mapping_by_thread[thread_id][register_name[:-3].lower()] = register_name
+
+    return register_mapping_by_thread
+
+
+configuration_registers_descriptions = TensixRegisterDescription(
     # ALU CONFIG
     alu_config=[
         {
@@ -870,4 +1092,5 @@ configuration_registers_descriptions = TensixConfigurationRegistersDescription(
     pack_edge_offset=get_pack_edge_offset(),
     pack_counters=get_pack_counters(),
     pack_strides=get_pack_strides(),
+    general_purpose_registers=get_general_purpose_registers(),
 )
