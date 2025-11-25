@@ -78,12 +78,9 @@ void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_
 
 void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip, tt::umd::CoreCoord core,
                                     uint64_t addr, uint32_t size) {
-    try {
-        read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
-    } catch (const std::exception& e) {
-        _configure_working_active_eth(cluster, chip);
-        read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
-    }
+    throw std::runtime_error("test exception");
+    // if timeout detected throw exception
+    read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
 }
 
 void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
@@ -129,12 +126,10 @@ void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void*
 
 void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes, ChipId chip,
                                    tt::umd::CoreCoord core, uint64_t addr) {
-    try {
-        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
-    } catch (const std::exception& e) {
-        _configure_working_active_eth(cluster, chip);
-        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
-    }
+    // if timeout detected throw exception
+    throw std::runtime_error("test exception");
+    write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
+
 }  // namespace tt::exalens
 
 umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {
