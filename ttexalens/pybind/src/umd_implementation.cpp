@@ -3,8 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "umd_implementation.h"
 
+#include <chrono>
 #include <cstdint>
 #include <exception>
+#include <future>
 #include <tuple>
 
 #include "read_tile.hpp"
@@ -78,10 +80,16 @@ void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_
 }
 
 void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip, tt::umd::CoreCoord core,
-                                    uint64_t addr, uint32_t size) {
-    std::terminate();
-    // if timeout detected throw exception
-    read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
+                                    uint64_t addr, uint32_t size,
+                                    std::chrono::seconds timeout = std::chrono::seconds(5)) {
+    auto future = std::async(
+        std::launch::async, [&]() { read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size); });
+
+    if (future.wait_for(timeout) == std::future_status::timeout) {
+        std::terminate();
+    }
+
+    future.get();
 }
 
 void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
@@ -126,12 +134,17 @@ void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void*
 }
 
 void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes, ChipId chip,
-                                   tt::umd::CoreCoord core, uint64_t addr) {
-    // if timeout detected throw exception
-    std::terminate();
-    write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
+                                   tt::umd::CoreCoord core, uint64_t addr,
+                                   std::chrono::seconds timeout = std::chrono::seconds(5)) {
+    auto future = std::async(std::launch::async, [&]() {
+        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
+    });
 
-}  // namespace tt::exalens
+    if (future.wait_for(timeout) == std::future_status::timeout) {
+        std::terminate();
+    }
+    future.get();
+}
 
 umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {
     cached_arc_telemetry_readers.resize(cluster->get_cluster_description()->get_number_of_chips());
