@@ -89,7 +89,7 @@ debug_bus_signal_map = {
     "erisc1_dbg_obs_cmt_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x7FFFFFFF),
 }
 
-# TODO(#651) Once signals are grouped, we can remove type hint
+# Signal name mapping to (DaisySel, sig_sel)
 group_map: dict[str, tuple[int, int]] = {
     "erisc0_group_a": (7, 18),
     "erisc0_group_b": (7, 19),
