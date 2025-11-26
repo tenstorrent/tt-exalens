@@ -82,6 +82,7 @@ void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_
 void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip, tt::umd::CoreCoord core,
                                     uint64_t addr, uint32_t size,
                                     std::chrono::milliseconds timeout = std::chrono::milliseconds(100)) {
+    throw std::runtime_error("test timeout");
     auto start_time = std::chrono::steady_clock::now();
     read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
     auto end_time = std::chrono::steady_clock::now();
@@ -135,6 +136,7 @@ void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void*
 void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes, ChipId chip,
                                    tt::umd::CoreCoord core, uint64_t addr,
                                    std::chrono::milliseconds timeout = std::chrono::milliseconds(100)) {
+    throw std::runtime_error("test timeout");
     auto start_time = std::chrono::steady_clock::now();
     write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
     auto end_time = std::chrono::steady_clock::now();
