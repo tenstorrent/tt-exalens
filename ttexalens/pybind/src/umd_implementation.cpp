@@ -260,14 +260,14 @@ std::optional<std::string> umd_implementation::get_device_arch(uint8_t chip_id) 
 
 std::optional<std::tuple<int, uint32_t, uint32_t>> umd_implementation::arc_msg(uint8_t noc_id, uint8_t chip_id,
                                                                                uint32_t msg_code, bool wait_for_done,
-                                                                               uint32_t arg0, uint32_t arg1,
+                                                                               const std::vector<uint32_t>& args,
                                                                                std::chrono::milliseconds timeout) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
     uint32_t return_3 = 0;
     uint32_t return_4 = 0;
-    int return_code = cluster->arc_msg(chip_id, msg_code, wait_for_done, arg0, arg1, timeout, &return_3, &return_4);
+    int return_code = cluster->arc_msg(chip_id, msg_code, wait_for_done, args, timeout, &return_3, &return_4);
     return std::make_tuple(return_code, return_3, return_4);
 }
 
