@@ -81,15 +81,14 @@ void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_
 
 void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip, tt::umd::CoreCoord core,
                                     uint64_t addr, uint32_t size,
-                                    std::chrono::seconds timeout = std::chrono::seconds(5)) {
-    auto future = std::async(
-        std::launch::async, [&]() { read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size); });
-
-    if (future.wait_for(timeout) == std::future_status::timeout) {
-        std::terminate();
+                                    std::chrono::milliseconds timeout = std::chrono::milliseconds(100)) {
+    auto start_time = std::chrono::steady_clock::now();
+    read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
+    auto end_time = std::chrono::steady_clock::now();
+    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    if (elapsed_time > timeout) {
+        throw std::runtime_error("Timeout reading from device register");
     }
-
-    future.get();
 }
 
 void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
@@ -135,15 +134,14 @@ void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void*
 
 void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes, ChipId chip,
                                    tt::umd::CoreCoord core, uint64_t addr,
-                                   std::chrono::seconds timeout = std::chrono::seconds(5)) {
-    auto future = std::async(std::launch::async, [&]() {
-        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
-    });
-
-    if (future.wait_for(timeout) == std::future_status::timeout) {
-        std::terminate();
+                                   std::chrono::milliseconds timeout = std::chrono::milliseconds(100)) {
+    auto start_time = std::chrono::steady_clock::now();
+    write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
+    auto end_time = std::chrono::steady_clock::now();
+    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    if (elapsed_time > timeout) {
+        throw std::runtime_error("Timeout reading from device register");
     }
-    future.get();
 }
 
 umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {
