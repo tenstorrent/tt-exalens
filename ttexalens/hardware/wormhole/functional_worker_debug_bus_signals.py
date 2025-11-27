@@ -304,7 +304,7 @@ debug_bus_signal_map = {
     "trisc2_mop_decode_mop_stage_opcode/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=23, mask=0x3FFFFF),
     "trisc2_mop_decode_math_loop_active": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=23, mask=0x200000),
     "trisc2_mop_decode_unpack_loop_active": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=23, mask=0x100000),
-    "trisc2_mop_decode_o_instrn_valid": DebugBusSignalDescription(),
+    "trisc2_mop_decode_o_instrn_valid": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=23, mask=0x80000),
     "trisc2_mop_decode_o_instrn_opcode/0": DebugBusSignalDescription(
         rd_sel=1, daisy_sel=7, sig_sel=23, mask=0xFFF80000
     ),

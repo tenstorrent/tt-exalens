@@ -4,7 +4,11 @@
 
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 
+# Commented signals marked with "# Duplicate signal name" are true duplicates -
+# their name already exists in the map and they represent the same signal so suffix "_dup" is added.
 
+# Commented signals marked with "# Signal spans two consecutive groups, so its value cannot be read atomically."
+# These signals must be read in two parts and combined externally.
 debug_bus_signal_map = {
     # For the other signals applying the pc_mask.
     "brisc_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 5 + 1, mask=0x3FFFFFFF),
