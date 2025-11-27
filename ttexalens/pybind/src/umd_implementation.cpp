@@ -6,9 +6,7 @@
 #include <chrono>
 #include <cstdint>
 #include <exception>
-#include <future>
 #include <sstream>
-#include <string>
 #include <thread>
 #include <tuple>
 
@@ -137,7 +135,6 @@ void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, Ch
     try {
         read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
     } catch (const TimeoutDeviceRegister& e) {
-        std::cout << e.what() << std::endl;
         throw e;
     } catch (const std::exception& e) {
         _configure_working_active_eth(cluster, chip);
@@ -191,7 +188,6 @@ void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_pt
     try {
         write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
     } catch (const TimeoutDeviceRegister& e) {
-        std::cout << e.what() << std::endl;
         throw e;
     } catch (const std::exception& e) {
         _configure_working_active_eth(cluster, chip);
