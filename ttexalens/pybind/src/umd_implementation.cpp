@@ -9,6 +9,7 @@
 #include <future>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <tuple>
 
 #include "read_tile.hpp"
@@ -45,10 +46,12 @@ void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id
                           uint64_t addr, uint32_t size,
                           std::chrono::milliseconds timeout = std::chrono::milliseconds(500)) {
     auto start_time = std::chrono::steady_clock::now();
+    std::this_thread::sleep_for(std::chrono::milliseconds(600));
     cluster->read_from_device_reg(temp, chip_id, tensix_core, addr, size);
     auto end_time = std::chrono::steady_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
     if (elapsed_time > timeout) {
+        tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
         throw TimeoutDeviceRegister(chip_id, tensix_core, addr, size);
     }
 }
@@ -57,10 +60,12 @@ void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t s
                          tt::umd::CoreCoord tensix_core, uint64_t addr,
                          std::chrono::milliseconds timeout = std::chrono::milliseconds(500)) {
     auto start_time = std::chrono::steady_clock::now();
+    std::this_thread::sleep_for(std::chrono::milliseconds(600));
     cluster->write_to_device_reg(temp, size, chip_id, tensix_core, addr);
     auto end_time = std::chrono::steady_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
     if (elapsed_time > timeout) {
+        tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
         throw TimeoutDeviceRegister(chip_id, tensix_core, addr, size);
     }
 }
@@ -132,7 +137,8 @@ void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, Ch
     try {
         read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
     } catch (const TimeoutDeviceRegister& e) {
-        // handle this
+        std::cout << e.what() << std::endl;
+        throw e;
     } catch (const std::exception& e) {
         _configure_working_active_eth(cluster, chip);
         read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
@@ -185,7 +191,8 @@ void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_pt
     try {
         write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
     } catch (const TimeoutDeviceRegister& e) {
-        // handle this
+        std::cout << e.what() << std::endl;
+        throw e;
     } catch (const std::exception& e) {
         _configure_working_active_eth(cluster, chip);
         write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
