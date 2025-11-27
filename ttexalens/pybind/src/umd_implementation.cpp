@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <exception>
 #include <sstream>
+#include <string>
 #include <thread>
 #include <tuple>
 
@@ -18,14 +19,14 @@
 
 namespace tt::exalens {
 
-class TimeoutDeviceRegister : public std::exception {
+class TimeoutDeviceRegisterException : public std::exception {
    public:
-    TimeoutDeviceRegister(uint8_t chip_id, tt::umd::CoreCoord core, uint64_t addr, uint32_t size)
+    TimeoutDeviceRegisterException(uint8_t chip_id, tt::umd::CoreCoord core, uint64_t addr, uint32_t size, bool is_read)
         : chip_id(chip_id), core(core), addr(addr), size(size) {
+        std::string msg = is_read ? "Timeout reading from device register" : "Timeout writing to device register";
         std::ostringstream oss;
-        oss << "Timeout accessing device register: chip_id=" << static_cast<int>(chip_id) << ", core=(" << core.x << ","
-            << core.y << ")"
-            << ", addr=0x" << std::hex << addr << ", size=" << std::dec << size;
+        oss << msg << ": device_id=" << static_cast<int>(chip_id) << ", location=(" << core.x << "," << core.y << ")"
+            << ", address=0x" << std::hex << addr << ", size=" << std::dec << size;
         message = oss.str();
     }
 
@@ -50,7 +51,7 @@ void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id
     auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
     if (elapsed_time > timeout) {
         tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
-        throw TimeoutDeviceRegister(chip_id, tensix_core, addr, size);
+        throw TimeoutDeviceRegisterException(chip_id, tensix_core, addr, size, true);
     }
 }
 
@@ -64,7 +65,7 @@ void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t s
     auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
     if (elapsed_time > timeout) {
         tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
-        throw TimeoutDeviceRegister(chip_id, tensix_core, addr, size);
+        throw TimeoutDeviceRegisterException(chip_id, tensix_core, addr, size, false);
     }
 }
 
@@ -134,9 +135,7 @@ void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, Ch
                                     uint64_t addr, uint32_t size) {
     try {
         read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
-    } catch (const TimeoutDeviceRegister& e) {
-        throw e;
-    } catch (const std::exception& e) {
+    } catch (const std::runtime_error& e) {
         _configure_working_active_eth(cluster, chip);
         read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
     }
@@ -187,9 +186,7 @@ void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_pt
                                    tt::umd::CoreCoord core, uint64_t addr) {
     try {
         write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
-    } catch (const TimeoutDeviceRegister& e) {
-        throw e;
-    } catch (const std::exception& e) {
+    } catch (const std::runtime_error& e) {
         _configure_working_active_eth(cluster, chip);
         write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
     }
