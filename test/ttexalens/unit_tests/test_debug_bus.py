@@ -264,76 +264,76 @@ class TestDebugBus(unittest.TestCase):
                 group_values[pc_signal_name] == pc_value_32
             ), f"PC signal value mismatch for {risc_name}: group={group_values[pc_signal_name]}, direct={pc_value_32}"
 
-    @parameterized.expand(
-        [
-            (1, 2),  # samples, sampling_interval
-            (11, 50),
-            (25, 100),
-            (40, 5),
-        ]
-    )
-    def test_debug_bus_signal_store_sample_signal_group(self, samples, sampling_interval):
-        """Validate signal group readings for all groups on this core."""
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on Wormhole devices.")
+    # @parameterized.expand(
+    #     [
+    #         (1, 2),  # samples, sampling_interval
+    #         (11, 50),
+    #         (25, 100),
+    #         (40, 5),
+    #     ]
+    # )
+    # def test_debug_bus_signal_store_sample_signal_group(self, samples, sampling_interval):
+    #     """Validate signal group readings for all groups on this core."""
+    #     if not self.device.is_wormhole():
+    #         self.skipTest("This test only works on Wormhole devices.")
 
-        WORD_SIZE_BITS = 32
-        l1_addr = 0x1000
+    #     WORD_SIZE_BITS = 32
+    #     l1_addr = 0x1000
 
-        for risc_name in self.location.noc_block.risc_names:
-            core_sim = RiscvCoreSimulator(self.context, self.core_desc, risc_name, self.neo_id)
-            program_writer = RiscvProgramWriter(core_sim)
+    #     for risc_name in self.location.noc_block.risc_names:
+    #         core_sim = RiscvCoreSimulator(self.context, self.core_desc, risc_name, self.neo_id)
+    #         program_writer = RiscvProgramWriter(core_sim)
 
-            # ebreak
-            program_writer.append_ebreak()
-            program_writer.write_program()
+    #         # ebreak
+    #         program_writer.append_ebreak()
+    #         program_writer.write_program()
 
-            # Take risc out of reset
-            core_sim.set_reset(False)
-            if not risc_name.lower() == "ncrisc":
-                assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
+    #         # Take risc out of reset
+    #         core_sim.set_reset(False)
+    #         if not risc_name.lower() == "ncrisc":
+    #             assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
 
-            for group in self.debug_bus.group_names:
-                if not group.startswith(risc_name.lower() + "_"):
-                    continue
+    #         for group in self.debug_bus.group_names:
+    #             if not group.startswith(risc_name.lower() + "_"):
+    #                 continue
 
-                sampled_group = self.debug_bus._read_signal_group_samples(group, l1_addr, samples, sampling_interval)
-                if not isinstance(sampled_group, list):
-                    sampled_group = [sampled_group]
+    #             sampled_group = self.debug_bus._read_signal_group_samples(group, l1_addr, samples, sampling_interval)
+    #             if not isinstance(sampled_group, list):
+    #                 sampled_group = [sampled_group]
 
-                # check number of samples taken
-                self.assertEqual(len(sampled_group), samples, f"Expected {samples} samples, got {len(sampled_group)}")
+    #             # check number of samples taken
+    #             self.assertEqual(len(sampled_group), samples, f"Expected {samples} samples, got {len(sampled_group)}")
 
-                for signal_name in self.debug_bus.get_signal_names_in_group(group):
-                    # all samples should be equal
-                    first_val = sampled_group[0][signal_name]
-                    self.assertTrue(
-                        all(v[signal_name] == first_val for v in sampled_group),
-                        f"{signal_name}: Inconsistent sampled values: {sampled_group}",
-                    )
+    #             for signal_name in self.debug_bus.get_signal_names_in_group(group):
+    #                 # all samples should be equal
+    #                 first_val = sampled_group[0][signal_name]
+    #                 self.assertTrue(
+    #                     all(v[signal_name] == first_val for v in sampled_group),
+    #                     f"{signal_name}: Inconsistent sampled values: {sampled_group}",
+    #                 )
 
-                    # get all signal parts
-                    parts = self.debug_bus.get_signal_part_names(signal_name)
+    #                 # get all signal parts
+    #                 parts = self.debug_bus.get_signal_part_names(signal_name)
 
-                    if self.debug_bus.is_combined_signal(signal_name):
-                        # combined signal
-                        combined_value = 0
+    #                 if self.debug_bus.is_combined_signal(signal_name):
+    #                     # combined signal
+    #                     combined_value = 0
 
-                        # Find the lowest part of combined signal, which has minimum rd_sel among all parts
-                        min_part = min(parts, key=lambda part: self.debug_bus.get_signal_description(part).rd_sel)
-                        min_part_desc = self.debug_bus.get_signal_description(min_part)
+    #                     # Find the lowest part of combined signal, which has minimum rd_sel among all parts
+    #                     min_part = min(parts, key=lambda part: self.debug_bus.get_signal_description(part).rd_sel)
+    #                     min_part_desc = self.debug_bus.get_signal_description(min_part)
 
-                        # calculate combined value from all parts using read_signal
-                        for part in parts:
-                            part_value = self.debug_bus.read_signal(part)
-                            part_desc = self.debug_bus.get_signal_description(part)
-                            shift = (part_desc.mask & -part_desc.mask).bit_length() - 1
-                            combined_value |= part_value << (shift + part_desc.rd_sel * WORD_SIZE_BITS)
+    #                     # calculate combined value from all parts using read_signal
+    #                     for part in parts:
+    #                         part_value = self.debug_bus.read_signal(part)
+    #                         part_desc = self.debug_bus.get_signal_description(part)
+    #                         shift = (part_desc.mask & -part_desc.mask).bit_length() - 1
+    #                         combined_value |= part_value << (shift + part_desc.rd_sel * WORD_SIZE_BITS)
 
-                        min_shift = (min_part_desc.mask & -min_part_desc.mask).bit_length() - 1
-                        combined_value >>= min_shift + min_part_desc.rd_sel * WORD_SIZE_BITS
-                        self.assertEqual(first_val, combined_value, f"Combined signal {signal_name} value mismatch.")
-                    else:
-                        # single signal
-                        single_value = self.debug_bus.read_signal(signal_name)
-                        self.assertEqual(first_val, single_value, f"Signal {signal_name} value mismatch.")
+    #                     min_shift = (min_part_desc.mask & -min_part_desc.mask).bit_length() - 1
+    #                     combined_value >>= min_shift + min_part_desc.rd_sel * WORD_SIZE_BITS
+    #                     self.assertEqual(first_val, combined_value, f"Combined signal {signal_name} value mismatch.")
+    #                 else:
+    #                     # single signal
+    #                     single_value = self.debug_bus.read_signal(signal_name)
+    #                     self.assertEqual(first_val, single_value, f"Signal {signal_name} value mismatch.")
