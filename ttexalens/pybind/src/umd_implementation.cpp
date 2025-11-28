@@ -24,17 +24,18 @@ class TimeoutDeviceRegisterException : public std::exception {
         : chip_id(chip_id), core(core), addr(addr), size(size) {
         std::string msg = is_read ? "Timeout reading from device register" : "Timeout writing to device register";
         std::ostringstream oss;
-        oss << msg << ": device_id=" << static_cast<int>(chip_id) << ", location=(" << core.x << "," << core.y << ")"
+        oss << msg << ": device_id=" << static_cast<int>(chip_id) << ", location=(" << core.x << "," << core.y << ","
+            << to_str(core.core_type) << ")"
             << ", address=0x" << std::hex << addr << ", size=" << std::dec << size;
         message = oss.str();
     }
 
     const char* what() const noexcept override { return message.c_str(); }
 
-    uint8_t chip_id;
-    tt::umd::CoreCoord core;
-    uint64_t addr;
-    uint32_t size;
+    const uint8_t chip_id;
+    const tt::umd::CoreCoord core;
+    const uint64_t addr;
+    const uint32_t size;
 
    private:
     std::string message;
@@ -132,6 +133,8 @@ void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, Ch
                                     uint64_t addr, uint32_t size) {
     try {
         read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
+    } catch (const TimeoutDeviceRegisterException& e) {
+        throw;
     } catch (const std::runtime_error& e) {
         _configure_working_active_eth(cluster, chip);
         read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
@@ -183,6 +186,8 @@ void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_pt
                                    tt::umd::CoreCoord core, uint64_t addr) {
     try {
         write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
+    } catch (const TimeoutDeviceRegisterException& e) {
+        throw;
     } catch (const std::runtime_error& e) {
         _configure_working_active_eth(cluster, chip);
         write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
