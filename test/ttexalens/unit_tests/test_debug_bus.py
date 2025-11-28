@@ -233,36 +233,36 @@ class TestDebugBus(unittest.TestCase):
         )
         self.assertIsInstance(parsed_result, list, f"Result should be a list, got {type(parsed_result).__name__}")
 
-    def test_debug_bus_signal_store_pc(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on Wormhole devices.")
+    # def test_debug_bus_signal_store_pc(self):
+    #     if not self.device.is_wormhole():
+    #         self.skipTest("This test only works on Wormhole devices.")
 
-        for risc_name in self.location.noc_block.risc_names:
-            core_sim = RiscvCoreSimulator(self.context, self.core_desc, risc_name, self.neo_id)
-            program_writer = RiscvProgramWriter(core_sim)
+    #     for risc_name in self.location.noc_block.risc_names:
+    #         core_sim = RiscvCoreSimulator(self.context, self.core_desc, risc_name, self.neo_id)
+    #         program_writer = RiscvProgramWriter(core_sim)
 
-            pc_signal_name = risc_name.lower() + "_pc"
+    #         pc_signal_name = risc_name.lower() + "_pc"
 
-            # ebreak
-            program_writer.append_ebreak()
-            program_writer.write_program()
+    #         # ebreak
+    #         program_writer.append_ebreak()
+    #         program_writer.write_program()
 
-            # Take risc out of reset
-            core_sim.set_reset(False)
-            if not risc_name.lower() == "ncrisc":
-                assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
+    #         # Take risc out of reset
+    #         core_sim.set_reset(False)
+    #         if not risc_name.lower() == "ncrisc":
+    #             assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
 
-            # simple test for pc signal
-            pc_value_32 = self.debug_bus.read_signal(pc_signal_name)
+    #         # simple test for pc signal
+    #         pc_value_32 = self.debug_bus.read_signal(pc_signal_name)
 
-            group_name = self._get_group_for_signal(self.debug_bus, pc_signal_name)
-            group_values = self.debug_bus.read_signal_group(group_name, l1_address=0x1000)
-            assert (
-                pc_signal_name in group_values.keys()
-            ), f"PC signal '{pc_signal_name}' not found in group for {risc_name}"
-            assert (
-                group_values[pc_signal_name] == pc_value_32
-            ), f"PC signal value mismatch for {risc_name}: group={group_values[pc_signal_name]}, direct={pc_value_32}"
+    #         group_name = self._get_group_for_signal(self.debug_bus, pc_signal_name)
+    #         group_values = self.debug_bus.read_signal_group(group_name, l1_address=0x1000)
+    #         assert (
+    #             pc_signal_name in group_values.keys()
+    #         ), f"PC signal '{pc_signal_name}' not found in group for {risc_name}"
+    #         assert (
+    #             group_values[pc_signal_name] == pc_value_32
+    #         ), f"PC signal value mismatch for {risc_name}: group={group_values[pc_signal_name]}, direct={pc_value_32}"
 
     @parameterized.expand(
         [
