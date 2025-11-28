@@ -30,6 +30,7 @@ Examples:
 
 command_metadata = {
     "short": "dr",
+    "long": "dump-regfile",
     "type": "dev",
     "description": __doc__,
     "context": ["limited", "metal"],

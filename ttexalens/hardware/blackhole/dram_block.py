@@ -23,6 +23,7 @@ from ttexalens.register_store import (
 
 # TODO #432: Once signals are added, we can remove type hint
 debug_bus_signal_map: dict[str, DebugBusSignalDescription] = {}
+
 # TODO(#651) Once signals are grouped, we can remove type hint
 group_map: dict[str, tuple[int, int]] = {}
 

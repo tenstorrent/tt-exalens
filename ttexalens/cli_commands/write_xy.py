@@ -23,6 +23,7 @@ Examples:
 
 command_metadata = {
     "short": "wxy",
+    "long": "write-xy",
     "type": "low-level",
     "description": __doc__,
     "context": ["limited", "metal"],
