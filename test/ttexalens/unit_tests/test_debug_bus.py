@@ -234,107 +234,114 @@ class TestDebugBus(unittest.TestCase):
         )
         self.assertIsInstance(parsed_result, list, f"Result should be a list, got {type(parsed_result).__name__}")
 
-    # def test_debug_bus_signal_store_pc(self):
-    #     if not self.device.is_wormhole():
-    #         self.skipTest("This test only works on Wormhole devices.")
+    def test_debug_bus_signal_store_pc(self):
+        """Validate reading of PC signal for all RISCs on this core."""
+        # TODO: Need to verify whether the test for reading debug-bus signals execute deterministically Issue: #730
+        self.skipTest("Need to verify whether the test for reading debug-bus signals execute deterministically.")
 
-    #     for risc_name in self.location.noc_block.risc_names:
-    #         core_sim = RiscvCoreSimulator(self.context, self.core_desc, risc_name, self.neo_id)
-    #         program_writer = RiscvProgramWriter(core_sim)
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on quasar.")
 
-    #         pc_signal_name = risc_name.lower() + "_pc"
+        for risc_name in self.location.noc_block.risc_names:
+            core_sim = RiscvCoreSimulator(self.context, self.core_desc, risc_name, self.neo_id)
+            program_writer = RiscvProgramWriter(core_sim)
 
-    #         # ebreak
-    #         program_writer.append_ebreak()
-    #         program_writer.write_program()
+            pc_signal_name = risc_name.lower() + "_pc"
 
-    #         # Take risc out of reset
-    #         core_sim.set_reset(False)
-    #         if not risc_name.lower() == "ncrisc":
-    #             assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
+            # ebreak
+            program_writer.append_ebreak()
+            program_writer.write_program()
 
-    #         # simple test for pc signal
-    #         pc_value_32 = self.debug_bus.read_signal(pc_signal_name)
+            # Take risc out of reset
+            core_sim.set_reset(False)
+            if not risc_name.lower() == "ncrisc":
+                assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
 
-    #         group_name = self._get_group_for_signal(self.debug_bus, pc_signal_name)
-    #         group_values = self.debug_bus.read_signal_group(group_name, l1_address=0x1000)
-    #         assert (
-    #             pc_signal_name in group_values.keys()
-    #         ), f"PC signal '{pc_signal_name}' not found in group for {risc_name}"
-    #         assert (
-    #             group_values[pc_signal_name] == pc_value_32
-    #         ), f"PC signal value mismatch for {risc_name}: group={group_values[pc_signal_name]}, direct={pc_value_32}"
+            # simple test for pc signal
+            pc_value_32 = self.debug_bus.read_signal(pc_signal_name)
 
-    # @parameterized.expand(
-    #     [
-    #         (1, 2),  # samples, sampling_interval
-    #         (11, 50),
-    #         (25, 100),
-    #         (40, 5),
-    #     ]
-    # )
-    # def test_debug_bus_signal_store_sample_signal_group(self, samples, sampling_interval):
-    #     """Validate signal group readings for all groups on this core."""
-    #     if not self.device.is_wormhole():
-    #         self.skipTest("This test only works on Wormhole devices.")
+            group_name = self._get_group_for_signal(self.debug_bus, pc_signal_name)
+            group_values = self.debug_bus.read_signal_group(group_name, l1_address=0x1000)
+            assert (
+                pc_signal_name in group_values.keys()
+            ), f"PC signal '{pc_signal_name}' not found in group for {risc_name}"
+            assert (
+                group_values[pc_signal_name] == pc_value_32
+            ), f"PC signal value mismatch for {risc_name}: group={group_values[pc_signal_name]}, direct={pc_value_32}"
 
-    #     WORD_SIZE_BITS = 32
-    #     l1_addr = 0x1000
+    @parameterized.expand(
+        [
+            (1, 2),  # samples, sampling_interval
+            (11, 50),
+            (25, 100),
+            (40, 5),
+        ]
+    )
+    def test_debug_bus_signal_store_sample_signal_group(self, samples, sampling_interval):
+        """Validate signal group readings for all groups on this core."""
+        # TODO: Need to verify whether the test for reading debug-bus signals execute deterministically Issue: #730
+        self.skipTest("Need to verify whether the test for reading debug-bus signals execute deterministically.")
 
-    #     for risc_name in self.location.noc_block.risc_names:
-    #         core_sim = RiscvCoreSimulator(self.context, self.core_desc, risc_name, self.neo_id)
-    #         program_writer = RiscvProgramWriter(core_sim)
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on quasar.")
 
-    #         # ebreak
-    #         program_writer.append_ebreak()
-    #         program_writer.write_program()
+        WORD_SIZE_BITS = 32
+        l1_addr = 0x1000
 
-    #         # Take risc out of reset
-    #         core_sim.set_reset(False)
-    #         if not risc_name.lower() == "ncrisc":
-    #             assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
+        for risc_name in self.location.noc_block.risc_names:
+            core_sim = RiscvCoreSimulator(self.context, self.core_desc, risc_name, self.neo_id)
+            program_writer = RiscvProgramWriter(core_sim)
 
-    #         for group in self.debug_bus.group_names:
-    #             if not group.startswith(risc_name.lower() + "_"):
-    #                 continue
+            # ebreak
+            program_writer.append_ebreak()
+            program_writer.write_program()
 
-    #             sampled_group = self.debug_bus._read_signal_group_samples(group, l1_addr, samples, sampling_interval)
-    #             if not isinstance(sampled_group, list):
-    #                 sampled_group = [sampled_group]
+            # Take risc out of reset
+            core_sim.set_reset(False)
+            if not risc_name.lower() == "ncrisc":
+                assert core_sim.is_halted(), f"Core {risc_name} should be halted after ebreak."
 
-    #             # check number of samples taken
-    #             self.assertEqual(len(sampled_group), samples, f"Expected {samples} samples, got {len(sampled_group)}")
+            for group in self.debug_bus.group_names:
+                if not group.startswith(risc_name.lower() + "_"):
+                    continue
 
-    #             for signal_name in self.debug_bus.get_signal_names_in_group(group):
-    #                 # all samples should be equal
-    #                 first_val = sampled_group[0][signal_name]
-    #                 self.assertTrue(
-    #                     all(v[signal_name] == first_val for v in sampled_group),
-    #                     f"{signal_name}: Inconsistent sampled values: {sampled_group}",
-    #                 )
+                sampled_group = self.debug_bus._read_signal_group_samples(group, l1_addr, samples, sampling_interval)
+                if not isinstance(sampled_group, list):
+                    sampled_group = [sampled_group]
 
-    #                 # get all signal parts
-    #                 parts = self.debug_bus.get_signal_part_names(signal_name)
+                # check number of samples taken
+                self.assertEqual(len(sampled_group), samples, f"Expected {samples} samples, got {len(sampled_group)}")
 
-    #                 if self.debug_bus.is_combined_signal(signal_name):
-    #                     # combined signal
-    #                     combined_value = 0
+                for signal_name in self.debug_bus.get_signal_names_in_group(group):
+                    # all samples should be equal
+                    first_val = sampled_group[0][signal_name]
+                    self.assertTrue(
+                        all(v[signal_name] == first_val for v in sampled_group),
+                        f"{signal_name}: Inconsistent sampled values: {sampled_group}",
+                    )
 
-    #                     # Find the lowest part of combined signal, which has minimum rd_sel among all parts
-    #                     min_part = min(parts, key=lambda part: self.debug_bus.get_signal_description(part).rd_sel)
-    #                     min_part_desc = self.debug_bus.get_signal_description(min_part)
+                    # get all signal parts
+                    parts = self.debug_bus.get_signal_part_names(signal_name)
 
-    #                     # calculate combined value from all parts using read_signal
-    #                     for part in parts:
-    #                         part_value = self.debug_bus.read_signal(part)
-    #                         part_desc = self.debug_bus.get_signal_description(part)
-    #                         shift = (part_desc.mask & -part_desc.mask).bit_length() - 1
-    #                         combined_value |= part_value << (shift + part_desc.rd_sel * WORD_SIZE_BITS)
+                    if self.debug_bus.is_combined_signal(signal_name):
+                        # combined signal
+                        combined_value = 0
 
-    #                     min_shift = (min_part_desc.mask & -min_part_desc.mask).bit_length() - 1
-    #                     combined_value >>= min_shift + min_part_desc.rd_sel * WORD_SIZE_BITS
-    #                     self.assertEqual(first_val, combined_value, f"Combined signal {signal_name} value mismatch.")
-    #                 else:
-    #                     # single signal
-    #                     single_value = self.debug_bus.read_signal(signal_name)
-    #                     self.assertEqual(first_val, single_value, f"Signal {signal_name} value mismatch.")
+                        # Find the lowest part of combined signal, which has minimum rd_sel among all parts
+                        min_part = min(parts, key=lambda part: self.debug_bus.get_signal_description(part).rd_sel)
+                        min_part_desc = self.debug_bus.get_signal_description(min_part)
+
+                        # calculate combined value from all parts using read_signal
+                        for part in parts:
+                            part_value = self.debug_bus.read_signal(part)
+                            part_desc = self.debug_bus.get_signal_description(part)
+                            shift = (part_desc.mask & -part_desc.mask).bit_length() - 1
+                            combined_value |= part_value << (shift + part_desc.rd_sel * WORD_SIZE_BITS)
+
+                        min_shift = (min_part_desc.mask & -min_part_desc.mask).bit_length() - 1
+                        combined_value >>= min_shift + min_part_desc.rd_sel * WORD_SIZE_BITS
+                        self.assertEqual(first_val, combined_value, f"Combined signal {signal_name} value mismatch.")
+                    else:
+                        # single signal
+                        single_value = self.debug_bus.read_signal(signal_name)
+                        self.assertEqual(first_val, single_value, f"Signal {signal_name} value mismatch.")
