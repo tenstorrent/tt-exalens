@@ -781,7 +781,7 @@ class TestRunElf(unittest.TestCase):
 class TestARC(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.context = tt_exalens_init.init_ttexalens()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
 
     def test_arc_msg(self):
@@ -890,7 +890,7 @@ class TestCallStack(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.context = tt_exalens_init.init_ttexalens()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
         server = ServerSocket()
         server.start()
