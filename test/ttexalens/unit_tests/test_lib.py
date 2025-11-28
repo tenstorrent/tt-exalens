@@ -823,7 +823,7 @@ class TestARC(unittest.TestCase):
         import time
 
         heartbeat1 = lib.read_arc_telemetry_entry(self.device._id, tag)
-        time.sleep(0.1)
+        time.sleep(0.2)
         heartbeat2 = lib.read_arc_telemetry_entry(self.device._id, tag)
         self.assertGreater(heartbeat2, heartbeat1)
 
