@@ -76,7 +76,7 @@ class TestAutoContext(unittest.TestCase):
 class TestReadWrite(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
 
     def setUp(self):
         self.assertIsNotNone(self.context)
