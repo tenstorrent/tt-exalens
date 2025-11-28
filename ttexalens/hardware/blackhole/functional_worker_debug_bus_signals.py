@@ -1986,6 +1986,8 @@ group_map: dict[str, tuple[int, int]] = {
     # RWCs and Control (DaisySel == 3)
     "rwc_control_signals": (3, 0),
     "rwc_status_signals": (3, 1),
+    "rwc_coordinates_a": (3, 2),
+    "rwc_coordinates_b": (3, 3),
     "rwc_fidelity_phase": (3, 4),
     "rwc_pack_unpack_signals": (3, 5),
     "rwc_tdma_core_signals": (3, 6),
