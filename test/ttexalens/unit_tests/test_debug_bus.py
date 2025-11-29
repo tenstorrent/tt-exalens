@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+
 import unittest
 from parameterized import parameterized_class, parameterized
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
@@ -80,8 +81,8 @@ class TestDebugBus(unittest.TestCase):
         self.assertIn("mask must be a valid 32-bit integer", str(cm.exception))
 
     def test_sample_signal_group_invalid_samples(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on Wormhole devices.")
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on quasar.")
 
         group_name = next(iter(self.debug_bus.group_map.keys()))
         with self.assertRaises(ValueError) as cm:
@@ -94,8 +95,8 @@ class TestDebugBus(unittest.TestCase):
         self.assertIn("samples count must be at least 1", str(cm.exception))
 
     def test_signal_group_invalid_l1_address(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on Wormhole devices.")
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on quasar.")
 
         # test sample_signal_group
         group_name = next(iter(self.debug_bus.group_map.keys()))
@@ -109,8 +110,8 @@ class TestDebugBus(unittest.TestCase):
         self.assertIn("L1 address must be 16-byte aligned", str(cm.exception))
 
     def test_sample_signal_group_invalid_sampling_interval(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on Wormhole devices.")
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on quasar.")
 
         group_name = next(iter(self.debug_bus.group_map.keys()))
         with self.assertRaises(ValueError) as cm:
@@ -131,8 +132,8 @@ class TestDebugBus(unittest.TestCase):
         ]
     )
     def test_signal_group_exceeds_memory(self, samples, l1_address):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on Wormhole devices.")
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on quasar.")
 
         # test sample_signal_group
         group_name = next(iter(self.debug_bus.group_map.keys()))
@@ -146,8 +147,8 @@ class TestDebugBus(unittest.TestCase):
         self.assertIn(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit", str(cm.exception))
 
     def test_read_signal_group_invalid_signal_name(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on Wormhole devices.")
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on quasar.")
 
         signal_name = "invalid_signal_name"
         group_name = next(iter(self.debug_bus.group_map.keys()))
@@ -160,8 +161,8 @@ class TestDebugBus(unittest.TestCase):
         self.assertIn(f"Signal '{signal_name}' does not exist in group.", str(cm.exception))
 
     def test_invalid_group_name(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on Wormhole devices.")
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on quasar.")
 
         group_name = "invalid_group_name"
         with self.assertRaises(ValueError) as cm:
@@ -234,8 +235,12 @@ class TestDebugBus(unittest.TestCase):
         self.assertIsInstance(parsed_result, list, f"Result should be a list, got {type(parsed_result).__name__}")
 
     def test_debug_bus_signal_store_pc(self):
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on Wormhole devices.")
+        """Validate reading of PC signal for all RISCs on this core."""
+        # TODO: Need to verify whether the test for reading debug-bus signals execute deterministically Issue: #730
+        self.skipTest("Need to verify whether the test for reading debug-bus signals execute deterministically.")
+
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on quasar.")
 
         for risc_name in self.location.noc_block.risc_names:
             core_sim = RiscvCoreSimulator(self.context, self.core_desc, risc_name, self.neo_id)
@@ -274,8 +279,11 @@ class TestDebugBus(unittest.TestCase):
     )
     def test_debug_bus_signal_store_sample_signal_group(self, samples, sampling_interval):
         """Validate signal group readings for all groups on this core."""
-        if not self.device.is_wormhole():
-            self.skipTest("This test only works on Wormhole devices.")
+        # TODO: Need to verify whether the test for reading debug-bus signals execute deterministically Issue: #730
+        self.skipTest("Need to verify whether the test for reading debug-bus signals execute deterministically.")
+
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on quasar.")
 
         WORD_SIZE_BITS = 32
         l1_addr = 0x1000

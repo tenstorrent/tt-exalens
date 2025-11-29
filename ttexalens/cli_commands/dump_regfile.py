@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump-regfile <core-loc> <regfile> [-d <D>...] [-t <num-tiles>]
+  dump_regfile <core-loc> <regfile> [-d <D>...] [-t <num-tiles>]
 
 Arguments:
   core-loc     Either X-Y or R,C location of a core

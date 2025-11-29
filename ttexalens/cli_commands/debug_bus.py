@@ -43,7 +43,7 @@ Examples:
   debug-bus list-signals --max all                              # List all predefined debug bus signals
   debug-bus list-signals --search *pc* --max 5                  # List up to 5 signals whose names contain 'pc'
   debug-bus list-groups                                         # List all debug bus signal groups
-  debug-bus list-groups --search *brisc*                        # List groups whose names match pattern 'brisc'
+  debug-bus list-groups --search brisc*                         # List groups whose names match pattern 'brisc'
   debug-bus group brisc_group_a 0x1000 --samples 4 --sampling-interval 10 # List all signals in group 'brisc_group_a' using L1 sampling, 4 samples, 10 cycles interval
   debug-bus group brisc_group_a 0x1000 --search *pc             # List all signals in group 'brisc_group_a' that ends with 'pc' using L1 sampling
   debug-bus trisc0_pc,trisc1_pc                                 # Print values for trisc0_pc and trisc1_pc
