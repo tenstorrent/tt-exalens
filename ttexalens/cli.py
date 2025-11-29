@@ -224,6 +224,39 @@ def import_commands(reload=False):
     return commands
 
 
+def extract_command_file_output(command_text: str) -> str | None:
+    # Check if command ends with '>file_name' or '>>file_name' or '|>file_name' or '|>>file_name' where file_name can have space at the start
+    import re
+
+    regex_pattern = r"((\|)?(>)?>[ ]*([^ ]+|\"[^\"]*\"|'[^']*')+)$"
+    match = re.search(regex_pattern, command_text)
+    if match:
+        return match.group(1)
+    return None
+
+
+def redirect_command_output_to_file(file_output: str):
+    if file_output is None:
+        return util.redirect_output_to_file_and_terminal(None)
+
+    show_terminal_output = True
+    if file_output.startswith("|"):
+        show_terminal_output = False
+        file_output = file_output[1:]
+
+    append = False
+    if file_output.startswith(">>"):
+        append = True
+        file_output = file_output[2:]
+    else:
+        assert file_output.startswith(">")
+        file_output = file_output[1:]
+
+    file_output = file_output.strip()
+    file_output = file_output.replace('"', "").replace("'", "")
+    return util.redirect_output_to_file_and_terminal(file_output, show_terminal_output, append)
+
+
 def main_loop(args, context):
     """
     Main loop: read-eval-print
@@ -296,41 +329,47 @@ def main_loop(args, context):
                 # Trim comments
                 cmd_raw = cmd_raw.split("#")[0].strip()
 
-                cmd_int = try_int(cmd_raw)
-                if type(cmd_int) == int:
-                    if navigation_suggestions and cmd_int >= 0 and cmd_int < len(navigation_suggestions):
-                        cmd_raw = navigation_suggestions[cmd_int]["cmd"]
-                    else:
-                        raise util.TTException(f"Invalid speed dial number: {cmd_int}")
+                # Check if command should be serialized to a file
+                file_output = extract_command_file_output(cmd_raw)
+                if file_output is not None:
+                    cmd_raw = cmd_raw[: -len(file_output)].strip()
 
-                cmd = cmd_raw.split()
-                if len(cmd) > 0:
-                    cmd_string = cmd[0]
-                    found_command = None
-
-                    # Look for command to execute
-                    for c in context.commands:
-                        if c["short"] == cmd_string or c["long"] == cmd_string:
-                            found_command = c
-
-                    if found_command == None:
-                        # Print help on invalid commands
-                        print_help(context.commands, cmd)
-                        raise util.TTException(f"Invalid command '{cmd_string}'")
-                    else:
-                        if found_command["long"] == "exit":
-                            exit_code = int(cmd[1]) if len(cmd) > 1 else 0
-                            return exit_code
-                        elif found_command["long"] == "help":
-                            print_help(context.commands, cmd)
-                        elif found_command["long"] == "reload":
-                            import_commands(reload=True)
-                        elif found_command["long"] == "eval":
-                            eval_str = " ".join(cmd[1:])
-                            print(f"{eval_str} = {eval(eval_str)}")
+                with redirect_command_output_to_file(file_output) as terminal_override:
+                    cmd_int = try_int(cmd_raw)
+                    if type(cmd_int) == int:
+                        if navigation_suggestions and cmd_int >= 0 and cmd_int < len(navigation_suggestions):
+                            cmd_raw = navigation_suggestions[cmd_int]["cmd"]
                         else:
-                            new_navigation_suggestions = found_command["module"].run(cmd_raw, context, ui_state)
-                            navigation_suggestions = new_navigation_suggestions
+                            raise util.TTException(f"Invalid speed dial number: {cmd_int}")
+
+                    cmd = cmd_raw.split()
+                    if len(cmd) > 0:
+                        cmd_string = cmd[0]
+                        found_command = None
+
+                        # Look for command to execute
+                        for c in context.commands:
+                            if c["short"] == cmd_string or c["long"] == cmd_string:
+                                found_command = c
+
+                        if found_command == None:
+                            # Print help on invalid commands
+                            print_help(context.commands, cmd)
+                            raise util.TTException(f"Invalid command '{cmd_string}'")
+                        else:
+                            if found_command["long"] == "exit":
+                                exit_code = int(cmd[1]) if len(cmd) > 1 else 0
+                                return exit_code
+                            elif found_command["long"] == "help":
+                                print_help(context.commands, cmd)
+                            elif found_command["long"] == "reload":
+                                import_commands(reload=True)
+                            elif found_command["long"] == "eval":
+                                eval_str = " ".join(cmd[1:])
+                                print(f"{eval_str} = {eval(eval_str)}")
+                            else:
+                                new_navigation_suggestions = found_command["module"].run(cmd_raw, context, ui_state)
+                                navigation_suggestions = new_navigation_suggestions
 
             except CommandParsingException as e:
                 if e.is_parsing_error():

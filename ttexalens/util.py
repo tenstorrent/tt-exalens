@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from contextlib import nullcontext, AbstractContextManager, contextmanager
+from typing import Any
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
@@ -78,18 +80,22 @@ def with_hex_if_possible(val):
     return f"{val}{to_hex_if_possible(val)}"
 
 
-# Colors
-CLR_RED = "\033[31m"
-CLR_GREEN = "\033[32m"
-CLR_YELLOW = "\033[33m"
-CLR_BLUE = "\033[34m"
-CLR_VIOLET = "\033[35m"
-CLR_TEAL = "\033[36m"
-CLR_GREY = "\033[37m"
-CLR_ORANGE = "\033[38:2:205:106:0m"
-CLR_WHITE = "\033[38:2:255:255:255m"
+# Cache the result of should_use_color
+_USE_COLOR = sys.stdout.isatty()
 
-CLR_END = "\033[0m"
+
+# Colors
+CLR_RED = "\033[31m" if _USE_COLOR else ""
+CLR_GREEN = "\033[32m" if _USE_COLOR else ""
+CLR_YELLOW = "\033[33m" if _USE_COLOR else ""
+CLR_BLUE = "\033[34m" if _USE_COLOR else ""
+CLR_VIOLET = "\033[35m" if _USE_COLOR else ""
+CLR_TEAL = "\033[36m" if _USE_COLOR else ""
+CLR_GREY = "\033[37m" if _USE_COLOR else ""
+CLR_ORANGE = "\033[38:2:205:106:0m" if _USE_COLOR else ""
+CLR_WHITE = "\033[38:2:255:255:255m" if _USE_COLOR else ""
+
+CLR_END = "\033[0m" if _USE_COLOR else ""
 
 CLR_ERR = CLR_RED
 CLR_WARN = CLR_ORANGE
@@ -154,6 +160,61 @@ def INFO(s, **kwargs):
 def VERBOSE(s, **kwargs):
     if Verbosity.supports(Verbosity.VERBOSE):
         print(f"{CLR_VERBOSE}{s}{CLR_END}", **kwargs)
+
+
+def trim_ascii_escape(input: Any) -> Any:
+    if not isinstance(input, str):
+        return input
+
+    import re
+
+    # Regex pattern to match ANSI escape sequences
+    ansi_escape = re.compile(r"(?:\x1B[@-Z\\-_]|[\x80-\x9A\x9C-\x9F]|(?:\x1B\[|\x9B)[0-?]*[ -/]*[@-~])")
+    return ansi_escape.sub("", input)
+
+
+class Tee:
+    def __init__(self, terminal_output, file_output):
+        self.terminal_output = terminal_output
+        self.file_output = file_output
+
+    def write(self, data):
+        if self.terminal_output is not None:
+            self.terminal_output.write(data)
+        self.file_output.write(trim_ascii_escape(data))
+
+    def flush(self):
+        if self.terminal_output is not None:
+            self.terminal_output.flush()
+        self.file_output.flush()
+
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+        raise NotImplementedError()
+
+
+def redirect_output_to_file_and_terminal(
+    file_path: str, show_terminal_output: bool = True, append: bool = False
+) -> AbstractContextManager:
+    if file_path is None:
+        # No redirection needed
+        return nullcontext()
+
+    mode = "a" if append else "w"
+
+    @contextmanager
+    def redirect_output():
+        original_stdout = sys.stdout
+        original_stderr = sys.stderr
+        try:
+            with open(file_path, mode) as f:
+                sys.stdout = Tee(original_stdout if show_terminal_output else None, f)
+                sys.stderr = Tee(original_stderr if show_terminal_output else None, f)
+                yield
+        finally:
+            sys.stdout = original_stdout
+            sys.stderr = original_stderr
+
+    return redirect_output()
 
 
 # Given a list l of possibly shuffled integers from 0 to len(l), the function returns reverse mapping
