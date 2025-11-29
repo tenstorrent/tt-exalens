@@ -95,8 +95,8 @@ class TTExaLensImplementation {
     }
 
     std::tuple<int, uint32_t, uint32_t> arc_msg(uint8_t noc_id, uint8_t chip_id, uint32_t msg_code, bool wait_for_done,
-                                                uint32_t arg0, uint32_t arg1, std::chrono::milliseconds timeout) {
-        return _check_result(implementation->arc_msg(noc_id, chip_id, msg_code, wait_for_done, arg0, arg1, timeout));
+                                                const std::vector<uint32_t> &args, std::chrono::milliseconds timeout) {
+        return _check_result(implementation->arc_msg(noc_id, chip_id, msg_code, wait_for_done, args, timeout));
     }
 
     uint32_t read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
@@ -174,7 +174,7 @@ NB_MODULE(ttexalens_pybind, m) {
         .def("get_device_soc_description", &TTExaLensImplementation::get_device_soc_description,
              "Returns device SoC description", "chip_id"_a)
         .def("arc_msg", &TTExaLensImplementation::arc_msg, "Send ARC message", "noc_id"_a, "chip_id"_a, "msg_code"_a,
-             "wait_for_done"_a, "arg0"_a, "arg1"_a, "timeout"_a)
+             "wait_for_done"_a, "args"_a, "timeout"_a)
         .def("read_arc_telemetry_entry", &TTExaLensImplementation::read_arc_telemetry_entry, "Read ARC telemetry entry",
              "chip_id"_a, "telemetry_tag"_a)
         .def("get_firmware_version", &TTExaLensImplementation::get_firmware_version, "Returns firmware version",

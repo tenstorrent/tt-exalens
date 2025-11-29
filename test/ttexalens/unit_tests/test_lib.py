@@ -792,14 +792,11 @@ class TestARC(unittest.TestCase):
 
         msg_code = 0x90  # ArcMessageType::TEST
         wait_for_done = True
-        arg0 = 0
-        arg1 = 0
+        args = [0, 0]
         timeout = timedelta(milliseconds=1000)
 
         # Ask for reply, check for reasonable TEST value
-        ret, return_3, _ = lib.arc_msg(
-            self.device._id, msg_code, wait_for_done, arg0, arg1, timeout, context=self.context
-        )
+        ret, return_3, _ = lib.arc_msg(self.device._id, msg_code, wait_for_done, args, timeout, context=self.context)
 
         print(f"ARC message result={ret}, test={return_3}")
         self.assertEqual(ret, 0)

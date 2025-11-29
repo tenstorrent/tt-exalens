@@ -37,7 +37,7 @@ class umd_implementation : public ttexalens_implementation {
 
     virtual std::optional<std::tuple<int, uint32_t, uint32_t>> arc_msg(uint8_t noc_id, uint8_t chip_id,
                                                                        uint32_t msg_code, bool wait_for_done,
-                                                                       uint32_t arg0, uint32_t arg1,
+                                                                       const std::vector<uint32_t>& args,
                                                                        std::chrono::milliseconds timeout) override;
 
     virtual std::optional<uint32_t> read_arc_telemetry_entry_helper(uint8_t chip_id, uint8_t telemetry_tag);
