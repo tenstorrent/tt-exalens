@@ -193,7 +193,7 @@ class Tee:
 
 
 def redirect_output_to_file_and_terminal(
-    file_path: str, show_terminal_output: bool = True, append: bool = False
+    file_path: str | None, show_terminal_output: bool = True, append: bool = False
 ) -> AbstractContextManager:
     if file_path is None:
         # No redirection needed

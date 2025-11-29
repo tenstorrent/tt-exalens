@@ -235,7 +235,7 @@ def extract_command_file_output(command_text: str) -> str | None:
     return None
 
 
-def redirect_command_output_to_file(file_output: str):
+def redirect_command_output_to_file(file_output: str | None):
     if file_output is None:
         return util.redirect_output_to_file_and_terminal(None)
 
