@@ -13,7 +13,8 @@ void halt() {
 }
 
 int f1(int a) {
-    if (a <= 1) {
+    constexpr int recursion_end = 1;
+    if (a <= recursion_end) {
         halt();
         return a;
     } else

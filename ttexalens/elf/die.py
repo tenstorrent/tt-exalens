@@ -15,11 +15,12 @@ from functools import cached_property
 import os
 import re
 import ttexalens.util as util
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ttexalens.elf.cu import ElfCompileUnit
     from ttexalens.elf.frame import FrameInspection
+    from ttexalens.elf.variable import ElfVariable
 
 
 # We only care about the stuff we can use for probing the memory
@@ -136,8 +137,8 @@ class ElfDie:
     def resolved_type(self) -> "ElfDie":
         """
         Resolve to underlying type
-        TODO: test typedefs, this looks overly complicated
         """
+        # TODO: test typedefs, this looks overly complicated
         if self.tag == "DW_TAG_typedef" and self.local_offset != None:
             typedef_DIE = self.cu.find_DIE_at_local_offset(self.local_offset)
             if typedef_DIE:  # If typedef, recursivelly do it
@@ -162,6 +163,11 @@ class ElfDie:
                 return type_die
         elif "DW_AT_specification" in self.attributes:
             dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
+            die = self.cu.dwarf.get_die(dwarf_die)
+            if die is not None:
+                return die.resolved_type
+        elif "DW_AT_abstract_origin" in self.attributes:
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
             die = self.cu.dwarf.get_die(dwarf_die)
             if die is not None:
                 return die.resolved_type
@@ -304,6 +310,12 @@ class ElfDie:
         """
         if "DW_AT_const_value" in self.attributes:
             return self.attributes["DW_AT_const_value"].value
+        if "DW_AT_const_expr" in self.attributes:
+            return self.attributes["DW_AT_const_expr"].value
+        if "DW_AT_abstract_origin" in self.attributes:
+            die = self.get_DIE_from_attribute("DW_AT_abstract_origin")
+            if die is not None:
+                return die.value
         return None
 
     @cached_property
@@ -412,6 +424,10 @@ class ElfDie:
             line = self.attributes["DW_AT_decl_line"].value
         if "DW_AT_decl_column" in self.attributes:
             column = self.attributes["DW_AT_decl_column"].value
+        if file is None and line is None and column is None and "DW_AT_abstract_origin" in self.attributes:
+            die = self.get_DIE_from_attribute("DW_AT_abstract_origin")
+            if die is not None:
+                return die.decl_file_info
         return (file, line, column)
 
     @cached_property
@@ -559,16 +575,45 @@ class ElfDie:
     def tag_is(self, tag):
         return self.tag == f"DW_TAG_{tag}"
 
-    def read_value(self, frame_inspection: FrameInspection):
+    def read_value(self, frame_inspection: FrameInspection | None) -> ElfVariable | None:
+        """
+        Read the value of the variable represented by this DIE using the provided frame inspection context.
+        """
+        from ttexalens.elf.variable import ElfVariable, FixedMemoryAccess
+
         # TODO: Check if it is variable (global, local, member, argument)
-        # TODO: Constant?
+        if not self.tag_is("formal_parameter") and not self.tag_is("variable"):
+            return None
+
+        # Get the type of the variable
+        variable_type = self.resolved_type
+        if variable_type is None or variable_type is self:
+            # We failed to resolve type
+            return None
+
+        # Check if we have constant value
+        const_value = self.value
+        if const_value is not None:
+            if isinstance(const_value, bytes):
+                memory = const_value
+            else:
+                try:
+                    const_value = int(const_value)
+                    size = variable_type.size if variable_type.size is not None else 4
+                    memory = const_value.to_bytes(size, byteorder="little")
+                except Exception:
+                    return None
+
+            # We explicitly set address to 0 to indicate that this is not an addressable variable
+            return ElfVariable(variable_type, 0, FixedMemoryAccess(memory))
+
+        # If we don't have frame inspection, we can't read the value
+        if frame_inspection is None:
+            return None
 
         # Check if we have address
-        address = self.address
-        if address is not None:
-            from ttexalens.elf.variable import ElfVariable
-
-            return ElfVariable(self, address, frame_inspection.mem_access)
+        if self.address is not None:
+            return ElfVariable(variable_type, self.address, frame_inspection.mem_access)
 
         # Check if we have location
         location = self._location
@@ -596,10 +641,139 @@ class ElfDie:
                         parsed_expression = self.cu.expression_parser.parse_expr(loc.loc_expr)
             if parsed_expression is None:
                 return None
+        else:
+            # Unknown location type
+            return None
 
-        # TODO: Evaluate expression to get value
-        return None
+        # Evaluate expression to get value
+        is_address, value = self._evaluate_location_expression(parsed_expression, frame_inspection)
+        if value is None:
+            return None
+        if is_address:
+            assert isinstance(value, int)
+            return ElfVariable(variable_type, value, frame_inspection.mem_access)
+        else:
+            if isinstance(value, bytes):
+                memory = value
+            else:
+                try:
+                    value = int(value)
+                    size = variable_type.size if variable_type.size is not None else 4
+                    memory = value.to_bytes(size, byteorder="little")
+                except Exception:
+                    return None
 
-    def _evaluate_location_expression(self, parsed_expression: list, frame_inspection: FrameInspection):
-        # TODO: Implement expression evaluation
-        return None
+            # We explicitly set address to 0 to indicate that this is not an addressable variable
+            return ElfVariable(variable_type, 0, FixedMemoryAccess(memory))
+
+    def _evaluate_location_expression(
+        self, parsed_expression: list, frame_inspection: FrameInspection
+    ) -> tuple[bool, Any | None]:
+        from ttexalens.elf.variable import ElfVariable, FixedMemoryAccess
+
+        location_parser = self.cu.dwarf.location_parser
+        is_address = False
+        value = None
+        stack = []
+        for op in parsed_expression:
+            if op.op_name == "DW_OP_fbreg":
+                # We need to get attribute frabe_base from the current function
+                function_die = self.parent
+                while (
+                    function_die is not None
+                    and not function_die.tag_is("subprogram")
+                    and not function_die.tag_is("inlined_function")
+                ):
+                    function_die = function_die.parent
+                if function_die is None or "DW_AT_frame_base" not in function_die.attributes:
+                    # We couldn't find the function DIE
+                    return False, None
+                frame_base_attribute = function_die.attributes["DW_AT_frame_base"]
+                frame_base_location = location_parser.parse_from_attribute(
+                    frame_base_attribute, self.cu.version, self.dwarf_die
+                )
+                if isinstance(frame_base_location, LocationExpr):
+                    parsed_frame_base_expression = self.cu.expression_parser.parse_expr(frame_base_location.loc_expr)
+                    _, frame_base = function_die._evaluate_location_expression(
+                        parsed_frame_base_expression, frame_inspection
+                    )
+                    if frame_base is None:
+                        return False, None
+                else:
+                    # We don't know how to parse frame base expression
+                    return False, None
+
+                if len(op.args) != 1 or not isinstance(op.args[0], int):
+                    return False, None
+                value = frame_base + op.args[0]
+                is_address = True
+            elif op.op_name == "DW_OP_call_frame_cfa":
+                value = frame_inspection.cfa
+                is_address = True
+            elif op.op_name == "DW_OP_entry_value":
+                if len(op.args) != 1 or not isinstance(op.args[0], list):
+                    return False, None
+                parsed_sub_expression = op.args[0]
+                _, value = self._evaluate_location_expression(parsed_sub_expression, frame_inspection)
+                if value is None:
+                    return False, None
+                stack.append(value)
+            elif op.op_name == "DW_OP_regval_type":
+                if len(op.args) != 2:
+                    return False, None
+                register_index = op.args[0]
+                type_die_offset = op.args[1]
+                type_die = self.cu.find_DIE_at_local_offset(type_die_offset)
+                if type_die is None:
+                    return False, None
+                register_value = frame_inspection.read_register(register_index)
+                if register_value is None:
+                    return False, None
+                type_size = type_die.size if type_die.size is not None else 4
+                value = ElfVariable(
+                    type_die, 0, FixedMemoryAccess(register_value.to_bytes(type_size, byteorder="little"))
+                ).read_value()
+                is_address = False
+            elif op.op_name == "DW_OP_convert":
+                if len(op.args) != 1:
+                    return False, None
+                type_die_offset = op.args[0]
+                if type_die_offset != 0:
+                    if len(stack) == 0:
+                        return False, None
+                    stack_value = stack.pop()
+                    type_die = self.cu.find_DIE_at_local_offset(type_die_offset)
+                    if type_die is None:
+                        return False, None
+                    type_size = type_die.size if type_die.size is not None else 4
+                    value = ElfVariable(
+                        type_die, 0, FixedMemoryAccess(stack_value.to_bytes(type_size, byteorder="little"))
+                    ).read_value()
+                    stack.append(value)
+                else:
+                    # Generic type conversion, we can ignore it
+                    pass
+            elif op.op_name == "DW_OP_stack_value":
+                if len(stack) == 0:
+                    return False, value
+                return False, stack.pop()
+            elif op.op_name.startswith("DW_OP_reg"):
+                register_index = int(op.op_name[len("DW_OP_reg") :])
+                value = frame_inspection.read_register(register_index)
+                if value is None:
+                    return False, None
+                is_address = False
+            elif op.op_name.startswith("DW_OP_breg"):
+                register_index = int(op.op_name[len("DW_OP_breg") :])
+                register_value = frame_inspection.read_register(register_index)
+                if register_value is None:
+                    return False, None
+                if len(op.args) != 1 or not isinstance(op.args[0], int):
+                    return False, None
+                value = register_value + op.args[0]
+                is_address = False
+            else:
+                # TODO: Implement expression evaluation
+                # Unsupported operation
+                return False, None
+        return is_address, value
