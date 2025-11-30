@@ -76,7 +76,7 @@ class TestAutoContext(unittest.TestCase):
 class TestReadWrite(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
 
     def setUp(self):
         self.assertIsNotNone(self.context)
@@ -781,7 +781,7 @@ class TestRunElf(unittest.TestCase):
 class TestARC(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.context = tt_exalens_init.init_ttexalens()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
 
     def test_arc_msg(self):
@@ -792,14 +792,11 @@ class TestARC(unittest.TestCase):
 
         msg_code = 0x90  # ArcMessageType::TEST
         wait_for_done = True
-        arg0 = 0
-        arg1 = 0
+        args = [0, 0]
         timeout = timedelta(milliseconds=1000)
 
         # Ask for reply, check for reasonable TEST value
-        ret, return_3, _ = lib.arc_msg(
-            self.device._id, msg_code, wait_for_done, arg0, arg1, timeout, context=self.context
-        )
+        ret, return_3, _ = lib.arc_msg(self.device._id, msg_code, wait_for_done, args, timeout, context=self.context)
 
         print(f"ARC message result={ret}, test={return_3}")
         self.assertEqual(ret, 0)
@@ -823,7 +820,7 @@ class TestARC(unittest.TestCase):
         import time
 
         heartbeat1 = lib.read_arc_telemetry_entry(self.device._id, tag)
-        time.sleep(0.1)
+        time.sleep(0.2)
         heartbeat2 = lib.read_arc_telemetry_entry(self.device._id, tag)
         self.assertGreater(heartbeat2, heartbeat1)
 
@@ -890,7 +887,7 @@ class TestCallStack(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.context = tt_exalens_init.init_ttexalens()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
         server = ServerSocket()
         server.start()

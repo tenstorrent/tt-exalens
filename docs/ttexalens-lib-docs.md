@@ -376,7 +376,7 @@ Loads the given ELF file into the specified RISC core and executes it. Similar t
 ## arc_msg
 
 ```
-arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, context=None, noc_id=None) -> int
+arc_msg(device_id, msg_code, wait_for_done, args, timeout, context=None, noc_id=None) -> int
 ```
 
 
@@ -390,8 +390,7 @@ Sends an ARC message to the device.
 - `device_id` *(int)*: ID number of device to send message to.
 - `msg_code` *(int)*: Message code to send.
 - `wait_for_done` *(bool)*: If True, waits for the message to be processed.
-- `arg0` *(int)*: First argument to the message.
-- `arg1` *(int)*: Second argument to the message.
+- `args` *(list[int])*: Arguments to the message.
 - `timeout` *(datetime.timedelta)*: Timeout.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.

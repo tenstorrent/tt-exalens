@@ -359,8 +359,7 @@ def arc_msg(
     device_id: int,
     msg_code: int,
     wait_for_done: bool,
-    arg0: int,
-    arg1: int,
+    args: list[int],
     timeout: datetime.timedelta,
     context: Context | None = None,
     noc_id: int | None = None,
@@ -372,8 +371,7 @@ def arc_msg(
         device_id (int): ID number of device to send message to.
         msg_code (int): Message code to send.
         wait_for_done (bool): If True, waits for the message to be processed.
-        arg0 (int): First argument to the message.
-        arg1 (int): Second argument to the message.
+        args (list[int]): Arguments to the message.
         timeout (datetime.timedelta): Timeout.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
@@ -388,7 +386,7 @@ def arc_msg(
     if timeout < datetime.timedelta(0):
         raise TTException("Timeout must be greater than or equal to 0.")
 
-    return list(context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout))
+    return list(context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, args, timeout))
 
 
 def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None) -> int:
