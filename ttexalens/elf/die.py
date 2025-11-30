@@ -251,22 +251,11 @@ class ElfDie:
                 location = location_parser.parse_from_attribute(location_attribute, self.cu.version, self.dwarf_die)
                 if isinstance(location, LocationExpr):
                     parsed = self.cu.expression_parser.parse_expr(location.loc_expr)
-                    if len(parsed) == 1 and parsed[0].op_name == "DW_OP_addr":
-                        assert len(parsed[0].args) == 1
-                        addr = parsed[0].args[0]
-                    elif len(parsed) == 1 and parsed[0].op_name == "DW_OP_addrx":
-                        assert len(parsed[0].args) == 1
-                        index = parsed[0].args[0]
-                        addr = self.cu.dwarf.dwarf.get_addr(self.cu.dwarf_cu, index)
-                    else:
-                        # We have expression that needs to be evaluated and applied in order to get to location value.
-                        # In order for this to work, we need to return expression that needs to be evaluated in mem_access method.
-                        pass
+                    _, addr = self._evaluate_location_expression(parsed, frame_inspection=None)
                 elif isinstance(location, list):
                     # We have list of expressions. All need to be evaluated and applied in order to get to location value.
-                    # In order for this to work, we need to return expression that needs to be evaluated in mem_access method.
-                    # for loc in location:
-                    #     parsed = self.cu.expression_parser.parse_expr(loc.loc_expr)
+                    # This list is usually used for location ranges, so we need to have PC in order to evaluate them properly.
+                    # We don't have it here, so we don't attempt to evaluate location lists.
                     pass
             else:
                 if allow_recursion and (
@@ -667,7 +656,7 @@ class ElfDie:
             return ElfVariable(variable_type, 0, FixedMemoryAccess(memory))
 
     def _evaluate_location_expression(
-        self, parsed_expression: list, frame_inspection: FrameInspection
+        self, parsed_expression: list, frame_inspection: FrameInspection | None = None
     ) -> tuple[bool, Any | None]:
         from ttexalens.elf.variable import ElfVariable, FixedMemoryAccess
 
@@ -708,6 +697,8 @@ class ElfDie:
                 value = frame_base + op.args[0]
                 is_address = True
             elif op.op_name == "DW_OP_call_frame_cfa":
+                if frame_inspection is None:
+                    return False, None
                 value = frame_inspection.cfa
                 is_address = True
             elif op.op_name == "DW_OP_entry_value":
@@ -726,6 +717,8 @@ class ElfDie:
                 type_die = self.cu.find_DIE_at_local_offset(type_die_offset)
                 if type_die is None:
                     return False, None
+                if frame_inspection is None:
+                    return False, None
                 register_value = frame_inspection.read_register(register_index)
                 if register_value is None:
                     return False, None
@@ -734,7 +727,7 @@ class ElfDie:
                     type_die, 0, FixedMemoryAccess(register_value.to_bytes(type_size, byteorder="little"))
                 ).read_value()
                 is_address = False
-            elif op.op_name == "DW_OP_convert":
+            elif op.op_name == "DW_OP_convert" or op.op_name == "DW_OP_reinterpret":
                 if len(op.args) != 1:
                     return False, None
                 type_die_offset = op.args[0]
@@ -757,14 +750,39 @@ class ElfDie:
                 if len(stack) == 0:
                     return False, value
                 return False, stack.pop()
-            elif op.op_name.startswith("DW_OP_reg"):
-                register_index = int(op.op_name[len("DW_OP_reg") :])
+            elif op.op_name == "DW_OP_regx":
+                if len(op.args) != 1 or not isinstance(op.args[0], int):
+                    return False, None
+                register_index = op.args[0]
+                if frame_inspection is None:
+                    return False, None
                 value = frame_inspection.read_register(register_index)
                 if value is None:
                     return False, None
                 is_address = False
+            elif op.op_name.startswith("DW_OP_reg"):
+                register_index = int(op.op_name[len("DW_OP_reg") :])
+                if frame_inspection is None:
+                    return False, None
+                value = frame_inspection.read_register(register_index)
+                if value is None:
+                    return False, None
+                is_address = False
+            elif op.op_name == "DW_OP_bregx":
+                if len(op.args) != 2 or not isinstance(op.args[0], int) or not isinstance(op.args[1], int):
+                    return False, None
+                register_index = op.args[0]
+                if frame_inspection is None:
+                    return False, None
+                register_value = frame_inspection.read_register(register_index)
+                if register_value is None:
+                    return False, None
+                value = register_value + op.args[1]
+                is_address = False
             elif op.op_name.startswith("DW_OP_breg"):
                 register_index = int(op.op_name[len("DW_OP_breg") :])
+                if frame_inspection is None:
+                    return False, None
                 register_value = frame_inspection.read_register(register_index)
                 if register_value is None:
                     return False, None
@@ -772,8 +790,180 @@ class ElfDie:
                     return False, None
                 value = register_value + op.args[0]
                 is_address = False
+            elif op.op_name == "DW_OP_addr":
+                if len(op.args) != 1 or not isinstance(op.args[0], int):
+                    return False, None
+                value = op.args[0]
+                is_address = True
+            elif op.op_name == "DW_OP_deref":
+                if len(stack) > 0:
+                    value = stack.pop()
+                if value is None:
+                    return False, None
+                try:
+                    read_address = int(value)
+                except:
+                    return False, None
+                read_size = 4  # Default to 4 bytes
+                if frame_inspection is None:
+                    return False, None
+                memory = frame_inspection.mem_access.read(read_address, read_size)
+                value = int.from_bytes(memory, byteorder="little")
+                is_address = False
+            elif op.op_name == "DW_OP_const_type":
+                if (
+                    len(op.args) != 2
+                    or not isinstance(op.args[0], int)
+                    or (not isinstance(op.args[1], list) and not isinstance(op.args[1], bytes))
+                ):
+                    return False, None
+                type_die_offset = op.args[0]
+                type_die = self.cu.find_DIE_at_local_offset(type_die_offset)
+                if type_die is None:
+                    return False, None
+                const_value = op.args[1]
+                if isinstance(const_value, list):
+                    const_value = bytes(const_value)
+                type_size = type_die.size if type_die.size is not None else len(const_value)
+                value = ElfVariable(type_die, 0, FixedMemoryAccess(const_value)).read_value()
+                is_address = False
+            elif (
+                op.op_name == "DW_OP_const1u"
+                or op.op_name == "DW_OP_const1s"
+                or op.op_name == "DW_OP_const2u"
+                or op.op_name == "DW_OP_const2s"
+                or op.op_name == "DW_OP_const4u"
+                or op.op_name == "DW_OP_const4s"
+                or op.op_name == "DW_OP_const8u"
+                or op.op_name == "DW_OP_const8s"
+                or op.op_name == "DW_OP_constu"
+                or op.op_name == "DW_OP_consts"
+            ):
+                if len(op.args) != 1 or not isinstance(op.args[0], int):
+                    return False, None
+                value = op.args[0]
+                is_address = False
+            elif op.op_name == "DW_OP_dup":
+                if len(stack) > 0:
+                    value = stack.pop()
+                if value is None:
+                    return False, None
+                stack.append(value)
+                stack.append(value)
+            elif op.op_name == "DW_OP_drop":
+                if len(stack) > 0:
+                    stack.pop()
+                else:
+                    if value is None:
+                        return False, None
+                    value = None
+            elif op.op_name == "DW_OP_over":
+                if len(stack) < 2:
+                    return False, None
+                stack.append(stack[-2])
+            elif op.op_name == "DW_OP_pick":
+                if len(op.args) != 1 or not isinstance(op.args[0], int):
+                    return False, None
+                index = op.args[0]
+                if index == 0:
+                    if len(stack) > 0:
+                        value = stack.pop()
+                    if value is None:
+                        return False, None
+                    stack.append(value)
+                    stack.append(value)
+                else:
+                    if len(stack) < index + 1:
+                        return False, None
+                    stack.append(stack[-index - 1])
+            elif op.op_name == "DW_OP_swap":
+                if len(stack) < 2:
+                    return False, None
+                v1 = stack[-1]
+                v2 = stack[-2]
+                stack[-1] = v2
+                stack[-2] = v1
+            elif op.op_name == "DW_OP_rot":
+                if len(stack) < 3:
+                    return False, None
+                v1 = stack[-1]
+                v2 = stack[-2]
+                v3 = stack[-3]
+                stack[-1] = v2
+                stack[-2] = v3
+                stack[-3] = v1
+            elif op.op_name == "DW_OP_xderef":
+                if len(stack) < 2:
+                    return False, None
+                address = stack.pop()
+                address_space_id = stack.pop()  # TODO: Does our architecture support multiple address spaces?
+                read_size = 4  # Default to 4 bytes as generic type
+                if frame_inspection is None:
+                    return False, None
+                memory = frame_inspection.mem_access.read(address, read_size)
+                value = int.from_bytes(memory, byteorder="little")
+                is_address = False
+            elif op.op_name == "DW_OP_abs":
+                if len(stack) > 0:
+                    value = stack.pop()
+                if value is None:
+                    return False, None
+                value = abs(int(value))
+                stack.append(value)
             else:
-                # TODO: Implement expression evaluation
+                # TODO: Implement missing expression operations
+                # DW_OP_and=0x1a,
+                # DW_OP_div=0x1b,
+                # DW_OP_minus=0x1c,
+                # DW_OP_mod=0x1d,
+                # DW_OP_mul=0x1e,
+                # DW_OP_neg=0x1f,
+                # DW_OP_not=0x20,
+                # DW_OP_or=0x21,
+                # DW_OP_plus=0x22,
+                # DW_OP_plus_uconst=0x23,
+                # DW_OP_shl=0x24,
+                # DW_OP_shr=0x25,
+                # DW_OP_shra=0x26,
+                # DW_OP_xor=0x27,
+                # DW_OP_bra=0x28,
+                # DW_OP_eq=0x29,
+                # DW_OP_ge=0x2a,
+                # DW_OP_gt=0x2b,
+                # DW_OP_le=0x2c,
+                # DW_OP_lt=0x2d,
+                # DW_OP_ne=0x2e,
+                # DW_OP_skip=0x2f,
+                # DW_OP_piece=0x93,
+                # DW_OP_deref_size=0x94,
+                # DW_OP_xderef_size=0x95,
+                # DW_OP_nop=0x96,
+                # DW_OP_push_object_address=0x97,
+                # DW_OP_call2=0x98,
+                # DW_OP_call4=0x99,
+                # DW_OP_call_ref=0x9a,
+                # DW_OP_form_tls_address=0x9b,
+                # DW_OP_bit_piece=0x9d,
+                # DW_OP_implicit_value=0x9e,
+                # DW_OP_implicit_pointer=0xa0,
+                # DW_OP_addrx=0xa1,
+                # DW_OP_constx=0xa2,
+                # DW_OP_const_type=0xa4,
+                # DW_OP_deref_type=0xa6,
+                # DW_OP_xderef_type=0xa7,
+                # DW_OP_lo_user=0xe0,
+                # DW_OP_GNU_push_tls_address=0xe0,
+                # DW_OP_WASM_location=0xed,
+                # DW_OP_GNU_uninit=0xf0,
+                # DW_OP_GNU_implicit_pointer=0xf2,
+                # DW_OP_GNU_entry_value=0xf3,
+                # DW_OP_GNU_const_type=0xf4,
+                # DW_OP_GNU_regval_type=0xf5,
+                # DW_OP_GNU_deref_type=0xf6,
+                # DW_OP_GNU_convert=0xf7,
+                # DW_OP_GNU_parameter_ref=0xfa,
+                # DW_OP_hi_user=0xff,
+
                 # Unsupported operation
                 return False, None
         return is_address, value
