@@ -49,7 +49,7 @@ void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id
     auto end_time = std::chrono::steady_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
     // Address will always be aligned to 4 bytes, so we can check the last 4 bytes for 0xFFFFFFFF
-    if (elapsed_time > timeout && *(uint32_t*)(temp + size - 4) == 0xFFFFFFFF) {
+    if (elapsed_time > timeout && *((uint32_t*)temp + size - 4) == 0xFFFFFFFF) {
         tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
         throw TimeoutDeviceRegisterException(chip_id, tensix_core, addr, size, true);
     }
