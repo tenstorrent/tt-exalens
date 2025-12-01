@@ -110,7 +110,7 @@ try:
             tt_umd.TTDevice.use_noc1(initialize_with_noc1)
 
             device_type = tt_umd.IODeviceType.PCIe if not init_jtag else tt_umd.IODeviceType.JTAG
-            self.cluster_descriptor = tt_umd.TopologyDiscovery.create_cluster_descriptor({}, "", device_type)
+            self.cluster_descriptor, self.devices = tt_umd.TopologyDiscovery.discover()
 
             if len(self.cluster_descriptor.get_all_chips()) == 0:
                 raise RuntimeError("No Tenstorrent devices were detected on this system.")
@@ -140,44 +140,12 @@ try:
 
             for device_id in self.device_ids:
                 target_devices.add(device_id)
-            self.tlb_managers = {}
-            self.sysmem_managers = {}
-            self.devices = {}
             self.soc_descriptors = {}
             self.device_soc_descriptors_yamls = {}
             self.cached_arc_telemetry_readers = {}
-            for chip_id in self.cluster_descriptor.get_chips_local_first(self.cluster_descriptor.get_all_chips()):
-                if self.cluster_descriptor.is_chip_mmio_capable(chip_id):
-                    physical_device_id = self.cluster_descriptor.get_chips_with_mmio()[chip_id]
-                    tt_device = tt_umd.TTDevice.create(physical_device_id, tt_umd.IODeviceType.PCIe)
-                    num_host_mem_channels = 1
-                    tt_device.init_tt_device()  # TODO: We might want to remove init_tt_device from here since it will wait for device to be up and running
-                    self.tlb_managers[chip_id] = tt_umd.TLBManager(tt_device)
-                    self.sysmem_managers[chip_id] = tt_umd.SysmemManager(
-                        self.tlb_managers[chip_id], num_host_mem_channels
-                    )
-                    self.devices[chip_id] = tt_device
-                else:
-                    gateway_id = self.cluster_descriptor.get_closest_mmio_capable_chip(chip_id)
-                    local_device = self.devices[gateway_id]
-                    target_eth_coord = self.cluster_descriptor.get_chip_location(chip_id)
-                    sysmem_manager = self.sysmem_managers[gateway_id]
-                    remote_transfer_eth_channels = self.cluster_descriptor.get_active_eth_channels(gateway_id)
-                    remote_communication = tt_umd.RemoteCommunication.create_remote_communication(
-                        local_device, target_eth_coord, sysmem_manager
-                    )
-                    remote_communication.set_remote_transfer_ethernet_cores(
-                        self.soc_descriptors[gateway_id].get_eth_xy_pairs_for_channels(
-                            remote_transfer_eth_channels, tt_umd.CoordSystem.TRANSLATED
-                        )
-                    )
-                    remote_tt_device = tt_umd.TTDevice.create(remote_communication, target_eth_coord)
-                    remote_tt_device.init_tt_device()
-                    self.devices[chip_id] = remote_tt_device
+            for chip_id, device in self.devices.items():
 
-                soc_descriptor = tt_umd.SocDescriptor(
-                    self.devices[chip_id].get_arch(), self.devices[chip_id].get_chip_info()
-                )
+                soc_descriptor = tt_umd.SocDescriptor(device)
                 file_name = os.path.join(self.temp_working_directory, f"device_desc_runtime_{chip_id}.yaml")
 
                 soc_descriptor.serialize_to_file(file_name)
