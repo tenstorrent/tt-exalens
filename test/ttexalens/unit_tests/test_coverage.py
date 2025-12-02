@@ -15,6 +15,7 @@ from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.tt_exalens_lib import parse_elf
 from ttexalens.coverage import dump_coverage
+from ttexalens.util import TTException
 
 ELFS = ["run_elf_test.coverage", "cov_test.coverage"]  # We only run ELFs that don't halt.
 
@@ -92,14 +93,30 @@ class TestCoverage(unittest.TestCase):
         self.loader = ElfLoader(self.risc_debug)
 
     def get_elf_name(self, elf: str):
-        return f"{elf}.{self.risc_name.lower()}.elf"
+        return os.path.join(self.elf_root, f"{elf}.{self.risc_name.lower()}.elf")
+
+    def test_no_coverage(self):
+        elf_path = self.get_elf_name("callstack.release")
+        elf = parse_elf(elf_path, self.context)
+        self.loader.run_elf(elf_path)
+        with self.assertRaises(TTException) as cm:
+            dump_coverage(elf, self.location, "/tmp/callstack.release.gcda", "/tmp/callstack.release.gcno")
+            self.assertIn("__coverage_start not found", str(cm.exception))
+
+    def test_coverage_not_finished(self):
+        elf_path = self.get_elf_name("callstack.coverage")
+        elf = parse_elf(elf_path, self.context)
+        self.loader.run_elf(elf_path)
+        with self.assertRaises(TTException) as cm:
+            dump_coverage(elf, self.location, "/tmp/callstack.release.gcda", "/tmp/callstack.release.gcno")
+            self.assertIn("Kernel did not finish writing coverage data", str(cm.exception))
 
     @parameterized.expand(ELFS)
     def test_coverage(self, elf):
         with tempfile.TemporaryDirectory(prefix="cov_test_") as temp_root:
 
             # Run the ELF and save its coverage data.
-            elf_path = os.path.join(self.elf_root, self.get_elf_name(elf))
+            elf_path = self.get_elf_name(elf)
             elf = parse_elf(elf_path, self.context)
             self.loader.run_elf(elf_path)
 
@@ -119,8 +136,8 @@ class TestCoverage(unittest.TestCase):
                 gcno_header = f.read(12)
 
             # First four bytes of gcno and gcda contain their magic numbers (mind the endianness).
-            self.assertEqual(gcno_header[0:4], b"oncg", "f{gcno}: incorrect magic")
-            self.assertEqual(gcda_header[0:4], b"adcg", "f{gcda}: incorrect magic")
+            self.assertEqual(gcno_header[0:4], b"oncg", f"{gcno}: incorrect magic")
+            self.assertEqual(gcda_header[0:4], b"adcg", f"{gcda}: incorrect magic")
 
             # Test if versions match.
             # TODO: Reenable this test when we understand the problem with gcov.
