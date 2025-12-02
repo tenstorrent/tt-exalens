@@ -11,6 +11,7 @@ from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
 
 if TYPE_CHECKING:
+    from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.elf.die import ElfDie
     from ttexalens.hardware.risc_debug import RiscDebug
 
@@ -38,6 +39,25 @@ class MemoryAccess(ABC):
     @staticmethod
     def get(risc_debug: RiscDebug) -> "MemoryAccess":
         return RiscDebugMemoryAccess(risc_debug)
+
+    @staticmethod
+    def get_l1(location: OnChipCoordinate) -> "MemoryAccess":
+        return L1MemoryAccess(location)
+
+
+class L1MemoryAccess(MemoryAccess):
+    def __init__(self, location: OnChipCoordinate):
+        self._location = location
+
+    def read(self, address: int, size_bytes: int) -> bytes:
+        from ttexalens.tt_exalens_lib import read_from_device
+
+        return read_from_device(location=self._location, addr=address, num_bytes=size_bytes)
+
+    def write(self, address: int, data: bytes) -> None:
+        from ttexalens.tt_exalens_lib import write_to_device
+
+        write_to_device(location=self._location, addr=address, data=data)
 
 
 class RiscDebugMemoryAccess(MemoryAccess):

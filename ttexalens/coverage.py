@@ -3,10 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.device import Device
-from ttexalens.tt_exalens_lib import read_word_from_device, read_from_device
-from ttexalens.tt_exalens_lib import TTException, ParsedElfFile
-from ttexalens.context import Context
+from ttexalens.tt_exalens_lib import read_from_device
+from ttexalens.tt_exalens_lib import TTException
+from ttexalens.elf import ParsedElfFile, MemoryAccess
 
 """
 Extract the coverage data from the device into a .gcda file.
@@ -28,24 +27,41 @@ def dump_coverage(
     gcno_copy_path: str | None = None,
 ) -> None:
 
-    # Coverage region layout:
-    # The first word at the __coverage_start symbol tells us the length of the whole segment.
-    # The second word is a pointer to the filename, which we use to reach the gcno, if required.
-    # The third is the length of the filename string.
-    # Onward, it's *__coverage_start - 12 bytes of data.
+    # Find coverage region in ELF.
     coverage_start = elf.symbols["__coverage_start"].value
     if not coverage_start:
         raise TTException("__coverage_start not found")
+    coverage_end = elf.symbols["__coverage_end"].value
+    if not coverage_end:
+        raise TTException("__coverage_end not found")
 
-    length = read_word_from_device(location, addr=coverage_start)
+    # Find coverage header in device memory.
+    coverage_header = elf.get_global("coverage_header", MemoryAccess.get_l1(location))
+    if coverage_header is None:
+        raise TTException("coverage_header not found")
+    coverage_header = coverage_header.dereference()
+    if coverage_header.get_address() != coverage_start:
+        raise TTException("coverage_header address does not match __coverage_start")
+
+    # Check magic number.
+    magic_number = elf.get_constant("COVERAGE_MAGIC_NUMBER")
+    if magic_number is None or coverage_header.magic_number != magic_number:
+        raise TTException("COVERAGE_MAGIC_NUMBER not found in ELF")
+
+    header_size = coverage_header.get_size()
+    length = coverage_header.bytes_written
 
     # 0xDEADBEEF will be written in place of length if overflow occurred.
     if length == 0xDEADBEEF:
         raise TTException("Coverage region overflowed")
+    if length > coverage_end - coverage_start:
+        raise TTException("Coverage length is larger than coverage region")
+    if length < header_size:
+        raise TTException("Kernel did not finish writing coverage data")
 
     if gcno_copy_path:
-        filename_addr = read_word_from_device(location, addr=coverage_start + 4)
-        filename_len = read_word_from_device(location, addr=coverage_start + 8)
+        filename_len = coverage_header.filename_length
+        filename_addr = coverage_header.filename.dereference().get_address()
         filename: str = read_from_device(location, filename_addr, num_bytes=filename_len).decode("ascii")
 
         # This points to the expected gcda file, which is in the same directory where the compiler placed the gcno,
@@ -56,6 +72,6 @@ def dump_coverage(
             with open(gcno_copy_path, "wb") as f:
                 f.write(gcno_reader.read())
 
-    data = read_from_device(location, coverage_start + 12, num_bytes=length - 12)
+    data = read_from_device(location, coverage_start + header_size, num_bytes=length - header_size)
     with open(gcda_path, "wb") as f:
         f.write(data)
