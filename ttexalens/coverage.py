@@ -60,7 +60,8 @@ def dump_coverage(
         raise TTException("Kernel did not finish writing coverage data")
 
     if gcno_copy_path:
-        filename_len = coverage_header.filename_length
+        filename_len = coverage_header.filename_length.read_value()
+        assert isinstance(filename_len, int)
         filename_addr = coverage_header.filename.dereference().get_address()
         filename: str = read_from_device(location, filename_addr, num_bytes=filename_len).decode("ascii")
 
