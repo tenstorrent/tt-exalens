@@ -110,26 +110,97 @@ def print_a_burst_read(
 ):
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
-    core_loc_str = (
-        f"{core_loc_str} (L1) :" if not core_loc_str.lower().startswith("ch") else f"{core_loc_str.lower()} (DRAM) :"
-    )
+
+    # Try to get memory regions from the block
+    memory_regions = None
+    try:
+        device = context.devices[device_id]
+        block = device.get_block(core_loc)
+        memory_regions = block.get_memory_regions()
+    except Exception:
+        # If we can't get the memory regions, fall back to simple header
+        pass
 
     if sample == 0:  # No sampling, just a single read
-        da = DataArray(f"{core_loc_str} 0x{addr:08x} ({word_count * 4} bytes)", 4)
+        # Read all data at once for efficiency
         data = read_words_from_device(core_loc, addr, device_id, word_count, context)
-        da.data = data
-        if bytes_per_entry != 4:
-            da.to_bytes_per_entry(bytes_per_entry)
-        print(f"{da._id}\n{util.dump_memory(addr, da.data, bytes_per_entry, 16, is_hex)}")
+
+        # Print overall header
+        print(f"{core_loc_str} : 0x{addr:08x} ({word_count * 4} total bytes)")
+
+        if memory_regions is not None:
+            # Break down by memory regions
+            current_region = None
+            current_data = []
+            current_start_addr = addr
+
+            for i in range(word_count):
+                word_addr = addr + i * 4
+                region = memory_regions.find_region_by_noc_address(word_addr)
+
+                if region != current_region:
+                    # Flush previous region's data if any
+                    if current_data:
+                        region_header = f"({current_region})"
+                        da = DataArray(
+                            f"{region_header} : 0x{current_start_addr:08x} ({len(current_data) * 4} bytes)", 4
+                        )
+                        da.data = current_data
+                        if bytes_per_entry != 4:
+                            da.to_bytes_per_entry(bytes_per_entry)
+                        print(f"{da._id}\n{util.dump_memory(current_start_addr, da.data, bytes_per_entry, 16, is_hex)}")
+
+                    # Start new region
+                    current_region = region
+                    current_data = []
+                    current_start_addr = word_addr
+
+                current_data.append(data[i])
+
+            # Flush last region
+            if current_data:
+                region_header = f"({current_region})"
+                da = DataArray(f"{region_header} : 0x{current_start_addr:08x} ({len(current_data) * 4} bytes)", 4)
+                da.data = current_data
+                if bytes_per_entry != 4:
+                    da.to_bytes_per_entry(bytes_per_entry)
+                print(f"{da._id}\n{util.dump_memory(current_start_addr, da.data, bytes_per_entry, 16, is_hex)}")
+        else:
+            # No memory regions, just print the data
+            da = DataArray(f"{core_loc_str} : 0x{addr:08x} ({word_count * 4} bytes)", 4)
+            da.data = data
+            if bytes_per_entry != 4:
+                da.to_bytes_per_entry(bytes_per_entry)
+            print(util.dump_memory(addr, da.data, bytes_per_entry, 16, is_hex))
     else:
-        for i in range(word_count):
-            values = {}
-            print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
-            t_end = time.time() + sample / word_count
-            while time.time() < t_end:
-                val = read_word_from_device(core_loc, addr + 4 * i, device_id, context=context)
-                if val not in values:
-                    values[val] = 0
-                values[val] += 1
-            for val in values.keys():
-                print_a_read(core_loc_str, addr + 4 * i, val, f"- {values[val]} times")
+        # Sampling mode
+        if memory_regions is not None:
+            # Track region for each sampled word
+            for i in range(word_count):
+                word_addr = addr + 4 * i
+                region = memory_regions.find_region_by_noc_address(word_addr)
+                region_header = f"{core_loc_str} ({region})" if region else core_loc_str
+
+                values = {}
+                print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
+                t_end = time.time() + sample / word_count
+                while time.time() < t_end:
+                    val = read_word_from_device(core_loc, word_addr, device_id, context=context)
+                    if val not in values:
+                        values[val] = 0
+                    values[val] += 1
+                for val in values.keys():
+                    print_a_read(region_header, word_addr, val, f"- {values[val]} times")
+        else:
+            # No memory regions, original behavior
+            for i in range(word_count):
+                values = {}
+                print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
+                t_end = time.time() + sample / word_count
+                while time.time() < t_end:
+                    val = read_word_from_device(core_loc, addr + 4 * i, device_id, context=context)
+                    if val not in values:
+                        values[val] = 0
+                    values[val] += 1
+                for val in values.keys():
+                    print_a_read(core_loc_str, addr + 4 * i, val, f"- {values[val]} times")

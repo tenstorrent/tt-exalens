@@ -12,6 +12,7 @@ from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_add
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.memory_regions import MemoryRegions
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     DebugRegisterDescription,
@@ -142,6 +143,22 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 )
 debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
+# Memory regions for Blackhole DRAM Block
+memory_regions = MemoryRegions(
+    [
+        MemoryBlock(
+            address=DeviceAddress(noc_address=0x00000000, private_address=0x00000000),
+            size=4 * 1024,
+            name="l1",
+        ),
+        MemoryBlock(
+            address=DeviceAddress(noc_address=0x00001000, private_address=0x00001000),
+            size=2 * 1024 * 1024 * 1024 - 4 * 1024,
+            name="dram_bank",
+        ),
+    ]
+)
+
 
 class BlackholeDramBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
@@ -151,16 +168,8 @@ class BlackholeDramBlock(BlackholeNocBlock):
             debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
         )
 
-        self.dram_bank = MemoryBlock(
-            # TODO #432: Check if this size is correct
-            size=2 * 1024 * 1024 * 1024 - 4 * 1024,
-            address=DeviceAddress(private_address=0x00001000, noc_address=0x00001000),
-        )
-
-        self.l1 = MemoryBlock(
-            size=4 * 1024,  # TODO #432: Check if this size is correct
-            address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000),
-        )
+        self.dram_bank = memory_regions.get_block("dram_bank")
+        self.l1 = memory_regions.get_block("l1")
 
         self.drisc = BabyRiscInfo(
             risc_name="drisc",
@@ -184,6 +193,9 @@ class BlackholeDramBlock(BlackholeNocBlock):
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
+
+    def get_memory_regions(self) -> MemoryRegions | None:
+        return memory_regions
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:

@@ -9,6 +9,7 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.memory_regions import MemoryRegions
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
 from ttexalens.hardware.wormhole.functional_worker_debug_bus_signals import debug_bus_signal_map, group_map
@@ -53,6 +54,18 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 )
 debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
+# Memory regions for Wormhole Functional Worker Block
+# Note: RISC private memories don't have NOC addresses in Wormhole, only L1 is mapped
+memory_regions = MemoryRegions(
+    [
+        MemoryBlock(
+            address=DeviceAddress(noc_address=0x00000000, private_address=0x00000000),
+            size=1464 * 1024,
+            name="l1",
+        ),
+    ]
+)
+
 
 class WormholeFunctionalWorkerBlock(WormholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
@@ -62,9 +75,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
         )
 
-        self.l1 = MemoryBlock(
-            size=1464 * 1024, address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000)
-        )
+        self.l1 = memory_regions.get_block("l1")
 
         self.brisc = BabyRiscInfo(
             risc_name="brisc",
@@ -179,6 +190,9 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
+
+    def get_memory_regions(self) -> MemoryRegions | None:
+        return memory_regions
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:

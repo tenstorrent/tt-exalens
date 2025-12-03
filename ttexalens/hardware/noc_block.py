@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from ttexalens.debug_bus_signal_store import DebugBusSignalStore
     from ttexalens.hardware.risc_debug import RiscDebug
     from ttexalens.register_store import RegisterStore
+    from ttexalens.memory_regions import MemoryRegions
 
 
 class NocBlock:
@@ -28,6 +29,9 @@ class NocBlock:
     @abstractmethod
     def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
         pass
+
+    def get_memory_regions(self) -> MemoryRegions | None:
+        return None
 
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
         if neo_id is None:
