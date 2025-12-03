@@ -115,7 +115,7 @@ def print_a_burst_read(
     try:
         device = context.devices[device_id]
         noc_block = device.get_block(core_loc)
-        memory_map = noc_block.get_memory_map()
+        memory_map = noc_block.get_noc_memory_map()
     except Exception:
         # If we can't get the memory map, fall back to simple header
         pass
@@ -131,24 +131,26 @@ def print_a_burst_read(
             i = 0
             while i < word_count:
                 word_addr = addr + i * 4
-                mem_block = memory_map.get_block_by_noc_address(word_addr)
+                region_name = memory_map.get_region_by_noc_address(word_addr)
 
-                if mem_block:
-                    # Calculate how many words fit in this block
-                    block_end_addr = mem_block.address.noc_address + mem_block.size
-                    remaining_in_block = (block_end_addr - word_addr) // 4
-                    words_to_read = min(remaining_in_block, word_count - i)
+                if region_name:
+                    # Get region info and calculate how many words fit
+                    region = memory_map.get_region_by_name(region_name)
+                    region_start = region["noc_address"]
+                    region_end = region_start + region["size"]
+                    remaining_in_region = (region_end - word_addr) // 4
+                    words_to_read = min(remaining_in_region, word_count - i)
                 else:
-                    # Unknown block, just take one word
+                    # Unknown region, just take one word
+                    region_name = "unknown"
                     words_to_read = 1
 
-                # Collect data for this block
+                # Collect data for this region
                 block_data = data[i : i + words_to_read]
                 block_start_addr = word_addr
 
-                # Print this block's data
-                block_name = mem_block.name if mem_block and mem_block.name else "unknown"
-                block_header = f"({block_name})"
+                # Print this region's data
+                block_header = f"({region_name})"
                 da = DataArray(f"{block_header} : 0x{block_start_addr:08x} ({len(block_data) * 4} bytes)", 4)
                 da.data = block_data
                 if bytes_per_entry != 4:
@@ -166,12 +168,13 @@ def print_a_burst_read(
     else:
         # Sampling mode
         if memory_map is not None:
-            # Track block for each sampled word
+            # Track region for each sampled word
             for i in range(word_count):
                 word_addr = addr + 4 * i
-                mem_block = memory_map.get_block_by_noc_address(word_addr)
-                block_name = mem_block.name if mem_block and mem_block.name else "unknown"
-                block_header = f"{core_loc_str} ({block_name})" if mem_block else core_loc_str
+                region_name = memory_map.get_region_by_noc_address(word_addr)
+                if not region_name:
+                    region_name = "unknown"
+                block_header = f"{core_loc_str} ({region_name})"
 
                 values = {}
                 print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")

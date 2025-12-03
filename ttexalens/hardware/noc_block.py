@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from ttexalens.debug_bus_signal_store import DebugBusSignalStore
     from ttexalens.hardware.risc_debug import RiscDebug
     from ttexalens.register_store import RegisterStore
-    from ttexalens.memory_map import MemoryMap
+    from ttexalens.noc_memory_map import NocMemoryMap
 
 
 class NocBlock:
@@ -21,6 +21,7 @@ class NocBlock:
         self.location = location
         self.block_type = block_type
         self.debug_bus = debug_bus
+        self.noc_memory_map = None
 
     @property
     def device(self) -> Device:
@@ -30,8 +31,8 @@ class NocBlock:
     def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
         pass
 
-    def get_memory_map(self) -> MemoryMap | None:
-        return None
+    def get_noc_memory_map(self) -> NocMemoryMap | None:
+        return self.noc_memory_map
 
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
         if neo_id is None:

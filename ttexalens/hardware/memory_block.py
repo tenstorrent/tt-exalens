@@ -6,10 +6,9 @@ from ttexalens.hardware.device_address import DeviceAddress
 
 
 class MemoryBlock:
-    def __init__(self, size: int, address: DeviceAddress, name: str | None = None):
+    def __init__(self, size: int, address: DeviceAddress):
         self.size = size
         self.address = address
-        self.name = name
 
     def contains_private_address(self, address: int) -> bool:
         assert self.address.private_address is not None

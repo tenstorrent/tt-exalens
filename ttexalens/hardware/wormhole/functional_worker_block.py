@@ -9,7 +9,7 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.memory_map import MemoryMap
+from ttexalens.noc_memory_map import NocMemoryMap
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
 from ttexalens.hardware.wormhole.functional_worker_debug_bus_signals import debug_bus_signal_map, group_map
@@ -54,41 +54,6 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 )
 debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
-memory_map = MemoryMap(
-    [
-        MemoryBlock(
-            address=DeviceAddress(noc_address=0x00000000, private_address=0x00000000),
-            size=1464 * 1024,
-            name="l1",
-        ),
-        MemoryBlock(
-            address=DeviceAddress(private_address=0xFFB00000),
-            size=4 * 1024,
-            name="brisc",
-        ),
-        MemoryBlock(
-            address=DeviceAddress(private_address=0xFFB00000),
-            size=2 * 1024,
-            name="trisc0",
-        ),
-        MemoryBlock(
-            address=DeviceAddress(private_address=0xFFB00000),
-            size=2 * 1024,
-            name="trisc1",
-        ),
-        MemoryBlock(
-            address=DeviceAddress(private_address=0xFFB00000),
-            size=2 * 1024,
-            name="trisc2",
-        ),
-        MemoryBlock(
-            address=DeviceAddress(private_address=0xFFB00000),
-            size=4 * 1024,
-            name="ncrisc",
-        ),
-    ]
-)
-
 
 class WormholeFunctionalWorkerBlock(WormholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
@@ -98,7 +63,9 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
         )
 
-        self.l1 = memory_map.get_block_by_name("l1")
+        self.l1 = MemoryBlock(
+            size=1464 * 1024, address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000)
+        )
 
         self.brisc = BabyRiscInfo(
             risc_name="brisc",
@@ -112,7 +79,10 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             branch_prediction_mask=1,
             default_code_start_address=0,
             code_start_address_register=None,  # We don't have a regsiter to override code start address
-            data_private_memory=memory_map.get_block_by_name("brisc"),
+            data_private_memory=MemoryBlock(
+                size=4 * 1024,
+                address=DeviceAddress(private_address=0xFFB00000),
+            ),
             code_private_memory=None,
             debug_hardware_present=True,
         )
@@ -131,7 +101,10 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             code_start_address_register="TRISC_RESET_PC_SEC0_PC",
             code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b001,
-            data_private_memory=memory_map.get_block_by_name("trisc0"),
+            data_private_memory=MemoryBlock(
+                size=2 * 1024,
+                address=DeviceAddress(private_address=0xFFB00000),
+            ),
             code_private_memory=None,
             debug_hardware_present=True,
         )
@@ -150,7 +123,10 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             code_start_address_register="TRISC_RESET_PC_SEC1_PC",
             code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b010,
-            data_private_memory=memory_map.get_block_by_name("trisc1"),
+            data_private_memory=MemoryBlock(
+                size=2 * 1024,
+                address=DeviceAddress(private_address=0xFFB00000),
+            ),
             code_private_memory=None,
             debug_hardware_present=True,
         )
@@ -169,7 +145,10 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             code_start_address_register="TRISC_RESET_PC_SEC2_PC",
             code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b100,
-            data_private_memory=memory_map.get_block_by_name("trisc2"),
+            data_private_memory=MemoryBlock(
+                size=2 * 1024,
+                address=DeviceAddress(private_address=0xFFB00000),
+            ),
             code_private_memory=None,
             debug_hardware_present=True,
         )
@@ -188,16 +167,22 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             code_start_address_register="NCRISC_RESET_PC_PC",
             code_start_address_enable_register="NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b1,
-            data_private_memory=memory_map.get_block_by_name("ncrisc"),
-            code_private_memory=None,
+            data_private_memory=MemoryBlock(
+                size=4 * 1024,  # TODO: Check if this is correct
+                address=DeviceAddress(private_address=0xFFB00000),
+            ),
+            code_private_memory=MemoryBlock(
+                size=4 * 1024,  # TODO: Check if this is correct
+                address=DeviceAddress(private_address=0xFFC00000),
+            ),
             debug_hardware_present=False,
         )
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
-    def get_memory_map(self) -> MemoryMap | None:
-        return memory_map
+        # Create NOC memory map
+        self.noc_memory_map = NocMemoryMap({"l1": {"noc_address": 0x00000000, "size": 1464 * 1024}})
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:

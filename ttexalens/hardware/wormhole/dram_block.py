@@ -5,9 +5,9 @@
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.memory_map import MemoryMap
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_store_initialization
 from ttexalens.hardware.wormhole.noc_block import WormholeNocBlock
+from ttexalens.noc_memory_map import NocMemoryMap
 from ttexalens.register_store import RegisterStore
 
 register_store_location0_noc0_initialization = get_niu_register_store_initialization(
@@ -29,23 +29,14 @@ register_store_location2_noc1_initialization = get_niu_register_store_initializa
     DeviceAddress(noc_address=0x1000A8000)
 )
 
-# Memory regions for Wormhole DRAM Block
-memory_map = MemoryMap(
-    [
-        MemoryBlock(
-            address=DeviceAddress(noc_address=0x00000000, private_address=0x00000000),
-            size=2 * 1024 * 1024 * 1024,
-            name="dram_bank",
-        ),
-    ]
-)
-
 
 class WormholeDramBlock(WormholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
         super().__init__(location, block_type="dram")
 
-        self.dram_bank = memory_map.get_block_by_name("dram_bank")
+        self.dram_bank = MemoryBlock(
+            size=2 * 1024 * 1024 * 1024, address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000)
+        )
 
         # Each DRAM block has three NOC blocks. We need to determine which NOC block to use based on the
         # location coordinate.
@@ -59,5 +50,4 @@ class WormholeDramBlock(WormholeNocBlock):
             self.register_store_noc0 = RegisterStore(register_store_location2_noc0_initialization, self.location)
             self.register_store_noc1 = RegisterStore(register_store_location2_noc1_initialization, self.location)
 
-    def get_memory_map(self) -> MemoryMap | None:
-        return memory_map
+        self.noc_memory_map = NocMemoryMap({"dram_bank": {"noc_address": 0x00000000, "size": 2 * 1024 * 1024 * 1024}})
