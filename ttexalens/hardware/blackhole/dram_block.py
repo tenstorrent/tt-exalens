@@ -12,7 +12,7 @@ from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_add
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.memory_regions import MemoryRegions
+from ttexalens.memory_map import MemoryMap
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     DebugRegisterDescription,
@@ -144,7 +144,7 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
 # Memory regions for Blackhole DRAM Block
-memory_regions = MemoryRegions(
+memory_map = MemoryMap(
     [
         MemoryBlock(
             address=DeviceAddress(noc_address=0x00000000, private_address=0x00000000),
@@ -155,6 +155,11 @@ memory_regions = MemoryRegions(
             address=DeviceAddress(noc_address=0x00001000, private_address=0x00001000),
             size=2 * 1024 * 1024 * 1024 - 4 * 1024,
             name="dram_bank",
+        ),
+        MemoryBlock(
+            address=DeviceAddress(private_address=0xFFB00000),
+            size=8 * 1024,
+            name="drisc",
         ),
     ]
 )
@@ -168,8 +173,8 @@ class BlackholeDramBlock(BlackholeNocBlock):
             debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
         )
 
-        self.dram_bank = memory_regions.get_block("dram_bank")
-        self.l1 = memory_regions.get_block("l1")
+        self.dram_bank = memory_map.get_block_by_name("dram_bank")
+        self.l1 = memory_map.get_block_by_name("l1")
 
         self.drisc = BabyRiscInfo(
             risc_name="drisc",
@@ -183,10 +188,7 @@ class BlackholeDramBlock(BlackholeNocBlock):
             default_code_start_address=None,  # Since we don't have a register to disable code start address override in DRAM block, we cannot have a default code start address
             code_start_address_register="RISC_CTRL_REG_RESET_PC_0",
             code_start_address_enable_register=None,  # We don't have a register to enable code start address override in DRAM block
-            data_private_memory=MemoryBlock(
-                size=8 * 1024,
-                address=DeviceAddress(private_address=0xFFB00000),
-            ),
+            data_private_memory=memory_map.get_block_by_name("drisc"),
             code_private_memory=None,
             debug_hardware_present=True,
         )
@@ -194,8 +196,8 @@ class BlackholeDramBlock(BlackholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
-    def get_memory_regions(self) -> MemoryRegions | None:
-        return memory_regions
+    def get_memory_map(self) -> MemoryMap | None:
+        return memory_map
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:

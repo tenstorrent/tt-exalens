@@ -9,14 +9,16 @@ if TYPE_CHECKING:
     from ttexalens.hardware.memory_block import MemoryBlock
 
 
-class MemoryRegions:
-    """Catalog of memory regions with address-based lookup.
+class MemoryMap:
+    """
+    Catalog of memory blocks with address-based lookup.
 
     Memory blocks are stored in sorted order by NOC address start for efficient lookup.
     """
 
     def __init__(self, blocks: list[MemoryBlock]):
-        """Initialize memory regions with memory blocks sorted by NOC address.
+        """
+        Initialize memory map with memory blocks sorted by NOC address.
 
         Args:
             blocks: List of MemoryBlock instances to map
@@ -26,46 +28,44 @@ class MemoryRegions:
         )
         self._blocks_by_name = {block.name: block for block in blocks if block.name is not None}
 
-    def find_region_by_noc_address(self, noc_address: int) -> str:
-        """Find the region name for a given NOC address.
+    def get_block_by_noc_address(self, noc_address: int) -> MemoryBlock | None:
+        """
+        Find the memory block for a given NOC address.
 
         Args:
             noc_address: The NOC address to look up
 
         Returns:
-            The name of the memory block containing the address, or "unknown" if not found
+            The MemoryBlock containing the address, or None if not found
         """
         for block in self.blocks:
             if block.address.noc_address is not None and block.contains_noc_address(noc_address):
-                return block.name if block.name is not None else "unknown"
-        return "unknown"
+                return block
+        return None
 
-    def find_region_by_private_address(self, private_address: int) -> str:
-        """Find the region name for a given private address.
+    def get_block_by_private_address(self, private_address: int) -> MemoryBlock | None:
+        """
+        Find the memory block for a given private address.
 
         Args:
             private_address: The private address to look up
 
         Returns:
-            The name of the memory block containing the address, or "unknown" if not found
+            The MemoryBlock containing the address, or None if not found
         """
         for block in self.blocks:
             if block.address.private_address is not None and block.contains_private_address(private_address):
-                return block.name if block.name is not None else "unknown"
-        return "unknown"
+                return block
+        return None
 
-    def get_block(self, name: str) -> MemoryBlock:
-        """Get a memory block by its name.
+    def get_block_by_name(self, name: str) -> MemoryBlock | None:
+        """
+        Get a memory block by its name.
 
         Args:
             name: The name of the memory block to retrieve
 
         Returns:
-            The MemoryBlock with the given name
-
-        Raises:
-            KeyError: If no block with the given name exists
+            The MemoryBlock with the given name, or None if not found
         """
-        if name not in self._blocks_by_name:
-            raise KeyError(f"Memory block '{name}' not found in memory map")
-        return self._blocks_by_name[name]
+        return self._blocks_by_name.get(name)

@@ -111,14 +111,13 @@ def print_a_burst_read(
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
 
-    # Try to get memory regions from the block
-    memory_regions = None
+    memory_map = None
     try:
         device = context.devices[device_id]
-        block = device.get_block(core_loc)
-        memory_regions = block.get_memory_regions()
+        noc_block = device.get_block(core_loc)
+        memory_map = noc_block.get_memory_map()
     except Exception:
-        # If we can't get the memory regions, fall back to simple header
+        # If we can't get the memory map, fall back to simple header
         pass
 
     if sample == 0:  # No sampling, just a single read
@@ -128,45 +127,37 @@ def print_a_burst_read(
         # Print overall header
         print(f"{core_loc_str} : 0x{addr:08x} ({word_count * 4} total bytes)")
 
-        if memory_regions is not None:
-            # Break down by memory regions
-            current_region = None
-            current_data = []
-            current_start_addr = addr
-
-            for i in range(word_count):
+        if memory_map is not None:
+            i = 0
+            while i < word_count:
                 word_addr = addr + i * 4
-                region = memory_regions.find_region_by_noc_address(word_addr)
+                mem_block = memory_map.get_block_by_noc_address(word_addr)
 
-                if region != current_region:
-                    # Flush previous region's data if any
-                    if current_data:
-                        region_header = f"({current_region})"
-                        da = DataArray(
-                            f"{region_header} : 0x{current_start_addr:08x} ({len(current_data) * 4} bytes)", 4
-                        )
-                        da.data = current_data
-                        if bytes_per_entry != 4:
-                            da.to_bytes_per_entry(bytes_per_entry)
-                        print(f"{da._id}\n{util.dump_memory(current_start_addr, da.data, bytes_per_entry, 16, is_hex)}")
+                if mem_block:
+                    # Calculate how many words fit in this block
+                    block_end_addr = mem_block.address.noc_address + mem_block.size
+                    remaining_in_block = (block_end_addr - word_addr) // 4
+                    words_to_read = min(remaining_in_block, word_count - i)
+                else:
+                    # Unknown block, just take one word
+                    words_to_read = 1
 
-                    # Start new region
-                    current_region = region
-                    current_data = []
-                    current_start_addr = word_addr
+                # Collect data for this block
+                block_data = data[i : i + words_to_read]
+                block_start_addr = word_addr
 
-                current_data.append(data[i])
-
-            # Flush last region
-            if current_data:
-                region_header = f"({current_region})"
-                da = DataArray(f"{region_header} : 0x{current_start_addr:08x} ({len(current_data) * 4} bytes)", 4)
-                da.data = current_data
+                # Print this block's data
+                block_name = mem_block.name if mem_block and mem_block.name else "unknown"
+                block_header = f"({block_name})"
+                da = DataArray(f"{block_header} : 0x{block_start_addr:08x} ({len(block_data) * 4} bytes)", 4)
+                da.data = block_data
                 if bytes_per_entry != 4:
                     da.to_bytes_per_entry(bytes_per_entry)
-                print(f"{da._id}\n{util.dump_memory(current_start_addr, da.data, bytes_per_entry, 16, is_hex)}")
+                print(f"{da._id}\n{util.dump_memory(block_start_addr, da.data, bytes_per_entry, 16, is_hex)}")
+
+                i += words_to_read
         else:
-            # No memory regions, just print the data
+            # No memory map, just print the data
             da = DataArray(f"{core_loc_str} : 0x{addr:08x} ({word_count * 4} bytes)", 4)
             da.data = data
             if bytes_per_entry != 4:
@@ -174,12 +165,13 @@ def print_a_burst_read(
             print(util.dump_memory(addr, da.data, bytes_per_entry, 16, is_hex))
     else:
         # Sampling mode
-        if memory_regions is not None:
-            # Track region for each sampled word
+        if memory_map is not None:
+            # Track block for each sampled word
             for i in range(word_count):
                 word_addr = addr + 4 * i
-                region = memory_regions.find_region_by_noc_address(word_addr)
-                region_header = f"{core_loc_str} ({region})" if region else core_loc_str
+                mem_block = memory_map.get_block_by_noc_address(word_addr)
+                block_name = mem_block.name if mem_block and mem_block.name else "unknown"
+                block_header = f"{core_loc_str} ({block_name})" if mem_block else core_loc_str
 
                 values = {}
                 print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
@@ -190,9 +182,9 @@ def print_a_burst_read(
                         values[val] = 0
                     values[val] += 1
                 for val in values.keys():
-                    print_a_read(region_header, word_addr, val, f"- {values[val]} times")
+                    print_a_read(block_header, word_addr, val, f"- {values[val]} times")
         else:
-            # No memory regions, original behavior
+            # No memory map, original behavior
             for i in range(word_count):
                 values = {}
                 print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")

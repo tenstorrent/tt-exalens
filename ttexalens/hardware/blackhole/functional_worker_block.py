@@ -10,7 +10,7 @@ from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.blackhole.baby_risc_debug import BlackholeBabyRiscDebug
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.memory_regions import MemoryRegions
+from ttexalens.memory_map import MemoryMap
 from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import debug_bus_signal_map, group_map
 from ttexalens.hardware.blackhole.functional_worker_registers import register_map
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
@@ -55,7 +55,7 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
 # Memory regions for Blackhole Functional Worker Block
-memory_regions = MemoryRegions(
+memory_map = MemoryMap(
     [
         MemoryBlock(
             address=DeviceAddress(noc_address=0x00000000, private_address=0x00000000),
@@ -104,9 +104,9 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
         )
 
-        self.l1 = memory_regions.get_block("l1")
+        self.l1 = memory_map.get_block_by_name("l1")
         # Dest size: 8 tiles, of 1024 4 bytes each
-        self.dest = memory_regions.get_block("dest")
+        self.dest = memory_map.get_block_by_name("dest")
 
         self.brisc = BabyRiscInfo(
             risc_name="brisc",
@@ -120,7 +120,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             branch_prediction_mask=1,
             default_code_start_address=0,
             code_start_address_register=None,  # We don't have a regsiter to override code start address
-            data_private_memory=memory_regions.get_block("brisc"),
+            data_private_memory=memory_map.get_block_by_name("brisc"),
             code_private_memory=None,
             debug_hardware_present=True,
         )
@@ -139,7 +139,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             code_start_address_register="TRISC_RESET_PC_SEC0_PC",
             code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b001,
-            data_private_memory=memory_regions.get_block("trisc0"),
+            data_private_memory=memory_map.get_block_by_name("trisc0"),
             code_private_memory=None,
             debug_hardware_present=True,
         )
@@ -158,7 +158,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             code_start_address_register="TRISC_RESET_PC_SEC1_PC",
             code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b010,
-            data_private_memory=memory_regions.get_block("trisc1"),
+            data_private_memory=memory_map.get_block_by_name("trisc1"),
             code_private_memory=None,
             debug_hardware_present=True,
         )
@@ -177,7 +177,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             code_start_address_register="TRISC_RESET_PC_SEC2_PC",
             code_start_address_enable_register="TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b100,
-            data_private_memory=memory_regions.get_block("trisc2"),
+            data_private_memory=memory_map.get_block_by_name("trisc2"),
             code_private_memory=None,
             debug_hardware_present=True,
         )
@@ -196,15 +196,15 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             code_start_address_register="NCRISC_RESET_PC_PC",
             code_start_address_enable_register="NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en",
             code_start_address_enable_bit=0b1,
-            data_private_memory=memory_regions.get_block("ncrisc"),
+            data_private_memory=memory_map.get_block_by_name("ncrisc"),
             debug_hardware_present=False,
         )
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
-    def get_memory_regions(self) -> MemoryRegions | None:
-        return memory_regions
+    def get_memory_map(self) -> MemoryMap | None:
+        return memory_map
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:
