@@ -92,79 +92,79 @@ class TestMemoryMap(unittest.TestCase):
     def test_get_block_by_address_start_of_block(self):
         """Test address lookup at the start of memory blocks."""
         # Start of L1
-        name = self.memory_map.get_block_by_address(0x00000000)
+        name = self.memory_map.get_block_name_by_address(0x00000000)
         self.assertEqual(name, "L1")
 
         # Start of DEST
-        name = self.memory_map.get_block_by_address(0xFFBD8000)
+        name = self.memory_map.get_block_name_by_address(0xFFBD8000)
         self.assertEqual(name, "DEST")
 
         # Start of GP_REG
-        name = self.memory_map.get_block_by_address(0xFFE00000)
+        name = self.memory_map.get_block_name_by_address(0xFFE00000)
         self.assertEqual(name, "GP_REG")
 
         # Start of CFG_REG
-        name = self.memory_map.get_block_by_address(0xFFEF0000)
+        name = self.memory_map.get_block_name_by_address(0xFFEF0000)
         self.assertEqual(name, "CFG_REG")
 
     def test_get_block_by_address_middle_of_block(self):
         """Test address lookup in the middle of memory blocks."""
         # Middle of L1 (0x00000000 + 768KB)
-        name = self.memory_map.get_block_by_address(0x000C0000)
+        name = self.memory_map.get_block_name_by_address(0x000C0000)
         self.assertEqual(name, "L1")
 
         # Middle of DEST
-        name = self.memory_map.get_block_by_address(0xFFBDC000)
+        name = self.memory_map.get_block_name_by_address(0xFFBDC000)
         self.assertEqual(name, "DEST")
 
         # Middle of GP_REG
-        name = self.memory_map.get_block_by_address(0xFFE08000)
+        name = self.memory_map.get_block_name_by_address(0xFFE08000)
         self.assertEqual(name, "GP_REG")
 
     def test_get_block_by_address_end_of_block(self):
         """Test address lookup at the end boundary of memory blocks."""
         # Last byte of L1 (0x00000000 + 1536KB - 1)
-        name = self.memory_map.get_block_by_address(0x0017FFFF)
+        name = self.memory_map.get_block_name_by_address(0x0017FFFF)
         self.assertEqual(name, "L1")
 
         # One byte past L1 should not be in L1
-        name = self.memory_map.get_block_by_address(0x00180000)
+        name = self.memory_map.get_block_name_by_address(0x00180000)
         self.assertNotEqual(name, "L1")
 
         # Last byte of DEST (0xFFBD8000 + 32KB - 1)
-        name = self.memory_map.get_block_by_address(0xFFBDFFFF)
+        name = self.memory_map.get_block_name_by_address(0xFFBDFFFF)
         self.assertEqual(name, "DEST")
 
         # One byte past DEST should not be in DEST
-        name = self.memory_map.get_block_by_address(0xFFBE0000)
+        name = self.memory_map.get_block_name_by_address(0xFFBE0000)
         self.assertNotEqual(name, "DEST")
 
     def test_get_block_by_address_unmapped_regions(self):
         """Test address lookup for unmapped memory regions."""
         # Between L1 and GP_REG
-        name = self.memory_map.get_block_by_address(0x00200000)
+        name = self.memory_map.get_block_name_by_address(0x00200000)
         self.assertIsNone(name)
 
         # Between DEST and GP_REG
-        name = self.memory_map.get_block_by_address(0xFFBE0000)
+        name = self.memory_map.get_block_name_by_address(0xFFBE0000)
         self.assertIsNone(name)
 
         # Above all defined blocks
-        name = self.memory_map.get_block_by_address(0xFFFFFFFF)
+        name = self.memory_map.get_block_name_by_address(0xFFFFFFFF)
         self.assertIsNone(name)
 
         # Very low address if there's a gap
-        name = self.memory_map.get_block_by_address(0x00180001)
+        name = self.memory_map.get_block_name_by_address(0x00180001)
         self.assertIsNone(name)
 
     def test_get_block_by_address_boundary_conditions(self):
         """Test edge cases and boundary conditions."""
         # Address 0
-        name = self.memory_map.get_block_by_address(0)
+        name = self.memory_map.get_block_name_by_address(0)
         self.assertEqual(name, "L1")
 
         # Negative address (should not match anything)
-        name = self.memory_map.get_block_by_address(-1)
+        name = self.memory_map.get_block_name_by_address(-1)
         self.assertIsNone(name)
 
     def test_empty_memory_map(self):
@@ -173,7 +173,7 @@ class TestMemoryMap(unittest.TestCase):
         self.assertEqual(len(empty_map.blocks), 0)
         self.assertEqual(len(empty_map.sortedBlocks), 0)
 
-        result = empty_map.get_block_by_address(0x00000000)
+        result = empty_map.get_block_name_by_address(0x00000000)
         self.assertIsNone(result)
 
         result = empty_map.get_block_by_name("ANYTHING")
@@ -186,10 +186,10 @@ class TestMemoryMap(unittest.TestCase):
         self.assertEqual(len(single_block_map.blocks), 1)
         self.assertEqual(len(single_block_map.sortedBlocks), 1)
 
-        name = single_block_map.get_block_by_address(0x00000000)
+        name = single_block_map.get_block_name_by_address(0x00000000)
         self.assertEqual(name, "ONLY_BLOCK")
 
-        name = single_block_map.get_block_by_address(0xFFFFFFFF)
+        name = single_block_map.get_block_name_by_address(0xFFFFFFFF)
         self.assertIsNone(name)
 
     def test_adjacent_blocks(self):
@@ -200,15 +200,12 @@ class TestMemoryMap(unittest.TestCase):
         adjacent_map = MemoryMap({"BLOCK1": block1, "BLOCK2": block2})
 
         # Last address of BLOCK1
-        name = adjacent_map.get_block_by_address(0x13FF)
+        name = adjacent_map.get_block_name_by_address(0x13FF)
         self.assertEqual(name, "BLOCK1")
 
         # First address of BLOCK2
-        name = adjacent_map.get_block_by_address(0x1400)
+        name = adjacent_map.get_block_name_by_address(0x1400)
         self.assertEqual(name, "BLOCK2")
-
-        # No gap between blocks - no unmapped region
-        # This is expected behavior
 
 
 if __name__ == "__main__":
