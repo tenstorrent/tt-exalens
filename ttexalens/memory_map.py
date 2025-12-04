@@ -4,54 +4,37 @@
 
 from __future__ import annotations
 from ttexalens.hardware.memory_block import MemoryBlock
+from intervaltree import Interval, IntervalTree  # type: ignore[import-untyped]
 
 
 class MemoryMap:
     """Catalog of memory blocks with address or name based lookup."""
 
-    def __init__(self, blocks: dict[str, MemoryBlock]):
-        """
-        Initialize memory map with named blocks.
+    def __init__(self):
+        self.noc_address_to_block_name_mapping = IntervalTree()
+        self.name_to_block_mapping: dict[str, MemoryBlock] = {}
 
-        Args:
-            blocks: Dictionary mapping block names to their descriptors
-        """
-
-        self.blocks: dict[str, MemoryBlock] = blocks
-        # Note: sortedBlocks only contains blocks with noc_address
-        self.sortedBlocks: list[tuple[MemoryBlock, str]] = sorted(
-            [(block, name) for name, block in blocks.items() if block.address.noc_address is not None],
-            key=lambda item: item[0].address.noc_address,  # type: ignore[return-value,arg-type]
+    def map_block(self, name: str, memory_block: MemoryBlock) -> None:
+        # Currently doing only NoC address mapping
+        assert memory_block.address.noc_address is not None, "Memory block must have NoC address to be mapped"
+        self.name_to_block_mapping[name] = memory_block
+        self.noc_address_to_block_name_mapping.addi(
+            memory_block.address.noc_address,
+            memory_block.address.noc_address + memory_block.size,
+            name,
         )
 
-    def get_block_name_by_address(self, address: int) -> str | None:
-        """
-        Find the block name for a given address.
-        Currently only NOC addresses are supported.
+    def map_blocks(self, blocks: list[tuple[str, MemoryBlock]]) -> None:
+        for name, memory_block in blocks:
+            self.map_block(name, memory_block)
 
-        Args:
-            address: The NOC address to look up
+    def get_block_name_by_noc_address(self, noc_address: int) -> str | None:
+        interval: Interval = self.noc_address_to_block_name_mapping.at(noc_address)
+        if interval is None:
+            return None
 
-        Returns:
-            The name of the block containing the address, or None if not found
-        """
-
-        # Linear search is sufficient since the number of blocks is small
-        # Move to binary search if the number of blocks increases
-        for block, name in self.sortedBlocks:
-            noc_addr = block.address.noc_address
-            assert noc_addr is not None  # Guaranteed by sortedBlocks construction
-            if noc_addr <= address < noc_addr + block.size:
-                return name
-        return None
+        # Assuming no overlapping blocks, return the first found
+        return list(interval)[0].data
 
     def get_block_by_name(self, name: str) -> MemoryBlock | None:
-        """
-        Get a memory block by its name.
-        Args:
-            name: The name of the block to retrieve
-
-        Returns:
-            The MemoryBlock descriptor, or None if not found
-        """
-        return self.blocks.get(name)
+        return self.name_to_block_mapping.get(name, None)

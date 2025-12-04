@@ -27,5 +27,4 @@ class MemoryBlock:
             return None
         if not self.contains_private_address(address):
             return None
-
         return self.address.noc_address + (address - self.address.private_address)

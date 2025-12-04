@@ -50,48 +50,30 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
             risc_base_start_address=0x00030000,
         )
 
-        # Quasar functional workers always have data private memory for all trisc cores
-        assert self.neo0.trisc0.data_private_memory is not None
-        assert self.neo0.trisc1.data_private_memory is not None
-        assert self.neo0.trisc2.data_private_memory is not None
-        assert self.neo0.trisc3.data_private_memory is not None
-        assert self.neo1.trisc0.data_private_memory is not None
-        assert self.neo1.trisc1.data_private_memory is not None
-        assert self.neo1.trisc2.data_private_memory is not None
-        assert self.neo1.trisc3.data_private_memory is not None
-        assert self.neo2.trisc0.data_private_memory is not None
-        assert self.neo2.trisc1.data_private_memory is not None
-        assert self.neo2.trisc2.data_private_memory is not None
-        assert self.neo2.trisc3.data_private_memory is not None
-        assert self.neo3.trisc0.data_private_memory is not None
-        assert self.neo3.trisc1.data_private_memory is not None
-        assert self.neo3.trisc2.data_private_memory is not None
-        assert self.neo3.trisc3.data_private_memory is not None
-
-        self.memory_map = MemoryMap(
-            {
-                "l1": self.l1,
-                # neo0
-                "neo0_trisc0_data_private_memory": self.neo0.trisc0.data_private_memory,
-                "neo0_trisc1_data_private_memory": self.neo0.trisc1.data_private_memory,
-                "neo0_trisc2_data_private_memory": self.neo0.trisc2.data_private_memory,
-                "neo0_trisc3_data_private_memory": self.neo0.trisc3.data_private_memory,
-                # neo1
-                "neo1_trisc0_data_private_memory": self.neo1.trisc0.data_private_memory,
-                "neo1_trisc1_data_private_memory": self.neo1.trisc1.data_private_memory,
-                "neo1_trisc2_data_private_memory": self.neo1.trisc2.data_private_memory,
-                "neo1_trisc3_data_private_memory": self.neo1.trisc3.data_private_memory,
-                # neo2
-                "neo2_trisc0_data_private_memory": self.neo2.trisc0.data_private_memory,
-                "neo2_trisc1_data_private_memory": self.neo2.trisc1.data_private_memory,
-                "neo2_trisc2_data_private_memory": self.neo2.trisc2.data_private_memory,
-                "neo2_trisc3_data_private_memory": self.neo2.trisc3.data_private_memory,
-                # neo3
-                "neo3_trisc0_data_private_memory": self.neo3.trisc0.data_private_memory,
-                "neo3_trisc1_data_private_memory": self.neo3.trisc1.data_private_memory,
-                "neo3_trisc2_data_private_memory": self.neo3.trisc2.data_private_memory,
-                "neo3_trisc3_data_private_memory": self.neo3.trisc3.data_private_memory,
-            }
+        self.memory_map.map_blocks(
+            [
+                ("l1", self.l1),
+                # neo0 memory blocks
+                ("neo0_trisc0_data_private_memory", self.neo0.trisc0.data_private_memory),  # type: ignore[list-item]
+                ("neo0_trisc1_data_private_memory", self.neo0.trisc1.data_private_memory),  # type: ignore[list-item]
+                ("neo0_trisc2_data_private_memory", self.neo0.trisc2.data_private_memory),  # type: ignore[list-item]
+                ("neo0_trisc3_data_private_memory", self.neo0.trisc3.data_private_memory),  # type: ignore[list-item]
+                # neo1 memory blocks
+                ("neo1_trisc0_data_private_memory", self.neo1.trisc0.data_private_memory),  # type: ignore[list-item]
+                ("neo1_trisc1_data_private_memory", self.neo1.trisc1.data_private_memory),  # type: ignore[list-item]
+                ("neo1_trisc2_data_private_memory", self.neo1.trisc2.data_private_memory),  # type: ignore[list-item]
+                ("neo1_trisc3_data_private_memory", self.neo1.trisc3.data_private_memory),  # type: ignore[list-item]
+                # neo2 memory blocks
+                ("neo2_trisc0_data_private_memory", self.neo2.trisc0.data_private_memory),  # type: ignore[list-item]
+                ("neo2_trisc1_data_private_memory", self.neo2.trisc1.data_private_memory),  # type: ignore[list-item]
+                ("neo2_trisc2_data_private_memory", self.neo2.trisc2.data_private_memory),  # type: ignore[list-item]
+                ("neo2_trisc3_data_private_memory", self.neo2.trisc3.data_private_memory),  # type: ignore[list-item]
+                # neo3 memory blocks
+                ("neo3_trisc0_data_private_memory", self.neo3.trisc0.data_private_memory),  # type: ignore[list-item]
+                ("neo3_trisc1_data_private_memory", self.neo3.trisc1.data_private_memory),  # type: ignore[list-item]
+                ("neo3_trisc2_data_private_memory", self.neo3.trisc2.data_private_memory),  # type: ignore[list-item]
+                ("neo3_trisc3_data_private_memory", self.neo3.trisc3.data_private_memory),  # type: ignore[list-item]
+            ]
         )
 
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:

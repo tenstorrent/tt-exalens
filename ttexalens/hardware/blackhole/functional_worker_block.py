@@ -179,22 +179,15 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
-        # Blackhole functional workers always have data private memory for these RISCs
-        assert self.brisc.data_private_memory is not None
-        assert self.ncrisc.data_private_memory is not None
-        assert self.trisc0.data_private_memory is not None
-        assert self.trisc1.data_private_memory is not None
-        assert self.trisc2.data_private_memory is not None
-
-        self.memory_map = MemoryMap(
-            {
-                "l1": self.l1,
-                "brisc_data_private_memory": self.brisc.data_private_memory,
-                "ncrisc_data_private_memory": self.ncrisc.data_private_memory,
-                "trisc0_data_private_memory": self.trisc0.data_private_memory,
-                "trisc1_data_private_memory": self.trisc1.data_private_memory,
-                "trisc2_data_private_memory": self.trisc2.data_private_memory,
-            }
+        self.memory_map.map_blocks(
+            [
+                ("l1", self.l1),
+                ("brisc_data_private_memory", self.brisc.data_private_memory),  # type: ignore[list-item]
+                ("ncrisc_data_private_memory", self.ncrisc.data_private_memory),  # type: ignore[list-item]
+                ("trisc0_data_private_memory", self.trisc0.data_private_memory),  # type: ignore[list-item]
+                ("trisc1_data_private_memory", self.trisc1.data_private_memory),  # type: ignore[list-item]
+                ("trisc2_data_private_memory", self.trisc2.data_private_memory),  # type: ignore[list-item]
+            ]
         )
 
     @cached_property

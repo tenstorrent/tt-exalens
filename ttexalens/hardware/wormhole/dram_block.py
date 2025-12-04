@@ -50,4 +50,4 @@ class WormholeDramBlock(WormholeNocBlock):
             self.register_store_noc0 = RegisterStore(register_store_location2_noc0_initialization, self.location)
             self.register_store_noc1 = RegisterStore(register_store_location2_noc1_initialization, self.location)
 
-        self.memory_map = MemoryMap({"dram_bank": self.dram_bank})
+        self.memory_map.map_block("dram_bank", self.dram_bank)
