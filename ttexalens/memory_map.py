@@ -22,12 +22,13 @@ class MemoryMap:
             [(block, name) for name, block in blocks.items()], key=lambda item: item[0].address.noc_address
         )
 
-    def get_block_by_address(self, noc_address: int) -> str | None:
+    def get_block_by_address(self, address: int) -> str | None:
         """
-        Find the block name for a given NOC address.
+        Find the block name for a given address.
+        Currently only NOC addresses are supported.
 
         Args:
-            noc_address: The NOC address to look up
+            address: The NOC address to look up
 
         Returns:
             The name of the block containing the address, or None if not found
@@ -36,7 +37,7 @@ class MemoryMap:
         # Linear search is sufficient since the number of blocks is small
         # Move to binary search if the number of blocks increases
         for block, name in self.sortedBlocks:
-            if block.address.noc_address <= noc_address < block.address.noc_address + block.size:
+            if block.address.noc_address <= address < block.address.noc_address + block.size:
                 return name
         return None
 
