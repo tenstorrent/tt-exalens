@@ -12,7 +12,7 @@ from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_add
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.noc_memory_map import NocMemoryMap
+from ttexalens.memory_map import MemoryMap
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     DebugRegisterDescription,
@@ -186,11 +186,10 @@ class BlackholeDramBlock(BlackholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
-        # Create NOC memory map
-        self.noc_memory_map = NocMemoryMap(
+        self.memory_map = MemoryMap(
             {
-                "l1": {"noc_address": 0x00000000, "size": 4 * 1024},
-                "dram_bank": {"noc_address": 0x00001000, "size": 2 * 1024 * 1024 * 1024 - 4 * 1024},
+                "l1": self.l1,
+                "dram_bank": self.dram_bank,
             }
         )
 

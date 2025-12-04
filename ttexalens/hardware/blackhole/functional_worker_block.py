@@ -10,7 +10,7 @@ from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.blackhole.baby_risc_debug import BlackholeBabyRiscDebug
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.noc_memory_map import NocMemoryMap
+from ttexalens.memory_map import MemoryMap
 from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import debug_bus_signal_map, group_map
 from ttexalens.hardware.blackhole.functional_worker_registers import register_map
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
@@ -179,15 +179,14 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
-        # Create NOC memory map
-        self.noc_memory_map = NocMemoryMap(
+        self.memory_map = MemoryMap(
             {
-                "l1": {"noc_address": 0x00000000, "size": 1536 * 1024},
-                "brisc_private_memory": {"noc_address": 0xFFB14000, "size": 8 * 1024},
-                "ncrisc_private_memory": {"noc_address": 0xFFB16000, "size": 8 * 1024},
-                "trisc0_private_memory": {"noc_address": 0xFFB18000, "size": 4 * 1024},
-                "trisc1_private_memory": {"noc_address": 0xFFB1A000, "size": 4 * 1024},
-                "trisc2_private_memory": {"noc_address": 0xFFB1C000, "size": 4 * 1024},
+                "l1": self.l1,
+                "brisc_data_private_memory": self.brisc.data_private_memory,
+                "ncrisc_data_private_memory": self.ncrisc.data_private_memory,
+                "trisc0_data_private_memory": self.trisc0.data_private_memory,
+                "trisc1_data_private_memory": self.trisc1.data_private_memory,
+                "trisc2_data_private_memory": self.trisc2.data_private_memory,
             }
         )
 

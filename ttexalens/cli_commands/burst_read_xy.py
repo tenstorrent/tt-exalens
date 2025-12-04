@@ -39,6 +39,7 @@ command_metadata = {
 import time
 from docopt import docopt
 
+from ttexalens.memory_map import MemoryMap
 from ttexalens.uistate import UIState
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -105,20 +106,33 @@ def print_a_read(core_loc_str, addr, val, comment=""):
     print(f"{core_loc_str} 0x{addr:08x} ({addr}) => 0x{val:08x} ({val:d}) {comment}")
 
 
+def print_memory_block(header: str, start_addr: int, data: list[int], bytes_per_entry: int, is_hex: bool):
+    """
+    Helper function to print a memory block with formatted data.
+
+    Args:
+        header: Block header/label to display
+        start_addr: Starting address of the block
+        data: List of word values to print
+        bytes_per_entry: Number of bytes per entry (1, 2, or 4)
+        is_hex: Whether to print in hex or decimal format
+    """
+    da = DataArray(f"{header} : 0x{start_addr:08x} ({len(data) * 4} bytes)", 4)
+    da.data = data
+    if bytes_per_entry != 4:
+        da.to_bytes_per_entry(bytes_per_entry)
+    print(f"{da._id}\n{util.dump_memory(start_addr, da.data, bytes_per_entry, 16, is_hex)}")
+
+
 def print_a_burst_read(
     device_id, core_loc, addr, core_loc_str, word_count=1, sample=1, print_format="hex32", context=None
 ):
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
 
-    memory_map = None
-    try:
-        device = context.devices[device_id]
-        noc_block = device.get_block(core_loc)
-        memory_map = noc_block.get_noc_memory_map()
-    except Exception:
-        # If we can't get the memory map, fall back to simple header
-        pass
+    device = context.devices[device_id]
+    noc_block = device.get_block(core_loc)
+    memory_map: MemoryMap | None = noc_block.get_memory_map()
 
     if sample == 0:  # No sampling, just a single read
         # Read all data at once for efficiency
@@ -131,71 +145,58 @@ def print_a_burst_read(
             i = 0
             while i < word_count:
                 word_addr = addr + i * 4
-                region_name = memory_map.get_region_by_noc_address(word_addr)
+                memory_block_name = memory_map.get_block_by_address(word_addr)
 
-                if region_name:
-                    # Get region info and calculate how many words fit
-                    region = memory_map.get_region_by_name(region_name)
-                    region_start = region["noc_address"]
-                    region_end = region_start + region["size"]
-                    remaining_in_region = (region_end - word_addr) // 4
-                    words_to_read = min(remaining_in_region, word_count - i)
+                if memory_block_name is not None:
+                    # Get block info and calculate how many words fit in this known region
+                    memory_block = memory_map.get_block_by_name(memory_block_name)
+                    memory_block_start = memory_block.address.noc_address
+                    memory_block_end = memory_block_start + memory_block.size
+                    remaining_words_in_block = (memory_block_end - word_addr) // 4
+                    words_to_read = min(remaining_words_in_block, word_count - i)
                 else:
-                    # Unknown region, just take one word
-                    region_name = "unknown"
-                    words_to_read = 1
+                    # Unknown block - find how many consecutive unknown words
+                    memory_block_name = "?"
+                    remaining_words_in_block = word_count - i
+                    words_to_read = remaining_words_in_block
+                    for offset in range(remaining_words_in_block):
+                        check_addr = word_addr + offset * 4
+                        if memory_map.get_block_by_address(check_addr) is not None:
+                            words_to_read = offset if offset > 0 else 1
+                            break
 
-                # Collect data for this region
+                # Collect data for this block
                 block_data = data[i : i + words_to_read]
                 block_start_addr = word_addr
 
-                # Print this region's data
-                block_header = f"({region_name})"
-                da = DataArray(f"{block_header} : 0x{block_start_addr:08x} ({len(block_data) * 4} bytes)", 4)
-                da.data = block_data
-                if bytes_per_entry != 4:
-                    da.to_bytes_per_entry(bytes_per_entry)
-                print(f"{da._id}\n{util.dump_memory(block_start_addr, da.data, bytes_per_entry, 16, is_hex)}")
+                # Print this block's data
+                header = f"({memory_block_name})"
+                print_memory_block(header, block_start_addr, block_data, bytes_per_entry, is_hex)
 
                 i += words_to_read
         else:
             # No memory map, just print the data
-            da = DataArray(f"{core_loc_str} : 0x{addr:08x} ({word_count * 4} bytes)", 4)
-            da.data = data
-            if bytes_per_entry != 4:
-                da.to_bytes_per_entry(bytes_per_entry)
-            print(util.dump_memory(addr, da.data, bytes_per_entry, 16, is_hex))
+            print_memory_block(core_loc_str, addr, data, bytes_per_entry, is_hex)
     else:
         # Sampling mode
-        if memory_map is not None:
-            # Track region for each sampled word
-            for i in range(word_count):
-                word_addr = addr + 4 * i
-                region_name = memory_map.get_region_by_noc_address(word_addr)
-                if not region_name:
-                    region_name = "unknown"
-                block_header = f"{core_loc_str} ({region_name})"
+        for i in range(word_count):
+            word_addr = addr + 4 * i
+            block_name: str | None = None
 
-                values = {}
-                print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
-                t_end = time.time() + sample / word_count
-                while time.time() < t_end:
-                    val = read_word_from_device(core_loc, word_addr, device_id, context=context)
-                    if val not in values:
-                        values[val] = 0
-                    values[val] += 1
-                for val in values.keys():
-                    print_a_read(block_header, word_addr, val, f"- {values[val]} times")
-        else:
-            # No memory map, original behavior
-            for i in range(word_count):
-                values = {}
-                print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
-                t_end = time.time() + sample / word_count
-                while time.time() < t_end:
-                    val = read_word_from_device(core_loc, addr + 4 * i, device_id, context=context)
-                    if val not in values:
-                        values[val] = 0
-                    values[val] += 1
-                for val in values.keys():
-                    print_a_read(core_loc_str, addr + 4 * i, val, f"- {values[val]} times")
+            if memory_map is not None:
+                block_name = memory_map.get_block_by_address(word_addr)
+            if block_name is None:
+                block_name = "?"
+
+            block_header = f"{core_loc_str} ({block_name})"
+
+            values = {}
+            print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
+            t_end = time.time() + sample / word_count
+            while time.time() < t_end:
+                val = read_word_from_device(core_loc, word_addr, device_id, context=context)
+                if val not in values:
+                    values[val] = 0
+                values[val] += 1
+            for val in values.keys():
+                print_a_read(block_header, word_addr, val, f"- {values[val]} times")
