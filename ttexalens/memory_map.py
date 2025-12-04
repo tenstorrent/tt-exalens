@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 from ttexalens.hardware.memory_block import MemoryBlock
-from intervaltree import Interval, IntervalTree  # type: ignore[import-untyped]
+from intervaltree import Interval, IntervalTree
 
 
 class MemoryMap:
