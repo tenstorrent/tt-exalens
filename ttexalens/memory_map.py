@@ -18,11 +18,13 @@ class MemoryMap:
         """
 
         self.blocks: dict[str, MemoryBlock] = blocks
+        # Note: sortedBlocks only contains blocks with noc_address
         self.sortedBlocks: list[tuple[MemoryBlock, str]] = sorted(
-            [(block, name) for name, block in blocks.items()], key=lambda item: item[0].address.noc_address
+            [(block, name) for name, block in blocks.items() if block.address.noc_address is not None],
+            key=lambda item: item[0].address.noc_address,  # type: ignore[return-value,arg-type]
         )
 
-    def get_block_by_address(self, address: int) -> str | None:
+    def get_block_name_by_address(self, address: int) -> str | None:
         """
         Find the block name for a given address.
         Currently only NOC addresses are supported.
@@ -37,7 +39,9 @@ class MemoryMap:
         # Linear search is sufficient since the number of blocks is small
         # Move to binary search if the number of blocks increases
         for block, name in self.sortedBlocks:
-            if block.address.noc_address <= address < block.address.noc_address + block.size:
+            noc_addr = block.address.noc_address
+            assert noc_addr is not None  # Guaranteed by sortedBlocks construction
+            if noc_addr <= address < noc_addr + block.size:
                 return name
         return None
 

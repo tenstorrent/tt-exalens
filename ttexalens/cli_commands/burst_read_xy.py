@@ -145,11 +145,15 @@ def print_a_burst_read(
             i = 0
             while i < word_count:
                 word_addr = addr + i * 4
-                memory_block_name = memory_map.get_block_by_address(word_addr)
+                memory_block_name = memory_map.get_block_name_by_address(word_addr)
 
                 if memory_block_name is not None:
                     # Get block info and calculate how many words fit in this known region
                     memory_block = memory_map.get_block_by_name(memory_block_name)
+                    assert memory_block is not None, f"Memory block '{memory_block_name}' not found in map but expected"
+                    assert (
+                        memory_block.address.noc_address is not None
+                    ), f"Memory block '{memory_block_name}' has no NOC address"
                     memory_block_start = memory_block.address.noc_address
                     memory_block_end = memory_block_start + memory_block.size
                     remaining_words_in_block = (memory_block_end - word_addr) // 4
@@ -161,7 +165,7 @@ def print_a_burst_read(
                     words_to_read = remaining_words_in_block
                     for offset in range(remaining_words_in_block):
                         check_addr = word_addr + offset * 4
-                        if memory_map.get_block_by_address(check_addr) is not None:
+                        if memory_map.get_block_name_by_address(check_addr) is not None:
                             words_to_read = offset if offset > 0 else 1
                             break
 
@@ -171,12 +175,12 @@ def print_a_burst_read(
 
                 # Print this block's data
                 header = f"({memory_block_name})"
-                print_memory_block(header, block_start_addr, block_data, bytes_per_entry, is_hex)
+                print_memory_block(header, block_start_addr, block_data, bytes_per_entry, bool(is_hex))
 
                 i += words_to_read
         else:
             # No memory map, just print the data
-            print_memory_block(core_loc_str, addr, data, bytes_per_entry, is_hex)
+            print_memory_block(core_loc_str, addr, data, bytes_per_entry, bool(is_hex))
     else:
         # Sampling mode
         for i in range(word_count):
@@ -184,7 +188,7 @@ def print_a_burst_read(
             block_name: str | None = None
 
             if memory_map is not None:
-                block_name = memory_map.get_block_by_address(word_addr)
+                block_name = memory_map.get_block_name_by_address(word_addr)
             if block_name is None:
                 block_name = "?"
 

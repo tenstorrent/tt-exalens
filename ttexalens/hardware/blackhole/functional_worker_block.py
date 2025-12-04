@@ -179,6 +179,13 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
+        # Blackhole functional workers always have data private memory for these RISCs
+        assert self.brisc.data_private_memory is not None
+        assert self.ncrisc.data_private_memory is not None
+        assert self.trisc0.data_private_memory is not None
+        assert self.trisc1.data_private_memory is not None
+        assert self.trisc2.data_private_memory is not None
+
         self.memory_map = MemoryMap(
             {
                 "l1": self.l1,

@@ -50,6 +50,24 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
             risc_base_start_address=0x00030000,
         )
 
+        # Quasar functional workers always have data private memory for all trisc cores
+        assert self.neo0.trisc0.data_private_memory is not None
+        assert self.neo0.trisc1.data_private_memory is not None
+        assert self.neo0.trisc2.data_private_memory is not None
+        assert self.neo0.trisc3.data_private_memory is not None
+        assert self.neo1.trisc0.data_private_memory is not None
+        assert self.neo1.trisc1.data_private_memory is not None
+        assert self.neo1.trisc2.data_private_memory is not None
+        assert self.neo1.trisc3.data_private_memory is not None
+        assert self.neo2.trisc0.data_private_memory is not None
+        assert self.neo2.trisc1.data_private_memory is not None
+        assert self.neo2.trisc2.data_private_memory is not None
+        assert self.neo2.trisc3.data_private_memory is not None
+        assert self.neo3.trisc0.data_private_memory is not None
+        assert self.neo3.trisc1.data_private_memory is not None
+        assert self.neo3.trisc2.data_private_memory is not None
+        assert self.neo3.trisc3.data_private_memory is not None
+
         self.memory_map = MemoryMap(
             {
                 "l1": self.l1,
