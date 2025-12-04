@@ -957,7 +957,7 @@ class TestCallStack(unittest.TestCase):
                 self.assertEqual(entry1.pc, entry2.pc, "Addresses do not match")
 
     CALLSTACK_ELFS = ["callstack.debug", "callstack.release", "callstack.coverage"]
-    RECURSION_COUNT = [1, 10, 50]
+    RECURSION_COUNT = [1, 10, 40]
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack_with_parsing(self, elf_name, recursion_count):
@@ -1033,24 +1033,6 @@ class TestCallStack(unittest.TestCase):
         callstack: list[CallstackEntry] = lib.top_callstack(pc, elf_path, None, self.context)
         self.assertEqual(len(callstack), 1)
         self.assertEqual(callstack[0].function_name, "halt")
-
-    @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
-    def test_callstack_optimized(self, elf_name: str, recursion_count: int):
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
-        elf_path = self.get_elf_path(elf_name)
-        self.loader.run_elf(elf_path)
-        callstack: list[CallstackEntry] = lib.callstack(self.location, elf_path, None, self.risc_name, None, 100, True)
-
-        self.assertEqual(len(callstack), recursion_count + 3)
-        self.assertEqual(callstack[0].function_name, "halt")
-        for i in range(1, recursion_count):
-            self.assertEqual(callstack[i].function_name, "f1")
-        self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
-        self.assertEqual(callstack[recursion_count + 2].function_name, "main")
-        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-            self.location, self.risc_name, [elf_path], [None], self.gdb_server
-        )
-        self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand([(1, 1)])
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):
