@@ -106,7 +106,7 @@ class MyBuild(build_ext):
             "ttexalens_lib": {"path": "ttexalens", "files": get_ttexalens_py_files(), "output": "ttexalens"},
             "libs": {
                 "path": "build/lib",
-                "files": ["libdevice.so", get_pybind_filename()] + get_libjtag(),
+                "files": [get_pybind_filename()] + get_libjtag(),
                 "output": "ttexalens/lib",
                 "strip": True,
             },
