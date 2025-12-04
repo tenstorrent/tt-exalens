@@ -908,19 +908,103 @@ class ElfDie:
                     value = stack.pop()
                 if value is None:
                     return False, None
-                value = abs(int(value))
-                stack.append(value)
+                try:
+                    value = abs(int(value))
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_neg":
+                if len(stack) > 0:
+                    value = stack.pop()
+                if value is None:
+                    return False, None
+                try:
+                    value = -value
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_not":
+                if len(stack) > 0:
+                    value = stack.pop()
+                if value is None:
+                    return False, None
+                try:
+                    value = not bool(value)
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_and":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = int(arg1) & int(arg2)
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_div":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = int(arg1) // int(arg2)
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_minus":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = int(arg1) - int(arg2)
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_mod":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = int(arg1) % int(arg2)
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_mul":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = arg1 * arg2
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_or":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = arg1 | arg2
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_plus":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = arg1 + arg2
+                    stack.append(value)
+                except:
+                    return False, None
             else:
                 # TODO: Implement missing expression operations
-                # DW_OP_and=0x1a,
-                # DW_OP_div=0x1b,
-                # DW_OP_minus=0x1c,
-                # DW_OP_mod=0x1d,
-                # DW_OP_mul=0x1e,
-                # DW_OP_neg=0x1f,
-                # DW_OP_not=0x20,
-                # DW_OP_or=0x21,
-                # DW_OP_plus=0x22,
                 # DW_OP_plus_uconst=0x23,
                 # DW_OP_shl=0x24,
                 # DW_OP_shr=0x25,
@@ -966,4 +1050,6 @@ class ElfDie:
 
                 # Unsupported operation
                 return False, None
+        if value is None and len(stack) > 0:
+            value = stack.pop()
         return is_address, value
