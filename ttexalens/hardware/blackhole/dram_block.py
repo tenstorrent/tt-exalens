@@ -187,10 +187,10 @@ class BlackholeDramBlock(BlackholeNocBlock):
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
         self.memory_map.map_blocks(
-            [
-                ("l1", self.l1),
-                ("dram_bank", self.dram_bank),
-            ]
+            {
+                "l1": self.l1,
+                "dram_bank": self.dram_bank,
+            }
         )
 
     @cached_property

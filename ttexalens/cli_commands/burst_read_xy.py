@@ -84,7 +84,6 @@ def run(cmd_text, context, ui_state: UIState):
             device_id,
             location,
             addr,
-            location_str,
             word_count=word_count if word_count > 0 else size_words,
             sample=sample,
             print_format=format,
@@ -102,8 +101,8 @@ def run(cmd_text, context, ui_state: UIState):
 
 
 # A helper to print the result of a single PCI read
-def print_a_read(location_str, addr, val, comment=""):
-    print(f"{location_str} 0x{addr:08x} ({addr}) => 0x{val:08x} ({val:d}) {comment}")
+def print_a_read(header, addr, val, comment=""):
+    print(f"{header} 0x{addr:08x} ({addr}) => 0x{val:08x} ({val:d}) {comment}")
 
 
 def print_memory_block(header: str, start_addr: int, data: list[int], bytes_per_entry: int, is_hex: bool):
@@ -114,9 +113,7 @@ def print_memory_block(header: str, start_addr: int, data: list[int], bytes_per_
     print(f"{da._id}\n{util.dump_memory(start_addr, da.data, bytes_per_entry, 16, is_hex)}")
 
 
-def print_a_burst_read(
-    device_id, location, addr, location_str, word_count=1, sample=1, print_format="hex32", context=None
-):
+def print_a_burst_read(device_id, location, addr, word_count=1, sample=1, print_format="hex32", context=None):
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
 
@@ -129,7 +126,7 @@ def print_a_burst_read(
         data = read_words_from_device(location, addr, device_id, word_count, context)
 
         # Print overall header
-        print(f"{location_str} : 0x{addr:08x} ({word_count * 4} total bytes)")
+        print(f"{location.to_user_str()} : 0x{addr:08x} ({word_count * 4} total bytes)")
 
         i = 0
         while i < word_count:
@@ -173,14 +170,12 @@ def print_a_burst_read(
         # Sampling mode
         for i in range(word_count):
             word_addr = addr + 4 * i
-            block_name: str | None = None
 
-            if memory_map is not None:
-                block_name = memory_map.get_block_name_by_noc_address(word_addr)
+            block_name = memory_map.get_block_name_by_noc_address(word_addr)
             if block_name is None:
                 block_name = "?"
 
-            block_header = f"{location_str} ({block_name})"
+            block_header = f"{location.to_user_str()} ({block_name})"
 
             values = {}
             print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
