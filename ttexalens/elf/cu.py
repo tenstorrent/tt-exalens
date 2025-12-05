@@ -6,7 +6,6 @@ from __future__ import annotations
 from elftools.dwarf.compileunit import CompileUnit as DWARF_CU
 from elftools.dwarf.die import DIE as DWARF_DIE
 from elftools.dwarf.dwarf_expr import DWARFExprParser
-from elftools.dwarf.lineprogram import LineProgram
 from functools import cached_property
 from ttexalens.elf.die import ElfDie
 from typing import TYPE_CHECKING
@@ -36,10 +35,8 @@ class ElfCompileUnit:
         return self.get_die(self.dwarf_cu.get_top_DIE())
 
     @cached_property
-    def line_program(self) -> LineProgram:
-        line_program = self.dwarf.dwarf.line_program_for_CU(self.dwarf_cu)
-        assert line_program is not None
-        return line_program
+    def line_program(self):
+        return self.dwarf.dwarf.line_program_for_CU(self.dwarf_cu)
 
     @cached_property
     def version(self):
