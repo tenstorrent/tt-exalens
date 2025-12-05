@@ -939,7 +939,7 @@ class ElfDie:
                 arg1 = stack.pop()
                 arg2 = stack.pop()
                 try:
-                    value = int(arg1) & int(arg2)
+                    value = int(arg2) & int(arg1)
                     stack.append(value)
                 except:
                     return False, None
@@ -949,7 +949,7 @@ class ElfDie:
                 arg1 = stack.pop()
                 arg2 = stack.pop()
                 try:
-                    value = int(arg1) // int(arg2)
+                    value = int(arg2) // int(arg1)
                     stack.append(value)
                 except:
                     return False, None
@@ -959,7 +959,7 @@ class ElfDie:
                 arg1 = stack.pop()
                 arg2 = stack.pop()
                 try:
-                    value = int(arg1) - int(arg2)
+                    value = int(arg2) - int(arg1)
                     stack.append(value)
                 except:
                     return False, None
@@ -969,7 +969,7 @@ class ElfDie:
                 arg1 = stack.pop()
                 arg2 = stack.pop()
                 try:
-                    value = int(arg1) % int(arg2)
+                    value = int(arg2) % int(arg1)
                     stack.append(value)
                 except:
                     return False, None
@@ -979,7 +979,7 @@ class ElfDie:
                 arg1 = stack.pop()
                 arg2 = stack.pop()
                 try:
-                    value = arg1 * arg2
+                    value = arg2 * arg1
                     stack.append(value)
                 except:
                     return False, None
@@ -989,7 +989,7 @@ class ElfDie:
                 arg1 = stack.pop()
                 arg2 = stack.pop()
                 try:
-                    value = arg1 | arg2
+                    value = arg2 | arg1
                     stack.append(value)
                 except:
                     return False, None
@@ -999,33 +999,145 @@ class ElfDie:
                 arg1 = stack.pop()
                 arg2 = stack.pop()
                 try:
-                    value = arg1 + arg2
+                    value = arg2 + arg1
                     stack.append(value)
                 except:
                     return False, None
+            elif op.op_name == "DW_OP_plus_uconst":
+                if len(stack) > 0:
+                    value = stack.pop()
+                if value is None:
+                    return False, None
+                if len(op.args) != 1:
+                    return False, None
+                try:
+                    value = value + op.args[0]
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_shl":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = arg2 << arg1
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_shr":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = arg2 >> arg1
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_shra":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = arg2 // (2**arg1)
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_xor":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = arg2 ^ arg1
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_eq":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = 1 if arg2 == arg1 else 0
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_ge":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = 1 if arg2 >= arg1 else 0
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_gt":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = 1 if arg2 > arg1 else 0
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_le":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = 1 if arg2 <= arg1 else 0
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_lt":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = 1 if arg2 < arg1 else 0
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_ne":
+                if len(stack) < 2:
+                    return False, None
+                arg1 = stack.pop()
+                arg2 = stack.pop()
+                try:
+                    value = 1 if arg2 != arg1 else 0
+                    stack.append(value)
+                except:
+                    return False, None
+            elif op.op_name == "DW_OP_call2" or op.op_name == "DW_OP_call4" or op.op_name == "DW_OP_call_ref":
+                if len(op.args) != 1 or not isinstance(op.args[0], int):
+                    return False, None
+                if not op.op_name == "DW_OP_call_ref":
+                    offset = op.args[0]
+                    refaddr = self.cu.dwarf_cu.cu_offset + offset
+                else:
+                    refaddr = op.args[0]
+                die = self.cu.get_die(self.cu.dwarf_cu.get_DIE_from_refaddr(refaddr))
+                if "DW_AT_location" not in die.attributes:
+                    return False, None
+                location = location_parser.parse_from_attribute(die.attributes["DW_AT_location"], self.cu.version, die)
+                # TODO: Start executing location expression in current context (current stack, etc.)
+                return False, None
             else:
                 # TODO: Implement missing expression operations
-                # DW_OP_plus_uconst=0x23,
-                # DW_OP_shl=0x24,
-                # DW_OP_shr=0x25,
-                # DW_OP_shra=0x26,
-                # DW_OP_xor=0x27,
-                # DW_OP_bra=0x28,
-                # DW_OP_eq=0x29,
-                # DW_OP_ge=0x2a,
-                # DW_OP_gt=0x2b,
-                # DW_OP_le=0x2c,
-                # DW_OP_lt=0x2d,
-                # DW_OP_ne=0x2e,
-                # DW_OP_skip=0x2f,
+                # DW_OP_bra=0x28, # Hard to implement without full control flow support
+                # DW_OP_skip=0x2f, # Hard to implement without full control flow support
                 # DW_OP_piece=0x93,
                 # DW_OP_deref_size=0x94,
                 # DW_OP_xderef_size=0x95,
                 # DW_OP_nop=0x96,
                 # DW_OP_push_object_address=0x97,
-                # DW_OP_call2=0x98,
-                # DW_OP_call4=0x99,
-                # DW_OP_call_ref=0x9a,
                 # DW_OP_form_tls_address=0x9b,
                 # DW_OP_bit_piece=0x9d,
                 # DW_OP_implicit_value=0x9e,
