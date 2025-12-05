@@ -12,6 +12,7 @@ from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_add
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.memory_map import MemoryMap
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     DebugRegisterDescription,
@@ -184,6 +185,13 @@ class BlackholeDramBlock(BlackholeNocBlock):
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
+
+        self.memory_map.map_blocks(
+            {
+                "l1": self.l1,
+                "dram_bank": self.dram_bank,
+            }
+        )
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:

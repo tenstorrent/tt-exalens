@@ -7,6 +7,7 @@ from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_store_initialization
 from ttexalens.hardware.wormhole.noc_block import WormholeNocBlock
+from ttexalens.memory_map import MemoryMap
 from ttexalens.register_store import RegisterStore
 
 register_store_location0_noc0_initialization = get_niu_register_store_initialization(
@@ -48,3 +49,5 @@ class WormholeDramBlock(WormholeNocBlock):
         else:
             self.register_store_noc0 = RegisterStore(register_store_location2_noc0_initialization, self.location)
             self.register_store_noc1 = RegisterStore(register_store_location2_noc1_initialization, self.location)
+
+        self.memory_map.map_block("dram_bank", self.dram_bank)

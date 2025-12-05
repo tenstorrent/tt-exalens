@@ -159,6 +159,8 @@ class WormholeEthBlock(WormholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
+        self.memory_map.map_block("l1", self.l1)
+
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:
         return [self.get_risc_debug(self.erisc.risc_name, self.erisc.neo_id)]
