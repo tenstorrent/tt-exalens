@@ -59,15 +59,7 @@ void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id
 void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t size, uint8_t chip_id,
                          tt::umd::CoreCoord tensix_core, uint64_t addr,
                          std::chrono::milliseconds timeout = std::chrono::milliseconds(200)) {
-    // Disabled timeout since we have no way to verify for writes of large sizes.
-    // auto start_time = std::chrono::steady_clock::now();
     cluster->write_to_device_reg(temp, size, chip_id, tensix_core, addr);
-    // auto end_time = std::chrono::steady_clock::now();
-    // auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-    // if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && elapsed_time > timeout) {
-    //     tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
-    //     throw TimeoutDeviceRegisterException(chip_id, tensix_core, addr, size, false);
-    // }
 }
 
 // Find working active eth core and configure it for remote communication
