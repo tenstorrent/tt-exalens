@@ -121,6 +121,8 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(0x11111111, g_global_struct.uint_pointer.dereference().read_value())
         self.assertEqual(0x11111111, g_global_struct.uint_pointer[0].read_value())
         self.assertEqual(0x22222222, g_global_struct.uint_pointer[1].read_value())
+        self.assertEqual(2, g_global_struct.enum_class_field.read_value())
+        self.assertEqual(20, g_global_struct.enum_type_field.read_value())
 
     def verify_global_struct(self, g_global_struct):
         self.assertEqual(0xAA, g_global_struct.base_field1)
@@ -168,6 +170,10 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(0x11111111, g_global_struct.uint_pointer.dereference())
         self.assertEqual(0x11111111, g_global_struct.uint_pointer[0])
         self.assertEqual(0x22222222, g_global_struct.uint_pointer[1])
+        self.assertEqual(2, g_global_struct.enum_class_field)
+        self.assertEqual("EnumClass::VALUE_C", str(g_global_struct.enum_class_field))
+        self.assertEqual(20, g_global_struct.enum_type_field)
+        self.assertEqual("EnumType::TYPE_Y", str(g_global_struct.enum_type_field))
 
     def test_elf_variable_low_level(self):
         variable_die = self.parsed_elf.variables["g_global_struct"]
@@ -379,3 +385,13 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertRaises(Exception, g_global_struct.f.write_value, 0xFFFFFFFF)  # Overflow uint32 on float32
         self.assertRaises(Exception, g_global_struct.f.write_value, 3.4028235e38 * 2)  # Overflow float32
         self.assertRaises(Exception, g_global_struct.g.write_value, 0xFFFFFFFFFFFFFFFF)  # Overflow uint64 on float64
+        enum_value = self.parsed_elf.get_enum_value("EnumClass::VALUE_D")
+        assert enum_value is not None
+        self.assertEqual(enum_value, 3)
+        g_global_struct.enum_class_field.write_value(enum_value)
+        self.assertEqual(3, g_global_struct.enum_class_field)
+        self.assertEqual("EnumClass::VALUE_D", str(g_global_struct.enum_class_field))
+        g_global_struct.enum_class_field.write_value(2)  # Restore original value
+        self.assertRaises(
+            Exception, g_global_struct.enum_class_field.write_value, 0xFFFFFFFFFFFFFFFF
+        )  # Overflow uint64 on byte enum

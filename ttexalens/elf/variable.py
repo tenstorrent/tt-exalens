@@ -274,54 +274,64 @@ class ElfVariable:
 
     def read_value(self) -> int | float | bool:
         # Check that type_die is a basic type
-        if not self.__type_die.tag_is("base_type") and not self.__type_die.tag_is("pointer_type"):
-            raise Exception(f"ERROR: {self.__type_die.name} is not a base type or pointer type")
+        type = self.__type_die
+        if not type.tag_is("base_type") and not type.tag_is("pointer_type") and not type.tag_is("enumeration_type"):
+            raise Exception(f"ERROR: {type.name} is not a base type or pointer type")
+
+        # If it is an enumeration type, treat it as its underlying base type
+        while type.tag_is("enumeration_type"):
+            type = type.resolved_type
 
         # Read the value from memory
-        assert self.__type_die.size is not None
-        value_bytes = self.__mem_access.read(self.__address, self.__type_die.size)
+        assert type.size is not None
+        value_bytes = self.__mem_access.read(self.__address, type.size)
 
         # Convert the value to the appropriate type
-        if self.__type_die.tag_is("pointer_type"):
+        if type.tag_is("pointer_type"):
             return self.dereference().get_address()
-        if self.__type_die.name == "float":
+        if type.name == "float":
             return struct.unpack("f", value_bytes)[0]
-        elif self.__type_die.name == "double":
+        elif type.name == "double":
             return struct.unpack("d", value_bytes)[0]
-        elif self.__type_die.name == "bool":
+        elif type.name == "bool":
             return bool(int.from_bytes(value_bytes, byteorder="little"))
         else:
             return int.from_bytes(value_bytes, byteorder="little")
 
     def write_value(self, value: int | float | bool, check_data_loss: bool = True) -> None:
         # Check that type_die is a basic type
-        if not self.__type_die.tag_is("base_type"):
-            raise Exception(f"ERROR: {self.__type_die.name} is not a base type")
+        type = self.__type_die
+        if not type.tag_is("base_type") and not type.tag_is("enumeration_type"):
+            raise Exception(f"ERROR: {type.name} is not a base type")
+
+        # If it is an enumeration type, treat it as its underlying base type
+        while type.tag_is("enumeration_type"):
+            type = type.resolved_type
 
         # Convert the value to bytes
-        assert self.__type_die.size is not None
-        if self.__type_die.name == "float":
+        assert type.size is not None
+        if type.name == "float":
             value_bytes = struct.pack("f", value)
-            if len(value_bytes) > self.__type_die.size:
-                value_bytes = value_bytes[: self.__type_die.size]
+            if len(value_bytes) > type.size:
+                value_bytes = value_bytes[: type.size]
             if check_data_loss:
                 # Verify no data loss
                 unpacked_value = struct.unpack("f", value_bytes)[0]
                 if unpacked_value != value:
                     raise Exception(f"ERROR: Data loss when writing float value {value} to variable")
-        elif self.__type_die.name == "double":
+        elif type.name == "double":
             value_bytes = struct.pack("d", value)
-            if len(value_bytes) > self.__type_die.size:
-                value_bytes = value_bytes[: self.__type_die.size]
+            if len(value_bytes) > type.size:
+                value_bytes = value_bytes[: type.size]
             if check_data_loss:
                 # Verify no data loss
                 unpacked_value = struct.unpack("d", value_bytes)[0]
                 if unpacked_value != value:
                     raise Exception(f"ERROR: Data loss when writing double value {value} to variable")
-        elif self.__type_die.name == "bool":
-            value_bytes = (1 if value else 0).to_bytes(self.__type_die.size, byteorder="little")
+        elif type.name == "bool":
+            value_bytes = (1 if value else 0).to_bytes(type.size, byteorder="little")
         else:
-            value_bytes = int(value).to_bytes(self.__type_die.size, byteorder="little")
+            value_bytes = int(value).to_bytes(type.size, byteorder="little")
             if check_data_loss:
                 # Verify no data loss
                 unpacked_value = int.from_bytes(value_bytes, byteorder="little")
@@ -641,7 +651,12 @@ class ElfVariable:
         This enables usage like: str(elf_var) instead of str(elf_var.value())
         """
         try:
-            return str(self.read_value())
+            value = self.read_value()
+            if self.__type_die.tag_is("enumeration_type"):
+                for entry in self.__type_die.iter_children():
+                    if entry.value == value and entry.path is not None:
+                        return entry.path
+            return str(value)
         except Exception:
             # If get_value() fails (e.g., not a base type), fall back to __repr__
             return self.__repr__()
