@@ -399,10 +399,11 @@ class ElfDie:
         line = None
         column = None
         if "DW_AT_decl_file" in self.attributes:
-            file_entry = self.cu.line_program["file_entry"][self.attributes["DW_AT_decl_file"].value]
-            directory = self.cu.line_program["include_directory"][file_entry.dir_index].decode("utf-8")
-            file = file_entry.name.decode("utf-8")
-            file = os.path.join(directory, file)
+            if self.cu.line_program is not None:
+                file_entry = self.cu.line_program["file_entry"][self.attributes["DW_AT_decl_file"].value]
+                directory = self.cu.line_program["include_directory"][file_entry.dir_index].decode("utf-8")
+                file = file_entry.name.decode("utf-8")
+                file = os.path.join(directory, file)
         if "DW_AT_decl_line" in self.attributes:
             line = self.attributes["DW_AT_decl_line"].value
         if "DW_AT_decl_column" in self.attributes:
