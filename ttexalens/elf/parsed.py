@@ -99,7 +99,7 @@ class ElfDwarfSymbol:
 def decode_symbols(elf_file: ELFFile) -> dict[str, ElfDwarfSymbol]:
     symbols = {}
     section = elf_file.get_section_by_name(".symtab")
-    assert isinstance(section, SymbolTableSection)
+    assert section is not None and isinstance(section, SymbolTableSection)
     for symbol in section.iter_symbols():
         if not symbol.name:
             continue

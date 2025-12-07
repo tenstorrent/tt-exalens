@@ -279,7 +279,7 @@ class ElfVariable:
             raise Exception(f"ERROR: {type.name} is not a base type or pointer type")
 
         # If it is an enumeration type, treat it as its underlying base type
-        while type.tag_is("enumeration_type"):
+        while type.tag_is("enumeration_type") and type.resolved_type != type:
             type = type.resolved_type
 
         # Read the value from memory
