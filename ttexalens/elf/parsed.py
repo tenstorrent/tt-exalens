@@ -98,19 +98,14 @@ class ElfDwarfSymbol:
 
 def decode_symbols(elf_file: ELFFile) -> dict[str, ElfDwarfSymbol]:
     symbols = {}
-    for section in elf_file.iter_sections():
-        # Check if it's a symbol table section
-        if section.name == ".symtab":
-            # Iterate through symbols
-            assert isinstance(section, SymbolTableSection)
-            for symbol in section.iter_symbols():
-                # Check if it's a label symbol
-                if symbol["st_info"]["type"] == "STT_NOTYPE" and symbol.name:
-                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
-                elif symbol["st_info"]["type"] == "STT_FUNC":
-                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
-                elif symbol["st_info"]["type"] == "STT_OBJECT":
-                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
+    section = elf_file.get_section_by_name(".symtab")
+    assert isinstance(section, SymbolTableSection)
+    for symbol in section.iter_symbols():
+        if not symbol.name:
+            continue
+        type = symbol["st_info"]["type"]
+        if type == "STT_NOTYPE" or type == "STT_FUNC" or type == "STT_OBJECT":
+            symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
     return symbols
 
 
@@ -196,6 +191,7 @@ class ParsedElfFile:
         names = name.split("::")
         if len(names) == 0:
             return None
+        declaration_die = None
         for cu in self._dwarf.iter_CUs():
             index = 0
             die = cu.top_DIE
@@ -204,9 +200,18 @@ class ParsedElfFile:
                 index += 1
             if die is not None:
                 if "DW_AT_abstract_origin" in die.attributes:
-                    return die.get_DIE_from_attribute("DW_AT_abstract_origin")
+                    die = die.get_DIE_from_attribute("DW_AT_abstract_origin")
+                    if die is None:
+                        return None
+                elif "DW_AT_specification" in die.attributes:
+                    die = die.get_DIE_from_attribute("DW_AT_specification")
+                    if die is None:
+                        return None
+                if "DW_AT_declaration" in die.attributes and die.attributes["DW_AT_declaration"].value:
+                    declaration_die = die
+                    continue
                 return die
-        return None
+        return declaration_die
 
     def get_enum_value(self, name: str, allow_fallback: bool = False) -> int | None:
         # Try to use fast lookup first
