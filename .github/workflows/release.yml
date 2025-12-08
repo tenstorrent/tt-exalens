@@ -2,11 +2,11 @@ name: "Release"
 description: "Release official ttexalens wheel, triggered manually or by updating VERSION on main."
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - "main"
-      - "onenezic/ci-actions"  # Temporary for testing
+    paths:
+      - "VERSION"
 
 run-name: "Release by @${{ github.actor }} for ${{ github.ref_name }}"
 
