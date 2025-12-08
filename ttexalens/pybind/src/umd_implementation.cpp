@@ -63,8 +63,8 @@ void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t s
     cluster->write_to_device_reg(temp, size, chip_id, tensix_core, addr);
     auto end_time = std::chrono::steady_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-    // Address will always be aligned to 4 bytes, so we can check the last 4 bytes for 0xFFFFFFFF
-    if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && elapsed_time > timeout && size == 4) {
+    // Timeout is set for 1 word write so we only check timeout for that case
+    if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && size == 4 && elapsed_time > timeout) {
         tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
         throw TimeoutDeviceRegisterException(chip_id, tensix_core, addr, size, false);
     }
