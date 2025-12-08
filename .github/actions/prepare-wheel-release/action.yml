@@ -19,7 +19,6 @@ runs:
   steps:
     - name: "Install exalens dependencies"
       uses: ./.github/actions/install-ttexalens-deps
-      shell: bash
     - name: "Setup Python"
       uses: actions/setup-python@v5
       with:
