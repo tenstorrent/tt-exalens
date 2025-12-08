@@ -2,8 +2,9 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from io import StringIO
+from functools import partial
 import threading
-from typing import Callable
+from typing import Callable, IO
 from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 
 from ttexalens.gdb.gdb_communication import (
@@ -52,7 +53,7 @@ class GdbThreadListPaged:
 # Class that serves gdb client requests
 # Gdb remote protocol documentation: https://sourceware.org/gdb/current/onlinedocs/gdb.html/Remote-Protocol.html
 class GdbServer(threading.Thread):
-    def __init__(self, context: Context, server: ServerSocket):
+    def __init__(self, context: Context, server: ServerSocket, error_stream: IO[str] | None = None):
         super().__init__(daemon=True)  # Spawn as daemon, so we don't block exit
         self.context = context  # TTExaLens context
         self.server = server  # server socket used for listening to incoming connections
@@ -89,6 +90,8 @@ class GdbServer(threading.Thread):
         self._last_available_processes: dict[
             RiscLocation, GdbProcess
         ] = {}  # Dictionary of last executed available processes that can be debugged (key: pid)
+        self.error_stream = error_stream
+        self.error = util.ERROR if error_stream is None else partial(util.ERROR, file=error_stream)
 
     @property
     def available_processes(self):
