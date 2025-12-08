@@ -1,13 +1,15 @@
-name: "Release Latest"
-description: "Release latest ttexalens wheel, triggered manually or by pushing/merging to main. Will overwrite existing 'latest' release."
+name: "Release"
+description: "Release official ttexalens wheel, triggered manually or by updating VERSION on main."
 
 on:
   workflow_dispatch:
   push:
     branches:
       - "main"
+    paths:
+        "VERSION"
 
-run-name: "Release latest by @${{ github.actor }} for ${{ github.ref_name }}"
+run-name: "Release by @${{ github.actor }} for ${{ github.ref_name }}"
 
 permissions:
   contents: write
@@ -18,22 +20,26 @@ jobs:
     runs-on: "ubuntu-22.04"
     outputs:
       wheel-name: ${{ steps.prepare-wheel.outputs.wheel-name }}
+      version: ${{ steps.get-version.outputs.version }}
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: "Read version from VERSION file"
+        id: get-version
+        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
       - name: "Prepare Wheel Release"
         uses: ./.github/actions/prepare-wheel-release
         id: prepare-wheel
         with:
           python-version: "3.10"
-          build-version: "latest"
+          build-version: ${{ steps.get-version.outputs.version }}
 
-  release-latest:
+  release:
     needs: prepare-release
     runs-on: ubuntu-22.04
-    name: "Release Latest"
+    name: "Release"
     steps:
       - name: "Download wheel artifact"
         uses: actions/download-artifact@v4
@@ -42,9 +48,9 @@ jobs:
       - name: "Create GitHub Release"
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "latest"
-          name: "Latest Release - Development Build"
+          tag_name: "v${{ needs.prepare-release.outputs.version }}"
+          name: Release v${{ needs.prepare-release.outputs.version }}
           prerelease: true
-          draft: false
+          draft: true
           files: |
             *.whl
